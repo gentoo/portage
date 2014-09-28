@@ -32,8 +32,8 @@ except ImportError:
 	from urlparse import urlparse
 
 from os import path as osp
-pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
-sys.path.insert(0, pym_path)
+if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
@@ -62,7 +62,7 @@ from repoman import utilities
 from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
-from _emerge.userquery import userquery
+from _emerge.UserQuery import UserQuery
 import portage.checksum
 import portage.const
 import portage.repository.config
@@ -299,6 +299,7 @@ qahelp = {
 	"dependency.badindev": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch",
 	"dependency.badmaskedindev": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch",
 	"dependency.badtilde": "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"dependency.perlcore": "This ebuild directly depends on a package in perl-core; it should use the corresponding virtual instead.",
 	"dependency.syntax": "Syntax error in dependency string (usually an extra/missing space/parenthesis)",
 	"dependency.unknown": "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
 	"file.executable": "Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit",
@@ -318,7 +319,6 @@ qahelp = {
 	"LICENSE.missing": "Ebuilds that have a missing or empty LICENSE variable",
 	"LICENSE.virtual": "Virtuals that have a non-empty LICENSE variable",
 	"DESCRIPTION.missing": "Ebuilds that have a missing or empty DESCRIPTION variable",
-	"DESCRIPTION.punctuation": "DESCRIPTION ends with a period character",
 	"DESCRIPTION.toolong": "DESCRIPTION is over %d characters" % max_desc_len,
 	"EAPI.definition": "EAPI definition does not conform to PMS section 7.3.1 (first non-comment, non-blank line)",
 	"EAPI.deprecated": "Ebuilds that use features that are deprecated in the current EAPI",
@@ -387,7 +387,7 @@ qawarnings = set((
 "dependency.badindev",
 "dependency.badmaskedindev",
 "dependency.badtilde",
-"DESCRIPTION.punctuation",
+"dependency.perlcore",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
 "HOMEPAGE.virtual",
@@ -1895,12 +1895,6 @@ for x in effective_scanlist:
 					stats[myqakey] += 1
 					fails[myqakey].append(relative_path)
 
-		if myaux['DESCRIPTION'][-1:] in ['.']:
-			stats['DESCRIPTION.punctuation'] += 1
-			fails['DESCRIPTION.punctuation'].append(
-				"%s: DESCRIPTION ends with a '%s' character"
-				% (relative_path, myaux['DESCRIPTION'][-1:]))
-
 		# 14 is the length of DESCRIPTION=""
 		if len(myaux['DESCRIPTION']) > max_desc_len:
 			stats['DESCRIPTION.toolong'] += 1
@@ -2042,15 +2036,15 @@ for x in effective_scanlist:
 					if atom == "||":
 						continue
 
+					is_blocker = atom.blocker
+
 					# Skip dependency.unknown for blockers, so that we
 					# don't encourage people to remove necessary blockers,
 					# as discussed in bug #382407.
-					if atom.blocker is None and \
+					if not is_blocker and \
 						not portdb.xmatch("match-all", atom) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
-
-					is_blocker = atom.blocker
 
 					if catdir != "virtual":
 						if not is_blocker and \
@@ -2060,6 +2054,13 @@ for x in effective_scanlist:
 								relative_path +
 								": %s: consider using '%s' instead of '%s'" %
 								(mytype, suspect_virtual[atom.cp], atom))
+						if not is_blocker and \
+							atom.cp.startswith("perl-core/"):
+							stats['dependency.perlcore'] += 1
+							fails['dependency.perlcore'].append(
+								relative_path +
+								": %s: please use '%s' instead of '%s'" %
+								(mytype, atom.replace("perl-core/","virtual/perl-"), atom))
 
 					if buildtime and \
 						not is_blocker and \
@@ -2882,7 +2883,8 @@ else:
 	logging.info("myupdates: %s", myupdates)
 	logging.info("myheaders: %s", myheaders)
 
-	if options.ask and userquery('Commit changes?', True) != 'Yes':
+	uq = UserQuery(options)
+	if options.ask and uq.query('Commit changes?', True) != 'Yes':
 		print("* aborting commit.")
 		sys.exit(128 + signal.SIGINT)
 

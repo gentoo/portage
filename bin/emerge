@@ -36,20 +36,26 @@ try:
 	signal.signal(debug_signum, debug_signal)
 
 	from os import path as osp
-	pym_path = osp.join(osp.dirname(osp.dirname(
-		osp.realpath(__file__))), "pym")
-	sys.path.insert(0, pym_path)
+	if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
+		sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 	import portage
 	portage._internal_caller = True
 	portage._disable_legacy_globals()
 	from _emerge.main import emerge_main
 
 	if __name__ == "__main__":
-		from portage.exception import ParseError, PermissionDenied
+		from portage.exception import IsADirectory, ParseError, \
+				PermissionDenied
 		try:
 			retval = emerge_main()
 		except PermissionDenied as e:
 			sys.stderr.write("Permission denied: '%s'\n" % str(e))
+			sys.exit(e.errno)
+		except IsADirectory as e:
+			sys.stderr.write("'%s' is a directory, but should be a file!\n"
+					"See portage man page for information on "
+					"which files may be directories.\n" %
+					str(e))
 			sys.exit(e.errno)
 		except ParseError as e:
 			sys.stderr.write("%s\n" % str(e))

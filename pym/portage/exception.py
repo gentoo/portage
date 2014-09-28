@@ -84,6 +84,10 @@ class FileNotFound(InvalidLocation):
 class DirectoryNotFound(InvalidLocation):
 	"""A directory was not found when it was expected to exist"""
 
+class IsADirectory(PortageException):
+	"""A directory was found when it was expected to be a file"""
+	from errno import EISDIR as errno
+
 class OperationNotPermitted(PortageException):
 	"""An operation was not permitted operating system"""
 	from errno import EPERM as errno

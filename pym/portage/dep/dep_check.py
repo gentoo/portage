@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -287,6 +287,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	unsat_use_non_installed = []
 	other_installed = []
 	other_installed_some = []
+	other_installed_any_slot = []
 	other = []
 
 	# unsat_use_* must come after preferred_non_installed
@@ -301,6 +302,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		unsat_use_non_installed,
 		other_installed,
 		other_installed_some,
+		other_installed_any_slot,
 		other,
 	)
 
@@ -414,16 +416,16 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
-				for slot_atom in slot_map:
+				for atom in atoms:
 					# New-style virtuals have zero cost to install.
-					if slot_atom.startswith("virtual/"):
+					if atom.blocker or atom.cp.startswith("virtual/"):
 						continue
 					# We check if the matched package has actually been
 					# added to the digraph, in order to distinguish between
 					# those packages and installed packages that may need
 					# to be uninstalled in order to resolve blockers.
-					graph_matches = graph_db.match_pkgs(slot_atom)
-					if not graph_matches or graph_matches[-1] not in graph:
+					if not any(pkg in graph for pkg in
+						graph_db.match_pkgs(atom)):
 						all_in_graph = False
 						break
 				circular_atom = None
@@ -504,6 +506,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				other_installed.append(this_choice)
 			elif some_installed:
 				other_installed_some.append(this_choice)
+
+			# Use Atom(atom.cp) for a somewhat "fuzzy" match, since
+			# the whole atom may be too specific. For example, see
+			# bug #522652, where using the whole atom leads to an
+			# unsatisfiable choice.
+			elif any(vardb.match(Atom(atom.cp)) for atom in atoms
+				if not atom.blocker):
+				other_installed_any_slot.append(this_choice)
 			else:
 				other.append(this_choice)
 

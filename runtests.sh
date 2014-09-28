@@ -4,7 +4,7 @@
 
 # These are the versions we care about.  The rest are just "nice to have".
 PYTHON_SUPPORTED_VERSIONS="2.6 2.7 3.2 3.3 3.4"
-PYTHON_VERSIONS="2.6 2.7 2.7-pypy-1.8 2.7-pypy-1.9 2.7-pypy-2.0 3.1 3.2 3.3 3.4 3.5"
+PYTHON_VERSIONS="2.6 2.7 pypy 3.1 3.2 3.3 3.4 3.5"
 
 # has to be run from portage root dir
 cd "${0%/*}" || exit 1
@@ -60,14 +60,14 @@ exit_status="0"
 found_versions=()
 status_array=()
 for version in ${PYTHON_VERSIONS}; do
-	if [[ $version =~ ^([[:digit:]]+\.[[:digit:]]+)-pypy-([[:digit:]]+\.[[:digit:]]+)$ ]] ; then
-		executable=${eprefix}/usr/bin/pypy-c${BASH_REMATCH[2]}
+	if [[ $version = 'pypy' ]] ; then
+		executable=${eprefix}/usr/bin/pypy
 	else
 		executable=${eprefix}/usr/bin/python${version}
 	fi
 	if [[ -x "${executable}" ]]; then
 		echo -e "${GOOD}Testing with Python ${version}...${NORMAL}"
-		"${executable}" -b -Wd pym/portage/tests/runTests "$@"
+		"${executable}" -b -Wd pym/portage/tests/runTests.py "$@"
 		status=$?
 		status_array[${#status_array[@]}]=${status}
 		found_versions[${#found_versions[@]}]=${version}

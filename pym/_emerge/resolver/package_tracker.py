@@ -152,7 +152,7 @@ class PackageTracker(object):
 		packages may also be returned.
 		"""
 		cp_key = root, atom.cp
-		cache_key = root, atom, installed
+		cache_key = root, atom, atom.unevaluated_atom, installed
 		try:
 			return iter(self._match_cache.get(cp_key, {})[cache_key])
 		except KeyError:

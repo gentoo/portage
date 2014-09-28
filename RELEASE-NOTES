@@ -1,6 +1,54 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.13
+==================================
+* Bug Fixes:
+    - Bug # 438976 Remove DESCRIPTION.punctuation check from repoman
+    - Bug # 520542 Replace .append() with .add() for set variables
+    - Bug # 515230 package_tracker.match: account for unevaluated_atom
+    - Bug # 508762 _slot_operator_update_probe: This fixes the
+        check_reverse_dependencies function.
+    - Bug # 522362 Fix config.setcpv to regenerate USE settings in order to
+        account for package.env USE settings from the previous package
+        instance.
+    - Bug # 507482 Run distcc-pump server throughout src_configure()
+        to src_install()
+    - Bug # 520950 This handles a case which occurs when
+        _solve_non_slot_operator_slot_conflicts calls _create_graph.
+    - Bug # 520752 Make email date, timestamp RFC-compliant
+    - Bug # 520378 Fix hard-coded emerge-fetch.log locations
+    - Bug # 522652 For cases such as || ( X <A-2 ), where X is unsatisfiable
+        and A-1 is installed, fix dep_zapdeps to make the correct choice.
+    - Bug # 510270 This fixes an IndexError in
+        _solve_non_slot_operator_slot_conflicts which occurs when none of the
+        conflict packages matched a particular atom.
+* No longer include a Changelog with release tarball.
+    For a complete log of the Changes please refer to the git log viewable
+        online at https://github.com/gentoo/portage/commits/master
+
+
+portage-2.2.12
+==================================
+* Bug Fixes:
+    - Bug # 519074 fix invalid locale setting
+    - Repoman: fix atom.blocker checks
+    - Bug # 519124 properly decode formatted number for localized_size()
+    - Revert an incorrect test fix from 2.2.11 which broke mime type detection
+    - Bug # 518968 Fix and incorrect userquery change
+    - QA systemd warning check for using /etc/conf.d
+    - QA Use pngfix to find broken PNG files
+    - Bug # 512578 Prepend '=' to unmerge atoms
+    - Repoman: Do not report DESCRIPTION.punctuation warning for "etc."
+    - Fix a py2/py3 discrepency involing integer division causing number output
+      to be inconsistent
+    - Fix an unicode-decode error in a gettaddrinfo() error message
+* New emaint module "merges"  for finding and fixing failed merges
+  If a pkg fails to merge to the live filesystem correctly, that pkg may
+  not work correctly if at all.  This module scans the installed pkg database
+  for those failures and can re-emerge those packages.
+
+
 portage-2.2.11
 ==================================
 * Bug Fixes:
@@ -8,9 +56,24 @@ portage-2.2.11
     - Bug # 505428 RO only filesystem check
     - Bug # 506186 TaskSequence starting bug.
     - Sort repoman check output
-    - remove obsolete repoman eclass checks
+    - Remove obsolete repoman eclass checks
     - Bug # 505944 Improve mismatch checking
     - Bug # 488820 fix @security crash
+    - Bug # 438976 Add DESCRIPTION.punctuation check to repoman
+    - Add ruby18 warning for deprecated ruby target to repoman
+    - Add Python version to Portage version line
+    - Prevent rebuild code from performing unwanted repository changes
+    - Include "::repository" more consistently in output
+    - Make the slot conflict handler output more debug information
+    - Bug # 487074 Don't split suggested commands when printing them
+    - Handle 'mkdir -p /etc/portage/make.profile/packages' gracefully
+      -- i.e. produce an error instead of crashing with a traceback
+    - Implement --alert
+    - Bug # 516428 Make repoman warn if non-virtuals depend on
+      perl-core
+    - Prefer install-xattr to install.py as a wrapper to coreutils'
+    /usr/bin/install to preserve file system extended attribute.
+
 
 portage-2.2.10
 ==================================

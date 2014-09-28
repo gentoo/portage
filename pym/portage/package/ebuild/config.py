@@ -37,7 +37,8 @@ from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_se
 from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
 	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import InvalidDependString, PortageException
+from portage.exception import InvalidDependString, IsADirectory, \
+		PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable, macossandbox_capable
@@ -556,8 +557,14 @@ class config(object):
 			self.profile_path = locations_manager.profile_path
 			self.user_profile_dir = locations_manager.user_profile_dir
 
-			packages_list = [grabfile_package(os.path.join(x, "packages"),
-				verify_eapi=True) for x in self.profiles]
+			try:
+				packages_list = [grabfile_package(os.path.join(x, "packages"),
+					verify_eapi=True) for x in self.profiles]
+			except IOError as e:
+				if e.errno == IsADirectory.errno:
+					raise IsADirectory(os.path.join(self.profile_path,
+									 "packages"))
+
 			self.packages = tuple(stack_lists(packages_list, incremental=1))
 
 			# revmaskdict
@@ -1359,6 +1366,7 @@ class config(object):
 		previous_iuse = pkg_configdict.get("IUSE")
 		previous_iuse_effective = pkg_configdict.get("IUSE_EFFECTIVE")
 		previous_features = pkg_configdict.get("FEATURES")
+		previous_penv = self._penv
 
 		aux_keys = self._setcpv_aux_keys
 
@@ -1525,6 +1533,9 @@ class config(object):
 						pkg_configdict['USE'] + " " + self.puse
 				else:
 					pkg_configdict['USE'] = self.puse
+
+		elif previous_penv:
+			has_changed = True
 
 		if has_changed:
 			self.reset(keeping_pkg=1)

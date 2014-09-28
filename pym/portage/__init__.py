@@ -494,7 +494,7 @@ _doebuild_manifest_exempt_depend = 0
 
 _testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2"])
-_supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI)] + list(_testing_eapis) + list(_deprecated_eapis))
+_supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI + 1)] + list(_testing_eapis) + list(_deprecated_eapis))
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
@@ -506,19 +506,7 @@ def eapi_is_supported(eapi):
 		eapi = str(eapi)
 	eapi = eapi.strip()
 
-	if _eapi_is_deprecated(eapi):
-		return True
-
-	if eapi in _testing_eapis:
-		return True
-
-	try:
-		eapi = int(eapi)
-	except ValueError:
-		eapi = -1
-	if eapi < 0:
-		return False
-	return eapi <= portage.const.EAPI
+	return eapi in _supported_eapis
 
 # This pattern is specified by PMS section 7.3.1.
 _pms_eapi_re = re.compile(r"^[ \t]*EAPI=(['\"]?)([A-Za-z0-9+_.-]*)\1[ \t]*([ \t]#.*)?$")

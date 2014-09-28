@@ -174,6 +174,11 @@ change a lot of unrelated things.  This makes it easier to see what
 parts of the system have actually changed.  It also makes it easier to
 cherry-pick and revert commits. Use your common sense!
 
+When you make a significant change, make sure to update RELEASE-NOTES
+for the to-be-released version.  Very significant changes should be
+mentioned in NEWS as well.  See the current entries to these files for
+examples of what constitutes significant.
+
 Commit messages
 ---------------
 
@@ -181,7 +186,18 @@ Commit messages should be in the imperative mood with a capitalised
 header, optionally followed by a newline and a more detailed explanatory
 text.  The headline should be capped at 70 characters, the detailed text
 at 72.  Prefix the message with the component you touched if this makes
-sense.  Postfix the message with the bug it fixes, if it does.  Example:
+sense.  Postfix the message with the bug it fixes, if it does.
+
+Feel free to use the following notes (if applicable):
+Signed-off-by: Wrote (a substantial portion of) the patch
+Reviewed-by: Reviewed the patch thoroughly
+Tested-by:  Tested the patch thoroughly
+Acked-by: Approved the concept but did not read the patch in detail
+(typically used by the maintainer of a specific portion, or a lead)
+Suggested-by: Designed the implementation
+Requested-by: Reported the bug/made the feature request
+
+Example:
 
 "
 emerge: Fix --tree output (bug 555555)
@@ -189,6 +205,10 @@ emerge: Fix --tree output (bug 555555)
 Make sure newlines appear where they are supposed to. Fix a bug with
 colourisation of --tree output when used in tandem with --verbose
 --pretend --ask.
+
+Signed-off-by: Foo Bar  <fbar@gentoo.org>
+Reviewed-by:   Fu Baz   <fub@gentoo.org>
+Reported-by:   Qux Quux <qq@gentoo.org>
 "
 
 For a more detailed explanation (and rationalisation) of these rules:

@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -67,6 +67,11 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 	return result
 
 def _eval_deps(dep_struct, vardbs):
+	# TODO: we'd use a better || () handling, i.e. || ( A:= B:= ) with both A
+	# and B installed should record subslot on A only since the package is
+	# supposed to link against that anyway, and we have no guarantee that B
+	# has matching ABI.
+
 	for i, x in enumerate(dep_struct):
 		if isinstance(x, list):
 			_eval_deps(x, vardbs)
@@ -87,11 +92,15 @@ def _eval_deps(dep_struct, vardbs):
 						dep_struct[i] = x
 						break
 			else:
-				# this dep could not be resolved, so remove the operator
-				# (user may be using package.provided and managing rebuilds
-				# manually)
-				if x.slot:
-					x = x.with_slot(x.slot)
-				else:
-					x = x.without_slot
-				dep_struct[i] = x
+				# this dep could not be resolved, possibilities include:
+				# 1. unsatisfied branch of || () dep,
+				# 2. package.provided,
+				# 3. --nodeps.
+				#
+				# just leave it as-is for now. this does not cause any special
+				# behavior while keeping the information in vdb -- necessary
+				# e.g. for @changed-deps to work properly.
+				#
+				# TODO: make it actually cause subslot rebuilds when switching
+				# || () branches.
+				pass

@@ -125,6 +125,7 @@ def insert_optional_args(args):
 	new_args = []
 
 	default_arg_opts = {
+		'--alert'                : y_or_n,
 		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
 		'--autounmask-keep-masks': y_or_n,
@@ -170,6 +171,7 @@ def insert_optional_args(args):
 	# since existence of -n makes it too ambiguous.
 	short_arg_opts_n = {
 		'a' : y_or_n,
+		'A' : y_or_n,
 		'b' : y_or_n,
 		'g' : y_or_n,
 		'G' : y_or_n,
@@ -300,6 +302,12 @@ def parse_opts(tmpcmdline, silent=False):
 	true_y_or_n = ("True", "y", "n")
 	true_y = ("True", "y")
 	argument_options = {
+
+		"--alert": {
+			"shortopt" : "-A",
+			"help"    : "alert (terminal bell) on prompts",
+			"choices" : true_y_or_n
+		},
 
 		"--ask": {
 			"shortopt" : "-a",
@@ -676,6 +684,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	myoptions, myargs = parser.parse_known_args(args=tmpcmdline)
 
+	if myoptions.alert in true_y:
+		myoptions.alert = True
+	else:
+		myoptions.alert = None
+
 	if myoptions.ask in true_y:
 		myoptions.ask = True
 	else:
@@ -987,7 +1000,10 @@ def emerge_main(args=None):
 	args = portage._decode_argv(args)
 
 	# Use system locale.
-	locale.setlocale(locale.LC_ALL, '')
+	try:
+		locale.setlocale(locale.LC_ALL, '')
+	except locale.Error as e:
+		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
 
 	# Disable color until we're sure that it should be enabled (after
 	# EMERGE_DEFAULT_OPTS has been parsed).

@@ -1,0 +1,168 @@
+# Check for important gcc warning
+
+gcc_warn_check() {
+	local f
+
+	# Evaluate misc gcc warnings
+	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		# In debug mode, this variable definition and corresponding grep calls
+		# will produce false positives if they're shown in the trace.
+		local reset_debug=0
+		if [[ ${-/x/} != $- ]] ; then
+			set +x
+			reset_debug=1
+		fi
+		local m msgs=(
+			# only will and does, no might :)
+			'warning: .*will.*\[-Wstrict-aliasing\]'
+			'warning: .*does.*\[-Wstrict-aliasing\]'
+			# implicit declaration of function ‘...’
+			'warning: .*\[-Wimplicit-function-declaration\]'
+			# with -Wall, goes in pair with -Wimplicit-function-declaration
+			# but without -Wall, we need to assert for it alone
+			'warning: .*incompatible implicit declaration of built-in function'
+			# 'is used uninitialized in this function' and some more
+			'warning: .*\[-Wuninitialized\]'
+			# comparisons like ‘X<=Y<=Z’ do not have their mathematical meaning
+			'warning: .*mathematical meaning*\[-Wparentheses\]'
+			# null argument where non-null required
+			'warning: .*\[-Wnonnull\]'
+			# array subscript is above/below/outside array bounds
+			'warning: .*\[-Warray-bounds\]'
+			# attempt to free a non-heap object
+			'warning: .*\[-Wfree-nonheap-object\]'
+			# those three do not have matching -W flags, it seems
+			'warning: .*will always overflow destination buffer'
+			'warning: .*assuming pointer wraparound does not occur'
+			'warning: .*escape sequence out of range'
+			# left/right-hand operand of comma expression has no effect
+			'warning: .*comma.*\[-Wunused-value\]'
+			# converting to non-pointer type ... from NULL and likes
+			'warning: .*\[-Wconversion-null\]'
+			# NULL used in arithmetic
+			'warning: .*NULL.*\[-Wpointer-arith\]'
+			# pointer to a function used in arithmetic and likes
+			'warning: .*function.*\[-Wpointer-arith\]'
+			# the address of ... will never be NULL and likes
+			# (uses of function refs & string constants in conditionals)
+			'warning: .*\[-Waddress\]'
+			# outdated?
+			'warning: .*too few arguments for format'
+			# format ... expects a matching ... argument
+			# (iow, too few arguments for format in new wording :))
+			'warning: .*matching.*\[-Wformat=\]'
+			# function returns address of local variable
+			'warning: .*\[-Wreturn-local-addr\]'
+			# argument to sizeof ... is the same expression as the source
+			'warning: .*\[-Wsizeof-pointer-memaccess\]'
+			# iteration invokes undefined behavior
+			'warning: .*\[-Waggressive-loop-optimizations\]'
+
+			# this may be valid code :/
+			#': warning: multi-character character constant'
+			# need to check these two ...
+			#': warning: assuming signed overflow does not occur when'
+			#': warning: comparison with string literal results in unspecified behav'
+			# yacc/lex likes to trigger this one
+			#': warning: extra tokens at end of .* directive'
+			# only gcc itself triggers this ?
+			#': warning: .*noreturn.* function does return'
+			# these throw false positives when 0 is used instead of NULL
+			#': warning: missing sentinel in function call'
+			#': warning: not enough variable arguments to fit a sentinel'
+		)
+
+		# join all messages into one grep-expression
+		local joined_msgs
+		printf -v joined_msgs '%s|' "${msgs[@]}"
+		joined_msgs=${joined_msgs%|}
+
+		local abort="no"
+		local grep_cmd=grep
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
+
+		# force C locale to work around slow unicode locales #160234
+		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E "${joined_msgs}" "${PORTAGE_LOG_FILE}")
+		if [[ -n ${f} ]] ; then
+			abort="yes"
+			# for now, don't make this fatal (see bug #337031)
+			#if [[ ${f} == *'will always overflow destination buffer'* ]]; then
+			#	always_overflow=yes
+			#fi
+			if [[ $always_overflow = yes ]] ; then
+				eerror
+				eerror "QA Notice: Package triggers severe warnings which indicate that it"
+				eerror "           may exhibit random runtime failures."
+				eerror
+				eerror "${f}"
+				eerror
+				eerror " Please file a bug about this at http://bugs.gentoo.org/"
+				eerror " with the maintaining herd of the package."
+				eerror
+			else
+				__vecho -ne '\n'
+				eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
+				eqawarn "           may exhibit random runtime failures."
+				eqawarn "${f}"
+				__vecho -ne '\n'
+			fi
+		fi
+
+		local cat_cmd=cat
+		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
+		[[ $reset_debug = 1 ]] && set -x
+		# Use safe cwd, avoiding unsafe import for bug #469338.
+		f=$(cd "${PORTAGE_PYM_PATH}" ; $cat_cmd "${PORTAGE_LOG_FILE}" | \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
+		if [[ -n ${f} ]] ; then
+
+			# In the future this will be a forced "die". In preparation,
+			# increase the log level from "qa" to "eerror" so that people
+			# are aware this is a problem that must be fixed asap.
+
+			# just warn on 32bit hosts but bail on 64bit hosts
+			case ${CHOST} in
+				alpha*|hppa64*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) gentoo_bug=yes ;;
+			esac
+
+			abort=yes
+
+			if [[ $gentoo_bug = yes ]] ; then
+				eerror
+				eerror "QA Notice: Package triggers severe warnings which indicate that it"
+				eerror "           will almost certainly crash on 64bit architectures."
+				eerror
+				eerror "${f}"
+				eerror
+				eerror " Please file a bug about this at http://bugs.gentoo.org/"
+				eerror " with the maintaining herd of the package."
+				eerror
+			else
+				__vecho -ne '\n'
+				eqawarn "QA Notice: Package triggers severe warnings which indicate that it"
+				eqawarn "           will almost certainly crash on 64bit architectures."
+				eqawarn "${f}"
+				__vecho -ne '\n'
+			fi
+
+		fi
+		if [[ ${abort} == "yes" ]] ; then
+			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
+				die "install aborted due to severe warnings shown above"
+			else
+				echo "Please do not file a Gentoo bug and instead" \
+				"report the above QA issues directly to the upstream" \
+				"developers of this software." | fmt -w 70 | \
+				while read -r line ; do eqawarn "${line}" ; done
+				eqawarn "Homepage: ${HOMEPAGE}"
+				has stricter ${FEATURES} && \
+					die "install aborted due to severe warnings shown above"
+			fi
+		fi
+	fi
+}
+
+gcc_warn_check
+: # guarantee successful exit
+
+# vim:ft=sh

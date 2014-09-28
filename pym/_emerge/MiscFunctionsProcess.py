@@ -33,11 +33,15 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		if self._dummy_pipe_fd is not None:
 			self.settings["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)
 
+		if "fakeroot" in self.settings.features:
+			kwargs["fakeroot"] = True
+
 		# Temporarily unset EBUILD_PHASE so that bashrc code doesn't
 		# think this is a real phase.
 		phase_backup = self.settings.pop("EBUILD_PHASE", None)
 		try:
-			return spawn(" ".join(args), self.settings, **kwargs)
+			return spawn(" ".join(args), self.settings,
+				**portage._native_kwargs(kwargs))
 		finally:
 			if phase_backup is not None:
 				self.settings["EBUILD_PHASE"] = phase_backup

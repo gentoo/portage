@@ -1,13 +1,20 @@
 # Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
+import io
+import tempfile
+
 import portage
-from portage import os
+from portage import os, shutil, _encodings
+from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
+from portage.util import normalize_path
 
 class ConfigTestCase(TestCase):
 
@@ -274,3 +281,65 @@ class ConfigTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
+
+
+	def testSetCpv(self):
+		"""
+		Test the clone via constructor.
+		"""
+
+		ebuilds = {
+			"dev-libs/A-1": {"IUSE": "static-libs"},
+			"dev-libs/B-1": {"IUSE": "static-libs"},
+		}
+
+		env_files = {
+			"A" : ("USE=\"static-libs\"",)
+		}
+
+		package_env = (
+			"dev-libs/A A",
+		)
+
+		eprefix = normalize_path(tempfile.mkdtemp())
+		playground = None
+		try:
+			user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
+			os.makedirs(user_config_dir)
+
+			with io.open(os.path.join(user_config_dir, "package.env"),
+				mode='w', encoding=_encodings['content']) as f:
+				for line in package_env:
+					f.write(line + "\n")
+
+			env_dir = os.path.join(user_config_dir, "env")
+			os.makedirs(env_dir)
+			for k, v in env_files.items():
+				with io.open(os.path.join(env_dir, k), mode='w',
+					encoding=_encodings['content']) as f:
+					for line in v:
+						f.write(line + "\n")
+
+			playground = ResolverPlayground(eprefix=eprefix, ebuilds=ebuilds)
+			settings = config(clone=playground.settings)
+
+			result = playground.run(["=dev-libs/A-1"])
+			pkg, existing_node = result.depgraph._select_package(
+				playground.eroot, Atom("=dev-libs/A-1"))
+			settings.setcpv(pkg)
+			self.assertTrue("static-libs" in
+				settings["PORTAGE_USE"].split())
+
+			# Test bug #522362, where a USE=static-libs package.env
+			# setting leaked from one setcpv call to the next.
+			pkg, existing_node = result.depgraph._select_package(
+				playground.eroot, Atom("=dev-libs/B-1"))
+			settings.setcpv(pkg)
+			self.assertTrue("static-libs" not in
+				settings["PORTAGE_USE"].split())
+
+		finally:
+			if playground is None:
+				shutil.rmtree(eprefix)
+			else:
+				playground.cleanup()

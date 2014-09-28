@@ -382,6 +382,19 @@ __dyn_prepare() {
 	trap - SIGINT SIGQUIT
 }
 
+# @FUNCTION: __start_distcc
+# @DESCRIPTION:
+# Start distcc-pump if necessary.
+__start_distcc() {
+	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
+		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
+			# adding distcc to PATH repeatedly results in fatal distcc recursion :)
+			eval $(pump --startup | grep -v PATH)
+			trap "pump --shutdown >/dev/null" EXIT
+		fi
+	fi
+}
+
 __dyn_configure() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
@@ -401,6 +414,7 @@ __dyn_configure() {
 	fi
 
 	trap __abort_configure SIGINT SIGQUIT
+	__start_distcc
 
 	__ebuild_phase pre_src_configure
 
@@ -434,13 +448,7 @@ __dyn_compile() {
 	fi
 
 	trap __abort_compile SIGINT SIGQUIT
-
-	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
-		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
-			eval $(pump --startup)
-			trap "pump --shutdown" EXIT
-		fi
-	fi
+	__start_distcc
 
 	__ebuild_phase pre_src_compile
 
@@ -464,6 +472,8 @@ __dyn_test() {
 	fi
 
 	trap "__abort_test" SIGINT SIGQUIT
+	__start_distcc
+
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	else
@@ -489,7 +499,11 @@ __dyn_test() {
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
 		__ebuild_phase pre_src_test
+
+		__vecho ">>> Test phase: ${CATEGORY}/${PF}"
 		__ebuild_phase src_test
+		__vecho ">>> Completed testing ${CATEGORY}/${PF}"
+
 		>> "$PORTAGE_BUILDDIR/.tested" || \
 			die "Failed to create $PORTAGE_BUILDDIR/.tested"
 		__ebuild_phase post_src_test
@@ -509,6 +523,8 @@ __dyn_install() {
 		return 0
 	fi
 	trap "__abort_install" SIGINT SIGQUIT
+	__start_distcc
+
 	__ebuild_phase pre_src_install
 
 	if ___eapi_has_prefix_variables; then
@@ -735,91 +751,84 @@ __ebuild_phase_funcs() {
 	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
 	local eapi=$1
 	local phase_func=$2
-	local default_phases="pkg_nofetch src_unpack src_prepare src_configure
-		src_compile src_install src_test"
-	local x y default_func=""
+	local all_phases="src_compile pkg_config src_configure pkg_info
+		src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+		src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
+	local x
 
-	for x in pkg_nofetch src_unpack src_test ; do
-		declare -F $x >/dev/null || \
-			eval "$x() { __eapi0_$x \"\$@\" ; }"
+	# First, set up the error handlers for default*
+	for x in ${all_phases} ; do
+		eval "default_${x}() {
+			die \"default_${x}() is not supported in EAPI='${eapi}' in phase ${phase_func}\"
+		}"
 	done
 
-	case "$eapi" in
+	# We can just call the specific handler -- it will either error out
+	# on invalid phase or run it.
+	eval "default() {
+		default_${phase_func}
+	}"
 
-		0|1)
+	case "$eapi" in
+		0|1) # EAPIs not supporting 'default'
+
+			for x in pkg_nofetch src_unpack src_test ; do
+				declare -F $x >/dev/null || \
+					eval "$x() { __eapi0_$x; }"
+			done
 
 			if ! declare -F src_compile >/dev/null ; then
 				case "$eapi" in
 					0)
-						src_compile() { __eapi0_src_compile "$@" ; }
+						src_compile() { __eapi0_src_compile; }
 						;;
 					*)
-						src_compile() { __eapi1_src_compile "$@" ; }
+						src_compile() { __eapi1_src_compile; }
 						;;
 				esac
 			fi
-
-			for x in $default_phases ; do
-				eval "default_$x() {
-					die \"default_$x() is not supported with EAPI='$eapi' during phase $phase_func\"
-				}"
-			done
-
-			eval "default() {
-				die \"default() is not supported with EAPI='$eapi' during phase $phase_func\"
-			}"
-
 			;;
 
-		*)
+		*) # EAPIs supporting 'default'
 
+			# defaults starting with EAPI 0
+			[[ ${phase_func} == pkg_nofetch ]] && \
+				default_pkg_nofetch() { __eapi0_pkg_nofetch; }
+			[[ ${phase_func} == src_unpack ]] && \
+				default_src_unpack() { __eapi0_src_unpack; }
+			[[ ${phase_func} == src_test ]] && \
+				default_src_test() { __eapi0_src_test; }
+
+			# defaults starting with EAPI 2
+			[[ ${phase_func} == src_prepare ]] && \
+				default_src_prepare() { __eapi2_src_prepare; }
+			[[ ${phase_func} == src_configure ]] && \
+				default_src_configure() { __eapi2_src_configure; }
+			[[ ${phase_func} == src_compile ]] && \
+				default_src_compile() { __eapi2_src_compile; }
+
+			# bind supported phases to the defaults
+			declare -F pkg_nofetch >/dev/null || \
+				pkg_nofetch() { default; }
+			declare -F src_unpack >/dev/null || \
+				src_unpack() { default; }
+			declare -F src_prepare >/dev/null || \
+				src_prepare() { default; }
 			declare -F src_configure >/dev/null || \
-				src_configure() { __eapi2_src_configure "$@" ; }
-
+				src_configure() { default; }
 			declare -F src_compile >/dev/null || \
-				src_compile() { __eapi2_src_compile "$@" ; }
+				src_compile() { default; }
+			declare -F src_test >/dev/null || \
+				src_test() { default; }
 
-			has $eapi 2 3 || declare -F src_install >/dev/null || \
-				src_install() { __eapi4_src_install "$@" ; }
+			# defaults starting with EAPI 4
+			if ! has ${eapi} 2 3; then
+				[[ ${phase_func} == src_install ]] && \
+					default_src_install() { __eapi4_src_install; }
 
-			if has $phase_func $default_phases ; then
-
-				__eapi2_pkg_nofetch   () { __eapi0_pkg_nofetch          "$@" ; }
-				__eapi2_src_unpack    () { __eapi0_src_unpack           "$@" ; }
-				__eapi2_src_prepare   () { true                             ; }
-				__eapi2_src_test      () { __eapi0_src_test             "$@" ; }
-				__eapi2_src_install   () { die "$FUNCNAME is not supported" ; }
-
-				for x in $default_phases ; do
-					eval "default_$x() { __eapi2_$x \"\$@\" ; }"
-				done
-
-				eval "default() { __eapi2_$phase_func \"\$@\" ; }"
-
-				case "$eapi" in
-					2|3)
-						;;
-					*)
-						eval "default_src_install() { __eapi4_src_install \"\$@\" ; }"
-						[[ $phase_func = src_install ]] && \
-							eval "default() { __eapi4_$phase_func \"\$@\" ; }"
-						;;
-				esac
-
-			else
-
-				for x in $default_phases ; do
-					eval "default_$x() {
-						die \"default_$x() is not supported in phase $default_func\"
-					}"
-				done
-
-				eval "default() {
-					die \"default() is not supported with EAPI='$eapi' during phase $phase_func\"
-				}"
-
+				declare -F src_install >/dev/null || \
+					src_install() { default; }
 			fi
-
 			;;
 	esac
 }

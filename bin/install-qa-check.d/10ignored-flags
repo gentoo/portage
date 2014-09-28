@@ -1,0 +1,99 @@
+# QA checks for ignored *FLAGS.
+
+ignored_flag_check() {
+	type -P scanelf > /dev/null || return
+	has binchecks ${RESTRICT} && return
+
+	local qa_var="QA_FLAGS_IGNORED_${ARCH/-/_}"
+	eval "[[ -n \${!qa_var} ]] && QA_FLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
+	if [[ ${#QA_FLAGS_IGNORED[@]} -eq 1 ]] ; then
+		local shopts=$-
+		set -o noglob
+		QA_FLAGS_IGNORED=(${QA_FLAGS_IGNORED})
+		set +o noglob
+		set -${shopts}
+	fi
+
+	local f x
+
+	# Check for files built without respecting *FLAGS. Note that
+	# -frecord-gcc-switches must be in all *FLAGS variables, in
+	# order to avoid false positive results here.
+	# NOTE: This check must execute before prepall/prepstrip, since
+	# prepstrip strips the .GCC.command.line sections.
+	if [[ "${CFLAGS}" == *-frecord-gcc-switches* ]] && \
+	[[ "${CXXFLAGS}" == *-frecord-gcc-switches* ]] && \
+	[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
+	[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] ; then
+		rm -f "${T}"/scanelf-ignored-CFLAGS.log
+		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED}") ; do
+			# Separate out file types that are known to support
+			# .GCC.command.line sections, using the `file` command
+			# similar to how prepstrip uses it.
+			f=$(file "${x}") || continue
+			[[ -z ${f} ]] && continue
+			if [[ ${f} == *"SB executable"* ||
+				${f} == *"SB shared object"* ]] ; then
+				echo "${x}" >> "${T}"/scanelf-ignored-CFLAGS.log
+			fi
+		done
+
+		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
+
+			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+				for x in "${QA_FLAGS_IGNORED[@]}" ; do
+					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
+				done
+			fi
+			# Filter anything under /usr/lib/debug/ in order to avoid
+			# duplicate warnings for splitdebug files.
+			sed -e "s#^usr/lib/debug/.*##" -e "/^\$/d" -e "s#^#/#" \
+				-i "${T}"/scanelf-ignored-CFLAGS.log
+			f=$(<"${T}"/scanelf-ignored-CFLAGS.log)
+			if [[ -n ${f} ]] ; then
+				__vecho -ne '\n'
+				eqawarn "${BAD}QA Notice: Files built without respecting CFLAGS have been detected${NORMAL}"
+				eqawarn " Please include the following list of files in your report:"
+				eqawarn "${f}"
+				__vecho -ne '\n'
+				sleep 1
+			else
+				rm -f "${T}"/scanelf-ignored-CFLAGS.log
+			fi
+		fi
+	fi
+
+	# Check for files built without respecting LDFLAGS
+	if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
+		! has binchecks ${RESTRICT} ; then
+		f=$(scanelf -qyRF '#k%p' -k .hash "${ED}")
+		if [[ -n ${f} ]] ; then
+			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
+			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+				for x in "${QA_FLAGS_IGNORED[@]}" ; do
+					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
+				done
+			fi
+			# Filter anything under /usr/lib/debug/ in order to avoid
+			# duplicate warnings for splitdebug files.
+			sed -e "s#^usr/lib/debug/.*##" -e "/^\$/d" -e "s#^#/#" \
+				-i "${T}"/scanelf-ignored-LDFLAGS.log
+			f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
+			if [[ -n ${f} ]] ; then
+				__vecho -ne '\n'
+				eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
+				eqawarn " Please include the following list of files in your report:"
+				eqawarn "${f}"
+				__vecho -ne '\n'
+				sleep 1
+			else
+				rm -f "${T}"/scanelf-ignored-LDFLAGS.log
+			fi
+		fi
+	fi
+}
+
+ignored_flag_check
+: # guarantee successful exit
+
+# vim:ft=sh

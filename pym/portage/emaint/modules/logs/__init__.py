@@ -1,18 +1,18 @@
 # Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Check and clean old logs in the PORT_LOGDIR.
-"""
+doc = """Check and clean old logs in the PORT_LOGDIR."""
+__doc__ = doc
 
 
 module_spec = {
 	'name': 'logs',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'module1': {
 			'name': "logs",
 			'class': "CleanLogs",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['check','clean'],
 			'func_desc': {
 				'clean': {

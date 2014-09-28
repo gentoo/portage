@@ -17,8 +17,8 @@ from portage.versions import cpv_sort_key, _pkg_str
 
 from _emerge.emergelog import emergelog
 from _emerge.Package import Package
+from _emerge.UserQuery import UserQuery
 from _emerge.UninstallFailure import UninstallFailure
-from _emerge.userquery import userquery
 from _emerge.countdown import countdown
 
 def _unmerge_display(root_config, myopts, unmerge_action,
@@ -488,7 +488,8 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 		if quiet:
 			writemsg_level("\n", noiselevel=-1)
 
-	writemsg_level("\nAll selected packages: %s\n" % " ".join(all_selected), noiselevel=-1)
+	writemsg_level("\nAll selected packages: %s\n" %
+				" ".join('=%s' % x for x in all_selected), noiselevel=-1)
 
 	writemsg_level("\n>>> " + colorize("UNMERGE_WARN", "'Selected'") + \
 		" packages are slated for removal.\n")
@@ -529,7 +530,8 @@ def unmerge(root_config, myopts, unmerge_action,
 		#we're done... return
 		return os.EX_OK
 	if "--ask" in myopts:
-		if userquery("Would you like to unmerge these packages?",
+		uq = UserQuery(myopts)
+		if uq.query("Would you like to unmerge these packages?",
 			enter_invalid) == "No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True

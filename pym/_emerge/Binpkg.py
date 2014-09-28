@@ -1,6 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -87,9 +88,9 @@ class Binpkg(CompositeTask):
 
 			waiting_msg = ("Fetching '%s' " + \
 				"in the background. " + \
-				"To view fetch progress, run `tail -f %s" + \
-				"/var/log/emerge-fetch.log` in another " + \
-				"terminal.") % (prefetcher.pkg_path, settings["EPREFIX"])
+				"To view fetch progress, run `tail -f %s` in another terminal.") \
+				% (prefetcher.pkg_path, os.path.join(
+					_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
 			msg_prefix = colorize("GOOD", " * ")
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
 				for line in textwrap.wrap(waiting_msg, 65))
@@ -344,7 +345,7 @@ class Binpkg(CompositeTask):
 	def _chpathtool_exit(self, chpathtool):
 		if self._final_exit(chpathtool) != os.EX_OK:
 			self._unlock_builddir()
-			self._writemsg_level("!!! Error Adjusting Prefix to %s" %
+			self._writemsg_level("!!! Error Adjusting Prefix to %s\n" %
 				(self.settings["EPREFIX"],),
 				noiselevel=-1, level=logging.ERROR)
 			self.wait()

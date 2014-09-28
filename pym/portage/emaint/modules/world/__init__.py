@@ -1,18 +1,18 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Check and fix problems in the world file.
-"""
+doc = """Check and fix problems in the world file."""
+__doc__ = doc
 
 
 module_spec = {
 	'name': 'world',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'module1':{
 			'name': "world",
 			'class': "WorldHandler",
-			'description': __doc__,
+			'description': doc,
 			'functions': ['check', 'fix'],
 			'func_desc': {}
 			}

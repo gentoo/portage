@@ -12,7 +12,6 @@
 
 import socket
 import sys
-import time
 
 from portage import os
 from portage import _encodings
@@ -49,6 +48,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	from email.header import Header
 	from email.mime.base import MIMEBase as BaseMessage
 	from email.mime.multipart import MIMEMultipart as MultipartMessage
+	from email.utils import formatdate
 
 	if sys.hexversion < 0x3000000:
 		sender = _unicode_encode(sender,
@@ -91,8 +91,8 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	#    input_bytes = s.encode(input_charset, errors)
 	#UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-9: ordinal not in range(128)
 	mymessage["Subject"] = Header(_force_ascii_if_necessary(subject))
-	mymessage["Date"] = time.strftime("%a, %d %b %Y %H:%M:%S %z")
-	
+	mymessage["Date"] = formatdate(localtime=True)
+
 	return mymessage
 
 def send_mail(mysettings, message):
@@ -104,7 +104,7 @@ def send_mail(mysettings, message):
 	mymailuser = ""
 	mymailpasswd = ""
 	myrecipient = "root@localhost"
-	
+
 	# Syntax for PORTAGE_ELOG_MAILURI (if defined):
 	# address [[user:passwd@]mailserver[:port]]
 	# where address:    recipient address
@@ -129,7 +129,7 @@ def send_mail(mysettings, message):
 			mymailhost = myconndata
 	else:
 		myrecipient = mysettings.get("PORTAGE_ELOG_MAILURI", "")
-	
+
 	myfrom = message.get("From")
 
 	if sys.hexversion < 0x3000000:
@@ -174,4 +174,4 @@ def send_mail(mysettings, message):
 		except socket.error as e:
 			raise portage.exception.PortageException(_("!!! A network error occurred while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
-	
+

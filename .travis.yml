@@ -1,0 +1,13 @@
+language: python
+python:
+    - 2.6
+    - 2.7
+    - 3.2
+    - 3.3
+    - 3.4
+    - pypy
+script:
+    - ./setup.py test
+    - ./setup.py install --root=/tmp/install-root
+    - sudo rsync -a /tmp/install-root/. /
+    - python -b -Wd -m portage.tests.runTests

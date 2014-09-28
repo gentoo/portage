@@ -38,8 +38,8 @@ signal.signal(debug_signum, debug_signal)
 import io
 import os
 from os import path as osp
-pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
-sys.path.insert(0, pym_path)
+if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
 from portage import os

@@ -8,8 +8,7 @@ import textwrap
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY, PORTAGE_BIN_PATH,
-	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.const import (BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
@@ -38,7 +37,7 @@ class PortdbCacheTestCase(TestCase):
 
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-b", "-Wd",
-			os.path.join(PORTAGE_BIN_PATH, "egencache"),
+			os.path.join(self.bindir, "egencache"),
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
 		python_cmd = (portage_python, "-b", "-Wd", "-c")
@@ -48,7 +47,7 @@ class PortdbCacheTestCase(TestCase):
 			(lambda: not os.path.exists(md5_cache_dir),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
-				if portage.portdb.porttree_root in portage.portdb._pregen_auxdb:
+				if portage.portdb.repositories.mainRepoLocation() in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
 
@@ -57,13 +56,13 @@ class PortdbCacheTestCase(TestCase):
 			(lambda: os.path.exists(md5_cache_dir),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
-				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
+				if portage.portdb.repositories.mainRepoLocation() not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], md5_database):
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories.mainRepoLocation()], md5_database):
 					sys.exit(1)
 			"""),),
 
@@ -74,13 +73,13 @@ class PortdbCacheTestCase(TestCase):
 			(lambda: os.path.exists(md5_cache_dir),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
-				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
+				if portage.portdb.repositories.mainRepoLocation() not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], md5_database):
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories.mainRepoLocation()], md5_database):
 					sys.exit(1)
 			"""),),
 
@@ -91,13 +90,13 @@ class PortdbCacheTestCase(TestCase):
 				("cache-formats = pms md5-dict", layout_conf_path,)))),
 			(portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
-				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
+				if portage.portdb.repositories.mainRepoLocation() not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
 			(portage_python, "-b", "-Wd", "-Wi::DeprecationWarning", "-c") + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.metadata import database as pms_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], pms_database):
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories.mainRepoLocation()], pms_database):
 					sys.exit(1)
 			"""),),
 
@@ -106,13 +105,13 @@ class PortdbCacheTestCase(TestCase):
 			(BASH_BINARY, "-c", "rm %s" % portage._shell_quote(layout_conf_path)),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
-				if portage.portdb.porttree_root not in portage.portdb._pregen_auxdb:
+				if portage.portdb.repositories.mainRepoLocation() not in portage.portdb._pregen_auxdb:
 					sys.exit(1)
 			"""),),
 			python_cmd + (textwrap.dedent("""
 				import os, sys, portage
 				from portage.cache.flat_hash import md5_database
-				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.porttree_root], md5_database):
+				if not isinstance(portage.portdb._pregen_auxdb[portage.portdb.repositories.mainRepoLocation()], md5_database):
 					sys.exit(1)
 			"""),),
 		)

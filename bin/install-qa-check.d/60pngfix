@@ -1,0 +1,35 @@
+# Check for issues with PNG files
+
+pngfix_check() {
+	local pngfix=$(type -P pngfix)
+	if [[ -n ${pngfix} ]] ; then
+		local pngout=()
+		local next
+
+		while read -r -a pngout ; do
+			local error=""
+
+			case "${pngout[1]}" in
+				CHK)
+					error='invalid checksum'
+					;;
+				TFB)
+					error='broken IDAT window length'
+					;;
+			esac
+
+			if [[ -n ${error} ]] ; then
+				if [[ -z ${next} ]] ; then
+					eqawarn "QA Notice: broken .png files found:"
+					next=1
+				fi
+				eqawarn "   ${pngout[@]:7}: ${error}"
+			fi
+		done < <(find "${ED}" -type f -name '*.png' -exec "${pngfix}" {} +)
+	fi
+}
+
+pngfix_check
+: # guarantee successful exit
+
+# vim:ft=sh

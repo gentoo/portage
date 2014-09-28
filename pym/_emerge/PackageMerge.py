@@ -1,7 +1,8 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.CompositeTask import CompositeTask
+from portage.dep import _repo_separator
 from portage.output import colorize
 class PackageMerge(CompositeTask):
 	__slots__ = ("merge",)
@@ -29,7 +30,7 @@ class PackageMerge(CompositeTask):
 		msg = "%s %s%s" % \
 			(action_desc,
 			counter_str,
-			colorize(pkg_color, pkg.cpv))
+			colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo))
 
 		if pkg.root_config.settings["ROOT"] != "/":
 			msg += " %s %s" % (preposition, pkg.root)

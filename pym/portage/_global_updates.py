@@ -118,7 +118,9 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 		else:
 			bindb = None
 
-	master_repo = portdb.getRepositoryName(portdb.porttree_root)
+	master_repo = portdb.repositories.mainRepo()
+	if master_repo is not None:
+		master_repo = master_repo.name
 	if master_repo in repo_map:
 		repo_map['DEFAULT'] = repo_map[master_repo]
 

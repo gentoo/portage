@@ -98,10 +98,11 @@ def module_opts(module_controller, module):
 class TaskHandler(object):
 	"""Handles the running of the tasks it is given"""
 
-	def __init__(self, show_progress_bar=True, verbose=True, callback=None):
+	def __init__(self, show_progress_bar=True, verbose=True, callback=None, module_output=None):
 		self.show_progress_bar = show_progress_bar
 		self.verbose = verbose
 		self.callback = callback
+		self.module_output = module_output
 		self.isatty = os.environ.get('TERM') != 'dumb' and sys.stdout.isatty()
 		self.progress_bar = ProgressBar(self.isatty, title="Emaint", max_desc_length=27)
 
@@ -124,6 +125,7 @@ class TaskHandler(object):
 				onProgress = None
 			kwargs = {
 				'onProgress': onProgress,
+				'module_output': self.module_output,
 				# pass in a copy of the options so a module can not pollute or change
 				# them for other tasks if there is more to do.
 				'options': options.copy()
@@ -219,5 +221,5 @@ def emaint_main(myargv):
 	# need to pass the parser options dict to the modules
 	# so they are available if needed.
 	task_opts = options.__dict__
-	taskmaster = TaskHandler(callback=print_results)
+	taskmaster = TaskHandler(callback=print_results, module_output=sys.stdout)
 	taskmaster.run_tasks(tasks, func, status, options=task_opts)

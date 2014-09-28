@@ -1,13 +1,13 @@
 # Copyright 2005-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-"""Check and fix problems in the resume and/or resume_backup files.
-"""
+doc = """Check and fix problems in the resume and/or resume_backup files."""
+__doc__ = doc
 
 
 module_spec = {
 	'name': 'resume',
-	'description': __doc__,
+	'description': doc,
 	'provides':{
 		'module1': {
 			'name': "cleanresume",

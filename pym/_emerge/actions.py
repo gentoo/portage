@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import division, print_function, unicode_literals
 
 import errno
 import logging
@@ -85,7 +85,7 @@ from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
-from _emerge.userquery import userquery
+from _emerge.UserQuery import UserQuery
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -388,8 +388,9 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
+		uq = UserQuery(myopts)
 		if prompt is not None and "--ask" in myopts and \
-			userquery(prompt, enter_invalid) == "No":
+			uq.query(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
@@ -469,6 +470,7 @@ def action_build(settings, trees, mtimedb,
 
 def action_config(settings, trees, myopts, myfiles):
 	enter_invalid = '--ask-enter-invalid' in myopts
+	uq = UserQuery(myopts)
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
@@ -498,7 +500,7 @@ def action_config(settings, trees, myopts, myfiles):
 				print(options[-1]+") "+pkg)
 			print("X) Cancel")
 			options.append("X")
-			idx = userquery("Selection?", enter_invalid, responses=options)
+			idx = uq.query("Selection?", enter_invalid, responses=options)
 			if idx == "X":
 				sys.exit(128 + signal.SIGINT)
 			pkg = pkgs[int(idx)-1]
@@ -513,7 +515,7 @@ def action_config(settings, trees, myopts, myfiles):
 
 	print()
 	if "--ask" in myopts:
-		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
+		if uq.query("Ready to configure %s?" % pkg, enter_invalid) == "No":
 			sys.exit(128 + signal.SIGINT)
 	else:
 		print("Configuring pkg...")
@@ -558,10 +560,9 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("\n")
 	msg.append("As a safety measure, depclean will not remove any packages\n")
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
-	msg.append("consequence, it is often necessary to run %s\n" % \
-		good("`emerge --update"))
-	msg.append(good("--newuse --deep @world`") + \
-		" prior to depclean.\n")
+	msg.append("consequence of this, it often becomes necessary to run \n")
+	msg.append("%s" % good("`emerge --update --newuse --deep @world`")
+			+ " prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
 		portage.writemsg_stdout("\n")
@@ -1366,7 +1367,8 @@ def action_deselect(settings, trees, opts, atoms):
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
-				if userquery(prompt, enter_invalid) == 'No':
+				uq = UserQuery(opts)
+				if uq.query(prompt, enter_invalid) == 'No':
 					return 128 + signal.SIGINT
 
 			remaining = set(world_set)
@@ -1498,14 +1500,14 @@ def action_info(settings, trees, myopts, myfiles):
 
 	vm_info = get_vm_info()
 	if "ram.total" in vm_info:
-		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] / 1024)
+		line = "%-9s %10d total" % ("KiB Mem:", vm_info["ram.total"] // 1024)
 		if "ram.free" in vm_info:
-			line += ",%10d free" % (vm_info["ram.free"] / 1024,)
+			line += ",%10d free" % (vm_info["ram.free"] // 1024,)
 		append(line)
 	if "swap.total" in vm_info:
-		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] / 1024)
+		line = "%-9s %10d total" % ("KiB Swap:", vm_info["swap.total"] // 1024)
 		if "swap.free" in vm_info:
-			line += ",%10d free" % (vm_info["swap.free"] / 1024,)
+			line += ",%10d free" % (vm_info["swap.free"] // 1024,)
 		append(line)
 
 	lastSync = portage.grabfile(os.path.join(
@@ -1581,7 +1583,9 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	main_repo = portdb.getRepositoryName(portdb.porttree_root)
+	main_repo = portdb.repositories.mainRepo()
+	if main_repo is not None:
+		main_repo = main_repo.name
 	cp_map = {}
 	cp_max_len = 0
 
@@ -2344,7 +2348,8 @@ def _sync_repo(emerge_config, repo):
 				family, socket.SOCK_STREAM))
 		except socket.error as e:
 			writemsg_level(
-				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
+				"!!! getaddrinfo failed for '%s': %s\n" % (hostname,
+					_unicode_decode(e.strerror, encoding=_encodings['stdio'])),
 				noiselevel=-1, level=logging.ERROR)
 
 		if addrinfos:
@@ -2404,7 +2409,8 @@ def _sync_repo(emerge_config, repo):
 
 			if (retries==0):
 				if "--ask" in myopts:
-					if userquery("Do you want to sync your Portage tree " + \
+					uq = UserQuery(myopts)
+					if uq.query("Do you want to sync your Portage tree " + \
 						"with the mirror at\n" + blue(dosyncuri) + bold("?"),
 						enter_invalid) == "No":
 						print()
@@ -3843,7 +3849,8 @@ def run_action(emerge_config):
 						(access_desc,), noiselevel=-1)
 					if portage.data.secpass < 1 and not need_superuser:
 						portage.data.portage_group_warning()
-					if userquery("Would you like to add --pretend to options?",
+					uq = UserQuery(emerge_config.opts)
+					if uq.query("Would you like to add --pretend to options?",
 						"--ask-enter-invalid" in emerge_config.opts) == "No":
 						return 128 + signal.SIGINT
 					emerge_config.opts["--pretend"] = True
@@ -4055,8 +4062,21 @@ def run_action(emerge_config):
 
 		# GLEP 42 says to display news *after* an emerge --pretend
 		if "--pretend" not in emerge_config.opts:
-			display_news_notification(
-				emerge_config.target_config, emerge_config.opts)
+			uq = UserQuery(emerge_config.opts)
+			if display_news_notification(emerge_config.target_config,
+								emerge_config.opts) \
+				and "--ask" in emerge_config.opts \
+				and uq.query("Would you like to read the news items while " \
+						"calculating dependencies?",
+						'--ask-enter-invalid' in emerge_config.opts) == "Yes":
+				try:
+					subprocess.call(['eselect', 'news', 'read'])
+				# If eselect is not installed, Python <3.3 will throw an
+				# OSError. >=3.3 will throw a FileNotFoundError, which is a
+				# subclass of OSError.
+				except OSError:
+					writemsg("Please install eselect to use this feature.\n",
+							noiselevel=-1)
 		retval = action_build(emerge_config.target_config.settings,
 			emerge_config.trees, emerge_config.target_config.mtimedb,
 			emerge_config.opts, emerge_config.action,

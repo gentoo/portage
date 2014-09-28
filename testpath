@@ -1,0 +1,11 @@
+#
+# Generic testpath to source.  This sets PATH and PYTHONPATH
+# to use the current checkout code, before searching the main PATH, PYTHONPATH
+# cd ~/.../portage
+# source ./testpath
+# emerge foo
+# repoman manifest
+# ...
+export PATH="$(dirname ${BASH_SOURCE[0]})/bin:${PATH}"
+export PYTHONPATH=PYTHONPATH="$(dirname $BASH_SOURCE[0])/pym:${PYTHONPATH:+:}${PYTHONPATH}"
+export PYTHONWARNINGS=d,i::ImportWarning

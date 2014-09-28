@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -69,10 +69,10 @@ PORTAGE_BASE_PATH        = PORTAGE_BASE
 # NOTE: Use realpath(__file__) so that python module symlinks in site-packages
 # are followed back to the real location of the whole portage installation.
 #PREFIX: below should work, but I'm not sure how it it affects other places
-#PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(
-#                               __file__.rstrip("co")).split(os.sep)[:-3]))
+# NOTE: Please keep PORTAGE_BASE_PATH in one line to help substitutions.
+#PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
 PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
-PORTAGE_PYM_PATH         = PORTAGE_BASE_PATH + "/pym"
+PORTAGE_PYM_PATH         = os.path.realpath(os.path.join(__file__, '../..'))
 LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
 EBUILD_SH_BINARY         = PORTAGE_BIN_PATH + "/ebuild.sh"
 MISC_SH_BINARY           = PORTAGE_BIN_PATH + "/misc-functions.sh"
@@ -94,6 +94,7 @@ PORTAGE_GROUPNAME        = portagegroup
 PORTAGE_USERNAME         = portageuser
 
 INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
+MERGING_IDENTIFIER       = "-MERGING-"
 REPO_NAME_FILE           = "repo_name"
 REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
 
@@ -290,6 +291,9 @@ SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
 
 # Time formats used in various places like metadata.chk.
 TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()
+
+# Top-level names of Python packages installed by Portage.
+PORTAGE_PYM_PACKAGES = ("_emerge", "portage", "repoman")
 
 # ===========================================================================
 # END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANTS -- END OF CONSTANT

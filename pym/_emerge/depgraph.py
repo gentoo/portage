@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import division, print_function, unicode_literals
 
 import collections
 import errno
@@ -73,7 +73,7 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
-from _emerge.userquery import userquery
+from _emerge.UserQuery import UserQuery
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
 from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
@@ -107,7 +107,7 @@ def _wildcard_set(atoms):
 
 class _frozen_depgraph_config(object):
 
-	def __init__(self, settings, trees, myopts, spinner):
+	def __init__(self, settings, trees, myopts, params, spinner):
 		self.settings = settings
 		self.target_root = settings["EROOT"]
 		self.myopts = myopts
@@ -115,6 +115,7 @@ class _frozen_depgraph_config(object):
 		if settings.get("PORTAGE_DEBUG", "") == "1":
 			self.edebug = 1
 		self.spinner = spinner
+		self.requested_depth = params.get("deep", 0)
 		self._running_root = trees[trees._running_eroot]["root_config"]
 		self.pkgsettings = {}
 		self.trees = {}
@@ -420,6 +421,7 @@ class _dynamic_depgraph_config(object):
 		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._success_without_autounmask = False
+		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
 		self._slot_operator_deps = {}
@@ -502,13 +504,18 @@ class _dynamic_depgraph_config(object):
 
 class depgraph(object):
 
+	# Represents the depth of a node that is unreachable from explicit
+	# user arguments (or their deep dependencies). Such nodes are pulled
+	# in by the _complete_graph method.
+	_UNREACHABLE_DEPTH = object()
+
 	pkg_tree_map = RootConfig.pkg_tree_map
 
 	def __init__(self, settings, trees, myopts, myparams, spinner,
 		frozen_config=None, backtrack_parameters=BacktrackParameter(), allow_backtracking=False):
 		if frozen_config is None:
 			frozen_config = _frozen_depgraph_config(settings, trees,
-			myopts, spinner)
+			myopts, myparams, spinner)
 		self._frozen_config = frozen_config
 		self._dynamic_config = _dynamic_depgraph_config(self, myparams,
 			allow_backtracking, backtrack_parameters)
@@ -519,6 +526,8 @@ class depgraph(object):
 
 		self._event_loop = (portage._internal_caller and
 			global_event_loop() or EventLoop(main=False))
+
+		self.query = UserQuery(myopts).query
 
 	def _load_vdb(self):
 		"""
@@ -639,23 +648,96 @@ class depgraph(object):
 		# Go through all slot operator deps and check if one of these deps
 		# has a parent that is matched by one of the atoms from above.
 		forced_rebuilds = {}
-		for (root, slot_atom), deps in self._dynamic_config._slot_operator_deps.items():
-			rebuild_atoms = atoms.get(root, set())
 
-			for dep in deps:
-				if getattr(dep.parent, "installed", False) or dep.child.installed or \
-					dep.parent.slot_atom not in rebuild_atoms:
+		for root, rebuild_atoms in atoms.items():
+
+			for slot_atom in rebuild_atoms:
+
+				inst_pkg, reinst_pkg = \
+					self._select_pkg_from_installed(root, slot_atom)
+
+				if inst_pkg is reinst_pkg or reinst_pkg is None:
 					continue
 
-				# Make sure the child's slot/subslot has changed. If it hasn't,
-				# then another child has forced this rebuild.
-				installed_pkg = self._select_pkg_from_installed(root, dep.child.slot_atom)[0]
-				if installed_pkg and installed_pkg.slot == dep.child.slot and \
-					installed_pkg.sub_slot == dep.child.sub_slot:
-					continue
+				# Generate pseudo-deps for any slot-operator deps of
+				# inst_pkg. Its deps aren't in _slot_operator_deps
+				# because it hasn't been added to the graph, but we
+				# are interested in any rebuilds that it triggered.
+				built_slot_op_atoms = []
+				if inst_pkg is not None:
+					selected_atoms = self._select_atoms_probe(
+						inst_pkg.root, inst_pkg)
+					for atom in selected_atoms:
+						if atom.slot_operator_built:
+							built_slot_op_atoms.append(atom)
 
-				# The child has forced a rebuild of the parent
-				forced_rebuilds.setdefault(root, {}).setdefault(dep.child, set()).add(dep.parent)
+					if not built_slot_op_atoms:
+						continue
+
+				# Use a cloned list, since we may append to it below.
+				deps = self._dynamic_config._slot_operator_deps.get(
+					(root, slot_atom), [])[:]
+
+				if built_slot_op_atoms and reinst_pkg is not None:
+					for child in self._dynamic_config.digraph.child_nodes(
+						reinst_pkg):
+
+						if child.installed:
+							continue
+
+						for atom in built_slot_op_atoms:
+							# NOTE: Since atom comes from inst_pkg, and
+							# reinst_pkg is the replacement parent, there's
+							# no guarantee that atom will completely match
+							# child. So, simply use atom.cp and atom.slot
+							# for matching.
+							if atom.cp != child.cp:
+								continue
+							if atom.slot and atom.slot != child.slot:
+								continue
+							deps.append(Dependency(atom=atom, child=child,
+								root=child.root, parent=reinst_pkg))
+
+				for dep in deps:
+					if dep.child.installed:
+						# Find the replacement child.
+						child = next((pkg for pkg in
+							self._dynamic_config._package_tracker.match(
+							dep.root, dep.child.slot_atom)
+							if not pkg.installed), None)
+
+						if child is None:
+							continue
+
+						inst_child = dep.child.installed
+
+					else:
+						child = dep.child
+						inst_child = self._select_pkg_from_installed(
+							child.root, child.slot_atom)[0]
+
+					# Make sure the child's slot/subslot has changed. If it
+					# hasn't, then another child has forced this rebuild.
+					if inst_child and inst_child.slot == child.slot and \
+						inst_child.sub_slot == child.sub_slot:
+						continue
+
+					if dep.parent.installed:
+						# Find the replacement parent.
+						parent = next((pkg for pkg in
+							self._dynamic_config._package_tracker.match(
+							dep.parent.root, dep.parent.slot_atom)
+							if not pkg.installed), None)
+
+						if parent is None:
+							continue
+
+					else:
+						parent = dep.parent
+
+					# The child has forced a rebuild of the parent
+					forced_rebuilds.setdefault(root, {}
+						).setdefault(child, set()).add(parent)
 
 		if debug:
 			writemsg_level("slot operator dependencies:\n",
@@ -990,6 +1072,11 @@ class depgraph(object):
 		if not conflicts:
 			return
 
+		if debug:
+			writemsg_level(
+				"\n!!! Slot conflict handler started.\n",
+				level=logging.DEBUG, noiselevel=-1)
+
 		# Get a set of all conflicting packages.
 		conflict_pkgs = set()
 		for conflict in conflicts:
@@ -1043,7 +1130,15 @@ class depgraph(object):
 			def __str__(self):
 				return "(%s)" % ",".join(str(pkg) for pkg in self)
 
+		non_matching_forced = set()
 		for conflict in conflicts:
+			if debug:
+				writemsg_level("   conflict:\n", level=logging.DEBUG, noiselevel=-1)
+				writemsg_level("      root: %s\n" % conflict.root, level=logging.DEBUG, noiselevel=-1)
+				writemsg_level("      atom: %s\n" % conflict.atom, level=logging.DEBUG, noiselevel=-1)
+				for pkg in conflict:
+					writemsg_level("      pkg: %s\n" % pkg, level=logging.DEBUG, noiselevel=-1)
+
 			all_parent_atoms = set()
 			for pkg in conflict:
 				all_parent_atoms.update(
@@ -1051,9 +1146,16 @@ class depgraph(object):
 
 			for parent, atom in all_parent_atoms:
 				is_arg_parent = isinstance(parent, AtomArg)
+				is_non_conflict_parent = parent not in conflict_pkgs and \
+					parent not in indirect_conflict_pkgs
 
-				if parent not in conflict_pkgs and \
-					parent not in indirect_conflict_pkgs:
+				if debug:
+					writemsg_level("      parent: %s\n" % parent, level=logging.DEBUG, noiselevel=-1)
+					writemsg_level("      arg, non-conflict: %s, %s\n" % (is_arg_parent, is_non_conflict_parent),
+						level=logging.DEBUG, noiselevel=-1)
+					writemsg_level("         atom: %s\n" % atom, level=logging.DEBUG, noiselevel=-1)
+
+				if is_non_conflict_parent:
 					parent = non_conflict_node
 
 				atom_set = InternalPackageSet(
@@ -1065,14 +1167,31 @@ class depgraph(object):
 						modified_use=self._pkg_use_enabled(pkg)) and \
 						not (is_arg_parent and pkg.installed):
 						matched.append(pkg)
-				if len(matched) == len(conflict):
-					# All packages match.
-					continue
+
+				if debug:
+					for match in matched:
+						writemsg_level("         match: %s\n" % match, level=logging.DEBUG, noiselevel=-1)
+
+				if len(matched) > 1:
+					# Even if all packages match, this parent must still
+					# be added to the conflict_graph. Otherwise, we risk
+					# removing all of these packages from the depgraph,
+					# which could cause a missed update (bug #522084).
+					conflict_graph.add(or_tuple(matched), parent)
 				elif len(matched) == 1:
 					conflict_graph.add(matched[0], parent)
 				else:
-					# More than one packages matched, but not all.
-					conflict_graph.add(or_tuple(matched), parent)
+					# This typically means that autounmask broke a
+					# USE-dep, but it could also be due to the slot
+					# not matching due to multislot (bug #220341).
+					# Either way, don't try to solve this conflict.
+					# Instead, force them all into the graph so that
+					# they are protected from removal.
+					non_matching_forced.update(conflict)
+					if debug:
+						for pkg in conflict:
+							writemsg_level("         non-match: %s\n" % pkg,
+								level=logging.DEBUG, noiselevel=-1)
 
 		for pkg in indirect_conflict_pkgs:
 			for parent, atom in self._dynamic_config._parent_atoms.get(pkg, []):
@@ -1090,6 +1209,7 @@ class depgraph(object):
 		# Now select required packages. Collect them in the
 		# 'forced' set.
 		forced = set([non_conflict_node])
+		forced.update(non_matching_forced)
 		unexplored = set([non_conflict_node])
 		# or_tuples get special handling. We first explore
 		# all packages in the hope of having forced one of
@@ -1336,6 +1456,10 @@ class depgraph(object):
 		found_update = False
 		for parent_atom, conflict_pkgs in conflict_atoms.items():
 			parent, atom = parent_atom
+
+			if not isinstance(parent, Package):
+				continue
+
 			if atom.slot_operator != "=" or not parent.built:
 				continue
 
@@ -1534,14 +1658,40 @@ class depgraph(object):
 		selective = "selective" in self._dynamic_config.myparams
 		want_downgrade = None
 
-		def check_reverse_dependencies(existing_pkg, candidate_pkg):
+		def check_reverse_dependencies(existing_pkg, candidate_pkg,
+			replacement_parent=None):
 			"""
 			Check if candidate_pkg satisfies all of existing_pkg's non-
 			slot operator parents.
 			"""
+			built_slot_operator_parents = set()
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
-				if atom.slot_operator == "=" and parent.built:
-					continue
+				if atom.slot_operator_built:
+					built_slot_operator_parents.add(parent)
+
+			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+				if isinstance(parent, Package):
+					if parent in built_slot_operator_parents:
+						# This parent may need to be rebuilt, so its
+						# dependencies aren't necessarily relevant.
+						continue
+
+					if replacement_parent is not None and \
+						(replacement_parent.slot_atom == parent.slot_atom
+						or replacement_parent.cpv == parent.cpv):
+						# This parent is irrelevant because we intend to
+						# replace it with replacement_parent.
+						continue
+
+					if any(pkg is not parent and
+						(pkg.slot_atom == parent.slot_atom or
+						pkg.cpv == parent.cpv) for pkg in
+						self._dynamic_config._package_tracker.match(
+						parent.root, Atom(parent.cp))):
+						# This parent may need to be eliminated due to a
+						# slot conflict,  so its dependencies aren't
+						# necessarily relevant.
+						continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
@@ -1660,7 +1810,8 @@ class depgraph(object):
 							continue
 
 					if not insignificant and \
-						check_reverse_dependencies(dep.child, pkg):
+						check_reverse_dependencies(dep.child, pkg,
+							replacement_parent=replacement_parent):
 
 						candidate_pkg_atoms.append((pkg, unevaluated_atom))
 						candidate_pkgs.append(pkg)
@@ -2035,6 +2186,13 @@ class depgraph(object):
 				arg = arg_stack.pop()
 				if arg in traversed_set_args:
 					continue
+
+				# If a node with the same hash already exists in
+				# the digraph, preserve the existing instance which
+				# may have a different reset_depth attribute
+				# (distiguishes user arguments from sets added for
+				# another reason such as complete mode).
+				arg = self._dynamic_config.digraph.get(arg, arg)
 				traversed_set_args.add(arg)
 
 				if add_to_digraph:
@@ -2054,8 +2212,16 @@ class depgraph(object):
 					if nested_set is None:
 						nested_set = root_config.sets.get(s)
 					if nested_set is not None:
+						# Propagate the reset_depth attribute from
+						# parent set to nested set.
 						nested_arg = SetArg(arg=token, pset=nested_set,
+							reset_depth=arg.reset_depth,
 							root_config=root_config)
+
+						# Preserve instances already in the graph (same
+						# reason as for the "arg" variable above).
+						nested_arg = self._dynamic_config.digraph.get(
+							nested_arg, nested_arg)
 						arg_stack.append(nested_arg)
 						if add_to_digraph:
 							self._dynamic_config.digraph.add(nested_arg, arg,
@@ -2104,9 +2270,42 @@ class depgraph(object):
 				dep.collapsed_priority.ignored):
 				# This is an unnecessary build-time dep.
 				return 1
+
+			# NOTE: For removal actions, allow_unsatisfied is always
+			# True since all existing removal actions traverse all
+			# installed deps deeply via the _complete_graph method,
+			# which calls _create_graph with allow_unsatisfied = True.
 			if allow_unsatisfied:
 				self._dynamic_config._unsatisfied_deps.append(dep)
 				return 1
+
+			# The following case occurs when
+			# _solve_non_slot_operator_slot_conflicts calls
+			# _create_graph. In this case, ignore unsatisfied deps for
+			# installed packages only if their depth is beyond the depth
+			# requested by the user and the dep was initially
+			# unsatisfied (not broken by a slot conflict in the current
+			# graph). See bug #520950.
+			# NOTE: The value of dep.parent.depth is guaranteed to be
+			# either an integer or _UNREACHABLE_DEPTH, where
+			# _UNREACHABLE_DEPTH indicates that the parent has been
+			# pulled in by the _complete_graph method (rather than by
+			# explicit arguments or their deep dependencies). These
+			# cases must be distinguished because depth is meaningless
+			# for packages that are not reachable as deep dependencies
+			# of arguments.
+			if (self._dynamic_config._complete_mode and
+				isinstance(dep.parent, Package) and
+				dep.parent.installed and
+				(dep.parent.depth is self._UNREACHABLE_DEPTH or
+				(self._frozen_config.requested_depth is not True and
+				dep.parent.depth >= self._frozen_config.requested_depth))):
+				inst_pkg, in_graph = \
+					self._select_pkg_from_installed(dep.root, dep.atom)
+				if inst_pkg is None:
+					self._dynamic_config._initially_unsatisfied_deps.append(dep)
+					return 1
+
 			self._dynamic_config._unsatisfied_deps_for_display.append(
 				((dep.root, dep.atom), {"myparent":dep.parent}))
 
@@ -2263,6 +2462,7 @@ class depgraph(object):
 				self._dynamic_config._unsatisfied_deps_for_display.append(
 					((pkg.root, atom),
 					{"myparent" : dep.parent, "show_req_use" : pkg}))
+				self._dynamic_config._required_use_unsatisfied = True
 				self._dynamic_config._skip_restart = True
 				return 0
 
@@ -2351,14 +2551,23 @@ class depgraph(object):
 		# Installing package A, we need to make sure package A's deps are met.
 		# emerge --deep <pkgspec>; we need to recursively check dependencies of pkgspec
 		# If we are in --nodeps (no recursion) mode, we obviously only check 1 level of dependencies.
-		if arg_atoms and depth > 0:
+		if arg_atoms and depth != 0:
 			for parent, atom in arg_atoms:
 				if parent.reset_depth:
 					depth = 0
 					break
 
-		if previously_added and pkg.depth is not None:
-			depth = min(pkg.depth, depth)
+		if previously_added and depth != 0 and \
+			isinstance(pkg.depth, int):
+			# Use pkg.depth if it is less than depth.
+			if isinstance(depth, int):
+				depth = min(pkg.depth, depth)
+			else:
+				# depth is _UNREACHABLE_DEPTH and pkg.depth is
+				# an int, so use the int because it's considered
+				# to be less than _UNREACHABLE_DEPTH.
+				depth = pkg.depth
+
 		pkg.depth = depth
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		update = "--update" in self._frozen_config.myopts
@@ -2656,7 +2865,11 @@ class depgraph(object):
 
 	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
 		dep_string, allow_unsatisfied):
-		depth = pkg.depth + 1
+		if isinstance(pkg.depth, int):
+			depth = pkg.depth + 1
+		else:
+			depth = pkg.depth
+
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		recurse_satisfied = deep is True or depth <= deep
 		debug = "--debug" in self._frozen_config.myopts
@@ -3484,9 +3697,9 @@ class depgraph(object):
 						if not self._add_pkg(arg.package, dep) or \
 							not self._create_graph():
 							if not self.need_restart():
-								sys.stderr.write(("\n\n!!! Problem " + \
+								writemsg(("\n\n!!! Problem " + \
 									"resolving dependencies for %s\n") % \
-									arg.arg)
+									arg.arg, noiselevel=-1)
 							return 0, myfavorites
 						continue
 					if debug:
@@ -3887,10 +4100,14 @@ class depgraph(object):
 			# Recursively traversed virtual dependencies, and their
 			# direct dependencies, are considered to have the same
 			# depth as direct dependencies.
-			if parent.depth is None:
-				virt_depth = None
-			else:
+			if isinstance(parent.depth, int):
 				virt_depth = parent.depth + 1
+			else:
+				# The depth may be None when called via
+				# _select_atoms_probe, or it may be
+				# _UNREACHABLE_DEPTH for complete mode.
+				virt_depth = parent.depth
+
 			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
 			selected_atoms = OrderedDict()
 			node_stack = [(parent, None, None)]
@@ -4776,7 +4993,8 @@ class depgraph(object):
 				raise
 
 		depth = parent.depth or 0
-		depth += 1
+		if isinstance(depth, int):
+			depth += 1
 
 		if arg_atoms:
 			for arg, atom in arg_atoms:
@@ -5773,14 +5991,14 @@ class depgraph(object):
 					pset = root_config.sets[s]
 				atom = SETPREFIX + s
 				args.append(SetArg(arg=atom, pset=pset,
-					root_config=root_config))
+					reset_depth=False, root_config=root_config))
 
 		self._set_args(args)
 		for arg in self._expand_set_args(args, add_to_digraph=True):
 			for atom in arg.pset.getAtoms():
 				self._dynamic_config._dep_stack.append(
 					Dependency(atom=atom, root=arg.root_config.root,
-						parent=arg))
+						parent=arg, depth=self._UNREACHABLE_DEPTH))
 
 		if True:
 			if self._dynamic_config._ignored_deps:
@@ -7299,12 +7517,14 @@ class depgraph(object):
 		(using CONFIG_PROTECT). The message includes the comments and the changes.
 		"""
 
-		autounmask_write = self._frozen_config.myopts.get("--autounmask-write", "n") == True
+		ask = "--ask" in self._frozen_config.myopts
+		autounmask_write = \
+				self._frozen_config.myopts.get("--autounmask-write",
+								   ask) is True
 		autounmask_unrestricted_atoms = \
 			self._frozen_config.myopts.get("--autounmask-unrestricted-atoms", "n") == True
 		quiet = "--quiet" in self._frozen_config.myopts
 		pretend = "--pretend" in self._frozen_config.myopts
-		ask = "--ask" in self._frozen_config.myopts
 		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
 
 		def check_if_latest(pkg):
@@ -7624,7 +7844,7 @@ class depgraph(object):
 		if ask and write_to_file and file_to_write_to:
 			prompt = "\nWould you like to add these " + \
 				"changes to your config files?"
-			if userquery(prompt, enter_invalid) == 'No':
+			if self.query(prompt, enter_invalid) == 'No':
 				write_to_file = False
 
 		if write_to_file and file_to_write_to:
@@ -7726,18 +7946,23 @@ class depgraph(object):
 						break
 
 			if world_problems:
-				sys.stderr.write("\n!!! Problems have been " + \
-					"detected with your world file\n")
-				sys.stderr.write("!!! Please run " + \
-					green("emaint --check world")+"\n\n")
+				writemsg("\n!!! Problems have been " + \
+					"detected with your world file\n",
+					noiselevel=-1)
+				writemsg("!!! Please run " + \
+					green("emaint --check world")+"\n\n",
+					noiselevel=-1)
 
 		if self._dynamic_config._missing_args:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" Ebuilds for the following packages are either all\n")
-			sys.stderr.write(colorize("BAD", "!!!") + \
-				" masked or don't exist:\n")
-			sys.stderr.write(" ".join(str(atom) for arg, atom in \
-				self._dynamic_config._missing_args) + "\n")
+			writemsg("\n" + colorize("BAD", "!!!") + \
+				" Ebuilds for the following packages are either all\n",
+				noiselevel=-1)
+			writemsg(colorize("BAD", "!!!") + \
+				" masked or don't exist:\n",
+				noiselevel=-1)
+			writemsg(" ".join(str(atom) for arg, atom in \
+				self._dynamic_config._missing_args) + "\n",
+				noiselevel=-1)
 
 		if self._dynamic_config._pprovided_args:
 			arg_refs = {}
@@ -7777,7 +8002,7 @@ class depgraph(object):
 				msg.append("  C) Remove offending entries from package.provided.\n\n")
 				msg.append("The best course of action depends on the reason that an offending\n")
 				msg.append("package.provided entry exists.\n\n")
-			sys.stderr.write("".join(msg))
+			writemsg("".join(msg), noiselevel=-1)
 
 		masked_packages = []
 		for pkg in self._dynamic_config._masked_license_updates:
@@ -7891,7 +8116,7 @@ class depgraph(object):
 					"favorites?"
 				enter_invalid = '--ask-enter-invalid' in \
 					self._frozen_config.myopts
-				if userquery(prompt, enter_invalid) == "No":
+				if self.query(prompt, enter_invalid) == "No":
 					skip = True
 
 			if not skip:
@@ -8170,8 +8395,9 @@ class depgraph(object):
 		return self._dynamic_config._need_restart and \
 			not self._dynamic_config._skip_restart
 
-	def success_without_autounmask(self):
-		return self._dynamic_config._success_without_autounmask
+	def need_config_change(self):
+		return self._dynamic_config._success_without_autounmask or \
+			self._dynamic_config._required_use_unsatisfied
 
 	def autounmask_breakage_detected(self):
 		try:
@@ -8226,18 +8452,20 @@ class _dep_check_composite_db(dbapi):
 
 		return ret
 
-	def match(self, atom):
+	def match_pkgs(self, atom):
 		cache_key = (atom, atom.unevaluated_atom)
 		ret = self._match_cache.get(cache_key)
 		if ret is not None:
+			for pkg in ret:
+				self._cpv_pkg_map[pkg.cpv] = pkg
 			return ret[:]
 
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		ret = []
 		pkg, existing = self._depgraph._select_package(self._root, atom)
 
-		if pkg is not None and self._visible(pkg):
-			self._cpv_pkg_map[pkg.cpv] = pkg
-			ret.append(pkg.cpv)
+		if pkg is not None and self._visible(pkg, atom_set):
+			ret.append(pkg)
 
 		if pkg is not None and \
 			atom.slot is None and \
@@ -8268,18 +8496,19 @@ class _dep_check_composite_db(dbapi):
 					self._root, slot_atom)
 				if not pkg:
 					continue
-				if not self._visible(pkg):
+				if not self._visible(pkg, atom_set):
 					continue
-				self._cpv_pkg_map[pkg.cpv] = pkg
-				ret.append(pkg.cpv)
+				ret.append(pkg)
 
 			if len(ret) > 1:
-				self._cpv_sort_ascending(ret)
+				ret.sort()
 
 		self._match_cache[cache_key] = ret
+		for pkg in ret:
+			self._cpv_pkg_map[pkg.cpv] = pkg
 		return ret[:]
 
-	def _visible(self, pkg):
+	def _visible(self, pkg, atom_set):
 		if pkg.installed and not self._depgraph._want_installed_pkg(pkg):
 			return False
 		if pkg.installed and \
@@ -8317,6 +8546,11 @@ class _dep_check_composite_db(dbapi):
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot
 			# conflict with a previously selected package.
+			if not atom_set.findAtomForPackage(in_graph,
+				modified_use=self._depgraph._pkg_use_enabled(in_graph)):
+				# Only mask if the graph package matches the given
+				# atom (fixes bug #515230).
+				return True
 			return False
 		return True
 
@@ -8324,8 +8558,8 @@ class _dep_check_composite_db(dbapi):
 		metadata = self._cpv_pkg_map[cpv]._metadata
 		return [metadata.get(x, "") for x in wants]
 
-	def match_pkgs(self, atom):
-		return [self._cpv_pkg_map[cpv] for cpv in self.match(atom)]
+	def match(self, atom):
+		return [pkg.cpv for pkg in self.match_pkgs(atom)]
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
@@ -8413,13 +8647,13 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 	debug = "--debug" in myopts
 	mydepgraph = None
 	max_retries = myopts.get('--backtrack', 10)
-	max_depth = max(1, (max_retries + 1) / 2)
+	max_depth = max(1, (max_retries + 1) // 2)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)
 	backtracked = 0
 
 	frozen_config = _frozen_depgraph_config(settings, trees,
-		myopts, spinner)
+		myopts, myparams, spinner)
 
 	while backtracker:
 
@@ -8437,7 +8671,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			backtrack_parameters=backtrack_parameters)
 		success, favorites = mydepgraph.select_files(myfiles)
 
-		if success or mydepgraph.success_without_autounmask():
+		if success or mydepgraph.need_config_change():
 			break
 		elif not allow_backtracking:
 			break
@@ -8449,7 +8683,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		else:
 			break
 
-	if not (success or mydepgraph.success_without_autounmask()) and backtracked:
+	if not (success or mydepgraph.need_config_change()) and backtracked:
 
 		if debug:
 			writemsg_level(
@@ -8501,7 +8735,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 	mergelist = mtimedb["resume"]["mergelist"]
 	dropped_tasks = {}
 	frozen_config = _frozen_depgraph_config(settings, trees,
-		myopts, spinner)
+		myopts, myparams, spinner)
 	while True:
 		mydepgraph = depgraph(settings, trees,
 			myopts, myparams, spinner, frozen_config=frozen_config)

@@ -2,7 +2,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import division, print_function
 
 import errno
 import math
@@ -11,8 +11,8 @@ import sys
 import tarfile
 
 from os import path as osp
-pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
-sys.path.insert(0, pym_path)
+if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
 from portage import os
@@ -264,7 +264,7 @@ def quickpkg_main(options, args, eout):
 			size_str = "0"
 		else:
 			power_of_2 = math.log(size, 2)
-			power_of_2 = 10*int(power_of_2/10)
+			power_of_2 = 10*(power_of_2//10)
 			unit = units.get(power_of_2)
 			if unit:
 				size = float(size)/(2**power_of_2)

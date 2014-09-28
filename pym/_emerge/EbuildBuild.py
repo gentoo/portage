@@ -1,6 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import _emerge.emergelog
 from _emerge.EbuildExecuter import EbuildExecuter
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildBinpkg import EbuildBinpkg
@@ -75,9 +76,8 @@ class EbuildBuild(CompositeTask):
 
 			waiting_msg = "Fetching files " + \
 				"in the background. " + \
-				"To view fetch progress, run `tail -f " + \
-				EPREFIX + "/var/log/emerge-fetch.log` in another " + \
-				"terminal."
+				"To view fetch progress, run `tail -f %s` in another terminal." \
+				% (os.path.join(_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
 			msg_prefix = colorize("GOOD", " * ")
 			from textwrap import wrap
 			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \

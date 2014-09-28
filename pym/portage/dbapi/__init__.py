@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -15,6 +15,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:cmp_sort_key,writemsg',
 	'portage.versions:catsplit,catpkgsplit,vercmp,_pkg_str',
 )
+
+from portage.const import MERGING_IDENTIFIER
 
 from portage import os
 from portage import auxdbkeys
@@ -278,7 +280,7 @@ class dbapi(object):
 		return True
 
 	def invalidentry(self, mypath):
-		if '/-MERGING-' in mypath:
+		if "/" + MERGING_IDENTIFIER in mypath:
 			if os.path.exists(mypath):
 				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)

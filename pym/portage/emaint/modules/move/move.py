@@ -13,8 +13,9 @@ class MoveHandler(object):
 		self._tree = tree
 		self._portdb = porttree.dbapi
 		self._update_keys = Package._dep_keys + ("PROVIDE",)
-		self._master_repo = \
-			self._portdb.getRepositoryName(self._portdb.porttree_root)
+		self._master_repo = self._portdb.repositories.mainRepo()
+		if self._master_repo is not None:
+			self._master_repo = self._master_repo.name
 
 	def _grab_global_updates(self):
 		from portage.update import grab_updates, parse_updates

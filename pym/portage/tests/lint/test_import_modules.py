@@ -1,7 +1,9 @@
 # Copyright 2011-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.const import PORTAGE_PYM_PATH
+from itertools import chain
+
+from portage.const import PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage import os
 from portage import _encodings
@@ -13,7 +15,9 @@ class ImportModulesTestCase(TestCase):
 		expected_failures = frozenset((
 		))
 
-		for mod in self._iter_modules(PORTAGE_PYM_PATH):
+		iters = (self._iter_modules(os.path.join(PORTAGE_PYM_PATH, x))
+			for x in PORTAGE_PYM_PACKAGES)
+		for mod in chain(*iters):
 			try:
 				__import__(mod)
 			except ImportError as e:

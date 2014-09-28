@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Sep 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -297,6 +297,20 @@ re\-distributable. With default
 configuration, this would result in an effective
 \fBACCEPT_RESTRICT\fR value of "* -bindist".
 .TP
+.BR "\-\-alert [ y | n ] (\-A short option)"
+Add a terminal bell character ('\\a') to all interactive prompts. This
+is especially useful if dependency resolution is taking a long time, and
+you want emerge to alert you when it is finished. If you use
+\fBemerge -auAD world\fR, emerge will courteously point out when it has
+finished calculating the graph.
+
+\fB--alert\fR may be 'y' or 'n'. 'true' and 'false' mean the same thing.
+Using \fB--alert\fR without an option is the same as using it with 'y'.
+Try it with 'emerge -aA portage'.
+
+If your terminal emulator is set up to make '\\a' into a window manager
+urgency hint, move your cursor to a different window to get the effect.
+.TP
 .BR "\-\-alphabetical "
 When displaying USE and other flag output, combines the enabled and
 disabled lists into one list and sorts the whole list alphabetically.
@@ -353,7 +367,8 @@ to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.
 If the corresponding package.* is a file, the changes are appended to
 it, if it is a directory, changes are written to the lexicographically
 last file. This way it is always ensured that the new changes take
-precedence over existing changes.
+precedence over existing changes. This option is automatically enabled with
+\-\-ask.
 .TP
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if

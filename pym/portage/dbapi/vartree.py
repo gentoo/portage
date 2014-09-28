@@ -1,7 +1,7 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
+from __future__ import division, unicode_literals
 
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_merge_unicode_error', '_spawn_phase',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
+	'portage.process:find_binary',
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabdict,normalize_path,new_protect_filename',
@@ -48,7 +49,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
-	PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
+	MERGING_IDENTIFIER, PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
@@ -108,7 +109,7 @@ class vardbapi(dbapi):
 
 	_excluded_dirs = ["CVS", "lost+found"]
 	_excluded_dirs = [re.escape(x) for x in _excluded_dirs]
-	_excluded_dirs = re.compile(r'^(\..*|-MERGING-.*|' + \
+	_excluded_dirs = re.compile(r'^(\..*|' + MERGING_IDENTIFIER + '.*|' + \
 		"|".join(_excluded_dirs) + r')$')
 
 	_aux_cache_version        = "1"
@@ -1058,7 +1059,7 @@ class vardbapi(dbapi):
 			from md5 import new as _new_hash
 
 		_hash_bits = 16
-		_hex_chars = int(_hash_bits / 4)
+		_hex_chars = _hash_bits // 4
 
 		def __init__(self, vardb):
 			self._vardb = vardb
@@ -1519,7 +1520,7 @@ class dblink(object):
 		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
-		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
+		self.dbtmpdir = self.dbcatdir+"/"+MERGING_IDENTIFIER+pkg
 		self.dbdir = self.dbpkgdir
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
@@ -3746,7 +3747,7 @@ class dblink(object):
 					break
 
 				relative_path = parent[srcroot_len:]
-				dirlist.append(os.path.join("/", relative_path))
+				dirlist.append(os.path.join(destroot, relative_path))
 
 				for fname in files:
 					try:
@@ -3872,8 +3873,7 @@ class dblink(object):
 			msg = textwrap.wrap(msg, 70)
 			msg.append("")
 			for f in rofilesystems:
-				msg.append("\t%s" % os.path.join(destroot,
-					f.lstrip(os.path.sep)))
+				msg.append("\t%s" % f)
 			msg.append("")
 			self._elog("eerror", "preinst", msg)
 
@@ -5034,6 +5034,15 @@ class dblink(object):
 			# Call quickpkg for support of QUICKPKG_DEFAULT_OPTS and stuff.
 			quickpkg_binary = os.path.join(self.settings["PORTAGE_BIN_PATH"],
 				"quickpkg")
+
+			if not os.access(quickpkg_binary, os.X_OK):
+				# If not running from the source tree, use PATH.
+				quickpkg_binary = find_binary("quickpkg")
+				if quickpkg_binary is None:
+					self._display_merge(
+						_("%s: command not found") % "quickpkg",
+						level=logging.ERROR, noiselevel=-1)
+					return 127
 
 			# Let quickpkg inherit the global vartree config's env.
 			env = dict(self.vartree.settings.items())

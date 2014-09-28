@@ -61,10 +61,12 @@ class NewsManager(object):
 		self._dir_mode  = 0o0074
 		self._mode_mask = 0o0000
 
-		portdir = portdb.porttree_root
-		profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
+		portdir = portdb.repositories.mainRepoLocation()
+		profiles_base = None
+		if portdir is not None:
+			profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
 		profile_path = None
-		if portdb.settings.profile_path:
+		if profiles_base is not None and portdb.settings.profile_path:
 			profile_path = normalize_path(
 				os.path.realpath(portdb.settings.profile_path))
 			if profile_path.startswith(profiles_base):
