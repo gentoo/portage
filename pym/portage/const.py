@@ -189,6 +189,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"unmerge-backup",
 	"unmerge-logs",
 	"unmerge-orphans",
+	"unprivileged",
 	"userfetch",
 	"userpriv",
 	"usersandbox",

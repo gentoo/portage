@@ -372,7 +372,7 @@ pkg_preinst() {
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
 		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
-		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
+		dirs = [cachedir, cachedir_pregen, cross_prefix, distdir, fake_bin,
 			portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
 		etc_symlinks = ("dispatch-conf.conf", "etc-update.conf")

@@ -834,14 +834,16 @@ class config(object):
 				"PORTAGE_INST_UID": "0",
 			}
 
-			if eprefix:
-				# For prefix environments, default to the UID and GID of
-				# the top-level EROOT directory.
-				try:
-					eroot_st = os.stat(eroot)
-				except OSError:
-					pass
-				else:
+			unprivileged = False
+			try:
+				eroot_st = os.stat(eroot)
+			except OSError:
+				pass
+			else:
+
+				if portage.data._unprivileged_mode(eroot, eroot_st):
+					unprivileged = True
+
 					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
 					default_inst_ids["PORTAGE_INST_UID"] = str(eroot_st.st_uid)
 
@@ -879,6 +881,9 @@ class config(object):
 
 			# initialize self.features
 			self.regenerate()
+
+			if unprivileged:
+				self.features.add('unprivileged')
 
 			if bsd_chflags:
 				self.features.add('chflags')

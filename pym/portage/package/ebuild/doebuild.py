@@ -200,7 +200,9 @@ def _doebuild_path(settings, eapi=None):
 	if "xattr" in settings.features:
 		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "xattr"))
 
-	if eprefix and uid != 0 and "fakeroot" not in settings.features:
+	if uid != 0 and \
+		"unprivileged" in settings.features and \
+		"fakeroot" not in settings.features:
 		path.append(os.path.join(portage_bin_path,
 			"ebuild-helpers", "unprivileged"))
 

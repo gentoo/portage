@@ -59,6 +59,15 @@ def portage_group_warning():
 # If the "wheel" group does not exist then wheelgid falls back to 0.
 # If the "portage" group does not exist then portage_uid falls back to wheelgid.
 
+# If the current user is not root, but has write access to the
+# EROOT directory (not due to the 0002 bit), then use "unprivileged"
+# mode which sets secpass = 2 and uses the UID and GID of the EROOT
+# directory to generate default PORTAGE_INST_GID, PORTAGE_INST_UID,
+# PORTAGE_USERNAME, and PORTAGE_GRPNAME settings.
+def _unprivileged_mode(eroot, eroot_st):
+	return os.getuid() != 0 and os.access(eroot, os.W_OK) and \
+		not eroot_st.st_mode & 0o0002
+
 uid = os.getuid()
 wheelgid = 0
 try:
@@ -77,13 +86,33 @@ def _get_global(k):
 	if k in _initialized_globals:
 		return globals()[k]
 
-	if k in ('portage_gid', 'portage_uid', 'secpass'):
-		global portage_gid, portage_uid, secpass
-		secpass = 0
+	if k == 'secpass':
+
+		unprivileged = False
+		if hasattr(portage, 'settings'):
+			unprivileged = "unprivileged" in portage.settings.features
+		else:
+			# The config class has equivalent code, but we also need to
+			# do it here if _disable_legacy_globals() has been called.
+			eroot = os.path.join(os.environ.get('ROOT', os.sep),
+				portage.const.EPREFIX.lstrip(os.sep))
+			try:
+				eroot_st = os.stat(eroot)
+			except OSError:
+				pass
+			else:
+				unprivileged = _unprivileged_mode(eroot, eroot_st)
+
+		v = 0
 		if uid == 0:
-			secpass = 2
-		elif portage.const.EPREFIX:
-			secpass = 2
+			v = 2
+		elif unprivileged:
+			v = 2
+		elif portage_gid in os.getgroups():
+			v = 1
+
+	elif k in ('portage_gid', 'portage_uid'):
+
 		#Discover the uid and gid of the portage user/group
 		keyerror = False
 		try:
@@ -97,9 +126,6 @@ def _get_global(k):
 		except KeyError:
 			keyerror = True
 			portage_gid = 0
-
-		if secpass < 1 and portage_gid in os.getgroups():
-			secpass = 1
 
 		# Suppress this error message if both PORTAGE_GRPNAME and
 		# PORTAGE_USERNAME are set to "root", for things like
@@ -118,16 +144,15 @@ def _get_global(k):
 				noiselevel=-1)
 			portage_group_warning()
 
+		globals()['portage_gid'] = portage_gid
 		_initialized_globals.add('portage_gid')
+		globals()['portage_uid'] = portage_uid
 		_initialized_globals.add('portage_uid')
-		_initialized_globals.add('secpass')
 
 		if k == 'portage_gid':
 			return portage_gid
 		elif k == 'portage_uid':
 			return portage_uid
-		elif k == 'secpass':
-			return secpass
 		else:
 			raise AssertionError('unknown name: %s' % k)
 
@@ -178,11 +203,9 @@ def _get_global(k):
 			v = os.environ[env_key]
 		elif hasattr(portage, 'settings'):
 			v = portage.settings.get(env_key)
-		elif portage.const.EPREFIX:
-			# For prefix environments, default to the UID and GID of
-			# the top-level EROOT directory. The config class has
-			# equivalent code, but we also need to do it here if
-			# _disable_legacy_globals() has been called.
+		else:
+			# The config class has equivalent code, but we also need to
+			# do it here if _disable_legacy_globals() has been called.
 			eroot = os.path.join(os.environ.get('ROOT', os.sep),
 				portage.const.EPREFIX.lstrip(os.sep))
 			try:
@@ -190,20 +213,21 @@ def _get_global(k):
 			except OSError:
 				pass
 			else:
-				if k == '_portage_grpname':
-					try:
-						grp_struct = grp.getgrgid(eroot_st.st_gid)
-					except KeyError:
-						pass
+				if _unprivileged_mode(eroot, eroot_st):
+					if k == '_portage_grpname':
+						try:
+							grp_struct = grp.getgrgid(eroot_st.st_gid)
+						except KeyError:
+							pass
+						else:
+							v = grp_struct.gr_name
 					else:
-						v = grp_struct.gr_name
-				else:
-					try:
-						pwd_struct = pwd.getpwuid(eroot_st.st_uid)
-					except KeyError:
-						pass
-					else:
-						v = pwd_struct.pw_name
+						try:
+							pwd_struct = pwd.getpwuid(eroot_st.st_uid)
+						except KeyError:
+							pass
+						else:
+							v = pwd_struct.pw_name
 
 		if v is None:
 			v = 'portage'
@@ -254,3 +278,14 @@ def _init(settings):
 			v = portage._native_string(v)
 		globals()['_portage_username'] = v
 		_initialized_globals.add('_portage_username')
+
+	if 'secpass' not in _initialized_globals:
+		v = 0
+		if uid == 0:
+			v = 2
+		elif "unprivileged" in settings.features:
+			v = 2
+		elif portage_gid in os.getgroups():
+			v = 1
+		globals()['secpass'] = v
+		_initialized_globals.add('secpass')
