@@ -24,6 +24,7 @@ make.defaults
 packages
 packages.build
 package.accept_keywords
+package.bashrc
 package.keywords
 package.mask
 package.provided
@@ -357,6 +358,31 @@ a '\-'.
 .BR packages.build
 A list of packages (one per line) that make up a stage1 tarball.  Really only
 useful for stage builders.
+.TP
+.BR package.bashrc
+Per-package bashrc mechanism.  Contains a list of bashrc files to be sourced
+before emerging a given atom.  The bashrc files must be stored in bashrc/, in
+the profile directory.
+
+.I Note:
+.nf
+\- The bashrc files will be sourced after profile.bashrc for the same profile.
+\- profile-formats in metadata/layout.conf must contain profile-bashrcs for this
+to be enabled.
+.fi
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments).
+\- one atom per line with space-delimited list of bashrc files.
+.fi
+
+.I Example:
+.nf
+# By setting INSTALL_MASK in bashrc/nostandardconf.conf, we can avoid installing
+# the standard configuration and enable another package to install it.
+net-misc/dhcp nostardardconf.conf
+.fi
 .TP
 .BR package.provided
 A list of packages (one per line) that portage should assume have been
@@ -1047,11 +1073,13 @@ The default setting for repoman's --echangelog option.
 The cache formats supported in the metadata tree.  There is the old "pms" format
 and the newer/faster "md5-dict" format.  Default is to detect dirs.
 .TP
-.BR profile\-formats " = [pms|portage-1|portage-2]"
+.BR profile\-formats " = [pms|portage-1|portage-2|profile-bashrcs]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
 with old profiles, but is not allowed to be opted into directly.
+Setting profile-bashrcs will enable the per-profile bashrc mechanism
+\fBpackage.bashrc\fR.
 .RE
 .RE
 

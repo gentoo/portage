@@ -254,6 +254,7 @@ class config(object):
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
 			self._env_d_blacklist = clone._env_d_blacklist
+			self._pbashrc = clone._pbashrc
 			self._repo_make_defaults = clone._repo_make_defaults
 			self.usemask = clone.usemask
 			self.useforce = clone.useforce
@@ -316,6 +317,7 @@ class config(object):
 			self._accept_restrict = copy.deepcopy(clone._accept_restrict)
 			self._paccept_restrict = copy.deepcopy(clone._paccept_restrict)
 			self._penvdict = copy.deepcopy(clone._penvdict)
+			self._pbashrcdict = copy.deepcopy(clone._pbashrcdict)
 			self._expand_map = copy.deepcopy(clone._expand_map)
 
 		else:
@@ -661,6 +663,8 @@ class config(object):
 			self._ppropertiesdict = portage.dep.ExtendedAtomDict(dict)
 			self._paccept_restrict = portage.dep.ExtendedAtomDict(dict)
 			self._penvdict = portage.dep.ExtendedAtomDict(dict)
+			self._pbashrcdict = {}
+			self._pbashrc = ()
 
 			self._repo_make_defaults = {}
 			for repo in self.repositories.repos_with_profiles():
@@ -741,6 +745,25 @@ class config(object):
 
 				for k, v in penvdict.items():
 					self._penvdict.setdefault(k.cp, {})[k] = v
+
+				# package.bashrc
+				for profile in profiles_complex:
+					if not 'profile-bashrcs' in profile.profile_formats:
+						continue
+					self._pbashrcdict[profile] = \
+						portage.dep.ExtendedAtomDict(dict)
+					bashrc = grabdict_package(os.path.join(profile.location,
+						"package.bashrc"), recursive=1, allow_wildcard=True,
+								allow_repo=True, verify_eapi=False)
+					if not bashrc:
+						continue
+
+					for k, v in bashrc.items():
+						envfiles = [os.path.join(profile.location,
+							"bashrc",
+							envname) for envname in v]
+						self._pbashrcdict[profile].setdefault(k.cp, {})\
+							.setdefault(k, []).extend(envfiles)
 
 			#getting categories from an external file now
 			self.categories = [grabfile(os.path.join(x, "categories")) \
@@ -1506,6 +1529,23 @@ class config(object):
 			if penv_matches:
 				for x in penv_matches:
 					self._penv.extend(x)
+
+		bashrc_files = []
+
+		for profile in self._locations_manager.profiles_complex:
+			profile_bashrc = os.path.join(profile.location,
+				'profile.bashrc')
+			if os.path.exists(profile_bashrc):
+				bashrc_files.append(profile_bashrc)
+			if profile in self._pbashrcdict:
+				cpdict = self._pbashrcdict[profile].get(cp)
+				if cpdict:
+					bashrc_matches = \
+						ordered_by_atom_specificity(cpdict, cpv_slot)
+					for x in bashrc_matches:
+						bashrc_files.extend(x)
+
+		self._pbashrc = tuple(bashrc_files)
 
 		protected_pkg_keys = set(pkg_configdict)
 		protected_pkg_keys.discard('USE')

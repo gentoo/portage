@@ -3664,17 +3664,15 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		if self.settings.get("INSTALL_MASK") or \
-			"nodoc" in self.settings.features or \
-			"noinfo" in self.settings.features or \
-			"noman" in self.settings.features:
-			# Apply INSTALL_MASK before collision-protect, since it may
-			# be useful to avoid collisions in some scenarios.
-			phase = MiscFunctionsProcess(background=False,
-				commands=["preinst_mask"], phase="preinst",
-				scheduler=self._scheduler, settings=self.settings)
-			phase.start()
-			phase.wait()
+		# Apply INSTALL_MASK before collision-protect, since it may
+		# be useful to avoid collisions in some scenarios.
+		# We cannot detect if this is needed or not here as INSTALL_MASK can be
+		# modified by bashrc files.
+		phase = MiscFunctionsProcess(background=False,
+			commands=["preinst_mask"], phase="preinst",
+			scheduler=self._scheduler, settings=self.settings)
+		phase.start()
+		phase.wait()
 
 		# We check for unicode encoding issues after src_install. However,
 		# the check must be repeated here for binary packages (it's

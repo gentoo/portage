@@ -373,10 +373,10 @@ __source_all_bashrcs() {
 		# source the existing profile.bashrcs.
 		save_IFS
 		IFS=$'\n'
-		local path_array=($PROFILE_PATHS)
+		local bashenv_files=($PORTAGE_BASHRC_FILES)
 		restore_IFS
-		for x in "${path_array[@]}" ; do
-			[ -f "$x/profile.bashrc" ] && __qa_source "$x/profile.bashrc"
+		for x in "${bashenv_files[@]}" ; do
+			__try_source "${x}"
 		done
 	fi
 

@@ -337,7 +337,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
-	mysettings["PROFILE_PATHS"] = "\n".join(mysettings.profiles)
+	mysettings["PORTAGE_BASHRC_FILES"] = "\n".join(mysettings._pbashrc)
+
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
