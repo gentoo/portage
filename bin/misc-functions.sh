@@ -372,20 +372,20 @@ install_qa_check_macho() {
 			# remember we are in an implicit subshell, that's
 			# why we touch a file here ... ideally we should be
 			# able to die correctly/nicely here
-			[[ -z ${ignore} && touch "${T}"/.install_name_check_failed
+			[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
 		fi
 
 		# this is ugly, paths with spaces won't work
 		for lib in ${needed//,/ } ; do
 			if [[ ${lib} == ${D}* ]] ; then
 				eqawarn "QA Notice: install_name references \${D}: ${lib} in ${obj}"
-				[[ -z ${ignore} && touch "${T}"/.install_name_check_failed
+				[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
 			elif [[ ${lib} == ${S}* ]] ; then
 				eqawarn "QA Notice: install_name references \${S}: ${lib} in ${obj}"
-				[[ -z ${ignore} && touch "${T}"/.install_name_check_failed
+				[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
 			elif ! install_name_is_relative ${lib} && [[ ! -e ${lib} && ! -e ${D}${lib} ]] ; then
 				eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
-				[[ -z ${ignore} && touch "${T}"/.install_name_check_failed
+				[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
 			fi
 		done
 
