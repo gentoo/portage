@@ -31,7 +31,7 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'use.mask', 'use.force'])
 
 _profile_node = collections.namedtuple('_profile_node',
-	'location portage1_directories user_config')
+	'location portage1_directories user_config profile_formats')
 
 _allow_parent_colon = frozenset(
 	["portage-2"])
@@ -132,7 +132,7 @@ class LocationsManager(object):
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
 				self.profiles_complex.append(
-					_profile_node(custom_prof, True, True))
+					_profile_node(custom_prof, True, True, ()))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -151,6 +151,7 @@ class LocationsManager(object):
 		allow_parent_colon = True
 		repo_loc = None
 		compat_mode = False
+		current_formats = ()
 
 		eapi_file = os.path.join(currentPath, "eapi")
 		eapi = "0"
@@ -183,6 +184,8 @@ class LocationsManager(object):
 				layout_data['profile-formats'] == ('portage-1-compat',)
 			allow_parent_colon = any(x in _allow_parent_colon
 				for x in layout_data['profile-formats'])
+			current_formats = tuple(layout_data['profile-formats'])
+
 
 		if compat_mode:
 			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
@@ -233,7 +236,8 @@ class LocationsManager(object):
 
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
-			_profile_node(currentPath, allow_directories, False))
+			_profile_node(currentPath, allow_directories, False,
+				current_formats))
 
 	def _expand_parent_colon(self, parentsFile, parentPath,
 		repo_loc, repositories):
