@@ -380,39 +380,64 @@ __source_all_bashrcs() {
 		done
 	fi
 
-	if [ -r "${PORTAGE_BASHRC}" ] ; then
-		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			source "${PORTAGE_BASHRC}"
-		else
-			set -x
-			source "${PORTAGE_BASHRC}"
-			set +x
-		fi
-	fi
+	# The user's bashrc is the ONLY non-portage bit of code
+	# that can change shopts without a QA violation.
+	__try_source --no-qa "${PORTAGE_BASHRC}"
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
-		# The user's bashrc is the ONLY non-portage bit of code that can
-		# change shopts without a QA violation.
-		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
-			if [ -r "${x}" ]; then
-				# If $- contains x, then tracing has already been enabled
-				# elsewhere for some reason. We preserve it's state so as
-				# not to interfere.
-				if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-					source "${x}"
-				else
-					set -x
-					source "${x}"
-					set +x
-				fi
-			fi
-		done
+		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
 	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
 }
 
+# @FUNCTION: __source_env_files
+# @USAGE: [--no-qa] <ENV_DIRECTORY>
+# @DESCRIPTION:
+# Source the files relevant to the current package from the given path.
+# If --no-qa is specified, use source instead of __qa_source to source the
+# files.
+__source_env_files() {
+	local argument=()
+	if [[ $1 == --no-qa ]]; then
+		argument=( --no-qa )
+	shift
+	fi
+	for x in "${1}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
+		__try_source "${argument[@]}" "${x}"
+	done
+}
+
+# @FUNCTION: __try_source
+# @USAGE: [--no-qa] <FILE>
+# @DESCRIPTION:
+# If the path given as argument exists, source the file while preserving
+# $-.
+# If --no-qa is specified, source the file with source instead of __qa_source.
+__try_source() {
+	local qa=true
+	if [[ $1 == --no-qa ]]; then
+		qa=false
+		shift
+	fi
+	if [[ -r "$1" ]]; then
+		local debug_on=false
+		if [[ "$PORTAGE_DEBUG" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
+			debug_on=true
+		fi
+		$debug_on && set -x
+		# If $- contains x, then tracing has already been enabled
+		# elsewhere for some reason. We preserve it's state so as
+		# not to interfere.
+		if [[ ${qa} ]]; then
+			source "${1}"
+		else
+			__qa_source "${1}"
+		fi
+		$debug_on && set +x
+	fi
+}
 # === === === === === === === === === === === === === === === === === ===
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
