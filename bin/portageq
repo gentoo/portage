@@ -24,11 +24,13 @@ import os
 import types
 
 # for an explanation on this logic, see pym/_emerge/__init__.py
+# this differs from master, we need to revisit this when we can install
+# using distutils, like master
 if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	pym_path = os.environ["PORTAGE_PYTHONPATH"]
+	pym_paths = [ os.environ["PORTAGE_PYTHONPATH"] ]
 else:
-	pym_path = os.path.join(os.path.dirname(
-		os.path.dirname(os.path.realpath(__file__))), "pym")
+	pym_paths = [ os.path.join(os.path.dirname(
+		os.path.dirname(os.path.realpath(__file__))), "pym") ]
 # Avoid sandbox violations after Python upgrade.
 if os.environ.get("SANDBOX_ON") == "1":
 	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
