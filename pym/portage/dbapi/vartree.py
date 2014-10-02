@@ -1067,6 +1067,11 @@ class vardbapi(dbapi):
 		def add(self, cpv):
 			eroot_len = len(self._vardb._eroot)
 			contents = self._vardb._dblink(cpv).getcontents()
+
+			if "case-insensitive-fs" in self._vardb.settings.features:
+				contents = dict((k.lower(), v)
+					for k, v in contents.items())
+
 			pkg_hash = self._hash_pkg(cpv)
 			if not contents:
 				# Empty path is a code used to represent empty contents.
@@ -1204,6 +1209,8 @@ class vardbapi(dbapi):
 			hash_pkg = owners_cache._hash_pkg
 			hash_str = owners_cache._hash_str
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
+			case_insensitive = "case-insensitive-fs" \
+				in vardb.settings.features
 
 			dblink_cache = {}
 
@@ -1220,6 +1227,8 @@ class vardbapi(dbapi):
 			while path_iter:
 
 				path = path_iter.pop()
+				if case_insensitive:
+					path = path.lower()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -1251,6 +1260,8 @@ class vardbapi(dbapi):
 
 							if is_basename:
 								for p in dblink(cpv).getcontents():
+									if case_insensitive:
+										p = p.lower()
 									if os.path.basename(p) == name:
 										owners.append((cpv, p[len(root):]))
 							else:
@@ -1280,8 +1291,12 @@ class vardbapi(dbapi):
 			if not path_list:
 				return
 
+			case_insensitive = "case-insensitive-fs" \
+				in self._vardb.settings.features
 			path_info_list = []
 			for path in path_list:
+				if case_insensitive:
+					path = path.lower()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -1300,6 +1315,8 @@ class vardbapi(dbapi):
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk.getcontents():
+							if case_insensitive:
+								p = p.lower()
 							if os.path.basename(p) == name:
 								search_pkg.results.append((dblnk, p[len(root):]))
 					else:
@@ -1555,7 +1572,9 @@ class dblink(object):
 			portage.util.shlex_split(
 				self.settings.get("CONFIG_PROTECT", "")),
 			portage.util.shlex_split(
-				self.settings.get("CONFIG_PROTECT_MASK", "")))
+				self.settings.get("CONFIG_PROTECT_MASK", "")),
+			case_insensitive = ("case-insensitive-fs"
+					in self.settings.features))
 
 		return self._protect_obj
 
@@ -2777,7 +2796,16 @@ class dblink(object):
 			filename.lstrip(os_filename_arg.path.sep)))
 
 		pkgfiles = self.getcontents()
+
+		preserve_case = None
+		if "case-insensitive-fs" in self.settings.features:
+			destfile = destfile.lower()
+			preserve_case = dict((k.lower(), k) for k in pkgfiles)
+			pkgfiles = dict((k.lower(), v) for k, v in pkgfiles.items())
+
 		if pkgfiles and destfile in pkgfiles:
+			if preserve_case is not None:
+				return preserve_case[destfile]
 			return destfile
 		if pkgfiles:
 			basename = os_filename_arg.path.basename(destfile)
@@ -2870,6 +2898,8 @@ class dblink(object):
 				for p_path in p_path_list:
 					x = os_filename_arg.path.join(p_path, basename)
 					if x in pkgfiles:
+						if preserve_case is not None:
+							return preserve_case[x]
 						return x
 
 		return False

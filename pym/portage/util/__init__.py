@@ -1556,10 +1556,12 @@ class LazyItemsDict(UserDict):
 			return result
 
 class ConfigProtect(object):
-	def __init__(self, myroot, protect_list, mask_list):
+	def __init__(self, myroot, protect_list, mask_list,
+		case_insensitive = False):
 		self.myroot = myroot
 		self.protect_list = protect_list
 		self.mask_list = mask_list
+		self.case_insensitive = case_insensitive
 		self.updateprotect()
 
 	def updateprotect(self):
@@ -1573,6 +1575,8 @@ class ConfigProtect(object):
 		for x in self.protect_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			if self.case_insensitive:
+				ppath = ppath.lower()
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
 					self._dirs.add(ppath)
@@ -1585,6 +1589,8 @@ class ConfigProtect(object):
 		for x in self.mask_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			if self.case_insensitive:
+				ppath = ppath.lower()
 			try:
 				"""Use lstat so that anything, even a broken symlink can be
 				protected."""
@@ -1605,6 +1611,8 @@ class ConfigProtect(object):
 		masked = 0
 		protected = 0
 		sep = os.path.sep
+		if self.case_insensitive:
+			obj = obj.lower()
 		for ppath in self.protect:
 			if len(ppath) > masked and obj.startswith(ppath):
 				if ppath in self._dirs:

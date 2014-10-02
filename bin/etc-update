@@ -67,6 +67,7 @@ scan() {
 	mkdir "${TMP}"/files || die "Failed mkdir command!"
 	count=0
 	input=0
+	local basename
 	local find_opts
 	local path
 
@@ -75,13 +76,17 @@ scan() {
 
 		if [[ ! -d ${path} ]] ; then
 			[[ ! -f ${path} ]] && continue
-			local my_basename="${path##*/}"
+			basename="${path##*/}"
 			path="${path%/*}"
-			find_opts=( -maxdepth 1 -name "._cfg????_${my_basename}" )
+			find_opts=( -maxdepth 1 )
 		else
+			basename=*
 			# Do not traverse hidden directories such as .svn or .git.
-			find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
+			find_opts=( -name '.*' -type d -prune -o )
 		fi
+		${case_insensitive} && \
+			find_opts+=( -iname ) || find_opts+=( -name )
+		find_opts+=( "._cfg????_${basename}" )
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
 		if [ ! -w "${path}" ] ; then
@@ -623,6 +628,7 @@ ${SET_X} && set -x
 type -P portageq >/dev/null || die "missing portageq"
 portage_vars=(
 	CONFIG_PROTECT{,_MASK}
+	FEATURES
 	PORTAGE_CONFIGROOT
 	PORTAGE_INST_{G,U}ID
 	PORTAGE_TMPDIR
@@ -633,6 +639,8 @@ portage_vars=(
 eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v ${portage_vars[@]})
 export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
+[[ " ${FEATURES} " == *" case-insensitive-fs "* ]] && \
+	case_insensitive=true || case_insensitive=false
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated" SIGTERM

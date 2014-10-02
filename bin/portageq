@@ -381,8 +381,8 @@ def is_protected(argv):
 	protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
 	protect_mask = portage.util.shlex_split(
 		settings.get("CONFIG_PROTECT_MASK", ""))
-	protect_obj = ConfigProtect(root, protect, protect_mask)
-
+	protect_obj = ConfigProtect(root, protect, protect_mask,
+		case_insensitive = ("case-insensitive-fs" in settings.features))
 	if protect_obj.isprotected(f):
 		return 0
 	return 1
@@ -416,7 +416,8 @@ def filter_protected(argv):
 	protect = portage.util.shlex_split(settings.get("CONFIG_PROTECT", ""))
 	protect_mask = portage.util.shlex_split(
 		settings.get("CONFIG_PROTECT_MASK", ""))
-	protect_obj = ConfigProtect(root, protect, protect_mask)
+	protect_obj = ConfigProtect(root, protect, protect_mask,
+		case_insensitive = ("case-insensitive-fs" in settings.features))
 
 	errors = 0
 

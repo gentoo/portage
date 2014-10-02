@@ -145,6 +145,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"buildpkg",
 	"buildsyspkg",
 	"candy",
+	"case-insensitive-fs",
 	"ccache",
 	"cgroup",
 	"chflags",
