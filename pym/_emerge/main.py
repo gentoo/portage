@@ -147,6 +147,7 @@ def insert_optional_args(args):
 		'--quiet'                : y_or_n,
 		'--quiet-build'          : y_or_n,
 		'--quiet-fail'           : y_or_n,
+		'--read-news'            : y_or_n,
 		'--rebuild-if-new-slot': y_or_n,
 		'--rebuild-if-new-rev'   : y_or_n,
 		'--rebuild-if-new-ver'   : y_or_n,
@@ -558,6 +559,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices"  : true_y_or_n,
 		},
 
+		"--read-news": {
+			"help"    : "offer to read unread news via eselect",
+			"choices" : true_y_or_n
+		},
+
+
 		"--rebuild-if-new-slot": {
 			"help"     : ("Automatically rebuild or reinstall packages when slot/sub-slot := "
 				"operator dependencies can be satisfied by a newer slot, so that "
@@ -803,6 +810,12 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.quiet_fail in true_y:
 		myoptions.quiet_fail = 'y'
+
+	if myoptions.read_news in true_y:
+		myoptions.read_news = True
+	else:
+		myoptions.read_news = None
+
 
 	if myoptions.rebuild_if_new_slot in true_y:
 		myoptions.rebuild_if_new_slot = 'y'
