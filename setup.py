@@ -340,7 +340,7 @@ class x_install(install):
 		('portage_datadir', '$datarootdir/portage'),
 
 		# not customized at the moment
-		('logrotatedir', '$sysconfdir/logrotate'),
+		('logrotatedir', '$sysconfdir/logrotate.d'),
 		('portage_confdir', '$portage_datadir/config'),
 		('portage_setsdir', '$portage_confdir/sets'),
 	]
