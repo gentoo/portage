@@ -1,6 +1,42 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.14
+==================================
+* Bug Fixes:
+    - Bug # 508364 Tweak the previous patch commit for the comma warning.
+    - Bug # 524964 $PORTAGE_BIN_PATH/portageq no longer exists, which breaks
+        bin/ebuild-helpers/portageq.
+    - Bug # 524328 Use nonblocking write instead of a fork for writing to
+            the fifo.
+    - Bug # 523684 If a CONFIG_PROTECTed file was installed but no longer
+        exists in the file system, then it may have been deleted or renamed
+        by the admin.
+    - Bug # 506192 This fixes the sync_local function so that it doesn't
+        prematurely remove the whole TMPDIR when tarsync is not installed.
+    - Bug # <no number> setup.py: Fix typo in logrotatedir path.
+
+
+portage-2.2.14_rc1
+==================================
+* Bug Fixes:
+    - Bug # 508364 Update gcc warning checks.
+    - Bug # 523182 Rewrite default ebuild phase setting code
+    - Bug # 517310 Offer to read news while calcing deps
+    - Bug # 481578 emerge: --autounmask-write if --ask
+    - Bug # 523494 Use PATH instead of PORTAGE_BIN_PATH to locate emerge.
+    - Bug # 523532 This fixes depth increment to handle _UNREACHABLE_DEPTH.
+    - Bug # 523152 This fixes the unmerge-backup and downgrade-backup features
+        to be compatible with the new setup.py quickpkg install location...
+    - Bug # 522084 Fix _solve_non_slot_operator_slot_conflicts to add all
+        parents to the conflict_graph...
+    - Bug # 523048 This fixes _backtrack_depgraph to immediately report
+        necessary REQUIRED_USE changes instead of discarding the graph.
+    - Bug # 521990 Since self._dynamic_config._slot_operator_deps only contains
+        deps for packages added to the graph, it doesn't contain potentially
+        relevant deps of installed packages that have not been added to the graph.
+
+
 portage-2.2.13
 ==================================
 * Bug Fixes:
