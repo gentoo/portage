@@ -4064,6 +4064,7 @@ def run_action(emerge_config):
 			uq = UserQuery(emerge_config.opts)
 			if display_news_notification(emerge_config.target_config,
 								emerge_config.opts) \
+				and "--ask" in emerge_config.opts \
 				and "--read-news" in emerge_config.opts \
 				and uq.query("Would you like to read the news items while " \
 						"calculating dependencies?",
