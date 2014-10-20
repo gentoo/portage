@@ -598,7 +598,7 @@ def get_manpages():
 
 setup(
 	name = 'portage',
-	version = '2.2.14_rc1',
+	version = '2.2.14',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
