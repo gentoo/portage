@@ -227,7 +227,8 @@ class SyncManager(object):
 			updatecache_flg = False
 
 		if updatecache_flg and \
-			os.path.exists(os.path.join(self.repo.location, 'metadata', 'cache')):
+			os.path.exists(os.path.join(
+			self.repo.location, 'metadata', 'md5-cache')):
 
 			# Only update cache for repo.location since that's
 			# the only one that's been synced here.
