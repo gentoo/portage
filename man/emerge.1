@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Sep 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Oct 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -399,7 +399,7 @@ Creates binary packages for all ebuilds processed without actually
 merging the packages.  This comes with the caveat that all build-time
 dependencies must already be emerged on the system.
 .TP
-.BR "\-\-changed\-use"
+.BR "\-\-changed\-use " (\fB\-U\fR)
 Tells emerge to include installed packages where USE flags have
 changed since installation. This option also implies the
 \fB\-\-selective\fR option. Unlike \fB\-\-newuse\fR, the

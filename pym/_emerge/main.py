@@ -69,7 +69,7 @@ shortmapping={
 "r":"--resume",
 "s":"--search",    "S":"--searchdesc",
 "t":"--tree",
-"u":"--update",
+"u":"--update",    "U":"--changed-use",
 "V":"--version"
 }
 
