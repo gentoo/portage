@@ -1,8 +1,6 @@
 # Copyright 2005-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from _emerge.actions import load_emerge_config
-
 import portage
 from portage import os, _unicode_encode
 from portage.const import MERGING_IDENTIFIER, PORTAGE_BIN_PATH, PRIVATE_PATH, \
@@ -174,8 +172,7 @@ class MergesHandler(object):
 		@type pkg_invalid_entries: set
 		"""
 
-		emerge_config = load_emerge_config()
-		portdb = emerge_config.target_config.trees['porttree'].dbapi
+		portdb = portage.db[portage.root]['porttree'].dbapi
 		for failed_pkg in failed_pkgs:
 			# validate pkg name
 			pkg_name = '%s' % failed_pkg.replace(MERGING_IDENTIFIER, '')
@@ -271,8 +268,8 @@ class MergesHandler(object):
 		for pkg in sorted(self._scan()):
 			results.append("'%s' still found as a failed merge." % pkg)
 		# reload config and remove successful packages from tracking file
-		emerge_config = load_emerge_config()
-		vardb = emerge_config.target_config.trees['vartree'].dbapi
+		portage._reset_legacy_globals()
+		vardb = portage.db[portage.root]['vartree'].dbapi
 		still_failed_pkgs = {}
 		for pkg, mtime in failed_pkgs.items():
 			pkg_name = '%s' % pkg.replace(MERGING_IDENTIFIER, '')
