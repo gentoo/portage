@@ -10,8 +10,8 @@ portage._internal_caller = True
 portage._sync_mode = True
 from portage.localization import _
 from portage.output import bold, create_color_func
-from portage.sync import get_syncer
 from portage._global_updates import _global_updates
+from portage.sync.controller import SyncManager
 from portage.util import writemsg_level
 
 import _emerge
@@ -52,13 +52,22 @@ class SyncRepos(object):
 		@param emerge_config: optional an emerge_config instance to use
 		@param emerge_logging: boolean, defaults to False
 		'''
-		if emerge_config:
-			self.emerge_config = emerge_config
-		else:
+		if emerge_config is None:
 			# need a basic options instance
 			actions, opts, _files = parse_opts([], silent=True)
-			self.emerge_config = load_emerge_config(
-				action='sync', args=_files, trees=[], opts=opts)
+			emerge_config = load_emerge_config(
+				action='sync', args=_files, opts=opts)
+
+			if hasattr(portage, 'settings'):
+				# cleanly destroy global objects
+				portage._reset_legacy_globals()
+				# update redundant global variables, for consistency
+				# and in order to conserve memory
+				portage.settings = emerge_config.target_config.settings
+				portage.db = emerge_config.trees
+				portage.root = portage.db._target_eroot
+
+		self.emerge_config = emerge_config
 		if emerge_logging:
 			_emerge.emergelog._disable = False
 		self.xterm_titles = "notitles" not in \
@@ -176,7 +185,8 @@ class SyncRepos(object):
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
-		sync_manager = get_syncer(self.emerge_config.target_config.settings, emergelog)
+		sync_manager = SyncManager(
+			self.emerge_config.target_config.settings, emergelog)
 		retvals = []
 		for repo in selected_repos:
 			if repo.sync_type is not None:
