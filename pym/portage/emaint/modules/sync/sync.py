@@ -208,9 +208,9 @@ class SyncRepos(object):
 		if retvals:
 			msgs.extend(self.rmessage(retvals, 'sync'))
 		else:
-			msgs.append(self.rmessage(('None', os.EX_OK), 'sync'))
+			msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
 		if rcode:
-			msgs.append(self.rmessage('None', rcode), 'post-sync')
+			msgs.extend(self.rmessage([('None', rcode)], 'post-sync'))
 		if return_messages:
 			return msgs
 		return
