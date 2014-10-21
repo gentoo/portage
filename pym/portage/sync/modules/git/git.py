@@ -69,11 +69,11 @@ class GitSync(SyncBase):
 			msg = "!!! git clone error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
-		return (exitcode, False)
+			return (exitcode, False)
 		msg = ">>> Git clone successful"
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		return self.post_sync(portdb, self.repo.location, emerge_config)
+		return (os.EX_OK, True)
 
 
 	def _sync(self):
@@ -101,18 +101,4 @@ class GitSync(SyncBase):
 		msg = ">>> Git pull successful: %s" % self.repo.location
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		return self.post_sync(portdb, self.repo.location, emerge_config)
-
-
-	def post_sync(self, portdb, location, emerge_config):
-		'''repo.sync_type == "git":
-		# NOTE: Do this after reloading the config, in case
-		# it did not exist prior to sync, so that the config
-		# and portdb properly account for its existence.
-		'''
-		# avoid circular import for now
-		from _emerge.actions import load_emerge_config, adjust_configs
-		# Reload the whole config from scratch.
-		settings, trees, mtimedb = load_emerge_config(emerge_config=emerge_config)
-		adjust_configs(emerge_config.opts, emerge_config.trees)
 		return (os.EX_OK, True)
