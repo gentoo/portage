@@ -10,7 +10,6 @@ from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from .timestamps import git_sync_timestamps
 from portage.sync.syncbase import SyncBase
 
 
@@ -116,9 +115,4 @@ class GitSync(SyncBase):
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(emerge_config=emerge_config)
 		adjust_configs(emerge_config.opts, emerge_config.trees)
-		portdb = trees[settings['EROOT']]['porttree'].dbapi
-		updatecache_flg = False
-		exitcode = git_sync_timestamps(portdb, location)
-		if exitcode == os.EX_OK:
-			updatecache_flg = True
-		return (exitcode, updatecache_flg)
+		return (os.EX_OK, True)
