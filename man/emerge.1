@@ -258,11 +258,12 @@ portage tree as a tarball, which is much faster than emerge
 .TP
 .BR "\-\-unmerge " (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
-all matching packages.  This does no checking of dependencies, so
-it may remove packages necessary for the proper operation of your
-system.  Its arguments can be \fIatoms\fR or
-\fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR,
-use \fB\-\-depclean\fR or \fB\-\-prune\fR.
+all matching packages following a counter governed by \fBCLEAN_DELAY\fR.
+This does no checking of dependencies, so it may remove packages necessary
+for the proper operation of your system.  Its arguments can be \fIatoms\fR
+or \fIebuilds\fR. For a dependency aware version of \fB\-\-unmerge\fR, use
+\fB\-\-depclean\fR or \fB\-\-prune\fR.  For a version with
+\fBCLEAN_DELAY=0\fR, use \fB\-\-rage\-clean\fR.
 .TP
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.
@@ -715,6 +716,10 @@ Disable the warning message that's shown prior to
 \fB\-\-unmerge\fR actions. This option is intended
 to be set in the \fBmake.conf\fR(5)
 \fBEMERGE_DEFAULT_OPTS\fR variable.
+.TP
+.BR "\-\-rage\-clean"
+\fBWARNING: This action can remove important packages!\fR
+\fB\-\-rage\-clean\fR does \fB\-\-unmerge\fR with \fBCLEAN_DELAY=0\fR.
 .TP
 .BR "\-\-read\-news [ y | n ]"
 Offer to read news via eselect if there are unread news. This option

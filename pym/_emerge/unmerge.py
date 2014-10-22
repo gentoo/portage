@@ -89,16 +89,18 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			else:
 				syslist.append(mycp)
 		syslist = frozenset(syslist)
-	
+
 		if not unmerge_files:
-			if unmerge_action == "unmerge":
+			if unmerge_action in ["rage-clean", "unmerge"]:
 				print()
-				print(bold("emerge unmerge") + " can only be used with specific package names")
+				print(bold("emerge %s") +
+						" can only be used with specific package names" %
+						unmerge_action)
 				print()
 				return 1, {}
 			else:
 				global_unmerge = 1
-	
+
 		localtree = vartree
 		# process all arguments and add all
 		# valid db entries to candidate_catpkgs
@@ -108,7 +110,8 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
-				print("\nNo packages to unmerge have been provided.\n")
+				print("\nNo packages to %s have been provided.\n" %
+						unmerge_action)
 				return 1, {}
 			for x in unmerge_files:
 				arg_parts = x.split('/')
@@ -208,7 +211,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 			pkgmap.append(
 				{"protected": set(), "selected": set(), "omitted": set()})
 			mykey = len(pkgmap) - 1
-			if unmerge_action=="unmerge":
+			if unmerge_action in ["rage-clean", "unmerge"]:
 					for y in mymatch:
 						if y not in all_selected:
 							pkgmap[mykey]["selected"].add(y)
@@ -330,13 +333,17 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 
 			if unmerge_action != "clean" and root_config.root == "/":
 				skip_pkg = False
-				if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [pkg]):
-					msg = ("Not unmerging package %s since there is no valid reason "
-						"for Portage to unmerge itself.") % (pkg.cpv,)
+				if portage.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM,
+						[pkg]):
+					msg = ("Not unmerging package %s "
+							"since there is no valid reason for Portage to "
+							"%s itself.") % (pkg.cpv, unmerge_action)
 					skip_pkg = True
-				elif vartree.dbapi._dblink(cpv).isowner(portage._python_interpreter):
-					msg = ("Not unmerging package %s since there is no valid reason "
-						"for Portage to unmerge currently used Python interpreter.") % (pkg.cpv,)
+				elif vartree.dbapi._dblink(cpv).isowner(
+						portage._python_interpreter):
+					msg = ("Not unmerging package %s since there is no valid "
+							"reason for Portage to %s currently used Python "
+							"interpreter.") % (pkg.cpv, unmerge_action)
 					skip_pkg = True
 				if skip_pkg:
 					for line in textwrap.wrap(msg, 75):
@@ -539,8 +546,8 @@ def unmerge(root_config, myopts, unmerge_action,
 			print("Quitting.")
 			print()
 			return 128 + signal.SIGINT
-	#the real unmerging begins, after a short delay....
-	if clean_delay and not autoclean:
+	#the real unmerging begins, after a short delay unless we're raging....
+	if not unmerge_action == "rage-clean" and clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
 	all_selected = set()

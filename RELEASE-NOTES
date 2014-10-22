@@ -1,6 +1,10 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.15
+==================================
+* New option --rage-clean that does --unmerge without delay.
+
 portage-2.2.14
 ==================================
 * Bug Fixes:
