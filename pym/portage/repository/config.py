@@ -913,7 +913,9 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync_cvs_repo", "sync_type", "sync_uri")
+		str_or_int_keys = ("auto_sync", "format", "location",
+			"main_repo", "priority", "sync_cvs_repo",
+			"sync_type", "sync_uri")
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
