@@ -58,6 +58,13 @@ class SyncRepos(object):
 			emerge_config = load_emerge_config(
 				action='sync', args=_files, opts=opts)
 
+			# Parse EMERGE_DEFAULT_OPTS, for settings like
+			# --package-moves=n.
+			cmdline = portage.util.shlex_split(
+				emerge_config.target_config.settings.get(
+				"EMERGE_DEFAULT_OPTS", ""))
+			emerge_config.opts = parse_opts(cmdline, silent=True)[1]
+
 			if hasattr(portage, 'settings'):
 				# cleanly destroy global objects
 				portage._reset_legacy_globals()
