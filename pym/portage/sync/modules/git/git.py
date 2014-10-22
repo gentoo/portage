@@ -60,10 +60,13 @@ class GitSync(SyncBase):
 		msg = ">>> Cloning git repository from upstream into %s..." % self.repo.location
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
+		sync_uri = self.repo.sync_uri
+		if sync_uri.startswith("file://"):
+			sync_uri = sync_uri[6:]
 		exitcode = portage.process.spawn_bash("cd %s ; %s clone %s ." % \
 			(portage._shell_quote(self.repo.location),
 			self.bin_command,
-			portage._shell_quote(self.repo.sync_uri)),
+			portage._shell_quote(sync_uri)),
 			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git clone error in %s" % self.repo.location
