@@ -66,6 +66,9 @@ class RsyncSync(SyncBase):
 			rsync_opts = self._validate_rsync_opts(rsync_opts, syncuri)
 		self.rsync_opts = self._rsync_opts_extend(opts, rsync_opts)
 
+		self.extra_rsync_opts = portage.util.shlex_split(
+			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
+
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(
 			self.repo.location, "metadata", "timestamp.chk")
@@ -93,6 +96,14 @@ class RsyncSync(SyncBase):
 		except:
 			maxretries = -1 #default number of retries
 
+		if syncuri.startswith("file://"):
+			self.proto = "file"
+			dosyncuri = syncuri[6:]
+			is_synced, exitcode = self._do_rsync(
+				dosyncuri, timestamp, opts)
+			self._process_exitcode(exitcode, dosyncuri, out, 1)
+			return (exitcode, exitcode == os.EX_OK)
+
 		retries=0
 		try:
 			self.proto, user_name, hostname, port = re.split(
@@ -116,8 +127,6 @@ class RsyncSync(SyncBase):
 			getaddrinfo_host = hostname[1:-1]
 		updatecache_flg=True
 		all_rsync_opts = set(self.rsync_opts)
-		self.extra_rsync_opts = portage.util.shlex_split(
-			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
 		all_rsync_opts.update(self.extra_rsync_opts)
 
 		family = socket.AF_UNSPEC
