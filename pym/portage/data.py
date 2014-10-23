@@ -157,7 +157,7 @@ def _get_global(k):
 			raise AssertionError('unknown name: %s' % k)
 
 	elif k == 'userpriv_groups':
-		v = [portage_gid]
+		v = [_get_global('portage_gid')]
 		if secpass >= 2:
 			# Get a list of group IDs for the portage user. Do not use
 			# grp.getgrall() since it is known to trigger spurious
