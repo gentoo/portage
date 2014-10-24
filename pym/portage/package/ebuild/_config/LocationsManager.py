@@ -132,7 +132,8 @@ class LocationsManager(object):
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
 				self.profiles_complex.append(
-					_profile_node(custom_prof, True, True, ()))
+					_profile_node(custom_prof, True, True,
+					('profile-bashrcs',)))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
