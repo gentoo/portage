@@ -197,7 +197,11 @@ else:
 		err('%s: does not seem to have a valid PORTDIR structure' % (ebuild,))
 
 if len(pargs) > 1 and "config" in pargs:
-	err('"config" must not be called with any other phase')
+	other_phases = set(pargs)
+	other_phases.difference_update(
+		("clean", "config", "digest", "manifest"))
+	if other_phases:
+		err('"config" must not be called with any other phase')
 
 def discard_digests(myebuild, mysettings, mydbapi):
 	"""Discard all distfiles digests for the given ebuild.  This is useful when
