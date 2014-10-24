@@ -291,7 +291,7 @@ install_qa_check_macho() {
 		done
 		if [[ -f ${T}/mach-o.check ]] ; then
 			f=$(< "${T}/mach-o.check")
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			eqawarn "QA Notice: Found .so dynamic libraries on Darwin:"
 			eqawarn "    ${f//$'\n'/\n    }"
 		fi
@@ -307,7 +307,7 @@ install_qa_check_macho() {
 		done
 		if [[ -f "${T}/mach-o.check" ]] ; then
 			f=$(< "${T}/mach-o.check")
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			eqawarn "QA Notice: Found wrongly named dynamic libraries on Darwin:"
 			eqawarn "    ${f// /\n    }"
 		fi
@@ -439,12 +439,12 @@ install_qa_check_pecoff() {
 			echo "${rpath}" | grep '$ORIGIN' > /dev/null 2>&1 && echo "${obj}"; done;
 		)
 		if [[ -n ${f}${x} ]] ; then
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with the maintaining herd of the package."
 			eqawarn "${f}${f:+${x:+\n}}${x}"
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			else
@@ -503,10 +503,10 @@ install_qa_check_pecoff() {
 				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
 				do [[ -z "${soname}" ]] && echo "${obj}"; done)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				__vecho -ne '\a\n'
 				eqawarn "QA Notice: The following shared libraries lack a SONAME"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				__vecho -ne '\a\n'
 				sleep 1
 			fi
 
@@ -514,10 +514,10 @@ install_qa_check_pecoff() {
 				xargs -0 ${_pfx_scan} | while IFS=";" read arch obj soname rpath needed; \
 				do [[ -z "${needed}" ]] && echo "${obj}"; done)
 			if [[ -n ${f} ]] ; then
-				vecho -ne '\a\n'
+				__vecho -ne '\a\n'
 				eqawarn "QA Notice: The following shared libraries lack NEEDED entries"
 				eqawarn "${f}"
-				vecho -ne '\a\n'
+				__vecho -ne '\a\n'
 				sleep 1
 			fi
 		done
@@ -629,21 +629,21 @@ install_qa_check_xcoff() {
 		eval "exec ${neededfd}>&-" || die "cannot close handle to ${PORTAGE_BUILDDIR}/build-info/NEEDED.XCOFF.1"
 
 		if [[ -n ${undefined_symbols_list} ]]; then
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain undefined symbols."
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with 'prefix' as the maintaining herd of the package."
 			eqawarn "${undefined_symbols_list}"
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 		fi
 
 		if [[ -n ${insecure_rpath_list} ]] ; then
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			eqawarn "QA Notice: The following files contain insecure RUNPATH's"
 			eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
 			eqawarn " with 'prefix' as the maintaining herd of the package."
 			eqawarn "${insecure_rpath_list}"
-			vecho -ne '\a\n'
+			__vecho -ne '\a\n'
 			if has stricter ${FEATURES} ; then
 				insecure_rpath=1
 			fi
