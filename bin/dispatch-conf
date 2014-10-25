@@ -116,13 +116,15 @@ class dispatch:
         for path in config_paths:
             path = portage.normalize_path(
                  os.path.join(config_root, path.lstrip(os.sep)))
-            try:
-                mymode = os.stat(path).st_mode
-            except OSError:
+
+            # Protect files that don't exist (bug #523684). If the
+            # parent directory doesn't exist, we can safely skip it.
+            if not os.path.isdir(os.path.dirname(path)):
                 continue
+
             basename = "*"
             find_opts = "-name '.*' -type d -prune -o"
-            if not stat.S_ISDIR(mymode):
+            if not os.path.isdir(path):
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 

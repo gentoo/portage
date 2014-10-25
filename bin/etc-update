@@ -74,7 +74,10 @@ scan() {
 		path="${EROOT%/}${path}"
 
 		if [[ ! -d ${path} ]] ; then
-			[[ ! -f ${path} ]] && continue
+			# Protect files that don't exist (bug #523684). If the
+			# parent directory doesn't exist, we can safely skip it.
+			path=${path%/}
+			[[ -d ${path%/*} ]] || continue
 			local my_basename="${path##*/}"
 			path="${path%/*}"
 			find_opts=( -maxdepth 1 -name "._cfg????_${my_basename}" )

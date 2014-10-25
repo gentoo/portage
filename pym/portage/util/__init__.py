@@ -1572,12 +1572,14 @@ class ConfigProtect(object):
 		for x in self.protect_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			# Protect files that don't exist (bug #523684). If the
+			# parent directory doesn't exist, we can safely skip it.
+			if os.path.isdir(os.path.dirname(ppath)):
+				self.protect.append(ppath)
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
 					self._dirs.add(ppath)
-				self.protect.append(ppath)
 			except OSError:
-				# If it doesn't exist, there's no need to protect it.
 				pass
 
 		self.protectmask = []
