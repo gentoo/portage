@@ -256,6 +256,29 @@ __elog_base() {
 	return 0
 }
 
+__eqalog() {
+	local tag=$1 x
+	shift
+	for x in "$@" ; do
+		echo "${tag}" "${x}"| (
+			escape=""
+			while read -r ; do
+				echo -n "${escape}${REPLY}"
+				escape="\\n"
+			done
+			echo
+		) >> "${T}"/qa.log
+	done
+}
+
+__eqawarnlog() {
+	__eqalog "$@"
+	shift
+	for x in "$@" ; do
+		eqawarn "  ${x}"
+	done
+}
+
 eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
