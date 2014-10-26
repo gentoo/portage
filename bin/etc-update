@@ -51,11 +51,15 @@ do_mv_ln() {
 	local src=${@:$(( $# - 1 )):1}
 	local dst=${@:$(( $# - 0 )):1}
 
-	if [[ -L ${dst} ]] ; then #330221
+	if [[ ! -L ${src} && -L ${dst} ]] ; then #330221
 		local lfile=$(readlink "${dst}")
 		[[ ${lfile} == /* ]] || lfile="${dst%/*}/${lfile}"
 		echo " Target is a symlink; replacing ${lfile}"
 		dst=${lfile}
+	elif [[ -d ${dst} && ! -L ${dst} ]] ; then
+		# If ${dst} is a directory, do not move the file
+		# inside of it if this fails.
+		rmdir "${dst}" || return
 	fi
 
 	mv "${opts[@]}" "${src}" "${dst}"
@@ -115,6 +119,24 @@ scan() {
 					continue 2
 				fi
 			done
+			if [[ -L ${file} ]] ; then
+				if [[ -L ${live_file} && \
+					$(readlink "${live_file}") == $(readlink "${file}") ]]
+				then
+					rm -f "${file}"
+					continue
+				fi
+				if [[ "${ofile:10}" != "${rfile:10}" ]] ||
+				   [[ ${opath} != ${rpath} ]]
+				then
+					: $(( ++count ))
+					echo "${live_file}" > "${TMP}"/files/${count}
+				fi
+				echo "${cfg_file}" >> "${TMP}"/files/${count}
+				ofile="${rfile}"
+				opath="${rpath}"
+				continue
+			fi
 			if [[ ! -f ${file} ]] ; then
 				${QUIET} || echo "Skipping non-file ${file} ..."
 				continue
@@ -124,7 +146,9 @@ scan() {
 			   [[ ${opath} != ${rpath} ]]
 			then
 				MATCHES=0
-				if [[ ${eu_automerge} == "yes" ]] ; then
+				if ! [[ -f ${cfg_file} && -f ${live_file} ]] ; then
+					MATCHES=0
+				elif [[ ${eu_automerge} == "yes" ]] ; then
 					if [[ ! -e ${cfg_file} || ! -e ${live_file} ]] ; then
 						MATCHES=0
 					else
@@ -377,17 +401,50 @@ do_file() {
 
 show_diff() {
 	clear
-	local file1=$1 file2=$2
+	local file1=$1 file2=$2 files=("$1" "$2") \
+		diff_files=() file i tmpdir
+
+	if [[ -L ${file1} && ! -L ${file2} &&
+		-f ${file1} && -f ${file2} ]] ; then
+		# If a regular file replaces a symlink to a regular file, then
+		# show the diff between the regular files (bug #330221).
+		diff_files=("${file1}" "${file2}")
+	else
+		for i in 0 1 ; do
+			if [[ ! -L ${files[$i]} && -f ${files[$i]} ]] ; then
+				diff_files[$i]=${files[$i]}
+				continue
+			fi
+			[[ -n ${tmpdir} ]] || \
+				tmpdir=$(mktemp -d "${TMP}/symdiff-XXX")
+			diff_files[$i]=${tmpdir}/${i}
+			if [[ ! -L ${files[$i]} && ! -e ${files[$i]} ]] ; then
+				echo "/dev/null" > "${diff_files[$i]}"
+			elif [[ -L ${files[$i]} ]] ; then
+				echo "SYM: ${file1} -> $(readlink "${files[$i]}")" > \
+					"${diff_files[$i]}"
+			elif [[ -d ${files[$i]} ]] ; then
+				echo "DIR: ${file1}" > "${diff_files[$i]}"
+			elif [[ -p ${files[$i]} ]] ; then
+				echo "FIF: ${file1}" > "${diff_files[$i]}"
+			else
+				echo "DEV: ${file1}" > "${diff_files[$i]}"
+			fi
+		done
+	fi
+
 	if [[ ${using_editor} == 0 ]] ; then
 		(
 			echo "Showing differences between ${file1} and ${file2}"
-			diff_command "${file1}" "${file2}"
+			diff_command "${diff_files[0]}" "${diff_files[1]}"
 		) | ${pager}
 	else
 		echo "Beginning of differences between ${file1} and ${file2}"
-		diff_command "${file1}" "${file2}"
+		diff_command "${diff_files[0]}" "${diff_files[1]}"
 		echo "End of differences between ${file1} and ${file2}"
 	fi
+
+	[[ -n ${tmpdir} ]] && rm -rf "${tmpdir}"
 }
 
 do_cfg() {
@@ -395,14 +452,14 @@ do_cfg() {
 	local ofile=$2
 	local -i my_input=0
 
-	until (( my_input == -1 )) || [ ! -f "${file}" ] ; do
+	until (( my_input == -1 )) || [[ ! -f ${file} && ! -L ${file} ]] ; do
 		if [[ "${OVERWRITE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=1
 		elif [[ "${DELETE_ALL}" == "yes" ]] && ! user_special "${ofile}"; then
 			my_input=2
 		else
 			show_diff "${ofile}" "${file}"
-			if [[ -L ${file} ]] ; then
+			if [[ -L ${file} && ! -L ${ofile} ]] ; then
 				cat <<-EOF
 
 					-------------------------------------------------------------
@@ -461,6 +518,19 @@ do_merge() {
 	local ofile="${2}"
 	local mfile="${TMP}/${2}.merged"
 	local -i my_input=0
+
+	if [[ -L ${file} && -L ${ofile} ]] ; then
+		echo "Both files are symlinks, so they will not be merged."
+		return 0
+	elif [[ ! -f ${file} ]] ; then
+		echo "Non-regular file cannot be merged: ${file}"
+		return 0
+	elif [[ ! -f ${ofile} ]] ; then
+		echo "Non-regular file cannot be merged: ${ofile}"
+		return 0
+	fi
+
+
 	echo "${file} ${ofile} ${mfile}"
 
 	if [[ -e ${mfile} ]] ; then
@@ -533,9 +603,18 @@ do_distconf() {
 	for (( count = 0; count <= 9999; ++count )) ; do
 		suffix=$(printf ".dist_%04i" ${count})
 		efile="${ofile}${suffix}"
-		if [[ ! -f ${efile} ]] ; then
+		if [[ ! -f ${efile} && ! -L ${efile} ]] ; then
 			mv ${mv_opts} "${file}" "${efile}"
 			break
+		elif [[ -L ${efile} && -L ${file} ]] ; then
+			if [[ $(readlink "${efile}") == $(readlink "${file}") ]] ; then
+				# replace identical copy
+				mv "${file}" "${efile}"
+				break
+			fi
+		elif [[ -L ${efile} || -L ${file} ]] ; then
+			# not the same file types
+			continue
 		elif diff_command "${file}" "${efile}" &> /dev/null; then
 			# replace identical copy
 			mv "${file}" "${efile}"
