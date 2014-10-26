@@ -4461,21 +4461,17 @@ class dblink(object):
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
-			# handy variables; mydest is the target object on the live filesystems;
-			# mysrc is the source object in the temporary install dir
-			try:
-				mydstat = os.lstat(mydest)
-				mydmode = mydstat.st_mode
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				#dest file doesn't exist
-				mydstat = None
-				mydmode = None
+			mymd5 = None
+			myto = None
 
-			if stat.S_ISLNK(mymode):
-				# we are merging a symbolic link
+			if sys.hexversion >= 0x3030000:
+				mymtime = mystat.st_mtime_ns
+			else:
+				mymtime = mystat[stat.ST_MTIME]
+
+			if stat.S_ISREG(mymode):
+				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
+			elif stat.S_ISLNK(mymode):
 				# The file name of mysrc and the actual file that it points to
 				# will have earlier been forcefully converted to the 'merge'
 				# encoding if necessary, but the content of the symbolic link
@@ -4495,6 +4491,69 @@ class dblink(object):
 					os.unlink(mysrc)
 					os.symlink(myto, mysrc)
 
+				mymd5 = portage.checksum._new_md5(
+					_unicode_encode(myto)).hexdigest()
+
+			protected = False
+			if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
+				protected = self.isprotected(mydest)
+
+				if stat.S_ISREG(mymode) and \
+					mystat.st_size == 0 and \
+					os.path.basename(mydest).startswith(".keep"):
+					protected = False
+
+			destmd5 = None
+			mydest_link = None
+			# handy variables; mydest is the target object on the live filesystems;
+			# mysrc is the source object in the temporary install dir
+			try:
+				mydstat = os.lstat(mydest)
+				mydmode = mydstat.st_mode
+				if protected:
+					if stat.S_ISLNK(mydmode):
+						# Read symlink target as bytes, in case the
+						# target path has a bad encoding.
+						mydest_link = _os.readlink(
+							_unicode_encode(mydest,
+							encoding=_encodings['merge'],
+							errors='strict'))
+						mydest_link = _unicode_decode(mydest_link,
+							encoding=_encodings['merge'],
+							errors='replace')
+
+						# For protection of symlinks, the md5
+						# of the link target path string is used
+						# for cfgfiledict (symlinks are
+						# protected since bug #485598).
+						destmd5 = portage.checksum._new_md5(
+							_unicode_encode(mydest_link)).hexdigest()
+
+					elif stat.S_ISREG(mydmode):
+						destmd5 = perform_md5(mydest,
+							calc_prelink=calc_prelink)
+			except (FileNotFound, OSError) as e:
+				if isinstance(e, OSError) and e.errno != errno.ENOENT:
+					raise
+				#dest file doesn't exist
+				mydstat = None
+				mydmode = None
+				mydest_link = None
+				destmd5 = None
+
+			moveme = True
+			if protected:
+				mydest, protected, moveme = self._protect(cfgfiledict,
+					protect_if_modified, mymd5, myto, mydest,
+					myrealdest, mydmode, destmd5, mydest_link)
+
+			zing = "!!!"
+			if not moveme:
+				# confmem rejected this update
+				zing = "---"
+
+			if stat.S_ISLNK(mymode):
+				# we are merging a symbolic link
 				# Pass in the symlink target in order to bypass the
 				# os.readlink() call inside abssymlink(), since that
 				# call is unsafe if the merge encoding is not ascii
@@ -4510,9 +4569,8 @@ class dblink(object):
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
-				if mydmode!=None:
-					#destination exists
-					if stat.S_ISDIR(mydmode):
+				if mydmode is not None and stat.S_ISDIR(mydmode):
+					if not protected:
 						# we can't merge a symlink over a directory
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4525,22 +4583,6 @@ class dblink(object):
 						self._eerror("preinst", msg)
 						mydest = newdest
 
-					elif not stat.S_ISLNK(mydmode):
-						if os.path.exists(mysrc) and stat.S_ISDIR(os.stat(mysrc)[stat.ST_MODE]):
-							# Kill file blocking installation of symlink to dir #71787
-							pass
-						elif self.isprotected(mydest):
-							# Use md5 of the target in ${D} if it exists...
-							try:
-								newmd5 = perform_md5(join(srcroot, myabsto))
-							except FileNotFound:
-								# Maybe the target is merged already.
-								try:
-									newmd5 = perform_md5(myrealto)
-								except FileNotFound:
-									newmd5 = None
-							mydest = new_protect_filename(mydest, newmd5=newmd5)
-
 				# if secondhand is None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand != None) and (not os.path.exists(myrealto)):
 					# either the target directory doesn't exist yet or the target file doesn't exist -- or
@@ -4549,9 +4591,11 @@ class dblink(object):
 					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
-					sstat=mystat, mysettings=self.settings,
-					encoding=_encodings['merge'])
+				if moveme:
+					zing = ">>>"
+					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
+						sstat=mystat, mysettings=self.settings,
+						encoding=_encodings['merge'])
 
 				try:
 					self._merged_path(mydest, os.lstat(mydest))
@@ -4567,7 +4611,7 @@ class dblink(object):
 							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
 							% (relative_path, myabsto)])
 
-					showMessage(">>> %s -> %s\n" % (mydest, myto))
+					showMessage("%s %s -> %s\n" % (zing, mydest, myto))
 					if sys.hexversion >= 0x3030000:
 						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
 					else:
@@ -4589,7 +4633,8 @@ class dblink(object):
 						if dflags != 0:
 							bsd_chflags.lchflags(mydest, 0)
 
-					if not os.access(mydest, os.W_OK):
+					if not stat.S_ISLNK(mydmode) and \
+						not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
 						writemsg(_("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1)
 						writemsg(_("!!! Please check permissions and directories for broken symlinks.\n"))
@@ -4678,14 +4723,8 @@ class dblink(object):
 
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
-				# calculate config file protection stuff
-				mydestdir = os.path.dirname(mydest)
-				moveme = 1
-				zing = "!!!"
-				mymtime = None
-				protected = self.isprotected(mydest)
-				if mydmode is not None and stat.S_ISDIR(mydmode):
+				if not protected and \
+					mydmode is not None and stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4697,73 +4736,6 @@ class dblink(object):
 						msg.append("")
 						self._eerror("preinst", msg)
 						mydest = newdest
-
-				elif mydmode is None or stat.S_ISREG(mydmode) or \
-					(stat.S_ISLNK(mydmode) and os.path.exists(mydest)
-					and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
-						# install of destination is blocked by an existing regular file,
-						# or by a symlink to an existing regular file;
-						# now, config file management may come into play.
-						# we only need to tweak mydest if cfg file management is in play.
-						destmd5 = None
-						if protected and mydmode is not None:
-							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
-							if protect_if_modified:
-								contents_key = \
-									self._installed_instance._match_contents(myrealdest)
-								if contents_key:
-									inst_info = self._installed_instance.getcontents()[contents_key]
-									if inst_info[0] == "obj" and inst_info[2] == destmd5:
-										protected = False
-
-						if protected:
-							# we have a protection path; enable config file management.
-							cfgprot = 0
-							cfgprot_force = False
-							if mydmode is None:
-								if self._installed_instance is not None and \
-									self._installed_instance._match_contents(
-									myrealdest) is not False:
-									# If the file doesn't exist, then it may
-									# have been deleted or renamed by the
-									# admin. Therefore, force the file to be
-									# merged with a ._cfg name, so that the
-									# admin will be prompted for this update
-									# (see bug #523684).
-									cfgprot_force = True
-									moveme = True
-									cfgprot = True
-							elif mymd5 == destmd5:
-								#file already in place; simply update mtimes of destination
-								moveme = 1
-							else:
-								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
-									""" An identical update has previously been
-									merged.  Skip it unless the user has chosen
-									--noconfmem."""
-									moveme = cfgfiledict["IGNORE"]
-									cfgprot = cfgfiledict["IGNORE"]
-									if not moveme:
-										zing = "---"
-										if sys.hexversion >= 0x3030000:
-											mymtime = mystat.st_mtime_ns
-										else:
-											mymtime = mystat[stat.ST_MTIME]
-								else:
-									moveme = 1
-									cfgprot = 1
-							if moveme:
-								# Merging a new file, so update confmem.
-								cfgfiledict[myrealdest] = [mymd5]
-							elif destmd5 == cfgfiledict.get(myrealdest, [None])[0]:
-								"""A previously remembered update has been
-								accepted, so it is removed from confmem."""
-								del cfgfiledict[myrealdest]
-
-							if cfgprot:
-								mydest = new_protect_filename(mydest,
-									newmd5=mymd5,
-									force=cfgprot_force)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
@@ -4819,6 +4791,63 @@ class dblink(object):
 				else:
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
+
+	def _protect(self, cfgfiledict, protect_if_modified, src_md5,
+		src_link, dest, dest_real, dest_mode, dest_md5, dest_link):
+
+		move_me = True
+		protected = True
+		force = False
+		k = False
+		if self._installed_instance is not None:
+			k = self._installed_instance._match_contents(dest_real)
+		if k is not False:
+			if dest_mode is None:
+				# If the file doesn't exist, then it may
+				# have been deleted or renamed by the
+				# admin. Therefore, force the file to be
+				# merged with a ._cfg name, so that the
+				# admin will be prompted for this update
+				# (see bug #523684).
+				force = True
+
+			elif protect_if_modified:
+				data = self._installed_instance.getcontents()[k]
+				if data[0] == "obj" and data[2] == dest_md5:
+					protected = False
+				elif data[0] == "sym" and data[2] == dest_link:
+					protected = False
+
+		if protected and dest_mode is not None:
+			# we have a protection path; enable config file management.
+			if src_md5 != dest_md5 and \
+				src_md5 == cfgfiledict.get(dest_real, [None])[0]:
+				# An identical update has previously been
+				# merged.  Skip it unless the user has chosen
+				# --noconfmem.
+				move_me = protected = bool(cfgfiledict["IGNORE"])
+
+			if protected and \
+				(dest_link is not None or src_link is not None) and \
+				dest_link != src_link:
+				# If either one is a symlink, and they are not
+				# identical symlinks, then force config protection.
+				force = True
+
+			if move_me:
+				# Merging a new file, so update confmem.
+				cfgfiledict[dest_real] = [src_md5]
+			elif dest_md5 == cfgfiledict.get(dest_real, [None])[0]:
+				# A previously remembered update has been
+				# accepted, so it is removed from confmem.
+				del cfgfiledict[dest_real]
+
+		if protected and move_me:
+			dest = new_protect_filename(dest,
+				newmd5=(dest_link or src_md5),
+				force=force)
+
+		return dest, protected, move_me
 
 	def _merged_path(self, path, lstatobj, exists=True):
 		previous_path = self._device_path_map.get(lstatobj.st_dev)

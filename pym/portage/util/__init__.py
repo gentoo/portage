@@ -1676,13 +1676,36 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
 		try:
-			last_pfile_md5 = portage.checksum._perform_md5_merge(old_pfile)
-		except FileNotFound:
-			# The file suddenly disappeared or it's a broken symlink.
-			pass
+			old_pfile_st = _os_merge.lstat(old_pfile)
+		except OSError as e:
+			if e.errno != errno.ENOENT:
+				raise
 		else:
-			if last_pfile_md5 == newmd5:
-				return old_pfile
+			if stat.S_ISLNK(old_pfile_st.st_mode):
+				try:
+					# Read symlink target as bytes, in case the
+					# target path has a bad encoding.
+					pfile_link = _os.readlink(_unicode_encode(old_pfile,
+						encoding=_encodings['merge'], errors='strict'))
+				except OSError:
+					if e.errno != errno.ENOENT:
+						raise
+				else:
+					pfile_link = _unicode_decode(
+						encoding=_encodings['merge'], errors='replace')
+					if pfile_link == newmd5:
+						return old_pfile
+			else:
+				try:
+					last_pfile_md5 = \
+						portage.checksum._perform_md5_merge(old_pfile)
+				except FileNotFound:
+					# The file suddenly disappeared or it's a
+					# broken symlink.
+					pass
+				else:
+					if last_pfile_md5 == newmd5:
+						return old_pfile
 	return new_pfile
 
 def find_updated_config_files(target_root, config_protect):
