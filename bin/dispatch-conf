@@ -13,17 +13,23 @@
 
 from __future__ import print_function
 
+import atexit
+import io
+import re
+import shutil
+import sys
+
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
-import atexit, re, shutil, stat, sys
+
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
 from portage import os
-from portage import _unicode_decode
-from portage.dispatch_conf import diffstatusoutput
+from portage import _encodings, _unicode_decode
+from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
 from portage.process import find_binary, spawn
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
@@ -72,6 +78,8 @@ def cmd_var_is_valid(cmd):
 
     return find_binary(cmd[0]) is not None
 
+diff = diff_mixed_wrapper(diffstatusoutput, DIFF_CONTENTS)
+
 class dispatch:
     options = {}
 
@@ -89,8 +97,6 @@ class dispatch:
                or not os.path.exists(self.options["log-file"]):
                 open(self.options["log-file"], 'w').close() # Truncate it
                 os.chmod(self.options["log-file"], 0o600)
-        else:
-            self.options["log-file"] = "/dev/null"
 
         pager = self.options.get("pager")
         if pager is None or not cmd_var_is_valid(pager):
@@ -148,9 +154,6 @@ class dispatch:
             portage.util.shlex_split(
             portage.settings.get('CONFIG_PROTECT_MASK', '')))
 
-        def diff(file1, file2):
-            return diffstatusoutput(DIFF_CONTENTS, file1, file2)
-
         #
         # Remove new configs identical to current
         #                  and
@@ -166,7 +169,7 @@ class dispatch:
                 mrgfail = portage.dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
             else:
                 mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
-            if os.path.exists(archive + '.dist'):
+            if os.path.lexists(archive + '.dist'):
                 unmodified = len(diff(conf['current'], archive + '.dist')[1]) == 0
             else:
                 unmodified = 0
@@ -181,7 +184,7 @@ class dispatch:
 
             if newconf == mrgconf and \
                 self.options.get('ignore-previously-merged') != 'yes' and \
-                os.path.exists(archive+'.dist') and \
+                os.path.lexists(archive+'.dist') and \
                 len(diff(archive+'.dist', conf['new'])[1]) == 0:
                 # The current update is identical to the archived .dist
                 # version that has previously been merged.
@@ -254,6 +257,13 @@ class dispatch:
 
         valid_input = "qhtnmlezu"
 
+        def diff_pager(file1, file2):
+            cmd = self.options['diff'] % (file1, file2)
+            cmd += pager
+            spawn_shell(cmd)
+
+        diff_pager = diff_mixed_wrapper(diff_pager)
+
         for conf in confs:
             count = count + 1
 
@@ -266,14 +276,10 @@ class dispatch:
             while 1:
                 clear_screen()
                 if show_new_diff:
-                    cmd = self.options['diff'] % (conf['new'], mrgconf)
-                    cmd += pager
-                    spawn_shell(cmd)
+                    diff_pager(conf['new'], mrgconf)
                     show_new_diff = 0
                 else:
-                    cmd = self.options['diff'] % (conf['current'], newconf)
-                    cmd += pager
-                    spawn_shell(cmd)
+                    diff_pager(conf['current'], newconf)
 
                 print()
                 print('>> (%i of %i) -- %s' % (count, len(confs), conf ['current']))
@@ -357,7 +363,12 @@ class dispatch:
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
         the diff of what changed into the configured log file."""
-        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
+        if "log-file" in self.options:
+            status, output = diff(curconf, newconf)
+            with io.open(self.options["log-file"], mode="a",
+                encoding=_encodings["stdio"]) as f:
+                f.write(output + "\n")
+
         try:
             os.rename(newconf, curconf)
         except (IOError, os.error) as why:
