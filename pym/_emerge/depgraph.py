@@ -527,6 +527,8 @@ class depgraph(object):
 		self._event_loop = (portage._internal_caller and
 			global_event_loop() or EventLoop(main=False))
 
+		self._select_atoms_parent = None
+
 		self.query = UserQuery(myopts).query
 
 	def _load_vdb(self):
@@ -4062,11 +4064,13 @@ class depgraph(object):
 			self._dynamic_config._autounmask = False
 			# backup state for restoration, in case of recursive
 			# calls to this method
+			backup_parent = self._select_atoms_parent
 			backup_state = mytrees.copy()
 			try:
 				# clear state from previous call, in case this
 				# call is recursive (we have a backup, that we
 				# will use to restore it later)
+				self._select_atoms_parent = None
 				mytrees.pop("pkg_use_enabled", None)
 				mytrees.pop("parent", None)
 				mytrees.pop("atom_graph", None)
@@ -4074,6 +4078,7 @@ class depgraph(object):
 
 				mytrees["pkg_use_enabled"] = self._pkg_use_enabled
 				if parent is not None:
+					self._select_atoms_parent = parent
 					mytrees["parent"] = parent
 					mytrees["atom_graph"] = atom_graph
 				if priority is not None:
@@ -4085,6 +4090,7 @@ class depgraph(object):
 			finally:
 				# restore state
 				self._dynamic_config._autounmask = _autounmask_backup
+				self._select_atoms_parent = backup_parent
 				mytrees.pop("pkg_use_enabled", None)
 				mytrees.pop("parent", None)
 				mytrees.pop("atom_graph", None)
@@ -8528,6 +8534,24 @@ class _dep_check_composite_db(dbapi):
 					return False
 				elif not self._depgraph._equiv_ebuild_visible(pkg):
 					return False
+
+		if pkg.cp.startswith("virtual/"):
+			# Force virtual updates to be pulled in when appropriate
+			# for bug #526160.
+			want_update = False
+			if self._depgraph._select_atoms_parent is not None:
+				want_update = \
+					self._depgraph._want_update_pkg(
+					self._depgraph._select_atoms_parent, pkg)
+
+			if want_update:
+				for new_child in self._depgraph._iter_similar_available(
+					pkg, next(iter(atom_set))):
+					if not self._depgraph._virt_deps_visible(
+						new_child, ignore_use=True):
+						continue
+					if pkg < new_child:
+						return False
 
 		in_graph = next(self._depgraph._dynamic_config._package_tracker.match(
 			self._root, pkg.slot_atom, installed=False), None)
