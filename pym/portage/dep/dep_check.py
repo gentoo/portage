@@ -429,11 +429,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_in_graph = False
 						break
 				circular_atom = None
-				if all_in_graph:
-					if parent is None or priority is None:
-						pass
-					elif priority.buildtime and \
-						not (priority.satisfied or priority.optional):
+				if not (parent is None or priority is None) and \
+					(parent.onlydeps or
+					(all_in_graph and priority.buildtime and
+					not (priority.satisfied or priority.optional))):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable. This is only relevant for
