@@ -188,13 +188,19 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
-			# pull in the new-style virtual
+			# Pull in virt_atom which refers to the specific version
+			# of the virtual whose deps we're expanding. Also pull
+			# in the original input atom, so that callers can reliably
+			# check to see if a given input atom has been selected,
+			# as in depgraph._slot_operator_update_probe.
 			mycheck[1].append(virt_atom)
+			mycheck[1].append(x)
 			a.append(mycheck[1])
 			if atom_graph is not None:
 				virt_atom_node = (virt_atom, id(virt_atom))
 				atom_graph.add(virt_atom_node, graph_parent)
 				atom_graph.add(pkg, virt_atom_node)
+				atom_graph.add((x, id(x)), graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.

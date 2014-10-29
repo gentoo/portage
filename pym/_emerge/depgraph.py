@@ -8474,12 +8474,11 @@ class _dep_check_composite_db(dbapi):
 			ret.append(pkg)
 
 		if pkg is not None and \
-			atom.slot is None and \
+			atom.sub_slot is None and \
 			pkg.cp.startswith("virtual/") and \
 			(("remove" not in self._depgraph._dynamic_config.myparams and
 			"--update" not in self._depgraph._frozen_config.myopts) or
-			not ret or
-			not self._depgraph._virt_deps_visible(pkg, ignore_use=True)):
+			not ret):
 			# For new-style virtual lookahead that occurs inside dep_check()
 			# for bug #141118, examine all slots. This is needed so that newer
 			# slots will not unnecessarily be pulled in when a satisfying lower
@@ -8487,34 +8486,66 @@ class _dep_check_composite_db(dbapi):
 			# satisfied via gcj-jdk then there's no need to pull in a newer
 			# slot to satisfy a virtual/jdk dependency, unless --update is
 			# enabled.
-			slots = set()
-			slots.add(pkg.slot)
+			sub_slots = set()
+			resolved_sub_slots = set()
 			for virt_pkg in self._depgraph._iter_match_pkgs_any(
 				self._depgraph._frozen_config.roots[self._root], atom):
 				if virt_pkg.cp != pkg.cp:
 					continue
-				slots.add(virt_pkg.slot)
+				sub_slots.add((virt_pkg.slot, virt_pkg.sub_slot))
 
-			slots.remove(pkg.slot)
-			while slots:
-				slot_atom = atom.with_slot(slots.pop())
+			sub_slot_key = (pkg.slot, pkg.sub_slot)
+			if ret:
+				# We've added pkg to ret already, and only one package
+				# per slot/sub_slot is desired here.
+				sub_slots.discard(sub_slot_key)
+				resolved_sub_slots.add(sub_slot_key)
+			else:
+				sub_slots.add(sub_slot_key)
+
+			while sub_slots:
+				slot, sub_slot = sub_slots.pop()
+				slot_atom = atom.with_slot("%s/%s" % (slot, sub_slot))
 				pkg, existing = self._depgraph._select_package(
 					self._root, slot_atom)
 				if not pkg:
 					continue
-				if not self._visible(pkg, atom_set):
-					continue
+				if not self._visible(pkg, atom_set,
+					avoid_slot_conflict=False):
+					# Try to force a virtual update to be pulled in
+					# when appropriate for bug #526160.
+					selected = pkg
+					for candidate in \
+						self._iter_virt_update(pkg, atom_set):
+
+						if candidate.slot != slot:
+							continue
+
+						if (candidate.slot, candidate.sub_slot) in \
+							resolved_sub_slots:
+							continue
+
+						if selected is None or \
+							selected < candidate:
+							selected = candidate
+
+					if selected is pkg:
+						continue
+					pkg = selected
+
+				resolved_sub_slots.add((pkg.slot, pkg.sub_slot))
 				ret.append(pkg)
 
 			if len(ret) > 1:
-				ret.sort()
+				ret = sorted(set(ret))
 
 		self._match_cache[cache_key] = ret
 		for pkg in ret:
 			self._cpv_pkg_map[pkg.cpv] = pkg
 		return ret[:]
 
-	def _visible(self, pkg, atom_set):
+	def _visible(self, pkg, atom_set, avoid_slot_conflict=True,
+		probe_virt_update=True):
 		if pkg.installed and not self._depgraph._want_installed_pkg(pkg):
 			return False
 		if pkg.installed and \
@@ -8536,22 +8567,23 @@ class _dep_check_composite_db(dbapi):
 					return False
 
 		if pkg.cp.startswith("virtual/"):
-			# Force virtual updates to be pulled in when appropriate
-			# for bug #526160.
-			want_update = False
-			if self._depgraph._select_atoms_parent is not None:
-				want_update = \
-					self._depgraph._want_update_pkg(
-					self._depgraph._select_atoms_parent, pkg)
 
-			if want_update:
-				for new_child in self._depgraph._iter_similar_available(
-					pkg, next(iter(atom_set))):
-					if not self._depgraph._virt_deps_visible(
-						new_child, ignore_use=True):
-						continue
-					if pkg < new_child:
-						return False
+			if not self._depgraph._virt_deps_visible(
+				pkg, ignore_use=True):
+				return False
+
+			if probe_virt_update and \
+				self._have_virt_update(pkg, atom_set):
+				# Force virtual updates to be pulled in when appropriate
+				# for bug #526160.
+				return False
+
+		if not avoid_slot_conflict:
+			# This is useful when trying to pull in virtual updates,
+			# since we don't want another instance that was previously
+			# pulled in to mask an update that we're trying to pull
+			# into the same slot.
+			return True
 
 		in_graph = next(self._depgraph._dynamic_config._package_tracker.match(
 			self._root, pkg.slot_atom, installed=False), None)
@@ -8577,6 +8609,34 @@ class _dep_check_composite_db(dbapi):
 				return True
 			return False
 		return True
+
+	def _iter_virt_update(self, pkg, atom_set):
+
+		if self._depgraph._select_atoms_parent is not None and \
+			self._depgraph._want_update_pkg(
+				self._depgraph._select_atoms_parent, pkg):
+
+			for new_child in self._depgraph._iter_similar_available(
+				pkg, next(iter(atom_set))):
+
+				if not self._depgraph._virt_deps_visible(
+					new_child, ignore_use=True):
+					continue
+
+				if not self._visible(new_child, atom_set,
+					avoid_slot_conflict=False,
+					probe_virt_update=False):
+					continue
+
+				yield new_child
+
+	def _have_virt_update(self, pkg, atom_set):
+
+		for new_child in self._iter_virt_update(pkg, atom_set):
+			if pkg < new_child:
+				return True
+
+		return False
 
 	def aux_get(self, cpv, wants):
 		metadata = self._cpv_pkg_map[cpv]._metadata

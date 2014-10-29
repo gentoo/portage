@@ -115,7 +115,7 @@ class VirtualSlotResolverTestCase(TestCase):
 			},
 			"dev-python/pygments-1.6_p20140324-r1": {
 				"EAPI": "5",
-				"DEPEND": "virtual/pypy:="
+				"DEPEND": "virtual/pypy:0="
 			}
 		}
 
@@ -143,6 +143,15 @@ class VirtualSlotResolverTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options = {"--update": True, "--deep": True},
+				success=True,
+				mergelist = ['dev-python/pypy-2.4.0',
+					'virtual/pypy-2.4.0',
+					'dev-python/pygments-1.6_p20140324-r1']),
+
+			# Repeat above test, but with --dynamic-deps disabled.
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True, "--dynamic-deps": "n"},
 				success=True,
 				mergelist = ['dev-python/pypy-2.4.0',
 					'virtual/pypy-2.4.0',
