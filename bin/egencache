@@ -48,6 +48,7 @@ portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
+from portage.cache.index.pkg_desc_index import pkg_desc_index_line_format
 from portage.const import TIMESTAMP_FORMAT
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
@@ -57,7 +58,7 @@ from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
-from portage.versions import pkgsplit, vercmp
+from portage.versions import pkgsplit, vercmp, _pkg_str
 
 try:
 	from xml.etree import ElementTree
@@ -91,6 +92,9 @@ def parse_args(args):
 	actions.add_argument("--update-changelogs",
 		action="store_true",
 		help="update the ChangeLog files from SCM logs")
+	actions.add_argument("--update-pkg-desc-index",
+		action="store_true",
+		help="update package description index")
 	actions.add_argument("--update-manifests",
 		action="store_true",
 		help="update manifests")
@@ -450,6 +454,29 @@ class GenCache(object):
 
 		if hasattr(trg_cache, '_prune_empty_dirs'):
 			trg_cache._prune_empty_dirs()
+
+class GenPkgDescIndex(object):
+	def __init__(self, portdb, output_file):
+		self.returncode = os.EX_OK
+		self._portdb = portdb
+		self._output_file = output_file
+
+	def run(self):
+
+		portage.util.ensure_dirs(os.path.dirname(self._output_file))
+		f = portage.util.atomic_ofstream(self._output_file,
+			encoding=_encodings["repo.content"])
+
+		portdb = self._portdb
+		for cp in portdb.cp_all():
+			pkgs = portdb.cp_list(cp)
+			if not pkgs:
+				continue
+			desc, = portdb.aux_get(pkgs[-1], ["DESCRIPTION"])
+
+			f.write(pkg_desc_index_line_format(cp, pkgs, desc))
+
+		f.close()
 
 class GenUseLocalDesc(object):
 	def __init__(self, portdb, output=None,
@@ -893,7 +920,8 @@ def egencache_main(args):
 			local_config=False, env=env)
 
 	if not (options.update or options.update_use_local_desc or
-			options.update_changelogs or options.update_manifests):
+			options.update_changelogs or options.update_manifests or
+			options.update_pkg_desc_index):
 		parser.error('No action specified')
 		return 1
 
@@ -1056,6 +1084,12 @@ def egencache_main(args):
 			ret.append(os.EX_OK)
 		else:
 			ret.append(scheduler.returncode)
+
+	if options.update_pkg_desc_index:
+		gen_index = GenPkgDescIndex(portdb, os.path.join(
+			repo_config.location, "metadata", "pkg_desc_index"))
+		gen_index.run()
+		ret.append(gen_index.returncode)
 
 	if options.update_use_local_desc:
 		gen_desc = GenUseLocalDesc(portdb,
