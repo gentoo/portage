@@ -435,6 +435,9 @@ class vardbapi(dbapi):
 		(generally this is only necessary in critical sections that
 		involve merge or unmerge of packages).
 		"""
+		return list(self._iter_cpv_all(use_cache=use_cache))
+
+	def _iter_cpv_all(self, use_cache=True, sort=False):
 		returnme = []
 		basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
@@ -451,26 +454,32 @@ class vardbapi(dbapi):
 					del e
 					return []
 
-		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+		catdirs = listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1)
+		if sort:
+			catdirs.sort()
+
+		for x in catdirs:
 			if self._excluded_dirs.match(x) is not None:
 				continue
 			if not self._category_re.match(x):
 				continue
-			for y in listdir(basepath + x, EmptyOnError=1, dirsonly=1):
+
+			pkgdirs = listdir(basepath + x, EmptyOnError=1, dirsonly=1)
+			if sort:
+				pkgdirs.sort()
+
+			for y in pkgdirs:
 				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
 				try:
-					if catpkgsplit(subpath) is None:
-						self.invalidentry(self.getpath(subpath))
-						continue
+					subpath = _pkg_str(subpath)
 				except InvalidData:
 					self.invalidentry(self.getpath(subpath))
 					continue
-				returnme.append(subpath)
 
-		return returnme
+				yield subpath
 
 	def cp_all(self, use_cache=1):
 		mylist = self.cpv_all(use_cache=use_cache)
