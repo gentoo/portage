@@ -43,6 +43,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import traceback
 import warnings
 from gzip import GzipFile
@@ -879,6 +880,11 @@ class binarytree(object):
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
+			try:
+				download_timestamp = \
+					float(pkgindex.header.get("DOWNLOAD_TIMESTAMP", 0))
+			except ValueError:
+				download_timestamp = 0
 			remote_timestamp = None
 			rmt_idx = self._new_pkgindex()
 			proc = None
@@ -889,6 +895,15 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				f = None
+
+				try:
+					ttl = float(pkgindex.header.get("TTL", 0))
+				except ValueError:
+					pass
+				else:
+					if download_timestamp and ttl and \
+						download_timestamp + ttl > time.time():
+						raise UseCachedCopyOfRemoteIndex()
 
 				# Don't use urlopen for https, since it doesn't support
 				# certificate/hostname verification (bug #469888).
@@ -1022,6 +1037,7 @@ class binarytree(object):
 					pass
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
+				pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
 				try:
 					ensure_dirs(os.path.dirname(pkgindex_file))
 					f = atomic_ofstream(pkgindex_file)
