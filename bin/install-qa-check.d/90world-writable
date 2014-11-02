@@ -12,9 +12,7 @@ world_writable_check() {
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Security Notice: world writable file(s):"
 
-		for x in $unsafe_files ; do
-			__eqawarnlog world-writable "$x"
-		done
+		eqatag -v world-writable $unsafe_files
 
 		eqawarn "This may or may not be a security problem, most of the time it is one."
 		eqawarn "Please double check that $PF really needs a world writeable bit and file bugs accordingly."
