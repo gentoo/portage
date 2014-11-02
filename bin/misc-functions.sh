@@ -551,6 +551,10 @@ install_hooks() {
 	return $ret
 }
 
+eqatag() {
+	__eqatag "${@}"
+}
+
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
 	__source_all_bashrcs
 	[ "$PORTAGE_DEBUG" == "1" ] && set -x

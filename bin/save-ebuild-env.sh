@@ -76,7 +76,7 @@ __save_ebuild_env() {
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		__unpack_tar __unset_colors \
 		__source_env_files __try_source \
-		__eqalog __eqawarnlog \
+		__eqalog __eqawarnlog __eqaquote __eqatag \
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex

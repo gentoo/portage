@@ -505,4 +505,72 @@ __repo_attr() {
 	return ${exit_status}
 }
 
+# eqaquote <string>
+#
+# outputs parameter escaped for quoting
+__eqaquote() {
+	local v=${1} esc=''
+
+	# quote backslashes
+	v=${v//\\/\\\\}
+	# quote the quotes
+	v=${v//\"/\\\"}
+	# quote newlines
+	while read -r; do
+		echo -n "${esc}${REPLY}"
+		esc='\n'
+	done <<<"${v}"
+}
+
+# eqatag <tag> [-v] [<key>=<value>...] [/<relative-path>...]
+#
+# output (to qa.log):
+# - tag: <tag>
+#   data:
+#     <key1>: "<value1>"
+#     <key2>: "<value2>"
+#   files:
+#     - "<path1>"
+#     - "<path2>"
+__eqatag() {
+	local tag i filenames=() data=() verbose=
+
+	if [[ ${1} == -v ]]; then
+		verbose=1
+		shift
+	fi
+
+	tag=${1}
+	shift
+	[[ -n ${tag} ]] || die "${FUNCNAME}: no tag specified"
+
+	# collect data & filenames
+	for i; do
+		if [[ ${i} == /* ]]; then
+			filenames+=( "${i}" )
+			[[ -n ${verbose} ]] && eqawarn "  ${i}"
+		elif [[ ${i} == *=* ]]; then
+			data+=( "${i}" )
+		else
+			die "${FUNCNAME}: invalid parameter: ${i}"
+		fi
+	done
+
+	(
+		echo "- tag: ${tag}"
+		if [[ ${data[@]} ]]; then
+			echo "  data:"
+			for i in "${data[@]}"; do
+				echo "    ${i%%=*}: \"$(__eqaquote "${i#*=}")\""
+			done
+		fi
+		if [[ ${filenames[@]} ]]; then
+			echo "  files:"
+			for i in "${filenames[@]}"; do
+				echo "    - \"$(__eqaquote "${i}")\""
+			done
+		fi
+	) >> "${T}"/qa.log
+}
+
 true
