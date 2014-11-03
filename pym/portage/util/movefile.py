@@ -328,7 +328,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				if xattr_enabled:
 					try:
 						_copyxattr(src_bytes, dest_tmp_bytes,
-							exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", "security.* system.nfs4_acl"))
+							exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", ""))
 					except SystemExit:
 						raise
 					except:
