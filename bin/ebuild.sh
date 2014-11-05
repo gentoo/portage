@@ -501,7 +501,7 @@ fi
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
 trap 'exit 1' SIGTERM
 
-if ! has "$EBUILD_PHASE" clean cleanrm depend && \
+if ! has "$EBUILD_PHASE" clean cleanrm depend setup && \
 	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
@@ -550,7 +550,7 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
-	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
+	if [[ $EBUILD_PHASE =~ ^(depend|setup)$ || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed || \
 		" ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
