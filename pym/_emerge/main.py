@@ -617,6 +617,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" :("True", "rdeps")
 		},
 
+		"--search-index": {
+			"help": "Enable or disable indexed search (enabled by default)",
+			"choices": y_or_n
+		},
+
 		"--select": {
 			"shortopt" : "-w",
 			"help"    : "add specified packages to the world set " + \

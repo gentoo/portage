@@ -8730,7 +8730,7 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
 	s = search(root_config, spinner, "--searchdesc" in myopts,
 		"--quiet" not in myopts, "--usepkg" in myopts,
-		"--usepkgonly" in myopts)
+		"--usepkgonly" in myopts, search_index = False)
 	null_cp = portage.dep_getkey(insert_category_into_atom(
 		arg, "null"))
 	cat, atom_pn = portage.catsplit(null_cp)

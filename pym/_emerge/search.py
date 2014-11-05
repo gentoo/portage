@@ -5,9 +5,12 @@ import re
 import portage
 from portage import os
 from portage.dbapi.porttree import _parse_uri_map
+from portage.dbapi.IndexedPortdb import IndexedPortdb
+from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.localization import localized_size
 from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
+from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
 from _emerge.Package import Package
 
@@ -23,7 +26,7 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, root_config, spinner, searchdesc,
-		verbose, usepkg, usepkgonly):
+		verbose, usepkg, usepkgonly, search_index=True):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -45,6 +48,10 @@ class search(object):
 		bindb = root_config.trees["bintree"].dbapi
 		vardb = root_config.trees["vartree"].dbapi
 
+		if search_index:
+			portdb = IndexedPortdb(portdb)
+			vardb = IndexedVardb(vardb)
+
 		if not usepkgonly and portdb._have_root_eclass_dir:
 			self._dbs.append(portdb)
 
@@ -60,10 +67,16 @@ class search(object):
 			self.spinner.update()
 
 	def _cp_all(self):
-		cp_all = set()
+		iterators = []
 		for db in self._dbs:
-			cp_all.update(db.cp_all())
-		return list(sorted(cp_all))
+			i = db.cp_all()
+			try:
+				i = iter(i)
+			except TypeError:
+				pass
+			iterators.append(i)
+		for group in MultiIterGroupBy(iterators):
+			yield group[0]
 
 	def _aux_get(self, *args, **kwargs):
 		for db in self._dbs:
@@ -154,9 +167,17 @@ class search(object):
 						result = cpv
 				else:
 					db_keys = list(db._aux_cache_keys)
+					matches = db.match(atom)
+					try:
+						db.match_unordered
+					except AttributeError:
+						pass
+					else:
+						db._cpv_sort_ascending(matches)
+
 					# break out of this loop with highest visible
 					# match, checked in descending order
-					for cpv in reversed(db.match(atom)):
+					for cpv in reversed(matches):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
 						metadata = zip(db_keys,

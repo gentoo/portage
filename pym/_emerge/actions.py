@@ -1901,7 +1901,8 @@ def action_search(root_config, myopts, myfiles, spinner):
 		searchinstance = search(root_config,
 			spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts, "--usepkg" in myopts,
-			"--usepkgonly" in myopts)
+			"--usepkgonly" in myopts,
+			search_index = myopts.get("--search-index", "y") != "n")
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
