@@ -64,6 +64,7 @@ from portage import _os_merge
 from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
+from ._VdbMetadataDelta import VdbMetadataDelta
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
@@ -179,6 +180,9 @@ class vardbapi(dbapi):
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self._eroot,
 			CACHE_PATH, "vdb_metadata.pickle")
+		self._cache_delta_filename = os.path.join(self._eroot,
+			CACHE_PATH, "vdb_metadata_delta.json")
+		self._cache_delta = VdbMetadataDelta(self)
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
@@ -569,22 +573,31 @@ class vardbapi(dbapi):
 		long as at least part of the cache is still valid)."""
 		if self._flush_cache_enabled and \
 			self._aux_cache is not None and \
-			len(self._aux_cache["modified"]) >= self._aux_cache_threshold and \
-			secpass >= 2:
+			secpass >= 2 and \
+			(len(self._aux_cache["modified"]) >= self._aux_cache_threshold or
+			not os.path.exists(self._cache_delta_filename)):
+
+			ensure_dirs(os.path.dirname(self._aux_cache_filename))
+
 			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
 			for cpv in list(self._aux_cache["packages"]):
 				if cpv not in valid_nodes:
 					del self._aux_cache["packages"][cpv]
 			del self._aux_cache["modified"]
-			try:
-				f = atomic_ofstream(self._aux_cache_filename, 'wb')
-				pickle.dump(self._aux_cache, f, protocol=2)
-				f.close()
-				apply_secpass_permissions(
-					self._aux_cache_filename, gid=portage_gid, mode=0o644)
-			except (IOError, OSError) as e:
-				pass
+			timestamp = time.time()
+			self._aux_cache["timestamp"] = timestamp
+
+			f = atomic_ofstream(self._aux_cache_filename, 'wb')
+			pickle.dump(self._aux_cache, f, protocol=2)
+			f.close()
+			apply_secpass_permissions(
+				self._aux_cache_filename, mode=0o644)
+
+			self._cache_delta.initialize(timestamp)
+			apply_secpass_permissions(
+				self._cache_delta_filename, mode=0o644)
+
 			self._aux_cache["modified"] = set()
 
 	@property
@@ -1621,6 +1634,13 @@ class dblink(object):
 			writemsg(_("portage.dblink.delete(): invalid dbdir: %s\n") % \
 				self.dbdir, noiselevel=-1)
 			return
+
+		if self.dbdir is self.dbpkgdir:
+			counter, = self.vartree.dbapi.aux_get(
+				self.mycpv, ["COUNTER"])
+			self.vartree.dbapi._cache_delta.recordEvent(
+				"remove", self.mycpv,
+				self.settings["SLOT"].split("/")[0], counter)
 
 		shutil.rmtree(self.dbdir)
 		# If empty, remove parent category directory.
@@ -4232,6 +4252,8 @@ class dblink(object):
 			self.delete()
 			_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 			self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
+			self.vartree.dbapi._cache_delta.recordEvent(
+				"add", self.mycpv, slot, counter)
 		finally:
 			self.unlockdb()
 

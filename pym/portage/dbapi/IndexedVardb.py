@@ -3,6 +3,7 @@
 
 import portage
 from portage.dep import Atom
+from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
 class IndexedVardb(object):
@@ -42,7 +43,26 @@ class IndexedVardb(object):
 		if self._cp_map is not None:
 			return iter(sorted(self._cp_map))
 
-		return self._iter_cp_all()
+		delta_data = self._vardb._cache_delta.loadRace()
+		if delta_data is None:
+			return self._iter_cp_all()
+
+		self._vardb._cache_delta.applyDelta(delta_data)
+
+		self._cp_map = cp_map = {}
+		for cpv in self._vardb._aux_cache["packages"]:
+			try:
+				cpv = _pkg_str(cpv)
+			except InvalidData:
+				continue
+
+			cp_list = cp_map.get(cpv.cp)
+			if cp_list is None:
+				cp_list = []
+				cp_map[cpv.cp] = cp_list
+			cp_list.append(cpv)
+
+		return iter(sorted(self._cp_map))
 
 	def _iter_cp_all(self):
 		self._cp_map = cp_map = {}
