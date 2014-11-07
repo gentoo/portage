@@ -123,6 +123,23 @@ class search(object):
 			cpv=cpv, built=built, installed=installed,
 			metadata=metadata).visible
 
+	def _first_cp(self, cp):
+
+		for db in self._dbs:
+			if hasattr(db, "cp_list"):
+				matches = db.cp_list(cp)
+				if matches:
+					return matches[-1]
+			else:
+				matches = db.match(cp)
+
+			for cpv in matches:
+				if cpv.cp == cp:
+					return cpv
+
+		return None
+
+
 	def _xmatch(self, level, atom):
 		"""
 		This method does not expand old-style virtuals because it
@@ -230,13 +247,12 @@ class search(object):
 			if self.searchre.search(match_string):
 				yield ("pkg", package)
 			elif self.searchdesc: # DESCRIPTION searching
-				# Use match-all to avoid an expensive visibility check,
+				# Use _first_cp to avoid an expensive visibility check,
 				# since the visibility check can be avoided entirely
 				# when the DESCRIPTION does not match.
-				full_package = self._xmatch("match-all", package)
+				full_package = self._first_cp(package)
 				if not full_package:
 					continue
-				full_package = full_package[-1]
 				try:
 					full_desc = self._aux_get(
 						full_package, ["DESCRIPTION"])[0]
