@@ -32,6 +32,35 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
+OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2)
+
+case $OS_RELEASE_ID in
+	suse|opensuse) OS_FAMILY='suse' ;;
+	*) OS_FAMILY='gentoo' ;;
+esac
+
+if [[ $OS_FAMILY == 'gentoo' ]]; then
+	get_basename_find_opt() {
+		echo "._cfg????_${1}"
+	}
+	get_scan_regexp() {
+		echo "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3$b\1$b\2$b\3:"
+	}
+	get_live_file() {
+		echo "${rpath}/${rfile:10}"
+	}
+elif [[ $OS_FAMILY == 'suse' ]]; then
+	get_basename_find_opt() {
+		echo "${1}.rpmnew"
+	}
+	get_scan_regexp() {
+		echo "s:\(^.*/\)\(.*\)\(\.rpmnew\):\1\2\3$b\1$b\3$b\2:"
+	}
+	get_live_file() {
+		echo "${cfg_file%.rpmnew}"
+	}
+fi
+
 cmd_var_is_valid() {
 	# return true if the first whitespace-separated token contained
 	# in "${1}" is an executable file, false otherwise
@@ -82,12 +111,13 @@ scan() {
 			# parent directory doesn't exist, we can safely skip it.
 			path=${path%/}
 			[[ -d ${path%/*} ]] || continue
-			local my_basename="${path##*/}"
+			local name_opt=$(get_basename_find_opt "${path##*/}")
 			path="${path%/*}"
-			find_opts=( -maxdepth 1 -name "._cfg????_${my_basename}" )
+			find_opts=( -maxdepth 1 -name "$name_opt" )
 		else
 			# Do not traverse hidden directories such as .svn or .git.
-			find_opts=( -name '.*' -type d -prune -o -name '._cfg????_*' )
+			local name_opt=$(get_basename_find_opt '*')
+			find_opts=( -name '.*' -type d -prune -o -name "$name_opt" )
 		fi
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
@@ -97,10 +127,11 @@ scan() {
 		fi
 
 		local file ofile b=$'\001'
+		local scan_regexp=$(get_scan_regexp)
 		for file in $(find "${path}"/ "${find_opts[@]}" |
 		              sed \
 						-e 's://*:/:g' \
-						-e "s:\(^.*/\)\(\._cfg[0-9]*_\)\(.*$\):\1\2\3$b\1$b\2$b\3:" |
+						-e "${scan_regexp}" |
 		              sort -t"$b" -k2,2 -k4,4 -k3,3 |
 		              LC_ALL=C cut -f1 -d"$b")
 		do
@@ -108,7 +139,7 @@ scan() {
 			rpath=${file%/*}
 			rfile=${file##*/}
 			cfg_file="${rpath}/${rfile}"
-			live_file="${rpath}/${rfile:10}"
+			live_file=$(get_live_file)
 
 			local mpath
 			for mpath in ${CONFIG_PROTECT_MASK}; do
@@ -702,7 +733,14 @@ while [[ -n $1 ]] ; do
 done
 ${SET_X} && set -x
 
-type -P portageq >/dev/null || die "missing portageq"
+if [[ $OS_FAMILY == 'suse' ]]; then
+	PORTAGE_CONFIGROOT='/'
+	PORTAGE_TMPDIR='/tmp'
+	CONFIG_PROTECT='/etc'
+	CONFIG_PROTECT_MASK=''
+	[[ -f /etc/sysconfig/etc-update ]] && . /etc/sysconfig/etc-update
+fi
+
 portage_vars=(
 	CONFIG_PROTECT{,_MASK}
 	PORTAGE_CONFIGROOT
@@ -712,7 +750,13 @@ portage_vars=(
 	USERLAND
 	NOCOLOR
 )
-eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v ${portage_vars[@]})
+
+if type -P portageq > /dev/null; then
+	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v ${portage_vars[@]})
+else
+	[[ $OS_FAMILY == 'gentoo' ]] && die "missing portageq"
+fi
+
 export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
 
