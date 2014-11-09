@@ -570,6 +570,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		env=env, eprefix=eprefix)
 	settings.lock()
 
+	depcachedir = settings.get('PORTAGE_DEPCACHEDIR')
 	trees._target_eroot = settings['EROOT']
 	myroots = [(settings['EROOT'], settings)]
 	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
@@ -587,6 +588,8 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
+		if depcachedir is not None:
+			clean_env['PORTAGE_DEPCACHEDIR'] = depcachedir
 		settings = config(config_root=None, target_root="/",
 			env=clean_env, eprefix=None)
 		settings.lock()

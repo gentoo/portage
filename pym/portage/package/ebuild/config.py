@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 import copy
+import errno
 from itertools import chain
 import grp
 import logging
@@ -826,16 +827,6 @@ class config(object):
 			if "USE_ORDER" not in self:
 				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
 
-			self.depcachedir = DEPCACHE_PATH
-			if portage.const.EPREFIX:
-				self.depcachedir = os.path.join(portage.const.EPREFIX,
-					DEPCACHE_PATH.lstrip(os.sep))
-
-			if self.get("PORTAGE_DEPCACHEDIR", None):
-				self.depcachedir = self["PORTAGE_DEPCACHEDIR"]
-			self["PORTAGE_DEPCACHEDIR"] = self.depcachedir
-			self.backup_changes("PORTAGE_DEPCACHEDIR")
-
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
 				self.backup_changes("CBUILD")
@@ -897,6 +888,34 @@ class config(object):
 						noiselevel=-1)
 					self[var] = default_val
 				self.backup_changes(var)
+
+			self.depcachedir = self.get("PORTAGE_DEPCACHEDIR")
+			if self.depcachedir is None:
+				self.depcachedir = os.path.join(os.sep,
+					portage.const.EPREFIX, DEPCACHE_PATH.lstrip(os.sep))
+				if unprivileged and target_root != os.sep:
+					# In unprivileged mode, automatically make
+					# depcachedir relative to target_root if the
+					# default depcachedir is not writable.
+					current_dir = self.depcachedir
+					found_dir = False
+					while current_dir != os.sep and not found_dir:
+						try:
+							os.stat(current_dir)
+							found_dir = True
+						except OSError as e:
+							if e.errno == errno.ENOENT:
+								current_dir = os.path.dirname(
+									current_dir)
+							else:
+								found_dir = True
+
+					if not os.access(current_dir, os.W_OK):
+						self.depcachedir = os.path.join(eroot,
+							DEPCACHE_PATH.lstrip(os.sep))
+
+			self["PORTAGE_DEPCACHEDIR"] = self.depcachedir
+			self.backup_changes("PORTAGE_DEPCACHEDIR")
 
 			if portage._internal_caller:
 				self["PORTAGE_INTERNAL_CALLER"] = "1"
