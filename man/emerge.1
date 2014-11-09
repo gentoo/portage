@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Oct 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2014" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -894,6 +894,12 @@ installation actions, meaning they will not be installed, and
 This setting can be added to
 \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
 command line.
+.TP
+.BR "\-\-with\-test\-deps [ y | n ]"
+For packages matched by arguments, this option will pull in dependencies
+that are conditional on the "test" USE flag, even if "test" is not
+enabled in \fBFEATURES\fR for the matched packages. (see \fBmake.conf\fR(5)
+for more information about \fBFEATURES\fR settings).
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBEPREFIX\fR = \fI[path]\fR

@@ -2699,6 +2699,20 @@ class depgraph(object):
 		for k in Package._dep_keys:
 			edepend[k] = metadata[k]
 
+		use_enabled = self._pkg_use_enabled(pkg)
+
+		with_test_deps = not removal_action and \
+			"with_test_deps" in \
+			self._dynamic_config.myparams and \
+			pkg.depth == 0 and \
+			"test" not in use_enabled and \
+			pkg.iuse.is_valid_flag("test") and \
+			self._is_argument(pkg)
+
+		if with_test_deps:
+			use_enabled = set(use_enabled)
+			use_enabled.add("test")
+
 		if not pkg.built and \
 			"--buildpkgonly" in self._frozen_config.myopts and \
 			"deep" not in self._dynamic_config.myparams:
@@ -2782,7 +2796,7 @@ class depgraph(object):
 
 				try:
 					dep_string = portage.dep.use_reduce(dep_string,
-						uselist=self._pkg_use_enabled(pkg),
+						uselist=use_enabled,
 						is_valid_flag=pkg.iuse.is_valid_flag,
 						opconvert=True, token_class=Atom,
 						eapi=pkg.eapi)
@@ -2797,7 +2811,7 @@ class depgraph(object):
 					# practical to ignore this issue for installed packages.
 					try:
 						dep_string = portage.dep.use_reduce(dep_string,
-							uselist=self._pkg_use_enabled(pkg),
+							uselist=use_enabled,
 							opconvert=True, token_class=Atom,
 							eapi=pkg.eapi)
 					except portage.exception.InvalidDependString as e:
@@ -4968,6 +4982,12 @@ class depgraph(object):
 				not (pkg.installed and pkg.masks):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
+
+	def _is_argument(self, pkg):
+		for arg, atom in self._iter_atoms_for_pkg(pkg):
+			if isinstance(arg, (AtomArg, PackageArg)):
+				return True
+		return False
 
 	def _want_installed_pkg(self, pkg):
 		"""

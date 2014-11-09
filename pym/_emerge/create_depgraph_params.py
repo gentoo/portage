@@ -21,6 +21,7 @@ def create_depgraph_params(myopts, myaction):
 	#	removal by the --depclean action as soon as possible
 	# ignore_built_slot_operator_deps: ignore the slot/sub-slot := operator parts
 	#	of dependencies that have been recorded when packages where built
+	# with_test_deps: pull in test deps for packages matched by arguments
 	myparams = {"recurse" : True}
 
 	bdeps = myopts.get("--with-bdeps")
@@ -103,6 +104,10 @@ def create_depgraph_params(myopts, myaction):
 		# behavior that may have been implied by some
 		# other option like --update.
 		myparams.pop("selective", None)
+
+	with_test_deps = myopts.get("--with-test-deps")
+	if with_test_deps is not None:
+		myparams["with_test_deps"] = with_test_deps
 
 	if '--debug' in myopts:
 		writemsg_level('\n\nmyparams %s\n\n' % myparams,

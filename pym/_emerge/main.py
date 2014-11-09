@@ -160,6 +160,7 @@ def insert_optional_args(args):
 		'--usepkgonly'           : y_or_n,
 		'--verbose'              : y_or_n,
 		'--verbose-slot-rebuilds': y_or_n,
+		'--with-test-deps'       : y_or_n,
 	}
 
 	short_arg_opts = {
@@ -661,6 +662,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"     : "verbose slot rebuild output",
 			"choices"  : true_y_or_n
 		},
+		"--with-test-deps": {
+			"help"     : "pull in test deps for packages " + \
+				"matched by arguments",
+			"choices"  : true_y_or_n
+		},
 	}
 
 	parser = ArgumentParser(add_help=False)
@@ -955,6 +961,11 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.verbose = True
 	else:
 		myoptions.verbose = None
+
+	if myoptions.with_test_deps in true_y:
+		myoptions.with_test_deps = True
+	else:
+		myoptions.with_test_deps = None
 
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
