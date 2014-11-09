@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Jan 2014" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Nov 2014" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -968,6 +968,11 @@ default_src_test
 .RE
 
 .SS "General:"
+.TP
+.B assert\fR \fI[reason]
+Checks the value of the shell's PIPESTATUS array variable, and if any
+component is non-zero (indicating failure), calls die with \fIreason\fR
+as a failure message.
 .TP
 .B die\fR \fI[reason]
 Causes the current emerge process to be aborted. The final display will
