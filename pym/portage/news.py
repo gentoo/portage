@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2013 Gentoo Foundation
+# Copyright 2006-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -27,8 +27,8 @@ from portage.dep import isvalidatom
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.output import colorize
-from portage.exception import InvalidLocation, OperationNotPermitted, \
-	PermissionDenied
+from portage.exception import (InvalidLocation, OperationNotPermitted,
+	PermissionDenied, ReadOnlyFileSystem)
 
 class NewsManager(object):
 	"""
@@ -180,7 +180,8 @@ class NewsManager(object):
 		unread_lock = None
 		try:
 			unread_lock = lockfile(unread_filename, wantnewlockfile=1)
-		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
+		except (InvalidLocation, OperationNotPermitted, PermissionDenied,
+			ReadOnlyFileSystem):
 			pass
 		try:
 			try:

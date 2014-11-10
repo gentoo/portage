@@ -133,6 +133,7 @@ class AlarmSignal(TimeoutException):
 
 class ReadOnlyFileSystem(PortageException):
 	"""Read-only file system"""
+	from errno import EROFS as errno
 
 class CommandNotFound(PortageException):
 	"""A required binary was not available or executable"""

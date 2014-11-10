@@ -15,8 +15,9 @@ import warnings
 
 import portage
 from portage import os, _encodings, _unicode_decode
-from portage.exception import DirectoryNotFound, FileNotFound, \
-	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
+from portage.exception import (DirectoryNotFound, FileNotFound,
+	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied,
+	ReadOnlyFileSystem)
 from portage.util import writemsg
 from portage.localization import _
 
@@ -110,6 +111,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 					raise OperationNotPermitted(func_call)
 				elif e.errno == PermissionDenied.errno:
 					raise PermissionDenied(func_call)
+				elif e.errno == ReadOnlyFileSystem.errno:
+					raise ReadOnlyFileSystem(func_call)
 				else:
 					raise
 
@@ -404,6 +407,8 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 				raise OperationNotPermitted(func_call)
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(func_call)
+			elif e.errno == ReadOnlyFileSystem.errno:
+				raise ReadOnlyFileSystem(func_call)
 			else:
 				raise
 		else:
