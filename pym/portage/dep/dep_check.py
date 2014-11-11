@@ -317,6 +317,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
+	pkg_use_enabled = trees[myroot].get("pkg_use_enabled")
 	want_update_pkg = trees[myroot].get("want_update_pkg")
 	vardb = None
 	if "vartree" in trees[myroot]:
@@ -349,6 +350,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 		all_available = True
 		all_use_satisfied = True
+		all_use_unmasked = True
 		slot_map = {}
 		cp_map = {}
 		for atom in atoms:
@@ -369,6 +371,32 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				avail_pkg_use = mydbapi_match_pkgs(atom)
 				if not avail_pkg_use:
 					all_use_satisfied = False
+
+					if pkg_use_enabled is not None:
+						# Check which USE flags cause the match to fail,
+						# so we can prioritize choices that do not
+						# require changes to use.mask or use.force
+						# (see bug #515584).
+						violated_atom = atom.violated_conditionals(
+							pkg_use_enabled(avail_pkg),
+							avail_pkg.iuse.is_valid_flag)
+
+						# Note that violated_atom.use can be None here,
+						# since evaluation can collapse conditional USE
+						# deps that cause the match to fail due to
+						# missing IUSE (match uses atom.unevaluated_atom
+						# to detect such missing IUSE).
+						if violated_atom.use is not None:
+							for flag in violated_atom.use.enabled:
+								if flag in avail_pkg.use.mask:
+									all_use_unmasked = False
+									break
+							else:
+								for flag in violated_atom.use.disabled:
+									if flag in avail_pkg.use.force and \
+										flag not in avail_pkg.use.mask:
+										all_use_unmasked = False
+										break
 				else:
 					# highest (ascending order)
 					avail_pkg_use = avail_pkg_use[-1]
@@ -416,7 +444,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					else:
 						preferred_non_installed.append(this_choice)
 				else:
-					if all_installed_slots:
+					if not all_use_unmasked:
+						other.append(this_choice)
+					elif all_installed_slots:
 						unsat_use_installed.append(this_choice)
 					else:
 						unsat_use_non_installed.append(this_choice)
@@ -490,7 +520,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						else:
 							preferred_non_installed.append(this_choice)
 					else:
-						if all_in_graph:
+						if not all_use_unmasked:
+							other.append(this_choice)
+						elif all_in_graph:
 							unsat_use_in_graph.append(this_choice)
 						elif all_installed_slots:
 							unsat_use_installed.append(this_choice)

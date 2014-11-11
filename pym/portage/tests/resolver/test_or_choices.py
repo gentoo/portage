@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -203,5 +203,62 @@ class OrChoicesTestCase(TestCase):
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+
+	def testUseMask(self):
+
+		profile = {
+			"use.mask":
+			(
+				"abi_ppc_32",
+			),
+		}
+
+		ebuilds = {
+
+			"sys-libs/A-1" : {
+				"EAPI": "5",
+				"RDEPEND": "|| ( sys-libs/zlib[abi_ppc_32(-)] " + \
+					"sys-libs/zlib[abi_x86_32(-)] )"
+			},
+
+			"sys-libs/zlib-1.2.8-r1" : {
+				"EAPI": "5",
+				"IUSE": "abi_ppc_32 abi_x86_32"
+			},
+
+			"sys-libs/zlib-1.2.8" : {
+				"EAPI": "5",
+				"IUSE": ""
+			},
+		}
+
+		test_cases = (
+
+			# bug #515584: We want to prefer choices that do
+			# not require changes to use.mask or use.force.
+			# In this case, abi_ppc_32 is use.masked in the
+			# profile, so we want to avoid that choice.
+			ResolverPlaygroundTestCase(
+				["sys-libs/A"],
+				options = {},
+				success = False,
+				use_changes = {
+					'sys-libs/zlib-1.2.8-r1': {'abi_x86_32': True}
+				},
+				mergelist = ["sys-libs/zlib-1.2.8-r1", "sys-libs/A-1"]
+			),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			profile=profile, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
 		finally:
 			playground.cleanup()
