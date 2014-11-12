@@ -219,7 +219,7 @@
 #
 # For Gentoo Prefix, use the following URL:
 #
-#   Default:       "rsync://prefix.gentooexperimental.org/gentoo-portage-prefix
+#   Default:       "rsync://rsync.prefix.bitzolder.nl/gentoo-portage-prefix
 #
 #SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 #
