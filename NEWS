@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.14
+-------------
+* Remaining bugs in build/install system should be fixed.
+
+
+portge-2.2.14_rc1
+-------------
+* Many new build/installation system errors fixed.
+
 
 portage-2.2.13
 -------------

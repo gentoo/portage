@@ -333,7 +333,7 @@ sync_local() {
 		cd "${DISTDIR}"
 
 		__vecho "Cleaning up ..."
-		rm -fr "${TMPDIR}"
+		rm -fr "${TMPDIR}"/portage
 	fi
 
 	if has metadata-transfer ${FEATURES} ; then

@@ -340,7 +340,7 @@ class x_install(install):
 		('portage_datadir', '$datarootdir/portage'),
 
 		# not customized at the moment
-		('logrotatedir', '$sysconfdir/logrotate'),
+		('logrotatedir', '$sysconfdir/logrotate.d'),
 		('portage_confdir', '$portage_datadir/config'),
 		('portage_setsdir', '$portage_confdir/sets'),
 	]
@@ -598,7 +598,7 @@ def get_manpages():
 
 setup(
 	name = 'portage',
-	version = '2.2.14_rc1',
+	version = '2.2.14',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

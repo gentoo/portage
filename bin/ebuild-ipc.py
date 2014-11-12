@@ -5,6 +5,7 @@
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+import errno
 import logging
 import os
 import pickle
@@ -44,19 +45,66 @@ import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
 
-from portage.util._async.ForkProcess import ForkProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.PipeReader import PipeReader
 
-class FifoWriter(ForkProcess):
+RETURNCODE_WRITE_FAILED = 2
 
-	__slots__ = ('buf', 'fifo',)
+class FifoWriter(AbstractPollTask):
 
-	def _run(self):
-		# Atomically write the whole buffer into the fifo.
-		with open(self.fifo, 'wb', 0) as f:
-			f.write(self.buf)
-		return os.EX_OK
+	__slots__ = ('buf', 'fifo', '_fd', '_reg_id',)
+
+	def _start(self):
+		try:
+			self._fd = os.open(self.fifo, os.O_WRONLY|os.O_NONBLOCK)
+		except OSError as e:
+			if e.errno == errno.ENXIO:
+				# This happens if the daemon has been killed.
+				self.returncode = RETURNCODE_WRITE_FAILED
+				self._unregister()
+				self._async_wait()
+				return
+			else:
+				raise
+		self._reg_id = self.scheduler.io_add_watch(
+			self._fd,
+			self.scheduler.IO_OUT | self.scheduler.IO_HUP | \
+			self._exceptional_events, self._output_handler)
+		self._registered = True
+
+	def _output_handler(self, fd, event):
+		if event & self.scheduler.IO_OUT:
+			# The whole buf should be able to fit in the fifo with
+			# a single write call, so there's no valid reason for
+			# os.write to raise EAGAIN here.
+			buf = self.buf
+			while buf:
+				buf = buf[os.write(fd, buf):]
+			self.returncode = os.EX_OK
+			self._unregister()
+			self.wait()
+			return False
+		else:
+			self._unregister_if_appropriate(event)
+			if not self._registered:
+				self.returncode = RETURNCODE_WRITE_FAILED
+				self.wait()
+				return False
+		return True
+
+	def _cancel(self):
+		self.returncode = self._cancelled_returncode
+		self._unregister()
+
+	def _unregister(self):
+		self._registered = False
+		if self._reg_id is not None:
+			self.scheduler.source_remove(self._reg_id)
+			self._reg_id = None
+		if self._fd is not None:
+			os.close(self._fd)
+			self._fd = None
 
 class EbuildIpc(object):
 
