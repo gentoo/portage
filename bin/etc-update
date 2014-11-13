@@ -113,12 +113,15 @@ scan() {
 			[[ -d ${path%/*} ]] || continue
 			local name_opt=$(get_basename_find_opt "${path##*/}")
 			path="${path%/*}"
-			find_opts=( -maxdepth 1 -name "$name_opt" )
+			find_opts=( -maxdepth 1 )
 		else
 			# Do not traverse hidden directories such as .svn or .git.
 			local name_opt=$(get_basename_find_opt '*')
-			find_opts=( -name '.*' -type d -prune -o -name "$name_opt" )
+			find_opts=( -name '.*' -type d -prune -o )
 		fi
+		${case_insensitive} && \
+			find_opts+=( -iname ) || find_opts+=( -name )
+		find_opts+=( "$name_opt" )
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
 		if [ ! -w "${path}" ] ; then
@@ -743,6 +746,7 @@ fi
 
 portage_vars=(
 	CONFIG_PROTECT{,_MASK}
+	FEATURES
 	PORTAGE_CONFIGROOT
 	PORTAGE_INST_{G,U}ID
 	PORTAGE_TMPDIR
@@ -759,6 +763,8 @@ fi
 
 export PORTAGE_TMPDIR
 SCAN_PATHS=${*:-${CONFIG_PROTECT}}
+[[ " ${FEATURES} " == *" case-insensitive-fs "* ]] && \
+	case_insensitive=true || case_insensitive=false
 
 TMP="${PORTAGE_TMPDIR}/etc-update-$$"
 trap "die terminated" SIGTERM

@@ -102,7 +102,9 @@ def quickpkg_atom(options, infos, arg, eout):
 			if not include_config:
 				confprot = ConfigProtect(eroot,
 					shlex_split(settings.get("CONFIG_PROTECT", "")),
-					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
+					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+					case_insensitive=("case-insensitive-fs"
+					in settings.features))
 				def protect(filename):
 					if not confprot.isprotected(filename):
 						return False

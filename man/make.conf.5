@@ -265,6 +265,12 @@ Build binary packages for just packages in the system set.
 Enable a special progress indicator when \fBemerge\fR(1) is calculating
 dependencies.
 .TP
+.B case\-insensitive\-fs
+Use case\-insensitive file name comparisions when merging and unmerging
+files. Most users should not enable this feature, since most filesystems
+are case\-sensitive. You should only enable this feature if you are
+using portage to install files to a case\-insensitive filesystem.
+.TP
 .B ccache
 Enable portage support for the ccache package.  If the ccache dir is not
 present in the user's environment, then portage will default to

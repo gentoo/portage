@@ -282,7 +282,8 @@ def parse_updates(mycontent):
 		myupd.append(mysplit)
 	return myupd, errors
 
-def update_config_files(config_root, protect, protect_mask, update_iter, match_callback = None):
+def update_config_files(config_root, protect, protect_mask, update_iter,
+	match_callback=None, case_insensitive=False):
 	"""Perform global updates on /etc/portage/package.*, /etc/portage/profile/package.*,
 	/etc/portage/profile/packages and /etc/portage/sets.
 	config_root - location of files to update
@@ -406,7 +407,8 @@ def update_config_files(config_root, protect, protect_mask, update_iter, match_c
 							sys.stdout.flush()
 
 	protect_obj = ConfigProtect(
-		config_root, protect, protect_mask)
+		config_root, protect, protect_mask,
+		case_insensitive=case_insensitive)
 	for x in update_files:
 		updating_file = os.path.join(abs_user_config, x)
 		if protect_obj.isprotected(updating_file):

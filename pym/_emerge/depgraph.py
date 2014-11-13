@@ -7813,7 +7813,9 @@ class depgraph(object):
 				settings = self._frozen_config.roots[root].settings
 				protect_obj[root] = ConfigProtect(settings["EROOT"], \
 					shlex_split(settings.get("CONFIG_PROTECT", "")),
-					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")))
+					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
+					case_insensitive=("case-insensitive-fs"
+					in settings.features))
 
 		def write_changes(root, changes, file_to_write_to):
 			file_contents = None

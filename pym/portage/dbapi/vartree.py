@@ -1052,13 +1052,13 @@ class vardbapi(dbapi):
 
 		def add(self, cpv):
 			eroot_len = len(self._vardb._eroot)
-			contents = self._vardb._dblink(cpv).getcontents()
 			pkg_hash = self._hash_pkg(cpv)
-			if not contents:
+			db = self._vardb._dblink(cpv)
+			if not db.getcontents():
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
 
-			for x in contents:
+			for x in db._contents.keys():
 				self._add_path(x[eroot_len:], pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
@@ -1190,6 +1190,8 @@ class vardbapi(dbapi):
 			hash_pkg = owners_cache._hash_pkg
 			hash_str = owners_cache._hash_str
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
+			case_insensitive = "case-insensitive-fs" \
+				in vardb.settings.features
 
 			dblink_cache = {}
 
@@ -1206,6 +1208,8 @@ class vardbapi(dbapi):
 			while path_iter:
 
 				path = path_iter.pop()
+				if case_insensitive:
+					path = path.lower()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -1236,12 +1240,16 @@ class vardbapi(dbapi):
 								continue
 
 							if is_basename:
-								for p in dblink(cpv).getcontents():
+								for p in dblink(cpv)._contents.keys():
 									if os.path.basename(p) == name:
-										owners.append((cpv, p[len(root):]))
+										owners.append((cpv, dblink(cpv).
+										_contents.unmap_key(
+										p)[len(root):]))
 							else:
-								if dblink(cpv).isowner(path):
-									owners.append((cpv, path))
+								key = dblink(cpv)._match_contents(path)
+								if key is not False:
+									owners.append(
+										(cpv, key[len(root):]))
 
 					except StopIteration:
 						path_iter.append(path)
@@ -1266,8 +1274,12 @@ class vardbapi(dbapi):
 			if not path_list:
 				return
 
+			case_insensitive = "case-insensitive-fs" \
+				in self._vardb.settings.features
 			path_info_list = []
 			for path in path_list:
+				if case_insensitive:
+					path = path.lower()
 				is_basename = os.sep != path[:1]
 				if is_basename:
 					name = path
@@ -1285,12 +1297,16 @@ class vardbapi(dbapi):
 				dblnk = self._vardb._dblink(cpv)
 				for path, name, is_basename in path_info_list:
 					if is_basename:
-						for p in dblnk.getcontents():
+						for p in dblnk._contents.keys():
 							if os.path.basename(p) == name:
-								search_pkg.results.append((dblnk, p[len(root):]))
+								search_pkg.results.append((dblnk,
+									dblnk._contents.unmap_key(
+										p)[len(root):]))
 					else:
-						if dblnk.isowner(path):
-							search_pkg.results.append((dblnk, path))
+						key = dblnk._match_contents(path)
+						if key is not False:
+							search_pkg.results.append(
+								(dblnk, key[len(root):]))
 				search_pkg.complete = True
 				return False
 
@@ -1542,7 +1558,9 @@ class dblink(object):
 			portage.util.shlex_split(
 				self.settings.get("CONFIG_PROTECT", "")),
 			portage.util.shlex_split(
-				self.settings.get("CONFIG_PROTECT_MASK", "")))
+				self.settings.get("CONFIG_PROTECT_MASK", "")),
+			case_insensitive=("case-insensitive-fs"
+					in self.settings.features))
 
 		return self._protect_obj
 
@@ -1620,9 +1638,9 @@ class dblink(object):
 		"""
 		Get the installed files of a given package (aka what that package installed)
 		"""
-		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		if self.contentscache is not None:
 			return self.contentscache
+		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		pkgfiles = {}
 		try:
 			with io.open(_unicode_encode(contents_file,
@@ -2764,15 +2782,18 @@ class dblink(object):
 			os_filename_arg.path.join(destroot,
 			filename.lstrip(os_filename_arg.path.sep)))
 
-		pkgfiles = self.getcontents()
-		if pkgfiles and destfile in pkgfiles:
-			return destfile
-		if pkgfiles:
+		if "case-insensitive-fs" in self.settings.features:
+			destfile = destfile.lower()
+
+		if self._contents.contains(destfile):
+			return self._contents.unmap_key(destfile)
+
+		if self.getcontents():
 			basename = os_filename_arg.path.basename(destfile)
 			if self._contents_basenames is None:
 
 				try:
-					for x in pkgfiles:
+					for x in self._contents.keys():
 						_unicode_encode(x,
 							encoding=_encodings['merge'],
 							errors='strict')
@@ -2781,7 +2802,7 @@ class dblink(object):
 					# different value of sys.getfilesystemencoding(),
 					# so fall back to utf_8 if appropriate.
 					try:
-						for x in pkgfiles:
+						for x in self._contents.keys():
 							_unicode_encode(x,
 								encoding=_encodings['fs'],
 								errors='strict')
@@ -2791,7 +2812,7 @@ class dblink(object):
 						os = portage.os
 
 				self._contents_basenames = set(
-					os.path.basename(x) for x in pkgfiles)
+					os.path.basename(x) for x in self._contents.keys())
 			if basename not in self._contents_basenames:
 				# This is a shortcut that, in most cases, allows us to
 				# eliminate this package as an owner without the need
@@ -2812,7 +2833,7 @@ class dblink(object):
 
 				if os is _os_merge:
 					try:
-						for x in pkgfiles:
+						for x in self._contents.keys():
 							_unicode_encode(x,
 								encoding=_encodings['merge'],
 								errors='strict')
@@ -2821,7 +2842,7 @@ class dblink(object):
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
-							for x in pkgfiles:
+							for x in self._contents.keys():
 								_unicode_encode(x,
 									encoding=_encodings['fs'],
 									errors='strict')
@@ -2832,7 +2853,7 @@ class dblink(object):
 
 				self._contents_inodes = {}
 				parent_paths = set()
-				for x in pkgfiles:
+				for x in self._contents.keys():
 					p_path = os.path.dirname(x)
 					if p_path in parent_paths:
 						continue
@@ -2857,8 +2878,8 @@ class dblink(object):
 			if p_path_list:
 				for p_path in p_path_list:
 					x = os_filename_arg.path.join(p_path, basename)
-					if x in pkgfiles:
-						return x
+					if self._contents.contains(x):
+						return self._contents.unmap_key(x)
 
 		return False
 

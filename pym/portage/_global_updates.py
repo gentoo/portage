@@ -208,7 +208,9 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 		update_config_files(root,
 			shlex_split(mysettings.get("CONFIG_PROTECT", "")),
 			shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
-			repo_map, match_callback=_config_repo_match)
+			repo_map, match_callback=_config_repo_match,
+			case_insensitive="case-insensitive-fs"
+			in mysettings.features)
 
 		# The above global updates proceed quickly, so they
 		# are considered a single mtimedb transaction.
