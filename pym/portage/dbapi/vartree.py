@@ -69,6 +69,7 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.SpawnProcess import SpawnProcess
+from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 import errno
 import fnmatch
@@ -1525,6 +1526,7 @@ class dblink(object):
 		# When necessary, this attribute is modified for
 		# compliance with RESTRICT=preserve-libs.
 		self._preserve_libs = "preserve-libs" in mysettings.features
+		self._contents = ContentsCaseSensitivityManager(self)
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1612,6 +1614,7 @@ class dblink(object):
 		self.contentscache = None
 		self._contents_inodes = None
 		self._contents_basenames = None
+		self._contents.clear_cache()
 
 	def getcontents(self):
 		"""
