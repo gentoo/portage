@@ -10,7 +10,7 @@ from portage import os
 from portage.proxy.lazyimport import lazyimport
 lazyimport(globals(),
 	'portage.exception:PortageException',
-	'portage.util:apply_permissions',
+	'portage.util:apply_permissions,ensure_dirs',
 )
 del lazyimport
 
@@ -61,20 +61,15 @@ class FsBased(template.database):
 
 		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
 			base = os.path.join(base,dir)
-			if not os.path.exists(base):
-				if self._perms != -1:
-					um = os.umask(0)
-				try:
-					perms = self._perms
-					if perms == -1:
-						perms = 0
-					perms |= 0o755
-					os.mkdir(base, perms)
-					if self._gid != -1:
-						os.chown(base, -1, self._gid)
-				finally:
-					if self._perms != -1:
-						os.umask(um)
+			if ensure_dirs(base):
+				# We only call apply_permissions if ensure_dirs created
+				# a new directory, so as not to interfere with
+				# permissions of existing directories.
+				mode = self._perms
+				if mode == -1:
+					mode = 0
+				mode |= 0o755
+				apply_permissions(base, mode=mode, gid=self._gid)
 
 	def _prune_empty_dirs(self):
 		all_dirs = []
