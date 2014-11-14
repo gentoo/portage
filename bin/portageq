@@ -1392,7 +1392,14 @@ def main(argv):
 			sys.stderr.write("Run portageq with --help for info\n")
 			sys.stderr.flush()
 			sys.exit(os.EX_USAGE)
-		eprefix = portage.settings["EPREFIX"]
+		# Calculate EPREFIX and ROOT that will be used to construct
+		# portage.settings later. It's tempting to use
+		# portage.settings["EPREFIX"] here, but that would force
+		# instantiation of portage.settings, which we don't want to do
+		# until after we've calculated ROOT (see bug #529200).
+		eprefix = os.environ.get("EPREFIX", portage.const.EPREFIX)
+		if eprefix:
+			eprefix = portage.util.normalize_path(eprefix)
 		eroot = portage.util.normalize_path(argv[2])
 
 		if eprefix:
