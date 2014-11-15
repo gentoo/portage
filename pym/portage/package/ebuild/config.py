@@ -48,6 +48,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level, _eapi_cache
+from portage.util.path import first_existing
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
 
@@ -848,14 +849,16 @@ class config(object):
 				"PORTAGE_INST_UID": "0",
 			}
 
+			eroot_or_parent = first_existing(eroot)
 			unprivileged = False
 			try:
-				eroot_st = os.stat(eroot)
+				eroot_st = os.stat(eroot_or_parent)
 			except OSError:
 				pass
 			else:
 
-				if portage.data._unprivileged_mode(eroot, eroot_st):
+				if portage.data._unprivileged_mode(
+					eroot_or_parent, eroot_st):
 					unprivileged = True
 
 					default_inst_ids["PORTAGE_INST_GID"] = str(eroot_st.st_gid)
@@ -897,20 +900,8 @@ class config(object):
 					# In unprivileged mode, automatically make
 					# depcachedir relative to target_root if the
 					# default depcachedir is not writable.
-					current_dir = self.depcachedir
-					found_dir = False
-					while current_dir != os.sep and not found_dir:
-						try:
-							os.stat(current_dir)
-							found_dir = True
-						except OSError as e:
-							if e.errno == errno.ENOENT:
-								current_dir = os.path.dirname(
-									current_dir)
-							else:
-								found_dir = True
-
-					if not os.access(current_dir, os.W_OK):
+					if not os.access(first_existing(self.depcachedir),
+						os.W_OK):
 						self.depcachedir = os.path.join(eroot,
 							DEPCACHE_PATH.lstrip(os.sep))
 

@@ -8,6 +8,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:colorize',
 	'portage.util:writemsg',
+	'portage.util.path:first_existing',
 	'subprocess'
 )
 from portage.localization import _
@@ -94,14 +95,16 @@ def _get_global(k):
 		else:
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
-			eroot = os.path.join(os.environ.get('ROOT', os.sep),
-				portage.const.EPREFIX.lstrip(os.sep))
+			eroot_or_parent = first_existing(os.path.join(
+				os.environ.get('ROOT', os.sep),
+				portage.const.EPREFIX.lstrip(os.sep)))
 			try:
-				eroot_st = os.stat(eroot)
+				eroot_st = os.stat(eroot_or_parent)
 			except OSError:
 				pass
 			else:
-				unprivileged = _unprivileged_mode(eroot, eroot_st)
+				unprivileged = _unprivileged_mode(
+					eroot_or_parent, eroot_st)
 
 		v = 0
 		if uid == 0:
@@ -206,14 +209,15 @@ def _get_global(k):
 		else:
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
-			eroot = os.path.join(os.environ.get('ROOT', os.sep),
-				portage.const.EPREFIX.lstrip(os.sep))
+			eroot_or_parent = first_existing(os.path.join(
+				os.environ.get('ROOT', os.sep),
+				portage.const.EPREFIX.lstrip(os.sep)))
 			try:
-				eroot_st = os.stat(eroot)
+				eroot_st = os.stat(eroot_or_parent)
 			except OSError:
 				pass
 			else:
-				if _unprivileged_mode(eroot, eroot_st):
+				if _unprivileged_mode(eroot_or_parent, eroot_st):
 					if k == '_portage_grpname':
 						try:
 							grp_struct = grp.getgrgid(eroot_st.st_gid)
