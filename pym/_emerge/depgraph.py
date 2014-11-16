@@ -1659,6 +1659,7 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		selective = "selective" in self._dynamic_config.myparams
 		want_downgrade = None
+		want_downgrade_parent = None
 
 		def check_reverse_dependencies(existing_pkg, candidate_pkg,
 			replacement_parent=None):
@@ -1705,6 +1706,13 @@ class depgraph(object):
 
 		for replacement_parent in self._iter_similar_available(dep.parent,
 			dep.parent.slot_atom, autounmask_level=autounmask_level):
+
+			if replacement_parent < dep.parent:
+				if want_downgrade_parent is None:
+					want_downgrade_parent = self._downgrade_probe(
+						dep.parent)
+				if not want_downgrade_parent:
+					continue
 
 			if not check_reverse_dependencies(dep.parent, replacement_parent):
 				continue
