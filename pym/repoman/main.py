@@ -560,7 +560,9 @@ for xpkg in effective_scanlist:
 							qatracker.add_error('dependency.perlcore',
 								ebuild.relative_path +
 								": %s: please use '%s' instead of '%s'" %
-								(mytype, atom.replace("perl-core/","virtual/perl-"), atom))
+								(mytype,
+								atom.replace("perl-core/","virtual/perl-"),
+								atom))
 
 					if buildtime and \
 						not is_blocker and \
