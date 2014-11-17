@@ -1397,9 +1397,7 @@ def main(argv):
 		# portage.settings["EPREFIX"] here, but that would force
 		# instantiation of portage.settings, which we don't want to do
 		# until after we've calculated ROOT (see bug #529200).
-		eprefix = os.environ.get("EPREFIX", portage.const.EPREFIX)
-		if eprefix:
-			eprefix = portage.util.normalize_path(eprefix)
+		eprefix = portage.data._target_eprefix()
 		eroot = portage.util.normalize_path(argv[2])
 
 		if eprefix:

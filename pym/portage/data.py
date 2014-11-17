@@ -35,6 +35,35 @@ if not lchown:
 
 lchown = portage._unicode_func_wrapper(lchown)
 
+def _target_eprefix():
+	"""
+	Calculate the target EPREFIX, which may be different from
+	portage.const.EPREFIX due to cross-prefix support. The result
+	is equivalent to portage.settings["EPREFIX"], but the calculation
+	is done without the expense of instantiating portage.settings.
+	@rtype: str
+	@return: the target EPREFIX
+	"""
+	eprefix = os.environ.get("EPREFIX", portage.const.EPREFIX)
+	if eprefix:
+		eprefix = portage.util.normalize_path(eprefix)
+	return eprefix
+
+def _target_root():
+	"""
+	Calculate the target ROOT. The result is equivalent to
+	portage.settings["ROOT"], but the calculation
+	is done without the expense of instantiating portage.settings.
+	@rtype: str
+	@return: the target ROOT (always ends with a slash)
+	"""
+	root = os.environ.get("ROOT")
+	if not root:
+		# Handle either empty or unset ROOT.
+		root = os.sep
+	root = portage.util.normalize_path(root)
+	return root.rstrip(os.sep) + os.sep
+
 def portage_group_warning():
 	warn_prefix = colorize("BAD", "*** WARNING ***  ")
 	mylines = [
@@ -96,8 +125,7 @@ def _get_global(k):
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
 			eroot_or_parent = first_existing(os.path.join(
-				os.environ.get('ROOT', os.sep),
-				portage.const.EPREFIX.lstrip(os.sep)))
+				_target_root(), _target_eprefix().lstrip(os.sep)))
 			try:
 				eroot_st = os.stat(eroot_or_parent)
 			except OSError:
@@ -210,8 +238,7 @@ def _get_global(k):
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
 			eroot_or_parent = first_existing(os.path.join(
-				os.environ.get('ROOT', os.sep),
-				portage.const.EPREFIX.lstrip(os.sep)))
+				_target_root(), _target_eprefix().lstrip(os.sep)))
 			try:
 				eroot_st = os.stat(eroot_or_parent)
 			except OSError:
