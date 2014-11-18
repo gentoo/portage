@@ -33,6 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util.path:first_existing',
 	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
@@ -187,6 +188,17 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None
+
+	@property
+	def writable(self):
+		"""
+		Check if var/db/pkg is writable, or permissions are sufficient
+		to create it if it does not exist yet.
+		@rtype: bool
+		@return: True if var/db/pkg is writable or can be created,
+			False otherwise
+		"""
+		return os.access(first_existing(self._dbroot), os.W_OK)
 
 	@property
 	def root(self):

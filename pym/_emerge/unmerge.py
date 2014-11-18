@@ -10,6 +10,7 @@ import textwrap
 import portage
 from portage import os
 from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.localization import _
 from portage.output import bold, colorize, darkgreen, green
 from portage._sets import SETPREFIX
 from portage._sets.base import EditablePackageSet
@@ -546,6 +547,13 @@ def unmerge(root_config, myopts, unmerge_action,
 			print("Quitting.")
 			print()
 			return 128 + signal.SIGINT
+
+	if not vartree.dbapi.writable:
+		writemsg_level("!!! %s\n" %
+			_("Read-only file system: %s") % vartree.dbapi._dbroot,
+			level=logging.ERROR, noiselevel=-1)
+		return 1
+
 	#the real unmerging begins, after a short delay unless we're raging....
 	if not unmerge_action == "rage-clean" and clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")

@@ -428,6 +428,21 @@ def action_build(settings, trees, mtimedb,
 			# least show warnings about missed updates and such.
 			mydepgraph.display_problems()
 
+		if not Scheduler._opts_no_self_update.intersection(myopts):
+
+			eroots = set()
+			for x in mydepgraph.altlist():
+				if isinstance(x, Package) and x.operation == "merge":
+					eroots.add(x.root)
+
+			for eroot in eroots:
+				if not trees[eroot]["vartree"].dbapi.writable:
+					writemsg_level("!!! %s\n" %
+						_("Read-only file system: %s") %
+						trees[eroot]["vartree"].dbapi._dbroot,
+						level=logging.ERROR, noiselevel=-1)
+					return 1
+
 		if ("--resume" in myopts):
 			favorites=mtimedb["resume"]["favorites"]
 
