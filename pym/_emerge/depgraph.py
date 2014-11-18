@@ -399,6 +399,7 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
+		self._flatten_atoms_cache = {}
 
 		# Binary packages that have been rejected because their USE
 		# didn't match the user's config. It maps packages to a set
@@ -1719,26 +1720,10 @@ class depgraph(object):
 
 			selected_atoms = None
 
-			atoms = set()
-			invalid_metadata = False
-			for dep_key in ("DEPEND", "HDEPEND", "RDEPEND", "PDEPEND"):
-				dep_string = replacement_parent._metadata[dep_key]
-				if not dep_string:
-					continue
-
-				try:
-					dep_string = portage.dep.use_reduce(dep_string,
-						uselist=self._pkg_use_enabled(replacement_parent),
-						is_valid_flag=replacement_parent.iuse.is_valid_flag,
-						flat=True, token_class=Atom,
-						eapi=replacement_parent.eapi)
-				except portage.exception.InvalidDependString:
-					invalid_metadata = True
-					break
-
-				atoms.update(token for token in dep_string if isinstance(token, Atom))
-
-			if invalid_metadata:
+			try:
+				atoms = self._flatten_atoms(replacement_parent,
+					self._pkg_use_enabled(replacement_parent))
+			except InvalidDependString:
 				continue
 
 			# List of list of child,atom pairs for each atom.
@@ -2004,6 +1989,46 @@ class depgraph(object):
 				root, v, myuse=use, parent=pkg)[pkg])
 		return frozenset(x.unevaluated_atom for
 			x in selected_atoms)
+
+	def _flatten_atoms(self, pkg, use):
+		"""
+		Evaluate all dependency atoms of the given package, and return
+		them as a frozenset. For performance, results are cached.
+
+		@param pkg: a Package instance
+		@type pkg: Package
+		@param pkg: set of enabled USE flags
+		@type pkg: frozenset
+		@rtype: frozenset
+		@return: set of evaluated atoms
+		"""
+
+		cache_key = (pkg, use)
+
+		try:
+			return self._dynamic_config._flatten_atoms_cache[cache_key]
+		except KeyError:
+			pass
+
+		atoms = []
+
+		for dep_key in pkg._dep_keys:
+			dep_string = pkg._metadata[dep_key]
+			if not dep_string:
+				continue
+
+			dep_string = portage.dep.use_reduce(
+				dep_string, uselist=use,
+				is_valid_flag=pkg.iuse.is_valid_flag,
+				flat=True, token_class=Atom, eapi=pkg.eapi)
+
+			atoms.extend(token for token in dep_string
+				if isinstance(token, Atom))
+
+		atoms = frozenset(atoms)
+
+		self._dynamic_config._flatten_atoms_cache[cache_key] = atoms
+		return atoms
 
 	def _iter_similar_available(self, graph_pkg, atom, autounmask_level=None):
 		"""
