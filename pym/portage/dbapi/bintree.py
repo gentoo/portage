@@ -18,6 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.listdir:listdir',
+	'portage.util.path:first_existing',
 	'portage.util._urlopen:urlopen@_urlopen',
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
@@ -84,6 +85,17 @@ class bindbapi(fakedbapi):
 			])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
+
+	@property
+	def writable(self):
+		"""
+		Check if PKGDIR is writable, or permissions are sufficient
+		to create it if it does not exist yet.
+		@rtype: bool
+		@return: True if PKGDIR is writable or can be created,
+			False otherwise
+		"""
+		return os.access(first_existing(self.bintree.pkgdir), os.W_OK)
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:

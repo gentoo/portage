@@ -428,7 +428,18 @@ def action_build(settings, trees, mtimedb,
 			# least show warnings about missed updates and such.
 			mydepgraph.display_problems()
 
-		if not Scheduler._opts_no_self_update.intersection(myopts):
+
+		need_write_vardb = not Scheduler. \
+			_opts_no_self_update.intersection(myopts)
+
+		need_write_bindb = not any(x in myopts for x in
+			("--fetchonly", "--fetch-all-uri", "--pretend")) and \
+			(any("buildpkg" in trees[eroot]["root_config"].
+				settings.features for eroot in trees) or
+			any("buildsyspkg" in trees[eroot]["root_config"].
+				settings.features for eroot in trees))
+
+		if need_write_bindb or need_write_vardb:
 
 			eroots = set()
 			for x in mydepgraph.altlist():
@@ -436,10 +447,23 @@ def action_build(settings, trees, mtimedb,
 					eroots.add(x.root)
 
 			for eroot in eroots:
-				if not trees[eroot]["vartree"].dbapi.writable:
+				if need_write_vardb and \
+					not trees[eroot]["vartree"].dbapi.writable:
 					writemsg_level("!!! %s\n" %
 						_("Read-only file system: %s") %
 						trees[eroot]["vartree"].dbapi._dbroot,
+						level=logging.ERROR, noiselevel=-1)
+					return 1
+
+				if need_write_bindb and \
+					("buildpkg" in trees[eroot]["root_config"].
+					settings.features or
+					"buildsyspkg" in trees[eroot]["root_config"].
+					settings.features) and \
+					not trees[eroot]["bintree"].dbapi.writable:
+					writemsg_level("!!! %s\n" %
+						_("Read-only file system: %s") %
+						trees[eroot]["bintree"].pkgdir,
 						level=logging.ERROR, noiselevel=-1)
 					return 1
 
