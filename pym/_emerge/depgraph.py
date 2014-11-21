@@ -399,6 +399,7 @@ class _dynamic_depgraph_config(object):
 		self._initially_unsatisfied_deps = []
 		self._ignored_deps = []
 		self._highest_pkg_cache = {}
+		self._highest_pkg_cache_cp_map = {}
 		self._flatten_atoms_cache = {}
 
 		# Binary packages that have been rejected because their USE
@@ -2539,8 +2540,8 @@ class depgraph(object):
 			if not previously_added:
 				self._dynamic_config._package_tracker.add_pkg(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
-				self._dynamic_config._highest_pkg_cache.clear()
 				self._check_masks(pkg)
+				self._prune_highest_pkg_cache(pkg)
 
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
@@ -2685,6 +2686,7 @@ class depgraph(object):
 		# Clear caches.
 		self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
 		self._dynamic_config._highest_pkg_cache.clear()
+		self._dynamic_config._highest_pkg_cache_cp_map.clear()
 
 
 	def _check_masks(self, pkg):
@@ -3981,6 +3983,7 @@ class depgraph(object):
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
 		self._dynamic_config._highest_pkg_cache.clear()
+		self._dynamic_config._highest_pkg_cache_cp_map.clear()
 		for trees in self._dynamic_config._filtered_trees.values():
 			trees["porttree"].dbapi._clear_cache()
 
@@ -5001,6 +5004,8 @@ class depgraph(object):
 			return ret
 		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps, parent=parent)
 		self._dynamic_config._highest_pkg_cache[cache_key] = ret
+		self._dynamic_config._highest_pkg_cache_cp_map. \
+			setdefault(atom.cp, []).append(cache_key)
 		pkg, existing = ret
 		if pkg is not None:
 			if self._pkg_visibility_check(pkg) and \
@@ -5013,6 +5018,13 @@ class depgraph(object):
 			if isinstance(arg, (AtomArg, PackageArg)):
 				return True
 		return False
+
+	def _prune_highest_pkg_cache(self, pkg):
+		for cp in pkg.provided_cps:
+			for cache_key in self._dynamic_config. \
+				_highest_pkg_cache_cp_map.pop(cp, []):
+				self._dynamic_config._highest_pkg_cache.pop(
+					cache_key, None)
 
 	def _want_installed_pkg(self, pkg):
 		"""

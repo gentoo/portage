@@ -35,8 +35,8 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
 		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
-		("_invalid", "_masks", "_metadata", "_raw_metadata", "_use",
-		"_validated_atoms", "_visible")
+		("_invalid", "_masks", "_metadata", "_provided_cps",
+		"_raw_metadata", "_use", "_validated_atoms", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -126,6 +126,20 @@ class Package(Task):
 	@property
 	def properties(self):
 		return self._metadata.properties
+
+	@property
+	def provided_cps(self):
+
+		if self._provided_cps is None:
+			provided_cps = [self.cp]
+			for atom in self._metadata["PROVIDE"].split():
+				try:
+					provided_cps.append(Atom(atom).cp)
+				except InvalidAtom:
+					pass
+			self._provided_cps = tuple(provided_cps)
+
+		return self._provided_cps
 
 	@property
 	def restrict(self):
