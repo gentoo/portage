@@ -23,13 +23,12 @@ world_writable_check() {
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 
-		for x in $unsafe_files ; do
-			__eqawarnlog world-writable-setid "$x"
-		done
+		eqatag -v world-writable-setid $unsafe_files
+
 		die "Unsafe files found in \${D}.  Portage will not install them."
 	fi
 
-	IFS=OLDIFS
+	IFS=$OLDIFS
 	[[ ${prev_shopts} == *f* ]] || set +f
 }
 
