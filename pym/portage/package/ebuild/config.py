@@ -2332,22 +2332,22 @@ class config(object):
 					if v is None:
 						continue
 					prefix = k.lower() + '_'
-					if k in myincrementals:
-						for x in v.split():
-							if x[:1] == '-':
-								expand_use.append('-' + prefix + x[1:])
-							else:
-								expand_use.append(prefix + x)
-					else:
-						for x in v.split():
+					for x in v.split():
+						if x[:1] == '-':
+							expand_use.append('-' + prefix + x[1:])
+						else:
 							expand_use.append(prefix + x)
+
 				if expand_use:
 					expand_use.append(use)
 					use  = ' '.join(expand_use)
 				self.make_defaults_use.append(use)
 			self.make_defaults_use = tuple(self.make_defaults_use)
+			# Preserve both positive and negative flags here, since
+			# negative flags may later interact with other flags pulled
+			# in via USE_ORDER.
 			configdict_defaults['USE'] = ' '.join(
-				stack_lists([x.split() for x in self.make_defaults_use]))
+				filter(None, self.make_defaults_use))
 			# Set to None so this code only runs once.
 			self._make_defaults = None
 

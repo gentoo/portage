@@ -104,6 +104,16 @@ class ResolverPlayground(object):
 
 		portage.util.noiselimit = 0
 
+	def reload_config(self):
+		"""
+		Reload configuration from disk, which is useful if it has
+		been modified after the constructor has been called.
+		"""
+		for eroot in self.trees:
+			portdb = self.trees[eroot]["porttree"].dbapi
+			portdb.close_caches()
+		self.settings, self.trees = self._load_config()
+
 	def _get_repo_dir(self, repo):
 		"""
 		Create the repo directory if needed.
