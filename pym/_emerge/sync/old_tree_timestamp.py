@@ -7,7 +7,7 @@ import locale
 import logging
 import time
 
-from portage import os
+from portage import os, _unicode_decode
 from portage.exception import PortageException
 from portage.localization import _
 from portage.output import EOutput
@@ -95,6 +95,7 @@ def old_tree_timestamp_warn(portdir, settings):
 				whenago(unixtime - lastsync))
 		else:
 			out.ewarn(_("Last emerge --sync was %s.") % \
-				time.strftime('%c', time.localtime(lastsync)))
+				_unicode_decode(time.strftime(
+				'%c', time.localtime(lastsync))))
 		return True
 	return False
