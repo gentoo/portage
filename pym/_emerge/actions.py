@@ -1556,6 +1556,47 @@ def action_info(settings, trees, myopts, myfiles):
 		lastSync = "Unknown"
 	append("Timestamp of tree: %s" % (lastSync,))
 
+	# Searching contents for the /bin/sh provider is somewhat
+	# slow. Therefore, use the basename of the symlink target
+	# to locate the package. If this fails, then only the
+	# basename of the symlink target will be displayed. So,
+	# typical output is something like "sh bash 4.2_p53". Since
+	# realpath is used to resolve symlinks recursively, this
+	# approach is also able to handle multiple levels of symlinks
+	# such as /bin/sh -> bb -> busybox. Note that we do not parse
+	# the output of "/bin/sh --version" because many shells
+	# do not have a --version option.
+	basename = os.path.basename(os.path.realpath(os.path.join(
+		os.sep, portage.const.EPREFIX, "bin", "sh")))
+	try:
+		Atom("null/%s" % basename)
+	except InvalidAtom:
+		matches = None
+	else:
+		try:
+			# Try a match against the basename, which should work for
+			# busybox and most shells.
+			matches = (trees[trees._running_eroot]["vartree"].dbapi.
+				match(basename))
+		except portage.exception.AmbiguousPackageName:
+			# If the name is ambiguous, then restrict our match
+			# to the app-shells category.
+			matches = (trees[trees._running_eroot]["vartree"].dbapi.
+				match("app-shells/%s" % basename))
+
+	if matches:
+		pkg = matches[-1]
+		name = pkg.cp
+		version = pkg.version
+		# Omit app-shells category from the output.
+		if name.startswith("app-shells/"):
+			name = name[len("app-shells/"):]
+		sh_str = "%s %s" % (name, version)
+	else:
+		sh_str = basename
+
+	append("sh %s" % sh_str)
+
 	ld_names = []
 	if chost:
 		ld_names.append(chost + "-ld")
