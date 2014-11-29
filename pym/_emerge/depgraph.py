@@ -5321,6 +5321,9 @@ class depgraph(object):
 		If target_use is given, the need changes are computed to make the package useable.
 		Example: target_use = { "foo": True, "bar": False }
 		The flags target_use must be in the pkg's IUSE.
+		@rtype: frozenset
+		@return: set of effectively enabled USE flags, including changes
+			made by autounmask
 		"""
 		if pkg.built:
 			return pkg.use.enabled
@@ -5386,6 +5389,10 @@ class depgraph(object):
 					return True
 
 			return False
+
+		# Always return frozenset since the result needs to be
+		# hashable (see bug #531112).
+		new_use = frozenset(new_use)
 
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
