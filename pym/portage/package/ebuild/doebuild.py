@@ -913,11 +913,14 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 		if eapi_exports_merge_type(mysettings["EAPI"]) and \
 			"MERGE_TYPE" not in mysettings.configdict["pkg"]:
 			if tree == "porttree":
-				mysettings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "source"
 			elif tree == "bintree":
-				mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 				mysettings.configdict["pkg"]["MERGE_TYPE"] = "binary"
+
+		if tree == "porttree":
+			mysettings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
+		elif tree == "bintree":
+			mysettings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 
 		# NOTE: It's not possible to set REPLACED_BY_VERSION for prerm
 		#       and postrm here, since we don't necessarily know what

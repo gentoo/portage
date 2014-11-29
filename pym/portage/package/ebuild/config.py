@@ -2663,9 +2663,11 @@ class config(object):
 		eapi = self.get('EAPI')
 		eapi_attrs = _get_eapi_attrs(eapi)
 		phase = self.get('EBUILD_PHASE')
+		emerge_from = self.get('EMERGE_FROM')
 		filter_calling_env = False
 		if self.mycpv is not None and \
-			phase not in ('clean', 'cleanrm', 'depend', 'fetch', 'setup'):
+			not (emerge_from == 'ebuild' and phase == 'setup') and \
+			phase not in ('clean', 'cleanrm', 'depend', 'fetch'):
 			temp_dir = self.get('T')
 			if temp_dir is not None and \
 				os.path.exists(os.path.join(temp_dir, 'environment')):
