@@ -421,7 +421,7 @@ __try_source() {
 		qa=false
 		shift
 	fi
-	if [[ -r "$1" ]]; then
+	if [[ -r $1 && -f $1 ]]; then
 		local debug_on=false
 		if [[ "$PORTAGE_DEBUG" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
 			debug_on=true
