@@ -94,9 +94,8 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 		if not unmerge_files:
 			if unmerge_action in ["rage-clean", "unmerge"]:
 				print()
-				print(bold("emerge %s") +
-						" can only be used with specific package names" %
-						unmerge_action)
+				print(bold("emerge %s" % unmerge_action) +
+						" can only be used with specific package names")
 				print()
 				return 1, {}
 			else:
