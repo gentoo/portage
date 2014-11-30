@@ -36,11 +36,18 @@ __assert_sigpipe_ok() {
 	local x pipestatus=${PIPESTATUS[*]}
 	for x in $pipestatus ; do
 		# Allow SIGPIPE through (128 + 13)
-		[[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
+		if [[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]]
+		then
+			__helpers_die "$@"
+			return 1
+		fi
 	done
 
 	# Require normal success for the last process (tar).
-	[[ $x -eq 0 ]] || die "$@"
+	if [[ $x -ne 0 ]]; then
+		__helpers_die "$@"
+		return 1
+	fi
 }
 
 shopt -s extdebug

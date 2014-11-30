@@ -285,7 +285,10 @@ unpack() {
 		else
 			srcdir="${DISTDIR}/"
 		fi
-		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
+		if [[ ! -s ${srcdir}${x} ]]; then
+			__helpers_die "unpack: ${x} does not exist"
+			return 1
+		fi
 
 		__unpack_tar() {
 			if [[ ${y_insensitive} == tar ]] ; then
@@ -296,15 +299,18 @@ unpack() {
 						"supported with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
 				$1 -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail" || return 1
 			else
 				local cwd_dest=${x##*/}
 				cwd_dest=${cwd_dest%.*}
-				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
+				if ! $1 -c -- "${srcdir}${x}" > "${cwd_dest}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 			fi
 		}
 
-		myfail="failure unpacking ${x}"
+		myfail="unpack: failure unpacking ${x}"
 		case "${suffix_insensitive}" in
 			tar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -313,7 +319,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				tar xof "$srcdir$x" || die "$myfail"
+				if ! tar xof "$srcdir$x"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			tgz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -322,7 +331,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tgz'."
 				fi
-				tar xozf "$srcdir$x" || die "$myfail"
+				if ! tar xozf "$srcdir$x"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			tbz|tbz2)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -332,7 +344,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
 				fi
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail" || return 1
 				;;
 			zip|jar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -344,8 +356,10 @@ unpack() {
 				fi
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				( set +x ; while true ; do echo n || break ; done ) | \
-				unzip -qo "${srcdir}${x}" || die "$myfail"
+				if ! unzip -qo "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi < <(set +x ; while true ; do echo n || break ; done)
 				;;
 			gz|z)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -354,7 +368,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'gz', 'z', or 'Z'."
 				fi
-				__unpack_tar "gzip -d"
+				__unpack_tar "gzip -d" || return 1
 				;;
 			bz2|bz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -363,7 +377,8 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'bz' or 'bz2'."
 				fi
-				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
+				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}" \
+					|| return 1
 				;;
 			7z)
 				local my_output
@@ -380,7 +395,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
 				fi
-				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
+				if ! unrar x -idq -o+ "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			lha|lzh)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -390,7 +408,10 @@ unpack() {
 						"with EAPI '${EAPI}'." \
 						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
 				fi
-				lha xfq "${srcdir}${x}" || die "$myfail"
+				if ! lha xfq "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			a)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -399,7 +420,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'a'."
 				fi
-				ar x "${srcdir}${x}" || die "$myfail"
+				if ! ar x "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			deb)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -420,18 +444,30 @@ unpack() {
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						ln -sf "$srcdir$x" "$y" || die "$myfail"
+						if ! ln -sf "$srcdir$x" "$y"; then
+							__helpers_die "$myfail"
+							return 1
+						fi
 						created_symlink=1
 					fi
-					deb2targz "$y" || die "$myfail"
+					if ! deb2targz "$y"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 					if [ $created_symlink = 1 ] ; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
 						rm -f "$y"
 					fi
-					mv -f "${y%.deb}".tar.gz data.tar.gz || die "$myfail"
+					if ! mv -f "${y%.deb}".tar.gz data.tar.gz; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 				else
-					ar x "$srcdir$x" || die "$myfail"
+					if ! ar x "$srcdir$x"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 				fi
 				;;
 			lzma)
@@ -441,7 +477,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'lzma'."
 				fi
-				__unpack_tar "lzma -d"
+				__unpack_tar "lzma -d" || return 1
 				;;
 			xz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -451,7 +487,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
 				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -d"
+					__unpack_tar "xz -d" || return 1
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -581,7 +617,8 @@ econf() {
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
 			fi
-			die "econf failed"
+			__helpers_die "econf failed"
+			return 1
 		fi
 	elif [ -f "${ECONF_SOURCE}/configure" ]; then
 		die "configure is not executable"
@@ -620,7 +657,7 @@ einstall() {
 				${MAKEOPTS} -j1 \
 				"$@" ${EXTRA_EMAKE} install
 		fi
-		${MAKE:-make} prefix="${ED}usr" \
+		if ! ${MAKE:-make} prefix="${ED}usr" \
 			datadir="${ED}usr/share" \
 			infodir="${ED}usr/share/info" \
 			localstatedir="${ED}var/lib" \
@@ -628,7 +665,11 @@ einstall() {
 			sysconfdir="${ED}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} -j1 \
-			"$@" ${EXTRA_EMAKE} install || die "einstall failed"
+			"$@" ${EXTRA_EMAKE} install
+		then
+			__helpers_die "einstall failed"
+			return 1
+		fi
 	else
 		die "no Makefile found"
 	fi
