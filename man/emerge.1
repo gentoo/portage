@@ -61,13 +61,15 @@ would like to query the owners of one or more files or directories.
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
-packages. Three sets are currently always available: \fBselected\fR,
-\fBsystem\fR and \fBworld\fR. \fBselected\fR contains the user-selected
-"world" packages that are listed in \fB/var/lib/portage/world\fR,
-and nested sets that may be listed
-in \fB/var/lib/portage/world_sets\fR. \fBsystem\fR refers to a set of
-packages deemed necessary for your system to run properly. \fBworld\fR
-encompasses both the \fBselected\fR and \fBsystem\fR sets. [See
+packages. Five sets are currently always available: \fBselected-packages\fR,
+\fBselected-sets\fR, \fBselected\fR, \fBsystem\fR and \fBworld\fR.
+\fBselected-packages\fR contains the user-selected "world" packages that
+are listed in \fB/var/lib/portage/world\fR, while \fBselected-sets\fR
+contains the nested sets that may be listed in \fB/var/lib/portage/world_sets\fR.
+\fBsystem\fR refers to a set of packages deemed necessary for your system
+to run properly. \fBselected\fR encompasses both the \fBselected-packages\fR
+and \fBselected-sets\fR sets, while \fBworld\fR encompasses the \fBselected\fR
+and \fBsystem\fR sets. [See
 \fBFILES\fR below for more information.] Other sets can exist depending
 on the current configuration. The default set configuration is located
 in the \fB/usr/share/portage/config/sets\fR directory.

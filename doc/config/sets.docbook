@@ -71,9 +71,9 @@
 			class = portage.sets.base.DummyPackageSet
 			packages = @selected @system
 
-			# The selected set
-			[selected]
-			class = portage.sets.files.WorldSelectedSet
+			# The selected-packages set
+			[selected-packages]
+			class = portage.sets.files.WorldSelectedPackagesSet
 
 			# The classic system set
 			[system]
@@ -247,8 +247,16 @@
 			</sect3>
 		</sect2>
 		
-		<sect2 id='config-set-classes-WorldSelectedSet'>
-		<title>portage.sets.files.WorldSelectedSet</title>
+		<sect2 id='config-set-classes-WorldSelectedPackagesSet'>
+		<title>portage.sets.files.WorldSelectedPackagesSet</title>
+		<para>
+		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
+		reasons. It should never be used in user configurations as it's already configured
+		by default, doesn't support any options and will eventually be removed in a future version.
+		</para>
+
+		<sect2 id='config-set-classes-WorldSelectedSetsSet'>
+		<title>portage.sets.files.WorldSelectedSetsSet</title>
 		<para>
 		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
 		reasons. It should never be used in user configurations as it's already configured

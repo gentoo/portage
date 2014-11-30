@@ -121,6 +121,14 @@ class SetConfig(object):
 		parser.add_section("selected")
 		parser.set("selected", "class", "portage.sets.files.WorldSelectedSet")
 
+		parser.remove_section("selected-packages")
+		parser.add_section("selected-packages")
+		parser.set("selected-packages", "class", "portage.sets.files.WorldSelectedPackagesSet")
+
+		parser.remove_section("selected-sets")
+		parser.add_section("selected-sets")
+		parser.set("selected-sets", "class", "portage.sets.files.WorldSelectedSetsSet")
+
 		parser.remove_section("system")
 		parser.add_section("system")
 		parser.set("system", "class", "portage.sets.profiles.PackagesSystemSet")

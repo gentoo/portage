@@ -11,7 +11,7 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 import portage
 portage._internal_caller = True
 from portage import os
-from portage._sets.files import StaticFileSet, WorldSelectedSet
+from portage._sets.files import StaticFileSet, WorldSelectedPackagesSet
 
 import re
 import tempfile
@@ -105,7 +105,7 @@ for mykey in biglist:
 if not worldlist:
 	pass
 else:
-	existing_set = WorldSelectedSet(eroot)
+	existing_set = WorldSelectedPackagesSet(eroot)
 	existing_set.load()
 
 	if not existing_set:
