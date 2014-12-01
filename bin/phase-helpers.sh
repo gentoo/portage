@@ -666,6 +666,11 @@ econf() {
 }
 
 einstall() {
+	if ! ___eapi_has_einstall; then
+		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+		exit 1
+	fi
+
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
 	if ! ___eapi_has_prefix_variables; then
