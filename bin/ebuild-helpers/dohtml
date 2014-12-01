@@ -4,6 +4,10 @@
 
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
+if ___eapi_has_dohtml_deprecated; then
+	eqawarn "'${0##*/}' is deprecated in EAPI '$EAPI'"
+fi
+
 PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
 PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 # Use safe cwd, avoiding unsafe import for bug #469338.
