@@ -320,12 +320,36 @@ class _unicode_module_wrapper(object):
 			cache[attr] = result
 		return result
 
+class _eintr_func_wrapper(object):
+	"""
+	Wraps a function and handles EINTR by calling the function as
+	many times as necessary (until it returns without raising EINTR).
+	"""
+
+	__slots__ = ('_func',)
+
+	def __init__(self, func):
+		self._func = func
+
+	def __call__(self, *args, **kwargs):
+
+		while True:
+			try:
+				rval = self._func(*args, **kwargs)
+				break
+			except OSError as e:
+				if e.errno != errno.EINTR:
+					raise
+
+		return rval
+
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
 	id(_os.system)        : _os.system,
+	id(_os.waitpid)       : _eintr_func_wrapper(_os.waitpid)
 }
 
 
