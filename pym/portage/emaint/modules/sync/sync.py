@@ -9,7 +9,7 @@ import portage
 portage._internal_caller = True
 portage._sync_mode = True
 from portage.localization import _
-from portage.output import bold, create_color_func
+from portage.output import bold, red, create_color_func
 from portage._global_updates import _global_updates
 from portage.sync.controller import SyncManager
 from portage.util import writemsg_level
@@ -116,6 +116,13 @@ class SyncRepos(object):
 			repos = repos.split()
 		available = self._get_repos(auto_sync_only=False)
 		selected = self._match_repos(repos, available)
+		if not selected:
+			msgs = [red(" * ") + "Emaint sync, The specified repos were not found: %s"
+				% (bold(", ".join(repos))) + "\n   ...returning"
+				]
+			if return_messages:
+				return msgs
+			return
 		return self._sync(selected, return_messages)
 
 
@@ -187,7 +194,8 @@ class SyncRepos(object):
 		if not selected_repos:
 			msgs.append("Emaint sync, nothing to sync... returning")
 			if return_messages:
-				return msgs.append(self.rmessage(('None', os.EX_OK), 'sync'))
+				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
+				return msgs
 			return
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
