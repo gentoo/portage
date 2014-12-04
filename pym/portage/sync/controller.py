@@ -20,6 +20,7 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
+from portage import _unicode_decode
 
 
 class TaskHandler(object):
@@ -98,7 +99,7 @@ class SyncManager(object):
 					hooks.append((filepath, name))
 				else:
 					writemsg_level(" %s postsync.d hook: '%s' is not executable\n"
-						% (warn("*"), name,), level=logging.WARN, noiselevel=2)
+						% (warn("*"), _unicode_decode(name),), level=logging.WARN, noiselevel=2)
 		self.hooks = hooks
 
 
@@ -159,13 +160,15 @@ class SyncManager(object):
 	def perform_post_sync_hook(self, reponame, dosyncuri='', repolocation=''):
 		succeeded = os.EX_OK
 		for filepath, hook in self.hooks:
-			writemsg_level("Spawning post_sync hook: %s\n" % (hook,),
+			writemsg_level("Spawning post_sync hook: %s\n"
+				% (_unicode_decode(hook)),
 				level=logging.ERROR, noiselevel=4)
 			retval = portage.process.spawn([filepath,
 				reponame, dosyncuri, repolocation], env=self.settings.environ())
 			if retval != os.EX_OK:
 				writemsg_level(" %s Spawn failed for: %s, %s\n" % (bad("*"),
-					hook, filepath), level=logging.ERROR, noiselevel=-1)
+					_unicode_decode(hook), filepath),
+					level=logging.ERROR, noiselevel=-1)
 				succeeded = retval
 		return succeeded
 
@@ -182,7 +185,8 @@ class SyncManager(object):
 		except OSError:
 			st = None
 		if st is None:
-			writemsg_level(">>> '%s' not found, creating it." % repo.location)
+			writemsg_level(">>> '%s' not found, creating it."
+				% _unicode_decode(repo.location))
 			portage.util.ensure_dirs(repo.location, mode=0o755)
 			st = os.stat(repo.location)
 
