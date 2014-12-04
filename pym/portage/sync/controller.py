@@ -142,7 +142,7 @@ class SyncManager(object):
 		taskmaster = TaskHandler(callback=self.do_callback)
 		taskmaster.run_tasks(tasks, func, status, options=task_opts)
 
-		self.perform_post_sync_hook(repo.name, repo.sync_uri)
+		self.perform_post_sync_hook(repo.name, repo.sync_uri, repo.location)
 
 		return self.exitcode, None
 
@@ -156,13 +156,13 @@ class SyncManager(object):
 		return
 
 
-	def perform_post_sync_hook(self, reponame, dosyncuri=''):
+	def perform_post_sync_hook(self, reponame, dosyncuri='', repolocation=''):
 		succeeded = os.EX_OK
 		for filepath, hook in self.hooks:
 			writemsg_level("Spawning post_sync hook: %s\n" % (hook,),
 				level=logging.ERROR, noiselevel=4)
 			retval = portage.process.spawn([filepath,
-				reponame, dosyncuri], env=self.settings.environ())
+				reponame, dosyncuri, repolocation], env=self.settings.environ())
 			if retval != os.EX_OK:
 				writemsg_level(" %s Spawn failed for: %s, %s\n" % (bad("*"),
 					hook, filepath), level=logging.ERROR, noiselevel=-1)
