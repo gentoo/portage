@@ -808,12 +808,6 @@ class config(object):
 					has_invalid_data = True
 					del pkgprovidedlines[x]
 					continue
-				if cpvr[0] == "virtual":
-					writemsg(_("Virtual package in package.provided: %s\n") % \
-						myline, noiselevel=-1)
-					has_invalid_data = True
-					del pkgprovidedlines[x]
-					continue
 			if has_invalid_data:
 				writemsg(_("See portage(5) for correct package.provided usage.\n"),
 					noiselevel=-1)
