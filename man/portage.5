@@ -901,6 +901,11 @@ Valid non\-empty values: cvs, git, rsync
 This attribute can be set to empty value to disable synchronization of given
 repository. Empty value is default.
 .TP
+.B sync\-umask
+Specifies umask used to synchronize the repository.
+.br
+Takes an octal permission mask, e.g. 022.
+.TP
 .B sync\-uri
 Specifies URI of repository used for synchronization performed by `emerge
 \-\-sync`.

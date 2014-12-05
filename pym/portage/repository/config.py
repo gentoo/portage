@@ -85,8 +85,9 @@ class RepoConfig(object):
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
-		'sync_type', 'sync_uri', 'thin_manifest', 'update_changelog',
-		'user_location', '_eapis_banned', '_eapis_deprecated', '_masters_orig')
+		'sync_type', 'sync_umask', 'sync_uri', 'thin_manifest',
+		'update_changelog', 'user_location', '_eapis_banned',
+		'_eapis_deprecated', '_masters_orig')
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -153,6 +154,11 @@ class RepoConfig(object):
 		if sync_type is not None:
 			sync_type = sync_type.strip()
 		self.sync_type = sync_type or None
+
+		sync_umask = repo_opts.get('sync-umask')
+		if sync_umask is not None:
+			sync_umask = sync_umask.strip()
+		self.sync_umask = sync_umask or None
 
 		sync_uri = repo_opts.get('sync-uri')
 		if sync_uri is not None:
@@ -375,6 +381,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "sync-cvs-repo: " + self.sync_cvs_repo)
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
+		if self.sync_umask:
+			repo_msg.append(indent + "sync-umask: " + self.sync_umask)
 		if self.sync_uri:
 			repo_msg.append(indent + "sync-uri: " + self.sync_uri)
 		if self.masters:
@@ -464,7 +472,7 @@ class RepoConfigLoader(object):
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
 							'force', 'masters', 'priority', 'sync_cvs_repo',
-							'sync_type', 'sync_uri',
+							'sync_type', 'sync_umask', 'sync_uri',
 							):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
@@ -915,7 +923,7 @@ class RepoConfigLoader(object):
 	def config_string(self):
 		str_or_int_keys = ("auto_sync", "format", "location",
 			"main_repo", "priority", "sync_cvs_repo",
-			"sync_type", "sync_uri")
+			"sync_type", "sync_umask", "sync_uri")
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys

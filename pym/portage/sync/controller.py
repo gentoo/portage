@@ -220,6 +220,9 @@ class SyncManager(object):
 				if not st.st_mode & 0o020:
 					umask = umask | 0o020
 				spawn_kwargs["umask"] = umask
+		# override the defaults when sync_umask is set
+		if repo.sync_umask is not None:
+			spawn_kwargs["umask"] = int(repo.sync_umask, 8)
 		self.spawn_kwargs = spawn_kwargs
 
 		if self.usersync_uid is not None:
