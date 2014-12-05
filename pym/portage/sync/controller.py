@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import sys
 import logging
+import grp
 import pwd
 
 import portage
@@ -200,7 +201,55 @@ class SyncManager(object):
 		self.usersync_uid = None
 		spawn_kwargs = {}
 		spawn_kwargs["env"] = self.settings.environ()
-		if ('usersync' in self.settings.features and
+		if repo.sync_user is not None:
+			def get_sync_user_data(sync_user):
+				user = None
+				group = None
+				home = None
+
+				spl = sync_user.split(':', 1)
+				if spl[0]:
+					username = spl[0]
+					try:
+						try:
+							pw = pwd.getpwnam(username)
+						except KeyError:
+							pw = pwd.getpwuid(int(username))
+					except (ValueError, KeyError):
+						writemsg("!!! User '%s' invalid or does not exist\n"
+								% username, noiselevel=-1)
+						return (user, group, home)
+					user = pw.pw_uid
+					group = pw.pw_gid
+					home = pw.pw_dir
+
+				if len(spl) > 1:
+					groupname = spl[1]
+					try:
+						try:
+							gp = grp.getgrnam(groupname)
+						except KeyError:
+							pw = grp.getgrgid(int(groupname))
+					except (ValueError, KeyError):
+						writemsg("!!! Group '%s' invalid or does not exist\n"
+								% groupname, noiselevel=-1)
+						return (user, group, home)
+
+					group = gp.gr_gid
+
+				return (user, group, home)
+
+			# user or user:group
+			(uid, gid, home) = get_sync_user_data(repo.sync_user)
+			if uid is not None:
+				spawn_kwargs["uid"] = uid
+				self.usersync_uid = uid
+			if gid is not None:
+				spawn_kwargs["gid"] = gid
+				spawn_kwargs["groups"] = [gid]
+			if home is not None:
+				spawn_kwargs["env"]["HOME"] = home
+		elif ('usersync' in self.settings.features and
 			portage.data.secpass >= 2 and
 			(st.st_uid != os.getuid() and st.st_mode & 0o700 or
 			st.st_gid != os.getgid() and st.st_mode & 0o070)):

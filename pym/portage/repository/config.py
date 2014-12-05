@@ -85,7 +85,7 @@ class RepoConfig(object):
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
-		'sync_type', 'sync_umask', 'sync_uri', 'thin_manifest',
+		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', 'user_location', '_eapis_banned',
 		'_eapis_deprecated', '_masters_orig')
 
@@ -164,6 +164,11 @@ class RepoConfig(object):
 		if sync_uri is not None:
 			sync_uri = sync_uri.strip()
 		self.sync_uri = sync_uri or None
+
+		sync_user = repo_opts.get('sync-user')
+		if sync_user is not None:
+			sync_user = sync_user.strip()
+		self.sync_user = sync_user or None
 
 		auto_sync = repo_opts.get('auto-sync')
 		if auto_sync is not None:
@@ -385,6 +390,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "sync-umask: " + self.sync_umask)
 		if self.sync_uri:
 			repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+		if self.sync_user:
+			repo_msg.append(indent + "sync-user: " + self.sync_user)
 		if self.masters:
 			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
 		if self.priority is not None:
@@ -472,7 +479,7 @@ class RepoConfigLoader(object):
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
 							'force', 'masters', 'priority', 'sync_cvs_repo',
-							'sync_type', 'sync_umask', 'sync_uri',
+							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
@@ -923,7 +930,7 @@ class RepoConfigLoader(object):
 	def config_string(self):
 		str_or_int_keys = ("auto_sync", "format", "location",
 			"main_repo", "priority", "sync_cvs_repo",
-			"sync_type", "sync_umask", "sync_uri")
+			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys

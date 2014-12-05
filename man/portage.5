@@ -934,6 +934,18 @@ ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
 .TP
 Note: For the ssh:// scheme, key\-based authentication might be of interest.
 .RE
+.TP
+.B sync\-user
+Specifies the credentials used to perform the synchronization.
+.br
+Syntax: [user][:group]
+.br
+If only user is provided, the primary group of the user will be used.
+If only group is provided, the current user will be preserved and only
+group id will be changed.
+.br
+This key takes precedence over FEATURES=userpriv. If user or group id
+is provided, Portage no longer uses owner of the directory.
 .RE
 
 .I Example:
