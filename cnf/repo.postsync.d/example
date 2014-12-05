@@ -1,0 +1,51 @@
+#!/bin/sh
+# Example /etc/portage/repo.postsync.d script. Make it executable (chmod +x) for
+# Portage to process it.
+#
+# With portage-2.2.16 and newer, all repo.postsync.d hooks will be called multiple
+# times after syncing each repository.
+#
+# Older versions of Portage support syncing only one repository.
+# In those versions, the postsync.d hooks will be called only once,
+# and they will not be passed any parameters.
+
+# On a repo.postsync.d hook call, positional parameters contain
+# information about the just-synced repository.
+
+# Your hook can control it's actions depending on any of the three
+# parameters passed in to it.
+#
+# They are as follows:
+#
+# The repository name.
+repository_name=${1}
+# The URI to which the repository was synced.
+sync_uri=${2}
+# The path to the repository.
+repository_path=${3}
+
+# Portage assumes that a hook succeeded if it exits with 0 code. If no
+# explicit exit is done, the exit code is the exit code of last spawned
+# command. Since our script is a bit more complex, we want to control
+# the exit code explicitly.
+ret=0
+
+if [ -n "${repository_name}" ]; then
+	# Repository name was provided, so we're in a post-repository hook.
+	echo "* In post-repository hook for ${repository_name}"
+	echo "** synced from remote repository ${sync_uri}"
+	echo "** synced into ${repository_path}"
+
+	# Gentoo comes with pregenerated cache but the other repositories
+	# usually don't. Generate them to improve performance.
+	if [ "${repository_name}" != "gentoo" ]; then
+		if ! egencache --update --repo="${repository_name}" --jobs=4
+		then
+			echo "!!! egencache failed!"
+			ret=1
+		fi
+	fi
+fi
+
+# Return explicit status.
+exit "${ret}"

@@ -629,6 +629,7 @@ setup(
 		['$portage_setsdir', ['cnf/sets/portage.conf']],
 		['$docdir', ['NEWS', 'RELEASE-NOTES']],
 		['$portage_base/bin', ['bin/deprecated-path']],
+		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
 	cmdclass = {
