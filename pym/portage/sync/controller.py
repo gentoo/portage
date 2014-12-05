@@ -192,11 +192,6 @@ class SyncManager(object):
 			st = os.stat(repo.location)
 		except OSError:
 			st = None
-		if st is None:
-			writemsg_level(">>> '%s' not found, creating it."
-				% _unicode_decode(repo.location))
-			portage.util.ensure_dirs(repo.location, mode=0o755)
-			st = os.stat(repo.location)
 
 		self.usersync_uid = None
 		spawn_kwargs = {}
@@ -249,7 +244,24 @@ class SyncManager(object):
 				spawn_kwargs["groups"] = [gid]
 			if home is not None:
 				spawn_kwargs["env"]["HOME"] = home
-		elif ('usersync' in self.settings.features and
+
+		if st is None:
+			perms = {'mode': 0o755}
+			# respect sync-user if set
+			if 'umask' in spawn_kwargs:
+				perms['mode'] &= ~spawn_kwargs['umask']
+			if 'uid' in spawn_kwargs:
+				perms['uid'] = spawn_kwargs['uid']
+			if 'gid' in spawn_kwargs:
+				perms['gid'] = spawn_kwargs['gid']
+
+			writemsg_level(">>> '%s' not found, creating it."
+				% _unicode_decode(repo.location))
+			portage.util.ensure_dirs(repo.location, **perms)
+			st = os.stat(repo.location)
+
+		if (repo.sync_user is None and
+			'usersync' in self.settings.features and
 			portage.data.secpass >= 2 and
 			(st.st_uid != os.getuid() and st.st_mode & 0o700 or
 			st.st_gid != os.getgid() and st.st_mode & 0o070)):
