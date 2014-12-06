@@ -477,8 +477,10 @@ unpack() {
 						rm -f "$y"
 					fi
 					if ! mv -f "${y%.deb}".tar.gz data.tar.gz; then
-						__helpers_die "$myfail"
-						return 1
+						if ! mv -f "${y%.deb}".tar.xz data.tar.xz; then
+							__helpers_die "$myfail"
+							return 1
+						fi
 					fi
 				else
 					if ! ar x "$srcdir$x"; then
