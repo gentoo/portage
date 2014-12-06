@@ -110,6 +110,7 @@ if not opts.color == 'y' and \
 	portage.output.nocolor()
 	portage.settings.unlock()
 	portage.settings['NOCOLOR'] = 'true'
+	portage.settings.backup_changes('NOCOLOR')
 	portage.settings.lock()
 
 ebuild = pargs.pop(0)
