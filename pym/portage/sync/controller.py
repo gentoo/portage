@@ -20,7 +20,9 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
+from portage import OrderedDict
 from portage import _unicode_decode
+from portage import util
 
 
 class TaskHandler(object):
@@ -88,19 +90,21 @@ class SyncManager(object):
 
 		self.module_controller = portage.sync.module_controller
 		self.module_names = self.module_controller.module_names
-		postsync_dir = os.path.join(self.settings["PORTAGE_CONFIGROOT"],
-			portage.USER_CONFIG_PATH, "postsync.d")
-		hooks = []
-		for root, dirs, names in os.walk(postsync_dir, topdown=True):
-			#print("root:", root, "dirs:", dirs, "names:", names)
-			for name in names:
-				filepath = os.path.join(root, name)
+		self.hooks = {}
+		for _dir in ["repo.postsync.d", "postsync.d"]:
+			postsync_dir = os.path.join(self.settings["PORTAGE_CONFIGROOT"],
+				portage.USER_CONFIG_PATH, _dir)
+			hooks = OrderedDict()
+			for filepath in util._recursive_file_list(postsync_dir):
+				name = filepath.split(postsync_dir)[1].lstrip(os.sep)
 				if os.access(filepath, os.X_OK):
-					hooks.append((filepath, name))
+					hooks[filepath] = name
 				else:
-					writemsg_level(" %s postsync.d hook: '%s' is not executable\n"
-						% (warn("*"), _unicode_decode(name),), level=logging.WARN, noiselevel=2)
-		self.hooks = hooks
+					writemsg_level(" %s %s hook: '%s' is not executable\n"
+						% (warn("*"), _dir, _unicode_decode(name),),
+						level=logging.WARN, noiselevel=2)
+			self.hooks[_dir] = hooks
+		print(self.hooks)
 
 
 	def get_module_descriptions(self, mod):
@@ -159,15 +163,19 @@ class SyncManager(object):
 
 	def perform_post_sync_hook(self, reponame, dosyncuri='', repolocation=''):
 		succeeded = os.EX_OK
-		for filepath, hook in self.hooks:
+		if reponame:
+			_hooks = self.hooks["repo.postsync.d"]
+		else:
+			_hooks = self.hooks["postsync.d"]
+		for filepath in _hooks:
 			writemsg_level("Spawning post_sync hook: %s\n"
-				% (_unicode_decode(hook)),
+				% (_unicode_decode(_hooks[filepath])),
 				level=logging.ERROR, noiselevel=4)
 			retval = portage.process.spawn([filepath,
 				reponame, dosyncuri, repolocation], env=self.settings.environ())
 			if retval != os.EX_OK:
 				writemsg_level(" %s Spawn failed for: %s, %s\n" % (bad("*"),
-					_unicode_decode(hook), filepath),
+					_unicode_decode(_hooks[filepath]), filepath),
 					level=logging.ERROR, noiselevel=-1)
 				succeeded = retval
 		return succeeded
