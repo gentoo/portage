@@ -12,8 +12,8 @@ from portage.util import writemsg_level
 
 class CheckCVSConfig(CheckSyncConfig):
 
-	def __init__(self, logger):
-		CheckSyncConfig.__init__(self, logger)
+	def __init__(self, repo, logger):
+		CheckSyncConfig.__init__(self, repo, logger)
 		self.checks.append('check_cvs_repo')
 
 
