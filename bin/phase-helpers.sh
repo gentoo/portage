@@ -448,11 +448,13 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'deb'."
 				fi
 				# Unpacking .deb archives can not always be done with
-				# `ar`.  For instance on AIX this doesn't work out.  If
-				# we have `deb2targz` installed, prefer it over `ar` for
-				# that reason.  We just make sure on AIX `deb2targz` is
+				# `ar`.  For instance on AIX this doesn't work out.
+				# If `ar` is not the GNU binutils version and we have
+				# `deb2targz` installed, prefer it over `ar` for that
+				# reason.  We just make sure on AIX `deb2targz` is
 				# installed.
-				if type -P deb2targz > /dev/null; then
+				if [[ $(ar --version 2>/dev/null) != "GNU ar"* ]] && \
+					type -P deb2targz > /dev/null; then
 					y=${x##*/}
 					local created_symlink=0
 					if [ ! "$srcdir$x" -ef "$y" ] ; then
