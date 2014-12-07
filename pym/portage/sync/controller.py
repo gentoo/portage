@@ -104,7 +104,6 @@ class SyncManager(object):
 						% (warn("*"), _dir, _unicode_decode(name),),
 						level=logging.WARN, noiselevel=2)
 			self.hooks[_dir] = hooks
-		print(self.hooks)
 
 
 	def get_module_descriptions(self, mod):
