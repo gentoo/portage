@@ -4856,8 +4856,10 @@ class dblink(object):
 
 		if protected and dest_mode is not None:
 			# we have a protection path; enable config file management.
-			if src_md5 != dest_md5 and \
-				src_md5 == cfgfiledict.get(dest_real, [None])[0]:
+			if src_md5 == dest_md5:
+				protected = False
+
+			elif src_md5 == cfgfiledict.get(dest_real, [None])[0]:
 				# An identical update has previously been
 				# merged.  Skip it unless the user has chosen
 				# --noconfmem.
