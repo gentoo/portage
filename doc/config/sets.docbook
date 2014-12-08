@@ -254,7 +254,15 @@
 		reasons. It should never be used in user configurations as it's already configured
 		by default, doesn't support any options and will eventually be removed in a future version.
 		</para>
-
+		
+			<sect3>
+			<title>Single Set Configuraton</title>
+			<para>
+			This class doesn't support any extra options.
+			</para>
+			</sect3>
+		</sect2>
+		
 		<sect2 id='config-set-classes-WorldSelectedSetsSet'>
 		<title>portage.sets.files.WorldSelectedSetsSet</title>
 		<para>
