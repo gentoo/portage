@@ -222,7 +222,7 @@ class WorldSelectedSet(EditablePackageSet):
 	def load(self):
 		self._pkgset.load()
 		self._setset.load()
-		self._setAtoms(self._pkgset._atoms | self._pkgset._nonatoms)
+		self._setAtoms(chain(self._pkgset, self._setset))
 
 	def lock(self):
 		self._pkgset.lock()
