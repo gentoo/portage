@@ -1,4 +1,4 @@
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -10,7 +10,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
-from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
+from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -142,6 +142,7 @@ class StaticFileSet(EditablePackageSet):
 				_("Directory path contains invalid character(s) for encoding '%s': '%s'") \
 				% (_encodings['fs'], directory))
 
+		vcs_dirs = [_unicode_encode(x, encoding=_encodings['fs']) for x in VCS_DIRS]
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 
@@ -152,7 +153,7 @@ class StaticFileSet(EditablePackageSet):
 				except UnicodeDecodeError:
 					continue
 				for d in dirs[:]:
-					if d[:1] == '.':
+					if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
 						dirs.remove(d)
 				for filename in files:
 					try:
@@ -160,7 +161,7 @@ class StaticFileSet(EditablePackageSet):
 							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
 						continue
-					if filename[:1] == '.':
+					if filename.startswith(".") or filename.endswith("~"):
 						continue
 					if filename.endswith(".metadata"):
 						continue
