@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Feb 2014" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "December 2014" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -331,14 +331,25 @@ Special USE flags which may be needed when bootstrapping from stage1 to stage2.
 .PD 1
 .TP
 .BR packages
-Provides the list of packages that compose the special \fIsystem\fR set.
+Provides the list of packages that compose the \fI@system\fR and
+\fI@profile\fR  package sets. The motivation to have \fI@profile\fR
+separate from \fI@system\fR is that \fI@system\fR packages may have
+incomplete dependency specifications (due to long-standing Gentoo
+policy), and incomplete dependency specifications have deleterious
+effects on the ability of \fBemerge\fR to parallelize builds. So,
+unlike \fI@system\fR, packages included in \fI@profile\fR do not
+hurt \fBemerge\fR's ability to parallelize.
 
 .I Format:
 .nf
 \- comments begin with # (no inline comments)
 \- one DEPEND atom per line
-\- packages to be added to the system set begin with a *
-\- atoms without * only appear for legacy reasons
+\- packages to be added to the @system set begin with a *
+\- packages to be added to the @profile set do not begin with a *
+\- packages may only be added to the @profile set if the containing
+  repository's layout.conf has 'profile-set' listed in the
+  profile-formats field. Otherwise, packages that do not begin with
+  '*' will simply be ignored for legacy reasons
 .fi
 .I Note:
 In a cascading profile setup, you can remove packages in children
@@ -348,12 +359,14 @@ a '\-'.
 .I Example:
 .nf
 # i am a comment !
-# pull in a version of glibc less than 2.3
+# pull a version of glibc less than 2.3 into @system
 *<sys\-libs/glibc\-2.3
-# pull in any version of bash
+# pull any version of bash into @system
 *app\-shells/bash
-# pull in a version of readline earlier than 4.2
+# pull a version of readline earlier than 4.2 into @system
 *<sys\-libs/readline\-4.2
+# pull vim into @profile
+app-editors/vim
 .fi
 .TP
 .BR packages.build
@@ -1101,13 +1114,15 @@ The default setting for repoman's --echangelog option.
 The cache formats supported in the metadata tree.  There is the old "pms" format
 and the newer/faster "md5-dict" format.  Default is to detect dirs.
 .TP
-.BR profile\-formats " = [pms|portage-1|portage-2|profile-bashrcs]"
+.BR profile\-formats " = [pms|portage-1|portage-2|profile-bashrcs|profile-set]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
 with old profiles, but is not allowed to be opted into directly.
 Setting profile-bashrcs will enable the per-profile bashrc mechanism
-\fBpackage.bashrc\fR.
+\fBpackage.bashrc\fR. Setting profile-set enables support for using the
+profile \fBpackages\fR file to add atoms to the @profile package set.
+See the profile \fBpackages\fR section for more information.
 .RE
 .RE
 

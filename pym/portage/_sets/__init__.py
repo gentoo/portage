@@ -116,7 +116,7 @@ class SetConfig(object):
 		parser.remove_section("world")
 		parser.add_section("world")
 		parser.set("world", "class", "portage.sets.base.DummyPackageSet")
-		parser.set("world", "packages", "@selected @system")
+		parser.set("world", "packages", "@profile @selected @system")
 
 		parser.remove_section("selected")
 		parser.add_section("selected")

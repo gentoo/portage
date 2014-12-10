@@ -650,7 +650,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 		return rval
 
 	set_atoms = {}
-	for k in ("system", "selected"):
+	for k in ("profile", "system", "selected"):
 		try:
 			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
 		except portage.exception.PackageSetNotFound:
@@ -660,6 +660,8 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    %d" % len(set_atoms["selected"]))
 	print("Packages in system:   %d" % len(set_atoms["system"]))
+	if set_atoms["profile"]:
+		print("Packages in profile:  %d" % len(set_atoms["profile"]))
 	print("Required packages:    "+str(req_pkg_count))
 	if "--pretend" in myopts:
 		print("Number to remove:     "+str(len(cleanlist)))
@@ -693,20 +695,24 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	system_set = psets["system"]
 
 	set_atoms = {}
-	for k in ("system", "selected"):
+	for k in ("profile", "system", "selected"):
 		try:
 			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
 		except portage.exception.PackageSetNotFound:
 			# A nested set could not be resolved, so ignore nested sets.
 			set_atoms[k] = root_config.sets[k].getAtoms()
 
-	if not set_atoms["system"] or not set_atoms["selected"]:
+	if (not set_atoms["system"] or
+		not (set_atoms["selected"] or set_atoms["profile"])):
 
 		if not set_atoms["system"]:
 			writemsg_level("!!! You have no system list.\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		if not set_atoms["selected"]:
+		# Skip this warning if @profile is non-empty, in order to
+		# support using @profile as an alternative to @selected
+		# for building a stage 4.
+		if not (set_atoms["selected"] or set_atoms["profile"]):
 			writemsg_level("!!! You have no world file.\n",
 					level=logging.WARNING, noiselevel=-1)
 

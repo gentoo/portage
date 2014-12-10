@@ -512,7 +512,6 @@ class config(object):
 				if v is not None:
 					portdir_sync = v
 
-			known_repos = frozenset(known_repos)
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay
 			if portdir_sync:
@@ -522,6 +521,9 @@ class config(object):
 				self.repositories = load_repository_config(self)
 			else:
 				self.repositories = repositories
+
+			known_repos.extend(repo.location for repo in self.repositories)
+			known_repos = frozenset(known_repos)
 
 			self['PORTAGE_REPOSITORIES'] = self.repositories.config_string()
 			self.backup_changes('PORTAGE_REPOSITORIES')
