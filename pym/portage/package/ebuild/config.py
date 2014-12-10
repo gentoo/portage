@@ -779,7 +779,7 @@ class config(object):
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) \
 				for x in locations_manager.profile_and_user_locations]
-			archlist = stack_lists(archlist, incremental=1)
+			archlist = sorted(stack_lists(archlist, incremental=1))
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
 			pkgprovidedlines = [grabfile(
