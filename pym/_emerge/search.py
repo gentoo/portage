@@ -1,6 +1,8 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
 import re
 import portage
 from portage import os
@@ -86,6 +88,11 @@ class search(object):
 				pass
 		raise KeyError(args[0])
 
+	def _aux_get_error(self, cpv):
+		portage.writemsg("emerge: search: "
+			"aux_get('%s') failed, skipping\n" % cpv,
+			noiselevel=-1)
+
 	def _findname(self, *args, **kwargs):
 		for db in self._dbs:
 			if db is not self._portdb:
@@ -166,8 +173,12 @@ class search(object):
 				else:
 					db_keys = list(db._aux_cache_keys)
 					for cpv in db.match(atom):
-						metadata = zip(db_keys,
-							db.aux_get(cpv, db_keys))
+						try:
+							metadata = zip(db_keys,
+								db.aux_get(cpv, db_keys))
+						except KeyError:
+							self._aux_get_error(cpv)
+							continue
 						if not self._visible(db, cpv, metadata):
 							continue
 						matches.add(cpv)
@@ -197,8 +208,12 @@ class search(object):
 					for cpv in reversed(matches):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
-						metadata = zip(db_keys,
-							db.aux_get(cpv, db_keys))
+						try:
+							metadata = zip(db_keys,
+								db.aux_get(cpv, db_keys))
+						except KeyError:
+							self._aux_get_error(cpv)
+							continue
 						if not self._visible(db, cpv, metadata):
 							continue
 						if not result or cpv == portage.best([cpv, result]):
@@ -257,9 +272,7 @@ class search(object):
 					full_desc = self._aux_get(
 						full_package, ["DESCRIPTION"])[0]
 				except KeyError:
-					portage.writemsg(
-						"emerge: search: aux_get() failed, skipping\n",
-						noiselevel=-1)
+					self._aux_get_error(full_package)
 					continue
 				if not self.searchre.search(full_desc):
 					continue
@@ -337,7 +350,7 @@ class search(object):
 						metadata = dict(zip(metadata_keys,
 							self._aux_get(full_package, metadata_keys)))
 					except KeyError:
-						msg.append("emerge: search: aux_get() failed, skipping\n")
+						self._aux_get_error(full_package)
 						continue
 
 					desc = metadata["DESCRIPTION"]
