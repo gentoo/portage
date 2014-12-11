@@ -564,8 +564,10 @@ class config(object):
 			self.user_profile_dir = locations_manager.user_profile_dir
 
 			try:
-				packages_list = [grabfile_package(os.path.join(x, "packages"),
-					verify_eapi=True) for x in self.profiles]
+				packages_list = [grabfile_package(
+					os.path.join(x.location, "packages"),
+					verify_eapi=True, eapi=x.eapi, eapi_default=None)
+					for x in profiles_complex]
 			except IOError as e:
 				if e.errno == IsADirectory.errno:
 					raise IsADirectory(os.path.join(self.profile_path,
@@ -758,7 +760,8 @@ class config(object):
 						portage.dep.ExtendedAtomDict(dict)
 					bashrc = grabdict_package(os.path.join(profile.location,
 						"package.bashrc"), recursive=1, allow_wildcard=True,
-								allow_repo=True, verify_eapi=False)
+								allow_repo=True, verify_eapi=True,
+								eapi=profile.eapi, eapi_default=None)
 					if not bashrc:
 						continue
 

@@ -39,7 +39,8 @@ class MaskManager(object):
 				path = os.path.join(loc, 'profiles', 'package.mask')
 				pmask_cache[loc] = grabfile_package(path,
 						recursive=repo_config.portage1_profiles,
-						remember_source_file=True, verify_eapi=True)
+						remember_source_file=True, verify_eapi=True,
+						eapi_default=repo_config.eapi)
 				if repo_config.portage1_profiles_compat and os.path.isdir(path):
 					warnings.warn(_("Repository '%(repo_name)s' is implicitly using "
 						"'portage-1' profile format in its profiles/package.mask, but "
@@ -105,7 +106,8 @@ class MaskManager(object):
 			if not repo.portage1_profiles:
 				continue
 			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.unmask"), \
-				recursive=1, remember_source_file=True, verify_eapi=True)
+				recursive=1, remember_source_file=True,
+				verify_eapi=True, eapi_default=repo.eapi)
 			lines = stack_lists([repo_lines], incremental=1, \
 				remember_source_file=True, warn_for_unmatched_removal=True,
 				strict_warn_for_unmatched_removal=strict_umatched_removal)
@@ -119,12 +121,14 @@ class MaskManager(object):
 			profile_pkgmasklines.append(grabfile_package(
 				os.path.join(x.location, "package.mask"),
 				recursive=x.portage1_directories,
-				remember_source_file=True, verify_eapi=True))
+				remember_source_file=True, verify_eapi=True,
+				eapi=x.eapi, eapi_default=None))
 			if x.portage1_directories:
 				profile_pkgunmasklines.append(grabfile_package(
 					os.path.join(x.location, "package.unmask"),
 					recursive=x.portage1_directories,
-					remember_source_file=True, verify_eapi=True))
+					remember_source_file=True, verify_eapi=True,
+					eapi=x.eapi, eapi_default=None))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True,
 			strict_warn_for_unmatched_removal=strict_umatched_removal)

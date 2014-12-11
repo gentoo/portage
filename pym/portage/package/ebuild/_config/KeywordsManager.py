@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -22,7 +22,7 @@ class KeywordsManager(object):
 		rawpkeywords = [grabdict_package(
 			os.path.join(x.location, "package.keywords"),
 			recursive=x.portage1_directories,
-			verify_eapi=True) \
+			verify_eapi=True, eapi=x.eapi, eapi_default=None)
 			for x in profiles]
 		for pkeyworddict in rawpkeywords:
 			if not pkeyworddict:
@@ -38,7 +38,7 @@ class KeywordsManager(object):
 		raw_p_accept_keywords = [grabdict_package(
 			os.path.join(x.location, "package.accept_keywords"),
 			recursive=x.portage1_directories,
-			verify_eapi=True) \
+			verify_eapi=True, eapi=x.eapi, eapi_default=None)
 			for x in profiles]
 		for d in raw_p_accept_keywords:
 			if not d:

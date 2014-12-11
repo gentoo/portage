@@ -254,6 +254,11 @@ use.stable.force, package.use.stable.mask and
 package.use.stable.force. These files behave similarly to
 previously supported USE configuration files, except that they
 only influence packages that are merged due to a stable keyword.
+
+If the eapi file does not exist, then the \fBEAPI\fR defaults to
+\fI0\fR unless the default has been overridden by a
+profile_eapi_when_unspecified setting inside \fImetadata/layout.conf\fR
+of the containing repository.
 .TP
 .BR make.defaults
 The profile default settings for Portage.  The general format is described
@@ -1114,7 +1119,11 @@ The default setting for repoman's --echangelog option.
 The cache formats supported in the metadata tree.  There is the old "pms" format
 and the newer/faster "md5-dict" format.  Default is to detect dirs.
 .TP
-.BR profile\-formats " = [pms|portage-1|portage-2|profile-bashrcs|profile-set]"
+.BR profile_eapi_when_unspecified
+The EAPI to use for profiles when unspecified. This attribute is
+supported only if profile-default-eapi is included in profile-formats.
+.TP
+.BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] [profile-set] [profile-default-eapi]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
@@ -1123,6 +1132,8 @@ Setting profile-bashrcs will enable the per-profile bashrc mechanism
 \fBpackage.bashrc\fR. Setting profile-set enables support for using the
 profile \fBpackages\fR file to add atoms to the @profile package set.
 See the profile \fBpackages\fR section for more information.
+Setting profile-default-eapi enables support for the
+profile_eapi_when_unspecified attribute.
 .RE
 .RE
 

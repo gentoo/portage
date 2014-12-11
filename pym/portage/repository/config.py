@@ -41,7 +41,8 @@ if sys.hexversion >= 0x3000000:
 _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
 
 _valid_profile_formats = frozenset(
-	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set'])
+	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
+	'profile-default-eapi'])
 
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
@@ -190,11 +191,9 @@ class RepoConfig(object):
 			location = None
 		self.location = location
 
-		eapi = None
 		missing = True
 		self.name = name
 		if self.location is not None:
-			eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
 			self.name, missing = self._read_valid_repo_name(self.location)
 			if missing:
 				# The name from repos.conf has to be used here for
@@ -208,7 +207,7 @@ class RepoConfig(object):
 		elif name == "DEFAULT":
 			missing = False
 
-		self.eapi = eapi
+		self.eapi = None
 		self.missing_repo_name = missing
 		# sign_commit is disabled by default, since it requires Git >=1.7.9,
 		# and key_id configured by `git config user.signingkey key_id`
@@ -257,6 +256,16 @@ class RepoConfig(object):
 				'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
+
+			# If profile-formats specifies a default EAPI, then set
+			# self.eapi to that, otherwise set it to "0" as specified
+			# by PMS.
+			self.eapi = layout_data.get(
+				'profile_eapi_when_unspecified', '0')
+
+			eapi = read_corresponding_eapi_file(
+				os.path.join(self.location, REPO_NAME_LOC),
+				default=self.eapi)
 
 			self.portage1_profiles = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
 				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
@@ -1084,5 +1093,29 @@ def parse_layout_conf(repo_location, repo_name=None):
 				DeprecationWarning)
 		raw_formats = tuple(raw_formats.intersection(_valid_profile_formats))
 	data['profile-formats'] = raw_formats
+
+	try:
+		eapi = layout_data['profile_eapi_when_unspecified']
+	except KeyError:
+		pass
+	else:
+		if 'profile-default-eapi' not in raw_formats:
+			warnings.warn((_("Repository named '%(repo_name)s' has "
+				"profile_eapi_when_unspecified setting in "
+				"'%(layout_filename)s', but 'profile-default-eapi' is "
+				"not listed in the profile-formats field. Please "
+				"report this issue to the repository maintainer.") %
+				dict(repo_name=repo_name or 'unspecified',
+				layout_filename=layout_filename)),
+				SyntaxWarning)
+		elif not portage.eapi_is_supported(eapi):
+			warnings.warn((_("Repository named '%(repo_name)s' has "
+				"unsupported EAPI '%(eapi)s' setting in "
+				"'%(layout_filename)s'; please upgrade portage.") %
+				dict(repo_name=repo_name or 'unspecified',
+				eapi=eapi, layout_filename=layout_filename)),
+				SyntaxWarning)
+		else:
+			data['profile_eapi_when_unspecified'] = eapi
 
 	return data, layout_errors

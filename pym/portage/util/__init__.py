@@ -425,7 +425,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 	return eapi
 
 def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
-	verify_eapi=False, eapi=None):
+	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
 	    with isvalidatom()"""
 
@@ -441,7 +441,8 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 		if not d:
 			continue
 		if verify_eapi and eapi is None:
-			eapi = read_corresponding_eapi_file(myfilename)
+			eapi = read_corresponding_eapi_file(
+				myfilename, default=eapi_default)
 
 		for k, v in d.items():
 			try:
@@ -460,13 +461,15 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 	return atoms
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
-	remember_source_file=False, verify_eapi=False, eapi=None):
+	remember_source_file=False, verify_eapi=False, eapi=None,
+	eapi_default="0"):
 
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
 	if not pkgs:
 		return pkgs
 	if verify_eapi and eapi is None:
-		eapi = read_corresponding_eapi_file(myfilename)
+		eapi = read_corresponding_eapi_file(
+			myfilename, default=eapi_default)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
 	for pkg, source_file in pkgs:
