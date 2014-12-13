@@ -21,7 +21,7 @@ from portage.localization import localized_size
 from portage.output import (blue, bold, colorize, create_color_func,
 	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
-from portage.util import shlex_split, writemsg
+from portage.util import writemsg
 from portage.util.SlotObject import SlotObject
 from portage.versions import catpkgsplit
 
@@ -39,23 +39,12 @@ class _RepoDisplay(object):
 		self._unknown_repo = False
 		repo_paths = set()
 		for root_config in roots.values():
-			portdir = root_config.settings.get("PORTDIR")
-			if portdir:
-				repo_paths.add(portdir)
-			overlays = root_config.settings.get("PORTDIR_OVERLAY")
-			if overlays:
-				repo_paths.update(shlex_split(overlays))
+			for repo in root_config.settings.repositories:
+				repo_paths.add(repo.location)
 		repo_paths = list(repo_paths)
 		self._repo_paths = repo_paths
 		self._repo_paths_real = [ os.path.realpath(repo_path) \
 			for repo_path in repo_paths ]
-
-		# pre-allocate index for PORTDIR so that it always has index 0.
-		for root_config in roots.values():
-			portdb = root_config.trees["porttree"].dbapi
-			portdir = portdb.repositories.mainRepoLocation()
-			if portdir:
-				self.repoStr(portdir)
 
 	def repoStr(self, repo_path_real):
 		real_index = -1
@@ -80,7 +69,7 @@ class _RepoDisplay(object):
 		shown_repos = self._shown_repos
 		unknown_repo = self._unknown_repo
 		if shown_repos or self._unknown_repo:
-			output.append("Portage tree and overlays:\n")
+			output.append("Repositories:\n")
 		show_repo_paths = list(shown_repos)
 		for repo_path, repo_index in shown_repos.items():
 			show_repo_paths[repo_index] = repo_path
