@@ -42,7 +42,7 @@ from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFA
 from portage.const import SUPPORTED_BINPKG_FORMATS, TIMESTAMP_FORMAT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
-from portage.dep import Atom
+from portage.dep import Atom, _repo_separator, _slot_separator
 from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom, InvalidData, ParseError
 from portage.output import blue, colorize, create_color_func, darkgreen, \
@@ -1668,9 +1668,6 @@ def action_info(settings, trees, myopts, myfiles):
 
 	myvars = sorted(set(atoms))
 
-	main_repo = portdb.repositories.mainRepo()
-	if main_repo is not None:
-		main_repo = main_repo.name
 	cp_map = {}
 	cp_max_len = 0
 
@@ -1692,12 +1689,10 @@ def action_info(settings, trees, myopts, myfiles):
 				if len(matched_cp) > cp_max_len:
 					cp_max_len = len(matched_cp)
 				repo = vardb.aux_get(cpv, ["repository"])[0]
-				if repo == main_repo:
-					repo_suffix = ""
-				elif not repo:
-					repo_suffix = "::<unknown repository>"
+				if repo:
+					repo_suffix = _repo_separator + repo
 				else:
-					repo_suffix = "::" + repo
+					repo_suffix = _repo_separator + "<unknown repository>"
 
 				if matched_cp == orig_atom.cp:
 					provide_suffix = ""
@@ -1826,13 +1821,13 @@ def action_info(settings, trees, myopts, myfiles):
 
 			if pkg_type == "installed":
 				append("\n%s was built with the following:" % \
-					colorize("INFORM", str(pkg.cpv)))
+					colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo)))
 			elif pkg_type == "ebuild":
-				append("\n%s would be build with the following:" % \
-					colorize("INFORM", str(pkg.cpv)))
+				append("\n%s would be built with the following:" % \
+					colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo)))
 			elif pkg_type == "binary":
 				append("\n%s (non-installed binary) was built with the following:" % \
-					colorize("INFORM", str(pkg.cpv)))
+					colorize("INFORM", str(pkg.cpv + _repo_separator + pkg.repo)))
 
 			append('%s' % pkg_use_display(pkg, myopts))
 			if pkg_type == "installed":
@@ -2015,10 +2010,10 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 						atom = "=" + atom + "-" + \
 							portage.versions.cpv_getversion(cpv)
 					if ext_atom.slot:
-						atom += ":" + ext_atom.slot
+						atom += _slot_separator + ext_atom.slot
 						require_metadata = True
 					if ext_atom.repo:
-						atom += "::" + ext_atom.repo
+						atom += _repo_separator + ext_atom.repo
 						require_metadata = True
 
 					atom = Atom(atom, allow_repo=True)
