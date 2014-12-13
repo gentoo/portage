@@ -50,7 +50,6 @@ options=[
 "--tree",
 "--unordered-display",
 "--update",
-"--verbose-main-repo-display",
 ]
 
 shortmapping={

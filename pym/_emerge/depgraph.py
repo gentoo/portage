@@ -4293,14 +4293,9 @@ class depgraph(object):
 		child = None
 		all_parents = self._dynamic_config._parent_atoms
 		graph = self._dynamic_config.digraph
-		verbose_main_repo_display = "--verbose-main-repo-display" in \
-			self._frozen_config.myopts
 
 		def format_pkg(pkg):
-			pkg_name = "%s" % (pkg.cpv,)
-			if verbose_main_repo_display or pkg.repo != \
-				pkg.root_config.settings.repositories.mainRepo().name:
-				pkg_name += _repo_separator + pkg.repo
+			pkg_name = "%s%s%s" % (pkg.cpv, _repo_separator, pkg.repo)
 			return pkg_name
 
 		if target_atom is not None and isinstance(node, Package):

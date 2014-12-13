@@ -387,9 +387,7 @@ class Display(object):
 						if old_pkg.slot != old_pkg.sub_slot or \
 							old_pkg.slot == pkg.slot and old_pkg.sub_slot != pkg.sub_slot:
 							key += "/" + old_pkg.sub_slot
-					if not self.quiet_repo_display and (self.verbose_main_repo_display or
-						self.portdb.repositories.mainRepo() is None or
-						any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
+					if not self.quiet_repo_display:
 						key += _repo_separator + old_pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
@@ -422,9 +420,7 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype string
 		"""
-		if not self.quiet_repo_display and (self.verbose_main_repo_display or
-			self.portdb.repositories.mainRepo() is None or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+		if not self.quiet_repo_display:
 			pkg_str += _repo_separator + pkg.repo
 		return pkg_str
 
@@ -819,7 +815,6 @@ class Display(object):
 			# and disable the entire repo display in this case.
 			repoadd_set = set()
 
-		self.verbose_main_repo_display = "--verbose-main-repo-display" in depgraph._frozen_config.myopts
 		self.restrict_fetch_list = {}
 
 		for mylist_index in range(len(mylist)):
