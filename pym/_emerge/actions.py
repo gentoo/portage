@@ -1713,13 +1713,9 @@ def action_info(settings, trees, myopts, myfiles):
 			((cp + ":").ljust(cp_max_len + 1), versions))
 
 	repos = portdb.settings.repositories
-	if "--verbose" in myopts:
-		append("Repositories:\n")
-		for repo in repos:
-			append(repo.info_string())
-	else:
-		append("Repositories: %s" % \
-			" ".join(repo.name for repo in repos))
+	append("Repositories:\n")
+	for repo in repos:
+		append(repo.info_string())
 
 	installed_sets = sorted(s for s in
 		root_config.sets['selected'].getNonAtoms() if s.startswith(SETPREFIX))
@@ -1732,8 +1728,8 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars = list(settings)
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
-		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTDIR_OVERLAY', 'PORTAGE_BUNZIP2_COMMAND',
+		          'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
+		          'PORTAGE_BUNZIP2_COMMAND',
 		          'PORTAGE_BZIP2_COMMAND',
 		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'FEATURES',
@@ -1745,11 +1741,18 @@ def action_info(settings, trees, myopts, myfiles):
 		'PORTAGE_BZIP2_COMMAND' : 'bzip2',
 	}
 
-	myvars = portage.util.unique_array(myvars)
+	skipped_vars = ['PORTAGE_REPOSITORIES']
+	# Deprecated variables
+	skipped_vars.extend(('PORTDIR', 'PORTDIR_OVERLAY', 'SYNC'))
+
+	myvars = set(myvars)
+	myvars.difference_update(skipped_vars)
+	myvars = sorted(myvars)
+
 	use_expand = settings.get('USE_EXPAND', '').split()
 	use_expand.sort()
 	unset_vars = []
-	myvars.sort()
+
 	for k in myvars:
 		v = settings.get(k)
 		if v is not None:
