@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -27,7 +27,7 @@ env_blacklist = frozenset((
 	"PORTAGE_INTERNAL_CALLER", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_PIPE_FD", "PORTAGE_REPO_NAME",
 	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "REPOSITORY",
-	"RESTRICT", "ROOT", "SLOT", "SRC_URI"
+	"RESTRICT", "ROOT", "SLOT", "SRC_URI", "_"
 ))
 
 environ_whitelist = []
