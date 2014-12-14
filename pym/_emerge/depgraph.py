@@ -713,7 +713,7 @@ class depgraph(object):
 						if child is None:
 							continue
 
-						inst_child = dep.child.installed
+						inst_child = dep.child
 
 					else:
 						child = dep.child
