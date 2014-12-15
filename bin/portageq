@@ -1075,14 +1075,10 @@ def pquery(parser, opts, args):
 			herds.extend(x.split(","))
 		xml_matchers.append(HerdMatcher(herds))
 
-	repos = []
-	if opts.all_repos:
-		repos.extend(portdb.repositories.get_repo_for_location(location)
-			for location in portdb.porttrees)
-	elif opts.repo is not None:
-		repos.append(portdb.repositories[opts.repo])
+	if opts.repo is not None:
+		repos = [portdb.repositories[opts.repo]]
 	else:
-		repos.append(portdb.repositories.mainRepo())
+		repos = list(portdb.repositories)
 
 	if not atoms:
 		names = None
@@ -1220,12 +1216,8 @@ def add_pquery_arguments(parser):
 				},
 				{
 					"longopt": "--repo",
-					"help": "repo to use (default is PORTDIR if omitted)"
+					"help": "repository to use (all repositories are used by default)"
 				},
-				{
-					"longopt": "--all-repos",
-					"help": "search all repos"
-				}
 			)
 		),
 		(
