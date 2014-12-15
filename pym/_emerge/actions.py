@@ -1452,6 +1452,7 @@ def action_info(settings, trees, myopts, myfiles):
 	vardb = trees[eroot]["vartree"].dbapi
 	portdb = trees[eroot]['porttree'].dbapi
 	bindb = trees[eroot]["bintree"].dbapi
+	repos = portdb.settings.repositories
 	for x in myfiles:
 		any_match = False
 		cp_exists = bool(vardb.match(x.cp))
@@ -1554,13 +1555,10 @@ def action_info(settings, trees, myopts, myfiles):
 			line += ",%10d free" % (vm_info["swap.free"] // 1024,)
 		append(line)
 
-	lastSync = portage.grabfile(os.path.join(
-		settings["PORTDIR"], "metadata", "timestamp.chk"))
-	if lastSync:
-		lastSync = lastSync[0]
-	else:
-		lastSync = "Unknown"
-	append("Timestamp of tree: %s" % (lastSync,))
+	for repo in repos:
+		last_sync = portage.grabfile(os.path.join(repo.location, "metadata", "timestamp.chk"))
+		if last_sync:
+			append("Timestamp of repository %s: %s" % (repo.name, last_sync[0]))
 
 	# Searching contents for the /bin/sh provider is somewhat
 	# slow. Therefore, use the basename of the symlink target
@@ -1707,7 +1705,6 @@ def action_info(settings, trees, myopts, myfiles):
 		append("%s %s" % \
 			((cp + ":").ljust(cp_max_len + 1), versions))
 
-	repos = portdb.settings.repositories
 	append("Repositories:\n")
 	for repo in repos:
 		append(repo.info_string())
