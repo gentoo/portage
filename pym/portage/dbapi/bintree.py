@@ -360,16 +360,6 @@ class binarytree(object):
 				"repository"   : "",
 			}
 
-			# It is especially important to populate keys like
-			# "repository" that save space when entries can
-			# inherit them from the header. If an existing
-			# pkgindex header already defines these keys, then
-			# they will appropriately override our defaults.
-			main_repo = self.settings.repositories.mainRepo()
-			if main_repo is not None and not main_repo.missing_repo_name:
-				self._pkgindex_default_header_data["repository"] = \
-					main_repo.name
-
 			self._pkgindex_translated_keys = (
 				("DESCRIPTION"   ,   "DESC"),
 				("repository"    ,   "REPO"),
