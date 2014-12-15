@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -129,8 +129,7 @@ class SecuritySetTestCase(TestCase):
 		try:
 
 			portdb = playground.trees[playground.eroot]["porttree"].dbapi
-			glsa_dir = os.path.join(
-				portdb.repositories.mainRepoLocation(), 'metadata', 'glsa')
+			glsa_dir = os.path.join(portdb.repositories['test_repo'].location, 'metadata', 'glsa')
 			portage.util.ensure_dirs(glsa_dir)
 			for glsa in glsas:
 				with io.open(os.path.join(glsa_dir,
