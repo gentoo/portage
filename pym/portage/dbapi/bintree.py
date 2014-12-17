@@ -391,7 +391,7 @@ class binarytree(object):
 		# sanity check
 		for atom in (origcp, newcp):
 			if not isjustname(atom):
-				raise InvalidPackageName(str(atom))
+				raise InvalidPackageName(_unicode(atom))
 		mynewcat = catsplit(newcp)[0]
 		origmatches=self.dbapi.cp_list(origcp)
 		moves = 0
@@ -803,8 +803,8 @@ class binarytree(object):
 
 					d["CPV"] = mycpv
 					d["SLOT"] = slot
-					d["MTIME"] = str(s[stat.ST_MTIME])
-					d["SIZE"] = str(s.st_size)
+					d["MTIME"] = _unicode(s[stat.ST_MTIME])
+					d["SIZE"] = _unicode(s.st_size)
 
 					d.update(zip(self._pkgindex_aux_keys,
 						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
@@ -1024,7 +1024,11 @@ class binarytree(object):
 			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % _hide_url_passwd(base_url))
-				writemsg("!!! %s\n\n" % str(e))
+				# With Python 2, the EnvironmentError message may
+				# contain bytes or unicode, so use _unicode to ensure
+				# safety with all locales (bug #532784).
+				writemsg("!!! %s\n\n" % _unicode(e,
+					_encodings["stdio"], errors="replace"))
 				del e
 				pkgindex = None
 			if proc is not None:
@@ -1242,8 +1246,8 @@ class binarytree(object):
 
 		d["CPV"] = cpv
 		st = os.stat(pkg_path)
-		d["MTIME"] = str(st[stat.ST_MTIME])
-		d["SIZE"] = str(st.st_size)
+		d["MTIME"] = _unicode(st[stat.ST_MTIME])
+		d["SIZE"] = _unicode(st.st_size)
 
 		rel_path = self._pkg_paths[cpv]
 		# record location if it's non-default
@@ -1270,7 +1274,7 @@ class binarytree(object):
 			if profile_path.startswith(profiles_base):
 				profile_path = profile_path[len(profiles_base):]
 			header["PROFILE"] = profile_path
-		header["VERSION"] = str(self._pkgindex_version)
+		header["VERSION"] = _unicode(self._pkgindex_version)
 		base_uri = self.settings.get("PORTAGE_BINHOST_HEADER_URI")
 		if base_uri:
 			header["URI"] = base_uri
@@ -1316,8 +1320,7 @@ class binarytree(object):
 				deps = use_reduce(deps, uselist=use, token_class=token_class)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
-				writemsg("%s: %s\n" % (k, str(e)),
-					noiselevel=-1)
+				writemsg("%s: %s\n" % (k, e), noiselevel=-1)
 				raise
 			metadata[k] = deps
 
