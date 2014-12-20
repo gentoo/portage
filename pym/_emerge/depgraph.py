@@ -9059,7 +9059,7 @@ def show_mask_docs():
 def show_blocker_docs_link():
 	writemsg("\nFor more information about " + bad("Blocked Packages") + ", please refer to the following\n", noiselevel=-1)
 	writemsg("section of the Gentoo Linux x86 Handbook (architecture is irrelevant):\n\n", noiselevel=-1)
-	writemsg("http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked\n\n", noiselevel=-1)
+        writemsg("https://wiki.gentoo.org/wiki/Handbook:X86/Working/Portage#Blocked_packages\n\n", noiselevel=-1)
 
 def get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 	return [mreason.message for \

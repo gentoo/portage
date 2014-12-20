@@ -11,7 +11,7 @@
 # example, quite a few packages have optional X, gtk or GNOME functionality
 # that can only be enabled or disabled at compile-time. Gentoo Linux has a
 # very extensive set of USE variables described in our USE variable HOWTO at
-# http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?part=2&chap=1
+# https://wiki.gentoo.org/wiki/Handbook:X86/Working/USE
 #
 # The available list of use flags with descriptions is in your portage tree.
 # Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
