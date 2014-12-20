@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -72,6 +72,12 @@ class ResolverPlayground(object):
 			self.eprefix = normalize_path(tempfile.mkdtemp())
 		else:
 			self.eprefix = normalize_path(eprefix)
+
+		# Tests may override portage.const.EPREFIX in order to
+		# simulate a prefix installation. It's reasonable to do
+		# this because tests should be self-contained such that
+		# the "real" value of portage.const.EPREFIX is entirely
+		# irrelevant (see bug #492932).
 		portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
 
 		self.eroot = self.eprefix + os.sep
