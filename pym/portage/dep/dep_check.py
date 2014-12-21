@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -319,6 +319,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	graph    = trees[myroot].get("graph")
 	pkg_use_enabled = trees[myroot].get("pkg_use_enabled")
 	want_update_pkg = trees[myroot].get("want_update_pkg")
+	downgrade_probe = trees[myroot].get("downgrade_probe")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -351,6 +352,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_available = True
 		all_use_satisfied = True
 		all_use_unmasked = True
+		conflict_downgrade = False
 		slot_map = {}
 		cp_map = {}
 		for atom in atoms:
@@ -366,6 +368,16 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				all_available = False
 				all_use_satisfied = False
 				break
+
+			if graph_db is not None and downgrade_probe is not None:
+				slot_matches = graph_db.match_pkgs(avail_slot)
+				if (len(slot_matches) > 1 and
+					avail_pkg < slot_matches[-1] and
+					not downgrade_probe(avail_pkg)):
+					# If a downgrade is not desirable, then avoid a
+					# choice that pulls in a lower version involved
+					# in a slot conflict (bug #531656).
+					conflict_downgrade = True
 
 			if atom.use:
 				avail_pkg_use = mydbapi_match_pkgs(atom)
@@ -450,6 +462,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_installed.append(this_choice)
 					else:
 						unsat_use_non_installed.append(this_choice)
+			elif conflict_downgrade:
+				other.append(this_choice)
 			else:
 				all_in_graph = True
 				for atom in atoms:

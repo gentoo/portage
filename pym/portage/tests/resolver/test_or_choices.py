@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Gentoo Foundation
+# Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -261,4 +261,82 @@ class OrChoicesTestCase(TestCase):
 				self.assertEqual(test_case.test_success, True,
 					test_case.fail_msg)
 		finally:
+			playground.cleanup()
+
+	def testConflictMissedUpdate(self):
+
+		ebuilds = {
+			"dev-lang/ocaml-4.02.1" : {
+				"EAPI": "5",
+				"SLOT": "0/4.02.1",
+			},
+
+			"dev-lang/ocaml-4.01.0" : {
+				"EAPI": "5",
+				"SLOT": "0/4.01.0",
+			},
+
+			"dev-ml/lablgl-1.05" : {
+				"EAPI": "5",
+				"DEPEND": (">=dev-lang/ocaml-3.10.2:= "
+					"|| ( dev-ml/labltk:= <dev-lang/ocaml-4.02 )"),
+				"RDEPEND": (">=dev-lang/ocaml-3.10.2:= "
+					"|| ( dev-ml/labltk:= <dev-lang/ocaml-4.02 )"),
+			},
+
+			"dev-ml/labltk-8.06.0" : {
+				"EAPI": "5",
+				"SLOT": "0/8.06.0",
+				"DEPEND": ">=dev-lang/ocaml-4.02:=",
+				"RDEPEND": ">=dev-lang/ocaml-4.02:=",
+			},
+		}
+
+		installed = {
+			"dev-lang/ocaml-4.01.0" : {
+				"EAPI": "5",
+				"SLOT": "0/4.01.0",
+			},
+
+			"dev-ml/lablgl-1.05" : {
+				"EAPI": "5",
+				"DEPEND": (">=dev-lang/ocaml-3.10.2:0/4.01.0= "
+					"|| ( dev-ml/labltk:= <dev-lang/ocaml-4.02 )"),
+				"RDEPEND": (">=dev-lang/ocaml-3.10.2:0/4.01.0= "
+					"|| ( dev-ml/labltk:= <dev-lang/ocaml-4.02 )"),
+			},
+		}
+
+		world = (
+			"dev-lang/ocaml",
+			"dev-ml/lablgl",
+		)
+
+		test_cases = (
+
+			# bug #531656: If an ocaml update is desirable,
+			# then we need to pull in dev-ml/labltk.
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = [
+					"dev-lang/ocaml-4.02.1",
+					"dev-ml/labltk-8.06.0",
+					"dev-ml/lablgl-1.05",
+				]
+			),
+
+		)
+
+		playground = ResolverPlayground(debug=False,
+			ebuilds=ebuilds, installed=installed, world=world)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			# Disable debug so that cleanup works.
+			playground.debug = False
 			playground.cleanup()

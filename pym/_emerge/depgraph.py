@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -451,6 +451,7 @@ class _dynamic_depgraph_config(object):
 			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
 			self._graph_trees[myroot]["graph"]      = self.digraph
 			self._graph_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._graph_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 			def filtered_tree():
 				pass
 			filtered_tree.dbapi = _dep_check_composite_db(depgraph, myroot)
@@ -478,6 +479,7 @@ class _dynamic_depgraph_config(object):
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
 			self._filtered_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._filtered_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 
 			dbs = []
 			#               (db, pkg_type, built, installed, db_keys)
@@ -1144,7 +1146,13 @@ class depgraph(object):
 					writemsg_level("      pkg: %s\n" % pkg, level=logging.DEBUG, noiselevel=-1)
 
 			all_parent_atoms = set()
+			highest_pkg = None
+			inst_pkg = None
 			for pkg in conflict:
+				if pkg.installed:
+					inst_pkg = pkg
+				if highest_pkg is None or highest_pkg < pkg:
+					highest_pkg = pkg
 				all_parent_atoms.update(
 					self._dynamic_config._parent_atoms.get(pkg, []))
 
@@ -1167,6 +1175,15 @@ class depgraph(object):
 
 				matched = []
 				for pkg in conflict:
+					if (pkg is highest_pkg and
+						not highest_pkg.installed and
+						inst_pkg is not None and
+						inst_pkg.sub_slot != highest_pkg.sub_slot and
+						not self._downgrade_probe(highest_pkg)):
+						# If an upgrade is desired, force the highest
+						# version into the graph (bug #531656).
+						non_matching_forced.add(highest_pkg)
+
 					if atom_set.findAtomForPackage(pkg, \
 						modified_use=self._pkg_use_enabled(pkg)) and \
 						not (is_arg_parent and pkg.installed):
@@ -1220,14 +1237,20 @@ class depgraph(object):
 		# the packages in the tuple. This way we don't have
 		# to choose one.
 		unexplored_tuples = set()
+		explored_nodes = set()
 
 		while unexplored:
 			# Handle all unexplored packages.
 			while unexplored:
 				node = unexplored.pop()
 				for child in conflict_graph.child_nodes(node):
-					if child in forced:
+					# Don't explore a node more than once, in order
+					# to avoid infinite recursion. The forced set
+					# cannot be used for this purpose, since it can
+					# contain unexplored nodes from non_matching_forced.
+					if child in explored_nodes:
 						continue
+					explored_nodes.add(child)
 					forced.add(child)
 					if isinstance(child, Package):
 						unexplored.add(child)
@@ -8817,6 +8840,11 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 			mydepgraph.display_problems()
 
 		backtrack_parameters = backtracker.get()
+		if debug and backtrack_parameters.runtime_pkg_mask:
+			writemsg_level(
+				"\n\nruntime_pkg_mask: %s \n\n" %
+				backtrack_parameters.runtime_pkg_mask,
+				noiselevel=-1, level=logging.DEBUG)
 
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config,
