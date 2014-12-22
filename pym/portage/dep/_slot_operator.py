@@ -8,6 +8,19 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from _emerge.Package import Package
 
+def strip_slots(dep_struct):
+	"""
+	Search dep_struct for any slot := operators and remove the
+	slot/sub-slot part, while preserving the operator. The result
+	is suitable for --changed-deps comparisons.
+	"""
+	for i, x in enumerate(dep_struct):
+		if isinstance(x, list):
+			strip_slots(x)
+		elif (isinstance(x, Atom) and
+			x.slot_operator == "=" and x.slot is not None):
+			dep_struct[i] = x.with_slot("=")
+
 def find_built_slot_operator_atoms(pkg):
 	atoms = {}
 	for k in Package._dep_keys:

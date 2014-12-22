@@ -130,7 +130,9 @@ def insert_optional_args(args):
 		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
 		'--autounmask-write'     : y_or_n,
+		'--binpkg-changed-deps'  : y_or_n,
 		'--buildpkg'             : y_or_n,
+		'--changed-deps'         : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
 		'--depclean-lib-check'   : y_or_n,
@@ -354,6 +356,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--binpkg-changed-deps": {
+			"help"    : ("reject binary packages with outdated "
+				"dependencies"),
+			"choices" : true_y_or_n
+		},
+
 		"--buildpkg": {
 			"shortopt" : "-b",
 			"help"     : "build binary packages",
@@ -366,6 +374,12 @@ def parse_opts(tmpcmdline, silent=False):
 				"possible ways to enable building of binary packages.",
 
 			"action" : "append"
+		},
+
+		"--changed-deps": {
+			"help"    : ("replace installed packages with "
+				"outdated dependencies"),
+			"choices" : true_y_or_n
 		},
 
 		"--config-root": {
@@ -730,6 +744,12 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.autounmask_write in true_y:
 		myoptions.autounmask_write = True
 
+	if myoptions.binpkg_changed_deps is not None:
+		if myoptions.binpkg_changed_deps in true_y:
+			myoptions.binpkg_changed_deps = 'y'
+		else:
+			myoptions.binpkg_changed_deps = 'n'
+
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
 
@@ -738,6 +758,12 @@ def parse_opts(tmpcmdline, silent=False):
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --buildpkg-exclude parameter: '%s'\n" % \
 				(",".join(bad_atoms),))
+
+	if myoptions.changed_deps is not None:
+		if myoptions.changed_deps in true_y:
+			myoptions.changed_deps = 'y'
+		else:
+			myoptions.changed_deps = 'n'
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"

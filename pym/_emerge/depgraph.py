@@ -24,7 +24,8 @@ from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
 	_repo_separator
-from portage.dep._slot_operator import ignore_built_slot_operator_deps
+from portage.dep._slot_operator import (ignore_built_slot_operator_deps,
+	strip_slots)
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
 	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidData, InvalidDependString,
@@ -796,14 +797,12 @@ class depgraph(object):
 		match the user's config.
 		"""
 		if not self._dynamic_config.ignored_binaries \
-			or '--quiet' in self._frozen_config.myopts \
-			or self._dynamic_config.myparams.get(
-			"binpkg_respect_use") in ("y", "n"):
+			or '--quiet' in self._frozen_config.myopts:
 			return
 
-		for pkg in list(self._dynamic_config.ignored_binaries):
+		ignored_binaries = {}
 
-			selected_pkg = list()
+		for pkg in list(self._dynamic_config.ignored_binaries):
 
 			for selected_pkg in self._dynamic_config._package_tracker.match(
 				pkg.root, pkg.slot_atom):
@@ -821,15 +820,38 @@ class depgraph(object):
 					self._dynamic_config.ignored_binaries.pop(pkg)
 					break
 
-		if not self._dynamic_config.ignored_binaries:
+			else:
+				for reason, info in self._dynamic_config.\
+					ignored_binaries[pkg].items():
+					ignored_binaries.setdefault(reason, {})[pkg] = info
+
+		if self._dynamic_config.myparams.get(
+			"binpkg_respect_use") in ("y", "n"):
+			ignored_binaries.pop("respect_use", None)
+
+		if self._dynamic_config.myparams.get(
+			"binpkg_changed_deps") in ("y", "n"):
+			ignored_binaries.pop("changed_deps", None)
+
+		if not ignored_binaries:
 			return
 
 		self._show_merge_list()
 
+		if ignored_binaries.get("respect_use"):
+			self._show_ignored_binaries_respect_use(
+				ignored_binaries["respect_use"])
+
+		if ignored_binaries.get("changed_deps"):
+			self._show_ignored_binaries_changed_deps(
+				ignored_binaries["changed_deps"])
+
+	def _show_ignored_binaries_respect_use(self, respect_use):
+
 		writemsg("\n!!! The following binary packages have been ignored " + \
 				"due to non matching USE:\n\n", noiselevel=-1)
 
-		for pkg, flags in self._dynamic_config.ignored_binaries.items():
+		for pkg, flags in respect_use.items():
 			flag_display = []
 			for flag in sorted(flags):
 				if flag not in pkg.use.enabled:
@@ -847,6 +869,30 @@ class depgraph(object):
 			"NOTE: The --binpkg-respect-use=n option will prevent emerge",
 			"      from ignoring these binary packages if possible.",
 			"      Using --binpkg-respect-use=y will silence this warning."
+		]
+
+		for line in msg:
+			if line:
+				line = colorize("INFORM", line)
+			writemsg(line + "\n", noiselevel=-1)
+
+	def _show_ignored_binaries_changed_deps(self, changed_deps):
+
+		writemsg("\n!!! The following binary packages have been "
+			"ignored due to changed dependencies:\n\n",
+			noiselevel=-1)
+
+		for pkg in changed_deps:
+			msg = "     %s%s%s" % (pkg.cpv, _repo_separator, pkg.repo)
+			if pkg.root_config.settings["ROOT"] != "/":
+				msg += " for %s" % pkg.root
+			writemsg("%s\n" % msg, noiselevel=-1)
+
+		msg = [
+			"",
+			"NOTE: The --binpkg-changed-deps=n option will prevent emerge",
+			"      from ignoring these binary packages if possible.",
+			"      Using --binpkg-changed-deps=y will silence this warning."
 		]
 
 		for line in msg:
@@ -2195,6 +2241,52 @@ class depgraph(object):
 			if flags:
 				return flags
 		return None
+
+	def _changed_deps(self, pkg):
+
+		ebuild = None
+		try:
+			ebuild = self._pkg(pkg.cpv, "ebuild",
+				pkg.root_config, myrepo=pkg.repo)
+		except PackageNotFound:
+			# Use first available instance of the same version.
+			for ebuild in self._iter_match_pkgs(
+				pkg.root_config, "ebuild", Atom("=" + pkg.cpv)):
+				break
+
+		if ebuild is None:
+			changed = False
+		else:
+			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
+				depvars = Package._dep_keys
+			else:
+				depvars = Package._runtime_keys
+
+			# Use _raw_metadata, in order to avoid interaction
+			# with --dynamic-deps.
+			try:
+				built_deps = []
+				for k in depvars:
+					dep_struct = portage.dep.use_reduce(
+						pkg._raw_metadata[k], uselist=pkg.use.enabled,
+						eapi=pkg.eapi, token_class=Atom)
+					strip_slots(dep_struct)
+					built_deps.append(dep_struct)
+			except InvalidDependString:
+				changed = True
+			else:
+				unbuilt_deps = []
+				for k in depvars:
+					dep_struct = portage.dep.use_reduce(
+						ebuild._raw_metadata[k],
+						uselist=pkg.use.enabled,
+						eapi=ebuild.eapi, token_class=Atom)
+					strip_slots(dep_struct)
+					unbuilt_deps.append(dep_struct)
+
+				changed = built_deps != unbuilt_deps
+
+		return changed
 
 	def _create_graph(self, allow_unsatisfied=False):
 		dep_stack = self._dynamic_config._dep_stack
@@ -4618,8 +4710,14 @@ class depgraph(object):
 							mreasons = ["need to rebuild from source"]
 						elif pkg.installed and root_slot in self._rebuild.reinstall_list:
 							mreasons = ["need to rebuild from source"]
-						elif pkg.built and not mreasons:
+						elif (pkg.built and not mreasons and
+							self._dynamic_config.ignored_binaries.get(
+							pkg, {}).get("respect_use")):
 							mreasons = ["use flag configuration mismatch"]
+						elif (pkg.built and not mreasons and
+							self._dynamic_config.ignored_binaries.get(
+							pkg, {}).get("changed_deps")):
+							mreasons = ["changed deps"]
 					masked_packages.append(
 						(root_config, pkgsettings, cpv, repo, metadata, mreasons))
 
@@ -5716,6 +5814,12 @@ class depgraph(object):
 					# reject the built package if necessary.
 					reinstall_use = ("--newuse" in self._frozen_config.myopts or \
 						"--reinstall" in self._frozen_config.myopts)
+					changed_deps = (
+						self._dynamic_config.myparams.get(
+						"changed_deps", "n") != "n")
+					binpkg_changed_deps = (
+						self._dynamic_config.myparams.get(
+						"binpkg_changed_deps", "n") != "n")
 					respect_use = self._dynamic_config.myparams.get("binpkg_respect_use") in ("y", "auto")
 					if built and not useoldpkg and \
 						(not installed or matched_packages) and \
@@ -5742,8 +5846,22 @@ class depgraph(object):
 								forced_flags, old_use, iuses, now_use, cur_iuse)
 							if reinstall_for_flags:
 								if not pkg.installed:
-									self._dynamic_config.ignored_binaries.setdefault(pkg, set()).update(reinstall_for_flags)
+									self._dynamic_config.\
+										ignored_binaries.setdefault(
+										pkg, {}).setdefault(
+										"respect_use", set()).update(
+										reinstall_for_flags)
 								break
+
+						if (((installed and changed_deps) or
+							(not installed and binpkg_changed_deps)) and
+							self._changed_deps(pkg)):
+							if not installed:
+								self._dynamic_config.\
+									ignored_binaries.setdefault(
+									pkg, {})["changed_deps"] = True
+							break
+
 					# Compare current config to installed package
 					# and do not reinstall if possible.
 					if not installed and not useoldpkg and cpv in vardb.match(atom):

@@ -386,9 +386,20 @@ Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
 unsatisfied dependency (default: \'10\').
 .TP
+.BR "\-\-binpkg\-changed\-deps [ y | n ]"
+Tells emerge to ignore binary packages for which the corresponding
+ebuild dependencies have changed since the packages were built.
+In order to help avoid issues with resolving inconsistent dependencies,
+this option is automatically enabled unless the \fB\-\-usepkgonly\fR
+option is enabled. Behavior with respect to changed build\-time
+dependencies is controlled by the \fB\-\-with\-bdeps\fR option.
+.TP
 .BR "\-\-binpkg\-respect\-use [ y | n ]"
-Tells emerge to ignore binary packages if their use flags
-don't match the current configuration. (default: \'n\')
+Tells emerge to ignore binary packages if their USE flags
+don't match the current configuration. In order to help avoid issues
+with resolving inconsistent USE flag settings, this option is
+automatically enabled unless the \fB\-\-usepkgonly\fR option
+is enabled.
 .TP
 .BR "\-\-buildpkg [ y | n ] (\-b short option)"
 Tells emerge to build binary packages for all ebuilds processed in
@@ -411,6 +422,13 @@ the downgrade\-backup and unmerge\-backup \fBFEATURES\fR settings (see
 Creates binary packages for all ebuilds processed without actually
 merging the packages.  This comes with the caveat that all build-time
 dependencies must already be emerged on the system.
+.TP
+.BR "\-\-changed\-deps [ y | n ]"
+Tells emerge to replace installed packages for which the corresponding
+ebuild dependencies have changed since the packages were built. This
+option also implies the \fB\-\-selective\fR option. Behavior with
+respect to changed build\-time dependencies is controlled by the
+\fB\-\-with\-bdeps\fR option.
 .TP
 .BR "\-\-changed\-use " (\fB\-U\fR)
 Tells emerge to include installed packages where USE flags have

@@ -22,6 +22,8 @@ def create_depgraph_params(myopts, myaction):
 	# ignore_built_slot_operator_deps: ignore the slot/sub-slot := operator parts
 	#	of dependencies that have been recorded when packages where built
 	# with_test_deps: pull in test deps for packages matched by arguments
+	# changed_deps: rebuild installed packages with outdated deps
+	# binpkg_changed_deps: reject binary packages with outdated deps
 	myparams = {"recurse" : True}
 
 	bdeps = myopts.get("--with-bdeps")
@@ -51,6 +53,7 @@ def create_depgraph_params(myopts, myaction):
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
+		myopts.get("--changed-deps", "n") != "n" or \
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
 
@@ -98,6 +101,19 @@ def create_depgraph_params(myopts, myaction):
 		# long as it doesn't strongly conflict with other options that
 		# have been specified.
 		myparams['binpkg_respect_use'] = 'auto'
+
+	binpkg_changed_deps = myopts.get('--binpkg-changed-deps')
+	if binpkg_changed_deps is not None:
+		myparams['binpkg_changed_deps'] = binpkg_changed_deps
+	elif '--usepkgonly' not in myopts:
+		# In order to avoid dependency resolution issues due to changed
+		# dependencies, enable this automatically, as long as it doesn't
+		# strongly conflict with other options that have been specified.
+		myparams['binpkg_changed_deps'] = 'auto'
+
+	changed_deps = myopts.get('--changed-deps')
+	if changed_deps is not None:
+		myparams['changed_deps'] = changed_deps
 
 	if myopts.get("--selective") == "n":
 		# --selective=n can be used to remove selective
