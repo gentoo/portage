@@ -403,7 +403,9 @@ live filesystem.
 .BR "\-\-buildpkg\-exclude " ATOMS
 A space separated list of package atoms for which
 no binary packages should be built. This option overrides all
-possible ways to enable building of binary packages.
+possible ways to enable building of binary packages except for
+the downgrade\-backup and unmerge\-backup \fBFEATURES\fR settings (see
+\fBmake.conf\fR(5) for more information about \fBFEATURES\fR settings).
 .TP
 .BR "\-\-buildpkgonly " (\fB\-B\fR)
 Creates binary packages for all ebuilds processed without actually
