@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -631,6 +631,13 @@ def parse_opts(tmpcmdline, silent=False):
 		"--selective": {
 			"help"    : "identical to --noreplace",
 			"choices" : true_y_or_n
+		},
+
+		"--sync-submodule": {
+			"help"    : ("Restrict sync to the specified submodule(s)."
+				" (--sync action only)"),
+			"choices" : ("glsa", "news", "profiles"),
+			"action" : "append",
 		},
 
 		"--use-ebuild-visibility": {

@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -90,7 +90,8 @@ class SyncRepos(object):
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages)
+		return self._sync(selected, return_messages,
+			emaint_opts=options)
 
 
 	def all_repos(self, **kwargs):
@@ -101,7 +102,8 @@ class SyncRepos(object):
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages)
+		return self._sync(selected, return_messages,
+			emaint_opts=options)
 
 
 	def repo(self, **kwargs):
@@ -123,7 +125,8 @@ class SyncRepos(object):
 			if return_messages:
 				return msgs
 			return
-		return self._sync(selected, return_messages)
+		return self._sync(selected, return_messages,
+			emaint_opts=options)
 
 
 	@staticmethod
@@ -189,7 +192,15 @@ class SyncRepos(object):
 		return selected
 
 
-	def _sync(self, selected_repos, return_messages):
+	def _sync(self, selected_repos, return_messages,
+		emaint_opts=None):
+
+		if emaint_opts is not None:
+			for k, v in emaint_opts.items():
+				if v is not None:
+					k = "--" + k.replace("_", "-")
+					self.emerge_config.opts[k] = v
+
 		msgs = []
 		if not selected_repos:
 			msgs.append("Emaint sync, nothing to sync... returning")

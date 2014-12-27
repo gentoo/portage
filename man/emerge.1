@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Dec 2014" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jan 2015" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -835,6 +835,13 @@ first package in the resume list. Dependencies are recalculated for
 remaining packages and any that have unsatisfied dependencies or are
 masked will be automatically dropped. Also see the related
 \fB\-\-keep\-going\fR option.
+.TP
+.BR "\-\-sync\-submodule <glsa|news|profiles>"
+Restrict sync to the specified submodule(s). This option may be
+specified multiple times, in order to sync multiple submodules.
+Currently, this option has no effect for sync protocols other
+than rsync.
+(--sync action only)
 .TP
 .BR "\-\-tree " (\fB\-t\fR)
 Shows the dependency tree for the given target by indenting dependencies.

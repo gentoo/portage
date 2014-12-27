@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -178,4 +178,19 @@ class Modules(object):
 		else:
 			raise InvalidModuleName("Module name '%s' was invalid or not"
 				%modname + "found")
+		return desc
+
+	def get_opt_descriptions(self, modname):
+		"""Retrieves the module class exported options descriptions
+
+		@type modname: string
+		@param modname: the module class name
+		@type dictionary
+		@return: the modules class exported options descriptions
+		"""
+		if modname and modname in self.module_names:
+			desc = self._modules[modname].get('opt_desc')
+		else:
+			raise InvalidModuleName(
+				"Module name '%s' was invalid or not found" % modname)
 		return desc

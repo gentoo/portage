@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -34,6 +34,7 @@ class OptionItem(object):
 		self.action = opt.get('action')
 		self.type = opt.get('type')
 		self.dest = opt.get('dest')
+		self.choices = opt.get('choices')
 
 	@property
 	def pargs(self):
@@ -58,6 +59,8 @@ class OptionItem(object):
 			kwargs['type'] = self.type
 		if self.dest is not None:
 			kwargs['dest'] = self.dest
+		if self.choices is not None:
+			kwargs['choices'] = self.choices
 		return kwargs
 
 def usage(module_controller):
@@ -89,7 +92,10 @@ def module_opts(module_controller, module):
 		opts = DEFAULT_OPTIONS
 	for opt in sorted(opts):
 		optd = opts[opt]
-		opto = "  %s, %s" % (optd['short'], optd['long'])
+		if 'short' in optd:
+			opto = "  %s, %s" % (optd['short'], optd['long'])
+		else:
+			opto = "  %s" % (optd['long'],)
 		_usage += '%s %s\n' % (opto.ljust(15), optd['help'])
 	_usage += '\n'
 	return _usage
@@ -171,6 +177,10 @@ def emaint_main(myargv):
 		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt]))
 	for mod in module_names[1:]:
 		desc = module_controller.get_func_descriptions(mod)
+		if desc:
+			for opt in desc:
+				parser_options.append(OptionItem(desc[opt]))
+		desc = module_controller.get_opt_descriptions(mod)
 		if desc:
 			for opt in desc:
 				parser_options.append(OptionItem(desc[opt]))

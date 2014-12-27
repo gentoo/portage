@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 '''
@@ -12,6 +12,11 @@ import os
 import portage
 from portage.util import writemsg_level
 
+_SUBMODULE_PATH_MAP = {
+	'glsa': 'metadata/glsa',
+	'news': 'metadata/news',
+	'profiles': 'profiles',
+}
 
 class SyncBase(object):
 	'''Base Sync class for subclassing'''
@@ -57,7 +62,6 @@ class SyncBase(object):
 		self.xterm_titles = self.options.get('xterm_titles', False)
 		self.spawn_kwargs = self.options.get('spawn_kwargs', None)
 
-
 	def exists(self, **kwargs):
 		'''Tests whether the repo actually exists'''
 		if kwargs:
@@ -100,3 +104,11 @@ class SyncBase(object):
 		# and portdb properly account for its existence.
 		'''
 		pass
+
+	def _get_submodule_paths(self):
+		paths = []
+		emerge_config = self.options.get('emerge_config')
+		if emerge_config is not None:
+			for name in emerge_config.opts.get('--sync-submodule', []):
+				paths.append(_SUBMODULE_PATH_MAP[name])
+		return tuple(paths)

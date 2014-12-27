@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Check repos.conf settings and sync repositories."""
@@ -36,6 +36,16 @@ module_spec = {
 					'action': 'store_true',
 					'dest': 'auto',
 					'func': 'auto_sync',
+					},
+				},
+			'opt_desc': {
+				'sync-submodule': {
+					"long": "--sync-submodule",
+					"help": ("(sync module only): Restrict sync "
+						"to the specified submodule(s)"),
+					"choices": ("glsa", "news", "profiles"),
+					"action": "append",
+					"dest": "sync_submodule",
 					},
 				}
 			}

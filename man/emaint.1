@@ -1,4 +1,4 @@
-.TH "EMAINT" "1" "Nov 2008" "Portage VERSION" "Portage"
+.TH "EMAINT" "1" "Jan 2015" "Portage VERSION" "Portage"
 .SH NAME
 emaint \- performs system health checks and maintenance
 .SH SYNOPSIS
@@ -71,6 +71,13 @@ Sync all repositories which have a sync\-uri specified. (sync command only)
 .TP
 .B \-r, \-\-repo REPO
 Sync the repository specified. (sync command only)
+.TP
+.BR "\-\-sync-submodule <glsa|news|profiles>"
+Restrict sync to the specified submodule(s). This option may be
+specified multiple times, in order to sync multiple submodules.
+Currently, this option has no effect for sync protocols other
+than rsync.
+(sync command only)
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS

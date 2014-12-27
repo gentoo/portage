@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -488,7 +488,21 @@ class RsyncSync(SyncBase):
 				exitcode = SERVER_OUT_OF_DATE
 			elif (servertimestamp == 0) or (servertimestamp > timestamp):
 				# actual sync
-				command = rsynccommand + [syncuri+"/", self.repo.location]
+				command = rsynccommand[:]
+				submodule_paths = self._get_submodule_paths()
+				if submodule_paths:
+					# The only way to select multiple directories to
+					# sync, without calling rsync multiple times, is
+					# to use --relative.
+					command.append("--relative")
+					for path in submodule_paths:
+						# /./ is special syntax supported with the
+						# rsync --relative option.
+						command.append(syncuri + "/./" + path)
+					command.append(self.repo.location)
+				else:
+					command.extend([syncuri + "/", self.repo.location])
+
 				exitcode = None
 				try:
 					exitcode = portage.process.spawn(command,
