@@ -43,7 +43,8 @@ class Package(Task):
 		"HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
 		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE"]
+		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE", "PROVIDES",
+		"REQUIRES"]
 
 	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('DEPEND', 'HDEPEND')

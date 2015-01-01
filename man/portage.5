@@ -1479,6 +1479,31 @@ can be changed quickly.  Generally though there is one file per environment
 variable that "matters" (like CFLAGS) with the contents stored inside of it.
 Another common file is the CONTENTS file which lists the path and hashes of
 all objects that the package installed onto your system.
+.TP
+.BR PROVIDES
+Contains information about the sonames that a package provides, which is
+automatically generated from the files that it installs. The sonames
+may have been filtered by the \fBPROVIDES_EXCLUDE\fR \fBebuild\fR(5)
+variable. A multilib category, followed by a colon, always preceeds a
+list of one or more sonames.
+
+.I Example:
+.nf
+x86_32: libcom_err.so.2 libss.so.2 x86_64: libcom_err.so.2 libss.so.2
+.fi
+.TP
+.BR REQUIRES
+Contains information about the sonames that a package requires, which is
+automatically generated from the files that it installs. The sonames
+may have been filtered by the \fBREQUIRES_EXCLUDE\fR \fBebuild\fR(5)
+variable. Any sonames that a package provides are automatically excluded
+from \fBREQUIRES\fR. A multilib category, followed by a colon, always
+preceeds a list of one or more sonames.
+
+.I Example:
+.nf
+x86_32: ld-linux.so.2 libc.so.6 x86_64: ld-linux-x86-64.so.2 libc.so.6
+.fi
 .RE
 .TP
 .BR /var/lib/portage/

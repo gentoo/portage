@@ -11,12 +11,37 @@ from portage import _os_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
-from portage.exception import CommandNotFound
+from portage.exception import CommandNotFound, InvalidData
 from portage.localization import _
 from portage.util import getlibpaths
 from portage.util import grabfile
 from portage.util import normalize_path
+from portage.util import varexpand
 from portage.util import writemsg_level
+from portage.util._dyn_libs.NeededEntry import NeededEntry
+
+# Map ELF e_machine values from NEEDED.ELF.2 to approximate multilib
+# categories. This approximation will produce incorrect results on x32
+# and mips systems, but the result is not worse than using the raw
+# e_machine value which was used by earlier versions of portage.
+_approx_multilib_categories = {
+	"386":           "x86_32",
+	"68K":           "m68k_32",
+	"AARCH64":       "arm_64",
+	"ALPHA":         "alpha_64",
+	"ARM":           "arm_32",
+	"IA_64":         "ia_64",
+	"MIPS":          "mips_o32",
+	"PARISC":        "hppa_64",
+	"PPC":           "ppc_32",
+	"PPC64":         "ppc_64",
+	"S390":          "s390_64",
+	"SH":            "sh_32",
+	"SPARC":         "sparc_32",
+	"SPARC32PLUS":   "sparc_32",
+	"SPARCV9":       "sparc_64",
+	"X86_64":        "x86_64",
+}
 
 class LinkageMapELF(object):
 
@@ -294,21 +319,31 @@ class LinkageMapELF(object):
 					"in %s: %s\n\n") % (location, l),
 					level=logging.ERROR, noiselevel=-1)
 				continue
-			fields = l.split(";")
-			if len(fields) < 5:
-				writemsg_level(_("\nWrong number of fields " \
-					"in %s: %s\n\n") % (location, l),
+			try:
+				entry = NeededEntry.parse(location, l)
+			except InvalidData as e:
+				writemsg_level("\n%s\n\n" % (e,),
 					level=logging.ERROR, noiselevel=-1)
 				continue
-			arch = fields[0]
-			obj = fields[1]
-			soname = fields[2]
-			path = frozenset(normalize_path(x) \
-				for x in filter(None, fields[3].replace(
-				"${ORIGIN}", os.path.dirname(obj)).replace(
-				"$ORIGIN", os.path.dirname(obj)).split(":")))
+
+			# If NEEDED.ELF.2 contains the new multilib category field,
+			# then use that for categorization. Otherwise, if a mapping
+			# exists, map e_machine (entry.arch) to an approximate
+			# multilib category. If all else fails, use e_machine, just
+			# as older versions of portage did.
+			arch = entry.multilib_category
+			if arch is None:
+				arch = _approx_multilib_categories.get(
+					entry.arch, entry.arch)
+
+			obj = entry.filename
+			soname = entry.soname
+			expand = {"ORIGIN": os.path.dirname(entry.filename)}
+			path = frozenset(normalize_path(varexpand(x, expand))
+				for x in entry.runpaths)
 			path = frozensets.setdefault(path, path)
-			needed = frozenset(x for x in fields[4].split(",") if x)
+			needed = frozenset(entry.needed)
+
 			needed = frozensets.setdefault(needed, needed)
 
 			obj_key = self._obj_key(obj)

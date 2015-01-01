@@ -33,7 +33,11 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
+	'portage.util.elf.header:ELFHeader',
+	'portage.dep.soname.multilib_category:compute_multilib_category',
 	'portage.util._desktop_entry:validate_desktop_entry',
+	'portage.util._dyn_libs.NeededEntry:NeededEntry',
+	'portage.util._dyn_libs.soname_deps:SonameDepsProcessor',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
@@ -57,9 +61,9 @@ from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
 	eapi_has_pkg_pretend, _get_eapi_attrs
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
-from portage.exception import DigestException, FileNotFound, \
-	IncorrectParameter, InvalidDependString, PermissionDenied, \
-	UnsupportedAPIException
+from portage.exception import (DigestException, FileNotFound,
+	IncorrectParameter, InvalidData, InvalidDependString,
+	PermissionDenied, UnsupportedAPIException)
 from portage.localization import _
 from portage.output import colormap
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
@@ -76,6 +80,11 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -2261,21 +2270,64 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		is_libdir_cache[obj_parent] = rval
 		return rval
 
-	missing_symlinks = []
+	build_info_dir = os.path.join(
+		mysettings['PORTAGE_BUILDDIR'], 'build-info')
+	try:
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			"PROVIDES_EXCLUDE"), encoding=_encodings['fs'],
+			errors='strict'), mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as f:
+			provides_exclude = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		provides_exclude = ""
 
-	# Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does.
+	try:
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			"REQUIRES_EXCLUDE"), encoding=_encodings['fs'],
+			errors='strict'), mode='r', encoding=_encodings['repo.content'],
+			errors='replace') as f:
+			requires_exclude = f.read()
+	except IOError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		requires_exclude = ""
+
+	missing_symlinks = []
+	soname_deps = SonameDepsProcessor(
+		provides_exclude, requires_exclude)
+
+	# Parse NEEDED.ELF.2 like LinkageMapELF.rebuild() does, and
+	# rewrite it to include multilib categories.
+	needed_file = portage.util.atomic_ofstream(needed_filename,
+		encoding=_encodings["repo.content"], errors="strict")
+
 	for l in lines:
 		l = l.rstrip("\n")
 		if not l:
 			continue
-		fields = l.split(";")
-		if len(fields) < 5:
-			portage.util.writemsg_level(_("\nWrong number of fields " \
-				"in %s: %s\n\n") % (needed_filename, l),
+		try:
+			entry = NeededEntry.parse(needed_filename, l)
+		except InvalidData as e:
+			portage.util.writemsg_level("\n%s\n\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 			continue
 
-		obj, soname = fields[1:3]
+		filename = os.path.join(image_dir,
+			entry.filename.lstrip(os.sep))
+		with open(_unicode_encode(filename, encoding=_encodings['fs'],
+			errors='strict'), 'rb') as f:
+			elf_header = ELFHeader.read(f)
+
+		# Compute the multilib category and write it back to the file.
+		entry.multilib_category = compute_multilib_category(elf_header)
+		needed_file.write(_unicode(entry))
+
+		soname_deps.add(entry)
+		obj = entry.filename
+		soname = entry.soname
+
 		if not soname:
 			continue
 		if not is_libdir(os.path.dirname(obj)):
@@ -2294,6 +2346,22 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			continue
 
 		missing_symlinks.append((obj, soname))
+
+	needed_file.close()
+
+	if soname_deps.requires is not None:
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			'REQUIRES'), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict') as f:
+			f.write(soname_deps.requires)
+
+	if soname_deps.provides is not None:
+		with io.open(_unicode_encode(os.path.join(build_info_dir,
+			'PROVIDES'), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict') as f:
+			f.write(soname_deps.provides)
 
 	if not missing_symlinks:
 		return

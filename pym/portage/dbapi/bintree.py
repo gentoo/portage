@@ -81,7 +81,8 @@ class bindbapi(fakedbapi):
 			["BUILD_TIME", "CHOST", "DEPEND", "EAPI",
 			"HDEPEND", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
-			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE", "DEFINED_PHASES"
+			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
+			"DEFINED_PHASES", "PROVIDES", "REQUIRES"
 			])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
@@ -322,7 +323,7 @@ class binarytree(object):
 				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RESTRICT", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
-				"BASE_URI"]
+				"BASE_URI", "PROVIDES", "REQUIRES"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",

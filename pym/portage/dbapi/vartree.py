@@ -176,6 +176,7 @@ class vardbapi(dbapi):
 			"EAPI", "HDEPEND", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
+			"PROVIDES", "REQUIRES"
 			])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self._eroot,
