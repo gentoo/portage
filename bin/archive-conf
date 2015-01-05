@@ -10,18 +10,15 @@
 #
 
 from __future__ import print_function
+from os import path as osp
 
 import sys
+import portage.*
 
-from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
-import portage
-portage._internal_caller = True
 
-import portage.dispatch_conf
-from portage import os
-from portage.checksum import perform_md5
+portage._internal_caller = True
 
 FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
 
