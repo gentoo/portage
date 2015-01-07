@@ -1,6 +1,8 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from ....sync import _SUBMODULE_PATH_MAP
+
 doc = """Check repos.conf settings and sync repositories."""
 __doc__ = doc[:]
 
@@ -43,7 +45,7 @@ module_spec = {
 					"long": "--sync-submodule",
 					"help": ("(sync module only): Restrict sync "
 						"to the specified submodule(s)"),
-					"choices": ("glsa", "news", "profiles"),
+					"choices": tuple(_SUBMODULE_PATH_MAP),
 					"action": "append",
 					"dest": "sync_submodule",
 					},

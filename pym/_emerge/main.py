@@ -20,6 +20,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 from portage import os
 from portage.util._argparse import ArgumentParser
+from portage.sync import _SUBMODULE_PATH_MAP
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -636,7 +637,7 @@ def parse_opts(tmpcmdline, silent=False):
 		"--sync-submodule": {
 			"help"    : ("Restrict sync to the specified submodule(s)."
 				" (--sync action only)"),
-			"choices" : ("glsa", "news", "profiles"),
+			"choices" : tuple(_SUBMODULE_PATH_MAP),
 			"action" : "append",
 		},
 

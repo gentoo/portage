@@ -1,11 +1,18 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 
+from portage import OrderedDict
 from portage.module import Modules
 from portage.sync.controller import SyncManager
 from portage.sync.config_checks import check_type
+
+_SUBMODULE_PATH_MAP = OrderedDict([
+	('glsa', 'metadata/glsa'),
+	('news', 'metadata/news'),
+	('profiles', 'profiles'),
+])
 
 path = os.path.join(os.path.dirname(__file__), "modules")
 # initial development debug info

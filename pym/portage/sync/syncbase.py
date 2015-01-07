@@ -11,12 +11,7 @@ import os
 
 import portage
 from portage.util import writemsg_level
-
-_SUBMODULE_PATH_MAP = {
-	'glsa': 'metadata/glsa',
-	'news': 'metadata/news',
-	'profiles': 'profiles',
-}
+from . import _SUBMODULE_PATH_MAP
 
 class SyncBase(object):
 	'''Base Sync class for subclassing'''
