@@ -179,6 +179,12 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 	if curconf_st is not None and \
 		(stat.S_ISREG(curconf_st.st_mode) or
 		stat.S_ISLNK(curconf_st.st_mode)):
+		# Remove destination file in order to ensure that the following
+		# symlink or copy2 call won't fail (see bug #535850).
+		try:
+			os.unlink(archive)
+		except OSError:
+			pass
 		try:
 			if stat.S_ISLNK(curconf_st.st_mode):
 				os.symlink(os.readlink(curconf), archive)
@@ -208,6 +214,12 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 		if has_branch:
 			os.rename(archive, archive + '.dist')
 
+		# Remove destination file in order to ensure that the following
+		# symlink or copy2 call won't fail (see bug #535850).
+		try:
+			os.unlink(archive)
+		except OSError:
+			pass
 		try:
 			if stat.S_ISLNK(mystat.st_mode):
 				os.symlink(os.readlink(newconf), archive)
@@ -264,6 +276,12 @@ def file_archive(archive, curconf, newconf, mrgconf):
 	if curconf_st is not None and \
 		(stat.S_ISREG(curconf_st.st_mode) or
 		stat.S_ISLNK(curconf_st.st_mode)):
+		# Remove destination file in order to ensure that the following
+		# symlink or copy2 call won't fail (see bug #535850).
+		try:
+			os.unlink(archive)
+		except OSError:
+			pass
 		try:
 			if stat.S_ISLNK(curconf_st.st_mode):
 				os.symlink(os.readlink(curconf), archive)
@@ -285,6 +303,12 @@ def file_archive(archive, curconf, newconf, mrgconf):
 		stat.S_ISLNK(mystat.st_mode)):
 		# Save off new config file in the archive dir with .dist.new suffix
 		newconf_archive = archive + '.dist.new'
+		# Remove destination file in order to ensure that the following
+		# symlink or copy2 call won't fail (see bug #535850).
+		try:
+			os.unlink(newconf_archive)
+		except OSError:
+			pass
 		try:
 			if stat.S_ISLNK(mystat.st_mode):
 				os.symlink(os.readlink(newconf), newconf_archive)
