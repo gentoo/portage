@@ -158,6 +158,38 @@ def read_config(mandatory_opts):
 
 	return opts
 
+def _archive_copy(src_st, src_path, dest_path):
+	"""
+	Copy file from src_path to dest_path. Regular files and symlinks
+	are supported. If an EnvironmentError occurs, then it is logged
+	to stderr.
+
+	@param src_st: source file lstat result
+	@type src_st: posix.stat_result
+	@param src_path: source file path
+	@type src_path: str
+	@param dest_path: destination file path
+	@type dest_path: str
+	"""
+	# Remove destination file in order to ensure that the following
+	# symlink or copy2 call won't fail (see bug #535850).
+	try:
+		os.unlink(dest_path)
+	except OSError:
+		pass
+	try:
+		if stat.S_ISLNK(src_st.st_mode):
+			os.symlink(os.readlink(src_path), dest_path)
+		else:
+			shutil.copy2(src_path, dest_path)
+	except EnvironmentError as e:
+		portage.util.writemsg(
+			_('dispatch-conf: Error copying %(src_path)s to '
+			'%(dest_path)s: %(reason)s\n') % {
+				"src_path": src_path,
+				"dest_path": dest_path,
+				"reason": e
+			}, noiselevel=-1)
 
 def rcs_archive(archive, curconf, newconf, mrgconf):
 	"""Archive existing config in rcs (on trunk). Then, if mrgconf is
@@ -179,20 +211,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 	if curconf_st is not None and \
 		(stat.S_ISREG(curconf_st.st_mode) or
 		stat.S_ISLNK(curconf_st.st_mode)):
-		# Remove destination file in order to ensure that the following
-		# symlink or copy2 call won't fail (see bug #535850).
-		try:
-			os.unlink(archive)
-		except OSError:
-			pass
-		try:
-			if stat.S_ISLNK(curconf_st.st_mode):
-				os.symlink(os.readlink(curconf), archive)
-			else:
-				shutil.copy2(curconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+		_archive_copy(curconf_st, curconf, archive)
 
 	if os.path.lexists(archive + ',v'):
 		os.system(RCS_LOCK + ' ' + archive)
@@ -214,20 +233,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 		if has_branch:
 			os.rename(archive, archive + '.dist')
 
-		# Remove destination file in order to ensure that the following
-		# symlink or copy2 call won't fail (see bug #535850).
-		try:
-			os.unlink(archive)
-		except OSError:
-			pass
-		try:
-			if stat.S_ISLNK(mystat.st_mode):
-				os.symlink(os.readlink(newconf), archive)
-			else:
-				shutil.copy2(newconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"newconf": newconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+		_archive_copy(mystat, newconf, archive)
 
 		if has_branch:
 			if mrgconf and os.path.isfile(archive) and \
@@ -276,20 +282,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 	if curconf_st is not None and \
 		(stat.S_ISREG(curconf_st.st_mode) or
 		stat.S_ISLNK(curconf_st.st_mode)):
-		# Remove destination file in order to ensure that the following
-		# symlink or copy2 call won't fail (see bug #535850).
-		try:
-			os.unlink(archive)
-		except OSError:
-			pass
-		try:
-			if stat.S_ISLNK(curconf_st.st_mode):
-				os.symlink(os.readlink(curconf), archive)
-			else:
-				shutil.copy2(curconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+		_archive_copy(curconf_st, curconf, archive)
 
 	mystat = None
 	if newconf:
@@ -303,20 +296,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 		stat.S_ISLNK(mystat.st_mode)):
 		# Save off new config file in the archive dir with .dist.new suffix
 		newconf_archive = archive + '.dist.new'
-		# Remove destination file in order to ensure that the following
-		# symlink or copy2 call won't fail (see bug #535850).
-		try:
-			os.unlink(newconf_archive)
-		except OSError:
-			pass
-		try:
-			if stat.S_ISLNK(mystat.st_mode):
-				os.symlink(os.readlink(newconf), newconf_archive)
-			else:
-				shutil.copy2(newconf, newconf_archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"newconf": newconf, "archive": archive + '.dist.new', "reason": str(why)}, file=sys.stderr)
+		_archive_copy(mystat, newconf, newconf_archive)
 
 		ret = 0
 		if mrgconf and os.path.isfile(curconf) and \
