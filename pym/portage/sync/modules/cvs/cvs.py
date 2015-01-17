@@ -28,9 +28,6 @@ class CVSSync(SyncBase):
 		if kwargs:
 			self._kwargs(kwargs)
 		#initial checkout
-		msg = ">>> Starting initial cvs checkout with %s..." % self.repo.sync_uri
-		self.logger(self.xterm_titles, msg)
-		writemsg_level(msg + "\n")
 		try:
 			os.rmdir(self.repo.location)
 		except OSError as e:
@@ -68,9 +65,6 @@ class CVSSync(SyncBase):
 		if cvs_root.startswith("cvs://"):
 			cvs_root = cvs_root[6:]
 			#cvs update
-			msg = ">>> Starting cvs update with %s..." % self.repo.sync_uri
-			self.logger(self.xterm_titles, msg)
-			writemsg_level(msg + "\n")
 			exitcode = portage.process.spawn_bash(
 				"cd %s; exec cvs -z0 -q update -dP" % \
 				(portage._shell_quote(self.repo.location),),

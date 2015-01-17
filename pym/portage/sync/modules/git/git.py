@@ -45,29 +45,25 @@ class GitSync(SyncBase):
 					'Created new directory %s' % self.repo.location)
 		except IOError:
 			return (1, False)
-		msg = ">>> Cloning git repository from upstream into %s..." % self.repo.location
-		self.logger(self.xterm_titles, msg)
-		writemsg_level(msg + "\n")
 		sync_uri = self.repo.sync_uri
 		if sync_uri.startswith("file://"):
 			sync_uri = sync_uri[6:]
 		depth_arg = ''
 		if self.repo.sync_depth is not None:
 			depth_arg = '--depth %d ' % self.repo.sync_depth
-		exitcode = portage.process.spawn_bash("cd %s ; %s clone %s%s ." % \
-			(portage._shell_quote(self.repo.location),
-			self.bin_command,
-			depth_arg,
-			portage._shell_quote(sync_uri)),
+
+		git_cmd = "%s clone %s%s ." % (self.bin_command, depth_arg,
+				portage._shell_quote(sync_uri))
+		writemsg_level(git_cmd + "\n")
+
+		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
+				portage._shell_quote(self.repo.location), git_cmd),
 			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git clone error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		msg = ">>> Git clone successful"
-		self.logger(self.xterm_titles, msg)
-		writemsg_level(msg + "\n")
 		return (os.EX_OK, True)
 
 
@@ -82,18 +78,15 @@ class GitSync(SyncBase):
 		emerge_config = self.options.get('emerge_config', None)
 		portdb = self.options.get('portdb', None)
 
-		msg = ">>> Starting git pull in %s..." % self.repo.location
-		self.logger(self.xterm_titles, msg)
-		writemsg_level(msg + "\n")
-		exitcode = portage.process.spawn_bash("cd %s ; git pull" % \
-			(portage._shell_quote(self.repo.location),),
+		git_cmd = "%s pull" % self.bin_command
+		writemsg_level(git_cmd + "\n")
+
+		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
+				portage._shell_quote(self.repo.location), git_cmd),
 			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		msg = ">>> Git pull successful: %s" % self.repo.location
-		self.logger(self.xterm_titles, msg)
-		writemsg_level(msg + "\n")
 		return (os.EX_OK, True)

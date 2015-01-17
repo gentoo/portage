@@ -246,7 +246,7 @@ class RsyncSync(SyncBase):
 
 	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
 		if (exitcode==0):
-			self.logger(self.xterm_titles, "=== Sync completed with %s" % syncuri)
+			pass
 		elif exitcode == SERVER_OUT_OF_DATE:
 			exitcode = 1
 		elif exitcode == EXCEEDED_MAX_RETRIES:

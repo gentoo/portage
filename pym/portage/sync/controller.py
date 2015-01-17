@@ -156,6 +156,10 @@ class SyncManager(object):
 		#print("result:", result, "callback()", self.callback)
 		exitcode, updatecache_flg = result
 		self.exitcode = exitcode
+		if exitcode == 0:
+			msg = "=== Sync completed for %s" % self.repo.name
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n")
 		if self.callback:
 			self.callback(exitcode, updatecache_flg)
 		return
@@ -184,7 +188,7 @@ class SyncManager(object):
 	def pre_sync(self, repo):
 		self.settings, self.trees, self.mtimedb = self.emerge_config
 		self.xterm_titles = "notitles" not in self.settings.features
-		msg = ">>> Synchronization of repository '%s' located in '%s'..." \
+		msg = ">>> Syncing repository '%s' into '%s'..." \
 			% (repo.name, repo.location)
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
@@ -255,8 +259,6 @@ class SyncManager(object):
 			if 'gid' in spawn_kwargs:
 				perms['gid'] = spawn_kwargs['gid']
 
-			writemsg_level(">>> '%s' not found, creating it."
-				% _unicode_decode(repo.location))
 			portage.util.ensure_dirs(repo.location, **perms)
 			st = os.stat(repo.location)
 
