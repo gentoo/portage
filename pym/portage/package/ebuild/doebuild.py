@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -66,6 +66,7 @@ from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
+from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile	
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -462,6 +463,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			if ccache:
 				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
 					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
+
+		if 'MAKEOPTS' not in mysettings:
+			nproc = get_cpu_count()
+			if nproc:
+				mysettings['MAKEOPTS'] = '-j%d' % (nproc + 1)
 
 		if not eapi_exports_KV(eapi):
 			# Discard KV for EAPIs that don't support it. Cached KV is restored
