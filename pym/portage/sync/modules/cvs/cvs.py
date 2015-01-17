@@ -24,19 +24,15 @@ class CVSSync(SyncBase):
 		SyncBase.__init__(self, "cvs", portage.const.CVS_PACKAGE_ATOM)
 
 
+	def exists(self, **kwargs):
+		'''Tests whether the repo is checked out'''
+		return os.path.exists(os.path.join(self.repo.location, 'CVS'))
+
+
 	def new(self, **kwargs):
 		if kwargs:
 			self._kwargs(kwargs)
 		#initial checkout
-		try:
-			os.rmdir(self.repo.location)
-		except OSError as e:
-			if e.errno != errno.ENOENT:
-				msg = "!!! existing '%s' directory; exiting." % self.repo.location
-				self.logger(self.xterm_titles, msg)
-				writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
-				return (1, False)
-			del e
 		cvs_root = self.repo.sync_uri
 		if portage.process.spawn_bash(
 			"cd %s; exec cvs -z0 -d %s co -P -d %s %s" %
@@ -60,17 +56,13 @@ class CVSSync(SyncBase):
 		@rtype: (int, bool)
 		"""
 
-		cvs_root = self.repo.sync_uri
-
-		if cvs_root.startswith("cvs://"):
-			cvs_root = cvs_root[6:]
-			#cvs update
-			exitcode = portage.process.spawn_bash(
-				"cd %s; exec cvs -z0 -q update -dP" % \
-				(portage._shell_quote(self.repo.location),),
-				**portage._native_kwargs(self.spawn_kwargs))
-			if exitcode != os.EX_OK:
-				msg = "!!! cvs update error; exiting."
-				self.logger(self.xterm_titles, msg)
-				writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
+		#cvs update
+		exitcode = portage.process.spawn_bash(
+			"cd %s; exec cvs -z0 -q update -dP" % \
+			(portage._shell_quote(self.repo.location),),
+			**portage._native_kwargs(self.spawn_kwargs))
+		if exitcode != os.EX_OK:
+			msg = "!!! cvs update error; exiting."
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
 		return (exitcode, False)
