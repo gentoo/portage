@@ -24,23 +24,19 @@ class SVNSync(SyncBase):
 		SyncBase.__init__(self, "svn", "dev-vcs/subversion")
 
 
+	def exists(self, **kwargs):
+		'''Tests whether the repo actually exists'''
+		return os.path.exists(os.path.join(self.repo.location, '.svn'))
+
+
 	def new(self, **kwargs):
 		if kwargs:
 			self._kwargs(kwargs)
 		#initial checkout
-		try:
-			os.rmdir(self.repo.location)
-		except OSError as e:
-			if e.errno != errno.ENOENT:
-				msg = "!!! existing '%s' directory; exiting." % self.repo.location
-				self.logger(self.xterm_titles, msg)
-				writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
-				return (1, False)
-			del e
 		svn_root = self.repo.sync_uri
-		exitcode =  portage.process.spawn_bash(
-			"cd %s; exec svn %s" %
-			(portage._shell_quote(os.path.dirname(self.repo.location)),
+		exitcode = portage.process.spawn_bash(
+			"cd %s; exec svn co %s ." %
+			(portage._shell_quote(self.repo.location),
 			portage._shell_quote(svn_root)),
 			**portage._native_kwargs(self.spawn_kwargs))
 		if exitcode != os.EX_OK:
@@ -63,19 +59,15 @@ class SVNSync(SyncBase):
 		if exitcode != os.EX_OK:
 			return (exitcode, False)
 
-		svn_root = self.repo.sync_uri
-
-		if svn_root.startswith("svn://"):
-			svn_root = svn_root[6:]
-			#svn update
-			exitcode = portage.process.spawn_bash(
-				"cd %s; exec svn update" % \
-				(portage._shell_quote(self.repo.location),),
-				**portage._native_kwargs(self.spawn_kwargs))
-			if exitcode != os.EX_OK:
-				msg = "!!! svn update error; exiting."
-				self.logger(self.xterm_titles, msg)
-				writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
+		#svn update
+		exitcode = portage.process.spawn_bash(
+			"cd %s; exec svn update" % \
+			(portage._shell_quote(self.repo.location),),
+			**portage._native_kwargs(self.spawn_kwargs))
+		if exitcode != os.EX_OK:
+			msg = "!!! svn update error; exiting."
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
 		return (exitcode, False)
 
 
