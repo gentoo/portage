@@ -5,7 +5,33 @@ doc = """Git plug-in module for portage.
 Performs a git pull on repositories."""
 __doc__ = doc[:]
 
+from portage.localization import _
 from portage.sync.config_checks import CheckSyncConfig
+from portage.util import writemsg_level
+
+
+class CheckGitConfig(CheckSyncConfig):
+	def __init__(self, repo, logger):
+		CheckSyncConfig.__init__(self, repo, logger)
+		self.checks.append('check_depth')
+
+	def check_depth(self):
+		d = self.repo.sync_depth
+		# default
+		self.repo.sync_depth = 1
+
+		if d is not None:
+			try:
+				d = int(d)
+			except ValueError:
+				writemsg_level("!!! %s\n" %
+					_("sync-depth value is not a number: '%s'")
+					% (d),
+					level=self.logger.ERROR, noiselevel=-1)
+			else:
+				if d == 0:
+					d = None
+				self.repo.sync_depth = d
 
 
 module_spec = {
@@ -23,7 +49,7 @@ module_spec = {
 				'exists': 'Returns a boolean of whether the specified dir ' +
 					'exists and is a valid Git repository',
 			},
-			'validate_config': CheckSyncConfig,
+			'validate_config': CheckGitConfig,
 		}
 	}
 }

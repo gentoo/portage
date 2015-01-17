@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jan 2015" "Portage VERSION" "Portage"
+TH "PORTAGE" "5" "Jan 2015" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -905,6 +905,10 @@ Specifies priority of given repository.
 .TP
 .B sync\-cvs\-repo
 Specifies CVS repository.
+.TP
+.B sync\-depth
+Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
+the newest commit). If set to 0, the depth is unlimited.
 .TP
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.

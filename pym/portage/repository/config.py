@@ -86,6 +86,7 @@ class RepoConfig(object):
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
+		'sync_depth',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', 'user_location', '_eapis_banned',
 		'_eapis_deprecated', '_masters_orig')
@@ -175,6 +176,8 @@ class RepoConfig(object):
 		if auto_sync is not None:
 			auto_sync = auto_sync.strip().lower()
 		self.auto_sync = auto_sync
+
+		self.sync_depth = repo_opts.get('sync-depth')
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -488,6 +491,7 @@ class RepoConfigLoader(object):
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
 							'force', 'masters', 'priority', 'sync_cvs_repo',
+							'sync_depth',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							):
 							v = getattr(repos_conf_opts, k, None)
