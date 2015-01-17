@@ -8950,7 +8950,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 	debug = "--debug" in myopts
 	mydepgraph = None
-	max_retries = myopts.get('--backtrack', 10)
+	max_retries = myopts.get('--backtrack', 3)
 	max_depth = max(1, (max_retries + 1) // 2)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)

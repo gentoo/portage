@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -154,7 +154,12 @@ class BacktrackingTestCase(TestCase):
 
 		world = ["dev-libs/B", "dev-libs/C"]
 
-		options = {'--update' : True, '--deep' : True, '--selective' : True}
+		options = {
+			'--backtrack': 6,
+			'--deep' : True,
+			'--selective' : True,
+			'--update' : True,
+		}
 
 		test_cases = (
 				ResolverPlaygroundTestCase(
