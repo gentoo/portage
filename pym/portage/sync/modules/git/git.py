@@ -29,19 +29,7 @@ class GitSync(SyncBase):
 
 	def exists(self, **kwargs):
 		'''Tests whether the repo actually exists'''
-		if kwargs:
-			self._kwargs(kwargs)
-		elif not self.repo:
-			return False
-
-		if not os.path.exists(self.repo.location):
-			return False
-		exitcode = portage.process.spawn_bash("cd %s ; git rev-parse" %\
-			(portage._shell_quote(self.repo.location),),
-			**portage._native_kwargs(self.spawn_kwargs))
-		if exitcode == 128:
-			return False
-		return True
+		return os.path.exists(os.path.join(self.repo.location, '.git'))
 
 
 	def new(self, **kwargs):
