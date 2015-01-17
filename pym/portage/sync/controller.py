@@ -119,7 +119,7 @@ class SyncManager(object):
 		self.callback = callback or self._sync_callback
 		self.repo = repo
 		self.exitcode = 1
-		if repo.sync_type in self.module_names[1:]:
+		if repo.sync_type in self.module_names:
 			tasks = [self.module_controller.get_class(repo.sync_type)]
 		else:
 			msg = "\n%s: Sync module '%s' is not an installed/known type'\n" \
