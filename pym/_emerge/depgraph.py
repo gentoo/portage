@@ -7741,7 +7741,7 @@ class depgraph(object):
 		pretend = "--pretend" in self._frozen_config.myopts
 		enter_invalid = '--ask-enter-invalid' in self._frozen_config.myopts
 
-		def check_if_latest(pkg):
+		def check_if_latest(pkg, check_visibility=False):
 			is_latest = True
 			is_latest_in_slot = True
 			dbs = self._dynamic_config._filtered_trees[pkg.root]["dbs"]
@@ -7749,6 +7749,9 @@ class depgraph(object):
 
 			for db, pkg_type, built, installed, db_keys in dbs:
 				for other_pkg in self._iter_match_pkgs(root_config, pkg_type, Atom(pkg.cp)):
+					if (check_visibility and
+						not self._pkg_visibility_check(other_pkg)):
+						continue
 					if other_pkg.cp != pkg.cp:
 						# old-style PROVIDE virtual means there are no
 						# normal matches for this pkg_type
@@ -7848,7 +7851,13 @@ class depgraph(object):
 				root = pkg.root
 				roots.add(root)
 				use_changes_msg.setdefault(root, [])
-				is_latest, is_latest_in_slot = check_if_latest(pkg)
+				# NOTE: For USE changes, call check_if_latest with
+				# check_visibility=True, since we want to generate
+				# a >= atom if possible. Don't do this for keyword
+				# or mask changes, since that may cause undesired
+				# versions to be unmasked! See bug #536392.
+				is_latest, is_latest_in_slot = check_if_latest(
+					pkg, check_visibility=True)
 				changes = needed_use_config_change[1]
 				adjustments = []
 				for flag, state in changes.items():
