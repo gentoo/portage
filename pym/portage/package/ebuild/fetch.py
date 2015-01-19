@@ -73,10 +73,12 @@ def _spawn_fetch(settings, args, **kwargs):
 			2 : sys.__stdout__.fileno(),
 		}
 
+	logname = None
 	if "userfetch" in settings.features and \
 		os.getuid() == 0 and portage_gid and portage_uid and \
 		hasattr(os, "setgroups"):
 		kwargs.update(_userpriv_spawn_kwargs)
+		logname = portage.data._portage_username
 
 	spawn_func = spawn
 
@@ -93,8 +95,11 @@ def _spawn_fetch(settings, args, **kwargs):
 	# proxy variables, as in bug #315421).
 	phase_backup = settings.get('EBUILD_PHASE')
 	settings['EBUILD_PHASE'] = 'fetch'
+	env = settings.environ()
+	if logname is not None:
+		env["LOGNAME"] = logname
 	try:
-		rval = spawn_func(args, env=settings.environ(), **kwargs)
+		rval = spawn_func(args, env=env, **kwargs)
 	finally:
 		if phase_backup is None:
 			settings.pop('EBUILD_PHASE', None)

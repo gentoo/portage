@@ -1493,8 +1493,10 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	fakeroot = fakeroot and uid != 0 and portage.process.fakeroot_capable
 	portage_build_uid = os.getuid()
 	portage_build_gid = os.getgid()
+	logname = None
 	if uid == 0 and portage_uid and portage_gid and hasattr(os, "setgroups"):
 		if droppriv:
+			logname = portage.data._portage_username
 			keywords.update({
 				"uid": portage_uid,
 				"gid": portage_gid,
@@ -1579,21 +1581,35 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 		spawn_func = selinux.spawn_wrapper(spawn_func,
 			mysettings["PORTAGE_SANDBOX_T"])
 
-	if keywords.get("returnpid"):
-		return spawn_func(mystring, env=mysettings.environ(),
-			**portage._native_kwargs(keywords))
+	logname_backup = None
+	if logname is not None:
+		logname_backup = mysettings.configdict["env"].get("LOGNAME")
+		mysettings.configdict["env"]["LOGNAME"] = logname
 
-	proc = EbuildSpawnProcess(
-		background=False, args=mystring,
-		scheduler=SchedulerInterface(portage._internal_caller and
-			global_event_loop() or EventLoop(main=False)),
-		spawn_func=spawn_func,
-		settings=mysettings, **portage._native_kwargs(keywords))
+	try:
+		if keywords.get("returnpid"):
+			return spawn_func(mystring, env=mysettings.environ(),
+				**portage._native_kwargs(keywords))
 
-	proc.start()
-	proc.wait()
+		proc = EbuildSpawnProcess(
+			background=False, args=mystring,
+			scheduler=SchedulerInterface(portage._internal_caller and
+				global_event_loop() or EventLoop(main=False)),
+			spawn_func=spawn_func,
+			settings=mysettings, **portage._native_kwargs(keywords))
 
-	return proc.returncode
+		proc.start()
+		proc.wait()
+
+		return proc.returncode
+
+	finally:
+		if logname is None:
+			pass
+		elif logname_backup is None:
+			mysettings.configdict["env"].pop("LOGNAME", None)
+		else:
+			mysettings.configdict["env"]["LOGNAME"] = logname_backup
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,

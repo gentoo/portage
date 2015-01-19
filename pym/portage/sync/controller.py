@@ -205,6 +205,7 @@ class SyncManager(object):
 				user = None
 				group = None
 				home = None
+				logname = None
 
 				spl = sync_user.split(':', 1)
 				if spl[0]:
@@ -217,10 +218,11 @@ class SyncManager(object):
 					except (ValueError, KeyError):
 						writemsg("!!! User '%s' invalid or does not exist\n"
 								% username, noiselevel=-1)
-						return (user, group, home)
+						return (logname, user, group, home)
 					user = pw.pw_uid
 					group = pw.pw_gid
 					home = pw.pw_dir
+					logname = pw.pw_name
 
 				if len(spl) > 1:
 					groupname = spl[1]
@@ -232,14 +234,15 @@ class SyncManager(object):
 					except (ValueError, KeyError):
 						writemsg("!!! Group '%s' invalid or does not exist\n"
 								% groupname, noiselevel=-1)
-						return (user, group, home)
+						return (logname, user, group, home)
 
 					group = gp.gr_gid
 
-				return (user, group, home)
+				return (logname, user, group, home)
 
 			# user or user:group
-			(uid, gid, home) = get_sync_user_data(repo.sync_user)
+			(logname, uid, gid, home) = get_sync_user_data(
+				repo.sync_user)
 			if uid is not None:
 				spawn_kwargs["uid"] = uid
 				self.usersync_uid = uid
@@ -248,6 +251,8 @@ class SyncManager(object):
 				spawn_kwargs["groups"] = [gid]
 			if home is not None:
 				spawn_kwargs["env"]["HOME"] = home
+			if logname is not None:
+				spawn_kwargs["env"]["LOGNAME"] = logname
 
 		if st is None:
 			perms = {'mode': 0o755}
@@ -268,7 +273,7 @@ class SyncManager(object):
 			(st.st_uid != os.getuid() and st.st_mode & 0o700 or
 			st.st_gid != os.getgid() and st.st_mode & 0o070)):
 			try:
-				homedir = pwd.getpwuid(st.st_uid).pw_dir
+				pw = pwd.getpwuid(st.st_uid)
 			except KeyError:
 				pass
 			else:
@@ -278,7 +283,8 @@ class SyncManager(object):
 				spawn_kwargs["uid"]    = st.st_uid
 				spawn_kwargs["gid"]    = st.st_gid
 				spawn_kwargs["groups"] = [st.st_gid]
-				spawn_kwargs["env"]["HOME"] = homedir
+				spawn_kwargs["env"]["HOME"] = pw.pw_dir
+				spawn_kwargs["env"]["LOGNAME"] = pw.pw_name
 				umask = 0o002
 				if not st.st_mode & 0o020:
 					umask = umask | 0o020
