@@ -792,6 +792,10 @@ documentation for QT.  Easy as pie my friend!
 .nf
 \- comments begin with # (no inline comments)
 \- one DEPEND atom per line with space-delimited USE flags
+\- USE flags can be prefixed with USE_EXPAND name followed by a colon (:)
+and a space. In this case, all the names following it are treated
+as values for the USE_EXPAND. Note that if you need to remove earlier
+assignments or defaults, you need to explicitly specify '\-*'.
 .fi
 
 .I Example:
@@ -800,6 +804,8 @@ documentation for QT.  Easy as pie my friend!
 =x11\-libs/gtk+\-2* doc
 # disable mysql support for QT
 x11\-libs/qt \-mysql
+# set preferred video card for all packages
+*/* VIDEO_CARDS: \-* radeon
 .fi
 .TP
 .BR repos.conf

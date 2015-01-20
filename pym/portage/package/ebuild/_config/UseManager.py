@@ -202,11 +202,18 @@ class UseManager(object):
 		useflag_re = _get_useflag_re(eapi)
 		for k, v in file_dict.items():
 			useflags = []
+			use_expand_prefix = ''
 			for prefixed_useflag in v:
+				if extended_syntax and prefixed_useflag[-1] == ":":
+					use_expand_prefix = prefixed_useflag[:-1].lower() + "_"
+					continue
+
 				if prefixed_useflag[:1] == "-":
-					useflag = prefixed_useflag[1:]
+					useflag = use_expand_prefix + prefixed_useflag[1:]
+					prefixed_useflag = "-" + useflag
 				else:
-					useflag = prefixed_useflag
+					useflag = use_expand_prefix + prefixed_useflag
+					prefixed_useflag = useflag
 				if useflag_re.match(useflag) is None:
 					writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") %
 						(k, file_name, prefixed_useflag), noiselevel=-1)
@@ -227,7 +234,18 @@ class UseManager(object):
 			pusedict = grabdict_package(
 				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
-				ret.setdefault(k.cp, {})[k] = tuple(v)
+				l = []
+				use_expand_prefix = ''
+				for flag in v:
+					if flag[-1] == ":":
+						use_expand_prefix = flag[:-1].lower() + "_"
+						continue
+					if flag[0] == "-":
+						nv = "-" + use_expand_prefix + flag[1:]
+					else:
+						nv = use_expand_prefix + flag
+					l.append(nv)
+				ret.setdefault(k.cp, {})[k] = tuple(l)
 
 		return ret
 
