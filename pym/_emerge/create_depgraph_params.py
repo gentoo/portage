@@ -21,6 +21,9 @@ def create_depgraph_params(myopts, myaction):
 	#	removal by the --depclean action as soon as possible
 	# ignore_built_slot_operator_deps: ignore the slot/sub-slot := operator parts
 	#	of dependencies that have been recorded when packages where built
+	# ignore_soname_deps: ignore the soname dependencies of built
+	#   packages, so that they do not trigger dependency resolution
+	#   failures, or cause packages to be rebuilt or replaced.
 	# with_test_deps: pull in test deps for packages matched by arguments
 	# changed_deps: rebuild installed packages with outdated deps
 	# binpkg_changed_deps: reject binary packages with outdated deps
@@ -33,6 +36,9 @@ def create_depgraph_params(myopts, myaction):
 	ignore_built_slot_operator_deps = myopts.get("--ignore-built-slot-operator-deps")
 	if ignore_built_slot_operator_deps is not None:
 		myparams["ignore_built_slot_operator_deps"] = ignore_built_slot_operator_deps
+
+	myparams["ignore_soname_deps"] = myopts.get(
+		"--ignore-soname-deps", "y")
 
 	dynamic_deps = myopts.get("--dynamic-deps")
 	if dynamic_deps is not None:

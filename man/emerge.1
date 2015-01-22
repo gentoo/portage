@@ -568,6 +568,19 @@ only for debugging purposes, and it only affects built packages
 that specify slot/sub\-slot := operator dependencies which are
 supported beginning with \fBEAPI 5\fR.
 .TP
+.BR "\-\-ignore\-soname\-deps < y | n >"
+Ignore the soname dependencies of binary and installed packages. This
+option is enabled by default, since soname dependencies are relatively
+new, and the required metadata is not guaranteed to exist for binary and
+installed packages built with older versions of portage. Also, soname
+dependencies will be automatically ignored for dependency calculations
+that can pull unbuilt ebuilds into the dependency graph, since unbuilt
+ebuilds do not have any soname dependency metadata, making it impossible
+to determine whether an unresolved soname dependency can be satisfied.
+Therefore, \fB\-\-usepkgonly\fR (or \fB\-\-getbinpkgonly\fR) must be
+used in order to enable soname depedency resolution when installing
+packages.
+.TP
 .BR "-j [JOBS], \-\-jobs[=JOBS]"
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can

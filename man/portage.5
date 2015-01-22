@@ -36,6 +36,7 @@ package.use.stable.force
 package.use.stable.mask
 parent
 profile.bashrc
+soname.provided
 use.force
 use.mask
 use.stable.mask
@@ -503,6 +504,28 @@ at profiles/.
 If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
+.TP
+.BR soname.provided
+A list of sonames that portage should assume have been provided. This
+is useful for using portage to install binary packages on top of a base
+image which lacks /var/db/pkg for some reason (perhaps the image was
+assembled by another package manager, or by Linux From Scratch).
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- line begins with a multilib category
+\- multilib category is followed by one or more sonames
+\- only one multilib category is allowed per line
+\- prefixing an soname with a '\-' will negate a parent profile setting
+.fi
+
+.I Example:
+.nf
+# provide libc and ld-linux sonames for x86_32 and x86_64 categories
+x86_32 ld-linux.so.2 libc.so.6
+x86_64 ld-linux-x86-64.so.2 libc.so.6
+.fi
 .TP
 \fBuse.force\fR and \fBuse.stable.force\fR
 Some USE flags don't make sense to disable under certain conditions.  Here we

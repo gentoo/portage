@@ -271,16 +271,27 @@ class slot_conflict_handler(object):
 					num_all_specific_atoms = 0
 
 					for ppkg, atom in parent_atoms:
-						atom_set = InternalPackageSet(initial_atoms=(atom,))
-						atom_without_use_set = InternalPackageSet(initial_atoms=(atom.without_use,))
-						atom_without_use_and_slot_set = InternalPackageSet(initial_atoms=(
-							atom.without_use.without_slot,))
+						if not atom.soname:
+							atom_set = InternalPackageSet(
+								initial_atoms=(atom,))
+							atom_without_use_set = InternalPackageSet(
+								initial_atoms=(atom.without_use,))
+							atom_without_use_and_slot_set = \
+								InternalPackageSet(initial_atoms=(
+								atom.without_use.without_slot,))
 
 						for other_pkg in pkgs:
 							if other_pkg == pkg:
 								continue
 
-							if not atom_without_use_and_slot_set.findAtomForPackage(other_pkg, \
+							if atom.soname:
+								# The soname does not match.
+								key = ("soname", atom)
+								atoms = collision_reasons.get(key, set())
+								atoms.add((ppkg, atom, other_pkg))
+								num_all_specific_atoms += 1
+								collision_reasons[key] = atoms
+							elif not atom_without_use_and_slot_set.findAtomForPackage(other_pkg,
 								modified_use=_pkg_use_enabled(other_pkg)):
 								if atom.operator is not None:
 									# The version range does not match.
@@ -381,7 +392,7 @@ class slot_conflict_handler(object):
 							if not verboseconflicts:
 								selected_for_display.update(
 										best_matches.values())
-						elif type == "slot":
+						elif type in ("soname", "slot"):
 							for ppkg, atom, other_pkg in parents:
 								selected_for_display.add((ppkg, atom))
 								if not verboseconflicts:
@@ -532,7 +543,10 @@ class slot_conflict_handler(object):
 								ordered_list.append(parent_atom)
 					for parent_atom in ordered_list:
 						parent, atom = parent_atom
-						if isinstance(parent, PackageArg):
+						if atom.soname:
+							msg.append("%s required by %s\n" %
+								(atom, parent))
+						elif isinstance(parent, PackageArg):
 							# For PackageArg it's
 							# redundant to display the atom attribute.
 							msg.append("%s\n" % (parent,))
@@ -677,6 +691,9 @@ class slot_conflict_handler(object):
 		for id, pkg in enumerate(config):
 			involved_flags = {}
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+				if not atom.package:
+					continue
+
 				if ppkg in conflict_nodes and not ppkg in config:
 					#The parent is part of a slot conflict itself and is
 					#not part of the current config.
@@ -882,6 +899,8 @@ class slot_conflict_handler(object):
 
 			#Go through all (parent, atom) pairs for the current slot conflict.
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+				if not atom.package:
+					continue
 				use = atom.unevaluated_atom.use
 				if not use:
 					#No need to force something for an atom without USE conditionals.
@@ -952,6 +971,8 @@ class slot_conflict_handler(object):
 					new_use = old_use
 
 			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+				if not atom.package:
+					continue
 				if not hasattr(ppkg, "use"):
 					#It's a SetArg or something like that.
 					continue

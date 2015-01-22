@@ -13,9 +13,10 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_separator, _repo_separator
+from portage.dep.soname.parse import parse_soname_deps
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
-from portage.exception import InvalidDependString
+from portage.exception import InvalidData, InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
 
@@ -36,7 +37,8 @@ class Package(Task):
 		"inherited", "iuse", "mtime",
 		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
 		("_invalid", "_masks", "_metadata", "_provided_cps",
-		"_raw_metadata", "_use", "_validated_atoms", "_visible")
+		"_raw_metadata", "_provides", "_requires", "_use",
+		"_validated_atoms", "_visible")
 
 	metadata_keys = [
 		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
@@ -189,6 +191,16 @@ class Package(Task):
 	def stable(self):
 		return self.cpv.stable
 
+	@property
+	def provides(self):
+		self.invalid
+		return self._provides
+
+	@property
+	def requires(self):
+		self.invalid
+		return self._requires
+
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
 		operation=None, repo_name=None, root_config=None,
@@ -310,6 +322,21 @@ class Package(Task):
 			except InvalidDependString as e:
 				if not self.installed:
 					self._metadata_exception(k, e)
+
+		if self.built:
+			k = 'PROVIDES'
+			try:
+				self._provides = frozenset(
+					parse_soname_deps(self._metadata[k]))
+			except InvalidData as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+
+			k = 'REQUIRES'
+			try:
+				self._requires = frozenset(
+					parse_soname_deps(self._metadata[k]))
+			except InvalidData as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def copy(self):
 		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
@@ -727,31 +754,47 @@ class Package(Task):
 
 	def __lt__(self, other):
 		if other.cp != self.cp:
-			return False
+			return self.cp < other.cp
 		if portage.vercmp(self.version, other.version) < 0:
 			return True
 		return False
 
 	def __le__(self, other):
 		if other.cp != self.cp:
-			return False
+			return self.cp <= other.cp
 		if portage.vercmp(self.version, other.version) <= 0:
 			return True
 		return False
 
 	def __gt__(self, other):
 		if other.cp != self.cp:
-			return False
+			return self.cp > other.cp
 		if portage.vercmp(self.version, other.version) > 0:
 			return True
 		return False
 
 	def __ge__(self, other):
 		if other.cp != self.cp:
-			return False
+			return self.cp >= other.cp
 		if portage.vercmp(self.version, other.version) >= 0:
 			return True
 		return False
+
+	def with_use(self, use):
+		"""
+		Return an Package instance with the specified USE flags. The
+		current instance may be returned if it has identical USE flags.
+		@param use: a set of USE flags
+		@type use: frozenset
+		@return: A package with the specified USE flags
+		@rtype: Package
+		"""
+		if use is not self.use.enabled:
+			pkg = self.copy()
+			pkg._metadata["USE"] = " ".join(use)
+		else:
+			pkg = self
+		return pkg
 
 _all_metadata_keys = set(x for x in portage.auxdbkeys \
 	if not x.startswith("UNUSED_"))

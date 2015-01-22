@@ -15,7 +15,7 @@ import sys
 import portage
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import cpvequal, _repo_separator, _slot_separator
+from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
 from portage.localization import localized_size
@@ -659,7 +659,8 @@ class Display(object):
 
 		if self.vardb.cpv_exists(pkg.cpv):
 			# Do a cpv match first, in case the SLOT has changed.
-			pkg_info.previous_pkg = self.vardb.match_pkgs('=' + pkg.cpv)[0]
+			pkg_info.previous_pkg = self.vardb.match_pkgs(
+				Atom('=' + pkg.cpv))[0]
 		else:
 			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
 			if slot_matches:
@@ -742,7 +743,7 @@ class Display(object):
 		"""
 		myoldbest = []
 		myinslotlist = None
-		installed_versions = self.vardb.match_pkgs(pkg.cp)
+		installed_versions = self.vardb.match_pkgs(Atom(pkg.cp))
 		if self.vardb.cpv_exists(pkg.cpv):
 			pkg_info.attr_display.replace = True
 			installed_version = pkg_info.previous_pkg
@@ -930,6 +931,9 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 	#   3. slot/sub_slot
 	#	4. repository
 	#	5. USE
+
+	if atom.soname:
+		return "%s" % (atom,), ""
 
 	highlight = set()
 

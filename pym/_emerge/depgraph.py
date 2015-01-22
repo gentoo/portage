@@ -20,6 +20,7 @@ from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
+from portage.dbapi.DummyTree import DummyTree
 from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
@@ -77,6 +78,7 @@ from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
 from _emerge.resolver.backtracking import Backtracker, BacktrackParameter
+from _emerge.resolver.DbapiProvidesIndex import DbapiProvidesIndex
 from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapiWrapper
 from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
@@ -125,6 +127,13 @@ class _frozen_depgraph_config(object):
 		# All Package instances
 		self._pkg_cache = {}
 		self._highest_license_masked = {}
+		# We can't know that an soname dep is unsatisfied if there are
+		# any unbuilt ebuilds in the graph, since unbuilt ebuilds have
+		# no soname data. Therefore, only enable soname dependency
+		# resolution if --usepkgonly is enabled, or for removal actions.
+		self.soname_deps_enabled = (
+			("--usepkgonly" in myopts or "remove" in params) and
+			params.get("ignore_soname_deps") != "y")
 		dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
 		ignore_built_slot_operator_deps = myopts.get(
 			"--ignore-built-slot-operator-deps", "n") == "y"
@@ -143,9 +152,13 @@ class _frozen_depgraph_config(object):
 					pkg_cache=self._pkg_cache,
 					pkg_root_config=self.roots[myroot],
 					dynamic_deps=dynamic_deps,
-					ignore_built_slot_operator_deps=ignore_built_slot_operator_deps)
+					ignore_built_slot_operator_deps=ignore_built_slot_operator_deps,
+					soname_deps=self.soname_deps_enabled)
 			self.pkgsettings[myroot] = portage.config(
 				clone=self.trees[myroot]["vartree"].settings)
+			if self.soname_deps_enabled and "remove" not in params:
+				self.trees[myroot]["bintree"] = DummyTree(
+					DbapiProvidesIndex(trees[myroot]["bintree"].dbapi))
 
 		self._required_set_names = set(["world"])
 
@@ -428,7 +441,9 @@ class _dynamic_depgraph_config(object):
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
 		self._slot_operator_deps = {}
-		self._package_tracker = PackageTracker()
+		self._installed_sonames = collections.defaultdict(list)
+		self._package_tracker = PackageTracker(
+			soname_deps=depgraph._frozen_config.soname_deps_enabled)
 		# Track missed updates caused by solved conflicts.
 		self._conflict_missed_update = collections.defaultdict(dict)
 
@@ -536,6 +551,18 @@ class depgraph(object):
 
 		self.query = UserQuery(myopts).query
 
+	def _index_binpkgs(self):
+		for root in self._frozen_config.trees:
+			bindb = self._frozen_config.trees[root]["bintree"].dbapi
+			if bindb._provides_index:
+				# don't repeat this when backtracking
+				continue
+			root_config = self._frozen_config.roots[root]
+			for cpv in self._frozen_config._trees_orig[
+				root]["bintree"].dbapi.cpv_all():
+				bindb._provides_inject(
+					self._pkg(cpv, "binary", root_config))
+
 	def _load_vdb(self):
 		"""
 		Load installed package metadata if appropriate. This used to be called
@@ -571,6 +598,7 @@ class depgraph(object):
 				if not dynamic_deps:
 					for pkg in vardb:
 						self._dynamic_config._package_tracker.add_installed_pkg(pkg)
+						self._add_installed_sonames(pkg)
 				else:
 					max_jobs = self._frozen_config.myopts.get("--jobs")
 					max_load = self._frozen_config.myopts.get("--load-average")
@@ -589,6 +617,7 @@ class depgraph(object):
 		for pkg in fake_vartree.dbapi:
 			self._spinner_update()
 			self._dynamic_config._package_tracker.add_installed_pkg(pkg)
+			self._add_installed_sonames(pkg)
 			ebuild_path, repo_path = \
 				portdb.findname2(pkg.cpv, myrepo=pkg.repo)
 			if ebuild_path is None:
@@ -631,6 +660,8 @@ class depgraph(object):
 		"""
 
 		debug = "--debug" in self._frozen_config.myopts
+		installed_sonames = self._dynamic_config._installed_sonames
+		package_tracker = self._dynamic_config._package_tracker
 
 		# Get all atoms that might have caused a forced rebuild.
 		atoms = {}
@@ -665,6 +696,32 @@ class depgraph(object):
 
 				if inst_pkg is reinst_pkg or reinst_pkg is None:
 					continue
+
+				if (inst_pkg is not None and
+					inst_pkg.requires is not None):
+					for atom in inst_pkg.requires:
+						initial_providers = installed_sonames.get(
+							(root, atom))
+						if initial_providers is None:
+							continue
+						final_provider = next(
+							package_tracker.match(root, atom),
+							None)
+						if final_provider:
+							continue
+						for provider in initial_providers:
+							# Find the replacement child.
+							child = next((pkg for pkg in
+								package_tracker.match(
+								root, provider.slot_atom)
+								if not pkg.installed), None)
+
+							if child is None:
+								continue
+
+							forced_rebuilds.setdefault(
+								root, {}).setdefault(
+								child, set()).add(inst_pkg)
 
 				# Generate pseudo-deps for any slot-operator deps of
 				# inst_pkg. Its deps aren't in _slot_operator_deps
@@ -1216,9 +1273,6 @@ class depgraph(object):
 				if is_non_conflict_parent:
 					parent = non_conflict_node
 
-				atom_set = InternalPackageSet(
-					initial_atoms=(atom,), allow_repo=True)
-
 				matched = []
 				for pkg in conflict:
 					if (pkg is highest_pkg and
@@ -1230,8 +1284,8 @@ class depgraph(object):
 						# version into the graph (bug #531656).
 						non_matching_forced.add(highest_pkg)
 
-					if atom_set.findAtomForPackage(pkg, \
-						modified_use=self._pkg_use_enabled(pkg)) and \
+					if atom.match(pkg.with_use(
+						self._pkg_use_enabled(pkg))) and \
 						not (is_arg_parent and pkg.installed):
 						matched.append(pkg)
 
@@ -1448,13 +1502,8 @@ class depgraph(object):
 			for parent_atom in slot_parent_atoms:
 				if parent_atom in parent_atoms:
 					continue
-				# Use package set for matching since it will match via
-				# PROVIDE when necessary, while match_from_list does not.
 				parent, atom = parent_atom
-				atom_set = InternalPackageSet(
-					initial_atoms=(atom,), allow_repo=True)
-				if atom_set.findAtomForPackage(pkg,
-					modified_use=self._pkg_use_enabled(pkg)):
+				if atom.match(pkg.with_use(self._pkg_use_enabled(pkg))):
 					parent_atoms.add(parent_atom)
 				else:
 					all_match = False
@@ -1533,7 +1582,11 @@ class depgraph(object):
 			if not isinstance(parent, Package):
 				continue
 
-			if atom.slot_operator != "=" or not parent.built:
+			if not parent.built:
+				continue
+
+			if not atom.soname and not (
+				atom.package and atom.slot_operator_built):
 				continue
 
 			if pkg not in conflict_pkgs:
@@ -1740,7 +1793,7 @@ class depgraph(object):
 			"""
 			built_slot_operator_parents = set()
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
-				if atom.slot_operator_built:
+				if atom.soname or atom.slot_operator_built:
 					built_slot_operator_parents.add(parent)
 
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
@@ -1778,6 +1831,9 @@ class depgraph(object):
 		for replacement_parent in self._iter_similar_available(dep.parent,
 			dep.parent.slot_atom, autounmask_level=autounmask_level):
 
+			if replacement_parent is dep.parent:
+				continue
+
 			if replacement_parent < dep.parent:
 				if want_downgrade_parent is None:
 					want_downgrade_parent = self._downgrade_probe(
@@ -1796,35 +1852,51 @@ class depgraph(object):
 			except InvalidDependString:
 				continue
 
+			if replacement_parent.requires is not None:
+				atoms = list(atoms)
+				atoms.extend(replacement_parent.requires)
+
 			# List of list of child,atom pairs for each atom.
 			replacement_candidates = []
 			# Set of all packages all atoms can agree on.
 			all_candidate_pkgs = None
+			atom_not_selected = False
 
 			for atom in atoms:
-				if atom.blocker or \
-					atom.cp != dep.atom.cp:
-					continue
 
-				# Discard USE deps, we're only searching for an approximate
-				# pattern, and dealing with USE states is too complex for
-				# this purpose.
-				unevaluated_atom = atom.unevaluated_atom
-				atom = atom.without_use
+				if not atom.package:
+					unevaluated_atom = None
+					if atom.match(dep.child):
+						# We are searching for a replacement_parent
+						# atom that will pull in a different child,
+						# so continue checking the rest of the atoms.
+						continue
+				else:
 
-				if replacement_parent.built and \
-					portage.dep._match_slot(atom, dep.child):
-					# Our selected replacement_parent appears to be built
-					# for the existing child selection. So, discard this
-					# parent and search for another.
-					break
+					if atom.blocker or \
+						atom.cp != dep.child.cp:
+						continue
+
+					# Discard USE deps, we're only searching for an
+					# approximate pattern, and dealing with USE states
+					# is too complex for this purpose.
+					unevaluated_atom = atom.unevaluated_atom
+					atom = atom.without_use
+
+					if replacement_parent.built and \
+						portage.dep._match_slot(atom, dep.child):
+						# We are searching for a replacement_parent
+						# atom that will pull in a different child,
+						# so continue checking the rest of the atoms.
+						continue
 
 				candidate_pkg_atoms = []
 				candidate_pkgs = []
 				for pkg in self._iter_similar_available(
 					dep.child, atom):
-					if pkg.slot == dep.child.slot and \
-						pkg.sub_slot == dep.child.sub_slot:
+					if (dep.atom.package and
+						pkg.slot == dep.child.slot and
+						pkg.sub_slot == dep.child.sub_slot):
 						# If slot/sub-slot is identical, then there's
 						# no point in updating.
 						continue
@@ -1863,7 +1935,8 @@ class depgraph(object):
 						# slot conflict).
 						insignificant = True
 
-					if not insignificant:
+					if (not insignificant and
+						unevaluated_atom is not None):
 						# Evaluate USE conditionals and || deps, in order
 						# to see if this atom is really desirable, since
 						# otherwise we may trigger an undesirable rebuild
@@ -1872,14 +1945,19 @@ class depgraph(object):
 							selected_atoms = self._select_atoms_probe(
 								dep.child.root, replacement_parent)
 						if unevaluated_atom not in selected_atoms:
-							continue
+							atom_not_selected = True
+							break
 
 					if not insignificant and \
 						check_reverse_dependencies(dep.child, pkg,
 							replacement_parent=replacement_parent):
 
-						candidate_pkg_atoms.append((pkg, unevaluated_atom))
+						candidate_pkg_atoms.append(
+							(pkg, unevaluated_atom or atom))
 						candidate_pkgs.append(pkg)
+
+				if atom_not_selected:
+					continue
 				replacement_candidates.append(candidate_pkg_atoms)
 				if all_candidate_pkgs is None:
 					all_candidate_pkgs = set(candidate_pkgs)
@@ -2183,10 +2261,8 @@ class depgraph(object):
 			for dep in slot_info:
 
 				atom = dep.atom
-				if atom.slot_operator is None:
-					continue
 
-				if not atom.slot_operator_built:
+				if not (atom.soname or atom.slot_operator_built):
 					new_child_slot = self._slot_change_probe(dep)
 					if new_child_slot is not None:
 						self._slot_change_backtrack(dep, new_child_slot)
@@ -2471,7 +2547,7 @@ class depgraph(object):
 							(dep.parent,
 							self._dynamic_config._runtime_pkg_mask[
 							dep.parent]), noiselevel=-1)
-				elif dep.atom.slot_operator_built and \
+				elif dep.atom.package and dep.atom.slot_operator_built and \
 					self._slot_operator_unsatisfied_probe(dep):
 					self._slot_operator_unsatisfied_backtrack(dep)
 					return 1
@@ -2483,8 +2559,9 @@ class depgraph(object):
 					# return None, and eventually we come through here
 					# and skip the "missing dependency" backtracking path.
 					dep_pkg, existing_node = \
-						self._select_package(dep.root, dep.atom.without_use,
-							onlydeps=dep.onlydeps)
+						self._select_package(dep.root,
+							dep.atom.without_use if dep.atom.package
+							else dep.atom, onlydeps=dep.onlydeps)
 					if dep_pkg is None:
 						self._dynamic_config._backtrack_infos["missing dependency"] = dep
 						self._dynamic_config._need_restart = True
@@ -2520,11 +2597,8 @@ class depgraph(object):
 			matches = pkg.cpv == existing_node.cpv
 			if pkg != existing_node and \
 				atom is not None:
-				# Use package set for matching since it will match via
-				# PROVIDE when necessary, while match_from_list does not.
-				matches = bool(InternalPackageSet(initial_atoms=(atom,),
-					allow_repo=True).findAtomForPackage(existing_node,
-					modified_use=self._pkg_use_enabled(existing_node)))
+				matches = atom.match(existing_node.with_use(
+					self._pkg_use_enabled(existing_node)))
 
 		return (existing_node, matches)
 
@@ -2563,8 +2637,8 @@ class depgraph(object):
 				# Display the specific atom from SetArg or
 				# Package types.
 				uneval = ""
-				if dep.atom and dep.atom.unevaluated_atom and \
-						dep.atom is not dep.atom.unevaluated_atom:
+				if (dep.atom and dep.atom.package and
+					dep.atom is not dep.atom.unevaluated_atom):
 					uneval = " (%s)" % (dep.atom.unevaluated_atom,)
 				writemsg_level(
 					"%s%s%s required by %s\n" %
@@ -2728,8 +2802,9 @@ class depgraph(object):
 			not (deep is not True and depth > deep))
 
 		dep.child = pkg
-		if (not pkg.onlydeps and
-			dep.atom and dep.atom.slot_operator is not None):
+		if not pkg.onlydeps and dep.atom and (
+			dep.atom.soname or
+			dep.atom.slot_operator == "="):
 			self._add_slot_operator_dep(dep)
 
 		recurse = deep is True or depth + 1 <= deep
@@ -2745,6 +2820,32 @@ class depgraph(object):
 			dep_stack.append(pkg)
 		return 1
 
+	def _add_installed_sonames(self, pkg):
+		if (self._frozen_config.soname_deps_enabled and
+			pkg.provides is not None):
+			for atom in pkg.provides:
+				self._dynamic_config._installed_sonames[
+					(pkg.root, atom)].append(pkg)
+
+	def _add_pkg_soname_deps(self, pkg, allow_unsatisfied=False):
+		if (self._frozen_config.soname_deps_enabled and
+			pkg.requires is not None):
+			if isinstance(pkg.depth, int):
+				depth = pkg.depth + 1
+			else:
+				depth = pkg.depth
+			soname_provided = self._frozen_config.roots[
+				pkg.root].settings.soname_provided
+			for atom in pkg.requires:
+				if atom in soname_provided:
+					continue
+				dep = Dependency(atom=atom, blocker=False, depth=depth,
+					parent=pkg, priority=self._priority(runtime=True),
+					root=pkg.root)
+				if not self._add_dep(dep,
+					allow_unsatisfied=allow_unsatisfied):
+					return False
+		return True
 
 	def _remove_pkg(self, pkg):
 		"""
@@ -2831,6 +2932,10 @@ class depgraph(object):
 		slot_info.append(dep)
 
 	def _add_pkg_deps(self, pkg, allow_unsatisfied=False):
+
+		if not self._add_pkg_soname_deps(pkg,
+			allow_unsatisfied=allow_unsatisfied):
+			return False
 
 		myroot = pkg.root
 		metadata = pkg._metadata
@@ -3482,6 +3587,9 @@ class depgraph(object):
 		self._dynamic_config._initial_arg_list and call self._resolve to create the
 		appropriate depgraph and return a favorite list."""
 		self._load_vdb()
+		if (self._frozen_config.soname_deps_enabled and
+			"remove" not in self._dynamic_config.myparams):
+			self._index_binpkgs()
 		debug = "--debug" in self._frozen_config.myopts
 		root_config = self._frozen_config.roots[self._frozen_config.target_root]
 		sets = root_config.sets
@@ -4451,7 +4559,7 @@ class depgraph(object):
 			# (aka unsatisfied_dependency is not None) we
 			# need that the start_node doesn't match the atom.
 			if not unsatisfied_dependency or \
-				not InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(start_node):
+				not patom.match(start_node):
 				start_node_parent_atoms.setdefault(patom, []).append(ppkg)
 
 		if start_node_parent_atoms:
@@ -4459,7 +4567,16 @@ class depgraph(object):
 			# If not, then this package got pulled in by an Arg and
 			# will be correctly handled by the code that handles later
 			# packages in the dep chain.
-			best_match = best_match_to_list(node.cpv, start_node_parent_atoms)
+			if (any(not x.package for x in start_node_parent_atoms) and
+				any(x.package for x in start_node_parent_atoms)):
+				for x in list(start_node_parent_atoms):
+					if not x.package:
+						del start_node_parent_atoms[x]
+			if next(iter(start_node_parent_atoms)).package:
+				best_match = best_match_to_list(node.cpv,
+					start_node_parent_atoms)
+			else:
+				best_match = next(iter(start_node_parent_atoms))
 
 			child = node
 			for ppkg in start_node_parent_atoms[best_match]:
@@ -4486,10 +4603,11 @@ class depgraph(object):
 				for ppkg, patom in all_parents[child]:
 					if ppkg == node:
 						if child is start_node and unsatisfied_dependency and \
-							InternalPackageSet(initial_atoms=(patom,)).findAtomForPackage(child):
+							patom.match(child):
 							# This atom is satisfied by child, there must be another atom.
 							continue
-						atom = patom.unevaluated_atom
+						atom = (patom.unevaluated_atom
+							if patom.package else patom)
 						break
 
 				dep_strings = set()
@@ -4558,8 +4676,7 @@ class depgraph(object):
 						# flag changes.
 						for ppkg, atom in all_parents[start_node]:
 							if parent is ppkg:
-								atom_set = InternalPackageSet(initial_atoms=(atom,))
-								if not atom_set.findAtomForPackage(start_node):
+								if not atom.match(start_node):
 									parent_unsatisfied = parent
 								break
 					else:
@@ -4602,11 +4719,13 @@ class depgraph(object):
 		"""
 		backtrack_mask = False
 		autounmask_broke_use_dep = False
-		atom_set = InternalPackageSet(initial_atoms=(atom.without_use,),
-			allow_repo=True)
-		atom_set_with_use = InternalPackageSet(initial_atoms=(atom,),
-			allow_repo=True)
-		xinfo = '"%s"' % atom.unevaluated_atom
+		if atom.package:
+			xinfo = '"%s"' % atom.unevaluated_atom
+			atom_without_use = atom.without_use
+		else:
+			xinfo = '"%s"' % atom
+			atom_without_use = None
+
 		if arg:
 			xinfo='"%s"' % arg
 		if isinstance(myparent, AtomArg):
@@ -4630,12 +4749,18 @@ class depgraph(object):
 		for db, pkg_type, built, installed, db_keys in dbs:
 			if installed:
 				continue
-			if hasattr(db, "xmatch"):
+			if atom.soname:
+				if not isinstance(db, DbapiProvidesIndex):
+					continue
+				cpv_list = db.match(atom)
+			elif hasattr(db, "xmatch"):
 				cpv_list = db.xmatch("match-all-cpv-only", atom.without_use)
 			else:
 				cpv_list = db.match(atom.without_use)
 
-			if atom.repo is None and hasattr(db, "getRepositories"):
+			if atom.soname:
+				repo_list = [None]
+			elif atom.repo is None and hasattr(db, "getRepositories"):
 				repo_list = db.getRepositories()
 			else:
 				repo_list = [atom.repo]
@@ -4666,8 +4791,10 @@ class depgraph(object):
 							masked_packages.append(
 								(root_config, pkgsettings, cpv, repo, metadata, mreasons))
 							continue
-						if not atom_set.findAtomForPackage(pkg,
-							modified_use=self._pkg_use_enabled(pkg)):
+						if atom.soname and not atom.match(pkg):
+							continue
+						if (atom_without_use is not None and
+							not atom_without_use.match(pkg)):
 							continue
 						if pkg in self._dynamic_config._runtime_pkg_mask:
 							backtrack_reasons = \
@@ -4680,12 +4807,12 @@ class depgraph(object):
 							mreasons = ["exclude option"]
 						if mreasons:
 							masked_pkg_instances.add(pkg)
-						if atom.unevaluated_atom.use:
+						if atom.package and atom.unevaluated_atom.use:
 							try:
 								if not pkg.iuse.is_valid_flag(atom.unevaluated_atom.use.required) \
 									or atom.violated_conditionals(self._pkg_use_enabled(pkg), pkg.iuse.is_valid_flag).use:
 									missing_use.append(pkg)
-									if atom_set_with_use.findAtomForPackage(pkg):
+									if atom.match(pkg):
 										autounmask_broke_use_dep = True
 									if not mreasons:
 										continue
@@ -4952,7 +5079,7 @@ class depgraph(object):
 			mask_docs = True
 		else:
 			cp_exists = False
-			if not atom.cp.startswith("null/"):
+			if atom.package and not atom.cp.startswith("null/"):
 				for pkg in self._iter_match_pkgs_any(
 					root_config, Atom(atom.cp)):
 					cp_exists = True
@@ -5011,7 +5138,28 @@ class depgraph(object):
 				pkg_type, atom, onlydeps=onlydeps):
 				yield pkg
 
-	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
+	def _iter_match_pkgs(self, root_config, pkg_type, atom,
+		onlydeps=False):
+		if atom.package:
+			return self._iter_match_pkgs_atom(root_config, pkg_type,
+				atom, onlydeps=onlydeps)
+		else:
+			return self._iter_match_pkgs_soname(root_config, pkg_type,
+				atom, onlydeps=onlydeps)
+
+	def _iter_match_pkgs_soname(self, root_config, pkg_type, atom,
+		onlydeps=False):
+		db = root_config.trees[self.pkg_tree_map[pkg_type]].dbapi
+		installed = pkg_type == 'installed'
+
+		if isinstance(db, DbapiProvidesIndex):
+			# descending order
+			for cpv in reversed(db.match(atom)):
+				yield self._pkg(cpv, pkg_type, root_config,
+					installed=installed, onlydeps=onlydeps)
+
+	def _iter_match_pkgs_atom(self, root_config, pkg_type, atom,
+		onlydeps=False):
 		"""
 		Iterate over Package instances of pkg_type matching the given atom.
 		This does not check visibility and it also does not match USE for
@@ -5114,14 +5262,21 @@ class depgraph(object):
 						return
 
 	def _select_pkg_highest_available(self, root, atom, onlydeps=False, parent=None):
-		cache_key = (root, atom, atom.unevaluated_atom, onlydeps, self._dynamic_config._autounmask)
+		if atom.package:
+			cache_key = (root, atom, atom.unevaluated_atom, onlydeps,
+				self._dynamic_config._autounmask)
+			self._dynamic_config._highest_pkg_cache_cp_map.\
+				setdefault((root, atom.cp), []).append(cache_key)
+		else:
+			cache_key = (root, atom, onlydeps,
+				self._dynamic_config._autounmask)
+			self._dynamic_config._highest_pkg_cache_cp_map.\
+				setdefault((root, atom), []).append(cache_key)
 		ret = self._dynamic_config._highest_pkg_cache.get(cache_key)
 		if ret is not None:
 			return ret
 		ret = self._select_pkg_highest_available_imp(root, atom, onlydeps=onlydeps, parent=parent)
 		self._dynamic_config._highest_pkg_cache[cache_key] = ret
-		self._dynamic_config._highest_pkg_cache_cp_map. \
-			setdefault(atom.cp, []).append(cache_key)
 		pkg, existing = ret
 		if pkg is not None:
 			if self._pkg_visibility_check(pkg) and \
@@ -5136,11 +5291,15 @@ class depgraph(object):
 		return False
 
 	def _prune_highest_pkg_cache(self, pkg):
+		cache = self._dynamic_config._highest_pkg_cache
+		key_map = self._dynamic_config._highest_pkg_cache_cp_map
 		for cp in pkg.provided_cps:
-			for cache_key in self._dynamic_config. \
-				_highest_pkg_cache_cp_map.pop(cp, []):
-				self._dynamic_config._highest_pkg_cache.pop(
-					cache_key, None)
+			for cache_key in key_map.pop((pkg.root, cp), []):
+				cache.pop(cache_key, None)
+		if pkg.provides is not None:
+			for atom in pkg.provides:
+				for cache_key in key_map.pop((pkg.root, atom), []):
+					cache.pop(cache_key, None)
 
 	def _want_installed_pkg(self, pkg):
 		"""
@@ -5540,12 +5699,13 @@ class depgraph(object):
 		# List of acceptable packages, ordered by type preference.
 		matched_packages = []
 		highest_version = None
-		if not isinstance(atom, portage.dep.Atom):
-			atom = portage.dep.Atom(atom)
-		atom_cp = atom.cp
-		have_new_virt = atom_cp.startswith("virtual/") and \
-			self._have_new_virt(root, atom_cp)
-		atom_set = InternalPackageSet(initial_atoms=(atom,), allow_repo=True)
+		atom_cp = None
+		have_new_virt = None
+		if atom.package:
+			atom_cp = atom.cp
+			have_new_virt = (atom_cp.startswith("virtual/") and
+				self._have_new_virt(root, atom_cp))
+
 		existing_node = None
 		myeb = None
 		rebuilt_binaries = 'rebuilt_binaries' in self._dynamic_config.myparams
@@ -5590,9 +5750,10 @@ class depgraph(object):
 				# Ignore USE deps for the initial match since we want to
 				# ensure that updates aren't missed solely due to the user's
 				# USE configuration.
-				for pkg in self._iter_match_pkgs(root_config, pkg_type, atom.without_use,
+				for pkg in self._iter_match_pkgs(root_config, pkg_type,
+					atom.without_use if atom.package else atom,
 					onlydeps=onlydeps):
-					if pkg.cp != atom_cp and have_new_virt:
+					if have_new_virt is True and pkg.cp != atom_cp:
 						# pull in a new-style virtual instead
 						continue
 					if pkg in self._dynamic_config._runtime_pkg_mask:
@@ -5711,14 +5872,14 @@ class depgraph(object):
 					if not installed and myarg:
 						found_available_arg = True
 
-					if atom.unevaluated_atom.use:
+					if atom.package and atom.unevaluated_atom.use:
 						#Make sure we don't miss a 'missing IUSE'.
 						if pkg.iuse.get_missing_iuse(atom.unevaluated_atom.use.required):
 							# Don't add this to packages_with_invalid_use_config
 							# since IUSE cannot be adjusted by the user.
 							continue
 
-					if atom.use:
+					if atom.package and atom.use is not None:
 
 						if autounmask_level and autounmask_level.allow_use_changes and not pkg.built:
 							target_use = {}
@@ -5778,7 +5939,7 @@ class depgraph(object):
 								packages_with_invalid_use_config.append(pkg)
 							continue
 
-					if pkg.cp == atom_cp:
+					if atom_cp is None or pkg.cp == atom_cp:
 						if highest_version is None:
 							highest_version = pkg
 						elif pkg > highest_version:
@@ -5797,9 +5958,11 @@ class depgraph(object):
 
 						# Use PackageSet.findAtomForPackage()
 						# for PROVIDE support.
-						if atom_set.findAtomForPackage(e_pkg, modified_use=self._pkg_use_enabled(e_pkg)):
+						if atom.match(e_pkg.with_use(
+							self._pkg_use_enabled(e_pkg))):
 							if highest_version and \
-								e_pkg.cp == atom_cp and \
+								(atom_cp is None or
+								e_pkg.cp == atom_cp) and \
 								e_pkg < highest_version and \
 								e_pkg.slot_atom != highest_version.slot_atom:
 								# There is a higher version available in a
@@ -5865,7 +6028,8 @@ class depgraph(object):
 					# Compare current config to installed package
 					# and do not reinstall if possible.
 					if not installed and not useoldpkg and cpv in vardb.match(atom):
-						inst_pkg = vardb.match_pkgs('=' + pkg.cpv)[0]
+						inst_pkg = vardb.match_pkgs(
+							Atom('=' + pkg.cpv))[0]
 						if "--newrepo" in self._frozen_config.myopts and pkg.repo != inst_pkg.repo:
 							reinstall = True
 						elif reinstall_use:
@@ -5906,8 +6070,9 @@ class depgraph(object):
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
-		cp = atom.cp
+		cp = atom_cp
 		if len(matched_packages) > 1 and \
+			cp is not None and \
 			"virtual" == portage.catsplit(cp)[0]:
 			for pkg in matched_packages:
 				if pkg.cp != cp:
@@ -6893,7 +7058,7 @@ class depgraph(object):
 		runtime_deps = InternalPackageSet(
 			initial_atoms=[PORTAGE_PACKAGE_ATOM])
 		running_portage = self._frozen_config.trees[running_root]["vartree"].dbapi.match_pkgs(
-			PORTAGE_PACKAGE_ATOM)
+			Atom(PORTAGE_PACKAGE_ATOM))
 		replacement_portage = list(self._dynamic_config._package_tracker.match(
 			running_root, Atom(PORTAGE_PACKAGE_ATOM)))
 

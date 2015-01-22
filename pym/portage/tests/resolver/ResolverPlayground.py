@@ -40,6 +40,7 @@ class ResolverPlayground(object):
 	config_files = frozenset(("eapi", "layout.conf", "make.conf", "package.accept_keywords",
 		"package.keywords", "package.license", "package.mask", "package.properties",
 		"package.unmask", "package.use", "package.use.aliases", "package.use.stable.mask",
+		"soname.provided",
 		"unpack_dependencies", "use.aliases", "use.force", "use.mask", "layout.conf"))
 
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
@@ -254,6 +255,8 @@ class ResolverPlayground(object):
 			unknown_keys.discard("COUNTER")
 			unknown_keys.discard("repository")
 			unknown_keys.discard("USE")
+			unknown_keys.discard("PROVIDES")
+			unknown_keys.discard("REQUIRES")
 			if unknown_keys:
 				raise ValueError("metadata of installed '%s' contains unknown keys: %s" %
 					(cpv, sorted(unknown_keys)))

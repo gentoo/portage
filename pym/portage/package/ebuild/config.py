@@ -22,6 +22,7 @@ from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.data:portage_gid',
+	'portage.dep.soname.SonameAtom:SonameAtom',
 	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
 )
@@ -230,6 +231,7 @@ class config(object):
 		self._features_overrides = []
 		self._make_defaults = None
 		self._parent_stable = None
+		self._soname_provided = None
 
 		# _unknown_features records unknown features that
 		# have triggered warning messages, and ensures that
@@ -266,6 +268,7 @@ class config(object):
 			self.make_defaults_use = clone.make_defaults_use
 			self.mycpv = clone.mycpv
 			self._setcpv_args_hash = clone._setcpv_args_hash
+			self._soname_provided = clone._soname_provided
 
 			# immutable attributes (internal policy ensures lack of mutation)
 			self._locations_manager = clone._locations_manager
@@ -1048,6 +1051,16 @@ class config(object):
 	@property
 	def punmaskdict(self):
 		return self._mask_manager._punmaskdict.copy()
+
+	@property
+	def soname_provided(self):
+		if self._soname_provided is None:
+			d = stack_dictlist((grabdict(
+				os.path.join(x, "soname.provided"), recursive=True)
+				for x in self.profiles), incremental=True)
+			self._soname_provided = frozenset(SonameAtom(cat, soname)
+				for cat, sonames in d.items() for soname in sonames)
+		return self._soname_provided
 
 	def expandLicenseTokens(self, tokens):
 		""" Take a token from ACCEPT_LICENSE or package.license and expand it

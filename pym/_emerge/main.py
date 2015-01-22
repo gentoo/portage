@@ -455,6 +455,16 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices": y_or_n
 		},
 
+		"--ignore-soname-deps": {
+			"help": "Ignore the soname dependencies of binary and "
+				"installed packages. This option is enabled by "
+				"default, since soname dependencies are relatively "
+				"new, and the required metadata is not guaranteed to "
+				"exist for binary and installed packages built with "
+				"older versions of portage.",
+			"choices": y_or_n
+		},
+
 		"--jobs": {
 
 			"shortopt" : "-j",

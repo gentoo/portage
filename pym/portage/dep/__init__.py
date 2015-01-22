@@ -1172,6 +1172,12 @@ class Atom(_unicode):
 	class emulates most of the str methods that are useful with atoms.
 	"""
 
+	# Distiguishes package atoms from other atom types
+	package = True
+
+	# Distiguishes soname atoms from other atom types
+	soname = False
+
 	class _blocker(object):
 		__slots__ = ("overlap",)
 
@@ -1560,6 +1566,25 @@ class Atom(_unicode):
 		"""Immutable, so returns self."""
 		memo[id(self)] = self
 		return self
+
+	def match(self, pkg):
+		"""
+		Check if the given package instance matches this atom. This
+		includes support for virtual matches via PROVIDE metadata.
+
+		@param pkg: a Package instance
+		@type pkg: Package
+		@return: True if this atom matches pkg, otherwise False
+		@rtype: bool
+		"""
+		if pkg.cp == self.cp:
+			return bool(match_from_list(self, [pkg]))
+		else:
+			for provided_cp in pkg.provided_cps:
+				if provided_cp == self.cp:
+					return bool(match_from_list(
+						self.replace(self.cp, provided_cp, 1), [pkg]))
+		return False
 
 _extended_cp_re_cache = {}
 

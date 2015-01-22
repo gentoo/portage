@@ -3,7 +3,7 @@
 
 import sys
 
-from portage.dep import _repo_separator
+from portage.dep import Atom, _repo_separator
 from portage.exception import InvalidData
 
 if sys.hexversion >= 0x3000000:
@@ -40,7 +40,7 @@ def create_world_atom(pkg, args_set, root_config):
 			repos.append(portdb.repositories.get_name_for_location(tree))
 
 	available_slots = set()
-	for cpv in portdb.match(cp):
+	for cpv in portdb.match(Atom(cp)):
 		for repo in repos:
 			try:
 				available_slots.add(portdb._pkg_str(_unicode(cpv), repo).slot)
@@ -52,7 +52,7 @@ def create_world_atom(pkg, args_set, root_config):
 	if not slotted:
 		# check the vdb in case this is multislot
 		available_slots = set(vardb._pkg_str(cpv, None).slot \
-			for cpv in vardb.match(cp))
+			for cpv in vardb.match(Atom(cp)))
 		slotted = len(available_slots) > 1 or \
 			(len(available_slots) == 1 and "0" not in available_slots)
 	if slotted and arg_atom.without_repo != cp:

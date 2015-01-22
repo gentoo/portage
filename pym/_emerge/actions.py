@@ -787,7 +787,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		for pkg in vardb:
 			if spinner is not None:
 				spinner.update()
-			pkgs_for_cp = vardb.match_pkgs(pkg.cp)
+			pkgs_for_cp = vardb.match_pkgs(Atom(pkg.cp))
 			if not pkgs_for_cp or pkg not in pkgs_for_cp:
 				raise AssertionError("package expected in matches: " + \
 					"cp = %s, cpv = %s matches = %s" % \
@@ -931,8 +931,13 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 		parent_strs = []
 		for parent, atoms in parent_atom_dict.items():
+			# Display package atoms and soname
+			# atoms in separate groups.
+			atoms = sorted(atoms, reverse=True,
+				key=operator.attrgetter('package'))
 			parent_strs.append("%s requires %s" %
-				(getattr(parent, "cpv", parent), ", ".join(atoms)))
+				(getattr(parent, "cpv", parent),
+				", ".join(_unicode(atom) for atom in atoms)))
 		parent_strs.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
