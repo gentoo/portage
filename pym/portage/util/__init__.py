@@ -1685,7 +1685,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
 		try:
-			old_pfile_st = _os_merge.lstat(old_pfile)
+			old_pfile_st = os.lstat(old_pfile)
 		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
@@ -1694,7 +1694,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 				try:
 					# Read symlink target as bytes, in case the
 					# target path has a bad encoding.
-					pfile_link = _os.readlink(_unicode_encode(old_pfile,
+					pfile_link = os.readlink(_unicode_encode(old_pfile,
 						encoding=_encodings['merge'], errors='strict'))
 				except OSError:
 					if e.errno != errno.ENOENT:
