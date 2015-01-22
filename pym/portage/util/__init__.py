@@ -43,8 +43,8 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
-       IsADirectory, OperationNotPermitted, ParseError, PermissionDenied, \
-	   ReadOnlyFileSystem
+	IsADirectory, OperationNotPermitted, ParseError, PermissionDenied, \
+	ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -427,7 +427,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
 	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
-	    with isvalidatom()"""
+		with isvalidatom()"""
 
 	if recursive:
 		file_list = _recursive_file_list(myfilename)
@@ -1001,24 +1001,24 @@ def unique_array(s):
 	return u
 
 def unique_everseen(iterable, key=None):
-    """
-    List unique elements, preserving order. Remember all elements ever seen.
-    Taken from itertools documentation.
-    """
-    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
-    # unique_everseen('ABBCcAD', str.lower) --> A B C D
-    seen = set()
-    seen_add = seen.add
-    if key is None:
-        for element in filterfalse(seen.__contains__, iterable):
-            seen_add(element)
-            yield element
-    else:
-        for element in iterable:
-            k = key(element)
-            if k not in seen:
-                seen_add(k)
-                yield element
+	"""
+	List unique elements, preserving order. Remember all elements ever seen.
+	Taken from itertools documentation.
+	"""
+	# unique_everseen('AAAABBBCCDAABBB') --> A B C D
+	# unique_everseen('ABBCcAD', str.lower) --> A B C D
+	seen = set()
+	seen_add = seen.add
+	if key is None:
+		for element in filterfalse(seen.__contains__, iterable):
+			seen_add(element)
+			yield element
+	else:
+		for element in iterable:
+			k = key(element)
+			if k not in seen:
+				seen_add(k)
+				yield element
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
