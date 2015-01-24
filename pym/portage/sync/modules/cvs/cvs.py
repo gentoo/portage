@@ -7,10 +7,10 @@ import errno
 import portage
 from portage import os
 from portage.util import writemsg_level
-from portage.sync.syncbase import SyncBase
+from portage.sync.syncbase import NewBase
 
 
-class CVSSync(SyncBase):
+class CVSSync(NewBase):
 	'''CVS sync module'''
 
 	short_desc = "Perform sync operations on CVS repositories"
@@ -21,7 +21,7 @@ class CVSSync(SyncBase):
 
 
 	def __init__(self):
-		SyncBase.__init__(self, "cvs", portage.const.CVS_PACKAGE_ATOM)
+		NewBase.__init__(self, "cvs", portage.const.CVS_PACKAGE_ATOM)
 
 
 	def exists(self, **kwargs):
@@ -47,9 +47,9 @@ class CVSSync(SyncBase):
 		return (0, False)
 
 
-	def _sync(self):
+	def update(self):
 		"""
-		Internal function to sync an existing CVS repository
+		Internal function to update an existing CVS repository
 
 		@return: tuple of return code (0=success), whether the cache
 			needs to be updated

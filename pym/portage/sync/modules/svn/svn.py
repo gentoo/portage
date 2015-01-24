@@ -7,10 +7,10 @@ import errno
 import portage
 from portage import os
 from portage.util import writemsg_level
-from portage.sync.syncbase import SyncBase
+from portage.sync.syncbase import NewBase
 
 
-class SVNSync(SyncBase):
+class SVNSync(NewBase):
 	'''SVN sync module'''
 
 	short_desc = "Perform sync operations on SVN repositories"
@@ -21,7 +21,7 @@ class SVNSync(SyncBase):
 
 
 	def __init__(self):
-		SyncBase.__init__(self, "svn", "dev-vcs/subversion")
+		NewBase.__init__(self, "svn", "dev-vcs/subversion")
 
 
 	def exists(self, **kwargs):
@@ -46,9 +46,9 @@ class SVNSync(SyncBase):
 		return (exitcode, False)
 
 
-	def _sync(self):
+	def update(self):
 		"""
-		Internal function to sync an existing SVN repository
+		Internal function to update an existing SVN repository
 
 		@return: tuple of return code (0=success), whether the cache
 			needs to be updated

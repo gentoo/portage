@@ -57,17 +57,48 @@ class SyncBase(object):
 		self.xterm_titles = self.options.get('xterm_titles', False)
 		self.spawn_kwargs = self.options.get('spawn_kwargs', None)
 
+
 	def exists(self, **kwargs):
 		'''Tests whether the repo actually exists'''
 		if kwargs:
 			self._kwargs(kwargs)
 		elif not self.repo:
 			return False
-
-
 		if not os.path.exists(self.repo.location):
 			return False
 		return True
+
+
+	def sync(self, **kwargs):
+		'''Sync the repository'''
+		raise NotImplementedError
+
+
+	def post_sync(self, portdb, location, emerge_config):
+		'''repo.sync_type == "Blank":
+		# NOTE: Do this after reloading the config, in case
+		# it did not exist prior to sync, so that the config
+		# and portdb properly account for its existence.
+		'''
+		pass
+
+
+	def _get_submodule_paths(self):
+		paths = []
+		emerge_config = self.options.get('emerge_config')
+		if emerge_config is not None:
+			for name in emerge_config.opts.get('--sync-submodule', []):
+				paths.append(_SUBMODULE_PATH_MAP[name])
+		return tuple(paths)
+
+
+class NewBase(SyncBase):
+	'''Subclasses Syncbase adding a new() and runs it
+	instead of update() if the repository does not exist()'''
+
+
+	def __init__(self, bin_command, bin_pkg):
+		SyncBase.__init__(self, bin_command, bin_pkg)
 
 
 	def sync(self, **kwargs):
@@ -80,30 +111,15 @@ class SyncBase(object):
 
 		if not self.exists():
 			return self.new()
-		return self._sync()
+		return self.update()
 
 
 	def new(self, **kwargs):
 		'''Do the initial download and install of the repository'''
-		pass
+		raise NotImplementedError
 
-	def _sync(self):
+
+	def update(self):
 		'''Update existing repository
 		'''
-		pass
-
-	def post_sync(self, portdb, location, emerge_config):
-		'''repo.sync_type == "Blank":
-		# NOTE: Do this after reloading the config, in case
-		# it did not exist prior to sync, so that the config
-		# and portdb properly account for its existence.
-		'''
-		pass
-
-	def _get_submodule_paths(self):
-		paths = []
-		emerge_config = self.options.get('emerge_config')
-		if emerge_config is not None:
-			for name in emerge_config.opts.get('--sync-submodule', []):
-				paths.append(_SUBMODULE_PATH_MAP[name])
-		return tuple(paths)
+		raise NotImplementedError

@@ -10,10 +10,10 @@ from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.sync.syncbase import SyncBase
+from portage.sync.syncbase import NewBase
 
 
-class GitSync(SyncBase):
+class GitSync(NewBase):
 	'''Git sync class'''
 
 	short_desc = "Perform sync operations on git based repositories"
@@ -24,7 +24,7 @@ class GitSync(SyncBase):
 
 
 	def __init__(self):
-		SyncBase.__init__(self, "git", portage.const.GIT_PACKAGE_ATOM)
+		NewBase.__init__(self, "git", portage.const.GIT_PACKAGE_ATOM)
 
 
 	def exists(self, **kwargs):
@@ -67,7 +67,7 @@ class GitSync(SyncBase):
 		return (os.EX_OK, True)
 
 
-	def _sync(self):
+	def update(self):
 		''' Update existing git repository, and ignore the syncuri. We are
 		going to trust the user and assume that the user is in the branch
 		that he/she wants updated. We'll let the user manage branches with

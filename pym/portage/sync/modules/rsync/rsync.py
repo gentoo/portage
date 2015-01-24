@@ -21,14 +21,14 @@ from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.util import writemsg, writemsg_stdout
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
-from portage.sync.syncbase import SyncBase
+from portage.sync.syncbase import NewBase
 
 
 SERVER_OUT_OF_DATE = -1
 EXCEEDED_MAX_RETRIES = -2
 
 
-class RsyncSync(SyncBase):
+class RsyncSync(NewBase):
 	'''Rsync sync module'''
 
 	short_desc = "Perform sync operations on rsync based repositories"
@@ -39,11 +39,11 @@ class RsyncSync(SyncBase):
 
 
 	def __init__(self):
-		SyncBase.__init__(self, "rsync", RSYNC_PACKAGE_ATOM)
+		NewBase.__init__(self, "rsync", RSYNC_PACKAGE_ATOM)
 
 
-	def _sync(self):
-		'''Internal sync function which performs only the sync'''
+	def update(self):
+		'''Internal update function which performs the transfer'''
 		opts = self.options.get('emerge_config').opts
 		self.usersync_uid = self.options.get('usersync_uid', None)
 		enter_invalid = '--ask-enter-invalid' in opts
@@ -287,7 +287,7 @@ class RsyncSync(SyncBase):
 					'Created New Directory %s ' % self.repo.location )
 		except IOError:
 			return (1, False)
-		return self._sync()
+		return self.update()
 
 
 	def _set_rsync_defaults(self):

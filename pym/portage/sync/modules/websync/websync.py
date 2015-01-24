@@ -27,14 +27,14 @@ class WebRsync(SyncBase):
 		SyncBase.__init__(self, 'emerge-webrsync', '>=sys-apps/portage-2.3')
 
 
-	def new(self, **kwargs):
-		'''Do the initial download and install of the repository'''
-		return self._sync()
+	def sync(self, **kwargs):
+		'''Sync the repository'''
+		if kwargs:
+			self._kwargs(kwargs)
 
+		if not self.has_bin:
+			return (1, False)
 
-	def _sync(self):
-		''' Update existing repository
-		'''
 		emerge_config = self.options.get('emerge_config', None)
 		portdb = self.options.get('portdb', None)
 
@@ -64,12 +64,7 @@ class PyWebRsync(SyncBase):
 		SyncBase.__init__(self, None, '>=sys-apps/portage-2.3')
 
 
-	def new(self, **kwargs):
-		'''Do the initial download and install of the repository'''
+	def sync(self, **kwargs):
+		'''Sync the repository'''
 		pass
 
-
-	def _sync(self):
-		''' Update existing repository
-		'''
-		pass
