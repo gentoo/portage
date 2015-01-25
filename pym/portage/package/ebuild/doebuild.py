@@ -68,6 +68,7 @@ from portage.util import apply_recursive_permissions, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile
+from portage.util.socks5 import get_socks5_proxy
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -1486,6 +1487,16 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	if uid == 0 and platform.system() == 'Linux':
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
+
+		if not networked:
+			# Provide a SOCKS5-over-UNIX-socket proxy to escape sandbox
+			try:
+				proxy = get_socks5_proxy(mysettings)
+			except NotImplementedError:
+				pass
+			else:
+				mysettings['PORTAGE_SOCKS5_PROXY'] = proxy
+				mysettings['DISTCC_SOCKS_PROXY'] = proxy
 
 	# TODO: Enable fakeroot to be used together with droppriv.  The
 	# fake ownership/permissions will have to be converted to real

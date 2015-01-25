@@ -436,6 +436,13 @@ from putting 64bit libraries into anything other than (/usr)/lib64.
 .B network\-sandbox
 Isolate the ebuild phase functions from host network interfaces.
 Supported only on Linux. Requires network namespace support in kernel.
+
+If asyncio Python module is available (requires Python 3.3, built-in
+since Python 3.4) Portage will additionally spawn an isolated SOCKSv5
+proxy on UNIX socket. The socket address will be exported
+as PORTAGE_SOCKS5_PROXY and the processes running inside the sandbox
+can use it to access host's network when desired. Portage automatically
+configures new enough distcc to use the proxy.
 .TP
 .B news
 Enable GLEP 42 news support. See

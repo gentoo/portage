@@ -484,6 +484,11 @@ source	source\-build which is scheduled for merge
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 PORTAGE_LOG_FILE=\fI"${T}/build.log"\fR.
 .TP
+.B PORTAGE_SOCKS5_PROXY
+Contains the UNIX socket path to SOCKSv5 proxy providing host network
+access. Available only when running inside network\-sandbox and a proxy
+is available (see network\-sandbox in \fBmake.conf\fR(5)).
+.TP
 .B REPLACED_BY_VERSION
 Beginning with \fBEAPI 4\fR, the REPLACED_BY_VERSION variable can be
 used in pkg_prerm and pkg_postrm to query the package version that
