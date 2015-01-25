@@ -85,7 +85,7 @@ _unsandboxed_phases = frozenset([
 
 # phases in which IPC with host is allowed
 _ipc_phases = frozenset([
-	"setup", "pretend",
+	"setup", "pretend", "config", "info",
 	"preinst", "postinst", "prerm", "postrm",
 ])
 
