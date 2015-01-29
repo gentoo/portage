@@ -421,5 +421,5 @@ def display_news_notifications(news_counts):
 
 	if newsReaderDisplay:
 		print(colorize("WARN", " *"), end=' ')
-		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
+		print("Use " + colorize("GOOD", "eselect news read") + " to view new items.")
 		print()
