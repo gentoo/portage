@@ -35,9 +35,6 @@ class WebRsync(SyncBase):
 		if not self._has_bin:
 			return (1, False)
 
-		emerge_config = self.options.get('emerge_config', None)
-		portdb = self.options.get('portdb', None)
-
 		exitcode = portage.process.spawn_bash("%s" % \
 			(self.bin_command),
 			**portage._native_kwargs(self.spawn_kwargs))
@@ -46,7 +43,6 @@ class WebRsync(SyncBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		#return self.post_sync(portdb, self.repo.location, emerge_config)
 		return (exitcode, True)
 
 

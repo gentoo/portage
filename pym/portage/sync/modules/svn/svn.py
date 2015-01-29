@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
-import errno
 
 import portage
 from portage import os
@@ -55,7 +54,7 @@ class SVNSync(NewBase):
 		@rtype: (int, bool)
 		"""
 
-		exitcode, d = self._svn_upgrade()
+		exitcode = self._svn_upgrade()
 		if exitcode != os.EX_OK:
 			return (exitcode, False)
 
@@ -87,4 +86,4 @@ class SVNSync(NewBase):
 			msg = "!!! svn upgrade error; exiting."
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
-		return (exitcode, False)
+		return exitcode

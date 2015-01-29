@@ -36,8 +36,6 @@ class GitSync(NewBase):
 		'''Do the initial clone of the repository'''
 		if kwargs:
 			self._kwargs(kwargs)
-		emerge_config = self.options.get('emerge_config', None)
-		portdb = self.options.get('portdb', None)
 		try:
 			if not os.path.exists(self.repo.location):
 				os.makedirs(self.repo.location)
@@ -73,10 +71,6 @@ class GitSync(NewBase):
 		that he/she wants updated. We'll let the user manage branches with
 		git directly.
 		'''
-		# No kwargs call here; this is internal, so it should have been
-		# called by something which set the internal variables
-		emerge_config = self.options.get('emerge_config', None)
-		portdb = self.options.get('portdb', None)
 
 		git_cmd = "%s pull" % self.bin_command
 		writemsg_level(git_cmd + "\n")
