@@ -35,17 +35,27 @@ class SyncBase(object):
 		self.xterm_titles = None
 		self.spawn_kwargs = None
 		self.bin_command = None
-		self.has_bin = False
+		self._bin_command = bin_command
+		self.bin_pkg = bin_pkg
 		if bin_command:
 			self.bin_command = portage.process.find_binary(bin_command)
-			if self.bin_command is None:
-				msg = ["Command not found: %s" % bin_command,
-				"Type \"emerge %s\" to enable %s support." % (bin_pkg, bin_command)]
-				for l in msg:
-					writemsg_level("!!! %s\n" % l,
-						level=self.logger.ERROR, noiselevel=-1)
-			else:
-				self.has_bin = True
+
+
+	@property
+	def _has_bin(self):
+		'''Checks for existance of the external binary.
+
+		MUST only be called after _kwargs() has set the logger
+		'''
+		if self.bin_command is None:
+			msg = ["Command not found: %s" % self._bin_command,
+			"Type \"emerge %s\" to enable %s support."
+			% (self.bin_pkg, self._bin_command)]
+			for l in msg:
+				writemsg_level("!!! %s\n" % l,
+					level=self.logger.ERROR, noiselevel=-1)
+			return False
+		return True
 
 
 	def _kwargs(self, kwargs):
@@ -106,7 +116,7 @@ class NewBase(SyncBase):
 		if kwargs:
 			self._kwargs(kwargs)
 
-		if not self.has_bin:
+		if not self._has_bin:
 			return (1, False)
 
 		if not self.exists():

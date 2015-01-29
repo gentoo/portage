@@ -32,7 +32,7 @@ class WebRsync(SyncBase):
 		if kwargs:
 			self._kwargs(kwargs)
 
-		if not self.has_bin:
+		if not self._has_bin:
 			return (1, False)
 
 		emerge_config = self.options.get('emerge_config', None)
