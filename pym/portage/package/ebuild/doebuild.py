@@ -67,7 +67,7 @@ from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, noiselimit, normalize_path, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.cpuinfo import get_cpu_count
-from portage.util.lafilefixer import rewrite_lafile	
+from portage.util.lafilefixer import rewrite_lafile
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -501,7 +501,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	"""
 	Wrapper function that invokes specific ebuild phases through the spawning
 	of ebuild.sh
-	
+
 	@param myebuild: name of the ebuild to invoke the phase on (CPV)
 	@type myebuild: String
 	@param mydo: Phase to run
@@ -544,13 +544,13 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	@return:
 	1. 0 for success
 	2. 1 for error
-	
+
 	Most errors have an accompanying error message.
-	
+
 	listonly and fetchonly are only really necessary for operations involving 'fetch'
 	prev_mtimes are only necessary for merge operations.
 	Other variables may not be strictly required, many have defaults that are set inside of doebuild.
-	
+
 	"""
 
 	if settings is None:
@@ -572,8 +572,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	if not tree:
 		writemsg("Warning: tree not specified to doebuild\n")
 		tree = "porttree"
-	
-	# chunked out deps for each phase, so that ebuild binary can use it 
+
+	# chunked out deps for each phase, so that ebuild binary can use it
 	# to collapse targets down.
 	actionmap_deps={
 	"pretend"  : [],
@@ -588,7 +588,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	"package":["install"],
 	"merge"  :["install"],
 	}
-	
+
 	if mydbapi is None:
 		mydbapi = portage.db[myroot][tree].dbapi
 
