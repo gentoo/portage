@@ -467,7 +467,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		if 'MAKEOPTS' not in mysettings:
 			nproc = get_cpu_count()
 			if nproc:
-				mysettings['MAKEOPTS'] = '-j%d' % (nproc + 1)
+				mysettings['MAKEOPTS'] = '-j%d' % (nproc)
 
 		if not eapi_exports_KV(eapi):
 			# Discard KV for EAPIs that don't support it. Cached KV is restored
