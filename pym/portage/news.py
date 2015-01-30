@@ -35,12 +35,12 @@ class NewsManager(object):
 	This object manages GLEP 42 style news items.  It will cache news items
 	that have previously shown up and notify users when there are relevant news
 	items that apply to their packages that the user has not previously read.
-	
+
 	Creating a news manager requires:
 	root - typically ${ROOT} see man make.conf and man emerge for details
 	news_path - path to news items; usually $REPODIR/metadata/news
 	unread_path - path to the news.repoid.unread file; this helps us track news items
-	
+
 	"""
 
 	def __init__(self, portdb, vardb, news_path, unread_path, language_id='en'):
