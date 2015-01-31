@@ -146,7 +146,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = _default_lock_fn
+	locking_method = portage._eintr_func_wrapper(_default_lock_fn)
 	try:
 		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 			raise IOError(errno.ENOSYS, "Function not implemented")

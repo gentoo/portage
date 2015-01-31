@@ -337,7 +337,7 @@ class _eintr_func_wrapper(object):
 			try:
 				rval = self._func(*args, **kwargs)
 				break
-			except OSError as e:
+			except EnvironmentError as e:
 				if e.errno != errno.EINTR:
 					raise
 
