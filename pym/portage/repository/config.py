@@ -606,10 +606,12 @@ class RepoConfigLoader(object):
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
 			portdir_overlay = ""
+			# depercated portdir_sync
 			portdir_sync = ""
 		else:
 			portdir = settings.get("PORTDIR", "")
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
+			# depercated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
 
 		try:
@@ -734,11 +736,15 @@ class RepoConfigLoader(object):
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
 
-		# Backward compatible SYNC support for mirrorselect.
+		# DEPRECATED Backward compatible SYNC support for old mirrorselect.
+		# Feb. 2, 2015.  Version 2.0.16
 		if portdir_sync and main_repo is not None:
-			if portdir_sync.startswith("rsync://"):
-				prepos[main_repo].sync_uri = portdir_sync
-				prepos[main_repo].sync_type = "rsync"
+			writemsg(_("!!! SYNC setting found in make.conf.\n    "
+				"This setting is Deprecated and no longer used.  "
+				"Please ensure your 'sync-type' and 'sync-uri' are set correctly"
+				" in repos.conf/gentoo.conf\n"),
+				noiselevel=-1)
+
 
 		# Include repo.name in sort key, for predictable sorting
 		# even when priorities are equal.
