@@ -606,12 +606,12 @@ class RepoConfigLoader(object):
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
 			portdir_overlay = ""
-			# depercated portdir_sync
+			# deprecated portdir_sync
 			portdir_sync = ""
 		else:
 			portdir = settings.get("PORTDIR", "")
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
-			# depercated portdir_sync
+			# deprecated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
 
 		try:
