@@ -1,6 +1,47 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.16
+==================================
+* New portage plug-in sync system.
+* New auto-sync setting for repos.conf repos
+* New sync-depth setting for git sync module
+* New --sub-submodule option for emaint sync module
+* New native portage postsync.d capability
+* New native portage repo.postsync.d capability
+* New socks5 module to allow builds to escape the network-sandbox
+* Tentative EAPI 6 changes for testing
+* New search index creation and fast search code for emerge -s, -S
+* Bug Fixes:
+    - Bug 583512 Deprecate make.conf SYNC variable
+    - Bug 538314 handle EINTR
+    - Bug 537298 Fix typo in new_protect_filename()
+    - Bug 534722 update LOGNAME variable when appropriate
+    - Bug 536926 emerge: default --backtrack=3
+    - Bug 536392 More >= atoms for autounmask USE changes
+    - Bug 492932 TestFakedbapi: override EPREFIX
+    - Bug 142579 BinpkgExtractorAsync: xz and gzip decompression
+    - Bug 282927 emerge: add --changed-deps/--binpkg-changed-deps
+    - Bug 535850 dispatch-conf: avoid symlink "File exists" error
+    - Bug 533036 man/emerge.1: clarify --buildpkg-exclude wrt *-backup FEATURES
+    - Bug 463266 man pages: note that make.conf can be a directory
+    - Bug 533884 emerge --autounmask-write: fix CONFIG_PROTECT for
+                 PORTAGE_CONFIGROOT
+    - Bug 531656 Solve more slot-operator conflicts
+    - Bug 531724 AbstractPollTask._read_buf: read regardless of event flags
+    - Bug 534070 Add --sync-submodule <glsa|news|profiles>
+    - Bug 532670 Support override of default profile EAPI
+    - Bug 532784 bintree.py: fix str() calls for Python 2
+    - Bug 532594 faulty variable assignment inside _compute_abi_rebuild_info
+    - Bug 525718 search._xmatch: handle aux_get KeyError
+    - Bug 532224 Support @profile package set
+    - Bug 504116 man/emerge.1: --quiet-build=n overridden by --jobs
+    - Bug 412471 Display emerge search results incrementally
+    - Bug 531690 bin/ebuild: fix --color=n
+    - Bug 531854 dblink._protect: disable config protect for identical files
+    - Bug 522032 add a one time only post-sync hook call
+
+
 portage-2.2.15
 ==================================
 * New option --rage-clean that does --unmerge without delay.
