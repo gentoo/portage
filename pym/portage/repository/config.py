@@ -172,7 +172,7 @@ class RepoConfig(object):
 			sync_user = sync_user.strip()
 		self.sync_user = sync_user or None
 
-		auto_sync = repo_opts.get('auto-sync')
+		auto_sync = repo_opts.get('auto-sync', 'yes')
 		if auto_sync is not None:
 			auto_sync = auto_sync.strip().lower()
 		self.auto_sync = auto_sync
