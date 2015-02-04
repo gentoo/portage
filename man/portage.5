@@ -61,6 +61,8 @@ package.mask
 package.properties
 package.unmask
 package.use
+postsync.d
+repo.postsync.d
 repos.conf
 .fi
 .TP
@@ -808,6 +810,26 @@ x11\-libs/qt \-mysql
 */* VIDEO_CARDS: \-* radeon
 .fi
 .TP
+.BR postsync.d/
+This directory is for user supplied postsync hooks to be run once after all
+repositories have been synced.  Each script is called in alphabetic order
+without any arguments.
+.fi
+.TP
+.BR repo.postsync.d/
+This directory is for user supplied postsync hooks to be run once after each
+repository has been synced.  Each script is called in alphabetic order
+with three arguments.
+
+.I args:
+        repository name, sync-uri, location
+.fi
+
+Using this information it is possible for hooks to be run for only a certain
+repository.  This way other update actions can be performed for that repository
+only.
+.fi
+.TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
 .br
@@ -871,7 +893,7 @@ desired via "\fBemaint sync \-\-repo foo\fR".
 Valid values: yes, no, true, false.
 .br
 If unset, the repo will be treated as set
-no, false.
+yes, true.
 .TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
@@ -1011,6 +1033,14 @@ location = /usr/portage
 sync\-type = cvs
 sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
 sync\-cvs\-repo = gentoo\-x86
+auto\-sync = yes
+
+# Overlay 'voip' syncronized with layman's plug-in sync module
+[voip]
+location = /var/lib/layman/voip
+sync-type = laymanator
+sync-uri = git://git.overlays.gentoo.org/proj/voip.git
+auto-sync = yes
 .fi
 .RE
 .RE
