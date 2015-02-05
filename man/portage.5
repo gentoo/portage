@@ -941,7 +941,7 @@ the newest commit). If set to 0, the depth is unlimited.
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non\-empty values: cvs, git, rsync
+Valid non\-empty values: cvs, git, rsync, svn, websync (emerge-webrsync)
 .br
 This attribute can be set to empty value to disable synchronization of given
 repository. Empty value is default.
@@ -1038,9 +1038,9 @@ auto\-sync = yes
 # Overlay 'voip' syncronized with layman's plug-in sync module
 [voip]
 location = /var/lib/layman/voip
-sync-type = laymanator
-sync-uri = git://git.overlays.gentoo.org/proj/voip.git
-auto-sync = yes
+sync\-type = laymanator
+sync\-uri = git://git.overlays.gentoo.org/proj/voip.git
+auto\-sync = yes
 .fi
 .RE
 .RE
