@@ -63,7 +63,6 @@ def quickpkg_atom(options, infos, arg, eout):
 	pkgs_for_arg = 0
 	for cpv in matches:
 		excluded_config_files = []
-		bintree.prevent_collision(cpv)
 		dblnk = vardb._dblink(cpv)
 		have_lock = False
 

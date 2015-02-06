@@ -10,13 +10,12 @@ class EbuildBinpkg(CompositeTask):
 	This assumes that src_install() has successfully completed.
 	"""
 	__slots__ = ('pkg', 'settings') + \
-		('_binpkg_tmpfile',)
+		('_binpkg_tmpfile', '_binpkg_info')
 
 	def _start(self):
 		pkg = self.pkg
 		root_config = pkg.root_config
 		bintree = root_config.trees["bintree"]
-		bintree.prevent_collision(pkg.cpv)
 		binpkg_tmpfile = os.path.join(bintree.pkgdir,
 			pkg.cpv + ".tbz2." + str(os.getpid()))
 		bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
@@ -43,8 +42,12 @@ class EbuildBinpkg(CompositeTask):
 
 		pkg = self.pkg
 		bintree = pkg.root_config.trees["bintree"]
-		bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
+		self._binpkg_info = bintree.inject(pkg.cpv,
+			filename=self._binpkg_tmpfile)
 
 		self._current_task = None
 		self.returncode = os.EX_OK
 		self.wait()
+
+	def get_binpkg_info(self):
+		return self._binpkg_info

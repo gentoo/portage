@@ -17,14 +17,13 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.update:update_dbentries',
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
-	'portage.util.listdir:listdir',
 	'portage.util.path:first_existing',
 	'portage.util._urlopen:urlopen@_urlopen',
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
 from portage.cache.mappings import slot_dict_class
-from portage.const import CACHE_PATH
+from portage.const import CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
@@ -71,18 +70,26 @@ class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
 		["CHOST", "repository", "USE"])
 	def __init__(self, mybintree=None, **kwargs):
-		fakedbapi.__init__(self, **kwargs)
+		# Always enable multi_instance mode for bindbapi indexing. This
+		# does not affect the local PKGDIR file layout, since that is
+		# controlled independently by FEATURES=binpkg-multi-instance.
+		# The multi_instance mode is useful for the following reasons:
+		# * binary packages with the same cpv from multiple binhosts
+		#   can be considered simultaneously
+		# * if binpkg-multi-instance is disabled, it's still possible
+		#   to properly access a PKGDIR which has binpkg-multi-instance
+		#   layout (or mixed layout)
+		fakedbapi.__init__(self, exclusive_slots=False,
+			multi_instance=True, **kwargs)
 		self.bintree = mybintree
 		self.move_ent = mybintree.move_ent
-		self.cpvdict={}
-		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BUILD_TIME", "CHOST", "DEPEND", "EAPI",
-			"HDEPEND", "IUSE", "KEYWORDS",
-			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
-			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE",
-			"DEFINED_PHASES", "PROVIDES", "REQUIRES"
+			["BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
+			"DEPEND", "EAPI", "HDEPEND", "IUSE", "KEYWORDS",
+			"LICENSE", "MD5", "PDEPEND", "PROPERTIES", "PROVIDE",
+			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
+			"SIZE", "SLOT", "USE", "_mtime_"
 			])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
@@ -109,33 +116,49 @@ class bindbapi(fakedbapi):
 		return fakedbapi.cpv_exists(self, cpv)
 
 	def cpv_inject(self, cpv, **kwargs):
-		self._aux_cache.pop(cpv, None)
-		fakedbapi.cpv_inject(self, cpv, **kwargs)
+		if not self.bintree.populated:
+			self.bintree.populate()
+		fakedbapi.cpv_inject(self, cpv,
+			metadata=cpv._metadata, **kwargs)
 
 	def cpv_remove(self, cpv):
-		self._aux_cache.pop(cpv, None)
+		if not self.bintree.populated:
+			self.bintree.populate()
 		fakedbapi.cpv_remove(self, cpv)
 
 	def aux_get(self, mycpv, wants, myrepo=None):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
-		cache_me = False
+		# Support plain string for backward compatibility with API
+		# consumers (including portageq, which passes in a cpv from
+		# a command-line argument).
+		instance_key = self._instance_key(mycpv,
+			support_string=True)
 		if not self._known_keys.intersection(
 			wants).difference(self._aux_cache_keys):
-			aux_cache = self._aux_cache.get(mycpv)
+			aux_cache = self.cpvdict[instance_key]
 			if aux_cache is not None:
 				return [aux_cache.get(x, "") for x in wants]
-			cache_me = True
 		mysplit = mycpv.split("/")
 		mylist = []
 		tbz2name = mysplit[1]+".tbz2"
 		if not self.bintree._remotepkgs or \
 			not self.bintree.isremote(mycpv):
-			tbz2_path = self.bintree.getname(mycpv)
-			if not os.path.exists(tbz2_path):
+			try:
+				tbz2_path = self.bintree._pkg_paths[instance_key]
+			except KeyError:
+				raise KeyError(mycpv)
+			tbz2_path = os.path.join(self.bintree.pkgdir, tbz2_path)
+			try:
+				st = os.lstat(tbz2_path)
+			except OSError:
 				raise KeyError(mycpv)
 			metadata_bytes = portage.xpak.tbz2(tbz2_path).get_data()
 			def getitem(k):
+				if k == "_mtime_":
+					return _unicode(st[stat.ST_MTIME])
+				elif k == "SIZE":
+					return _unicode(st.st_size)
 				v = metadata_bytes.get(_unicode_encode(k,
 					encoding=_encodings['repo.content'],
 					errors='backslashreplace'))
@@ -144,11 +167,9 @@ class bindbapi(fakedbapi):
 						encoding=_encodings['repo.content'], errors='replace')
 				return v
 		else:
-			getitem = self.bintree._remotepkgs[mycpv].get
+			getitem = self.cpvdict[instance_key].get
 		mydata = {}
 		mykeys = wants
-		if cache_me:
-			mykeys = self._aux_cache_keys.union(wants)
 		for x in mykeys:
 			myval = getitem(x)
 			# myval is None if the key doesn't exist
@@ -159,16 +180,24 @@ class bindbapi(fakedbapi):
 		if not mydata.setdefault('EAPI', '0'):
 			mydata['EAPI'] = '0'
 
-		if cache_me:
-			aux_cache = self._aux_cache_slot_dict()
-			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata.get(x, '')
-			self._aux_cache[mycpv] = aux_cache
 		return [mydata.get(x, '') for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
 			self.bintree.populate()
+		build_id = None
+		try:
+			build_id = cpv.build_id
+		except AttributeError:
+			if self.bintree._multi_instance:
+				# The cpv.build_id attribute is required if we are in
+				# multi-instance mode, since otherwise we won't know
+				# which instance to update.
+				raise
+			else:
+				cpv = self._instance_key(cpv, support_string=True)[0]
+				build_id = cpv.build_id
+
 		tbz2path = self.bintree.getname(cpv)
 		if not os.path.exists(tbz2path):
 			raise KeyError(cpv)
@@ -187,7 +216,7 @@ class bindbapi(fakedbapi):
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		# inject will clear stale caches via cpv_inject.
-		self.bintree.inject(cpv)
+		self.bintree.inject(cpv, filename=tbz2path)
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
@@ -219,7 +248,7 @@ class bindbapi(fakedbapi):
 		if not self.bintree.isremote(pkg):
 			pass
 		else:
-			metadata = self.bintree._remotepkgs[pkg]
+			metadata = self.bintree._remotepkgs[self._instance_key(pkg)]
 			try:
 				size = int(metadata["SIZE"])
 			except KeyError:
@@ -300,6 +329,13 @@ class binarytree(object):
 
 		if True:
 			self.pkgdir = normalize_path(pkgdir)
+			# NOTE: Event if binpkg-multi-instance is disabled, it's
+			# still possible to access a PKGDIR which uses the
+			# binpkg-multi-instance layout (or mixed layout).
+			self._multi_instance = ("binpkg-multi-instance" in
+				settings.features)
+			if self._multi_instance:
+				self._allocate_filename = self._allocate_filename_multi
 			self.dbapi = bindbapi(self, settings=settings)
 			self.update_ents = self.dbapi.update_ents
 			self.move_slot_ent = self.dbapi.move_slot_ent
@@ -310,7 +346,6 @@ class binarytree(object):
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
-			self._pkgindex_uri = {}
 			self._populating = False
 			self._all_directory = os.path.isdir(
 				os.path.join(self.pkgdir, "All"))
@@ -318,12 +353,14 @@ class binarytree(object):
 			self._pkgindex_hashes = ["MD5","SHA1"]
 			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
-			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
+			self._pkgindex_keys.update(["CPV", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
-				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
-				"PROVIDE", "RESTRICT", "RDEPEND", "repository", "SLOT", "USE", "DEFINED_PHASES",
-				"BASE_URI", "PROVIDES", "REQUIRES"]
+				["BASE_URI", "BUILD_ID", "BUILD_TIME", "CHOST",
+				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
+				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"PKGINDEX_URI", "PROPERTIES", "PROVIDE", "PROVIDES",
+				"RDEPEND", "repository", "REQUIRES", "RESTRICT",
+				"SIZE", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
@@ -336,6 +373,7 @@ class binarytree(object):
 				"USE_EXPAND", "USE_EXPAND_HIDDEN", "USE_EXPAND_IMPLICIT",
 				"USE_EXPAND_UNPREFIXED"])
 			self._pkgindex_default_pkg_data = {
+				"BUILD_ID"           : "",
 				"BUILD_TIME"         : "",
 				"DEFINED_PHASES"     : "",
 				"DEPEND"  : "",
@@ -365,6 +403,7 @@ class binarytree(object):
 
 			self._pkgindex_translated_keys = (
 				("DESCRIPTION"   ,   "DESC"),
+				("_mtime_"       ,   "MTIME"),
 				("repository"    ,   "REPO"),
 			)
 
@@ -455,16 +494,21 @@ class binarytree(object):
 			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 
 			self.dbapi.cpv_remove(mycpv)
-			del self._pkg_paths[mycpv]
+			del self._pkg_paths[self.dbapi._instance_key(mycpv)]
+			metadata = self.dbapi._aux_cache_slot_dict()
+			for k in self.dbapi._aux_cache_keys:
+				v = mydata.get(_unicode_encode(k))
+				if v is not None:
+					v = _unicode_decode(v)
+					metadata[k] = " ".join(v.split())
+			mynewcpv = _pkg_str(mynewcpv, metadata=metadata)
 			new_path = self.getname(mynewcpv)
-			self._pkg_paths[mynewcpv] = os.path.join(
+			self._pkg_paths[
+				self.dbapi._instance_key(mynewcpv)] = os.path.join(
 				*new_path.split(os.path.sep)[-2:])
 			if new_path != mytbz2:
 				self._ensure_dir(os.path.dirname(new_path))
 				_movefile(tbz2path, new_path, mysettings=self.settings)
-				self._remove_symlink(mycpv)
-				if new_path.split(os.path.sep)[-2] == "All":
-					self._create_symlink(mynewcpv)
 			self.inject(mynewcpv)
 
 		return moves
@@ -645,55 +689,63 @@ class binarytree(object):
 		# prior to performing package moves since it only wants to
 		# operate on local packages (getbinpkgs=0).
 		self._remotepkgs = None
-		self.dbapi._clear_cache()
-		self.dbapi._aux_cache.clear()
+		self.dbapi.clear()
+		_instance_key = self.dbapi._instance_key
 		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
-			dirs = listdir(self.pkgdir, dirsonly=True, EmptyOnError=True)
-			if "All" in dirs:
-				dirs.remove("All")
-			dirs.sort()
-			dirs.insert(0, "All")
+			dir_files = {}
+			for parent, dir_names, file_names in os.walk(self.pkgdir):
+				relative_parent = parent[len(self.pkgdir)+1:]
+				dir_files[relative_parent] = file_names
+
 			pkgindex = self._load_pkgindex()
-			pf_index = None
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 			header = pkgindex.header
 			metadata = {}
+			basename_index = {}
 			for d in pkgindex.packages:
-				metadata[d["CPV"]] = d
+				cpv = _pkg_str(d["CPV"], metadata=d,
+					settings=self.settings)
+				d["CPV"] = cpv
+				metadata[_instance_key(cpv)] = d
+				path = d.get("PATH")
+				if not path:
+					path = cpv + ".tbz2"
+				basename = os.path.basename(path)
+				basename_index.setdefault(basename, []).append(d)
+
 			update_pkgindex = False
-			for mydir in dirs:
-				for myfile in listdir(os.path.join(self.pkgdir, mydir)):
-					if not myfile.endswith(".tbz2"):
+			for mydir, file_names in dir_files.items():
+				try:
+					mydir = _unicode_decode(mydir,
+						encoding=_encodings["fs"], errors="strict")
+				except UnicodeDecodeError:
+					continue
+				for myfile in file_names:
+					try:
+						myfile = _unicode_decode(myfile,
+							encoding=_encodings["fs"], errors="strict")
+					except UnicodeDecodeError:
+						continue
+					if not myfile.endswith(SUPPORTED_XPAK_EXTENSIONS):
 						continue
 					mypath = os.path.join(mydir, myfile)
 					full_path = os.path.join(self.pkgdir, mypath)
 					s = os.lstat(full_path)
-					if stat.S_ISLNK(s.st_mode):
+
+					if not stat.S_ISREG(s.st_mode):
 						continue
 
 					# Validate data from the package index and try to avoid
 					# reading the xpak if possible.
-					if mydir != "All":
-						possibilities = None
-						d = metadata.get(mydir+"/"+myfile[:-5])
-						if d:
-							possibilities = [d]
-					else:
-						if pf_index is None:
-							pf_index = {}
-							for mycpv in metadata:
-								mycat, mypf = catsplit(mycpv)
-								pf_index.setdefault(
-									mypf, []).append(metadata[mycpv])
-						possibilities = pf_index.get(myfile[:-5])
+					possibilities = basename_index.get(myfile)
 					if possibilities:
 						match = None
 						for d in possibilities:
 							try:
-								if long(d["MTIME"]) != s[stat.ST_MTIME]:
+								if long(d["_mtime_"]) != s[stat.ST_MTIME]:
 									continue
 							except (KeyError, ValueError):
 								continue
@@ -707,15 +759,14 @@ class binarytree(object):
 								break
 						if match:
 							mycpv = match["CPV"]
-							if mycpv in pkg_paths:
-								# discard duplicates (All/ is preferred)
-								continue
-							mycpv = _pkg_str(mycpv)
-							pkg_paths[mycpv] = mypath
+							instance_key = _instance_key(mycpv)
+							pkg_paths[instance_key] = mypath
 							# update the path if the package has been moved
 							oldpath = d.get("PATH")
 							if oldpath and oldpath != mypath:
 								update_pkgindex = True
+							# Omit PATH if it is the default path for
+							# the current Packages format version.
 							if mypath != mycpv + ".tbz2":
 								d["PATH"] = mypath
 								if not oldpath:
@@ -725,11 +776,6 @@ class binarytree(object):
 								if oldpath:
 									update_pkgindex = True
 							self.dbapi.cpv_inject(mycpv)
-							if not self.dbapi._aux_cache_keys.difference(d):
-								aux_cache = self.dbapi._aux_cache_slot_dict()
-								for k in self.dbapi._aux_cache_keys:
-									aux_cache[k] = d[k]
-								self.dbapi._aux_cache[mycpv] = aux_cache
 							continue
 					if not os.access(full_path, os.R_OK):
 						writemsg(_("!!! Permission denied to read " \
@@ -737,13 +783,12 @@ class binarytree(object):
 							noiselevel=-1)
 						self.invalids.append(myfile[:-5])
 						continue
-					metadata_bytes = portage.xpak.tbz2(full_path).get_data()
-					mycat = _unicode_decode(metadata_bytes.get(b"CATEGORY", ""),
-						encoding=_encodings['repo.content'], errors='replace')
-					mypf = _unicode_decode(metadata_bytes.get(b"PF", ""),
-						encoding=_encodings['repo.content'], errors='replace')
-					slot = _unicode_decode(metadata_bytes.get(b"SLOT", ""),
-						encoding=_encodings['repo.content'], errors='replace')
+					pkg_metadata = self._read_metadata(full_path, s,
+						keys=chain(self.dbapi._aux_cache_keys,
+						("PF", "CATEGORY")))
+					mycat = pkg_metadata.get("CATEGORY", "")
+					mypf = pkg_metadata.get("PF", "")
+					slot = pkg_metadata.get("SLOT", "")
 					mypkg = myfile[:-5]
 					if not mycat or not mypf or not slot:
 						#old-style or corrupt package
@@ -767,16 +812,51 @@ class binarytree(object):
 							writemsg("!!! %s\n" % line, noiselevel=-1)
 						self.invalids.append(mypkg)
 						continue
-					mycat = mycat.strip()
-					slot = slot.strip()
-					if mycat != mydir and mydir != "All":
+
+					multi_instance = False
+					invalid_name = False
+					build_id = None
+					if myfile.endswith(".xpak"):
+						multi_instance = True
+						build_id = self._parse_build_id(myfile)
+						if build_id < 1:
+							invalid_name = True
+						elif myfile != "%s-%s.xpak" % (
+							mypf, build_id):
+							invalid_name = True
+						else:
+							mypkg = mypkg[:-len(str(build_id))-1]
+					elif myfile != mypf + ".tbz2":
+						invalid_name = True
+
+					if invalid_name:
+						writemsg(_("\n!!! Binary package name is "
+							"invalid: '%s'\n") % full_path,
+							noiselevel=-1)
+						continue
+
+					if pkg_metadata.get("BUILD_ID"):
+						try:
+							build_id = long(pkg_metadata["BUILD_ID"])
+						except ValueError:
+							writemsg(_("!!! Binary package has "
+								"invalid BUILD_ID: '%s'\n") %
+								full_path, noiselevel=-1)
+							continue
+					else:
+						build_id = None
+
+					if multi_instance:
+						name_split = catpkgsplit("%s/%s" %
+							(mycat, mypf))
+						if (name_split is None or
+							tuple(catsplit(mydir)) != name_split[:2]):
+							continue
+					elif mycat != mydir and mydir != "All":
 						continue
 					if mypkg != mypf.strip():
 						continue
 					mycpv = mycat + "/" + mypkg
-					if mycpv in pkg_paths:
-						# All is first, so it's preferred.
-						continue
 					if not self.dbapi._category_re.match(mycat):
 						writemsg(_("!!! Binary package has an " \
 							"unrecognized category: '%s'\n") % full_path,
@@ -786,14 +866,23 @@ class binarytree(object):
 							(mycpv, self.settings["PORTAGE_CONFIGROOT"]),
 							noiselevel=-1)
 						continue
-					mycpv = _pkg_str(mycpv)
-					pkg_paths[mycpv] = mypath
+					if build_id is not None:
+						pkg_metadata["BUILD_ID"] = _unicode(build_id)
+					pkg_metadata["SIZE"] = _unicode(s.st_size)
+					# Discard items used only for validation above.
+					pkg_metadata.pop("CATEGORY")
+					pkg_metadata.pop("PF")
+					mycpv = _pkg_str(mycpv,
+						metadata=self.dbapi._aux_cache_slot_dict(
+						pkg_metadata))
+					pkg_paths[_instance_key(mycpv)] = mypath
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
-					d = metadata.get(mycpv, {})
+					d = metadata.get(_instance_key(mycpv),
+						pkgindex._pkg_slot_dict())
 					if d:
 						try:
-							if long(d["MTIME"]) != s[stat.ST_MTIME]:
+							if long(d["_mtime_"]) != s[stat.ST_MTIME]:
 								d.clear()
 						except (KeyError, ValueError):
 							d.clear()
@@ -804,36 +893,30 @@ class binarytree(object):
 						except (KeyError, ValueError):
 							d.clear()
 
+					for k in self._pkgindex_allowed_pkg_keys:
+						v = pkg_metadata.get(k)
+						if v is not None:
+							d[k] = v
 					d["CPV"] = mycpv
-					d["SLOT"] = slot
-					d["MTIME"] = _unicode(s[stat.ST_MTIME])
-					d["SIZE"] = _unicode(s.st_size)
 
-					d.update(zip(self._pkgindex_aux_keys,
-						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
 					try:
 						self._eval_use_flags(mycpv, d)
 					except portage.exception.InvalidDependString:
 						writemsg(_("!!! Invalid binary package: '%s'\n") % \
 							self.getname(mycpv), noiselevel=-1)
 						self.dbapi.cpv_remove(mycpv)
-						del pkg_paths[mycpv]
+						del pkg_paths[_instance_key(mycpv)]
 
 					# record location if it's non-default
 					if mypath != mycpv + ".tbz2":
 						d["PATH"] = mypath
 					else:
 						d.pop("PATH", None)
-					metadata[mycpv] = d
-					if not self.dbapi._aux_cache_keys.difference(d):
-						aux_cache = self.dbapi._aux_cache_slot_dict()
-						for k in self.dbapi._aux_cache_keys:
-							aux_cache[k] = d[k]
-						self.dbapi._aux_cache[mycpv] = aux_cache
+					metadata[_instance_key(mycpv)] = d
 
-			for cpv in list(metadata):
-				if cpv not in pkg_paths:
-					del metadata[cpv]
+			for instance_key in list(metadata):
+				if instance_key not in pkg_paths:
+					del metadata[instance_key]
 
 			# Do not bother to write the Packages index if $PKGDIR/All/ exists
 			# since it will provide no benefit due to the need to read CATEGORY
@@ -1058,45 +1141,24 @@ class binarytree(object):
 					# The current user doesn't have permission to cache the
 					# file, but that's alright.
 			if pkgindex:
-				# Organize remote package list as a cpv -> metadata map.
-				remotepkgs = _pkgindex_cpv_map_latest_build(pkgindex)
 				remote_base_uri = pkgindex.header.get("URI", base_url)
-				for cpv, remote_metadata in remotepkgs.items():
-					remote_metadata["BASE_URI"] = remote_base_uri
-					self._pkgindex_uri[cpv] = url
-				self._remotepkgs.update(remotepkgs)
-				self._remote_has_index = True
-				for cpv in remotepkgs:
+				for d in pkgindex.packages:
+					cpv = _pkg_str(d["CPV"], metadata=d,
+						settings=self.settings)
+					instance_key = _instance_key(cpv)
+					# Local package instances override remote instances
+					# with the same instance_key.
+					if instance_key in metadata:
+						continue
+
+					d["CPV"] = cpv
+					d["BASE_URI"] = remote_base_uri
+					d["PKGINDEX_URI"] = url
+					self._remotepkgs[instance_key] = d
+					metadata[instance_key] = d
 					self.dbapi.cpv_inject(cpv)
-				if True:
-					# Remote package instances override local package
-					# if they are not identical.
-					hash_names = ["SIZE"] + self._pkgindex_hashes
-					for cpv, local_metadata in metadata.items():
-						remote_metadata = self._remotepkgs.get(cpv)
-						if remote_metadata is None:
-							continue
-						# Use digests to compare identity.
-						identical = True
-						for hash_name in hash_names:
-							local_value = local_metadata.get(hash_name)
-							if local_value is None:
-								continue
-							remote_value = remote_metadata.get(hash_name)
-							if remote_value is None:
-								continue
-							if local_value != remote_value:
-								identical = False
-								break
-						if identical:
-							del self._remotepkgs[cpv]
-						else:
-							# Override the local package in the aux_get cache.
-							self.dbapi._aux_cache[cpv] = remote_metadata
-				else:
-					# Local package instances override remote instances.
-					for cpv in metadata:
-						self._remotepkgs.pop(cpv, None)
+
+				self._remote_has_index = True
 
 		self.populated=1
 
@@ -1108,7 +1170,8 @@ class binarytree(object):
 		@param filename: File path of the package to inject, or None if it's
 			already in the location returned by getname()
 		@type filename: string
-		@rtype: None
+		@rtype: _pkg_str or None
+		@return: A _pkg_str instance on success, or None on failure.
 		"""
 		mycat, mypkg = catsplit(cpv)
 		if not self.populated:
@@ -1126,24 +1189,44 @@ class binarytree(object):
 			writemsg(_("!!! Binary package does not exist: '%s'\n") % full_path,
 				noiselevel=-1)
 			return
-		mytbz2 = portage.xpak.tbz2(full_path)
-		slot = mytbz2.getfile("SLOT")
+		metadata = self._read_metadata(full_path, s)
+		slot = metadata.get("SLOT")
+		try:
+			self._eval_use_flags(cpv, metadata)
+		except portage.exception.InvalidDependString:
+			slot = None
 		if slot is None:
 			writemsg(_("!!! Invalid binary package: '%s'\n") % full_path,
 				noiselevel=-1)
 			return
-		slot = slot.strip()
-		self.dbapi.cpv_inject(cpv)
+
+		fetched = False
+		try:
+			build_id = cpv.build_id
+		except AttributeError:
+			build_id = None
+		else:
+			instance_key = self.dbapi._instance_key(cpv)
+			if instance_key in self.dbapi.cpvdict:
+				# This means we've been called by aux_update (or
+				# similar). The instance key typically changes (due to
+				# file modification), so we need to discard existing
+				# instance key references.
+				self.dbapi.cpv_remove(cpv)
+				self._pkg_paths.pop(instance_key, None)
+				if self._remotepkgs is not None:
+					fetched = self._remotepkgs.pop(instance_key, None)
+
+		cpv = _pkg_str(cpv, metadata=metadata, settings=self.settings)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
 		pkgindex_lock = None
-		created_symlink = False
 		try:
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
 			if filename is not None:
-				new_filename = self.getname(cpv)
+				new_filename = self.getname(cpv, allocate_new=True)
 				try:
 					samefile = os.path.samefile(filename, new_filename)
 				except OSError:
@@ -1153,60 +1236,104 @@ class binarytree(object):
 					_movefile(filename, new_filename, mysettings=self.settings)
 				full_path = new_filename
 
+			basename = os.path.basename(full_path)
+			pf = catsplit(cpv)[1]
+			if (build_id is None and not fetched and
+				basename.endswith(".xpak")):
+				# Apply the newly assigned BUILD_ID. This is intended
+				# to occur only for locally built packages. If the
+				# package was fetched, we want to preserve its
+				# attributes, so that we can later distinguish that it
+				# is identical to its remote counterpart.
+				build_id = self._parse_build_id(basename)
+				metadata["BUILD_ID"] = _unicode(build_id)
+				cpv = _pkg_str(cpv, metadata=metadata,
+					settings=self.settings)
+				binpkg = portage.xpak.tbz2(full_path)
+				binary_data = binpkg.get_data()
+				binary_data[b"BUILD_ID"] = _unicode_encode(
+					metadata["BUILD_ID"])
+				binpkg.recompose_mem(portage.xpak.xpak_mem(binary_data))
+
 			self._file_permissions(full_path)
-
-			if self._all_directory and \
-				self.getname(cpv).split(os.path.sep)[-2] == "All":
-				self._create_symlink(cpv)
-				created_symlink = True
 			pkgindex = self._load_pkgindex()
-
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
 
-			# Discard remote metadata to ensure that _pkgindex_entry
-			# gets the local metadata. This also updates state for future
-			# isremote calls.
-			if self._remotepkgs is not None:
-				self._remotepkgs.pop(cpv, None)
-
-			# Discard cached metadata to ensure that _pkgindex_entry
-			# doesn't return stale metadata.
-			self.dbapi._aux_cache.pop(cpv, None)
-
-			try:
-				d = self._pkgindex_entry(cpv)
-			except portage.exception.InvalidDependString:
-				writemsg(_("!!! Invalid binary package: '%s'\n") % \
-					self.getname(cpv), noiselevel=-1)
-				self.dbapi.cpv_remove(cpv)
-				del self._pkg_paths[cpv]
-				return
-
-			# If found, remove package(s) with duplicate path.
-			path = d.get("PATH", "")
-			for i in range(len(pkgindex.packages) - 1, -1, -1):
-				d2 = pkgindex.packages[i]
-				if path and path == d2.get("PATH"):
-					# Handle path collisions in $PKGDIR/All
-					# when CPV is not identical.
-					del pkgindex.packages[i]
-				elif cpv == d2.get("CPV"):
-					if path == d2.get("PATH", ""):
-						del pkgindex.packages[i]
-					elif created_symlink and not d2.get("PATH", ""):
-						# Delete entry for the package that was just
-						# overwritten by a symlink to this package.
-						del pkgindex.packages[i]
-
-			pkgindex.packages.append(d)
-
+			d = self._inject_file(pkgindex, cpv, full_path)
 			self._update_pkgindex_header(pkgindex.header)
 			self._pkgindex_write(pkgindex)
 
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
+
+		# This is used to record BINPKGMD5 in the installed package
+		# database, for a package that has just been built.
+		cpv._metadata["MD5"] = d["MD5"]
+
+		return cpv
+
+	def _read_metadata(self, filename, st, keys=None):
+		if keys is None:
+			keys = self.dbapi._aux_cache_keys
+			metadata = self.dbapi._aux_cache_slot_dict()
+		else:
+			metadata = {}
+		binary_metadata = portage.xpak.tbz2(filename).get_data()
+		for k in keys:
+			if k == "_mtime_":
+				metadata[k] = _unicode(st[stat.ST_MTIME])
+			elif k == "SIZE":
+				metadata[k] = _unicode(st.st_size)
+			else:
+				v = binary_metadata.get(_unicode_encode(k))
+				if v is not None:
+					v = _unicode_decode(v)
+					metadata[k] = " ".join(v.split())
+		metadata.setdefault("EAPI", "0")
+		return metadata
+
+	def _inject_file(self, pkgindex, cpv, filename):
+		"""
+		Add a package to internal data structures, and add an
+		entry to the given pkgindex.
+		@param pkgindex: The PackageIndex instance to which an entry
+			will be added.
+		@type pkgindex: PackageIndex
+		@param cpv: A _pkg_str instance corresponding to the package
+			being injected.
+		@type cpv: _pkg_str
+		@param filename: Absolute file path of the package to inject.
+		@type filename: string
+		@rtype: dict
+		@return: A dict corresponding to the new entry which has been
+			added to pkgindex. This may be used to access the checksums
+			which have just been generated.
+		"""
+		# Update state for future isremote calls.
+		instance_key = self.dbapi._instance_key(cpv)
+		if self._remotepkgs is not None:
+			self._remotepkgs.pop(instance_key, None)
+
+		self.dbapi.cpv_inject(cpv)
+		self._pkg_paths[instance_key] = filename[len(self.pkgdir)+1:]
+		d = self._pkgindex_entry(cpv)
+
+		# If found, remove package(s) with duplicate path.
+		path = d.get("PATH", "")
+		for i in range(len(pkgindex.packages) - 1, -1, -1):
+			d2 = pkgindex.packages[i]
+			if path and path == d2.get("PATH"):
+				# Handle path collisions in $PKGDIR/All
+				# when CPV is not identical.
+				del pkgindex.packages[i]
+			elif cpv == d2.get("CPV"):
+				if path == d2.get("PATH", ""):
+					del pkgindex.packages[i]
+
+		pkgindex.packages.append(d)
+		return d
 
 	def _pkgindex_write(self, pkgindex):
 		contents = codecs.getwriter(_encodings['repo.content'])(io.BytesIO())
@@ -1233,7 +1360,7 @@ class binarytree(object):
 
 	def _pkgindex_entry(self, cpv):
 		"""
-		Performs checksums and evaluates USE flag conditionals.
+		Performs checksums, and gets size and mtime via lstat.
 		Raises InvalidDependString if necessary.
 		@rtype: dict
 		@return: a dict containing entry for the give cpv.
@@ -1241,23 +1368,20 @@ class binarytree(object):
 
 		pkg_path = self.getname(cpv)
 
-		d = dict(zip(self._pkgindex_aux_keys,
-			self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
-
+		d = dict(cpv._metadata.items())
 		d.update(perform_multiple_checksums(
 			pkg_path, hashes=self._pkgindex_hashes))
 
 		d["CPV"] = cpv
-		st = os.stat(pkg_path)
-		d["MTIME"] = _unicode(st[stat.ST_MTIME])
+		st = os.lstat(pkg_path)
+		d["_mtime_"] = _unicode(st[stat.ST_MTIME])
 		d["SIZE"] = _unicode(st.st_size)
 
-		rel_path = self._pkg_paths[cpv]
+		rel_path = pkg_path[len(self.pkgdir)+1:]
 		# record location if it's non-default
 		if rel_path != cpv + ".tbz2":
 			d["PATH"] = rel_path
 
-		self._eval_use_flags(cpv, d)
 		return d
 
 	def _new_pkgindex(self):
@@ -1311,15 +1435,17 @@ class binarytree(object):
 		return False
 
 	def _eval_use_flags(self, cpv, metadata):
-		use = frozenset(metadata["USE"].split())
+		use = frozenset(metadata.get("USE", "").split())
 		for k in self._pkgindex_use_evaluated_keys:
 			if k.endswith('DEPEND'):
 				token_class = Atom
 			else:
 				token_class = None
 
+			deps = metadata.get(k)
+			if deps is None:
+				continue
 			try:
-				deps = metadata[k]
 				deps = use_reduce(deps, uselist=use, token_class=token_class)
 				deps = paren_enclose(deps)
 			except portage.exception.InvalidDependString as e:
@@ -1349,46 +1475,129 @@ class binarytree(object):
 			return ""
 		return mymatch
 
-	def getname(self, pkgname):
-		"""Returns a file location for this package.  The default location is
-		${PKGDIR}/All/${PF}.tbz2, but will be ${PKGDIR}/${CATEGORY}/${PF}.tbz2
-		in the rare event of a collision.  The prevent_collision() method can
-		be called to ensure that ${PKGDIR}/All/${PF}.tbz2 is available for a
-		specific cpv."""
+	def getname(self, cpv, allocate_new=None):
+		"""Returns a file location for this package.
+		If cpv has both build_time and build_id attributes, then the
+		path to the specific corresponding instance is returned.
+		Otherwise, allocate a new path and return that. When allocating
+		a new path, behavior depends on the binpkg-multi-instance
+		FEATURES setting.
+		"""
 		if not self.populated:
 			self.populate()
-		mycpv = pkgname
-		mypath = self._pkg_paths.get(mycpv, None)
-		if mypath:
-			return os.path.join(self.pkgdir, mypath)
-		mycat, mypkg = catsplit(mycpv)
-		if self._all_directory:
-			mypath = os.path.join("All", mypkg + ".tbz2")
-			if mypath in self._pkg_paths.values():
-				mypath = os.path.join(mycat, mypkg + ".tbz2")
+
+		try:
+			cpv.cp
+		except AttributeError:
+			cpv = _pkg_str(cpv)
+
+		filename = None
+		if allocate_new:
+			filename = self._allocate_filename(cpv)
+		elif self._is_specific_instance(cpv):
+			instance_key = self.dbapi._instance_key(cpv)
+			path = self._pkg_paths.get(instance_key)
+			if path is not None:
+				filename = os.path.join(self.pkgdir, path)
+
+		if filename is None and not allocate_new:
+			try:
+				instance_key = self.dbapi._instance_key(cpv,
+					support_string=True)
+			except KeyError:
+				pass
+			else:
+				filename = self._pkg_paths.get(instance_key)
+				if filename is not None:
+					filename = os.path.join(self.pkgdir, filename)
+
+		if filename is None:
+			if self._multi_instance:
+				pf = catsplit(cpv)[1]
+				filename = "%s-%s.xpak" % (
+					os.path.join(self.pkgdir, cpv.cp, pf), "1")
+			else:
+				filename = os.path.join(self.pkgdir, cpv + ".tbz2")
+
+		return filename
+
+	def _is_specific_instance(self, cpv):
+		specific = True
+		try:
+			build_time = cpv.build_time
+			build_id = cpv.build_id
+		except AttributeError:
+			specific = False
 		else:
-			mypath = os.path.join(mycat, mypkg + ".tbz2")
-		self._pkg_paths[mycpv] = mypath # cache for future lookups
-		return os.path.join(self.pkgdir, mypath)
+			if build_time is None or build_id is None:
+				specific = False
+		return specific
+
+	def _max_build_id(self, cpv):
+		max_build_id = 0
+		for x in self.dbapi.cp_list(cpv.cp):
+			if (x == cpv and x.build_id is not None and
+				x.build_id > max_build_id):
+				max_build_id = x.build_id
+		return max_build_id
+
+	def _allocate_filename(self, cpv):
+		return os.path.join(self.pkgdir, cpv + ".tbz2")
+
+	def _allocate_filename_multi(self, cpv):
+
+		# First, get the max build_id found when _populate was
+		# called.
+		max_build_id = self._max_build_id(cpv)
+
+		# A new package may have been added concurrently since the
+		# last _populate call, so use increment build_id until
+		# we locate an unused id.
+		pf = catsplit(cpv)[1]
+		build_id = max_build_id + 1
+
+		while True:
+			filename = "%s-%s.xpak" % (
+				os.path.join(self.pkgdir, cpv.cp, pf), build_id)
+			if os.path.exists(filename):
+				build_id += 1
+			else:
+				return filename
+
+	@staticmethod
+	def _parse_build_id(filename):
+		build_id = -1
+		hyphen = filename.rfind("-", 0, -6)
+		if hyphen != -1:
+			build_id = filename[hyphen+1:-5]
+		try:
+			build_id = long(build_id)
+		except ValueError:
+			pass
+		return build_id
 
 	def isremote(self, pkgname):
 		"""Returns true if the package is kept remotely and it has not been
 		downloaded (or it is only partially downloaded)."""
-		if self._remotepkgs is None or pkgname not in self._remotepkgs:
+		if (self._remotepkgs is None or
+		self.dbapi._instance_key(pkgname) not in self._remotepkgs):
 			return False
 		# Presence in self._remotepkgs implies that it's remote. When a
 		# package is downloaded, state is updated by self.inject().
 		return True
 
-	def get_pkgindex_uri(self, pkgname):
+	def get_pkgindex_uri(self, cpv):
 		"""Returns the URI to the Packages file for a given package."""
-		return self._pkgindex_uri.get(pkgname)
-
-
+		uri = None
+		metadata = self._remotepkgs.get(self.dbapi._instance_key(cpv))
+		if metadata is not None:
+			uri = metadata["PKGINDEX_URI"]
+		return uri
 
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
+		instance_key = self.dbapi._instance_key(pkgname)
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
@@ -1404,10 +1613,10 @@ class binarytree(object):
 		self._ensure_dir(mydest)
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
-			rel_url = self._remotepkgs[pkgname].get("PATH")
+			rel_url = self._remotepkgs[instance_key].get("PATH")
 			if not rel_url:
 				rel_url = pkgname+".tbz2"
-			remote_base_uri = self._remotepkgs[pkgname]["BASE_URI"]
+			remote_base_uri = self._remotepkgs[instance_key]["BASE_URI"]
 			url = remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
 		else:
 			url = self.settings["PORTAGE_BINHOST"].rstrip("/") + "/" + tbz2name
@@ -1450,15 +1659,19 @@ class binarytree(object):
 		except AttributeError:
 			cpv = pkg
 
+		_instance_key = self.dbapi._instance_key
+		instance_key = _instance_key(cpv)
 		digests = {}
-		metadata = None
-		if self._remotepkgs is None or cpv not in self._remotepkgs:
+		metadata = (None if self._remotepkgs is None else
+			self._remotepkgs.get(instance_key))
+		if metadata is None:
 			for d in self._load_pkgindex().packages:
-				if d["CPV"] == cpv:
+				if (d["CPV"] == cpv and
+					instance_key == _instance_key(_pkg_str(d["CPV"],
+					metadata=d, settings=self.settings))):
 					metadata = d
 					break
-		else:
-			metadata = self._remotepkgs[cpv]
+
 		if metadata is None:
 			return digests
 

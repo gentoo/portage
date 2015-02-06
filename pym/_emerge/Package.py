@@ -219,6 +219,8 @@ class Package(Task):
 		else:
 			raise TypeError("root_config argument is required")
 
+		elements = [type_name, root, _unicode(cpv), operation]
+
 		# For installed (and binary) packages we don't care for the repo
 		# when it comes to hashing, because there can only be one cpv.
 		# So overwrite the repo_key with type_name.
@@ -229,14 +231,22 @@ class Package(Task):
 				raise AssertionError(
 					"Package._gen_hash_key() " + \
 					"called without 'repo_name' argument")
-			repo_key = repo_name
+			elements.append(repo_name)
+		elif type_name == "binary":
+			# Including a variety of fingerprints in the hash makes
+			# it possible to simultaneously consider multiple similar
+			# packages. Note that digests are not included here, since
+			# they are relatively expensive to compute, and they may
+			# not necessarily be available.
+			elements.extend([cpv.build_id, cpv.file_size,
+				cpv.build_time, cpv.mtime])
 		else:
 			# For installed (and binary) packages we don't care for the repo
 			# when it comes to hashing, because there can only be one cpv.
 			# So overwrite the repo_key with type_name.
-			repo_key = type_name
+			elements.append(type_name)
 
-		return (type_name, root, _unicode(cpv), operation, repo_key)
+		return tuple(elements)
 
 	def _validate_deps(self):
 		"""
