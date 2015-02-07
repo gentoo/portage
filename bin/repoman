@@ -419,6 +419,7 @@ qawarnings = set((
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 "IUSE.rubydeprecated",
+"SRC_URI.mirror",
 ))
 
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
