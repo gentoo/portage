@@ -135,7 +135,7 @@ class SyncManager(object):
 		task_opts = {
 			'emerge_config': emerge_config,
 			'logger': self.logger,
-			'portdb': self.trees[self.settings['EROOT']]['porttree'].dbapi,
+			'portdb': self.portdb,
 			'repo': repo,
 			'settings': self.settings,
 			'spawn_kwargs': self.spawn_kwargs,
@@ -192,6 +192,7 @@ class SyncManager(object):
 			% (repo.name, repo.location)
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
+		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
 		try:
 			st = os.stat(repo.location)
 		except OSError:
