@@ -737,12 +737,12 @@ class RepoConfigLoader(object):
 			prepos[main_repo].priority = -1000
 
 		# DEPRECATED Backward compatible SYNC support for old mirrorselect.
-		# Feb. 2, 2015.  Version 2.0.16
+		# Feb. 2, 2015.  Version 2.2.16
 		if portdir_sync and main_repo is not None:
 			writemsg(_("!!! SYNC setting found in make.conf.\n    "
 				"This setting is Deprecated and no longer used.  "
 				"Please ensure your 'sync-type' and 'sync-uri' are set correctly"
-				" in repos.conf/gentoo.conf\n"),
+				" in /etc/portage/repos.conf/gentoo.conf\n"),
 				noiselevel=-1)
 
 
