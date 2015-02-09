@@ -464,6 +464,7 @@ class RsyncSync(NewBase):
 
 		if exitcode == os.EX_OK:
 			if (servertimestamp != 0) and (servertimestamp == timestamp):
+				is_synced = True
 				self.logger(self.xterm_titles,
 					">>> Cancelling sync -- Already current.")
 				print()
