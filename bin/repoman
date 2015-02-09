@@ -2319,7 +2319,8 @@ for x in effective_scanlist:
 
 			if not baddepsyntax:
 				ismasked = not ebuild_archs or \
-					pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)
+					pkg.cpv not in portdb.xmatch("match-visible",
+					Atom("%s::%s" % (pkg.cp, repo_config.name)))
 				if ismasked:
 					if not have_pmasked:
 						have_pmasked = bool(dep_settings._getMaskAtom(
