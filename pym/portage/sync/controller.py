@@ -14,7 +14,7 @@ from portage import os
 from portage.progress import ProgressBar
 #from portage.emaint.defaults import DEFAULT_OPTIONS
 #from portage.util._argparse import ArgumentParser
-from portage.util import writemsg_level
+from portage.util import writemsg, writemsg_level
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
