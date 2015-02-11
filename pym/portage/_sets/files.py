@@ -215,15 +215,14 @@ class WorldSelectedSet(EditablePackageSet):
 		self._setset = WorldSelectedSetsSet(eroot)
 
 	def write(self):
-		self._pkgset._atoms = self._atoms
+		self._pkgset._atoms = self._atoms.copy()
 		self._pkgset.write()
-		self._setset._nonatoms = self._nonatoms
+		self._setset._nonatoms = self._nonatoms.copy()
 		self._setset.write()
 
 	def load(self):
-		self._pkgset.load()
-		self._setset.load()
-		self._setAtoms(self._pkgset._atoms | self._pkgset._nonatoms)
+		# Iterating over these sets loads them automatically.
+		self._setAtoms(chain(self._pkgset, self._setset))
 
 	def lock(self):
 		self._pkgset.lock()
