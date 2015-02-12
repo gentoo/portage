@@ -609,15 +609,56 @@ def get_manpages():
 			for g, mans in groups.items():
 				yield [os.path.join('$mandir', topdir, 'man%s' % g), mans]
 
+# initialize the list here
+# it can then be modified by the select_plugins()
+PACKAGES = list(find_packages())
+
+# the USE flag selectable list of modules
+SELECTABLE = {
+	'cvs': 'cvs',
+	'git': 'git',
+	'subversion': 'svn',
+	}
+
+# get the USE from the environment
+# split them so we don't get substring matches
+USE = os.environ.get("USE", "").split()
+
+
+class select_plugins(Command):
+	""" Removes the plugin modules not selected from the packages list
+	so they won't be installed."""
+
+	user_options = [
+	]
+
+	global PACKAGES
+
+	def initialize_options(self):
+		self.build_base = None
+
+	def finalize_options(self):
+		self.set_undefined_options('build',
+			('build_base', 'build_base'))
+
+	def run(self):
+		for plugin in sorted(SELECTABLE):
+			if plugin not in USE:
+				module = os.path.join('portage', 'sync', 'modules',
+					SELECTABLE[plugin])
+				PACKAGES.remove(module)
+				remove_tree(os.path.join('pym', module))
+
+
 setup(
 	name = 'portage',
-	version = '2.2.16',
+	version = '2.2.17',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 
 	package_dir = {'': 'pym'},
-	packages = list(find_packages()),
+	packages = PACKAGES,
 	# something to cheat build & install commands
 	scripts = list(find_scripts()),
 
@@ -653,6 +694,7 @@ setup(
 		'install_scripts_portagebin': x_install_scripts_portagebin,
 		'install_scripts_sbin': x_install_scripts_sbin,
 		'sdist': x_sdist,
+		'select_plugins': select_plugins,
 		'test': test,
 	},
 
