@@ -7,6 +7,7 @@ This class contains common initialization code and functions.
 '''
 
 
+import logging
 import os
 
 import portage
@@ -42,7 +43,7 @@ class SyncBase(object):
 
 
 	@property
-	def _has_bin(self):
+	def has_bin(self):
 		'''Checks for existance of the external binary.
 
 		MUST only be called after _kwargs() has set the logger
@@ -53,7 +54,7 @@ class SyncBase(object):
 			% (self.bin_pkg, self._bin_command)]
 			for l in msg:
 				writemsg_level("!!! %s\n" % l,
-					level=self.logger.ERROR, noiselevel=-1)
+					level=logging.ERROR, noiselevel=-1)
 			return False
 		return True
 
@@ -116,7 +117,7 @@ class NewBase(SyncBase):
 		if kwargs:
 			self._kwargs(kwargs)
 
-		if not self._has_bin:
+		if not self.has_bin:
 			return (1, False)
 
 		if not self.exists():
