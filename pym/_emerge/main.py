@@ -1100,6 +1100,20 @@ def emerge_main(args=None):
 		# loading to allow new repos with non-existent directories
 		portage._sync_mode = True
 
+	# Verify that /dev/null exists and is a device file as a cheap early
+	# filter for obviously broken /dev/s.
+	try:
+		if os.stat(os.devnull).st_rdev == 0:
+			writemsg_level("Failed to validate a sane '/dev'.\n"
+				  "'/dev/null' is not a device file.\n",
+				  level=logging.ERROR, noiselevel=-1)
+			return 1
+	except OSError:
+		writemsg_level("Failed to validate a sane '/dev'.\n"
+				 "'/dev/null' does not exist.\n",
+				 level=logging.ERROR, noiselevel=-1)
+		return 1
+
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
 	emerge_config = load_emerge_config(
