@@ -22,7 +22,7 @@ portage-2.2.16
 * Tentative EAPI 6 changes for testing
 * New search index creation and fast search code for emerge -s, -S
 * Bug Fixes:
-    - Bug 583512 Deprecate make.conf SYNC variable
+    - Bug 538512 Deprecate make.conf SYNC variable
     - Bug 538314 handle EINTR
     - Bug 537298 Fix typo in new_protect_filename()
     - Bug 534722 update LOGNAME variable when appropriate
