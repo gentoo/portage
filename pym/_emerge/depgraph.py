@@ -1860,9 +1860,9 @@ class depgraph(object):
 			replacement_candidates = []
 			# Set of all packages all atoms can agree on.
 			all_candidate_pkgs = None
-			atom_not_selected = False
 
 			for atom in atoms:
+				atom_not_selected = False
 
 				if not atom.package:
 					unevaluated_atom = None
