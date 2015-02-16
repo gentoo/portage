@@ -175,7 +175,7 @@ ___eapi_unpack_is_case_sensitive() {
 }
 
 ___eapi_unpack_supports_absolute_paths() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
 }
 
 ___eapi_die_can_respect_nonfatal() {
