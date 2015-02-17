@@ -424,6 +424,18 @@ class Display(object):
 			pkg_str += _repo_separator + pkg.repo
 		return pkg_str
 
+	def _append_build_id(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends repository to package string.
+
+		@param pkg_str: string
+		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
+		@rtype string
+		"""
+		if pkg.type_name == "binary" and pkg.cpv.build_id is not None:
+			pkg_str += "-%s" % pkg.cpv.build_id
+		return pkg_str
+
 	def _set_non_root_columns(self, pkg, pkg_info):
 		"""sets the indent level and formats the output
 
@@ -431,7 +443,7 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype string
 		"""
-		ver_str = pkg_info.ver
+		ver_str = self._append_build_id(pkg_info.ver, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
@@ -470,7 +482,7 @@ class Display(object):
 		@rtype string
 		Modifies self.verboseadd
 		"""
-		ver_str = pkg_info.ver
+		ver_str = self._append_build_id(pkg_info.ver, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
@@ -507,7 +519,7 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype the updated addl
 		"""
-		pkg_str = pkg.cpv
+		pkg_str = self._append_build_id(pkg.cpv, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
 			pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
@@ -868,7 +880,8 @@ class Display(object):
 					if self.conf.columns:
 						myprint = self._set_non_root_columns(pkg, pkg_info)
 					else:
-						pkg_str = pkg.cpv
+						pkg_str = self._append_build_id(
+							pkg.cpv, pkg, pkg_info)
 						if self.conf.verbosity == 3:
 							pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
 							pkg_str = self._append_repository(pkg_str, pkg, pkg_info)

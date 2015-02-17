@@ -26,6 +26,7 @@ class pkg_node(_unicode):
 		self.__dict__['cp'] = cp
 		self.__dict__['repo'] = repo
 		self.__dict__['version'] = version
+		self.__dict__['build_time'] = None
 
 	def __new__(cls, cp, version, repo=None):
 		return _unicode.__new__(cls, cp + "-" + version)
