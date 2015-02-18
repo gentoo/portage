@@ -570,7 +570,8 @@ class config(object):
 			try:
 				packages_list = [grabfile_package(
 					os.path.join(x.location, "packages"),
-					verify_eapi=True, eapi=x.eapi, eapi_default=None)
+					verify_eapi=True, eapi=x.eapi, eapi_default=None,
+					allow_build_id=x.allow_build_id)
 					for x in profiles_complex]
 			except IOError as e:
 				if e.errno == IsADirectory.errno:
@@ -708,7 +709,8 @@ class config(object):
 				#package.properties
 				propdict = grabdict_package(os.path.join(
 					abs_user_config, "package.properties"), recursive=1, allow_wildcard=True, \
-					allow_repo=True, verify_eapi=False)
+					allow_repo=True, verify_eapi=False,
+					allow_build_id=True)
 				v = propdict.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_PROPERTIES" in self.configdict["conf"]:
@@ -722,7 +724,8 @@ class config(object):
 				d = grabdict_package(os.path.join(
 					abs_user_config, "package.accept_restrict"),
 					recursive=True, allow_wildcard=True,
-					allow_repo=True, verify_eapi=False)
+					allow_repo=True, verify_eapi=False,
+					allow_build_id=True)
 				v = d.pop("*/*", None)
 				if v is not None:
 					if "ACCEPT_RESTRICT" in self.configdict["conf"]:
@@ -735,7 +738,8 @@ class config(object):
 				#package.env
 				penvdict = grabdict_package(os.path.join(
 					abs_user_config, "package.env"), recursive=1, allow_wildcard=True, \
-					allow_repo=True, verify_eapi=False)
+					allow_repo=True, verify_eapi=False,
+					allow_build_id=True)
 				v = penvdict.pop("*/*", None)
 				if v is not None:
 					global_wildcard_conf = {}
@@ -765,7 +769,8 @@ class config(object):
 					bashrc = grabdict_package(os.path.join(profile.location,
 						"package.bashrc"), recursive=1, allow_wildcard=True,
 								allow_repo=True, verify_eapi=True,
-								eapi=profile.eapi, eapi_default=None)
+								eapi=profile.eapi, eapi_default=None,
+								allow_build_id=profile.allow_build_id)
 					if not bashrc:
 						continue
 

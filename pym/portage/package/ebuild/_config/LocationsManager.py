@@ -31,7 +31,8 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'use.mask', 'use.force'])
 
 _profile_node = collections.namedtuple('_profile_node',
-	'location portage1_directories user_config profile_formats eapi')
+	('location', 'portage1_directories', 'user_config',
+	'profile_formats', 'eapi', 'allow_build_id'))
 
 _allow_parent_colon = frozenset(
 	["portage-2"])
@@ -142,7 +143,8 @@ class LocationsManager(object):
 					_profile_node(custom_prof, True, True,
 					('profile-bashrcs', 'profile-set'),
 					read_corresponding_eapi_file(
-					custom_prof + os.sep, default=None)))
+					custom_prof + os.sep, default=None),
+					True))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -253,7 +255,7 @@ class LocationsManager(object):
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
 			_profile_node(currentPath, allow_directories, False,
-				current_formats, eapi))
+				current_formats, eapi, 'build-id' in current_formats))
 
 	def _expand_parent_colon(self, parentsFile, parentPath,
 		repo_loc, repositories):

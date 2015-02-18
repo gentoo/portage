@@ -424,7 +424,8 @@ def read_corresponding_eapi_file(filename, default="0"):
 		return default
 	return eapi
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
+def grabdict_package(myfilename, juststrings=0, recursive=0,
+	allow_wildcard=False, allow_repo=False, allow_build_id=False,
 	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
 		with isvalidatom()"""
@@ -447,7 +448,8 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 		for k, v in d.items():
 			try:
 				k = Atom(k, allow_wildcard=allow_wildcard,
-					allow_repo=allow_repo, eapi=eapi)
+					allow_repo=allow_repo,
+					allow_build_id=allow_build_id, eapi=eapi)
 			except InvalidAtom as e:
 				writemsg(_("--- Invalid atom in %s: %s\n") % (filename, e),
 					noiselevel=-1)
@@ -460,7 +462,8 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
+def grabfile_package(myfilename, compatlevel=0, recursive=0,
+	allow_wildcard=False, allow_repo=False, allow_build_id=False,
 	remember_source_file=False, verify_eapi=False, eapi=None,
 	eapi_default="0"):
 
@@ -480,7 +483,9 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard,
+				allow_repo=allow_repo, allow_build_id=allow_build_id,
+				eapi=eapi)
 		except InvalidAtom as e:
 			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)

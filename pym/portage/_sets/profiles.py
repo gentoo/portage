@@ -34,7 +34,8 @@ class PackagesSystemSet(PackageSet):
 				(self._profiles,), level=logging.DEBUG, noiselevel=-1)
 
 		mylist = [grabfile_package(os.path.join(x.location, "packages"),
-			verify_eapi=True, eapi=x.eapi, eapi_default=None)
+			verify_eapi=True, eapi=x.eapi, eapi_default=None,
+			allow_build_id=x.allow_build_id)
 			for x in self._profiles]
 
 		if debug:
