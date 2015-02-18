@@ -261,48 +261,6 @@ class bindbapi(fakedbapi):
 
 		return filesdict
 
-def _pkgindex_cpv_map_latest_build(pkgindex):
-	"""
-	Given a PackageIndex instance, create a dict of cpv -> metadata map.
-	If multiple packages have identical CPV values, prefer the package
-	with latest BUILD_TIME value.
-	@param pkgindex: A PackageIndex instance.
-	@type pkgindex: PackageIndex
-	@rtype: dict
-	@return: a dict containing entry for the give cpv.
-	"""
-	cpv_map = {}
-
-	for d in pkgindex.packages:
-		cpv = d["CPV"]
-
-		try:
-			cpv = _pkg_str(cpv)
-		except InvalidData:
-			writemsg(_("!!! Invalid remote binary package: %s\n") % cpv,
-				noiselevel=-1)
-			continue
-
-		btime = d.get('BUILD_TIME', '')
-		try:
-			btime = int(btime)
-		except ValueError:
-			btime = None
-
-		other_d = cpv_map.get(cpv)
-		if other_d is not None:
-			other_btime = other_d.get('BUILD_TIME', '')
-			try:
-				other_btime = int(other_btime)
-			except ValueError:
-				other_btime = None
-			if other_btime and (not btime or other_btime > btime):
-				continue
-
-		cpv_map[_pkg_str(cpv)] = d
-
-	return cpv_map
-
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, _unused=DeprecationWarning, pkgdir=None,
