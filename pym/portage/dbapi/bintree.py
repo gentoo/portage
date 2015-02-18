@@ -471,89 +471,11 @@ class binarytree(object):
 
 		return moves
 
-	def _remove_symlink(self, cpv):
-		"""Remove a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink and also remove
-		the ${PKGDIR}/${CATEGORY} directory if empty.  The file will not be
-		removed if os.path.islink() returns False."""
-		mycat, mypkg = catsplit(cpv)
-		mylink = os.path.join(self.pkgdir, mycat, mypkg + ".tbz2")
-		if os.path.islink(mylink):
-			"""Only remove it if it's really a link so that this method never
-			removes a real package that was placed here to avoid a collision."""
-			os.unlink(mylink)
-		try:
-			os.rmdir(os.path.join(self.pkgdir, mycat))
-		except OSError as e:
-			if e.errno not in (errno.ENOENT,
-				errno.ENOTEMPTY, errno.EEXIST):
-				raise
-			del e
-
-	def _create_symlink(self, cpv):
-		"""Create a ${PKGDIR}/${CATEGORY}/${PF}.tbz2 symlink (and
-		${PKGDIR}/${CATEGORY} directory, if necessary).  Any file that may
-		exist in the location of the symlink will first be removed."""
-		mycat, mypkg = catsplit(cpv)
-		full_path = os.path.join(self.pkgdir, mycat, mypkg + ".tbz2")
-		self._ensure_dir(os.path.dirname(full_path))
-		try:
-			os.unlink(full_path)
-		except OSError as e:
-			if e.errno != errno.ENOENT:
-				raise
-			del e
-		os.symlink(os.path.join("..", "All", mypkg + ".tbz2"), full_path)
-
 	def prevent_collision(self, cpv):
-		"""Make sure that the file location ${PKGDIR}/All/${PF}.tbz2 is safe to
-		use for a given cpv.  If a collision will occur with an existing
-		package from another category, the existing package will be bumped to
-		${PKGDIR}/${CATEGORY}/${PF}.tbz2 so that both can coexist."""
-		if not self._all_directory:
-			return
-
-		# Copy group permissions for new directories that
-		# may have been created.
-		for path in ("All", catsplit(cpv)[0]):
-			path = os.path.join(self.pkgdir, path)
-			self._ensure_dir(path)
-			if not os.access(path, os.W_OK):
-				raise PermissionDenied("access('%s', W_OK)" % path)
-
-		full_path = self.getname(cpv)
-		if "All" == full_path.split(os.path.sep)[-2]:
-			return
-		"""Move a colliding package if it exists.  Code below this point only
-		executes in rare cases."""
-		mycat, mypkg = catsplit(cpv)
-		myfile = mypkg + ".tbz2"
-		mypath = os.path.join("All", myfile)
-		dest_path = os.path.join(self.pkgdir, mypath)
-
-		try:
-			st = os.lstat(dest_path)
-		except OSError:
-			st = None
-		else:
-			if stat.S_ISLNK(st.st_mode):
-				st = None
-				try:
-					os.unlink(dest_path)
-				except OSError:
-					if os.path.exists(dest_path):
-						raise
-
-		if st is not None:
-			# For invalid packages, other_cat could be None.
-			other_cat = portage.xpak.tbz2(dest_path).getfile(b"CATEGORY")
-			if other_cat:
-				other_cat = _unicode_decode(other_cat,
-					encoding=_encodings['repo.content'], errors='replace')
-				other_cat = other_cat.strip()
-				other_cpv = other_cat + "/" + mypkg
-				self._move_from_all(other_cpv)
-				self.inject(other_cpv)
-		self._move_to_all(cpv)
+		warnings.warn("The "
+			"portage.dbapi.bintree.binarytree.prevent_collision "
+			"method is deprecated.",
+			DeprecationWarning, stacklevel=2)
 
 	def _ensure_dir(self, path):
 		"""
@@ -588,37 +510,6 @@ class binarytree(object):
 					mode=pkgdir_grp_mode, mask=0)
 			except PortageException:
 				pass
-
-	def _move_to_all(self, cpv):
-		"""If the file exists, move it.  Whether or not it exists, update state
-		for future getname() calls."""
-		mycat, mypkg = catsplit(cpv)
-		myfile = mypkg + ".tbz2"
-		self._pkg_paths[cpv] = os.path.join("All", myfile)
-		src_path = os.path.join(self.pkgdir, mycat, myfile)
-		try:
-			mystat = os.lstat(src_path)
-		except OSError as e:
-			mystat = None
-		if mystat and stat.S_ISREG(mystat.st_mode):
-			self._ensure_dir(os.path.join(self.pkgdir, "All"))
-			dest_path = os.path.join(self.pkgdir, "All", myfile)
-			_movefile(src_path, dest_path, mysettings=self.settings)
-			self._create_symlink(cpv)
-			self.inject(cpv)
-
-	def _move_from_all(self, cpv):
-		"""Move a package from ${PKGDIR}/All/${PF}.tbz2 to
-		${PKGDIR}/${CATEGORY}/${PF}.tbz2 and update state from getname calls."""
-		self._remove_symlink(cpv)
-		mycat, mypkg = catsplit(cpv)
-		myfile = mypkg + ".tbz2"
-		mypath = os.path.join(mycat, myfile)
-		dest_path = os.path.join(self.pkgdir, mypath)
-		self._ensure_dir(os.path.dirname(dest_path))
-		src_path = os.path.join(self.pkgdir, "All", myfile)
-		_movefile(src_path, dest_path, mysettings=self.settings)
-		self._pkg_paths[cpv] = mypath
 
 	def populate(self, getbinpkgs=0):
 		"populates the binarytree"
