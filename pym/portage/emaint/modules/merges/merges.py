@@ -3,8 +3,7 @@
 
 import portage
 from portage import os, _unicode_encode
-from portage.const import MERGING_IDENTIFIER, PORTAGE_BIN_PATH, PRIVATE_PATH, \
-	VDB_PATH
+from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
 from portage.dep import isvalidatom
 
 import shutil
@@ -206,7 +205,8 @@ class MergesHandler(object):
 		emerge_cmd = (
 			portage._python_interpreter,
 			'-b',
-			os.path.join(PORTAGE_BIN_PATH, 'emerge'),
+			os.path.join(EPREFIX or '/', 'usr', 'bin', 'emerge'),
+			'--ask',
 			'--quiet',
 			'--oneshot',
 			'--complete-graph=y'
