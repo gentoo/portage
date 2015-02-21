@@ -1187,7 +1187,10 @@ mychanged = []
 mynew = []
 myremoved = []
 
-if vcs == "cvs":
+if (options.if_modified != "y" and
+	options.mode in ("manifest", "manifest-check")):
+	pass
+elif vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
