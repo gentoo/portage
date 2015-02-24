@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jan 2015" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Feb 2015" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -65,6 +65,7 @@ package.use
 postsync.d
 repo.postsync.d
 repos.conf
+sets.conf
 .fi
 .TP
 .BR /etc/portage/env/
@@ -75,6 +76,11 @@ site-specific overrides of \fB/etc/portage/make.profile/\fR
 .TP
 .BR /etc/portage/sets/
 user\-defined package sets
+.TP
+.BR /usr/portage/
+.nf
+sets.conf
+.fi
 .TP
 .BR /usr/portage/metadata/
 .nf
@@ -112,6 +118,7 @@ use.stable.force
 .nf
 make.globals
 repos.conf
+sets
 .fi
 .TP
 .BR /var/cache/edb/
@@ -1066,6 +1073,30 @@ sync\-uri = git://git.overlays.gentoo.org/proj/voip.git
 auto\-sync = yes
 .fi
 .RE
+.TP
+.BR sets.conf
+A package set configuration file. Settings here override settings from
+\fB/usr/portage/sets.conf\fR and \fB/usr/share/portage/config/sets\fR.
+The format is described extensively in the
+\fIPackage Set Configuration\fR section of the html documentation which
+is installed with portage when the "doc" USE flag is enabled.
+
+.I Example:
+.nf
+[world]
+class = portage.sets.base.DummyPackageSet
+packages = @profile @selected @system
+
+[usersets]
+class = portage.sets.files.StaticFileSet
+multiset = true
+directory =  %(PORTAGE_CONFIGROOT)setc/portage/sets
+world-candidate = True
+
+[module-rebuild]
+class = portage.sets.dbapi.OwnerSet
+files = /lib/modules
+.fi
 .RE
 .TP
 .BR /etc/portage/env/
@@ -1104,6 +1135,15 @@ set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
+.RE
+.TP
+.BR /usr/portage/
+.RS
+.TP
+.BR sets.conf
+A package set configuration file. Also see \fB/etc/portage/sets.conf\fR
+which overrides these settings, and
+\fB/usr/share/portage/config/sets\fR which contains default settings.
 .RE
 .TP
 .BR /usr/portage/metadata/
@@ -1470,6 +1510,13 @@ The default configuration of repositories for Portage.  This comes from
 the portage package itself.  Settings in \fB/etc/portage/repos.conf\fR
 override values set here. The format is described extensively in section
 for \fB/etc/portage/repos.conf\fR.
+.TP
+.BR sets
+A directory containing package set configuration files. Also see
+\fB/etc/portage/sets.conf\fR and \fB/usr/portage/sets.conf\fR, both of
+which override values set here. Default set configurations are installed
+in \fB/usr/share/portage/config/sets/portage.conf\fR.
+.RE
 .RE
 .TP
 .BR /var/cache/edb/
