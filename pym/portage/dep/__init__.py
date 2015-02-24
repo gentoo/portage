@@ -558,7 +558,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						stack[level].extend(l)
 					continue
 
-				if stack[level]:
+				if stack[level] and isinstance(stack[level][-1],
+					basestring):
 					if stack[level][-1] == "||" and not l:
 						#Optimize: || ( ) -> .
 						stack[level].pop()
@@ -583,7 +584,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					#ends in a non-operator. This is almost equivalent to stack[level][-1]=="||",
 					#expect that it skips empty levels.
 					while k>=0:
-						if stack[k]:
+						if stack[k] and isinstance(stack[k][-1],
+							basestring):
 							if stack[k][-1] == "||":
 								return k
 							elif stack[k][-1][-1] != "?":
