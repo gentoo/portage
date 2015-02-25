@@ -63,6 +63,7 @@ from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage._global_updates import _global_updates
 from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
+from portage.localization import _
 from portage.metadata import action_metadata
 
 from _emerge.clear_caches import clear_caches
@@ -433,7 +434,8 @@ def action_build(settings, trees, mtimedb,
 			_opts_no_self_update.intersection(myopts)
 
 		need_write_bindb = not any(x in myopts for x in
-			("--fetchonly", "--fetch-all-uri", "--pretend")) and \
+			("--fetchonly", "--fetch-all-uri",
+			"--pretend", "--usepkgonly")) and \
 			(any("buildpkg" in trees[eroot]["root_config"].
 				settings.features for eroot in trees) or
 			any("buildsyspkg" in trees[eroot]["root_config"].
