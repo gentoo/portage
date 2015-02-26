@@ -1326,7 +1326,7 @@ If the item does not exist, it is ignored.
 .TP
 .B dosed\fR \fI"s:orig:change:g" <filename>
 Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
-should call \fBsed(1)\fR directly (and assume that it is GNU sed).
+should call \fBsed\fR(1) directly (and assume that it is GNU sed).
 
 Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
 given then \fI"s:${D}::g"\fR is used as the default expression.  Note
@@ -1412,7 +1412,7 @@ file name.
 .TP
 .B dohard\fR \fI<filename> <linkname>
 Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
-should call \fBln(1)\fR directly.
+should call \fBln\fR(1) directly.
 .TP
 .B dosym\fR \fI<filename> <linkname>
 .PD 1
