@@ -6595,7 +6595,7 @@ class depgraph(object):
 						if not success:
 							replacement_pkgs = self._dynamic_config._package_tracker.match(
 								myroot, pkg.slot_atom)
-							if any(replacement_pkg[0].operation == "merge" for \
+							if any(replacement_pkg.operation == "merge" for
 								replacement_pkg in replacement_pkgs):
 								# This package is being replaced anyway, so
 								# ignore invalid dependencies so as not to
