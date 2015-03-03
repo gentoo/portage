@@ -394,6 +394,7 @@ class config(object):
 
 			# Allow make.globals to set default paths relative to ${EPREFIX}.
 			expand_map["EPREFIX"] = eprefix
+			expand_map["PORTAGE_CONFIGROOT"] = config_root
 
 			if portage._not_installed:
 				make_globals_path = os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals")
