@@ -457,18 +457,26 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 		ccache = "ccache" in mysettings.features
 		distcc = "distcc" in mysettings.features
-		if ccache or distcc:
+		icecream = "icecream" in mysettings.features
+
+		if ccache or distcc or icecream:
 			# Use default ABI libdir in accordance with bug #355283.
 			libdir = None
 			default_abi = mysettings.get("DEFAULT_ABI")
+
 			if default_abi:
 				libdir = mysettings.get("LIBDIR_" + default_abi)
+
 			if not libdir:
 				libdir = "lib"
 
 			if distcc:
 				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
 					 "usr", libdir, "distcc", "bin") + ":" + mysettings["PATH"]
+
+			if icecream:
+				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
+					 "usr", "libexec", "icecc", "bin") + ":" + mysettings["PATH"]
 
 			if ccache:
 				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
