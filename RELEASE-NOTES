@@ -15,7 +15,7 @@ portage-2.2.18
     - Bug 540482 Add man page entries for "emaint merges"
                  and egencache's "--write-timestamp"
     - Bug 511806 make.conf: expand PORTAGE_CONFIGROOT
-    - Bug 541746 depgraph: fix 'operation' AttributeError
+    - Bug 541754 depgraph: fix 'operation' AttributeError
     - Bug 542052 Don't spawn socks5-server.py for pkg_nofetch
 
 
