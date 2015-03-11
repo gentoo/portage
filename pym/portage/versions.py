@@ -18,6 +18,7 @@ if sys.hexversion < 0x3000000:
 	_unicode = unicode
 else:
 	_unicode = str
+	long = int
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -361,11 +362,13 @@ class _pkg_str(_unicode):
 	"""
 
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
-		repo=None, slot=None):
+		repo=None, slot=None, build_time=None, build_id=None,
+		file_size=None, mtime=None):
 		return _unicode.__new__(cls, cpv)
 
 	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
-		repo=None, slot=None):
+		repo=None, slot=None, build_time=None, build_id=None,
+		file_size=None, mtime=None):
 		if not isinstance(cpv, _unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
@@ -375,10 +378,19 @@ class _pkg_str(_unicode):
 			slot = metadata.get('SLOT', slot)
 			repo = metadata.get('repository', repo)
 			eapi = metadata.get('EAPI', eapi)
+			build_time = metadata.get('BUILD_TIME', build_time)
+			file_size = metadata.get('SIZE', file_size)
+			build_id = metadata.get('BUILD_ID', build_id)
+			mtime = metadata.get('_mtime_', mtime)
 		if settings is not None:
 			self.__dict__['_settings'] = settings
 		if eapi is not None:
 			self.__dict__['eapi'] = eapi
+
+		self.__dict__['build_time'] = self._long(build_time, 0)
+		self.__dict__['file_size'] = self._long(file_size, None)
+		self.__dict__['build_id'] = self._long(build_id, None)
+		self.__dict__['mtime'] = self._long(mtime, None)
 		self.__dict__['cpv_split'] = catpkgsplit(cpv, eapi=eapi)
 		if self.cpv_split is None:
 			raise InvalidData(cpv)
@@ -418,6 +430,18 @@ class _pkg_str(_unicode):
 	def __setattr__(self, name, value):
 		raise AttributeError("_pkg_str instances are immutable",
 			self.__class__, name, value)
+
+	@staticmethod
+	def _long(var, default):
+		if var is not None:
+			try:
+				var = long(var)
+			except ValueError:
+				if var:
+					var = -1
+				else:
+					var = default
+		return var
 
 	@property
 	def stable(self):

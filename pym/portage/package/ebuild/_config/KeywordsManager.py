@@ -22,7 +22,8 @@ class KeywordsManager(object):
 		rawpkeywords = [grabdict_package(
 			os.path.join(x.location, "package.keywords"),
 			recursive=x.portage1_directories,
-			verify_eapi=True, eapi=x.eapi, eapi_default=None)
+			verify_eapi=True, eapi=x.eapi, eapi_default=None,
+			allow_build_id=x.allow_build_id)
 			for x in profiles]
 		for pkeyworddict in rawpkeywords:
 			if not pkeyworddict:

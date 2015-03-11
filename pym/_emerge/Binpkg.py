@@ -121,16 +121,11 @@ class Binpkg(CompositeTask):
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			pretend=self.opts.pretend, scheduler=self.scheduler)
-		pkg_path = fetcher.pkg_path
-		self._pkg_path = pkg_path
-		# This gives bashrc users an opportunity to do various things
-		# such as remove binary packages after they're installed.
-		self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
 
 		if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
-
 			msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
-				(pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path)
+				(pkg_count.curval, pkg_count.maxval, pkg.cpv,
+					fetcher.pkg_path)
 			short_msg = "emerge: (%s of %s) %s Fetch" % \
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv)
 			self.logger.log(msg, short_msg=short_msg)
@@ -149,7 +144,7 @@ class Binpkg(CompositeTask):
 		# The fetcher only has a returncode when
 		# --getbinpkg is enabled.
 		if fetcher.returncode is not None:
-			self._fetched_pkg = True
+			self._fetched_pkg = fetcher.pkg_path
 			if self._default_exit(fetcher) != os.EX_OK:
 				self._unlock_builddir()
 				self.wait()
@@ -163,9 +158,15 @@ class Binpkg(CompositeTask):
 
 		verifier = None
 		if self._verify:
+			if self._fetched_pkg:
+				path = self._fetched_pkg
+			else:
+				path = self.pkg.root_config.trees["bintree"].getname(
+					self.pkg.cpv)
 			logfile = self.settings.get("PORTAGE_LOG_FILE")
 			verifier = BinpkgVerifier(background=self.background,
-				logfile=logfile, pkg=self.pkg, scheduler=self.scheduler)
+				logfile=logfile, pkg=self.pkg, scheduler=self.scheduler,
+				_pkg_path=path)
 			self._start_task(verifier, self._verifier_exit)
 			return
 
@@ -181,10 +182,20 @@ class Binpkg(CompositeTask):
 		logger = self.logger
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		pkg_path = self._pkg_path
 
 		if self._fetched_pkg:
-			self._bintree.inject(pkg.cpv, filename=pkg_path)
+			pkg_path = self._bintree.getname(
+				self._bintree.inject(pkg.cpv,
+				filename=self._fetched_pkg),
+				allocate_new=False)
+		else:
+			pkg_path = self.pkg.root_config.trees["bintree"].getname(
+				self.pkg.cpv)
+
+		# This gives bashrc users an opportunity to do various things
+		# such as remove binary packages after they're installed.
+		self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
+		self._pkg_path = pkg_path
 
 		logfile = self.settings.get("PORTAGE_LOG_FILE")
 		if logfile is not None and os.path.isfile(logfile):

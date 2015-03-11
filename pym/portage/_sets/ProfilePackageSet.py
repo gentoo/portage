@@ -23,7 +23,8 @@ class ProfilePackageSet(PackageSet):
 	def load(self):
 		self._setAtoms(x for x in stack_lists(
 			[grabfile_package(os.path.join(y.location, "packages"),
-			verify_eapi=True, eapi=y.eapi, eapi_default=None)
+			verify_eapi=True, eapi=y.eapi, eapi_default=None,
+			allow_build_id=y.allow_build_id)
 			for y in self._profiles
 			if "profile-set" in y.profile_formats],
 			incremental=1) if x[:1] != "*")

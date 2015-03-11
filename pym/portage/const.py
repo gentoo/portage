@@ -122,6 +122,7 @@ EBUILD_PHASES            = (
 SUPPORTED_FEATURES       = frozenset([
 	"assume-digests",
 	"binpkg-logs",
+	"binpkg-multi-instance",
 	"buildpkg",
 	"buildsyspkg",
 	"candy",
@@ -268,6 +269,7 @@ LIVE_ECLASSES = frozenset([
 ])
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
+SUPPORTED_XPAK_EXTENSIONS = (".tbz2", ".xpak")
 
 # Time formats used in various places like metadata.chk.
 TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()

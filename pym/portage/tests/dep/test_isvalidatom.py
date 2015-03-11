@@ -5,11 +5,13 @@ from portage.tests import TestCase
 from portage.dep import isvalidatom
 
 class IsValidAtomTestCase(object):
-	def __init__(self, atom, expected, allow_wildcard=False, allow_repo=False):
+	def __init__(self, atom, expected, allow_wildcard=False,
+		allow_repo=False, allow_build_id=False):
 		self.atom = atom
 		self.expected = expected
 		self.allow_wildcard = allow_wildcard
 		self.allow_repo = allow_repo
+		self.allow_build_id = allow_build_id
 
 class IsValidAtom(TestCase):
 
@@ -154,5 +156,7 @@ class IsValidAtom(TestCase):
 			else:
 				atom_type = "invalid"
 			self.assertEqual(bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard,
-				allow_repo=test_case.allow_repo)), test_case.expected,
+				allow_repo=test_case.allow_repo,
+				allow_build_id=test_case.allow_build_id)),
+				test_case.expected,
 				msg="isvalidatom(%s) != %s" % (test_case.atom, test_case.expected))

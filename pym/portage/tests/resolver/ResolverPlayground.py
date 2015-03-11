@@ -39,6 +39,7 @@ class ResolverPlayground(object):
 
 	config_files = frozenset(("eapi", "layout.conf", "make.conf", "package.accept_keywords",
 		"package.keywords", "package.license", "package.mask", "package.properties",
+		"package.provided", "packages",
 		"package.unmask", "package.use", "package.use.aliases", "package.use.stable.mask",
 		"soname.provided",
 		"unpack_dependencies", "use.aliases", "use.force", "use.mask", "layout.conf"))
@@ -208,12 +209,18 @@ class ResolverPlayground(object):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
 
 	def _create_binpkgs(self, binpkgs):
-		for cpv, metadata in binpkgs.items():
+		# When using BUILD_ID, there can be mutiple instances for the
+		# same cpv. Therefore, binpkgs may be an iterable instead of
+		# a dict.
+		items = getattr(binpkgs, 'items', None)
+		items = items() if items is not None else binpkgs
+		for cpv, metadata in items:
 			a = Atom("=" + cpv, allow_repo=True)
 			repo = a.repo
 			if repo is None:
 				repo = "test_repo"
 
+			pn = catsplit(a.cp)[1]
 			cat, pf = catsplit(a.cpv)
 			metadata = metadata.copy()
 			metadata.setdefault("SLOT", "0")
@@ -225,8 +232,13 @@ class ResolverPlayground(object):
 
 			repo_dir = self.pkgdir
 			category_dir = os.path.join(repo_dir, cat)
-			binpkg_path = os.path.join(category_dir, pf + ".tbz2")
-			ensure_dirs(category_dir)
+			if "BUILD_ID" in metadata:
+				binpkg_path = os.path.join(category_dir, pn,
+					"%s-%s.xpak"% (pf, metadata["BUILD_ID"]))
+			else:
+				binpkg_path = os.path.join(category_dir, pf + ".tbz2")
+
+			ensure_dirs(os.path.dirname(binpkg_path))
 			t = portage.xpak.tbz2(binpkg_path)
 			t.recompose_mem(portage.xpak.xpak_mem(metadata))
 
@@ -252,6 +264,7 @@ class ResolverPlayground(object):
 			unknown_keys = set(metadata).difference(
 				portage.dbapi.dbapi._known_keys)
 			unknown_keys.discard("BUILD_TIME")
+			unknown_keys.discard("BUILD_ID")
 			unknown_keys.discard("COUNTER")
 			unknown_keys.discard("repository")
 			unknown_keys.discard("USE")
@@ -749,7 +762,11 @@ class ResolverPlaygroundResult(object):
 					repo_str = ""
 					if x.repo != "test_repo":
 						repo_str = _repo_separator + x.repo
-					mergelist_str = x.cpv + repo_str
+					build_id_str = ""
+					if (x.type_name == "binary" and
+						x.cpv.build_id is not None):
+						build_id_str = "-%s" % x.cpv.build_id
+					mergelist_str = x.cpv + build_id_str + repo_str
 					if x.built:
 						if x.operation == "merge":
 							desc = x.type_name

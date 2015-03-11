@@ -1220,7 +1220,7 @@ and the newer/faster "md5-dict" format.  Default is to detect dirs.
 The EAPI to use for profiles when unspecified. This attribute is
 supported only if profile-default-eapi is included in profile-formats.
 .TP
-.BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] [profile-set] [profile-default-eapi]"
+.BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] [profile-set] [profile-default-eapi] [build-id]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
@@ -1230,7 +1230,11 @@ Setting profile-bashrcs will enable the per-profile bashrc mechanism
 profile \fBpackages\fR file to add atoms to the @profile package set.
 See the profile \fBpackages\fR section for more information.
 Setting profile-default-eapi enables support for the
-profile_eapi_when_unspecified attribute.
+profile_eapi_when_unspecified attribute. Setting build\-id allows
+dependency atoms in the profile to refer to specific builds (see the
+binpkg\-multi\-instance FEATURES setting in \fBmake.conf\fR(5)). A
+build\-id atom is identical to a version-specific atom, except that the
+version is followed by a hyphen and an integer build\-id.
 .RE
 .RE
 

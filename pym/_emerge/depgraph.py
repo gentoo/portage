@@ -5747,11 +5747,11 @@ class depgraph(object):
 					if want_reinstall and matched_packages:
 						continue
 
-				# Ignore USE deps for the initial match since we want to
-				# ensure that updates aren't missed solely due to the user's
-				# USE configuration.
+				# For unbuilt ebuilds, ignore USE deps for the initial
+				# match since we want to ensure that updates aren't
+				# missed solely due to the user's USE configuration.
 				for pkg in self._iter_match_pkgs(root_config, pkg_type,
-					atom.without_use if atom.package else atom,
+					atom.without_use if (atom.package and not built) else atom,
 					onlydeps=onlydeps):
 					if have_new_virt is True and pkg.cp != atom_cp:
 						# pull in a new-style virtual instead
@@ -6014,6 +6014,10 @@ class depgraph(object):
 										pkg, {}).setdefault(
 										"respect_use", set()).update(
 										reinstall_for_flags)
+									# Continue searching for a binary
+									# package instance built with the
+									# desired USE settings.
+									continue
 								break
 
 						if (((installed and changed_deps) or
@@ -6023,6 +6027,10 @@ class depgraph(object):
 								self._dynamic_config.\
 									ignored_binaries.setdefault(
 									pkg, {})["changed_deps"] = True
+								# Continue searching for a binary
+								# package instance built with the
+								# desired USE settings.
+								continue
 							break
 
 					# Compare current config to installed package

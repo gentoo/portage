@@ -24,7 +24,8 @@ class BinpkgFetcher(SpawnProcess):
 	def __init__(self, **kwargs):
 		SpawnProcess.__init__(self, **kwargs)
 		pkg = self.pkg
-		self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv)
+		self.pkg_path = pkg.root_config.trees["bintree"].getname(
+			pkg.cpv) + ".partial"
 
 	def _start(self):
 
@@ -51,10 +52,12 @@ class BinpkgFetcher(SpawnProcess):
 		# urljoin doesn't work correctly with
 		# unrecognized protocols like sftp
 		if bintree._remote_has_index:
-			rel_uri = bintree._remotepkgs[pkg.cpv].get("PATH")
+			instance_key = bintree.dbapi._instance_key(pkg.cpv)
+			rel_uri = bintree._remotepkgs[instance_key].get("PATH")
 			if not rel_uri:
 				rel_uri = pkg.cpv + ".tbz2"
-			remote_base_uri = bintree._remotepkgs[pkg.cpv]["BASE_URI"]
+			remote_base_uri = bintree._remotepkgs[
+				instance_key]["BASE_URI"]
 			uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
@@ -128,7 +131,9 @@ class BinpkgFetcher(SpawnProcess):
 			# the fetcher didn't already do it automatically.
 			bintree = self.pkg.root_config.trees["bintree"]
 			if bintree._remote_has_index:
-				remote_mtime = bintree._remotepkgs[self.pkg.cpv].get("MTIME")
+				remote_mtime = bintree._remotepkgs[
+					bintree.dbapi._instance_key(
+					self.pkg.cpv)].get("MTIME")
 				if remote_mtime is not None:
 					try:
 						remote_mtime = long(remote_mtime)

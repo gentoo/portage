@@ -14,9 +14,10 @@ def insert_category_into_atom(atom, category):
 		ret = None
 	return ret
 
-def is_valid_package_atom(x, allow_repo=False):
+def is_valid_package_atom(x, allow_repo=False, allow_build_id=True):
 	if "/" not in x.split(":")[0]:
 		x2 = insert_category_into_atom(x, 'cat')
 		if x2 != None:
 			x = x2
-	return isvalidatom(x, allow_blockers=False, allow_repo=allow_repo)
+	return isvalidatom(x, allow_blockers=False, allow_repo=allow_repo,
+		allow_build_id=allow_build_id)

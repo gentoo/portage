@@ -33,7 +33,6 @@ class BinpkgVerifier(CompositeTask):
 			digests = _apply_hash_filter(digests, hash_filter)
 
 		self._digests = digests
-		self._pkg_path = bintree.getname(self.pkg.cpv)
 
 		try:
 			size = os.stat(self._pkg_path).st_size
@@ -90,8 +89,11 @@ class BinpkgVerifier(CompositeTask):
 			if portage.output.havecolor:
 				portage.output.havecolor = not self.background
 
+			path = self._pkg_path
+			if path.endswith(".partial"):
+				path = path[:-len(".partial")]
 			eout = EOutput()
-			eout.ebegin("%s %s ;-)" % (os.path.basename(self._pkg_path),
+			eout.ebegin("%s %s ;-)" % (os.path.basename(path),
 				" ".join(sorted(self._digests))))
 			eout.eend(0)
 

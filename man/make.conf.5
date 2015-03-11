@@ -256,6 +256,33 @@ has a \fB\-\-force\fR option that can be used to force regeneration of digests.
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORT_LOGDIR\fR is set.
 .TP
+.B binpkg\-multi\-instance
+Enable support for multiple binary package instances per ebuild.
+Having multiple instances is useful for a number of purposes, such as
+retaining builds that were built with different USE flags or linked
+against different versions of libraries. The location of any particular
+package within PKGDIR can be expressed as follows:
+
+	${PKGDIR}/${CATEGORY}/${PN}/${PF}\-${BUILD_ID}.xpak
+
+The build\-id starts at 1 for the first build of a particular ebuild,
+and is incremented by 1 for each new build. It is possible to share a
+writable PKGDIR over NFS, and locking ensures that each package added
+to PKGDIR will have a unique build\-id. It is not necessary to migrate
+an existing PKGDIR to the new layout, since portage is capable of
+working with a mixed PKGDIR layout, where packages using the old layout
+are allowed to remain in place.
+
+The new PKGDIR layout is backward\-compatible with binhost clients
+running older portage, since the file format is identical, the
+per\-package PATH attribute in the 'Packages' index directs them to
+download the file from the correct URI, and they automatically use
+BUILD_TIME metadata to select the latest builds.
+
+There is currently no automated way to prune old builds from PKGDIR,
+although it is possible to remove packages manually, and then run
+\(aqemaint \-\-fix binhost' to update the ${PKGDIR}/Packages index.
+.TP
 .B buildpkg
 Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and

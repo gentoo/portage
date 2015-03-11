@@ -1,6 +1,10 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import unicode_literals
+
+import io
+
 import _emerge.emergelog
 from _emerge.EbuildExecuter import EbuildExecuter
 from _emerge.EbuildPhase import EbuildPhase
@@ -15,7 +19,7 @@ from _emerge.TaskSequence import TaskSequence
 
 from portage.util import writemsg
 import portage
-from portage import os
+from portage import _encodings, _unicode_decode, _unicode_encode, os
 from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
@@ -317,9 +321,13 @@ class EbuildBuild(CompositeTask):
 						phase="rpm", scheduler=self.scheduler,
 						settings=self.settings))
 				else:
-					binpkg_tasks.add(EbuildBinpkg(background=self.background,
+					task = EbuildBinpkg(
+						background=self.background,
 						pkg=self.pkg, scheduler=self.scheduler,
-						settings=self.settings))
+						settings=self.settings)
+					binpkg_tasks.add(task)
+					task.addExitListener(
+						self._record_binpkg_info)
 
 		if binpkg_tasks:
 			self._start_task(binpkg_tasks, self._buildpkg_exit)
@@ -355,6 +363,28 @@ class EbuildBuild(CompositeTask):
 		self._current_task = None
 		self.returncode = packager.returncode
 		self.wait()
+
+	def _record_binpkg_info(self, task):
+		if task.returncode != os.EX_OK:
+			return
+
+		# Save info about the created binary package, so that
+		# identifying information can be passed to the install
+		# task, to be recorded in the installed package database.
+		pkg = task.get_binpkg_info()
+		infoloc = os.path.join(self.settings["PORTAGE_BUILDDIR"],
+			"build-info")
+		info = {
+			"BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
+		}
+		if pkg.build_id is not None:
+			info["BUILD_ID"] = "%s\n" % pkg.build_id
+		for k, v in info.items():
+			with io.open(_unicode_encode(os.path.join(infoloc, k),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['repo.content'],
+				errors='strict') as f:
+				f.write(v)
 
 	def _buildpkgonly_success_hook_exit(self, success_hooks):
 		self._default_exit(success_hooks)
