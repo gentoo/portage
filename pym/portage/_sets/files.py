@@ -221,7 +221,10 @@ class WorldSelectedSet(EditablePackageSet):
 		self._setset.write()
 
 	def load(self):
-		# Iterating over these sets loads them automatically.
+		# Iterating over these sets does not force them to load if they
+		# have been loaded previously.
+		self._pkgset.load()
+		self._setset.load()
 		self._setAtoms(chain(self._pkgset, self._setset))
 
 	def lock(self):

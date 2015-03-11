@@ -1193,11 +1193,11 @@ class Atom(_unicode):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
 	def __new__(cls, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=None,
-		_use=None, eapi=None, is_valid_flag=None):
+		_use=None, eapi=None, is_valid_flag=None, allow_build_id=None):
 		return _unicode.__new__(cls, s)
 
 	def __init__(self, s, unevaluated_atom=None, allow_wildcard=False, allow_repo=None,
-		_use=None, eapi=None, is_valid_flag=None):
+		_use=None, eapi=None, is_valid_flag=None, allow_build_id=None):
 		if isinstance(s, Atom):
 			# This is an efficiency assertion, to ensure that the Atom
 			# constructor is not called redundantly.
@@ -1218,8 +1218,13 @@ class Atom(_unicode):
 			# Ignore allow_repo when eapi is specified.
 			allow_repo = eapi_attrs.repo_deps
 		else:
+			# These parameters have "smart" defaults that are only
+			# applied when the caller does not explicitly pass in a
+			# True or False value.
 			if allow_repo is None:
 				allow_repo = True
+			if allow_build_id is None:
+				allow_build_id = True
 
 		blocker_prefix = ""
 		if "!" == s[:1]:
@@ -1234,6 +1239,7 @@ class Atom(_unicode):
 			blocker = False
 		self.__dict__['blocker'] = blocker
 		m = atom_re.match(s)
+		build_id = None
 		extended_syntax = False
 		extended_version = None
 		if m is None:
@@ -1270,8 +1276,22 @@ class Atom(_unicode):
 			slot = m.group(atom_re.groups - 2)
 			repo = m.group(atom_re.groups - 1)
 			use_str = m.group(atom_re.groups)
-			if m.group(base + 4) is not None:
-				raise InvalidAtom(self)
+			version = m.group(base + 4)
+			if version is not None:
+				if allow_build_id:
+					cpv_build_id = cpv
+					cpv = cp
+					cp = cp[:-len(version)]
+					build_id = cpv_build_id[len(cpv)+1:]
+					if len(build_id) > 1 and build_id[:1] == "0":
+						# Leading zeros are not allowed.
+						raise InvalidAtom(self)
+					try:
+						build_id = int(build_id)
+					except ValueError:
+						raise InvalidAtom(self)
+				else:
+					raise InvalidAtom(self)
 		elif m.group('star') is not None:
 			base = atom_re.groupindex['star']
 			op = '=*'
@@ -1334,6 +1354,7 @@ class Atom(_unicode):
 				self.__dict__['slot_operator'] = None
 		self.__dict__['operator'] = op
 		self.__dict__['extended_syntax'] = extended_syntax
+		self.__dict__['build_id'] = build_id
 
 		if not (repo is None or allow_repo):
 			raise InvalidAtom(self)
@@ -1879,7 +1900,7 @@ def dep_getusedeps( depend ):
 	return tuple(use_list)
 
 def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
-	allow_repo=False, eapi=None):
+	allow_repo=False, eapi=None, allow_build_id=False):
 	"""
 	Check to see if a depend atom is valid
 
@@ -1904,7 +1925,8 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
 	try:
 		if not isinstance(atom, Atom):
 			atom = Atom(atom, allow_wildcard=allow_wildcard,
-				allow_repo=allow_repo, eapi=eapi)
+				allow_repo=allow_repo, eapi=eapi,
+				allow_build_id=allow_build_id)
 		if not allow_blockers and atom.blocker:
 			return False
 		return True
@@ -2109,6 +2131,7 @@ def match_from_list(mydep, candidate_list):
 	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
 	slot      = mydep.slot
+	build_id  = mydep.build_id
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
@@ -2182,6 +2205,9 @@ def match_from_list(mydep, candidate_list):
 			if xcpv is None:
 				xcpv = remove_slot(x)
 			if not cpvequal(xcpv, mycpv):
+				continue
+			if (build_id is not None and
+				getattr(xcpv, "build_id", None) != build_id):
 				continue
 			mylist.append(x)
 

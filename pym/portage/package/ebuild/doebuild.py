@@ -1505,8 +1505,10 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
 
-		if not networked:
+		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch":
 			# Provide a SOCKS5-over-UNIX-socket proxy to escape sandbox
+			# Don't do this for pkg_nofetch, since the spawn_nofetch
+			# function creates a private PORTAGE_TMPDIR.
 			try:
 				proxy = get_socks5_proxy(mysettings)
 			except NotImplementedError:

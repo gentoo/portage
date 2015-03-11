@@ -173,7 +173,8 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HDEPEND", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HDEPEND", "HOMEPAGE",
+			"BUILD_ID", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			"PROVIDES", "REQUIRES"
@@ -425,7 +426,10 @@ class vardbapi(dbapi):
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
-					returnme.append(_pkg_str(mysplit[0]+"/"+x))
+					cpv = "%s/%s" % (mysplit[0], x)
+					metadata = dict(zip(self._aux_cache_keys,
+						self.aux_get(cpv, self._aux_cache_keys)))
+					returnme.append(_pkg_str(cpv, metadata=metadata))
 		self._cpv_sort_ascending(returnme)
 		if use_cache:
 			self.cpcache[mycp] = [mystat, returnme[:]]

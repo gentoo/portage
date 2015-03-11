@@ -41,12 +41,12 @@ class Package(Task):
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
-		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
-		"HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
-		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE", "PROVIDES",
-		"REQUIRES"]
+		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
+		"DEPEND", "EAPI", "HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
+		"LICENSE", "MD5", "PDEPEND", "PROVIDE", "PROVIDES",
+		"RDEPEND", "repository", "REQUIRED_USE",
+		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
+		"SLOT", "USE", "_mtime_"]
 
 	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('DEPEND', 'HDEPEND')
@@ -114,13 +114,14 @@ class Package(Task):
 		return self._metadata["EAPI"]
 
 	@property
+	def build_id(self):
+		return self.cpv.build_id
+
+	@property
 	def build_time(self):
 		if not self.built:
 			raise AttributeError('build_time')
-		try:
-			return long(self._metadata['BUILD_TIME'])
-		except (KeyError, ValueError):
-			return 0
+		return self.cpv.build_time
 
 	@property
 	def defined_phases(self):
@@ -218,6 +219,8 @@ class Package(Task):
 		else:
 			raise TypeError("root_config argument is required")
 
+		elements = [type_name, root, _unicode(cpv), operation]
+
 		# For installed (and binary) packages we don't care for the repo
 		# when it comes to hashing, because there can only be one cpv.
 		# So overwrite the repo_key with type_name.
@@ -228,14 +231,22 @@ class Package(Task):
 				raise AssertionError(
 					"Package._gen_hash_key() " + \
 					"called without 'repo_name' argument")
-			repo_key = repo_name
+			elements.append(repo_name)
+		elif type_name == "binary":
+			# Including a variety of fingerprints in the hash makes
+			# it possible to simultaneously consider multiple similar
+			# packages. Note that digests are not included here, since
+			# they are relatively expensive to compute, and they may
+			# not necessarily be available.
+			elements.extend([cpv.build_id, cpv.file_size,
+				cpv.build_time, cpv.mtime])
 		else:
 			# For installed (and binary) packages we don't care for the repo
 			# when it comes to hashing, because there can only be one cpv.
 			# So overwrite the repo_key with type_name.
-			repo_key = type_name
+			elements.append(type_name)
 
-		return (type_name, root, _unicode(cpv), operation, repo_key)
+		return tuple(elements)
 
 	def _validate_deps(self):
 		"""
@@ -509,9 +520,15 @@ class Package(Task):
 		else:
 			cpv_color = "PKG_NOMERGE"
 
+		build_id_str = ""
+		if isinstance(self.cpv.build_id, long) and self.cpv.build_id > 0:
+			build_id_str = "-%s" % self.cpv.build_id
+
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv + _slot_separator + \
-			self.slot + "/" + self.sub_slot + _repo_separator + self.repo) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv +
+			build_id_str + _slot_separator + self.slot + "/" +
+			self.sub_slot + _repo_separator + self.repo),
+			self.type_name)
 
 		if self.type_name == "installed":
 			if self.root_config.settings['ROOT'] != "/":
@@ -755,29 +772,41 @@ class Package(Task):
 	def __lt__(self, other):
 		if other.cp != self.cp:
 			return self.cp < other.cp
-		if portage.vercmp(self.version, other.version) < 0:
+		result = portage.vercmp(self.version, other.version)
+		if result < 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time < other.build_time
 		return False
 
 	def __le__(self, other):
 		if other.cp != self.cp:
 			return self.cp <= other.cp
-		if portage.vercmp(self.version, other.version) <= 0:
+		result = portage.vercmp(self.version, other.version)
+		if result <= 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time <= other.build_time
 		return False
 
 	def __gt__(self, other):
 		if other.cp != self.cp:
 			return self.cp > other.cp
-		if portage.vercmp(self.version, other.version) > 0:
+		result = portage.vercmp(self.version, other.version)
+		if result > 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time > other.build_time
 		return False
 
 	def __ge__(self, other):
 		if other.cp != self.cp:
 			return self.cp >= other.cp
-		if portage.vercmp(self.version, other.version) >= 0:
+		result = portage.vercmp(self.version, other.version)
+		if result >= 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time >= other.build_time
 		return False
 
 	def with_use(self, use):

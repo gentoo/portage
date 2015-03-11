@@ -42,7 +42,7 @@ _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
-	'profile-default-eapi'])
+	'profile-default-eapi', 'build-id'])
 
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
