@@ -8,6 +8,7 @@ __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 import grp
 import gzip
 import errno
+import fnmatch
 import io
 from itertools import chain
 import logging
@@ -2209,24 +2210,29 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		if f is not None:
 			f.close()
 
-	qa_no_symlink = ""
-	f = None
-	try:
-		f = io.open(_unicode_encode(os.path.join(
-			mysettings["PORTAGE_BUILDDIR"],
-			"build-info", "QA_SONAME_NO_SYMLINK"),
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'],
-			errors='replace')
-		qa_no_symlink = f.read()
-	except IOError as e:
-		if e.errno not in (errno.ENOENT, errno.ESTALE):
-			raise
-	finally:
-		if f is not None:
-			f.close()
+	metadata = {}
+	for k in ("QA_PREBUILT", "QA_NO_SYMLINK"):
+		try:
+			with io.open(_unicode_encode(os.path.join(
+				mysettings["PORTAGE_BUILDDIR"],
+				"build-info", k),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace') as f:
+				v = f.read()
+		except IOError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				raise
+		else:
+			metadata[k] = v
 
-	qa_no_symlink = qa_no_symlink.split()
+	qa_prebuilt = metadata.get("QA_PREBUILT", "").strip()
+	if qa_prebuilt:
+		qa_prebuilt = re.compile("|".join(
+			fnmatch.translate(x.lstrip(os.sep))
+			for x in portage.util.shlex_split(qa_prebuilt)))
+
+	qa_no_symlink = metadata.get("QA_NO_SYMLINK", "").split()
 	if qa_no_symlink:
 		if len(qa_no_symlink) > 1:
 			qa_no_symlink = "|".join("(%s)" % x for x in qa_no_symlink)
@@ -2297,6 +2303,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		requires_exclude = ""
 
 	missing_symlinks = []
+	unrecognized_elf_files = []
 	soname_deps = SonameDepsProcessor(
 		provides_exclude, requires_exclude)
 
@@ -2326,7 +2333,14 @@ def _post_src_install_soname_symlinks(mysettings, out):
 		entry.multilib_category = compute_multilib_category(elf_header)
 		needed_file.write(_unicode(entry))
 
-		soname_deps.add(entry)
+		if entry.multilib_category is None:
+			if not qa_prebuilt or qa_prebuilt.match(
+				entry.filename[len(mysettings["EPREFIX"]):].lstrip(
+				os.sep)) is None:
+				unrecognized_elf_files.append(entry)
+		else:
+			soname_deps.add(entry)
+
 		obj = entry.filename
 		soname = entry.soname
 
@@ -2364,6 +2378,15 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			mode='w', encoding=_encodings['repo.content'],
 			errors='strict') as f:
 			f.write(soname_deps.provides)
+
+	if unrecognized_elf_files:
+		qa_msg = ["QA Notice: Unrecognized ELF file(s):"]
+		qa_msg.append("")
+		qa_msg.extend("\t%s" % _unicode(entry).rstrip()
+			for entry in unrecognized_elf_files)
+		qa_msg.append("")
+		for line in qa_msg:
+			eqawarn(line, key=mysettings.mycpv, out=out)
 
 	if not missing_symlinks:
 		return
