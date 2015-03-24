@@ -191,6 +191,9 @@ def ParseArgs(argv, qahelp):
 	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
+	parser.add_argument('-S', '--straight-to-stable', dest='straight_to_stable', default=False,
+		action='store_true', help='Allow committing straight to stable')
+
 	parser.add_argument('--vcs', dest='vcs',
 		help='Force using specific VCS instead of autodetection')
 
@@ -1908,18 +1911,19 @@ for x in effective_scanlist:
 				(relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
 		keywords = myaux["KEYWORDS"].split()
-		stable_keywords = []
-		for keyword in keywords:
-			if not keyword.startswith("~") and \
-				not keyword.startswith("-"):
-				stable_keywords.append(keyword)
-		if stable_keywords:
-			if ebuild_path in new_ebuilds and catdir != "virtual":
-				stable_keywords.sort()
-				stats["KEYWORDS.stable"] += 1
-				fails["KEYWORDS.stable"].append(
-					x + "/" + y + ".ebuild added with stable keywords: %s" % \
-						" ".join(stable_keywords))
+		if not options.straight_to_stable:
+			stable_keywords = []
+			for keyword in keywords:
+				if not keyword.startswith("~") and \
+					not keyword.startswith("-"):
+					stable_keywords.append(keyword)
+			if stable_keywords:
+				if ebuild_path in new_ebuilds and catdir != "virtual":
+					stable_keywords.sort()
+					stats["KEYWORDS.stable"] += 1
+					fails["KEYWORDS.stable"].append(
+						relative_path + " added with stable keywords: %s" % \
+							" ".join(stable_keywords))
 
 		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
 			if not kw.startswith("-"))
