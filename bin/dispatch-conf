@@ -11,12 +11,11 @@
 #  dialog menus
 #
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import atexit
 import io
 import re
-import shutil
 import sys
 
 from stat import ST_GID, ST_MODE, ST_UID
@@ -27,7 +26,7 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
-from portage import os
+from portage import os, shutil
 from portage import _encodings, _unicode_decode
 from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
 from portage.process import find_binary, spawn
@@ -403,7 +402,9 @@ class dispatch:
         newconfigs.sort ()
 
         for nconf in newconfigs:
-            nconf = nconf.rstrip ()
+            # Use strict mode here, because we want to know if it fails,
+            # and portage only merges files with valid UTF-8 encoding.
+            nconf = _unicode_decode(nconf, errors='strict').rstrip()
             conf  = re.sub (r'\._cfg\d+_', '', nconf)
             dirname   = os.path.dirname(nconf)
             conf_map  = {

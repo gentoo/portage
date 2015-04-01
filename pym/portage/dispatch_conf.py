@@ -10,15 +10,13 @@ from __future__ import print_function, unicode_literals
 
 import io
 import functools
-import os
-import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 
 import portage
-from portage import _encodings
+from portage import _encodings, os, shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
