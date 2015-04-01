@@ -462,8 +462,7 @@ class binarytree(object):
 			mynewcpv = _pkg_str(mynewcpv, metadata=metadata)
 			new_path = self.getname(mynewcpv)
 			self._pkg_paths[
-				self.dbapi._instance_key(mynewcpv)] = os.path.join(
-				*new_path.split(os.path.sep)[-2:])
+				self.dbapi._instance_key(mynewcpv)] = new_path[len(self.pkgdir)+1:]
 			if new_path != mytbz2:
 				self._ensure_dir(os.path.dirname(new_path))
 				_movefile(tbz2path, new_path, mysettings=self.settings)
