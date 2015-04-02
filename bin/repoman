@@ -2049,9 +2049,10 @@ for x in effective_scanlist:
 
 					# Skip dependency.unknown for blockers, so that we
 					# don't encourage people to remove necessary blockers,
-					# as discussed in bug #382407.
+					# as discussed in bug 382407. We use atom.without_use
+					# due to bug 525376.
 					if not is_blocker and \
-						not portdb.xmatch("match-all", atom) and \
+						not portdb.xmatch("match-all", atom.without_use) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
