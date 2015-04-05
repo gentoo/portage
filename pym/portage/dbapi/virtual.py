@@ -11,12 +11,17 @@ class fakedbapi(dbapi):
 	"""A fake dbapi that allows consumers to inject/remove packages to/from it
 	portage.settings is required to maintain the dbAPI.
 	"""
-	def __init__(self, settings=None, exclusive_slots=True):
+	def __init__(self, settings=None, exclusive_slots=True,
+		multi_instance=False):
 		"""
 		@param exclusive_slots: When True, injecting a package with SLOT
 			metadata causes an existing package in the same slot to be
 			automatically removed (default is True).
 		@type exclusive_slots: Boolean
+		@param multi_instance: When True, multiple instances with the
+			same cpv may be stored simultaneously, as long as they are
+			distinguishable (default is False).
+		@type multi_instance: Boolean
 		"""
 		self._exclusive_slots = exclusive_slots
 		self.cpvdict = {}
@@ -25,6 +30,56 @@ class fakedbapi(dbapi):
 			from portage import settings
 		self.settings = settings
 		self._match_cache = {}
+		self._set_multi_instance(multi_instance)
+
+	def _set_multi_instance(self, multi_instance):
+		"""
+		Enable or disable multi_instance mode. This should before any
+		packages are injected, so that all packages are indexed with
+		the same implementation of self._instance_key.
+		"""
+		if self.cpvdict:
+			raise AssertionError("_set_multi_instance called after "
+				"packages have already been added")
+		self._multi_instance = multi_instance
+		if multi_instance:
+			self._instance_key = self._instance_key_multi_instance
+		else:
+			self._instance_key = self._instance_key_cpv
+
+	def _instance_key_cpv(self, cpv, support_string=False):
+		return cpv
+
+	def _instance_key_multi_instance(self, cpv, support_string=False):
+		try:
+			return (cpv, cpv.build_id, cpv.file_size, cpv.build_time,
+				cpv.mtime)
+		except AttributeError:
+			if not support_string:
+				raise
+
+		# Fallback for interfaces such as aux_get where API consumers
+		# may pass in a plain string.
+		latest = None
+		for pkg in self.cp_list(cpv_getkey(cpv)):
+			if pkg == cpv and (
+				latest is None or
+				latest.build_time < pkg.build_time):
+				latest = pkg
+
+		if latest is not None:
+			return (latest, latest.build_id, latest.file_size,
+				latest.build_time, latest.mtime)
+
+		raise KeyError(cpv)
+
+	def clear(self):
+		"""
+		Remove all packages.
+		"""
+		self._clear_cache()
+		self.cpvdict.clear()
+		self.cpdict.clear()
 
 	def _clear_cache(self):
 		if self._categories is not None:
@@ -43,7 +98,8 @@ class fakedbapi(dbapi):
 		return result[:]
 
 	def cpv_exists(self, mycpv, myrepo=None):
-		return mycpv in self.cpvdict
+		return self._instance_key(mycpv,
+			support_string=True) in self.cpvdict
 
 	def cp_list(self, mycp, use_cache=1, myrepo=None):
 		# NOTE: Cache can be safely shared with the match cache, since the
@@ -63,7 +119,10 @@ class fakedbapi(dbapi):
 		return list(self.cpdict)
 
 	def cpv_all(self):
-		return list(self.cpvdict)
+		if self._multi_instance:
+			return [x[0] for x in self.cpvdict]
+		else:
+			return list(self.cpvdict)
 
 	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv to the list of available packages. See the
@@ -99,13 +158,14 @@ class fakedbapi(dbapi):
 			except AttributeError:
 				pass
 
-		self.cpvdict[mycpv] = metadata
+		instance_key = self._instance_key(mycpv)
+		self.cpvdict[instance_key] = metadata
 		if not self._exclusive_slots:
 			myslot = None
 		if myslot and mycp in self.cpdict:
 			# If necessary, remove another package in the same SLOT.
 			for cpv in self.cpdict[mycp]:
-				if mycpv != cpv:
+				if instance_key != self._instance_key(cpv):
 					try:
 						other_slot = cpv.slot
 					except AttributeError:
@@ -115,40 +175,41 @@ class fakedbapi(dbapi):
 							self.cpv_remove(cpv)
 							break
 
-		cp_list = self.cpdict.get(mycp)
-		if cp_list is None:
-			cp_list = []
-			self.cpdict[mycp] = cp_list
-		try:
-			cp_list.remove(mycpv)
-		except ValueError:
-			pass
+		cp_list = self.cpdict.get(mycp, [])
+		cp_list = [x for x in cp_list
+			if self._instance_key(x) != instance_key]
 		cp_list.append(mycpv)
+		self.cpdict[mycp] = cp_list
 
 	def cpv_remove(self,mycpv):
 		"""Removes a cpv from the list of available packages."""
 		self._clear_cache()
 		mycp = cpv_getkey(mycpv)
-		if mycpv in self.cpvdict:
-			del	self.cpvdict[mycpv]
-		if mycp not in self.cpdict:
-			return
-		while mycpv in self.cpdict[mycp]:
-			del self.cpdict[mycp][self.cpdict[mycp].index(mycpv)]
-		if not len(self.cpdict[mycp]):
-			del self.cpdict[mycp]
+		instance_key = self._instance_key(mycpv)
+		self.cpvdict.pop(instance_key, None)
+		cp_list = self.cpdict.get(mycp)
+		if cp_list is not None:
+			cp_list = [x for x in cp_list
+				if self._instance_key(x) != instance_key]
+			if cp_list:
+				self.cpdict[mycp] = cp_list
+			else:
+				del self.cpdict[mycp]
 
 	def aux_get(self, mycpv, wants, myrepo=None):
-		if not self.cpv_exists(mycpv):
+		metadata = self.cpvdict.get(
+			self._instance_key(mycpv, support_string=True))
+		if metadata is None:
 			raise KeyError(mycpv)
-		metadata = self.cpvdict[mycpv]
-		if not metadata:
-			return ["" for x in wants]
 		return [metadata.get(x, "") for x in wants]
 
 	def aux_update(self, cpv, values):
 		self._clear_cache()
-		self.cpvdict[cpv].update(values)
+		metadata = self.cpvdict.get(
+			self._instance_key(cpv, support_string=True))
+		if metadata is None:
+			raise KeyError(cpv)
+		metadata.update(values)
 
 class testdbapi(object):
 	"""A dbapi instance with completely fake functions to get by hitting disk

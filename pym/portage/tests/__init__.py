@@ -197,9 +197,7 @@ class TestCase(unittest.TestCase):
 		self.cnf_path = cnf_path
 		self.cnf_etc_path = cnf_etc_path
 		self.bindir = cnf_bindir
-		# sbin scripts are installed by setup.py to the bindir
-		# they are relocated to /usr/sbin dir by the ebuild later
-		self.sbindir = self.bindir
+		self.sbindir = cnf_sbindir
 
 	def defaultTestResult(self):
 		return TextTestResult()

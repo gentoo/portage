@@ -31,7 +31,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTAGE_XATTR_EXCLUDE \
 	PORTDIR \
-	PROFILE_PATHS REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
+	REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
 	__PORTAGE_HELPER __PORTAGE_TEST_HARDLINK_LOCKS ED EROOT"
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
@@ -580,7 +580,7 @@ __dyn_install() {
 		for f in ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
 			CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 			LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
-			QA_DESKTOP_FILE ; do
+			QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE ; do
 			x=$(echo -n ${!f})
 			[[ -n $x ]] && echo "$x" > $f
 		done
@@ -828,6 +828,17 @@ __ebuild_phase_funcs() {
 
 				declare -F src_install >/dev/null || \
 					src_install() { default; }
+			fi
+
+			# defaults starting with EAPI 6
+			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress 5-hdepend; then
+				[[ ${phase_func} == src_prepare ]] && \
+					default_src_prepare() { __eapi6_src_prepare; }
+				[[ ${phase_func} == src_install ]] && \
+					default_src_install() { __eapi6_src_install; }
+
+				declare -F src_prepare >/dev/null || \
+					src_prepare() { default; }
 			fi
 			;;
 	esac

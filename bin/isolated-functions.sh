@@ -36,11 +36,18 @@ __assert_sigpipe_ok() {
 	local x pipestatus=${PIPESTATUS[*]}
 	for x in $pipestatus ; do
 		# Allow SIGPIPE through (128 + 13)
-		[[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
+		if [[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]]
+		then
+			__helpers_die "$@"
+			return 1
+		fi
 	done
 
 	# Require normal success for the last process (tar).
-	[[ $x -eq 0 ]] || die "$@"
+	if [[ $x -ne 0 ]]; then
+		__helpers_die "$@"
+		return 1
+	fi
 }
 
 shopt -s extdebug
@@ -106,7 +113,7 @@ __bashpid() {
 }
 
 __helpers_die() {
-	if ___eapi_helpers_can_die; then
+	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
 	else
 		echo -e "$@" >&2
@@ -116,9 +123,11 @@ __helpers_die() {
 die() {
 	local IFS=$' \t\n'
 
-	if [[ $PORTAGE_NONFATAL -eq 1 ]]; then
-		echo -e " $WARN*$NORMAL ${FUNCNAME[1]}: WARNING: $@" >&2
-		return 1
+	if ___eapi_die_can_respect_nonfatal; then
+		if [[ ${1} == -n ]]; then
+			[[ ${PORTAGE_NONFATAL} == 1 ]] && return 1
+			shift
+		fi
 	fi
 
 	set +e
@@ -486,6 +495,74 @@ __repo_attr() {
 	done <<< "${PORTAGE_REPOSITORIES}"
 	eval "${saved_extglob_shopt}"
 	return ${exit_status}
+}
+
+# eqaquote <string>
+#
+# outputs parameter escaped for quoting
+__eqaquote() {
+	local v=${1} esc=''
+
+	# quote backslashes
+	v=${v//\\/\\\\}
+	# quote the quotes
+	v=${v//\"/\\\"}
+	# quote newlines
+	while read -r; do
+		echo -n "${esc}${REPLY}"
+		esc='\n'
+	done <<<"${v}"
+}
+
+# eqatag <tag> [-v] [<key>=<value>...] [/<relative-path>...]
+#
+# output (to qa.log):
+# - tag: <tag>
+#   data:
+#     <key1>: "<value1>"
+#     <key2>: "<value2>"
+#   files:
+#     - "<path1>"
+#     - "<path2>"
+__eqatag() {
+	local tag i filenames=() data=() verbose=
+
+	if [[ ${1} == -v ]]; then
+		verbose=1
+		shift
+	fi
+
+	tag=${1}
+	shift
+	[[ -n ${tag} ]] || die "${FUNCNAME}: no tag specified"
+
+	# collect data & filenames
+	for i; do
+		if [[ ${i} == /* ]]; then
+			filenames+=( "${i}" )
+			[[ -n ${verbose} ]] && eqawarn "  ${i}"
+		elif [[ ${i} == *=* ]]; then
+			data+=( "${i}" )
+		else
+			die "${FUNCNAME}: invalid parameter: ${i}"
+		fi
+	done
+
+	(
+		echo "- tag: ${tag}"
+		if [[ ${data[@]} ]]; then
+			echo "  data:"
+			for i in "${data[@]}"; do
+				echo "    ${i%%=*}: \"$(__eqaquote "${i#*=}")\""
+			done
+		fi
+		if [[ ${filenames[@]} ]]; then
+			echo "  files:"
+			for i in "${filenames[@]}"; do
+				echo "    - \"$(__eqaquote "${i}")\""
+			done
+		fi
+	) >> "${T}"/qa.log
 }
 
 true

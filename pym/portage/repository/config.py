@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -31,6 +31,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import _encodings
 from portage import manifest
+import portage.sync
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
@@ -40,7 +41,8 @@ if sys.hexversion >= 0x3000000:
 _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
 
 _valid_profile_formats = frozenset(
-	['pms', 'portage-1', 'portage-2'])
+	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
+	'profile-default-eapi', 'build-id'])
 
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
@@ -78,14 +80,16 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
-		'cache_formats', 'create_manifest', 'disable_manifest', 'eapi',
-		'eclass_db', 'eclass_locations', 'eclass_overrides',
+		'auto_sync', 'cache_formats', 'create_manifest', 'disable_manifest',
+		'eapi', 'eclass_db', 'eclass_locations', 'eclass_overrides',
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
-		'sync_type', 'sync_uri', 'thin_manifest', 'update_changelog',
-		'user_location', '_eapis_banned', '_eapis_deprecated', '_masters_orig')
+		'sync_depth',
+		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
+		'update_changelog', 'user_location', '_eapis_banned',
+		'_eapis_deprecated', '_masters_orig')
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -153,10 +157,27 @@ class RepoConfig(object):
 			sync_type = sync_type.strip()
 		self.sync_type = sync_type or None
 
+		sync_umask = repo_opts.get('sync-umask')
+		if sync_umask is not None:
+			sync_umask = sync_umask.strip()
+		self.sync_umask = sync_umask or None
+
 		sync_uri = repo_opts.get('sync-uri')
 		if sync_uri is not None:
 			sync_uri = sync_uri.strip()
 		self.sync_uri = sync_uri or None
+
+		sync_user = repo_opts.get('sync-user')
+		if sync_user is not None:
+			sync_user = sync_user.strip()
+		self.sync_user = sync_user or None
+
+		auto_sync = repo_opts.get('auto-sync', 'yes')
+		if auto_sync is not None:
+			auto_sync = auto_sync.strip().lower()
+		self.auto_sync = auto_sync
+
+		self.sync_depth = repo_opts.get('sync-depth')
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -173,11 +194,9 @@ class RepoConfig(object):
 			location = None
 		self.location = location
 
-		eapi = None
 		missing = True
 		self.name = name
 		if self.location is not None:
-			eapi = read_corresponding_eapi_file(os.path.join(self.location, REPO_NAME_LOC))
 			self.name, missing = self._read_valid_repo_name(self.location)
 			if missing:
 				# The name from repos.conf has to be used here for
@@ -191,7 +210,7 @@ class RepoConfig(object):
 		elif name == "DEFAULT":
 			missing = False
 
-		self.eapi = eapi
+		self.eapi = None
 		self.missing_repo_name = missing
 		# sign_commit is disabled by default, since it requires Git >=1.7.9,
 		# and key_id configured by `git config user.signingkey key_id`
@@ -240,6 +259,16 @@ class RepoConfig(object):
 				'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
+
+			# If profile-formats specifies a default EAPI, then set
+			# self.eapi to that, otherwise set it to "0" as specified
+			# by PMS.
+			self.eapi = layout_data.get(
+				'profile_eapi_when_unspecified', '0')
+
+			eapi = read_corresponding_eapi_file(
+				os.path.join(self.location, REPO_NAME_LOC),
+				default=self.eapi)
 
 			self.portage1_profiles = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
 				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
@@ -369,8 +398,12 @@ class RepoConfig(object):
 			repo_msg.append(indent + "sync-cvs-repo: " + self.sync_cvs_repo)
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
+		if self.sync_umask:
+			repo_msg.append(indent + "sync-umask: " + self.sync_umask)
 		if self.sync_uri:
 			repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+		if self.sync_user:
+			repo_msg.append(indent + "sync-user: " + self.sync_user)
 		if self.masters:
 			repo_msg.append(indent + "masters: " + " ".join(master.name for master in self.masters))
 		if self.priority is not None:
@@ -456,8 +489,11 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'eclass_overrides', 'force', 'masters',
-							'priority', 'sync_cvs_repo', 'sync_type', 'sync_uri'):
+						for k in ('aliases', 'auto_sync', 'eclass_overrides',
+							'force', 'masters', 'priority', 'sync_cvs_repo',
+							'sync_depth',
+							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
+							):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -550,25 +586,8 @@ class RepoConfigLoader(object):
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
 
-			if repo.sync_type is not None and repo.sync_uri is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute, but is missing sync-uri attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_uri is not None and repo.sync_type is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-uri attribute, but is missing sync-type attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_type not in (None, "cvs", "git", "rsync"):
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type attribute set to unsupported value: '%s'") %
-					(sname, repo.sync_type), level=logging.ERROR, noiselevel=-1)
-				continue
-
-			if repo.sync_type == "cvs" and repo.sync_cvs_repo is None:
-				writemsg_level("!!! %s\n" % _("Repository '%s' has sync-type=cvs, but is missing sync-cvs-repo attribute") %
-					sname, level=logging.ERROR, noiselevel=-1)
-				continue
+			# Perform repos.conf sync variable validation
+			portage.sync.validate_config(repo, logging)
 
 			# For backward compatibility with locations set via PORTDIR and
 			# PORTDIR_OVERLAY, delay validation of the location and repo.name
@@ -587,10 +606,12 @@ class RepoConfigLoader(object):
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
 			portdir_overlay = ""
+			# deprecated portdir_sync
 			portdir_sync = ""
 		else:
 			portdir = settings.get("PORTDIR", "")
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
+			# deprecated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
 
 		try:
@@ -715,11 +736,15 @@ class RepoConfigLoader(object):
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
 
-		# Backward compatible SYNC support for mirrorselect.
+		# DEPRECATED Backward compatible SYNC support for old mirrorselect.
+		# Feb. 2, 2015.  Version 2.2.16
 		if portdir_sync and main_repo is not None:
-			if portdir_sync.startswith("rsync://"):
-				prepos[main_repo].sync_uri = portdir_sync
-				prepos[main_repo].sync_type = "rsync"
+			writemsg(_("!!! SYNC setting found in make.conf.\n    "
+				"This setting is Deprecated and no longer used.  "
+				"Please ensure your 'sync-type' and 'sync-uri' are set correctly"
+				" in /etc/portage/repos.conf/gentoo.conf\n"),
+				noiselevel=-1)
+
 
 		# Include repo.name in sort key, for predictable sorting
 		# even when priorities are equal.
@@ -922,7 +947,9 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		str_or_int_keys = ("format", "location", "main_repo", "priority", "sync_cvs_repo", "sync_type", "sync_uri")
+		str_or_int_keys = ("auto_sync", "format", "location",
+			"main_repo", "priority", "sync_cvs_repo",
+			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
 		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
@@ -1076,5 +1103,29 @@ def parse_layout_conf(repo_location, repo_name=None):
 				DeprecationWarning)
 		raw_formats = tuple(raw_formats.intersection(_valid_profile_formats))
 	data['profile-formats'] = raw_formats
+
+	try:
+		eapi = layout_data['profile_eapi_when_unspecified']
+	except KeyError:
+		pass
+	else:
+		if 'profile-default-eapi' not in raw_formats:
+			warnings.warn((_("Repository named '%(repo_name)s' has "
+				"profile_eapi_when_unspecified setting in "
+				"'%(layout_filename)s', but 'profile-default-eapi' is "
+				"not listed in the profile-formats field. Please "
+				"report this issue to the repository maintainer.") %
+				dict(repo_name=repo_name or 'unspecified',
+				layout_filename=layout_filename)),
+				SyntaxWarning)
+		elif not portage.eapi_is_supported(eapi):
+			warnings.warn((_("Repository named '%(repo_name)s' has "
+				"unsupported EAPI '%(eapi)s' setting in "
+				"'%(layout_filename)s'; please upgrade portage.") %
+				dict(repo_name=repo_name or 'unspecified',
+				eapi=eapi, layout_filename=layout_filename)),
+				SyntaxWarning)
+		else:
+			data['profile_eapi_when_unspecified'] = eapi
 
 	return data, layout_errors

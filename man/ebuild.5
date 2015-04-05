@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Jan 2014" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Nov 2014" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -480,9 +480,20 @@ source	source\-build which is scheduled for merge
 .TE
 .RE
 .TP
+.B PROVIDES_EXCLUDE\fR = \fI[space delimited list of fnmatch patterns]\fR
+Sonames and file paths matched by these fnmatch patterns will be
+excluded during genertion of \fBPROVIDES\fR metadata (see
+\fBportage\fR(5)). Patterns are delimited by whitespace, and it is
+possible to create patterns containing quoted whitespace.
+.TP
 .B PORTAGE_LOG_FILE
 Contains the path of the build log. If \fBPORT_LOGDIR\fR variable is unset then
 PORTAGE_LOG_FILE=\fI"${T}/build.log"\fR.
+.TP
+.B PORTAGE_SOCKS5_PROXY
+Contains the UNIX socket path to SOCKSv5 proxy providing host network
+access. Available only when running inside network\-sandbox and a proxy
+is available (see network\-sandbox in \fBmake.conf\fR(5)).
 .TP
 .B REPLACED_BY_VERSION
 Beginning with \fBEAPI 4\fR, the REPLACED_BY_VERSION variable can be
@@ -500,6 +511,12 @@ will contain a space\-separated list of version numbers corresponding
 to the package version(s) being replaced. Typically, this variable will
 not contain more than one version, but according to PMS it can contain
 more.
+.TP
+.B REQUIRES_EXCLUDE\fR = \fI[space delimited list of fnmatch patterns]\fR
+Sonames and file paths matched by these fnmatch patterns will be
+excluded during generation of \fBREQUIRES\fR metadata (see
+\fBportage\fR(5)). Patterns are delimited by whitespace, and it is
+possible to create patterns containing quoted whitespace.
 .TP
 .B ROOT\fR = \fI"/"
 Contains the path that portage should use as the root of the live filesystem.
@@ -975,6 +992,11 @@ default_src_test
 
 .SS "General:"
 .TP
+.B assert\fR \fI[reason]
+Checks the value of the shell's PIPESTATUS array variable, and if any
+component is non-zero (indicating failure), calls die with \fIreason\fR
+as a failure message.
+.TP
 .B die\fR \fI[reason]
 Causes the current emerge process to be aborted. The final display will
 include \fIreason\fR.
@@ -1310,7 +1332,7 @@ If the item does not exist, it is ignored.
 .TP
 .B dosed\fR \fI"s:orig:change:g" <filename>
 Beginning with \fBEAPI 4\fR, the \fBdosed\fR helper no longer exists. Ebuilds
-should call \fBsed(1)\fR directly (and assume that it is GNU sed).
+should call \fBsed\fR(1) directly (and assume that it is GNU sed).
 
 Performs sed in place on \fIfilename\fR inside ${ED}. If no expression is
 given then \fI"s:${D}::g"\fR is used as the default expression.  Note
@@ -1396,7 +1418,7 @@ file name.
 .TP
 .B dohard\fR \fI<filename> <linkname>
 Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
-should call \fBln(1)\fR directly.
+should call \fBln\fR(1) directly.
 .TP
 .B dosym\fR \fI<filename> <linkname>
 .PD 1

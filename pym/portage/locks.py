@@ -15,8 +15,9 @@ import warnings
 
 import portage
 from portage import os, _encodings, _unicode_decode
-from portage.exception import DirectoryNotFound, FileNotFound, \
-	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
+from portage.exception import (DirectoryNotFound, FileNotFound,
+	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied,
+	ReadOnlyFileSystem)
 from portage.util import writemsg
 from portage.localization import _
 
@@ -110,6 +111,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 					raise OperationNotPermitted(func_call)
 				elif e.errno == PermissionDenied.errno:
 					raise PermissionDenied(func_call)
+				elif e.errno == ReadOnlyFileSystem.errno:
+					raise ReadOnlyFileSystem(func_call)
 				else:
 					raise
 
@@ -143,7 +146,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = _default_lock_fn
+	locking_method = portage._eintr_func_wrapper(_default_lock_fn)
 	try:
 		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 			raise IOError(errno.ENOSYS, "Function not implemented")
@@ -404,6 +407,8 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 				raise OperationNotPermitted(func_call)
 			elif e.errno == PermissionDenied.errno:
 				raise PermissionDenied(func_call)
+			elif e.errno == ReadOnlyFileSystem.errno:
+				raise ReadOnlyFileSystem(func_call)
 			else:
 				raise
 		else:

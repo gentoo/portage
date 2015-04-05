@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -21,6 +21,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage.const import EPREFIX
 from portage.util._argparse import ArgumentParser
+from portage.sync import _SUBMODULE_PATH_MAP
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -51,7 +52,6 @@ options=[
 "--tree",
 "--unordered-display",
 "--update",
-"--verbose-main-repo-display",
 ]
 
 shortmapping={
@@ -131,7 +131,9 @@ def insert_optional_args(args):
 		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
 		'--autounmask-write'     : y_or_n,
+		'--binpkg-changed-deps'  : y_or_n,
 		'--buildpkg'             : y_or_n,
+		'--changed-deps'         : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
 		'--depclean-lib-check'   : y_or_n,
@@ -161,6 +163,7 @@ def insert_optional_args(args):
 		'--usepkgonly'           : y_or_n,
 		'--verbose'              : y_or_n,
 		'--verbose-slot-rebuilds': y_or_n,
+		'--with-test-deps'       : y_or_n,
 	}
 
 	short_arg_opts = {
@@ -294,7 +297,7 @@ def parse_opts(tmpcmdline, silent=False):
 	actions = frozenset([
 		"clean", "check-news", "config", "depclean", "help",
 		"info", "list-sets", "metadata", "moo",
-		"prune", "regen",  "search",
+		"prune", "rage-clean", "regen",  "search",
 		"sync",  "unmerge", "version",
 	])
 
@@ -354,6 +357,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--binpkg-changed-deps": {
+			"help"    : ("reject binary packages with outdated "
+				"dependencies"),
+			"choices" : true_y_or_n
+		},
+
 		"--buildpkg": {
 			"shortopt" : "-b",
 			"help"     : "build binary packages",
@@ -366,6 +375,12 @@ def parse_opts(tmpcmdline, silent=False):
 				"possible ways to enable building of binary packages.",
 
 			"action" : "append"
+		},
+
+		"--changed-deps": {
+			"help"    : ("replace installed packages with "
+				"outdated dependencies"),
+			"choices" : true_y_or_n
 		},
 
 		"--config-root": {
@@ -438,6 +453,16 @@ def parse_opts(tmpcmdline, silent=False):
 				"only for debugging purposes, and it only affects built packages "
 				"that specify slot/sub-slot := operator dependencies using the "
 				"experimental \"4-slot-abi\" EAPI.",
+			"choices": y_or_n
+		},
+
+		"--ignore-soname-deps": {
+			"help": "Ignore the soname dependencies of binary and "
+				"installed packages. This option is enabled by "
+				"default, since soname dependencies are relatively "
+				"new, and the required metadata is not guaranteed to "
+				"exist for binary and installed packages built with "
+				"older versions of portage.",
 			"choices": y_or_n
 		},
 
@@ -617,6 +642,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" :("True", "rdeps")
 		},
 
+		"--search-index": {
+			"help": "Enable or disable indexed search (enabled by default)",
+			"choices": y_or_n
+		},
+
 		"--select": {
 			"shortopt" : "-w",
 			"help"    : "add specified packages to the world set " + \
@@ -627,6 +657,13 @@ def parse_opts(tmpcmdline, silent=False):
 		"--selective": {
 			"help"    : "identical to --noreplace",
 			"choices" : true_y_or_n
+		},
+
+		"--sync-submodule": {
+			"help"    : ("Restrict sync to the specified submodule(s)."
+				" (--sync action only)"),
+			"choices" : tuple(_SUBMODULE_PATH_MAP),
+			"action" : "append",
 		},
 
 		"--use-ebuild-visibility": {
@@ -660,6 +697,11 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 		"--verbose-slot-rebuilds": {
 			"help"     : "verbose slot rebuild output",
+			"choices"  : true_y_or_n
+		},
+		"--with-test-deps": {
+			"help"     : "pull in test deps for packages " + \
+				"matched by arguments",
 			"choices"  : true_y_or_n
 		},
 	}
@@ -713,6 +755,12 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.autounmask_write in true_y:
 		myoptions.autounmask_write = True
 
+	if myoptions.binpkg_changed_deps is not None:
+		if myoptions.binpkg_changed_deps in true_y:
+			myoptions.binpkg_changed_deps = 'y'
+		else:
+			myoptions.binpkg_changed_deps = 'n'
+
 	if myoptions.buildpkg in true_y:
 		myoptions.buildpkg = True
 
@@ -721,6 +769,12 @@ def parse_opts(tmpcmdline, silent=False):
 		if bad_atoms and not silent:
 			parser.error("Invalid Atom(s) in --buildpkg-exclude parameter: '%s'\n" % \
 				(",".join(bad_atoms),))
+
+	if myoptions.changed_deps is not None:
+		if myoptions.changed_deps in true_y:
+			myoptions.changed_deps = 'y'
+		else:
+			myoptions.changed_deps = 'n'
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"
@@ -957,6 +1011,11 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.verbose = None
 
+	if myoptions.with_test_deps in true_y:
+		myoptions.with_test_deps = True
+	else:
+		myoptions.with_test_deps = None
+
 	for myopt in options:
 		v = getattr(myoptions, myopt.lstrip("--").replace("-", "_"))
 		if v:
@@ -1047,11 +1106,36 @@ def emerge_main(args=None):
 	elif myaction == "moo":
 		print(COWSAY_MOO % platform.system())
 		return os.EX_OK
+	elif myaction == "sync":
+		# need to set this to True now in order for the repository config
+		# loading to allow new repos with non-existent directories
+		portage._sync_mode = True
+
+	# Verify that /dev/null exists and is a device file as a cheap early
+	# filter for obviously broken /dev/s.
+	try:
+		if os.stat(os.devnull).st_rdev == 0:
+			writemsg_level("Failed to validate a sane '/dev'.\n"
+				  "'/dev/null' is not a device file.\n",
+				  level=logging.ERROR, noiselevel=-1)
+			return 1
+	except OSError:
+		writemsg_level("Failed to validate a sane '/dev'.\n"
+				 "'/dev/null' does not exist.\n",
+				 level=logging.ERROR, noiselevel=-1)
+		return 1
+
+	# Verify that BASH process substitution works as another cheap early
+	# filter. Process substitution uses '/dev/fd'.
+	if portage.process.spawn_bash("[[ $(< <(echo foo) ) == foo ]]") != 0:
+		writemsg_level("Failed to validate a sane '/dev'.\n"
+				 "bash process substitution doesn't work; this may be an "
+				 "indication of a broken '/dev/fd'.\n",
+				 level=logging.ERROR, noiselevel=-1)
+		return 1
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
-	if myaction == "sync":
-		portage._sync_mode = True
 	emerge_config = load_emerge_config(
 		action=myaction, args=myfiles, opts=myopts)
 	rval = profile_check(emerge_config.trees, emerge_config.action)

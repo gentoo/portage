@@ -373,46 +373,71 @@ __source_all_bashrcs() {
 		# source the existing profile.bashrcs.
 		save_IFS
 		IFS=$'\n'
-		local path_array=($PROFILE_PATHS)
+		local bashenv_files=($PORTAGE_BASHRC_FILES)
 		restore_IFS
-		for x in "${path_array[@]}" ; do
-			[ -f "$x/profile.bashrc" ] && __qa_source "$x/profile.bashrc"
+		for x in "${bashenv_files[@]}" ; do
+			__try_source "${x}"
 		done
 	fi
 
-	if [ -r "${PORTAGE_BASHRC}" ] ; then
-		if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-			source "${PORTAGE_BASHRC}"
-		else
-			set -x
-			source "${PORTAGE_BASHRC}"
-			set +x
-		fi
-	fi
+	# The user's bashrc is the ONLY non-portage bit of code
+	# that can change shopts without a QA violation.
+	__try_source --no-qa "${PORTAGE_BASHRC}"
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
-		# The user's bashrc is the ONLY non-portage bit of code that can
-		# change shopts without a QA violation.
-		for x in "${PM_EBUILD_HOOK_DIR}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
-			if [ -r "${x}" ]; then
-				# If $- contains x, then tracing has already been enabled
-				# elsewhere for some reason. We preserve it's state so as
-				# not to interfere.
-				if [ "$PORTAGE_DEBUG" != "1" ] || [ "${-/x/}" != "$-" ]; then
-					source "${x}"
-				else
-					set -x
-					source "${x}"
-					set +x
-				fi
-			fi
-		done
+		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
 
 	[ ! -z "${OCC}" ] && export CC="${OCC}"
 	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
 }
 
+# @FUNCTION: __source_env_files
+# @USAGE: [--no-qa] <ENV_DIRECTORY>
+# @DESCRIPTION:
+# Source the files relevant to the current package from the given path.
+# If --no-qa is specified, use source instead of __qa_source to source the
+# files.
+__source_env_files() {
+	local argument=()
+	if [[ $1 == --no-qa ]]; then
+		argument=( --no-qa )
+	shift
+	fi
+	for x in "${1}"/${CATEGORY}/{${PN},${PN}:${SLOT%/*},${P},${PF}}; do
+		__try_source "${argument[@]}" "${x}"
+	done
+}
+
+# @FUNCTION: __try_source
+# @USAGE: [--no-qa] <FILE>
+# @DESCRIPTION:
+# If the path given as argument exists, source the file while preserving
+# $-.
+# If --no-qa is specified, source the file with source instead of __qa_source.
+__try_source() {
+	local qa=true
+	if [[ $1 == --no-qa ]]; then
+		qa=false
+		shift
+	fi
+	if [[ -r $1 && -f $1 ]]; then
+		local debug_on=false
+		if [[ "$PORTAGE_DEBUG" == "1" ]] && [[ "${-/x/}" == "$-" ]]; then
+			debug_on=true
+		fi
+		$debug_on && set -x
+		# If $- contains x, then tracing has already been enabled
+		# elsewhere for some reason. We preserve it's state so as
+		# not to interfere.
+		if [[ ${qa} ]]; then
+			source "${1}"
+		else
+			__qa_source "${1}"
+		fi
+		$debug_on && set +x
+	fi
+}
 # === === === === === === === === === === === === === === === === === ===
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
@@ -477,6 +502,7 @@ export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
 trap 'exit 1' SIGTERM
 
 if ! has "$EBUILD_PHASE" clean cleanrm depend && \
+	! [[ $EMERGE_FROM = ebuild && $EBUILD_PHASE = setup ]] && \
 	[ -f "${T}"/environment ] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
@@ -525,7 +551,8 @@ eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
 if ! has "$EBUILD_PHASE" clean cleanrm ; then
-	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
+	if [[ $EBUILD_PHASE = setup && $EMERGE_FROM = ebuild ]] || \
+		[[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed || \
 		" ${FEATURES} " == *" noauto "* ]] ; then
 		# The bashrcs get an opportunity here to set aliases that will be expanded
@@ -538,13 +565,20 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# we make a backup copy for QA checks.
 		__INHERITED_QA_CACHE=$INHERITED
 
+		# Catch failed globbing attempts in case ebuild writer forgot to
+		# escape '*' or likes.
+		# Note: this needs to be done before unsetting EAPI.
+		if ___eapi_enables_failglob_in_global_scope; then
+			shopt -s failglob
+		fi
+
 		# *DEPEND and IUSE will be set during the sourcing of the ebuild.
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
 		unset EAPI DEPEND RDEPEND PDEPEND HDEPEND INHERITED IUSE REQUIRED_USE \
 			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
-			E_HDEPEND
+			E_HDEPEND PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -552,6 +586,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			set -x
 			source "$EBUILD" || die "error sourcing ebuild"
 			set +x
+		fi
+
+		if ___eapi_enables_failglob_in_global_scope; then
+			shopt -u failglob
 		fi
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then

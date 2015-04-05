@@ -11,19 +11,24 @@
 #  dialog menus
 #
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
+
+import atexit
+import io
+import re
+import sys
 
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
-import atexit, re, shutil, stat, sys
+
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym"))
 import portage
 portage._internal_caller = True
-from portage import os
-from portage import _unicode_decode
-from portage.dispatch_conf import diffstatusoutput
+from portage import os, shutil
+from portage import _encodings, _unicode_decode
+from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
 from portage.process import find_binary, spawn
 from portage.const import EPREFIX
 
@@ -31,8 +36,8 @@ FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
 
 if "case-insensitive-fs" in portage.settings.features:
-    FIND_EXTANT_CONFIGS = \
-        FIND_EXTANT_CONFIGS.replace("-name '._cfg", "-iname '._cfg")
+    FIND_EXTANT_CONFIGS = FIND_EXTANT_CONFIGS.replace(
+        "-name '._cfg", "-iname '._cfg")
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0o077)
@@ -77,6 +82,8 @@ def cmd_var_is_valid(cmd):
 
     return find_binary(cmd[0]) is not None
 
+diff = diff_mixed_wrapper(diffstatusoutput, DIFF_CONTENTS)
+
 class dispatch:
     options = {}
 
@@ -94,8 +101,6 @@ class dispatch:
                or not os.path.exists(self.options["log-file"]):
                 open(self.options["log-file"], 'w').close() # Truncate it
                 os.chmod(self.options["log-file"], 0o600)
-        else:
-            self.options["log-file"] = "/dev/null"
 
         pager = self.options.get("pager")
         if pager is None or not cmd_var_is_valid(pager):
@@ -121,13 +126,15 @@ class dispatch:
         for path in config_paths:
             path = portage.normalize_path(
                  os.path.join(config_root, path.lstrip(os.sep)))
-            try:
-                mymode = os.stat(path).st_mode
-            except OSError:
+
+            # Protect files that don't exist (bug #523684). If the
+            # parent directory doesn't exist, we can safely skip it.
+            if not os.path.isdir(os.path.dirname(path)):
                 continue
+
             basename = "*"
             find_opts = "-name '.*' -type d -prune -o"
-            if not stat.S_ISDIR(mymode):
+            if not os.path.isdir(path):
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 
@@ -150,11 +157,8 @@ class dispatch:
             config_root, config_paths,
             portage.util.shlex_split(
             portage.settings.get('CONFIG_PROTECT_MASK', '')),
-            case_insensitive = ("case-insensitive-fs"
+            case_insensitive=("case-insensitive-fs"
             in portage.settings.features))
-
-        def diff(file1, file2):
-            return diffstatusoutput(DIFF_CONTENTS, file1, file2)
 
         #
         # Remove new configs identical to current
@@ -171,7 +175,7 @@ class dispatch:
                 mrgfail = portage.dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
             else:
                 mrgfail = portage.dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
-            if os.path.exists(archive + '.dist'):
+            if os.path.lexists(archive + '.dist'):
                 unmodified = len(diff(conf['current'], archive + '.dist')[1]) == 0
             else:
                 unmodified = 0
@@ -186,7 +190,7 @@ class dispatch:
 
             if newconf == mrgconf and \
                 self.options.get('ignore-previously-merged') != 'yes' and \
-                os.path.exists(archive+'.dist') and \
+                os.path.lexists(archive+'.dist') and \
                 len(diff(archive+'.dist', conf['new'])[1]) == 0:
                 # The current update is identical to the archived .dist
                 # version that has previously been merged.
@@ -259,6 +263,13 @@ class dispatch:
 
         valid_input = "qhtnmlezu"
 
+        def diff_pager(file1, file2):
+            cmd = self.options['diff'] % (file1, file2)
+            cmd += pager
+            spawn_shell(cmd)
+
+        diff_pager = diff_mixed_wrapper(diff_pager)
+
         for conf in confs:
             count = count + 1
 
@@ -271,14 +282,10 @@ class dispatch:
             while 1:
                 clear_screen()
                 if show_new_diff:
-                    cmd = self.options['diff'] % (conf['new'], mrgconf)
-                    cmd += pager
-                    spawn_shell(cmd)
+                    diff_pager(conf['new'], mrgconf)
                     show_new_diff = 0
                 else:
-                    cmd = self.options['diff'] % (conf['current'], newconf)
-                    cmd += pager
-                    spawn_shell(cmd)
+                    diff_pager(conf['current'], newconf)
 
                 print()
                 print('>> (%i of %i) -- %s' % (count, len(confs), conf ['current']))
@@ -362,7 +369,12 @@ class dispatch:
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
         the diff of what changed into the configured log file."""
-        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
+        if "log-file" in self.options:
+            status, output = diff(curconf, newconf)
+            with io.open(self.options["log-file"], mode="a",
+                encoding=_encodings["stdio"]) as f:
+                f.write(output + "\n")
+
         try:
             os.rename(newconf, curconf)
         except (IOError, os.error) as why:
@@ -391,7 +403,9 @@ class dispatch:
         newconfigs.sort ()
 
         for nconf in newconfigs:
-            nconf = nconf.rstrip ()
+            # Use strict mode here, because we want to know if it fails,
+            # and portage only merges files with valid UTF-8 encoding.
+            nconf = _unicode_decode(nconf, errors='strict').rstrip()
             conf  = re.sub (r'\._cfg\d+_', '', nconf)
             dirname   = os.path.dirname(nconf)
             conf_map  = {

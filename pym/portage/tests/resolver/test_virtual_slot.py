@@ -92,6 +92,81 @@ class VirtualSlotResolverTestCase(TestCase):
 		finally:
 			playground.cleanup()
 
+	def testVirtualSubslotUpdate(self):
+
+		ebuilds = {
+			"virtual/pypy-2.3.1" : {
+				"EAPI": "5",
+				"SLOT": "0/2.3",
+				"RDEPEND": "|| ( >=dev-python/pypy-2.3.1:0/2.3 >=dev-python/pypy-bin-2.3.1:0/2.3 ) "
+			},
+			"virtual/pypy-2.4.0" : {
+				"EAPI": "5",
+				"SLOT": "0/2.4",
+				"RDEPEND": "|| ( >=dev-python/pypy-2.4.0:0/2.4 >=dev-python/pypy-bin-2.4.0:0/2.4 ) "
+			},
+			"dev-python/pypy-2.3.1": {
+				"EAPI": "5",
+				"SLOT": "0/2.3"
+			},
+			"dev-python/pypy-2.4.0": {
+				"EAPI": "5",
+				"SLOT": "0/2.4"
+			},
+			"dev-python/pygments-1.6_p20140324-r1": {
+				"EAPI": "5",
+				"DEPEND": "virtual/pypy:0="
+			}
+		}
+
+		installed = {
+			"virtual/pypy-2.3.1" : {
+				"EAPI": "5",
+				"SLOT": "0/2.3",
+				"RDEPEND": "|| ( >=dev-python/pypy-2.3.1:0/2.3 >=dev-python/pypy-bin-2.3.1:0/2.3 ) "
+			},
+			"dev-python/pypy-2.3.1": {
+				"EAPI": "5",
+				"SLOT": "0/2.3"
+			},
+			"dev-python/pygments-1.6_p20140324-r1": {
+				"EAPI": "5",
+				"DEPEND": "virtual/pypy:0/2.3=",
+				"RDEPEND": "virtual/pypy:0/2.3=",
+			}
+		}
+
+		world = ["dev-python/pygments"]
+
+		test_cases = (
+			# bug 526160 - test for missed pypy sub-slot update
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success=True,
+				mergelist = ['dev-python/pypy-2.4.0',
+					'virtual/pypy-2.4.0',
+					'dev-python/pygments-1.6_p20140324-r1']),
+
+			# Repeat above test, but with --dynamic-deps disabled.
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True, "--dynamic-deps": "n"},
+				success=True,
+				mergelist = ['dev-python/pypy-2.4.0',
+					'virtual/pypy-2.4.0',
+					'dev-python/pygments-1.6_p20140324-r1']),
+		)
+
+		playground = ResolverPlayground(debug=False, ebuilds=ebuilds,
+			installed=installed, world=world)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
 	def testVirtualSlotDepclean(self):
 
 		ebuilds = {

@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -188,13 +188,19 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
-			# pull in the new-style virtual
+			# Pull in virt_atom which refers to the specific version
+			# of the virtual whose deps we're expanding. Also pull
+			# in the original input atom, so that callers can reliably
+			# check to see if a given input atom has been selected,
+			# as in depgraph._slot_operator_update_probe.
 			mycheck[1].append(virt_atom)
+			mycheck[1].append(x)
 			a.append(mycheck[1])
 			if atom_graph is not None:
 				virt_atom_node = (virt_atom, id(virt_atom))
 				atom_graph.add(virt_atom_node, graph_parent)
 				atom_graph.add(pkg, virt_atom_node)
+				atom_graph.add((x, id(x)), graph_parent)
 
 		if not a and mychoices:
 			# Check for a virtual package.provided match.
@@ -311,7 +317,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
+	pkg_use_enabled = trees[myroot].get("pkg_use_enabled")
 	want_update_pkg = trees[myroot].get("want_update_pkg")
+	downgrade_probe = trees[myroot].get("downgrade_probe")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -343,6 +351,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 
 		all_available = True
 		all_use_satisfied = True
+		all_use_unmasked = True
+		conflict_downgrade = False
 		slot_map = {}
 		cp_map = {}
 		for atom in atoms:
@@ -359,10 +369,46 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				all_use_satisfied = False
 				break
 
+			if graph_db is not None and downgrade_probe is not None:
+				slot_matches = graph_db.match_pkgs(avail_slot)
+				if (len(slot_matches) > 1 and
+					avail_pkg < slot_matches[-1] and
+					not downgrade_probe(avail_pkg)):
+					# If a downgrade is not desirable, then avoid a
+					# choice that pulls in a lower version involved
+					# in a slot conflict (bug #531656).
+					conflict_downgrade = True
+
 			if atom.use:
 				avail_pkg_use = mydbapi_match_pkgs(atom)
 				if not avail_pkg_use:
 					all_use_satisfied = False
+
+					if pkg_use_enabled is not None:
+						# Check which USE flags cause the match to fail,
+						# so we can prioritize choices that do not
+						# require changes to use.mask or use.force
+						# (see bug #515584).
+						violated_atom = atom.violated_conditionals(
+							pkg_use_enabled(avail_pkg),
+							avail_pkg.iuse.is_valid_flag)
+
+						# Note that violated_atom.use can be None here,
+						# since evaluation can collapse conditional USE
+						# deps that cause the match to fail due to
+						# missing IUSE (match uses atom.unevaluated_atom
+						# to detect such missing IUSE).
+						if violated_atom.use is not None:
+							for flag in violated_atom.use.enabled:
+								if flag in avail_pkg.use.mask:
+									all_use_unmasked = False
+									break
+							else:
+								for flag in violated_atom.use.disabled:
+									if flag in avail_pkg.use.force and \
+										flag not in avail_pkg.use.mask:
+										all_use_unmasked = False
+										break
 				else:
 					# highest (ascending order)
 					avail_pkg_use = avail_pkg_use[-1]
@@ -410,10 +456,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					else:
 						preferred_non_installed.append(this_choice)
 				else:
-					if all_installed_slots:
+					if not all_use_unmasked:
+						other.append(this_choice)
+					elif all_installed_slots:
 						unsat_use_installed.append(this_choice)
 					else:
 						unsat_use_non_installed.append(this_choice)
+			elif conflict_downgrade:
+				other.append(this_choice)
 			else:
 				all_in_graph = True
 				for atom in atoms:
@@ -429,11 +479,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_in_graph = False
 						break
 				circular_atom = None
-				if all_in_graph:
-					if parent is None or priority is None:
-						pass
-					elif priority.buildtime and \
-						not (priority.satisfied or priority.optional):
+				if not (parent is None or priority is None) and \
+					(parent.onlydeps or
+					(all_in_graph and priority.buildtime and
+					not (priority.satisfied or priority.optional))):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable. This is only relevant for
@@ -485,7 +534,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						else:
 							preferred_non_installed.append(this_choice)
 					else:
-						if all_in_graph:
+						if not all_use_unmasked:
+							other.append(this_choice)
+						elif all_in_graph:
 							unsat_use_in_graph.append(this_choice)
 						elif all_installed_slots:
 							unsat_use_installed.append(this_choice)

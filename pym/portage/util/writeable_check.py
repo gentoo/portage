@@ -55,7 +55,7 @@ def linux_ro_checker(dir_list):
 				#       _dir ^ ^ attr1                     ^ attr2
 				# there can be a variable number of fields
 				# to the left of the ' - ', after the attr's, so split it there
-				mount = line.split(' - ')
+				mount = line.split(' - ', 1)
 				_dir, attr1 = mount[0].split()[4:6]
 				attr2 = mount[1].split()[2]
 				if attr1.startswith('ro') or attr2.startswith('ro'):

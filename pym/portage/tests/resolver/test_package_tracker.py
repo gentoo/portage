@@ -116,11 +116,11 @@ class PackageTrackerTestCase(TestCase):
 				if pkg.root == "/" and pkg.cp == x_atom:
 					self.assertTrue(pkg in matches)
 			self.assertTrue(not dbapi.cp_list(y_atom))
-			matches = dbapi.match(x_atom)
+			matches = dbapi.match(Atom(x_atom))
 			for pkg in pkgs:
 				if pkg.root == "/" and pkg.cp == x_atom:
 					self.assertTrue(pkg in matches)
-			self.assertTrue(not dbapi.match(y_atom))
+			self.assertTrue(not dbapi.match(Atom(y_atom)))
 
 		check_dbapi([])
 

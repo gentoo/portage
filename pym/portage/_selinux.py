@@ -5,6 +5,7 @@
 # the whole _selinux module itself will be wrapped.
 import os
 import shutil
+import sys
 
 import portage
 from portage import _encodings
@@ -77,7 +78,18 @@ def settype(newtype):
 
 def setexec(ctx="\n"):
 	ctx = _native_string(ctx, encoding=_encodings['content'], errors='strict')
-	if selinux.setexeccon(ctx) < 0:
+	rc = 0
+	try:
+		rc = selinux.setexeccon(ctx)
+	except OSError:
+		msg = _("Failed to set new SELinux execution context. " + \
+			"Is your current SELinux context allowed to run Portage?")
+		if selinux.security_getenforce() == 1:
+			raise OSError(msg)
+		else:
+			portage.writemsg("!!! %s\n" % msg, noiselevel=-1)
+
+	if rc < 0:
 		if sys.hexversion < 0x3000000:
 			ctx = _unicode_decode(ctx, encoding=_encodings['content'], errors='replace')
 		if selinux.security_getenforce() == 1:

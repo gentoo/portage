@@ -19,6 +19,10 @@ for the details on package atom syntax.
 .BR "\-\-update\-changelogs"
 Update the ChangeLog files from SCM logs (supported only in git repos).
 .TP
+.BR "\-\-update\-pkg\-desc\-index"
+Update the package description index which is located at
+\fImetadata/pkg_desc_index\fR in the repository.
+.TP
 .BR "\-\-update\-use\-local\-desc"
 Update the \fIprofiles/use.local.desc\fR file from metadata.xml.
 .TP
@@ -103,7 +107,10 @@ updates due to ebuilds that either fail to source or are not sourced
 due to invalid Manifest entries.
 .TP
 .BR "\-\-use\-local\-desc\-output=ULD_OUTPUT"
-output file for use.local.desc data (or '-' for stdout)
+Output file for use.local.desc data (or '-' for stdout)
+.TP
+.BR "\-\-write\-timestamp
+Write metadata/timestamp.chk as required for rsync repositories
 .SH "ENVIRONMENT OPTIONS"
 .TP
 \fBEGENCACHE_DEFAULT_OPTS\fR
@@ -116,13 +123,13 @@ Prior to portage-2.1.11.32, the 'pms' cache format was enabled by default.
 This 'pms' format, which is distributed in the \fImetadata/cache/\fR
 directory of the repository, has significant limitations related to the
 cache validation mechanism which involves comparison of
-a cache entry mtime to the mtime of the corresponding \fBebuild(5)\fR. This
+a cache entry mtime to the mtime of the corresponding \fBebuild\fR(5). This
 mechanism is unreliable in cases when eclass changes result in metadata
 changes, since no information about eclass state is available in the cache.
 Also, since the mtime of the cache entry must correspond to that of the
 ebuild, the cache format is only suitable for distribution via protocols
-that preserve timestamps (such as \fBrsync(1))\fR. For cache that is
-distributed via \fBgit(1)\fR repositories, there is currently a workaround
+that preserve timestamps (such as \fBrsync\fR(1)). For cache that is
+distributed via \fBgit\fR(1) repositories, there is currently a workaround
 implemented in \fBemerge\fR(1) \fB\-\-sync\fR which updates ebuild mtimes
 to match their corresponding cache entries (except for ebuilds that are
 modified relative to HEAD).

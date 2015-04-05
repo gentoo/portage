@@ -21,6 +21,12 @@ def create_depgraph_params(myopts, myaction):
 	#	removal by the --depclean action as soon as possible
 	# ignore_built_slot_operator_deps: ignore the slot/sub-slot := operator parts
 	#	of dependencies that have been recorded when packages where built
+	# ignore_soname_deps: ignore the soname dependencies of built
+	#   packages, so that they do not trigger dependency resolution
+	#   failures, or cause packages to be rebuilt or replaced.
+	# with_test_deps: pull in test deps for packages matched by arguments
+	# changed_deps: rebuild installed packages with outdated deps
+	# binpkg_changed_deps: reject binary packages with outdated deps
 	myparams = {"recurse" : True}
 
 	bdeps = myopts.get("--with-bdeps")
@@ -30,6 +36,9 @@ def create_depgraph_params(myopts, myaction):
 	ignore_built_slot_operator_deps = myopts.get("--ignore-built-slot-operator-deps")
 	if ignore_built_slot_operator_deps is not None:
 		myparams["ignore_built_slot_operator_deps"] = ignore_built_slot_operator_deps
+
+	myparams["ignore_soname_deps"] = myopts.get(
+		"--ignore-soname-deps", "y")
 
 	dynamic_deps = myopts.get("--dynamic-deps")
 	if dynamic_deps is not None:
@@ -50,6 +59,7 @@ def create_depgraph_params(myopts, myaction):
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
+		myopts.get("--changed-deps", "n") != "n" or \
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
 
@@ -98,11 +108,28 @@ def create_depgraph_params(myopts, myaction):
 		# have been specified.
 		myparams['binpkg_respect_use'] = 'auto'
 
+	binpkg_changed_deps = myopts.get('--binpkg-changed-deps')
+	if binpkg_changed_deps is not None:
+		myparams['binpkg_changed_deps'] = binpkg_changed_deps
+	elif '--usepkgonly' not in myopts:
+		# In order to avoid dependency resolution issues due to changed
+		# dependencies, enable this automatically, as long as it doesn't
+		# strongly conflict with other options that have been specified.
+		myparams['binpkg_changed_deps'] = 'auto'
+
+	changed_deps = myopts.get('--changed-deps')
+	if changed_deps is not None:
+		myparams['changed_deps'] = changed_deps
+
 	if myopts.get("--selective") == "n":
 		# --selective=n can be used to remove selective
 		# behavior that may have been implied by some
 		# other option like --update.
 		myparams.pop("selective", None)
+
+	with_test_deps = myopts.get("--with-test-deps")
+	if with_test_deps is not None:
+		myparams["with_test_deps"] = with_test_deps
 
 	if '--debug' in myopts:
 		writemsg_level('\n\nmyparams %s\n\n' % myparams,

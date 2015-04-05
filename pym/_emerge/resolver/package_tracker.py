@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import bisect
 import collections
 
 import portage
@@ -43,7 +44,11 @@ class PackageTracker(object):
 		3) Packages that block each other.
 	"""
 
-	def __init__(self):
+	def __init__(self, soname_deps=False):
+		"""
+		@param soname_deps: enable soname match support
+		@type soname_deps: bool
+		"""
 		# Mapping from package keys to set of packages.
 		self._cp_pkg_map = collections.defaultdict(list)
 		self._cp_vdb_pkg_map = collections.defaultdict(list)
@@ -61,6 +66,10 @@ class PackageTracker(object):
 		self._replaced_by = collections.defaultdict(list)
 
 		self._match_cache = collections.defaultdict(dict)
+		if soname_deps:
+			self._provides_index = collections.defaultdict(list)
+		else:
+			self._provides_index = None
 
 	def add_pkg(self, pkg):
 		"""
@@ -85,7 +94,18 @@ class PackageTracker(object):
 				self._replacing[pkg].append(installed)
 				self._replaced_by[installed].append(pkg)
 
+		self._add_provides(pkg)
+
 		self._match_cache.pop(cp_key, None)
+
+	def _add_provides(self, pkg):
+		if (self._provides_index is not None and
+			pkg.provides is not None):
+			index = self._provides_index
+			root = pkg.root
+			for atom in pkg.provides:
+				# Use bisect.insort for ordered match results.
+				bisect.insort(index[(root, atom)], pkg)
 
 	def add_installed_pkg(self, installed):
 		"""
@@ -133,6 +153,19 @@ class PackageTracker(object):
 				del self._replaced_by[installed]
 		del self._replacing[pkg]
 
+		if self._provides_index is not None:
+			index = self._provides_index
+			root = pkg.root
+			for atom in pkg.provides:
+				key = (root, atom)
+				items = index[key]
+				try:
+					items.remove(pkg)
+				except ValueError:
+					pass
+				if not items:
+					del index[key]
+
 		self._match_cache.pop(cp_key, None)
 
 	def discard_pkg(self, pkg):
@@ -151,6 +184,9 @@ class PackageTracker(object):
 		If 'installed' is True, installed non-replaced
 		packages may also be returned.
 		"""
+		if atom.soname:
+			return iter(self._provides_index.get((root, atom), []))
+
 		cp_key = root, atom.cp
 		cache_key = root, atom, atom.unevaluated_atom, installed
 		try:
@@ -285,8 +321,6 @@ class PackageTrackerDbapiWrapper(object):
 		self._package_tracker.add_pkg(pkg)
 
 	def match_pkgs(self, atom):
-		if not isinstance(atom, Atom):
-			atom = Atom(atom)
 		ret = sorted(self._package_tracker.match(self._root, atom),
 			key=cmp_sort_key(lambda x, y: vercmp(x.version, y.version)))
 		return ret
@@ -298,4 +332,4 @@ class PackageTrackerDbapiWrapper(object):
 		return self.match_pkgs(atom)
 
 	def cp_list(self, cp):
-		return self.match_pkgs(cp)
+		return self.match_pkgs(Atom(cp))

@@ -1,6 +1,127 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.18
+==================================
+* Bug Fixes:
+    - Bug 539706 Fix Syncbase _has_bin()
+    - Bug 538980 Add early check for broken /dev/s
+    - Bug 282639 Generate soname dependency metadata
+    - Bug 540882 repoman: skip vcs calls for manifest modes
+    - Bug 541188 man/portage.5: document sets.conf
+    - Bug 541198 use_reduce: support non-string token_class
+    - Bug 541302 actions.py: fix missing localization import
+    - Bug 500436 Do not interrupt on SIGCONT
+    - Bug 540482 Add man page entries for "emaint merges"
+                 and egencache's "--write-timestamp"
+    - Bug 511806 make.conf: expand PORTAGE_CONFIGROOT
+    - Bug 541754 depgraph: fix 'operation' AttributeError
+    - Bug 542052 Don't spawn socks5-server.py for pkg_nofetch
+
+
+portage-2.2.17
+==================================
+* Bug Fixes:
+    - Bug 539746 WorldSelectedSet: fix breakage
+    - Bug 539478 Fix missed self.portdb assignment for
+        metadata-transfer feature
+    - Bug 539402 fix overlay mask logic
+
+
+portage-2.2.16
+==================================
+* New portage plug-in sync system.
+* New auto-sync setting for repos.conf repos
+* New sync-depth setting for git sync module
+* New --sub-submodule option for emaint sync module
+* New native portage postsync.d capability
+* New native portage repo.postsync.d capability
+* New socks5 module to allow builds to escape the network-sandbox
+* Tentative EAPI 6 changes for testing
+* New search index creation and fast search code for emerge -s, -S
+* Bug Fixes:
+    - Bug 538512 Deprecate make.conf SYNC variable
+    - Bug 538314 handle EINTR
+    - Bug 537298 Fix typo in new_protect_filename()
+    - Bug 534722 update LOGNAME variable when appropriate
+    - Bug 536926 emerge: default --backtrack=3
+    - Bug 536392 More >= atoms for autounmask USE changes
+    - Bug 492932 TestFakedbapi: override EPREFIX
+    - Bug 142579 BinpkgExtractorAsync: xz and gzip decompression
+    - Bug 282927 emerge: add --changed-deps/--binpkg-changed-deps
+    - Bug 535850 dispatch-conf: avoid symlink "File exists" error
+    - Bug 533036 man/emerge.1: clarify --buildpkg-exclude wrt *-backup FEATURES
+    - Bug 463266 man pages: note that make.conf can be a directory
+    - Bug 533884 emerge --autounmask-write: fix CONFIG_PROTECT for
+                 PORTAGE_CONFIGROOT
+    - Bug 531656 Solve more slot-operator conflicts
+    - Bug 531724 AbstractPollTask._read_buf: read regardless of event flags
+    - Bug 534070 Add --sync-submodule <glsa|news|profiles>
+    - Bug 532670 Support override of default profile EAPI
+    - Bug 532784 bintree.py: fix str() calls for Python 2
+    - Bug 532594 faulty variable assignment inside _compute_abi_rebuild_info
+    - Bug 525718 search._xmatch: handle aux_get KeyError
+    - Bug 532224 Support @profile package set
+    - Bug 504116 man/emerge.1: --quiet-build=n overridden by --jobs
+    - Bug 412471 Display emerge search results incrementally
+    - Bug 531690 bin/ebuild: fix --color=n
+    - Bug 531854 dblink._protect: disable config protect for identical files
+    - Bug 522032 add a one time only post-sync hook call
+    - Bug 471776 Support USE_EXPAND prefixes in package.use and relevant files
+
+
+portage-2.2.15
+==================================
+* New option --rage-clean that does --unmerge without delay.
+* package.bashrc: per profile, per-package bashrc mechanism
+* Introduce eqalog and eqawarnlog functions.
+* Introduce eqatag to output proper machine-readable QA logs
+* Bug Fixes:
+    - Bug 517310 emerge --read-news: prompt only if --ask
+    - Bug 433453 Support unprivileged mode
+    - Bug 519566 Remove g+w bit from $T for TPE
+    - Bug 433453 portage.data._get_global: fix UnboundLocalError
+    - Bug 526160 This fixes _dep_check_composite_db to mask packages
+                 that aren't the highest visible match, but only if an
+                 update is desirable.
+    - Bug 523684 This fixes the ConfigProtect class, etc-update, and
+                 dispatch-conf to account for non-existent files (rather than
+                 directories) that are listed directly in CONFIG_PROTECT.
+    - Bug 524964 bin/bashrc-functions.sh: remove portageq function
+    - Bug 527636 Add btrfs.* to default PORTAGE_XATTR_EXCLUDE
+    - Bug 485598 etc-update & dispatch-conf: symlink and protected
+                 symlink support
+    - Bug 527636 Remove redundant PORTAGE_XATTR_EXCLUDE defaults
+    - Bug 528272 This fixes incorrect behavior of the "fetch" phase
+    - Bug 456128 Add support for SUSE based distros in etc-update
+    - Bug 528760 man/ebuild.5: document assert fix
+    - Bug 525726 _selinux.setexec: improve failure message
+    - Bug 529200 portageq: fix eroot parameter
+    - Bug 529120 fs_template._ensure_dirs: handle EEXIST
+    - Bug 528610 This fixes a case inside _slot_operator_update_probe where
+                 it would select an inappropriate replacement_parent of a
+                 lower version than desired.
+    - Bug 490732 NewsManager.getUnreadItems: handle EROFS
+    - Bug 524236 dblink: case insensitive support
+    - Bug 515584 dep_zapdeps: avoid use.mask/force changes
+    - Bug 490732 check for writable /var/db/pkg
+    - Bug 520652 Add emerge --with-test-deps option
+    - Bug 490732 check for writable PKGDIR
+    - Bug 529660 Memoize the results of use_reduce calls inside
+                 _slot_operator_update_probe, in order to improve performance.
+    - Bug 530010 Implement selective invalidation of cache for the
+                 depgraph._select_pkg_highest_available method...
+    - Bug 530982 fix UnicodeDecodeError
+    - Bug 531112 _pkg_use_enabled: return frozenset
+    - Bug 387059 emerge: warn about @installed, don't deprecate
+    - Bug 528274 ebuild.sh: force fresh env for pkg_setup
+    - Bug 527996 emerge --info: show /bin/sh provider
+    - Bug 527486 portage/util/writeable_check.py: Fix IndexError:
+    - Bug 525552 Use a new _eintr_func_wrapper class to wrap waitpid calls and
+                 handle EINTR by calling the function as many times as necessary
+                 (until it returns without raising EINTR).
+
+
 portage-2.2.14
 ==================================
 * Bug Fixes:

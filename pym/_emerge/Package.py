@@ -13,9 +13,10 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \
 	paren_enclose, _slot_separator, _repo_separator
+from portage.dep.soname.parse import parse_soname_deps
 from portage.versions import _pkg_str, _unknown_repo
 from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
-from portage.exception import InvalidDependString
+from portage.exception import InvalidData, InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
 from portage.const import EPREFIX
@@ -36,15 +37,17 @@ class Package(Task):
 		"category", "counter", "cp", "cpv_split",
 		"inherited", "iuse", "mtime",
 		"pf", "root", "slot", "sub_slot", "slot_atom", "version") + \
-		("_invalid", "_masks", "_metadata", "_raw_metadata", "_use",
+		("_invalid", "_masks", "_metadata", "_provided_cps",
+		"_raw_metadata", "_provides", "_requires", "_use",
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
-		"BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "EAPI",
-		"HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
-		"LICENSE", "PDEPEND", "PROVIDE", "RDEPEND",
-		"repository", "PROPERTIES", "RESTRICT", "SLOT", "USE",
-		"_mtime_", "DEFINED_PHASES", "REQUIRED_USE", "EPREFIX"]
+		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
+		"DEPEND", "EAPI", "HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
+		"LICENSE", "MD5", "PDEPEND", "PROVIDE", "PROVIDES",
+		"RDEPEND", "repository", "REQUIRED_USE",
+		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
+		"SLOT", "USE", "_mtime_", "EPREFIX"]
 
 	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('DEPEND', 'HDEPEND')
@@ -112,13 +115,14 @@ class Package(Task):
 		return self._metadata["EAPI"]
 
 	@property
+	def build_id(self):
+		return self.cpv.build_id
+
+	@property
 	def build_time(self):
 		if not self.built:
 			raise AttributeError('build_time')
-		try:
-			return long(self._metadata['BUILD_TIME'])
-		except (KeyError, ValueError):
-			return 0
+		return self.cpv.build_time
 
 	@property
 	def defined_phases(self):
@@ -127,6 +131,20 @@ class Package(Task):
 	@property
 	def properties(self):
 		return self._metadata.properties
+
+	@property
+	def provided_cps(self):
+
+		if self._provided_cps is None:
+			provided_cps = [self.cp]
+			for atom in self._metadata["PROVIDE"].split():
+				try:
+					provided_cps.append(Atom(atom).cp)
+				except InvalidAtom:
+					pass
+			self._provided_cps = tuple(provided_cps)
+
+		return self._provided_cps
 
 	@property
 	def restrict(self):
@@ -175,6 +193,16 @@ class Package(Task):
 	def stable(self):
 		return self.cpv.stable
 
+	@property
+	def provides(self):
+		self.invalid
+		return self._provides
+
+	@property
+	def requires(self):
+		self.invalid
+		return self._requires
+
 	@classmethod
 	def _gen_hash_key(cls, cpv=None, installed=None, onlydeps=None,
 		operation=None, repo_name=None, root_config=None,
@@ -192,6 +220,8 @@ class Package(Task):
 		else:
 			raise TypeError("root_config argument is required")
 
+		elements = [type_name, root, _unicode(cpv), operation]
+
 		# For installed (and binary) packages we don't care for the repo
 		# when it comes to hashing, because there can only be one cpv.
 		# So overwrite the repo_key with type_name.
@@ -202,14 +232,22 @@ class Package(Task):
 				raise AssertionError(
 					"Package._gen_hash_key() " + \
 					"called without 'repo_name' argument")
-			repo_key = repo_name
+			elements.append(repo_name)
+		elif type_name == "binary":
+			# Including a variety of fingerprints in the hash makes
+			# it possible to simultaneously consider multiple similar
+			# packages. Note that digests are not included here, since
+			# they are relatively expensive to compute, and they may
+			# not necessarily be available.
+			elements.extend([cpv.build_id, cpv.file_size,
+				cpv.build_time, cpv.mtime])
 		else:
 			# For installed (and binary) packages we don't care for the repo
 			# when it comes to hashing, because there can only be one cpv.
 			# So overwrite the repo_key with type_name.
-			repo_key = type_name
+			elements.append(type_name)
 
-		return (type_name, root, _unicode(cpv), operation, repo_key)
+		return tuple(elements)
 
 	def _validate_deps(self):
 		"""
@@ -296,6 +334,21 @@ class Package(Task):
 			except InvalidDependString as e:
 				if not self.installed:
 					self._metadata_exception(k, e)
+
+		if self.built:
+			k = 'PROVIDES'
+			try:
+				self._provides = frozenset(
+					parse_soname_deps(self._metadata[k]))
+			except InvalidData as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+
+			k = 'REQUIRES'
+			try:
+				self._requires = frozenset(
+					parse_soname_deps(self._metadata[k]))
+			except InvalidData as e:
+				self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def copy(self):
 		return Package(built=self.built, cpv=self.cpv, depth=self.depth,
@@ -478,9 +531,15 @@ class Package(Task):
 		else:
 			cpv_color = "PKG_NOMERGE"
 
+		build_id_str = ""
+		if isinstance(self.cpv.build_id, long) and self.cpv.build_id > 0:
+			build_id_str = "-%s" % self.cpv.build_id
+
 		s = "(%s, %s" \
-			% (portage.output.colorize(cpv_color, self.cpv + _slot_separator + \
-			self.slot + "/" + self.sub_slot + _repo_separator + self.repo) , self.type_name)
+			% (portage.output.colorize(cpv_color, self.cpv +
+			build_id_str + _slot_separator + self.slot + "/" +
+			self.sub_slot + _repo_separator + self.repo),
+			self.type_name)
 
 		if self.type_name == "installed":
 			if self.root_config.settings['ROOT'] != "/":
@@ -723,31 +782,59 @@ class Package(Task):
 
 	def __lt__(self, other):
 		if other.cp != self.cp:
-			return False
-		if portage.vercmp(self.version, other.version) < 0:
+			return self.cp < other.cp
+		result = portage.vercmp(self.version, other.version)
+		if result < 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time < other.build_time
 		return False
 
 	def __le__(self, other):
 		if other.cp != self.cp:
-			return False
-		if portage.vercmp(self.version, other.version) <= 0:
+			return self.cp <= other.cp
+		result = portage.vercmp(self.version, other.version)
+		if result <= 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time <= other.build_time
 		return False
 
 	def __gt__(self, other):
 		if other.cp != self.cp:
-			return False
-		if portage.vercmp(self.version, other.version) > 0:
+			return self.cp > other.cp
+		result = portage.vercmp(self.version, other.version)
+		if result > 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time > other.build_time
 		return False
 
 	def __ge__(self, other):
 		if other.cp != self.cp:
-			return False
-		if portage.vercmp(self.version, other.version) >= 0:
+			return self.cp >= other.cp
+		result = portage.vercmp(self.version, other.version)
+		if result >= 0:
 			return True
+		if result == 0 and self.built and other.built:
+			return self.build_time >= other.build_time
 		return False
+
+	def with_use(self, use):
+		"""
+		Return an Package instance with the specified USE flags. The
+		current instance may be returned if it has identical USE flags.
+		@param use: a set of USE flags
+		@type use: frozenset
+		@return: A package with the specified USE flags
+		@rtype: Package
+		"""
+		if use is not self.use.enabled:
+			pkg = self.copy()
+			pkg._metadata["USE"] = " ".join(use)
+		else:
+			pkg = self
+		return pkg
 
 _all_metadata_keys = set(x for x in portage.auxdbkeys \
 	if not x.startswith("UNUSED_"))

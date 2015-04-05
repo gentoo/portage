@@ -43,8 +43,8 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.const import VCS_DIRS
 from portage.exception import InvalidAtom, PortageException, FileNotFound, \
-       IsADirectory, OperationNotPermitted, ParseError, PermissionDenied, \
-	   ReadOnlyFileSystem
+	IsADirectory, OperationNotPermitted, ParseError, PermissionDenied, \
+	ReadOnlyFileSystem
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -425,10 +425,11 @@ def read_corresponding_eapi_file(filename, default="0"):
 		return default
 	return eapi
 
-def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=False, allow_repo=False,
-	verify_eapi=False, eapi=None):
+def grabdict_package(myfilename, juststrings=0, recursive=0,
+	allow_wildcard=False, allow_repo=False, allow_build_id=False,
+	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
-	    with isvalidatom()"""
+		with isvalidatom()"""
 
 	if recursive:
 		file_list = _recursive_file_list(myfilename)
@@ -442,12 +443,14 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 		if not d:
 			continue
 		if verify_eapi and eapi is None:
-			eapi = read_corresponding_eapi_file(myfilename)
+			eapi = read_corresponding_eapi_file(
+				myfilename, default=eapi_default)
 
 		for k, v in d.items():
 			try:
 				k = Atom(k, allow_wildcard=allow_wildcard,
-					allow_repo=allow_repo, eapi=eapi)
+					allow_repo=allow_repo,
+					allow_build_id=allow_build_id, eapi=eapi)
 			except InvalidAtom as e:
 				writemsg(_("--- Invalid atom in %s: %s\n") % (filename, e),
 					noiselevel=-1)
@@ -460,14 +463,17 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, allow_wildcard=Fals
 
 	return atoms
 
-def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=False, allow_repo=False,
-	remember_source_file=False, verify_eapi=False, eapi=None):
+def grabfile_package(myfilename, compatlevel=0, recursive=0,
+	allow_wildcard=False, allow_repo=False, allow_build_id=False,
+	remember_source_file=False, verify_eapi=False, eapi=None,
+	eapi_default="0"):
 
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive, remember_source_file=True)
 	if not pkgs:
 		return pkgs
 	if verify_eapi and eapi is None:
-		eapi = read_corresponding_eapi_file(myfilename)
+		eapi = read_corresponding_eapi_file(
+			myfilename, default=eapi_default)
 	mybasename = os.path.basename(myfilename)
 	atoms = []
 	for pkg, source_file in pkgs:
@@ -478,7 +484,9 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0, allow_wildcard=Fals
 		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
 		try:
-			pkg = Atom(pkg, allow_wildcard=allow_wildcard, allow_repo=allow_repo, eapi=eapi)
+			pkg = Atom(pkg, allow_wildcard=allow_wildcard,
+				allow_repo=allow_repo, allow_build_id=allow_build_id,
+				eapi=eapi)
 		except InvalidAtom as e:
 			writemsg(_("--- Invalid atom in %s: %s\n") % (source_file, e),
 				noiselevel=-1)
@@ -999,24 +1007,24 @@ def unique_array(s):
 	return u
 
 def unique_everseen(iterable, key=None):
-    """
-    List unique elements, preserving order. Remember all elements ever seen.
-    Taken from itertools documentation.
-    """
-    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
-    # unique_everseen('ABBCcAD', str.lower) --> A B C D
-    seen = set()
-    seen_add = seen.add
-    if key is None:
-        for element in filterfalse(seen.__contains__, iterable):
-            seen_add(element)
-            yield element
-    else:
-        for element in iterable:
-            k = key(element)
-            if k not in seen:
-                seen_add(k)
-                yield element
+	"""
+	List unique elements, preserving order. Remember all elements ever seen.
+	Taken from itertools documentation.
+	"""
+	# unique_everseen('AAAABBBCCDAABBB') --> A B C D
+	# unique_everseen('ABBCcAD', str.lower) --> A B C D
+	seen = set()
+	seen_add = seen.add
+	if key is None:
+		for element in filterfalse(seen.__contains__, iterable):
+			seen_add(element)
+			yield element
+	else:
+		for element in iterable:
+			k = key(element)
+			if k not in seen:
+				seen_add(k)
+				yield element
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
@@ -1557,7 +1565,7 @@ class LazyItemsDict(UserDict):
 
 class ConfigProtect(object):
 	def __init__(self, myroot, protect_list, mask_list,
-		case_insensitive = False):
+		case_insensitive=False):
 		self.myroot = myroot
 		self.protect_list = protect_list
 		self.mask_list = mask_list
@@ -1575,14 +1583,14 @@ class ConfigProtect(object):
 		for x in self.protect_list:
 			ppath = normalize_path(
 				os.path.join(self.myroot, x.lstrip(os.path.sep)))
-			if self.case_insensitive:
-				ppath = ppath.lower()
+			# Protect files that don't exist (bug #523684). If the
+			# parent directory doesn't exist, we can safely skip it.
+			if os.path.isdir(os.path.dirname(ppath)):
+				self.protect.append(ppath)
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
 					self._dirs.add(ppath)
-				self.protect.append(ppath)
 			except OSError:
-				# If it doesn't exist, there's no need to protect it.
 				pass
 
 		self.protectmask = []
@@ -1683,13 +1691,36 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 	old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
 	if last_pfile and newmd5:
 		try:
-			last_pfile_md5 = portage.checksum._perform_md5_merge(old_pfile)
-		except FileNotFound:
-			# The file suddenly disappeared or it's a broken symlink.
-			pass
+			old_pfile_st = os.lstat(old_pfile)
+		except OSError as e:
+			if e.errno != errno.ENOENT:
+				raise
 		else:
-			if last_pfile_md5 == newmd5:
-				return old_pfile
+			if stat.S_ISLNK(old_pfile_st.st_mode):
+				try:
+					# Read symlink target as bytes, in case the
+					# target path has a bad encoding.
+					pfile_link = os.readlink(_unicode_encode(old_pfile,
+						encoding=_encodings['merge'], errors='strict'))
+				except OSError:
+					if e.errno != errno.ENOENT:
+						raise
+				else:
+					pfile_link = _unicode_decode(
+						encoding=_encodings['merge'], errors='replace')
+					if pfile_link == newmd5:
+						return old_pfile
+			else:
+				try:
+					last_pfile_md5 = \
+						portage.checksum._perform_md5_merge(old_pfile)
+				except FileNotFound:
+					# The file suddenly disappeared or it's a
+					# broken symlink.
+					pass
+				else:
+					if last_pfile_md5 == newmd5:
+						return old_pfile
 	return new_pfile
 
 def find_updated_config_files(target_root, config_protect):

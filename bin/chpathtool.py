@@ -13,13 +13,11 @@ import os
 import stat
 import sys
 
-from portage.util._argparse import ArgumentParser
-
-# Argument parsing compatibility for Python 2.6 using optparse.
-if sys.hexversion < 0x2070000:
+try:
+	from argparse import ArgumentParser
+except ImportError:
+	ArgumentParser = None
 	from optparse import OptionParser
-
-from optparse import OptionError
 
 CONTENT_ENCODING = 'utf_8'
 FS_ENCODING = 'utf_8'
@@ -154,8 +152,8 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	parser = ArgumentParser(description=doc)
-	try:
+	if ArgumentParser is not None:
+		parser = ArgumentParser(description=doc)
 		parser.add_argument('location', default=None,
 			help='root directory (e.g. $D)')
 		parser.add_argument('old', default=None,
@@ -165,9 +163,8 @@ def main(argv):
 		opts = parser.parse_args(argv)
 
 		location, old, new = opts.location, opts.old, opts.new
-	except OptionError:
+	else:
 		# Argument parsing compatibility for Python 2.6 using optparse.
-		if sys.hexversion < 0x2070000:
 			parser = OptionParser(description=doc,
 				usage="usage: %prog [-h] location old new\n\n" + \
 				"  location: root directory (e.g. $D)\n" + \
@@ -178,13 +175,10 @@ def main(argv):
 
 			if len(args) != 3:
 				parser.print_usage()
-				print("%s: error: expected 3 arguments, got %i"
+				parser.error("%s: error: expected 3 arguments, got %i"
 					% (__file__, len(args)))
-				return
 
 			location, old, new = args[0:3]
-		else:
-			raise
 
 	is_text_file = IsTextFile()
 

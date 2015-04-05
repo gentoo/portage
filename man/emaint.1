@@ -1,67 +1,108 @@
-.TH "EMAINT" "1" "Nov 2008" "Portage VERSION" "Portage"
+.TH "EMAINT" "1" "Jan 2015" "Portage VERSION" "Portage"
 .SH NAME
-emaint \- performs system health checks and maintenance
+emaint \- performs package managment related system health checks and maintenance
 .SH SYNOPSIS
 .BR emaint
 [\fIoptions\fR]
 [\fBall\fR | \fBbinhost\fR | \fBcleanresume\fR | \
-\fBmovebin\fR | \fBmoveinst\fR | \fBworld\fR]
+\fBmerges\fR | \fBmovebin\fR | \fBmoveinst\fR | \fBworld\fR]
 .SH DESCRIPTION
-The emaint program provides an interface to system health
-checks and maintenance.
+The emaint program provides a command line interface to package
+management health checks and maintenance.
 .SH COMMANDS
 .TP
 .BR all
-Perform all supported commands.
+Perform all supported commands that accept the specified option.
 .TP
 .BR binhost
 Generate a metadata index for binary packages located in \fBPKGDIR\fR (for
 download by remote clients). See the \fBPORTAGE_BINHOST\fR documentation in
 the \fBmake.conf\fR(5) man page for additional information.
+.br
+OPTIONS: check, fix
 .TP
 .BR cleanconfig
 Discard no longer installed config tracker entries.
+.br
+OPTIONS: check, fix
 .TP
 .BR cleanresume
 Discard merge lists saved for the \fBemerge\fR(1) \fB--resume\fR action.
+.br
+OPTIONS: check, fix
 .TP
 .BR logs
 Clean out old logs from the \fBPORT_LOGDIR\fR using the command
 \fBPORT_LOGDIR_CLEAN\fR
 See the \fBmake.conf\fR(5) man page for additional information as well as
 enabling the \fB'clean-logs'\fR feature in emerge to do this automatically.
+.br
+OPTIONS: check, clean
+.TP
+.BR merges
+Scan for failed package merges and attempt to fix those failed packages.
+.br
+OPTIONS: check, fix, purge
 .TP
 .BR movebin
 Perform package move updates for binary packages located in \fBPKGDIR\fR.
+.br
+OPTIONS: check, fix
 .TP
 .BR moveinst
 Perform package move updates for installed packages.
+.br
+OPTIONS: check, fix
+.TP
+.BR sync
+Perform sync actions on specified repositories.
+.br
+OPTIONS: allrepos, auto, repo
 .TP
 .BR world
 Fix problems in the \fIworld\fR file.
-.SH DEFAULT OPTIONS
+.br
+OPTIONS: check, fix
+.SH DEFAULT OPTIONS (Not supported in all commands)
 .TP
 .B \-c, \-\-check
-Check for any problems that may exist.  (all commands)
+Check for any problems that may exist.
 .TP
 .B \-f, \-\-fix
-Fix any problems that may exist.  (not all commands)
-.SH OPTIONS
+Fix any problems that may exist.
+.SH OPTIONS logs command only
 .TP
 .B \-C, \-\-clean
-Cleans the logs from \fBPORT_LOGDIR\fR (logs command only)
+Cleans the logs from \fBPORT_LOGDIR\fR
 .TP
 .B \-p, \-\-pretend
 Sets pretend mode (same as \-c, \-\-check) for use with the \-C, \-\-clean
-OPTION (logs command only)
+OPTION
 .TP
 .B \-t NUM, \-\-time NUM
 Changes the minimum age \fBNUM\fR (in days) of the logs to be listed or
-deleted. (logs command only)
+deleted.
+.SH OPTIONS sync command only
+.TP
+.B \-a, \-\-auto
+Sync repositories which have its auto\-sync setting set yes, true.
+.TP
+.B \-A, \-\-allrepos
+Sync all repositories which have a sync\-uri specified.
+.TP
+.B \-r, \-\-repo REPO
+Sync the repository specified.
+.TP
+.BR "\-\-sync-submodule <glsa|news|profiles>"
+Restrict sync to the specified submodule(s). This option may be
+specified multiple times, in order to sync multiple submodules.
+Currently, this option has no effect for sync protocols other
+than rsync.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH AUTHORS
 .nf
+Pavel Kazakov <nullishzero@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 Brian Dolbec <dolsen@gentoo.org>
 .fi
@@ -72,6 +113,10 @@ Contains a list of all user\-specified packages.
 .TP
 .B /var/lib/portage/config
 Contains the paths and md5sums of all the config files being tracked.
+.TP
+.B /var/lib/portage/failed-merges
+Contains the packages and timestamps of any failed merges being cleaned from
+the system, and to be re-emerged.
 .SH "SEE ALSO"
 .BR emerge (1),
 .BR portage (5)

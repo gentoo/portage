@@ -1,15 +1,18 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import unicode_literals
 
 import re
 import portage
 from portage import os
 from portage.dbapi.porttree import _parse_uri_map
+from portage.dbapi.IndexedPortdb import IndexedPortdb
+from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.localization import localized_size
 from portage.output import  bold, bold as white, darkgreen, green, red
 from portage.util import writemsg_stdout
+from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
 from _emerge.Package import Package
 
@@ -25,15 +28,17 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, root_config, spinner, searchdesc,
-		verbose, usepkg, usepkgonly):
+		verbose, usepkg, usepkgonly, search_index=True):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
 		self.settings = root_config.settings
-		self.vartree = root_config.trees["vartree"]
-		self.spinner = spinner
 		self.verbose = verbose
 		self.searchdesc = searchdesc
+		self.searchkey = None
+		# Disable the spinner since search results are displayed
+		# incrementally.
+		self.spinner = None
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
 		self.matches = {"pkg" : []}
@@ -45,6 +50,10 @@ class search(object):
 		bindb = root_config.trees["bintree"].dbapi
 		vardb = root_config.trees["vartree"].dbapi
 
+		if search_index:
+			portdb = IndexedPortdb(portdb)
+			vardb = IndexedVardb(vardb)
+
 		if not usepkgonly and portdb._have_root_eclass_dir:
 			self._dbs.append(portdb)
 
@@ -53,16 +62,23 @@ class search(object):
 
 		self._dbs.append(vardb)
 		self._portdb = portdb
+		self._vardb = vardb
 
 	def _spinner_update(self):
 		if self.spinner:
 			self.spinner.update()
 
 	def _cp_all(self):
-		cp_all = set()
+		iterators = []
 		for db in self._dbs:
-			cp_all.update(db.cp_all())
-		return list(sorted(cp_all))
+			i = db.cp_all()
+			try:
+				i = iter(i)
+			except TypeError:
+				pass
+			iterators.append(i)
+		for group in MultiIterGroupBy(iterators):
+			yield group[0]
 
 	def _aux_get(self, *args, **kwargs):
 		for db in self._dbs:
@@ -71,6 +87,11 @@ class search(object):
 			except KeyError:
 				pass
 		raise KeyError(args[0])
+
+	def _aux_get_error(self, cpv):
+		portage.writemsg("emerge: search: "
+			"aux_get('%s') failed, skipping\n" % cpv,
+			noiselevel=-1)
 
 	def _findname(self, *args, **kwargs):
 		for db in self._dbs:
@@ -97,7 +118,7 @@ class search(object):
 		return {}
 
 	def _visible(self, db, cpv, metadata):
-		installed = db is self.vartree.dbapi
+		installed = db is self._vardb
 		built = installed or db is not self._portdb
 		pkg_type = "ebuild"
 		if installed:
@@ -108,6 +129,23 @@ class search(object):
 			root_config=self.root_config,
 			cpv=cpv, built=built, installed=installed,
 			metadata=metadata).visible
+
+	def _first_cp(self, cp):
+
+		for db in self._dbs:
+			if hasattr(db, "cp_list"):
+				matches = db.cp_list(cp)
+				if matches:
+					return matches[-1]
+			else:
+				matches = db.match(cp)
+
+			for cpv in matches:
+				if cpv.cp == cp:
+					return cpv
+
+		return None
+
 
 	def _xmatch(self, level, atom):
 		"""
@@ -135,8 +173,12 @@ class search(object):
 				else:
 					db_keys = list(db._aux_cache_keys)
 					for cpv in db.match(atom):
-						metadata = zip(db_keys,
-							db.aux_get(cpv, db_keys))
+						try:
+							metadata = zip(db_keys,
+								db.aux_get(cpv, db_keys))
+						except KeyError:
+							self._aux_get_error(cpv)
+							continue
 						if not self._visible(db, cpv, metadata):
 							continue
 						matches.add(cpv)
@@ -153,13 +195,25 @@ class search(object):
 						result = cpv
 				else:
 					db_keys = list(db._aux_cache_keys)
+					matches = db.match(atom)
+					try:
+						db.match_unordered
+					except AttributeError:
+						pass
+					else:
+						db._cpv_sort_ascending(matches)
+
 					# break out of this loop with highest visible
 					# match, checked in descending order
-					for cpv in reversed(db.match(atom)):
+					for cpv in reversed(matches):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
-						metadata = zip(db_keys,
-							db.aux_get(cpv, db_keys))
+						try:
+							metadata = zip(db_keys,
+								db.aux_get(cpv, db_keys))
+						except KeyError:
+							self._aux_get_error(cpv)
+							continue
 						if not self._visible(db, cpv, metadata):
 							continue
 						if not result or cpv == portage.best([cpv, result]):
@@ -171,8 +225,11 @@ class search(object):
 
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
+		self.searchkey = searchkey
+
+	def _iter_search(self):
+
 		match_category = 0
-		self.searchkey=searchkey
 		self.packagematches = []
 		if self.searchdesc:
 			self.searchdesc=1
@@ -180,7 +237,7 @@ class search(object):
 		else:
 			self.searchdesc=0
 			self.matches = {"pkg":[], "set":[]}
-		print("Searching...   ", end=' ')
+		writemsg_stdout("Searching...\n\n", noiselevel=-1)
 
 		regexsearch = False
 		if self.searchkey.startswith('%'):
@@ -202,29 +259,25 @@ class search(object):
 			else:
 				match_string  = package.split("/")[-1]
 
-			masked=0
 			if self.searchre.search(match_string):
-				if not self._xmatch("match-visible", package):
-					masked=1
-				self.matches["pkg"].append([package,masked])
+				yield ("pkg", package)
 			elif self.searchdesc: # DESCRIPTION searching
-				full_package = self._xmatch("bestmatch-visible", package)
+				# Use _first_cp to avoid an expensive visibility check,
+				# since the visibility check can be avoided entirely
+				# when the DESCRIPTION does not match.
+				full_package = self._first_cp(package)
 				if not full_package:
-					#no match found; we don't want to query description
-					full_package = portage.best(
-						self._xmatch("match-all", package))
-					if not full_package:
-						continue
-					else:
-						masked=1
+					continue
 				try:
 					full_desc = self._aux_get(
 						full_package, ["DESCRIPTION"])[0]
 				except KeyError:
-					print("emerge: search: aux_get() failed, skipping")
+					self._aux_get_error(full_package)
 					continue
-				if self.searchre.search(full_desc):
-					self.matches["desc"].append([full_package,masked])
+				if not self.searchre.search(full_desc):
+					continue
+
+				yield ("desc", package)
 
 		self.sdict = self.setconfig.getSets()
 		for setname in self.sdict:
@@ -235,51 +288,56 @@ class search(object):
 				match_string = setname.split("/")[-1]
 			
 			if self.searchre.search(match_string):
-				self.matches["set"].append([setname, False])
+				yield ("set", setname)
 			elif self.searchdesc:
 				if self.searchre.search(
 					self.sdict[setname].getMetadata("DESCRIPTION")):
-					self.matches["set"].append([setname, False])
-			
-		self.mlen=0
-		for mtype in self.matches:
-			self.matches[mtype].sort()
-			self.mlen += len(self.matches[mtype])
+					yield ("set", setname)
 
 	def addCP(self, cp):
 		if not self._xmatch("match-all", cp):
 			return
-		masked = 0
-		if not self._xmatch("bestmatch-visible", cp):
-			masked = 1
-		self.matches["pkg"].append([cp, masked])
+		self.matches["pkg"].append(cp)
 		self.mlen += 1
 
 	def output(self):
 		"""Outputs the results of the search."""
-		msg = []
+
+		class msg(object):
+			@staticmethod
+			def append(msg):
+				writemsg_stdout(msg, noiselevel=-1)
+
 		msg.append("\b\b  \n[ Results for search key : " + \
 			bold(self.searchkey) + " ]\n")
-		msg.append("[ Applications found : " + \
-			bold(str(self.mlen)) + " ]\n\n")
-		vardb = self.vartree.dbapi
+		vardb = self._vardb
 		metadata_keys = set(Package.metadata_keys)
 		metadata_keys.update(["DESCRIPTION", "HOMEPAGE", "LICENSE", "SRC_URI"])
 		metadata_keys = tuple(metadata_keys)
-		for mtype in self.matches:
-			for match,masked in self.matches[mtype]:
+
+		if self.searchkey is None:
+			# Handle results added via addCP
+			addCP_matches = []
+			for mytype, match in self.matches.items():
+				addCP_matches.append(mytype, match)
+			iterator = iter(addCP_matches)
+
+		else:
+			# Do a normal search
+			iterator = self._iter_search()
+
+		for mtype, match in iterator:
+				self.mlen += 1
+				masked = False
 				full_package = None
-				if mtype == "pkg":
+				if mtype in ("pkg", "desc"):
 					full_package = self._xmatch(
 						"bestmatch-visible", match)
 					if not full_package:
-						#no match found; we don't want to query description
-						masked=1
-						full_package = portage.best(
-							self._xmatch("match-all",match))
-				elif mtype == "desc":
-					full_package = match
-					match        = portage.cpv_getkey(match)
+						masked = True
+						full_package = self._xmatch("match-all", match)
+						if full_package:
+							full_package = full_package[-1]
 				elif mtype == "set":
 					msg.append(green("*") + "  " + bold(match) + "\n")
 					if self.verbose:
@@ -292,7 +350,7 @@ class search(object):
 						metadata = dict(zip(metadata_keys,
 							self._aux_get(full_package, metadata_keys)))
 					except KeyError:
-						msg.append("emerge: search: aux_get() failed, skipping\n")
+						self._aux_get_error(full_package)
 						continue
 
 					desc = metadata["DESCRIPTION"]
@@ -367,12 +425,26 @@ class search(object):
 							+ "   " + desc + "\n")
 						msg.append("      " + darkgreen("License:") + \
 							"       " + license + "\n\n")
-		writemsg_stdout(''.join(msg), noiselevel=-1)
+
+		msg.append("[ Applications found : " + \
+			bold(str(self.mlen)) + " ]\n\n")
+
+		# This method can be called multiple times, so
+		# reset the match count for the next call. Don't
+		# reset it at the beginning of this method, since
+		# that would lose modfications from the addCP
+		# method.
+		self.mlen = 0
+
 	#
 	# private interface
 	#
 	def getInstallationStatus(self,package):
-		installed_package = self.vartree.dep_bestmatch(package)
+		installed_package = self._vardb.match(package)
+		if installed_package:
+			installed_package = installed_package[-1]
+		else:
+			installed_package = ""
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
 		if len(version) > 0:

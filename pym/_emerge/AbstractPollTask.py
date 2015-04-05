@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -78,33 +78,39 @@ class AbstractPollTask(AsynchronousTask):
 
 	def _read_buf(self, fd, event):
 		"""
-		| POLLIN | RETURN
-		| BIT    | VALUE
-		| ---------------------------------------------------
-		| 1      | Read self._bufsize into a string of bytes,
-		|        | handling EAGAIN and EIO. An empty string
-		|        | of bytes indicates EOF.
-		| ---------------------------------------------------
-		| 0      | None
+		Read self._bufsize into a string of bytes, handling EAGAIN and
+		EIO. This will only call os.read() once, so the caller should
+		call this method in a loop until either None or an empty string
+		of bytes is returned. An empty string of bytes indicates EOF.
+		None indicates EAGAIN.
+
+		NOTE: os.read() will be called regardless of the event flags,
+			since otherwise data may be lost (see bug #531724).
+
+		@param fd: file descriptor (non-blocking mode required)
+		@type fd: int
+		@param event: poll event flags
+		@type event: int
+		@rtype: bytes or None
+		@return: A string of bytes, or None
 		"""
 		# NOTE: array.fromfile() is no longer used here because it has
 		# bugs in all known versions of Python (including Python 2.7
 		# and Python 3.2).
 		buf = None
-		if event & self.scheduler.IO_IN:
-			try:
-				buf = os.read(fd, self._bufsize)
-			except OSError as e:
-				# EIO happens with pty on Linux after the
-				# slave end of the pty has been closed.
-				if e.errno == errno.EIO:
-					# EOF: return empty string of bytes
-					buf = b''
-				elif e.errno == errno.EAGAIN:
-					# EAGAIN: return None
-					buf = None
-				else:
-					raise
+		try:
+			buf = os.read(fd, self._bufsize)
+		except OSError as e:
+			# EIO happens with pty on Linux after the
+			# slave end of the pty has been closed.
+			if e.errno == errno.EIO:
+				# EOF: return empty string of bytes
+				buf = b''
+			elif e.errno == errno.EAGAIN:
+				# EAGAIN: return None
+				buf = None
+			else:
+				raise
 
 		return buf
 

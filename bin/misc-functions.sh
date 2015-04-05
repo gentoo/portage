@@ -167,7 +167,7 @@ prepcompress() {
 }
 
 install_qa_check() {
-	local f i qa_var x
+	local d f i qa_var x paths qa_checks=() checks_run=()
 	if ! ___eapi_has_prefix_variables; then
 		local EPREFIX= ED=${D}
 	fi
@@ -176,32 +176,53 @@ install_qa_check() {
 	cd "${D}" || die "cd failed"
 	# END PREFIX LOCAL
 
-	# Run QA checks from install-qa-check.d.
-	# Note: checks need to be run *before* stripping.
-	local f
-	# TODO: handle nullglob-like
-	for f in "${PORTAGE_BIN_PATH}"/install-qa-check.d/*; do
-		# Run in a subshell to treat it like external script,
-		# but use 'source' to pass all variables through.
-		(
-			source "${f}" || eerror "Post-install QA check ${f##*/} failed to run"
+	# Collect the paths for QA checks, highest prio first.
+	paths=(
+		# sysadmin overrides
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/local/lib/install-qa-check.d
+		# system-wide package installs
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/install-qa-check.d
+	)
+
+	# Now repo-specific checks.
+	# (yes, PORTAGE_ECLASS_LOCATIONS contains repo paths...)
+	for d in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
+		paths+=(
+			"${d}"/metadata/install-qa-check.d
 		)
 	done
 
-	# Run QA checks from repositories
-	# (yes, PORTAGE_ECLASS_LOCATIONS contains repo paths...)
-	local repo_location
-	for repo_location in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
-		for f in "${repo_location}"/metadata/install-qa-check.d/*; do
-			if [[ -f ${f} ]]; then
-				(
-					# allow inheriting eclasses
-					_IN_INSTALL_QA_CHECK=1
-					source "${f}" || eerror "Post-install QA check ${f##*/} failed to run"
-				)
-			fi
+	paths+=(
+		# Portage built-in checks
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/portage/install-qa-check.d
+		"${PORTAGE_BIN_PATH}"/install-qa-check.d
+	)
+
+	# Collect file names of QA checks. We need them early to support
+	# overrides properly.
+	for d in "${paths[@]}"; do
+		for f in "${d}"/*; do
+			[[ -f ${f} ]] && qa_checks+=( "${f##*/}" )
 		done
 	done
+
+	# Now we need to sort the filenames lexically, and process
+	# them in order.
+	while read -r -d '' f; do
+		# Find highest priority file matching the basename.
+		for d in "${paths[@]}"; do
+			[[ -f ${d}/${f} ]] && break
+		done
+
+		# Run in a subshell to treat it like external script,
+		# but use 'source' to pass all variables through.
+		(
+			# Allow inheriting eclasses.
+			# XXX: we want this only in repository-wide checks.
+			_IN_INSTALL_QA_CHECK=1
+			source "${d}/${f}" || eerror "Post-install QA check ${f} failed to run"
+		)
+	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 
 	export STRIP_MASK
 	prepall
@@ -1025,7 +1046,7 @@ preinst_selinux_labels() {
 				addwrite /selinux/context
 				addwrite /sys/fs/selinux/context
 
-				/usr/sbin/setfiles "${file_contexts_path}" -r "${D}" "${D}"
+				/usr/sbin/setfiles -F "${file_contexts_path}" -r "${D}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
@@ -1182,6 +1203,10 @@ install_hooks() {
 	done
 	shopt -u nullglob
 	return $ret
+}
+
+eqatag() {
+	__eqatag "${@}"
 }
 
 if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then

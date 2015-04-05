@@ -58,6 +58,7 @@ from portage import _encodings
 from portage import _unicode_encode
 import repoman.checks
 from repoman.checks import run_checks
+from repoman.check_missingslot import check_missingslot
 from repoman import utilities
 from repoman.herdbase import make_herd_base
 from _emerge.Package import Package
@@ -190,6 +191,9 @@ def ParseArgs(argv, qahelp):
 	parser.add_argument('-f', '--force', dest='force', default=False, action='store_true',
 		help='Commit with QA violations')
 
+	parser.add_argument('-S', '--straight-to-stable', dest='straight_to_stable', default=False,
+		action='store_true', help='Allow committing straight to stable')
+
 	parser.add_argument('--vcs', dest='vcs',
 		help='Force using specific VCS instead of autodetection')
 
@@ -299,6 +303,7 @@ qahelp = {
 	"dependency.badindev": "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in developing arch",
 	"dependency.badmaskedindev": "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in developing arch",
 	"dependency.badtilde": "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"dependency.missingslot": "RDEPEND matches more than one SLOT but does not specify a slot and/or use the := or :* slot operator",
 	"dependency.perlcore": "This ebuild directly depends on a package in perl-core; it should use the corresponding virtual instead.",
 	"dependency.syntax": "Syntax error in dependency string (usually an extra/missing space/parenthesis)",
 	"dependency.unknown": "Ebuild has a dependency that refers to an unknown package (which may be valid if it is a blocker for a renamed/removed package, or is an alternative choice provided by an overlay)",
@@ -387,6 +392,7 @@ qawarnings = set((
 "dependency.badindev",
 "dependency.badmaskedindev",
 "dependency.badtilde",
+"dependency.missingslot",
 "dependency.perlcore",
 "DESCRIPTION.toolong",
 "EAPI.deprecated",
@@ -418,6 +424,7 @@ qawarnings = set((
 "LIVEVCS.stable",
 "LIVEVCS.unmasked",
 "IUSE.rubydeprecated",
+"SRC_URI.mirror",
 ))
 
 non_ascii_re = re.compile(r'[^\x00-\x7f]')
@@ -1185,7 +1192,10 @@ mychanged = []
 mynew = []
 myremoved = []
 
-if vcs == "cvs":
+if (options.if_modified != "y" and
+	options.mode in ("manifest", "manifest-check")):
+	pass
+elif vcs == "cvs":
 	mycvstree = cvstree.getentries("./", recursive=1)
 	mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
 	mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
@@ -1903,18 +1913,19 @@ for x in effective_scanlist:
 				(relative_path, len(myaux['DESCRIPTION']), max_desc_len))
 
 		keywords = myaux["KEYWORDS"].split()
-		stable_keywords = []
-		for keyword in keywords:
-			if not keyword.startswith("~") and \
-				not keyword.startswith("-"):
-				stable_keywords.append(keyword)
-		if stable_keywords:
-			if ebuild_path in new_ebuilds and catdir != "virtual":
-				stable_keywords.sort()
-				stats["KEYWORDS.stable"] += 1
-				fails["KEYWORDS.stable"].append(
-					x + "/" + y + ".ebuild added with stable keywords: %s" % \
-						" ".join(stable_keywords))
+		if not options.straight_to_stable:
+			stable_keywords = []
+			for keyword in keywords:
+				if not keyword.startswith("~") and \
+					not keyword.startswith("-"):
+					stable_keywords.append(keyword)
+			if stable_keywords:
+				if ebuild_path in new_ebuilds and catdir != "virtual":
+					stable_keywords.sort()
+					stats["KEYWORDS.stable"] += 1
+					fails["KEYWORDS.stable"].append(
+						relative_path + " added with stable keywords: %s" % \
+							" ".join(stable_keywords))
 
 		ebuild_archs = set(kw.lstrip("~") for kw in keywords \
 			if not kw.startswith("-"))
@@ -2091,6 +2102,9 @@ for x in effective_scanlist:
 							(relative_path + ": %s uses the ~ operator"
 							 " with a non-zero revision:" + \
 							 " '%s'") % (mytype, atom))
+
+					check_missingslot(atom, mytype, eapi, portdb, stats, fails,
+						relative_path, myaux)
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
@@ -2315,7 +2329,8 @@ for x in effective_scanlist:
 
 			if not baddepsyntax:
 				ismasked = not ebuild_archs or \
-					pkg.cpv not in portdb.xmatch("match-visible", pkg.cp)
+					pkg.cpv not in portdb.xmatch("match-visible",
+					Atom("%s::%s" % (pkg.cp, repo_config.name)))
 				if ismasked:
 					if not have_pmasked:
 						have_pmasked = bool(dep_settings._getMaskAtom(

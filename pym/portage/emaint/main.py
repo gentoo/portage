@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -9,8 +9,8 @@ import textwrap
 
 import portage
 from portage import os
-from portage.emaint.module import Modules
-from portage.emaint.progress import ProgressBar
+from portage.module import Modules
+from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
 from portage.util._argparse import ArgumentParser
 
@@ -34,6 +34,7 @@ class OptionItem(object):
 		self.action = opt.get('action')
 		self.type = opt.get('type')
 		self.dest = opt.get('dest')
+		self.choices = opt.get('choices')
 
 	@property
 	def pargs(self):
@@ -58,6 +59,8 @@ class OptionItem(object):
 			kwargs['type'] = self.type
 		if self.dest is not None:
 			kwargs['dest'] = self.dest
+		if self.choices is not None:
+			kwargs['choices'] = self.choices
 		return kwargs
 
 def usage(module_controller):
@@ -89,7 +92,10 @@ def module_opts(module_controller, module):
 		opts = DEFAULT_OPTIONS
 	for opt in sorted(opts):
 		optd = opts[opt]
-		opto = "  %s, %s" % (optd['short'], optd['long'])
+		if 'short' in optd:
+			opto = "  %s, %s" % (optd['short'], optd['long'])
+		else:
+			opto = "  %s" % (optd['long'],)
 		_usage += '%s %s\n' % (opto.ljust(15), optd['help'])
 	_usage += '\n'
 	return _usage
@@ -113,7 +119,7 @@ class TaskHandler(object):
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
-			# check if the function is capable of progressbar 
+			# check if the function is capable of progressbar
 			# and possibly override it off
 			if show_progress and hasattr(inst, 'can_progressbar'):
 				show_progress = inst.can_progressbar(func)
@@ -153,7 +159,13 @@ def emaint_main(myargv):
 	# files (such as the world file) have sane permissions.
 	os.umask(0o22)
 
-	module_controller = Modules(namepath="portage.emaint.modules")
+	module_path = os.path.join(
+		(os.path.dirname(
+		os.path.realpath(__file__))), "modules"
+		)
+	module_controller = Modules(
+		path=module_path,
+		namepath="portage.emaint.modules")
 	module_names = module_controller.module_names[:]
 	module_names.insert(0, "all")
 
@@ -165,6 +177,10 @@ def emaint_main(myargv):
 		parser_options.append(OptionItem(DEFAULT_OPTIONS[opt]))
 	for mod in module_names[1:]:
 		desc = module_controller.get_func_descriptions(mod)
+		if desc:
+			for opt in desc:
+				parser_options.append(OptionItem(desc[opt]))
+		desc = module_controller.get_opt_descriptions(mod)
 		if desc:
 			for opt in desc:
 				parser_options.append(OptionItem(desc[opt]))
@@ -206,9 +222,9 @@ def emaint_main(myargv):
 		tasks = []
 		for m in module_names[1:]:
 			#print("DEBUG: module: %s, functions: " % (m, str(module_controller.get_functions(m))))
-			if func in module_controller.get_functions(m):
+			if long_action in module_controller.get_functions(m):
 				tasks.append(module_controller.get_class(m))
-	elif func in module_controller.get_functions(args[0]):
+	elif long_action in module_controller.get_functions(args[0]):
 		tasks = [module_controller.get_class(args[0] )]
 	else:
 		portage.util.writemsg(
@@ -221,5 +237,6 @@ def emaint_main(myargv):
 	# need to pass the parser options dict to the modules
 	# so they are available if needed.
 	task_opts = options.__dict__
+	task_opts['return-messages'] = True
 	taskmaster = TaskHandler(callback=print_results, module_output=sys.stdout)
 	taskmaster.run_tasks(tasks, func, status, options=task_opts)

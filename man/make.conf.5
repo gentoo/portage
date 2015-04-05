@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Apr 2014" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2015" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -14,6 +14,9 @@ features like arrays and special parameter expansions. For more details, see
 the Simple lexical analysis documentation:
 \fLhttp://docs.python.org/3/library/shlex.html\fR. Note that if you source
 files, they need to be in the same shlex syntax for portage to read them.
+If make.conf is a directory, then all the files in that directory will
+be sorted in ascending alphabetical order by file name and summed
+together as if it were a single file.
 .br
 Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
@@ -256,6 +259,33 @@ has a \fB\-\-force\fR option that can be used to force regeneration of digests.
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORT_LOGDIR\fR is set.
 .TP
+.B binpkg\-multi\-instance
+Enable support for multiple binary package instances per ebuild.
+Having multiple instances is useful for a number of purposes, such as
+retaining builds that were built with different USE flags or linked
+against different versions of libraries. The location of any particular
+package within PKGDIR can be expressed as follows:
+
+	${PKGDIR}/${CATEGORY}/${PN}/${PF}\-${BUILD_ID}.xpak
+
+The build\-id starts at 1 for the first build of a particular ebuild,
+and is incremented by 1 for each new build. It is possible to share a
+writable PKGDIR over NFS, and locking ensures that each package added
+to PKGDIR will have a unique build\-id. It is not necessary to migrate
+an existing PKGDIR to the new layout, since portage is capable of
+working with a mixed PKGDIR layout, where packages using the old layout
+are allowed to remain in place.
+
+The new PKGDIR layout is backward\-compatible with binhost clients
+running older portage, since the file format is identical, the
+per\-package PATH attribute in the 'Packages' index directs them to
+download the file from the correct URI, and they automatically use
+BUILD_TIME metadata to select the latest builds.
+
+There is currently no automated way to prune old builds from PKGDIR,
+although it is possible to remove packages manually, and then run
+\(aqemaint \-\-fix binhost' to update the ${PKGDIR}/Packages index.
+.TP
 .B buildpkg
 Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and
@@ -270,7 +300,9 @@ dependencies.
 .TP
 .B case\-insensitive\-fs
 Use case\-insensitive file name comparisions when merging and unmerging
-files.
+files. Most users should not enable this feature, since most filesystems
+are case\-sensitive. You should only enable this feature if you are
+using portage to install files to a case\-insensitive filesystem.
 .TP
 .B ccache
 Enable portage support for the ccache package.  If the ccache dir is not
@@ -434,6 +466,13 @@ from putting 64bit libraries into anything other than (/usr)/lib64.
 .B network\-sandbox
 Isolate the ebuild phase functions from host network interfaces.
 Supported only on Linux. Requires network namespace support in kernel.
+
+If asyncio Python module is available (requires Python 3.3, built-in
+since Python 3.4) Portage will additionally spawn an isolated SOCKSv5
+proxy on UNIX socket. The socket address will be exported
+as PORTAGE_SOCKS5_PROXY and the processes running inside the sandbox
+can use it to access host's network when desired. Portage automatically
+configures new enough distcc to use the proxy.
 .TP
 .B news
 Enable GLEP 42 news support. See
@@ -617,7 +656,7 @@ Enable the sandbox in the compile phase, when running without root privs
 (\fIuserpriv\fR).
 .TP
 .B usersync
-Drop privileges to the owner of ${repository_location} for \fBemerge(1) --sync\fR
+Drop privileges to the owner of ${repository_location} for \fBemerge\fR(1) --sync
 operations. Note that this feature assumes that all subdirectories of
 ${repository_location} have the same ownership as ${repository_location} itself.
 It is the user's responsibility to ensure correct ownership, since otherwise

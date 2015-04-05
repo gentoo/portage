@@ -17,6 +17,7 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
 from portage.update import grab_updates, parse_updates, update_dbentries
 from portage.versions import _pkg_str
+from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -24,12 +25,15 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-class FakeVardbapi(PackageVirtualDbapi):
+class FakeVardbGetPath(object):
 	"""
 	Implements the vardbapi.getpath() method which is used in error handling
 	code for the Package class and vartree.get_provide().
 	"""
-	def getpath(self, cpv, filename=None):
+	def __init__(self, vardb):
+		self.settings = vardb.settings
+
+	def __call__(self, cpv, filename=None):
 		path = os.path.join(self.settings['EROOT'], VDB_PATH, cpv)
 		if filename is not None:
 			path =os.path.join(path, filename)
@@ -50,7 +54,8 @@ class FakeVartree(vartree):
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
 	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
-		dynamic_deps=True, ignore_built_slot_operator_deps=False):
+		dynamic_deps=True, ignore_built_slot_operator_deps=False,
+		soname_deps=False):
 		self._root_config = root_config
 		self._dynamic_deps = dynamic_deps
 		self._ignore_built_slot_operator_deps = ignore_built_slot_operator_deps
@@ -68,7 +73,10 @@ class FakeVartree(vartree):
 			mykeys.append("_mtime_")
 		self._db_keys = mykeys
 		self._pkg_cache = pkg_cache
-		self.dbapi = FakeVardbapi(real_vartree.settings)
+		self.dbapi = PackageVirtualDbapi(real_vartree.settings)
+		if soname_deps:
+			self.dbapi = PackageDbapiProvidesIndex(self.dbapi)
+		self.dbapi.getpath = FakeVardbGetPath(self.dbapi)
 		self.dbapi._aux_cache_keys = set(self._db_keys)
 
 		# Initialize variables needed for lazy cache pulls of the live ebuild

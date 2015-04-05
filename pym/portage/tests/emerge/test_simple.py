@@ -217,6 +217,8 @@ pkg_preinst() {
 		self.assertFalse(test_ebuild is None)
 
 		cross_prefix = os.path.join(eprefix, "cross_prefix")
+		cross_root = os.path.join(eprefix, "cross_root")
+		cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
 
 		test_commands = (
 			env_update_cmd,
@@ -318,6 +320,10 @@ pkg_preinst() {
 				portageq_cmd + ("has_version", cross_prefix, "dev-libs/A"),
 			({"EPREFIX" : cross_prefix},) + \
 				portageq_cmd + ("has_version", cross_prefix, "dev-libs/B"),
+
+			# Test ROOT support
+			({"ROOT": cross_root},) + emerge_cmd + ("dev-libs/B",),
+			portageq_cmd + ("has_version", cross_eroot, "dev-libs/B"),
 		)
 
 		distdir = playground.distdir
@@ -372,8 +378,8 @@ pkg_preinst() {
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"]
 
 		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
-		dirs = [cachedir, cachedir_pregen, distdir, fake_bin,
-			portage_tmpdir, updates_dir,
+		dirs = [cachedir, cachedir_pregen, cross_eroot, cross_prefix,
+			distdir, fake_bin, portage_tmpdir, updates_dir,
 			user_config_dir, var_cache_edb]
 		etc_symlinks = ("dispatch-conf.conf", "etc-update.conf")
 		# Override things that may be unavailable, or may have portability

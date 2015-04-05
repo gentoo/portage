@@ -15,7 +15,7 @@ import sys
 import portage
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
-from portage.dep import cpvequal, _repo_separator, _slot_separator
+from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidDependString, SignatureException
 from portage.localization import localized_size
@@ -387,9 +387,7 @@ class Display(object):
 						if old_pkg.slot != old_pkg.sub_slot or \
 							old_pkg.slot == pkg.slot and old_pkg.sub_slot != pkg.sub_slot:
 							key += "/" + old_pkg.sub_slot
-					if not self.quiet_repo_display and (self.verbose_main_repo_display or
-						self.portdb.repositories.mainRepo() is None or
-						any(x.repo != self.portdb.repositories.mainRepo().name for x in myoldbest + [pkg])):
+					if not self.quiet_repo_display:
 						key += _repo_separator + old_pkg.repo
 				versions.append(key)
 			myoldbest_str = blue("["+", ".join(versions)+"]")
@@ -422,10 +420,20 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype string
 		"""
-		if not self.quiet_repo_display and (self.verbose_main_repo_display or
-			self.portdb.repositories.mainRepo() is None or
-			any(x.repo != self.portdb.repositories.mainRepo().name for x in pkg_info.oldbest_list + [pkg])):
+		if not self.quiet_repo_display:
 			pkg_str += _repo_separator + pkg.repo
+		return pkg_str
+
+	def _append_build_id(self, pkg_str, pkg, pkg_info):
+		"""Potentially appends repository to package string.
+
+		@param pkg_str: string
+		@param pkg: _emerge.Package.Package instance
+		@param pkg_info: dictionary
+		@rtype string
+		"""
+		if pkg.type_name == "binary" and pkg.cpv.build_id is not None:
+			pkg_str += "-%s" % pkg.cpv.build_id
 		return pkg_str
 
 	def _set_non_root_columns(self, pkg, pkg_info):
@@ -435,7 +443,7 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype string
 		"""
-		ver_str = pkg_info.ver
+		ver_str = self._append_build_id(pkg_info.ver, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
@@ -474,7 +482,7 @@ class Display(object):
 		@rtype string
 		Modifies self.verboseadd
 		"""
-		ver_str = pkg_info.ver
+		ver_str = self._append_build_id(pkg_info.ver, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
@@ -511,7 +519,7 @@ class Display(object):
 		@param pkg_info: dictionary
 		@rtype the updated addl
 		"""
-		pkg_str = pkg.cpv
+		pkg_str = self._append_build_id(pkg.cpv, pkg, pkg_info)
 		if self.conf.verbosity == 3:
 			pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
 			pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
@@ -663,7 +671,8 @@ class Display(object):
 
 		if self.vardb.cpv_exists(pkg.cpv):
 			# Do a cpv match first, in case the SLOT has changed.
-			pkg_info.previous_pkg = self.vardb.match_pkgs('=' + pkg.cpv)[0]
+			pkg_info.previous_pkg = self.vardb.match_pkgs(
+				Atom('=' + pkg.cpv))[0]
 		else:
 			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
 			if slot_matches:
@@ -746,7 +755,7 @@ class Display(object):
 		"""
 		myoldbest = []
 		myinslotlist = None
-		installed_versions = self.vardb.match_pkgs(pkg.cp)
+		installed_versions = self.vardb.match_pkgs(Atom(pkg.cp))
 		if self.vardb.cpv_exists(pkg.cpv):
 			pkg_info.attr_display.replace = True
 			installed_version = pkg_info.previous_pkg
@@ -819,7 +828,6 @@ class Display(object):
 			# and disable the entire repo display in this case.
 			repoadd_set = set()
 
-		self.verbose_main_repo_display = "--verbose-main-repo-display" in depgraph._frozen_config.myopts
 		self.restrict_fetch_list = {}
 
 		for mylist_index in range(len(mylist)):
@@ -872,7 +880,8 @@ class Display(object):
 					if self.conf.columns:
 						myprint = self._set_non_root_columns(pkg, pkg_info)
 					else:
-						pkg_str = pkg.cpv
+						pkg_str = self._append_build_id(
+							pkg.cpv, pkg, pkg_info)
 						if self.conf.verbosity == 3:
 							pkg_str = self._append_slot(pkg_str, pkg, pkg_info)
 							pkg_str = self._append_repository(pkg_str, pkg, pkg_info)
@@ -935,6 +944,9 @@ def format_unmatched_atom(pkg, atom, pkg_use_enabled):
 	#   3. slot/sub_slot
 	#	4. repository
 	#	5. USE
+
+	if atom.soname:
+		return "%s" % (atom,), ""
 
 	highlight = set()
 

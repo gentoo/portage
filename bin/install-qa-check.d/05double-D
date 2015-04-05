@@ -2,12 +2,13 @@
 
 DD_check() {
 	if [[ -d ${D%/}${D} ]] ; then
-		local -i INSTALLTOD=0
+		eqawarn "QA Notice: files installed in \${D}/\${D}:"
+		local files=()
 		while read -r -d $'\0' i ; do
-			eqawarn "QA Notice: /${i##${D%/}${D}} installed in \${D}/\${D}"
-			((INSTALLTOD++))
+			files+=( "${i#${D%/}${D}}" )
 		done < <(find "${D%/}${D}" -print0)
-		die "Aborting due to QA concerns: ${INSTALLTOD} files installed in ${D%/}${D}"
+		eqatag -v double-D "${files[@]/#//}"
+		die "Aborting due to QA concerns: ${#files[@]} files installed in ${D%/}${D}"
 	fi
 }
 

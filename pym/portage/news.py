@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2013 Gentoo Foundation
+# Copyright 2006-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -27,20 +27,20 @@ from portage.dep import isvalidatom
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.output import colorize
-from portage.exception import InvalidLocation, OperationNotPermitted, \
-	PermissionDenied
+from portage.exception import (InvalidLocation, OperationNotPermitted,
+	PermissionDenied, ReadOnlyFileSystem)
 
 class NewsManager(object):
 	"""
 	This object manages GLEP 42 style news items.  It will cache news items
 	that have previously shown up and notify users when there are relevant news
 	items that apply to their packages that the user has not previously read.
-	
+
 	Creating a news manager requires:
 	root - typically ${ROOT} see man make.conf and man emerge for details
 	news_path - path to news items; usually $REPODIR/metadata/news
 	unread_path - path to the news.repoid.unread file; this helps us track news items
-	
+
 	"""
 
 	def __init__(self, portdb, vardb, news_path, unread_path, language_id='en'):
@@ -180,7 +180,8 @@ class NewsManager(object):
 		unread_lock = None
 		try:
 			unread_lock = lockfile(unread_filename, wantnewlockfile=1)
-		except (InvalidLocation, OperationNotPermitted, PermissionDenied):
+		except (InvalidLocation, OperationNotPermitted, PermissionDenied,
+			ReadOnlyFileSystem):
 			pass
 		try:
 			try:
@@ -420,5 +421,5 @@ def display_news_notifications(news_counts):
 
 	if newsReaderDisplay:
 		print(colorize("WARN", " *"), end=' ')
-		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
+		print("Use " + colorize("GOOD", "eselect news read") + " to view new items.")
 		print()

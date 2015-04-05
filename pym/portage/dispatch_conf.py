@@ -6,11 +6,17 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
-import os, shutil, subprocess, sys
+import io
+import functools
+import stat
+import subprocess
+import sys
+import tempfile
 
 import portage
+from portage import _encodings, os, shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
@@ -50,6 +56,66 @@ def diffstatusoutput(cmd, file1, file2):
 		# getstatusoutput strips one newline
 		output = output[:-1]
 	return (proc.wait(), output)
+
+def diff_mixed(func, file1, file2):
+	tempdir = None
+	try:
+		if os.path.islink(file1) and \
+			not os.path.islink(file2) and \
+			os.path.isfile(file1) and \
+			os.path.isfile(file2):
+			# If a regular file replaces a symlink to a regular
+			# file, then show the diff between the regular files
+			# (bug #330221).
+			diff_files = (file2, file2)
+		else:
+			files = [file1, file2]
+			diff_files = [file1, file2]
+			for i in range(len(diff_files)):
+				try:
+					st = os.lstat(diff_files[i])
+				except OSError:
+					st = None
+				if st is not None and stat.S_ISREG(st.st_mode):
+					continue
+
+				if tempdir is None:
+					tempdir = tempfile.mkdtemp()
+				diff_files[i] = os.path.join(tempdir, "%d" % i)
+				if st is None:
+					content = "/dev/null\n"
+				elif stat.S_ISLNK(st.st_mode):
+					link_dest = os.readlink(files[i])
+					content = "SYM: %s -> %s\n" % \
+						(file1, link_dest)
+				elif stat.S_ISDIR(st.st_mode):
+					content = "DIR: %s\n" % (file1,)
+				elif stat.S_ISFIFO(st.st_mode):
+					content = "FIF: %s\n" % (file1,)
+				else:
+					content = "DEV: %s\n" % (file1,)
+				with io.open(diff_files[i], mode='w',
+					encoding=_encodings['stdio']) as f:
+					f.write(content)
+
+		return func(diff_files[0], diff_files[1])
+
+	finally:
+		if tempdir is not None:
+			shutil.rmtree(tempdir)
+
+class diff_mixed_wrapper(object):
+
+	def __init__(self, f, *args):
+		self._func = f
+		self._args = args
+
+	def __call__(self, *args):
+		return diff_mixed(
+			functools.partial(self._func, *(self._args + args[:-2])),
+			*args[-2:])
+
+diffstatusoutput_mixed = diff_mixed_wrapper(diffstatusoutput)
 
 def read_config(mandatory_opts):
 	eprefix = portage.settings["EPREFIX"]
@@ -91,6 +157,38 @@ def read_config(mandatory_opts):
 
 	return opts
 
+def _archive_copy(src_st, src_path, dest_path):
+	"""
+	Copy file from src_path to dest_path. Regular files and symlinks
+	are supported. If an EnvironmentError occurs, then it is logged
+	to stderr.
+
+	@param src_st: source file lstat result
+	@type src_st: posix.stat_result
+	@param src_path: source file path
+	@type src_path: str
+	@param dest_path: destination file path
+	@type dest_path: str
+	"""
+	# Remove destination file in order to ensure that the following
+	# symlink or copy2 call won't fail (see bug #535850).
+	try:
+		os.unlink(dest_path)
+	except OSError:
+		pass
+	try:
+		if stat.S_ISLNK(src_st.st_mode):
+			os.symlink(os.readlink(src_path), dest_path)
+		else:
+			shutil.copy2(src_path, dest_path)
+	except EnvironmentError as e:
+		portage.util.writemsg(
+			_('dispatch-conf: Error copying %(src_path)s to '
+			'%(dest_path)s: %(reason)s\n') % {
+				"src_path": src_path,
+				"dest_path": dest_path,
+				"reason": e
+			}, noiselevel=-1)
 
 def rcs_archive(archive, curconf, newconf, mrgconf):
 	"""Archive existing config in rcs (on trunk). Then, if mrgconf is
@@ -104,35 +202,43 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 	except OSError:
 		pass
 
-	if os.path.isfile(curconf):
-		try:
-			shutil.copy2(curconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+	try:
+		curconf_st = os.lstat(curconf)
+	except OSError:
+		curconf_st = None
 
-	if os.path.exists(archive + ',v'):
+	if curconf_st is not None and \
+		(stat.S_ISREG(curconf_st.st_mode) or
+		stat.S_ISLNK(curconf_st.st_mode)):
+		_archive_copy(curconf_st, curconf, archive)
+
+	if os.path.lexists(archive + ',v'):
 		os.system(RCS_LOCK + ' ' + archive)
 	os.system(RCS_PUT + ' ' + archive)
 
 	ret = 0
-	if newconf != '':
+	mystat = None
+	if newconf:
+		try:
+			mystat = os.lstat(newconf)
+		except OSError:
+			pass
+
+	if mystat is not None and \
+		(stat.S_ISREG(mystat.st_mode) or
+		stat.S_ISLNK(mystat.st_mode)):
 		os.system(RCS_GET + ' -r' + RCS_BRANCH + ' ' + archive)
-		has_branch = os.path.exists(archive)
+		has_branch = os.path.lexists(archive)
 		if has_branch:
 			os.rename(archive, archive + '.dist')
 
-		try:
-			shutil.copy2(newconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"newconf": newconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+		_archive_copy(mystat, newconf, archive)
 
 		if has_branch:
-			if mrgconf != '':
+			if mrgconf and os.path.isfile(archive) and \
+				os.path.isfile(mrgconf):
 				# This puts the results of the merge into mrgconf.
 				ret = os.system(RCS_MERGE % (archive, mrgconf))
-				mystat = os.lstat(newconf)
 				os.chmod(mrgconf, mystat.st_mode)
 				os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
 		os.rename(archive, archive + '.dist.new')
@@ -154,10 +260,11 @@ def file_archive(archive, curconf, newconf, mrgconf):
 		pass
 
 	# Archive the current config file if it isn't already saved
-	if (os.path.exists(archive) and
-		len(diffstatusoutput("diff -aq '%s' '%s'", curconf, archive)[1]) != 0):
+	if (os.path.lexists(archive) and
+		len(diffstatusoutput_mixed(
+		"diff -aq '%s' '%s'", curconf, archive)[1]) != 0):
 		suf = 1
-		while suf < 9 and os.path.exists(archive + '.' + str(suf)):
+		while suf < 9 and os.path.lexists(archive + '.' + str(suf)):
 			suf += 1
 
 		while suf > 1:
@@ -166,26 +273,36 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
 		os.rename(archive, archive + '.1')
 
-	if os.path.isfile(curconf):
-		try:
-			shutil.copy2(curconf, archive)
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
+	try:
+		curconf_st = os.lstat(curconf)
+	except OSError:
+		curconf_st = None
 
-	if newconf != '':
-		# Save off new config file in the archive dir with .dist.new suffix
+	if curconf_st is not None and \
+		(stat.S_ISREG(curconf_st.st_mode) or
+		stat.S_ISLNK(curconf_st.st_mode)):
+		_archive_copy(curconf_st, curconf, archive)
+
+	mystat = None
+	if newconf:
 		try:
-			shutil.copy2(newconf, archive + '.dist.new')
-		except(IOError, os.error) as why:
-			print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-				{"newconf": newconf, "archive": archive + '.dist.new', "reason": str(why)}, file=sys.stderr)
+			mystat = os.lstat(newconf)
+		except OSError:
+			pass
+
+	if mystat is not None and \
+		(stat.S_ISREG(mystat.st_mode) or
+		stat.S_ISLNK(mystat.st_mode)):
+		# Save off new config file in the archive dir with .dist.new suffix
+		newconf_archive = archive + '.dist.new'
+		_archive_copy(mystat, newconf, newconf_archive)
 
 		ret = 0
-		if mrgconf != '' and os.path.exists(archive + '.dist'):
+		if mrgconf and os.path.isfile(curconf) and \
+			os.path.isfile(newconf) and \
+			os.path.isfile(archive + '.dist'):
 			# This puts the results of the merge into mrgconf.
 			ret = os.system(DIFF3_MERGE % (curconf, archive + '.dist', newconf, mrgconf))
-			mystat = os.lstat(newconf)
 			os.chmod(mrgconf, mystat.st_mode)
 			os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
 
@@ -196,7 +313,7 @@ def rcs_archive_post_process(archive):
 	"""Check in the archive file with the .dist.new suffix on the branch
 	and remove the one with the .dist suffix."""
 	os.rename(archive + '.dist.new', archive)
-	if os.path.exists(archive + '.dist'):
+	if os.path.lexists(archive + '.dist'):
 		# Commit the last-distributed version onto the branch.
 		os.system(RCS_LOCK + RCS_BRANCH + ' ' + archive)
 		os.system(RCS_PUT + ' -r' + RCS_BRANCH + ' ' + archive)
@@ -208,5 +325,5 @@ def rcs_archive_post_process(archive):
 
 def file_archive_post_process(archive):
 	"""Rename the archive file with the .dist.new suffix to a .dist suffix"""
-	if os.path.exists(archive + '.dist.new'):
+	if os.path.lexists(archive + '.dist.new'):
 		os.rename(archive + '.dist.new', archive + '.dist')

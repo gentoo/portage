@@ -81,7 +81,7 @@ def eapi_supports_stable_use_forcing_and_masking(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi):
-	return eapi in ("4-python", "5-progress")
+	return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi", "5")
 
 def eapi_has_use_aliases(eapi):
 	return eapi in ("4-python", "5-progress")

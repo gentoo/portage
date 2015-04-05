@@ -33,6 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util.path:first_existing',
 	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
@@ -66,12 +67,14 @@ from portage import _os_merge
 from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
+from ._VdbMetadataDelta import VdbMetadataDelta
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.emergelog import emergelog
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.SpawnProcess import SpawnProcess
+from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
 import errno
 import fnmatch
@@ -174,13 +177,18 @@ class vardbapi(dbapi):
 		self.vartree = vartree
 		self._aux_cache_keys = set(
 			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HDEPEND", "HOMEPAGE", "IUSE", "KEYWORDS",
+			"EAPI", "HDEPEND", "HOMEPAGE",
+			"BUILD_ID", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
+			"PROVIDES", "REQUIRES"
 			])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self._eroot,
 			CACHE_PATH, "vdb_metadata.pickle")
+		self._cache_delta_filename = os.path.join(self._eroot,
+			CACHE_PATH, "vdb_metadata_delta.json")
+		self._cache_delta = VdbMetadataDelta(self)
 		self._counter_path = os.path.join(self._eroot,
 			CACHE_PATH, "counter")
 
@@ -201,6 +209,17 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 		self._cached_counter = None
+
+	@property
+	def writable(self):
+		"""
+		Check if var/db/pkg is writable, or permissions are sufficient
+		to create it if it does not exist yet.
+		@rtype: bool
+		@return: True if var/db/pkg is writable or can be created,
+			False otherwise
+		"""
+		return os.access(first_existing(self._dbroot), os.W_OK)
 
 	@property
 	def root(self):
@@ -422,7 +441,10 @@ class vardbapi(dbapi):
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
-					returnme.append(_pkg_str(mysplit[0]+"/"+x))
+					cpv = "%s/%s" % (mysplit[0], x)
+					metadata = dict(zip(self._aux_cache_keys,
+						self.aux_get(cpv, self._aux_cache_keys)))
+					returnme.append(_pkg_str(cpv, metadata=metadata))
 		self._cpv_sort_ascending(returnme)
 		if use_cache:
 			self.cpcache[mycp] = [mystat, returnme[:]]
@@ -437,6 +459,9 @@ class vardbapi(dbapi):
 		(generally this is only necessary in critical sections that
 		involve merge or unmerge of packages).
 		"""
+		return list(self._iter_cpv_all(use_cache=use_cache))
+
+	def _iter_cpv_all(self, use_cache=True, sort=False):
 		returnme = []
 		basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
 
@@ -453,26 +478,32 @@ class vardbapi(dbapi):
 					del e
 					return []
 
-		for x in listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+		catdirs = listdir(basepath, EmptyOnError=1, ignorecvs=1, dirsonly=1)
+		if sort:
+			catdirs.sort()
+
+		for x in catdirs:
 			if self._excluded_dirs.match(x) is not None:
 				continue
 			if not self._category_re.match(x):
 				continue
-			for y in listdir(basepath + x, EmptyOnError=1, dirsonly=1):
+
+			pkgdirs = listdir(basepath + x, EmptyOnError=1, dirsonly=1)
+			if sort:
+				pkgdirs.sort()
+
+			for y in pkgdirs:
 				if self._excluded_dirs.match(y) is not None:
 					continue
 				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
 				try:
-					if catpkgsplit(subpath) is None:
-						self.invalidentry(self.getpath(subpath))
-						continue
+					subpath = _pkg_str(subpath)
 				except InvalidData:
 					self.invalidentry(self.getpath(subpath))
 					continue
-				returnme.append(subpath)
 
-		return returnme
+				yield subpath
 
 	def cp_all(self, use_cache=1):
 		mylist = self.cpv_all(use_cache=use_cache)
@@ -562,22 +593,31 @@ class vardbapi(dbapi):
 		long as at least part of the cache is still valid)."""
 		if self._flush_cache_enabled and \
 			self._aux_cache is not None and \
-			len(self._aux_cache["modified"]) >= self._aux_cache_threshold and \
-			secpass >= 2:
+			secpass >= 2 and \
+			(len(self._aux_cache["modified"]) >= self._aux_cache_threshold or
+			not os.path.exists(self._cache_delta_filename)):
+
+			ensure_dirs(os.path.dirname(self._aux_cache_filename))
+
 			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
 			for cpv in list(self._aux_cache["packages"]):
 				if cpv not in valid_nodes:
 					del self._aux_cache["packages"][cpv]
 			del self._aux_cache["modified"]
-			try:
-				f = atomic_ofstream(self._aux_cache_filename, 'wb')
-				pickle.dump(self._aux_cache, f, protocol=2)
-				f.close()
-				apply_secpass_permissions(
-					self._aux_cache_filename, gid=portage_gid, mode=0o644)
-			except (IOError, OSError) as e:
-				pass
+			timestamp = time.time()
+			self._aux_cache["timestamp"] = timestamp
+
+			f = atomic_ofstream(self._aux_cache_filename, 'wb')
+			pickle.dump(self._aux_cache, f, protocol=2)
+			f.close()
+			apply_secpass_permissions(
+				self._aux_cache_filename, mode=0o644)
+
+			self._cache_delta.initialize(timestamp)
+			apply_secpass_permissions(
+				self._cache_delta_filename, mode=0o644)
+
 			self._aux_cache["modified"] = set()
 
 	@property
@@ -1066,19 +1106,17 @@ class vardbapi(dbapi):
 
 		def add(self, cpv):
 			eroot_len = len(self._vardb._eroot)
-			contents = self._vardb._dblink(cpv).getcontents()
-
-			if "case-insensitive-fs" in self._vardb.settings.features:
-				contents = dict((k.lower(), v)
-					for k, v in contents.items())
-
 			pkg_hash = self._hash_pkg(cpv)
-			if not contents:
+			db = self._vardb._dblink(cpv)
+			if not db.getcontents():
 				# Empty path is a code used to represent empty contents.
 				self._add_path("", pkg_hash)
 
-			for x in contents:
-				self._add_path(x[eroot_len:], pkg_hash)
+			for x in db._contents.keys():
+				path = x[eroot_len:]
+				if "case-insensitive-fs" in self._vardb.settings.features:
+					path = path.lower()
+				self._add_path(patch, pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
 
@@ -1259,14 +1297,18 @@ class vardbapi(dbapi):
 								continue
 
 							if is_basename:
-								for p in dblink(cpv).getcontents():
+								for p in dblink(cpv)._contents.keys():
 									if case_insensitive:
 										p = p.lower()
 									if os.path.basename(p) == name:
-										owners.append((cpv, p[len(root):]))
+										owners.append((cpv, dblink(cpv).
+										_contents.unmap_key(
+										p)[len(root):]))
 							else:
-								if dblink(cpv).isowner(path):
-									owners.append((cpv, path))
+								key = dblink(cpv)._match_contents(path)
+								if key is not False:
+									owners.append(
+										(cpv, key[len(root):]))
 
 					except StopIteration:
 						path_iter.append(path)
@@ -1314,14 +1356,18 @@ class vardbapi(dbapi):
 				dblnk = self._vardb._dblink(cpv)
 				for path, name, is_basename in path_info_list:
 					if is_basename:
-						for p in dblnk.getcontents():
+						for p in dblnk._contents.keys():
 							if case_insensitive:
 								p = p.lower()
 							if os.path.basename(p) == name:
-								search_pkg.results.append((dblnk, p[len(root):]))
+								search_pkg.results.append((dblnk,
+									dblnk._contents.unmap_key(
+										p)[len(root):]))
 					else:
-						if dblnk.isowner(path):
-							search_pkg.results.append((dblnk, path))
+						key = dblnk._match_contents(path)
+						if key is not False:
+							search_pkg.results.append(
+								(dblnk, key[len(root):]))
 				search_pkg.complete = True
 				return False
 
@@ -1557,6 +1603,7 @@ class dblink(object):
 		# When necessary, this attribute is modified for
 		# compliance with RESTRICT=preserve-libs.
 		self._preserve_libs = "preserve-libs" in mysettings.features
+		self._contents = ContentsCaseSensitivityManager(self)
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1573,7 +1620,7 @@ class dblink(object):
 				self.settings.get("CONFIG_PROTECT", "")),
 			portage.util.shlex_split(
 				self.settings.get("CONFIG_PROTECT_MASK", "")),
-			case_insensitive = ("case-insensitive-fs"
+			case_insensitive=("case-insensitive-fs"
 					in self.settings.features))
 
 		return self._protect_obj
@@ -1615,6 +1662,13 @@ class dblink(object):
 				self.dbdir, noiselevel=-1)
 			return
 
+		if self.dbdir is self.dbpkgdir:
+			counter, = self.vartree.dbapi.aux_get(
+				self.mycpv, ["COUNTER"])
+			self.vartree.dbapi._cache_delta.recordEvent(
+				"remove", self.mycpv,
+				self.settings["SLOT"].split("/")[0], counter)
+
 		shutil.rmtree(self.dbdir)
 		# If empty, remove parent category directory.
 		try:
@@ -1646,14 +1700,15 @@ class dblink(object):
 		self.contentscache = None
 		self._contents_inodes = None
 		self._contents_basenames = None
+		self._contents.clear_cache()
 
 	def getcontents(self):
 		"""
 		Get the installed files of a given package (aka what that package installed)
 		"""
-		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		if self.contentscache is not None:
 			return self.contentscache
+		contents_file = os.path.join(self.dbdir, "CONTENTS")
 		pkgfiles = {}
 		try:
 			with io.open(_unicode_encode(contents_file,
@@ -2807,12 +2862,14 @@ class dblink(object):
 			if preserve_case is not None:
 				return preserve_case[destfile]
 			return destfile
+		#if self._contents.contains(destfile):
+		#	return self._contents.unmap_key(destfile)
 		if pkgfiles:
 			basename = os_filename_arg.path.basename(destfile)
 			if self._contents_basenames is None:
 
 				try:
-					for x in pkgfiles:
+					for x in pkgfiles):
 						_unicode_encode(x,
 							encoding=_encodings['merge'],
 							errors='strict')
@@ -2901,6 +2958,8 @@ class dblink(object):
 						if preserve_case is not None:
 							return preserve_case[x]
 						return x
+					#if self._contents.contains(x):
+					#	return self._contents.unmap_key(x)
 
 		return False
 
@@ -3717,17 +3776,15 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		if self.settings.get("INSTALL_MASK") or \
-			"nodoc" in self.settings.features or \
-			"noinfo" in self.settings.features or \
-			"noman" in self.settings.features:
-			# Apply INSTALL_MASK before collision-protect, since it may
-			# be useful to avoid collisions in some scenarios.
-			phase = MiscFunctionsProcess(background=False,
-				commands=["preinst_mask"], phase="preinst",
-				scheduler=self._scheduler, settings=self.settings)
-			phase.start()
-			phase.wait()
+		# Apply INSTALL_MASK before collision-protect, since it may
+		# be useful to avoid collisions in some scenarios.
+		# We cannot detect if this is needed or not here as INSTALL_MASK can be
+		# modified by bashrc files.
+		phase = MiscFunctionsProcess(background=False,
+			commands=["preinst_mask"], phase="preinst",
+			scheduler=self._scheduler, settings=self.settings)
+		phase.start()
+		phase.wait()
 
 		# We check for unicode encoding issues after src_install. However,
 		# the check must be repeated here for binary packages (it's
@@ -4242,6 +4299,8 @@ class dblink(object):
 			self.delete()
 			_movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 			self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
+			self.vartree.dbapi._cache_delta.recordEvent(
+				"add", self.mycpv, slot, counter)
 		finally:
 			self.unlockdb()
 
@@ -4516,21 +4575,17 @@ class dblink(object):
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat = os.lstat(mysrc)
 			mymode = mystat[stat.ST_MODE]
-			# handy variables; mydest is the target object on the live filesystems;
-			# mysrc is the source object in the temporary install dir
-			try:
-				mydstat = os.lstat(mydest)
-				mydmode = mydstat.st_mode
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				#dest file doesn't exist
-				mydstat = None
-				mydmode = None
+			mymd5 = None
+			myto = None
 
-			if stat.S_ISLNK(mymode):
-				# we are merging a symbolic link
+			if sys.hexversion >= 0x3030000:
+				mymtime = mystat.st_mtime_ns
+			else:
+				mymtime = mystat[stat.ST_MTIME]
+
+			if stat.S_ISREG(mymode):
+				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
+			elif stat.S_ISLNK(mymode):
 				# The file name of mysrc and the actual file that it points to
 				# will have earlier been forcefully converted to the 'merge'
 				# encoding if necessary, but the content of the symbolic link
@@ -4550,6 +4605,69 @@ class dblink(object):
 					os.unlink(mysrc)
 					os.symlink(myto, mysrc)
 
+				mymd5 = portage.checksum._new_md5(
+					_unicode_encode(myto)).hexdigest()
+
+			protected = False
+			if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
+				protected = self.isprotected(mydest)
+
+				if stat.S_ISREG(mymode) and \
+					mystat.st_size == 0 and \
+					os.path.basename(mydest).startswith(".keep"):
+					protected = False
+
+			destmd5 = None
+			mydest_link = None
+			# handy variables; mydest is the target object on the live filesystems;
+			# mysrc is the source object in the temporary install dir
+			try:
+				mydstat = os.lstat(mydest)
+				mydmode = mydstat.st_mode
+				if protected:
+					if stat.S_ISLNK(mydmode):
+						# Read symlink target as bytes, in case the
+						# target path has a bad encoding.
+						mydest_link = _os.readlink(
+							_unicode_encode(mydest,
+							encoding=_encodings['merge'],
+							errors='strict'))
+						mydest_link = _unicode_decode(mydest_link,
+							encoding=_encodings['merge'],
+							errors='replace')
+
+						# For protection of symlinks, the md5
+						# of the link target path string is used
+						# for cfgfiledict (symlinks are
+						# protected since bug #485598).
+						destmd5 = portage.checksum._new_md5(
+							_unicode_encode(mydest_link)).hexdigest()
+
+					elif stat.S_ISREG(mydmode):
+						destmd5 = perform_md5(mydest,
+							calc_prelink=calc_prelink)
+			except (FileNotFound, OSError) as e:
+				if isinstance(e, OSError) and e.errno != errno.ENOENT:
+					raise
+				#dest file doesn't exist
+				mydstat = None
+				mydmode = None
+				mydest_link = None
+				destmd5 = None
+
+			moveme = True
+			if protected:
+				mydest, protected, moveme = self._protect(cfgfiledict,
+					protect_if_modified, mymd5, myto, mydest,
+					myrealdest, mydmode, destmd5, mydest_link)
+
+			zing = "!!!"
+			if not moveme:
+				# confmem rejected this update
+				zing = "---"
+
+			if stat.S_ISLNK(mymode):
+				# we are merging a symbolic link
 				# Pass in the symlink target in order to bypass the
 				# os.readlink() call inside abssymlink(), since that
 				# call is unsafe if the merge encoding is not ascii
@@ -4565,9 +4683,8 @@ class dblink(object):
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
-				if mydmode!=None:
-					#destination exists
-					if stat.S_ISDIR(mydmode):
+				if mydmode is not None and stat.S_ISDIR(mydmode):
+					if not protected:
 						# we can't merge a symlink over a directory
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4580,22 +4697,6 @@ class dblink(object):
 						self._eerror("preinst", msg)
 						mydest = newdest
 
-					elif not stat.S_ISLNK(mydmode):
-						if os.path.exists(mysrc) and stat.S_ISDIR(os.stat(mysrc)[stat.ST_MODE]):
-							# Kill file blocking installation of symlink to dir #71787
-							pass
-						elif self.isprotected(mydest):
-							# Use md5 of the target in ${D} if it exists...
-							try:
-								newmd5 = perform_md5(join(srcroot, myabsto))
-							except FileNotFound:
-								# Maybe the target is merged already.
-								try:
-									newmd5 = perform_md5(myrealto)
-								except FileNotFound:
-									newmd5 = None
-							mydest = new_protect_filename(mydest, newmd5=newmd5)
-
 				# if secondhand is None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand != None) and (not os.path.exists(myrealto)):
 					# either the target directory doesn't exist yet or the target file doesn't exist -- or
@@ -4604,9 +4705,11 @@ class dblink(object):
 					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
-					sstat=mystat, mysettings=self.settings,
-					encoding=_encodings['merge'])
+				if moveme:
+					zing = ">>>"
+					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
+						sstat=mystat, mysettings=self.settings,
+						encoding=_encodings['merge'])
 
 				try:
 					self._merged_path(mydest, os.lstat(mydest))
@@ -4622,7 +4725,7 @@ class dblink(object):
 							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
 							% (relative_path, myabsto)])
 
-					showMessage(">>> %s -> %s\n" % (mydest, myto))
+					showMessage("%s %s -> %s\n" % (zing, mydest, myto))
 					if sys.hexversion >= 0x3030000:
 						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
 					else:
@@ -4644,7 +4747,8 @@ class dblink(object):
 						if dflags != 0:
 							bsd_chflags.lchflags(mydest, 0)
 
-					if not os.access(mydest, os.W_OK):
+					if not stat.S_ISLNK(mydmode) and \
+						not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
 						writemsg(_("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1)
 						writemsg(_("!!! Please check permissions and directories for broken symlinks.\n"))
@@ -4733,14 +4837,8 @@ class dblink(object):
 
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
-				# calculate config file protection stuff
-				mydestdir = os.path.dirname(mydest)
-				moveme = 1
-				zing = "!!!"
-				mymtime = None
-				protected = self.isprotected(mydest)
-				if mydmode is not None and stat.S_ISDIR(mydmode):
+				if not protected and \
+					mydmode is not None and stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4752,73 +4850,6 @@ class dblink(object):
 						msg.append("")
 						self._eerror("preinst", msg)
 						mydest = newdest
-
-				elif mydmode is None or stat.S_ISREG(mydmode) or \
-					(stat.S_ISLNK(mydmode) and os.path.exists(mydest)
-					and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
-						# install of destination is blocked by an existing regular file,
-						# or by a symlink to an existing regular file;
-						# now, config file management may come into play.
-						# we only need to tweak mydest if cfg file management is in play.
-						destmd5 = None
-						if protected and mydmode is not None:
-							destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
-							if protect_if_modified:
-								contents_key = \
-									self._installed_instance._match_contents(myrealdest)
-								if contents_key:
-									inst_info = self._installed_instance.getcontents()[contents_key]
-									if inst_info[0] == "obj" and inst_info[2] == destmd5:
-										protected = False
-
-						if protected:
-							# we have a protection path; enable config file management.
-							cfgprot = 0
-							cfgprot_force = False
-							if mydmode is None:
-								if self._installed_instance is not None and \
-									self._installed_instance._match_contents(
-									myrealdest) is not False:
-									# If the file doesn't exist, then it may
-									# have been deleted or renamed by the
-									# admin. Therefore, force the file to be
-									# merged with a ._cfg name, so that the
-									# admin will be prompted for this update
-									# (see bug #523684).
-									cfgprot_force = True
-									moveme = True
-									cfgprot = True
-							elif mymd5 == destmd5:
-								#file already in place; simply update mtimes of destination
-								moveme = 1
-							else:
-								if mymd5 == cfgfiledict.get(myrealdest, [None])[0]:
-									""" An identical update has previously been
-									merged.  Skip it unless the user has chosen
-									--noconfmem."""
-									moveme = cfgfiledict["IGNORE"]
-									cfgprot = cfgfiledict["IGNORE"]
-									if not moveme:
-										zing = "---"
-										if sys.hexversion >= 0x3030000:
-											mymtime = mystat.st_mtime_ns
-										else:
-											mymtime = mystat[stat.ST_MTIME]
-								else:
-									moveme = 1
-									cfgprot = 1
-							if moveme:
-								# Merging a new file, so update confmem.
-								cfgfiledict[myrealdest] = [mymd5]
-							elif destmd5 == cfgfiledict.get(myrealdest, [None])[0]:
-								"""A previously remembered update has been
-								accepted, so it is removed from confmem."""
-								del cfgfiledict[myrealdest]
-
-							if cfgprot:
-								mydest = new_protect_filename(mydest,
-									newmd5=mymd5,
-									force=cfgprot_force)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
@@ -4874,6 +4905,65 @@ class dblink(object):
 				else:
 					outfile.write("dev %s\n" % myrealdest)
 				showMessage(zing + " " + mydest + "\n")
+
+	def _protect(self, cfgfiledict, protect_if_modified, src_md5,
+		src_link, dest, dest_real, dest_mode, dest_md5, dest_link):
+
+		move_me = True
+		protected = True
+		force = False
+		k = False
+		if self._installed_instance is not None:
+			k = self._installed_instance._match_contents(dest_real)
+		if k is not False:
+			if dest_mode is None:
+				# If the file doesn't exist, then it may
+				# have been deleted or renamed by the
+				# admin. Therefore, force the file to be
+				# merged with a ._cfg name, so that the
+				# admin will be prompted for this update
+				# (see bug #523684).
+				force = True
+
+			elif protect_if_modified:
+				data = self._installed_instance.getcontents()[k]
+				if data[0] == "obj" and data[2] == dest_md5:
+					protected = False
+				elif data[0] == "sym" and data[2] == dest_link:
+					protected = False
+
+		if protected and dest_mode is not None:
+			# we have a protection path; enable config file management.
+			if src_md5 == dest_md5:
+				protected = False
+
+			elif src_md5 == cfgfiledict.get(dest_real, [None])[0]:
+				# An identical update has previously been
+				# merged.  Skip it unless the user has chosen
+				# --noconfmem.
+				move_me = protected = bool(cfgfiledict["IGNORE"])
+
+			if protected and \
+				(dest_link is not None or src_link is not None) and \
+				dest_link != src_link:
+				# If either one is a symlink, and they are not
+				# identical symlinks, then force config protection.
+				force = True
+
+			if move_me:
+				# Merging a new file, so update confmem.
+				cfgfiledict[dest_real] = [src_md5]
+			elif dest_md5 == cfgfiledict.get(dest_real, [None])[0]:
+				# A previously remembered update has been
+				# accepted, so it is removed from confmem.
+				del cfgfiledict[dest_real]
+
+		if protected and move_me:
+			dest = new_protect_filename(dest,
+				newmd5=(dest_link or src_md5),
+				force=force)
+
+		return dest, protected, move_me
 
 	def _merged_path(self, path, lstatobj, exists=True):
 		previous_path = self._device_path_map.get(lstatobj.st_dev)

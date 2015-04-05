@@ -276,16 +276,34 @@ unpack() {
 		y=${y##*.}
 		y_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${y}")
 
-		if [[ ${x} == "./"* ]] ; then
-			srcdir=""
-		elif [[ ${x} == ${DISTDIR%/}/* ]] ; then
-			die "Arguments to unpack() cannot begin with \${DISTDIR}."
-		elif [[ ${x} == "/"* ]] ; then
-			die "Arguments to unpack() cannot be absolute"
+		# wrt PMS 11.3.3.13 Misc Commands
+		if [[ ${x} != */* ]]; then
+			# filename without path of any kind
+			srcdir=${DISTDIR}/
+		elif [[ ${x} == ./* ]]; then
+			# relative path starting with './'
+			srcdir=
 		else
-			srcdir="${DISTDIR}/"
+			# non-'./' filename with path of some kind
+			if ___eapi_unpack_supports_absolute_paths; then
+				# EAPI 6 allows absolute and deep relative paths
+				srcdir=
+
+				if [[ ${x} == ${DISTDIR%/}/* ]]; then
+					eqawarn "QA Notice: unpack called with redundant \${DISTDIR} in path"
+				fi
+			elif [[ ${x} == ${DISTDIR%/}/* ]]; then
+				die "Arguments to unpack() cannot begin with \${DISTDIR} in EAPI ${EAPI}"
+			elif [[ ${x} == /* ]] ; then
+				die "Arguments to unpack() cannot be absolute in EAPI ${EAPI}"
+			else
+				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
+			fi
 		fi
-		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
+		if [[ ! -s ${srcdir}${x} ]]; then
+			__helpers_die "unpack: ${x} does not exist"
+			return 1
+		fi
 
 		__unpack_tar() {
 			if [[ ${y_insensitive} == tar ]] ; then
@@ -296,15 +314,18 @@ unpack() {
 						"supported with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
 				$1 -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail" || return 1
 			else
 				local cwd_dest=${x##*/}
 				cwd_dest=${cwd_dest%.*}
-				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
+				if ! $1 -c -- "${srcdir}${x}" > "${cwd_dest}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 			fi
 		}
 
-		myfail="failure unpacking ${x}"
+		myfail="unpack: failure unpacking ${x}"
 		case "${suffix_insensitive}" in
 			tar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -313,7 +334,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				tar xof "$srcdir$x" || die "$myfail"
+				if ! tar xof "$srcdir$x"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			tgz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -322,7 +346,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tgz'."
 				fi
-				tar xozf "$srcdir$x" || die "$myfail"
+				if ! tar xozf "$srcdir$x"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			tbz|tbz2)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -332,7 +359,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
 				fi
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail"
+				__assert_sigpipe_ok "$myfail" || return 1
 				;;
 			zip|jar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -344,8 +371,10 @@ unpack() {
 				fi
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				( set +x ; while true ; do echo n || break ; done ) | \
-				unzip -qo "${srcdir}${x}" || die "$myfail"
+				if ! unzip -qo "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi < <(set +x ; while true ; do echo n || break ; done)
 				;;
 			gz|z)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -354,7 +383,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'gz', 'z', or 'Z'."
 				fi
-				__unpack_tar "gzip -d"
+				__unpack_tar "gzip -d" || return 1
 				;;
 			bz2|bz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -363,7 +392,8 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'bz' or 'bz2'."
 				fi
-				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
+				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}" \
+					|| return 1
 				;;
 			7z)
 				local my_output
@@ -380,7 +410,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
 				fi
-				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
+				if ! unrar x -idq -o+ "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			lha|lzh)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -390,7 +423,10 @@ unpack() {
 						"with EAPI '${EAPI}'." \
 						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
 				fi
-				lha xfq "${srcdir}${x}" || die "$myfail"
+				if ! lha xfq "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			a)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -399,7 +435,10 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'a'."
 				fi
-				ar x "${srcdir}${x}" || die "$myfail"
+				if ! ar x "${srcdir}${x}"; then
+					__helpers_die "$myfail"
+					return 1
+				fi
 				;;
 			deb)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -409,29 +448,45 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'deb'."
 				fi
 				# Unpacking .deb archives can not always be done with
-				# `ar`.  For instance on AIX this doesn't work out.  If
-				# we have `deb2targz` installed, prefer it over `ar` for
-				# that reason.  We just make sure on AIX `deb2targz` is
+				# `ar`.  For instance on AIX this doesn't work out.
+				# If `ar` is not the GNU binutils version and we have
+				# `deb2targz` installed, prefer it over `ar` for that
+				# reason.  We just make sure on AIX `deb2targz` is
 				# installed.
-				if type -P deb2targz > /dev/null; then
+				if [[ $(ar --version 2>/dev/null) != "GNU ar"* ]] && \
+					type -P deb2targz > /dev/null; then
 					y=${x##*/}
 					local created_symlink=0
 					if [ ! "$srcdir$x" -ef "$y" ] ; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						ln -sf "$srcdir$x" "$y" || die "$myfail"
+						if ! ln -sf "$srcdir$x" "$y"; then
+							__helpers_die "$myfail"
+							return 1
+						fi
 						created_symlink=1
 					fi
-					deb2targz "$y" || die "$myfail"
+					if ! deb2targz "$y"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 					if [ $created_symlink = 1 ] ; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
 						rm -f "$y"
 					fi
-					mv -f "${y%.deb}".tar.gz data.tar.gz || die "$myfail"
+					if ! mv -f "${y%.deb}".tar.gz data.tar.gz; then
+						if ! mv -f "${y%.deb}".tar.xz data.tar.xz; then
+							__helpers_die "$myfail"
+							return 1
+						fi
+					fi
 				else
-					ar x "$srcdir$x" || die "$myfail"
+					if ! ar x "$srcdir$x"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 				fi
 				;;
 			lzma)
@@ -441,7 +496,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'lzma'."
 				fi
-				__unpack_tar "lzma -d"
+				__unpack_tar "lzma -d" || return 1
 				;;
 			xz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -451,7 +506,20 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
 				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -d"
+					__unpack_tar "xz -d" || return 1
+				else
+					__vecho "unpack ${x}: file format not recognized. Ignoring."
+				fi
+				;;
+			txz)
+				if ___eapi_unpack_is_case_sensitive && \
+					[[ " txz " != *" ${suffix} "* ]] ; then
+					eqawarn "QA Notice: unpack called with" \
+						"suffix '${suffix}' which is unofficially supported" \
+						"with EAPI '${EAPI}'. Instead use 'txz'."
+				fi
+				if ___eapi_supports_txz; then
+					__unpack_tar "xz -d" || return 1
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -522,7 +590,7 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules; then
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
@@ -534,6 +602,16 @@ econf() {
 			if ___eapi_econf_passes_--disable-silent-rules; then
 				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
 					conf_args+=( --disable-silent-rules )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--docdir_and_--htmldir; then
+				if [[ ${conf_help} == *--docdir* ]]; then
+					conf_args+=( --docdir="${EPREFIX}"/usr/share/doc/${PF} )
+				fi
+
+				if [[ ${conf_help} == *--htmldir* ]]; then
+					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
 				fi
 			fi
 		fi
@@ -581,7 +659,8 @@ econf() {
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
 			fi
-			die "econf failed"
+			__helpers_die "econf failed"
+			return 1
 		fi
 	elif [ -f "${ECONF_SOURCE}/configure" ]; then
 		die "configure is not executable"
@@ -591,6 +670,11 @@ econf() {
 }
 
 einstall() {
+	if ! ___eapi_has_einstall; then
+		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+		exit 1
+	fi
+
 	# CONF_PREFIX is only set if they didn't pass in libdir above.
 	local LOCAL_EXTRA_EINSTALL="${EXTRA_EINSTALL}"
 	if ! ___eapi_has_prefix_variables; then
@@ -620,7 +704,7 @@ einstall() {
 				${MAKEOPTS} -j1 \
 				"$@" ${EXTRA_EMAKE} install
 		fi
-		${MAKE:-make} prefix="${ED}usr" \
+		if ! ${MAKE:-make} prefix="${ED}usr" \
 			datadir="${ED}usr/share" \
 			infodir="${ED}usr/share/info" \
 			localstatedir="${ED}var/lib" \
@@ -628,7 +712,11 @@ einstall() {
 			sysconfdir="${ED}etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} -j1 \
-			"$@" ${EXTRA_EMAKE} install || die "einstall failed"
+			"$@" ${EXTRA_EMAKE} install
+		then
+			__helpers_die "einstall failed"
+			return 1
+		fi
 	else
 		die "no Makefile found"
 	fi
@@ -714,6 +802,24 @@ __eapi4_src_install() {
 	else
 		dodoc ${DOCS}
 	fi
+}
+
+__eapi6_src_prepare() {
+	if [[ $(declare -p PATCHES) == "declare -a"* ]]; then
+		eapply "${PATCHES[@]}"
+	elif [[ -n ${PATCHES} ]]; then
+		eapply ${PATCHES}
+	fi
+
+	eapply_user
+}
+
+__eapi6_src_install() {
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
+		emake DESTDIR="${D}" install
+	fi
+
+	einstalldocs
 }
 
 # @FUNCTION: has_version
@@ -833,6 +939,145 @@ best_version() {
 			;;
 	esac
 }
+
+if ___eapi_has_get_libdir; then
+	get_libdir() {
+		local libdir_var="LIBDIR_${ABI}"
+		local libdir="lib"
+
+		[[ -n ${ABI} && -n ${!libdir_var} ]] && libdir=${!libdir_var}
+
+		echo "${libdir}"
+	}
+fi
+
+if ___eapi_has_einstalldocs; then
+	einstalldocs() {
+		(
+			docinto .
+			if ! declare -p DOCS &>/dev/null ; then
+				local d
+				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+						THANKS BUGS FAQ CREDITS CHANGELOG ; do
+					[[ -s ${d} ]] && dodoc "${d}"
+				done
+			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
+				[[ ${DOCS[@]} ]] && dodoc -r "${DOCS[@]}"
+			else
+				[[ ${DOCS} ]] && dodoc -r ${DOCS}
+			fi
+		)
+
+		(
+			docinto html
+			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
+				[[ ${HTML_DOCS[@]} ]] && dodoc -r "${HTML_DOCS[@]}"
+			else
+				[[ ${HTML_DOCS} ]] && dodoc -r ${HTML_DOCS}
+			fi
+		)
+	}
+fi
+
+if ___eapi_has_eapply; then
+	eapply() {
+		_eapply_patch() {
+			local f=${1}
+			local prefix=${2}
+
+			started_applying=1
+			ebegin "${prefix:-Applying }${f##*/}"
+			# -p1 as a sane default
+			# -f to avoid interactivity
+			# -s to silence progress output
+			patch -p1 -f -s "${patch_options[@]}" < "${f}"
+			if ! eend ${?}; then
+				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
+				failed=1
+			fi
+		}
+
+		local f patch_options=() failed started_applying options_terminated
+		for f; do
+			if [[ ${f} == -* && -z ${options_terminated} ]]; then
+				if [[ -n ${started_applying} ]]; then
+					die "eapply: options need to be specified before files"
+				fi
+				if [[ ${f} == -- ]]; then
+					options_terminated=1
+				else
+					patch_options+=( ${f} )
+				fi
+			elif [[ -d ${f} ]]; then
+				_eapply_get_files() {
+					local LC_ALL=POSIX
+					local prev_shopt=$(shopt -p nullglob)
+					shopt -s nullglob
+					files=( "${f}"/*.{patch,diff} )
+					${prev_shopt}
+				}
+
+				local files
+				_eapply_get_files
+				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
+
+				einfo "Applying patches from ${f} ..."
+				local f2
+				for f2 in "${files[@]}"; do
+					_eapply_patch "${f2}" '  '
+
+					# in case of nonfatal
+					[[ -n ${failed} ]] && return 1
+				done
+			else
+				_eapply_patch "${f}"
+
+				# in case of nonfatal
+				[[ -n ${failed} ]] && return 1
+			fi
+		done
+
+		return 0
+	}
+fi
+
+if ___eapi_has_eapply_user; then
+	eapply_user() {
+		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
+
+		local d applied
+		# possibilities:
+		# 1. ${CATEGORY}/${P}-${PR} (note: -r0 desired to avoid applying
+		#    ${P} twice)
+		# 2. ${CATEGORY}/${P}
+		# 3. ${CATEGORY}/${PN}
+		# all of the above may be optionally followed by a slot
+		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{,:${SLOT%/*}}; do
+			if [[ -d ${d} ]]; then
+				eapply "${d}"
+				applied=1
+			fi
+		done
+
+		[[ -n ${applied} ]] && ewarn "User patches applied."
+	}
+fi
+
+if ___eapi_has_in_iuse; then
+	in_iuse() {
+		local use=${1}
+
+		if [[ -z "${use}" ]]; then
+			echo "!!! in_iuse() called without a parameter." >&2
+			echo "!!! in_iuse <USEFLAG>" >&2
+			die "in_iuse() called without a parameter"
+		fi
+
+		local liuse=( ${IUSE_EFFECTIVE} )
+
+		has "${use}" "${liuse[@]#[+-]}"
+	}
+fi
 
 if ___eapi_has_master_repositories; then
 	master_repositories() {

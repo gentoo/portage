@@ -71,9 +71,9 @@
 			class = portage.sets.base.DummyPackageSet
 			packages = @selected @system
 
-			# The selected set
-			[selected]
-			class = portage.sets.files.WorldSelectedSet
+			# The selected-packages set
+			[selected-packages]
+			class = portage.sets.files.WorldSelectedPackagesSet
 
 			# The classic system set
 			[system]
@@ -247,8 +247,24 @@
 			</sect3>
 		</sect2>
 		
-		<sect2 id='config-set-classes-WorldSelectedSet'>
-		<title>portage.sets.files.WorldSelectedSet</title>
+		<sect2 id='config-set-classes-WorldSelectedPackagesSet'>
+		<title>portage.sets.files.WorldSelectedPackagesSet</title>
+		<para>
+		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
+		reasons. It should never be used in user configurations as it's already configured
+		by default, doesn't support any options and will eventually be removed in a future version.
+		</para>
+		
+			<sect3>
+			<title>Single Set Configuraton</title>
+			<para>
+			This class doesn't support any extra options.
+			</para>
+			</sect3>
+		</sect2>
+		
+		<sect2 id='config-set-classes-WorldSelectedSetsSet'>
+		<title>portage.sets.files.WorldSelectedSetsSet</title>
 		<para>
 		A minor variation of <classname>StaticFileSet</classname>, mainly for implementation 
 		reasons. It should never be used in user configurations as it's already configured
@@ -270,7 +286,7 @@
 		<filename>packages</filename> files in the profile.
 		<!-- TODO: Add reference to profile documentation regarding "packages" -->
 		There is no reason to use this in a user configuration as it is already
-		confgured by default and doesn't support any options.
+		configured by default and doesn't support any options.
 		</para>
 		
 			<sect3>
@@ -280,7 +296,23 @@
 			</para>
 			</sect3>
 		</sect2>
-		
+
+		<sect2 id='config-set-classes-ProfilePackageSet'>
+		<title>portage.sets.ProfilePackageSet.ProfilePackageSet</title>
+		<para>
+		This class implements the <parameter>profile</parameter> set, based on the
+		<filename>packages</filename> files in the profile.
+		There is no reason to use this in a user configuration as it is already
+		confgured by default and doesn't support any options.
+		</para>
+			<sect3>
+			<title>Single Set Configuration</title>
+			<para>
+			This class doesn't support any extra options.
+			</para>
+			</sect3>
+		</sect2>
+
 		<sect2 id='config-set-classes-SecuritySet' xreflabel='SecuritySet'>
 		<title>portage.sets.security.SecuritySet</title>
 		<para>
@@ -585,6 +617,7 @@
 	</para>
 	<itemizedlist>
 	<listitem><para><varname>world</varname>: uses <classname>DummySet</classname></para></listitem>
+	<listitem><para><varname>profile</varname>: uses <classname>ProfilePackageSet</classname></para></listitem>
 	<listitem><para><varname>selected</varname>: uses <classname>WorldSelectedSet</classname></para></listitem>
 	<listitem><para><varname>system</varname>: uses <classname>PackagesSystemSet</classname></para></listitem>
 	<listitem><para><varname>security</varname>: uses <classname>NewAffectedSet</classname> with default options</para></listitem>

@@ -31,7 +31,8 @@ class dbapi(object):
 	_use_mutable = False
 	_known_keys = frozenset(x for x in auxdbkeys
 		if not x.startswith("UNUSED_0"))
-	_pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
+	_pkg_str_aux_keys = ("BUILD_TIME", "EAPI", "BUILD_ID",
+		"KEYWORDS", "SLOT", "repository")
 
 	def __init__(self):
 		pass
@@ -57,7 +58,12 @@ class dbapi(object):
 
 	@staticmethod
 	def _cmp_cpv(cpv1, cpv2):
-		return vercmp(cpv1.version, cpv2.version)
+		result = vercmp(cpv1.version, cpv2.version)
+		if (result == 0 and cpv1.build_time is not None and
+			cpv2.build_time is not None):
+			result = ((cpv1.build_time > cpv2.build_time) -
+				(cpv1.build_time < cpv2.build_time))
+		return result
 
 	@staticmethod
 	def _cpv_sort_ascending(cpv_list):

@@ -1,5 +1,16 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.16
+-------------
+* New portage plug-in sync system.
+    Read the news anouncement for more details of the changes in config
+    settings and operation.
+* New native portage postsync.d capability
+* New native portage repo.postsync.d capability
+* New native indexed search capability for decent search speed
+* Tentative EAPI 6 patches for additional testing
+
+
 portage-2.2.14
 -------------
 * Remaining bugs in build/install system should be fixed.

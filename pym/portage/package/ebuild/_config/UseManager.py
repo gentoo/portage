@@ -107,10 +107,32 @@ class UseManager(object):
 
 		self.repositories = repositories
 
-	def _parse_file_to_tuple(self, file_name, recursive=True, eapi_filter=None):
+	def _parse_file_to_tuple(self, file_name, recursive=True,
+		eapi_filter=None, eapi=None, eapi_default="0"):
+		"""
+		@param file_name: input file name
+		@type file_name: str
+		@param recursive: triggers recursion if the input file is a
+			directory
+		@type recursive: bool
+		@param eapi_filter: a function that accepts a single eapi
+			argument, and returns true if the the current file type
+			is supported by the given EAPI
+		@type eapi_filter: callable
+		@param eapi: the EAPI of the current profile node, which allows
+			a call to read_corresponding_eapi_file to be skipped
+		@type eapi: str
+		@param eapi_default: the default EAPI which applies if the
+			current profile node does not define a local EAPI
+		@type eapi_default: str
+		@rtype: tuple
+		@return: collection of USE flags
+		"""
 		ret = []
 		lines = grabfile(file_name, recursive=recursive)
-		eapi = read_corresponding_eapi_file(file_name)
+		if eapi is None:
+			eapi = read_corresponding_eapi_file(
+				file_name, default=eapi_default)
 		if eapi_filter is not None and not eapi_filter(eapi):
 			if lines:
 				writemsg(_("--- EAPI '%s' does not support '%s': '%s'\n") %
@@ -131,19 +153,50 @@ class UseManager(object):
 		return tuple(ret)
 
 	def _parse_file_to_dict(self, file_name, juststrings=False, recursive=True,
-		eapi_filter=None, user_config=False):
+		eapi_filter=None, user_config=False, eapi=None, eapi_default="0",
+		allow_build_id=False):
+		"""
+		@param file_name: input file name
+		@type file_name: str
+		@param juststrings: store dict values as space-delimited strings
+			instead of tuples
+		@type juststrings: bool
+		@param recursive: triggers recursion if the input file is a
+			directory
+		@type recursive: bool
+		@param eapi_filter: a function that accepts a single eapi
+			argument, and returns true if the the current file type
+			is supported by the given EAPI
+		@type eapi_filter: callable
+		@param user_config: current file is part of the local
+			configuration (not repository content)
+		@type user_config: bool
+		@param eapi: the EAPI of the current profile node, which allows
+			a call to read_corresponding_eapi_file to be skipped
+		@type eapi: str
+		@param eapi_default: the default EAPI which applies if the
+			current profile node does not define a local EAPI
+		@type eapi_default: str
+		@param allow_build_id: allow atoms to specify a particular
+			build-id
+		@type allow_build_id: bool
+		@rtype: tuple
+		@return: collection of USE flags
+		"""
 		ret = {}
 		location_dict = {}
-		eapi = read_corresponding_eapi_file(file_name, default=None)
-		if eapi is None and not user_config:
-			eapi = "0"
 		if eapi is None:
+			eapi = read_corresponding_eapi_file(file_name,
+				default=eapi_default)
+		extended_syntax = eapi is None and user_config
+		if extended_syntax:
 			ret = ExtendedAtomDict(dict)
 		else:
 			ret = {}
 		file_dict = grabdict_package(file_name, recursive=recursive,
-			allow_wildcard=(eapi is None), allow_repo=(eapi is None),
-			verify_eapi=(eapi is not None))
+			allow_wildcard=extended_syntax, allow_repo=extended_syntax,
+			verify_eapi=(not extended_syntax), eapi=eapi,
+			eapi_default=eapi_default, allow_build_id=allow_build_id)
 		if eapi is not None and eapi_filter is not None and not eapi_filter(eapi):
 			if file_dict:
 				writemsg(_("--- EAPI '%s' does not support '%s': '%s'\n") %
@@ -153,11 +206,18 @@ class UseManager(object):
 		useflag_re = _get_useflag_re(eapi)
 		for k, v in file_dict.items():
 			useflags = []
+			use_expand_prefix = ''
 			for prefixed_useflag in v:
+				if extended_syntax and prefixed_useflag[-1] == ":":
+					use_expand_prefix = prefixed_useflag[:-1].lower() + "_"
+					continue
+
 				if prefixed_useflag[:1] == "-":
-					useflag = prefixed_useflag[1:]
+					useflag = use_expand_prefix + prefixed_useflag[1:]
+					prefixed_useflag = "-" + useflag
 				else:
-					useflag = prefixed_useflag
+					useflag = use_expand_prefix + prefixed_useflag
+					prefixed_useflag = useflag
 				if useflag_re.match(useflag) is None:
 					writemsg(_("--- Invalid USE flag for '%s' in '%s': '%s'\n") %
 						(k, file_name, prefixed_useflag), noiselevel=-1)
@@ -178,42 +238,61 @@ class UseManager(object):
 			pusedict = grabdict_package(
 				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
-				ret.setdefault(k.cp, {})[k] = tuple(v)
+				l = []
+				use_expand_prefix = ''
+				for flag in v:
+					if flag[-1] == ":":
+						use_expand_prefix = flag[:-1].lower() + "_"
+						continue
+					if flag[0] == "-":
+						nv = "-" + use_expand_prefix + flag[1:]
+					else:
+						nv = use_expand_prefix + flag
+					l.append(nv)
+				ret.setdefault(k.cp, {})[k] = tuple(l)
 
 		return ret
 
 	def _parse_repository_files_to_dict_of_tuples(self, file_name, repositories, eapi_filter=None):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			ret[repo.name] = self._parse_file_to_tuple(os.path.join(repo.location, "profiles", file_name), eapi_filter=eapi_filter)
+			ret[repo.name] = self._parse_file_to_tuple(
+				os.path.join(repo.location, "profiles", file_name),
+				eapi_filter=eapi_filter, eapi_default=repo.eapi)
 		return ret
 
 	def _parse_repository_files_to_dict_of_dicts(self, file_name, repositories, eapi_filter=None):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			ret[repo.name] = self._parse_file_to_dict(os.path.join(repo.location, "profiles", file_name), eapi_filter=eapi_filter)
+			ret[repo.name] = self._parse_file_to_dict(
+				os.path.join(repo.location, "profiles", file_name),
+				eapi_filter=eapi_filter, eapi_default=repo.eapi,
+				allow_build_id=("build-id" in repo.profile_formats))
 		return ret
 
 	def _parse_profile_files_to_tuple_of_tuples(self, file_name, locations,
 		eapi_filter=None):
 		return tuple(self._parse_file_to_tuple(
 			os.path.join(profile.location, file_name),
-			recursive=profile.portage1_directories, eapi_filter=eapi_filter)
-			for profile in locations)
+			recursive=profile.portage1_directories,
+			eapi_filter=eapi_filter, eapi=profile.eapi,
+			eapi_default=None) for profile in locations)
 
 	def _parse_profile_files_to_tuple_of_dicts(self, file_name, locations,
 		juststrings=False, eapi_filter=None):
 		return tuple(self._parse_file_to_dict(
 			os.path.join(profile.location, file_name), juststrings,
 			recursive=profile.portage1_directories, eapi_filter=eapi_filter,
-			user_config=profile.user_config)
+			user_config=profile.user_config, eapi=profile.eapi,
+			eapi_default=None, allow_build_id=profile.allow_build_id)
 			for profile in locations)
 
 	def _parse_repository_usealiases(self, repositories):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
 			file_name = os.path.join(repo.location, "profiles", "use.aliases")
-			eapi = read_corresponding_eapi_file(file_name)
+			eapi = read_corresponding_eapi_file(
+				file_name, default=repo.eapi)
 			useflag_re = _get_useflag_re(eapi)
 			raw_file_dict = grabdict(file_name, recursive=True)
 			file_dict = {}
@@ -238,7 +317,8 @@ class UseManager(object):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
 			file_name = os.path.join(repo.location, "profiles", "package.use.aliases")
-			eapi = read_corresponding_eapi_file(file_name)
+			eapi = read_corresponding_eapi_file(
+				file_name, default=repo.eapi)
 			useflag_re = _get_useflag_re(eapi)
 			lines = grabfile(file_name, recursive=True)
 			file_dict = {}

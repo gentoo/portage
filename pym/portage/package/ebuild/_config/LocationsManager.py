@@ -19,7 +19,7 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.exception import DirectoryNotFound, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
-	normalize_path, shlex_split, writemsg
+	normalize_path, read_corresponding_eapi_file, shlex_split, writemsg
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.repository.config import parse_layout_conf, \
 	_portage1_profiles_allow_directories
@@ -31,7 +31,8 @@ _PORTAGE1_DIRECTORIES = frozenset([
 	'use.mask', 'use.force'])
 
 _profile_node = collections.namedtuple('_profile_node',
-	'location portage1_directories user_config')
+	('location', 'portage1_directories', 'user_config',
+	'profile_formats', 'eapi', 'allow_build_id'))
 
 _allow_parent_colon = frozenset(
 	["portage-2"])
@@ -71,10 +72,14 @@ class LocationsManager(object):
 		known_repos = []
 		for x in known_repository_paths:
 			try:
-				layout_data = {"profile-formats":
-					repositories.get_repo_for_location(x).profile_formats}
+				repo = repositories.get_repo_for_location(x)
 			except KeyError:
 				layout_data = parse_layout_conf(x)[0]
+			else:
+				layout_data = {
+					"profile-formats": repo.profile_formats,
+					"profile_eapi_when_unspecified": repo.eapi
+				}
 			# force a trailing '/' for ease of doing startswith checks
 			known_repos.append((x + '/', layout_data))
 		known_repos = tuple(known_repos)
@@ -129,10 +134,17 @@ class LocationsManager(object):
 			custom_prof = os.path.join(
 				self.config_root, CUSTOM_PROFILE_PATH)
 			if os.path.exists(custom_prof):
+				# For read_corresponding_eapi_file, specify default=None
+				# in order to allow things like wildcard atoms when
+				# is no explicit EAPI setting.
 				self.user_profile_dir = custom_prof
 				self.profiles.append(custom_prof)
 				self.profiles_complex.append(
-					_profile_node(custom_prof, True, True))
+					_profile_node(custom_prof, True, True,
+					('profile-bashrcs', 'profile-set'),
+					read_corresponding_eapi_file(
+					custom_prof + os.sep, default=None),
+					True))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -151,9 +163,20 @@ class LocationsManager(object):
 		allow_parent_colon = True
 		repo_loc = None
 		compat_mode = False
+		current_formats = ()
+		eapi = None
+
+		intersecting_repos = [x for x in known_repos
+			if current_abs_path.startswith(x[0])]
+		if intersecting_repos:
+			# Handle nested repositories. The longest path
+			# will be the correct one.
+			repo_loc, layout_data = max(intersecting_repos,
+				key=lambda x:len(x[0]))
+			eapi = layout_data.get("profile_eapi_when_unspecified")
 
 		eapi_file = os.path.join(currentPath, "eapi")
-		eapi = "0"
+		eapi = eapi or "0"
 		f = None
 		try:
 			f = io.open(_unicode_encode(eapi_file,
@@ -172,17 +195,15 @@ class LocationsManager(object):
 			if f is not None:
 				f.close()
 
-		intersecting_repos = [x for x in known_repos if current_abs_path.startswith(x[0])]
 		if intersecting_repos:
-			# protect against nested repositories.  Insane configuration, but the longest
-			# path will be the correct one.
-			repo_loc, layout_data = max(intersecting_repos, key=lambda x:len(x[0]))
 			allow_directories = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
 				any(x in _portage1_profiles_allow_directories for x in layout_data['profile-formats'])
 			compat_mode = not eapi_allows_directories_on_profile_level_and_repository_level(eapi) and \
 				layout_data['profile-formats'] == ('portage-1-compat',)
 			allow_parent_colon = any(x in _allow_parent_colon
 				for x in layout_data['profile-formats'])
+			current_formats = tuple(layout_data['profile-formats'])
+
 
 		if compat_mode:
 			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
@@ -233,7 +254,8 @@ class LocationsManager(object):
 
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
-			_profile_node(currentPath, allow_directories, False))
+			_profile_node(currentPath, allow_directories, False,
+				current_formats, eapi, 'build-id' in current_formats))
 
 	def _expand_parent_colon(self, parentsFile, parentPath,
 		repo_loc, repositories):

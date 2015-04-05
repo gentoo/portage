@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Feb 2014" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Feb 2015" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -24,6 +24,7 @@ make.defaults
 packages
 packages.build
 package.accept_keywords
+package.bashrc
 package.keywords
 package.mask
 package.provided
@@ -35,6 +36,7 @@ package.use.stable.force
 package.use.stable.mask
 parent
 profile.bashrc
+soname.provided
 use.force
 use.mask
 use.stable.mask
@@ -60,7 +62,10 @@ package.mask
 package.properties
 package.unmask
 package.use
+postsync.d
+repo.postsync.d
 repos.conf
+sets.conf
 .fi
 .TP
 .BR /etc/portage/env/
@@ -72,9 +77,15 @@ site-specific overrides of \fB/etc/portage/make.profile/\fR
 .BR /etc/portage/sets/
 user\-defined package sets
 .TP
+.BR /usr/portage/
+.nf
+sets.conf
+.fi
+.TP
 .BR /usr/portage/metadata/
 .nf
 layout.conf
+pkg_desc_index
 .fi
 .TP
 .BR /usr/portage/profiles/
@@ -107,6 +118,7 @@ use.stable.force
 .nf
 make.globals
 repos.conf
+sets
 .fi
 .TP
 .BR /var/cache/edb/
@@ -139,7 +151,7 @@ More reading:
 .br
 The following atom syntax extensions are only supported in user
 configuration files and command line arguments for programs such as
-\fBemerge(1)\fR:
+\fBemerge\fR(1):
 .RS
 .TP
 .B Repository Constraints
@@ -252,6 +264,11 @@ use.stable.force, package.use.stable.mask and
 package.use.stable.force. These files behave similarly to
 previously supported USE configuration files, except that they
 only influence packages that are merged due to a stable keyword.
+
+If the eapi file does not exist, then the \fBEAPI\fR defaults to
+\fI0\fR unless the default has been overridden by a
+profile_eapi_when_unspecified setting inside \fImetadata/layout.conf\fR
+of the containing repository.
 .TP
 .BR make.defaults
 The profile default settings for Portage.  The general format is described
@@ -329,14 +346,25 @@ Special USE flags which may be needed when bootstrapping from stage1 to stage2.
 .PD 1
 .TP
 .BR packages
-Provides the list of packages that compose the special \fIsystem\fR set.
+Provides the list of packages that compose the \fI@system\fR and
+\fI@profile\fR  package sets. The motivation to have \fI@profile\fR
+separate from \fI@system\fR is that \fI@system\fR packages may have
+incomplete dependency specifications (due to long-standing Gentoo
+policy), and incomplete dependency specifications have deleterious
+effects on the ability of \fBemerge\fR to parallelize builds. So,
+unlike \fI@system\fR, packages included in \fI@profile\fR do not
+hurt \fBemerge\fR's ability to parallelize.
 
 .I Format:
 .nf
 \- comments begin with # (no inline comments)
 \- one DEPEND atom per line
-\- packages to be added to the system set begin with a *
-\- atoms without * only appear for legacy reasons
+\- packages to be added to the @system set begin with a *
+\- packages to be added to the @profile set do not begin with a *
+\- packages may only be added to the @profile set if the containing
+  repository's layout.conf has 'profile-set' listed in the
+  profile-formats field. Otherwise, packages that do not begin with
+  '*' will simply be ignored for legacy reasons
 .fi
 .I Note:
 In a cascading profile setup, you can remove packages in children
@@ -346,17 +374,44 @@ a '\-'.
 .I Example:
 .nf
 # i am a comment !
-# pull in a version of glibc less than 2.3
+# pull a version of glibc less than 2.3 into @system
 *<sys\-libs/glibc\-2.3
-# pull in any version of bash
+# pull any version of bash into @system
 *app\-shells/bash
-# pull in a version of readline earlier than 4.2
+# pull a version of readline earlier than 4.2 into @system
 *<sys\-libs/readline\-4.2
+# pull vim into @profile
+app-editors/vim
 .fi
 .TP
 .BR packages.build
 A list of packages (one per line) that make up a stage1 tarball.  Really only
 useful for stage builders.
+.TP
+.BR package.bashrc
+Per-package bashrc mechanism.  Contains a list of bashrc files to be sourced
+before emerging a given atom.  The bashrc files must be stored in bashrc/, in
+the profile directory.
+
+.I Note:
+.nf
+\- The bashrc files will be sourced after profile.bashrc for the same profile.
+\- profile-formats in metadata/layout.conf must contain profile-bashrcs for this
+to be enabled.
+.fi
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments).
+\- one atom per line with space-delimited list of bashrc files.
+.fi
+
+.I Example:
+.nf
+# By setting INSTALL_MASK in bashrc/nostandardconf.conf, we can avoid installing
+# the standard configuration and enable another package to install it.
+net-misc/dhcp nostardardconf.conf
+.fi
 .TP
 .BR package.provided
 A list of packages (one per line) that portage should assume have been
@@ -373,13 +428,6 @@ has been listed. Dependencies that are satisfied by package.provided
 entries may cause installed packages satisfying equivalent dependencies
 to be removed by \fBemerge\fR(1) \fB\-\-depclean\fR actions (see the
 \fBACTIONS\fR section of the \fBemerge\fR(1) man page for more information).
-
-Virtual packages (virtual/*) should not be specified in package.provided,
-since virtual packages themselves do not provide any files, and
-package.provided is intended to represent packages that do provide files.
-Depending on the type of virtual, it may be necessary to add an entry to the
-virtuals file and/or add a package that satisfies a virtual to
-package.provided.
 
 .I Format:
 .nf
@@ -464,6 +512,28 @@ If needed, this file can be used to set up a special environment for ebuilds,
 different from the standard root environment.  The syntax is the same as for
 any other bash script.
 .TP
+.BR soname.provided
+A list of sonames that portage should assume have been provided. This
+is useful for using portage to install binary packages on top of a base
+image which lacks /var/db/pkg for some reason (perhaps the image was
+assembled by another package manager, or by Linux From Scratch).
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- line begins with a multilib category
+\- multilib category is followed by one or more sonames
+\- only one multilib category is allowed per line
+\- prefixing an soname with a '\-' will negate a parent profile setting
+.fi
+
+.I Example:
+.nf
+# provide libc and ld-linux sonames for x86_32 and x86_64 categories
+x86_32 ld-linux.so.2 libc.so.6
+x86_64 ld-linux-x86-64.so.2 libc.so.6
+.fi
+.TP
 \fBuse.force\fR and \fBuse.stable.force\fR
 Some USE flags don't make sense to disable under certain conditions.  Here we
 list forced flags.
@@ -528,7 +598,8 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RE
 .TP
 .BR /etc/portage/
-Any file in this directory that begins with "package." or is repos.conf can be
+Files in this directory including make.conf, repos.conf, and any file
+with a name that begins with "package." can be
 more than just a flat file.  If it is a directory, then all the files in that
 directory will be sorted in ascending alphabetical order by file name and summed
 together as if it were a single file.
@@ -753,6 +824,10 @@ documentation for QT.  Easy as pie my friend!
 .nf
 \- comments begin with # (no inline comments)
 \- one DEPEND atom per line with space-delimited USE flags
+\- USE flags can be prefixed with USE_EXPAND name followed by a colon (:)
+and a space. In this case, all the names following it are treated
+as values for the USE_EXPAND. Note that if you need to remove earlier
+assignments or defaults, you need to explicitly specify '\-*'.
 .fi
 
 .I Example:
@@ -761,6 +836,28 @@ documentation for QT.  Easy as pie my friend!
 =x11\-libs/gtk+\-2* doc
 # disable mysql support for QT
 x11\-libs/qt \-mysql
+# set preferred video card for all packages
+*/* VIDEO_CARDS: \-* radeon
+.fi
+.TP
+.BR postsync.d/
+This directory is for user supplied postsync hooks to be run once after all
+repositories have been synced.  Each script is called in alphabetic order
+without any arguments.
+.fi
+.TP
+.BR repo.postsync.d/
+This directory is for user supplied postsync hooks to be run once after each
+repository has been synced.  Each script is called in alphabetic order
+with three arguments.
+
+.I args:
+        repository name, sync-uri, location
+.fi
+
+Using this information it is possible for hooks to be run for only a certain
+repository.  This way other update actions can be performed for that repository
+only.
 .fi
 .TP
 .BR repos.conf
@@ -818,6 +915,16 @@ When 'force = aliases' attribute is not set, \fBegencache\fR(1),
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
+.B auto\-sync
+This setting determines if the repo will be synced during "\fBemerge \-\-sync\fR" or
+"\fBemaint sync \-\-auto\fR" runs.  This allows for repositories to be synced only when
+desired via "\fBemaint sync \-\-repo foo\fR".
+.br
+Valid values: yes, no, true, false.
+.br
+If unset, the repo will be treated as set
+yes, true.
+.TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
 .br
@@ -857,13 +964,22 @@ Specifies priority of given repository.
 .B sync\-cvs\-repo
 Specifies CVS repository.
 .TP
+.B sync\-depth
+Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
+the newest commit). If set to 0, the depth is unlimited.
+.TP
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non\-empty values: cvs, git, rsync
+Valid non\-empty values: cvs, git, rsync, svn, websync (emerge-webrsync)
 .br
 This attribute can be set to empty value to disable synchronization of given
 repository. Empty value is default.
+.TP
+.B sync\-umask
+Specifies umask used to synchronize the repository.
+.br
+Takes an octal permission mask, e.g. 022.
 .TP
 .B sync\-uri
 Specifies URI of repository used for synchronization performed by `emerge
@@ -893,6 +1009,18 @@ ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
 .TP
 Note: For the ssh:// scheme, key\-based authentication might be of interest.
 .RE
+.TP
+.B sync\-user
+Specifies the credentials used to perform the synchronization.
+.br
+Syntax: [user][:group]
+.br
+If only user is provided, the primary group of the user will be used.
+If only group is provided, the current user will be preserved and only
+group id will be changed.
+.br
+This key takes precedence over FEATURES=userpriv. If user or group id
+is provided, Portage no longer uses owner of the directory.
 .RE
 
 .I Example:
@@ -935,8 +1063,40 @@ location = /usr/portage
 sync\-type = cvs
 sync\-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
 sync\-cvs\-repo = gentoo\-x86
+auto\-sync = yes
+
+# Overlay 'voip' syncronized with layman's plug-in sync module
+[voip]
+location = /var/lib/layman/voip
+sync\-type = laymanator
+sync\-uri = git://git.overlays.gentoo.org/proj/voip.git
+auto\-sync = yes
 .fi
 .RE
+.TP
+.BR sets.conf
+A package set configuration file. Settings here override settings from
+\fB/usr/portage/sets.conf\fR and \fB/usr/share/portage/config/sets\fR.
+The format is described extensively in the
+\fIPackage Set Configuration\fR section of the html documentation which
+is installed with portage when the "doc" USE flag is enabled.
+
+.I Example:
+.nf
+[world]
+class = portage.sets.base.DummyPackageSet
+packages = @profile @selected @system
+
+[usersets]
+class = portage.sets.files.StaticFileSet
+multiset = true
+directory =  %(PORTAGE_CONFIGROOT)setc/portage/sets
+world-candidate = True
+
+[module-rebuild]
+class = portage.sets.dbapi.OwnerSet
+files = /lib/modules
+.fi
 .RE
 .TP
 .BR /etc/portage/env/
@@ -975,6 +1135,15 @@ set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
+.RE
+.TP
+.BR /usr/portage/
+.RS
+.TP
+.BR sets.conf
+A package set configuration file. Also see \fB/etc/portage/sets.conf\fR
+which overrides these settings, and
+\fB/usr/share/portage/config/sets\fR which contains default settings.
 .RE
 .TP
 .BR /usr/portage/metadata/
@@ -1047,11 +1216,25 @@ The default setting for repoman's --echangelog option.
 The cache formats supported in the metadata tree.  There is the old "pms" format
 and the newer/faster "md5-dict" format.  Default is to detect dirs.
 .TP
-.BR profile\-formats " = [pms|portage-1|portage-2]"
+.BR profile_eapi_when_unspecified
+The EAPI to use for profiles when unspecified. This attribute is
+supported only if profile-default-eapi is included in profile-formats.
+.TP
+.BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] [profile-set] [profile-default-eapi] [build-id]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
 with old profiles, but is not allowed to be opted into directly.
+Setting profile-bashrcs will enable the per-profile bashrc mechanism
+\fBpackage.bashrc\fR. Setting profile-set enables support for using the
+profile \fBpackages\fR file to add atoms to the @profile package set.
+See the profile \fBpackages\fR section for more information.
+Setting profile-default-eapi enables support for the
+profile_eapi_when_unspecified attribute. Setting build\-id allows
+dependency atoms in the profile to refer to specific builds (see the
+binpkg\-multi\-instance FEATURES setting in \fBmake.conf\fR(5)). A
+build\-id atom is identical to a version-specific atom, except that the
+version is followed by a hyphen and an integer build\-id.
 .RE
 .RE
 
@@ -1110,6 +1293,17 @@ cache\-formats = md5-dict pms
 profile\-formats = portage-2
 .fi
 .RE
+.TP
+.BR pkg_desc_index
+This is an index of package names, versions, and descriptions which
+may be generated by \fBegencache\fR(1) in order to optimize
+\fBemerge\fR(1) search actions.
+
+.I Example:
+.nf
+sys-apps/sed 4.2 4.2.1 4.2.1-r1 4.2.2: Super-useful stream editor
+sys-apps/usleep 0.1: A wrapper for usleep
+.fi
 .RE
 .TP
 .BR /usr/portage/profiles/
@@ -1320,6 +1514,13 @@ The default configuration of repositories for Portage.  This comes from
 the portage package itself.  Settings in \fB/etc/portage/repos.conf\fR
 override values set here. The format is described extensively in section
 for \fB/etc/portage/repos.conf\fR.
+.TP
+.BR sets
+A directory containing package set configuration files. Also see
+\fB/etc/portage/sets.conf\fR and \fB/usr/portage/sets.conf\fR, both of
+which override values set here. Default set configurations are installed
+in \fB/usr/share/portage/config/sets/portage.conf\fR.
+.RE
 .RE
 .TP
 .BR /var/cache/edb/
@@ -1352,6 +1553,31 @@ can be changed quickly.  Generally though there is one file per environment
 variable that "matters" (like CFLAGS) with the contents stored inside of it.
 Another common file is the CONTENTS file which lists the path and hashes of
 all objects that the package installed onto your system.
+.TP
+.BR PROVIDES
+Contains information about the sonames that a package provides, which is
+automatically generated from the files that it installs. The sonames
+may have been filtered by the \fBPROVIDES_EXCLUDE\fR \fBebuild\fR(5)
+variable. A multilib category, followed by a colon, always preceeds a
+list of one or more sonames.
+
+.I Example:
+.nf
+x86_32: libcom_err.so.2 libss.so.2 x86_64: libcom_err.so.2 libss.so.2
+.fi
+.TP
+.BR REQUIRES
+Contains information about the sonames that a package requires, which is
+automatically generated from the files that it installs. The sonames
+may have been filtered by the \fBREQUIRES_EXCLUDE\fR \fBebuild\fR(5)
+variable. Any sonames that a package provides are automatically excluded
+from \fBREQUIRES\fR. A multilib category, followed by a colon, always
+preceeds a list of one or more sonames.
+
+.I Example:
+.nf
+x86_32: ld-linux.so.2 libc.so.6 x86_64: ld-linux-x86-64.so.2 libc.so.6
+.fi
 .RE
 .TP
 .BR /var/lib/portage/

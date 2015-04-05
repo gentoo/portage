@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -24,6 +24,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import _encodings
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
+from portage.const import VCS_DIRS
 from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
@@ -115,11 +116,19 @@ class SetConfig(object):
 		parser.remove_section("world")
 		parser.add_section("world")
 		parser.set("world", "class", "portage.sets.base.DummyPackageSet")
-		parser.set("world", "packages", "@selected @system")
+		parser.set("world", "packages", "@profile @selected @system")
 
 		parser.remove_section("selected")
 		parser.add_section("selected")
 		parser.set("selected", "class", "portage.sets.files.WorldSelectedSet")
+
+		parser.remove_section("selected-packages")
+		parser.add_section("selected-packages")
+		parser.set("selected-packages", "class", "portage.sets.files.WorldSelectedPackagesSet")
+
+		parser.remove_section("selected-sets")
+		parser.add_section("selected-sets")
+		parser.set("selected-sets", "class", "portage.sets.files.WorldSelectedSetsSet")
 
 		parser.remove_section("system")
 		parser.add_section("system")
@@ -299,10 +308,14 @@ def load_default_config(settings, trees):
 	if portage.const.EPREFIX:
 		global_config_path = os.path.join(portage.const.EPREFIX,
 			GLOBAL_CONFIG_PATH.lstrip(os.sep))
+	vcs_dirs = [_unicode_encode(x, encoding=_encodings['fs']) for x in VCS_DIRS]
 	def _getfiles():
 		for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
+			for d in dirs:
+				if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
+					dirs.remove(d)
 			for f in files:
-				if not f.startswith(b'.'):
+				if not f.startswith(b".") and not f.endswith(b"~"):
 					yield os.path.join(path, f)
 
 		dbapi = trees["porttree"].dbapi

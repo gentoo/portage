@@ -862,8 +862,12 @@ class Scheduler(PollScheduler):
 							continue
 						fetched = fetcher.pkg_path
 
+					if fetched is False:
+						filename = bintree.getname(x.cpv)
+					else:
+						filename = fetched
 					verifier = BinpkgVerifier(pkg=x,
-						scheduler=sched_iface)
+						scheduler=sched_iface, _pkg_path=filename)
 					current_task = verifier
 					verifier.start()
 					if verifier.wait() != os.EX_OK:
@@ -1017,6 +1021,7 @@ class Scheduler(PollScheduler):
 			earlier_sigterm_handler = signal.signal(signal.SIGTERM, sighandler)
 			earlier_sigcont_handler = \
 				signal.signal(signal.SIGCONT, self._sigcont_handler)
+			signal.siginterrupt(signal.SIGCONT, False)
 
 			try:
 				rval = self._merge()

@@ -1,8 +1,9 @@
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
+import portage
 from portage import os
 from portage import shutil
 from portage.dbapi.virtual import fakedbapi
@@ -49,6 +50,14 @@ class TestFakedbapi(TestCase):
 			env = {
 				"PORTAGE_REPOSITORIES": "[DEFAULT]\nmain-repo = test_repo\n[test_repo]\nlocation = %s" % test_repo
 			}
+
+			# Tests may override portage.const.EPREFIX in order to
+			# simulate a prefix installation. It's reasonable to do
+			# this because tests should be self-contained such that
+			# the "real" value of portage.const.EPREFIX is entirely
+			# irrelevant (see bug #492932).
+			portage.const.EPREFIX = tempdir
+
 			fakedb = fakedbapi(settings=config(config_profile_path="",
 				env=env, eprefix=tempdir))
 			for cpv, metadata in packages:

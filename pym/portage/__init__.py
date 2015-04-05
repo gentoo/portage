@@ -321,12 +321,36 @@ class _unicode_module_wrapper(object):
 			cache[attr] = result
 		return result
 
+class _eintr_func_wrapper(object):
+	"""
+	Wraps a function and handles EINTR by calling the function as
+	many times as necessary (until it returns without raising EINTR).
+	"""
+
+	__slots__ = ('_func',)
+
+	def __init__(self, func):
+		self._func = func
+
+	def __call__(self, *args, **kwargs):
+
+		while True:
+			try:
+				rval = self._func(*args, **kwargs)
+				break
+			except EnvironmentError as e:
+				if e.errno != errno.EINTR:
+					raise
+
+		return rval
+
 import os as _os
 _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
 	id(_os.system)        : _os.system,
+	id(_os.waitpid)       : _eintr_func_wrapper(_os.waitpid)
 }
 
 
@@ -492,7 +516,7 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend", "6_pre1"])
 _deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2"])
 _supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI + 1)] + list(_testing_eapis) + list(_deprecated_eapis))
 
@@ -570,6 +594,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		env=env, eprefix=eprefix)
 	settings.lock()
 
+	depcachedir = settings.get('PORTAGE_DEPCACHEDIR')
 	trees._target_eroot = settings['EROOT']
 	myroots = [(settings['EROOT'], settings)]
 	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
@@ -587,6 +612,8 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 			v = settings.get(k)
 			if v is not None:
 				clean_env[k] = v
+		if depcachedir is not None:
+			clean_env['PORTAGE_DEPCACHEDIR'] = depcachedir
 		settings = config(config_root=None, target_root="/",
 			env=clean_env, eprefix=None)
 		settings.lock()

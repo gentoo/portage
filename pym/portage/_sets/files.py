@@ -1,4 +1,4 @@
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -10,7 +10,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
-from portage.const import USER_CONFIG_PATH, WORLD_FILE, WORLD_SETS_FILE
+from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage import portage_gid
@@ -20,7 +20,8 @@ from portage.env.loaders import ItemFileLoader, KeyListFileLoader
 from portage.env.validators import ValidAtomValidator
 from portage import cpv_getkey
 
-__all__ = ["StaticFileSet", "ConfigFileSet", "WorldSelectedSet"]
+__all__ = ["StaticFileSet", "ConfigFileSet", "WorldSelectedSet",
+		"WorldSelectedPackagesSet", "WorldSelectedSetsSet"]
 
 class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
@@ -141,6 +142,7 @@ class StaticFileSet(EditablePackageSet):
 				_("Directory path contains invalid character(s) for encoding '%s': '%s'") \
 				% (_encodings['fs'], directory))
 
+		vcs_dirs = [_unicode_encode(x, encoding=_encodings['fs']) for x in VCS_DIRS]
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 
@@ -151,7 +153,7 @@ class StaticFileSet(EditablePackageSet):
 				except UnicodeDecodeError:
 					continue
 				for d in dirs[:]:
-					if d[:1] == '.':
+					if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
 						dirs.remove(d)
 				for filename in files:
 					try:
@@ -159,7 +161,7 @@ class StaticFileSet(EditablePackageSet):
 							encoding=_encodings['fs'], errors='strict')
 					except UnicodeDecodeError:
 						continue
-					if filename[:1] == '.':
+					if filename.startswith(".") or filename.endswith("~"):
 						continue
 					if filename.endswith(".metadata"):
 						continue
@@ -205,41 +207,61 @@ class ConfigFileSet(PackageSet):
 	multiBuilder = classmethod(multiBuilder)
 
 class WorldSelectedSet(EditablePackageSet):
-	description = "Set of packages that were directly installed by the user"
-	
+	description = "Set of packages and subsets that were directly installed by the user"
+
 	def __init__(self, eroot):
 		super(WorldSelectedSet, self).__init__(allow_repo=True)
-		# most attributes exist twice as atoms and non-atoms are stored in 
-		# separate files
+		self._pkgset = WorldSelectedPackagesSet(eroot)
+		self._setset = WorldSelectedSetsSet(eroot)
+
+	def write(self):
+		self._pkgset._atoms = self._atoms.copy()
+		self._pkgset.write()
+		self._setset._nonatoms = self._nonatoms.copy()
+		self._setset.write()
+
+	def load(self):
+		# Iterating over these sets does not force them to load if they
+		# have been loaded previously.
+		self._pkgset.load()
+		self._setset.load()
+		self._setAtoms(chain(self._pkgset, self._setset))
+
+	def lock(self):
+		self._pkgset.lock()
+		self._setset.lock()
+
+	def unlock(self):
+		self._pkgset.unlock()
+		self._setset.unlock()
+
+	def cleanPackage(self, vardb, cpv):
+		self._pkgset.cleanPackage(vardb, cpv)
+
+	def singleBuilder(self, options, settings, trees):
+		return WorldSelectedSet(settings["EROOT"])
+	singleBuilder = classmethod(singleBuilder)
+
+class WorldSelectedPackagesSet(EditablePackageSet):
+	description = "Set of packages that were directly installed by the user"
+
+	def __init__(self, eroot):
+		super(WorldSelectedPackagesSet, self).__init__(allow_repo=True)
 		self._lock = None
 		self._filename = os.path.join(eroot, WORLD_FILE)
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
-		
-		self._filename2 = os.path.join(eroot, WORLD_SETS_FILE)
-		self.loader2 = ItemFileLoader(self._filename2, self._validate2)
-		self._mtime2 = None
-		
+
 	def _validate(self, atom):
 		return ValidAtomValidator(atom, allow_repo=True)
-
-	def _validate2(self, setname):
-		return setname.startswith(SETPREFIX)
 
 	def write(self):
 		write_atomic(self._filename,
 			"".join(sorted("%s\n" % x for x in self._atoms)))
 
-		write_atomic(self._filename2,
-			"".join(sorted("%s\n" % x for x in self._nonatoms)))
-
 	def load(self):
 		atoms = []
-		nonatoms = []
 		atoms_changed = False
-		# load atoms and non-atoms from different files so the worldfile is 
-		# backwards-compatible with older versions and other PMs, even though 
-		# it's supposed to be private state data :/
 		try:
 			mtime = os.stat(self._filename).st_mtime
 		except (OSError, IOError):
@@ -261,36 +283,8 @@ class WorldSelectedSet(EditablePackageSet):
 		else:
 			atoms.extend(self._atoms)
 
-		changed2, nonatoms = self._load2()
-		atoms_changed |= changed2
-
 		if atoms_changed:
-			self._setAtoms(atoms+nonatoms)
-
-	def _load2(self):
-		changed = False
-		try:
-			mtime = os.stat(self._filename2).st_mtime
-		except (OSError, IOError):
-			mtime = None
-		if (not self._loaded or self._mtime2 != mtime):
-			try:
-				data, errors = self.loader2.load()
-				for fname in errors:
-					for e in errors[fname]:
-						self.errors.append(fname+": "+e)
-			except EnvironmentError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-				data = {}
-			nonatoms = list(data)
-			self._mtime2 = mtime
-			changed = True
-		else:
-			nonatoms = list(self._nonatoms)
-
-		return changed, nonatoms
+			self._setAtoms(atoms)
 
 	def _ensure_dirs(self):
 		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
@@ -338,5 +332,63 @@ class WorldSelectedSet(EditablePackageSet):
 		self.replace(newworldlist)
 
 	def singleBuilder(self, options, settings, trees):
-		return WorldSelectedSet(settings["EROOT"])
+		return WorldSelectedPackagesSet(settings["EROOT"])
+	singleBuilder = classmethod(singleBuilder)
+
+class WorldSelectedSetsSet(EditablePackageSet):
+	description = "Set of sets that were directly installed by the user"
+
+	def __init__(self, eroot):
+		super(WorldSelectedSetsSet, self).__init__(allow_repo=True)
+		self._lock = None
+		self._filename = os.path.join(eroot, WORLD_SETS_FILE)
+		self.loader = ItemFileLoader(self._filename, self._validate)
+		self._mtime = None
+
+	def _validate(self, setname):
+		return setname.startswith(SETPREFIX)
+
+	def write(self):
+		write_atomic(self._filename,
+			"".join(sorted("%s\n" % x for x in self._nonatoms)))
+
+	def load(self):
+		atoms_changed = False
+		try:
+			mtime = os.stat(self._filename).st_mtime
+		except (OSError, IOError):
+			mtime = None
+		if (not self._loaded or self._mtime != mtime):
+			try:
+				data, errors = self.loader.load()
+				for fname in errors:
+					for e in errors[fname]:
+						self.errors.append(fname+": "+e)
+			except EnvironmentError as e:
+				if e.errno != errno.ENOENT:
+					raise
+				del e
+				data = {}
+			nonatoms = list(data)
+			self._mtime = mtime
+			atoms_changed = True
+		else:
+			nonatoms = list(self._nonatoms)
+
+		if atoms_changed:
+			self._setAtoms(nonatoms)
+
+	def lock(self):
+		if self._lock is not None:
+			raise AssertionError("already locked")
+		self._lock = lockfile(self._filename, wantnewlockfile=1)
+
+	def unlock(self):
+		if self._lock is None:
+			raise AssertionError("not locked")
+		unlockfile(self._lock)
+		self._lock = None
+
+	def singleBuilder(self, options, settings, trees):
+		return WorldSelectedSetsSet(settings["EROOT"])
 	singleBuilder = classmethod(singleBuilder)

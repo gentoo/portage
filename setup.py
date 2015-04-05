@@ -30,10 +30,12 @@ import sys
 
 x_scripts = {
 	'bin': [
-		'bin/archive-conf', 'bin/dispatch-conf', 'bin/ebuild', 'bin/egencache',
-		'bin/emaint', 'bin/emerge', 'bin/emerge-webrsync', 'bin/emirrordist',
-		'bin/env-update', 'bin/etc-update', 'bin/fixpackages', 'bin/portageq',
-		'bin/quickpkg', 'bin/regenworld', 'bin/repoman',
+		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
+		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg', 'bin/repoman'
+	],
+	'sbin': [
+		'bin/archive-conf', 'bin/dispatch-conf', 'bin/emaint', 'bin/env-update',
+		'bin/etc-update', 'bin/fixpackages', 'bin/regenworld'
 	],
 }
 
@@ -224,6 +226,10 @@ class x_build_scripts_bin(x_build_scripts_custom):
 	dir_name = 'bin'
 
 
+class x_build_scripts_sbin(x_build_scripts_custom):
+	dir_name = 'sbin'
+
+
 class x_build_scripts_portagebin(x_build_scripts_custom):
 	dir_name = 'portage'
 
@@ -238,6 +244,7 @@ class x_build_scripts(build_scripts):
 	def run(self):
 		self.run_command('build_scripts_bin')
 		self.run_command('build_scripts_portagebin')
+		self.run_command('build_scripts_sbin')
 
 
 class x_clean(clean):
@@ -473,6 +480,11 @@ class x_install_scripts_bin(x_install_scripts_custom):
 	var_name = 'bindir'
 
 
+class x_install_scripts_sbin(x_install_scripts_custom):
+	dir_name = 'sbin'
+	var_name = 'sbindir'
+
+
 class x_install_scripts_portagebin(x_install_scripts_custom):
 	dir_name = 'portage'
 	var_name = 'portage_bindir'
@@ -488,6 +500,7 @@ class x_install_scripts(install_scripts):
 	def run(self):
 		self.run_command('install_scripts_bin')
 		self.run_command('install_scripts_portagebin')
+		self.run_command('install_scripts_sbin')
 
 
 class x_sdist(sdist):
@@ -596,9 +609,10 @@ def get_manpages():
 			for g, mans in groups.items():
 				yield [os.path.join('$mandir', topdir, 'man%s' % g), mans]
 
+
 setup(
 	name = 'portage',
-	version = '2.2.14',
+	version = '2.2.18',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
@@ -616,6 +630,7 @@ setup(
 		['$portage_setsdir', ['cnf/sets/portage.conf']],
 		['$docdir', ['NEWS', 'RELEASE-NOTES']],
 		['$portage_base/bin', ['bin/deprecated-path']],
+		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
 	cmdclass = {
@@ -624,6 +639,7 @@ setup(
 		'build_scripts': x_build_scripts,
 		'build_scripts_bin': x_build_scripts_bin,
 		'build_scripts_portagebin': x_build_scripts_portagebin,
+		'build_scripts_sbin': x_build_scripts_sbin,
 		'build_tests': build_tests,
 		'clean': x_clean,
 		'docbook': docbook,
@@ -636,6 +652,7 @@ setup(
 		'install_scripts': x_install_scripts,
 		'install_scripts_bin': x_install_scripts_bin,
 		'install_scripts_portagebin': x_install_scripts_portagebin,
+		'install_scripts_sbin': x_install_scripts_sbin,
 		'sdist': x_sdist,
 		'test': test,
 	},
