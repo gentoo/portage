@@ -303,7 +303,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	reason     = "Reason unknown"
 	try:
 		mysize = os.stat(filename)[stat.ST_SIZE]
-		if mydict["size"] != mysize:
+		if mydict.get("size") is not None and mydict["size"] != mysize:
 			return False,(_("Filesize does not match recorded size"), mysize, mydict["size"])
 	except OSError as e:
 		if e.errno == errno.ENOENT:

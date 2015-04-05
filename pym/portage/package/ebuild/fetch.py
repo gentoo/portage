@@ -700,7 +700,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								os.unlink(myfile_path)
 							except OSError:
 								pass
-					elif distdir_writable:
+					elif distdir_writable and size is not None:
 						if mystat.st_size < fetch_resume_size and \
 							mystat.st_size < size:
 							# If the file already exists and the size does not
@@ -806,8 +806,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						# assume that it is fully downloaded.
 						continue
 					else:
-						if mystat.st_size < mydigests[myfile]["size"] and \
-							not restrict_fetch:
+						if (mydigests[myfile].get("size") is not None
+								and mystat.st_size < mydigests[myfile]["size"]
+								and not restrict_fetch):
 							fetched = 1 # Try to resume this download.
 						elif parallel_fetchonly and \
 							mystat.st_size == mydigests[myfile]["size"]:
