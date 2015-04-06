@@ -3751,6 +3751,7 @@ class dblink(object):
 		line_ending_re = re.compile('[\n\r]')
 		srcroot_len = len(srcroot)
 		ed_len = len(self.settings["ED"])
+		eprefix_len = len(self.settings["EPREFIX"])
 
 		while True:
 
@@ -3792,7 +3793,11 @@ class dblink(object):
 					break
 
 				relative_path = parent[srcroot_len:]
-				dirlist.append(os.path.join(destroot, relative_path))
+				if len(relative_path) >= eprefix_len:
+					# Files are never installed outside of the prefix,
+					# therefore we skip the readonly filesystem check for
+					# parent directories of the prefix (see bug 544624).
+					dirlist.append(os.path.join(destroot, relative_path))
 
 				for fname in files:
 					try:
