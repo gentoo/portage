@@ -1047,7 +1047,10 @@ def vcs_files_to_cps(vcs_file_iter):
 			if len(f_split) > 3 and f_split[1] in categories:
 				modified_cps.append("/".join(f_split[1:3]))
 
-	return frozenset(modified_cps)
+	# Exclude packages that have been removed, since calling
+	# code assumes that the packages exist.
+	return frozenset(x for x in frozenset(modified_cps)
+		if os.path.exists(os.path.join(repodir, x)))
 
 def git_supports_gpg_sign():
 	status, cmd_output = \
