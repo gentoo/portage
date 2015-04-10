@@ -1705,7 +1705,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 					if e.errno != errno.ENOENT:
 						raise
 				else:
-					pfile_link = _unicode_decode(
+					pfile_link = _unicode_decode(pfile_link,
 						encoding=_encodings['merge'], errors='replace')
 					if pfile_link == newmd5:
 						return old_pfile
