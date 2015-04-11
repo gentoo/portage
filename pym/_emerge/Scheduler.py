@@ -827,7 +827,7 @@ class Scheduler(PollScheduler):
 
 			try:
 
-			        # Clean up the existing build dir, in case pkg_pretend
+				# Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
 				if existing_builddir:
 					if x.built:
