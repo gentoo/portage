@@ -65,6 +65,10 @@ from _emerge.SequentialTaskQueue import SequentialTaskQueue
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+# enums
+FAILURE = 1
+
+
 class Scheduler(PollScheduler):
 
 	# max time between loadavg checks (milliseconds)
@@ -283,11 +287,11 @@ class Scheduler(PollScheduler):
 				self._parallel_fetch = True
 
 		if self._parallel_fetch:
-				# clear out existing fetch log if it exists
-				try:
-					open(self._fetch_log, 'w').close()
-				except EnvironmentError:
-					pass
+			# clear out existing fetch log if it exists
+			try:
+				open(self._fetch_log, 'w').close()
+			except EnvironmentError:
+				pass
 
 		self._running_portage = None
 		portage_match = self._running_root.trees["vartree"].dbapi.match(
@@ -352,7 +356,7 @@ class Scheduler(PollScheduler):
 		Use this to free memory at the beginning of _calc_resume_list().
 		After _calc_resume_list(), the _init_graph() method
 		must to be called in order to re-generate the structures that
-		this method destroys. 
+		this method destroys.
 		"""
 		self._blocker_db = None
 		self._set_graph_config(None)
@@ -640,7 +644,7 @@ class Scheduler(PollScheduler):
 				writemsg_level(
 					"!!! Unable to generate manifest for '%s'.\n" \
 					% x.cpv, level=logging.ERROR, noiselevel=-1)
-				return 1
+				return FAILURE
 
 		return os.EX_OK
 
@@ -672,7 +676,7 @@ class Scheduler(PollScheduler):
 				out = portage.output.EOutput()
 				for line in textwrap.wrap(msg, 70):
 					out.eerror(line)
-				return 1
+				return FAILURE
 
 		return os.EX_OK
 
@@ -718,7 +722,7 @@ class Scheduler(PollScheduler):
 				failures |= 1
 
 		if failures:
-			return 1
+			return FAILURE
 		return os.EX_OK
 
 	def _add_prefetchers(self):
@@ -823,7 +827,7 @@ class Scheduler(PollScheduler):
 
 			try:
 
-				# Clean up the existing build dir, in case pkg_pretend
+			        # Clean up the existing build dir, in case pkg_pretend
 				# checks for available space (bug #390711).
 				if existing_builddir:
 					if x.built:
@@ -933,7 +937,7 @@ class Scheduler(PollScheduler):
 				build_dir.unlock()
 
 		if failures:
-			return 1
+			return FAILURE
 		return os.EX_OK
 
 	def merge(self):
@@ -948,7 +952,7 @@ class Scheduler(PollScheduler):
 		try:
 			self._background = self._background_mode()
 		except self._unknown_internal_error:
-			return 1
+			return FAILURE
 
 		rval = self._handle_self_update()
 		if rval != os.EX_OK:
@@ -970,7 +974,7 @@ class Scheduler(PollScheduler):
 				out = portage.output.EOutput()
 				for l in msg:
 					out.eerror(l)
-				return 1
+				return FAILURE
 
 			if self._background:
 				root_config.settings.unlock()
@@ -1177,7 +1181,7 @@ class Scheduler(PollScheduler):
 			printer.eerror("")
 
 		if self._failed_pkgs_all:
-			return 1
+			return FAILURE
 		return os.EX_OK
 
 	def _elog_listener(self, mysettings, key, logentries, fulltext):
