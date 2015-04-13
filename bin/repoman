@@ -2953,7 +2953,7 @@ else:
 	# Setup the GPG commands
 	def gpgsign(filename):
 		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
-		if gpgcmd is None:
+		if gpgcmd in [None, '']:
 			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!" + \
 				" Is make.globals missing?")
 		if "${PORTAGE_GPG_KEY}" in gpgcmd and \
