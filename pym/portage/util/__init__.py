@@ -340,7 +340,7 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 	else:
 		return list(new_list)
 
-def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
+def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1, newlines=0):
 	"""
 	This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary
 
@@ -354,6 +354,8 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 	@type recursive: Boolean (integer)
 	@param incremental: Append to the return list, don't overwrite
 	@type incremental: Boolean (integer)
+	@param newlines: Append newlines
+	@type newlines: Boolean (integer)
 	@rtype: Dictionary
 	@return:
 	1.  Returns the lines in a file in a dictionary, for example:
@@ -379,6 +381,8 @@ def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1):
 			continue
 		if len(myline) < 1 and empty == 1:
 			continue
+		if newlines:
+			myline.append("\n")
 		if incremental:
 			newdict.setdefault(myline[0], []).extend(myline[1:])
 		else:
@@ -424,7 +428,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 		return default
 	return eapi
 
-def grabdict_package(myfilename, juststrings=0, recursive=0,
+def grabdict_package(myfilename, juststrings=0, recursive=0, newlines=0,
 	allow_wildcard=False, allow_repo=False, allow_build_id=False,
 	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
@@ -438,7 +442,7 @@ def grabdict_package(myfilename, juststrings=0, recursive=0,
 	atoms = {}
 	for filename in file_list:
 		d = grabdict(filename, juststrings=False,
-			empty=True, recursive=False, incremental=True)
+			empty=True, recursive=False, incremental=True, newlines=newlines)
 		if not d:
 			continue
 		if verify_eapi and eapi is None:
