@@ -1,0 +1,124 @@
+==================
+ squashdelta-sync
+==================
+
+Introduction
+============
+
+Squashdelta-sync provides the squashfs syncing module for Portage.
+When used as sync-type for the repository, it fetches the complete
+repository snapshot on initial sync, and then uses squashdeltas to
+efficiently update it.
+
+While initially intended for the daily snapshot of the Gentoo
+repository, the module is designed with flexibility in mind. It can be
+used to sync any repository, without enforcing any specific snapshotting
+interval or versioning rules. However, each snapshot version identifier
+must be unique in the scope of repository.
+
+
+Technical hosting details
+=========================
+
+The snapshot hosting needs to provide the following files:
+
+1. the current (newest) full SquashFS snapshot of the repository,
+   and optionally M past snapshots,
+
+2. the deltas from N past snapshots to the current snapshot,
+
+3. a ``sha512sum.txt`` file containing SHA-512 checksums of all hosted
+   files, optionally OpenPGP-signed.
+
+The following naming schemes are used for the snapshots and deltas,
+respectively::
+
+    ${repo_name}-${version}.sqfs
+    ${repo_name}-${old_version}-${new_version}.sqdelta
+
+where:
+
+* ``${repo_name}`` is the repository name (as specified
+  in ``repos.conf``),
+* ``${version}`` specifies the snapshot version,
+* ``${old_version}`` specifies the snapshot version which the delta
+  updates from,
+* ``${new_version}`` specifies the snapshot version which the delta
+  updates to.
+
+Version can be an arbitrary string. It does not need to be incremental,
+however each version must be unique in the repository scope.
+For example, the version can be a date, a revision number or a commit
+hash.
+
+The ``sha512sum.txt`` uses the format used by the GNU coreutils
+``sha512sum`` program. That is, it contains one or more lines consisting
+of hexadecimal SHA-512 checksum followed by whitespace, followed by
+a filename. Lines not matching that format should be ignored.
+
+Optionally, the ``sha512sum.txt`` may be OpenPGP-signed. In that case,
+the file conforms to the ASCII-armored OpenPGP message format, with
+the checksums being stored in the message body.
+
+Additionally, the ``sha512sum.txt`` needs to contain an additional line
+containing the following string::
+
+    Current: ${repo_name}-${version}
+
+Stating the current (newest) snapshot version. If snapshots for multiple
+repositories are provided in the same directory (using the same
+``sha512sum.txt`` file), this line can occur multiple times or list
+multiple snapshots, whitespace-separated. In order not to introduce
+stray lines in the file, it is recommended to embed this information
+in the OpenPGP comment field.
+
+An example script generating daily deltas for a repository can be found
+in squashdelta-daily-gen_ repository.
+
+.. _squashdelta-daily-gen: https://bitbucket.org/mgorny/squashdelta-daily-gen
+
+
+Technical syncing details
+=========================
+
+When performing a sync, the script first fetches the ``sha512sum.txt``
+and processes it in order to determine the list of files available
+on the mirror. It should be noted that the script will never use
+a snapshot or delta that is not listed there. If the file is
+OpenPGP-signed, the signature is verified.
+
+The script scans scans the ``sha512sum.txt`` for a line containing
+the following string (case-insensitive)::
+
+    Current:
+
+The text following this string is split on spaces, and the resulting
+tokens are parsed as snapshot names. The one matching the current
+repository name is used to determine the current (newest) snapshot
+version.
+
+Afterwards, the script scans the local cache directory for the following
+symlink::
+
+    ${repo_name}-current.sqfs
+
+If the symlink exists, the file pointed by it is assumed to be
+the current (newest) local snapshot. Otherwise, the script assumes
+initial sync.
+
+On initial sync, the script fetches the newest snapshot from mirror
+and places it inside cache directory. The snapshot checksum is verified
+using ``sha512sum.txt`` and ``${repo_name}-current.sqfs`` symlink is
+created.
+
+On update, the script scans the file list for a delta transforming
+the current local snapshot to the newest remote snapshot. If such
+a delta is found, it is fetched, verified and applied to obtain
+the new snapshot. Afterwards, the resulting snapshot checksum is
+verified and the ``${repo_name}-current.sqfs`` symlink is updated.
+
+If no delta matches the version pair, it is assumed that the system is
+outdated beyond available deltas and a new snapshot is fetched instead
+(alike initial sync).
+
+.. vim:ft=rst
