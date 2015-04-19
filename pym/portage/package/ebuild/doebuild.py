@@ -195,7 +195,10 @@ def _doebuild_path(settings, eapi=None):
 
 	# Note: PORTAGE_BIN_PATH may differ from the global constant
 	# when portage is reinstalling itself.
-	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	portage_bin_path = [settings["PORTAGE_BIN_PATH"]]
+	if portage_bin_path[0] != portage.const.PORTAGE_BIN_PATH:
+		# Add a fallback path for restarting failed builds (bug 547086)
+		portage_bin_path.append(portage.const.PORTAGE_BIN_PATH)
 	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
@@ -210,18 +213,22 @@ def _doebuild_path(settings, eapi=None):
 	path = overrides
 
 	if "xattr" in settings.features:
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "xattr"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x, "ebuild-helpers", "xattr"))
 
 	if uid != 0 and \
 		"unprivileged" in settings.features and \
 		"fakeroot" not in settings.features:
-		path.append(os.path.join(portage_bin_path,
-			"ebuild-helpers", "unprivileged"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x,
+				"ebuild-helpers", "unprivileged"))
 
 	if settings.get("USERLAND", "GNU") != "GNU":
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "bsd"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x, "ebuild-helpers", "bsd"))
 
-	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
+	for x in portage_bin_path:
+		path.append(os.path.join(x, "ebuild-helpers"))
 	path.extend(prerootpath)
 
 	for prefix in prefixes:
