@@ -72,7 +72,10 @@ elf_check() {
 			eqawarn " work at startup, waste system resources, and may pose a security"
 			eqawarn " risk.  On some architectures, the code may not even function"
 			eqawarn " properly, if at all."
-			eqawarn " For more information, see http://hardened.gentoo.org/pic-fix-guide.xml"
+			eqawarn " For more information, see:"
+			eqawarn
+			eqawarn "   https://wiki.gentoo.org/wiki/Hardened/HOWTO_locate_and_fix_textrels"
+			eqawarn
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn "${f}"
 			__vecho -ne '\n'
@@ -86,7 +89,7 @@ elf_check() {
 			*-linux-gnu*)
 			# Check for files with executable stacks, but only on arches which
 			# are supported at the moment.  Keep this list in sync with
-			# http://www.gentoo.org/proj/en/hardened/gnu-stack.xml (Arch Status)
+			# https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart#Arch_Status
 			case ${CTARGET:-${CHOST}} in
 				arm*|i?86*|ia64*|m68k*|s390*|sh*|x86_64*)
 					# Allow devs to mark things as ignorable ... e.g. things
@@ -116,7 +119,10 @@ elf_check() {
 			eqawarn " Files with such sections will not work properly (or at all!) on some"
 			eqawarn " architectures/operating systems.  A bug should be filed at"
 			eqawarn " http://bugs.gentoo.org/ to make sure the issue is fixed."
-			eqawarn " For more information, see http://hardened.gentoo.org/gnu-stack.xml"
+			eqawarn " For more information, see:"
+			eqawarn
+			eqawarn "   https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart"
+			eqawarn
 			eqawarn " Please include the following list of files in your report:"
 			eqawarn " Note: Bugs should be filed for the respective maintainers"
 			eqawarn " of the package in question and not hardened@g.o."
