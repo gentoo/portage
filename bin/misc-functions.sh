@@ -276,7 +276,13 @@ install_mask() {
 
 		# we also need to handle globs (*.a, *.h, etc)
 		find "${root}" \( -path "${no_inst}" -or -name "${no_inst}" \) \
-			-exec rm -fR {} \; >/dev/null 2>&1
+			-print0 2> /dev/null \
+		| LC_ALL=C sort -z \
+		| while read -r -d ''; do
+			__quiet_mode || einfo "Removing /${REPLY#${root}}"
+			rm -Rf "${REPLY}" >&/dev/null
+		done
+
 	done
 	# set everything back the way we found it
 	set +o noglob
