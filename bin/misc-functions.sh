@@ -267,9 +267,12 @@ install_mask() {
 	local no_inst
 	for no_inst in ${install_mask}; do
 		set +o noglob
-		__quiet_mode || einfo "Removing ${no_inst}"
+
 		# normal stuff
-		rm -Rf "${root}"/${no_inst} >&/dev/null
+		if [[ -e "${root}"/${no_inst} || "${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
+			__quiet_mode || einfo "Removing ${no_inst}"
+			rm -Rf "${root}"/${no_inst} >&/dev/null
+		fi
 
 		# we also need to handle globs (*.a, *.h, etc)
 		find "${root}" \( -path "${no_inst}" -or -name "${no_inst}" \) \
