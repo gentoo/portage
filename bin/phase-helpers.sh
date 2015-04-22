@@ -884,7 +884,7 @@ has_version() {
 # @FUNCTION: best_version
 # @USAGE: [--host-root] <DEPEND ATOM>
 # @DESCRIPTION:
-# Returns the best/most-current match.
+# Returns highest installed matching category/package-version (without .ebuild).
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {

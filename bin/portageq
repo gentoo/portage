@@ -177,7 +177,7 @@ def best_version(argv):
 		return 1
 
 docstrings['best_version'] = """<eroot> <category/package>
-	Returns category/package-version (without .ebuild).
+	Returns highest installed matching category/package-version (without .ebuild).
 	"""
 best_version.__doc__ = docstrings['best_version']
 
