@@ -339,7 +339,8 @@ class LinkageMapELF(object):
 			obj = entry.filename
 			soname = entry.soname
 			expand = {"ORIGIN": os.path.dirname(entry.filename)}
-			path = frozenset(normalize_path(varexpand(x, expand))
+			path = frozenset(normalize_path(
+				varexpand(x, expand, error_leader=lambda: "%s: " % location))
 				for x in entry.runpaths)
 			path = frozensets.setdefault(path, path)
 			needed = frozenset(entry.needed)
