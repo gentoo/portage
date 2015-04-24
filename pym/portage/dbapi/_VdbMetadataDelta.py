@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -8,6 +8,7 @@ import os
 
 from portage import _encodings
 from portage.util import atomic_ofstream
+from portage.versions import cpv_getkey
 
 class VdbMetadataDelta(object):
 
@@ -138,10 +139,12 @@ class VdbMetadataDelta(object):
 
 	def applyDelta(self, data):
 		packages = self._vardb._aux_cache["packages"]
+		added_slots = {}
 		for delta in data["deltas"]:
 			cpv = delta["package"] + "-" + delta["version"]
 			event = delta["event"]
 			if event == "add":
+				added_slots[cpv] = delta
 				# Use aux_get to populate the cache
 				# for this cpv.
 				if cpv not in packages:
@@ -151,3 +154,20 @@ class VdbMetadataDelta(object):
 						pass
 			elif event == "remove":
 				packages.pop(cpv, None)
+
+		# Remove replaced versions from updated slots
+		for cached_cpv, (mtime, metadata) in list(packages.items()):
+			if cached_cpv in added_slots:
+				continue
+			replaced = False
+			for cpv, delta in added_slots.items():
+				if (cached_cpv.startswith(delta["package"]) and
+					metadata.get("SLOT") == delta["slot"] and
+					cpv_getkey(cached_cpv) == delta["package"]):
+					replaced = True
+					break
+			if replaced:
+				del packages[cached_cpv]
+				del added_slots[cpv]
+				if not added_slots:
+					break

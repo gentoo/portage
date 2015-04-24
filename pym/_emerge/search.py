@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -442,7 +442,13 @@ class search(object):
 	def getInstallationStatus(self,package):
 		installed_package = self._vardb.match(package)
 		if installed_package:
-			installed_package = installed_package[-1]
+			try:
+				self._vardb.match_unordered
+			except AttributeError:
+				installed_package = installed_package[-1]
+			else:
+				installed_package = portage.best(installed_package)
+
 		else:
 			installed_package = ""
 		result = ""
