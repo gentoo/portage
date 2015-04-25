@@ -11,7 +11,6 @@ from __future__ import print_function, unicode_literals
 import codecs
 import copy
 import errno
-import formatter
 import io
 import logging
 import re
@@ -56,6 +55,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+import portage.util.formatter as formatter
 import repoman.checks
 from repoman.checks import run_checks
 from repoman.check_missingslot import check_missingslot

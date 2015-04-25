@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -7,7 +7,6 @@ __docformat__ = "epytext"
 
 import errno
 import io
-import formatter
 import re
 import subprocess
 import sys
@@ -16,6 +15,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:writemsg',
 )
+import portage.util.formatter as formatter
 
 from portage import os
 from portage import _encodings
