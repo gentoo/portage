@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
@@ -745,6 +745,14 @@ else
 	if ___eapi_has_prefix_variables; then
 		declare -r ED EPREFIX EROOT
 	fi
+
+	# If ${EBUILD_FORCE_TEST} == 1 and USE came from ${T}/environment
+	# then it might not have USE=test like it's supposed to here.
+	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 &&
+		test =~ ${PORTAGE_IUSE} ]] && ! has test ${USE} ; then
+		export USE="${USE} test"
+	fi
+	declare -r USE
 
 	if [[ -n $EBUILD_SH_ARGS ]] ; then
 		(
