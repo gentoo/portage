@@ -33,7 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.env_update:env_update',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
-	'portage.util.path:first_existing',
+	'portage.util.path:first_existing,iter_parents',
 	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
@@ -3325,6 +3325,8 @@ class dblink(object):
 			showMessage = self._display_merge
 			stopmerge = False
 			collisions = []
+			dirs = set()
+			dirs_ro = set()
 			symlink_collisions = []
 			destroot = self.settings['ROOT']
 			showMessage(_(" %s checking %d files for package collisions\n") % \
@@ -3337,6 +3339,18 @@ class dblink(object):
 
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
+
+				parent = os.path.dirname(dest_path)
+				if parent not in dirs:
+					for x in iter_parents(parent):
+						if x in dirs:
+							break
+						dirs.add(x)
+						if os.path.isdir(x):
+							if not os.access(x, os.W_OK):
+								dirs_ro.add(x)
+							break
+
 				try:
 					dest_lstat = os.lstat(dest_path)
 				except EnvironmentError as e:
@@ -3410,7 +3424,7 @@ class dblink(object):
 							break
 					if stopmerge:
 						collisions.append(f)
-			return collisions, symlink_collisions, plib_collisions
+			return collisions, dirs_ro, symlink_collisions, plib_collisions
 
 	def _lstat_inode_map(self, path_iter):
 		"""
@@ -3759,7 +3773,6 @@ class dblink(object):
 			eagain_error = False
 
 			filelist = []
-			dirlist = []
 			linklist = []
 			paths_with_newlines = []
 			def onerror(e):
@@ -3791,13 +3804,6 @@ class dblink(object):
 					unicode_error = True
 					unicode_errors.append(new_parent[ed_len:])
 					break
-
-				relative_path = parent[srcroot_len:]
-				if len(relative_path) >= eprefix_len:
-					# Files are never installed outside of the prefix,
-					# therefore we skip the readonly filesystem check for
-					# parent directories of the prefix (see bug 544624).
-					dirlist.append(os.path.join(destroot, relative_path))
 
 				for fname in files:
 					try:
@@ -3911,9 +3917,17 @@ class dblink(object):
 			for other in others_in_slot])
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
+		# check for package collisions
+		blockers = self._blockers
+		if blockers is None:
+			blockers = []
+		collisions, dirs_ro, symlink_collisions, plib_collisions = \
+			self._collision_protect(srcroot, destroot,
+			others_in_slot + blockers, filelist, linklist)
+
 		# Check for read-only filesystems.
 		ro_checker = get_ro_checker()
-		rofilesystems = ro_checker(dirlist)
+		rofilesystems = ro_checker(dirs_ro)
 
 		if rofilesystems:
 			msg = _("One or more files installed to this package are "
@@ -3934,14 +3948,6 @@ class dblink(object):
 			msg = textwrap.wrap(msg, 70)
 			eerror(msg)
 			return 1
-
-		# check for package collisions
-		blockers = self._blockers
-		if blockers is None:
-			blockers = []
-		collisions, symlink_collisions, plib_collisions = \
-			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, filelist, linklist)
 
 		if symlink_collisions:
 			# Symlink collisions need to be distinguished from other types
