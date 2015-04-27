@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
@@ -23,6 +23,18 @@ else
 		implementation="python"
 	fi
 fi
+
+# Filter internal portage paths from PATH, in order to avoid
+# a possible exec loop or fork bomb (see bug 547086).
+IFS=':'
+set -f
+path=
+for x in ${PATH}; do
+	[[ ${x} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
+	[[ ${x} == */._portage_reinstall_.* ]] && continue
+	path+=":${x}"
+done
+PATH=${path#:}
 
 if [[ "${implementation}" == "c" ]]; then
 	exec "${INSTALL_XATTR}" "$@"

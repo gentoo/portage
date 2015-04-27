@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2009-2013 Gentoo Foundation
+# Copyright 2009-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 scriptpath=${BASH_SOURCE[0]}
@@ -15,6 +15,8 @@ set -f # in case ${PATH} contains any shell glob characters
 
 for path in ${PATH}; do
 	[[ -x ${path}/${scriptname} ]] || continue
+	[[ ${path} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
+	[[ ${path} == */._portage_reinstall_.* ]] && continue
 	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		exec "${PORTAGE_PYTHON:-/usr/bin/python}" \
