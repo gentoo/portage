@@ -2590,6 +2590,9 @@ class dblink(object):
 				os.path.join(real_root, f.lstrip(os.path.sep)))
 
 		msg.append("")
+		msg.append("Use the UNINSTALL_IGNORE variable to exempt specific symlinks")
+		msg.append("from the following search (see the make.conf man page).")
+		msg.append("")
 		msg.append(_("Searching all installed"
 			" packages for files installed via above symlink(s)..."))
 		msg.append("")
