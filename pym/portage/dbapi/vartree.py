@@ -4376,8 +4376,9 @@ class dblink(object):
 		if a != os.EX_OK:
 			# It's stupid to bail out here, so keep going regardless of
 			# phase return code.
-			showMessage(_("!!! FAILED postinst: ")+str(a)+"\n",
-				level=logging.ERROR, noiselevel=-1)
+			self._elog("eerror", "postinst", [
+				_("FAILED postinst: %s") % (a,),
+			])
 
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(
