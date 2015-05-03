@@ -1577,6 +1577,7 @@ class dblink(object):
 		self._hash_key = (self._eroot, self.mycpv)
 		self._protect_obj = None
 		self._pipe = pipe
+		self._postinst_failure = False
 
 		# When necessary, this attribute is modified for
 		# compliance with RESTRICT=preserve-libs.
@@ -4376,6 +4377,7 @@ class dblink(object):
 		if a != os.EX_OK:
 			# It's stupid to bail out here, so keep going regardless of
 			# phase return code.
+			self._postinst_failure = True
 			self._elog("eerror", "postinst", [
 				_("FAILED postinst: %s") % (a,),
 			])
@@ -5042,6 +5044,10 @@ class dblink(object):
 			self.vartree.dbapi._bump_mtime(self.mycpv)
 			if not parallel_install:
 				self.unlockdb()
+
+		if retval == os.EX_OK and self._postinst_failure:
+			retval = portage.const.RETURNCODE_POSTINST_FAILURE
+
 		return retval
 
 	def getstring(self,name):
