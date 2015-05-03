@@ -23,7 +23,10 @@ class BinpkgExtractorAsync(SpawnProcess):
 			process = subprocess.Popen(["tar", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 			output = process.communicate()[0]
 			if b"--xattrs" in output:
-				tar_options = "--xattrs"
+				tar_options = ["--xattrs", "--xattrs-include='*'"]
+				for x in portage.util.shlex_split(self.env.get("PORTAGE_XATTR_EXCLUDE", "")):
+					tar_options.append(portage._shell_quote("--xattrs-exclude=%s" % x))
+				tar_options = " ".join(tar_options)
 
 		decomp_cmd = _decompressors.get(
 			compression_probe(self.pkg_path))
