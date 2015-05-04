@@ -1189,16 +1189,24 @@ string \fIdisable\-silent\-rules\fR occurs in the output
 of \fIconfigure \-\-help\fR.
 .TP
 .B emake\fR \fI[make options]
-This is used as a replacement for make.  Performs 'make ${MAKEOPTS}
-\fImake options\fR' (as set in make.globals), default is MAKEOPTS="\-j2".
+This must be used in place of `make` in ebuilds.  Performs `${MAKE:-make}
+${MAKEOPTS} \fImake options\fR ${EXTRA_EMAKE}`, and calls `die` automatically
+starting with \fBEAPI 4\fR.
+
+The \fBMAKEOPTS\fR variable is set by the user so they can enable features such
+as parallel builds; see \fBmake.conf\fR(5) for more details.
+
+The \fBEXTRA_EMAKE\fR knob is portage feature so developers can override things
+while debugging ebuilds; it is not part of any EAPI specification.
 
 .B ***WARNING***
 .br
-if you are going to use \fBemake\fR, make sure your build is happy with
-parallel makes (make \-j2).  It should be tested thoroughly as parallel
-makes are notorious for failing _sometimes_ but not always.  If you determine
-that your package fails to build in parallel, and you are unable to resolve
-the issue, then you should run '\fBemake\fR \-j1' instead of 'make'.
+You must make sure your build is happy with parallel makes (make \-j2).  It
+should be tested thoroughly as parallel makes are notorious for failing
+_sometimes_ but not always.  If you determine that your package fails to build
+in parallel, and you are unable to resolve the issue, then you should run
+`\fBemake\fR \-j1` explicitly.  This is a last resort however as it can
+significantly slow down builds on systems with lots of processors.
 
 .SS "Install:"
 .TP
