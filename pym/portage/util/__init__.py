@@ -850,8 +850,20 @@ def varexpand(mystring, mydict=None, error_leader=None):
 					continue
 			elif current == "$":
 				pos += 1
+				if pos == length:
+					# shells handle this like \$
+					newstring.append(current)
+					continue
+
 				if mystring[pos] == "{":
 					pos += 1
+					if pos == length:
+						msg = _varexpand_unexpected_eof_msg
+						if error_leader is not None:
+							msg = error_leader() + msg
+						writemsg(msg + "\n", noiselevel=-1)
+						return ""
+
 					braced = True
 				else:
 					braced = False
