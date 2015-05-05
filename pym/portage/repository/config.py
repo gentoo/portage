@@ -38,7 +38,7 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 # Characters prohibited by repoman's file.name check.
-_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
+_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
