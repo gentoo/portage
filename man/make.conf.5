@@ -463,6 +463,10 @@ from putting 64bit libraries into anything other than (/usr)/lib64.
 .B network\-sandbox
 Isolate the ebuild phase functions from host network interfaces.
 Supported only on Linux. Requires network namespace support in kernel.
+.TP
+.B network\-sandbox\-proxy
+Enable escaping network-sandbox through SOCKSv5 proxy. Enabling distcc
+feature also enables the proxy.
 
 If asyncio Python module is available (requires Python 3.3, built-in
 since Python 3.4) Portage will additionally spawn an isolated SOCKSv5

@@ -158,6 +158,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"mirror",
 	"multilib-strict",
 	"network-sandbox",
+	"network-sandbox-proxy",
 	"news",
 	"noauto",
 	"noclean",
