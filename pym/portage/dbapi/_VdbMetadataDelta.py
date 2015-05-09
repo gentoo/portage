@@ -139,12 +139,12 @@ class VdbMetadataDelta(object):
 
 	def applyDelta(self, data):
 		packages = self._vardb._aux_cache["packages"]
-		added_slots = {}
+		deltas = {}
 		for delta in data["deltas"]:
 			cpv = delta["package"] + "-" + delta["version"]
+			deltas[cpv] = delta
 			event = delta["event"]
 			if event == "add":
-				added_slots[cpv] = delta
 				# Use aux_get to populate the cache
 				# for this cpv.
 				if cpv not in packages:
@@ -155,19 +155,22 @@ class VdbMetadataDelta(object):
 			elif event == "remove":
 				packages.pop(cpv, None)
 
-		# Remove replaced versions from updated slots
-		for cached_cpv, (mtime, metadata) in list(packages.items()):
-			if cached_cpv in added_slots:
-				continue
-			replaced = False
-			for cpv, delta in added_slots.items():
-				if (cached_cpv.startswith(delta["package"]) and
-					metadata.get("SLOT") == delta["slot"] and
-					cpv_getkey(cached_cpv) == delta["package"]):
-					replaced = True
-					break
-			if replaced:
-				del packages[cached_cpv]
-				del added_slots[cpv]
-				if not added_slots:
-					break
+		if deltas:
+			# Delete removed or replaced versions from affected slots
+			for cached_cpv, (mtime, metadata) in list(packages.items()):
+				if cached_cpv in deltas:
+					continue
+
+				removed = False
+				for cpv, delta in deltas.items():
+					if (cached_cpv.startswith(delta["package"]) and
+						metadata.get("SLOT") == delta["slot"] and
+						cpv_getkey(cached_cpv) == delta["package"]):
+						removed = True
+						break
+
+				if removed:
+					del packages[cached_cpv]
+					del deltas[cpv]
+					if not deltas:
+						break
