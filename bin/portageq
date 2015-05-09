@@ -722,12 +722,14 @@ repos_config.__doc__ = docstrings['repos_config']
 
 
 def portdir(_argv):
-	print("WARNING: 'portageq portdir' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
+	print("WARNING: 'portageq portdir' is deprecated. Use the get_repo_path "
+		"command instead. eg: "
+		"'portageq get_repo_path / gentoo' instead.", file=sys.stderr)
 	print(portage.settings["PORTDIR"])
 
 docstrings['portdir'] = """
 	Returns the PORTDIR path.
-	Deprecated in favor of repositories_configuration command.
+	Deprecated in favor of get_repo_path command.
 	"""
 portdir.__doc__ = docstrings['portdir']
 
@@ -750,12 +752,14 @@ docstrings['config_protect_mask'] = """
 config_protect_mask.__doc__ = docstrings['config_protect_mask']
 
 def portdir_overlay(_argv):
-	print("WARNING: 'portageq portdir_overlay' is deprecated. Use 'portageq repositories_configuration' instead.", file=sys.stderr)
+	print("WARNING: 'portageq portdir_overlay' is deprecated. Use the get_repos"
+		" and get_repo_path commands or the repos_config command instead. eg: "
+		"'portageq repos_config /'", file=sys.stderr)
 	print(portage.settings["PORTDIR_OVERLAY"])
 
 docstrings['portdir_overlay'] = """
 	Returns the PORTDIR_OVERLAY path.
-	Deprecated in favor of repositories_configuration command.
+	Deprecated in favor of get_repos & get_repo_path or repos_config commands.
 	"""
 portdir_overlay.__doc__ = docstrings['portdir_overlay']
 
@@ -798,7 +802,9 @@ def envvar(argv):
 
 	for arg in argv:
 		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
-			print("WARNING: 'portageq envvar %s' is deprecated. Use 'portageq repositories_configuration' instead." % arg, file=sys.stderr)
+			print("WARNING: 'portageq envvar %s' is deprecated. Use any of "
+				"'get_repos, get_repo_path, repos_config' instead."
+				% arg, file=sys.stderr)
 		if verbose:
 			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
 		else:
