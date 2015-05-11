@@ -2,6 +2,9 @@
 # (c) 2015 Michał Górny <mgorny@gentoo.org>
 # Distributed under the terms of the GNU General Public License v2
 
+'''SquashDelta sync module for portage'''
+
+
 import errno
 import io
 import logging
@@ -21,6 +24,8 @@ class SquashDeltaError(Exception):
 
 
 class SquashDeltaSync(SyncBase):
+	'''Repository syncing using SquashFS deltas'''
+
 	short_desc = "Repository syncing using SquashFS deltas"
 
 	@staticmethod
@@ -179,6 +184,7 @@ class SquashDeltaSync(SyncBase):
 			raise SquashDeltaError()
 
 	def sync(self, **kwargs):
+		'''Sync the repository'''
 		self._kwargs(kwargs)
 
 		try:
