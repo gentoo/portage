@@ -37,7 +37,7 @@ class WebRsync(SyncBase):
 
 		# filter these out to prevent gpg errors
 		for var in ['uid', 'gid', 'groups']:
-			kwargs.pop(var, None)
+			self.spawn_kwargs.pop(var, None)
 
 		exitcode = portage.process.spawn_bash("%s" % \
 			(self.bin_command),
