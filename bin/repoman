@@ -282,10 +282,10 @@ def ParseArgs(argv, qahelp):
 	if opts.mode == 'commit' and not (opts.force or opts.pretend):
 		if opts.ignore_masked:
 			opts.ignore_masked = False
-			logging.warn('Commit mode automatically disables --ignore-masked')
+			logging.warning('Commit mode automatically disables --ignore-masked')
 		if opts.without_mask:
 			opts.without_mask = False
-			logging.warn('Commit mode automatically disables --without-mask')
+			logging.warning('Commit mode automatically disables --without-mask')
 
 	return (opts, args)
 
@@ -435,7 +435,7 @@ commitmessage = None
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
-		logging.warn('* missingvars values need to be added to qahelp ("%s")' % x)
+		logging.warning('* missingvars values need to be added to qahelp ("%s")' % x)
 		qacats.append(x)
 		qawarnings.add(x)
 
@@ -647,7 +647,7 @@ if repo_config.sign_manifest and repo_config.name == "gentoo" and \
 	"'sign-manifests = false' in metadata/layout.conf.") % \
 	(repo_config.name,)
 	for line in textwrap.wrap(msg, 60):
-		logging.warn(line)
+		logging.warning(line)
 
 if sign_manifests and options.mode in ("commit",) and \
 	repoman_settings.get("PORTAGE_GPG_KEY") and \
@@ -2424,7 +2424,7 @@ for x in effective_scanlist:
 				(x, myflag))
 
 if options.if_modified == "y" and len(effective_scanlist) < 1:
-	logging.warn("--if-modified is enabled, but no modified packages were found!")
+	logging.warning("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
 	sys.exit(dofail)

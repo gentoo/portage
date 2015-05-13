@@ -79,8 +79,8 @@ class Config(object):
 			line_format = "%s: %%s" % log_desc
 			add_newline = False
 			if log_path is not None:
-				logging.warn(("dry-run: %s log "
-					"redirected to logging.info") % log_desc)
+				logging.warning("dry-run: %s log "
+					"redirected to logging.info" % log_desc)
 		else:
 			self._open_files.append(io.open(log_path, mode=mode,
 				encoding='utf_8'))
@@ -114,7 +114,7 @@ class Config(object):
 				db = ShelveUnicodeWrapper(db)
 
 		if self.options.dry_run:
-			logging.warn("dry-run: %s db opened in readonly mode" % db_desc)
+			logging.warning("dry-run: %s db opened in readonly mode" % db_desc)
 			if not isinstance(db, dict):
 				volatile_db = dict((k, db[k]) for k in db)
 				db.close()
