@@ -444,9 +444,12 @@ def action_build(settings, trees, mtimedb,
 		if need_write_bindb or need_write_vardb:
 
 			eroots = set()
+			ebuild_eroots = set()
 			for x in mydepgraph.altlist():
 				if isinstance(x, Package) and x.operation == "merge":
 					eroots.add(x.root)
+					if x.type_name == "ebuild":
+						ebuild_eroots.add(x.root)
 
 			for eroot in eroots:
 				if need_write_vardb and \
@@ -457,7 +460,7 @@ def action_build(settings, trees, mtimedb,
 						level=logging.ERROR, noiselevel=-1)
 					return 1
 
-				if need_write_bindb and \
+				if need_write_bindb and eroot in ebuild_eroots and \
 					("buildpkg" in trees[eroot]["root_config"].
 					settings.features or
 					"buildsyspkg" in trees[eroot]["root_config"].
