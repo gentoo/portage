@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.19
+-------------
+* websync module now fully renamed to webrsync
+* New squashdelta sync module for downloading full or updates for a squasfs tree
+  requires dev-util/squashmerge be installed
+* New binpkg-multi-instance feature allows for multiple variations
+    (USE settings) to be saved in the pkgdir and index.
+
+
 portage-2.2.16
 -------------
 * New portage plug-in sync system.
