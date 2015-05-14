@@ -280,10 +280,10 @@
 # CCACHE_SIZE and CCACHE_DIR are used to control the behavior of ccache, and
 #     and are only used if "ccache" is in FEATURES.
 #
-# CCACHE_SIZE sets the space limitations for ccache. The default size is
-#     "2G", or 2 gigabytes.  Units are specified with 'G', 'M', or 'K'.
+# CCACHE_SIZE sets the space limitations for ccache. The default size depends
+#     on ccache itself; see the -M flag in the ccache(1) man page for details.
 #
-#CCACHE_SIZE="512M"
+#CCACHE_SIZE="5GiB"
 #
 # CCACHE_DIR sets the ccache path.  If not specified, portage will default
 #     to "${PORTAGE_TMPDIR}/ccache".
