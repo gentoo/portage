@@ -5,10 +5,7 @@
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
 
 if ___eapi_dodoc_supports_-r; then
-	exec \
-	env \
-	__PORTAGE_HELPER="dodoc" \
-	doins "$@"
+	__PORTAGE_HELPER='dodoc' exec doins "$@"
 fi
 
 if [ $# -lt 1 ] ; then

@@ -13,7 +13,4 @@ if [[ $# -lt 1 ]] || [[ $1 == -r && $# -lt 2 ]] ; then
 	exit 1
 fi
 
-exec \
-env \
-INSDESTTREE="/usr/include/" \
-doins "$@"
+INSDESTTREE='/usr/include/' exec doins "$@"
