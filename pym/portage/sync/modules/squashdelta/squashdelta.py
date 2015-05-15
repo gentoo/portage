@@ -35,9 +35,10 @@ class SquashDeltaSync(SyncBase):
 	def __init__(self):
 		super(SquashDeltaSync, self).__init__(
 				'squashmerge', 'dev-util/squashmerge')
-		self.repo_re = re.compile(self.repo.name + '-(.*)$')
+		self.repo_re = None
 
 	def _configure(self):
+		self.repo_re = re.compile(self.repo.name + '-(.*)$')
 		self.my_settings = portage.config(clone = self.settings)
 		self.cache_location = DEFAULT_CACHE_LOCATION
 
@@ -60,7 +61,7 @@ class SquashDeltaSync(SyncBase):
 		if 'webrsync-gpg' in self.my_settings.features:
 			# TODO: OpenPGP signature verification
 			# raise SquashDeltaError if it fails
-			pass
+			return True
 
 	def _parse_sha512sum(self, path):
 		# sha512sum.txt parsing
@@ -164,7 +165,6 @@ class SquashDeltaSync(SyncBase):
 
 	def _update_mount(self, current_path):
 		mount_cmd = ['mount', current_path, self.repo.location]
-		can_mount = True
 		if os.path.ismount(self.repo.location):
 			# need to umount old snapshot
 			ret = portage.process.spawn(['umount', '-l', self.repo.location])
@@ -209,6 +209,7 @@ class SquashDeltaSync(SyncBase):
 			old_snapshot, old_version, old_path = (
 					self._find_local_snapshot(current_path))
 
+			delta_path = None
 			if old_version:
 				if old_version == new_version:
 					logging.info('Snapshot up-to-date, verifying integrity.')
