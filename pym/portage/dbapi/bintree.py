@@ -1441,9 +1441,10 @@ class binarytree(object):
 	def get_pkgindex_uri(self, cpv):
 		"""Returns the URI to the Packages file for a given package."""
 		uri = None
-		metadata = self._remotepkgs.get(self.dbapi._instance_key(cpv))
-		if metadata is not None:
-			uri = metadata["PKGINDEX_URI"]
+		if self._remotepkgs is not None:
+			metadata = self._remotepkgs.get(self.dbapi._instance_key(cpv))
+			if metadata is not None:
+				uri = metadata["PKGINDEX_URI"]
 		return uri
 
 	def gettbz2(self, pkgname):
