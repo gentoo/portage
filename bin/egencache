@@ -1086,8 +1086,23 @@ def egencache_main(args):
 			ret.append(scheduler.returncode)
 
 	if options.update_pkg_desc_index:
+		if repo_config.writable:
+			writable_location = repo_config.location
+		else:
+			writable_location = os.path.join(portdb.depcachedir,
+				repo_config.location.lstrip(os.sep))
+			msg = [
+				"WARNING: Repository is not writable: %s" % (
+				repo_config.location,),
+				"         Using cache directory instead: %s" % (
+				writable_location,)
+			]
+			msg = "".join(line + '\n' for line in msg)
+			writemsg_level(msg,
+				level=logging.WARNING, noiselevel=-1)
+
 		gen_index = GenPkgDescIndex(portdb, os.path.join(
-			repo_config.location, "metadata", "pkg_desc_index"))
+			writable_location, "metadata", "pkg_desc_index"))
 		gen_index.run()
 		ret.append(gen_index.returncode)
 

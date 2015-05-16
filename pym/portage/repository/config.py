@@ -26,6 +26,7 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
+from portage.util.path import first_existing
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -345,6 +346,17 @@ class RepoConfig(object):
 
 		if new_repo.name is not None:
 			self.missing_repo_name = new_repo.missing_repo_name
+
+	@property
+	def writable(self):
+		"""
+		Check if self.location is writable, or permissions are sufficient
+		to create it if it does not exist yet.
+		@rtype: bool
+		@return: True if self.location is writable or can be created,
+			False otherwise
+		"""
+		return os.access(first_existing(self.location), os.W_OK)
 
 	@staticmethod
 	def _read_valid_repo_name(repo_path):
