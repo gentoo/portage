@@ -2,6 +2,12 @@ News (mainly features/major bug fixes)
 
 portage-2.2.19
 -------------
+* The squashdelta sync module was removed for separate installation
+  and development work
+
+
+portage-2.2.19
+-------------
 * websync module now fully renamed to webrsync
 * New squashdelta sync module for downloading full or updates for a squasfs tree
   requires dev-util/squashmerge be installed

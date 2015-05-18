@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.20
+==================================
+* Bug Fixes:
+    - Bug 539510 make.conf: point people to ccache(1) for cache size details
+    - Bug 549666 binarytree.get_pkgindex_uri: handle --gebinpkg=n
+    - Bug 549616 egencache --update-pkg-desc-index: handle read-only repo
+    - Bug 549826 portage/sync/modules/rsync: Fix UnicodeDecodeError:
+    - Bug 534022 bin/repoman: Use pformat and newlines to *DEPEND output
+          for clarity
+
+
 portage-2.2.19
 ==================================
 * New repoman --straight-to-stable, -S option
