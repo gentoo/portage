@@ -12,6 +12,7 @@ import tempfile
 
 import portage
 from portage import os
+from portage import _unicode_decode
 from portage.util import writemsg_level
 from portage.output import create_color_func, yellow, blue, bold
 good = create_color_func("GOOD")
@@ -23,6 +24,11 @@ from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import NewBase
 
+if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
+	_unicode = str
+else:
+	_unicode = unicode
 
 SERVER_OUT_OF_DATE = -1
 EXCEEDED_MAX_RETRIES = -2
@@ -145,7 +151,8 @@ class RsyncSync(NewBase):
 				family, socket.SOCK_STREAM))
 		except socket.error as e:
 			writemsg_level(
-				"!!! getaddrinfo failed for '%s': %s\n" % (hostname, e),
+				"!!! getaddrinfo failed for '%s': %s\n"
+				% (_unicode_decode(hostname), _unicode(e)),
 				noiselevel=-1, level=logging.ERROR)
 
 		if addrinfos:
@@ -197,8 +204,8 @@ class RsyncSync(NewBase):
 			if uris:
 				dosyncuri = uris.pop()
 			else:
-				writemsg("!!! Exhausted addresses for %s\n" % \
-					hostname, noiselevel=-1)
+				writemsg("!!! Exhausted addresses for %s\n"
+					% _unicode_decode(hostname), noiselevel=-1)
 				return (1, False)
 
 			if (retries==0):
