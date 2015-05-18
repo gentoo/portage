@@ -24,6 +24,7 @@ import time
 import platform
 from itertools import chain
 from stat import S_ISDIR
+from pprint import pformat
 
 try:
 	from urllib.parse import urlparse
@@ -2396,14 +2397,14 @@ for x in effective_scanlist:
 							if not atoms:
 								continue
 							stats[mykey] += 1
-							fails[mykey].append("%s: %s: %s(%s) %s" % \
+							fails[mykey].append("%s: %s: %s(%s)\n%s" % \
 								(relative_path, mytype, keyword,
-								prof, repr(atoms)))
+								prof, pformat(atoms, indent=6)))
 					else:
 						stats[mykey] += 1
-						fails[mykey].append("%s: %s: %s(%s) %s" % \
+						fails[mykey].append("%s: %s: %s(%s)\n%s" % \
 							(relative_path, mytype, keyword,
-							prof, repr(atoms)))
+							prof, pformat(atoms, indent=6)))
 
 		if not baddepsyntax and unknown_pkgs:
 			type_map = {}
