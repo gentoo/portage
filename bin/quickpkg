@@ -22,6 +22,7 @@ from portage.dep import Atom, use_reduce
 from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
 	InvalidDependString, PackageSetNotFound, PermissionDenied)
 from portage.util import ConfigProtect, ensure_dirs, shlex_split
+import portage.util.xattr as _xattr
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
@@ -35,6 +36,7 @@ def quickpkg_atom(options, infos, arg, eout):
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
+	xattr = 'xattr' in settings.features
 
 	include_config = options.include_config == "y"
 	include_unmodified_config = options.include_unmodified_config == "y"
@@ -132,8 +134,11 @@ def quickpkg_atom(options, infos, arg, eout):
 			binpkg_tmpfile = os.path.join(bintree.pkgdir,
 				cpv + ".tbz2." + str(os.getpid()))
 			ensure_dirs(os.path.dirname(binpkg_tmpfile))
-			tar = tarfile.open(binpkg_tmpfile, "w:bz2")
-			tar_contents(contents, root, tar, protect=protect)
+			# The tarfile module will write pax headers holding the
+			# xattrs only if PAX_FORMAT is specified here.
+			tar = tarfile.open(binpkg_tmpfile, "w:bz2",
+				format=tarfile.PAX_FORMAT if xattr else tarfile.DEFAULT_FORMAT)
+			tar_contents(contents, root, tar, protect=protect, xattr=xattr)
 			tar.close()
 			xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
 		finally:
@@ -232,6 +237,13 @@ def quickpkg_main(options, args, eout):
 	if not os.access(bintree.pkgdir, os.W_OK):
 		eout.eerror("No write access to '%s'" % bintree.pkgdir)
 		return errno.EACCES
+
+	if 'xattr' in portage.settings.features and not hasattr(_xattr, 'getxattr'):
+		eout.eerror("No xattr support library was found, "
+			"so xattrs will not be preserved!")
+		portage.settings.unlock()
+		portage.settings.features.remove('xattr')
+		portage.settings.lock()
 
 	infos = {}
 	infos["successes"] = []

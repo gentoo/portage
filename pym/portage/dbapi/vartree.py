@@ -35,6 +35,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.movefile:movefile',
 	'portage.util.path:first_existing,iter_parents',
 	'portage.util.writeable_check:get_ro_checker',
+	'portage.util:xattr@_xattr',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
@@ -5266,7 +5267,8 @@ def write_contents(contents, root, f):
 			line = "%s %s\n" % (entry_type, relative_filename)
 		f.write(line)
 
-def tar_contents(contents, root, tar, protect=None, onProgress=None):
+def tar_contents(contents, root, tar, protect=None, onProgress=None,
+	xattr=False):
 	os = _os_merge
 	encoding = _encodings['merge']
 
@@ -5384,9 +5386,19 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tar.addfile(tarinfo, f)
 				f.close()
 			else:
-				with open(_unicode_encode(path,
+				path_bytes = _unicode_encode(path,
 					encoding=encoding,
-					errors='strict'), 'rb') as f:
+					errors='strict')
+
+				if xattr:
+					# Compatible with GNU tar, which saves the xattrs
+					# under the SCHILY.xattr namespace.
+					for k in _xattr.listxattr(path_bytes):
+						tarinfo.pax_headers['SCHILY.xattr.' +
+							_unicode_decode(k)] = _unicode_decode(
+							_xattr.getxattr(path_bytes, _unicode_encode(k)))
+
+				with open(path_bytes, 'rb') as f:
 					tar.addfile(tarinfo, f)
 
 		else:
