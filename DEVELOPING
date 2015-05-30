@@ -225,7 +225,7 @@ Second create a git tag for this release:
 Then create the tarball and run the tests:
 	./mkrelease.sh --changelog-rev v2.2.7 --tag --runtests 2.2.8
 Make sure you have all supported python versions installed first
-(see PYTHON_SUPPORTED_VERSIONS in runtests.sh).
+(see PYTHON_SUPPORTED_VERSIONS in runtests).
 
 Version bump the ebuild and verify it can re-install itself:
 	emerge portage
