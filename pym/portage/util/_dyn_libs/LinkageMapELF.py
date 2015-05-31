@@ -30,7 +30,7 @@ _approx_multilib_categories = {
 	"AARCH64":       "arm_64",
 	"ALPHA":         "alpha_64",
 	"ARM":           "arm_32",
-	"IA_64":         "ia_64",
+	"IA_64":         "ia64_64",
 	"MIPS":          "mips_o32",
 	"PARISC":        "hppa_64",
 	"PPC":           "ppc_32",
