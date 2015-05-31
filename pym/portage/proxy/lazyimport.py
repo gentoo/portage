@@ -128,10 +128,19 @@ class _LazyImportFrom(_LazyImport):
 		name = object.__getattribute__(self, '_name')
 		attr_name = object.__getattribute__(self, '_attr_name')
 		__import__(name)
-		# If called by _unregister_module_proxy() and the target module is
-		# partially imported, then the following getattr call may raise an
-		# AttributeError for _unregister_module_proxy() to handle.
-		target = getattr(sys.modules[name], attr_name)
+		try:
+			target = getattr(sys.modules[name], attr_name)
+		except AttributeError:
+			# Try to import it as a submodule
+			try:
+				__import__("%s.%s" % (name, attr_name))
+			except ImportError:
+				pass
+			# If it's a submodule, this will succeed. Otherwise, it may
+			# be that the module is only partially imported, so raise
+			# AttributeError for _unregister_module_proxy() to handle.
+			target = getattr(sys.modules[name], attr_name)
+
 		object.__setattr__(self, '_target', target)
 		object.__getattribute__(self, '_scope')[
 			object.__getattribute__(self, '_alias')] = target
