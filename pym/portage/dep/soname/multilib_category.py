@@ -46,7 +46,7 @@ _machine_prefix_map = {
 	EM_AARCH64:         "arm",
 	EM_ALPHA:           "alpha",
 	EM_ARM:             "arm",
-	EM_IA_64:           "ia",
+	EM_IA_64:           "ia64",
 	EM_MIPS:            "mips",
 	EM_PARISC:          "hppa",
 	EM_PPC:             "ppc",
