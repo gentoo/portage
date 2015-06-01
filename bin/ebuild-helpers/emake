@@ -9,7 +9,7 @@
 #
 # With newer EAPIs, we also automatically fail the build if make itself fails.
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 cmd=(
 	${MAKE:-make} ${MAKEOPTS} "$@" ${EXTRA_EMAKE}

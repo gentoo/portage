@@ -2,9 +2,6 @@
 # Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
-PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
-
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a

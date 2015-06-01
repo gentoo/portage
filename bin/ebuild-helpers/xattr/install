@@ -2,8 +2,6 @@
 # Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
-PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 INSTALL_XATTR=${EPREFIX}/usr/bin/install-xattr
 # Use safe cwd, avoiding unsafe import for bug #469338.
 export __PORTAGE_HELPER_CWD=${PWD}

@@ -2,8 +2,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
+source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false

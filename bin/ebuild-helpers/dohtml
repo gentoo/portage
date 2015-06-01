@@ -2,17 +2,15 @@
 # Copyright 2009-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ___eapi_has_dohtml_deprecated; then
 	eqawarn "'${0##*/}' is deprecated in EAPI '$EAPI'"
 fi
 
-PORTAGE_BIN_PATH=${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}
-PORTAGE_PYM_PATH=${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}
 # Use safe cwd, avoiding unsafe import for bug #469338.
 export __PORTAGE_HELPER_CWD=${PWD}
-cd "${PORTAGE_PYM_PATH}"
+cd "${PORTAGE_PYM_PATH}" || die
 PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 	"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
 

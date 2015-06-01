@@ -2,7 +2,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/helper-functions.sh
+source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
 if [[ -z $1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
