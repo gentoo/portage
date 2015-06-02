@@ -2362,14 +2362,25 @@ def getgccversion(chost):
 	gcc_ver_command = ['gcc', '-dumpversion']
 	gcc_ver_prefix = 'gcc-'
 
+	clang_ver_command = ['clang', '--version']
+	clang_ver_prefix = 'clang-'
+
+	ubinpath = os.path.join('/', portage.const.EPREFIX, 'usr', 'bin')
+
 	gcc_not_found_error = red(
 	"!!! No gcc found. You probably need to 'source /etc/profile'\n" +
 	"!!! to update the environment of this terminal and possibly\n" +
 	"!!! other terminals also.\n"
 	)
 
+	def getclangversion(output):
+		version = re.search('clang version ([0-9.]+) ', output)
+		if version:
+			return version.group(1)
+		return "unknown"
+
 	try:
-		proc = subprocess.Popen(["gcc-config", "-c"],
+		proc = subprocess.Popen([ubinpath + "/gcc-config", "-c"],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
 		myoutput = None
@@ -2382,7 +2393,7 @@ def getgccversion(chost):
 
 	try:
 		proc = subprocess.Popen(
-			[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
+			[ubinpath + "/" + chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
 		myoutput = None
@@ -2394,7 +2405,7 @@ def getgccversion(chost):
 		return gcc_ver_prefix + myoutput
 
 	try:
-		proc = subprocess.Popen(gcc_ver_command,
+		proc = subprocess.Popen([ubinpath + "/" + gcc_ver_command[0]] + gcc_ver_command[1:],
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	except OSError:
 		myoutput = None
@@ -2404,6 +2415,31 @@ def getgccversion(chost):
 		mystatus = proc.wait()
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
+
+	try:
+		proc = subprocess.Popen(
+			[ubinpath + "/" + chost + "-" + clang_ver_command[0]] + clang_ver_command[1:],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
+	if mystatus == os.EX_OK:
+		return clang_ver_prefix + getclangversion(myoutput)
+
+	try:
+		proc = subprocess.Popen([ubinpath + "/" + clang_ver_command[0]] + clang_ver_command[1:],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	except OSError:
+		myoutput = None
+		mystatus = 1
+	else:
+		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+		mystatus = proc.wait()
+	if mystatus == os.EX_OK:
+		return clang_ver_prefix + getclangversion(myoutput)
 
 	portage.writemsg(gcc_not_found_error, noiselevel=-1)
 	return "[unavailable]"
