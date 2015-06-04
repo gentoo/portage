@@ -1,6 +1,65 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.20
+==================================
+* Bug Fixes:
+    - Bug 539510 make.conf: point people to ccache(1) for cache size details
+    - Bug 549666 binarytree.get_pkgindex_uri: handle --gebinpkg=n
+    - Bug 549616 egencache --update-pkg-desc-index: handle read-only repo
+    - Bug 549826 portage/sync/modules/rsync: Fix UnicodeDecodeError:
+    - Bug 534022 bin/repoman: Use pformat and newlines to *DEPEND output
+          for clarity
+
+
+portage-2.2.19
+==================================
+* New repoman --straight-to-stable, -S option
+* Use consistent rules for filenames of ebuils and misc files
+* New squashdelta sync module for downloading full or updates for a squasfs tree
+    requires dev-util/squashmerge be installed
+* New binpkg-multi-instance feature allows for multiple variations
+    (USE settings) to be saved in the pkgdir and index.
+* Bug Fixes:
+    - Bug 542732 WorldSelectedSet: fix load method
+    - Bug 501866 dispatch-conf.conf: less-opts --quit-if-one-screen
+    - Bug 543818 Fix an AssertionError if the multilib category of an
+                 ELF file is not recognized
+    - Bug 545252 Fix binpkg-multi-instance _pkg_paths corruption
+    - Bug 545270 Fix dispatch-conf unicode handling
+    - Bug 544624 ro_checker: skip parents of EPREFIX dir
+    - Bug 525376 repoman: fix dependency.unknown to ignore USE deps
+    - Bug 546010 repoman: handle removed packages in vcs_files_to_cps
+    - Bug 546176 new_protect_filename: fix _unicode_decode TypeError
+                 with symlink
+    - Bug Fix missed renames of websync to webrsync
+    - Bug 547086 _doebuild_path: add fallback for temp PORTAGE_BIN_PATH
+    - Bug 546512 UseManager: handle newlines for USE_EXPAND prefixes
+    - Bug 547414 Fix postsync hook regression
+    - Bug 542796 LinkageMapElf.rebuild: pass error_leader to varexpand
+    - Bug 547532 VdbMetadataDelta.applyDelta: remove replaced versions,
+                 handle "remove" events properly
+    - Bug 547086 ebuild-helpers: avoid exec loops or fork bombs in wrappers
+    - Bug 547390 ro_checker: only check nearest parent
+    - Bug 325009 Make the USE variable readonly
+    - Bug 547736 search: fix addCP so only the specified results are displayed
+    - Bug 428098 _unmerge_protected_symlinks: suggest UNINSTALL_IGNORE
+    - Bug 547778 dblink: elog failed postinst
+                 Scheduler: increase visiblity of postinst failures
+    - Bug 548438 gcc_warn_check: filter grep results with uniq
+    - Bug 532784 bintree.populate: binhost connection failure triggers TypeError
+    - Bug 548516 PORTAGE_XATTR_EXCLUDE: preserve security.capability
+    - Bug 548556 varexpand: fix IndexError
+    - Bug 548710 Disable SOCKSv5-over-UNIX-socket proxy by default
+    - Bug 547732 Bundle a minimalistic derivation of Python's formatter module
+    - Bug 488836 repoman: enable copyright date check without vcs
+    - Bug portage/sync/modules/webrsync: Fileter out
+          uid, gid, groups from kwargs
+    - Bug 256376 dispatch-conf: handle file/directory collisions
+    - Bug 549072 Allow read-only PKGDIR if no ebuilds will be built
+    - Bug 549322 Fix deprecated logging.warn() calls
+
+
 portage-2.2.18
 ==================================
 * Bug Fixes:

@@ -276,16 +276,16 @@ def FindPackagesToScan(settings, startdir, reposplit):
 		# we only want 1 segment of the directory, is why we use catdir instead of startdir
 		catdir = reposplit[-2]
 		if catdir not in settings.categories:
-			logging.warn('%s is not a valid category according to profiles/categories, ' \
-				'skipping checks in %s' % (catdir, catdir))
+			logging.warning('%s is not a valid category according to '
+				'profiles/categories, skipping checks in %s' % (catdir, catdir))
 		else:
 			scanlist = AddPackagesInDir(catdir)
 	elif repolevel == 3: # pkgdir level, startdir = pkgdir
 		catdir = reposplit[-2]
 		pkgdir = reposplit[-1]
 		if catdir not in settings.categories:
-			logging.warn('%s is not a valid category according to profiles/categories, ' \
-			'skipping checks in %s' % (catdir, catdir))
+			logging.warning('%s is not a valid category according to '
+				'profiles/categories, skipping checks in %s' % (catdir, catdir))
 		else:
 			path = os.path.join(catdir, pkgdir)
 			logging.debug('adding %s to scanlist' % path)

@@ -1,5 +1,5 @@
 #-*- coding:utf-8 -*-
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 """
 Methods to check whether Portage is going to write to read-only filesystems.
@@ -13,6 +13,7 @@ from __future__ import unicode_literals
 
 import io
 import logging
+import os
 
 from portage import _encodings
 from portage.util import writemsg_level
@@ -68,7 +69,26 @@ def linux_ro_checker(dir_list):
 			level=logging.WARNING, noiselevel=-1)
 		return []
 
-	return set.intersection(ro_filesystems, set(dir_list))
+	ro_devs = {}
+	for x in ro_filesystems:
+		try:
+			ro_devs[os.stat(x).st_dev] = x
+		except OSError:
+			pass
+
+	ro_filesystems.clear()
+	for x in set(dir_list):
+		try:
+			dev = os.stat(x).st_dev
+		except OSError:
+			pass
+		else:
+			try:
+				ro_filesystems.add(ro_devs[dev])
+			except KeyError:
+				pass
+
+	return ro_filesystems
 
 
 def empty_ro_checker(dir_list):

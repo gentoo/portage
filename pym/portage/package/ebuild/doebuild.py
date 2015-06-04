@@ -196,7 +196,10 @@ def _doebuild_path(settings, eapi=None):
 
 	# Note: PORTAGE_BIN_PATH may differ from the global constant
 	# when portage is reinstalling itself.
-	portage_bin_path = settings["PORTAGE_BIN_PATH"]
+	portage_bin_path = [settings["PORTAGE_BIN_PATH"]]
+	if portage_bin_path[0] != portage.const.PORTAGE_BIN_PATH:
+		# Add a fallback path for restarting failed builds (bug 547086)
+		portage_bin_path.append(portage.const.PORTAGE_BIN_PATH)
 	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
@@ -214,18 +217,22 @@ def _doebuild_path(settings, eapi=None):
 	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
 
 	if "xattr" in settings.features:
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "xattr"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x, "ebuild-helpers", "xattr"))
 
 	if uid != 0 and \
 		"unprivileged" in settings.features and \
 		"fakeroot" not in settings.features:
-		path.append(os.path.join(portage_bin_path,
-			"ebuild-helpers", "unprivileged"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x,
+				"ebuild-helpers", "unprivileged"))
 
 	if settings.get("USERLAND", "GNU") != "GNU":
-		path.append(os.path.join(portage_bin_path, "ebuild-helpers", "bsd"))
+		for x in portage_bin_path:
+			path.append(os.path.join(x, "ebuild-helpers", "bsd"))
 
-	path.append(os.path.join(portage_bin_path, "ebuild-helpers"))
+	for x in portage_bin_path:
+		path.append(os.path.join(x, "ebuild-helpers"))
 	path.extend(prerootpath)
 	path.extend(defaultpath)
 	path.extend(rootpath)
@@ -1502,7 +1509,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
 
-		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch":
+		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch" and \
+			("network-sandbox-proxy" in features or "distcc" in features):
 			# Provide a SOCKS5-over-UNIX-socket proxy to escape sandbox
 			# Don't do this for pkg_nofetch, since the spawn_nofetch
 			# function creates a private PORTAGE_TMPDIR.

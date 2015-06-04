@@ -115,7 +115,8 @@ class Scheduler(PollScheduler):
 			emergelog(self.xterm_titles, *pargs, **kwargs)
 
 	class _failed_pkg(SlotObject):
-		__slots__ = ("build_dir", "build_log", "pkg", "returncode")
+		__slots__ = ("build_dir", "build_log", "pkg",
+			"postinst_failure", "returncode")
 
 	class _ConfigPool(object):
 		"""Interface for a task to temporarily allocate a config
@@ -1155,10 +1156,10 @@ class Scheduler(PollScheduler):
 			if len(self._failed_pkgs_all) > 1:
 				msg = "The following %d packages have " % \
 					len(self._failed_pkgs_all) + \
-					"failed to build or install:"
+					"failed to build, install, or execute postinst:"
 			else:
 				msg = "The following package has " + \
-					"failed to build or install:"
+					"failed to build, install, or execute postinst:"
 
 			printer.eerror("")
 			for line in textwrap.wrap(msg, 72):
@@ -1168,6 +1169,8 @@ class Scheduler(PollScheduler):
 				# Use unicode_literals to force unicode format string so
 				# that Package.__unicode__() is called in python2.
 				msg = " %s" % (failed_pkg.pkg,)
+				if failed_pkg.postinst_failure:
+					msg += " (postinst failed)"
 				log_path = self._locate_failure_log(failed_pkg)
 				if log_path is not None:
 					msg += ", Log file:"
@@ -1288,6 +1291,17 @@ class Scheduler(PollScheduler):
 				self._failed_pkg_msg(self._failed_pkgs[-1], "install", "to")
 				self._status_display.failed = len(self._failed_pkgs)
 			return
+
+		if merge.postinst_failure:
+			# Append directly to _failed_pkgs_all for non-critical errors.
+			self._failed_pkgs_all.append(self._failed_pkg(
+				build_dir=merge.merge.settings.get("PORTAGE_BUILDDIR"),
+				build_log=merge.merge.settings.get("PORTAGE_LOG_FILE"),
+				pkg=pkg,
+				postinst_failure=True,
+				returncode=merge.returncode))
+			self._failed_pkg_msg(self._failed_pkgs_all[-1],
+				"execute postinst for", "for")
 
 		self._task_complete(pkg)
 		pkg_to_replace = merge.merge.pkg_to_replace

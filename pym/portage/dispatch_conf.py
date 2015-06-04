@@ -8,6 +8,7 @@
 
 from __future__ import print_function, unicode_literals
 
+import errno
 import io
 import functools
 import stat
@@ -20,6 +21,7 @@ from portage import _encodings, os, shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
+from portage.util.path import iter_parents
 from portage.const import EPREFIX
 
 RCS_BRANCH = '1.1.1'
@@ -29,6 +31,7 @@ RCS_GET = 'co'
 RCS_MERGE = "rcsmerge -p -r" + RCS_BRANCH + " '%s' > '%s'"
 
 DIFF3_MERGE = "diff3 -mE '%s' '%s' '%s' > '%s'"
+_ARCHIVE_ROTATE_MAX = 9
 
 def diffstatusoutput(cmd, file1, file2):
 	"""
@@ -245,6 +248,77 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
 	return ret
 
+def _file_archive_rotate(archive):
+	"""
+	Rename archive to archive + '.1', and perform similar rotation
+	for files up to archive + '.9'.
+
+	@param archive: file path to archive
+	@type archive: str
+	"""
+
+	max_suf = 0
+	try:
+		for max_suf, max_st, max_path in (
+			(suf, os.lstat(path), path) for suf, path in (
+			(suf, "%s.%s" % (archive, suf)) for suf in range(
+			1, _ARCHIVE_ROTATE_MAX + 1))):
+			pass
+	except OSError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		# There's already an unused suffix.
+	else:
+		# Free the max suffix in order to avoid possible problems
+		# when we rename another file or directory to the same
+		# location (see bug 256376).
+		if stat.S_ISDIR(max_st.st_mode):
+			# Removing a directory might destroy something important,
+			# so rename it instead.
+			head, tail = os.path.split(archive)
+			placeholder = tempfile.NamedTemporaryFile(
+				prefix="%s." % tail,
+				dir=head)
+			placeholder.close()
+			os.rename(max_path, placeholder.name)
+		else:
+			os.unlink(max_path)
+
+		# The max suffix is now unused.
+		max_suf -= 1
+
+	for suf in range(max_suf + 1, 1, -1):
+		os.rename("%s.%s" % (archive, suf - 1), "%s.%s" % (archive, suf))
+
+	os.rename(archive, "%s.1" % (archive,))
+
+def _file_archive_ensure_dir(parent_dir):
+	"""
+	Ensure that the parent directory for an archive exists.
+	If a file exists where a directory is needed, then rename
+	it (see bug 256376).
+
+	@param parent_dir: path of parent directory
+	@type parent_dir: str
+	"""
+
+	for parent in iter_parents(parent_dir):
+		# Use lstat because a symlink to a directory might point
+		# to a directory outside of the config archive, making
+		# it an unsuitable parent.
+		try:
+			parent_st = os.lstat(parent)
+		except OSError:
+			pass
+		else:
+			if not stat.S_ISDIR(parent_st.st_mode):
+				_file_archive_rotate(parent)
+			break
+
+	try:
+		os.makedirs(parent_dir)
+	except OSError:
+		pass
 
 def file_archive(archive, curconf, newconf, mrgconf):
 	"""Archive existing config to the archive-dir, bumping old versions
@@ -254,24 +328,13 @@ def file_archive(archive, curconf, newconf, mrgconf):
 	if newconf was specified, archive it as a .dist.new version (which
 	gets moved to the .dist version at the end of the processing)."""
 
-	try:
-		os.makedirs(os.path.dirname(archive))
-	except OSError:
-		pass
+	_file_archive_ensure_dir(os.path.dirname(archive))
 
 	# Archive the current config file if it isn't already saved
 	if (os.path.lexists(archive) and
 		len(diffstatusoutput_mixed(
 		"diff -aq '%s' '%s'", curconf, archive)[1]) != 0):
-		suf = 1
-		while suf < 9 and os.path.lexists(archive + '.' + str(suf)):
-			suf += 1
-
-		while suf > 1:
-			os.rename(archive + '.' + str(suf-1), archive + '.' + str(suf))
-			suf -= 1
-
-		os.rename(archive, archive + '.1')
+		_file_archive_rotate(archive)
 
 	try:
 		curconf_st = os.lstat(curconf)
@@ -295,6 +358,9 @@ def file_archive(archive, curconf, newconf, mrgconf):
 		stat.S_ISLNK(mystat.st_mode)):
 		# Save off new config file in the archive dir with .dist.new suffix
 		newconf_archive = archive + '.dist.new'
+		if os.path.isdir(newconf_archive
+			) and not os.path.islink(newconf_archive):
+			_file_archive_rotate(newconf_archive)
 		_archive_copy(mystat, newconf, newconf_archive)
 
 		ret = 0
@@ -326,4 +392,7 @@ def rcs_archive_post_process(archive):
 def file_archive_post_process(archive):
 	"""Rename the archive file with the .dist.new suffix to a .dist suffix"""
 	if os.path.lexists(archive + '.dist.new'):
-		os.rename(archive + '.dist.new', archive + '.dist')
+		dest = "%s.dist" % archive
+		if os.path.isdir(dest) and not os.path.islink(dest):
+			_file_archive_rotate(dest)
+		os.rename(archive + '.dist.new', dest)

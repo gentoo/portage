@@ -208,6 +208,9 @@ class UseManager(object):
 			useflags = []
 			use_expand_prefix = ''
 			for prefixed_useflag in v:
+				if extended_syntax and prefixed_useflag == "\n":
+					use_expand_prefix = ""
+					continue
 				if extended_syntax and prefixed_useflag[-1] == ":":
 					use_expand_prefix = prefixed_useflag[:-1].lower() + "_"
 					continue
@@ -236,11 +239,14 @@ class UseManager(object):
 		ret = ExtendedAtomDict(dict)
 		if user_config:
 			pusedict = grabdict_package(
-				os.path.join(location, file_name), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
+				os.path.join(location, file_name), recursive=1, newlines=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 			for k, v in pusedict.items():
 				l = []
 				use_expand_prefix = ''
 				for flag in v:
+					if flag == "\n":
+						use_expand_prefix = ""
+						continue
 					if flag[-1] == ":":
 						use_expand_prefix = flag[:-1].lower() + "_"
 						continue

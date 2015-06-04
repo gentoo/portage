@@ -82,7 +82,7 @@ gcc_warn_check() {
 		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
 
 		# force C locale to work around slow unicode locales #160234
-		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E "${joined_msgs}" "${PORTAGE_LOG_FILE}")
+		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
 		if [[ -n ${f} ]] ; then
 			abort="yes"
 			# for now, don't make this fatal (see bug #337031)

@@ -175,8 +175,13 @@ class SyncManager(object):
 			writemsg_level("Spawning post_sync hook: %s\n"
 				% (_unicode_decode(_hooks[filepath])),
 				level=logging.ERROR, noiselevel=4)
-			retval = portage.process.spawn([filepath,
-				reponame, dosyncuri, repolocation], env=self.settings.environ())
+			if reponame:
+				retval = portage.process.spawn(
+					[filepath, reponame, dosyncuri, repolocation],
+					env=self.settings.environ())
+			else:
+				retval = portage.process.spawn([filepath],
+					env=self.settings.environ())
 			if retval != os.EX_OK:
 				writemsg_level(" %s Spawn failed for: %s, %s\n" % (bad("*"),
 					_unicode_decode(_hooks[filepath]), filepath),

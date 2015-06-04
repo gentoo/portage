@@ -35,6 +35,10 @@ class WebRsync(SyncBase):
 		if not self.has_bin:
 			return (1, False)
 
+		# filter these out to prevent gpg errors
+		for var in ['uid', 'gid', 'groups']:
+			self.spawn_kwargs.pop(var, None)
+
 		exitcode = portage.process.spawn_bash("%s" % \
 			(self.bin_command),
 			**portage._native_kwargs(self.spawn_kwargs))

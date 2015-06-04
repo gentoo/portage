@@ -122,8 +122,8 @@ man page for more information.
 Defaults to /var/tmp/ccache
 .TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
-This controls the space use limitations for ccache.  The default is 2 gigabytes
-('2G').  Sizes are specified with 'G', 'M', or 'K'.
+This controls the space use limitations for ccache.  See the \fI\-M\fR flag in
+the \fBccache\fR(1) man page for more information.
 .TP
 .B CFLAGS CXXFLAGS
 Use these variables to set the desired optimization/CPU instruction settings
@@ -466,6 +466,10 @@ from putting 64bit libraries into anything other than (/usr)/lib64.
 .B network\-sandbox
 Isolate the ebuild phase functions from host network interfaces.
 Supported only on Linux. Requires network namespace support in kernel.
+.TP
+.B network\-sandbox\-proxy
+Enable escaping network-sandbox through SOCKSv5 proxy. Enabling distcc
+feature also enables the proxy.
 
 If asyncio Python module is available (requires Python 3.3, built-in
 since Python 3.4) Portage will additionally spawn an isolated SOCKSv5

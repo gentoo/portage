@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Aug 2013" "Portage VERSION" "Portage"
+.TH "REPOMAN" "1" "May 2015" "Portage VERSION" "Portage"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -36,7 +36,7 @@ entries that already exist. Replacement of existing Manifest
 DIST entries can be forced by using the \fBmanifest\fR mode
 together with the \fB\-\-force\fR option.
 .TP
-\fB--force\fR
+\fB-f\fR, \fB--force\fR
 Force commit to proceed, regardless of QA issues. For convenience, this option
 causes the most time consuming QA checks to be skipped. The commit message will
 include an indication that this option has been enabled, together with the
@@ -49,6 +49,9 @@ have to be downloaded in order to recompute digests. \fBWARNING:\fR When
 replacing existing digests, it is the user's responsibility to ensure that
 files contained in ${DISTDIR} have the correct identities. Especially beware
 of partially downloaded files.
+.TP
+\fB-S\fR, \fB--straight-to-stable\fR
+Allow committing straight to stable
 .TP
 \fB-q\fR, \fB--quiet\fR
 Be less verbose about extraneous info

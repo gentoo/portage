@@ -8,7 +8,7 @@ from portage.dbapi._MergeProcess import MergeProcess
 class EbuildMerge(CompositeTask):
 
 	__slots__ = ("exit_hook", "find_blockers", "logger", "ldpath_mtimes",
-		"pkg", "pkg_count", "pkg_path", "pretend",
+		"pkg", "pkg_count", "pkg_path", "postinst_failure", "pretend",
 		"settings", "tree", "world_atom")
 
 	def _start(self):
@@ -39,6 +39,7 @@ class EbuildMerge(CompositeTask):
 			self.wait()
 			return
 
+		self.postinst_failure = merge_task.postinst_failure
 		pkg = self.pkg
 		self.world_atom(pkg)
 		pkg_count = self.pkg_count

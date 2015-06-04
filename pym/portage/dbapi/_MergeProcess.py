@@ -23,7 +23,8 @@ class MergeProcess(ForkProcess):
 
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
-		'mydbapi', 'prev_mtimes', 'unmerge', '_elog_reader_fd', '_elog_reg_id',
+		'mydbapi', 'postinst_failure', 'prev_mtimes', 'unmerge',
+		'_elog_reader_fd', '_elog_reg_id',
 		'_buf', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
@@ -249,6 +250,12 @@ class MergeProcess(ForkProcess):
 				# finally block has to be setup before the fork
 				# in order to avoid a race condition.
 				os._exit(1)
+
+	def _set_returncode(self, wait_retval):
+		ForkProcess._set_returncode(self, wait_retval)
+		if self.returncode == portage.const.RETURNCODE_POSTINST_FAILURE:
+			self.postinst_failure = True
+			self.returncode = os.EX_OK
 
 	def _unregister(self):
 		"""

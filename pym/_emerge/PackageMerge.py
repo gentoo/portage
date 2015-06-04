@@ -5,7 +5,7 @@ from _emerge.CompositeTask import CompositeTask
 from portage.dep import _repo_separator
 from portage.output import colorize
 class PackageMerge(CompositeTask):
-	__slots__ = ("merge",)
+	__slots__ = ("merge", "postinst_failure")
 
 	def _start(self):
 
@@ -41,4 +41,9 @@ class PackageMerge(CompositeTask):
 			self.merge.statusMessage(msg)
 
 		task = self.merge.create_install_task()
-		self._start_task(task, self._default_final_exit)
+		self._start_task(task, self._install_exit)
+
+	def _install_exit(self, task):
+		self.postinst_failure = getattr(task, 'postinst_failure', None)
+		self._final_exit(task)
+		self.wait()

@@ -26,6 +26,7 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
+from portage.util.path import first_existing
 from portage.localization import _
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -38,7 +39,7 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 # Characters prohibited by repoman's file.name check.
-_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+:/]')
+_invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
@@ -252,6 +253,7 @@ class RepoConfig(object):
 				# useful when having two copies of the same repo enabled
 				# to avoid modifying profiles/repo_name in one of them
 				self.name = layout_data['repo-name']
+				self.missing_repo_name = False
 
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
@@ -345,6 +347,17 @@ class RepoConfig(object):
 
 		if new_repo.name is not None:
 			self.missing_repo_name = new_repo.missing_repo_name
+
+	@property
+	def writable(self):
+		"""
+		Check if self.location is writable, or permissions are sufficient
+		to create it if it does not exist yet.
+		@rtype: bool
+		@return: True if self.location is writable or can be created,
+			False otherwise
+		"""
+		return os.access(first_existing(self.location), os.W_OK)
 
 	@staticmethod
 	def _read_valid_repo_name(repo_path):

@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Next to do: dep syntax checking in mask files
@@ -11,7 +11,6 @@ from __future__ import print_function, unicode_literals
 import codecs
 import copy
 import errno
-import formatter
 import io
 import logging
 import re
@@ -25,6 +24,7 @@ import time
 import platform
 from itertools import chain
 from stat import S_ISDIR
+from pprint import pformat
 
 try:
 	from urllib.parse import urlparse
@@ -56,6 +56,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+import portage.util.formatter as formatter
 import repoman.checks
 from repoman.checks import run_checks
 from repoman.check_missingslot import check_missingslot
@@ -88,7 +89,7 @@ util.initialize_logger()
 
 # 14 is the length of DESCRIPTION=""
 max_desc_len = 100
-allowed_filename_chars="a-zA-Z0-9._-+:"
+allowed_filename_chars="a-zA-Z0-9._+-"
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}|[0-9a-fA-F]{16}|[0-9a-fA-F]{24}|[0-9a-fA-F]{32}|[0-9a-fA-F]{40})!?'
 bad = create_color_func("BAD")
@@ -282,10 +283,10 @@ def ParseArgs(argv, qahelp):
 	if opts.mode == 'commit' and not (opts.force or opts.pretend):
 		if opts.ignore_masked:
 			opts.ignore_masked = False
-			logging.warn('Commit mode automatically disables --ignore-masked')
+			logging.warning('Commit mode automatically disables --ignore-masked')
 		if opts.without_mask:
 			opts.without_mask = False
-			logging.warn('Commit mode automatically disables --without-mask')
+			logging.warning('Commit mode automatically disables --without-mask')
 
 	return (opts, args)
 
@@ -437,7 +438,7 @@ commitmessage = None
 for x in missingvars:
 	x += ".missing"
 	if x not in qacats:
-		logging.warn('* missingvars values need to be added to qahelp ("%s")' % x)
+		logging.warning('* missingvars values need to be added to qahelp ("%s")' % x)
 		qacats.append(x)
 		qawarnings.add(x)
 
@@ -557,7 +558,7 @@ if options.if_modified == "y" and vcs is None:
 	options.if_modified = "n"
 
 # Disable copyright/mtime check if vcs does not preserve mtime (bug #324075).
-vcs_preserves_mtime = vcs in ('cvs',)
+vcs_preserves_mtime = vcs in ('cvs', None)
 
 vcs_local_opts = repoman_settings.get("REPOMAN_VCS_LOCAL_OPTS", "").split()
 vcs_global_opts = repoman_settings.get("REPOMAN_VCS_GLOBAL_OPTS")
@@ -649,7 +650,7 @@ if repo_config.sign_manifest and repo_config.name == "gentoo" and \
 	"'sign-manifests = false' in metadata/layout.conf.") % \
 	(repo_config.name,)
 	for line in textwrap.wrap(msg, 60):
-		logging.warn(line)
+		logging.warning(line)
 
 if sign_manifests and options.mode in ("commit",) and \
 	repoman_settings.get("PORTAGE_GPG_KEY") and \
@@ -1049,7 +1050,10 @@ def vcs_files_to_cps(vcs_file_iter):
 			if len(f_split) > 3 and f_split[1] in categories:
 				modified_cps.append("/".join(f_split[1:3]))
 
-	return frozenset(modified_cps)
+	# Exclude packages that have been removed, since calling
+	# code assumes that the packages exist.
+	return frozenset(x for x in frozenset(modified_cps)
+		if os.path.exists(os.path.join(repodir, x)))
 
 def git_supports_gpg_sign():
 	status, cmd_output = \
@@ -2051,9 +2055,10 @@ for x in effective_scanlist:
 
 					# Skip dependency.unknown for blockers, so that we
 					# don't encourage people to remove necessary blockers,
-					# as discussed in bug #382407.
+					# as discussed in bug 382407. We use atom.without_use
+					# due to bug 525376.
 					if not is_blocker and \
-						not portdb.xmatch("match-all", atom) and \
+						not portdb.xmatch("match-all", atom.without_use) and \
 						not atom.cp.startswith("virtual/"):
 						unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
@@ -2394,14 +2399,14 @@ for x in effective_scanlist:
 							if not atoms:
 								continue
 							stats[mykey] += 1
-							fails[mykey].append("%s: %s: %s(%s) %s" % \
+							fails[mykey].append("%s: %s: %s(%s)\n%s" % \
 								(relative_path, mytype, keyword,
-								prof, repr(atoms)))
+								prof, pformat(atoms, indent=6)))
 					else:
 						stats[mykey] += 1
-						fails[mykey].append("%s: %s: %s(%s) %s" % \
+						fails[mykey].append("%s: %s: %s(%s)\n%s" % \
 							(relative_path, mytype, keyword,
-							prof, repr(atoms)))
+							prof, pformat(atoms, indent=6)))
 
 		if not baddepsyntax and unknown_pkgs:
 			type_map = {}
@@ -2422,7 +2427,7 @@ for x in effective_scanlist:
 				(x, myflag))
 
 if options.if_modified == "y" and len(effective_scanlist) < 1:
-	logging.warn("--if-modified is enabled, but no modified packages were found!")
+	logging.warning("--if-modified is enabled, but no modified packages were found!")
 
 if options.mode == "manifest":
 	sys.exit(dofail)
@@ -2951,7 +2956,7 @@ else:
 	# Setup the GPG commands
 	def gpgsign(filename):
 		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
-		if gpgcmd is None:
+		if gpgcmd in [None, '']:
 			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!" + \
 				" Is make.globals missing?")
 		if "${PORTAGE_GPG_KEY}" in gpgcmd and \

@@ -8,7 +8,4 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-exec \
-env \
-_E_EXEDESTTREE_="/etc/init.d/" \
-doexe "$@"
+_E_EXEDESTTREE_='/etc/init.d/' exec doexe "$@"

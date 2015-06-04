@@ -963,8 +963,12 @@ class binarytree(object):
 				# With Python 2, the EnvironmentError message may
 				# contain bytes or unicode, so use _unicode to ensure
 				# safety with all locales (bug #532784).
-				writemsg("!!! %s\n\n" % _unicode(e,
-					_encodings["stdio"], errors="replace"))
+				try:
+					error_msg = _unicode(e)
+				except UnicodeDecodeError as uerror:
+					error_msg = _unicode(uerror.object,
+						encoding='utf_8', errors='replace')
+				writemsg("!!! %s\n\n" % error_msg)
 				del e
 				pkgindex = None
 			if proc is not None:
@@ -1439,9 +1443,10 @@ class binarytree(object):
 	def get_pkgindex_uri(self, cpv):
 		"""Returns the URI to the Packages file for a given package."""
 		uri = None
-		metadata = self._remotepkgs.get(self.dbapi._instance_key(cpv))
-		if metadata is not None:
-			uri = metadata["PKGINDEX_URI"]
+		if self._remotepkgs is not None:
+			metadata = self._remotepkgs.get(self.dbapi._instance_key(cpv))
+			if metadata is not None:
+				uri = metadata["PKGINDEX_URI"]
 		return uri
 
 	def gettbz2(self, pkgname):

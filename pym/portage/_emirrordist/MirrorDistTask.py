@@ -166,8 +166,8 @@ class MirrorDistTask(CompositeTask):
 			date_files.append(filename)
 
 		if dry_run:
-			logging.warn(("dry-run: scheduled-deletions log "
-				"will be summarized via logging.info"))
+			logging.warning("dry-run: scheduled-deletions log "
+				"will be summarized via logging.info")
 
 		lines = []
 		for date in sorted(date_map):

@@ -30,8 +30,8 @@ module_spec = {
 	'name': 'webrsync',
 	'description': doc,
 	'provides':{
-		'websync-module': {
-			'name': "websync",
+		'webrsync-module': {
+			'name': "webrsync",
 			'class': config_class,
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],

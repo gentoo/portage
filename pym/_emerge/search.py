@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -36,6 +36,7 @@ class search(object):
 		self.verbose = verbose
 		self.searchdesc = searchdesc
 		self.searchkey = None
+		self._results_specified = False
 		# Disable the spinner since search results are displayed
 		# incrementally.
 		self.spinner = None
@@ -295,6 +296,12 @@ class search(object):
 					yield ("set", setname)
 
 	def addCP(self, cp):
+		"""
+		Add a specific cp to the search results. This modifies the
+		behavior of the output method, so that it only displays specific
+		packages added via this method.
+		"""
+		self._results_specified = True
 		if not self._xmatch("match-all", cp):
 			return
 		self.matches["pkg"].append(cp)
@@ -315,11 +322,12 @@ class search(object):
 		metadata_keys.update(["DESCRIPTION", "HOMEPAGE", "LICENSE", "SRC_URI"])
 		metadata_keys = tuple(metadata_keys)
 
-		if self.searchkey is None:
+		if self._results_specified:
 			# Handle results added via addCP
 			addCP_matches = []
-			for mytype, match in self.matches.items():
-				addCP_matches.append(mytype, match)
+			for mytype, matches in self.matches.items():
+				for match in matches:
+					addCP_matches.append((mytype, match))
 			iterator = iter(addCP_matches)
 
 		else:
@@ -442,7 +450,13 @@ class search(object):
 	def getInstallationStatus(self,package):
 		installed_package = self._vardb.match(package)
 		if installed_package:
-			installed_package = installed_package[-1]
+			try:
+				self._vardb.match_unordered
+			except AttributeError:
+				installed_package = installed_package[-1]
+			else:
+				installed_package = portage.best(installed_package)
+
 		else:
 			installed_package = ""
 		result = ""
