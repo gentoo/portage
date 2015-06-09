@@ -108,7 +108,6 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-
 class vardbapi(dbapi):
 
 	_excluded_dirs = ["CVS", "lost+found"]
@@ -1117,7 +1116,7 @@ class vardbapi(dbapi):
 				path = x[eroot_len:]
 				if "case-insensitive-fs" in self._vardb.settings.features:
 					path = path.lower()
-				self._add_path(patch, pkg_hash)
+				self._add_path(path, pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
 
