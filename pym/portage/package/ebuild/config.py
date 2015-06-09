@@ -863,7 +863,7 @@ class config(object):
 			# This in particularly breaks the configure-set portage
 			# group and user (in portage/data.py)
 			eroot_or_parent = first_existing(eroot)
-			unprivileged = False
+			unprivileged = True
 #			try:
 #				eroot_st = os.stat(eroot_or_parent)
 #			except OSError:
