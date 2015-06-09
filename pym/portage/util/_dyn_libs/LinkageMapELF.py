@@ -43,7 +43,6 @@ _approx_multilib_categories = {
 	"SPARCV9":       "sparc_64",
 	"X86_64":        "x86_64",
 }
->>>>>>> overlays-gentoo-org/master
 
 class LinkageMapELF(object):
 
