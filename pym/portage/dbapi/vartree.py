@@ -2874,7 +2874,7 @@ class dblink(object):
 			if self._contents_basenames is None:
 
 				try:
-					for x in pkgfiles):
+					for x in pkgfiles:
 						_unicode_encode(x,
 							encoding=_encodings['merge'],
 							errors='strict')
