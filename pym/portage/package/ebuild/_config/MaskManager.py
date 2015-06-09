@@ -130,13 +130,8 @@ class MaskManager(object):
 			'location portage1_directories')
 		repo_pkgmasklines = []
 		repo_pkgunmasklines = []
-		all_profiles = []
-		for repo in repositories.repos_with_profiles():
-			all_profiles.append(_profile_node(
-				os.path.join(repo.location, "profiles"), True))
-		all_profiles.extend(profiles)
 		# END PREFIX LOCAL
-		for x in all_profiles:
+		for x in profiles:
 			profile_pkgmasklines.append(grabfile_package(
 				os.path.join(x.location, "package.mask"),
 				recursive=x.portage1_directories,
