@@ -862,8 +862,8 @@ class config(object):
 			# don't have to match, when a user has many
 			# This in particularly breaks the configure-set portage
 			# group and user (in portage/data.py)
-#			eroot_or_parent = first_existing(eroot)
-#			unprivileged = False
+			eroot_or_parent = first_existing(eroot)
+			unprivileged = False
 #			try:
 #				eroot_st = os.stat(eroot_or_parent)
 #			except OSError:
