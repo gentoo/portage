@@ -8,10 +8,10 @@ bad habits that exist in the current codebase.
 Python Version
 --------------
 
-Python 2.6 is the minimum supported version, since it is the first
-version to support Python 3 syntax. All exception handling should use
-Python 3 'except' syntax, and the print function should be used instead
-of Python 2's print statement (from __future__ import print_function).
+Python 2.7 is the minimum supported version as it eases 3.x compatibility.
+All exception handling should use Python 3 'except' syntax, and the print
+function should be used instead of Python 2's print statement (use "from
+__future__ import print_function" everywhere).
 
 Dependencies
 ------------
@@ -225,7 +225,7 @@ Second create a git tag for this release:
 Then create the tarball and run the tests:
 	./mkrelease.sh --changelog-rev v2.2.7 --tag --runtests 2.2.8
 Make sure you have all supported python versions installed first
-(see PYTHON_SUPPORTED_VERSIONS in runtests.sh).
+(see PYTHON_SUPPORTED_VERSIONS in runtests).
 
 Version bump the ebuild and verify it can re-install itself:
 	emerge portage
