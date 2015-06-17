@@ -1126,12 +1126,19 @@ def emerge_main(args=None):
 
 	# Verify that BASH process substitution works as another cheap early
 	# filter. Process substitution uses '/dev/fd'.
-	if portage.process.spawn_bash("[[ $(< <(echo foo) ) == foo ]]") != 0:
-		writemsg_level("Failed to validate a sane '/dev'.\n"
-				 "bash process substitution doesn't work; this may be an "
-				 "indication of a broken '/dev/fd'.\n",
-				 level=logging.ERROR, noiselevel=-1)
-		return 1
+	with open(os.devnull, 'r+b') as dev_null:
+		fd_pipes = {
+			0: dev_null.fileno(),
+			1: dev_null.fileno(),
+			2: dev_null.fileno(),
+		}
+		if portage.process.spawn_bash("[[ $(< <(echo foo) ) == foo ]]",
+			fd_pipes=fd_pipes) != 0:
+			writemsg_level("Failed to validate a sane '/dev'.\n"
+				"bash process substitution doesn't work; this may be an "
+				"indication of a broken '/dev/fd'.\n",
+				level=logging.ERROR, noiselevel=-1)
+			return 1
 
 	# Portage needs to ensure a sane umask for the files it creates.
 	os.umask(0o22)
