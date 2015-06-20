@@ -1,4 +1,5 @@
 #!@PORTAGE_BASH@
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # emake: Run make and automatically pass along flags set in the env.  We support
@@ -8,7 +9,7 @@
 #
 # With newer EAPIs, we also automatically fail the build if make itself fails.
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 cmd=(
 	${MAKE:-make} SHELL="${BASH:-/bin/bash}" ${MAKEOPTS} "$@" ${EXTRA_EMAKE}

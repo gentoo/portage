@@ -5,7 +5,7 @@
 # For routines we want to use in ebuild-helpers/ but don't want to
 # expose to the general ebuild environment.
 
-source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/isolated-functions.sh
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 #
 # API functions for doing parallel processing

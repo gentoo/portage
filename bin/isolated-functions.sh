@@ -2,7 +2,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}/eapi.sh"
+source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.

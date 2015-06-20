@@ -2,7 +2,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH:-@PORTAGE_BASE@/bin}"/helper-functions.sh
+source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
