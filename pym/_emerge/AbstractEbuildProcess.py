@@ -1,10 +1,12 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import io
 import platform
 import stat
 import subprocess
+import tempfile
 import textwrap
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -14,7 +16,7 @@ from portage.elog import messages as elog_messages
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage import os
+from portage import shutil, os
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
@@ -69,9 +71,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				and self.phase not in self._phases_without_cgroup):
 			cgroup_root = '/sys/fs/cgroup'
 			cgroup_portage = os.path.join(cgroup_root, 'portage')
-			cgroup_path = os.path.join(cgroup_portage,
-					'%s:%s' % (self.settings["CATEGORY"],
-						self.settings["PF"]))
+
 			try:
 				# cgroup tmpfs
 				if not os.path.ismount(cgroup_root):
@@ -90,9 +90,9 @@ class AbstractEbuildProcess(SpawnProcess):
 						'-o', 'rw,nosuid,nodev,noexec,none,name=portage',
 						'tmpfs', cgroup_portage])
 
-				# the ebuild cgroup
-				if not os.path.isdir(cgroup_path):
-					os.mkdir(cgroup_path)
+				cgroup_path = tempfile.mkdtemp(dir=cgroup_portage,
+					prefix='%s:%s.' % (self.settings["CATEGORY"],
+					self.settings["PF"]))
 			except (subprocess.CalledProcessError, OSError):
 				pass
 			else:
@@ -312,6 +312,13 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
+
+		if self.cgroup is not None:
+			try:
+				shutil.rmtree(self.cgroup)
+			except EnvironmentError as e:
+				if e.errno != errno.ENOENT:
+					raise
 
 		if self._exit_timeout_id is not None:
 			self.scheduler.source_remove(self._exit_timeout_id)
