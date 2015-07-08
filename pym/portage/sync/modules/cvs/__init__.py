@@ -18,7 +18,7 @@ class CheckCVSConfig(CheckSyncConfig):
 
 
 	def check_cvs_repo(self):
-		if self.repo.sync_cvs_repo is None:
+		if self.repo.module_specific_options['sync-cvs-repo'] is None:
 			writemsg_level("!!! %s\n" %
 				_("Repository '%s' has sync-type=cvs, but is missing sync-cvs-repo attribute")
 				% self.repo.name, level=self.logger.ERROR, noiselevel=-1)
@@ -40,6 +40,7 @@ module_spec = {
 					'exists and is a valid CVS repository',
 			},
 			'validate_config': CheckCVSConfig,
+			'module_specific_options': ("sync-cvs-repo",),
 		}
 	}
 }

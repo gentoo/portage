@@ -25,6 +25,18 @@ module_controller = Modules(path=path, namepath="portage.sync.modules")
 module_names = module_controller.module_names[:]
 
 
+def module_specific_options(repo):
+	'''Get the authorized module specific options set for
+	the repos.conf settings for the repo'''
+	global module_controller
+
+	if repo.sync_type:
+		opts = frozenset([opt for opt in
+			module_controller.modules[repo.sync_type]['module_specific_options']])
+		return opts
+	return frozenset()
+
+
 def validate_config(repo, logger):
 	'''Validate the repos.conf settings for the repo'''
 	global module_names, module_controller

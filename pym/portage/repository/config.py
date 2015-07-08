@@ -86,11 +86,12 @@ class RepoConfig(object):
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
+		'profile_formats', 'sign_commit', 'sign_manifest',
 		'sync_depth',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', 'user_location', '_eapis_banned',
-		'_eapis_deprecated', '_masters_orig')
+		'_eapis_deprecated', '_masters_orig', 'module_specific_options',
+		)
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -148,11 +149,6 @@ class RepoConfig(object):
 				priority = None
 		self.priority = priority
 
-		sync_cvs_repo = repo_opts.get('sync-cvs-repo')
-		if sync_cvs_repo is not None:
-			sync_cvs_repo = sync_cvs_repo.strip()
-		self.sync_cvs_repo = sync_cvs_repo or None
-
 		sync_type = repo_opts.get('sync-type')
 		if sync_type is not None:
 			sync_type = sync_type.strip()
@@ -179,6 +175,8 @@ class RepoConfig(object):
 		self.auto_sync = auto_sync
 
 		self.sync_depth = repo_opts.get('sync-depth')
+
+		self.module_specific_options = {}
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -279,6 +277,9 @@ class RepoConfig(object):
 
 			self._eapis_banned = frozenset(layout_data['eapis-banned'])
 			self._eapis_deprecated = frozenset(layout_data['eapis-deprecated'])
+
+	def set_module_specific_opt(self, opt, val):
+		self.module_specific_options[opt] = val
 
 	def eapi_is_banned(self, eapi):
 		return eapi in self._eapis_banned
@@ -407,8 +408,6 @@ class RepoConfig(object):
 			repo_msg.append(indent + "format: " + self.format)
 		if self.user_location:
 			repo_msg.append(indent + "location: " + self.user_location)
-		if self.sync_cvs_repo:
-			repo_msg.append(indent + "sync-cvs-repo: " + self.sync_cvs_repo)
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -426,6 +425,9 @@ class RepoConfig(object):
 		if self.eclass_overrides:
 			repo_msg.append(indent + "eclass-overrides: " + \
 				" ".join(self.eclass_overrides))
+		for o, v in self.module_specific_options.items():
+			if v is not None:
+				repo_msg.append(indent + o + ": " + v)
 		repo_msg.append("")
 		return "\n".join(repo_msg)
 
@@ -503,10 +505,10 @@ class RepoConfigLoader(object):
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
-							'force', 'masters', 'priority', 'sync_cvs_repo',
+							'force', 'masters', 'priority',
 							'sync_depth',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
-							):
+							) + portage.sync.module_specific_options(repo, logging):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -598,6 +600,8 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
+			for o in portage.sync.module_specific_options(repo):
+				repo.set_module_specific_opt(o, parser.get(sname, o))
 
 			# Perform repos.conf sync variable validation
 			portage.sync.validate_config(repo, logging)
@@ -961,7 +965,7 @@ class RepoConfigLoader(object):
 
 	def config_string(self):
 		str_or_int_keys = ("auto_sync", "format", "location",
-			"main_repo", "priority", "sync_cvs_repo",
+			"main_repo", "priority",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
@@ -979,6 +983,8 @@ class RepoConfigLoader(object):
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
 					elif key in repo_config_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
+			for o, v in repo.module_specific_options.items():
+				config_string += "%s = %s\n" % (o, v)
 		return config_string.lstrip("\n")
 
 def load_repository_config(settings, extra_files=None):

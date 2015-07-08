@@ -26,6 +26,7 @@ module_spec = {
 					'exists and is a valid SVN repository',
 			},
 			'validate_config': CheckSyncConfig,
+			'module_specific_options': (),
 		}
 	}
 }
