@@ -515,6 +515,8 @@ class config(object):
 				v = confs.get("SYNC")
 				if v is not None:
 					portdir_sync = v
+				if 'PORTAGE_RSYNC_EXTRA_OPTS' in confs:
+					self['PORTAGE_RSYNC_EXTRA_OPTS'] = confs['PORTAGE_RSYNC_EXTRA_OPTS']
 
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay

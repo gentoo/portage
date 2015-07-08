@@ -72,8 +72,10 @@ class RsyncSync(NewBase):
 			rsync_opts = self._validate_rsync_opts(rsync_opts, syncuri)
 		self.rsync_opts = self._rsync_opts_extend(opts, rsync_opts)
 
-		self.extra_rsync_opts = portage.util.shlex_split(
-			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
+		self.extra_rsync_opts = list()
+		if 'sync-rsync-extra-opts' in self.repo.module_specific_options:
+			self.extra_rsync_opts.extend(portage.util.shlex_split(
+				self.repo.module_specific_options['sync-rsync-extra-opts']))
 
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(

@@ -1021,6 +1021,11 @@ group id will be changed.
 .br
 This key takes precedence over FEATURES=userpriv. If user or group id
 is provided, Portage no longer uses owner of the directory.
+.TP
+.B sync-rsync-extra-opts
+Extra options to give to rsync on repository synchronization. It takes
+precedence over a declaration in [DEFAULT] section, that takes
+precedence over PORTAGE_RSYNC_EXTRA_OPTS.
 .RE
 
 .I Example:

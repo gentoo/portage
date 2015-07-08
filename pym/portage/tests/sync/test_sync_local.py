@@ -7,7 +7,7 @@ import textwrap
 import time
 
 import portage
-from portage import os, shutil
+from portage import os, shutil, _shell_quote
 from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, TIMESTAMP_FORMAT
 from portage.process import find_binary
@@ -36,11 +36,14 @@ class SyncLocalTestCase(TestCase):
 			return
 
 		repos_conf = textwrap.dedent("""
+			[DEFAULT]
+			%(default_keys)s
 			[test_repo]
 			location = %(EPREFIX)s/var/repositories/test_repo
 			sync-type = %(sync-type)s
 			sync-uri = file:/%(EPREFIX)s/var/repositories/test_repo_sync
 			auto-sync = yes
+			%(repo_extra_keys)s
 		""")
 
 		profile = {
@@ -73,9 +76,17 @@ class SyncLocalTestCase(TestCase):
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
 
-		def change_sync_type(sync_type):
-			env["PORTAGE_REPOSITORIES"] = repos_conf % \
-				{"EPREFIX": eprefix, "sync-type": sync_type}
+		def repos_set_conf(sync_type, dflt_keys=None, xtra_keys=None):
+			env["PORTAGE_REPOSITORIES"] = repos_conf % {\
+				"EPREFIX": eprefix, "sync-type": sync_type,
+				"default_keys": "" if dflt_keys is None else dflt_keys,
+				"repo_extra_keys": "" if xtra_keys is None else xtra_keys}
+
+		def alter_ebuild():
+			with open(os.path.join(repo.location + "_sync",
+				"dev-libs", "A", "A-0.ebuild"), "a") as f:
+				f.write("\n")
+			os.unlink(os.path.join(metadata_dir, 'timestamp.chk'))
 
 		sync_cmds = (
 			(homedir, cmds["emerge"] + ("--sync",)),
@@ -88,6 +99,53 @@ class SyncLocalTestCase(TestCase):
 		rename_repo = (
 			(homedir, lambda: os.rename(repo.location,
 				repo.location + "_sync")),
+		)
+
+		rsync_opts_repos = (
+			(homedir, alter_ebuild),
+			(homedir, lambda: repos_set_conf("rsync", None,
+				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
+				_shell_quote(repo.location + "_back"))),
+			(homedir, cmds['emerge'] + ("--sync",)),
+			(homedir, lambda: self.assertTrue(os.path.exists(
+				repo.location + "_back"))),
+			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+			(homedir, lambda: repos_set_conf("rsync")),
+		)
+
+		rsync_opts_repos_default = (
+			(homedir, alter_ebuild),
+			(homedir, lambda: repos_set_conf("rsync",
+					"sync-rsync-extra-opts = --backup --backup-dir=%s" %
+					_shell_quote(repo.location+"_back"))),
+			(homedir, cmds['emerge'] + ("--sync",)),
+			(homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
+			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+			(homedir, lambda: repos_set_conf("rsync")),
+		)
+
+		rsync_opts_repos_default_ovr = (
+			(homedir, alter_ebuild),
+			(homedir, lambda: repos_set_conf("rsync",
+				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
+				_shell_quote(repo.location + "_back_nowhere"),
+				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
+				_shell_quote(repo.location + "_back"))),
+			(homedir, cmds['emerge'] + ("--sync",)),
+			(homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
+			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+			(homedir, lambda: repos_set_conf("rsync")),
+		)
+
+		rsync_opts_repos_default_cancel = (
+			(homedir, alter_ebuild),
+			(homedir, lambda: repos_set_conf("rsync",
+				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
+				_shell_quote(repo.location + "_back_nowhere"),
+				"sync-rsync-extra-opts = ")),
+			(homedir, cmds['emerge'] + ("--sync",)),
+			(homedir, lambda: self.assertFalse(os.path.exists(repo.location + "_back"))),
+			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
 		delete_sync_repo = (
@@ -107,7 +165,7 @@ class SyncLocalTestCase(TestCase):
 		)
 
 		sync_type_git = (
-			(homedir, lambda: change_sync_type("git")),
+			(homedir, lambda: repos_set_conf("git")),
 		)
 
 		pythonpath =  os.environ.get("PYTHONPATH")
@@ -132,10 +190,9 @@ class SyncLocalTestCase(TestCase):
 			"PATH" : os.environ["PATH"],
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
-			"PORTAGE_REPOSITORIES" : repos_conf %
-				{"EPREFIX": eprefix, "sync-type": "rsync"},
 			"PYTHONPATH" : pythonpath,
 		}
+		repos_set_conf("rsync")
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# avoid problems from nested sandbox instances
@@ -160,6 +217,8 @@ class SyncLocalTestCase(TestCase):
 				stdout = subprocess.PIPE
 
 			for cwd, cmd in rename_repo + sync_cmds + \
+				rsync_opts_repos + rsync_opts_repos_default + \
+				rsync_opts_repos_default_ovr + rsync_opts_repos_default_cancel + \
 				delete_sync_repo + git_repo_create + sync_type_git + \
 				rename_repo + sync_cmds:
 

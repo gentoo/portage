@@ -545,9 +545,9 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config, portdir):
+	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config, portdir, default_opts):
 		"""Parse files in paths to load config"""
-		parser = SafeConfigParser()
+		parser = SafeConfigParser(defaults=default_opts)
 
 		# use read_file/readfp in order to control decoding of unicode
 		try:
@@ -619,6 +619,7 @@ class RepoConfigLoader(object):
 		treemap = {}
 		ignored_map = {}
 		ignored_location_map = {}
+		default_opts = {}
 
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
@@ -631,10 +632,13 @@ class RepoConfigLoader(object):
 			# deprecated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
 
+		default_opts['sync-rsync-extra-opts'] = \
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
+
 		try:
 			self._parse(paths, prepos, ignored_map,
 				ignored_location_map, settings.local_config,
-				portdir)
+				portdir, default_opts)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
