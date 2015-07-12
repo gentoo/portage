@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -7,6 +7,7 @@ import portage
 from portage import os
 from portage import digraph
 from portage._sets.base import InternalPackageSet
+from portage.dep import Atom
 
 from _emerge.BlockerCache import BlockerCache
 from _emerge.Package import Package
@@ -117,7 +118,7 @@ class BlockerDB(object):
 	def discardBlocker(self, pkg):
 		"""Discard a package from the list of potential blockers.
 		This will match any package(s) with identical cpv or cp:slot."""
-		for cpv_match in self._fake_vartree.dbapi.match_pkgs("=%s" % (pkg.cpv,)):
+		for cpv_match in self._fake_vartree.dbapi.match_pkgs(Atom("=%s" % (pkg.cpv,))):
 			if cpv_match.cp == pkg.cp:
 				self._fake_vartree.cpv_discard(cpv_match)
 		for slot_match in self._fake_vartree.dbapi.match_pkgs(pkg.slot_atom):
