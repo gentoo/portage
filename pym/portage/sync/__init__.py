@@ -31,9 +31,11 @@ def module_specific_options(repo):
 	global module_controller
 
 	if repo.sync_type:
-		opts = frozenset([opt for opt in
-			module_controller.modules[repo.sync_type]['module_specific_options']])
-		return opts
+		try:
+			return frozenset(
+				module_controller.modules[repo.sync_type]['module_specific_options'])
+		except KeyError:
+			pass
 	return frozenset()
 
 
