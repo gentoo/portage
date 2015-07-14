@@ -25,7 +25,7 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
-from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
+from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _
 from portage import _unicode_decode

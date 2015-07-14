@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 import copy
-import errno
 from itertools import chain
 import grp
 import logging
