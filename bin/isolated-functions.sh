@@ -121,6 +121,7 @@ __helpers_die() {
 }
 
 die() {
+	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
 
 	if ___eapi_die_can_respect_nonfatal; then
