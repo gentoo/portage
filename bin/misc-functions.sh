@@ -261,20 +261,30 @@ install_mask() {
 	shift
 	local install_mask="$*"
 
-	# we don't want globbing for initial expansion, but afterwards, we do
+	# We think of $install_mask as a space-separated list of
+	# globs. We don't want globbing in the "for" loop; that is, we
+	# want to keep the asterisks in the indivual entries.
 	local shopts=$-
 	set -o noglob
 	local no_inst
 	for no_inst in ${install_mask}; do
+		# Here, $no_inst is a single "entry" potentially
+		# containing a glob. From now on, we *do* want to
+		# expand it.
 		set +o noglob
 
-		# normal stuff
+		# The standard case where $no_inst is something that
+		# the shell could expand on its own.
 		if [[ -e "${root}"/${no_inst} || "${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
 			__quiet_mode || einfo "Removing ${no_inst}"
 			rm -Rf "${root}"/${no_inst} >&/dev/null
 		fi
 
-		# we also need to handle globs (*.a, *.h, etc)
+		# We also want to allow the user to specify a "bare
+		# glob." For example, $no_inst="*.a" should prevent
+		# ALL files ending in ".a" from being installed,
+		# regardless of their location/depth. We achieve this
+		# by passing the pattern to `find`.
 		find "${root}" \( -path "${no_inst}" -or -name "${no_inst}" \) \
 			-print0 2> /dev/null \
 		| LC_ALL=C sort -z \
