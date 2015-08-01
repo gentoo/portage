@@ -31,6 +31,7 @@ from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
 	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidData, InvalidDependString,
 	PackageNotFound, PortageException)
+from portage.localization import _
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -3632,14 +3633,18 @@ class depgraph(object):
 					writemsg(colorize("BAD", "\n*** Package is missing CATEGORY metadata: %s.\n\n" % x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
-				elif os.path.realpath(x) != \
-					os.path.realpath(bindb.bintree.getname(mykey)):
-					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
+
+				x = os.path.realpath(x)
+				for pkg in self._iter_match_pkgs(root_config, "binary", Atom('=%s' % mykey)):
+					if x == os.path.realpath(bindb.bintree.getname(pkg.cpv)):
+						break
+				else:
+					writemsg("\n%s\n\n" % colorize("BAD",
+						"*** " + _("You need to adjust PKGDIR to emerge "
+						"this package: %s") % x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
 
-				pkg = self._pkg(mykey, "binary", root_config,
-					onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif ext==".ebuild":
