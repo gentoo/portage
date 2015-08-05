@@ -264,6 +264,7 @@ LIVE_ECLASSES = frozenset([
 	"git",
 	"git-2",
 	"git-r3",
+	"golang-vcs",
 	"mercurial",
 	"subversion",
 	"tla",
