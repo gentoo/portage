@@ -42,6 +42,8 @@ from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFA
 from portage.const import SUPPORTED_BINPKG_FORMATS, TIMESTAMP_FORMAT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.dbapi.IndexedPortdb import IndexedPortdb
+from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
 from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom, InvalidData, ParseError
@@ -1513,9 +1515,10 @@ def action_info(settings, trees, myopts, myfiles):
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
-				dbs = [vardb]
+				search_index = myopts.get("--search-index", "y") != "n"
+				dbs = [IndexedVardb(vardb) if search_index else vardb]
 				#if "--usepkgonly" not in myopts:
-				dbs.append(portdb)
+				dbs.append(IndexedPortdb(portdb) if search_index else portdb)
 				if "--usepkg" in myopts:
 					dbs.append(bindb)
 

@@ -21,6 +21,7 @@ from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.DummyTree import DummyTree
+from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
@@ -5100,10 +5101,13 @@ class depgraph(object):
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
+				search_index = self._frozen_config.myopts.get("--search-index", "y") != "n"
+				# fakedbapi is indexed
 				dbs = [vardb]
 				if "--usepkgonly" not in self._frozen_config.myopts:
-					dbs.append(portdb)
+					dbs.append(IndexedPortdb(portdb) if search_index else portdb)
 				if "--usepkg" in self._frozen_config.myopts:
+					# bindbapi is indexed
 					dbs.append(bindb)
 
 				matches = similar_name_search(dbs, atom)
