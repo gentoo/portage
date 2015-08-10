@@ -13,6 +13,10 @@ from portage.output import bold, red, create_color_func
 from portage._global_updates import _global_updates
 from portage.sync.controller import SyncManager
 from portage.util import writemsg_level
+from portage.util.digraph import digraph
+from portage.util._async.AsyncScheduler import AsyncScheduler
+from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util._eventloop.EventLoop import EventLoop
 
 import _emerge
 from _emerge.emergelog import emergelog
@@ -201,6 +205,7 @@ class SyncRepos(object):
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
+		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
 		if not selected_repos:
 			msgs.append("Emaint sync, nothing to sync... returning")
@@ -213,13 +218,20 @@ class SyncRepos(object):
 
 		sync_manager = SyncManager(
 			self.emerge_config.target_config.settings, emergelog)
-		retvals = []
-		for repo in selected_repos:
-			if repo.sync_type is not None:
-				returncode, message = sync_manager.sync(self.emerge_config, repo)
-				retvals.append((repo.name, returncode))
-				if message:
-					msgs.append(message)
+
+		max_jobs = (self.emerge_config.opts.get('--jobs', 1)
+			if 'parallel-fetch' in self.emerge_config.
+			target_config.settings.features else 1)
+		sync_scheduler = SyncScheduler(emerge_config=self.emerge_config,
+			selected_repos=selected_repos, sync_manager=sync_manager,
+			max_jobs=max_jobs,
+			event_loop=global_event_loop() if portage._internal_caller else
+				EventLoop(main=False))
+
+		sync_scheduler.start()
+		sync_scheduler.wait()
+		retvals = sync_scheduler.retvals
+		msgs.extend(sync_scheduler.msgs)
 
 		# Reload the whole config.
 		portage._sync_mode = False
@@ -287,3 +299,106 @@ class SyncRepos(object):
 			messages.append("Action: %s for repo: %s, returned code = %s"
 				% (action, rval[0], rval[1]))
 		return messages
+
+
+class SyncScheduler(AsyncScheduler):
+	'''
+	Sync repos in parallel, but don't sync a given repo until all
+	of its masters have synced.
+	'''
+	def __init__(self, **kwargs):
+		'''
+		@param emerge_config: an emerge_config instance
+		@param selected_repos: list of RepoConfig instances
+		@param sync_manager: a SyncManger instance
+		'''
+		self._emerge_config = kwargs.pop('emerge_config')
+		self._selected_repos = kwargs.pop('selected_repos')
+		self._sync_manager = kwargs.pop('sync_manager')
+		AsyncScheduler.__init__(self, **kwargs)
+		self._init_graph()
+		self.retvals = []
+		self.msgs = []
+
+	def _init_graph(self):
+		'''
+		Graph relationships between repos and their masters.
+		'''
+		self._sync_graph = digraph()
+		self._leaf_nodes = []
+		self._repo_map = {}
+		self._running_repos = set()
+		for repo in self._selected_repos:
+			self._repo_map[repo.name] = repo
+			self._sync_graph.add(repo.name, None)
+			for master in repo.masters:
+				self._repo_map[master.name] = master
+				self._sync_graph.add(master.name, repo.name)
+		self._update_leaf_nodes()
+
+	def _task_exit(self, task):
+		'''
+		Remove the task from the graph, in order to expose
+		more leaf nodes.
+		'''
+		self._running_tasks.discard(task)
+		returncode = task.returncode
+		if task.returncode == os.EX_OK:
+			returncode, message, updatecache_flg = task.result
+			if message:
+				self.msgs.append(message)
+		repo = task.kwargs['repo'].name
+		self._running_repos.remove(repo)
+		self.retvals.append((repo, returncode))
+		self._sync_graph.remove(repo)
+		self._update_leaf_nodes()
+		super(SyncScheduler, self)._task_exit(self)
+
+	def _update_leaf_nodes(self):
+		'''
+		Populate self._leaf_nodes with current leaves from
+		self._sync_graph. If a circular master relationship
+		is discovered, choose a random node to break the cycle.
+		'''
+		if self._sync_graph and not self._leaf_nodes:
+			self._leaf_nodes = [obj for obj in
+				self._sync_graph.leaf_nodes()
+				if obj not in self._running_repos]
+
+			if not (self._leaf_nodes or self._running_repos):
+				# If there is a circular master relationship,
+				# choose a random node to break the cycle.
+				self._leaf_nodes = [next(iter(self._sync_graph))]
+
+	def _next_task(self):
+		'''
+		Return a task for the next available leaf node.
+		'''
+		if not self._sync_graph:
+			raise StopIteration()
+		# If self._sync_graph is non-empty, then self._leaf_nodes
+		# is guaranteed to be non-empty, since otherwise
+		# _can_add_job would have returned False and prevented
+		# _next_task from being immediately called.
+		node = self._leaf_nodes.pop()
+		self._running_repos.add(node)
+		self._update_leaf_nodes()
+
+		task = self._sync_manager.async(
+			self._emerge_config, self._repo_map[node])
+		return task
+
+	def _can_add_job(self):
+		'''
+		Returns False if there are no leaf nodes available.
+		'''
+		if not AsyncScheduler._can_add_job(self):
+			return False
+		return bool(self._leaf_nodes) and not self._terminated.is_set()
+
+	def _keep_scheduling(self):
+		'''
+		Schedule as long as the graph is non-empty, and we haven't
+		been terminated.
+		'''
+		return bool(self._sync_graph) and not self._terminated.is_set()

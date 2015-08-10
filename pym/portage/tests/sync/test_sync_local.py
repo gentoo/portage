@@ -55,8 +55,12 @@ class SyncLocalTestCase(TestCase):
 			"dev-libs/A-0": {}
 		}
 
+		user_config = {
+			'make.conf': ('FEATURES="metadata-transfer"',)
+		}
+
 		playground = ResolverPlayground(ebuilds=ebuilds,
-			profile=profile, user_config={}, debug=debug)
+			profile=profile, user_config=user_config, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
