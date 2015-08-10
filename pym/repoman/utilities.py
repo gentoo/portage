@@ -399,7 +399,7 @@ def editor_is_executable(editor):
 	return os.access(filename, os.X_OK) and os.path.isfile(filename)
 
 
-def get_commit_message_with_editor(editor, message=None):
+def get_commit_message_with_editor(editor, message=None, prefix=""):
 	"""
 	Execute editor with a temporary file as it's argument
 	and return the file content afterwards.
@@ -408,13 +408,16 @@ def get_commit_message_with_editor(editor, message=None):
 	@type: string
 	@param message: An iterable of lines to show in the editor.
 	@type: iterable
+	@param prefix: Suggested prefix for the commit message summary line.
+	@type: string
 	@rtype: string or None
 	@return: A string on success or None if an error occurs.
 	"""
 	fd, filename = mkstemp()
 	try:
 		os.write(fd, _unicode_encode(_(
-			"\n# Please enter the commit message " + \
+			prefix +
+			"\n\n# Please enter the commit message " + \
 			"for your changes.\n# (Comment lines starting " + \
 			"with '#' will not be included)\n"),
 			encoding=_encodings['content'], errors='backslashreplace'))
