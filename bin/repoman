@@ -2696,16 +2696,21 @@ else:
 		# We've read the content so the file is no longer needed.
 		commitmessagefile = None
 	if not commitmessage or not commitmessage.strip():
+		msg_prefix = ""
+		if repolevel > 1:
+			msg_prefix = "/".join(reposplit[1:]) + ": "
+
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and utilities.editor_is_executable(editor):
 				commitmessage = utilities.get_commit_message_with_editor(
-					editor, message=qa_output)
+					editor, message=qa_output, prefix=msg_prefix)
 			else:
 				commitmessage = utilities.get_commit_message_with_stdin()
 		except KeyboardInterrupt:
 			exithandler()
-		if not commitmessage or not commitmessage.strip():
+		if (not commitmessage or not commitmessage.strip()
+				or commitmessage.strip() == msg_prefix):
 			print("* no commit message?  aborting commit.")
 			sys.exit(1)
 	commitmessage = commitmessage.rstrip()
