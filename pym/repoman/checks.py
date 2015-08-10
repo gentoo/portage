@@ -81,7 +81,7 @@ class EbuildHeader(LineCheck):
 	# Why a regex here, use a string match
 	# gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 	gentoo_license = '# Distributed under the terms of the GNU General Public License v2'
-	cvs_header = re.compile(r'^# \$Header: .*\$$')
+	id_header = '# $Id$'
 	ignore_comment = False
 
 	def new(self, pkg):
@@ -100,9 +100,8 @@ class EbuildHeader(LineCheck):
 				return errors.COPYRIGHT_ERROR
 		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return errors.LICENSE_ERROR
-		elif num == 2:
-			if not self.cvs_header.match(line):
-				return errors.CVS_HEADER_ERROR
+		elif num == 2 and line.rstrip('\n') != self.id_header:
+			return errors.ID_HEADER_ERROR
 
 
 class EbuildWhitespace(LineCheck):
