@@ -297,8 +297,6 @@ class GenCache(object):
 		# EAPI from _parse_eapi_ebuild_head, we don't write cache
 		# entries for unsupported EAPIs.
 		if metadata is not None and eapi_supported:
-			if metadata.get('EAPI') == '0':
-				del metadata['EAPI']
 			for trg_cache in self._trg_caches:
 				self._write_cache(trg_cache,
 					cpv, repo_path, metadata, ebuild_hash)
