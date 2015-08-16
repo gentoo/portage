@@ -328,12 +328,15 @@ class SyncScheduler(AsyncScheduler):
 		self._leaf_nodes = []
 		self._repo_map = {}
 		self._running_repos = set()
+		selected_repo_names = frozenset(repo.name
+			for repo in self._selected_repos)
 		for repo in self._selected_repos:
 			self._repo_map[repo.name] = repo
 			self._sync_graph.add(repo.name, None)
 			for master in repo.masters:
-				self._repo_map[master.name] = master
-				self._sync_graph.add(master.name, repo.name)
+				if master.name in selected_repo_names:
+					self._repo_map[master.name] = master
+					self._sync_graph.add(master.name, repo.name)
 		self._update_leaf_nodes()
 
 	def _task_exit(self, task):
