@@ -233,13 +233,6 @@ class SyncRepos(object):
 		retvals = sync_scheduler.retvals
 		msgs.extend(sync_scheduler.msgs)
 
-		# Reload the whole config.
-		portage._sync_mode = False
-		self._reload_config()
-		self._do_pkg_moves()
-		msgs.extend(self._check_updates())
-		display_news_notification(self.emerge_config.target_config,
-			self.emerge_config.opts)
 		# run the post_sync_hook one last time for
 		# run only at sync completion hooks
 		rcode = sync_manager.perform_post_sync_hook('')
@@ -249,6 +242,15 @@ class SyncRepos(object):
 			msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
 		if rcode:
 			msgs.extend(self.rmessage([('None', rcode)], 'post-sync'))
+
+		# Reload the whole config.
+		portage._sync_mode = False
+		self._reload_config()
+		self._do_pkg_moves()
+		msgs.extend(self._check_updates())
+		display_news_notification(self.emerge_config.target_config,
+			self.emerge_config.opts)
+
 		if return_messages:
 			return msgs
 		return
