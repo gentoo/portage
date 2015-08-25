@@ -7,6 +7,7 @@ from __future__ import print_function, unicode_literals
 
 import platform
 import signal
+import stat
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
@@ -487,6 +488,8 @@ class GenUseLocalDesc(object):
 	def run(self):
 		repo_path = self._portdb.porttrees[0]
 		ops = {'<':0, '<=':1, '=':2, '>=':3, '>':4}
+		prev_mtime = None
+		prev_md5 = None
 
 		if self._output is None or self._output != '-':
 			if self._output is None:
@@ -498,6 +501,12 @@ class GenUseLocalDesc(object):
 					pass
 			else:
 				desc_path = self._output
+
+			try:
+				prev_md5 = portage.checksum.perform_md5(desc_path)
+				prev_mtime = os.stat(desc_path)[stat.ST_MTIME]
+			except (portage.exception.FileNotFound, OSError):
+				pass
 
 			try:
 				if self._preserve_comments:
@@ -651,6 +660,17 @@ class GenUseLocalDesc(object):
 						output.write('%s:%s - %s\n' % (cp, flag, resdesc))
 
 		output.close()
+		if (prev_mtime is not None and
+			prev_md5 == portage.checksum.perform_md5(desc_path)):
+			# Preserve mtime for rsync.
+			mtime = prev_mtime
+		else:
+			# For portability, and consistency with the mtime preservation
+			# code, set mtime to an exact integer value.
+			mtime = int(time.time())
+
+		os.utime(desc_path, (mtime, mtime))
+
 
 if sys.hexversion < 0x3000000:
 	_filename_base = unicode
