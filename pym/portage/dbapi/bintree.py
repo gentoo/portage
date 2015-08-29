@@ -223,10 +223,10 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
-	def cp_all(self):
+	def cp_all(self, sort=False):
 		if not self.bintree.populated:
 			self.bintree.populate()
-		return fakedbapi.cp_all(self)
+		return fakedbapi.cp_all(self, sort=sort)
 
 	def cpv_all(self):
 		if not self.bintree.populated:

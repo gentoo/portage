@@ -115,8 +115,8 @@ class fakedbapi(dbapi):
 		self._match_cache[cache_key] = cpv_list
 		return cpv_list[:]
 
-	def cp_all(self):
-		return list(self.cpdict)
+	def cp_all(self, sort=False):
+		return sorted(self.cpdict) if sort else list(self.cpdict)
 
 	def cpv_all(self):
 		if self._multi_instance:

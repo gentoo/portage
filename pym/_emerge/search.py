@@ -72,7 +72,8 @@ class search(object):
 	def _cp_all(self):
 		iterators = []
 		for db in self._dbs:
-			i = db.cp_all()
+			# MultiIterGroupBy requires sorted input
+			i = db.cp_all(sort=True)
 			try:
 				i = iter(i)
 			except TypeError:

@@ -491,7 +491,7 @@ class vardbapi(dbapi):
 
 				yield subpath
 
-	def cp_all(self, use_cache=1):
+	def cp_all(self, use_cache=1, sort=False):
 		mylist = self.cpv_all(use_cache=use_cache)
 		d={}
 		for y in mylist:
@@ -506,7 +506,7 @@ class vardbapi(dbapi):
 				self.invalidentry(self.getpath(y))
 				continue
 			d[mysplit[0]+"/"+mysplit[1]] = None
-		return list(d)
+		return sorted(d) if sort else list(d)
 
 	def checkblockers(self, origdep):
 		pass

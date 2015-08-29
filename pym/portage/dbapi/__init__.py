@@ -94,10 +94,10 @@ class dbapi(object):
 			cpv_list.extend(self.cp_list(cp))
 		return cpv_list
 
-	def cp_all(self):
+	def cp_all(self, sort=False):
 		""" Implement this in a child class
 		Args
-			None
+			sort - return sorted results
 		Returns:
 			A list of strings 1 per CP in the datastore
 		"""
