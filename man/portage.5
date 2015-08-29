@@ -1026,6 +1026,12 @@ is provided, Portage no longer uses owner of the directory.
 Extra options to give to rsync on repository synchronization. It takes
 precedence over a declaration in [DEFAULT] section, that takes
 precedence over PORTAGE_RSYNC_EXTRA_OPTS.
+.TP
+.B sync-rsync-vcs-ignore = true|false
+Ignore vcs directories that may be present in the repository. It is the
+user's responsibility to set sync-rsync-extra-opts to protect vcs
+directories if appropriate.
+
 .RE
 
 .I Example:

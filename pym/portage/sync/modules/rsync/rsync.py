@@ -55,12 +55,17 @@ class RsyncSync(NewBase):
 		enter_invalid = '--ask-enter-invalid' in opts
 		out = portage.output.EOutput()
 		syncuri = self.repo.sync_uri
-		vcs_dirs = frozenset(VCS_DIRS)
-		vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
+		if self.repo.module_specific_options.get(
+			'sync-rsync-vcs-ignore', 'false').lower() == 'true':
+			vcs_dirs = ()
+		else:
+			vcs_dirs = frozenset(VCS_DIRS)
+			vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
 
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
-				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
+				"control (contains %s).\n!!! Aborting rsync sync "
+				"(override with \"sync-rsync-vcs-ignore = true\" in repos.conf).\n") % \
 				(self.repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return (1, False)
 		self.timeout=180
