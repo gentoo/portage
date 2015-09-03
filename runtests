@@ -82,7 +82,7 @@ List all the available unittests.
 $ %(prog)s --list
 
 Run against specific versions of python.
-$ %(prog)s --python-version '2.7 3.3'
+$ %(prog)s --python-versions '2.7 3.3'
 
 Run just one unittest.
 $ %(prog)s pym/portage/tests/xpak/test_decodeint.py
