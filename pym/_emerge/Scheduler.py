@@ -963,11 +963,11 @@ class Scheduler(PollScheduler):
 			# for ensuring sane $PWD (bug #239560) and storing elog messages.
 			tmpdir = root_config.settings.get("PORTAGE_TMPDIR", "")
 			if not tmpdir or not os.path.isdir(tmpdir):
-				msg = "The directory specified in your " + \
-					"PORTAGE_TMPDIR variable, '%s', " % tmpdir + \
-				"does not exist. Please create this " + \
-				"directory or correct your PORTAGE_TMPDIR setting."
-				msg = textwrap.wrap(msg, 70)
+				msg = (
+					'The directory specified in your PORTAGE_TMPDIR variable does not exist:',
+					tmpdir,
+					'Please create this directory or correct your PORTAGE_TMPDIR setting.',
+				)
 				out = portage.output.EOutput()
 				for l in msg:
 					out.eerror(l)
