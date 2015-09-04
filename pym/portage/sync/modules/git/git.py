@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -43,15 +43,18 @@ class GitSync(NewBase):
 					'Created new directory %s' % self.repo.location)
 		except IOError:
 			return (1, False)
+
 		sync_uri = self.repo.sync_uri
 		if sync_uri.startswith("file://"):
 			sync_uri = sync_uri[6:]
-		depth_arg = ''
-		if self.repo.sync_depth is not None:
-			depth_arg = '--depth %d ' % self.repo.sync_depth
 
-		git_cmd = "%s clone %s%s ." % (self.bin_command, depth_arg,
-				portage._shell_quote(sync_uri))
+		git_cmd_opts = ""
+		if self.settings.get("PORTAGE_QUIET") == "1":
+			git_cmd_opts += " --quiet"
+		if self.repo.sync_depth is not None:
+			git_cmd_opts += " --depth %d" % self.repo.sync_depth
+		git_cmd = "%s clone%s %s ." % (self.bin_command, git_cmd_opts,
+			portage._shell_quote(sync_uri))
 		writemsg_level(git_cmd + "\n")
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
@@ -72,7 +75,10 @@ class GitSync(NewBase):
 		git directly.
 		'''
 
-		git_cmd = "%s pull" % self.bin_command
+		git_cmd_opts = ""
+		if self.settings.get("PORTAGE_QUIET") == "1":
+			git_cmd_opts += " --quiet"
+		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
 		writemsg_level(git_cmd + "\n")
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
