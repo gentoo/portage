@@ -68,7 +68,7 @@ from repoman.ebuild import Ebuild
 from repoman.errors import err
 from repoman.gpg import gpgsign, need_signature
 from repoman.modules.commit import repochecks
-from repoman.profile import check_profiles, dev_keywords, setup_profile
+from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats, missingvars,
@@ -243,7 +243,7 @@ scanlist = scan(repolevel, reposplit, startdir, categories, repo_settings)
 
 ####################
 
-dev_keywords = dev_keywords(profiles)
+dev_keywords = dev_profile_keywords(profiles)
 
 qatracker = QATracker()
 

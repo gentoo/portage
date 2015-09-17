@@ -28,7 +28,7 @@ class ProfileDesc(object):
 valid_profile_types = frozenset(['dev', 'exp', 'stable'])
 
 
-def dev_keywords(profiles):
+def dev_profile_keywords(profiles):
 	"""
 	Create a set of KEYWORDS values that exist in 'dev'
 	profiles. These are used
