@@ -30,11 +30,10 @@ pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
 sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
-#from repoman.main import repoman_main
+from repoman.main import repoman_main
 
 try:
-	#repoman_main(sys.argv[1:])
-	from repoman import main
+	repoman_main(sys.argv[1:])
 except IOError as e:
 	if e.errno == errno.EACCES:
 		print("\nRepoman: Need user access")
