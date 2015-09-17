@@ -38,7 +38,6 @@ import portage.repository.config
 from portage import cvstree, normalize_path
 from portage import util
 from portage.dep import Atom
-from portage.exception import MissingParameter
 from portage.process import find_binary, spawn
 from portage.output import (
 	bold, create_color_func, green, nocolor, red)
@@ -67,6 +66,7 @@ from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.ebuild import Ebuild
 from repoman.errors import err
+from repoman.gpg import gpgsign, need_signature
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_keywords, setup_profile
 from repoman.qa_data import (
@@ -97,6 +97,11 @@ non_ascii_re = re.compile(r'[^\x00-\x7f]')
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)
+
+def sort_key(item):
+	return item[2].sub_path
+
+
 # Repoman sets it's own ACCEPT_KEYWORDS and we don't want it to
 # behave incrementally.
 repoman_incrementals = tuple(
@@ -672,9 +677,6 @@ for xpkg in effective_scanlist:
 
 			relevant_profiles.extend(
 				(keyword, groups, prof) for prof in profiles[arch])
-
-		def sort_key(item):
-			return item[2].sub_path
 
 		relevant_profiles.sort(key=sort_key)
 
@@ -1441,72 +1443,6 @@ else:
 			except OSError:
 				pass
 
-	# Setup the GPG commands
-	def gpgsign(filename):
-		gpgcmd = repoman_settings.get("PORTAGE_GPG_SIGNING_COMMAND")
-		if gpgcmd in [None, '']:
-			raise MissingParameter("PORTAGE_GPG_SIGNING_COMMAND is unset!"
-				" Is make.globals missing?")
-		if "${PORTAGE_GPG_KEY}" in gpgcmd and \
-			"PORTAGE_GPG_KEY" not in repoman_settings:
-			raise MissingParameter("PORTAGE_GPG_KEY is unset!")
-		if "${PORTAGE_GPG_DIR}" in gpgcmd:
-			if "PORTAGE_GPG_DIR" not in repoman_settings:
-				repoman_settings["PORTAGE_GPG_DIR"] = \
-					os.path.expanduser("~/.gnupg")
-				logging.info(
-					"Automatically setting PORTAGE_GPG_DIR to '%s'" %
-					repoman_settings["PORTAGE_GPG_DIR"])
-			else:
-				repoman_settings["PORTAGE_GPG_DIR"] = \
-					os.path.expanduser(repoman_settings["PORTAGE_GPG_DIR"])
-			if not os.access(repoman_settings["PORTAGE_GPG_DIR"], os.X_OK):
-				raise portage.exception.InvalidLocation(
-					"Unable to access directory: PORTAGE_GPG_DIR='%s'" %
-					repoman_settings["PORTAGE_GPG_DIR"])
-		gpgvars = {"FILE": filename}
-		for k in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
-			v = repoman_settings.get(k)
-			if v is not None:
-				gpgvars[k] = v
-		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
-		if options.pretend:
-			print("(" + gpgcmd + ")")
-		else:
-			# Encode unicode manually for bug #310789.
-			gpgcmd = portage.util.shlex_split(gpgcmd)
-
-			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-				not os.path.isabs(gpgcmd[0]):
-				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see http://bugs.python.org/issue8513).
-				fullname = find_binary(gpgcmd[0])
-				if fullname is None:
-					raise portage.exception.CommandNotFound(gpgcmd[0])
-				gpgcmd[0] = fullname
-
-			gpgcmd = [
-				_unicode_encode(arg, encoding=_encodings['fs'], errors='strict')
-				for arg in gpgcmd]
-			rValue = subprocess.call(gpgcmd)
-			if rValue == os.EX_OK:
-				os.rename(filename + ".asc", filename)
-			else:
-				raise portage.exception.PortageException(
-					"!!! gpg exited with '" + str(rValue) + "' status")
-
-	def need_signature(filename):
-		try:
-			with open(
-				_unicode_encode(
-					filename, encoding=_encodings['fs'], errors='strict'),
-				'rb') as f:
-				return b"BEGIN PGP SIGNED MESSAGE" not in f.readline()
-		except IOError as e:
-			if e.errno in (errno.ENOENT, errno.ESTALE):
-				return False
-			raise
-
 	# When files are removed and re-added, the cvs server will put /Attic/
 	# inside the $Header path. This code detects the problem and corrects it
 	# so that the Manifest will generate correctly. See bug #169500.
@@ -1557,7 +1493,7 @@ else:
 				manifest_path = os.path.join(repoman_settings["O"], "Manifest")
 				if not need_signature(manifest_path):
 					continue
-				gpgsign(manifest_path)
+				gpgsign(manifest_path, repoman_settings, options)
 		except portage.exception.PortageException as e:
 			portage.writemsg("!!! %s\n" % str(e))
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
