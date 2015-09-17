@@ -128,29 +128,29 @@ class RepoSettings(object):
 				sys.exit(1)
 
 	def _add_repo(self, config_root, portdir_overlay):
-			self.repo_conf = portage.repository.config
-			self.repo_name = self.repo_conf.RepoConfig._read_valid_repo_name(
-				portdir_overlay)[0]
-			self.layout_conf_data = self.repo_conf.parse_layout_conf(portdir_overlay)[0]
-			if self.layout_conf_data['repo-name']:
-				self.repo_name = self.layout_conf_data['repo-name']
-			tmp_conf_file = io.StringIO(textwrap.dedent("""
-				[%s]
-				location = %s
-				""") % (self.repo_name, portdir_overlay))
-			# Ensure that the repository corresponding to $PWD overrides a
-			# repository of the same name referenced by the existing PORTDIR
-			# or PORTDIR_OVERLAY settings.
-			self.repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % (
-				self.repoman_settings.get('PORTDIR_OVERLAY', ''),
-				portage._shell_quote(portdir_overlay))
-			self.repositories = self.repo_conf.load_repository_config(
-				self.repoman_settings, extra_files=[tmp_conf_file])
-			# We have to call the config constructor again so that attributes
-			# dependent on config.repositories are initialized correctly.
-			self.repoman_settings = portage.config(
-				config_root=config_root, local_config=False,
-				repositories=self.repositories)
+		self.repo_conf = portage.repository.config
+		self.repo_name = self.repo_conf.RepoConfig._read_valid_repo_name(
+			portdir_overlay)[0]
+		self.layout_conf_data = self.repo_conf.parse_layout_conf(portdir_overlay)[0]
+		if self.layout_conf_data['repo-name']:
+			self.repo_name = self.layout_conf_data['repo-name']
+		tmp_conf_file = io.StringIO(textwrap.dedent("""
+			[%s]
+			location = %s
+			""") % (self.repo_name, portdir_overlay))
+		# Ensure that the repository corresponding to $PWD overrides a
+		# repository of the same name referenced by the existing PORTDIR
+		# or PORTDIR_OVERLAY settings.
+		self.repoman_settings['PORTDIR_OVERLAY'] = "%s %s" % (
+			self.repoman_settings.get('PORTDIR_OVERLAY', ''),
+			portage._shell_quote(portdir_overlay))
+		self.repositories = self.repo_conf.load_repository_config(
+			self.repoman_settings, extra_files=[tmp_conf_file])
+		# We have to call the config constructor again so that attributes
+		# dependent on config.repositories are initialized correctly.
+		self.repoman_settings = portage.config(
+			config_root=config_root, local_config=False,
+			repositories=self.repositories)
 
 	##########
 	# future vcs plugin functions
