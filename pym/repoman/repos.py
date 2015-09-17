@@ -30,12 +30,12 @@ class RepoSettings(object):
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
 
-		repoman_repos = self.repoman_settings.repositories
+		self.repositories = self.repoman_settings.repositories
 
 		# Ensure that current repository is in the list of enabled repositories.
 		self.repodir = os.path.realpath(portdir_overlay)
 		try:
-			repoman_repos.get_repo_for_location(self.repodir)
+			self.repositories.get_repo_for_location(self.repodir)
 		except KeyError:
 			self._add_repo(config_root, portdir_overlay)
 
@@ -47,15 +47,15 @@ class RepoSettings(object):
 
 		# Constrain dependency resolution to the master(s)
 		# that are specified in layout.conf.
-		self.repo_config = repoman_repos.get_repo_for_location(self.repodir)
+		self.repo_config = self.repositories.get_repo_for_location(self.repodir)
 		self.portdb.porttrees = list(self.repo_config.eclass_db.porttrees)
 		self.portdir = self.portdb.porttrees[0]
 		self.commit_env = os.environ.copy()
 		# list() is for iteration on a copy.
-		for repo in list(repoman_repos):
+		for repo in list(self.repositories):
 			# all paths are canonical
 			if repo.location not in self.repo_config.eclass_db.porttrees:
-				del repoman_repos[repo.name]
+				del self.repositories[repo.name]
 
 		if self.repo_config.allow_provide_virtual:
 			qawarnings.add("virtual.oldstyle")
