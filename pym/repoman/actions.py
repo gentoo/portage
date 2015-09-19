@@ -330,59 +330,7 @@ class Actions(object):
 						level=logging.ERROR, noiselevel=-1)
 					sys.exit(retval)
 
-		if True:
-			myfiles = mymanifests[:]
-			# If there are no header (SVN/CVS keywords) changes in
-			# the files, this Manifest commit must include the
-			# other (yet uncommitted) files.
-			if not myheaders:
-				myfiles += myupdates
-				myfiles += myremoved
-			myfiles.sort()
-
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "wb")
-			mymsg.write(_unicode_encode(commitmessage))
-			mymsg.close()
-
-			commit_cmd = []
-			if self.options.pretend and self.vcs_settings.vcs is None:
-				# substitute a bogus value for pretend output
-				commit_cmd.append("cvs")
-			else:
-				commit_cmd.append(self.vcs_settings.vcs)
-			commit_cmd.extend(self.vcs_settings.vcs_global_opts)
-			commit_cmd.append("commit")
-			commit_cmd.extend(self.vcs_settings.vcs_local_opts)
-			if self.vcs_settings.vcs == "hg":
-				commit_cmd.extend(["--logfile", commitmessagefile])
-				commit_cmd.extend(myfiles)
-			else:
-				commit_cmd.extend(["-F", commitmessagefile])
-				commit_cmd.extend(f.lstrip("./") for f in myfiles)
-
-			try:
-				if self.options.pretend:
-					print("(%s)" % (" ".join(commit_cmd),))
-				else:
-					retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
-					if retval != os.EX_OK:
-						if self.repo_settings.repo_config.sign_commit and self.vcs_settings.vcs == 'git' and \
-							not git_supports_gpg_sign():
-							# Inform user that newer git is needed (bug #403323).
-							logging.error(
-								"Git >=1.7.9 is required for signed commits!")
-
-						writemsg_level(
-							"!!! Exiting on %s (shell) "
-							"error code: %s\n" % (self.vcs_settings.vcs, retval),
-							level=logging.ERROR, noiselevel=-1)
-						sys.exit(retval)
-			finally:
-				try:
-					os.unlink(commitmessagefile)
-				except OSError:
-					pass
+		self.add_manifest(mymanifests, myheaders, myupdates, myremoved, commitmessage)
 
 		print()
 		if self.vcs_settings.vcs:
@@ -807,3 +755,59 @@ class Actions(object):
 
 			myupdates += myautoadd
 		return myupdates, broken_changelog_manifests
+
+
+	def add_manifest(self, mymanifests, myheaders, myupdates, myremoved,
+					commitmessage):
+		myfiles = mymanifests[:]
+		# If there are no header (SVN/CVS keywords) changes in
+		# the files, this Manifest commit must include the
+		# other (yet uncommitted) files.
+		if not myheaders:
+			myfiles += myupdates
+			myfiles += myremoved
+		myfiles.sort()
+
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "wb")
+		mymsg.write(_unicode_encode(commitmessage))
+		mymsg.close()
+
+		commit_cmd = []
+		if self.options.pretend and self.vcs_settings.vcs is None:
+			# substitute a bogus value for pretend output
+			commit_cmd.append("cvs")
+		else:
+			commit_cmd.append(self.vcs_settings.vcs)
+		commit_cmd.extend(self.vcs_settings.vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(self.vcs_settings.vcs_local_opts)
+		if self.vcs_settings.vcs == "hg":
+			commit_cmd.extend(["--logfile", commitmessagefile])
+			commit_cmd.extend(myfiles)
+		else:
+			commit_cmd.extend(["-F", commitmessagefile])
+			commit_cmd.extend(f.lstrip("./") for f in myfiles)
+
+		try:
+			if self.options.pretend:
+				print("(%s)" % (" ".join(commit_cmd),))
+			else:
+				retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
+				if retval != os.EX_OK:
+					if self.repo_settings.repo_config.sign_commit and self.vcs_settings.vcs == 'git' and \
+						not git_supports_gpg_sign():
+						# Inform user that newer git is needed (bug #403323).
+						logging.error(
+							"Git >=1.7.9 is required for signed commits!")
+
+					writemsg_level(
+						"!!! Exiting on %s (shell) "
+						"error code: %s\n" % (self.vcs_settings.vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
