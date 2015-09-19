@@ -208,49 +208,7 @@ class Actions(object):
 		# will change and need a priming commit before the Manifest
 		# can be committed.
 		if (myupdates or myremoved) and myheaders:
-			myfiles = myupdates + myremoved
-			fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-			mymsg = os.fdopen(fd, "wb")
-			mymsg.write(_unicode_encode(commitmessage))
-			mymsg.close()
-
-			separator = '-' * 78
-
-			print()
-			print(green("Using commit message:"))
-			print(green(separator))
-			print(commitmessage)
-			print(green(separator))
-			print()
-
-			# Having a leading ./ prefix on file paths can trigger a bug in
-			# the cvs server when committing files to multiple directories,
-			# so strip the prefix.
-			myfiles = [f.lstrip("./") for f in myfiles]
-
-			commit_cmd = [self.vcs_settings.vcs]
-			commit_cmd.extend(self.vcs_settings.vcs_global_opts)
-			commit_cmd.append("commit")
-			commit_cmd.extend(self.vcs_settings.vcs_local_opts)
-			commit_cmd.extend(["-F", commitmessagefile])
-			commit_cmd.extend(myfiles)
-
-			try:
-				if self.options.pretend:
-					print("(%s)" % (" ".join(commit_cmd),))
-				else:
-					retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
-					if retval != os.EX_OK:
-						writemsg_level(
-							"!!! Exiting on %s (shell) "
-							"error code: %s\n" % (self.vcs_settings.vcs, retval),
-							level=logging.ERROR, noiselevel=-1)
-						sys.exit(retval)
-			finally:
-				try:
-					os.unlink(commitmessagefile)
-				except OSError:
-					pass
+			self.priming_commit(myupdates, myremoved, commitmessage)
 
 		# When files are removed and re-added, the cvs server will put /Attic/
 		# inside the $Header path. This code detects the problem and corrects it
@@ -809,3 +767,50 @@ class Actions(object):
 				os.unlink(commitmessagefile)
 			except OSError:
 				pass
+
+
+	def priming_commit(self, myupdates, myremoved, commitmessage):
+		myfiles = myupdates + myremoved
+		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
+		mymsg = os.fdopen(fd, "wb")
+		mymsg.write(_unicode_encode(commitmessage))
+		mymsg.close()
+
+		separator = '-' * 78
+
+		print()
+		print(green("Using commit message:"))
+		print(green(separator))
+		print(commitmessage)
+		print(green(separator))
+		print()
+
+		# Having a leading ./ prefix on file paths can trigger a bug in
+		# the cvs server when committing files to multiple directories,
+		# so strip the prefix.
+		myfiles = [f.lstrip("./") for f in myfiles]
+
+		commit_cmd = [self.vcs_settings.vcs]
+		commit_cmd.extend(self.vcs_settings.vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(self.vcs_settings.vcs_local_opts)
+		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(myfiles)
+
+		try:
+			if self.options.pretend:
+				print("(%s)" % (" ".join(commit_cmd),))
+			else:
+				retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
+				if retval != os.EX_OK:
+					writemsg_level(
+						"!!! Exiting on %s (shell) "
+						"error code: %s\n" % (self.vcs_settings.vcs, retval),
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(retval)
+		finally:
+			try:
+				os.unlink(commitmessagefile)
+			except OSError:
+				pass
+
