@@ -186,19 +186,7 @@ class Actions(object):
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
 
 		if self.repo_settings.sign_manifests:
-			try:
-				for x in sorted(vcs_files_to_cps(
-					chain(myupdates, myremoved, mymanifests),
-					self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
-					self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
-					manifest_path = os.path.join(self.repoman_settings["O"], "Manifest")
-					if not need_signature(manifest_path):
-						continue
-					gpgsign(manifest_path, self.repoman_settings, self.options)
-			except portage.exception.PortageException as e:
-				portage.writemsg("!!! %s\n" % str(e))
-				portage.writemsg("!!! Disabled FEATURES='sign'\n")
-				self.repo_settings.sign_manifests = False
+			self.sign_manifests(myupdates, myremoved, mymanifests)
 
 		if self.vcs_settings.vcs == 'git':
 			# It's not safe to use the git commit -a option since there might
@@ -821,3 +809,20 @@ class Actions(object):
 					modified = True
 			if modified:
 				portage.util.write_atomic(x, b''.join(mylines), mode='wb')
+
+
+	def sign_manifest(self, myupdates, myremoved, mymanifests):
+		try:
+			for x in sorted(vcs_files_to_cps(
+				chain(myupdates, myremoved, mymanifests),
+				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
+				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
+				manifest_path = os.path.join(self.repoman_settings["O"], "Manifest")
+				if not need_signature(manifest_path):
+					continue
+				gpgsign(manifest_path, self.repoman_settings, self.options)
+		except portage.exception.PortageException as e:
+			portage.writemsg("!!! %s\n" % str(e))
+			portage.writemsg("!!! Disabled FEATURES='sign'\n")
+			self.repo_settings.sign_manifests = False
+
