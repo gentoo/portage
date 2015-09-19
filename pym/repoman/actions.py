@@ -166,23 +166,7 @@ class Actions(object):
 		# inside the $Header path. This code detects the problem and corrects it
 		# so that the Manifest will generate correctly. See bug #169500.
 		# Use binary mode in order to avoid potential character encoding issues.
-		cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
-		attic_str = b'/Attic/'
-		attic_replace = b'/'
-		for x in myheaders:
-			f = open(
-				_unicode_encode(x, encoding=_encodings['fs'], errors='strict'),
-				mode='rb')
-			mylines = f.readlines()
-			f.close()
-			modified = False
-			for i, line in enumerate(mylines):
-				if cvs_header_re.match(line) is not None and \
-					attic_str in line:
-					mylines[i] = line.replace(attic_str, attic_replace)
-					modified = True
-			if modified:
-				portage.util.write_atomic(x, b''.join(mylines), mode='wb')
+		self.clear_attic(myheaders)
 
 		if self.scanner.repolevel == 1:
 			utilities.repoman_sez(
@@ -817,3 +801,23 @@ class Actions(object):
 			print(
 				"* Files with headers will"
 				" cause the manifests to be changed and committed separately.")
+
+
+	def clear_attic(self, myheaders):
+		cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
+		attic_str = b'/Attic/'
+		attic_replace = b'/'
+		for x in myheaders:
+			f = open(
+				_unicode_encode(x, encoding=_encodings['fs'], errors='strict'),
+				mode='rb')
+			mylines = f.readlines()
+			f.close()
+			modified = False
+			for i, line in enumerate(mylines):
+				if cvs_header_re.match(line) is not None and \
+					attic_str in line:
+					mylines[i] = line.replace(attic_str, attic_replace)
+					modified = True
+			if modified:
+				portage.util.write_atomic(x, b''.join(mylines), mode='wb')
