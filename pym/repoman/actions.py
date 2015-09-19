@@ -132,101 +132,13 @@ class Actions(object):
 				print("* no commit message?  aborting commit.")
 				sys.exit(1)
 		commitmessage = commitmessage.rstrip()
-		changelog_msg = commitmessage
+
+		myupdates, broken_changelog_manifests = self.changelogs(
+					myupdates, mymanifests, myremoved, mychanged, myautoadd,
+					mynew, commitmessage)
 
 		commit_footer = self.get_commit_footer()
 		commitmessage += commit_footer
-
-		broken_changelog_manifests = []
-		if self.options.echangelog in ('y', 'force'):
-			logging.info("checking for unmodified ChangeLog files")
-			committer_name = utilities.get_committer_name(env=self.repoman_settings)
-			for x in sorted(vcs_files_to_cps(
-				chain(myupdates, mymanifests, myremoved),
-				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
-				catdir, pkgdir = x.split("/")
-				checkdir = self.repo_settings.repodir + "/" + x
-				checkdir_relative = ""
-				if self.scanner.repolevel < 3:
-					checkdir_relative = os.path.join(pkgdir, checkdir_relative)
-				if self.scanner.repolevel < 2:
-					checkdir_relative = os.path.join(catdir, checkdir_relative)
-				checkdir_relative = os.path.join(".", checkdir_relative)
-
-				changelog_path = os.path.join(checkdir_relative, "ChangeLog")
-				changelog_modified = changelog_path in self.scanner.changed.changelogs
-				if changelog_modified and self.options.echangelog != 'force':
-					continue
-
-				# get changes for this package
-				cdrlen = len(checkdir_relative)
-				check_relative = lambda e: e.startswith(checkdir_relative)
-				split_relative = lambda e: e[cdrlen:]
-				clnew = list(map(split_relative, filter(check_relative, mynew)))
-				clremoved = list(map(split_relative, filter(check_relative, myremoved)))
-				clchanged = list(map(split_relative, filter(check_relative, mychanged)))
-
-				# Skip ChangeLog generation if only the Manifest was modified,
-				# as discussed in bug #398009.
-				nontrivial_cl_files = set()
-				nontrivial_cl_files.update(clnew, clremoved, clchanged)
-				nontrivial_cl_files.difference_update(['Manifest'])
-				if not nontrivial_cl_files and self.options.echangelog != 'force':
-					continue
-
-				new_changelog = utilities.UpdateChangeLog(
-					checkdir_relative, committer_name, changelog_msg,
-					os.path.join(self.repo_settings.repodir, 'skel.ChangeLog'),
-					catdir, pkgdir,
-					new=clnew, removed=clremoved, changed=clchanged,
-					pretend=self.options.pretend)
-				if new_changelog is None:
-					writemsg_level(
-						"!!! Updating the ChangeLog failed\n",
-						level=logging.ERROR, noiselevel=-1)
-					sys.exit(1)
-
-				# if the ChangeLog was just created, add it to vcs
-				if new_changelog:
-					myautoadd.append(changelog_path)
-					# myautoadd is appended to myupdates below
-				else:
-					myupdates.append(changelog_path)
-
-				if self.options.ask and not self.options.pretend:
-					# regenerate Manifest for modified ChangeLog (bug #420735)
-					self.repoman_settings["O"] = checkdir
-					digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
-				else:
-					broken_changelog_manifests.append(x)
-
-		if myautoadd:
-			print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
-			add_cmd = [self.vcs_settings.vcs, "add"]
-			add_cmd += myautoadd
-			if self.options.pretend:
-				portage.writemsg_stdout(
-					"(%s)\n" % " ".join(add_cmd),
-					noiselevel=-1)
-			else:
-
-				if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-					not os.path.isabs(add_cmd[0]):
-					# Python 3.1 _execvp throws TypeError for non-absolute executable
-					# path passed as bytes (see http://bugs.python.org/issue8513).
-					fullname = find_binary(add_cmd[0])
-					if fullname is None:
-						raise portage.exception.CommandNotFound(add_cmd[0])
-					add_cmd[0] = fullname
-
-				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
-				retcode = subprocess.call(add_cmd)
-				if retcode != os.EX_OK:
-					logging.error(
-						"Exiting on %s error code: %s\n" % (self.vcs_settings.vcs, retcode))
-					sys.exit(retcode)
-
-			myupdates += myautoadd
 
 		print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 
@@ -800,3 +712,98 @@ class Actions(object):
 				commit_footer += ", unsigned Manifest commit"
 			commit_footer += ")"
 		return commit_footer
+
+
+	def changelogs(self, myupdates, mymanifests, myremoved, mychanged, myautoadd,
+					mynew, changelog_msg):
+		broken_changelog_manifests = []
+		if self.options.echangelog in ('y', 'force'):
+			logging.info("checking for unmodified ChangeLog files")
+			committer_name = utilities.get_committer_name(env=self.repoman_settings)
+			for x in sorted(vcs_files_to_cps(
+				chain(myupdates, mymanifests, myremoved),
+				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
+				catdir, pkgdir = x.split("/")
+				checkdir = self.repo_settings.repodir + "/" + x
+				checkdir_relative = ""
+				if self.scanner.repolevel < 3:
+					checkdir_relative = os.path.join(pkgdir, checkdir_relative)
+				if self.scanner.repolevel < 2:
+					checkdir_relative = os.path.join(catdir, checkdir_relative)
+				checkdir_relative = os.path.join(".", checkdir_relative)
+
+				changelog_path = os.path.join(checkdir_relative, "ChangeLog")
+				changelog_modified = changelog_path in self.scanner.changed.changelogs
+				if changelog_modified and self.options.echangelog != 'force':
+					continue
+
+				# get changes for this package
+				cdrlen = len(checkdir_relative)
+				check_relative = lambda e: e.startswith(checkdir_relative)
+				split_relative = lambda e: e[cdrlen:]
+				clnew = list(map(split_relative, filter(check_relative, mynew)))
+				clremoved = list(map(split_relative, filter(check_relative, myremoved)))
+				clchanged = list(map(split_relative, filter(check_relative, mychanged)))
+
+				# Skip ChangeLog generation if only the Manifest was modified,
+				# as discussed in bug #398009.
+				nontrivial_cl_files = set()
+				nontrivial_cl_files.update(clnew, clremoved, clchanged)
+				nontrivial_cl_files.difference_update(['Manifest'])
+				if not nontrivial_cl_files and self.options.echangelog != 'force':
+					continue
+
+				new_changelog = utilities.UpdateChangeLog(
+					checkdir_relative, committer_name, changelog_msg,
+					os.path.join(self.repo_settings.repodir, 'skel.ChangeLog'),
+					catdir, pkgdir,
+					new=clnew, removed=clremoved, changed=clchanged,
+					pretend=self.options.pretend)
+				if new_changelog is None:
+					writemsg_level(
+						"!!! Updating the ChangeLog failed\n",
+						level=logging.ERROR, noiselevel=-1)
+					sys.exit(1)
+
+				# if the ChangeLog was just created, add it to vcs
+				if new_changelog:
+					myautoadd.append(changelog_path)
+					# myautoadd is appended to myupdates below
+				else:
+					myupdates.append(changelog_path)
+
+				if self.options.ask and not self.options.pretend:
+					# regenerate Manifest for modified ChangeLog (bug #420735)
+					self.repoman_settings["O"] = checkdir
+					digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
+				else:
+					broken_changelog_manifests.append(x)
+
+		if myautoadd:
+			print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
+			add_cmd = [self.vcs_settings.vcs, "add"]
+			add_cmd += myautoadd
+			if self.options.pretend:
+				portage.writemsg_stdout(
+					"(%s)\n" % " ".join(add_cmd),
+					noiselevel=-1)
+			else:
+
+				if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
+					not os.path.isabs(add_cmd[0]):
+					# Python 3.1 _execvp throws TypeError for non-absolute executable
+					# path passed as bytes (see http://bugs.python.org/issue8513).
+					fullname = find_binary(add_cmd[0])
+					if fullname is None:
+						raise portage.exception.CommandNotFound(add_cmd[0])
+					add_cmd[0] = fullname
+
+				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+				retcode = subprocess.call(add_cmd)
+				if retcode != os.EX_OK:
+					logging.error(
+						"Exiting on %s error code: %s\n" % (self.vcs_settings.vcs, retcode))
+					sys.exit(retcode)
+
+			myupdates += myautoadd
+		return myupdates, broken_changelog_manifests
