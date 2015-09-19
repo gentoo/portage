@@ -111,24 +111,8 @@ class Actions(object):
 				else:
 					raise
 		if not commitmessage or not commitmessage.strip():
-			msg_prefix = ""
-			if self.scanner.repolevel > 1:
-				msg_prefix = "/".join(self.scanner.reposplit[1:]) + ": "
+			commitmessage = self.get_new_commit_message(qa_output)
 
-			try:
-				editor = os.environ.get("EDITOR")
-				if editor and utilities.editor_is_executable(editor):
-					commitmessage = utilities.get_commit_message_with_editor(
-						editor, message=qa_output, prefix=msg_prefix)
-				else:
-					commitmessage = utilities.get_commit_message_with_stdin()
-			except KeyboardInterrupt:
-				logging.fatal("Interrupted; exiting...")
-				sys.exit(1)
-			if (not commitmessage or not commitmessage.strip()
-					or commitmessage.strip() == msg_prefix):
-				print("* no commit message?  aborting commit.")
-				sys.exit(1)
 		commitmessage = commitmessage.rstrip()
 
 		myupdates, broken_changelog_manifests = self.changelogs(
@@ -826,3 +810,24 @@ class Actions(object):
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			self.repo_settings.sign_manifests = False
 
+
+	def get_new_commit_message(self, qa_output):
+		msg_prefix = ""
+		if self.scanner.repolevel > 1:
+			msg_prefix = "/".join(self.scanner.reposplit[1:]) + ": "
+
+		try:
+			editor = os.environ.get("EDITOR")
+			if editor and utilities.editor_is_executable(editor):
+				commitmessage = utilities.get_commit_message_with_editor(
+					editor, message=qa_output, prefix=msg_prefix)
+			else:
+				commitmessage = utilities.get_commit_message_with_stdin()
+		except KeyboardInterrupt:
+			logging.fatal("Interrupted; exiting...")
+			sys.exit(1)
+		if (not commitmessage or not commitmessage.strip()
+				or commitmessage.strip() == msg_prefix):
+			print("* no commit message?  aborting commit.")
+			sys.exit(1)
+		return commitmessage
