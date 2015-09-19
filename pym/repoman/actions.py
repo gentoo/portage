@@ -110,8 +110,6 @@ class Actions(object):
 						" --commitmsgfile='%s'\n" % self.options.commitmsgfile)
 				else:
 					raise
-			# We've read the content so the file is no longer needed.
-			commitmessagefile = None
 		if not commitmessage or not commitmessage.strip():
 			msg_prefix = ""
 			if self.scanner.repolevel > 1:
