@@ -133,53 +133,8 @@ class Actions(object):
 				sys.exit(1)
 		commitmessage = commitmessage.rstrip()
 		changelog_msg = commitmessage
-		portage_version = getattr(portage, "VERSION", None)
-		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
-		dco_sob = self.repoman_settings.get("DCO_SIGNED_OFF_BY", "")
-		if portage_version is None:
-			sys.stderr.write("Failed to insert portage version in message!\n")
-			sys.stderr.flush()
-			portage_version = "Unknown"
 
-		report_options = []
-		if self.options.force:
-			report_options.append("--force")
-		if self.options.ignore_arches:
-			report_options.append("--ignore-arches")
-		if self.scanner.include_arches is not None:
-			report_options.append(
-				"--include-arches=\"%s\"" %
-				" ".join(sorted(self.scanner.include_arches)))
-
-		if self.vcs_settings.vcs == "git":
-			# Use new footer only for git (see bug #438364).
-			commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
-			if report_options:
-				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
-			if self.repo_settings.sign_manifests:
-				commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
-			if dco_sob:
-				commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
-		else:
-			unameout = platform.system() + " "
-			if platform.system() in ["Darwin", "SunOS"]:
-				unameout += platform.processor()
-			else:
-				unameout += platform.machine()
-			commit_footer = "\n\n"
-			if dco_sob:
-				commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
-			commit_footer += "(Portage version: %s/%s/%s" % \
-				(portage_version, self.vcs_settings.vcs, unameout)
-			if report_options:
-				commit_footer += ", RepoMan options: " + " ".join(report_options)
-			if self.repo_settings.sign_manifests:
-				commit_footer += ", signed Manifest commit with key %s" % \
-					(gpg_key, )
-			else:
-				commit_footer += ", unsigned Manifest commit"
-			commit_footer += ")"
-
+		commit_footer = self.get_commit_footer()
 		commitmessage += commit_footer
 
 		broken_changelog_manifests = []
@@ -797,3 +752,51 @@ class Actions(object):
 		expansion = {}
 		return  (mynew, mychanged, myremoved, no_expansion, expansion)
 
+
+	def get_commit_footer(self):
+		portage_version = getattr(portage, "VERSION", None)
+		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
+		dco_sob = self.repoman_settings.get("DCO_SIGNED_OFF_BY", "")
+		report_options = []
+		if self.options.force:
+			report_options.append("--force")
+		if self.options.ignore_arches:
+			report_options.append("--ignore-arches")
+		if self.scanner.include_arches is not None:
+			report_options.append(
+				"--include-arches=\"%s\"" %
+				" ".join(sorted(self.scanner.include_arches)))
+
+		if portage_version is None:
+			sys.stderr.write("Failed to insert portage version in message!\n")
+			sys.stderr.flush()
+			portage_version = "Unknown"
+		# Use new footer only for git (see bug #438364).
+		if self.vcs_settings.vcs in ["git"]:
+			commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
+			if report_options:
+				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
+			if self.repo_settings.sign_manifests:
+				commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
+			if dco_sob:
+				commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
+		else:
+			unameout = platform.system() + " "
+			if platform.system() in ["Darwin", "SunOS"]:
+				unameout += platform.processor()
+			else:
+				unameout += platform.machine()
+			commit_footer = "\n\n"
+			if dco_sob:
+				commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+			commit_footer += "(Portage version: %s/%s/%s" % \
+				(portage_version, self.vcs_settings.vcs, unameout)
+			if report_options:
+				commit_footer += ", RepoMan options: " + " ".join(report_options)
+			if self.repo_settings.sign_manifests:
+				commit_footer += ", signed Manifest commit with key %s" % \
+					(gpg_key, )
+			else:
+				commit_footer += ", unsigned Manifest commit"
+			commit_footer += ")"
+		return commit_footer
