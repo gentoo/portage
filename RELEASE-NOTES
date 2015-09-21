@@ -1,6 +1,45 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.21
+==================================
+* Bug Fixes:
+    - Bug 550006 quickpkg: support FEATURES=xattr
+    - Bug 550324 Fix missed rename of cleanconfig to cleanconfmem
+    - Bug 550898 rename ia to ia64
+    - Bug 550886 enable absolute_import for Python 2
+    - Bug 550906 handle submodule import in _LazyImportFrom._get_target
+    - Bug 552340 Redirect /dev/fd bash test to /dev/null
+    - Bug 554084 unpack: avoid useless chmods to improve speed
+    - Bug 554108 use mkdtemp to avoid cgroup interference
+    - Bug 554578 convert str to Atom for DbapiProvidesIndex
+    - Bug 554928 depgraph._want_update_pkg: handle _UNREACHABLE_DEPTH
+    - Bug 556172 slot_conflict_handler: suggest --verbose-conflicts
+    - Bug 556464 depgraph._select_files: use _iter_match_pkgs for tbz2 arguments
+    - Bug 555698 circular_dependency_handler: limit USE combination search
+    - Bug 556764 similar_name_search: used indexed repos where appropriate
+    - Bug 557426 sync repositories in parallel
+    - Bug 557962 Manifest.write: stable/predictable Manifest mtime for rsync
+    - Bug 558322 SyncRepos._sync: call postsync.d hooks earlier
+    - Bug 557192 egencache: stable use.local.desc mtime for rsync
+    - Bug 559044 emerge --search: fix duplication of results
+    - Bug 296085 RsyncSync: add sync-rsync-vcs-ignore option
+    - Bug 559122 sync: include metadata/layout.conf with profile submodule
+    - Bug 560466 match_from_list: restrict =* to match only on version part boundaries
+* git sync: Respect PORTAGE_QUIET
+* several man page updates
+
+
+portage-2.2.20.1
+==================================
+# Note this was a branch release based of the 2.2.20 release
+# expressly for the new git based ebuild tree
+* Bug Fixes:
+    - Bug 550324 Fix missed rename of cleanconfig to cleanconfmem
+    - included a few man page updates
+    - a couplerepoman changes for the new git based tree
+
+
 portage-2.2.20
 ==================================
 * Bug Fixes:
