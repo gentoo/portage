@@ -2250,7 +2250,12 @@ def match_from_list(mydep, candidate_list):
 					pkg.cp + "-" + xs[2],
 					pkg.cp + "-" + myver, 1)
 			if xcpv.startswith(mycpv_cmp):
-				mylist.append(x)
+				# =* glob matches only on boundaries between version parts,
+				# so 1* does not match 10 (bug 560466).
+				next_char = xcpv[len(mycpv_cmp):len(mycpv_cmp)+1]
+				if (not next_char or next_char in '._-' or
+					mycpv_cmp[-1].isdigit() != next_char.isdigit()):
+					mylist.append(x)
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
