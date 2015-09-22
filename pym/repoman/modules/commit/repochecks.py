@@ -1,4 +1,6 @@
 
+from __future__ import print_function, unicode_literals
+
 from portage.output import red
 
 from repoman.errors import err

@@ -1,4 +1,6 @@
 
+from __future__ import print_function, unicode_literals
+
 from portage import normalize_path
 from portage import os
 from portage.output import red
