@@ -96,12 +96,9 @@ Example:
 .fi
 .TP
 .I *
-means match any version of the package so long
-as the specified string prefix is matched. So with a
-version of '2*', we can match '2.1', '2.2', '2.2.1',
-etc... and not match version '1.0', '3.0', '4.1', etc...
-Beware that, due to the string matching nature, '20'
-will also be matched by '2*'. The version part
+means match any version of the package so long as the specified base
+is matched.  So with a version of '2*', we can match '2.1', '2.2', '2.2.1',
+etc... and not match version '1.0', '3.0', '4.1', etc... The version part
 that comes before the '*' must be a valid version in the absence of the '*'.
 For example, '2' is a valid version and '2.' is not. Therefore, '2*' is
 allowed and '2.*' is not.
