@@ -8,10 +8,6 @@ import io
 import logging
 import sys
 
-from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__)))) #, "pym")
-	sys.path.insert(0, pym_path)
 # import our centrally initialized portage instance
 from repoman._portage import portage
 portage._internal_caller = True
