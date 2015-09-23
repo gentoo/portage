@@ -115,13 +115,16 @@ class SyncManager(object):
 		return []
 
 	def async(self, emerge_config=None, repo=None):
+		self.emerge_config = emerge_config
+		self.settings, self.trees, self.mtimedb = emerge_config
+		self.xterm_titles = "notitles" not in self.settings.features
+		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
 		proc = AsyncFunction(target=self.sync,
 			kwargs=dict(emerge_config=emerge_config, repo=repo))
 		proc.addExitListener(self._sync_callback)
 		return proc
 
 	def sync(self, emerge_config=None, repo=None):
-		self.emerge_config = emerge_config
 		self.callback = None
 		self.repo = repo
 		self.exitcode = 1
@@ -199,13 +202,10 @@ class SyncManager(object):
 
 
 	def pre_sync(self, repo):
-		self.settings, self.trees, self.mtimedb = self.emerge_config
-		self.xterm_titles = "notitles" not in self.settings.features
 		msg = ">>> Syncing repository '%s' into '%s'..." \
 			% (repo.name, repo.location)
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
 		try:
 			st = os.stat(repo.location)
 		except OSError:
