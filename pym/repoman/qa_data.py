@@ -354,14 +354,19 @@ def format_qa_output(
 	formatter, fails, dofull, dofail, options, qawarnings):
 	"""Helper function that formats output properly
 
-	Args:
-		formatter - a subclass of Formatter
-		fails - a dict of qa status failures
-		dofull - boolean to print full results or a summary
-		dofail - boolean to decide if failure was hard or soft
-
-	Returns:
-		None (modifies formatter)
+	@param formatter: an instance of Formatter
+	@type formatter: Formatter
+	@param fails: dict of qa status failures
+	@type fails: dict
+	@param dofull: Whether to print full results or a summary
+	@type dofull: boolean
+	@param dofail: Whether failure was hard or soft
+	@type dofail: boolean
+	@param options: The command-line options provided to repoman
+	@type options: Namespace
+	@param qawarnings: the set of warning types
+	@type qawarnings: set
+	@return: None (modifies formatter)
 	"""
 	full = options.mode == 'full'
 	# we only want key value pairs where value > 0
@@ -398,8 +403,6 @@ def format_qa_output_column(
 
 	@param formatter: an instance of Formatter
 	@type formatter: Formatter
-	@param path: dict of qa status items
-	@type path: dict
 	@param fails: dict of qa status failures
 	@type fails: dict
 	@param dofull: Whether to print full results or a summary
