@@ -508,7 +508,7 @@ class RepoConfigLoader(object):
 							'force', 'masters', 'priority',
 							'sync_depth',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
-							) + tuple(portage.sync.module_specific_options(repo)):
+							'module_specific_options'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
