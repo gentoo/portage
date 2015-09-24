@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.22
+==================================
+* Bug Fixes:
+    - Bug 559636 repoman: ignore unadded files when possible
+    - Bug 510840 repoman: Remove profiles TODO comment
+    - Bug 561234 SyncManager.async: initialize attributes before fork
+    - Bug 561240 repository/config.py: Fix propogation of module_specific_options
+* First release of the repoman re-write code (stage 1)
+
+
 portage-2.2.21
 ==================================
 * Bug Fixes:
@@ -28,6 +38,7 @@ portage-2.2.21
     - Bug 560466 match_from_list: restrict =* to match only on version part boundaries
 * git sync: Respect PORTAGE_QUIET
 * several man page updates
+* rsync: per repo repos.conf rsync options via the 'sync-rsync-extra-opts' option
 
 
 portage-2.2.20.1

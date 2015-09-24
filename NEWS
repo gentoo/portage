@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.22
+-------------
+* Stage 1 of the repoman re-write code merged in to master branch
+  This is the first release of the new code base.
+
+
 portage-2.2.19
 -------------
 * The squashdelta sync module was removed for separate installation
