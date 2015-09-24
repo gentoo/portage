@@ -29,7 +29,6 @@ class FetchChecks(object):
 		self.repo_settings = repo_settings
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
-		self._digests = None
 
 	def check(self, xpkg, checkdir, checkdir_relative, mychanged, mynew):
 		'''Checks the ebuild sources and files for errors
@@ -38,7 +37,7 @@ class FetchChecks(object):
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
 		'''
-		self.checkdir = checkdir
+		_digests = self.digests(checkdir)
 		fetchlist_dict = portage.FetchlistDict(
 			checkdir, self.repoman_settings, self.portdb)
 		myfiles_all = []
@@ -64,11 +63,11 @@ class FetchChecks(object):
 			# produce a valid error elsewhere, such as "SRC_URI.syntax"
 			# or "ebuild.sytax".
 			myfiles_all = set(myfiles_all)
-			for entry in self.digests:
+			for entry in _digests:
 				if entry not in myfiles_all:
 					self.qatracker.add_error("digest.unused", checkdir + "::" + entry)
 			for entry in myfiles_all:
-				if entry not in self.digests:
+				if entry not in _digests:
 					self.qatracker.add_error("digest.missing", checkdir + "::" + entry)
 		del myfiles_all
 
@@ -125,14 +124,11 @@ class FetchChecks(object):
 						"file.name",
 						"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
 
-	@property
-	def digests(self):
-		'''Property function, returns the saved digests or
-		loads them for the test'''
-		if not self._digests:
-			mf = self.repoman_settings.repositories.get_repo_for_location(
-				os.path.dirname(os.path.dirname(self.checkdir)))
-			mf = mf.load_manifest(self.checkdir, self.repoman_settings["DISTDIR"])
-			self._digests = mf.getTypeDigests("DIST")
-			del mf
-		return self._digests
+	def digests(self, checkdir):
+		'''Returns the freshly loaded digests'''
+		mf = self.repoman_settings.repositories.get_repo_for_location(
+			os.path.dirname(os.path.dirname(checkdir)))
+		mf = mf.load_manifest(checkdir, self.repoman_settings["DISTDIR"])
+		_digests = mf.getTypeDigests("DIST")
+		del mf
+		return _digests
