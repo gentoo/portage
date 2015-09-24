@@ -199,7 +199,7 @@ class Scanner(object):
 			self.qatracker, self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
 		self.status_check = VCSStatus(self.vcs_settings, self.qatracker)
 		self.fetchcheck = FetchChecks(
-			self.qatracker, self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
+			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
 		self.pkgmeta = PkgMetadata(self.options, self.qatracker, self.repo_settings.repoman_settings)
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)

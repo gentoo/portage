@@ -17,7 +17,7 @@ class FetchChecks(object):
 	'''Performs checks on the files needed for the ebuild'''
 
 	def __init__(
-		self, qatracker, repoman_settings, repo_settings, portdb, vcs_settings):
+		self, qatracker, repo_settings, portdb, vcs_settings):
 		'''
 		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
@@ -27,7 +27,7 @@ class FetchChecks(object):
 		self.portdb = portdb
 		self.qatracker = qatracker
 		self.repo_settings = repo_settings
-		self.repoman_settings = repoman_settings
+		self.repoman_settings = repo_settings.repoman_settings
 		self.vcs_settings = vcs_settings
 
 	def check(self, xpkg, checkdir, checkdir_relative, mychanged, mynew):
