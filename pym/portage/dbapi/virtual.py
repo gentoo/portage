@@ -98,8 +98,12 @@ class fakedbapi(dbapi):
 		return result[:]
 
 	def cpv_exists(self, mycpv, myrepo=None):
-		return self._instance_key(mycpv,
-			support_string=True) in self.cpvdict
+		try:
+			return self._instance_key(mycpv,
+				support_string=True) in self.cpvdict
+		except KeyError:
+			# _instance_key failure
+			return False
 
 	def cp_list(self, mycp, use_cache=1, myrepo=None):
 		# NOTE: Cache can be safely shared with the match cache, since the
