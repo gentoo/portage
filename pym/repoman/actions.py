@@ -726,55 +726,55 @@ class Actions(object):
 
 
 	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
-			if self.vcs_settings.vcs == 'cvs':
-				headerstring = "'\$(Header|Id).*\$'"
+		if self.vcs_settings.vcs == 'cvs':
+			headerstring = "'\$(Header|Id).*\$'"
+		elif self.vcs_settings.vcs == "svn":
+			svn_keywords = dict((k.lower(), k) for k in [
+				"Rev",
+				"Revision",
+				"LastChangedRevision",
+				"Date",
+				"LastChangedDate",
+				"Author",
+				"LastChangedBy",
+				"URL",
+				"HeadURL",
+				"Id",
+				"Header",
+			])
+
+		for myfile in myupdates:
+
+			# for CVS, no_expansion contains files that are excluded from expansion
+			if self.vcs_settings.vcs == "cvs":
+				if myfile in no_expansion:
+					continue
+
+			# for SVN, expansion contains files that are included in expansion
 			elif self.vcs_settings.vcs == "svn":
-				svn_keywords = dict((k.lower(), k) for k in [
-					"Rev",
-					"Revision",
-					"LastChangedRevision",
-					"Date",
-					"LastChangedDate",
-					"Author",
-					"LastChangedBy",
-					"URL",
-					"HeadURL",
-					"Id",
-					"Header",
-				])
+				if myfile not in expansion:
+					continue
 
-			for myfile in myupdates:
+				# Subversion keywords are case-insensitive
+				# in svn:keywords properties,
+				# but case-sensitive in contents of files.
+				enabled_keywords = []
+				for k in expansion[myfile]:
+					keyword = svn_keywords.get(k.lower())
+					if keyword is not None:
+						enabled_keywords.append(keyword)
 
-				# for CVS, no_expansion contains files that are excluded from expansion
-				if self.vcs_settings.vcs == "cvs":
-					if myfile in no_expansion:
-						continue
+				headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
 
-				# for SVN, expansion contains files that are included in expansion
-				elif self.vcs_settings.vcs == "svn":
-					if myfile not in expansion:
-						continue
+			myout = repoman_getstatusoutput(
+				"egrep -q %s %s" % (headerstring, portage._shell_quote(myfile)))
+			if myout[0] == 0:
+				myheaders.append(myfile)
 
-					# Subversion keywords are case-insensitive
-					# in svn:keywords properties,
-					# but case-sensitive in contents of files.
-					enabled_keywords = []
-					for k in expansion[myfile]:
-						keyword = svn_keywords.get(k.lower())
-						if keyword is not None:
-							enabled_keywords.append(keyword)
-
-					headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
-
-				myout = repoman_getstatusoutput(
-					"egrep -q %s %s" % (headerstring, portage._shell_quote(myfile)))
-				if myout[0] == 0:
-					myheaders.append(myfile)
-
-			print("%s have headers that will change." % green(str(len(myheaders))))
-			print(
-				"* Files with headers will"
-				" cause the manifests to be changed and committed separately.")
+		print("%s have headers that will change." % green(str(len(myheaders))))
+		print(
+			"* Files with headers will"
+			" cause the manifests to be changed and committed separately.")
 
 
 	def clear_attic(self, myheaders):
