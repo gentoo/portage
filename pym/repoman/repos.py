@@ -60,7 +60,7 @@ class RepoSettings(object):
 		if self.repo_config.allow_provide_virtual:
 			qawarnings.add("virtual.oldstyle")
 
-		if self.repo_config.sign_commit:
+		if self.repo_config.sign_commit and options.mode in ("commit", "fix", "manifest"):
 			if vcs_settings.vcs:
 				func = getattr(self, '_vcs_gpg_%s' % vcs_settings.vcs)
 				func()
