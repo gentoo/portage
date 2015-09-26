@@ -172,7 +172,7 @@ class Actions(object):
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
 
 		if self.repo_settings.sign_manifests:
-			self.sign_manifests(myupdates, myremoved, mymanifests)
+			self.sign_manifest(myupdates, myremoved, mymanifests)
 
 		if self.vcs_settings.vcs == 'git':
 			# It's not safe to use the git commit -a option since there might
