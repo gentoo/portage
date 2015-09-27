@@ -89,6 +89,13 @@ class AbstractEbuildProcess(SpawnProcess):
 					subprocess.check_call(['mount', '-t', 'cgroup',
 						'-o', 'rw,nosuid,nodev,noexec,none,name=portage',
 						'tmpfs', cgroup_portage])
+					with open(os.path.join(
+						cgroup_portage, 'release_agent'), 'w') as f:
+						f.write(os.path.join(self.settings['PORTAGE_BIN_PATH'],
+							'cgroup-release-agent'))
+					with open(os.path.join(
+						cgroup_portage, 'notify_on_release'), 'w') as f:
+						f.write('1')
 
 				cgroup_path = tempfile.mkdtemp(dir=cgroup_portage,
 					prefix='%s:%s.' % (self.settings["CATEGORY"],
@@ -312,13 +319,6 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _set_returncode(self, wait_retval):
 		SpawnProcess._set_returncode(self, wait_retval)
-
-		if self.cgroup is not None:
-			try:
-				shutil.rmtree(self.cgroup)
-			except EnvironmentError as e:
-				if e.errno != errno.ENOENT:
-					raise
 
 		if self._exit_timeout_id is not None:
 			self.scheduler.source_remove(self._exit_timeout_id)
