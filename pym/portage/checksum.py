@@ -7,7 +7,7 @@ from portage.const import PRELINK_BINARY, HASHING_BLOCKSIZE
 from portage.localization import _
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
+from portage import _unicode_decode, _unicode_encode
 import errno
 import stat
 import subprocess
@@ -22,7 +22,7 @@ def _open_file(filename):
 		return open(_unicode_encode(filename,
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 	except IOError as e:
-		func_call = "open('%s')" % filename
+		func_call = "open('%s')" % _unicode_decode(filename)
 		if e.errno == errno.EPERM:
 			raise portage.exception.OperationNotPermitted(func_call)
 		elif e.errno == errno.EACCES:
