@@ -139,7 +139,7 @@ def _get_global(k):
 			v = 2
 		elif unprivileged:
 			v = 2
-		elif portage_gid in os.getgroups():
+		elif _get_global('portage_gid') in os.getgroups():
 			v = 1
 
 	elif k in ('portage_gid', 'portage_uid'):

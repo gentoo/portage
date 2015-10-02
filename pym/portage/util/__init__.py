@@ -17,9 +17,9 @@ from copy import deepcopy
 import errno
 import io
 try:
-	from itertools import filterfalse
+	from itertools import chain, filterfalse
 except ImportError:
-	from itertools import ifilterfalse as filterfalse
+	from itertools import chain, ifilterfalse as filterfalse
 import logging
 import re
 import shlex
@@ -1041,6 +1041,23 @@ def unique_everseen(iterable, key=None):
 				seen_add(k)
 				yield element
 
+def _do_stat(filename, follow_links=True):
+	try:
+		if follow_links:
+			return os.stat(filename)
+		else:
+			return os.lstat(filename)
+	except OSError as oe:
+		func_call = "stat('%s')" % filename
+		if oe.errno == errno.EPERM:
+			raise OperationNotPermitted(func_call)
+		elif oe.errno == errno.EACCES:
+			raise PermissionDenied(func_call)
+		elif oe.errno == errno.ENOENT:
+			raise FileNotFound(filename)
+		else:
+			raise
+
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
 	"""Apply user, group, and mode bits to a file if the existing bits do not
@@ -1058,21 +1075,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	gid = int(gid)
 
 	if stat_cached is None:
-		try:
-			if follow_links:
-				stat_cached = os.stat(filename)
-			else:
-				stat_cached = os.lstat(filename)
-		except OSError as oe:
-			func_call = "stat('%s')" % filename
-			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted(func_call)
-			elif oe.errno == errno.EACCES:
-				raise PermissionDenied(func_call)
-			elif oe.errno == errno.ENOENT:
-				raise FileNotFound(filename)
-			else:
-				raise
+		stat_cached = _do_stat(filename, follow_links=follow_links)
 
 	if	(uid != -1 and uid != stat_cached.st_uid) or \
 		(gid != -1 and gid != stat_cached.st_gid):
@@ -1177,22 +1180,40 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 			else:
 				raise
 
+	# For bug 554084, always apply permissions to a directory before
+	# that directory is traversed.
 	all_applied = True
-	for dirpath, dirnames, filenames in os.walk(top):
-		try:
-			applied = apply_secpass_permissions(dirpath,
-				uid=uid, gid=gid, mode=dirmode, mask=dirmask,
-				follow_links=follow_links)
-			if not applied:
-				all_applied = False
-		except PortageException as e:
-			all_applied = False
-			onerror(e)
 
-		for name in filenames:
+	try:
+		stat_cached = _do_stat(top, follow_links=follow_links)
+	except FileNotFound:
+		# backward compatibility
+		return True
+
+	if stat.S_ISDIR(stat_cached.st_mode):
+		mode = dirmode
+		mask = dirmask
+	else:
+		mode = filemode
+		mask = filemask
+
+	try:
+		applied = apply_secpass_permissions(top,
+			uid=uid, gid=gid, mode=mode, mask=mask,
+			stat_cached=stat_cached, follow_links=follow_links)
+		if not applied:
+			all_applied = False
+	except PortageException as e:
+		all_applied = False
+		onerror(e)
+
+	for dirpath, dirnames, filenames in os.walk(top):
+		for name, mode, mask in chain(
+			((x, filemode, filemask) for x in filenames),
+			((x, dirmode, dirmask) for x in dirnames)):
 			try:
 				applied = apply_secpass_permissions(os.path.join(dirpath, name),
-					uid=uid, gid=gid, mode=filemode, mask=filemask,
+					uid=uid, gid=gid, mode=mode, mask=mask,
 					follow_links=follow_links)
 				if not applied:
 					all_applied = False
@@ -1216,21 +1237,7 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	unapplied."""
 
 	if stat_cached is None:
-		try:
-			if follow_links:
-				stat_cached = os.stat(filename)
-			else:
-				stat_cached = os.lstat(filename)
-		except OSError as oe:
-			func_call = "stat('%s')" % filename
-			if oe.errno == errno.EPERM:
-				raise OperationNotPermitted(func_call)
-			elif oe.errno == errno.EACCES:
-				raise PermissionDenied(func_call)
-			elif oe.errno == errno.ENOENT:
-				raise FileNotFound(filename)
-			else:
-				raise
+		stat_cached = _do_stat(filename, follow_links=follow_links)
 
 	all_applied = True
 

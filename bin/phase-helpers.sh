@@ -532,7 +532,7 @@ unpack() {
 	# Do not chmod '.' since it's probably ${WORKDIR} and PORTAGE_WORKDIR_MODE
 	# should be preserved.
 	find . -mindepth 1 -maxdepth 1 ! -type l -print0 | \
-		${XARGS} -0 chmod -fR a+rX,u+w,g-w,o-w
+		${XARGS} -0 "${PORTAGE_BIN_PATH}/chmod-lite"
 }
 
 econf() {
