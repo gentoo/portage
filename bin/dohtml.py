@@ -28,13 +28,13 @@
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
-import os
-import shutil
+import os as _os
 import sys
 
-from portage.util import normalize_path
+from portage import _unicode_encode, _unicode_decode, os, shutil
+from portage.util import normalize_path, writemsg
 
 # Change back to original cwd _after_ all imports (bug #469338).
 os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
@@ -92,7 +92,13 @@ def install(basename, dirname, options, prefix=""):
 			skipped_files.append(fullpath)
 	elif options.recurse and os.path.isdir(fullpath) and \
 	     basename not in options.disallowed_dirs:
-		for i in os.listdir(fullpath):
+		for i in _os.listdir(_unicode_encode(fullpath)):
+			try:
+				i = _unicode_decode(i, errors='strict')
+			except UnicodeDecodeError:
+				writemsg('dohtml: argument is not encoded as UTF-8: %s\n' %
+					_unicode_decode(i), noiselevel=-1)
+				sys.exit(1)
 			pfx = basename
 			if prefix:
 				pfx = os.path.join(prefix, pfx)
@@ -155,12 +161,29 @@ def print_help():
 	print()
 
 def parse_args():
+	argv = sys.argv[:]
+
+	if sys.hexversion >= 0x3000000:
+		# We can't trust that the filesystem encoding (locale dependent)
+		# correctly matches the arguments, so use surrogateescape to
+		# pass through the original argv bytes for Python 3.
+		fs_encoding = sys.getfilesystemencoding()
+		argv = [x.encode(fs_encoding, 'surrogateescape') for x in argv]
+
+	for x, arg in enumerate(argv):
+		try:
+			argv[x] = _unicode_decode(arg, errors='strict')
+		except UnicodeDecodeError:
+			writemsg('dohtml: argument is not encoded as UTF-8: %s\n' %
+				_unicode_decode(arg), noiselevel=-1)
+			sys.exit(1)
+
 	options = OptionsClass()
 	args = []
 
 	x = 1
-	while x < len(sys.argv):
-		arg = sys.argv[x]
+	while x < len(argv):
+		arg = argv[x]
 		if arg in ["-h","-r","-V"]:
 			if arg == "-h":
 				print_help()
@@ -169,17 +192,17 @@ def parse_args():
 				options.recurse = True
 			elif arg == "-V":
 				options.verbose = True
-		elif sys.argv[x] in ["-A","-a","-f","-x","-p"]:
+		elif argv[x] in ["-A","-a","-f","-x","-p"]:
 			x += 1
-			if x == len(sys.argv):
+			if x == len(argv):
 				print_help()
 				sys.exit(0)
 			elif arg == "-p":
-				options.doc_prefix = sys.argv[x]
+				options.doc_prefix = argv[x]
 				if options.doc_prefix:
 					options.doc_prefix = normalize_path(options.doc_prefix)
 			else:
-				values = sys.argv[x].split(",")
+				values = argv[x].split(",")
 				if arg == "-A":
 					options.allowed_exts.extend(values)
 				elif arg == "-a":
@@ -189,7 +212,7 @@ def parse_args():
 				elif arg == "-x":
 					options.disallowed_dirs = values
 		else:
-			args.append(sys.argv[x])
+			args.append(argv[x])
 		x += 1
 
 	return (options, args)
