@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 '''fetches.py
 Performs the src_uri fetchlist and files checks

@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 # repoman: Checks
 # Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2

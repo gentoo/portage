@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 '''keywords.py
 Perform KEYWORDS related checks

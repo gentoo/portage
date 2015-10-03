@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 # import our initialized portage instance
 from repoman._portage import portage

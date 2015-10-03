@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 # repoman: Argument parser
 # Copyright 2007-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2

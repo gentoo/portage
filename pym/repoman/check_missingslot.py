@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 # repoman: missing slot check
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2

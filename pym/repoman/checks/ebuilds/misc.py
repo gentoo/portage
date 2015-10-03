@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 '''repoman/checks/ebuilds/misc.py
 Miscelaneous ebuild check functions'''

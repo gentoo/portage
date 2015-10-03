@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 '''repoman/checks/diretories/files.py
 

@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 
 '''use_flags.py
 Performs USE flag related checks
