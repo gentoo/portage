@@ -168,4 +168,5 @@ class Changes(object):
 			with repoman_popen("hg status --no-status --removed .") as f:
 				removed = f.readlines()
 			self.removed = ["./" + elem.rstrip() for elem in removed]
-		del changed, new, removed
+			del removed
+		del changed, new
