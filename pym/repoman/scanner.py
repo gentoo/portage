@@ -633,7 +633,7 @@ class Scanner(object):
 							continue
 						# we are testing deps for a masked package; give it some lee-way
 						suffix = "masked"
-						matchmode = "minimum-all"
+						matchmode = "minimum-all-ignore-profile"
 					else:
 						suffix = ""
 						matchmode = "minimum-visible"

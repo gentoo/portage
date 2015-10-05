@@ -215,7 +215,7 @@ class dbapi(object):
 
 			yield cpv
 
-	def _match_use(self, atom, pkg, metadata):
+	def _match_use(self, atom, pkg, metadata, ignore_profile=False):
 		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
 		if eapi_attrs.iuse_effective:
 			iuse_implicit_match = self.settings._iuse_effective_match
@@ -261,17 +261,18 @@ class dbapi(object):
 						return False
 
 		elif not self.settings.local_config:
-			# Check masked and forced flags for repoman.
-			usemask = self.settings._getUseMask(pkg,
-				stable=self.settings._parent_stable)
-			if any(x in usemask for x in atom.use.enabled):
-				return False
+			if not ignore_profile:
+				# Check masked and forced flags for repoman.
+				usemask = self.settings._getUseMask(pkg,
+					stable=self.settings._parent_stable)
+				if any(x in usemask for x in atom.use.enabled):
+					return False
 
-			useforce = self.settings._getUseForce(pkg,
-				stable=self.settings._parent_stable)
-			if any(x in useforce and x not in usemask
-				for x in atom.use.disabled):
-				return False
+				useforce = self.settings._getUseForce(pkg,
+					stable=self.settings._parent_stable)
+				if any(x in useforce and x not in usemask
+					for x in atom.use.disabled):
+					return False
 
 			# Check unsatisfied use-default deps
 			if atom.use.enabled:

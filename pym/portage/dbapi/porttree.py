@@ -809,9 +809,9 @@ class portdbapi(dbapi):
 		return mylist
 
 	def freeze(self):
-		for x in "bestmatch-visible", "cp-list", "match-all", \
-			"match-all-cpv-only", "match-visible", "minimum-all", \
-			"minimum-visible":
+		for x in ("bestmatch-visible", "cp-list", "match-all",
+			"match-all-cpv-only", "match-visible", "minimum-all",
+			"minimum-all-ignore-profile", "minimum-visible"):
 			self.xcache[x]={}
 		self.frozen=1
 
@@ -870,8 +870,9 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-		elif level in ("bestmatch-visible", "match-all", "match-visible",
-			"minimum-all", "minimum-visible"):
+		elif level in ("bestmatch-visible", "match-all",
+			"match-visible", "minimum-all", "minimum-all-ignore-profile",
+			"minimum-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -881,7 +882,9 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-			visibility_filter = level not in ("match-all", "minimum-all")
+			ignore_profile = level in ("minimum-all-ignore-profile",)
+			visibility_filter = level not in ("match-all",
+				"minimum-all", "minimum-all-ignore-profile")
 			single_match = level not in ("match-all", "match-visible")
 			myval = []
 			aux_keys = list(self._aux_cache_keys)
@@ -922,7 +925,8 @@ class portdbapi(dbapi):
 						continue
 
 					if mydep.unevaluated_atom.use is not None and \
-						not self._match_use(mydep, pkg_str, metadata):
+						not self._match_use(mydep, pkg_str, metadata,
+						ignore_profile=ignore_profile):
 						continue
 
 					myval.append(pkg_str)
