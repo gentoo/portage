@@ -25,6 +25,7 @@ from portage.util._async.AsyncFunction import AsyncFunction
 from portage import OrderedDict
 from portage import _unicode_decode
 from portage import util
+from _emerge.CompositeTask import CompositeTask
 
 
 class TaskHandler(object):
@@ -119,10 +120,9 @@ class SyncManager(object):
 		self.settings, self.trees, self.mtimedb = emerge_config
 		self.xterm_titles = "notitles" not in self.settings.features
 		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
-		proc = AsyncFunction(target=self.sync,
-			kwargs=dict(emerge_config=emerge_config, repo=repo))
-		proc.addExitListener(self._sync_callback)
-		return proc
+		return SyncRepo(sync_task=AsyncFunction(target=self.sync,
+			kwargs=dict(emerge_config=emerge_config, repo=repo)),
+			sync_callback=self._sync_callback)
 
 	def sync(self, emerge_config=None, repo=None):
 		self.callback = None
@@ -342,4 +342,35 @@ class SyncManager(object):
 			# the only one that's been synced here.
 			action_metadata(self.settings, self.portdb, self.emerge_config.opts,
 				porttrees=[repo.location])
+
+
+class SyncRepo(CompositeTask):
+	"""
+	Encapsulates a sync operation and the callback which executes afterwards,
+	so both can be considered as a single composite task. This is useful
+	since we don't want to consider a particular repo's sync operation as
+	complete until after the callback has executed (bug 562264).
+
+	The kwargs and result properties expose attributes that are accessed
+	by SyncScheduler.
+	"""
+
+	__slots__ = ('sync_task', 'sync_callback')
+
+	@property
+	def kwargs(self):
+		return self.sync_task.kwargs
+
+	@property
+	def result(self):
+		return self.sync_task.result
+
+	def _start(self):
+		self._start_task(self.sync_task, self._sync_task_exit)
+
+	def _sync_task_exit(self, sync_task):
+		self._current_task = None
+		self.returncode = sync_task.returncode
+		self.sync_callback(self.sync_task)
+		self._async_wait()
 
