@@ -1241,7 +1241,9 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	all_applied = True
 
-	if portage.data.secpass < 2:
+	# Avoid accessing portage.data.secpass when possible, since
+	# it triggers config loading (undesirable for chmod-lite).
+	if (uid != -1 or gid != -1) and portage.data.secpass < 2:
 
 		if uid != -1 and \
 		uid != stat_cached.st_uid:
