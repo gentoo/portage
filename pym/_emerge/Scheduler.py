@@ -284,11 +284,11 @@ class Scheduler(PollScheduler):
 				self._parallel_fetch = True
 
 		if self._parallel_fetch:
-				# clear out existing fetch log if it exists
-				try:
-					open(self._fetch_log, 'w').close()
-				except EnvironmentError:
-					pass
+			# clear out existing fetch log if it exists
+			try:
+				open(self._fetch_log, 'w').close()
+			except EnvironmentError:
+				pass
 
 		self._running_portage = None
 		portage_match = self._running_root.trees["vartree"].dbapi.match(
@@ -353,7 +353,7 @@ class Scheduler(PollScheduler):
 		Use this to free memory at the beginning of _calc_resume_list().
 		After _calc_resume_list(), the _init_graph() method
 		must to be called in order to re-generate the structures that
-		this method destroys. 
+		this method destroys.
 		"""
 		self._blocker_db = None
 		self._set_graph_config(None)
