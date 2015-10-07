@@ -2,8 +2,8 @@ About Portage
 =============
 
 Portage is a package management system based on ports collections. The
-Package Manager Specification Project (PMS) standardises and documents 
-the behaviour of Portage so that the Portage tree can be used by other 
+Package Manager Specification Project (PMS) standardises and documents
+the behaviour of Portage so that the Portage tree can be used by other
 package managers.
 
 
@@ -28,7 +28,7 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Portage; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 02110-1301, USA.
 
 
@@ -44,6 +44,6 @@ More information
 
 Links
 =====
-Gentoo project page: <http://www.gentoo.org/proj/en/portage/>
+Gentoo project page: <https://wiki.gentoo.org/wiki/Project:Portage>
 PMS: <https://dev.gentoo.org/~ulm/pms/head/pms.html>
-PMS git repo: <http://git.overlays.gentoo.org/gitweb/?p=proj/pms.git>
+PMS git repo: <https://gitweb.gentoo.org/proj/pms.git/>
