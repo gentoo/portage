@@ -1,6 +1,20 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.23
+==================================
+* Bug Fixes:
+    - Bug 561474 Add check that we need commit signing
+    - Bug 561596 Fix typo in function call
+    - Bug 561264 AbstractEbuildProcess: remove cgroup with release_agent
+                 SyncRepos.async: group sync and callback as composite task
+    - Bug 554084 unpack: use chmod-lite helper
+    - Bug 562108 repoman/argparser.py: _unicode_decode the commitmsg
+    - Bug 561846 dohtml: handle unicode
+    - Bug 534022 scanner.py: Fix options.output_style for column output
+* Add icecream feature support
+
+
 portage-2.2.22
 ==================================
 * Bug Fixes:
