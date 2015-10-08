@@ -45,7 +45,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )
 
-from portage import auxdbkeys, bsd_chflags, \
+from portage import bsd_chflags, \
 	eapi_is_supported, merge, os, selinux, shutil, \
 	unmerge, _encodings, _os_merge, \
 	_shell_quote, _unicode_decode, _unicode_encode
@@ -69,7 +69,7 @@ from portage.localization import _
 from portage.output import colormap
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util import apply_recursive_permissions, \
-	apply_secpass_permissions, noiselimit, normalize_path, \
+	apply_secpass_permissions, noiselimit, \
 	writemsg, writemsg_stdout, write_atomic
 from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile
@@ -251,8 +251,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	EAPI metadata.
 	The myroot and use_cache parameters are unused.
 	"""
-	myroot = None
-	use_cache = None
 
 	if settings is None:
 		raise TypeError("settings argument is required")
