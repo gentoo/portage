@@ -148,6 +148,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"force-mirror",
 	"force-prefix",
 	"getbinpkg",
+	"icecream",
 	"installsources",
 	"ipc-sandbox",
 	"keeptemp",
