@@ -409,6 +409,7 @@ class InheritDeprecated(LineCheck):
 
 	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_eclasses = {
+		"base": False,
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"distutils": "distutils-r1",
