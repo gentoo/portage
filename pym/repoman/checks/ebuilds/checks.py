@@ -408,7 +408,7 @@ class InheritDeprecated(LineCheck):
 	repoman_check_name = 'inherit.deprecated'
 
 	# deprecated eclass : new eclass (False if no new eclass)
-	deprecated_classes = {
+	deprecated_eclasses = {
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"distutils": "distutils-r1",
@@ -436,7 +436,7 @@ class InheritDeprecated(LineCheck):
 			return
 
 		for eclass in direct_inherits:
-			replacement = self.deprecated_classes.get(eclass)
+			replacement = self.deprecated_eclasses.get(eclass)
 			if replacement is None:
 				pass
 			elif replacement is False:
