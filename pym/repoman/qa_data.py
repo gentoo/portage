@@ -7,8 +7,7 @@ from _emerge.Package import Package
 # import our initialized portage instance
 from repoman._portage import portage
 
-# 14 is the length of DESCRIPTION=""
-max_desc_len = 100
+max_desc_len = 80
 allowed_filename_chars = "a-zA-Z0-9._-+:"
 
 qahelp = {
