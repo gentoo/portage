@@ -185,8 +185,8 @@ class SpawnProcess(SubProcess):
 				try:
 					with open(os.path.join(cgroup, 'cgroup.procs'), 'r') as f:
 						return [int(p) for p in f.read().split()]
-				except OSError:
-					# cgroup removed already?
+				except EnvironmentError:
+					# removed by cgroup-release-agent
 					return []
 
 			def kill_all(pids, sig):
