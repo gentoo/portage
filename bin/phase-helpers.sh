@@ -990,7 +990,10 @@ if ___eapi_has_eapply; then
 			# -p1 as a sane default
 			# -f to avoid interactivity
 			# -s to silence progress output
-			patch -p1 -f -s "${patch_options[@]}" < "${f}"
+			# -g0 to guarantee no VCS interaction
+			# --no-backup-if-mismatch not to pollute the sources
+			patch -p1 -f -s -g0 --no-backup-if-mismatch \
+				"${patch_options[@]}" < "${f}"
 			if ! eend ${?}; then
 				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
 				failed=1
