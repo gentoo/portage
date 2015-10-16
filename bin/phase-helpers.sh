@@ -997,18 +997,42 @@ if ___eapi_has_eapply; then
 			fi
 		}
 
-		local f patch_options=() failed started_applying options_terminated
-		for f; do
-			if [[ ${f} == -* && -z ${options_terminated} ]]; then
-				if [[ -n ${started_applying} ]]; then
-					die "eapply: options need to be specified before files"
+		local patch_options=() files=()
+		local i found_doublehyphen
+		# first, try to split on --
+		for (( i = 1; i <= ${#@}; ++i )); do
+			if [[ ${@:i:1} == -- ]]; then
+				patch_options=( "${@:1:i-1}" )
+				files=( "${@:i+1}" )
+				found_doublehyphen=1
+				break
+			fi
+		done
+
+		# then, try to split on first non-option
+		if [[ -z ${found_doublehyphen} ]]; then
+			for (( i = 1; i <= ${#@}; ++i )); do
+				if [[ ${@:i:1} != -* ]]; then
+					patch_options=( "${@:1:i-1}" )
+					files=( "${@:i+1}" )
+					break
 				fi
-				if [[ ${f} == -- ]]; then
-					options_terminated=1
-				else
-					patch_options+=( ${f} )
+			done
+
+			# ensure that no options were interspersed with files
+			for i in "${files[@]}"; then
+				if [[ ${i} == -* ]]; then
+					die "eapply: all options must be passed before non-options"
 				fi
-			elif [[ -d ${f} ]]; then
+			fi
+		fi
+
+		if [[ -z ${files[@]} ]]; then
+			die "eapply: no files specified"
+		fi
+
+		for i in "${files[@]}"; do
+			if [[ -d ${f} ]]; then
 				_eapply_get_files() {
 					local LC_ALL=POSIX
 					local prev_shopt=$(shopt -p nullglob)
