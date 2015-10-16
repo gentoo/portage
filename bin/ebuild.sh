@@ -32,6 +32,7 @@ else
 	# `use multislot` is false for the "depend" phase.
 	funcs="use useq usev"
 	___eapi_has_usex && funcs+=" usex"
+	___eapi_has_in_iuse && funcs+=" in_iuse"
 	for x in ${funcs} ; do
 		eval "${x}() {
 			if ___eapi_disallows_helpers_in_global_scope; then
