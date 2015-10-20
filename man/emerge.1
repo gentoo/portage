@@ -676,6 +676,13 @@ packages that depend on matching packages due to \fB\-\-rebuild\fR.
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
 for later updating.
+
+\fBWARNING:\fR This option should only be used for packages that are
+reachable from the @world package set (those that would not be removed
+by \fB\-\-depclean\fR), since dependencies of unreachable packages are
+allowed to be broken when satisfying dependencies of other packages.
+Broken dependencies of this sort will invalidate assumptions that make
+it possible for \fB\-\-deep\fR to be disabled by default.
 .TP
 .BR "\-\-onlydeps " (\fB\-o\fR)
 Only merge (or pretend to merge) the dependencies of the packages
