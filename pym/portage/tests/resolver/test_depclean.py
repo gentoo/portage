@@ -165,6 +165,9 @@ class DepcleanWithExcludeTestCase(TestCase):
 			"dev-libs/B-1": { "RDEPEND": "dev-libs/A" },
 			}
 
+		# depclean asserts non-empty @world set
+		world = ["non-empty/world-set"]
+
 		test_cases = (
 			#Without --exclude.
 			ResolverPlaygroundTestCase(
@@ -196,7 +199,7 @@ class DepcleanWithExcludeTestCase(TestCase):
 				cleanlist=[]),
 			)
 
-		playground = ResolverPlayground(installed=installed)
+		playground = ResolverPlayground(installed=installed, world=world)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
@@ -253,6 +256,9 @@ class DepcleanAndWildcardsTestCase(TestCase):
 			"dev-libs/B-1": {},
 			}
 
+		# depclean asserts non-empty @world set
+		world = ["non-empty/world-set"]
+
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["*/*"],
@@ -276,7 +282,7 @@ class DepcleanAndWildcardsTestCase(TestCase):
 				cleanlist=[]),
 			)
 
-		playground = ResolverPlayground(installed=installed)
+		playground = ResolverPlayground(installed=installed, world=world)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
