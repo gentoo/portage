@@ -133,7 +133,7 @@ class BinpkgFetcher(SpawnProcess):
 			if bintree._remote_has_index:
 				remote_mtime = bintree._remotepkgs[
 					bintree.dbapi._instance_key(
-					self.pkg.cpv)].get("MTIME")
+					self.pkg.cpv)].get("_mtime_")
 				if remote_mtime is not None:
 					try:
 						remote_mtime = long(remote_mtime)
