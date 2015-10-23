@@ -863,11 +863,31 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	def unresolved_deps():
 
+		soname_deps = set()
 		unresolvable = set()
 		for dep in resolver._dynamic_config._initially_unsatisfied_deps:
 			if isinstance(dep.parent, Package) and \
 				(dep.priority > UnmergeDepPriority.SOFT):
-				unresolvable.add((dep.atom, dep.parent.cpv))
+				if dep.atom.soname:
+					soname_deps.add((dep.atom, dep.parent.cpv))
+				else:
+					unresolvable.add((dep.atom, dep.parent.cpv))
+
+		if soname_deps:
+			# Generally, broken soname dependencies can safely be
+			# suppressed by a REQUIRES_EXCLUDE setting in the ebuild,
+			# so they should only trigger a warning message.
+			prefix = warn(" * ")
+			msg = []
+			msg.append("Broken soname dependencies found:")
+			msg.append("")
+			for atom, parent in soname_deps:
+				msg.append("  %s required by:" % (atom,))
+				msg.append("    %s" % (parent,))
+				msg.append("")
+
+			writemsg_level("".join("%s%s\n" % (prefix, line) for line in msg),
+				level=logging.WARNING, noiselevel=-1)
 
 		if not unresolvable:
 			return False
