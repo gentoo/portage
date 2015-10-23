@@ -620,7 +620,12 @@ class RepoConfigLoader(object):
 		treemap = {}
 		ignored_map = {}
 		ignored_location_map = {}
-		default_opts = {}
+		default_opts = {
+			"EPREFIX" : settings["EPREFIX"],
+			"EROOT" : settings["EROOT"],
+			"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
+			"ROOT" : settings["ROOT"],
+		}
 
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
