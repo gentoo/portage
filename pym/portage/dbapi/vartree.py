@@ -728,7 +728,13 @@ class vardbapi(dbapi):
 		if pkg_data:
 			cache_mtime, metadata = pkg_data
 			if isinstance(cache_mtime, float):
-				cache_valid = cache_mtime == mydir_stat.st_mtime
+				if cache_mtime == mydir_stat.st_mtime:
+					cache_valid = True
+
+				# Handle truncated mtime in order to avoid cache
+				# invalidation for livecd squashfs (bug 564222).
+				elif long(cache_mtime) == mydir_stat.st_mtime:
+					cache_valid = True
 			else:
 				# Cache may contain integer mtime.
 				cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
