@@ -17,10 +17,8 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.TaskSequence import TaskSequence
 
-from portage.util import writemsg
 import portage
 from portage import _encodings, _unicode_decode, _unicode_encode, os
-from portage.output import colorize
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
@@ -77,16 +75,17 @@ class EbuildBuild(CompositeTask):
 		elif prefetcher.isAlive() and \
 			prefetcher.poll() is None:
 
-			waiting_msg = "Fetching files " + \
-				"in the background. " + \
-				"To view fetch progress, run `tail -f %s` in another terminal." \
-				% (os.path.join(_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
-			msg_prefix = colorize("GOOD", " * ")
-			from textwrap import wrap
-			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
-				for line in wrap(waiting_msg, 65))
 			if not self.background:
-				writemsg(waiting_msg, noiselevel=-1)
+				fetch_log = os.path.join(
+					_emerge.emergelog._emerge_log_dir, 'emerge-fetch.log')
+				msg = (
+					'Fetching files in the background.',
+					'To view fetch progress, run in another terminal:',
+					'tail -f %s' % fetch_log,
+				)
+				out = portage.output.EOutput()
+				for l in msg:
+					out.einfo(l)
 
 			self._current_task = prefetcher
 			prefetcher.addExitListener(self._prefetch_exit)

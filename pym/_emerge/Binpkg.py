@@ -12,7 +12,7 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
-from portage.util import ensure_dirs, writemsg
+from portage.util import ensure_dirs
 import portage
 from portage import os
 from portage import shutil
@@ -21,8 +21,6 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 import io
 import logging
-import textwrap
-from portage.output import colorize
 
 class Binpkg(CompositeTask):
 
@@ -86,16 +84,18 @@ class Binpkg(CompositeTask):
 		elif prefetcher.isAlive() and \
 			prefetcher.poll() is None:
 
-			waiting_msg = ("Fetching '%s' " + \
-				"in the background. " + \
-				"To view fetch progress, run `tail -f %s` in another terminal.") \
-				% (prefetcher.pkg_path, os.path.join(
-					_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"))
-			msg_prefix = colorize("GOOD", " * ")
-			waiting_msg = "".join("%s%s\n" % (msg_prefix, line) \
-				for line in textwrap.wrap(waiting_msg, 65))
 			if not self.background:
-				writemsg(waiting_msg, noiselevel=-1)
+				fetch_log = os.path.join(
+					_emerge.emergelog._emerge_log_dir, 'emerge-fetch.log')
+				msg = (
+					'Fetching in the background:',
+					prefetcher.pkg_path,
+					'To view fetch progress, run in another terminal:',
+					'tail -f %s' % fetch_log,
+				)
+				out = portage.output.EOutput()
+				for l in msg:
+					out.einfo(l)
 
 			self._current_task = prefetcher
 			prefetcher.addExitListener(self._prefetch_exit)
