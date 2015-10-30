@@ -1,13 +1,13 @@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import argparse
 import logging
 import sys
 
 import portage
 from portage import os
 from portage.util import normalize_path, writemsg_level, _recursive_file_list
-from portage.util._argparse import ArgumentParser
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -202,7 +202,7 @@ def parse_args(args):
 	description = "emirrordist - a fetch tool for mirroring " \
 		"of package distfiles"
 	usage = "emirrordist [options] <action>"
-	parser = ArgumentParser(description=description, usage=usage)
+	parser = argparse.ArgumentParser(description=description, usage=usage)
 
 	actions = parser.add_argument_group('Actions')
 	actions.add_argument("--version",

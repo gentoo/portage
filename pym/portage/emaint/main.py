@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 
-
+import argparse
 import sys
 import textwrap
 
@@ -12,7 +12,6 @@ from portage import os
 from portage.module import Modules
 from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
-from portage.util._argparse import ArgumentParser
 
 class OptionItem(object):
 	"""class to hold module ArgumentParser options data
@@ -169,8 +168,7 @@ def emaint_main(myargv):
 	module_names = module_controller.module_names[:]
 	module_names.insert(0, "all")
 
-
-	parser = ArgumentParser(usage=usage(module_controller))
+	parser = argparse.ArgumentParser(usage=usage(module_controller))
 	# add default options
 	parser_options = []
 	for opt in DEFAULT_OPTIONS:

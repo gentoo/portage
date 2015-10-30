@@ -4,6 +4,7 @@
 
 """This module contains functions used in Repoman to parse CLI arguments."""
 
+import argparse
 import logging
 import sys
 
@@ -12,7 +13,6 @@ from repoman._portage import portage
 
 from portage import _unicode_decode
 from portage import util
-from portage.util._argparse import ArgumentParser
 
 
 def parse_args(argv, qahelp, repoman_default_opts):
@@ -47,7 +47,7 @@ def parse_args(argv, qahelp, repoman_default_opts):
 
 	output_keys = sorted(output_choices)
 
-	parser = ArgumentParser(
+	parser = argparse.ArgumentParser(
 		usage="repoman [options] [mode]",
 		description="Modes: %s" % " | ".join(mode_keys),
 		epilog="For more help consult the man page.")

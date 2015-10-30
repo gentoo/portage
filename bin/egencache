@@ -5,6 +5,7 @@
 # unicode_literals for compat with TextIOWrapper in Python 2
 from __future__ import print_function, unicode_literals
 
+import argparse
 import platform
 import signal
 import stat
@@ -54,7 +55,6 @@ from portage.const import TIMESTAMP_FORMAT
 from portage.manifest import guessManifestFileType
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
-from portage.util._argparse import ArgumentParser
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage import cpv_getkey
@@ -81,7 +81,7 @@ if sys.hexversion >= 0x3000000:
 
 def parse_args(args):
 	usage = "egencache [options] <action> ... [atom] ..."
-	parser = ArgumentParser(usage=usage)
+	parser = argparse.ArgumentParser(usage=usage)
 
 	actions = parser.add_argument_group('Actions')
 	actions.add_argument("--update",

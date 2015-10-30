@@ -2,6 +2,7 @@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import argparse
 import os
 import stat
 import sys
@@ -9,7 +10,6 @@ import subprocess
 import traceback
 
 import portage
-from portage.util._argparse import ArgumentParser
 from portage.util.movefile import _copyxattr
 from portage.exception import OperationNotSupported
 
@@ -24,7 +24,7 @@ def parse_args(args):
 	Returns:
 	  tuple of the Namespace of parsed options, and a list of order parameters
 	"""
-	parser = ArgumentParser(add_help=False)
+	parser = argparse.ArgumentParser(add_help=False)
 
 	parser.add_argument(
 		"-b",

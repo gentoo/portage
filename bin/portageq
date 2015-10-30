@@ -4,6 +4,7 @@
 
 from __future__ import print_function, unicode_literals
 
+import argparse
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -44,7 +45,6 @@ portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
-from portage.util._argparse import ArgumentParser
 portage.proxy.lazyimport.lazyimport(globals(),
 	're',
 	'subprocess',
@@ -1310,7 +1310,7 @@ def usage(argv):
 	print()
 	print('Pkgcore pquery compatible options:')
 	print()
-	parser = ArgumentParser(add_help=False,
+	parser = argparse.ArgumentParser(add_help=False,
 		usage='portageq pquery [options] [atom ...]')
 	add_pquery_arguments(parser)
 	parser.print_help()
@@ -1342,7 +1342,7 @@ def main(argv):
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	parser = ArgumentParser(add_help=False)
+	parser = argparse.ArgumentParser(add_help=False)
 
 	# used by envvar
 	parser.add_argument("-v", dest="verbose", action="store_true")

@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 
+import argparse
 import platform
 import signal
 import sys
@@ -48,13 +49,12 @@ from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
-from portage.util._argparse import ArgumentParser
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
-parser = ArgumentParser(description=description, usage=usage)
+parser = argparse.ArgumentParser(description=description, usage=usage)
 
 force_help = "When used together with the digest or manifest " + \
 	"command, this option forces regeneration of digests for all " + \

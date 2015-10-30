@@ -13,12 +13,12 @@ https://en.wikipedia.org/wiki/Extended_file_attributes
 __doc__ = doc
 
 
+import argparse
 import array
 import os
 import re
 import sys
 
-from portage.util._argparse import ArgumentParser
 from portage.util._xattr import xattr
 
 
@@ -140,7 +140,7 @@ def restore_xattrs(file_in):
 
 def main(argv):
 
-	parser = ArgumentParser(description=doc)
+	parser = argparse.ArgumentParser(description=doc)
 	parser.add_argument('paths', nargs='*', default=[])
 
 	actions = parser.add_argument_group('Actions')

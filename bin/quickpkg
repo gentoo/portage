@@ -4,6 +4,7 @@
 
 from __future__ import division, print_function
 
+import argparse
 import errno
 import math
 import signal
@@ -26,7 +27,6 @@ xattr = _xattr.xattr
 from portage.dbapi.vartree import dblink, tar_contents
 from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
-from portage.util._argparse import ArgumentParser
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
@@ -302,7 +302,7 @@ def quickpkg_main(options, args, eout):
 
 if __name__ == "__main__":
 	usage = "quickpkg [options] <list of package atoms or package sets>"
-	parser = ArgumentParser(usage=usage)
+	parser = argparse.ArgumentParser(usage=usage)
 	parser.add_argument("--umask",
 		default="0077",
 		help="umask used during package creation (default is 0077)")

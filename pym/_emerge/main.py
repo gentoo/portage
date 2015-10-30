@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import argparse
 import locale
 import platform
 import sys
@@ -19,7 +20,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'_emerge.is_valid_package_atom:insert_category_into_atom'
 )
 from portage import os
-from portage.util._argparse import ArgumentParser
 from portage.sync import _SUBMODULE_PATH_MAP
 
 if sys.hexversion >= 0x3000000:
@@ -705,7 +705,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 	}
 
-	parser = ArgumentParser(add_help=False)
+	parser = argparse.ArgumentParser(add_help=False)
 
 	for action_opt in actions:
 		parser.add_argument("--" + action_opt, action="store_true",
