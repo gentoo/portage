@@ -15,8 +15,10 @@ from __future__ import print_function
 
 import argparse
 import os
-import sys
+import shutil
 import subprocess
+import sys
+import tempfile
 
 
 # These are the versions we fully support and require to pass tests.
@@ -91,6 +93,8 @@ $ %(prog)s pym/portage/tests/xpak/test_decodeint.py
 		description=__doc__,
 		formatter_class=argparse.RawDescriptionHelpFormatter,
 		epilog=epilog)
+	parser.add_argument('--keep-temp', default=False, action='store_true',
+		help='Do not delete the temporary directory when exiting')
 	parser.add_argument('--color', type=str, default=None,
 		help='Whether to use colorized output (default is auto)')
 	parser.add_argument('--python-versions', action='append',
@@ -116,20 +120,34 @@ def main(argv):
 			else:
 				pyversions.extend(ver.split())
 
-	# Actually test those versions now.
-	statuses = []
-	for ver in pyversions:
-		prog = get_python_executable(ver)
-		cmd = [prog, '-b', '-Wd', 'pym/portage/tests/runTests.py'] + args
-		if os.access(prog, os.X_OK):
-			print('%sTesting with Python %s...%s' %
-				(colors.GOOD, ver, colors.NORMAL))
-			statuses.append(subprocess.call(cmd))
-		elif not ignore_missing:
-			print('%sCould not find requested Python %s%s' %
-				(colors.BAD, ver, colors.NORMAL))
-			statuses.append(1)
-		print()
+	tempdir = None
+	try:
+		# Set up a single tempdir for all the tests to use.
+		# This way we know the tests won't leak things on us.
+		tempdir = tempfile.mkdtemp(prefix='portage.runtests.')
+		os.environ['TMPDIR'] = tempdir
+
+		# Actually test those versions now.
+		statuses = []
+		for ver in pyversions:
+			prog = get_python_executable(ver)
+			cmd = [prog, '-b', '-Wd', 'pym/portage/tests/runTests.py'] + args
+			if os.access(prog, os.X_OK):
+				print('%sTesting with Python %s...%s' %
+					(colors.GOOD, ver, colors.NORMAL))
+				statuses.append(subprocess.call(cmd))
+			elif not ignore_missing:
+				print('%sCould not find requested Python %s%s' %
+					(colors.BAD, ver, colors.NORMAL))
+				statuses.append(1)
+			print()
+	finally:
+		if tempdir is not None:
+			if opts.keep_temp:
+				print('Temporary directory left behind:\n%s' % tempdir)
+			else:
+				# Nuke our tempdir and anything that might be under it.
+				shutil.rmtree(tempdir, True)
 
 	# Then summarize it all.
 	print('\nSummary:\n')
