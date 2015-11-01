@@ -2,6 +2,8 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+
 from distutils.core import setup, Command
 from distutils.command.build import build
 from distutils.command.build_scripts import build_scripts
@@ -250,9 +252,10 @@ class x_build_scripts(build_scripts):
 class x_clean(clean):
 	""" clean extended for doc & post-test cleaning """
 
-	def clean_docs(self):
+	@staticmethod
+	def clean_docs():
 		def get_doc_outfiles():
-			for dirpath, dirnames, filenames in os.walk('doc'):
+			for dirpath, _dirnames, filenames in os.walk('doc'):
 				for f in filenames:
 					if f.endswith('.docbook') or f == 'custom.xsl':
 						pass
@@ -367,7 +370,7 @@ class x_install(install):
 			'package': self.distribution.get_name(),
 			'version': self.distribution.get_version(),
 		}
-		for key, default in self.paths:
+		for key, _default in self.paths:
 			new_paths[key] = subst_vars(getattr(self, key), new_paths)
 			setattr(self, key, new_paths[key])
 		self.subst_paths = new_paths
@@ -556,7 +559,7 @@ class build_tests(x_build_scripts_custom):
 
 		# create $build_lib/../.portage_not_installed
 		# to enable proper paths in tests
-		with open(os.path.join(self.top_dir, '.portage_not_installed'), 'w') as f:
+		with open(os.path.join(self.top_dir, '.portage_not_installed'), 'w'):
 			pass
 
 
@@ -581,13 +584,13 @@ class test(Command):
 
 
 def find_packages():
-	for dirpath, dirnames, filenames in os.walk('pym'):
+	for dirpath, _dirnames, filenames in os.walk('pym'):
 		if '__init__.py' in filenames:
 			yield os.path.relpath(dirpath, 'pym')
 
 
 def find_scripts():
-	for dirpath, dirnames, filenames in os.walk('bin'):
+	for dirpath, _dirnames, filenames in os.walk('bin'):
 		for f in filenames:
 			if  f not in ['deprecated-path']:
 				yield os.path.join(dirpath, f)
@@ -598,10 +601,10 @@ def get_manpages():
 	if linguas is not None:
 		linguas = linguas.split()
 
-	for dirpath, dirnames, filenames in os.walk('man'):
+	for dirpath, _dirnames, filenames in os.walk('man'):
 		groups = collections.defaultdict(list)
 		for f in filenames:
-			fn, suffix = f.rsplit('.', 1)
+			_fn, suffix = f.rsplit('.', 1)
 			groups[suffix].append(os.path.join(dirpath, f))
 
 		topdir = dirpath[len('man/'):]
