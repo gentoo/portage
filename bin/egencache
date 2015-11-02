@@ -171,6 +171,9 @@ def parse_args(args):
 		dest="uld_output")
 
 	uc = parser.add_argument_group('--update-changelogs options')
+	uc.add_argument("--changelog-reversed",
+		action="store_true",
+		help="log commits in reverse order (oldest first)")
 	uc.add_argument("--changelog-output",
 		help="output filename for change logs",
 		dest="changelog_output",
@@ -745,7 +748,7 @@ class _special_filename(_filename_base):
 			return self.file_name < other.file_name
 
 class GenChangeLogs(object):
-	def __init__(self, portdb, changelog_output):
+	def __init__(self, portdb, changelog_output, changelog_reversed):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
 		self._wrapper = textwrap.TextWrapper(
@@ -754,6 +757,7 @@ class GenChangeLogs(object):
 				subsequent_indent = '  '
 			)
 		self._changelog_output = changelog_output
+		self._changelog_reversed = changelog_reversed
 
 	@staticmethod
 	def grab(cmd):
@@ -781,7 +785,11 @@ class GenChangeLogs(object):
 			''' % (cp, time.strftime('%Y'))))
 
 		# now grab all the commits
-		commits = self.grab(['git', 'rev-list', 'HEAD', '--', '.']).split()
+		revlist_cmd = ['git', 'rev-list']
+		if self._changelog_reversed:
+			revlist_cmd.append('--reverse')
+		revlist_cmd.extend(['HEAD', '--', '.'])
+		commits = self.grab(revlist_cmd).split()
 
 		for c in commits:
 			# Explaining the arguments:
@@ -1140,7 +1148,8 @@ def egencache_main(args):
 
 	if options.update_changelogs:
 		gen_clogs = GenChangeLogs(portdb,
-			changelog_output=options.changelog_output)
+			changelog_output=options.changelog_output,
+			changelog_reversed=options.changelog_reversed)
 		gen_clogs.run()
 		ret.append(gen_clogs.returncode)
 
