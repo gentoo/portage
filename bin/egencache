@@ -809,7 +809,7 @@ class GenChangeLogs(object):
 					f = l.split()
 					if f[1] == 'Manifest':
 						pass # XXX: remanifest commits?
-					elif f[1] == 'ChangeLog':
+					elif f[1].startswith('ChangeLog'):
 						pass
 					elif f[0].startswith('A'):
 						changed.append(_special_filename("+", f[1]))
