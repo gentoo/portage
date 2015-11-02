@@ -170,6 +170,12 @@ def parse_args(args):
 		help="output file for use.local.desc data (or '-' for stdout)",
 		dest="uld_output")
 
+	uc = parser.add_argument_group('--update-changelogs options')
+	uc.add_argument("--changelog-output",
+		help="output filename for change logs",
+		dest="changelog_output",
+		default="ChangeLog")
+
 	options, args = parser.parse_known_args(args)
 
 	if options.jobs:
@@ -739,7 +745,7 @@ class _special_filename(_filename_base):
 			return self.file_name < other.file_name
 
 class GenChangeLogs(object):
-	def __init__(self, portdb):
+	def __init__(self, portdb, changelog_output):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
 		self._wrapper = textwrap.TextWrapper(
@@ -747,6 +753,7 @@ class GenChangeLogs(object):
 				initial_indent = '  ',
 				subsequent_indent = '  '
 			)
+		self._changelog_output = changelog_output
 
 	@staticmethod
 	def grab(cmd):
@@ -756,7 +763,7 @@ class GenChangeLogs(object):
 
 	def generate_changelog(self, cp):
 		try:
-			output = io.open('ChangeLog',
+			output = io.open(self._changelog_output,
 				mode='w', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
 		except IOError as e:
@@ -1132,7 +1139,8 @@ def egencache_main(args):
 		ret.append(gen_desc.returncode)
 
 	if options.update_changelogs:
-		gen_clogs = GenChangeLogs(portdb)
+		gen_clogs = GenChangeLogs(portdb,
+			changelog_output=options.changelog_output)
 		gen_clogs.run()
 		ret.append(gen_clogs.returncode)
 
