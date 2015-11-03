@@ -769,7 +769,7 @@ class GenChangeLogs(object):
 		output.write(textwrap.dedent('''\
 			# ChangeLog for %s
 			# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2
-			# $Header: $
+			# $Id$
 
 			''' % (cp, time.strftime('%Y'))))
 
