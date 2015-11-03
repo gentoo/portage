@@ -96,6 +96,24 @@ class AbstractEbuildProcess(SpawnProcess):
 					with open(os.path.join(
 						cgroup_portage, 'notify_on_release'), 'w') as f:
 						f.write('1')
+				else:
+					# Update release_agent if it no longer exists, because
+					# it refers to a temporary path when portage is updating
+					# itself.
+					release_agent = os.path.join(
+						cgroup_portage, 'release_agent')
+					try:
+						with open(release_agent) as f:
+							release_agent_path = f.readline().rstrip('\n')
+					except EnvironmentError:
+						release_agent_path = None
+
+					if (release_agent_path is None or
+						not os.path.exists(release_agent_path)):
+						with open(release_agent, 'w') as f:
+							f.write(os.path.join(
+								self.settings['PORTAGE_BIN_PATH'],
+								'cgroup-release-agent'))
 
 				cgroup_path = tempfile.mkdtemp(dir=cgroup_portage,
 					prefix='%s:%s.' % (self.settings["CATEGORY"],
