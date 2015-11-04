@@ -1,6 +1,25 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.24
+==================================
+* Bug Fixes:
+    - Bug 562964 handle missing cgroup IOError
+    - Bug 562808 repoman: Set max DESCRIPTION length to 80
+    - Bug 563482 emerge(1): document --oneshot caveats
+    - Bug 563740 calc_depclean: fix AttributeError for
+                 SonameAtom.unevaluated_atom
+    - Bug 563844 calc_depclean: do not abort for broken soname dependencies
+    - Bug 563876 BinpkgFetcher._set_returncode: fix ftp _mtime_ handling
+    - Bug 563546 repoman: check deps of stable ebuilds for unstable
+                 configurations
+    - Bug 563836 RepoConfigLoader: allow subsitution of variables like ROOT in
+                 repos.conf
+    - Bug 564222 vardbapi.aux_get: treat cache as valid if mtime is truncated
+    - Bug 561264 AbstractEbuildProcess: validate cgroup release agent
+* Egencache changes for the new git tree changelog generation.
+
+
 portage-2.2.23
 ==================================
 * Bug Fixes:
