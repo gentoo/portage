@@ -112,10 +112,10 @@ class RsyncSync(NewBase):
 		if syncuri.startswith("file://"):
 			self.proto = "file"
 			dosyncuri = syncuri[6:]
-			is_synced, exitcode = self._do_rsync(
+			is_synced, exitcode, updatecache_flg = self._do_rsync(
 				dosyncuri, timestamp, opts)
 			self._process_exitcode(exitcode, dosyncuri, out, 1)
-			return (exitcode, exitcode == os.EX_OK)
+			return (exitcode, updatecache_flg)
 
 		retries=0
 		try:
@@ -138,7 +138,7 @@ class RsyncSync(NewBase):
 		else:
 			# getaddrinfo needs the brackets stripped
 			getaddrinfo_host = hostname[1:-1]
-		updatecache_flg=True
+		updatecache_flg = False
 		all_rsync_opts = set(self.rsync_opts)
 		all_rsync_opts.update(self.extra_rsync_opts)
 
@@ -240,7 +240,8 @@ class RsyncSync(NewBase):
 			if dosyncuri.startswith('ssh://'):
 				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
-			is_synced, exitcode = self._do_rsync(dosyncuri, timestamp, opts)
+			is_synced, exitcode, updatecache_flg = self._do_rsync(
+				dosyncuri, timestamp, opts)
 			if is_synced:
 				break
 
@@ -251,7 +252,6 @@ class RsyncSync(NewBase):
 			else:
 				# over retries
 				# exit loop
-				updatecache_flg=False
 				exitcode = EXCEEDED_MAX_RETRIES
 				break
 		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
@@ -382,6 +382,7 @@ class RsyncSync(NewBase):
 
 
 	def _do_rsync(self, syncuri, timestamp, opts):
+		updatecache_flg = False
 		is_synced = False
 		if timestamp != 0 and "--quiet" not in opts:
 			print(">>> Checking server timestamp ...")
@@ -489,7 +490,7 @@ class RsyncSync(NewBase):
 				print(">>> In order to force sync, remove '%s'." % self.servertimestampfile)
 				print(">>>")
 				print()
-				return is_synced, exitcode
+				return is_synced, exitcode, updatecache_flg
 			elif (servertimestamp != 0) and (servertimestamp < timestamp):
 				self.logger(self.xterm_titles,
 					">>> Server out of date: %s" % syncuri)
@@ -543,6 +544,8 @@ class RsyncSync(NewBase):
 							os.unlink(self.servertimestampfile)
 						except OSError:
 							pass
+					else:
+						updatecache_flg = True
 
 				if exitcode in [0,1,3,4,11,14,20,21]:
 					is_synced = True
@@ -554,4 +557,4 @@ class RsyncSync(NewBase):
 			# --prune-empty-directories.  Retry for a server that supports
 			# at least rsync protocol version 29 (>=rsync-2.6.4).
 			pass
-		return is_synced, exitcode
+		return is_synced, exitcode, updatecache_flg
