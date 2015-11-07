@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+import subprocess
 
 import portage
 from portage import os
@@ -81,6 +82,10 @@ class GitSync(NewBase):
 		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
 		writemsg_level(git_cmd + "\n")
 
+		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
+		previous_rev = subprocess.check_output(rev_cmd,
+			cwd=portage._unicode_encode(self.repo.location))
+
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
 			**portage._native_kwargs(self.spawn_kwargs))
@@ -89,4 +94,8 @@ class GitSync(NewBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		return (os.EX_OK, True)
+
+		current_rev = subprocess.check_output(rev_cmd,
+			cwd=portage._unicode_encode(self.repo.location))
+
+		return (os.EX_OK, current_rev != previous_rev)
