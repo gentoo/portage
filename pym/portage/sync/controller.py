@@ -114,16 +114,17 @@ class SyncManager(object):
 			return desc
 		return []
 
-	def async(self, emerge_config=None, repo=None):
+	def async(self, emerge_config=None, repo=None, master_hooks=True):
 		self.emerge_config = emerge_config
 		self.settings, self.trees, self.mtimedb = emerge_config
 		self.xterm_titles = "notitles" not in self.settings.features
 		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
 		return SyncRepo(sync_task=AsyncFunction(target=self.sync,
-			kwargs=dict(emerge_config=emerge_config, repo=repo)),
+			kwargs=dict(emerge_config=emerge_config, repo=repo,
+			master_hooks=master_hooks)),
 			sync_callback=self._sync_callback)
 
-	def sync(self, emerge_config=None, repo=None):
+	def sync(self, emerge_config=None, repo=None, master_hooks=True):
 		self.callback = None
 		self.repo = repo
 		self.exitcode = 1
@@ -156,9 +157,14 @@ class SyncManager(object):
 		taskmaster = TaskHandler(callback=self.do_callback)
 		taskmaster.run_tasks(tasks, func, status, options=task_opts)
 
-		self.perform_post_sync_hook(repo.name, repo.sync_uri, repo.location)
+		hooks_enabled = False
+		if (master_hooks or self.updatecache_flg or
+			not repo.sync_hooks_only_on_change):
+			hooks_enabled = True
+			self.perform_post_sync_hook(
+				repo.name, repo.sync_uri, repo.location)
 
-		return self.exitcode, None, self.updatecache_flg
+		return self.exitcode, None, self.updatecache_flg, hooks_enabled
 
 
 	def do_callback(self, result):
@@ -328,7 +334,7 @@ class SyncManager(object):
 		exitcode = proc.returncode
 		updatecache_flg = False
 		if proc.returncode == os.EX_OK:
-			exitcode, message, updatecache_flg = proc.result
+			exitcode, message, updatecache_flg, hooks_enabled = proc.result
 
 		if updatecache_flg and "metadata-transfer" not in self.settings.features:
 			updatecache_flg = False
