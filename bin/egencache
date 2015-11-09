@@ -75,8 +75,6 @@ else:
 	else:
 		from repoman.metadata import parse_metadata_use
 
-from repoman.vcs.vcs import FindVCS
-
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
 	long = int
@@ -920,9 +918,7 @@ class GenChangeLogs(object):
 		output.close()
 
 	def _task_iter(self):
-		os.chdir(self._repo_path)
-
-		if 'git' not in FindVCS():
+		if not os.path.isdir(os.environ.get('GIT_DIR', os.path.join(repo_path, '.git'))):
 			writemsg_level(
 				"ERROR: --update-changelogs supported only in git repos\n",
 				level=logging.ERROR, noiselevel=-1)
