@@ -982,6 +982,7 @@ fi
 if ___eapi_has_eapply; then
 	eapply() {
 		local failed
+		local -x LC_COLLATE=POSIX
 
 		_eapply_patch() {
 			local f=${1}
