@@ -981,6 +981,8 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
+		local failed
+
 		_eapply_patch() {
 			local f=${1}
 			local prefix=${2}
@@ -994,9 +996,9 @@ if ___eapi_has_eapply; then
 			# --no-backup-if-mismatch not to pollute the sources
 			patch -p1 -f -s -g0 --no-backup-if-mismatch \
 				"${patch_options[@]}" < "${f}"
-			if ! eend ${?}; then
+			failed=${?}
+			if ! eend "${failed}"; then
 				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
-				failed=1
 			fi
 		}
 
@@ -1054,13 +1056,13 @@ if ___eapi_has_eapply; then
 					_eapply_patch "${f2}" '  '
 
 					# in case of nonfatal
-					[[ -n ${failed} ]] && return 1
+					[[ ${failed} -ne 0 ]] && return "${failed}"
 				done
 			else
 				_eapply_patch "${f}"
 
 				# in case of nonfatal
-				[[ -n ${failed} ]] && return 1
+				[[ ${failed} -ne 0 ]] && return "${failed}"
 			fi
 		done
 
