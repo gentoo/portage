@@ -1070,6 +1070,10 @@ fi
 
 if ___eapi_has_eapply_user; then
 	eapply_user() {
+		local tagfile=${T}/.portage_user_patches_applied
+		[[ -f ${tagfile} ]] && return
+		>> "${tagfile}"
+
 		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
 		local d applied
