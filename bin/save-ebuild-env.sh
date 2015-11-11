@@ -51,7 +51,7 @@ __save_ebuild_env() {
 		__dump_trace die \
 		__quiet_mode __vecho __elog_base eqawarn elog \
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
-		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
+		KV_minor KV_micro KV_to_int get_KV has \
 		__has_phase_defined_up_to \
 		hasv hasq __qa_source __qa_call \
 		addread addwrite adddeny addpredict __sb_append_var \
