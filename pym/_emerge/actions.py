@@ -27,6 +27,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.util._get_vm_info:get_vm_info',
+	'portage.util.locale:check_locale',
 	'portage.emaint.modules.sync.sync:SyncRepos',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
 	'_emerge.help:help@emerge_help',
@@ -2466,6 +2467,8 @@ def validate_ebuild_environment(trees):
 		out = portage.output.EOutput()
 		for line in textwrap.wrap(msg, 65):
 			out.ewarn(line)
+
+	check_locale()
 
 def check_procfs():
 	procfs_path = '/proc'
