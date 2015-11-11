@@ -6,7 +6,49 @@
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
 
+# Make sure this isn't exported to scripts we execute.
+unset BASH_COMPAT
+
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
+
+# Set up the bash version compatibility level.  This does not disable
+# features when running with a newer version, but makes it so that when
+# bash changes behavior in an incompatible way, the older behavior is
+# used instead.
+__check_bash_version() {
+	# Figure out which min version of bash we require.
+	local maj min
+	if ___eapi_bash_3_2 ; then
+		maj=3 min=2
+	elif ___eapi_bash_4_2 ; then
+		maj=4 min=2
+	else
+		return
+	fi
+
+	# Make sure the active bash is sane.
+	if [[ ${BASH_VERSINFO[0]} -lt ${maj} ]] ||
+	   [[ ${BASH_VERSINFO[0]} -eq ${maj} && ${BASH_VERSINFO[1]} -lt ${min} ]] ; then
+		die ">=bash-${maj}.${min} is required"
+	fi
+
+	# Set the compat level in case things change with newer ones.  We must not
+	# export this into the env otherwise we might break  other shell scripts we
+	# execute (e.g. ones in /usr/bin).
+	BASH_COMPAT="${maj}.${min}"
+
+	# The variable above is new to bash-4.3.  For older versions, we have to use
+	# a compat knob.  Further, the compat knob only exists with older versions
+	# (e.g. bash-4.3 has compat42 but not compat43).  This means we only need to
+	# turn the knob with older EAPIs, and only when running newer bash versions:
+	# there is no bash-3.3 (it went 3.2 to 4.0), and when requiring bash-4.2, the
+	# var works with bash-4.3+, and you don't need to set compat to 4.2 when you
+	# are already running 4.2.
+	if ___eapi_bash_3_2 && [[ ${BASH_VERSINFO[0]} -gt 3 ]] ; then
+		shopt -s compat32
+	fi
+}
+__check_bash_version
 
 if [[ $EBUILD_PHASE != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh" || die
