@@ -1105,29 +1105,6 @@ def egencache_main(args):
 		else:
 			ret.append(gen_cache.returncode)
 
-	if options.update_manifests:
-
-		cp_iter = None
-		if atoms:
-			cp_iter = iter(atoms)
-
-		event_loop = global_event_loop()
-		scheduler = ManifestScheduler(portdb, cp_iter=cp_iter,
-			gpg_cmd=gpg_cmd, gpg_vars=gpg_vars,
-			force_sign_key=force_sign_key,
-			max_jobs=options.jobs,
-			max_load=options.load_average,
-			event_loop=event_loop)
-
-		signum = run_main_scheduler(scheduler)
-		if signum is not None:
-			sys.exit(128 + signum)
-
-		if options.tolerant:
-			ret.append(os.EX_OK)
-		else:
-			ret.append(scheduler.returncode)
-
 	if options.update_pkg_desc_index:
 		if repo_config.writable:
 			writable_location = repo_config.location
@@ -1166,6 +1143,29 @@ def egencache_main(args):
 		if signum is not None:
 			sys.exit(128 + signum)
 		ret.append(gen_clogs.returncode)
+
+	if options.update_manifests:
+
+		cp_iter = None
+		if atoms:
+			cp_iter = iter(atoms)
+
+		event_loop = global_event_loop()
+		scheduler = ManifestScheduler(portdb, cp_iter=cp_iter,
+			gpg_cmd=gpg_cmd, gpg_vars=gpg_vars,
+			force_sign_key=force_sign_key,
+			max_jobs=options.jobs,
+			max_load=options.load_average,
+			event_loop=event_loop)
+
+		signum = run_main_scheduler(scheduler)
+		if signum is not None:
+			sys.exit(128 + signum)
+
+		if options.tolerant:
+			ret.append(os.EX_OK)
+		else:
+			ret.append(scheduler.returncode)
 
 	if options.write_timestamp:
 		timestamp_path = os.path.join(repo_path, 'metadata', 'timestamp.chk')
