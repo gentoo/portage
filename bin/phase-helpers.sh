@@ -1026,11 +1026,11 @@ if ___eapi_has_eapply; then
 			done
 
 			# ensure that no options were interspersed with files
-			for i in "${files[@]}"; then
+			for i in "${files[@]}"; do
 				if [[ ${i} == -* ]]; then
 					die "eapply: all options must be passed before non-options"
 				fi
-			fi
+			done
 		fi
 
 		if [[ -z ${files[@]} ]]; then
