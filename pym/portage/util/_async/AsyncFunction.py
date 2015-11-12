@@ -15,7 +15,10 @@ class AsyncFunction(ForkProcess):
 	"result" attribute after the forked process has exited.
 	"""
 
-	__slots__ = ('args', 'kwargs', 'result', 'target',
+	# NOTE: This class overrides the meaning of the SpawnProcess 'args'
+	# attribute, and uses it to hold the positional arguments for the
+	# 'target' function.
+	__slots__ = ('kwargs', 'result', 'target',
 		'_async_func_reader', '_async_func_reader_pw')
 
 	def _start(self):
