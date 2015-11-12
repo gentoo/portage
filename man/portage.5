@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Feb 2015" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Nov 2015" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -967,6 +967,11 @@ Specifies CVS repository.
 .B sync\-depth
 Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
 the newest commit). If set to 0, the depth is unlimited.
+.TP
+.B sync\-hooks\-only\-on\-change
+If set to true, then sync of a given repository will not trigger postsync
+hooks unless hooks would have executed for a master repository or the
+repository has changed since the previous sync operation.
 .TP
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.

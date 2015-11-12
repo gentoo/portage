@@ -233,15 +233,17 @@ class SyncRepos(object):
 		retvals = sync_scheduler.retvals
 		msgs.extend(sync_scheduler.msgs)
 
-		# run the post_sync_hook one last time for
-		# run only at sync completion hooks
-		rcode = sync_manager.perform_post_sync_hook('')
 		if retvals:
 			msgs.extend(self.rmessage(retvals, 'sync'))
 		else:
 			msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
-		if rcode:
-			msgs.extend(self.rmessage([('None', rcode)], 'post-sync'))
+
+		# run the post_sync_hook one last time for
+		# run only at sync completion hooks
+		if sync_scheduler.global_hooks_enabled:
+			rcode = sync_manager.perform_post_sync_hook('')
+			if rcode:
+				msgs.extend(self.rmessage([('None', rcode)], 'post-sync'))
 
 		# Reload the whole config.
 		portage._sync_mode = False
@@ -339,6 +341,8 @@ class SyncScheduler(AsyncScheduler):
 				if master.name in selected_repo_names:
 					self._repo_map[master.name] = master
 					self._sync_graph.add(master.name, repo.name)
+		self._complete_graph = self._sync_graph.copy()
+		self._hooks_repos = set()
 		self._update_leaf_nodes()
 
 	def _task_exit(self, task):
@@ -347,9 +351,13 @@ class SyncScheduler(AsyncScheduler):
 		more leaf nodes.
 		'''
 		self._running_tasks.discard(task)
+		# Set hooks_enabled = True by default, in order to ensure
+		# that hooks will be called in a backward-compatible manner
+		# even if all sync tasks have failed.
+		hooks_enabled = True
 		returncode = task.returncode
 		if task.returncode == os.EX_OK:
-			returncode, message, updatecache_flg = task.result
+			returncode, message, updatecache_flg, hooks_enabled = task.result
 			if message:
 				self.msgs.append(message)
 		repo = task.kwargs['repo'].name
@@ -357,7 +365,37 @@ class SyncScheduler(AsyncScheduler):
 		self.retvals.append((repo, returncode))
 		self._sync_graph.remove(repo)
 		self._update_leaf_nodes()
+		if hooks_enabled:
+			self._hooks_repos.add(repo)
 		super(SyncScheduler, self)._task_exit(self)
+
+	def _master_hooks(self, repo_name):
+		"""
+		@param repo_name: a repo name
+		@type repo_name: str
+		@return: True if hooks would have been executed for any master
+			repositories of the given repo, False otherwise
+		@rtype: bool
+		"""
+		traversed_nodes = set()
+		node_stack = [repo_name]
+		while node_stack:
+			node = node_stack.pop()
+			if node in self._hooks_repos:
+				return True
+			if node not in traversed_nodes:
+				traversed_nodes.add(node)
+				node_stack.extend(self._complete_graph.child_nodes(node))
+		return False
+
+	@property
+	def global_hooks_enabled(self):
+		"""
+		@return: True if repo.postsync.d hooks would have been executed
+			for any repositories.
+		@rtype: bool
+		"""
+		return bool(self._hooks_repos)
 
 	def _update_leaf_nodes(self):
 		'''
@@ -389,9 +427,10 @@ class SyncScheduler(AsyncScheduler):
 		self._running_repos.add(node)
 		self._update_leaf_nodes()
 
-		task = self._sync_manager.async(
-			self._emerge_config, self._repo_map[node])
-		return task
+		return self._sync_manager.async(
+			emerge_config=self._emerge_config,
+			repo=self._repo_map[node],
+			master_hooks=self._master_hooks(node))
 
 	def _can_add_job(self):
 		'''
