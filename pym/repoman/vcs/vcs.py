@@ -39,15 +39,25 @@ _FindVCS_data = (
 )
 
 
-def FindVCS():
-	""" Try to figure out in what VCS' working tree we are. """
+def FindVCS(cwd=None):
+	"""
+	Try to figure out in what VCS' working tree we are.
+
+	@param cwd: working directory (default is os.getcwd())
+	@type cwd: str
+	@return: list of strings describing the discovered vcs types
+	@rtype: list
+	"""
+
+	if cwd is None:
+		cwd = os.getcwd()
 
 	outvcs = []
 
 	def seek(depth=None):
 		""" Seek for VCSes that have a top-level data directory only. """
 		retvcs = []
-		pathprep = ''
+		pathprep = cwd
 
 		while depth is None or depth > 0:
 			for vcs_type in _FindVCS_data:
@@ -70,10 +80,10 @@ def FindVCS():
 		return retvcs
 
 	# Level zero VCS-es.
-	if os.path.isdir('CVS'):
+	if os.path.isdir(os.path.join(cwd, 'CVS')):
 		outvcs.append('cvs')
 	if os.path.isdir('.svn'):  # <1.7
-		outvcs.append('svn')
+		outvcs.append(os.path.join(cwd, 'svn'))
 
 	# If we already found one of 'level zeros', just take a quick look
 	# at the current directory. Otherwise, seek parents till we get
