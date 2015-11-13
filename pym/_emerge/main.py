@@ -1072,7 +1072,7 @@ def emerge_main(args=None):
 
 	# Use system locale.
 	try:
-		locale.setlocale(locale.LC_ALL, '')
+		locale.setlocale(locale.LC_ALL, "")
 	except locale.Error as e:
 		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
 
@@ -1144,6 +1144,19 @@ def emerge_main(args=None):
 	os.umask(0o22)
 	emerge_config = load_emerge_config(
 		action=myaction, args=myfiles, opts=myopts)
+
+	# Make locale variables from configuration files (make.defaults, make.conf) affect locale of emerge process.
+	for locale_var_name in ("LANGUAGE", "LC_ALL", "LC_ADDRESS", "LC_COLLATE", "LC_CTYPE",
+		"LC_IDENTIFICATION", "LC_MEASUREMENT", "LC_MESSAGES", "LC_MONETARY",
+		"LC_NAME", "LC_NUMERIC", "LC_PAPER", "LC_TELEPHONE", "LC_TIME", "LANG"):
+		locale_var_value = emerge_config.running_config.settings.get(locale_var_name)
+		if locale_var_value is not None:
+			os.environ.setdefault(locale_var_name, locale_var_value)
+	try:
+		locale.setlocale(locale.LC_ALL, "")
+	except locale.Error as e:
+		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
+
 	rval = profile_check(emerge_config.trees, emerge_config.action)
 	if rval != os.EX_OK:
 		return rval
