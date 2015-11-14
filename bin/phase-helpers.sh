@@ -1044,12 +1044,17 @@ if ___eapi_has_eapply; then
 					local LC_ALL=POSIX
 					local prev_shopt=$(shopt -p nullglob)
 					shopt -s nullglob
-					files=( "${f}"/*.{patch,diff} )
+					local f
+					for f in "${1}"/*; do
+						if [[ ${f} == *.diff || ${f} == *.patch ]]; then
+							files+=( "${f}" )
+						fi
+					done
 					${prev_shopt}
 				}
 
-				local files
-				_eapply_get_files
+				local files=()
+				_eapply_get_files "${f}"
 				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
 
 				einfo "Applying patches from ${f} ..."
