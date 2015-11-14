@@ -1037,7 +1037,8 @@ if ___eapi_has_eapply; then
 			die "eapply: no files specified"
 		fi
 
-		for i in "${files[@]}"; do
+		local f
+		for f in "${files[@]}"; do
 			if [[ -d ${f} ]]; then
 				_eapply_get_files() {
 					local LC_ALL=POSIX
