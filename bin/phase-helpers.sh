@@ -1020,7 +1020,7 @@ if ___eapi_has_eapply; then
 			for (( i = 1; i <= ${#@}; ++i )); do
 				if [[ ${@:i:1} != -* ]]; then
 					patch_options=( "${@:1:i-1}" )
-					files=( "${@:i+1}" )
+					files=( "${@:i}" )
 					break
 				fi
 			done
