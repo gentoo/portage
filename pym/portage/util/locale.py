@@ -8,6 +8,7 @@ locale.
 """
 from __future__ import unicode_literals
 
+import locale
 import logging
 import os
 import textwrap
@@ -26,7 +27,7 @@ locale_categories = (
 )
 
 
-def _check_locale():
+def _check_locale(silent):
 	"""
 	The inner locale check function.
 	"""
@@ -44,6 +45,9 @@ def _check_locale():
 	ruc = [libc.toupper(c) for c in lc]
 
 	if lc != rlc or uc != ruc:
+		if silent:
+			return False
+
 		msg = ("WARNING: The LC_CTYPE variable is set to a locale " +
 			"that specifies transformation between lowercase " +
 			"and uppercase ASCII characters that is different than " +
@@ -71,7 +75,7 @@ def _check_locale():
 	return True
 
 
-def check_locale():
+def check_locale(silent=False, env=None):
 	"""
 	Check whether the locale is sane. Returns True if it is, prints
 	warning and returns False if it is not. Returns None if the check
@@ -81,7 +85,20 @@ def check_locale():
 	pid = os.fork()
 	if pid == 0:
 		try:
-			ret = _check_locale()
+			if env is not None:
+				for v in ("LC_ALL", "LC_CTYPE", "LANG"):
+					if v in env:
+						mylocale = env[v]
+						break
+				else:
+					mylocale = "C"
+
+				try:
+					locale.setlocale(locale.LC_CTYPE, mylocale)
+				except locale.Error:
+					os._exit(2)
+
+			ret = _check_locale(silent)
 			if ret is None:
 				os._exit(2)
 			else:
