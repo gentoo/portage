@@ -202,7 +202,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"xattr",
 ])
 
-EAPI                     = 5
+EAPI                     = 6
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
