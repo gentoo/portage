@@ -17,6 +17,15 @@ from portage.util import writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
 
 
+locale_categories = (
+	'LC_COLLATE', 'LC_CTYPE', 'LC_MONETARY', 'LC_MESSAGES',
+	'LC_NUMERIC', 'LC_TIME',
+	# GNU extensions
+	'LC_ADDRESS', 'LC_IDENTIFICATION', 'LC_MEASUREMENT', 'LC_NAME',
+	'LC_PAPER', 'LC_TELEPHONE',
+)
+
+
 def _check_locale():
 	"""
 	The inner locale check function.
@@ -88,3 +97,15 @@ def check_locale():
 		if ret != 2:
 			return ret == 0
 	return None
+
+
+def split_LC_ALL(env):
+	"""
+	Replace LC_ALL with split-up LC_* variables if it is defined.
+	Works on the passed environment (or settings instance).
+	"""
+	lc_all = env.get("LC_ALL")
+	if lc_all is not None:
+		for c in locale_categories:
+			env[c] = lc_all
+		del env["LC_ALL"]

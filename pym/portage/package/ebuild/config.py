@@ -24,6 +24,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep.soname.SonameAtom:SonameAtom',
 	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
+	'portage.util.locale:split_LC_ALL',
 )
 from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
@@ -2768,6 +2769,10 @@ class config(object):
 			phase_func = _phase_func_map.get(phase)
 			if phase_func is not None:
 				mydict["EBUILD_PHASE_FUNC"] = phase_func
+
+		if eapi_attrs.posixish_locale:
+			split_LC_ALL(mydict)
+			mydict["LC_COLLATE"] = "C"
 
 		return mydict
 
