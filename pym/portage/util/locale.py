@@ -27,6 +27,9 @@ locale_categories = (
 )
 
 
+_check_locale_cache = {}
+
+
 def _check_locale(silent):
 	"""
 	The inner locale check function.
@@ -82,17 +85,22 @@ def check_locale(silent=False, env=None):
 	can not be executed due to platform limitations.
 	"""
 
+	if env is not None:
+		for v in ("LC_ALL", "LC_CTYPE", "LANG"):
+			if v in env:
+				mylocale = env[v]
+				break
+		else:
+			mylocale = "C"
+
+		try:
+			return _check_locale_cache[mylocale]
+		except KeyError:
+
 	pid = os.fork()
 	if pid == 0:
 		try:
 			if env is not None:
-				for v in ("LC_ALL", "LC_CTYPE", "LANG"):
-					if v in env:
-						mylocale = env[v]
-						break
-				else:
-					mylocale = "C"
-
 				try:
 					locale.setlocale(locale.LC_CTYPE, mylocale)
 				except locale.Error:
@@ -109,11 +117,15 @@ def check_locale(silent=False, env=None):
 
 	pid2, ret = os.waitpid(pid, 0)
 	assert pid == pid2
+	pyret = None
 	if os.WIFEXITED(ret):
 		ret = os.WEXITSTATUS(ret)
 		if ret != 2:
-			return ret == 0
-	return None
+			pyret = ret == 0
+
+	if env is not None:
+		_check_locale_cache[mylocale] = pyret
+	return pyret
 
 
 def split_LC_ALL(env):
