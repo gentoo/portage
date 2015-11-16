@@ -524,8 +524,13 @@ class InheritEclass(LineCheck):
 			yield 'no function called from %s.eclass; please drop' % self._eclass
 
 _usex_supported_eapis = ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
+_in_iuse_supported_eapis = ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+		"5", "5-hdepend", "5-progress")
+_get_libdir_supported_eapis = _in_iuse_supported_eapis
 _eclass_eapi_functions = {
-	"usex": lambda eapi: eapi not in _usex_supported_eapis
+	"usex": lambda eapi: eapi not in _usex_supported_eapis,
+	"in_iuse": lambda eapi: eapi not in _in_iuse_supported_eapis,
+	"get_libdir": lambda eapi: eapi not in _get_libdir_supported_eapis,
 }
 
 # eclasses that export ${ECLASS}_src_(compile|configure|install)
