@@ -96,6 +96,7 @@ def check_locale(silent=False, env=None):
 		try:
 			return _check_locale_cache[mylocale]
 		except KeyError:
+			pass
 
 	pid = os.fork()
 	if pid == 0:
