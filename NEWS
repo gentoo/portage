@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.2.25
+--------------
+* EAPI 6 final fully implemented.
+
+
 portage-2.2.22
 -------------
 * Stage 1 of the repoman re-write code merged in to master branch

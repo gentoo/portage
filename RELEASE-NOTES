@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.25
+==================================
+* Bug Fixes:
+    - Bug 564988 Rsync and Git Sync: skip metadata-transfer when appropriate
+    - Bug 565172 repos.conf: support sync-hooks-only-on-change attribute
+    - Bug 565540 egencache: parallelize --update-changelogs
+    - Bug 565626 egencache: Delay updating Manifests until all other
+                 tasks complete
+* EAPI 6 final updates and changes.
+* locale: Warn when locale does not conform to ASCII rules for case conversions.
+          Force sane LC_COLLATE & LC_CTYPE as required in EAPI 6.
+
+
 portage-2.2.24
 ==================================
 * Bug Fixes:
