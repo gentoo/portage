@@ -1079,6 +1079,7 @@ fi
 
 if ___eapi_has_eapply_user; then
 	eapply_user() {
+		# keep path in __dyn_prepare in sync!
 		local tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
 		>> "${tagfile}"

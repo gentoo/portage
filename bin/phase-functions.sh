@@ -374,6 +374,12 @@ __dyn_prepare() {
 	__ebuild_phase pre_src_prepare
 	__vecho ">>> Preparing source in $PWD ..."
 	__ebuild_phase src_prepare
+
+	# keep path in eapply_user in sync!
+	if [[ ! -f ${T}/.portage_user_patches_applied ]]; then
+		die "eapply_user (or default) must be called in src_prepare()!"
+	fi
+
 	>> "$PORTAGE_BUILDDIR/.prepared" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
 	__vecho ">>> Source prepared."
