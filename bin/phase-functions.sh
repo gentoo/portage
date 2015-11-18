@@ -376,7 +376,7 @@ __dyn_prepare() {
 	__ebuild_phase src_prepare
 
 	# keep path in eapply_user in sync!
-	if [[ ! -f ${T}/.portage_user_patches_applied ]]; then
+	if ___eapi_has_eapply_user && [[ ! -f ${T}/.portage_user_patches_applied ]]; then
 		die "eapply_user (or default) must be called in src_prepare()!"
 	fi
 
