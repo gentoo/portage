@@ -1079,6 +1079,8 @@ fi
 
 if ___eapi_has_eapply_user; then
 	eapply_user() {
+		[[ ${EBUILD_PHASE} == prepare ]] || \
+			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
 		# keep path in __dyn_prepare in sync!
 		local tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
