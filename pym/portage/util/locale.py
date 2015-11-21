@@ -6,7 +6,7 @@ Function to check whether the current used LC_CTYPE handles case
 transformations of ASCII characters in a way compatible with the POSIX
 locale.
 """
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 
 import locale
 import logging
@@ -25,7 +25,6 @@ locale_categories = (
 	'LC_ADDRESS', 'LC_IDENTIFICATION', 'LC_MEASUREMENT', 'LC_NAME',
 	'LC_PAPER', 'LC_TELEPHONE',
 )
-
 
 _check_locale_cache = {}
 
