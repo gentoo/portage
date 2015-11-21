@@ -179,7 +179,13 @@ class SpawnProcess(SubProcess):
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
+		self._cgroup_cleanup()
 
+	def _cancel(self):
+		SubProcess._cancel(self)
+		self._cgroup_cleanup()
+
+	def _cgroup_cleanup(self):
 		if self.cgroup:
 			def get_pids(cgroup):
 				try:
