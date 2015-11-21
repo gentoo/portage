@@ -16,6 +16,8 @@ from _emerge.SubProcess import SubProcess
 import portage
 from portage import os
 from portage.const import BASH_BINARY
+from portage.localization import _
+from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.PipeLogger import PipeLogger
 
@@ -34,6 +36,10 @@ class SpawnProcess(SubProcess):
 
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
+
+	# Max number of attempts to kill the processes listed in cgroup.procs,
+	# given that processes may fork before they can be killed.
+	_CGROUP_CLEANUP_RETRY_MAX = 8
 
 	def _start(self):
 
@@ -209,10 +215,24 @@ class SpawnProcess(SubProcess):
 						elif e.errno != errno.ESRCH:
 							raise
 
-			# step 1: kill all orphans
-			pids = get_pids(self.cgroup)
+			# step 1: kill all orphans (loop in case of new forks)
+			remaining = self._CGROUP_CLEANUP_RETRY_MAX
+			while remaining:
+				remaining -= 1
+				pids = get_pids(self.cgroup)
+				if pids:
+					kill_all(pids, signal.SIGKILL)
+				else:
+					break
+
 			if pids:
-				kill_all(pids, signal.SIGKILL)
+				msg = []
+				msg.append(
+					_("Failed to kill pid(s) in '%(cgroup)s': %(pids)s") % dict(
+					cgroup=os.path.join(self.cgroup, 'cgroup.procs'),
+					pids=' '.join(str(pid) for pid in pids)))
+
+				self._elog('eerror', msg)
 
 			# step 2: remove the cgroup
 			try:
@@ -221,3 +241,8 @@ class SpawnProcess(SubProcess):
 				# it may be removed already, or busy
 				# we can't do anything good about it
 				pass
+
+	def _elog(self, elog_funcname, lines):
+		elog_func = getattr(EOutput(), elog_funcname)
+		for line in lines:
+			elog_func(line)
