@@ -218,6 +218,13 @@ class SyncManager(object):
 
 		self.usersync_uid = None
 		spawn_kwargs = {}
+		# Redirect command stderr to stdout, in order to prevent
+		# spurious cron job emails (bug 566132).
+		spawn_kwargs["fd_pipes"] = {
+			0: sys.__stdin__.fileno(),
+			1: sys.__stdout__.fileno(),
+			2: sys.__stdout__.fileno()
+		}
 		spawn_kwargs["env"] = self.settings.environ()
 		if repo.sync_user is not None:
 			def get_sync_user_data(sync_user):
