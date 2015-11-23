@@ -454,7 +454,7 @@ class RepoConfigLoader(object):
 
 	@staticmethod
 	def _add_repositories(portdir, portdir_overlay, prepos,
-		ignored_map, ignored_location_map, local_config, default_portdir):
+		ignored_map, local_config, default_portdir):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
 		portdir_orig = None
@@ -524,7 +524,6 @@ class RepoConfigLoader(object):
 							not (base_priority == 0 and
 							old_location == default_portdir):
 							ignored_map.setdefault(repo.name, []).append(old_location)
-							ignored_location_map[old_location] = repo.name
 							if old_location == portdir:
 								portdir = repo.user_location
 
@@ -621,7 +620,6 @@ class RepoConfigLoader(object):
 		location_map = {}
 		treemap = {}
 		ignored_map = {}
-		ignored_location_map = {}
 		default_opts = {
 			"EPREFIX" : settings["EPREFIX"],
 			"EROOT" : settings["EROOT"],
@@ -664,7 +662,7 @@ class RepoConfigLoader(object):
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
 		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
-			ignored_map, ignored_location_map, settings.local_config,
+			ignored_map, settings.local_config,
 			default_portdir)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
