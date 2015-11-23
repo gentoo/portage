@@ -547,7 +547,7 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config, portdir, default_opts):
+	def _parse(paths, prepos, local_config, portdir, default_opts):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser(defaults=default_opts)
 
@@ -644,9 +644,7 @@ class RepoConfigLoader(object):
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
 
 		try:
-			self._parse(paths, prepos, ignored_map,
-				ignored_location_map, settings.local_config,
-				portdir, default_opts)
+			self._parse(paths, prepos, settings.local_config, portdir, default_opts)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
@@ -659,8 +657,6 @@ class RepoConfigLoader(object):
 				{}, local_config=settings.local_config)
 			location_map.clear()
 			treemap.clear()
-			ignored_map.clear()
-			ignored_location_map.clear()
 
 		default_portdir = os.path.join(os.sep,
 			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
