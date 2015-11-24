@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.26
+==================================
+* Bug Fixes:
+    - Bug 566372 enable absolute_import
+                 fix python2.7 setlocale ValueError
+    - Bug 566414 SpawnProcess: make _cancel kill all processes in cgroup
+    - Bug 566420 SpawnProcess: re-check cgroup.procs until empty
+    - Bug 566654 einstalldocs: use lazy docinto calls (prevent empty dir)
+    - Bug 566132 SyncManager: redirect command stderr to stdout
+    - Bug 566704 depgraph: autounmask for conditional USE deps
+* other EAPI 6 code changes: eapply_user, several corrections
+
 portage-2.2.25
 ==================================
 * Bug Fixes:
