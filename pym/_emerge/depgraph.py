@@ -4075,6 +4075,7 @@ class depgraph(object):
 		# Now that the root packages have been added to the graph,
 		# process the dependencies.
 		if not self._create_graph():
+			self._apply_parent_use_changes()
 			return 0, myfavorites
 
 		try:
@@ -4161,6 +4162,24 @@ class depgraph(object):
 
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
+
+	def _apply_parent_use_changes(self):
+		"""
+		For parents with unsatisfied conditional dependencies, translate
+		USE change suggestions into autounmask changes.
+		"""
+		if (self._dynamic_config._unsatisfied_deps_for_display and
+			self._dynamic_config._autounmask):
+			remaining_items = []
+			for item in self._dynamic_config._unsatisfied_deps_for_display:
+				pargs, kwargs = item
+				kwargs = kwargs.copy()
+				kwargs['collect_use_changes'] = True
+				if not self._show_unsatisfied_dep(*pargs,
+					**portage._native_kwargs(kwargs)):
+					remaining_items.append(item)
+			if len(remaining_items) != len(self._dynamic_config._unsatisfied_deps_for_display):
+				self._dynamic_config._unsatisfied_deps_for_display = remaining_items
 
 	def _set_args(self, args):
 		"""
@@ -4718,7 +4737,8 @@ class depgraph(object):
 
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
-		check_backtrack=False, check_autounmask_breakage=False, show_req_use=None):
+		check_backtrack=False, check_autounmask_breakage=False, show_req_use=None,
+		collect_use_changes=False):
 		"""
 		When check_backtrack=True, no output is produced and
 		the method either returns or raises _backtrack_mask if
@@ -4962,14 +4982,27 @@ class depgraph(object):
 									"defined by %s: '%s'" % (myparent.cpv, \
 									human_readable_required_use(required_use))
 
+					target_use = {}
 					for flag in involved_flags:
 						if flag in self._pkg_use_enabled(myparent):
+							target_use[flag] = False
 							changes.append(colorize("blue", "-" + flag))
 						else:
+							target_use[flag] = True
 							changes.append(colorize("red", "+" + flag))
+
+					if collect_use_changes and not required_use_warning:
+						previous_changes = self._dynamic_config._needed_use_config_changes.get(myparent)
+						self._pkg_use_enabled(myparent, target_use=target_use)
+						if previous_changes is not self._dynamic_config._needed_use_config_changes.get(myparent):
+							return True
+
 					mreasons.append("Change USE: %s" % " ".join(changes) + required_use_warning)
 					if (myparent, mreasons) not in missing_use_reasons:
 						missing_use_reasons.append((myparent, mreasons))
+
+		if collect_use_changes:
+			return False
 
 		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
 			in missing_use_reasons if pkg not in masked_pkg_instances]
