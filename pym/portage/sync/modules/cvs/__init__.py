@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """CVS plug-in module for portage.
@@ -18,7 +18,7 @@ class CheckCVSConfig(CheckSyncConfig):
 
 
 	def check_cvs_repo(self):
-		if self.repo.module_specific_options['sync-cvs-repo'] is None:
+		if self.repo.module_specific_options.get('sync-cvs-repo') is None:
 			writemsg_level("!!! %s\n" %
 				_("Repository '%s' has sync-type=cvs, but is missing sync-cvs-repo attribute")
 				% self.repo.name, level=self.logger.ERROR, noiselevel=-1)
