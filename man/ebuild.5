@@ -1449,9 +1449,9 @@ depending on local\-file's ending.  Creates all necessary dirs.
 
 .PD 0
 .TP
-.B fowners\fR \fI<permissions> <file> [files]
+.B fowners\fR \fI[-h|-H|-L|-P|-R] [user][:group] <file> [files]
 .TP
-.B fperms\fR \fI<permissions> <file> [files]
+.B fperms\fR \fI[-R] <permissions> <file> [files]
 .PD 1
 Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying
 \fIpermissions\fR to \fIfiles\fR.
