@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -2393,7 +2393,7 @@ def load_emerge_config(emerge_config=None, **kargs):
 
 	return emerge_config
 
-def getgccversion(chost):
+def getgccversion(chost=None):
 	"""
 	rtype: C{str}
 	return:  the current in-use gcc version
@@ -2408,30 +2408,31 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	try:
-		proc = subprocess.Popen(["gcc-config", "-c"],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	except OSError:
-		myoutput = None
-		mystatus = 1
-	else:
-		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
-		mystatus = proc.wait()
-	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
-		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
+	if chost:
+		try:
+			proc = subprocess.Popen(["gcc-config", "-c"],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			myoutput = None
+			mystatus = 1
+		else:
+			myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+			mystatus = proc.wait()
+		if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
+			return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	try:
-		proc = subprocess.Popen(
-			[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	except OSError:
-		myoutput = None
-		mystatus = 1
-	else:
-		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
-		mystatus = proc.wait()
-	if mystatus == os.EX_OK:
-		return gcc_ver_prefix + myoutput
+		try:
+			proc = subprocess.Popen(
+				[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			myoutput = None
+			mystatus = 1
+		else:
+			myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+			mystatus = proc.wait()
+		if mystatus == os.EX_OK:
+			return gcc_ver_prefix + myoutput
 
 	try:
 		proc = subprocess.Popen(gcc_ver_command,
