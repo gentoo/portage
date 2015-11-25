@@ -1,5 +1,5 @@
 #!/usr/bin/python -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -800,15 +800,25 @@ def envvar(argv):
 		print("ERROR: insufficient parameters!")
 		return 2
 
+	exit_status = 0
+
 	for arg in argv:
 		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
 			print("WARNING: 'portageq envvar %s' is deprecated. Use any of "
 				"'get_repos, get_repo_path, repos_config' instead."
 				% arg, file=sys.stderr)
+
+		value = portage.settings.get(arg)
+		if value is None:
+			value = ""
+			exit_status = 1
+
 		if verbose:
-			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
+			print(arg + "=" + portage._shell_quote(value))
 		else:
-			print(portage.settings[arg])
+			print(value)
+
+	return exit_status
 
 docstrings['envvar'] = """<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
