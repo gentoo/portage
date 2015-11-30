@@ -1,5 +1,5 @@
 #!/usr/bin/python -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -49,6 +49,7 @@ from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
+from portage.exception import PortageKeyError
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
@@ -273,7 +274,7 @@ try:
 	metadata = dict(zip(Package.metadata_keys,
 		portage.db[portage.settings['EROOT']][mytree].dbapi.aux_get(
 		cpv, Package.metadata_keys, myrepo=myrepo)))
-except KeyError:
+except PortageKeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
 
