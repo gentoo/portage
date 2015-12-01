@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -987,10 +987,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					}
 
 					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
-						try:
-							variables[k] = mysettings[k]
-						except KeyError:
-							pass
+						v = mysettings.get(k)
+						if v is not None:
+							variables[k] = v
 
 					myfetch = shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
