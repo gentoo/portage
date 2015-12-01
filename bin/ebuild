@@ -8,6 +8,8 @@ import argparse
 import platform
 import signal
 import sys
+import textwrap
+
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
@@ -49,7 +51,9 @@ from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
-from portage.exception import PortageKeyError
+from portage.exception import PermissionDenied, PortageKeyError, \
+	PortagePackageException, UnsupportedAPIException
+import portage.util
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
@@ -95,8 +99,6 @@ if not opts.ignore_default_opts:
 
 debug = opts.debug
 force = opts.force
-
-import portage.util, portage.const
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
@@ -305,17 +307,13 @@ def stale_env_warning():
 			msg = ("Existing ${T}/environment for '%s' will be sourced. " + \
 				"Run 'clean' to start with a fresh environment.") % \
 				(tmpsettings["PF"], )
-			from textwrap import wrap
-			msg = wrap(msg, 70)
+			msg = textwrap.wrap(msg, 70)
 			for x in msg:
 				portage.writemsg(">>> %s\n" % x)
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
 					'.ebuild_changed'), 'w').close()
-
-from portage.exception import PermissionDenied, \
-	PortagePackageException, UnsupportedAPIException
 
 if 'digest' in tmpsettings.features:
 	if pargs and pargs[0] not in ("digest", "manifest"):
@@ -345,8 +343,7 @@ for arg in pargs:
 		# aux_get error
 		a = 1
 	except UnsupportedAPIException as e:
-		from textwrap import wrap
-		msg = wrap(str(e), 70)
+		msg = textwrap.wrap(str(e), 70)
 		del e
 		for x in msg:
 			portage.writemsg("!!! %s\n" % x, noiselevel=-1)
