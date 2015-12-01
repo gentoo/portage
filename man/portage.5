@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Nov 2015" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Dec 2015" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -862,9 +862,6 @@ only.
 .TP
 .BR repos.conf
 Specifies \fIsite\-specific\fR repository configuration information.
-.br
-Configuration specified in \fBrepos.conf\fR can be overriden by \fBPORTAGE_REPOSITORIES\fR
-environmental variable, which has the same format as \fBrepos.conf\fR.
 
 .I Format:
 .nf
@@ -872,6 +869,20 @@ environmental variable, which has the same format as \fBrepos.conf\fR.
 \- configuration of each repository is specified in a section starting with \
 "[${repository_name}]"
 \- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.I Environmental variables overriding configuration:
+.nf
+\- \fBPORTAGE_REPOSITORIES\fR overrides full configuration.
+  Format: Format of repos.conf
+  Environmental variables described below are ignored when PORTAGE_REPOSITORIES is set.
+\- \fBPORTAGE_REPOSITORY:${repository_name}:${attribute}\fR overrides value of given attribute.
+  Usage of \fBenv\fR(1) tool is needed if ":" character is not supported in names of shell variables.
+  Example: env PORTAGE_REPOSITORY:gentoo:location=/var/repositories/gentoo emerge ...
+\- \fBPORTAGE_ADDED_REPOSITORIES\fR specifies names of repositories added to configuration.
+  Format: Whitespace\-separated list of names of repositories
+\- \fBPORTAGE_DELETED_REPOSITORIES\fR specifies names of repositories deleted from configuration.
+  Format: Whitespace\-separated list of names of repositories
 .fi
 
 .I Attributes supported in DEFAULT section:
