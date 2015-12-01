@@ -1580,7 +1580,7 @@ def action_info(settings, trees, myopts, myfiles):
 	chost = settings.get("CHOST")
 
 	append(getportageversion(settings["PORTDIR"], None,
-		settings.profile_path, settings["CHOST"],
+		settings.profile_path, chost,
 		trees[settings['EROOT']]["vartree"].dbapi))
 
 	header_width = 65
@@ -2810,7 +2810,7 @@ def run_action(emerge_config):
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 	apply_priorities(emerge_config.target_config.settings)
 
-	for fmt in emerge_config.target_config.settings["PORTAGE_BINPKG_FORMAT"].split():
+	for fmt in emerge_config.target_config.settings.get("PORTAGE_BINPKG_FORMAT", "").split():
 		if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
 			if "--pkg-format" in emerge_config.opts:
 				problematic="--pkg-format"
@@ -2827,7 +2827,7 @@ def run_action(emerge_config):
 			emerge_config.target_config.settings["PORTDIR"],
 			None,
 			emerge_config.target_config.settings.profile_path,
-			emerge_config.target_config.settings["CHOST"],
+			emerge_config.target_config.settings.get("CHOST"),
 			emerge_config.target_config.trees['vartree'].dbapi) + '\n',
 			noiselevel=-1)
 		return 0

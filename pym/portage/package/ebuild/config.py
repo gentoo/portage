@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -15,6 +15,7 @@ import platform
 import pwd
 import re
 import sys
+import traceback
 import warnings
 
 from _emerge.Package import Package
@@ -1257,13 +1258,13 @@ class config(object):
 				use = frozenset(settings['PORTAGE_USE'].split())
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
-				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings.get('PORTAGE_REPO_NAME'))
+				settings.mycpv, use, settings.get('LICENSE', ''), settings.get('SLOT'), settings.get('PORTAGE_REPO_NAME'))
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
 		def _restrict(self, use, settings):
 			try:
-				restrict = set(use_reduce(settings['RESTRICT'], uselist=use, flat=True))
+				restrict = set(use_reduce(settings.get('RESTRICT', ''), uselist=use, flat=True))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -2567,7 +2568,23 @@ class config(object):
 		try:
 			return self._getitem(key)
 		except KeyError:
-			return '' # for backward compat, don't raise KeyError
+			if portage._internal_caller:
+				stack = traceback.format_stack()[:-1] + traceback.format_exception(*sys.exc_info())[1:]
+				try:
+					# Ensure that output is written to terminal.
+					with open("/dev/tty", "w") as f:
+						f.write("=" * 96 + "\n")
+						f.write("=" * 8 + " Traceback for invalid call to portage.package.ebuild.config.config.__getitem__ " + "=" * 8 + "\n")
+						f.writelines(stack)
+						f.write("=" * 96 + "\n")
+				except:
+					pass
+				raise
+			else:
+				warnings.warn(_("Passing nonexistent key %r to %s is deprecated. Use %s instead.") %
+					(key, "portage.package.ebuild.config.config.__getitem__",
+					"portage.package.ebuild.config.config.get"), DeprecationWarning, stacklevel=2)
+				return ""
 
 	def _getitem(self, mykey):
 
@@ -2697,7 +2714,9 @@ class config(object):
 		for x in self:
 			if x in environ_filter:
 				continue
-			myvalue = self[x]
+			myvalue = self.get(x)
+			if myvalue is None:
+				continue
 			if not isinstance(myvalue, basestring):
 				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
 					(x, myvalue), noiselevel=-1)

@@ -653,10 +653,12 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		# matchall behavior to account for profile use.mask/force. The
 		# ARCH/archlist code here may be redundant, since the profile
 		# really should be handling ARCH masking/forcing itself.
+		arch = mysettings.get("ARCH")
 		mymasks.update(mysettings.usemask)
 		mymasks.update(mysettings.archlist())
-		mymasks.discard(mysettings["ARCH"])
-		useforce.add(mysettings["ARCH"])
+		if arch:
+			mymasks.discard(arch)
+			useforce.add(arch)
 		useforce.update(mysettings.useforce)
 		useforce.difference_update(mymasks)
 
