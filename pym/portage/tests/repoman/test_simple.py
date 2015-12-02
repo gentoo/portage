@@ -1,4 +1,4 @@
-# Copyright 2011-2014 Gentoo Foundation
+# Copyright 2011-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -229,6 +229,7 @@ class SimpleRepomanTestCase(TestCase):
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
+			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
 			"PYTHONPATH" : pythonpath,
 		}
 

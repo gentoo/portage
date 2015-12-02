@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -51,6 +51,7 @@ class IpcDaemonTestCase(TestCase):
 			env['PORTAGE_BIN_PATH'] = PORTAGE_BIN_PATH
 			env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 			env['PORTAGE_BUILDDIR'] = os.path.join(tmpdir, 'cat', 'pkg-1')
+			env['PYTHONDONTWRITEBYTECODE'] = os.environ.get('PYTHONDONTWRITEBYTECODE', '')
 
 			if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 				env["__PORTAGE_TEST_HARDLINK_LOCKS"] = \

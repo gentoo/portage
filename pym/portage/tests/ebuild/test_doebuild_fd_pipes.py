@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
@@ -75,6 +75,7 @@ class DoebuildFdPipesTestCase(TestCase):
 			settings.features.add("test")
 			settings['PORTAGE_PYTHON'] = portage._python_interpreter
 			settings['PORTAGE_QUIET'] = "1"
+			settings['PYTHONDONTWRITEBYTECODE'] = os.environ.get("PYTHONDONTWRITEBYTECODE", "")
 
 			fake_bin = os.path.join(settings["EPREFIX"], "bin")
 			portage.util.ensure_dirs(fake_bin)
