@@ -704,31 +704,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
-
-			if [[ -n $QA_PREBUILT ]] ; then
-
-				# these ones support fnmatch patterns
-				QA_EXECSTACK+=" $QA_PREBUILT"
-				QA_TEXTRELS+=" $QA_PREBUILT"
-				QA_WX_LOAD+=" $QA_PREBUILT"
-
-				# these ones support regular expressions, so translate
-				# fnmatch patterns to regular expressions
-				for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
-					if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
-						eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
-					else
-						eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
-					fi
-				done
-
-				unset x
-			fi
-
-			# This needs to be exported since prepstrip is a separate shell script.
-			[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-			eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && \
-				export QA_PRESTRIPPED_${ARCH/-/_}"
 		fi
 	fi
 fi

@@ -524,6 +524,33 @@ __dyn_install() {
 	trap "__abort_install" SIGINT SIGQUIT
 	__start_distcc
 
+	# Handle setting QA_* based on QA_PREBUILT
+	# Those variables shouldn't be needed before src_install()
+	# (QA_PRESTRIPPED is used in prepstrip, others in install-qa-checks)
+	# and delay in setting them allows us to set them in pkg_setup()
+	if [[ -n $QA_PREBUILT ]] ; then
+		# these ones support fnmatch patterns
+		QA_EXECSTACK+=" $QA_PREBUILT"
+		QA_TEXTRELS+=" $QA_PREBUILT"
+		QA_WX_LOAD+=" $QA_PREBUILT"
+
+		# these ones support regular expressions, so translate
+		# fnmatch patterns to regular expressions
+		for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
+			if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
+				eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
+			else
+				eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
+			fi
+		done
+
+		unset x
+	fi
+	# This needs to be exported since prepstrip is a separate shell script.
+	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+	eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && \
+		export QA_PRESTRIPPED_${ARCH/-/_}"
+
 	__ebuild_phase pre_src_install
 
 	if ___eapi_has_prefix_variables; then
