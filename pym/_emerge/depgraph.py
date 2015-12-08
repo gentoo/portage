@@ -3667,7 +3667,7 @@ class depgraph(object):
 				if ebuild_path:
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
 						cp, os.path.basename(ebuild_path)):
-						writemsg(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n\n"), noiselevel=-1)
+						writemsg(colorize("BAD", "\n*** You need to adjust repos.conf to emerge this package.\n\n"), noiselevel=-1)
 						self._dynamic_config._skip_restart = True
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
