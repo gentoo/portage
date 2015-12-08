@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Gentoo Foundation
+# Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -72,15 +72,6 @@ common_options = (
 		"longopt"  : "--config-root",
 		"help"     : "location of portage config files",
 		"metavar"  : "DIR"
-	},
-	{
-		"longopt"  : "--portdir",
-		"help"     : "override the PORTDIR variable (deprecated in favor of --repositories-configuration)",
-		"metavar"  : "DIR"
-	},
-	{
-		"longopt"  : "--portdir-overlay",
-		"help"     : "override the PORTDIR_OVERLAY variable (deprecated in favor of --repositories-configuration)"
 	},
 	{
 		"longopt"  : "--repositories-configuration",
@@ -245,20 +236,8 @@ def emirrordist_main(args):
 
 	config_root = options.config_root
 
-	if options.portdir is not None:
-		writemsg_level("emirrordist: warning: --portdir option is deprecated in favor of --repositories-configuration option\n",
-			level=logging.WARNING, noiselevel=-1)
-	if options.portdir_overlay is not None:
-		writemsg_level("emirrordist: warning: --portdir-overlay option is deprecated in favor of --repositories-configuration option\n",
-			level=logging.WARNING, noiselevel=-1)	
-
 	if options.repositories_configuration is not None:
 		env['PORTAGE_REPOSITORIES'] = options.repositories_configuration
-	elif options.portdir_overlay is not None:
-		env['PORTDIR_OVERLAY'] = options.portdir_overlay
-
-	if options.portdir is not None:
-		env['PORTDIR'] = options.portdir
 
 	settings = portage.config(config_root=config_root,
 		local_config=False, env=env)
