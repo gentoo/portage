@@ -10,6 +10,13 @@ import socket
 import struct
 import sys
 
+if hasattr(asyncio, 'ensure_future'):
+	# Python >=3.4.4.
+	asyncio_ensure_future = asyncio.ensure_future
+else:
+	# getattr() necessary because async is a keyword in Python >=3.7.
+	asyncio_ensure_future = getattr(asyncio, 'async')
+
 
 class Socks5Server(object):
 	"""
@@ -141,7 +148,7 @@ class Socks5Server(object):
 
 			# otherwise, start two loops:
 			# remote -> local...
-			t = asyncio.async(self.handle_proxied_conn(
+			t = asyncio_ensure_future(self.handle_proxied_conn(
 					proxied_reader, writer, asyncio.Task.current_task()))
 
 			# and local -> remote...
