@@ -21,6 +21,7 @@ import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
 	PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
+from portage.dep import _repo_name_re
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
@@ -51,6 +52,36 @@ _portage1_profiles_allow_directories = frozenset(
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
 _repo_attr_override_var_re = re.compile(r'^PORTAGE_REPOSITORY:([^:]+):([^:]+)$')
+
+def _read_repo_name(repo_location, quiet=False):
+	layout_data = _read_layout_conf(repo_location)[0]
+	repo_name = layout_data.get("repo-name")
+	if repo_name is not None:
+		if _repo_name_re.match(repo_name) is None:
+			if not quiet:
+				writemsg_level("!!! %s\n" % _("Repository name set in 'repo-name' attribute in %r is invalid: %r") %
+					(os.path.join(repo_location, "metadata", "layout.conf"), repo_name), level=logging.ERROR, noiselevel=-1)
+			return None
+		return repo_name
+
+	repo_name_file_location = os.path.join(repo_location, REPO_NAME_LOC)
+	try:
+		with io.open(_unicode_encode(repo_name_file_location, encoding=_encodings["fs"], errors="strict"),
+			mode="r", encoding=_encodings["repo.content"], errors="replace") as f:
+			repo_name = f.read()
+	except EnvironmentError:
+		repo_name = None
+	if repo_name is not None:
+		if repo_name.endswith("\n"):
+			repo_name = repo_name[:-1]
+		if _repo_name_re.match(repo_name) is None:
+			if not quiet:
+				writemsg_level("!!! %s\n" % _("Repository name set in %r is invalid: %r") %
+					(repo_name_file_location, repo_name), level=logging.ERROR, noiselevel=-1)
+			return None
+		return repo_name
+
+	return None
 
 def _gen_valid_repo(name):
 	"""
@@ -86,19 +117,70 @@ class RepoConfig(object):
 		'auto_sync', 'cache_formats', 'create_manifest', 'disable_manifest',
 		'eapi', 'eclass_db', 'eclass_locations', 'eclass_overrides',
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
-		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
+		'main_repo', 'manifest_hashes', 'masters', 'module_specific_options',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
 		'profile_formats', 'sign_commit', 'sign_manifest',
 		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
-		'_masters_orig', 'module_specific_options',
+		'_invalid_config', '_masters_orig'
 		)
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
 		   Try to read repo_name in repository location, but if
 		   it is not found use variable name as repository name"""
+
+		self._invalid_config = False
+
+		if name == "DEFAULT":
+			self.location = None
+			self.name = name
+		else:
+			location = repo_opts.get("location")
+			if location is None:
+				writemsg_level("!!! %s\n" % _("Section %r in repos.conf is missing 'location' attribute") %
+					name, level=logging.ERROR, noiselevel=-1)
+				self._invalid_config = True
+			else:
+				if not os.path.isabs(location):
+					writemsg_level("!!! %s\n" % _("Section %r in repos.conf has 'location' attribute set to "
+						"relative path: %r") % (name, location), level=logging.ERROR, noiselevel=-1)
+					self._invalid_config = True
+					location = None
+				elif not os.path.lexists(location):
+					if not portage._sync_mode:
+						writemsg_level("!!! %s\n" % _("Section %r in repos.conf has 'location' attribute set to "
+							"nonexistent directory: %r") % (name, location), level=logging.ERROR, noiselevel=-1)
+						self._invalid_config = True
+						location = None
+				elif not os.path.isdir(location):
+					writemsg_level("!!! %s\n" % _("Section %r in repos.conf has 'location' attribute set to "
+						"non-directory: %r") % (name, location), level=logging.ERROR, noiselevel=-1)
+					self._invalid_config = True
+					location = None
+				elif not os.access(location, os.R_OK):
+					writemsg_level("!!! %s\n" % _("Section %r in repos.conf has 'location' attribute set to "
+						"nonreadable directory: %r") % (name, location), level=logging.ERROR, noiselevel=-1)
+					self._invalid_config = True
+					location = None
+				else:
+					location = os.path.realpath(location)
+			self.location = location
+
+			if self.location is None or portage._sync_mode:
+				self.name = name
+			else:
+				self.name = _read_repo_name(location)
+				if self.name is None:
+					writemsg_level("!!! %s\n" % _("Section %r in repos.conf refers to repository without repository name "
+						"set in %r or in 'repo-name' attribute in %r") % (name, os.path.join(location, REPO_NAME_LOC),
+						os.path.join(location, "metadata", "layout.conf")), level=logging.ERROR, noiselevel=-1)
+					self._invalid_config = True
+				elif name != self.name:
+					writemsg_level("!!! %s\n" % _("Section %r in repos.conf has name different from repository name %r "
+						"set inside repository") % (name, self.name), level=logging.ERROR, noiselevel=-1)
+					self._invalid_config = True
 
 		force = repo_opts.get('force')
 		if force is not None:
@@ -188,32 +270,7 @@ class RepoConfig(object):
 			format = format.strip()
 		self.format = format
 
-		location = repo_opts.get('location')
-		if location is not None and location.strip():
-			if os.path.isdir(location) or portage._sync_mode:
-				location = os.path.realpath(location)
-		else:
-			location = None
-		self.location = location
-
-		missing = True
-		self.name = name
-		if self.location is not None:
-			self.name, missing = self._read_valid_repo_name(self.location)
-			if missing:
-				# The name from repos.conf has to be used here for
-				# things like emerge-webrsync to work when the repo
-				# is empty (bug #484950).
-				if name is not None:
-					self.name = name
-				if portage._sync_mode:
-					missing = False
-
-		elif name == "DEFAULT":
-			missing = False
-
 		self.eapi = None
-		self.missing_repo_name = missing
 		# sign_commit is disabled by default, since it requires Git >=1.7.9,
 		# and key_id configured by `git config user.signingkey key_id`
 		self.sign_commit = False
@@ -248,13 +305,6 @@ class RepoConfig(object):
 				# repos.conf aliases come after layout.conf aliases, giving
 				# them the ability to do incremental overrides
 				self.aliases = layout_data['aliases'] + tuple(aliases)
-
-			if layout_data['repo-name']:
-				# allow layout.conf to override repository name
-				# useful when having two copies of the same repo enabled
-				# to avoid modifying profiles/repo_name in one of them
-				self.name = layout_data['repo-name']
-				self.missing_repo_name = False
 
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
@@ -343,14 +393,10 @@ class RepoConfig(object):
 		"""Update repository with options in another RepoConfig"""
 
 		keys = set(self.__slots__)
-		keys.discard("missing_repo_name")
 		for k in keys:
 			v = getattr(new_repo, k, None)
 			if v is not None:
 				setattr(self, k, v)
-
-		if new_repo.name is not None:
-			self.missing_repo_name = new_repo.missing_repo_name
 
 	@property
 	def writable(self):
@@ -362,42 +408,6 @@ class RepoConfig(object):
 			False otherwise
 		"""
 		return os.access(first_existing(self.location), os.W_OK)
-
-	@staticmethod
-	def _read_valid_repo_name(repo_path):
-		name, missing = RepoConfig._read_repo_name(repo_path)
-		# We must ensure that the name conforms to PMS 3.1.5
-		# in order to avoid InvalidAtom exceptions when we
-		# use it to generate atoms.
-		name = _gen_valid_repo(name)
-		if not name:
-			# name only contains invalid characters
-			name = "x-" + os.path.basename(repo_path)
-			name = _gen_valid_repo(name)
-			# If basename only contains whitespace then the
-			# end result is name = 'x-'.
-		return name, missing
-
-	@staticmethod
-	def _read_repo_name(repo_path):
-		"""
-		Read repo_name from repo_path.
-		Returns repo_name, missing.
-		"""
-		repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
-		f = None
-		try:
-			f = io.open(
-				_unicode_encode(repo_name_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
-			return f.readline().strip(), False
-		except EnvironmentError:
-			return "x-" + os.path.basename(repo_path), True
-		finally:
-			if f is not None:
-				f.close()
 
 	def info_string(self):
 		"""
@@ -604,6 +614,11 @@ class RepoConfigLoader(object):
 			parser.remove_section(deleted_repo)
 
 		for sname in parser.sections():
+			if _repo_name_re.match(sname) is None:
+				writemsg_level("!!! %s\n" % _("Section %r in repos.conf has invalid name") %
+					sname, level=logging.ERROR, noiselevel=-1)
+				continue
+
 			optdict = {}
 			for oname in parser.options(sname):
 				optdict[oname] = parser.get(sname, oname)
@@ -622,10 +637,8 @@ class RepoConfigLoader(object):
 			# Perform repos.conf sync variable validation
 			portage.sync.validate_config(repo, logging)
 
-			# For backward compatibility with locations set via PORTDIR and
-			# PORTDIR_OVERLAY, delay validation of the location and repo.name
-			# until after PORTDIR and PORTDIR_OVERLAY have been processed.
-			prepos[sname] = repo
+			if not repo._invalid_config:
+				prepos[sname] = repo
 
 	def __init__(self, paths, settings):
 		"""Load config from files in paths"""
@@ -690,50 +703,10 @@ class RepoConfigLoader(object):
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
 
-		self.missing_repo_names = frozenset(repo.location
-			for repo in prepos.values()
-			if repo.location is not None and repo.missing_repo_name)
-
 		# Do this before expanding aliases, so that location_map and
 		# treemap consistently map unaliased names whenever available.
 		for repo_name, repo in list(prepos.items()):
-			if repo.location is None:
-				if repo_name != 'DEFAULT':
-					# Skip this warning for repoman (bug #474578).
-					if settings.local_config and paths:
-						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf is missing location attribute") %
-							repo.name, level=logging.ERROR, noiselevel=-1)
-					del prepos[repo_name]
-					continue
-			else:
-				if not portage._sync_mode:
-					if not isdir_raise_eaccess(repo.location):
-						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has location attribute set "
-							"to nonexistent directory: '%s'") %
-							(repo_name, repo.location), level=logging.ERROR, noiselevel=-1)
-
-						# Ignore missing directory for 'gentoo' so that
-						# first sync with emerge-webrsync is possible.
-						if repo.name != 'gentoo':
-							del prepos[repo_name]
-							continue
-
-					# After removing support for PORTDIR_OVERLAY, the following check can be:
-					# if repo.missing_repo_name:
-					if repo.missing_repo_name and repo.name != repo_name:
-						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf refers to repository "
-							"without repository name set in '%s'") %
-							(repo_name, os.path.join(repo.location, REPO_NAME_LOC)), level=logging.ERROR, noiselevel=-1)
-						del prepos[repo_name]
-						continue
-
-					if repo.name != repo_name:
-						writemsg_level("!!! %s\n" % _("Section '%s' in repos.conf has name different "
-							"from repository name '%s' set inside repository") %
-							(repo_name, repo.name), level=logging.ERROR, noiselevel=-1)
-						del prepos[repo_name]
-						continue
-
+			if repo_name != "DEFAULT":
 				location_map[repo.location] = repo_name
 				treemap[repo_name] = repo.location
 
@@ -1022,17 +995,19 @@ def load_repository_config(settings, extra_files=None):
 def _get_repo_name(repo_location, cached=None):
 	if cached is not None:
 		return cached
-	name, missing = RepoConfig._read_repo_name(repo_location)
-	if missing:
-		return None
-	return name
+	return _read_repo_name(repo_location, quiet=True)
 
-def parse_layout_conf(repo_location, repo_name=None):
-	eapi = read_corresponding_eapi_file(os.path.join(repo_location, REPO_NAME_LOC))
-
+def _read_layout_conf(repo_location):
 	layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
 	layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 	layout_data, layout_errors = layout_file.load()
+
+	return layout_data, layout_errors
+
+def parse_layout_conf(repo_location, repo_name=None):
+	layout_data, layout_errors = _read_layout_conf(repo_location)
+
+	eapi = read_corresponding_eapi_file(os.path.join(repo_location, REPO_NAME_LOC))
 
 	data = {}
 
@@ -1061,8 +1036,6 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data['thin-manifest'] = layout_data.get('thin-manifests', 'false').lower() \
 		== 'true'
-
-	data['repo-name'] = _gen_valid_repo(layout_data.get('repo-name', ''))
 
 	manifest_policy = layout_data.get('use-manifests', 'strict').lower()
 	data['allow-missing-manifest'] = manifest_policy != 'strict'

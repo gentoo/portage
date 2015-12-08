@@ -130,11 +130,7 @@ class RepoSettings(object):
 
 	def _add_repo(self, config_root, portdir_overlay):
 		self.repo_conf = portage.repository.config
-		self.repo_name = self.repo_conf.RepoConfig._read_valid_repo_name(
-			portdir_overlay)[0]
-		self.layout_conf_data = self.repo_conf.parse_layout_conf(portdir_overlay)[0]
-		if self.layout_conf_data['repo-name']:
-			self.repo_name = self.layout_conf_data['repo-name']
+		self.repo_name = self.repo_conf._read_repo_name(portdir_overlay, quiet=True)
 		tmp_conf_file = io.StringIO(textwrap.dedent("""
 			[%s]
 			location = %s
