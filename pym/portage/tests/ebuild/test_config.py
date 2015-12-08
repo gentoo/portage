@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -252,7 +252,7 @@ class ConfigTestCase(TestCase):
 		new_repo_config = settings.repositories["new_repo"]
 		old_repo_config = settings.repositories["old_repo"]
 		self.assertTrue(len(new_repo_config.masters) > 0, "new_repo has no default master")
-		self.assertEqual(new_repo_config.masters[0].user_location, playground.settings.repositories["test_repo"].location,
+		self.assertEqual(new_repo_config.masters[0].location, playground.settings.repositories["test_repo"].location,
 			"new_repo default master is not test_repo")
 		self.assertEqual(new_repo_config.thin_manifest, True,
 			"new_repo_config.thin_manifest != True")

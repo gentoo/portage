@@ -539,13 +539,13 @@ class config(object):
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
 			if main_repo is not None:
-				self["PORTDIR"] = main_repo.user_location
+				self["PORTDIR"] = main_repo.location
 				self.backup_changes("PORTDIR")
 				expand_map["PORTDIR"] = self["PORTDIR"]
 
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
 			# special cases are needed here.
-			portdir_overlay = list(self.repositories.repoUserLocationList())
+			portdir_overlay = list(self.repositories.repoLocationList())
 			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
 				portdir_overlay = portdir_overlay[1:]
 
