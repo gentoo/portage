@@ -5407,8 +5407,14 @@ class depgraph(object):
 		@return: True if the package is deeper than the max allowed depth
 		"""
 		deep = self._dynamic_config.myparams.get("deep", 0)
-		return depth is self._UNREACHABLE_DEPTH or (
-			isinstance(deep, int) and isinstance(depth, int) and depth > deep)
+		if depth is self._UNREACHABLE_DEPTH:
+			return True
+		elif deep is True:
+			return False
+		else:
+			# All non-integer cases are handled above,
+			# so both values must be int type.
+			return depth > deep
 
 	def _depth_increment(self, depth, n=1):
 		"""
