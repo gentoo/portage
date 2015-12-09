@@ -2693,6 +2693,38 @@ def expand_set_arguments(myfiles, myaction, root_config):
 			newargs.append(a)
 	return (newargs, retval)
 
+def repo_name_duplicate_check(trees):
+	ignored_repos = {}
+	for root, root_trees in trees.items():
+		if 'porttree' in root_trees:
+			portdb = root_trees['porttree'].dbapi
+			if portdb.settings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
+				for repo_name, paths in portdb.getIgnoredRepos():
+					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
+					ignored_repos.setdefault(k, []).extend(paths)
+
+	if ignored_repos:
+		msg = []
+		msg.append('WARNING: One or more repositories ' + \
+			'have been ignored due to duplicate')
+		msg.append('  profiles/repo_name entries:')
+		msg.append('')
+		for k in sorted(ignored_repos):
+			msg.append('  %s overrides' % ", ".join(k))
+			for path in ignored_repos[k]:
+				msg.append('    %s' % (path,))
+			msg.append('')
+		msg.extend('  ' + x for x in textwrap.wrap(
+			"All profiles/repo_name entries must be unique in order " + \
+			"to avoid having duplicates ignored. " + \
+			"Set PORTAGE_REPO_DUPLICATE_WARN=\"0\" in " + \
+			"/etc/portage/make.conf if you would like to disable this warning."))
+		msg.append("\n")
+		writemsg_level(''.join('%s\n' % l for l in msg),
+			level=logging.WARNING, noiselevel=-1)
+
+	return bool(ignored_repos)
+
 def run_action(emerge_config):
 
 	# skip global updates prior to sync, since it's called after sync
@@ -2778,6 +2810,7 @@ def run_action(emerge_config):
 	if "--quiet" not in emerge_config.opts:
 		portage.deprecated_profile_check(
 			settings=emerge_config.target_config.settings)
+		repo_name_duplicate_check(emerge_config.trees)
 		config_protect_check(emerge_config.trees)
 	check_procfs()
 

@@ -133,7 +133,7 @@ class RepoSettings(object):
 		self.repo_name = self.repo_conf._read_repo_name(portdir_overlay, quiet=True)
 		tmp_conf_file = io.StringIO(textwrap.dedent("""
 			[%s]
-			location = "%s"
+			location = %s
 			""") % (self.repo_name, portdir_overlay))
 		# Ensure that the repository corresponding to $PWD overrides a
 		# repository of the same name referenced by the existing PORTDIR

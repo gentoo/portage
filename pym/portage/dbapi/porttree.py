@@ -363,9 +363,7 @@ class portdbapi(dbapi):
 		Returns a list of repository paths that have been ignored, because
 		another repo with the same name exists.
 		"""
-		warnings.warn("portage.dbapi.porttree.portdbapi.getIgnoredRepos() is deprecated",
-			DeprecationWarning, stacklevel=2)
-		return ()
+		return self.settings.repositories.ignored_repos
 
 	def findname2(self, mycpv, mytree=None, myrepo = None):
 		""" 

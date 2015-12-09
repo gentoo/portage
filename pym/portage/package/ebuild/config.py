@@ -502,24 +502,28 @@ class config(object):
 			self["EPREFIX"] = eprefix
 			self["EROOT"] = eroot
 			known_repos = []
+			portdir = ""
+			portdir_overlay = ""
+			portdir_sync = None
 			for confs in [make_globals, make_conf, self.configdict["env"]]:
+				v = confs.get("PORTDIR")
+				if v is not None:
+					portdir = v
+					known_repos.append(v)
+				v = confs.get("PORTDIR_OVERLAY")
+				if v is not None:
+					portdir_overlay = v
+					known_repos.extend(shlex_split(v))
+				v = confs.get("SYNC")
+				if v is not None:
+					portdir_sync = v
 				if 'PORTAGE_RSYNC_EXTRA_OPTS' in confs:
 					self['PORTAGE_RSYNC_EXTRA_OPTS'] = confs['PORTAGE_RSYNC_EXTRA_OPTS']
 
-			for var in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
-				if make_conf.get(var) is not None:
-					writemsg_level("!!! %s\n" % _("%s variable is set in make.conf but is no longer used. "
-						"Use repos.conf instead.") % var, level=logging.WARNING, noiselevel=-1)
-			# Skip warnings for Portage Python scripts called in ebuild environment.
-			# PORTDIR is exported in ebuild environment in some EAPIs.
-			if self.configdict["env"].get("EBUILD") is None:
-				for var in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
-					if self.configdict["env"].get(var) is not None:
-						writemsg_level("!!! %s\n" % _("%s environmental variable is set but is no longer used. "
-							"Use new environmental variables instead:") % var, level=logging.WARNING, noiselevel=-1)
-						writemsg_level("    PORTAGE_REPOSITORIES, PORTAGE_REPOSITORY:${repository_name}:${attribute}, "
-							"PORTAGE_ADDED_REPOSITORIES, PORTAGE_DELETED_REPOSITORIES\n", level=logging.WARNING, noiselevel=-1)
-
+			self["PORTDIR"] = portdir
+			self["PORTDIR_OVERLAY"] = portdir_overlay
+			if portdir_sync:
+				self["SYNC"] = portdir_sync
 			self.lookuplist = [self.configdict["env"]]
 			if repositories is None:
 				self.repositories = load_repository_config(self)
@@ -539,11 +543,23 @@ class config(object):
 				self.backup_changes("PORTDIR")
 				expand_map["PORTDIR"] = self["PORTDIR"]
 
+			# repoman controls PORTDIR_OVERLAY via the environment, so no
+			# special cases are needed here.
 			portdir_overlay = list(self.repositories.repoLocationList())
 			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
 				portdir_overlay = portdir_overlay[1:]
 
-			self["PORTDIR_OVERLAY"] = " ".join(portdir_overlay)
+			new_ov = []
+			if portdir_overlay:
+				for ov in portdir_overlay:
+					ov = normalize_path(ov)
+					if isdir_raise_eaccess(ov) or portage._sync_mode:
+						new_ov.append(portage._shell_quote(ov))
+					else:
+						writemsg(_("!!! Invalid PORTDIR_OVERLAY"
+							" (not a dir): '%s'\n") % ov, noiselevel=-1)
+
+			self["PORTDIR_OVERLAY"] = " ".join(new_ov)
 			self.backup_changes("PORTDIR_OVERLAY")
 			expand_map["PORTDIR_OVERLAY"] = self["PORTDIR_OVERLAY"]
 
