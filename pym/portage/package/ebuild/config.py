@@ -838,7 +838,8 @@ class config(object):
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
+				self["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
+				self.backup_changes("USE_ORDER")
 
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
