@@ -502,7 +502,7 @@ class ResolverPlayground(object):
 			create_trees_kwargs["target_root"] = self.target_root
 
 		env = {
-			"PORTAGE_REPOSITORIES": "\n".join("[%s]\n%s" % (repo_name, "\n".join("%s = %s" % (k, v) for k, v in repo_config.items())) for repo_name, repo_config in self._repositories.items())
+			"PORTAGE_REPOSITORIES": "\n".join("[%s]\n%s" % (repo_name, "\n".join("%s = %s" % ((k, "'%s'" % v) if k == "location" else (k, v)) for k, v in repo_config.items())) for repo_name, repo_config in self._repositories.items())
 		}
 
 		trees = portage.create_trees(env=env, eprefix=self.eprefix,

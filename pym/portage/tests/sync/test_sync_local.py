@@ -39,7 +39,7 @@ class SyncLocalTestCase(TestCase):
 			[DEFAULT]
 			%(default_keys)s
 			[test_repo]
-			location = %(EPREFIX)s/var/repositories/test_repo
+			location = "%(EPREFIX)s/var/repositories/test_repo"
 			sync-type = %(sync-type)s
 			sync-uri = file:/%(EPREFIX)s/var/repositories/test_repo_sync
 			auto-sync = yes

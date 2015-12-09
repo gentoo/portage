@@ -48,7 +48,7 @@ class TestFakedbapi(TestCase):
 			with open(os.path.join(test_repo, "profiles", "repo_name"), "w") as f:
 				f.write("test_repo")
 			env = {
-				"PORTAGE_REPOSITORIES": "[DEFAULT]\nmain-repo = test_repo\n[test_repo]\nlocation = %s" % test_repo
+				"PORTAGE_REPOSITORIES": "[DEFAULT]\nmain-repo = test_repo\n[test_repo]\nlocation = '%s'" % test_repo
 			}
 
 			# Tests may override portage.const.EPREFIX in order to

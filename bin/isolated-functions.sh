@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -473,17 +473,23 @@ has() {
 }
 
 __repo_attr() {
-	local appropriate_section=0 exit_status=1 line saved_extglob_shopt=$(shopt -p extglob)
+	local appropriate_section=0 attribute=$2 exit_status=1 line repo_name=$1 saved_extglob_shopt=$(shopt -p extglob) value
 	shopt -s extglob
 	while read line; do
-		[[ ${appropriate_section} == 0 && ${line} == "[$1]" ]] && appropriate_section=1 && continue
+		[[ ${appropriate_section} == 0 && ${line} == "[${repo_name}]" ]] && appropriate_section=1 && continue
 		[[ ${appropriate_section} == 1 && ${line} == "["*"]" ]] && appropriate_section=0 && continue
-		# If a conditional expression like [[ ${line} == $2*( )=* ]] is used
-		# then bash-3.2 produces an error like the following when the file is
+		# If a conditional expression like [[ ${line} == ${attribute}*( )=* ]] is used
+		# then bash <4.1 produces an error like the following when the file is
 		# sourced: syntax error in conditional expression: unexpected token `('
 		# Therefore, use a regular expression for compatibility.
-		if [[ ${appropriate_section} == 1 && ${line} =~ ^${2}[[:space:]]*= ]]; then
-			echo "${line##$2*( )=*( )}"
+		if [[ ${appropriate_section} == 1 && ${line} =~ ^${attribute}[[:space:]]*= ]]; then
+			value="${line##${attribute}*( )=*( )}"
+			if [[ ${attribute} =~ ^(location)$ && (${value} == "'"*"'" || ${value} == '"'*'"') ]]; then
+				# bash >=4.2:
+				# value=${value:1:-1}
+				value=${value:1:$((${#value} - 2))}
+			fi
+			echo "${value}"
 			exit_status=0
 			break
 		fi

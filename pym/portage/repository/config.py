@@ -143,6 +143,8 @@ class RepoConfig(object):
 					name, level=logging.ERROR, noiselevel=-1)
 				self._invalid_config = True
 			else:
+				if (location.startswith("'") and location.endswith("'")) or (location.startswith('"') and location.endswith('"')):
+					location = location[1:-1]
 				if not os.path.isabs(location):
 					writemsg_level("!!! %s\n" % _("Section %r in repos.conf has 'location' attribute set to "
 						"relative path: %r") % (name, location), level=logging.ERROR, noiselevel=-1)
@@ -420,7 +422,7 @@ class RepoConfig(object):
 		if self.format:
 			repo_msg.append(indent + "format: " + self.format)
 		if self.location:
-			repo_msg.append(indent + "location: " + self.location)
+			repo_msg.append(indent + "location: \"" + self.location + "\"")
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -957,12 +959,12 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		str_or_int_keys = ("auto_sync", "format", "location",
-			"main_repo", "priority",
+		quoted_str_keys = ("location",)
+		str_or_int_keys = ("auto_sync", "format", "main_repo", "priority",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
-		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
+		keys = quoted_str_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
 			config_string += "\n[%s]\n" % repo_name
@@ -970,7 +972,9 @@ class RepoConfigLoader(object):
 				if key == "main_repo" and repo_name != "DEFAULT":
 					continue
 				if getattr(repo, key) is not None:
-					if key in str_or_int_keys:
+					if key in quoted_str_keys:
+						config_string += "%s = \"%s\"\n" % (key.replace("_", "-"), getattr(repo, key))
+					elif key in str_or_int_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
 					elif key in str_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
