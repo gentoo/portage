@@ -463,102 +463,7 @@ class RepoConfig(object):
 			return _unicode_encode(self.__unicode__())
 
 class RepoConfigLoader(object):
-	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
-
-	@staticmethod
-	def _add_repositories(portdir, portdir_overlay, prepos,
-		ignored_map, local_config, default_portdir):
-		"""Add overlays in PORTDIR_OVERLAY as repositories"""
-		overlays = []
-		portdir_orig = None
-		if portdir:
-			portdir = normalize_path(portdir)
-			portdir_orig = portdir
-			overlays.append(portdir)
-		try:
-			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
-		except ValueError as e:
-			#File "/usr/lib/python3.2/shlex.py", line 168, in read_token
-			#	raise ValueError("No closing quotation")
-			writemsg(_("!!! Invalid PORTDIR_OVERLAY:"
-				" %s: %s\n") % (e, portdir_overlay), noiselevel=-1)
-			port_ov = []
-		overlays.extend(port_ov)
-		default_repo_opts = {}
-		if prepos['DEFAULT'].aliases is not None:
-			default_repo_opts['aliases'] = \
-				' '.join(prepos['DEFAULT'].aliases)
-		if prepos['DEFAULT'].eclass_overrides is not None:
-			default_repo_opts['eclass-overrides'] = \
-				' '.join(prepos['DEFAULT'].eclass_overrides)
-		if prepos['DEFAULT'].masters is not None:
-			default_repo_opts['masters'] = \
-				' '.join(prepos['DEFAULT'].masters)
-
-		if overlays:
-			# We need a copy of the original repos.conf data, since we're
-			# going to modify the prepos dict and some of the RepoConfig
-			# objects that we put in prepos may have to be discarded if
-			# they get overridden by a repository with the same name but
-			# a different location. This is common with repoman, for example,
-			# when temporarily overriding an rsync repo with another copy
-			# of the same repo from CVS.
-			repos_conf = prepos.copy()
-			#overlay priority is negative because we want them to be looked before any other repo
-			base_priority = 0
-			for ov in overlays:
-				# Ignore missing directory for 'gentoo' so that
-				# first sync with emerge-webrsync is possible.
-				if isdir_raise_eaccess(ov) or \
-					(base_priority == 0 and ov is portdir):
-					repo_opts = default_repo_opts.copy()
-					repo_opts['location'] = ov
-					repo = RepoConfig(None, repo_opts, local_config=local_config)
-					if repo._invalid_config:
-						continue
-					# repos_conf_opts contains options from repos.conf
-					repos_conf_opts = repos_conf.get(repo.name)
-					if repos_conf_opts is not None:
-						# Selectively copy only the attributes which
-						# repos.conf is allowed to override.
-						for k in ('aliases', 'auto_sync', 'eclass_overrides',
-							'force', 'masters', 'priority',
-							'sync_depth', 'sync_hooks_only_on_change',
-							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
-							'module_specific_options'):
-							v = getattr(repos_conf_opts, k, None)
-							if v is not None:
-								setattr(repo, k, v)
-
-					if repo.name in prepos:
-						# Silently ignore when PORTDIR overrides the location
-						# setting from the default repos.conf (bug #478544).
-						old_location = prepos[repo.name].location
-						if old_location is not None and \
-							old_location != repo.location and \
-							not (base_priority == 0 and
-							old_location == default_portdir):
-							ignored_map.setdefault(repo.name, []).append(old_location)
-							if old_location == portdir:
-								portdir = repo.location
-
-					if repo.priority is None:
-						if base_priority == 0 and ov == portdir_orig:
-							# If it's the original PORTDIR setting and it's not
-							# in PORTDIR_OVERLAY, then it will be assigned a
-							# special priority setting later.
-							pass
-						else:
-							repo.priority = base_priority
-							base_priority += 1
-
-					prepos[repo.name] = repo
-				else:
-
-					if not portage._sync_mode:
-						writemsg(_("!!! Invalid PORTDIR_OVERLAY (not a dir): '%s'\n") % ov, noiselevel=-1)
-
-		return portdir
+	"""Loads and store config of several repositories, loaded from repos.conf"""
 
 	@staticmethod
 	def _parse(paths, prepos, local_config, default_opts, added_repos, deleted_repos, attrs_overrides):
@@ -650,7 +555,6 @@ class RepoConfigLoader(object):
 		prepos = {}
 		location_map = {}
 		treemap = {}
-		ignored_map = {}
 		default_opts = {
 			"EPREFIX" : settings["EPREFIX"],
 			"EROOT" : settings["EROOT"],
@@ -662,18 +566,10 @@ class RepoConfigLoader(object):
 			added_repos = []
 			deleted_repos = []
 			attrs_overrides = {}
-			portdir = ""
-			portdir_overlay = ""
-			# deprecated portdir_sync
-			portdir_sync = ""
 		else:
 			added_repos = settings.get("PORTAGE_ADDED_REPOSITORIES", "").split()
 			deleted_repos = settings.get("PORTAGE_DELETED_REPOSITORIES", "").split()
 			attrs_overrides = {x: settings[x] for x in settings if _repo_attr_override_var_re.match(x) is not None}
-			portdir = settings.get("PORTDIR", "")
-			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
-			# deprecated portdir_sync
-			portdir_sync = settings.get("SYNC", "")
 
 		default_opts['sync-rsync-extra-opts'] = \
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
@@ -684,28 +580,11 @@ class RepoConfigLoader(object):
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
 				noiselevel=-1)
-			# The configparser state is unreliable (prone to quirky
-			# exceptions) after it has thrown an error, so use empty
-			# config and try to fall back to PORTDIR{,_OVERLAY}.
+			# The configparser state is unreliable (prone to quirky exceptions)
+			# after it has thrown an error, so use empty config.
 			prepos.clear()
 			prepos['DEFAULT'] = RepoConfig('DEFAULT',
 				{}, local_config=settings.local_config)
-			location_map.clear()
-			treemap.clear()
-
-		default_portdir = os.path.join(os.sep,
-			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
-
-		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
-		# PORTDIR, then PORTDIR is overridden.
-		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
-			ignored_map, settings.local_config,
-			default_portdir)
-		if portdir and portdir.strip():
-			portdir = os.path.realpath(portdir)
-
-		ignored_repos = tuple((repo_name, tuple(paths)) \
-			for repo_name, paths in ignored_map.items())
 
 		# Do this before expanding aliases, so that location_map and
 		# treemap consistently map unaliased names whenever available.
@@ -742,29 +621,10 @@ class RepoConfigLoader(object):
 					treemap[name] = repo.location
 
 		main_repo = prepos['DEFAULT'].main_repo
-		if main_repo is None or main_repo not in prepos:
-			#setting main_repo if it was not set in repos.conf
-			main_repo = location_map.get(portdir)
-			if main_repo is not None:
-				prepos['DEFAULT'].main_repo = main_repo
-			else:
-				prepos['DEFAULT'].main_repo = None
-				if portdir and not portage._sync_mode:
-					writemsg(_("!!! main-repo not set in DEFAULT and PORTDIR is empty.\n"), noiselevel=-1)
 
 		if main_repo is not None and prepos[main_repo].priority is None:
 			# This happens if main-repo has been set in repos.conf.
 			prepos[main_repo].priority = -1000
-
-		# DEPRECATED Backward compatible SYNC support for old mirrorselect.
-		# Feb. 2, 2015.  Version 2.2.16
-		if portdir_sync and main_repo is not None:
-			writemsg(_("!!! SYNC setting found in make.conf.\n    "
-				"This setting is Deprecated and no longer used.  "
-				"Please ensure your 'sync-type' and 'sync-uri' are set correctly"
-				" in /etc/portage/repos.conf/gentoo.conf\n"),
-				noiselevel=-1)
-
 
 		# Include repo.name in sort key, for predictable sorting
 		# even when priorities are equal.
@@ -779,7 +639,6 @@ class RepoConfigLoader(object):
 
 		self.prepos = prepos
 		self.prepos_order = prepos_order
-		self.ignored_repos = ignored_repos
 		self.location_map = location_map
 		self.treemap = treemap
 		self._prepos_changed = True
@@ -872,7 +731,7 @@ class RepoConfigLoader(object):
 		self._check_locations()
 
 	def repoLocationList(self):
-		"""Get a list of repositories location. Replaces PORTDIR_OVERLAY"""
+		"""Get list of locations of repositories."""
 		if self._prepos_changed:
 			_repo_location_list = []
 			for repo in self.prepos_order:
