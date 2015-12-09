@@ -510,12 +510,15 @@ class config(object):
 				if make_conf.get(var) is not None:
 					writemsg_level("!!! %s\n" % _("%s variable is set in make.conf but is no longer used. "
 						"Use repos.conf instead.") % var, level=logging.WARNING, noiselevel=-1)
-			for var in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
-				if self.configdict["env"].get(var) is not None:
-					writemsg_level("!!! %s\n" % _("%s environmental variable is set but is no longer used. "
-						"Use new environmental variables instead:") % var, level=logging.WARNING, noiselevel=-1)
-					writemsg_level("    PORTAGE_REPOSITORIES, PORTAGE_REPOSITORY:${repository_name}:${attribute}, "
-						"PORTAGE_ADDED_REPOSITORIES, PORTAGE_DELETED_REPOSITORIES\n", level=logging.WARNING, noiselevel=-1)
+			# Skip warnings for Portage Python scripts called in ebuild environment.
+			# PORTDIR is exported in ebuild environment in some EAPIs.
+			if self.configdict["env"].get("EBUILD") is None:
+				for var in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
+					if self.configdict["env"].get(var) is not None:
+						writemsg_level("!!! %s\n" % _("%s environmental variable is set but is no longer used. "
+							"Use new environmental variables instead:") % var, level=logging.WARNING, noiselevel=-1)
+						writemsg_level("    PORTAGE_REPOSITORIES, PORTAGE_REPOSITORY:${repository_name}:${attribute}, "
+							"PORTAGE_ADDED_REPOSITORIES, PORTAGE_DELETED_REPOSITORIES\n", level=logging.WARNING, noiselevel=-1)
 
 			self.lookuplist = [self.configdict["env"]]
 			if repositories is None:
