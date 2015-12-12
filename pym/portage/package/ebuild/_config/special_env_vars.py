@@ -1,17 +1,14 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
 
 __all__ = (
-	'case_insensitive_vars', 'default_globals', 'env_blacklist',
-	'environ_filter', 'environ_filter_re', 'environ_whitelist',
-	'environ_whitelist_re', 'global_only_vars', 'validate_commands'
+	'case_insensitive_vars', 'default_globals', 'env_blacklist', \
+	'environ_filter', 'environ_whitelist', 'environ_whitelist_re',
 )
 
 import re
-
-from portage.repository.config import _repo_attr_override_var_re
 
 # Blacklisted variables are internal variables that are never allowed
 # to enter the config instance from the external environment or
@@ -160,12 +157,10 @@ environ_filter += [
 	"FETCHCOMMAND_HTTP", "FETCHCOMMAND_HTTPS",
 	"FETCHCOMMAND_RSYNC", "FETCHCOMMAND_SFTP",
 	"GENTOO_MIRRORS", "NOCONFMEM", "O",
-	"PORTAGE_ADDED_REPOSITORIES",
 	"PORTAGE_BACKGROUND", "PORTAGE_BACKGROUND_UNMERGE",
 	"PORTAGE_BINHOST", "PORTAGE_BINPKG_FORMAT",
 	"PORTAGE_BUILDDIR_LOCKED",
 	"PORTAGE_CHECKSUM_FILTER",
-	"PORTAGE_DELETED_REPOSITORIES",
 	"PORTAGE_ELOG_CLASSES",
 	"PORTAGE_ELOG_MAILFROM", "PORTAGE_ELOG_MAILSUBJECT",
 	"PORTAGE_ELOG_MAILURI", "PORTAGE_ELOG_SYSTEM",
@@ -194,8 +189,6 @@ environ_filter += [
 ]
 
 environ_filter = frozenset(environ_filter)
-
-environ_filter_re = re.compile(r"(" + _repo_attr_override_var_re.pattern + r")")
 
 # Variables that are not allowed to have per-repo or per-package
 # settings.

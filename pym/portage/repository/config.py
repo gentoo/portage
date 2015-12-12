@@ -50,8 +50,6 @@ _portage1_profiles_allow_directories = frozenset(
 
 _repo_name_sub_re = re.compile(r'[^\w-]')
 
-_repo_attr_override_var_re = re.compile(r'^PORTAGE_REPOSITORY:([^:]+):([^:]+)$')
-
 def _gen_valid_repo(name):
 	"""
 	Substitute hyphen in place of characters that don't conform to PMS 3.1.5,
@@ -549,7 +547,7 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, local_config, default_opts, added_repos, deleted_repos, attrs_overrides):
+	def _parse(paths, prepos, local_config, default_opts):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser(defaults=default_opts)
 
@@ -598,23 +596,10 @@ class RepoConfigLoader(object):
 		prepos['DEFAULT'] = RepoConfig("DEFAULT",
 			parser.defaults(), local_config=local_config)
 
-		# Apply overrides from PORTAGE_ADDED_REPOSITORIES and PORTAGE_DELETED_REPOSITORIES environmental variables.
-		for added_repo in added_repos:
-			if not parser.has_section(added_repo):
-				parser.add_section(added_repo)
-		for deleted_repo in deleted_repos:
-			parser.remove_section(deleted_repo)
-
 		for sname in parser.sections():
 			optdict = {}
 			for oname in parser.options(sname):
 				optdict[oname] = parser.get(sname, oname)
-
-			# Apply overrides from PORTAGE_REPOSITORY:${repository_name}:${attribute} environmental variables.
-			for k, v in attrs_overrides.items():
-				m = _repo_attr_override_var_re.match(k)
-				if m is not None and m.group(1) == sname:
-					optdict[m.group(2)] = v
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
 			for o in portage.sync.module_specific_options(repo):
@@ -644,17 +629,11 @@ class RepoConfigLoader(object):
 		}
 
 		if "PORTAGE_REPOSITORIES" in settings:
-			added_repos = []
-			deleted_repos = []
-			attrs_overrides = {}
 			portdir = ""
 			portdir_overlay = ""
 			# deprecated portdir_sync
 			portdir_sync = ""
 		else:
-			added_repos = settings.get("PORTAGE_ADDED_REPOSITORIES", "").split()
-			deleted_repos = settings.get("PORTAGE_DELETED_REPOSITORIES", "").split()
-			attrs_overrides = {x: settings[x] for x in settings if _repo_attr_override_var_re.match(x) is not None}
 			portdir = settings.get("PORTDIR", "")
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
 			# deprecated portdir_sync
@@ -664,7 +643,7 @@ class RepoConfigLoader(object):
 			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
 
 		try:
-			self._parse(paths, prepos, settings.local_config, default_opts, added_repos, deleted_repos, attrs_overrides)
+			self._parse(paths, prepos, settings.local_config, default_opts)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,

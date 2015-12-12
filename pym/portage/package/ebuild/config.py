@@ -168,7 +168,6 @@ class config(object):
 	_default_globals = special_env_vars.default_globals
 	_env_blacklist = special_env_vars.env_blacklist
 	_environ_filter = special_env_vars.environ_filter
-	_environ_filter_re = special_env_vars.environ_filter_re
 	_environ_whitelist = special_env_vars.environ_whitelist
 	_environ_whitelist_re = special_env_vars.environ_whitelist_re
 	_global_only_vars = special_env_vars.global_only_vars
@@ -2714,7 +2713,7 @@ class config(object):
 
 		environ_whitelist = self._environ_whitelist
 		for x in self:
-			if x in environ_filter or self._environ_filter_re.match(x) is not None:
+			if x in environ_filter:
 				continue
 			myvalue = self.get(x)
 			if myvalue is None:
@@ -2725,7 +2724,7 @@ class config(object):
 				continue
 			if filter_calling_env and \
 				x not in environ_whitelist and \
-				self._environ_whitelist_re.match(x) is None:
+				not self._environ_whitelist_re.match(x):
 				# Do not allow anything to leak into the ebuild
 				# environment unless it is explicitly whitelisted.
 				# This ensures that variables unset by the ebuild
