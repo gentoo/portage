@@ -50,7 +50,7 @@ from portage import _encodings
 from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.const import REPO_NAME_LOC, VDB_PATH
+from portage.const import VDB_PATH
 from portage.exception import PermissionDenied, PortageKeyError, \
 	PortagePackageException, UnsupportedAPIException
 import portage.util
@@ -146,23 +146,27 @@ ebuild_portdir = os.path.realpath(
 ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
 vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 
+# Make sure that portdb.findname() returns the correct ebuild.
+if ebuild_portdir != vdb_path and \
+	ebuild_portdir not in portage.portdb.porttrees:
+	portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
+	if sys.hexversion >= 0x3000000:
+		os.environ["PORTDIR_OVERLAY"] = \
+			portdir_overlay + \
+			" " + _shell_quote(ebuild_portdir)
+	else:
+		os.environ["PORTDIR_OVERLAY"] = \
+			_unicode_encode(portdir_overlay,
+			encoding=_encodings['content'], errors='strict') + \
+			" " + _unicode_encode(_shell_quote(ebuild_portdir),
+			encoding=_encodings['content'], errors='strict')
+
+	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
+	portage._reset_legacy_globals()
+
 myrepo = None
 if ebuild_portdir != vdb_path:
-	myrepo = portage.repository.config._read_repo_name(ebuild_portdir)
-	if myrepo is None:
-		err("Repository located in %r has no repository name set in %r or in 'repo-name' attribute in %r" %
-			(ebuild_portdir, os.path.join(ebuild_portdir, REPO_NAME_LOC), os.path.join(ebuild_portdir, "metadata", "layout.conf")))
-
-	# Make sure that portdb.findname() returns the correct ebuild.
-	if ebuild_portdir not in portage.portdb.porttrees:
-		print("Appending repository '%s' located in '%s' to configuration of repositories" % (myrepo, ebuild_portdir))
-		tmp_conf_file = io.StringIO(textwrap.dedent("""
-			[%s]
-			location = %s
-			""" % (myrepo, ebuild_portdir)))
-		repositories = portage.repository.config.load_repository_config(portage.settings, extra_files=[tmp_conf_file])
-		os.environ["PORTAGE_REPOSITORIES"] = repositories.config_string()
-		portage._reset_legacy_globals()
+	myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
 if not os.path.exists(ebuild):
 	err('%s: does not exist' % (ebuild,))
@@ -194,7 +198,7 @@ else:
 	portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
-		err('%s: Invalid structure of repository' % (ebuild,))
+		err('%s: does not seem to have a valid PORTDIR structure' % (ebuild,))
 
 if len(pargs) > 1 and "config" in pargs:
 	other_phases = set(pargs)
