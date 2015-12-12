@@ -2712,11 +2712,8 @@ class config(object):
 				filter_calling_env = True
 
 		environ_whitelist = self._environ_whitelist
-		for x in self:
+		for x, myvalue in self.iteritems():
 			if x in environ_filter:
-				continue
-			myvalue = self.get(x)
-			if myvalue is None:
 				continue
 			if not isinstance(myvalue, basestring):
 				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
