@@ -141,25 +141,25 @@ if not os.path.isabs(ebuild):
 ebuild = portage.normalize_path(ebuild)
 # portdbapi uses the canonical path for the base of the portage tree, but
 # subdirectories of the base can be built from symlinks (like crossdev does).
-repo_location = os.path.realpath(
+ebuild_portdir = os.path.realpath(
 	os.path.dirname(os.path.dirname(os.path.dirname(ebuild))))
-ebuild = os.path.join(repo_location, *ebuild.split(os.path.sep)[-3:])
+ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
 vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 
-repo_name = None
-if repo_location != vdb_path:
-	repo_name = portage.repository.config._read_repo_name(repo_location)
-	if repo_name is None:
+myrepo = None
+if ebuild_portdir != vdb_path:
+	myrepo = portage.repository.config._read_repo_name(ebuild_portdir)
+	if myrepo is None:
 		err("Repository located in %r has no repository name set in %r or in 'repo-name' attribute in %r" %
-			(repo_location, os.path.join(repo_location, REPO_NAME_LOC), os.path.join(repo_location, "metadata", "layout.conf")))
+			(ebuild_portdir, os.path.join(ebuild_portdir, REPO_NAME_LOC), os.path.join(ebuild_portdir, "metadata", "layout.conf")))
 
 	# Make sure that portdb.findname() returns the correct ebuild.
-	if repo_location not in portage.portdb.porttrees:
-		print("Appending repository '%s' located in '%s' to configuration of repositories" % (repo_name, repo_location))
+	if ebuild_portdir not in portage.portdb.porttrees:
+		print("Appending repository '%s' located in '%s' to configuration of repositories" % (myrepo, ebuild_portdir))
 		tmp_conf_file = io.StringIO(textwrap.dedent("""
 			[%s]
 			location = %s
-			""" % (repo_name, repo_location)))
+			""" % (myrepo, ebuild_portdir)))
 		repositories = portage.repository.config.load_repository_config(portage.settings, extra_files=[tmp_conf_file])
 		os.environ["PORTAGE_REPOSITORIES"] = repositories.config_string()
 		portage._reset_legacy_globals()
@@ -182,7 +182,7 @@ if ebuild.startswith(vdb_path):
 	mytree = "vartree"
 	pkg_type = "installed"
 
-	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=repo_name)
+	portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
 	if os.path.realpath(portage_ebuild) != ebuild:
 		err('Portage seems to think that %s is at %s' % (cpv, portage_ebuild))
@@ -191,7 +191,7 @@ else:
 	mytree = "porttree"
 	pkg_type = "ebuild"
 
-	portage_ebuild = portage.portdb.findname(cpv, myrepo=repo_name)
+	portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
 	if not portage_ebuild or portage_ebuild != ebuild:
 		err('%s: Invalid structure of repository' % (ebuild,))
@@ -238,7 +238,7 @@ build_dir_phases = set(["setup", "unpack", "prepare", "configure", "compile",
 ebuild_changed = False
 if mytree == "porttree" and build_dir_phases.intersection(pargs):
 	ebuild_changed = \
-		portage.portdb._pull_valid_cache(cpv, ebuild, repo_location)[0] is None
+		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
 
 tmpsettings = portage.config(clone=portage.settings)
 tmpsettings["PORTAGE_VERBOSE"] = "1"
@@ -271,7 +271,7 @@ if "merge" in pargs and "noauto" in tmpsettings.features:
 try:
 	metadata = dict(zip(Package.metadata_keys,
 		portage.db[portage.settings['EROOT']][mytree].dbapi.aux_get(
-		cpv, Package.metadata_keys, myrepo=repo_name)))
+		cpv, Package.metadata_keys, myrepo=myrepo)))
 except PortageKeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
