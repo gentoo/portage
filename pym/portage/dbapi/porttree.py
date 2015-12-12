@@ -354,9 +354,7 @@ class portdbapi(dbapi):
 		"""
 		Returns a list of repository paths that lack profiles/repo_name.
 		"""
-		warnings.warn("portage.dbapi.porttree.portdbapi.getMissingRepoNames() is deprecated",
-			DeprecationWarning, stacklevel=2)
-		return frozenset()
+		return self.settings.repositories.missing_repo_names
 
 	def getIgnoredRepos(self):
 		"""

@@ -2693,6 +2693,38 @@ def expand_set_arguments(myfiles, myaction, root_config):
 			newargs.append(a)
 	return (newargs, retval)
 
+def repo_name_check(trees):
+	missing_repo_names = set()
+	for root_trees in trees.values():
+		porttree = root_trees.get("porttree")
+		if porttree:
+			portdb = porttree.dbapi
+			missing_repo_names.update(portdb.getMissingRepoNames())
+
+	# Skip warnings about missing repo_name entries for
+	# /usr/local/portage (see bug #248603).
+	try:
+		missing_repo_names.remove('/usr/local/portage')
+	except KeyError:
+		pass
+
+	if missing_repo_names:
+		msg = []
+		msg.append("WARNING: One or more repositories " + \
+			"have missing repo_name entries:")
+		msg.append("")
+		for p in missing_repo_names:
+			msg.append("\t%s/profiles/repo_name" % (p,))
+		msg.append("")
+		msg.extend(textwrap.wrap("NOTE: Each repo_name entry " + \
+			"should be a plain text file containing a unique " + \
+			"name for the repository on the first line.", 70))
+		msg.append("\n")
+		writemsg_level("".join("%s\n" % l for l in msg),
+			level=logging.WARNING, noiselevel=-1)
+
+	return bool(missing_repo_names)
+
 def repo_name_duplicate_check(trees):
 	ignored_repos = {}
 	for root, root_trees in trees.items():
@@ -2810,6 +2842,7 @@ def run_action(emerge_config):
 	if "--quiet" not in emerge_config.opts:
 		portage.deprecated_profile_check(
 			settings=emerge_config.target_config.settings)
+		repo_name_check(emerge_config.trees)
 		repo_name_duplicate_check(emerge_config.trees)
 		config_protect_check(emerge_config.trees)
 	check_procfs()

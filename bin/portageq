@@ -66,10 +66,6 @@ def uses_eroot(function):
 	function.uses_eroot = True
 	return function
 
-# Workaround until emerge-webrsync and emerge-delta-webrsync are rewritten in Python.
-if os.environ.get("PORTAGE_SYNC_MODE") == "1":
-	portage._sync_mode = True
-
 # global to hold all function docstrings to be used for argparse help.
 # Avoids python compilation level 2 optimization troubles.
 docstrings = {}
