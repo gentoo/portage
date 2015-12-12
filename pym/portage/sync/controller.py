@@ -129,16 +129,17 @@ class SyncManager(object):
 		self.repo = repo
 		self.exitcode = 1
 		self.updatecache_flg = False
+		hooks_enabled = master_hooks or not repo.sync_hooks_only_on_change
 		if repo.sync_type in self.module_names:
 			tasks = [self.module_controller.get_class(repo.sync_type)]
 		else:
 			msg = "\n%s: Sync module '%s' is not an installed/known type'\n" \
 				% (bad("ERROR"), repo.sync_type)
-			return self.exitcode, msg
+			return self.exitcode, msg, self.updatecache_flg, hooks_enabled
 
 		rval = self.pre_sync(repo)
 		if rval != os.EX_OK:
-			return rval, None
+			return rval, None, self.updatecache_flg, hooks_enabled
 
 		# need to pass the kwargs dict to the modules
 		# so they are available if needed.
@@ -157,7 +158,6 @@ class SyncManager(object):
 		taskmaster = TaskHandler(callback=self.do_callback)
 		taskmaster.run_tasks(tasks, func, status, options=task_opts)
 
-		hooks_enabled = False
 		if (master_hooks or self.updatecache_flg or
 			not repo.sync_hooks_only_on_change):
 			hooks_enabled = True
