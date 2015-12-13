@@ -2578,7 +2578,7 @@ class config(object):
 						f.write("=" * 8 + " Traceback for invalid call to portage.package.ebuild.config.config.__getitem__ " + "=" * 8 + "\n")
 						f.writelines(stack)
 						f.write("=" * 96 + "\n")
-				except:
+				except Exception:
 					pass
 				raise
 			else:
