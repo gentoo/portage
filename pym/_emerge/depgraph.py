@@ -9064,7 +9064,9 @@ class _dep_check_composite_db(dbapi):
 			# Note: highest_visible is not necessarily the real highest
 			# visible, especially when --update is not enabled, so use
 			# < operator instead of !=.
-			if highest_visible is not None and pkg < highest_visible:
+			if (highest_visible is not None and pkg < highest_visible
+				and atom_set.findAtomForPackage(highest_visible,
+				modified_use=self._depgraph._pkg_use_enabled(highest_visible))):
 				return False
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot
