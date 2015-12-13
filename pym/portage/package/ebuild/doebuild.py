@@ -466,7 +466,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		icecream = "icecream" in mysettings.features
 
 		if ccache or distcc or icecream:
-			# Use default ABI libdir in accordance with bug #355283.
 			libdir = None
 			default_abi = mysettings.get("DEFAULT_ABI")
 			if default_abi:
@@ -474,17 +473,27 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			if not libdir:
 				libdir = "lib"
 
+			# The installation locations use to vary between versions...
+			# Safer to look them up rather than assuming
+			possible_libexecdirs = (libdir, "lib", "libexec")
+			masquerades = []
 			if distcc:
-				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
-					 "usr", libdir, "distcc", "bin") + ":" + mysettings["PATH"]
-
+				masquerades.append("distcc")
 			if icecream:
-				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
-					"usr", 'libexec', "icecc", "bin") + ":" + mysettings["PATH"]
-
+				masquerades.append("icecc")
 			if ccache:
-				mysettings["PATH"] = os.path.join(os.sep, eprefix_lstrip,
-					 "usr", libdir, "ccache", "bin") + ":" + mysettings["PATH"]
+				masquerades.append("ccache")
+
+			for m in masquerades:
+				for l in possible_libexecdirs:
+					p = os.path.join(os.sep, eprefix_lstrip,
+							"usr", l, m, "bin")
+					if os.path.isdir(p):
+						mysettings["PATH"] = p + ":" + mysettings["PATH"]
+						break
+				else:
+					writemsg(("Warning: %s requested but no masquerade dir"
+						+ "can be found in /usr/lib*/%s/bin\n") % (m, m))
 
 		if 'MAKEOPTS' not in mysettings:
 			nproc = get_cpu_count()
