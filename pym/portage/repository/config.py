@@ -500,8 +500,6 @@ class RepoConfigLoader(object):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
 					repo = RepoConfig(None, repo_opts, local_config=local_config)
-					if repo._invalid_config:
-						continue
 					# repos_conf_opts contains options from repos.conf
 					repos_conf_opts = repos_conf.get(repo.name)
 					if repos_conf_opts is not None:
