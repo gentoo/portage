@@ -4015,7 +4015,7 @@ class depgraph(object):
 							continue
 
 						if not (isinstance(arg, SetArg) and \
-							arg.name in ("selected", "system", "world")):
+							arg.name in ("selected", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
