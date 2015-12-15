@@ -282,7 +282,8 @@ class Manifest(object):
 		try:
 			myentries = list(self._createManifestEntries())
 			update_manifest = True
-			existing_st = None
+			preserved_stats = {}
+			preserved_stats[self.pkgdir.rstrip(os.sep)] = os.stat(self.pkgdir)
 			if myentries and not force:
 				try:
 					f = io.open(_unicode_encode(self.getFullname(),
@@ -290,7 +291,7 @@ class Manifest(object):
 						mode='r', encoding=_encodings['repo.content'],
 						errors='replace')
 					oldentries = list(self._parseManifestLines(f))
-					existing_st = os.fstat(f.fileno())
+					preserved_stats[self.getFullname()] = os.fstat(f.fileno())
 					f.close()
 					if len(oldentries) == len(myentries):
 						update_manifest = False
@@ -312,7 +313,7 @@ class Manifest(object):
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
 						_unicode(myentry) for myentry in myentries))
-					self._apply_max_mtime(existing_st, myentries)
+					self._apply_max_mtime(preserved_stats, myentries)
 					rval = True
 				else:
 					# With thin manifest, there's no need to have
@@ -332,17 +333,21 @@ class Manifest(object):
 			raise
 		return rval
 
-	def _apply_max_mtime(self, existing_st, entries):
+	def _apply_max_mtime(self, preserved_stats, entries):
 		"""
 		Set the Manifest mtime to the max mtime of all relevant files
-		(the existing Manifest mtime is included in order to account for
-		eclass modifications that change DIST entries). This results in a
+		and directories. Directory mtimes account for file renames and
+		removals. The existing Manifest mtime accounts for eclass
+		modifications that change DIST entries. This results in a
 		stable/predictable mtime, which is useful when converting thin
 		manifests to thick manifests for distribution via rsync. For
 		portability, the mtime is set with 1 second resolution.
 
 		@param existing_st: stat result for existing Manifest
 		@type existing_st: posix.stat_result
+		@param preserved_stats: maps paths to preserved stat results
+			that should be used instead of os.stat() calls
+		@type preserved_stats: dict
 		@param entries: list of current Manifest2Entry instances
 		@type entries: list
 		"""
@@ -350,18 +355,31 @@ class Manifest(object):
 		# it always rounds down. Note that stat_result.st_mtime will round
 		# up from 0.999999999 to 1.0 when precision is lost during conversion
 		# from nanosecond resolution to float.
-		max_mtime = None if existing_st is None else existing_st[stat.ST_MTIME]
+		max_mtime = None
+		_update_max = (lambda st: max_mtime if max_mtime is not None
+			and max_mtime > st[stat.ST_MTIME] else st[stat.ST_MTIME])
+		_stat = (lambda path: preserved_stats[path] if path in preserved_stats
+			else os.stat(path))
+
+		for stat_result in preserved_stats.values():
+			max_mtime = _update_max(stat_result)
+
+		dirs = set()
 		for entry in entries:
 			if entry.type == 'DIST':
 				continue
 			abs_path = (os.path.join(self.pkgdir, 'files', entry.name) if
 				entry.type == 'AUX' else os.path.join(self.pkgdir, entry.name))
-			mtime = os.stat(abs_path)[stat.ST_MTIME]
-			if max_mtime is None or mtime > max_mtime:
-				max_mtime = mtime
+			max_mtime = _update_max(_stat(abs_path))
+
+			parent_dir = os.path.dirname(abs_path)
+			if parent_dir not in dirs:
+				dirs.add(parent_dir)
+				max_mtime = _update_max(_stat(parent_dir))
 
 		if max_mtime is not None:
-			os.utime(self.getFullname(), (max_mtime, max_mtime))
+			for path in preserved_stats:
+				os.utime(path, (max_mtime, max_mtime))
 
 	def sign(self):
 		""" Sign the Manifest """
