@@ -40,18 +40,20 @@ from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 class PkgMetadata(object):
 	'''Package metadata.xml checks'''
 
-	def __init__(self, options, qatracker, repoman_settings):
+	def __init__(self, options, qatracker, repoman_settings, metadata_dtd=None):
 		'''PkgMetadata init function
 
 		@param options: ArgumentParser.parse_known_args(argv[1:]) options
 		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
+		@param metadata_dtd: path of metadata.dtd
 		'''
 		self.options = options
 		self.qatracker = qatracker
 		self.repoman_settings = repoman_settings
 		self.musedict = {}
-		self.xmllint = XmlLint(self.options, self.repoman_settings)
+		self.xmllint = XmlLint(self.options, self.repoman_settings,
+			metadata_dtd=metadata_dtd)
 
 	def check(self, xpkg, checkdir, checkdirlist, repolevel):
 		'''Performs the checks on the metadata.xml for the package

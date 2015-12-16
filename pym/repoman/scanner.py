@@ -82,6 +82,13 @@ class Scanner(object):
 			portage.util.stack_lists([self.categories], incremental=1))
 		self.categories = self.repo_settings.repoman_settings.categories
 
+		metadata_dtd = None
+		for path in reversed(self.repo_settings.repo_config.eclass_db.porttrees):
+			path = os.path.join(path, 'metadata/dtd/metadata.dtd')
+			if os.path.exists(path):
+				metadata_dtd = path
+				break
+
 		self.portdb = repo_settings.portdb
 		self.portdb.settings = self.repo_settings.repoman_settings
 		# We really only need to cache the metadata that's necessary for visibility
@@ -201,7 +208,8 @@ class Scanner(object):
 		self.status_check = VCSStatus(self.vcs_settings, self.qatracker)
 		self.fetchcheck = FetchChecks(
 			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
-		self.pkgmeta = PkgMetadata(self.options, self.qatracker, self.repo_settings.repoman_settings)
+		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
+			self.repo_settings.repoman_settings, metadata_dtd=metadata_dtd)
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
 		self.keywordcheck = KeywordChecks(self.qatracker, self.options)

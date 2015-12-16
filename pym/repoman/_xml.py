@@ -51,11 +51,12 @@ class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 
 class XmlLint(object):
 
-	def __init__(self, options, repoman_settings):
-		self.metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
+	def __init__(self, options, repoman_settings, metadata_dtd=None):
+		self.metadata_dtd = (metadata_dtd or
+			os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd'))
 		self.options = options
 		self.repoman_settings = repoman_settings
-		self._is_capable = False
+		self._is_capable = metadata_dtd is not None
 		self.binary = None
 		self._check_capable()
 
@@ -65,7 +66,8 @@ class XmlLint(object):
 		self.binary = find_binary('xmllint')
 		if not self.binary:
 			print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
-		else:
+			self._is_capable = False
+		elif not self._is_capable:
 			if not fetch_metadata_dtd(self.metadata_dtd, self.repoman_settings):
 				sys.exit(1)
 			# this can be problematic if xmllint changes their output
