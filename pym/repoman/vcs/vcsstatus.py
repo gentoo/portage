@@ -67,7 +67,7 @@ class VCSStatus(object):
 		try:
 			myf = repoman_popen(
 				"svn status --depth=files --verbose " +
-				portage._shell_quote(self.checkdir))
+				portage._shell_quote(checkdir))
 			myl = myf.readlines()
 			myf.close()
 		except IOError:
