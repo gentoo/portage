@@ -343,8 +343,6 @@ class Manifest(object):
 		manifests to thick manifests for distribution via rsync. For
 		portability, the mtime is set with 1 second resolution.
 
-		@param existing_st: stat result for existing Manifest
-		@type existing_st: posix.stat_result
 		@param preserved_stats: maps paths to preserved stat results
 			that should be used instead of os.stat() calls
 		@type preserved_stats: dict
