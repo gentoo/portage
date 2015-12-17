@@ -362,7 +362,6 @@ class Manifest(object):
 		for stat_result in preserved_stats.values():
 			max_mtime = _update_max(stat_result)
 
-		dirs = set()
 		for entry in entries:
 			if entry.type == 'DIST':
 				continue
@@ -370,10 +369,21 @@ class Manifest(object):
 				entry.type == 'AUX' else os.path.join(self.pkgdir, entry.name))
 			max_mtime = _update_max(_stat(abs_path))
 
-			parent_dir = os.path.dirname(abs_path)
-			if parent_dir not in dirs:
-				dirs.add(parent_dir)
-				max_mtime = _update_max(_stat(parent_dir))
+		if not self.thin:
+			# Account for changes to all relevant nested directories.
+			# This is not necessary for thin manifests because
+			# self.pkgdir is already included via preserved_stats.
+			for parent_dir, dirs, files in os.walk(self.pkgdir.rstrip(os.sep)):
+				try:
+					parent_dir = _unicode_decode(parent_dir,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					# If an absolute path cannot be decoded, then it is
+					# always excluded from the manifest (repoman will
+					# report such problems).
+					pass
+				else:
+					max_mtime = _update_max(_stat(parent_dir))
 
 		if max_mtime is not None:
 			for path in preserved_stats:
