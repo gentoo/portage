@@ -160,8 +160,8 @@ class config(object):
 		'repository', 'RESTRICT', 'LICENSE',)
 
 	_module_aliases = {
-		"cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
-		"portage.cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
+		"cache.metadata_overlay.database" : "portage.cache.flat_hash.mtime_md5_database",
+		"portage.cache.metadata_overlay.database" : "portage.cache.flat_hash.mtime_md5_database",
 	}
 
 	_case_insensitive_vars = special_env_vars.case_insensitive_vars
@@ -444,7 +444,7 @@ class config(object):
 				(user_auxdbmodule, modules_file))
 
 			self.modules["default"] = {
-				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
+				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.mtime_md5_database",
 			}
 
 			self.configlist=[]
