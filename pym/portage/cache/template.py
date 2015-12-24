@@ -46,12 +46,13 @@ class database(object):
 			self.commit()
 			self.updates = 0
 		d=self._getitem(cpv)
-		if self.serialize_eclasses and "_eclasses_" in d:
-			try:
-				chf_types = self.chf_types
-			except AttributeError:
-				chf_types = (self.validation_chf,)
 
+		try:
+			chf_types = self.chf_types
+		except AttributeError:
+			chf_types = (self.validation_chf,)
+
+		if self.serialize_eclasses and "_eclasses_" in d:
 			for chf_type in chf_types:
 				try:
 					d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"],
@@ -69,16 +70,23 @@ class database(object):
 		# to omit it in comparisons between cache entries like
 		# those that egencache uses to avoid redundant writes.
 		d.pop("INHERITED", None)
+
+		mtime_required = not any(d.get('_%s_' % x)
+			for x in chf_types if x != 'mtime')
+
 		mtime = d.get('_mtime_')
-		if mtime is None:
-			raise cache_errors.CacheCorruption(cpv,
-				'_mtime_ field is missing')
-		try:
-			mtime = long(mtime)
-		except ValueError:
-			raise cache_errors.CacheCorruption(cpv,
-				'_mtime_ conversion to long failed: %s' % (mtime,))
-		d['_mtime_'] = mtime
+		if not mtime:
+			if mtime_required:
+				raise cache_errors.CacheCorruption(cpv,
+					'_mtime_ field is missing')
+			d.pop('_mtime_', None)
+		else:
+			try:
+				mtime = long(mtime)
+			except ValueError:
+				raise cache_errors.CacheCorruption(cpv,
+					'_mtime_ conversion to long failed: %s' % (mtime,))
+			d['_mtime_'] = mtime
 		return d
 
 	def _getitem(self, cpv):
