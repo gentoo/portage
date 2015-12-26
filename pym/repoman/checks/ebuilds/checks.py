@@ -427,6 +427,7 @@ class InheritDeprecated(LineCheck):
 		"gst-plugins-good": "gstreamer",
 		"gst-plugins-ugly": "gstreamer",
 		"gst-plugins10": "gstreamer",
+		"clutter": "gnome2",
 	}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
