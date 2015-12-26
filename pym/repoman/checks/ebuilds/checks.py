@@ -422,6 +422,11 @@ class InheritDeprecated(LineCheck):
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
 		"x-modular": "xorg-2",
+		"gst-plugins-bad": "gstreamer",
+		"gst-plugins-base": "gstreamer",
+		"gst-plugins-good": "gstreamer",
+		"gst-plugins-ugly": "gstreamer",
+		"gst-plugins10": "gstreamer",
 	}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
