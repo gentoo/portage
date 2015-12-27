@@ -593,6 +593,15 @@ __dyn_install() {
 	__vecho
 	__ebuild_phase post_src_install
 
+	# record build & installed size in build log
+	if type -P du &>/dev/null; then
+		local sz=( $(du -ks "${WORKDIR}") )
+		einfo "Final size of build directory: ${sz[0]} KiB"
+		sz=( $(du -ks "${D}") )
+		einfo "Final size of installed tree: ${sz[0]} KiB"
+		__vecho
+	fi
+
 	cd "${PORTAGE_BUILDDIR}"/build-info
 	set -f
 	local f x
