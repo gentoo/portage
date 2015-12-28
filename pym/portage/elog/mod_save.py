@@ -33,8 +33,7 @@ def process(mysettings, key, logentries, fulltext):
 			uid = portage_uid
 		ensure_dirs(logdir, uid=uid, gid=portage_gid, mode=0o2770)
 
-	cat = mysettings['CATEGORY']
-	pf = mysettings['PF']
+	cat, pf = portage.catsplit(key)
 
 	elogfilename = pf + ":" + _unicode_decode(
 		time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())),
