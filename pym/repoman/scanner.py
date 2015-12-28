@@ -93,9 +93,13 @@ class Scanner(object):
 		self.portdb.settings = self.repo_settings.repoman_settings
 		# We really only need to cache the metadata that's necessary for visibility
 		# filtering. Anything else can be discarded to reduce memory consumption.
-		self.portdb._aux_cache_keys.clear()
-		self.portdb._aux_cache_keys.update(
-			["EAPI", "IUSE", "KEYWORDS", "repository", "SLOT"])
+		if self.options.mode != "manifest" and self.options.digest != "y":
+			# Don't do this when generating manifests, since that uses
+			# additional keys if spawn_nofetch is called (RESTRICT and
+			# DEFINED_PHASES).
+			self.portdb._aux_cache_keys.clear()
+			self.portdb._aux_cache_keys.update(
+				["EAPI", "IUSE", "KEYWORDS", "repository", "SLOT"])
 
 		self.reposplit = myreporoot.split(os.path.sep)
 		self.repolevel = len(self.reposplit)
