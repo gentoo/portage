@@ -22,7 +22,7 @@ bad = portage.output.create_color_func("BAD")
 
 
 class RepoSettings(object):
-	'''Holds out repo specific settings'''
+	'''Holds our repo specific settings'''
 
 	def __init__(
 		self, config_root, portdir, portdir_overlay,
