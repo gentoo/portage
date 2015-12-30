@@ -5,7 +5,6 @@ from __future__ import print_function, unicode_literals
 from portage.output import red
 
 from repoman.errors import err
-from repoman.vcs.vcs import detect_vcs_conflicts
 
 
 def commit_check(repolevel, reposplit):
@@ -32,4 +31,5 @@ def commit_check(repolevel, reposplit):
 
 def conflict_check(vcs_settings, options):
 	if vcs_settings.vcs:
-		detect_vcs_conflicts(options, vcs_settings.vcs)
+		conflicts = vcs_settings.status.detect_conflicts(options)
+

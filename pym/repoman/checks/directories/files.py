@@ -9,7 +9,7 @@ import io
 from portage import _encodings, _unicode_encode
 from portage import os
 
-from repoman.vcs.vcs import vcs_new_changed
+from repoman.modules.vcs.vcs import vcs_new_changed
 
 
 class FileChecks(object):

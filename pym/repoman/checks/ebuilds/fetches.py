@@ -11,7 +11,7 @@ from repoman._portage import portage
 
 from portage import os
 
-from repoman.vcs.vcs import vcs_new_changed
+from repoman.modules.vcs.vcs import vcs_new_changed
 
 
 class FetchChecks(object):

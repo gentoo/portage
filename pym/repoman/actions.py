@@ -30,7 +30,7 @@ from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 from repoman.errors import err
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities
-from repoman.vcs.vcs import git_supports_gpg_sign, vcs_files_to_cps
+from repoman.modules.vcs.vcs import vcs_files_to_cps
 
 bad = create_color_func("BAD")
 
@@ -673,8 +673,7 @@ class Actions(object):
 			else:
 				retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
 				if retval != os.EX_OK:
-					if self.repo_settings.repo_config.sign_commit and self.vcs_settings.vcs == 'git' and \
-						not git_supports_gpg_sign():
+					if self.repo_settings.repo_config.sign_commit and not self.vcs_settings.status.supports_gpg_sign():
 						# Inform user that newer git is needed (bug #403323).
 						logging.error(
 							"Git >=1.7.9 is required for signed commits!")

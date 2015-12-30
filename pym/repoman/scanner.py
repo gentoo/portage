@@ -40,11 +40,9 @@ from repoman.ebuild import Ebuild
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.qa_data import missingvars, suspect_virtual, suspect_rdepend
-from repoman.qa_tracker import QATracker
 from repoman.repos import repo_metadata
-from repoman.scan import Changes, scan
-from repoman.vcs.vcsstatus import VCSStatus
-from repoman.vcs.vcs import vcs_files_to_cps
+from repoman.scan import scan
+from repoman.modules.vcs.vcs import vcs_files_to_cps
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -141,7 +139,7 @@ class Scanner(object):
 
 		self.dev_keywords = dev_profile_keywords(self.profiles)
 
-		self.qatracker = QATracker()
+		self.qatracker = self.vcs_settings.qatracker
 
 		if self.options.echangelog is None and self.repo_settings.repo_config.update_changelog:
 			self.options.echangelog = 'y'
@@ -170,11 +168,11 @@ class Scanner(object):
 		else:
 			print(green("\nRepoMan scours the neighborhood..."))
 
-		self.changed = Changes(self.options)
+		self.changed = self.vcs_settings.changes
 		# bypass unneeded VCS operations if not needed
 		if (self.options.if_modified == "y" or
 			self.options.mode not in ("manifest", "manifest-check")):
-			self.changed.scan(self.vcs_settings)
+			self.changed.scan()
 
 		self.have = {
 			'pmasked': False,
@@ -212,7 +210,7 @@ class Scanner(object):
 		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
 		self.filescheck = FileChecks(
 			self.qatracker, self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
-		self.status_check = VCSStatus(self.vcs_settings, self.qatracker)
+		self.status_check = self.vcs_settings.status
 		self.fetchcheck = FetchChecks(
 			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
 		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
@@ -272,7 +270,7 @@ class Scanner(object):
 			self.filescheck.check(
 				checkdir, checkdirlist, checkdir_relative, self.changed.changed, self.changed.new)
 
-			self.status_check.check(self.check['ebuild_notadded'], checkdir, checkdir_relative, xpkg)
+			self.status_check.check(checkdir, checkdir_relative, xpkg)
 			self.eadded.extend(self.status_check.eadded)
 
 			self.fetchcheck.check(
@@ -288,7 +286,7 @@ class Scanner(object):
 			self.changelog_modified = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, xpkg, catdir, pkgdir)
-		return self.qatracker, can_force
+		return can_force
 
 
 	def _scan_ebuilds(self, ebuildlist, xpkg, catdir, pkgdir):
