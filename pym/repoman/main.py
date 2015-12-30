@@ -33,7 +33,7 @@ from repoman.qa_data import (
 from repoman.repos import RepoSettings
 from repoman.scanner import Scanner
 from repoman import utilities
-from repoman.vcs.vcs import VCSSettings
+from repoman.modules.vcs.settings import VCSSettings
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -101,7 +101,7 @@ def repoman_main(argv):
 	# Perform the main checks
 	scanner = Scanner(repo_settings, myreporoot, config_root, options,
 					vcs_settings, mydir, env)
-	qatracker, can_force = scanner.scan_pkgs(can_force)
+	can_force = scanner.scan_pkgs(can_force)
 
 	commitmessage = None
 
@@ -122,7 +122,7 @@ def repoman_main(argv):
 		sys.exit(result['fail'])
 
 	for x in qacats:
-		if x not in qatracker.fails:
+		if x not in vcs_settings.qatracker.fails:
 			continue
 		result['warn'] = 1
 		if x not in qawarnings:
@@ -153,7 +153,8 @@ def repoman_main(argv):
 
 	format_output = format_outputs.get(
 		options.output_style, format_outputs['default'])
-	format_output(f, qatracker.fails, result['full'], result['fail'], options, qawarnings)
+	format_output(f, vcs_settings.qatracker.fails, result['full'],
+		result['fail'], options, qawarnings)
 
 	style_file.flush()
 	del console_writer, f, style_file
