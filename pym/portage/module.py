@@ -46,7 +46,7 @@ class Module(object):
 		for submodule in self.module_spec['provides']:
 			kid = self.module_spec['provides'][submodule]
 			kidname = kid['name']
-			kid['module_name'] = '.'.join([mod_name, self.name])
+			kid['module_name'] = '.'.join([mod_name, kid['sourcefile']])
 			kid['is_imported'] = False
 			self.kids[kidname] = kid
 			self.kids_names.append(kidname)
@@ -81,6 +81,7 @@ class Modules(object):
 	def __init__(self, path, namepath):
 		self._module_path = path
 		self._namepath = namepath
+		self.parents = []
 		self._modules = self._get_all_modules()
 		self.modules = ProtectedDict(self._modules)
 		self.module_names = sorted(self._modules)
@@ -111,10 +112,11 @@ class Modules(object):
 				kid = new_module.kids[module_name]
 				kid['parent'] = new_module
 				kids[kid['name']] = kid
+			self.parents.append(entry)
 		return kids
 
 	def get_module_names(self):
-		"""Convienence function to return the list of installed modules
+		"""Convenience function to return the list of installed modules
 		available
 
 		@rtype: list

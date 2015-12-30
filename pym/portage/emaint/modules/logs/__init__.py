@@ -11,6 +11,7 @@ module_spec = {
 	'provides':{
 		'module1': {
 			'name': "logs",
+			'sourcefile': "logs",
 			'class': "CleanLogs",
 			'description': doc,
 			'functions': ['check','clean'],

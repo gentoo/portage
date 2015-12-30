@@ -11,6 +11,7 @@ module_spec = {
 	'provides':{
 		'module1': {
 			'name': "cleanconfmem",
+			'sourcefile': "config",
 			'class': "CleanConfig",
 			'description': doc,
 			'functions': ['check', 'fix'],

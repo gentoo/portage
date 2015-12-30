@@ -11,6 +11,7 @@ module_spec = {
 	'provides': {
 		'merges': {
 			'name': "merges",
+			'sourcefile': "merges",
 			'class': "MergesHandler",
 			'description': doc,
 			'functions': ['check', 'fix', 'purge'],

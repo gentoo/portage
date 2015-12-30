@@ -11,6 +11,7 @@ module_spec = {
 	'provides':{
 		'module1':{
 			'name': "world",
+			'sourcefile': "world",
 			'class': "WorldHandler",
 			'description': doc,
 			'functions': ['check', 'fix'],

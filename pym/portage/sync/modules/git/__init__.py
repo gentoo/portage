@@ -40,6 +40,7 @@ module_spec = {
 	'provides':{
 		'git-module': {
 			'name': "git",
+			'sourcefile': "git",
 			'class': "GitSync",
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
