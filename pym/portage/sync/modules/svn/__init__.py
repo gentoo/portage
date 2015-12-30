@@ -16,6 +16,7 @@ module_spec = {
 	'provides':{
 		'svn-module': {
 			'name': "svn",
+			'sourcefile': "svn",
 			'class': "SVNSync",
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
