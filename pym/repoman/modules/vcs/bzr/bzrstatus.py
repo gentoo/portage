@@ -34,3 +34,7 @@ class Status(object):
 	@staticmethod
 	def supports_gpg_sign():
 		return False
+
+	@staticmethod
+	def isVcsDir(dirname):
+		return dirname in [".bzr"]

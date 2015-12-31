@@ -43,4 +43,7 @@ class Status(object):
 	def detect_conflicts(options):
 		return False
 
+	@staticmethod
+	def isVcsDir(dirname):
+		return dirname in [".git"]
 
