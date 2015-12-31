@@ -91,11 +91,10 @@ class FetchChecks(object):
 					else:
 						raise oe
 				if S_ISDIR(mystat.st_mode):
-					# !!! VCS "portability" alert!  Need some function isVcsDir() or alike !!!
-					if y == "CVS" or y == ".svn":
+					if self.vcs_settings.status.isVcsDir(y):
 						continue
 					for z in os.listdir(checkdir + "/files/" + y):
-						if z == "CVS" or z == ".svn":
+						if self.vcs_settings.status.isVcsDir(z):
 							continue
 						filesdirlist.append(y + "/" + z)
 				# Current policy is no files over 20 KiB, these are the checks.
