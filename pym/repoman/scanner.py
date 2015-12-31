@@ -209,7 +209,7 @@ class Scanner(object):
 		self.manifester = Manifests(self.options, self.qatracker, self.repo_settings.repoman_settings)
 		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
 		self.filescheck = FileChecks(
-			self.qatracker, self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
+			self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
 		self.status_check = self.vcs_settings.status
 		self.fetchcheck = FetchChecks(
 			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
