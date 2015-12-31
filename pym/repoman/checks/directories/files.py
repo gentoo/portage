@@ -15,15 +15,14 @@ from repoman.modules.vcs.vcs import vcs_new_changed
 class FileChecks(object):
 
 	def __init__(
-		self, qatracker, repoman_settings, repo_settings, portdb, vcs_settings):
+		self, repoman_settings, repo_settings, portdb, vcs_settings):
 		'''
-		@param qatracker: QATracker instance
 		@param repoman_settings: settings instance
 		@param repo_settings: repository settings instance
 		@param portdb: portdb instance
 		'''
 		self.portdb = portdb
-		self.qatracker = qatracker
+		self.qatracker = vcs_settings.qatracker
 		self.repo_settings = repo_settings
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
