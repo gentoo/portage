@@ -224,16 +224,16 @@ class Scanner(object):
 			"options": self.options,
 			"metadata_dtd": metadata_dtd,
 			"uselist": uselist,
+			"checks": self.check,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in ['manifests', 'isebuild', 'keywords', 'files']:
+		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.status_check = self.vcs_settings.status
 		self.fetchcheck = FetchChecks(
 			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
 		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
@@ -276,7 +276,8 @@ class Scanner(object):
 				'can_force': can_force,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks']:
+			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
+						'VCSStatus']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -300,9 +301,6 @@ class Scanner(object):
 			self.allvalid = dynamic_data['allvalid']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
-
-			self.status_check.check(checkdir, checkdir_relative, xpkg)
-			self.eadded.extend(self.status_check.eadded)
 
 			self.fetchcheck.check(
 				xpkg, checkdir, checkdir_relative, self.changed.changed, self.changed.new)
