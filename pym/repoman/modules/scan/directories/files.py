@@ -10,30 +10,38 @@ from portage import _encodings, _unicode_encode
 from portage import os
 
 from repoman.modules.vcs.vcs import vcs_new_changed
+from repoman.modules.scan.scanbase import ScanBase
 
 
-class FileChecks(object):
+class FileChecks(ScanBase):
+	'''Performs various file checks in the package's directory'''
 
-	def __init__(
-		self, repoman_settings, repo_settings, portdb, vcs_settings):
+	def __init__(self, **kwargs):
 		'''
-		@param repoman_settings: settings instance
-		@param repo_settings: repository settings instance
 		@param portdb: portdb instance
+		@param qatracker: QATracker instance
+		@param repo_settings: settings instance
+		@param vcs_settings: VCSSettings instance
 		'''
-		self.portdb = portdb
-		self.qatracker = vcs_settings.qatracker
-		self.repo_settings = repo_settings
-		self.repoman_settings = repoman_settings
-		self.vcs_settings = vcs_settings
+		super(FileChecks, self).__init__(**kwargs)
+		self.portdb = kwargs.get('portdb')
+		self.qatracker = kwargs.get('qatracker')
+		self.repo_settings = kwargs.get('repo_settings')
+		self.repoman_settings = self.repo_settings.repoman_settings
+		self.vcs_settings = kwargs.get('vcs_settings')
 
-	def check(self, checkdir, checkdirlist, checkdir_relative, changed, new):
+	def check(self, **kwargs):
 		'''Checks the ebuild sources and files for errors
 
-		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
+		@param changed: dictionary instance
 		'''
+		checkdir = kwargs.get('checkdir')
+		checkdirlist = kwargs.get('checkdirlist')
+		checkdir_relative = kwargs.get('checkdir_relative')
+		changed = kwargs.get('changed').changed
+		new = kwargs.get('changed').new
 		for y_file in checkdirlist:
 			index = self.repo_settings.repo_config.find_invalid_path_char(y_file)
 			if index != -1:
@@ -77,4 +85,9 @@ class FileChecks(object):
 			finally:
 				if f is not None:
 					f.close()
-		return
+		return {'continue': False}
+
+	@property
+	def runInPkgs(self):
+		'''Package level scans'''
+		return (True, [self.check])
