@@ -19,7 +19,6 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
-from repoman.checks.directories.files import FileChecks
 from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
@@ -228,14 +227,12 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in ['manifests', 'isebuild', 'keywords']:
+		for mod in ['manifests', 'isebuild', 'keywords', 'files']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.filescheck = FileChecks(
-			self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
 		self.status_check = self.vcs_settings.status
 		self.fetchcheck = FetchChecks(
 			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
@@ -279,7 +276,7 @@ class Scanner(object):
 				'can_force': can_force,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks']:
+			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -303,9 +300,6 @@ class Scanner(object):
 			self.allvalid = dynamic_data['allvalid']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
-
-			self.filescheck.check(
-				checkdir, checkdirlist, checkdir_relative, self.changed.changed, self.changed.new)
 
 			self.status_check.check(checkdir, checkdir_relative, xpkg)
 			self.eadded.extend(self.status_check.eadded)
