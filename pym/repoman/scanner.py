@@ -314,11 +314,12 @@ class Scanner(object):
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			self.changelog_modified = changelog_path in self.changed.changelogs
 
-			self._scan_ebuilds(ebuildlist, xpkg, catdir, pkgdir)
+			self._scan_ebuilds(ebuildlist, catdir, pkgdir, dynamic_data)
 		return dynamic_data['can_force']
 
 
-	def _scan_ebuilds(self, ebuildlist, xpkg, catdir, pkgdir):
+	def _scan_ebuilds(self, ebuildlist, catdir, pkgdir, dynamic_data):
+		xpkg = dynamic_data['xpkg']
 		# detect unused local USE-descriptions
 		used_useflags = set()
 
