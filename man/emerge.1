@@ -361,6 +361,12 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-only [ y | n ]"
+Instead of doing any package building, just unmask
+packages and generate package.use settings as necessary
+to satisfy dependencies. This option is disabled by
+default.
+.TP
 .BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
 If \-\-autounmask is enabled, keyword and mask changes
 using the \'=\' operator will be written. With this

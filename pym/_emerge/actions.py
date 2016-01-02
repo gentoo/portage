@@ -327,6 +327,10 @@ def action_build(settings, trees, mtimedb,
 			display_missing_pkg_set(root_config, e.value)
 			return 1
 
+		if "--autounmask-only" in myopts:
+			mydepgraph.display_problems()
+			return 0
+
 		if not success:
 			mydepgraph.display_problems()
 			return 1
