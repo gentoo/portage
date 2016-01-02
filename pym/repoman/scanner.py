@@ -27,7 +27,6 @@ from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.keywords import KeywordChecks
 from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
-from repoman.checks.ebuilds.manifests import Manifests
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
@@ -237,7 +236,6 @@ class Scanner(object):
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.manifester = Manifests(self.options, self.qatracker, self.repo_settings.repoman_settings)
 		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
 		self.filescheck = FileChecks(
 			self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
@@ -274,14 +272,6 @@ class Scanner(object):
 			if self.repolevel < 2:
 				checkdir_relative = os.path.join(catdir, checkdir_relative)
 			checkdir_relative = os.path.join(".", checkdir_relative)
-
-			if self.manifester.run(checkdir, self.portdb):
-				continue
-			if not self.manifester.generated_manifest:
-				self.manifester.digest_check(xpkg, checkdir)
-			if self.options.mode == 'manifest-check':
-				continue
-
 			checkdirlist = os.listdir(checkdir)
 
 			self.pkgs, self.allvalid = self.is_ebuild.check(checkdirlist, checkdir, xpkg)
@@ -301,7 +291,7 @@ class Scanner(object):
 				'can_force': can_force,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in []:
+			for mod in ['Manifests']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
