@@ -275,7 +275,8 @@ install_mask() {
 
 		# The standard case where $no_inst is something that
 		# the shell could expand on its own.
-		if [[ -e "${root}"/${no_inst} || "${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
+		if [[ -e "${root}"/${no_inst} || -L "${root}"/${no_inst} ||
+			"${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
 			__quiet_mode || einfo "Removing ${no_inst}"
 			rm -Rf "${root}"/${no_inst} >&/dev/null
 		fi
