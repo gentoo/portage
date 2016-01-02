@@ -13,13 +13,16 @@ from portage.util import writemsg_level
 
 class Manifests(object):
 
-	def __init__(self, options, qatracker=None, repoman_settings=None):
-		self.options = options
-		self.qatracker = qatracker
-		self.repoman_settings = repoman_settings
+	def __init__(self, **kwargs):
+		self.options = kwargs.get('options')
+		self.portdb = kwargs.get('portdb')
+		self.qatracker = kwargs.get('qatracker')
+		self.repoman_settings = kwargs.get('repo_settings').repoman_settings
 		self.generated_manifest = False
 
-	def run(self, checkdir, portdb):
+	def check(self, **kwargs):
+		checkdir = kwargs.get('checkdir')
+		xpkg = kwargs.get('xpkg')
 		self.generated_manifest = False
 		self.digest_only = self.options.mode != 'manifest-check' \
 			and self.options.digest == 'y'
@@ -29,14 +32,14 @@ class Manifests(object):
 			failed = False
 			self.auto_assumed = set()
 			fetchlist_dict = portage.FetchlistDict(
-				checkdir, self.repoman_settings, portdb)
+				checkdir, self.repoman_settings, self.portdb)
 			if self.options.mode == 'manifest' and self.options.force:
 				portage._doebuild_manifest_exempt_depend += 1
 				self.create_manifest(checkdir, fetchlist_dict)
 			self.repoman_settings["O"] = checkdir
 			try:
 				self.generated_manifest = digestgen(
-					mysettings=self.repoman_settings, myportdb=portdb)
+					mysettings=self.repoman_settings, myportdb=self.portdb)
 			except portage.exception.PermissionDenied as e:
 				self.generated_manifest = False
 				writemsg_level(
@@ -70,10 +73,14 @@ class Manifests(object):
 								portage.writemsg_stdout(
 									"   %s::%s\n" % (pf, distfile))
 				# continue, skip remaining main loop code
-				return True
+				return {'continue': True}
 			elif failed:
 				sys.exit(1)
-		return False
+		if not self.generated_manifest:
+			self.digest_check(xpkg, checkdir)
+		if self.options.mode == 'manifest-check':
+			return {'continue': True}
+		return {'continue': False}
 
 	def create_manifest(self, checkdir, fetchlist_dict):
 		try:
@@ -100,3 +107,11 @@ class Manifests(object):
 		if not portage.digestcheck([], self.repoman_settings, strict=1):
 			self.qatracker.add_error("manifest.bad", os.path.join(xpkg, 'Manifest'))
 		self.repoman_settings.pop('PORTAGE_QUIET', None)
+
+	@property
+	def runInPkgs(self):
+		return (True, [self.check])
+
+	@property
+	def runInEbuilds(self):
+		return (False, [])
