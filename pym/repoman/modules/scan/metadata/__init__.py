@@ -46,6 +46,15 @@ module_spec = {
 			'func_desc': {
 			},
 		},
+		'restrict-metadata': {
+			'name': "restrict",
+			'sourcefile': "restrict",
+			'class': "RestrictChecks",
+			'description': doc,
+			'functions': ['check'],
+			'func_desc': {
+			},
+		},
 	}
 }
 
