@@ -327,8 +327,6 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-			if dynamic_data['ebuild'].metadata.get("PROVIDE"):
-				self.qatracker.add_error("virtual.oldstyle", dynamic_data['ebuild'].relative_path)
 
 			for pos, missing_var in enumerate(missingvars):
 				if not dynamic_data['ebuild'].metadata.get(missing_var):
