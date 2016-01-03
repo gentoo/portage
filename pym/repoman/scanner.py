@@ -21,7 +21,6 @@ from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
-from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
@@ -219,7 +218,6 @@ class Scanner(object):
 		# initialize our checks classes here before the big xpkg loop
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
 		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
-		self.descriptioncheck = DescriptionChecks(self.qatracker)
 		self.licensecheck = LicenseChecks(self.qatracker, liclist, liclist_deprecated)
 		self.restrictcheck = RestrictChecks(self.qatracker)
 
@@ -304,6 +302,7 @@ class Scanner(object):
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
+				('description', 'DescriptionChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -349,8 +348,6 @@ class Scanner(object):
 					if dynamic_data['ebuild'].metadata.get(var):
 						myqakey = var + ".virtual"
 						self.qatracker.add_error(myqakey, dynamic_data['ebuild'].relative_path)
-
-			self.descriptioncheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
 			if dynamic_data['live_ebuild'] and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
