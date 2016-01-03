@@ -5,8 +5,6 @@ from __future__ import print_function, unicode_literals
 import copy
 import io
 import logging
-import re
-import sys
 from itertools import chain
 from pprint import pformat
 
@@ -47,16 +45,8 @@ MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
 MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
 
 
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
-
-NON_ASCII_RE = re.compile(r'[^\x00-\x7f]')
-
-
 def sort_key(item):
 	return item[2].sub_path
-
 
 
 class Scanner(object):
@@ -314,7 +304,7 @@ class Scanner(object):
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
-				('eapi', 'EAPIChecks')]:
+				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata')]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
@@ -340,21 +330,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-
-			for k, v in dynamic_data['ebuild'].metadata.items():
-				if not isinstance(v, basestring):
-					continue
-				m = NON_ASCII_RE.search(v)
-				if m is not None:
-					self.qatracker.add_error(
-						"variable.invalidchar",
-						"%s: %s variable contains non-ASCII "
-						"character at position %s" %
-						(dynamic_data['ebuild'].relative_path, k, m.start() + 1))
-
-			if not dynamic_data['src_uri_error']:
-				self.thirdparty.check(dynamic_data['ebuild'].metadata, dynamic_data['ebuild'].relative_path)
 
 			if dynamic_data['ebuild'].metadata.get("PROVIDE"):
 				self.qatracker.add_error("virtual.oldstyle", dynamic_data['ebuild'].relative_path)
