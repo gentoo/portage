@@ -19,13 +19,11 @@ from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
-from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
-from repoman.qa_data import missingvars, suspect_virtual, suspect_rdepend
 from repoman.repos import repo_metadata
 from repoman.modules.scan.scan import scan
 from repoman.modules.vcs.vcs import vcs_files_to_cps
@@ -304,7 +302,7 @@ class Scanner(object):
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
 				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
-				('arches', 'ArchChecks'),
+				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -361,112 +359,9 @@ class Scanner(object):
 			badprovsyntax = False
 			# catpkg = catdir + "/" + y_ebuild
 
-			inherited_java_eclass = "java-pkg-2" in dynamic_data['ebuild'].inherited or \
-				"java-pkg-opt-2" in dynamic_data['ebuild'].inherited,
-			inherited_wxwidgets_eclass = "wxwidgets" in dynamic_data['ebuild'].inherited
-			# operator_tokens = set(["||", "(", ")"])
-			type_list, badsyntax = [], []
-			for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
-				mydepstr = dynamic_data['ebuild'].metadata[mytype]
-
-				buildtime = mytype in Package._buildtime_keys
-				runtime = mytype in Package._runtime_keys
-				token_class = None
-				if mytype.endswith("DEPEND"):
-					token_class = portage.dep.Atom
-
-				try:
-					atoms = portage.dep.use_reduce(
-						mydepstr, matchall=1, flat=True,
-						is_valid_flag=dynamic_data['pkg'].iuse.is_valid_flag, token_class=token_class)
-				except portage.exception.InvalidDependString as e:
-					atoms = None
-					badsyntax.append(str(e))
-
-				if atoms and mytype.endswith("DEPEND"):
-					if runtime and \
-						"test?" in mydepstr.split():
-						self.qatracker.add_error(
-							mytype + '.suspect',
-							"%s: 'test?' USE conditional in %s" %
-							(dynamic_data['ebuild'].relative_path, mytype))
-
-					for atom in atoms:
-						if atom == "||":
-							continue
-
-						is_blocker = atom.blocker
-
-						# Skip dependency.unknown for blockers, so that we
-						# don't encourage people to remove necessary blockers,
-						# as discussed in bug 382407. We use atom.without_use
-						# due to bug 525376.
-						if not is_blocker and \
-							not self.portdb.xmatch("match-all", atom.without_use) and \
-							not atom.cp.startswith("virtual/"):
-							unknown_pkgs.add((mytype, atom.unevaluated_atom))
-
-						if dynamic_data['catdir'] != "virtual":
-							if not is_blocker and \
-								atom.cp in suspect_virtual:
-								self.qatracker.add_error(
-									'virtual.suspect', dynamic_data['ebuild'].relative_path +
-									": %s: consider using '%s' instead of '%s'" %
-									(mytype, suspect_virtual[atom.cp], atom))
-							if not is_blocker and \
-								atom.cp.startswith("perl-core/"):
-								self.qatracker.add_error('dependency.perlcore',
-									dynamic_data['ebuild'].relative_path +
-									": %s: please use '%s' instead of '%s'" %
-									(mytype,
-									atom.replace("perl-core/","virtual/perl-"),
-									atom))
-
-						if buildtime and \
-							not is_blocker and \
-							not inherited_java_eclass and \
-							atom.cp == "virtual/jdk":
-							self.qatracker.add_error(
-								'java.eclassesnotused', dynamic_data['ebuild'].relative_path)
-						elif buildtime and \
-							not is_blocker and \
-							not inherited_wxwidgets_eclass and \
-							atom.cp == "x11-libs/wxGTK":
-							self.qatracker.add_error(
-								'wxwidgets.eclassnotused',
-								"%s: %ss on x11-libs/wxGTK without inheriting"
-								" wxwidgets.eclass" % (dynamic_data['ebuild'].relative_path, mytype))
-						elif runtime:
-							if not is_blocker and \
-								atom.cp in suspect_rdepend:
-								self.qatracker.add_error(
-									mytype + '.suspect',
-									dynamic_data['ebuild'].relative_path + ": '%s'" % atom)
-
-						if atom.operator == "~" and \
-							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
-							qacat = 'dependency.badtilde'
-							self.qatracker.add_error(
-								qacat, "%s: %s uses the ~ operator"
-								" with a non-zero revision: '%s'" %
-								(dynamic_data['ebuild'].relative_path, mytype, atom))
-
-						check_missingslot(atom, mytype, dynamic_data['ebuild'].eapi, self.portdb, self.qatracker,
-							dynamic_data['ebuild'].relative_path, dynamic_data['ebuild'].metadata)
-
-				type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
-
-			for m, b in zip(type_list, badsyntax):
-				if m.endswith("DEPEND"):
-					qacat = "dependency.syntax"
-				else:
-					qacat = m + ".syntax"
-				self.qatracker.add_error(
-					qacat, "%s: %s: %s" % (dynamic_data['ebuild'].relative_path, m, b))
-
-			badlicsyntax = len([z for z in type_list if z == "LICENSE"])
-			badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
-			baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax
+			badlicsyntax = len([z for z in dynamic_data['type_list'] if z == "LICENSE"])
+			badprovsyntax = len([z for z in dynamic_data['type_list'] if z == "PROVIDE"])
+			baddepsyntax = len(dynamic_data['type_list']) != badlicsyntax + badprovsyntax
 			badlicsyntax = badlicsyntax > 0
 			badprovsyntax = badprovsyntax > 0
 
@@ -629,7 +524,7 @@ class Scanner(object):
 									# aren't counted for *DEPEND.bad, so we
 									# ignore them here.
 									if not atom.blocker:
-										unknown_pkgs.discard(
+										dynamic_data['unknown_pkgs'].discard(
 											(mytype, atom.unevaluated_atom))
 
 								if not prof.sub_path:
@@ -674,9 +569,9 @@ class Scanner(object):
 									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 										prof, pformat(atoms, indent=6)))
 
-			if not baddepsyntax and unknown_pkgs:
+			if not baddepsyntax and dynamic_data['unknown_pkgs']:
 				type_map = {}
-				for mytype, atom in unknown_pkgs:
+				for mytype, atom in dynamic_data['unknown_pkgs']:
 					type_map.setdefault(mytype, set()).add(atom)
 				for mytype, atoms in type_map.items():
 					self.qatracker.add_error(
