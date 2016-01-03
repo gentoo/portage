@@ -155,7 +155,7 @@ class Scanner(object):
 		if self.vcs_settings.vcs is None:
 			self.options.echangelog = 'n'
 
-		self.check = {}
+		self.checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,
 		# which invalidates changelog.ebuildadded and changelog.missing
 		# checks.
@@ -167,7 +167,7 @@ class Scanner(object):
 		# TODO: shouldn't this just be switched on the repo, iso the VCS?
 		is_echangelog_enabled = self.options.echangelog in ('y', 'force')
 		self.vcs_settings.vcs_is_cvs_or_svn = self.vcs_settings.vcs in ('cvs', 'svn')
-		self.check['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
+		self.checks['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
 
 		if self.options.mode == "manifest" or self.options.quiet:
 			pass
@@ -202,7 +202,7 @@ class Scanner(object):
 
 		# Disable the "ebuild.notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
-		self.check['ebuild_notadded'] = not \
+		self.checks['ebuild_notadded'] = not \
 			(self.vcs_settings.vcs == "svn" and self.repolevel < 3 and self.options.mode != "commit")
 
 		self.effective_scanlist = scanlist
@@ -222,7 +222,7 @@ class Scanner(object):
 			"options": self.options,
 			"metadata_dtd": metadata_dtd,
 			"uselist": uselist,
-			"checks": self.check,
+			"checks": self.checks,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
@@ -298,7 +298,7 @@ class Scanner(object):
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
-			if self.check['changelog'] and "ChangeLog" not in checkdirlist:
+			if self.checks['changelog'] and "ChangeLog" not in checkdirlist:
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
@@ -319,11 +319,11 @@ class Scanner(object):
 				self.repo_settings, self.repolevel, pkgdir, catdir, self.vcs_settings,
 				xpkg, y_ebuild)
 
-			if self.check['changelog'] and not self.changelog_modified \
+			if self.checks['changelog'] and not self.changelog_modified \
 				and ebuild.ebuild_path in self.changed.new_ebuilds:
 				self.qatracker.add_error('changelog.ebuildadded', ebuild.relative_path)
 
-			if ebuild.untracked(self.check['ebuild_notadded'], y_ebuild, self.eadded):
+			if ebuild.untracked(self.checks['ebuild_notadded'], y_ebuild, self.eadded):
 				# ebuild not added to vcs
 				self.qatracker.add_error(
 					"ebuild.notadded", xpkg + "/" + y_ebuild + ".ebuild")
