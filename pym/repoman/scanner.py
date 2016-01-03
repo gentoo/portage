@@ -327,23 +327,6 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-
-			for pos, missing_var in enumerate(missingvars):
-				if not dynamic_data['ebuild'].metadata.get(missing_var):
-					if dynamic_data['catdir'] == "virtual" and \
-						missing_var in ("HOMEPAGE", "LICENSE"):
-						continue
-					if dynamic_data['live_ebuild'] and missing_var == "KEYWORDS":
-						continue
-					myqakey = missingvars[pos] + ".missing"
-					self.qatracker.add_error(myqakey, xpkg + "/" + y_ebuild + ".ebuild")
-
-			if dynamic_data['catdir'] == "virtual":
-				for var in ("HOMEPAGE", "LICENSE"):
-					if dynamic_data['ebuild'].metadata.get(var):
-						myqakey = var + ".virtual"
-						self.qatracker.add_error(myqakey, dynamic_data['ebuild'].relative_path)
-
 			if dynamic_data['live_ebuild'] and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
 					dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['ebuild'].keywords, self.repo_metadata['pmaskdict'])
