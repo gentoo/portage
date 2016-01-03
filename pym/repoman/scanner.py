@@ -327,26 +327,10 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-			if dynamic_data['live_ebuild'] and self.repo_settings.repo_config.name == "gentoo":
-				self.liveeclasscheck.check(
-					dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['ebuild'].keywords, self.repo_metadata['pmaskdict'])
-
-			unknown_pkgs = set()
-			baddepsyntax = False
-			badlicsyntax = False
-			badprovsyntax = False
-			# catpkg = catdir + "/" + y_ebuild
-
-			badlicsyntax = len([z for z in dynamic_data['type_list'] if z == "LICENSE"])
-			badprovsyntax = len([z for z in dynamic_data['type_list'] if z == "PROVIDE"])
-			baddepsyntax = len(dynamic_data['type_list']) != badlicsyntax + badprovsyntax
-			badlicsyntax = badlicsyntax > 0
-			badprovsyntax = badprovsyntax > 0
-
 			used_useflags = used_useflags.union(dynamic_data['ebuild_UsedUseFlags'])
 
 			# license checks
-			if not badlicsyntax:
+			if not dynamic_data['badlicsyntax']:
 				self.licensecheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
 			self.restrictcheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
@@ -452,7 +436,7 @@ class Scanner(object):
 				dep_settings.usemask = dep_settings._use_manager.getUseMask(
 					dynamic_data['pkg'], stable=dep_settings._parent_stable)
 
-				if not baddepsyntax:
+				if not dynamic_data['baddepsyntax']:
 					ismasked = not dynamic_data['ebuild'].archs or \
 						dynamic_data['pkg'].cpv not in self.portdb.xmatch("match-visible",
 						Atom("%s::%s" % (dynamic_data['pkg'].cp, self.repo_settings.repo_config.name)))
@@ -542,7 +526,7 @@ class Scanner(object):
 									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 										prof, pformat(atoms, indent=6)))
 
-			if not baddepsyntax and dynamic_data['unknown_pkgs']:
+			if not dynamic_data['baddepsyntax'] and dynamic_data['unknown_pkgs']:
 				type_map = {}
 				for mytype, atom in dynamic_data['unknown_pkgs']:
 					type_map.setdefault(mytype, set()).add(atom)
