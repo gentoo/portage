@@ -1,3 +1,5 @@
+# -*- coding:utf-8 -*-
+
 
 from _emerge.Package import Package
 
@@ -121,7 +123,16 @@ class DependChecks(object):
 				qacat = m + ".syntax"
 			self.qatracker.add_error(
 				qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
-		return {'continue': False, 'unknown_pkgs': unknown_pkgs, 'type_list': type_list}
+
+		# data required for some other tests
+		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
+		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
+		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax
+		badlicsyntax = badlicsyntax > 0
+		#badprovsyntax = badprovsyntax > 0
+
+		return {'continue': False, 'unknown_pkgs': unknown_pkgs, 'type_list': type_list,
+			'badlicsyntax': badlicsyntax, 'baddepsyntax': baddepsyntax}
 
 	@property
 	def runInPkgs(self):
