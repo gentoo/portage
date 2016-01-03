@@ -294,6 +294,7 @@ class Scanner(object):
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
+				('mtime', 'MtimeChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -322,10 +323,6 @@ class Scanner(object):
 				continue
 
 			# Syntax Checks
-			if not self.vcs_settings.vcs_preserves_mtime:
-				if dynamic_data['ebuild'].ebuild_path not in self.changed.new_ebuilds and \
-					dynamic_data['ebuild'].ebuild_path not in self.changed.ebuilds:
-					dynamic_data['pkg'].mtime = None
 			try:
 				# All ebuilds should have utf_8 encoding.
 				f = io.open(
