@@ -18,7 +18,6 @@ from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
-from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
@@ -213,7 +212,6 @@ class Scanner(object):
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.licensecheck = LicenseChecks(self.qatracker, liclist, liclist_deprecated)
 		self.restrictcheck = RestrictChecks(self.qatracker)
 
 
@@ -300,6 +298,7 @@ class Scanner(object):
 				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
+				('license', 'LicenseChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -326,10 +325,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-			# license checks
-			if not dynamic_data['badlicsyntax']:
-				self.licensecheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
 			self.restrictcheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
