@@ -286,7 +286,7 @@ class Scanner(object):
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
 		xpkg = dynamic_data['xpkg']
 		# detect unused local USE-descriptions
-		used_useflags = set()
+		dynamic_data['used_useflags'] = set()
 
 		for y_ebuild in ebuildlist:
 			dynamic_data['y_ebuild'] = y_ebuild
@@ -326,8 +326,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-			used_useflags = used_useflags.union(dynamic_data['ebuild_UsedUseFlags'])
 
 			# license checks
 			if not dynamic_data['badlicsyntax']:
@@ -538,7 +536,7 @@ class Scanner(object):
 		# check if there are unused local USE-descriptions in metadata.xml
 		# (unless there are any invalids, to avoid noise)
 		if dynamic_data['allvalid']:
-			for myflag in dynamic_data['muselist'].difference(used_useflags):
+			for myflag in dynamic_data['muselist'].difference(dynamic_data['used_useflags']):
 				self.qatracker.add_error(
 					"metadata.warning",
 					"%s/metadata.xml: unused local USE-description: '%s'"
