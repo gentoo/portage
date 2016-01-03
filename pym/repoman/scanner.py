@@ -304,6 +304,7 @@ class Scanner(object):
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
 				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
+				('arches', 'ArchChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -353,50 +354,6 @@ class Scanner(object):
 			if dynamic_data['live_ebuild'] and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
 					dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['ebuild'].keywords, self.repo_metadata['pmaskdict'])
-
-			if self.options.ignore_arches:
-				arches = [[
-					self.repo_settings.repoman_settings["ARCH"], self.repo_settings.repoman_settings["ARCH"],
-					self.repo_settings.repoman_settings["ACCEPT_KEYWORDS"].split()]]
-			else:
-				arches = set()
-				for keyword in dynamic_data['ebuild'].keywords:
-					if keyword[0] == "-":
-						continue
-					elif keyword[0] == "~":
-						arch = keyword[1:]
-						if arch == "*":
-							for expanded_arch in self.profiles:
-								if expanded_arch == "**":
-									continue
-								arches.add(
-									(keyword, expanded_arch, (
-										expanded_arch, "~" + expanded_arch)))
-						else:
-							arches.add((keyword, arch, (arch, keyword)))
-					else:
-						# For ebuilds with stable keywords, check if the
-						# dependencies are satisfiable for unstable
-						# configurations, since use.stable.mask is not
-						# applied for unstable configurations (see bug
-						# 563546).
-						if keyword == "*":
-							for expanded_arch in self.profiles:
-								if expanded_arch == "**":
-									continue
-								arches.add(
-									(keyword, expanded_arch, (expanded_arch,)))
-								arches.add(
-									(keyword, expanded_arch,
-										(expanded_arch, "~" + expanded_arch)))
-						else:
-							arches.add((keyword, keyword, (keyword,)))
-							arches.add((keyword, keyword,
-								(keyword, "~" + keyword)))
-				if not arches:
-					# Use an empty profile for checking dependencies of
-					# packages that have empty KEYWORDS.
-					arches.add(('**', '**', ('**',)))
 
 			unknown_pkgs = set()
 			baddepsyntax = False
@@ -554,7 +511,7 @@ class Scanner(object):
 				continue
 
 			relevant_profiles = []
-			for keyword, arch, groups in arches:
+			for keyword, arch, groups in dynamic_data['arches']:
 				if arch not in self.profiles:
 					# A missing profile will create an error further down
 					# during the KEYWORDS verification.
