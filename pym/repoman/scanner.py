@@ -19,13 +19,13 @@ from portage.module import Modules
 
 MODULES_PATH = os.path.join(os.path.dirname(__file__), "modules", "scan")
 # initial development debug info
-#print("module path:", path)
+logging.debug("module path: %s", MODULES_PATH)
 
 MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
 
-# initial development debug info
-#print(module_controller.module_names)
 MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
+# initial development debug info
+logging.debug("module_names: %s", MODULE_NAMES)
 
 
 class Scanner(object):
@@ -200,7 +200,7 @@ class Scanner(object):
 		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus',
 					'fetches', 'pkgmetadata']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
-			print("Initializing class name:", mod_class.__name__)
+			logging.debug("Initializing class name: %s", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 	def scan_pkgs(self, can_force):
@@ -208,7 +208,7 @@ class Scanner(object):
 		for xpkg in self.effective_scanlist:
 			xpkg_continue = False
 			# ebuilds and digests added to cvs respectively.
-			logging.info("checking package %s" % xpkg)
+			logging.info("checking package %s", xpkg)
 			# save memory by discarding xmatch caches from previous package(s)
 			self.caches['arch_xmatch'].clear()
 			self.eadded = []
@@ -236,7 +236,7 @@ class Scanner(object):
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
 						'VCSStatus', 'FetchChecks', 'PkgMetadata']:
-				print("scan_pkgs(): module:", mod)
+				logging.debug("scan_pkgs; module: %s", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
 					for func in functions:
@@ -300,7 +300,7 @@ class Scanner(object):
 				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 				if do_it:
 					for func in functions:
-						print("\tRunning function:", func)
+						logging.debug("\tRunning function: %s", func)
 						rdata = func(**dynamic_data)
 						if rdata.get('continue', False):
 							# If we can't access all the metadata then it's totally unsafe to
@@ -309,13 +309,16 @@ class Scanner(object):
 							# metadata leads to false positives for several checks, and false
 							# positives confuse users.
 							y_ebuild_continue = True
+							# logging.debug("\t>>> Continuing")
 							break
-						#print("rdata:", rdata)
+						# logging.debug("rdata: %s", rdata)
 						dynamic_data.update(rdata)
-						#print("dynamic_data", dynamic_data)
+						# logging.debug("dynamic_data: %s", dynamic_data)
 
 			if y_ebuild_continue:
 				continue
+
+			logging.debug("Finished ebuild plugin loop, continuing...")
 
 		# Final checks
 		# initialize per pkg plugin final checks here
@@ -324,22 +327,22 @@ class Scanner(object):
 		for mod in [('unused', 'UnusedChecks')]:
 			if mod[0]:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
-				print("Initializing class name:", mod_class.__name__)
+				logging.debug("Initializing class name: %s", mod_class.__name__)
 				self.modules[mod[1]] = mod_class(**self.kwargs)
-			print("scan_ebuilds final checks: module:", mod[1])
+			logging.debug("scan_ebuilds final checks: module: %s", mod[1])
 			do_it, functions = self.modules[mod[1]].runInFinal
-			# print("do_it", do_it, "functions", functions)
+			logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 			if do_it:
 				for func in functions:
-					print("\tRunning function:", func)
+					logging.debug("\tRunning function: %s", func)
 					rdata = func(**dynamic_data)
 					if rdata.get('continue', False):
 						xpkg_complete = True
-						print("\t>>> Continuing")
+						# logging.debug("\t>>> Continuing")
 						break
-					#print("rdata:", rdata)
+					# logging.debug("rdata: %s", rdata)
 					dynamic_data.update(rdata)
-					#print("dynamic_data", dynamic_data)
+					# logging.debug("dynamic_data: %s", dynamic_data)
 
 		if xpkg_complete:
 			return

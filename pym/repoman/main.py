@@ -19,7 +19,6 @@ from portage import os
 import portage.checksum
 import portage.const
 import portage.repository.config
-from portage import util
 from portage.output import create_color_func, nocolor
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
@@ -37,12 +36,13 @@ from repoman.modules.vcs.settings import VCSSettings
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-util.initialize_logger()
-
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)
+
+LOGLEVEL = logging.WARNING
+portage.util.initialize_logger(LOGLEVEL)
 
 
 def repoman_main(argv):
@@ -60,6 +60,13 @@ def repoman_main(argv):
 	if options.version:
 		print("Portage", portage.VERSION)
 		sys.exit(0)
+
+	logger = logging.getLogger()
+
+	if options.verbosity > 0:
+		logger.setLevel(LOGLEVEL - 10 * options.verbosity)
+	else:
+		logger.setLevel(LOGLEVEL)
 
 	if options.experimental_inherit == 'y':
 		# This is experimental, so it's non-fatal.
