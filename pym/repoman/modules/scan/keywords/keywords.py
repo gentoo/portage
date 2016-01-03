@@ -19,6 +19,8 @@ class KeywordChecks(ScanBase):
 		super(KeywordChecks, self).__init__(**kwargs)
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
+		self.repo_metadata = kwargs.get('repo_metadata')
+		self.profiles = kwargs.get('profiles')
 		self.slot_keywords = {}
 
 	def prepare(self, **kwargs):
@@ -45,21 +47,19 @@ class KeywordChecks(ScanBase):
 		live_ebuild = kwargs.get('live_ebuild')
 		if not self.options.straight_to_stable:
 			self._checkAddedWithStableKeywords(
-				package, ebuild, y_ebuild, keywords, changed)
+				xpkg, ebuild, y_ebuild, ebuild.keywords, changed)
 
-		self._checkForDroppedKeywords(
-			pkg, ebuild, ebuild_archs, live_ebuild)
+		self._checkForDroppedKeywords(pkg, ebuild, ebuild.archs, live_ebuild)
 
-		self._checkForInvalidKeywords(
-			pkg, package, y_ebuild, kwlist, profiles)
+		self._checkForInvalidKeywords(ebuild, xpkg, y_ebuild)
 
-		self._checkForMaskLikeKeywords(
-			package, y_ebuild, keywords, kwlist)
+		self._checkForMaskLikeKeywords(xpkg, y_ebuild, ebuild.keywords)
 
-		self.slot_keywords[pkg.slot].update(ebuild_archs)
+		self.slot_keywords[pkg.slot].update(ebuild.archs)
 		return {'continue': False}
 
-	def _isKeywordStable(self, keyword):
+	@staticmethod
+	def _isKeywordStable(keyword):
 		return not keyword.startswith("~") and not keyword.startswith("-")
 
 	def _checkAddedWithStableKeywords(
@@ -88,9 +88,8 @@ class KeywordChecks(ScanBase):
 						ebuild.relative_path,
 						" ".join(sorted(dropped_keywords))))
 
-	def _checkForInvalidKeywords(
-		self, pkg, package, y_ebuild, kwlist, profiles):
-		myuse = pkg._metadata["KEYWORDS"].split()
+	def _checkForInvalidKeywords(self, ebuild, xpkg, y_ebuild):
+		myuse = ebuild.keywords
 
 		for mykey in myuse:
 			if mykey not in ("-*", "*", "~*"):
@@ -99,20 +98,16 @@ class KeywordChecks(ScanBase):
 				if not self._isKeywordStable(myskey[:1]):
 					myskey = myskey[1:]
 
-				if myskey not in kwlist:
+				if myskey not in self.repo_metadata['kwlist']:
+					self.qatracker.add_error("KEYWORDS.invalid",
+						"%s/%s.ebuild: %s" % (xpkg, y_ebuild, mykey))
+				elif myskey not in self.profiles:
 					self.qatracker.add_error(
 						"KEYWORDS.invalid",
-						"%s/%s.ebuild: %s" % (
-							package, y_ebuild, mykey))
-				elif myskey not in profiles:
-					self.qatracker.add_error(
-						"KEYWORDS.invalid",
-						"%s/%s.ebuild: %s (profile invalid)" % (
-							package, y_ebuild, mykey))
+						"%s/%s.ebuild: %s (profile invalid)"
+							% (xpkg, y_ebuild, mykey))
 
-	def _checkForMaskLikeKeywords(
-		self, package, y_ebuild, keywords, kwlist):
-
+	def _checkForMaskLikeKeywords(self, xpkg, y_ebuild, keywords):
 		# KEYWORDS="-*" is a stupid replacement for package.mask
 		# and screws general KEYWORDS semantics
 		if "-*" in keywords:
@@ -121,12 +116,12 @@ class KeywordChecks(ScanBase):
 			for kw in keywords:
 				if kw[0] == "~":
 					kw = kw[1:]
-				if kw in kwlist:
+				if kw in self.repo_metadata['kwlist']:
 					haskeyword = True
 
 			if not haskeyword:
-				self.qatracker.add_error(
-					"KEYWORDS.stupid", package + "/" + y_ebuild + ".ebuild")
+				self.qatracker.add_error("KEYWORDS.stupid",
+					"%s/%s.ebuild" % (xpkg, y_ebuild))
 
 	@property
 	def runInPkgs(self):

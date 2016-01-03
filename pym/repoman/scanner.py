@@ -203,6 +203,7 @@ class Scanner(object):
 			"uselist": uselist,
 			"checks": self.checks,
 			"repo_metadata": self.repo_metadata,
+			"profiles": self.profiles,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
@@ -299,7 +300,7 @@ class Scanner(object):
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
-				('description', 'DescriptionChecks'),
+				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
