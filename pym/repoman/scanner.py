@@ -25,7 +25,6 @@ from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
-from repoman.checks.ebuilds.variables.eapi import EAPIChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
@@ -232,7 +231,6 @@ class Scanner(object):
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
 		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
-		self.eapicheck = EAPIChecks(self.qatracker, self.repo_settings)
 		self.descriptioncheck = DescriptionChecks(self.qatracker)
 		self.licensecheck = LicenseChecks(self.qatracker, liclist, liclist_deprecated)
 		self.restrictcheck = RestrictChecks(self.qatracker)
@@ -315,7 +313,8 @@ class Scanner(object):
 
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
-			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks')]:
+			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
+				('eapi', 'EAPIChecks')]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
@@ -342,7 +341,6 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-			self.eapicheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
 			for k, v in dynamic_data['ebuild'].metadata.items():
 				if not isinstance(v, basestring):
