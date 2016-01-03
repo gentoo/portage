@@ -18,7 +18,6 @@ from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
-from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
@@ -211,10 +210,6 @@ class Scanner(object):
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
-		# initialize our checks classes here before the big xpkg loop
-		self.restrictcheck = RestrictChecks(self.qatracker)
-
-
 	def scan_pkgs(self, can_force):
 		dynamic_data = {'can_force': can_force}
 		for xpkg in self.effective_scanlist:
@@ -298,7 +293,7 @@ class Scanner(object):
 				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
-				('license', 'LicenseChecks'),
+				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -325,8 +320,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-			self.restrictcheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
 			# Syntax Checks
 			if not self.vcs_settings.vcs_preserves_mtime:
