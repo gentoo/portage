@@ -28,6 +28,9 @@ class EbuildMetadata(object):
 					"%s: %s variable contains non-ASCII "
 					"character at position %s" %
 					(ebuild.relative_path, k, m.start() + 1))
+		if ebuild.metadata.get("PROVIDE"):
+			self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
+
 		return {'continue': False}
 
 	@property
