@@ -2,17 +2,12 @@
 
 from __future__ import print_function, unicode_literals
 
-import copy
 import logging
 from itertools import chain
-from pprint import pformat
-
-from _emerge.Package import Package
 
 import portage
 from portage import normalize_path
 from portage import os
-from portage.dep import Atom
 from portage.output import green
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
@@ -31,10 +26,6 @@ MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
 # initial development debug info
 #print(module_controller.module_names)
 MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
-
-
-def sort_key(item):
-	return item[2].sub_path
 
 
 class Scanner(object):
@@ -197,6 +188,12 @@ class Scanner(object):
 			"checks": self.checks,
 			"repo_metadata": self.repo_metadata,
 			"profiles": self.profiles,
+			"include_arches": self.include_arches,
+			"caches": self.caches,
+			"repoman_incrementals": self.repoman_incrementals,
+			"env": self.env,
+			"have": self.have,
+			"dev_keywords": self.dev_keywords,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
@@ -292,7 +289,7 @@ class Scanner(object):
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
 				# Options.is_forced() is used to bypass further checks
-				('options', 'Options'),
+				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -319,170 +316,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-			relevant_profiles = []
-			for keyword, arch, groups in dynamic_data['arches']:
-				if arch not in self.profiles:
-					# A missing profile will create an error further down
-					# during the KEYWORDS verification.
-					continue
-
-				if self.include_arches is not None:
-					if arch not in self.include_arches:
-						continue
-
-				relevant_profiles.extend(
-					(keyword, groups, prof) for prof in self.profiles[arch])
-
-			relevant_profiles.sort(key=sort_key)
-
-			for keyword, groups, prof in relevant_profiles:
-
-				is_stable_profile = prof.status == "stable"
-				is_dev_profile = prof.status == "dev" and \
-					self.options.include_dev
-				is_exp_profile = prof.status == "exp" and \
-					self.options.include_exp_profiles == 'y'
-				if not (is_stable_profile or is_dev_profile or is_exp_profile):
-					continue
-
-				dep_settings = self.caches['arch'].get(prof.sub_path)
-				if dep_settings is None:
-					dep_settings = portage.config(
-						config_profile_path=prof.abs_path,
-						config_incrementals=self.repoman_incrementals,
-						config_root=self.config_root,
-						local_config=False,
-						_unmatched_removal=self.options.unmatched_removal,
-						env=self.env, repositories=self.repo_settings.repoman_settings.repositories)
-					dep_settings.categories = self.repo_settings.repoman_settings.categories
-					if self.options.without_mask:
-						dep_settings._mask_manager_obj = \
-							copy.deepcopy(dep_settings._mask_manager)
-						dep_settings._mask_manager._pmaskdict.clear()
-					self.caches['arch'][prof.sub_path] = dep_settings
-
-				xmatch_cache_key = (prof.sub_path, tuple(groups))
-				xcache = self.caches['arch_xmatch'].get(xmatch_cache_key)
-				if xcache is None:
-					self.portdb.melt()
-					self.portdb.freeze()
-					xcache = self.portdb.xcache
-					xcache.update(self.caches['shared_xmatch'])
-					self.caches['arch_xmatch'][xmatch_cache_key] = xcache
-
-				self.repo_settings.trees[self.repo_settings.root]["porttree"].settings = dep_settings
-				self.portdb.settings = dep_settings
-				self.portdb.xcache = xcache
-
-				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
-				# just in case, prevent config.reset() from nuking these.
-				dep_settings.backup_changes("ACCEPT_KEYWORDS")
-
-				# This attribute is used in dbapi._match_use() to apply
-				# use.stable.{mask,force} settings based on the stable
-				# status of the parent package. This is required in order
-				# for USE deps of unstable packages to be resolved correctly,
-				# since otherwise use.stable.{mask,force} settings of
-				# dependencies may conflict (see bug #456342).
-				dep_settings._parent_stable = dep_settings._isStable(dynamic_data['pkg'])
-
-				# Handle package.use*.{force,mask) calculation, for use
-				# in dep_check.
-				dep_settings.useforce = dep_settings._use_manager.getUseForce(
-					dynamic_data['pkg'], stable=dep_settings._parent_stable)
-				dep_settings.usemask = dep_settings._use_manager.getUseMask(
-					dynamic_data['pkg'], stable=dep_settings._parent_stable)
-
-				if not dynamic_data['baddepsyntax']:
-					ismasked = not dynamic_data['ebuild'].archs or \
-						dynamic_data['pkg'].cpv not in self.portdb.xmatch("match-visible",
-						Atom("%s::%s" % (dynamic_data['pkg'].cp, self.repo_settings.repo_config.name)))
-					if ismasked:
-						if not self.have['pmasked']:
-							self.have['pmasked'] = bool(dep_settings._getMaskAtom(
-								dynamic_data['pkg'].cpv, dynamic_data['pkg']._metadata))
-						if self.options.ignore_masked:
-							continue
-						# we are testing deps for a masked package; give it some lee-way
-						suffix = "masked"
-						matchmode = "minimum-all-ignore-profile"
-					else:
-						suffix = ""
-						matchmode = "minimum-visible"
-
-					if not self.have['dev_keywords']:
-						self.have['dev_keywords'] = \
-							bool(self.dev_keywords.intersection(dynamic_data['ebuild'].keywords))
-
-					if prof.status == "dev":
-						suffix = suffix + "indev"
-
-					for mytype in Package._dep_keys:
-
-						mykey = "dependency.bad" + suffix
-						myvalue = dynamic_data['ebuild'].metadata[mytype]
-						if not myvalue:
-							continue
-
-						success, atoms = portage.dep_check(
-							myvalue, self.portdb, dep_settings,
-							use="all", mode=matchmode, trees=self.repo_settings.trees)
-
-						if success:
-							if atoms:
-
-								# Don't bother with dependency.unknown for
-								# cases in which *DEPEND.bad is triggered.
-								for atom in atoms:
-									# dep_check returns all blockers and they
-									# aren't counted for *DEPEND.bad, so we
-									# ignore them here.
-									if not atom.blocker:
-										dynamic_data['unknown_pkgs'].discard(
-											(mytype, atom.unevaluated_atom))
-
-								if not prof.sub_path:
-									# old-style virtuals currently aren't
-									# resolvable with empty profile, since
-									# 'virtuals' mappings are unavailable
-									# (it would be expensive to search
-									# for PROVIDE in all ebuilds)
-									atoms = [
-										atom for atom in atoms if not (
-											atom.cp.startswith('virtual/')
-											and not self.portdb.cp_list(atom.cp))]
-
-								# we have some unsolvable deps
-								# remove ! deps, which always show up as unsatisfiable
-								atoms = [
-									str(atom.unevaluated_atom)
-									for atom in atoms if not atom.blocker]
-
-								# if we emptied out our list, continue:
-								if not atoms:
-									continue
-								if self.options.output_style in ['column']:
-									self.qatracker.add_error(mykey,
-										"%s: %s: %s(%s) %s"
-										% (dynamic_data['ebuild'].relative_path, mytype, keyword,
-											prof, repr(atoms)))
-								else:
-									self.qatracker.add_error(mykey,
-										"%s: %s: %s(%s)\n%s"
-										% (dynamic_data['ebuild'].relative_path, mytype, keyword,
-											prof, pformat(atoms, indent=6)))
-						else:
-							if self.options.output_style in ['column']:
-								self.qatracker.add_error(mykey,
-									"%s: %s: %s(%s) %s"
-									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
-										prof, repr(atoms)))
-							else:
-								self.qatracker.add_error(mykey,
-									"%s: %s: %s(%s)\n%s"
-									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
-										prof, pformat(atoms, indent=6)))
 
 			if not dynamic_data['baddepsyntax'] and dynamic_data['unknown_pkgs']:
 				type_map = {}

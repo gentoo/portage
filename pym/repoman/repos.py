@@ -28,6 +28,7 @@ class RepoSettings(object):
 		self, config_root, portdir, portdir_overlay,
 		repoman_settings=None, vcs_settings=None, options=None,
 		qawarnings=None):
+		self.config_root = config_root
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
 
