@@ -290,6 +290,7 @@ class Scanner(object):
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
 				# Options.is_forced() is used to bypass further checks
 				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
+				('unknown', 'DependUnknown'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -316,15 +317,6 @@ class Scanner(object):
 
 			if y_ebuild_continue:
 				continue
-
-			if not dynamic_data['baddepsyntax'] and dynamic_data['unknown_pkgs']:
-				type_map = {}
-				for mytype, atom in dynamic_data['unknown_pkgs']:
-					type_map.setdefault(mytype, set()).add(atom)
-				for mytype, atoms in type_map.items():
-					self.qatracker.add_error(
-						"dependency.unknown", "%s: %s: %s"
-						% (dynamic_data['ebuild'].relative_path, mytype, ", ".join(sorted(atoms))))
 
 		# check if there are unused local USE-descriptions in metadata.xml
 		# (unless there are any invalids, to avoid noise)
