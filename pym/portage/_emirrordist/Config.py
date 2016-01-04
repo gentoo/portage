@@ -109,7 +109,15 @@ class Config(object):
 		if self.options.dry_run and not os.path.exists(db_file):
 			db = {}
 		else:
-			db = shelve.open(db_file, flag=open_flag)
+			try:
+				db = shelve.open(db_file, flag=open_flag)
+			except ImportError as e:
+				# ImportError has different attributes for python2 vs. python3
+				if (getattr(e, 'name', None) == 'bsddb' or
+					getattr(e, 'message', None) == 'No module named bsddb'):
+					from bsddb3 import dbshelve
+					db = dbshelve.open(db_file, flags=open_flag)
+
 			if sys.hexversion < 0x3000000:
 				db = ShelveUnicodeWrapper(db)
 
