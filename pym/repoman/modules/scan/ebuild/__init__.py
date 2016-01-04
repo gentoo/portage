@@ -28,6 +28,15 @@ module_spec = {
 			'func_desc': {
 			},
 		},
+		'multicheck-module': {
+			'name': "multicheck",
+			'sourcefile': "multicheck",
+			'class': "MultiCheck",
+			'description': doc,
+			'functions': ['check'],
+			'func_kwargs': {
+			},
+		},
 	}
 }
 

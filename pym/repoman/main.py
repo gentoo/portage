@@ -26,7 +26,6 @@ from portage.util import formatter
 
 from repoman.actions import Actions
 from repoman.argparser import parse_args
-from repoman.checks.ebuilds.checks import checks_init
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats)
@@ -65,7 +64,6 @@ def repoman_main(argv):
 	if options.experimental_inherit == 'y':
 		# This is experimental, so it's non-fatal.
 		qawarnings.add("inherit.missing")
-		checks_init(experimental_inherit=True)
 
 	# Set this to False when an extraordinary issue (generally
 	# something other than a QA issue) makes it impossible to
