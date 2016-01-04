@@ -201,13 +201,22 @@ class ProfileDependsChecks(ScanBase):
 
 							# we have some unsolvable deps
 							# remove ! deps, which always show up as unsatisfiable
-							atoms = [
+							all_atoms = [
 								str(atom.unevaluated_atom)
 								for atom in atoms if not atom.blocker]
 
 							# if we emptied out our list, continue:
-							if not atoms:
+							if not all_atoms:
 								continue
+
+							# Filter out duplicates.  We do this by hand (rather
+							# than use a set) so the order is stable and better
+							# matches the order that's in the ebuild itself.
+							atoms = []
+							for atom in all_atoms:
+								if atom not in atoms:
+									atoms.append(atom)
+
 							if self.options.output_style in ['column']:
 								self.qatracker.add_error(mykey,
 									"%s: %s: %s(%s) %s"
