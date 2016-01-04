@@ -3,7 +3,6 @@
 from __future__ import print_function, unicode_literals
 
 import copy
-import io
 import logging
 from itertools import chain
 from pprint import pformat
@@ -13,11 +12,8 @@ from _emerge.Package import Package
 import portage
 from portage import normalize_path
 from portage import os
-from portage import _encodings
-from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
-from repoman.checks.ebuilds.checks import run_checks
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
@@ -294,7 +290,7 @@ class Scanner(object):
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
-				('mtime', 'MtimeChecks'),
+				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -323,21 +319,6 @@ class Scanner(object):
 				continue
 
 			# Syntax Checks
-			try:
-				# All ebuilds should have utf_8 encoding.
-				f = io.open(
-					_unicode_encode(
-						dynamic_data['ebuild'].full_path, encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'])
-				try:
-					for check_name, e in run_checks(f, dynamic_data['pkg']):
-						self.qatracker.add_error(
-							check_name, dynamic_data['ebuild'].relative_path + ': %s' % e)
-				finally:
-					f.close()
-			except UnicodeDecodeError:
-				# A file.UTF8 failure will have already been recorded above.
-				pass
 
 			if self.options.force:
 				# The dep_check() calls are the most expensive QA test. If --force

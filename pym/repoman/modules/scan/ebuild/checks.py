@@ -21,7 +21,7 @@ from portage.eapi import (
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard,
 	eapi_exports_AA, eapi_has_pkg_pretend)
 
-import repoman.checks.ebuilds.errors as errors
+from . import errors
 
 
 class LineCheck(object):
