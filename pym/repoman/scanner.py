@@ -291,6 +291,8 @@ class Scanner(object):
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
+				# Options.is_forced() is used to bypass further checks
+				('options', 'Options'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -316,14 +318,6 @@ class Scanner(object):
 						#print("dynamic_data", dynamic_data)
 
 			if y_ebuild_continue:
-				continue
-
-			# Syntax Checks
-
-			if self.options.force:
-				# The dep_check() calls are the most expensive QA test. If --force
-				# is enabled, there's no point in wasting time on these since the
-				# user is intent on forcing the commit anyway.
 				continue
 
 			relevant_profiles = []
