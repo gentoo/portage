@@ -55,6 +55,15 @@ module_spec = {
 			'func_desc': {
 			},
 		},
+		'unused-metadata': {
+			'name': "unused",
+			'sourcefile': "unused",
+			'class': "UnusedCheck",
+			'description': doc,
+			'functions': ['check'],
+			'func_desc': {
+			},
+		},
 	}
 }
 

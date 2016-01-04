@@ -270,7 +270,6 @@ class Scanner(object):
 
 
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
-		xpkg = dynamic_data['xpkg']
 		# detect unused local USE-descriptions
 		dynamic_data['used_useflags'] = set()
 
@@ -318,11 +317,30 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-		# check if there are unused local USE-descriptions in metadata.xml
-		# (unless there are any invalids, to avoid noise)
-		if dynamic_data['allvalid']:
-			for myflag in dynamic_data['muselist'].difference(dynamic_data['used_useflags']):
-				self.qatracker.add_error(
-					"metadata.warning",
-					"%s/metadata.xml: unused local USE-description: '%s'"
-					% (xpkg, myflag))
+		# Final checks
+		# initialize per pkg plugin final checks here
+		# need to set it up for ==> self.modules_list or some other ordered list
+		xpkg_complete = False
+		for mod in [('unused', 'UnusedChecks')]:
+			if mod[0]:
+				mod_class = MODULE_CONTROLLER.get_class(mod[0])
+				print("Initializing class name:", mod_class.__name__)
+				self.modules[mod[1]] = mod_class(**self.kwargs)
+			print("scan_ebuilds final checks: module:", mod[1])
+			do_it, functions = self.modules[mod[1]].runInFinal
+			# print("do_it", do_it, "functions", functions)
+			if do_it:
+				for func in functions:
+					print("\tRunning function:", func)
+					rdata = func(**dynamic_data)
+					if rdata.get('continue', False):
+						xpkg_complete = True
+						print("\t>>> Continuing")
+						break
+					#print("rdata:", rdata)
+					dynamic_data.update(rdata)
+					#print("dynamic_data", dynamic_data)
+
+		if xpkg_complete:
+			return
+		return
