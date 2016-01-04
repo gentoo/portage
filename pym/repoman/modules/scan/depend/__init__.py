@@ -28,6 +28,15 @@ module_spec = {
 			'func_desc': {
 			},
 		},
+		'unknown-module': {
+			'name': "unknown",
+			'sourcefile': "unknown",
+			'class': "DependUnknown",
+			'description': doc,
+			'functions': ['check'],
+			'func_desc': {
+			},
+		},
 	}
 }
 
