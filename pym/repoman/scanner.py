@@ -41,8 +41,22 @@ from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.qa_data import missingvars, suspect_virtual, suspect_rdepend
 from repoman.repos import repo_metadata
-from repoman.scan import scan
+from repoman.modules.scan.scan import scan
 from repoman.modules.vcs.vcs import vcs_files_to_cps
+
+from portage.module import Modules
+
+MODULES_PATH = os.path.join(os.path.dirname(__file__), "modules", "scan")
+# initial development debug info
+#print("module path:", path)
+
+MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
+
+# initial development debug info
+#print(module_controller.module_names)
+MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
+
+
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -205,6 +219,23 @@ class Scanner(object):
 
 		self.live_eclasses = portage.const.LIVE_ECLASSES
 
+		# Create our kwargs dict here to initialize the plugins with
+		kwargs = {
+			"repo_settings": self.repo_settings,
+			"portdb": self.portdb,
+			"qatracker": self.qatracker,
+			"vcs_settings": self.vcs_settings,
+			"options": self.options,
+			"metadata_dtd": metadata_dtd,
+			"uselist": uselist,
+		}
+		# initialize the plugin checks here
+		self.modules = {}
+		for mod in []:
+			mod_class = MODULE_CONTROLLER.get_class(mod)
+			print("Initializing class name:", mod_class.__name__)
+			self.modules[mod_class.__name__] = mod_class(**kwargs)
+
 		# initialize our checks classes here before the big xpkg loop
 		self.manifester = Manifests(self.options, self.qatracker, self.repo_settings.repoman_settings)
 		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
@@ -227,7 +258,9 @@ class Scanner(object):
 
 
 	def scan_pkgs(self, can_force):
+		dynamic_data = {'can_force': can_force}
 		for xpkg in self.effective_scanlist:
+			xpkg_continue = False
 			# ebuilds and digests added to cvs respectively.
 			logging.info("checking package %s" % xpkg)
 			# save memory by discarding xmatch caches from previous package(s)
@@ -259,6 +292,32 @@ class Scanner(object):
 				# metadata leads to false positives for several checks, and false
 				# positives confuse users.
 				can_force = False
+			dynamic_data = {
+				'checkdirlist': checkdirlist,
+				'checkdir': checkdir,
+				'xpkg': xpkg,
+				'changed': self.changed,
+				'checkdir_relative': checkdir_relative,
+				'can_force': can_force,
+				}
+			# need to set it up for ==> self.modules or some other ordered list
+			for mod in []:
+				print("scan_pkgs(): module:", mod)
+				do_it, functions = self.modules[mod].runInPkgs
+				if do_it:
+					for func in functions:
+						rdata = func(**dynamic_data)
+						if rdata.get('continue', False):
+							# If we can't access all the metadata then it's totally unsafe to
+							# commit since there's no way to generate a correct Manifest.
+							# Do not try to do any more QA checks on this package since missing
+							# metadata leads to false positives for several checks, and false
+							# positives confuse users.
+							xpkg_continue = True
+							break
+						dynamic_data.update(rdata)
+
+			if xpkg_continue:
 				continue
 
 			self.keywordcheck.prepare()
