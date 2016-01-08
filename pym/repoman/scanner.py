@@ -22,7 +22,6 @@ from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
-from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
@@ -228,14 +227,13 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus']:
+		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus',
+					'fetches']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.fetchcheck = FetchChecks(
-			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
 		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
 			self.repo_settings.repoman_settings, metadata_dtd=metadata_dtd)
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
@@ -277,7 +275,7 @@ class Scanner(object):
 				}
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
-						'VCSStatus']:
+						'VCSStatus', 'FetchChecks']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -301,9 +299,6 @@ class Scanner(object):
 			self.allvalid = dynamic_data['allvalid']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
-
-			self.fetchcheck.check(
-				xpkg, checkdir, checkdir_relative, self.changed.changed, self.changed.new)
 
 			if self.check['changelog'] and "ChangeLog" not in checkdirlist:
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
@@ -364,7 +359,7 @@ class Scanner(object):
 						"character at position %s" %
 						(ebuild.relative_path, k, m.start() + 1))
 
-			if not self.fetchcheck.src_uri_error:
+			if not dynamic_data['src_uri_error']:
 				self.thirdparty.check(myaux, ebuild.relative_path)
 
 			if myaux.get("PROVIDE"):
