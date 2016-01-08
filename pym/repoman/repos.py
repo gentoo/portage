@@ -295,13 +295,3 @@ def repo_metadata(portdb, repoman_settings):
 	return (
 		kwlist, liclist, uselist, profile_list, global_pmaskdict,
 		list_checks(kwlist, liclist, uselist, repoman_settings))
-
-
-def has_global_mask(pkg, global_pmaskdict):
-	mask_atoms = global_pmaskdict.get(pkg.cp)
-	if mask_atoms:
-		pkg_list = [pkg]
-		for x in mask_atoms:
-			if portage.dep.match_from_list(x, pkg_list):
-				return x
-	return None

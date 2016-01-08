@@ -20,7 +20,6 @@ from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
-from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
@@ -209,8 +208,6 @@ class Scanner(object):
 				chain(self.changed.changed, self.changed.new, self.changed.removed),
 				self.repolevel, self.reposplit, self.categories))
 
-		self.live_eclasses = portage.const.LIVE_ECLASSES
-
 		# Create our kwargs dict here to initialize the plugins with
 		self.kwargs = {
 			"repo_settings": self.repo_settings,
@@ -221,6 +218,7 @@ class Scanner(object):
 			"metadata_dtd": metadata_dtd,
 			"uselist": uselist,
 			"checks": self.checks,
+			"repo_metadata": self.repo_metadata,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
@@ -233,7 +231,6 @@ class Scanner(object):
 		# initialize our checks classes here before the big xpkg loop
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
-		self.liveeclasscheck = LiveEclassChecks(self.qatracker)
 		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
 		self.eapicheck = EAPIChecks(self.qatracker, self.repo_settings)
 		self.descriptioncheck = DescriptionChecks(self.qatracker)
@@ -318,7 +315,7 @@ class Scanner(object):
 
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
-			for mod in [('ebuild', 'Ebuild')]:
+			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks')]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
@@ -345,8 +342,6 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-			live_ebuild = self.live_eclasses.intersection(dynamic_data['ebuild'].inherited)
-
 			self.eapicheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
 			for k, v in dynamic_data['ebuild'].metadata.items():
@@ -371,7 +366,7 @@ class Scanner(object):
 					if dynamic_data['catdir'] == "virtual" and \
 						missing_var in ("HOMEPAGE", "LICENSE"):
 						continue
-					if live_ebuild and missing_var == "KEYWORDS":
+					if dynamic_data['live_ebuild'] and missing_var == "KEYWORDS":
 						continue
 					myqakey = missingvars[pos] + ".missing"
 					self.qatracker.add_error(myqakey, xpkg + "/" + y_ebuild + ".ebuild")
@@ -384,7 +379,7 @@ class Scanner(object):
 
 			self.descriptioncheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
-			if live_ebuild and self.repo_settings.repo_config.name == "gentoo":
+			if dynamic_data['live_ebuild'] and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
 					dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['ebuild'].keywords, self.repo_metadata['pmaskdict'])
 
