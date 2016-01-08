@@ -18,7 +18,6 @@ from portage import _unicode_encode
 from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
-from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
 from repoman.modules.commit import repochecks
@@ -214,7 +213,6 @@ class Scanner(object):
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
 		self.licensecheck = LicenseChecks(self.qatracker, liclist, liclist_deprecated)
 		self.restrictcheck = RestrictChecks(self.qatracker)
 
@@ -301,7 +299,7 @@ class Scanner(object):
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
 				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
-				('use_flags', 'USEFlagChecks'),
+				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
@@ -364,9 +362,7 @@ class Scanner(object):
 			badlicsyntax = badlicsyntax > 0
 			badprovsyntax = badprovsyntax > 0
 
-			used_useflags = used_useflags.union(dynamic_data['ebuild_used_useflags'])
-
-			self.rubyeclasscheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
+			used_useflags = used_useflags.union(dynamic_data['ebuild_UsedUseFlags'])
 
 			# license checks
 			if not badlicsyntax:
