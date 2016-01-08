@@ -11,18 +11,34 @@ from repoman._portage import portage
 from portage import os
 
 from repoman.qa_data import no_exec, allvars
+from repoman.modules.scan.scanbase import ScanBase
 
+class IsEbuild(ScanBase):
+	'''Performs basic tests to confirm it is an ebuild'''
 
-class IsEbuild(object):
+	def __init__(self, **kwargs):
+		'''
+		@param portdb: portdb instance
+		@param qatracker: QATracker instance
+		@param repo_settings: repository settings instance
+		'''
+		super(IsEbuild, self).__init__(**kwargs)
+		self.portdb = kwargs.get('portdb')
+		self.qatracker = kwargs.get('qatracker')
+		repo_settings = kwargs.get('repo_settings')
+		self.root_config = RootConfig(repo_settings.repoman_settings,
+			repo_settings.trees[repo_settings.root], None)
 
-	def __init__(self, repoman_settings, repo_settings, portdb, qatracker):
-		''''''
-		self.portdb = portdb
-		self.qatracker = qatracker
-		self.root_config = RootConfig(
-			repoman_settings, repo_settings.trees[repo_settings.root], None)
+	def check(self, **kwargs):
+		'''Test the file for qualifications that is is an ebuild
 
-	def check(self, checkdirlist, checkdir, xpkg):
+		@param checkdirlist: list of files in teh current package directory
+		@param checkdir: current package directory path
+		@param xpkg: current package directory being checked
+		'''
+		checkdirlist = kwargs.get('checkdirlist')
+		checkdir = kwargs.get('checkdir')
+		xpkg = kwargs.get('xpkg')
 		self.continue_ = False
 		ebuildlist = []
 		pkgs = {}
@@ -68,4 +84,10 @@ class IsEbuild(object):
 			# positives confuse users.
 			self.continue_ = True
 
-		return pkgs, allvalid
+		return {'continue': self.continue_, 'pkgs': pkgs, 'allvalid': allvalid,
+			'can_force': not self.continue_}
+
+	@property
+	def runInPkgs(self):
+		'''Package level scans'''
+		return (True, [self.check])

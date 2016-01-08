@@ -25,7 +25,6 @@ from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.fetches import FetchChecks
 from repoman.checks.ebuilds.keywords import KeywordChecks
-from repoman.checks.ebuilds.isebuild import IsEbuild
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
@@ -230,13 +229,12 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in []:
+		for mod in ['manifests', 'isebuild']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
 		self.filescheck = FileChecks(
 			self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
 		self.status_check = self.vcs_settings.status
@@ -274,14 +272,6 @@ class Scanner(object):
 			checkdir_relative = os.path.join(".", checkdir_relative)
 			checkdirlist = os.listdir(checkdir)
 
-			self.pkgs, self.allvalid = self.is_ebuild.check(checkdirlist, checkdir, xpkg)
-			if self.is_ebuild.continue_:
-				# If we can't access all the metadata then it's totally unsafe to
-				# commit since there's no way to generate a correct Manifest.
-				# Do not try to do any more QA checks on this package since missing
-				# metadata leads to false positives for several checks, and false
-				# positives confuse users.
-				can_force = False
 			dynamic_data = {
 				'checkdirlist': checkdirlist,
 				'checkdir': checkdir,
@@ -291,7 +281,7 @@ class Scanner(object):
 				'can_force': can_force,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in ['Manifests']:
+			for mod in ['Manifests', 'IsEbuild']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -313,6 +303,8 @@ class Scanner(object):
 			self.keywordcheck.prepare()
 
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+			self.pkgs = dynamic_data['pkgs']
+			self.allvalid = dynamic_data['allvalid']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
@@ -335,7 +327,7 @@ class Scanner(object):
 			self.changelog_modified = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, xpkg, catdir, pkgdir)
-		return can_force
+		return dynamic_data['can_force']
 
 
 	def _scan_ebuilds(self, ebuildlist, xpkg, catdir, pkgdir):
