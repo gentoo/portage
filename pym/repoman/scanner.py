@@ -24,7 +24,6 @@ from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.fetches import FetchChecks
-from repoman.checks.ebuilds.keywords import KeywordChecks
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
@@ -229,7 +228,7 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in ['manifests', 'isebuild']:
+		for mod in ['manifests', 'isebuild', 'keywords']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
@@ -244,7 +243,6 @@ class Scanner(object):
 			self.repo_settings.repoman_settings, metadata_dtd=metadata_dtd)
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
-		self.keywordcheck = KeywordChecks(self.qatracker, self.options)
 		self.liveeclasscheck = LiveEclassChecks(self.qatracker)
 		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
 		self.eapicheck = EAPIChecks(self.qatracker, self.repo_settings)
@@ -281,7 +279,7 @@ class Scanner(object):
 				'can_force': can_force,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in ['Manifests', 'IsEbuild']:
+			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -299,8 +297,6 @@ class Scanner(object):
 
 			if xpkg_continue:
 				continue
-
-			self.keywordcheck.prepare()
 
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 			self.pkgs = dynamic_data['pkgs']
@@ -403,10 +399,6 @@ class Scanner(object):
 
 			ebuild_archs = set(
 				kw.lstrip("~") for kw in keywords if not kw.startswith("-"))
-
-			self.keywordcheck.check(
-				pkg, xpkg, ebuild, y_ebuild, keywords, ebuild_archs, self.changed,
-				live_ebuild, self.repo_metadata['kwlist'], self.profiles)
 
 			if live_ebuild and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
