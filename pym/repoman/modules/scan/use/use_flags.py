@@ -9,31 +9,39 @@ from repoman._portage import portage
 
 from portage import eapi
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
+from repoman.modules.scan.scanbase import ScanBase
 
 
-class USEFlagChecks(object):
+class USEFlagChecks(ScanBase):
 	'''Performs checks on USE flags listed in the ebuilds and metadata.xml'''
 
-	def __init__(self, qatracker, globalUseFlags):
-		'''
+	def __init__(self, **kwargs):
+		'''Class init
+
 		@param qatracker: QATracker instance
 		@param globalUseFlags: Global USE flags
 		'''
-		self.qatracker = qatracker
-		self.globalUseFlags = globalUseFlags
+		super(USEFlagChecks, self).__init__(**kwargs)
+		self.qatracker = kwargs.get('qatracker')
+		self.globalUseFlags = kwargs.get('uselist')
 		self.useFlags = []
 		self.defaultUseFlags = []
 		self.usedUseFlags = set()
 
-	def check(self, pkg, package, ebuild, y_ebuild, localUseFlags):
+	def check(self, **kwargs):
 		'''Perform the check.
 
 		@param pkg: Package in which we check (object).
-		@param package: Package in which we check (string).
+		@param xpkg: Package in which we check (string).
 		@param ebuild: Ebuild which we check (object).
 		@param y_ebuild: Ebuild which we check (string).
-		@param localUseFlags: Local USE flags of the package
+		@param muselist: Local USE flags of the package
 		'''
+		pkg = kwargs.get('pkg')
+		package = kwargs.get('xpkg')
+		ebuild = kwargs.get('ebuild')
+		y_ebuild = kwargs.get('y_ebuild')
+		localUseFlags = kwargs.get('muselist')
 		# reset state variables for the run
 		self.useFlags = []
 		self.defaultUseFlags = []
@@ -41,10 +49,9 @@ class USEFlagChecks(object):
 		self._checkGlobal(pkg)
 		self._checkMetadata(package, ebuild, y_ebuild, localUseFlags)
 		self._checkRequiredUSE(pkg, ebuild)
-
-	def getUsedUseFlags(self):
-		'''Get the USE flags that this check has seen'''
-		return self.usedUseFlags
+		used_useflags = kwargs.get('used_useflags').union(self.usedUseFlags)
+		return {'continue': False, 'ebuild_UsedUseFlags': self.usedUseFlags,
+			'used_useflags': used_useflags}
 
 	def _checkGlobal(self, pkg):
 		for myflag in pkg._metadata["IUSE"].split():
@@ -88,3 +95,8 @@ class USEFlagChecks(object):
 					"REQUIRED_USE.syntax",
 					"%s: REQUIRED_USE: %s" % (ebuild.relative_path, e))
 				del e
+
+	@property
+	def runInEbuilds(self):
+		'''Ebuild level scans'''
+		return (True, [self.check])
