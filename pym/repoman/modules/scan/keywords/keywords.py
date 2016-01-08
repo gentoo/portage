@@ -2,41 +2,47 @@
 
 '''keywords.py
 Perform KEYWORDS related checks
+
 '''
 
+from repoman.modules.scan.scanbase import ScanBase
 
-class KeywordChecks(object):
+
+class KeywordChecks(ScanBase):
 	'''Perform checks on the KEYWORDS of an ebuild'''
 
-	def __init__(self, qatracker, options):
+	def __init__(self, **kwargs):
 		'''
 		@param qatracker: QATracker instance
+		@param options: argparse options instance
 		'''
-		self.qatracker = qatracker
-		self.options = options
+		super(KeywordChecks, self).__init__(**kwargs)
+		self.qatracker = kwargs.get('qatracker')
+		self.options = kwargs.get('options')
 		self.slot_keywords = {}
 
-	def prepare(self):
+	def prepare(self, **kwargs):
 		'''Prepare the checks for the next package.'''
 		self.slot_keywords = {}
+		return {'continue': False}
 
-	def check(
-		self, pkg, package, ebuild, y_ebuild, keywords, ebuild_archs, changed,
-		live_ebuild, kwlist, profiles):
+	def check(self, **kwargs):
 		'''Perform the check.
 
 		@param pkg: Package in which we check (object).
-		@param package: Package in which we check (string).
+		@param xpkg: Package in which we check (string).
 		@param ebuild: Ebuild which we check (object).
 		@param y_ebuild: Ebuild which we check (string).
-		@param keywords: All the keywords (including -...) of the ebuild.
 		@param ebuild_archs: Just the architectures (no prefixes) of the ebuild.
 		@param changed: Changes instance
-		@param slot_keywords: A dictionary of keywords per slot.
 		@param live_ebuild: A boolean that determines if this is a live ebuild.
-		@param kwlist: A list of all global keywords.
-		@param profiles: A list of all profiles.
 		'''
+		pkg = kwargs.get('pkg')
+		xpkg =kwargs.get('xpkg')
+		ebuild = kwargs.get('ebuild')
+		y_ebuild = kwargs.get('y_ebuild')
+		changed = kwargs.get('changed')
+		live_ebuild = kwargs.get('live_ebuild')
 		if not self.options.straight_to_stable:
 			self._checkAddedWithStableKeywords(
 				package, ebuild, y_ebuild, keywords, changed)
@@ -51,6 +57,7 @@ class KeywordChecks(object):
 			package, y_ebuild, keywords, kwlist)
 
 		self.slot_keywords[pkg.slot].update(ebuild_archs)
+		return {'continue': False}
 
 	def _isKeywordStable(self, keyword):
 		return not keyword.startswith("~") and not keyword.startswith("-")
@@ -120,3 +127,13 @@ class KeywordChecks(object):
 			if not haskeyword:
 				self.qatracker.add_error(
 					"KEYWORDS.stupid", package + "/" + y_ebuild + ".ebuild")
+
+	@property
+	def runInPkgs(self):
+		'''Package level scans'''
+		return (True, [self.prepare])
+
+	@property
+	def runInEbuilds(self):
+		'''Ebuild level scans'''
+		return (True, [self.check])
