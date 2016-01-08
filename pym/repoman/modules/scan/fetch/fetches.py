@@ -8,46 +8,52 @@ from stat import S_ISDIR
 
 # import our initialized portage instance
 from repoman._portage import portage
+from repoman.modules.vcs.vcs import vcs_new_changed
+from repoman.modules.scan.scanbase import ScanBase
 
 from portage import os
 
-from repoman.modules.vcs.vcs import vcs_new_changed
 
-
-class FetchChecks(object):
+class FetchChecks(ScanBase):
 	'''Performs checks on the files needed for the ebuild'''
 
-	def __init__(
-		self, qatracker, repo_settings, portdb, vcs_settings):
+	def __init__(self, **kwargs):
 		'''
-		@param qatracker: QATracker instance
-		@param repoman_settings: settings instance
-		@param repo_settings: repository settings instance
 		@param portdb: portdb instance
+		@param qatracker: QATracker instance
+		@param repo_settings: repository settings instance
+		@param vcs_settings: VCSSettings instance
 		'''
-		self.portdb = portdb
-		self.qatracker = qatracker
-		self.repo_settings = repo_settings
-		self.repoman_settings = repo_settings.repoman_settings
-		self.vcs_settings = vcs_settings
+		super(FetchChecks, self).__init__(**kwargs)
+		self.portdb = kwargs.get('portdb')
+		self.qatracker = kwargs.get('qatracker')
+		self.repo_settings = kwargs.get('repo_settings')
+		self.repoman_settings = self.repo_settings.repoman_settings
+		self.vcs_settings = kwargs.get('vcs_settings')
+		self._src_uri_error = False
 
-	def check(self, xpkg, checkdir, checkdir_relative, mychanged, mynew):
+	def check(self, **kwargs):
 		'''Checks the ebuild sources and files for errors
 
 		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
 		'''
+		xpkg = kwargs.get('xpkg')
+		checkdir = kwargs.get('checkdir')
+		checkdir_relative = kwargs.get('checkdir_relative')
+		changed = kwargs.get('changed').changed
+		new = kwargs.get('changed').new
 		_digests = self.digests(checkdir)
 		fetchlist_dict = portage.FetchlistDict(
 			checkdir, self.repoman_settings, self.portdb)
 		myfiles_all = []
-		self.src_uri_error = False
+		self._src_uri_error = False
 		for mykey in fetchlist_dict:
 			try:
 				myfiles_all.extend(fetchlist_dict[mykey])
 			except portage.exception.InvalidDependString as e:
-				self.src_uri_error = True
+				self._src_uri_error = True
 				try:
 					self.portdb.aux_get(mykey, ["SRC_URI"])
 				except KeyError:
@@ -57,7 +63,7 @@ class FetchChecks(object):
 					self.qatracker.add_error(
 						"SRC_URI.syntax", "%s.ebuild SRC_URI: %s" % (mykey, e))
 		del fetchlist_dict
-		if not self.src_uri_error:
+		if not self._src_uri_error:
 			# This test can produce false positives if SRC_URI could not
 			# be parsed for one or more ebuilds. There's no point in
 			# producing a false error here since the root cause will
@@ -113,7 +119,7 @@ class FetchChecks(object):
 				if index != -1:
 					y_relative = os.path.join(checkdir_relative, "files", y)
 					if self.vcs_settings.vcs is not None \
-						and not vcs_new_changed(y_relative, mychanged, mynew):
+						and not vcs_new_changed(y_relative, changed, new):
 						# If the file isn't in the VCS new or changed set, then
 						# assume that it's an irrelevant temporary file (Manifest
 						# entries are not generated for file names containing
@@ -123,12 +129,21 @@ class FetchChecks(object):
 					self.qatracker.add_error(
 						"file.name",
 						"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
+		return {'continue': False, 'src_uri_error': self._src_uri_error}
 
 	def digests(self, checkdir):
-		'''Returns the freshly loaded digests'''
+		'''Returns the freshly loaded digests
+
+		@param checkdir: string, directory path
+		'''
 		mf = self.repoman_settings.repositories.get_repo_for_location(
 			os.path.dirname(os.path.dirname(checkdir)))
 		mf = mf.load_manifest(checkdir, self.repoman_settings["DISTDIR"])
 		_digests = mf.getTypeDigests("DIST")
 		del mf
 		return _digests
+
+	@property
+	def runInPkgs(self):
+		'''Package level scans'''
+		return (True, [self.check])
