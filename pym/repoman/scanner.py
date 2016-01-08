@@ -24,13 +24,11 @@ from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
-from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.eapi import EAPIChecks
 from repoman.checks.ebuilds.variables.license import LicenseChecks
 from repoman.checks.ebuilds.variables.restrict import RestrictChecks
-from repoman.ebuild import Ebuild
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.qa_data import missingvars, suspect_virtual, suspect_rdepend
@@ -200,7 +198,7 @@ class Scanner(object):
 			self.include_arches = set()
 			self.include_arches.update(*[x.split() for x in self.options.include_arches])
 
-		# Disable the "ebuild.notadded" check when not in commit mode and
+		# Disable the "self.modules['Ebuild'].notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
 		self.checks['ebuild_notadded'] = not \
 			(self.vcs_settings.vcs == "svn" and self.repolevel < 3 and self.options.mode != "commit")
@@ -296,7 +294,6 @@ class Scanner(object):
 
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
 			self.pkgs = dynamic_data['pkgs']
-			self.allvalid = dynamic_data['allvalid']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
@@ -319,26 +316,16 @@ class Scanner(object):
 			dynamic_data['y_ebuild'] = y_ebuild
 			y_ebuild_continue = False
 
-			ebuild = Ebuild(
-				self.repo_settings, self.repolevel, dynamic_data['pkgdir'],
-				dynamic_data['catdir'], self.vcs_settings, xpkg, y_ebuild)
-
-			if self.checks['changelog'] and not self.changelog_modified \
-				and ebuild.ebuild_path in self.changed.new_ebuilds:
-				self.qatracker.add_error('changelog.ebuildadded', ebuild.relative_path)
-
-			if ebuild.untracked(self.checks['ebuild_notadded'], y_ebuild, self.eadded):
-				# ebuild not added to vcs
-				self.qatracker.add_error(
-					"ebuild.notadded", xpkg + "/" + y_ebuild + ".ebuild")
-
-			if bad_split_check(xpkg, y_ebuild, dynamic_data['pkgdir'], self.qatracker):
-				continue
-			# need to set it up for ==> self.modules or some other ordered list
-			for mod in []:
-				print("scan_ebuilds: module:", mod)
-				do_it, functions = self.modules[mod].runInEbuilds
-				# print("do_it", do_it, "functions", functions)
+			# initialize per ebuild plugin checks here
+			# need to set it up for ==> self.modules_list or some other ordered list
+			for mod in [('ebuild', 'Ebuild')]:
+				if mod[0]:
+					mod_class = MODULE_CONTROLLER.get_class(mod[0])
+					logging.debug("Initializing class name: %s", mod_class.__name__)
+					self.modules[mod[1]] = mod_class(**self.kwargs)
+				logging.debug("scan_ebuilds: module: %s", mod[1])
+				do_it, functions = self.modules[mod[1]].runInEbuilds
+				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 				if do_it:
 					for func in functions:
 						print("\tRunning function:", func)
@@ -358,19 +345,11 @@ class Scanner(object):
 			if y_ebuild_continue:
 				continue
 
-			pkg = self.pkgs[y_ebuild]
-			if pkg_invalid(pkg, self.qatracker, ebuild):
-				self.allvalid = False
-				continue
+			live_ebuild = self.live_eclasses.intersection(dynamic_data['ebuild'].inherited)
 
-			myaux = pkg._metadata
-			eapi = myaux["EAPI"]
-			inherited = pkg.inherited
-			live_ebuild = self.live_eclasses.intersection(inherited)
+			self.eapicheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
-			self.eapicheck.check(pkg, ebuild)
-
-			for k, v in myaux.items():
+			for k, v in dynamic_data['ebuild'].metadata.items():
 				if not isinstance(v, basestring):
 					continue
 				m = NON_ASCII_RE.search(v)
@@ -379,16 +358,16 @@ class Scanner(object):
 						"variable.invalidchar",
 						"%s: %s variable contains non-ASCII "
 						"character at position %s" %
-						(ebuild.relative_path, k, m.start() + 1))
+						(dynamic_data['ebuild'].relative_path, k, m.start() + 1))
 
 			if not dynamic_data['src_uri_error']:
-				self.thirdparty.check(myaux, ebuild.relative_path)
+				self.thirdparty.check(dynamic_data['ebuild'].metadata, dynamic_data['ebuild'].relative_path)
 
-			if myaux.get("PROVIDE"):
-				self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
+			if dynamic_data['ebuild'].metadata.get("PROVIDE"):
+				self.qatracker.add_error("virtual.oldstyle", dynamic_data['ebuild'].relative_path)
 
 			for pos, missing_var in enumerate(missingvars):
-				if not myaux.get(missing_var):
+				if not dynamic_data['ebuild'].metadata.get(missing_var):
 					if dynamic_data['catdir'] == "virtual" and \
 						missing_var in ("HOMEPAGE", "LICENSE"):
 						continue
@@ -399,20 +378,15 @@ class Scanner(object):
 
 			if dynamic_data['catdir'] == "virtual":
 				for var in ("HOMEPAGE", "LICENSE"):
-					if myaux.get(var):
+					if dynamic_data['ebuild'].metadata.get(var):
 						myqakey = var + ".virtual"
-						self.qatracker.add_error(myqakey, ebuild.relative_path)
+						self.qatracker.add_error(myqakey, dynamic_data['ebuild'].relative_path)
 
-			self.descriptioncheck.check(pkg, ebuild)
-
-			keywords = myaux["KEYWORDS"].split()
-
-			ebuild_archs = set(
-				kw.lstrip("~") for kw in keywords if not kw.startswith("-"))
+			self.descriptioncheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
 			if live_ebuild and self.repo_settings.repo_config.name == "gentoo":
 				self.liveeclasscheck.check(
-					pkg, xpkg, ebuild, y_ebuild, keywords, self.repo_metadata['pmaskdict'])
+					dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['ebuild'].keywords, self.repo_metadata['pmaskdict'])
 
 			if self.options.ignore_arches:
 				arches = [[
@@ -420,7 +394,7 @@ class Scanner(object):
 					self.repo_settings.repoman_settings["ACCEPT_KEYWORDS"].split()]]
 			else:
 				arches = set()
-				for keyword in keywords:
+				for keyword in dynamic_data['ebuild'].keywords:
 					if keyword[0] == "-":
 						continue
 					elif keyword[0] == "~":
@@ -464,13 +438,13 @@ class Scanner(object):
 			badprovsyntax = False
 			# catpkg = catdir + "/" + y_ebuild
 
-			inherited_java_eclass = "java-pkg-2" in inherited or \
-				"java-pkg-opt-2" in inherited
-			inherited_wxwidgets_eclass = "wxwidgets" in inherited
+			inherited_java_eclass = "java-pkg-2" in dynamic_data['ebuild'].inherited or \
+				"java-pkg-opt-2" in dynamic_data['ebuild'].inherited,
+			inherited_wxwidgets_eclass = "wxwidgets" in dynamic_data['ebuild'].inherited
 			# operator_tokens = set(["||", "(", ")"])
 			type_list, badsyntax = [], []
 			for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
-				mydepstr = myaux[mytype]
+				mydepstr = dynamic_data['ebuild'].metadata[mytype]
 
 				buildtime = mytype in Package._buildtime_keys
 				runtime = mytype in Package._runtime_keys
@@ -481,7 +455,7 @@ class Scanner(object):
 				try:
 					atoms = portage.dep.use_reduce(
 						mydepstr, matchall=1, flat=True,
-						is_valid_flag=pkg.iuse.is_valid_flag, token_class=token_class)
+						is_valid_flag=dynamic_data['pkg'].iuse.is_valid_flag, token_class=token_class)
 				except portage.exception.InvalidDependString as e:
 					atoms = None
 					badsyntax.append(str(e))
@@ -492,7 +466,7 @@ class Scanner(object):
 						self.qatracker.add_error(
 							mytype + '.suspect',
 							"%s: 'test?' USE conditional in %s" %
-							(ebuild.relative_path, mytype))
+							(dynamic_data['ebuild'].relative_path, mytype))
 
 					for atom in atoms:
 						if atom == "||":
@@ -513,13 +487,13 @@ class Scanner(object):
 							if not is_blocker and \
 								atom.cp in suspect_virtual:
 								self.qatracker.add_error(
-									'virtual.suspect', ebuild.relative_path +
+									'virtual.suspect', dynamic_data['ebuild'].relative_path +
 									": %s: consider using '%s' instead of '%s'" %
 									(mytype, suspect_virtual[atom.cp], atom))
 							if not is_blocker and \
 								atom.cp.startswith("perl-core/"):
 								self.qatracker.add_error('dependency.perlcore',
-									ebuild.relative_path +
+									dynamic_data['ebuild'].relative_path +
 									": %s: please use '%s' instead of '%s'" %
 									(mytype,
 									atom.replace("perl-core/","virtual/perl-"),
@@ -530,7 +504,7 @@ class Scanner(object):
 							not inherited_java_eclass and \
 							atom.cp == "virtual/jdk":
 							self.qatracker.add_error(
-								'java.eclassesnotused', ebuild.relative_path)
+								'java.eclassesnotused', dynamic_data['ebuild'].relative_path)
 						elif buildtime and \
 							not is_blocker and \
 							not inherited_wxwidgets_eclass and \
@@ -538,13 +512,13 @@ class Scanner(object):
 							self.qatracker.add_error(
 								'wxwidgets.eclassnotused',
 								"%s: %ss on x11-libs/wxGTK without inheriting"
-								" wxwidgets.eclass" % (ebuild.relative_path, mytype))
+								" wxwidgets.eclass" % (dynamic_data['ebuild'].relative_path, mytype))
 						elif runtime:
 							if not is_blocker and \
 								atom.cp in suspect_rdepend:
 								self.qatracker.add_error(
 									mytype + '.suspect',
-									ebuild.relative_path + ": '%s'" % atom)
+									dynamic_data['ebuild'].relative_path + ": '%s'" % atom)
 
 						if atom.operator == "~" and \
 							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
@@ -552,10 +526,10 @@ class Scanner(object):
 							self.qatracker.add_error(
 								qacat, "%s: %s uses the ~ operator"
 								" with a non-zero revision: '%s'" %
-								(ebuild.relative_path, mytype, atom))
+								(dynamic_data['ebuild'].relative_path, mytype, atom))
 
-						check_missingslot(atom, mytype, eapi, self.portdb, self.qatracker,
-							ebuild.relative_path, myaux)
+						check_missingslot(atom, mytype, dynamic_data['ebuild'].eapi, self.portdb, self.qatracker,
+							dynamic_data['ebuild'].relative_path, dynamic_data['ebuild'].metadata)
 
 				type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
@@ -565,7 +539,7 @@ class Scanner(object):
 				else:
 					qacat = m + ".syntax"
 				self.qatracker.add_error(
-					qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
+					qacat, "%s: %s: %s" % (dynamic_data['ebuild'].relative_path, m, b))
 
 			badlicsyntax = len([z for z in type_list if z == "LICENSE"])
 			badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
@@ -573,34 +547,34 @@ class Scanner(object):
 			badlicsyntax = badlicsyntax > 0
 			badprovsyntax = badprovsyntax > 0
 
-			self.use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, dynamic_data['muselist'])
+			self.use_flag_checks.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild, dynamic_data['muselist'])
 
 			ebuild_used_useflags = self.use_flag_checks.getUsedUseFlags()
 			used_useflags = used_useflags.union(ebuild_used_useflags)
 
-			self.rubyeclasscheck.check(pkg, ebuild)
+			self.rubyeclasscheck.check(dynamic_data['pkg'], dynamic_data['ebuild'])
 
 			# license checks
 			if not badlicsyntax:
-				self.licensecheck.check(pkg, xpkg, ebuild, y_ebuild)
+				self.licensecheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
-			self.restrictcheck.check(pkg, xpkg, ebuild, y_ebuild)
+			self.restrictcheck.check(dynamic_data['pkg'], xpkg, dynamic_data['ebuild'], y_ebuild)
 
 			# Syntax Checks
 			if not self.vcs_settings.vcs_preserves_mtime:
-				if ebuild.ebuild_path not in self.changed.new_ebuilds and \
-					ebuild.ebuild_path not in self.changed.ebuilds:
-					pkg.mtime = None
+				if dynamic_data['ebuild'].ebuild_path not in self.changed.new_ebuilds and \
+					dynamic_data['ebuild'].ebuild_path not in self.changed.ebuilds:
+					dynamic_data['pkg'].mtime = None
 			try:
 				# All ebuilds should have utf_8 encoding.
 				f = io.open(
 					_unicode_encode(
-						ebuild.full_path, encoding=_encodings['fs'], errors='strict'),
+						dynamic_data['ebuild'].full_path, encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'])
 				try:
-					for check_name, e in run_checks(f, pkg):
+					for check_name, e in run_checks(f, dynamic_data['pkg']):
 						self.qatracker.add_error(
-							check_name, ebuild.relative_path + ': %s' % e)
+							check_name, dynamic_data['ebuild'].relative_path + ': %s' % e)
 				finally:
 					f.close()
 			except UnicodeDecodeError:
@@ -678,23 +652,23 @@ class Scanner(object):
 				# for USE deps of unstable packages to be resolved correctly,
 				# since otherwise use.stable.{mask,force} settings of
 				# dependencies may conflict (see bug #456342).
-				dep_settings._parent_stable = dep_settings._isStable(pkg)
+				dep_settings._parent_stable = dep_settings._isStable(dynamic_data['pkg'])
 
 				# Handle package.use*.{force,mask) calculation, for use
 				# in dep_check.
 				dep_settings.useforce = dep_settings._use_manager.getUseForce(
-					pkg, stable=dep_settings._parent_stable)
+					dynamic_data['pkg'], stable=dep_settings._parent_stable)
 				dep_settings.usemask = dep_settings._use_manager.getUseMask(
-					pkg, stable=dep_settings._parent_stable)
+					dynamic_data['pkg'], stable=dep_settings._parent_stable)
 
 				if not baddepsyntax:
-					ismasked = not ebuild_archs or \
-						pkg.cpv not in self.portdb.xmatch("match-visible",
-						Atom("%s::%s" % (pkg.cp, self.repo_settings.repo_config.name)))
+					ismasked = not dynamic_data['ebuild'].archs or \
+						dynamic_data['pkg'].cpv not in self.portdb.xmatch("match-visible",
+						Atom("%s::%s" % (dynamic_data['pkg'].cp, self.repo_settings.repo_config.name)))
 					if ismasked:
 						if not self.have['pmasked']:
 							self.have['pmasked'] = bool(dep_settings._getMaskAtom(
-								pkg.cpv, pkg._metadata))
+								dynamic_data['pkg'].cpv, dynamic_data['pkg']._metadata))
 						if self.options.ignore_masked:
 							continue
 						# we are testing deps for a masked package; give it some lee-way
@@ -706,7 +680,7 @@ class Scanner(object):
 
 					if not self.have['dev_keywords']:
 						self.have['dev_keywords'] = \
-							bool(self.dev_keywords.intersection(keywords))
+							bool(self.dev_keywords.intersection(dynamic_data['ebuild'].keywords))
 
 					if prof.status == "dev":
 						suffix = suffix + "indev"
@@ -714,7 +688,7 @@ class Scanner(object):
 					for mytype in Package._dep_keys:
 
 						mykey = "dependency.bad" + suffix
-						myvalue = myaux[mytype]
+						myvalue = dynamic_data['ebuild'].metadata[mytype]
 						if not myvalue:
 							continue
 
@@ -758,23 +732,23 @@ class Scanner(object):
 								if self.options.output_style in ['column']:
 									self.qatracker.add_error(mykey,
 										"%s: %s: %s(%s) %s"
-										% (ebuild.relative_path, mytype, keyword,
+										% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 											prof, repr(atoms)))
 								else:
 									self.qatracker.add_error(mykey,
 										"%s: %s: %s(%s)\n%s"
-										% (ebuild.relative_path, mytype, keyword,
+										% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 											prof, pformat(atoms, indent=6)))
 						else:
 							if self.options.output_style in ['column']:
 								self.qatracker.add_error(mykey,
 									"%s: %s: %s(%s) %s"
-									% (ebuild.relative_path, mytype, keyword,
+									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 										prof, repr(atoms)))
 							else:
 								self.qatracker.add_error(mykey,
 									"%s: %s: %s(%s)\n%s"
-									% (ebuild.relative_path, mytype, keyword,
+									% (dynamic_data['ebuild'].relative_path, mytype, keyword,
 										prof, pformat(atoms, indent=6)))
 
 			if not baddepsyntax and unknown_pkgs:
@@ -784,11 +758,11 @@ class Scanner(object):
 				for mytype, atoms in type_map.items():
 					self.qatracker.add_error(
 						"dependency.unknown", "%s: %s: %s"
-						% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
+						% (dynamic_data['ebuild'].relative_path, mytype, ", ".join(sorted(atoms))))
 
 		# check if there are unused local USE-descriptions in metadata.xml
 		# (unless there are any invalids, to avoid noise)
-		if self.allvalid:
+		if dynamic_data['allvalid']:
 			for myflag in dynamic_data['muselist'].difference(used_useflags):
 				self.qatracker.add_error(
 					"metadata.warning",
