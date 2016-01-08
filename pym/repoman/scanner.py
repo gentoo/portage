@@ -25,7 +25,6 @@ from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
 from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
-from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
 from repoman.checks.ebuilds.variables.eapi import EAPIChecks
@@ -228,14 +227,12 @@ class Scanner(object):
 		# initialize the plugin checks here
 		self.modules = {}
 		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus',
-					'fetches']:
+					'fetches', 'pkgmetadata']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
 			self.modules[mod_class.__name__] = mod_class(**kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
-			self.repo_settings.repoman_settings, metadata_dtd=metadata_dtd)
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
 		self.liveeclasscheck = LiveEclassChecks(self.qatracker)
@@ -272,10 +269,11 @@ class Scanner(object):
 				'changed': self.changed,
 				'checkdir_relative': checkdir_relative,
 				'can_force': can_force,
+				'repolevel': self.repolevel,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
-						'VCSStatus', 'FetchChecks']:
+						'VCSStatus', 'FetchChecks', 'PkgMetadata']:
 				print("scan_pkgs(): module:", mod)
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
@@ -302,9 +300,6 @@ class Scanner(object):
 
 			if self.check['changelog'] and "ChangeLog" not in checkdirlist:
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
-
-			self.pkgmeta.check(xpkg, checkdir, checkdirlist, self.repolevel)
-			self.muselist = frozenset(self.pkgmeta.musedict)
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			self.changelog_modified = changelog_path in self.changed.changelogs
@@ -551,7 +546,7 @@ class Scanner(object):
 			badlicsyntax = badlicsyntax > 0
 			badprovsyntax = badprovsyntax > 0
 
-			self.use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, self.muselist)
+			self.use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, dynamic_data['muselist'])
 
 			ebuild_used_useflags = self.use_flag_checks.getUsedUseFlags()
 			used_useflags = used_useflags.union(ebuild_used_useflags)
@@ -767,7 +762,7 @@ class Scanner(object):
 		# check if there are unused local USE-descriptions in metadata.xml
 		# (unless there are any invalids, to avoid noise)
 		if self.allvalid:
-			for myflag in self.muselist.difference(used_useflags):
+			for myflag in dynamic_data['muselist'].difference(used_useflags):
 				self.qatracker.add_error(
 					"metadata.warning",
 					"%s/metadata.xml: unused local USE-description: '%s'"
