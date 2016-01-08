@@ -214,7 +214,7 @@ class Scanner(object):
 		self.live_eclasses = portage.const.LIVE_ECLASSES
 
 		# Create our kwargs dict here to initialize the plugins with
-		kwargs = {
+		self.kwargs = {
 			"repo_settings": self.repo_settings,
 			"portdb": self.portdb,
 			"qatracker": self.qatracker,
@@ -230,7 +230,7 @@ class Scanner(object):
 					'fetches', 'pkgmetadata']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			print("Initializing class name:", mod_class.__name__)
-			self.modules[mod_class.__name__] = mod_class(**kwargs)
+			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
 		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
@@ -270,6 +270,8 @@ class Scanner(object):
 				'checkdir_relative': checkdir_relative,
 				'can_force': can_force,
 				'repolevel': self.repolevel,
+				'catdir': catdir,
+				'pkgdir': pkgdir,
 				}
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
@@ -304,20 +306,22 @@ class Scanner(object):
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			self.changelog_modified = changelog_path in self.changed.changelogs
 
-			self._scan_ebuilds(ebuildlist, catdir, pkgdir, dynamic_data)
+			self._scan_ebuilds(ebuildlist, dynamic_data)
 		return dynamic_data['can_force']
 
 
-	def _scan_ebuilds(self, ebuildlist, catdir, pkgdir, dynamic_data):
+	def _scan_ebuilds(self, ebuildlist, dynamic_data):
 		xpkg = dynamic_data['xpkg']
 		# detect unused local USE-descriptions
 		used_useflags = set()
 
 		for y_ebuild in ebuildlist:
+			dynamic_data['y_ebuild'] = y_ebuild
+			y_ebuild_continue = False
 
 			ebuild = Ebuild(
-				self.repo_settings, self.repolevel, pkgdir, catdir, self.vcs_settings,
-				xpkg, y_ebuild)
+				self.repo_settings, self.repolevel, dynamic_data['pkgdir'],
+				dynamic_data['catdir'], self.vcs_settings, xpkg, y_ebuild)
 
 			if self.checks['changelog'] and not self.changelog_modified \
 				and ebuild.ebuild_path in self.changed.new_ebuilds:
@@ -328,7 +332,30 @@ class Scanner(object):
 				self.qatracker.add_error(
 					"ebuild.notadded", xpkg + "/" + y_ebuild + ".ebuild")
 
-			if bad_split_check(xpkg, y_ebuild, pkgdir, self.qatracker):
+			if bad_split_check(xpkg, y_ebuild, dynamic_data['pkgdir'], self.qatracker):
+				continue
+			# need to set it up for ==> self.modules or some other ordered list
+			for mod in []:
+				print("scan_ebuilds: module:", mod)
+				do_it, functions = self.modules[mod].runInEbuilds
+				# print("do_it", do_it, "functions", functions)
+				if do_it:
+					for func in functions:
+						print("\tRunning function:", func)
+						rdata = func(**dynamic_data)
+						if rdata.get('continue', False):
+							# If we can't access all the metadata then it's totally unsafe to
+							# commit since there's no way to generate a correct Manifest.
+							# Do not try to do any more QA checks on this package since missing
+							# metadata leads to false positives for several checks, and false
+							# positives confuse users.
+							y_ebuild_continue = True
+							break
+						#print("rdata:", rdata)
+						dynamic_data.update(rdata)
+						#print("dynamic_data", dynamic_data)
+
+			if y_ebuild_continue:
 				continue
 
 			pkg = self.pkgs[y_ebuild]
@@ -362,7 +389,7 @@ class Scanner(object):
 
 			for pos, missing_var in enumerate(missingvars):
 				if not myaux.get(missing_var):
-					if catdir == "virtual" and \
+					if dynamic_data['catdir'] == "virtual" and \
 						missing_var in ("HOMEPAGE", "LICENSE"):
 						continue
 					if live_ebuild and missing_var == "KEYWORDS":
@@ -370,7 +397,7 @@ class Scanner(object):
 					myqakey = missingvars[pos] + ".missing"
 					self.qatracker.add_error(myqakey, xpkg + "/" + y_ebuild + ".ebuild")
 
-			if catdir == "virtual":
+			if dynamic_data['catdir'] == "virtual":
 				for var in ("HOMEPAGE", "LICENSE"):
 					if myaux.get(var):
 						myqakey = var + ".virtual"
@@ -482,7 +509,7 @@ class Scanner(object):
 							not atom.cp.startswith("virtual/"):
 							unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
-						if catdir != "virtual":
+						if dynamic_data['catdir'] != "virtual":
 							if not is_blocker and \
 								atom.cp in suspect_virtual:
 								self.qatracker.add_error(
