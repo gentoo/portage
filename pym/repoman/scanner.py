@@ -19,7 +19,6 @@ from portage.dep import Atom
 from portage.output import green
 from repoman.checks.ebuilds.checks import run_checks
 from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
-from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
 from repoman.check_missingslot import check_missingslot
 from repoman.checks.ebuilds.use_flags import USEFlagChecks
 from repoman.checks.ebuilds.variables.description import DescriptionChecks
@@ -218,7 +217,6 @@ class Scanner(object):
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
 		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
 		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
 		self.descriptioncheck = DescriptionChecks(self.qatracker)
@@ -304,7 +302,9 @@ class Scanner(object):
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
-				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata')]:
+				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
+				('thirdpartymirrors', 'ThirdPartyMirrors'),
+				]:
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
