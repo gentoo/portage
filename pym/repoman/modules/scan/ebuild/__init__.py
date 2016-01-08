@@ -10,10 +10,19 @@ module_spec = {
 	'name': 'ebuild',
 	'description': doc,
 	'provides':{
-		'ebuild-module': {
+		'isebuild-module': {
 			'name': "isebuild",
 			'sourcefile': "isebuild",
 			'class': "IsEbuild",
+			'description': doc,
+			'functions': ['check'],
+			'func_desc': {
+			},
+		},
+		'ebuild-module': {
+			'name': "ebuild",
+			'sourcefile': "ebuild",
+			'class': "Ebuild",
 			'description': doc,
 			'functions': ['check'],
 			'func_desc': {
