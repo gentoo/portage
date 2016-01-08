@@ -23,46 +23,52 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 # import our initialized portage instance
 from repoman._portage import portage
-
-from portage.exception import InvalidAtom
-from portage import os
-from portage import _encodings, _unicode_encode
-from portage.dep import Atom
-
 from repoman.metadata import (
 	metadata_xml_encoding, metadata_doctype_name,
 	metadata_dtd_uri, metadata_xml_declaration, parse_metadata_use)
 from repoman.checks.herds.herdbase import get_herd_base
 from repoman.checks.herds.metadata import check_metadata, UnknownHerdsError
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
+from repoman.modules.scan.scanbase import ScanBase
+
+from portage.exception import InvalidAtom
+from portage import os
+from portage import _encodings, _unicode_encode
+from portage.dep import Atom
 
 
-class PkgMetadata(object):
+class PkgMetadata(ScanBase):
 	'''Package metadata.xml checks'''
 
-	def __init__(self, options, qatracker, repoman_settings, metadata_dtd=None):
+	def __init__(self, **kwargs):
 		'''PkgMetadata init function
 
-		@param options: ArgumentParser.parse_known_args(argv[1:]) options
+		@param repo_settings: settings instance
 		@param qatracker: QATracker instance
-		@param repoman_settings: settings instance
+		@param options: argparse options instance
 		@param metadata_dtd: path of metadata.dtd
 		'''
-		self.options = options
-		self.qatracker = qatracker
-		self.repoman_settings = repoman_settings
+		super(PkgMetadata, self).__init__(**kwargs)
+		repo_settings = kwargs.get('repo_settings')
+		self.qatracker = kwargs.get('qatracker')
+		self.options = kwargs.get('options')
+		metadata_dtd = kwargs.get('metadata_dtd')
+		self.repoman_settings = repo_settings.repoman_settings
 		self.musedict = {}
 		self.xmllint = XmlLint(self.options, self.repoman_settings,
 			metadata_dtd=metadata_dtd)
 
-	def check(self, xpkg, checkdir, checkdirlist, repolevel):
+	def check(self, **kwargs):
 		'''Performs the checks on the metadata.xml for the package
-
 		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdirlist: list of checkdir's
 		@param repolevel: integer
 		'''
+		xpkg = kwargs.get('xpkg')
+		checkdir = kwargs.get('checkdir')
+		checkdirlist = kwargs.get('checkdirlist')
+		repolevel = kwargs.get('repolevel')
 
 		self.musedict = {}
 		# metadata.xml file check
@@ -174,4 +180,9 @@ class PkgMetadata(object):
 				if not self.xmllint.check(checkdir, repolevel):
 					self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 			del metadata_bad
-		return
+		return {'continue': False, 'muselist': frozenset(self.musedict)}
+
+	@property
+	def runInPkgs(self):
+		'''Package level scans'''
+		return (True, [self.check])
