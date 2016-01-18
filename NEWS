@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+
+portage-2.2.26
+--------------
+* EAPI 6 stable portage release
+
+
 portage-2.2.25
 --------------
 * EAPI 6 final fully implemented.

@@ -1,6 +1,30 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.27
+==================================
+* Bug Fixes:
+    - Bug 532224 Fixes commit 28828655da86 @profile pkg set support
+    - Bug 566024 Fix logic when deep is True
+    - Bug 567932 SyncManager.sync: always return 4-tuple
+    - Bug 561686 _dep_check_composite_db._visible: verify that highest_visible
+                 matches
+    - Bug 567920 Manifest._apply_max_mtime: account for removals and renames
+    - Bug 567746 repoman: use metadata.dtd from rsync tree if available
+    - Bug 568354 depgraph._resolve: consider unresolved @system atoms fatal
+    - Bug 567360 doebuild: Support finding lib* for ccache/distcc/icecc
+                 masquerade dir
+    - Bug 568054 repoman: Do not check for PATCHES array in EAPI 6 and later.
+    - Bug 568934 flat_hash: enable md5 validation for /var/cache/edb/dep
+    - Bug 569942 elog/mod_save: fix CATEGORY KeyError
+    - Bug 486362 repoman: add clutter to inherit.deprecated
+    - Bug 562652 emaint/.../merges: Rename --purge-tracker option
+    - Bug 570530 INSTALL_MASK: enable matching of broken symlinks
+    - Bug 570672 emerge: Add --autounmask-only parameter
+    - Bug 570798 support bsddb3 module
+
+
+
 portage-2.2.26
 ==================================
 * Bug Fixes:
@@ -12,6 +36,7 @@ portage-2.2.26
     - Bug 566132 SyncManager: redirect command stderr to stdout
     - Bug 566704 depgraph: autounmask for conditional USE deps
 * other EAPI 6 code changes: eapply_user, several corrections
+
 
 portage-2.2.25
 ==================================
