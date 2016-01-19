@@ -920,7 +920,7 @@ def checks_init(experimental_inherit=False):
 			for k, kwargs in _eclass_info.items())))
 
 
-_here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
+_here_doc_re = re.compile(r'.*<<[-]?(\w+)\s*(>\s*\S+\s*)?$')
 _ignore_comment_re = re.compile(r'^\s*#')
 
 
