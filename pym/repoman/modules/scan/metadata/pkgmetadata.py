@@ -71,6 +71,9 @@ class PkgMetadata(ScanBase):
 		repolevel = kwargs.get('repolevel')
 
 		self.musedict = {}
+		if self.options.mode in ['manifest']:
+			return {'continue': False, 'muselist': frozenset(self.musedict)}
+
 		# metadata.xml file check
 		if "metadata.xml" not in checkdirlist:
 			self.qatracker.add_error("metadata.missing", xpkg + "/metadata.xml")
