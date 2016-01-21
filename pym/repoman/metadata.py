@@ -19,6 +19,7 @@ from repoman._portage import portage
 
 from portage import exception
 from portage import os
+from portage import shutil
 from portage.output import green
 
 if sys.hexversion >= 0x3000000:
@@ -143,7 +144,7 @@ def fetch_metadata_dtd(metadata_dtd, repoman_settings):
 			except portage.exception.PortageException:
 				pass
 
-			os.rename(metadata_dtd_tmp, metadata_dtd)
+			shutil.move(metadata_dtd_tmp, metadata_dtd)
 		finally:
 			try:
 				os.unlink(metadata_dtd_tmp)
