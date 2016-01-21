@@ -60,6 +60,7 @@ class XmlLint(object):
 		self.repoman_settings = repoman_settings
 		self._is_capable = metadata_dtd is not None
 		self.binary = None
+		self._is_capable = False
 		self._check_capable()
 
 	def _check_capable(self):
@@ -68,7 +69,6 @@ class XmlLint(object):
 		self.binary = find_binary('xmllint')
 		if not self.binary:
 			print(red("!!! xmllint not found. Can't check metadata.xml.\n"))
-			self._is_capable = False
 		elif not self._is_capable:
 			if not fetch_metadata_dtd(self.metadata_dtd, self.repoman_settings):
 				sys.exit(1)
