@@ -84,10 +84,9 @@ class BinpkgFetcher(SpawnProcess):
 		}
 
 		for k in ("PORTAGE_SSH_OPTS",):
-			try:
-				fcmd_vars[k] = settings[k]
-			except KeyError:
-				pass
+			v = settings.get(k)
+			if v is not None:
+				fcmd_vars[k] = v
 
 		fetch_env = dict(settings.items())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
