@@ -3,6 +3,8 @@
 '''repoman/checks/ebuilds/misc.py
 Miscelaneous ebuild check functions'''
 
+from __future__ import print_function, unicode_literals
+
 import re
 
 # import our initialized portage instance
