@@ -775,7 +775,7 @@ class binarytree(object):
 				self._update_pkgindex_header(pkgindex.header)
 				self._pkgindex_write(pkgindex)
 
-		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
+		if getbinpkgs and not self.settings.get("PORTAGE_BINHOST"):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
