@@ -24,7 +24,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
 from repoman._portage import portage
 from repoman.metadata import metadata_dtd_uri
 from repoman.checks.herds.herdbase import get_herd_base
-from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
 from repoman.modules.scan.scanbase import ScanBase
 
 from portage.exception import InvalidAtom
