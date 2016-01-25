@@ -128,11 +128,10 @@ class PkgMetadata(ScanBase):
 		repo_settings = kwargs.get('repo_settings')
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
-		metadata_dtd = kwargs.get('metadata_dtd')
 		self.repoman_settings = repo_settings.repoman_settings
+		self.metadata_dtd = kwargs.get('metadata_dtd') or \
+			os.path.join(self.repoman_settings['DISTDIR'], 'metadata.dtd')
 		self.musedict = {}
-		self.xmllint = XmlLint(self.options, self.repoman_settings,
-			metadata_dtd=metadata_dtd)
 
 	def check(self, **kwargs):
 		'''Performs the checks on the metadata.xml for the package
@@ -233,7 +232,8 @@ class PkgMetadata(ScanBase):
 
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
-			if not self.xmllint.check(checkdir, repolevel):
+			validator = etree.DTD(self.metadata_dtd)
+			if not validator.validate(_metadata_xml):
 				self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 		del metadata_bad
 		return {'continue': False, 'muselist': frozenset(self.musedict)}
