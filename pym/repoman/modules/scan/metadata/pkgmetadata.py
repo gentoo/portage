@@ -23,9 +23,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 # import our initialized portage instance
 from repoman._portage import portage
-from repoman.metadata import (
-	metadata_xml_encoding, metadata_doctype_name,
-	metadata_dtd_uri, metadata_xml_declaration, parse_metadata_use)
+from repoman.metadata import metadata_dtd_uri, parse_metadata_use
 from repoman.checks.herds.herdbase import get_herd_base
 from repoman.checks.herds.metadata import check_metadata, UnknownHerdsError
 from repoman._xml import _XMLParser, _MetadataTreeBuilder, XmlLint
@@ -35,6 +33,12 @@ from portage.exception import InvalidAtom
 from portage import os
 from portage import _encodings, _unicode_encode
 from portage.dep import Atom
+
+
+metadata_xml_encoding = 'UTF-8'
+metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
+	% (metadata_xml_encoding,)
+metadata_doctype_name = 'pkgmetadata'
 
 
 class PkgMetadata(ScanBase):
