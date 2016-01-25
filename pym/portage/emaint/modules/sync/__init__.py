@@ -12,6 +12,7 @@ module_spec = {
 	'provides':{
 		'sync-module': {
 			'name': "sync",
+			'sourcefile': "sync",
 			'class': "SyncRepos",
 			'description': doc,
 			'functions': ['allrepos', 'auto', 'repo'],

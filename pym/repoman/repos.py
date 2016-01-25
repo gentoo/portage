@@ -22,12 +22,13 @@ bad = portage.output.create_color_func("BAD")
 
 
 class RepoSettings(object):
-	'''Holds out repo specific settings'''
+	'''Holds our repo specific settings'''
 
 	def __init__(
 		self, config_root, portdir, portdir_overlay,
 		repoman_settings=None, vcs_settings=None, options=None,
 		qawarnings=None):
+		self.config_root = config_root
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
 
@@ -295,13 +296,3 @@ def repo_metadata(portdb, repoman_settings):
 	return (
 		kwlist, liclist, uselist, profile_list, global_pmaskdict,
 		list_checks(kwlist, liclist, uselist, repoman_settings))
-
-
-def has_global_mask(pkg, global_pmaskdict):
-	mask_atoms = global_pmaskdict.get(pkg.cp)
-	if mask_atoms:
-		pkg_list = [pkg]
-		for x in mask_atoms:
-			if portage.dep.match_from_list(x, pkg_list):
-				return x
-	return None

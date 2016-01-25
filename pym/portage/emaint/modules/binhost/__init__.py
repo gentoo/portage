@@ -11,6 +11,7 @@ module_spec = {
 	'provides':{
 		'module1': {
 			'name': "binhost",
+			'sourcefile': "binhost",
 			'class': "BinhostHandler",
 			'description': doc,
 			'functions': ['check', 'fix'],

@@ -19,31 +19,30 @@ from portage import os
 import portage.checksum
 import portage.const
 import portage.repository.config
-from portage import util
 from portage.output import create_color_func, nocolor
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
 
 from repoman.actions import Actions
 from repoman.argparser import parse_args
-from repoman.checks.ebuilds.checks import checks_init
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats)
 from repoman.repos import RepoSettings
 from repoman.scanner import Scanner
 from repoman import utilities
-from repoman.vcs.vcs import VCSSettings
+from repoman.modules.vcs.settings import VCSSettings
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
-
-util.initialize_logger()
 
 bad = create_color_func("BAD")
 
 # A sane umask is needed for files that portage creates.
 os.umask(0o22)
+
+LOGLEVEL = logging.WARNING
+portage.util.initialize_logger(LOGLEVEL)
 
 
 def repoman_main(argv):
@@ -62,10 +61,16 @@ def repoman_main(argv):
 		print("Portage", portage.VERSION)
 		sys.exit(0)
 
+	logger = logging.getLogger()
+
+	if options.verbosity > 0:
+		logger.setLevel(LOGLEVEL - 10 * options.verbosity)
+	else:
+		logger.setLevel(LOGLEVEL)
+
 	if options.experimental_inherit == 'y':
 		# This is experimental, so it's non-fatal.
 		qawarnings.add("inherit.missing")
-		checks_init(experimental_inherit=True)
 
 	# Set this to False when an extraordinary issue (generally
 	# something other than a QA issue) makes it impossible to
@@ -101,7 +106,7 @@ def repoman_main(argv):
 	# Perform the main checks
 	scanner = Scanner(repo_settings, myreporoot, config_root, options,
 					vcs_settings, mydir, env)
-	qatracker, can_force = scanner.scan_pkgs(can_force)
+	can_force = scanner.scan_pkgs(can_force)
 
 	commitmessage = None
 
@@ -122,7 +127,7 @@ def repoman_main(argv):
 		sys.exit(result['fail'])
 
 	for x in qacats:
-		if x not in qatracker.fails:
+		if x not in vcs_settings.qatracker.fails:
 			continue
 		result['warn'] = 1
 		if x not in qawarnings:
@@ -153,7 +158,8 @@ def repoman_main(argv):
 
 	format_output = format_outputs.get(
 		options.output_style, format_outputs['default'])
-	format_output(f, qatracker.fails, result['full'], result['fail'], options, qawarnings)
+	format_output(f, vcs_settings.qatracker.fails, result['full'],
+		result['fail'], options, qawarnings)
 
 	style_file.flush()
 	del console_writer, f, style_file

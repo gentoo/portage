@@ -2,59 +2,30 @@
 
 from __future__ import print_function, unicode_literals
 
-import copy
-import io
 import logging
-import re
-import sys
 from itertools import chain
-from pprint import pformat
-
-from _emerge.Package import Package
 
 import portage
 from portage import normalize_path
 from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-from portage.dep import Atom
 from portage.output import green
-from repoman.checks.directories.files import FileChecks
-from repoman.checks.ebuilds.checks import run_checks
-from repoman.checks.ebuilds.eclasses.live import LiveEclassChecks
-from repoman.checks.ebuilds.eclasses.ruby import RubyEclassChecks
-from repoman.checks.ebuilds.fetches import FetchChecks
-from repoman.checks.ebuilds.keywords import KeywordChecks
-from repoman.checks.ebuilds.isebuild import IsEbuild
-from repoman.checks.ebuilds.thirdpartymirrors import ThirdPartyMirrors
-from repoman.checks.ebuilds.manifests import Manifests
-from repoman.check_missingslot import check_missingslot
-from repoman.checks.ebuilds.misc import bad_split_check, pkg_invalid
-from repoman.checks.ebuilds.pkgmetadata import PkgMetadata
-from repoman.checks.ebuilds.use_flags import USEFlagChecks
-from repoman.checks.ebuilds.variables.description import DescriptionChecks
-from repoman.checks.ebuilds.variables.eapi import EAPIChecks
-from repoman.checks.ebuilds.variables.license import LicenseChecks
-from repoman.checks.ebuilds.variables.restrict import RestrictChecks
-from repoman.ebuild import Ebuild
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
-from repoman.qa_data import missingvars, suspect_virtual, suspect_rdepend
-from repoman.qa_tracker import QATracker
 from repoman.repos import repo_metadata
-from repoman.scan import Changes, scan
-from repoman.vcs.vcsstatus import VCSStatus
-from repoman.vcs.vcs import vcs_files_to_cps
+from repoman.modules.scan.scan import scan
+from repoman.modules.vcs.vcs import vcs_files_to_cps
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
+from portage.module import Modules
 
-NON_ASCII_RE = re.compile(r'[^\x00-\x7f]')
+MODULES_PATH = os.path.join(os.path.dirname(__file__), "modules", "scan")
+# initial development debug info
+logging.debug("module path: %s", MODULES_PATH)
 
+MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
 
-def sort_key(item):
-	return item[2].sub_path
-
+MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
+# initial development debug info
+logging.debug("module_names: %s", MODULE_NAMES)
 
 
 class Scanner(object):
@@ -141,7 +112,7 @@ class Scanner(object):
 
 		self.dev_keywords = dev_profile_keywords(self.profiles)
 
-		self.qatracker = QATracker()
+		self.qatracker = self.vcs_settings.qatracker
 
 		if self.options.echangelog is None and self.repo_settings.repo_config.update_changelog:
 			self.options.echangelog = 'y'
@@ -149,7 +120,7 @@ class Scanner(object):
 		if self.vcs_settings.vcs is None:
 			self.options.echangelog = 'n'
 
-		self.check = {}
+		self.checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,
 		# which invalidates changelog.ebuildadded and changelog.missing
 		# checks.
@@ -161,7 +132,7 @@ class Scanner(object):
 		# TODO: shouldn't this just be switched on the repo, iso the VCS?
 		is_echangelog_enabled = self.options.echangelog in ('y', 'force')
 		self.vcs_settings.vcs_is_cvs_or_svn = self.vcs_settings.vcs in ('cvs', 'svn')
-		self.check['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
+		self.checks['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
 
 		if self.options.mode == "manifest":
 			pass
@@ -170,7 +141,7 @@ class Scanner(object):
 		else:
 			print(green("\nRepoMan scours the neighborhood..."))
 
-		self.changed = Changes(self.options)
+		self.changed = self.vcs_settings.changes
 		self.changed.scan(self.vcs_settings)
 
 		self.have = {
@@ -191,9 +162,9 @@ class Scanner(object):
 			self.include_arches = set()
 			self.include_arches.update(*[x.split() for x in self.options.include_arches])
 
-		# Disable the "ebuild.notadded" check when not in commit mode and
+		# Disable the "self.modules['Ebuild'].notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
-		self.check['ebuild_notadded'] = not \
+		self.checks['ebuild_notadded'] = not \
 			(self.vcs_settings.vcs == "svn" and self.repolevel < 3 and self.options.mode != "commit")
 
 		self.effective_scanlist = scanlist
@@ -202,33 +173,41 @@ class Scanner(object):
 				chain(self.changed.changed, self.changed.new, self.changed.removed),
 				self.repolevel, self.reposplit, self.categories))
 
-		self.live_eclasses = portage.const.LIVE_ECLASSES
+		# Create our kwargs dict here to initialize the plugins with
+		self.kwargs = {
+			"repo_settings": self.repo_settings,
+			"portdb": self.portdb,
+			"qatracker": self.qatracker,
+			"vcs_settings": self.vcs_settings,
+			"options": self.options,
+			"metadata_dtd": metadata_dtd,
+			"uselist": uselist,
+			"checks": self.checks,
+			"repo_metadata": self.repo_metadata,
+			"profiles": self.profiles,
+			"include_arches": self.include_arches,
+			"caches": self.caches,
+			"repoman_incrementals": self.repoman_incrementals,
+			"env": self.env,
+			"have": self.have,
+			"dev_keywords": self.dev_keywords,
+		}
+		# initialize the plugin checks here
+		self.modules = {}
+		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus',
+					'fetches', 'pkgmetadata']:
+			mod_class = MODULE_CONTROLLER.get_class(mod)
+			logging.debug("Initializing class name: %s", mod_class.__name__)
+			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 		# initialize our checks classes here before the big xpkg loop
-		self.manifester = Manifests(self.options, self.qatracker, self.repo_settings.repoman_settings)
-		self.is_ebuild = IsEbuild(self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.qatracker)
-		self.filescheck = FileChecks(
-			self.qatracker, self.repo_settings.repoman_settings, self.repo_settings, self.portdb, self.vcs_settings)
-		self.status_check = VCSStatus(self.vcs_settings, self.qatracker)
-		self.fetchcheck = FetchChecks(
-			self.qatracker, self.repo_settings, self.portdb, self.vcs_settings)
-		self.pkgmeta = PkgMetadata(self.options, self.qatracker,
-			self.repo_settings.repoman_settings, metadata_dtd=metadata_dtd)
-		self.thirdparty = ThirdPartyMirrors(self.repo_settings.repoman_settings, self.qatracker)
-		self.use_flag_checks = USEFlagChecks(self.qatracker, uselist)
-		self.keywordcheck = KeywordChecks(self.qatracker, self.options)
-		self.liveeclasscheck = LiveEclassChecks(self.qatracker)
-		self.rubyeclasscheck = RubyEclassChecks(self.qatracker)
-		self.eapicheck = EAPIChecks(self.qatracker, self.repo_settings)
-		self.descriptioncheck = DescriptionChecks(self.qatracker)
-		self.licensecheck = LicenseChecks(self.qatracker, liclist, liclist_deprecated)
-		self.restrictcheck = RestrictChecks(self.qatracker)
-
 
 	def scan_pkgs(self, can_force):
+		dynamic_data = {'can_force': can_force}
 		for xpkg in self.effective_scanlist:
+			xpkg_continue = False
 			# ebuilds and digests added to cvs respectively.
-			logging.info("checking package %s" % xpkg)
+			logging.info("checking package %s", xpkg)
 			# save memory by discarding xmatch caches from previous package(s)
 			self.caches['arch_xmatch'].clear()
 			self.eadded = []
@@ -240,513 +219,130 @@ class Scanner(object):
 			if self.repolevel < 2:
 				checkdir_relative = os.path.join(catdir, checkdir_relative)
 			checkdir_relative = os.path.join(".", checkdir_relative)
-
-			if self.manifester.run(checkdir, self.portdb):
-				continue
-			if not self.manifester.generated_manifest:
-				self.manifester.digest_check(xpkg, checkdir)
-			if self.options.mode == 'manifest-check':
-				continue
-
 			checkdirlist = os.listdir(checkdir)
 
-			self.pkgs, self.allvalid = self.is_ebuild.check(checkdirlist, checkdir, xpkg)
-			if self.is_ebuild.continue_:
-				# If we can't access all the metadata then it's totally unsafe to
-				# commit since there's no way to generate a correct Manifest.
-				# Do not try to do any more QA checks on this package since missing
-				# metadata leads to false positives for several checks, and false
-				# positives confuse users.
-				can_force = False
+			dynamic_data = {
+				'checkdirlist': checkdirlist,
+				'checkdir': checkdir,
+				'xpkg': xpkg,
+				'changed': self.changed,
+				'checkdir_relative': checkdir_relative,
+				'can_force': can_force,
+				'repolevel': self.repolevel,
+				'catdir': catdir,
+				'pkgdir': pkgdir,
+				}
+			# need to set it up for ==> self.modules or some other ordered list
+			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
+						'VCSStatus', 'FetchChecks', 'PkgMetadata']:
+				logging.debug("scan_pkgs; module: %s", mod)
+				do_it, functions = self.modules[mod].runInPkgs
+				if do_it:
+					for func in functions:
+						rdata = func(**dynamic_data)
+						if rdata.get('continue', False):
+							# If we can't access all the metadata then it's totally unsafe to
+							# commit since there's no way to generate a correct Manifest.
+							# Do not try to do any more QA checks on this package since missing
+							# metadata leads to false positives for several checks, and false
+							# positives confuse users.
+							xpkg_continue = True
+							break
+						dynamic_data.update(rdata)
+
+			if xpkg_continue:
 				continue
 
-			self.keywordcheck.prepare()
-
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
+			self.pkgs = dynamic_data['pkgs']
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
-			self.filescheck.check(
-				checkdir, checkdirlist, checkdir_relative, self.changed.changed, self.changed.new)
-
-			self.status_check.check(self.check['ebuild_notadded'], checkdir, checkdir_relative, xpkg)
-			self.eadded.extend(self.status_check.eadded)
-
-			self.fetchcheck.check(
-				xpkg, checkdir, checkdir_relative, self.changed.changed, self.changed.new)
-
-			if self.check['changelog'] and "ChangeLog" not in checkdirlist:
+			if self.checks['changelog'] and "ChangeLog" not in checkdirlist:
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
-
-			self.pkgmeta.check(xpkg, checkdir, checkdirlist, self.repolevel)
-			self.muselist = frozenset(self.pkgmeta.musedict)
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
 			self.changelog_modified = changelog_path in self.changed.changelogs
 
-			self._scan_ebuilds(ebuildlist, xpkg, catdir, pkgdir)
-		return self.qatracker, can_force
+			self._scan_ebuilds(ebuildlist, dynamic_data)
+		return dynamic_data['can_force']
 
 
-	def _scan_ebuilds(self, ebuildlist, xpkg, catdir, pkgdir):
+	def _scan_ebuilds(self, ebuildlist, dynamic_data):
 		# detect unused local USE-descriptions
-		used_useflags = set()
+		dynamic_data['used_useflags'] = set()
 
 		for y_ebuild in ebuildlist:
+			dynamic_data['y_ebuild'] = y_ebuild
+			y_ebuild_continue = False
 
-			ebuild = Ebuild(
-				self.repo_settings, self.repolevel, pkgdir, catdir, self.vcs_settings,
-				xpkg, y_ebuild)
+			# initialize per ebuild plugin checks here
+			# need to set it up for ==> self.modules_list or some other ordered list
+			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
+				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
+				('thirdpartymirrors', 'ThirdPartyMirrors'),
+				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
+				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
+				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
+				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
+				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
+				# Options.is_forced() is used to bypass further checks
+				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
+				('unknown', 'DependUnknown'),
+				]:
+				if mod[0]:
+					mod_class = MODULE_CONTROLLER.get_class(mod[0])
+					logging.debug("Initializing class name: %s", mod_class.__name__)
+					self.modules[mod[1]] = mod_class(**self.kwargs)
+				logging.debug("scan_ebuilds: module: %s", mod[1])
+				do_it, functions = self.modules[mod[1]].runInEbuilds
+				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
+				if do_it:
+					for func in functions:
+						logging.debug("\tRunning function: %s", func)
+						rdata = func(**dynamic_data)
+						if rdata.get('continue', False):
+							# If we can't access all the metadata then it's totally unsafe to
+							# commit since there's no way to generate a correct Manifest.
+							# Do not try to do any more QA checks on this package since missing
+							# metadata leads to false positives for several checks, and false
+							# positives confuse users.
+							y_ebuild_continue = True
+							# logging.debug("\t>>> Continuing")
+							break
+						# logging.debug("rdata: %s", rdata)
+						dynamic_data.update(rdata)
+						# logging.debug("dynamic_data: %s", dynamic_data)
 
-			if self.check['changelog'] and not self.changelog_modified \
-				and ebuild.ebuild_path in self.changed.new_ebuilds:
-				self.qatracker.add_error('changelog.ebuildadded', ebuild.relative_path)
-
-			if ebuild.untracked(self.check['ebuild_notadded'], y_ebuild, self.eadded):
-				# ebuild not added to vcs
-				self.qatracker.add_error(
-					"ebuild.notadded", xpkg + "/" + y_ebuild + ".ebuild")
-
-			if bad_split_check(xpkg, y_ebuild, pkgdir, self.qatracker):
+			if y_ebuild_continue:
 				continue
 
-			pkg = self.pkgs[y_ebuild]
-			if pkg_invalid(pkg, self.qatracker, ebuild):
-				self.allvalid = False
-				continue
+			logging.debug("Finished ebuild plugin loop, continuing...")
 
-			myaux = pkg._metadata
-			eapi = myaux["EAPI"]
-			inherited = pkg.inherited
-			live_ebuild = self.live_eclasses.intersection(inherited)
+		# Final checks
+		# initialize per pkg plugin final checks here
+		# need to set it up for ==> self.modules_list or some other ordered list
+		xpkg_complete = False
+		for mod in [('unused', 'UnusedChecks')]:
+			if mod[0]:
+				mod_class = MODULE_CONTROLLER.get_class(mod[0])
+				logging.debug("Initializing class name: %s", mod_class.__name__)
+				self.modules[mod[1]] = mod_class(**self.kwargs)
+			logging.debug("scan_ebuilds final checks: module: %s", mod[1])
+			do_it, functions = self.modules[mod[1]].runInFinal
+			logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
+			if do_it:
+				for func in functions:
+					logging.debug("\tRunning function: %s", func)
+					rdata = func(**dynamic_data)
+					if rdata.get('continue', False):
+						xpkg_complete = True
+						# logging.debug("\t>>> Continuing")
+						break
+					# logging.debug("rdata: %s", rdata)
+					dynamic_data.update(rdata)
+					# logging.debug("dynamic_data: %s", dynamic_data)
 
-			self.eapicheck.check(pkg, ebuild)
-
-			for k, v in myaux.items():
-				if not isinstance(v, basestring):
-					continue
-				m = NON_ASCII_RE.search(v)
-				if m is not None:
-					self.qatracker.add_error(
-						"variable.invalidchar",
-						"%s: %s variable contains non-ASCII "
-						"character at position %s" %
-						(ebuild.relative_path, k, m.start() + 1))
-
-			if not self.fetchcheck.src_uri_error:
-				self.thirdparty.check(myaux, ebuild.relative_path)
-
-			if myaux.get("PROVIDE"):
-				self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
-
-			for pos, missing_var in enumerate(missingvars):
-				if not myaux.get(missing_var):
-					if catdir == "virtual" and \
-						missing_var in ("HOMEPAGE", "LICENSE"):
-						continue
-					if live_ebuild and missing_var == "KEYWORDS":
-						continue
-					myqakey = missingvars[pos] + ".missing"
-					self.qatracker.add_error(myqakey, xpkg + "/" + y_ebuild + ".ebuild")
-
-			if catdir == "virtual":
-				for var in ("HOMEPAGE", "LICENSE"):
-					if myaux.get(var):
-						myqakey = var + ".virtual"
-						self.qatracker.add_error(myqakey, ebuild.relative_path)
-
-			self.descriptioncheck.check(pkg, ebuild)
-
-			keywords = myaux["KEYWORDS"].split()
-
-			ebuild_archs = set(
-				kw.lstrip("~") for kw in keywords if not kw.startswith("-"))
-
-			self.keywordcheck.check(
-				pkg, xpkg, ebuild, y_ebuild, keywords, ebuild_archs, self.changed,
-				live_ebuild, self.repo_metadata['kwlist'], self.profiles)
-
-			if live_ebuild and self.repo_settings.repo_config.name == "gentoo":
-				self.liveeclasscheck.check(
-					pkg, xpkg, ebuild, y_ebuild, keywords, self.repo_metadata['pmaskdict'])
-
-			if self.options.ignore_arches:
-				arches = [[
-					self.repo_settings.repoman_settings["ARCH"], self.repo_settings.repoman_settings["ARCH"],
-					self.repo_settings.repoman_settings["ACCEPT_KEYWORDS"].split()]]
-			else:
-				arches = set()
-				for keyword in keywords:
-					if keyword[0] == "-":
-						continue
-					elif keyword[0] == "~":
-						arch = keyword[1:]
-						if arch == "*":
-							for expanded_arch in self.profiles:
-								if expanded_arch == "**":
-									continue
-								arches.add(
-									(keyword, expanded_arch, (
-										expanded_arch, "~" + expanded_arch)))
-						else:
-							arches.add((keyword, arch, (arch, keyword)))
-					else:
-						# For ebuilds with stable keywords, check if the
-						# dependencies are satisfiable for unstable
-						# configurations, since use.stable.mask is not
-						# applied for unstable configurations (see bug
-						# 563546).
-						if keyword == "*":
-							for expanded_arch in self.profiles:
-								if expanded_arch == "**":
-									continue
-								arches.add(
-									(keyword, expanded_arch, (expanded_arch,)))
-								arches.add(
-									(keyword, expanded_arch,
-										(expanded_arch, "~" + expanded_arch)))
-						else:
-							arches.add((keyword, keyword, (keyword,)))
-							arches.add((keyword, keyword,
-								(keyword, "~" + keyword)))
-				if not arches:
-					# Use an empty profile for checking dependencies of
-					# packages that have empty KEYWORDS.
-					arches.add(('**', '**', ('**',)))
-
-			unknown_pkgs = set()
-			baddepsyntax = False
-			badlicsyntax = False
-			badprovsyntax = False
-			# catpkg = catdir + "/" + y_ebuild
-
-			inherited_java_eclass = "java-pkg-2" in inherited or \
-				"java-pkg-opt-2" in inherited
-			inherited_wxwidgets_eclass = "wxwidgets" in inherited
-			# operator_tokens = set(["||", "(", ")"])
-			type_list, badsyntax = [], []
-			for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
-				mydepstr = myaux[mytype]
-
-				buildtime = mytype in Package._buildtime_keys
-				runtime = mytype in Package._runtime_keys
-				token_class = None
-				if mytype.endswith("DEPEND"):
-					token_class = portage.dep.Atom
-
-				try:
-					atoms = portage.dep.use_reduce(
-						mydepstr, matchall=1, flat=True,
-						is_valid_flag=pkg.iuse.is_valid_flag, token_class=token_class)
-				except portage.exception.InvalidDependString as e:
-					atoms = None
-					badsyntax.append(str(e))
-
-				if atoms and mytype.endswith("DEPEND"):
-					if runtime and \
-						"test?" in mydepstr.split():
-						self.qatracker.add_error(
-							mytype + '.suspect',
-							"%s: 'test?' USE conditional in %s" %
-							(ebuild.relative_path, mytype))
-
-					for atom in atoms:
-						if atom == "||":
-							continue
-
-						is_blocker = atom.blocker
-
-						# Skip dependency.unknown for blockers, so that we
-						# don't encourage people to remove necessary blockers,
-						# as discussed in bug 382407. We use atom.without_use
-						# due to bug 525376.
-						if not is_blocker and \
-							not self.portdb.xmatch("match-all", atom.without_use) and \
-							not atom.cp.startswith("virtual/"):
-							unknown_pkgs.add((mytype, atom.unevaluated_atom))
-
-						if catdir != "virtual":
-							if not is_blocker and \
-								atom.cp in suspect_virtual:
-								self.qatracker.add_error(
-									'virtual.suspect', ebuild.relative_path +
-									": %s: consider using '%s' instead of '%s'" %
-									(mytype, suspect_virtual[atom.cp], atom))
-							if not is_blocker and \
-								atom.cp.startswith("perl-core/"):
-								self.qatracker.add_error('dependency.perlcore',
-									ebuild.relative_path +
-									": %s: please use '%s' instead of '%s'" %
-									(mytype,
-									atom.replace("perl-core/","virtual/perl-"),
-									atom))
-
-						if buildtime and \
-							not is_blocker and \
-							not inherited_java_eclass and \
-							atom.cp == "virtual/jdk":
-							self.qatracker.add_error(
-								'java.eclassesnotused', ebuild.relative_path)
-						elif buildtime and \
-							not is_blocker and \
-							not inherited_wxwidgets_eclass and \
-							atom.cp == "x11-libs/wxGTK":
-							self.qatracker.add_error(
-								'wxwidgets.eclassnotused',
-								"%s: %ss on x11-libs/wxGTK without inheriting"
-								" wxwidgets.eclass" % (ebuild.relative_path, mytype))
-						elif runtime:
-							if not is_blocker and \
-								atom.cp in suspect_rdepend:
-								self.qatracker.add_error(
-									mytype + '.suspect',
-									ebuild.relative_path + ": '%s'" % atom)
-
-						if atom.operator == "~" and \
-							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
-							qacat = 'dependency.badtilde'
-							self.qatracker.add_error(
-								qacat, "%s: %s uses the ~ operator"
-								" with a non-zero revision: '%s'" %
-								(ebuild.relative_path, mytype, atom))
-
-						check_missingslot(atom, mytype, eapi, self.portdb, self.qatracker,
-							ebuild.relative_path, myaux)
-
-				type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
-
-			for m, b in zip(type_list, badsyntax):
-				if m.endswith("DEPEND"):
-					qacat = "dependency.syntax"
-				else:
-					qacat = m + ".syntax"
-				self.qatracker.add_error(
-					qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
-
-			badlicsyntax = len([z for z in type_list if z == "LICENSE"])
-			badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
-			baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax
-			badlicsyntax = badlicsyntax > 0
-			badprovsyntax = badprovsyntax > 0
-
-			self.use_flag_checks.check(pkg, xpkg, ebuild, y_ebuild, self.muselist)
-
-			ebuild_used_useflags = self.use_flag_checks.getUsedUseFlags()
-			used_useflags = used_useflags.union(ebuild_used_useflags)
-
-			self.rubyeclasscheck.check(pkg, ebuild)
-
-			# license checks
-			if not badlicsyntax:
-				self.licensecheck.check(pkg, xpkg, ebuild, y_ebuild)
-
-			self.restrictcheck.check(pkg, xpkg, ebuild, y_ebuild)
-
-			# Syntax Checks
-			if not self.vcs_settings.vcs_preserves_mtime:
-				if ebuild.ebuild_path not in self.changed.new_ebuilds and \
-					ebuild.ebuild_path not in self.changed.ebuilds:
-					pkg.mtime = None
-			try:
-				# All ebuilds should have utf_8 encoding.
-				f = io.open(
-					_unicode_encode(
-						ebuild.full_path, encoding=_encodings['fs'], errors='strict'),
-					mode='r', encoding=_encodings['repo.content'])
-				try:
-					for check_name, e in run_checks(f, pkg):
-						self.qatracker.add_error(
-							check_name, ebuild.relative_path + ': %s' % e)
-				finally:
-					f.close()
-			except UnicodeDecodeError:
-				# A file.UTF8 failure will have already been recorded above.
-				pass
-
-			if self.options.force:
-				# The dep_check() calls are the most expensive QA test. If --force
-				# is enabled, there's no point in wasting time on these since the
-				# user is intent on forcing the commit anyway.
-				continue
-
-			relevant_profiles = []
-			for keyword, arch, groups in arches:
-				if arch not in self.profiles:
-					# A missing profile will create an error further down
-					# during the KEYWORDS verification.
-					continue
-
-				if self.include_arches is not None:
-					if arch not in self.include_arches:
-						continue
-
-				relevant_profiles.extend(
-					(keyword, groups, prof) for prof in self.profiles[arch])
-
-			relevant_profiles.sort(key=sort_key)
-
-			for keyword, groups, prof in relevant_profiles:
-
-				is_stable_profile = prof.status == "stable"
-				is_dev_profile = prof.status == "dev" and \
-					self.options.include_dev
-				is_exp_profile = prof.status == "exp" and \
-					self.options.include_exp_profiles == 'y'
-				if not (is_stable_profile or is_dev_profile or is_exp_profile):
-					continue
-
-				dep_settings = self.caches['arch'].get(prof.sub_path)
-				if dep_settings is None:
-					dep_settings = portage.config(
-						config_profile_path=prof.abs_path,
-						config_incrementals=self.repoman_incrementals,
-						config_root=self.config_root,
-						local_config=False,
-						_unmatched_removal=self.options.unmatched_removal,
-						env=self.env, repositories=self.repo_settings.repoman_settings.repositories)
-					dep_settings.categories = self.repo_settings.repoman_settings.categories
-					if self.options.without_mask:
-						dep_settings._mask_manager_obj = \
-							copy.deepcopy(dep_settings._mask_manager)
-						dep_settings._mask_manager._pmaskdict.clear()
-					self.caches['arch'][prof.sub_path] = dep_settings
-
-				xmatch_cache_key = (prof.sub_path, tuple(groups))
-				xcache = self.caches['arch_xmatch'].get(xmatch_cache_key)
-				if xcache is None:
-					self.portdb.melt()
-					self.portdb.freeze()
-					xcache = self.portdb.xcache
-					xcache.update(self.caches['shared_xmatch'])
-					self.caches['arch_xmatch'][xmatch_cache_key] = xcache
-
-				self.repo_settings.trees[self.repo_settings.root]["porttree"].settings = dep_settings
-				self.portdb.settings = dep_settings
-				self.portdb.xcache = xcache
-
-				dep_settings["ACCEPT_KEYWORDS"] = " ".join(groups)
-				# just in case, prevent config.reset() from nuking these.
-				dep_settings.backup_changes("ACCEPT_KEYWORDS")
-
-				# This attribute is used in dbapi._match_use() to apply
-				# use.stable.{mask,force} settings based on the stable
-				# status of the parent package. This is required in order
-				# for USE deps of unstable packages to be resolved correctly,
-				# since otherwise use.stable.{mask,force} settings of
-				# dependencies may conflict (see bug #456342).
-				dep_settings._parent_stable = dep_settings._isStable(pkg)
-
-				# Handle package.use*.{force,mask) calculation, for use
-				# in dep_check.
-				dep_settings.useforce = dep_settings._use_manager.getUseForce(
-					pkg, stable=dep_settings._parent_stable)
-				dep_settings.usemask = dep_settings._use_manager.getUseMask(
-					pkg, stable=dep_settings._parent_stable)
-
-				if not baddepsyntax:
-					ismasked = not ebuild_archs or \
-						pkg.cpv not in self.portdb.xmatch("match-visible",
-						Atom("%s::%s" % (pkg.cp, self.repo_settings.repo_config.name)))
-					if ismasked:
-						if not self.have['pmasked']:
-							self.have['pmasked'] = bool(dep_settings._getMaskAtom(
-								pkg.cpv, pkg._metadata))
-						if self.options.ignore_masked:
-							continue
-						# we are testing deps for a masked package; give it some lee-way
-						suffix = "masked"
-						matchmode = "minimum-all-ignore-profile"
-					else:
-						suffix = ""
-						matchmode = "minimum-visible"
-
-					if not self.have['dev_keywords']:
-						self.have['dev_keywords'] = \
-							bool(self.dev_keywords.intersection(keywords))
-
-					if prof.status == "dev":
-						suffix = suffix + "indev"
-
-					for mytype in Package._dep_keys:
-
-						mykey = "dependency.bad" + suffix
-						myvalue = myaux[mytype]
-						if not myvalue:
-							continue
-
-						success, atoms = portage.dep_check(
-							myvalue, self.portdb, dep_settings,
-							use="all", mode=matchmode, trees=self.repo_settings.trees)
-
-						if success:
-							if atoms:
-
-								# Don't bother with dependency.unknown for
-								# cases in which *DEPEND.bad is triggered.
-								for atom in atoms:
-									# dep_check returns all blockers and they
-									# aren't counted for *DEPEND.bad, so we
-									# ignore them here.
-									if not atom.blocker:
-										unknown_pkgs.discard(
-											(mytype, atom.unevaluated_atom))
-
-								if not prof.sub_path:
-									# old-style virtuals currently aren't
-									# resolvable with empty profile, since
-									# 'virtuals' mappings are unavailable
-									# (it would be expensive to search
-									# for PROVIDE in all ebuilds)
-									atoms = [
-										atom for atom in atoms if not (
-											atom.cp.startswith('virtual/')
-											and not self.portdb.cp_list(atom.cp))]
-
-								# we have some unsolvable deps
-								# remove ! deps, which always show up as unsatisfiable
-								atoms = [
-									str(atom.unevaluated_atom)
-									for atom in atoms if not atom.blocker]
-
-								# if we emptied out our list, continue:
-								if not atoms:
-									continue
-								if self.options.output_style in ['column']:
-									self.qatracker.add_error(mykey,
-										"%s: %s: %s(%s) %s"
-										% (ebuild.relative_path, mytype, keyword,
-											prof, repr(atoms)))
-								else:
-									self.qatracker.add_error(mykey,
-										"%s: %s: %s(%s)\n%s"
-										% (ebuild.relative_path, mytype, keyword,
-											prof, pformat(atoms, indent=6)))
-						else:
-							if self.options.output_style in ['column']:
-								self.qatracker.add_error(mykey,
-									"%s: %s: %s(%s) %s"
-									% (ebuild.relative_path, mytype, keyword,
-										prof, repr(atoms)))
-							else:
-								self.qatracker.add_error(mykey,
-									"%s: %s: %s(%s)\n%s"
-									% (ebuild.relative_path, mytype, keyword,
-										prof, pformat(atoms, indent=6)))
-
-			if not baddepsyntax and unknown_pkgs:
-				type_map = {}
-				for mytype, atom in unknown_pkgs:
-					type_map.setdefault(mytype, set()).add(atom)
-				for mytype, atoms in type_map.items():
-					self.qatracker.add_error(
-						"dependency.unknown", "%s: %s: %s"
-						% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
-
-		# check if there are unused local USE-descriptions in metadata.xml
-		# (unless there are any invalids, to avoid noise)
-		if self.allvalid:
-			for myflag in self.muselist.difference(used_useflags):
-				self.qatracker.add_error(
-					"metadata.warning",
-					"%s/metadata.xml: unused local USE-description: '%s'"
-					% (xpkg, myflag))
+		if xpkg_complete:
+			return
+		return

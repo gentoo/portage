@@ -32,6 +32,7 @@ module_spec = {
 	'provides':{
 		'webrsync-module': {
 			'name': "webrsync",
+			'sourcefile': "webrsync",
 			'class': config_class,
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],
