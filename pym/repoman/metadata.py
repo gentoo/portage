@@ -17,7 +17,6 @@ except ImportError:
 # import our initialized portage instance
 from repoman._portage import portage
 
-from portage import exception
 from portage import os
 from portage import shutil
 from portage.output import green
@@ -32,55 +31,6 @@ metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
 metadata_xsd_uri = 'http://www.gentoo.org/xml-schema/metadata.xsd'
 # force refetch if the local copy creation time is older than this
 metadata_xsd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
-
-
-def parse_metadata_use(xml_tree):
-	"""
-	Records are wrapped in XML as per GLEP 56
-	returns a dict with keys constisting of USE flag names and values
-	containing their respective descriptions
-	"""
-	uselist = {}
-
-	usetags = xml_tree.findall("use")
-	if not usetags:
-		return uselist
-
-	# It's possible to have multiple 'use' elements.
-	for usetag in usetags:
-		flags = usetag.findall("flag")
-		if not flags:
-			# DTD allows use elements containing no flag elements.
-			continue
-
-		for flag in flags:
-			pkg_flag = flag.get("name")
-			if pkg_flag is None:
-				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-			flag_restrict = flag.get("restrict")
-
-			# emulate the Element.itertext() method from python-2.7
-			inner_text = []
-			stack = []
-			stack.append(flag)
-			while stack:
-				obj = stack.pop()
-				if isinstance(obj, basestring):
-					inner_text.append(obj)
-					continue
-				if isinstance(obj.text, basestring):
-					inner_text.append(obj.text)
-				if isinstance(obj.tail, basestring):
-					stack.append(obj.tail)
-				stack.extend(reversed(obj))
-
-			if pkg_flag not in uselist:
-				uselist[pkg_flag] = {}
-
-			# (flag_restrict can be None)
-			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
-
-	return uselist
 
 
 def fetch_metadata_xsd(metadata_xsd, repoman_settings):
