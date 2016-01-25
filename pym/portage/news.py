@@ -338,7 +338,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
 		self.keyword = keyword
 
 	def checkRestriction(self, **kwargs):
-		if kwargs['config']['ARCH'] == self.keyword:
+		if kwargs['config'].get('ARCH', '') == self.keyword:
 			return True
 		return False
 

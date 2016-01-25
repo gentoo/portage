@@ -1082,7 +1082,7 @@ class config(object):
 		"""Validate miscellaneous settings and display warnings if necessary.
 		(This code was previously in the global scope of portage.py)"""
 
-		groups = self["ACCEPT_KEYWORDS"].split()
+		groups = self.get("ACCEPT_KEYWORDS", "").split()
 		archlist = self.archlist()
 		if not archlist:
 			writemsg(_("--- 'profiles/arch.list' is empty or "
@@ -1976,7 +1976,7 @@ class config(object):
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
-		global_accept_keywords = self["ACCEPT_KEYWORDS"]
+		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")
 
 		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
