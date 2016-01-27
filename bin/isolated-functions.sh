@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -124,10 +124,11 @@ die() {
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
 
-	if ___eapi_die_can_respect_nonfatal; then
-		if [[ ${1} == -n ]]; then
-			[[ ${PORTAGE_NONFATAL} == 1 ]] && return 1
-			shift
+	if ___eapi_die_can_respect_nonfatal && [[ $1 == -n ]]; then
+		shift
+		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
+			[[ $# -gt 0 ]] && eerror "$*"
+			return 1
 		fi
 	fi
 
