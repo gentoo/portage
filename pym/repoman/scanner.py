@@ -171,7 +171,10 @@ class Scanner(object):
 			print(green("\nRepoMan scours the neighborhood..."))
 
 		self.changed = Changes(self.options)
-		self.changed.scan(self.vcs_settings)
+		# bypass unneeded VCS operations if not needed
+		if (self.options.if_modified != "y" and
+			self.options.mode in ("manifest", "manifest-check")):
+			self.changed.scan(self.vcs_settings)
 
 		self.have = {
 			'pmasked': False,
