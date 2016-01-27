@@ -5125,7 +5125,10 @@ class depgraph(object):
 					cp_exists = True
 					break
 
-			writemsg("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg("\nemerge: there are no %s to satisfy " %
+                ("binary packages" if
+                 self._frozen_config.myopts.get("--usepkgonly", "y") == True
+                 else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
 				not cp_exists and \
 				self._frozen_config.myopts.get(
