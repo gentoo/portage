@@ -19,6 +19,7 @@ module_spec = {
 			'func_desc': {
 			},
 			'vcs_preserves_mtime': False,
+			'needs_keyword_expansion': False,
 		},
 		'hg-changes': {
 			'name': "hg_changes",

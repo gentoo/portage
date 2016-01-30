@@ -4,7 +4,6 @@ from __future__ import print_function, unicode_literals
 import logging
 import sys
 
-from repoman._portage import portage
 from portage.output import red
 from repoman.modules.vcs import module_controller, module_names
 from repoman.modules.vcs.vcs import FindVCS
@@ -58,6 +57,8 @@ class VCSSettings(object):
 			logging.error("VCSSettings: Unknown VCS type: %s", self.vcs)
 			logging.error("Available modules: %s", module_controller.parents)
 
+		self.needs_keyword_expansion = module_controller.modules[
+				"%s_status" % self.vcs]['needs_keyword_expansion']
 		self.vcs_local_opts = repoman_settings.get(
 			"REPOMAN_VCS_LOCAL_OPTS", "").split()
 		self.vcs_global_opts = repoman_settings.get(
@@ -88,5 +89,5 @@ class VCSSettings(object):
 	def changes(self):
 		if not self._changes:
 			changes = self.module_controller.get_class('%s_changes' % self.vcs)
-			self._changes = changes(self.options)
+			self._changes = changes(self.options, self.vcs)
 		return self._changes

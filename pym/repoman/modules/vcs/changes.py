@@ -21,6 +21,10 @@ class ChangesBase(object):
 		self.changed = []
 		self.new = []
 		self.removed = []
+		self.no_expansion = set()
+		self._expansion = None
+		self._deleted = None
+		self._unadded = None
 
 	def scan(self):
 		self._reset()
@@ -37,3 +41,28 @@ class ChangesBase(object):
 		'''Placeholder for subclassing'''
 		pass
 
+	@property
+	def has_deleted(self):
+		'''Placeholder for VCS that requires manual deletion of files'''
+		return self.deleted != []
+
+	@property
+	def has_changes(self):
+		'''Placeholder for VCS repo common has changes result'''
+		changed = self.changed or self.new or self.removed or self.deleted
+		return changed != []
+
+	@property
+	def unadded(self):
+		'''Override this function as needed'''
+		return []
+
+	@property
+	def deleted(self):
+		'''Override this function as needed'''
+		return []
+
+	@property
+	def expansion(self):
+		'''Override this function as needed'''
+		return {}

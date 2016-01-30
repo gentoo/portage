@@ -16,7 +16,6 @@ from itertools import chain
 from _emerge.UserQuery import UserQuery
 
 import portage
-from portage import cvstree
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -26,8 +25,7 @@ from portage.package.ebuild.digestgen import digestgen
 from portage.process import find_binary, spawn
 from portage.util import writemsg_level
 
-from repoman._subprocess import repoman_popen, repoman_getstatusoutput
-from repoman.errors import err
+from repoman._subprocess import repoman_getstatusoutput
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities
 from repoman.modules.vcs.vcs import vcs_files_to_cps
@@ -72,13 +70,11 @@ class Actions(object):
 
 
 	def perform(self, qa_output):
-		myunadded, mydeleted = self._vcs_unadded()
+		myautoadd = self._vcs_autoadd()
 
-		myautoadd = self._vcs_autoadd(myunadded)
+		self._vcs_deleted()
 
-		self._vcs_deleted(mydeleted)
-
-		changes = self.get_vcs_changed(mydeleted)
+		changes = self.get_vcs_changed()
 
 		mynew, mychanged, myremoved, no_expansion, expansion = changes
 
@@ -128,12 +124,14 @@ class Actions(object):
 
 		print("* %s files being committed..." % green(str(len(myupdates))), end=' ')
 
-		if self.vcs_settings.vcs not in ('cvs', 'svn'):
-			# With git, bzr and hg, there's never any keyword expansion, so
+		if not self.vcs_settings.needs_keyword_expansion:
+			# With some VCS types there's never any keyword expansion, so
 			# there's no need to regenerate manifests and all files will be
 			# committed in one big commit at the end.
+			logging.debug("VCS type doesn't need keyword expansion")
 			print()
 		elif not self.repo_settings.repo_config.thin_manifest:
+			logging.debug("perform: Calling thick_manifest()")
 			self.thick_manifest(myupdates, myheaders, no_expansion, expansion)
 
 		logging.info("myupdates: %s", myupdates)
@@ -272,62 +270,8 @@ class Actions(object):
 			sys.exit(1)
 
 
-	def _vcs_unadded(self):
-		myunadded = []
-		mydeleted = []
-		if self.vcs_settings.vcs == "cvs":
-			try:
-				myvcstree = portage.cvstree.getentries("./", recursive=1)
-				myunadded = portage.cvstree.findunadded(
-					myvcstree, recursive=1, basedir="./")
-			except SystemExit:
-				raise  # TODO propagate this
-			except:
-				err("Error retrieving CVS tree; exiting.")
-		if self.vcs_settings.vcs == "svn":
-			try:
-				with repoman_popen("svn status --no-ignore") as f:
-					svnstatus = f.readlines()
-				myunadded = [
-					"./" + elem.rstrip().split()[1]
-					for elem in svnstatus
-					if elem.startswith("?") or elem.startswith("I")]
-			except SystemExit:
-				raise  # TODO propagate this
-			except:
-				err("Error retrieving SVN info; exiting.")
-		if self.vcs_settings.vcs == "git":
-			# get list of files not under version control or missing
-			myf = repoman_popen("git ls-files --others")
-			myunadded = ["./" + elem[:-1] for elem in myf]
-			myf.close()
-		if self.vcs_settings.vcs == "bzr":
-			try:
-				with repoman_popen("bzr status -S .") as f:
-					bzrstatus = f.readlines()
-				myunadded = [
-					"./" + elem.rstrip().split()[1].split('/')[-1:][0]
-					for elem in bzrstatus
-					if elem.startswith("?") or elem[0:2] == " D"]
-			except SystemExit:
-				raise # TODO propagate this
-			except:
-				err("Error retrieving bzr info; exiting.")
-		if self.vcs_settings.vcs == "hg":
-			with repoman_popen("hg status --no-status --unknown .") as f:
-				myunadded = f.readlines()
-			myunadded = ["./" + elem.rstrip() for elem in myunadded]
-
-			# Mercurial doesn't handle manually deleted files as removed from
-			# the repository, so the user need to remove them before commit,
-			# using "hg remove [FILES]"
-			with repoman_popen("hg status --no-status --deleted .") as f:
-				mydeleted = f.readlines()
-			mydeleted = ["./" + elem.rstrip() for elem in mydeleted]
-		return myunadded, mydeleted
-
-
-	def _vcs_autoadd(self, myunadded):
+	def _vcs_autoadd(self):
+		myunadded = self.vcs_settings.changes.unadded
 		myautoadd = []
 		if myunadded:
 			for x in range(len(myunadded) - 1, -1, -1):
@@ -359,137 +303,38 @@ class Actions(object):
 		return myautoadd
 
 
-	def _vcs_deleted(self, mydeleted):
-		if self.vcs_settings.vcs == "hg" and mydeleted:
+	def _vcs_deleted(self):
+		if self.vcs_settings.changes.has_deleted:
 			print(red(
 				"!!! The following files are removed manually"
 				" from your local tree but are not"))
 			print(red(
 				"!!! removed from the repository."
-				" Please remove them, using \"hg remove [FILES]\"."))
-			for x in mydeleted:
+				" Please remove them, using \"%s remove [FILES]\"."
+				% self.vcs_settings.vcs))
+			for x in self.vcs_settings.changes.deleted:
 				print("   ", x)
 			print()
 			print()
 			sys.exit(1)
 
 
-	def get_vcs_changed(self, mydeleted):
+	def get_vcs_changed(self):
 		'''Holding function which calls the approriate VCS module for the data'''
-		changed = ([], [], [], [], [])
-		if self.vcs_settings.vcs:
-			vcs_module = getattr(self, '_get_changed_%s_' % self.vcs_settings.vcs)
-			changed = vcs_module(mydeleted)
-			mynew, mychanged, myremoved, no_expansion, expansion = changed
+		changes = self.vcs_settings.changes
+		# re-run the scan to pick up a newly modified Manifest file
+		logging.debug("RE-scanning for changes...")
+		changes.scan()
 
-			a_file_is_changed = mychanged or mynew or myremoved
-			a_file_is_deleted_hg = self.vcs_settings.vcs == "hg" and mydeleted
-
-			if not (a_file_is_changed or a_file_is_deleted_hg):
-				utilities.repoman_sez(
-					"\"Doing nothing is not always good for QA.\"")
-				print()
-				print("(Didn't find any changed files...)")
-				print()
-				sys.exit(1)
-		return changed
-
-
-	def _get_changed_cvs_(self, mydeleted):
-		mycvstree = cvstree.getentries("./", recursive=1)
-		mychanged = cvstree.findchanged(mycvstree, recursive=1, basedir="./")
-		mynew = cvstree.findnew(mycvstree, recursive=1, basedir="./")
-		myremoved = portage.cvstree.findremoved(mycvstree, recursive=1, basedir="./")
-		bin_blob_pattern = re.compile("^-kb$")
-		no_expansion = set(portage.cvstree.findoption(
-			mycvstree, bin_blob_pattern, recursive=1, basedir="./"))
-		expansion = {}
-		return  (mynew, mychanged, myremoved, no_expansion, expansion)
-
-	def _get_changed_svn_(self, mydeleted):
-		with repoman_popen("svn status") as f:
-			svnstatus = f.readlines()
-		mychanged = [
-			"./" + elem.split()[-1:][0]
-			for elem in svnstatus
-			if (elem[:1] in "MR" or elem[1:2] in "M")]
-		mynew = [
-			"./" + elem.split()[-1:][0]
-			for elem in svnstatus
-			if elem.startswith("A")]
-		myremoved = [
-			"./" + elem.split()[-1:][0]
-			for elem in svnstatus
-			if elem.startswith("D")]
-		# Subversion expands keywords specified in svn:keywords properties.
-		with repoman_popen("svn propget -R svn:keywords") as f:
-			props = f.readlines()
-		expansion = dict(
-			("./" + prop.split(" - ")[0], prop.split(" - ")[1].split())
-			for prop in props if " - " in prop)
-		no_expansion = set()
-		return  (mynew, mychanged, myremoved, no_expansion, expansion)
-
-	def _get_changed_git_(self, mydeleted):
-		with repoman_popen(
-			"git diff-index --name-only "
-			"--relative --diff-filter=M HEAD") as f:
-			mychanged = f.readlines()
-		mychanged = ["./" + elem[:-1] for elem in mychanged]
-		with repoman_popen(
-			"git diff-index --name-only "
-			"--relative --diff-filter=A HEAD") as f:
-			mynew = f.readlines()
-		mynew = ["./" + elem[:-1] for elem in mynew]
-		with repoman_popen(
-			"git diff-index --name-only "
-			"--relative --diff-filter=D HEAD") as f:
-			myremoved = f.readlines()
-		myremoved = ["./" + elem[:-1] for elem in myremoved]
-		no_expansion = set()
-		expansion = {}
-		return  (mynew, mychanged, myremoved, no_expansion, expansion)
-
-	def _get_changed_bzr_(self, mydeleted):
-		with repoman_popen("bzr status -S .") as f:
-			bzrstatus = f.readlines()
-		mychanged = [
-			"./" + elem.split()[-1:][0].split('/')[-1:][0]
-			for elem in bzrstatus
-			if elem and elem[1:2] == "M"]
-		mynew = [
-			"./" + elem.split()[-1:][0].split('/')[-1:][0]
-			for elem in bzrstatus
-			if elem and (elem[1:2] in "NK" or elem[0:1] == "R")]
-		myremoved = [
-			"./" + elem.split()[-1:][0].split('/')[-1:][0]
-			for elem in bzrstatus
-			if elem.startswith("-")]
-		myremoved = [
-			"./" + elem.split()[-3:-2][0].split('/')[-1:][0]
-			for elem in bzrstatus
-			if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
-		# Bazaar expands nothing.
-		no_expansion = set()
-		expansion = {}
-		return  (mynew, mychanged, myremoved, no_expansion, expansion)
-
-	def _get_changed_hg_(self, mydeleted):
-		with repoman_popen("hg status --no-status --modified .") as f:
-			mychanged = f.readlines()
-		mychanged = ["./" + elem.rstrip() for elem in mychanged]
-
-		with repoman_popen("hg status --no-status --added .") as f:
-			mynew = f.readlines()
-		mynew = ["./" + elem.rstrip() for elem in mynew]
-
-		with repoman_popen("hg status --no-status --removed .") as f:
-			myremoved = f.readlines()
-		myremoved = ["./" + elem.rstrip() for elem in myremoved]
-		no_expansion = set()
-		expansion = {}
-		return  (mynew, mychanged, myremoved, no_expansion, expansion)
-
+		if not changes.has_changes:
+			utilities.repoman_sez(
+				"\"Doing nothing is not always good for QA.\"")
+			print()
+			print("(Didn't find any changed files...)")
+			print()
+			sys.exit(1)
+		return (changes.new, changes.changed, changes.removed,
+				changes.no_expansion, changes.expansion)
 
 	def get_commit_footer(self):
 		portage_version = getattr(portage, "VERSION", None)

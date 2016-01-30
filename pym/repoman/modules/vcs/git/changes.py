@@ -27,11 +27,23 @@ class Changes(ChangesBase):
 			"--relative --diff-filter=A HEAD") as f:
 			new = f.readlines()
 		self.new = ["./" + elem[:-1] for elem in new]
-		if self.options.if_modified == "y":
-			with repoman_popen(
-				"git diff-index --name-only "
-				"--relative --diff-filter=D HEAD") as f:
-				removed = f.readlines()
-			self.removed = ["./" + elem[:-1] for elem in removed]
-			del removed
+		del new
 
+		with repoman_popen(
+			"git diff-index --name-only "
+			"--relative --diff-filter=D HEAD") as f:
+			removed = f.readlines()
+		self.removed = ["./" + elem[:-1] for elem in removed]
+		del removed
+
+	@property
+	def unadded(self):
+		'''VCS method of getting the unadded files in the repository'''
+		if self._unadded is not None:
+			return self._unadded
+		# get list of files not under version control or missing
+		with repoman_popen("git ls-files --others") as f:
+			unadded = f.readlines()
+		self._unadded = ["./" + elem[:-1] for elem in unadded]
+		del unadded
+		return self._unadded

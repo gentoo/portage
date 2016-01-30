@@ -19,6 +19,7 @@ module_spec = {
 			'func_desc': {
 			},
 			'vcs_preserves_mtime': False,
+			'needs_keyword_expansion': False,
 		},
 		'None-changes': {
 			'name': "None_changes",

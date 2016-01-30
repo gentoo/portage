@@ -19,6 +19,7 @@ module_spec = {
 			'func_desc': {
 			},
 			'vcs_preserves_mtime': True,
+			'needs_keyword_expansion': True,
 		},
 		'cvs-changes': {
 			'name': "cvs_changes",

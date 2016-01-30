@@ -25,8 +25,19 @@ class Changes(ChangesBase):
 			"./" + elem.split()[-1:][0].split('/')[-1:][0]
 			for elem in bzrstatus
 			if elem and (elem[1:2] == "NK" or elem[0:1] == "R")]
-		if self.options.if_modified == "y":
-			self.removed = [
-				"./" + elem.split()[-3:-2][0].split('/')[-1:][0]
-				for elem in bzrstatus
-				if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
+		self.removed = [
+			"./" + elem.split()[-3:-2][0].split('/')[-1:][0]
+			for elem in bzrstatus
+			if elem and (elem[1:2] == "K" or elem[0:1] == "R")]
+		# Bazaar expands nothing.
+
+	@property
+	def unadded(self):
+		'''Bazzar method of getting the unadded files in the repository'''
+		if self._unadded is not None:
+			return self._unadded
+		self._unadded = [
+			"./" + elem.rstrip().split()[1].split('/')[-1:][0]
+			for elem in bzrstatus
+			if elem.startswith("?") or elem[0:2] == " D"]
+		return self._unadded
