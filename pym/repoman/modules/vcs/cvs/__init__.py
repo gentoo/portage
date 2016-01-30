@@ -1,7 +1,7 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-doc = """CVS plug-in module for portage.
+doc = """CVS (cvs) plug-in module for portage.
 Performs variaous CVS actions and checks on repositories."""
 __doc__ = doc[:]
 

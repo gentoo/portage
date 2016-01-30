@@ -1,7 +1,7 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-doc = """SVN plug-in module for portage.
+doc = """Subversion (svn) plug-in module for portage.
 Performs variaous subversion actions and checks on repositories."""
 __doc__ = doc[:]
 

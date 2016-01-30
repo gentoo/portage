@@ -1,3 +1,6 @@
+'''
+Base Changes class
+'''
 
 import os
 from itertools import chain

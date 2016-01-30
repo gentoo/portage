@@ -89,5 +89,5 @@ class VCSSettings(object):
 	def changes(self):
 		if not self._changes:
 			changes = self.module_controller.get_class('%s_changes' % self.vcs)
-			self._changes = changes(self.options, self.vcs)
+			self._changes = changes(self.options)
 		return self._changes

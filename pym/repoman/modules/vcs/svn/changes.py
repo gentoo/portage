@@ -1,4 +1,6 @@
-
+'''
+Subversion module Changes class submodule
+'''
 
 from repoman.modules.vcs.changes import ChangesBase
 from repoman._subprocess import repoman_popen
@@ -12,9 +14,14 @@ class Changes(ChangesBase):
 	vcs = 'svn'
 
 	def __init__(self, options):
+		'''Class init
+
+		@param options: commandline options
+		'''
 		super(Changes, self).__init__(options)
 
 	def _scan(self):
+		'''VCS type scan function, looks for all detectable changes'''
 		with repoman_popen("svn status") as f:
 			svnstatus = f.readlines()
 		self.changed = [

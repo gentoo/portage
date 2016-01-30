@@ -1,4 +1,6 @@
-
+'''
+CVS module Changes class submodule
+'''
 
 import re
 
@@ -15,6 +17,10 @@ class Changes(ChangesBase):
 	vcs = 'cvs'
 
 	def __init__(self, options):
+		'''Class init
+
+		@param options: commandline options
+		'''
 		super(Changes, self).__init__(options)
 		self._tree = None
 

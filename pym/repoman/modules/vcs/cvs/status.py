@@ -1,3 +1,6 @@
+'''
+CVS module Status class submodule
+'''
 
 import logging
 import subprocess
@@ -11,8 +14,14 @@ from portage import _unicode_encode, _unicode_decode
 
 
 class Status(object):
+	'''Performs status checks on the svn repository'''
 
 	def __init__(self, qatracker, eadded):
+		'''Class init
+
+		@param qatracker: QATracker class instance
+		@param eadded: list
+		'''
 		self.qatracker = qatracker
 		self.eadded = eadded
 
@@ -106,8 +115,17 @@ class Status(object):
 
 	@staticmethod
 	def supports_gpg_sign():
+		'''Does this vcs system support gpg commit signatures
+
+		@returns: Boolean
+		'''
 		return False
 
 	@staticmethod
 	def isVcsDir(dirname):
+		'''Is the directory belong to the vcs system
+
+		@param dirname: string, directory name
+		@returns: Boolean
+		'''
 		return dirname in ["CVS"]

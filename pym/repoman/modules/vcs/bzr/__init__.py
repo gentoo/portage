@@ -1,7 +1,7 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-doc = """BZR plug-in module for portage.
+doc = """Bazaar (bzr) plug-in module for portage.
 Performs variaous Bazaar actions and checks on repositories."""
 __doc__ = doc[:]
 

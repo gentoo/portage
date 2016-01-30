@@ -1,5 +1,5 @@
 '''
-SVN module Status class submodule
+Subversion module Status class submodule
 '''
 
 import logging
@@ -19,10 +19,22 @@ class Status(object):
 	'''Performs status checks on the svn repository'''
 
 	def __init__(self, qatracker, eadded):
+		'''Class init
+
+		@param qatracker: QATracker class instance
+		@param eadded: list
+		'''
 		self.qatracker = qatracker
 		self.eadded = eadded
 
 	def check(self, checkdir, checkdir_relative, xpkg):
+		'''Perform the svn status check
+
+		@param checkdir: string of the directory being checked
+		@param checkdir_relative: string of the relative directory being checked
+		@param xpkg: string of the package being checked
+		@returns: boolean
+		'''
 		try:
 			myf = repoman_popen(
 				"svn status --depth=files --verbose " +
@@ -68,8 +80,8 @@ class Status(object):
 
 		Args:
 			vcs - A string identifying the version control system in use
-		Returns:
-			None (calls sys.exit on fatal problems)
+		Returns: boolean
+			(calls sys.exit on fatal problems)
 		"""
 
 		cmd = "svn status -u 2>&1 | egrep -v '^.  +.*/digest-[^/]+' | head -n-1"
@@ -122,8 +134,17 @@ class Status(object):
 
 	@staticmethod
 	def supports_gpg_sign():
+		'''Does this vcs system support gpg commit signatures
+
+		@returns: Boolean
+		'''
 		return False
 
 	@staticmethod
 	def isVcsDir(dirname):
+		'''Is the directory belong to the vcs system
+
+		@param dirname: string, directory name
+		@returns: Boolean
+		'''
 		return dirname in [".svn"]

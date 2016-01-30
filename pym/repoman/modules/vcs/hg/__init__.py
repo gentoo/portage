@@ -1,7 +1,7 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-doc = """HG plug-in module for portage.
+doc = """Mercurial (hg) plug-in module for portage.
 Performs variaous mercurial actions and checks on repositories."""
 __doc__ = doc[:]
 
