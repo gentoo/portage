@@ -172,8 +172,8 @@ class Scanner(object):
 
 		self.changed = Changes(self.options)
 		# bypass unneeded VCS operations if not needed
-		if (self.options.if_modified != "y" and
-			self.options.mode in ("manifest", "manifest-check")):
+		if (self.options.if_modified == "y" or
+			self.options.mode not in ("manifest", "manifest-check")):
 			self.changed.scan(self.vcs_settings)
 
 		self.have = {
