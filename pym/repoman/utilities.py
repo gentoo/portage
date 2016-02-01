@@ -395,13 +395,6 @@ def UpdateChangeLog(
 	year = time.strftime('%Y', gmtime)
 	date = time.strftime('%d %b %Y', gmtime)
 
-	# check modified files and the ChangeLog for copyright updates
-	# patches and diffs (identified by .patch and .diff) are excluded
-	for fn in chain(new, changed):
-		if fn.endswith('.diff') or fn.endswith('.patch'):
-			continue
-		update_copyright(os.path.join(pkgdir, fn), year, pretend=pretend)
-
 	cl_path = os.path.join(pkgdir, 'ChangeLog')
 	clold_lines = []
 	clnew_lines = []

@@ -9,6 +9,7 @@ import platform
 import signal
 import sys
 import tempfile
+import time
 from itertools import chain
 
 from _emerge.UserQuery import UserQuery
@@ -22,6 +23,7 @@ from portage.output import (
 from portage.package.ebuild.digestgen import digestgen
 from portage.util import writemsg_level
 
+from repoman.copyrights import update_copyright
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities
 from repoman.modules.vcs.vcs import vcs_files_to_cps
@@ -110,6 +112,13 @@ class Actions(object):
 			commitmessage = self.get_new_commit_message(qa_output)
 
 		commitmessage = commitmessage.rstrip()
+
+		# Update copyright for new and changed files
+		year = time.strftime('%Y', time.gmtime())
+		for fn in chain(mynew, mychanged):
+			if fn.endswith('.diff') or fn.endswith('.patch'):
+				continue
+			update_copyright(fn, year, pretend=self.options.pretend)
 
 		myupdates, broken_changelog_manifests = self.changelogs(
 					myupdates, mymanifests, myremoved, mychanged, myautoadd,
