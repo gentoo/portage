@@ -36,7 +36,7 @@ def chk_updated_cfg_files(eroot, config_protect):
 
 	if result:
 		print(" " + yellow("*") + " See the " +
-			colorize("INFORM", _("CONFIGURATION FILES")) +
-			" " + _("section of the") + " " + bold("emerge"))
-		print(" " + yellow("*") + " " +
+			colorize("INFORM", _("CONFIGURATION FILES")) + " and " +
+			colorize("INFORM", _("CONFIGURATION FILES UPDATE TOOLS")))
+		print(" " + yellow("*") + " sections of the " + bold("emerge") + " " +
 			_("man page to learn how to update config files."))
