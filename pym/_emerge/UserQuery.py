@@ -59,8 +59,8 @@ class UserQuery(object):
 						response = input("[%s] " %
 							"/".join([colours[i](responses[i])
 							for i in range(len(responses))]))
-					except UnicodeDecodeError:
-						response = _unicode_decode(response.object).rstrip('\n')
+					except UnicodeDecodeError as e:
+						response = _unicode_decode(e.object).rstrip('\n')
 				else:
 					response=raw_input("["+"/".join([colours[i](responses[i])
 									  for i in range(len(responses))])+"] ")
