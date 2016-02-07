@@ -13,8 +13,10 @@ class ChangesBase(object):
 
 	vcs = 'None'
 
-	def __init__(self, options):
+	def __init__(self, options, repo_settings):
 		self.options = options
+		self.repo_settings = repo_settings
+		self.repoman_settings = repo_settings.repoman_settings
 		self._reset()
 
 	def _reset(self):

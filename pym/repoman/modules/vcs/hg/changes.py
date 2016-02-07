@@ -13,12 +13,12 @@ class Changes(ChangesBase):
 
 	vcs = 'hg'
 
-	def __init__(self, options):
+	def __init__(self, options, repo_settings):
 		'''Class init
 
 		@param options: commandline options
 		'''
-		super(Changes, self).__init__(options)
+		super(Changes, self).__init__(options, repo_settings)
 
 	def _scan(self):
 		'''VCS type scan function, looks for all detectable changes'''

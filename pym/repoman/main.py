@@ -84,12 +84,16 @@ def repoman_main(argv):
 	myreporoot = os.path.basename(portdir_overlay)
 	myreporoot += mydir[len(portdir_overlay):]
 
+	# avoid a circular parameter repo_settings
 	vcs_settings = VCSSettings(options, repoman_settings)
 
 	repo_settings = RepoSettings(
 		config_root, portdir, portdir_overlay,
 		repoman_settings, vcs_settings, options, qawarnings)
 	repoman_settings = repo_settings.repoman_settings
+
+	# Now set repo_settings
+	vcs_settings.repo_settings = repo_settings
 
 	if 'digest' in repoman_settings.features and options.digest != 'n':
 		options.digest = 'y'

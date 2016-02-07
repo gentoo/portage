@@ -16,12 +16,12 @@ class Changes(ChangesBase):
 
 	vcs = 'cvs'
 
-	def __init__(self, options):
+	def __init__(self, options, repo_settings):
 		'''Class init
 
 		@param options: commandline options
 		'''
-		super(Changes, self).__init__(options)
+		super(Changes, self).__init__(options, repo_settings)
 		self._tree = None
 
 	def _scan(self):
