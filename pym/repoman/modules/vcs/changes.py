@@ -69,3 +69,8 @@ class ChangesBase(object):
 	def expansion(self):
 		'''Override this function as needed'''
 		return {}
+
+	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
+		'''Create a thick manifest'''
+		pass
+

@@ -64,3 +64,45 @@ class Changes(ChangesBase):
 			if elem.startswith("?") or elem.startswith("I")]
 		del svnstatus
 		return self._unadded
+
+	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
+		svn_keywords = dict((k.lower(), k) for k in [
+			"Rev",
+			"Revision",
+			"LastChangedRevision",
+			"Date",
+			"LastChangedDate",
+			"Author",
+			"LastChangedBy",
+			"URL",
+			"HeadURL",
+			"Id",
+			"Header",
+		])
+
+		for myfile in myupdates:
+			# for SVN, expansion contains files that are included in expansion
+			if myfile not in expansion:
+				continue
+
+			# Subversion keywords are case-insensitive
+			# in svn:keywords properties,
+			# but case-sensitive in contents of files.
+			enabled_keywords = []
+			for k in expansion[myfile]:
+				keyword = svn_keywords.get(k.lower())
+				if keyword is not None:
+					enabled_keywords.append(keyword)
+
+			headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
+
+			myout = repoman_getstatusoutput(
+				"egrep -q %s %s" % (headerstring, portage._shell_quote(myfile)))
+			if myout[0] == 0:
+				myheaders.append(myfile)
+
+		print("%s have headers that will change." % green(str(len(myheaders))))
+		print(
+			"* Files with headers will"
+			" cause the manifests to be changed and committed separately.")
+

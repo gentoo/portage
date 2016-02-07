@@ -41,3 +41,22 @@ class Changes(ChangesBase):
 			return self._unadded
 		self._unadded = portage.cvstree.findunadded(self._tree, recursive=1, basedir="./")
 		return self._unadded
+	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
+		headerstring = "'\$(Header|Id).*\$'"
+
+		for myfile in myupdates:
+
+			# for CVS, no_expansion contains files that are excluded from expansion
+			if myfile in no_expansion:
+				continue
+
+			myout = repoman_getstatusoutput(
+				"egrep -q %s %s" % (headerstring, portage._shell_quote(myfile)))
+			if myout[0] == 0:
+				myheaders.append(myfile)
+
+		print("%s have headers that will change." % green(str(len(myheaders))))
+		print(
+			"* Files with headers will"
+			" cause the manifests to be changed and committed separately.")
+
