@@ -74,3 +74,7 @@ class ChangesBase(object):
 		'''Create a thick manifest'''
 		pass
 
+	@staticmethod
+	def clear_attic(myheaders):
+		'''Old CVS leftover'''
+		pass

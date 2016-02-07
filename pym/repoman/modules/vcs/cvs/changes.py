@@ -41,6 +41,27 @@ class Changes(ChangesBase):
 			return self._unadded
 		self._unadded = portage.cvstree.findunadded(self._tree, recursive=1, basedir="./")
 		return self._unadded
+
+	@staticmethod
+	def clear_attic(myheaders):
+		cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
+		attic_str = b'/Attic/'
+		attic_replace = b'/'
+		for x in myheaders:
+			f = open(
+				_unicode_encode(x, encoding=_encodings['fs'], errors='strict'),
+				mode='rb')
+			mylines = f.readlines()
+			f.close()
+			modified = False
+			for i, line in enumerate(mylines):
+				if cvs_header_re.match(line) is not None and \
+					attic_str in line:
+					mylines[i] = line.replace(attic_str, attic_replace)
+					modified = True
+			if modified:
+				portage.util.write_atomic(x, b''.join(mylines), mode='wb')
+
 	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
 		headerstring = "'\$(Header|Id).*\$'"
 
