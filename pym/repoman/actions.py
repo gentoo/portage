@@ -6,7 +6,6 @@ import errno
 import io
 import logging
 import platform
-import re
 import signal
 import subprocess
 import sys
@@ -25,7 +24,6 @@ from portage.package.ebuild.digestgen import digestgen
 from portage.process import find_binary, spawn
 from portage.util import writemsg_level
 
-from repoman._subprocess import repoman_getstatusoutput
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities
 from repoman.modules.vcs.vcs import vcs_files_to_cps
@@ -160,17 +158,8 @@ class Actions(object):
 				"\"You're rather crazy... "
 				"doing the entire repository.\"\n")
 
-		if self.vcs_settings.vcs in ('cvs', 'svn') and (myupdates or myremoved):
-			for x in sorted(vcs_files_to_cps(
-				chain(myupdates, myremoved, mymanifests),
-				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
-				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
-				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
-
-		elif broken_changelog_manifests:
-			for x in broken_changelog_manifests:
-				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
-				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
+		self.vcs_settings.changes.digest_regen(myupdates, myremoved, mymanifests,
+			self.scanner, broken_changelog_manifests)
 
 		if self.repo_settings.sign_manifests:
 			self.sign_manifest(myupdates, myremoved, mymanifests)

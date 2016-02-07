@@ -76,6 +76,11 @@ class ChangesBase(object):
 		'''Create a thick manifest'''
 		pass
 
+	def digest_regen(self, myupdates, myremoved, mymanifests, scanner,
+					broken_changelog_manifests):
+		'''Regenerate manifests'''
+		pass
+
 	@staticmethod
 	def clear_attic(myheaders):
 		'''Old CVS leftover'''

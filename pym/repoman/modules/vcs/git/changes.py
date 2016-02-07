@@ -4,6 +4,9 @@ Git module Changes class submodule
 
 from repoman.modules.vcs.changes import ChangesBase
 from repoman._subprocess import repoman_popen
+from repoman._portage import portage
+from portage import os
+from portage.package.ebuild.digestgen import digestgen
 
 
 class Changes(ChangesBase):
@@ -54,3 +57,9 @@ class Changes(ChangesBase):
 		self._unadded = ["./" + elem[:-1] for elem in unadded]
 		del unadded
 		return self._unadded
+
+	def digest_regen(self, myupdates, myremoved, mymanifests, scanner, broken_changelog_manifests):
+		if broken_changelog_manifests:
+			for x in broken_changelog_manifests:
+				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
+				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)

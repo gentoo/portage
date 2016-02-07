@@ -13,8 +13,10 @@ from repoman.qa_tracker import QATracker
 class VCSSettings(object):
 	'''Holds various VCS settings'''
 
-	def __init__(self, options=None, repoman_settings=None):
+	def __init__(self, options=None, repoman_settings=None, repo_settings=None):
 		self.options = options
+		self.repoman_settings = repoman_settings
+		self.repo_settings = repo_settings
 		if options.vcs:
 			if options.vcs in module_names:
 				self.vcs = options.vcs
@@ -89,5 +91,5 @@ class VCSSettings(object):
 	def changes(self):
 		if not self._changes:
 			changes = self.module_controller.get_class('%s_changes' % self.vcs)
-			self._changes = changes(self.options)
+			self._changes = changes(self.options, self.repo_settings)
 		return self._changes

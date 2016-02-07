@@ -3,11 +3,12 @@ CVS module Changes class submodule
 '''
 
 import re
+from itertools import chain
 
 from repoman._portage import portage
 from repoman.modules.vcs.changes import ChangesBase
-from portage import cvstree
-
+from portage import cvstree, os
+from portage.package.ebuild.digestgen import digestgen
 
 class Changes(ChangesBase):
 	'''Class object to scan and hold the resultant data
@@ -80,4 +81,12 @@ class Changes(ChangesBase):
 		print(
 			"* Files with headers will"
 			" cause the manifests to be changed and committed separately.")
+
+	def digest_regen(self, myupdates, myremoved, mymanifests, scanner, broken_changelog_manifests):
+		if myupdates or myremoved:
+			for x in sorted(vcs_files_to_cps(
+				chain(myupdates, myremoved, mymanifests),
+				scanner.repolevel, scanner.reposplit, scanner.categories)):
+				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
+				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
 
