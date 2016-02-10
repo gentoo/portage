@@ -22,3 +22,7 @@ class Changes(ChangesBase):
 	def scan(self):
 		'''VCS type scan function, looks for all detectable changes'''
 		pass
+
+	def add_items(self, myautoadd):
+		'''Nothing to add them to'''
+		pass

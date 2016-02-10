@@ -2,9 +2,14 @@
 Base Changes class
 '''
 
+import logging
 import os
+import subprocess
+import sys
 from itertools import chain
 
+from repoman._portage import portage
+from portage import _unicode_encode
 
 class ChangesBase(object):
 	'''Base Class object to scan and hold the resultant data
@@ -89,3 +94,18 @@ class ChangesBase(object):
 	def update_index(self, mymanifests, myupdates):
 		'''Update the vcs's modified index if it is needed'''
 		pass
+
+	def add_items(self, myautoadd):
+			add_cmd = [self.vcs, "add"]
+			add_cmd += myautoadd
+			if self.options.pretend:
+				portage.writemsg_stdout(
+					"(%s)\n" % " ".join(add_cmd),
+					noiselevel=-1)
+			else:
+				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
+				retcode = subprocess.call(add_cmd)
+				if retcode != os.EX_OK:
+					logging.error(
+						"Exiting on %s error code: %s\n" % (self.vcs_settings.vcs, retcode))
+					sys.exit(retcode)

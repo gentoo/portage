@@ -422,30 +422,7 @@ class Actions(object):
 
 		if myautoadd:
 			print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
-			add_cmd = [self.vcs_settings.vcs, "add"]
-			add_cmd += myautoadd
-			if self.options.pretend:
-				portage.writemsg_stdout(
-					"(%s)\n" % " ".join(add_cmd),
-					noiselevel=-1)
-			else:
-
-				if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-					not os.path.isabs(add_cmd[0]):
-					# Python 3.1 _execvp throws TypeError for non-absolute executable
-					# path passed as bytes (see http://bugs.python.org/issue8513).
-					fullname = find_binary(add_cmd[0])
-					if fullname is None:
-						raise portage.exception.CommandNotFound(add_cmd[0])
-					add_cmd[0] = fullname
-
-				add_cmd = [_unicode_encode(arg) for arg in add_cmd]
-				retcode = subprocess.call(add_cmd)
-				if retcode != os.EX_OK:
-					logging.error(
-						"Exiting on %s error code: %s\n" % (self.vcs_settings.vcs, retcode))
-					sys.exit(retcode)
-
+			self.vcs_settings.changes.add_items(myautoadd)
 			myupdates += myautoadd
 		return myupdates, broken_changelog_manifests
 
