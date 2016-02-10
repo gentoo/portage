@@ -2,11 +2,16 @@
 Git module Changes class submodule
 '''
 
+import logging
+import sys
+
 from repoman.modules.vcs.changes import ChangesBase
 from repoman._subprocess import repoman_popen
 from repoman._portage import portage
 from portage import os
 from portage.package.ebuild.digestgen import digestgen
+from portage.process import spawn
+from portage.util import writemsg_level
 
 
 class Changes(ChangesBase):
@@ -63,3 +68,25 @@ class Changes(ChangesBase):
 			for x in broken_changelog_manifests:
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
+
+	def update_index(self, mymanifests, myupdates):
+		# It's not safe to use the git commit -a option since there might
+		# be some modified files elsewhere in the working tree that the
+		# user doesn't want to commit. Therefore, call git update-index
+		# in order to ensure that the index is updated with the latest
+		# versions of all new and modified files in the relevant portion
+		# of the working tree.
+		myfiles = mymanifests + myupdates
+		myfiles.sort()
+		update_index_cmd = ["git", "update-index"]
+		update_index_cmd.extend(f.lstrip("./") for f in myfiles)
+		if self.options.pretend:
+			print("(%s)" % (" ".join(update_index_cmd),))
+		else:
+			retval = spawn(update_index_cmd, env=os.environ)
+			if retval != os.EX_OK:
+				writemsg_level(
+					"!!! Exiting on %s (shell) "
+					"error code: %s\n" % (self.vcs_settings.vcs, retval),
+					level=logging.ERROR, noiselevel=-1)
+				sys.exit(retval)

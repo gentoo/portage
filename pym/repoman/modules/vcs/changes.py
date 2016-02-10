@@ -85,3 +85,7 @@ class ChangesBase(object):
 	def clear_attic(myheaders):
 		'''Old CVS leftover'''
 		pass
+
+	def update_index(self, mymanifests, myupdates):
+		'''Update the vcs's modified index if it is needed'''
+		pass

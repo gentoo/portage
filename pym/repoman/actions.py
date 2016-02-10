@@ -164,27 +164,7 @@ class Actions(object):
 		if self.repo_settings.sign_manifests:
 			self.sign_manifest(myupdates, myremoved, mymanifests)
 
-		if self.vcs_settings.vcs == 'git':
-			# It's not safe to use the git commit -a option since there might
-			# be some modified files elsewhere in the working tree that the
-			# user doesn't want to commit. Therefore, call git update-index
-			# in order to ensure that the index is updated with the latest
-			# versions of all new and modified files in the relevant portion
-			# of the working tree.
-			myfiles = mymanifests + myupdates
-			myfiles.sort()
-			update_index_cmd = ["git", "update-index"]
-			update_index_cmd.extend(f.lstrip("./") for f in myfiles)
-			if self.options.pretend:
-				print("(%s)" % (" ".join(update_index_cmd),))
-			else:
-				retval = spawn(update_index_cmd, env=os.environ)
-				if retval != os.EX_OK:
-					writemsg_level(
-						"!!! Exiting on %s (shell) "
-						"error code: %s\n" % (self.vcs_settings.vcs, retval),
-						level=logging.ERROR, noiselevel=-1)
-					sys.exit(retval)
+		self.vcs_settings.changes.update_index(mymanifests, myupdates)
 
 		self.add_manifest(mymanifests, myheaders, myupdates, myremoved, commitmessage)
 
