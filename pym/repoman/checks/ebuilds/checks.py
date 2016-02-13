@@ -417,6 +417,7 @@ class InheritDeprecated(LineCheck):
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"distutils": "distutils-r1",
+		"games": False,
 		"gems": "ruby-fakegem",
 		"mono": "mono-env",
 		"python": "python-r1 / python-single-r1 / python-any-r1",
