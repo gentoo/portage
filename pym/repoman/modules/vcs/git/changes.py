@@ -90,3 +90,13 @@ class Changes(ChangesBase):
 					"error code: %s\n" % (self.vcs_settings.vcs, retval),
 					level=logging.ERROR, noiselevel=-1)
 				sys.exit(retval)
+
+	def commit(self, myfiles, commitmessagefile):
+		'''Git commit the changes'''
+		retval = super(Changes, self).commit(myfiles, commitmessagefile)
+		if retval != os.EX_OK:
+			if self.repo_settings.repo_config.sign_commit and not self.vcs_settings.status.supports_gpg_sign():
+				# Inform user that newer git is needed (bug #403323).
+				logging.error(
+					"Git >=1.7.9 is required for signed commits!")
+		return retval

@@ -10,6 +10,8 @@ from itertools import chain
 
 from repoman._portage import portage
 from portage import _unicode_encode
+from portage.process import spawn
+
 
 class ChangesBase(object):
 	'''Base Class object to scan and hold the resultant data
@@ -22,6 +24,7 @@ class ChangesBase(object):
 		self.options = options
 		self.repo_settings = repo_settings
 		self.repoman_settings = repo_settings.repoman_settings
+		self.vcs_settings = repo_settings.vcs_settings
 		self._reset()
 
 	def _reset(self):
@@ -109,3 +112,20 @@ class ChangesBase(object):
 					logging.error(
 						"Exiting on %s error code: %s\n" % (self.vcs_settings.vcs, retcode))
 					sys.exit(retcode)
+
+
+	def commit(self, myfiles, commitmessagefile):
+		'''Common generic commit function'''
+		commit_cmd = []
+		commit_cmd.append(self.vcs)
+		commit_cmd.extend(self.vcs_settings.vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(self.vcs_settings.vcs_local_opts)
+		commit_cmd.extend(["-F", commitmessagefile])
+		commit_cmd.extend(f.lstrip("./") for f in myfiles)
+
+		if self.options.pretend:
+			print("(%s)" % (" ".join(commit_cmd),))
+		else:
+			retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
+		return retval

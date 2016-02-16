@@ -57,4 +57,3 @@ class Changes(ChangesBase):
 			for x in broken_changelog_manifests:
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
-

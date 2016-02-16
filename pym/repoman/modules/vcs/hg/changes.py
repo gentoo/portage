@@ -7,6 +7,7 @@ from repoman._subprocess import repoman_popen
 from repoman._portage import portage
 from portage import os
 from portage.package.ebuild.digestgen import digestgen
+from portage.process import spawn
 
 
 class Changes(ChangesBase):
@@ -71,3 +72,19 @@ class Changes(ChangesBase):
 			for x in broken_changelog_manifests:
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
+
+	def commit(self, myfiles, commitmessagefile):
+		'''Hg commit the changes'''
+		commit_cmd = []
+		commit_cmd.append(self.vcs)
+		commit_cmd.extend(self.vcs_settings.vcs_global_opts)
+		commit_cmd.append("commit")
+		commit_cmd.extend(self.vcs_settings.vcs_local_opts)
+		commit_cmd.extend(["--logfile", commitmessagefile])
+		commit_cmd.extend(myfiles)
+
+		if self.options.pretend:
+			print("(%s)" % (" ".join(commit_cmd),))
+		else:
+			retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
+		return retval
