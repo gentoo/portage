@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -21,6 +21,7 @@ from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.DummyTree import DummyTree
+from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi._similar_name_search import similar_name_search
 from portage.dep import Atom, best_match_to_list, extract_affecting_use, \
 	check_required_use, human_readable_required_use, match_from_list, \
@@ -31,6 +32,7 @@ from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, \
 	_get_eapi_attrs
 from portage.exception import (InvalidAtom, InvalidData, InvalidDependString,
 	PackageNotFound, PortageException)
+from portage.localization import _
 from portage.output import colorize, create_color_func, \
 	darkgreen, green
 bad = create_color_func("BAD")
@@ -2799,7 +2801,7 @@ class depgraph(object):
 
 		dep.want_update = (not self._dynamic_config._complete_mode and
 			(arg_atoms or update) and
-			not (deep is not True and depth > deep))
+			not self._too_deep(depth))
 
 		dep.child = pkg
 		if not pkg.onlydeps and dep.atom and (
@@ -2807,7 +2809,8 @@ class depgraph(object):
 			dep.atom.slot_operator == "="):
 			self._add_slot_operator_dep(dep)
 
-		recurse = deep is True or depth + 1 <= deep
+		recurse = (deep is True or
+			not self._too_deep(self._depth_increment(depth, n=1)))
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
@@ -3631,14 +3634,18 @@ class depgraph(object):
 					writemsg(colorize("BAD", "\n*** Package is missing CATEGORY metadata: %s.\n\n" % x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
-				elif os.path.realpath(x) != \
-					os.path.realpath(bindb.bintree.getname(mykey)):
-					writemsg(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n\n"), noiselevel=-1)
+
+				x = os.path.realpath(x)
+				for pkg in self._iter_match_pkgs(root_config, "binary", Atom('=%s' % mykey)):
+					if x == os.path.realpath(bindb.bintree.getname(pkg.cpv)):
+						break
+				else:
+					writemsg("\n%s\n\n" % colorize("BAD",
+						"*** " + _("You need to adjust PKGDIR to emerge "
+						"this package: %s") % x), noiselevel=-1)
 					self._dynamic_config._skip_restart = True
 					return 0, myfavorites
 
-				pkg = self._pkg(mykey, "binary", root_config,
-					onlydeps=onlydeps)
 				args.append(PackageArg(arg=x, package=pkg,
 					root_config=root_config))
 			elif ext==".ebuild":
@@ -3660,7 +3667,7 @@ class depgraph(object):
 				if ebuild_path:
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
 						cp, os.path.basename(ebuild_path)):
-						writemsg(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n\n"), noiselevel=-1)
+						writemsg(colorize("BAD", "\n*** You need to adjust repos.conf to emerge this package.\n\n"), noiselevel=-1)
 						self._dynamic_config._skip_restart = True
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
@@ -4008,7 +4015,7 @@ class depgraph(object):
 							continue
 
 						if not (isinstance(arg, SetArg) and \
-							arg.name in ("selected", "system", "world")):
+							arg.name in ("selected", "world")):
 							self._dynamic_config._unsatisfied_deps_for_display.append(
 								((myroot, atom), {"myparent" : arg}))
 							return 0, myfavorites
@@ -4068,6 +4075,7 @@ class depgraph(object):
 		# Now that the root packages have been added to the graph,
 		# process the dependencies.
 		if not self._create_graph():
+			self._apply_parent_use_changes()
 			return 0, myfavorites
 
 		try:
@@ -4154,6 +4162,24 @@ class depgraph(object):
 
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
+
+	def _apply_parent_use_changes(self):
+		"""
+		For parents with unsatisfied conditional dependencies, translate
+		USE change suggestions into autounmask changes.
+		"""
+		if (self._dynamic_config._unsatisfied_deps_for_display and
+			self._dynamic_config._autounmask):
+			remaining_items = []
+			for item in self._dynamic_config._unsatisfied_deps_for_display:
+				pargs, kwargs = item
+				kwargs = kwargs.copy()
+				kwargs['collect_use_changes'] = True
+				if not self._show_unsatisfied_dep(*pargs,
+					**portage._native_kwargs(kwargs)):
+					remaining_items.append(item)
+			if len(remaining_items) != len(self._dynamic_config._unsatisfied_deps_for_display):
+				self._dynamic_config._unsatisfied_deps_for_display = remaining_items
 
 	def _set_args(self, args):
 		"""
@@ -4711,7 +4737,8 @@ class depgraph(object):
 
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
-		check_backtrack=False, check_autounmask_breakage=False, show_req_use=None):
+		check_backtrack=False, check_autounmask_breakage=False, show_req_use=None,
+		collect_use_changes=False):
 		"""
 		When check_backtrack=True, no output is produced and
 		the method either returns or raises _backtrack_mask if
@@ -4955,14 +4982,27 @@ class depgraph(object):
 									"defined by %s: '%s'" % (myparent.cpv, \
 									human_readable_required_use(required_use))
 
+					target_use = {}
 					for flag in involved_flags:
 						if flag in self._pkg_use_enabled(myparent):
+							target_use[flag] = False
 							changes.append(colorize("blue", "-" + flag))
 						else:
+							target_use[flag] = True
 							changes.append(colorize("red", "+" + flag))
+
+					if collect_use_changes and not required_use_warning:
+						previous_changes = self._dynamic_config._needed_use_config_changes.get(myparent)
+						self._pkg_use_enabled(myparent, target_use=target_use)
+						if previous_changes is not self._dynamic_config._needed_use_config_changes.get(myparent):
+							return True
+
 					mreasons.append("Change USE: %s" % " ".join(changes) + required_use_warning)
 					if (myparent, mreasons) not in missing_use_reasons:
 						missing_use_reasons.append((myparent, mreasons))
+
+		if collect_use_changes:
+			return False
 
 		unmasked_use_reasons = [(pkg, mreasons) for (pkg, mreasons) \
 			in missing_use_reasons if pkg not in masked_pkg_instances]
@@ -5085,7 +5125,10 @@ class depgraph(object):
 					cp_exists = True
 					break
 
-			writemsg("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".\n", noiselevel=-1)
+			writemsg("\nemerge: there are no %s to satisfy " %
+                ("binary packages" if
+                 self._frozen_config.myopts.get("--usepkgonly", "y") == True
+                 else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
 				not cp_exists and \
 				self._frozen_config.myopts.get(
@@ -5094,10 +5137,13 @@ class depgraph(object):
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
+				search_index = self._frozen_config.myopts.get("--search-index", "y") != "n"
+				# fakedbapi is indexed
 				dbs = [vardb]
 				if "--usepkgonly" not in self._frozen_config.myopts:
-					dbs.append(portdb)
+					dbs.append(IndexedPortdb(portdb) if search_index else portdb)
 				if "--usepkg" in self._frozen_config.myopts:
+					# bindbapi is indexed
 					dbs.append(bindb)
 
 				matches = similar_name_search(dbs, atom)
@@ -5348,12 +5394,43 @@ class depgraph(object):
 					depth = 0
 					break
 
-		deep = self._dynamic_config.myparams.get("deep", 0)
 		update = "--update" in self._frozen_config.myopts
 
 		return (not self._dynamic_config._complete_mode and
 			(arg_atoms or update) and
-			not (deep is not True and depth > deep))
+			not self._too_deep(depth))
+
+	def _too_deep(self, depth):
+		"""
+		Check if a package depth is deeper than the max allowed depth.
+
+		@param depth: the depth of a particular package
+		@type depth: int or _UNREACHABLE_DEPTH
+		@rtype: bool
+		@return: True if the package is deeper than the max allowed depth
+		"""
+		deep = self._dynamic_config.myparams.get("deep", 0)
+		if depth is self._UNREACHABLE_DEPTH:
+			return True
+		elif deep is True:
+			return False
+		else:
+			# All non-integer cases are handled above,
+			# so both values must be int type.
+			return depth > deep
+
+	def _depth_increment(self, depth, n=1):
+		"""
+		Return depth + n if depth is an int, otherwise return depth.
+
+		@param depth: the depth of a particular package
+		@type depth: int or _UNREACHABLE_DEPTH
+		@param n: number to add (default is 1)
+		@type n: int
+		@rtype: int or _UNREACHABLE_DEPTH
+		@return: depth + 1 or _UNREACHABLE_DEPTH
+		"""
+		return depth + n if isinstance(depth, int) else depth
 
 	def _equiv_ebuild_visible(self, pkg, autounmask_level=None):
 		try:
@@ -8990,7 +9067,9 @@ class _dep_check_composite_db(dbapi):
 			# Note: highest_visible is not necessarily the real highest
 			# visible, especially when --update is not enabled, so use
 			# < operator instead of !=.
-			if highest_visible is not None and pkg < highest_visible:
+			if (highest_visible is not None and pkg < highest_visible
+				and atom_set.findAtomForPackage(highest_visible,
+				modified_use=self._depgraph._pkg_use_enabled(highest_visible))):
 				return False
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot

@@ -46,9 +46,23 @@ class database(object):
 			self.commit()
 			self.updates = 0
 		d=self._getitem(cpv)
+
+		try:
+			chf_types = self.chf_types
+		except AttributeError:
+			chf_types = (self.validation_chf,)
+
 		if self.serialize_eclasses and "_eclasses_" in d:
-			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"],
-				self.validation_chf, paths=self.store_eclass_paths)
+			for chf_type in chf_types:
+				try:
+					d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"],
+						chf_type, paths=self.store_eclass_paths)
+				except cache_errors.CacheCorruption:
+					if chf_type is chf_types[-1]:
+						raise
+				else:
+					break
+
 		elif "_eclasses_" not in d:
 			d["_eclasses_"] = {}
 		# Never return INHERITED, since portdbapi.aux_get() will
@@ -56,16 +70,23 @@ class database(object):
 		# to omit it in comparisons between cache entries like
 		# those that egencache uses to avoid redundant writes.
 		d.pop("INHERITED", None)
+
+		mtime_required = not any(d.get('_%s_' % x)
+			for x in chf_types if x != 'mtime')
+
 		mtime = d.get('_mtime_')
-		if mtime is None:
-			raise cache_errors.CacheCorruption(cpv,
-				'_mtime_ field is missing')
-		try:
-			mtime = long(mtime)
-		except ValueError:
-			raise cache_errors.CacheCorruption(cpv,
-				'_mtime_ conversion to long failed: %s' % (mtime,))
-		d['_mtime_'] = mtime
+		if not mtime:
+			if mtime_required:
+				raise cache_errors.CacheCorruption(cpv,
+					'_mtime_ field is missing')
+			d.pop('_mtime_', None)
+		else:
+			try:
+				mtime = long(mtime)
+			except ValueError:
+				raise cache_errors.CacheCorruption(cpv,
+					'_mtime_ conversion to long failed: %s' % (mtime,))
+			d['_mtime_'] = mtime
 		return d
 
 	def _getitem(self, cpv):
@@ -204,15 +225,27 @@ class database(object):
 			return x
 
 	def validate_entry(self, entry, ebuild_hash, eclass_db):
-		hash_key = '_%s_' % self.validation_chf
+		try:
+			chf_types = self.chf_types
+		except AttributeError:
+			chf_types = (self.validation_chf,)
+
+		for chf_type in chf_types:
+			if self._validate_entry(chf_type, entry, ebuild_hash, eclass_db):
+				return True
+
+		return False
+
+	def _validate_entry(self, chf_type, entry, ebuild_hash, eclass_db):
+		hash_key = '_%s_' % chf_type
 		try:
 			entry_hash = entry[hash_key]
 		except KeyError:
 			return False
 		else:
-			if entry_hash != getattr(ebuild_hash, self.validation_chf):
+			if entry_hash != getattr(ebuild_hash, chf_type):
 				return False
-		update = eclass_db.validate_and_rewrite_cache(entry['_eclasses_'], self.validation_chf,
+		update = eclass_db.validate_and_rewrite_cache(entry['_eclasses_'], chf_type,
 			self.store_eclass_paths)
 		if update is None:
 			return False

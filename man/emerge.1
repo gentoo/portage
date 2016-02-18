@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jan 2015" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Feb 2016" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -361,6 +361,12 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-only [ y | n ]"
+Instead of doing any package building, just unmask
+packages and generate package.use settings as necessary
+to satisfy dependencies. This option is disabled by
+default.
+.TP
 .BR "\-\-autounmask\-unrestricted\-atoms [ y | n ]"
 If \-\-autounmask is enabled, keyword and mask changes
 using the \'=\' operator will be written. With this
@@ -676,6 +682,13 @@ packages that depend on matching packages due to \fB\-\-rebuild\fR.
 .BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world file
 for later updating.
+
+\fBWARNING:\fR This option should only be used for packages that are
+reachable from the @world package set (those that would not be removed
+by \fB\-\-depclean\fR), since dependencies of unreachable packages are
+allowed to be broken when satisfying dependencies of other packages.
+Broken dependencies of this sort will invalidate assumptions that make
+it possible for \fB\-\-deep\fR to be disabled by default.
 .TP
 .BR "\-\-onlydeps " (\fB\-o\fR)
 Only merge (or pretend to merge) the dependencies of the packages
@@ -1224,6 +1237,7 @@ add this to \fBmake.conf\fR(5):
 .LP
 .I CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 .LP
+.SH "CONFIGURATION FILES UPDATE TOOLS"
 Tools such as dispatch\-conf, cfg\-update, and etc\-update are also available
 to aid in the merging of these files. They provide interactive merging and can
 auto\-merge trivial changes.

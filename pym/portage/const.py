@@ -168,6 +168,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"force-mirror",
 	"force-prefix",
 	"getbinpkg",
+	"icecream",
 	"installsources",
 	"ipc-sandbox",
 	"keeptemp",
@@ -221,7 +222,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"xattr",
 ])
 
-EAPI                     = 5
+EAPI                     = 6
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
@@ -286,6 +287,7 @@ LIVE_ECLASSES = frozenset([
 	"git",
 	"git-2",
 	"git-r3",
+	"golang-vcs",
 	"mercurial",
 	"subversion",
 	"tla",

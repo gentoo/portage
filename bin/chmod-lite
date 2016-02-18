@@ -1,0 +1,10 @@
+#!/bin/bash
+# Copyright 2015 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+export __PORTAGE_HELPER_CWD=${PWD}
+
+# Use safe cwd, avoiding unsafe import for bug #469338.
+cd "${PORTAGE_PYM_PATH}" || exit 1
+PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+	exec "${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/chmod-lite.py" "$@"

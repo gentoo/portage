@@ -127,14 +127,14 @@ class IndexedPortdb(object):
 				if new_cp is not None:
 					yield cp_group[0].cp
 
-	def cp_all(self):
+	def cp_all(self, sort=True):
 		"""
 		Returns an ordered iterator instead of a list, so that search
 		results can be displayed incrementally.
 		"""
 		if self._cp_map is None:
 			return self._init_index()
-		return iter(sorted(self._cp_map))
+		return iter(sorted(self._cp_map)) if sort else iter(self._cp_map)
 
 	def match(self, atom):
 		"""

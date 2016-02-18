@@ -35,13 +35,13 @@ class IndexedVardb(object):
 
 		self._cp_map = None
 
-	def cp_all(self):
+	def cp_all(self, sort=True):
 		"""
 		Returns an ordered iterator instead of a list, so that search
 		results can be displayed incrementally.
 		"""
 		if self._cp_map is not None:
-			return iter(sorted(self._cp_map))
+			return iter(sorted(self._cp_map)) if sort else iter(self._cp_map)
 
 		delta_data = self._vardb._cache_delta.loadRace()
 		if delta_data is None:
@@ -62,7 +62,7 @@ class IndexedVardb(object):
 				cp_map[cpv.cp] = cp_list
 			cp_list.append(cpv)
 
-		return iter(sorted(self._cp_map))
+		return iter(sorted(self._cp_map)) if sort else iter(self._cp_map)
 
 	def _iter_cp_all(self):
 		self._cp_map = cp_map = {}

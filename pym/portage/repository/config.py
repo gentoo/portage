@@ -25,7 +25,7 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
-from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
+from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _
 from portage import _unicode_decode
@@ -86,11 +86,12 @@ class RepoConfig(object):
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest', 'sync_cvs_repo',
-		'sync_depth',
+		'profile_formats', 'sign_commit', 'sign_manifest',
+		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
-		'update_changelog', 'user_location', '_eapis_banned',
-		'_eapis_deprecated', '_masters_orig')
+		'update_changelog', '_eapis_banned', '_eapis_deprecated',
+		'_masters_orig', 'module_specific_options',
+		)
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -148,11 +149,6 @@ class RepoConfig(object):
 				priority = None
 		self.priority = priority
 
-		sync_cvs_repo = repo_opts.get('sync-cvs-repo')
-		if sync_cvs_repo is not None:
-			sync_cvs_repo = sync_cvs_repo.strip()
-		self.sync_cvs_repo = sync_cvs_repo or None
-
 		sync_type = repo_opts.get('sync-type')
 		if sync_type is not None:
 			sync_type = sync_type.strip()
@@ -179,6 +175,10 @@ class RepoConfig(object):
 		self.auto_sync = auto_sync
 
 		self.sync_depth = repo_opts.get('sync-depth')
+		self.sync_hooks_only_on_change = repo_opts.get(
+			'sync-hooks-only-on-change', 'false').lower() == 'true'
+
+		self.module_specific_options = {}
 
 		# Not implemented.
 		format = repo_opts.get('format')
@@ -187,7 +187,6 @@ class RepoConfig(object):
 		self.format = format
 
 		location = repo_opts.get('location')
-		self.user_location = location
 		if location is not None and location.strip():
 			if os.path.isdir(location) or portage._sync_mode:
 				location = os.path.realpath(location)
@@ -279,6 +278,9 @@ class RepoConfig(object):
 
 			self._eapis_banned = frozenset(layout_data['eapis-banned'])
 			self._eapis_deprecated = frozenset(layout_data['eapis-deprecated'])
+
+	def set_module_specific_opt(self, opt, val):
+		self.module_specific_options[opt] = val
 
 	def eapi_is_banned(self, eapi):
 		return eapi in self._eapis_banned
@@ -405,10 +407,8 @@ class RepoConfig(object):
 		repo_msg.append(self.name)
 		if self.format:
 			repo_msg.append(indent + "format: " + self.format)
-		if self.user_location:
-			repo_msg.append(indent + "location: " + self.user_location)
-		if self.sync_cvs_repo:
-			repo_msg.append(indent + "sync-cvs-repo: " + self.sync_cvs_repo)
+		if self.location:
+			repo_msg.append(indent + "location: " + self.location)
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -426,6 +426,9 @@ class RepoConfig(object):
 		if self.eclass_overrides:
 			repo_msg.append(indent + "eclass-overrides: " + \
 				" ".join(self.eclass_overrides))
+		for o, v in self.module_specific_options.items():
+			if v is not None:
+				repo_msg.append(indent + o + ": " + v)
 		repo_msg.append("")
 		return "\n".join(repo_msg)
 
@@ -450,7 +453,7 @@ class RepoConfigLoader(object):
 
 	@staticmethod
 	def _add_repositories(portdir, portdir_overlay, prepos,
-		ignored_map, ignored_location_map, local_config, default_portdir):
+		ignored_map, local_config, default_portdir):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
 		portdir_orig = None
@@ -503,10 +506,10 @@ class RepoConfigLoader(object):
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
-							'force', 'masters', 'priority', 'sync_cvs_repo',
-							'sync_depth',
+							'force', 'masters', 'priority',
+							'sync_depth', 'sync_hooks_only_on_change',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
-							):
+							'module_specific_options'):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -520,9 +523,8 @@ class RepoConfigLoader(object):
 							not (base_priority == 0 and
 							old_location == default_portdir):
 							ignored_map.setdefault(repo.name, []).append(old_location)
-							ignored_location_map[old_location] = repo.name
 							if old_location == portdir:
-								portdir = repo.user_location
+								portdir = repo.location
 
 					if repo.priority is None:
 						if base_priority == 0 and ov == portdir_orig:
@@ -543,9 +545,9 @@ class RepoConfigLoader(object):
 		return portdir
 
 	@staticmethod
-	def _parse(paths, prepos, ignored_map, ignored_location_map, local_config, portdir):
+	def _parse(paths, prepos, local_config, default_opts):
 		"""Parse files in paths to load config"""
-		parser = SafeConfigParser()
+		parser = SafeConfigParser(defaults=default_opts)
 
 		# use read_file/readfp in order to control decoding of unicode
 		try:
@@ -598,6 +600,9 @@ class RepoConfigLoader(object):
 				optdict[oname] = parser.get(sname, oname)
 
 			repo = RepoConfig(sname, optdict, local_config=local_config)
+			for o in portage.sync.module_specific_options(repo):
+				if parser.has_option(sname, o):
+					repo.set_module_specific_opt(o, parser.get(sname, o))
 
 			# Perform repos.conf sync variable validation
 			portage.sync.validate_config(repo, logging)
@@ -614,7 +619,12 @@ class RepoConfigLoader(object):
 		location_map = {}
 		treemap = {}
 		ignored_map = {}
-		ignored_location_map = {}
+		default_opts = {
+			"EPREFIX" : settings["EPREFIX"],
+			"EROOT" : settings["EROOT"],
+			"PORTAGE_CONFIGROOT" : settings["PORTAGE_CONFIGROOT"],
+			"ROOT" : settings["ROOT"],
+		}
 
 		if "PORTAGE_REPOSITORIES" in settings:
 			portdir = ""
@@ -627,10 +637,11 @@ class RepoConfigLoader(object):
 			# deprecated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
 
+		default_opts['sync-rsync-extra-opts'] = \
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
+
 		try:
-			self._parse(paths, prepos, ignored_map,
-				ignored_location_map, settings.local_config,
-				portdir)
+			self._parse(paths, prepos, settings.local_config, default_opts)
 		except ConfigParserError as e:
 			writemsg(
 				_("!!! Error while reading repo config file: %s\n") % e,
@@ -643,8 +654,6 @@ class RepoConfigLoader(object):
 				{}, local_config=settings.local_config)
 			location_map.clear()
 			treemap.clear()
-			ignored_map.clear()
-			ignored_location_map.clear()
 
 		default_portdir = os.path.join(os.sep,
 			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
@@ -652,7 +661,7 @@ class RepoConfigLoader(object):
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
 		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
-			ignored_map, ignored_location_map, settings.local_config,
+			ignored_map, settings.local_config,
 			default_portdir)
 		if portdir and portdir.strip():
 			portdir = os.path.realpath(portdir)
@@ -795,7 +804,7 @@ class RepoConfigLoader(object):
 				master_repos = []
 				for master_name in repo.masters:
 					if master_name not in prepos:
-						layout_filename = os.path.join(repo.user_location,
+						layout_filename = os.path.join(repo.location,
 							"metadata", "layout.conf")
 						writemsg_level(_("Unavailable repository '%s' " \
 							"referenced by masters entry in '%s'\n") % \
@@ -876,14 +885,6 @@ class RepoConfigLoader(object):
 			self._prepos_changed = False
 		return self._repo_location_list
 
-	def repoUserLocationList(self):
-		"""Get a list of repositories location. Replaces PORTDIR_OVERLAY"""
-		user_location_list = []
-		for repo in self.prepos_order:
-			if self.prepos[repo].location is not None:
-				user_location_list.append(self.prepos[repo].user_location)
-		return tuple(user_location_list)
-
 	def mainRepoLocation(self):
 		"""Returns the location of main repo"""
 		main_repo = self.prepos['DEFAULT'].main_repo
@@ -961,7 +962,7 @@ class RepoConfigLoader(object):
 
 	def config_string(self):
 		str_or_int_keys = ("auto_sync", "format", "location",
-			"main_repo", "priority", "sync_cvs_repo",
+			"main_repo", "priority",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
@@ -979,6 +980,8 @@ class RepoConfigLoader(object):
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))
 					elif key in repo_config_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(x.name for x in getattr(repo, key)))
+			for o, v in repo.module_specific_options.items():
+				config_string += "%s = %s\n" % (o, v)
 		return config_string.lstrip("\n")
 
 def load_repository_config(settings, extra_files=None):

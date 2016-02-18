@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -27,6 +27,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.debug',
 	'portage.news:count_unread_news,display_news_notifications',
 	'portage.util._get_vm_info:get_vm_info',
+	'portage.util.locale:check_locale',
 	'portage.emaint.modules.sync.sync:SyncRepos',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
 	'_emerge.help:help@emerge_help',
@@ -43,6 +44,8 @@ from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFA
 from portage.const import SUPPORTED_BINPKG_FORMATS, TIMESTAMP_FORMAT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
+from portage.dbapi.IndexedPortdb import IndexedPortdb
+from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
 from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom, InvalidData, ParseError
@@ -324,6 +327,10 @@ def action_build(settings, trees, mtimedb,
 			root_config = trees[settings['EROOT']]['root_config']
 			display_missing_pkg_set(root_config, e.value)
 			return 1
+
+		if "--autounmask-only" in myopts:
+			mydepgraph.display_problems()
+			return 0
 
 		if not success:
 			mydepgraph.display_problems()
@@ -698,35 +705,49 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	protected_set = InternalPackageSet()
 	protected_set_name = '____depclean_protected_set____'
 	required_sets[protected_set_name] = protected_set
-	system_set = psets["system"]
 
+	set_error = False
 	set_atoms = {}
 	for k in ("profile", "system", "selected"):
 		try:
 			set_atoms[k] = root_config.setconfig.getSetAtoms(k)
-		except portage.exception.PackageSetNotFound:
+		except portage.exception.PackageSetNotFound as e:
 			# A nested set could not be resolved, so ignore nested sets.
 			set_atoms[k] = root_config.sets[k].getAtoms()
+			writemsg_level(_("!!! The set '%s' "
+				"contains a non-existent set named '%s'.\n") %
+				(k, e), level=logging.ERROR, noiselevel=-1)
+			set_error = True
 
-	if (not set_atoms["system"] or
-		not (set_atoms["selected"] or set_atoms["profile"])):
-
-		if not set_atoms["system"]:
-			writemsg_level("!!! You have no system list.\n",
-				level=logging.ERROR, noiselevel=-1)
-
-		# Skip this warning if @profile is non-empty, in order to
-		# support using @profile as an alternative to @selected
-		# for building a stage 4.
-		if not (set_atoms["selected"] or set_atoms["profile"]):
-			writemsg_level("!!! You have no world file.\n",
-					level=logging.WARNING, noiselevel=-1)
-
-		writemsg_level("!!! Proceeding is likely to " + \
-			"break your installation.\n",
+	# Support @profile as an alternative to @system.
+	if not (set_atoms["system"] or set_atoms["profile"]):
+		writemsg_level(_("!!! You have no system list.\n"),
 			level=logging.WARNING, noiselevel=-1)
-		if "--pretend" not in myopts:
-			countdown(int(settings["EMERGE_WARNING_DELAY"]), ">>> Depclean")
+
+	if not set_atoms["selected"]:
+		writemsg_level(_("!!! You have no world file.\n"),
+			level=logging.WARNING, noiselevel=-1)
+
+	# Suppress world file warnings unless @world is completely empty,
+	# since having an empty world file can be a valid state.
+	try:
+		world_atoms = bool(root_config.setconfig.getSetAtoms('world'))
+	except portage.exception.PackageSetNotFound as e:
+		writemsg_level(_("!!! The set '%s' "
+			"contains a non-existent set named '%s'.\n") %
+			("world", e), level=logging.ERROR, noiselevel=-1)
+		set_error = True
+	else:
+		if not world_atoms:
+			writemsg_level(_("!!! Your @world set is empty.\n"),
+				level=logging.ERROR, noiselevel=-1)
+			set_error = True
+
+	if set_error:
+		writemsg_level(_("!!! Aborting due to set configuration "
+			"errors displayed above.\n"),
+			level=logging.ERROR, noiselevel=-1)
+		return 1, [], False, 0
 
 	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
@@ -848,11 +869,31 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 	def unresolved_deps():
 
+		soname_deps = set()
 		unresolvable = set()
 		for dep in resolver._dynamic_config._initially_unsatisfied_deps:
 			if isinstance(dep.parent, Package) and \
 				(dep.priority > UnmergeDepPriority.SOFT):
-				unresolvable.add((dep.atom, dep.parent.cpv))
+				if dep.atom.soname:
+					soname_deps.add((dep.atom, dep.parent.cpv))
+				else:
+					unresolvable.add((dep.atom, dep.parent.cpv))
+
+		if soname_deps:
+			# Generally, broken soname dependencies can safely be
+			# suppressed by a REQUIRES_EXCLUDE setting in the ebuild,
+			# so they should only trigger a warning message.
+			prefix = warn(" * ")
+			msg = []
+			msg.append("Broken soname dependencies found:")
+			msg.append("")
+			for atom, parent in soname_deps:
+				msg.append("  %s required by:" % (atom,))
+				msg.append("    %s" % (parent,))
+				msg.append("")
+
+			writemsg_level("".join("%s%s\n" % (prefix, line) for line in msg),
+				level=logging.WARNING, noiselevel=-1)
 
 		if not unresolvable:
 			return False
@@ -870,7 +911,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg.append("the following required packages not being installed:")
 			msg.append("")
 			for atom, parent in unresolvable:
-				if atom != atom.unevaluated_atom and \
+				if atom.package and atom != atom.unevaluated_atom and \
 					vardb.match(_unicode(atom)):
 					msg.append("  %s (%s) pulled in by:" %
 						(atom.unevaluated_atom, atom))
@@ -1514,9 +1555,10 @@ def action_info(settings, trees, myopts, myfiles):
 				writemsg("\nemerge: searching for similar names..."
 					, noiselevel=-1)
 
-				dbs = [vardb]
+				search_index = myopts.get("--search-index", "y") != "n"
+				dbs = [IndexedVardb(vardb) if search_index else vardb]
 				#if "--usepkgonly" not in myopts:
-				dbs.append(portdb)
+				dbs.append(IndexedPortdb(portdb) if search_index else portdb)
 				if "--usepkg" in myopts:
 					dbs.append(bindb)
 
@@ -1543,7 +1585,7 @@ def action_info(settings, trees, myopts, myfiles):
 	chost = settings.get("CHOST")
 
 	append(getportageversion(settings["PORTDIR"], None,
-		settings.profile_path, settings["CHOST"],
+		settings.profile_path, chost,
 		trees[settings['EROOT']]["vartree"].dbapi))
 
 	header_width = 65
@@ -2356,7 +2398,7 @@ def load_emerge_config(emerge_config=None, **kargs):
 
 	return emerge_config
 
-def getgccversion(chost):
+def getgccversion(chost=None):
 	"""
 	rtype: C{str}
 	return:  the current in-use gcc version
@@ -2382,30 +2424,31 @@ def getgccversion(chost):
 			return version.group(1)
 		return "unknown"
 
-	try:
-		proc = subprocess.Popen([ubinpath + "/gcc-config", "-c"],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	except OSError:
-		myoutput = None
-		mystatus = 1
-	else:
-		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
-		mystatus = proc.wait()
-	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
-		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
+	if chost:
+		try:
+			proc = subprocess.Popen(["gcc-config", "-c"],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			myoutput = None
+			mystatus = 1
+		else:
+			myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+			mystatus = proc.wait()
+		if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
+			return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	try:
-		proc = subprocess.Popen(
-			[ubinpath + "/" + chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	except OSError:
-		myoutput = None
-		mystatus = 1
-	else:
-		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
-		mystatus = proc.wait()
-	if mystatus == os.EX_OK:
-		return gcc_ver_prefix + myoutput
+		try:
+			proc = subprocess.Popen(
+				[chost + "-" + gcc_ver_command[0]] + gcc_ver_command[1:],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			myoutput = None
+			mystatus = 1
+		else:
+			myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+			mystatus = proc.wait()
+		if mystatus == os.EX_OK:
+			return gcc_ver_prefix + myoutput
 
 	try:
 		proc = subprocess.Popen([ubinpath + "/" + gcc_ver_command[0]] + gcc_ver_command[1:],
@@ -2466,6 +2509,8 @@ def validate_ebuild_environment(trees):
 		out = portage.output.EOutput()
 		for line in textwrap.wrap(msg, 65):
 			out.ewarn(line)
+
+	check_locale()
 
 def check_procfs():
 	procfs_path = '/proc'
@@ -2806,7 +2851,7 @@ def run_action(emerge_config):
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 	apply_priorities(emerge_config.target_config.settings)
 
-	for fmt in emerge_config.target_config.settings["PORTAGE_BINPKG_FORMAT"].split():
+	for fmt in emerge_config.target_config.settings.get("PORTAGE_BINPKG_FORMAT", "").split():
 		if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
 			if "--pkg-format" in emerge_config.opts:
 				problematic="--pkg-format"
@@ -2823,7 +2868,7 @@ def run_action(emerge_config):
 			emerge_config.target_config.settings["PORTDIR"],
 			None,
 			emerge_config.target_config.settings.profile_path,
-			emerge_config.target_config.settings["CHOST"],
+			emerge_config.target_config.settings.get("CHOST"),
 			emerge_config.target_config.trees['vartree'].dbapi) + '\n',
 			noiselevel=-1)
 		return 0

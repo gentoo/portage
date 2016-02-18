@@ -6,7 +6,49 @@
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
 
+# Make sure this isn't exported to scripts we execute.
+unset BASH_COMPAT
+
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
+
+# Set up the bash version compatibility level.  This does not disable
+# features when running with a newer version, but makes it so that when
+# bash changes behavior in an incompatible way, the older behavior is
+# used instead.
+__check_bash_version() {
+	# Figure out which min version of bash we require.
+	local maj min
+	if ___eapi_bash_3_2 ; then
+		maj=3 min=2
+	elif ___eapi_bash_4_2 ; then
+		maj=4 min=2
+	else
+		return
+	fi
+
+	# Make sure the active bash is sane.
+	if [[ ${BASH_VERSINFO[0]} -lt ${maj} ]] ||
+	   [[ ${BASH_VERSINFO[0]} -eq ${maj} && ${BASH_VERSINFO[1]} -lt ${min} ]] ; then
+		die ">=bash-${maj}.${min} is required"
+	fi
+
+	# Set the compat level in case things change with newer ones.  We must not
+	# export this into the env otherwise we might break  other shell scripts we
+	# execute (e.g. ones in /usr/bin).
+	BASH_COMPAT="${maj}.${min}"
+
+	# The variable above is new to bash-4.3.  For older versions, we have to use
+	# a compat knob.  Further, the compat knob only exists with older versions
+	# (e.g. bash-4.3 has compat42 but not compat43).  This means we only need to
+	# turn the knob with older EAPIs, and only when running newer bash versions:
+	# there is no bash-3.3 (it went 3.2 to 4.0), and when requiring bash-4.2, the
+	# var works with bash-4.3+, and you don't need to set compat to 4.2 when you
+	# are already running 4.2.
+	if ___eapi_bash_3_2 && [[ ${BASH_VERSINFO[0]} -gt 3 ]] ; then
+		shopt -s compat32
+	fi
+}
+__check_bash_version
 
 if [[ $EBUILD_PHASE != depend ]] ; then
 	source "${PORTAGE_BIN_PATH}/phase-functions.sh" || die
@@ -32,6 +74,7 @@ else
 	# `use multislot` is false for the "depend" phase.
 	funcs="use useq usev"
 	___eapi_has_usex && funcs+=" usex"
+	___eapi_has_in_iuse && funcs+=" in_iuse"
 	for x in ${funcs} ; do
 		eval "${x}() {
 			if ___eapi_disallows_helpers_in_global_scope; then
@@ -661,31 +704,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 				[[ -n $CCACHE_SIZE ]] && ccache -M $CCACHE_SIZE &> /dev/null
 			fi
-
-			if [[ -n $QA_PREBUILT ]] ; then
-
-				# these ones support fnmatch patterns
-				QA_EXECSTACK+=" $QA_PREBUILT"
-				QA_TEXTRELS+=" $QA_PREBUILT"
-				QA_WX_LOAD+=" $QA_PREBUILT"
-
-				# these ones support regular expressions, so translate
-				# fnmatch patterns to regular expressions
-				for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
-					if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
-						eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
-					else
-						eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
-					fi
-				done
-
-				unset x
-			fi
-
-			# This needs to be exported since prepstrip is a separate shell script.
-			[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-			eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && \
-				export QA_PRESTRIPPED_${ARCH/-/_}"
 		fi
 	fi
 fi

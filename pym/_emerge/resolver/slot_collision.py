@@ -242,6 +242,7 @@ class slot_conflict_handler(object):
 		"""
 		_pkg_use_enabled = self.depgraph._pkg_use_enabled
 		verboseconflicts = "--verbose-conflicts" in self.myopts
+		any_omitted_parents = False
 		msg = self.conflict_msg
 		indent = "  "
 		msg.append("\n!!! Multiple package instances within a single " + \
@@ -596,6 +597,7 @@ class slot_conflict_handler(object):
 					
 					omitted_parents = num_all_specific_atoms - len(selected_for_display)
 					if omitted_parents:
+						any_omitted_parents = True
 						msg.append(2*indent)
 						if len(selected_for_display) > 1:
 							msg.append("(and %d more with the same problems)\n" % omitted_parents)
@@ -604,7 +606,14 @@ class slot_conflict_handler(object):
 				else:
 					msg.append(" (no parents)\n")
 				msg.append("\n")
-		msg.append("\n")
+
+		if any_omitted_parents:
+			msg.append(colorize("INFORM",
+				"NOTE: Use the '--verbose-conflicts'"
+				" option to display parents omitted above"))
+			msg.append("\n\n")
+		else:
+			msg.append("\n")
 
 	def get_explanation(self):
 		msg = ""

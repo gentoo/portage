@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 
+import argparse
 import sys
 import time
 import unittest
@@ -27,7 +28,6 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage.const import (EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	PORTAGE_BIN_PATH)
-from portage.util._argparse import ArgumentParser
 
 
 if portage._not_installed:
@@ -48,7 +48,7 @@ def main():
 	basedir = os.path.dirname(os.path.realpath(__file__))
 
 	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
-	parser = ArgumentParser(usage=usage)
+	parser = argparse.ArgumentParser(usage=usage)
 	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
 	options, args = parser.parse_known_args(args=sys.argv)

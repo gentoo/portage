@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 
+import argparse
 import locale
 import platform
 import sys
@@ -19,8 +20,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'_emerge.is_valid_package_atom:insert_category_into_atom'
 )
 from portage import os
-from portage.const import EPREFIX
-from portage.util._argparse import ArgumentParser
 from portage.sync import _SUBMODULE_PATH_MAP
 
 if sys.hexversion >= 0x3000000:
@@ -128,6 +127,7 @@ def insert_optional_args(args):
 		'--alert'                : y_or_n,
 		'--ask'                  : y_or_n,
 		'--autounmask'           : y_or_n,
+		'--autounmask-only'      : y_or_n,
 		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
 		'--autounmask-write'     : y_or_n,
@@ -321,6 +321,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask": {
 			"help"    : "automatically unmask packages",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-only": {
+			"help"    : "only perform --autounmask",
 			"choices" : true_y_or_n
 		},
 
@@ -706,7 +711,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 	}
 
-	parser = ArgumentParser(add_help=False)
+	parser = argparse.ArgumentParser(add_help=False)
 
 	for action_opt in actions:
 		parser.add_argument("--" + action_opt, action="store_true",
@@ -745,6 +750,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask in true_y:
 		myoptions.autounmask = True
+
+	if myoptions.autounmask_only in true_y:
+		myoptions.autounmask_only = True
+	else:
+		myoptions.autounmask_only = None
 
 	if myoptions.autounmask_unrestricted_atoms in true_y:
 		myoptions.autounmask_unrestricted_atoms = True
@@ -1073,7 +1083,7 @@ def emerge_main(args=None):
 
 	# Use system locale.
 	try:
-		locale.setlocale(locale.LC_ALL, '')
+		locale.setlocale(locale.LC_ALL, "")
 	except locale.Error as e:
 		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
 
@@ -1145,6 +1155,19 @@ def emerge_main(args=None):
 	os.umask(0o22)
 	emerge_config = load_emerge_config(
 		action=myaction, args=myfiles, opts=myopts)
+
+	# Make locale variables from configuration files (make.defaults, make.conf) affect locale of emerge process.
+	for locale_var_name in ("LANGUAGE", "LC_ALL", "LC_ADDRESS", "LC_COLLATE", "LC_CTYPE",
+		"LC_IDENTIFICATION", "LC_MEASUREMENT", "LC_MESSAGES", "LC_MONETARY",
+		"LC_NAME", "LC_NUMERIC", "LC_PAPER", "LC_TELEPHONE", "LC_TIME", "LANG"):
+		locale_var_value = emerge_config.running_config.settings.get(locale_var_name)
+		if locale_var_value is not None:
+			os.environ.setdefault(locale_var_name, locale_var_value)
+	try:
+		locale.setlocale(locale.LC_ALL, "")
+	except locale.Error as e:
+		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
+
 	rval = profile_check(emerge_config.trees, emerge_config.action)
 	if rval != os.EX_OK:
 		return rval

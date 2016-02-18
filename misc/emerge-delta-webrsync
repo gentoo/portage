@@ -754,7 +754,7 @@ if [ "$verified" == "1" ]; then
 	rm -f "${TMPDIR}/portage-${final_date}.tar"
 else
 	echo "recompressing."
-	bzip2 -v9 "${TMPDIR}/portage-${final_date}.tar.bz2"
+	bzip2 -v9 "${TMPDIR}/portage-${final_date}.tar"
 fi
 
 echo "verifying generated tarball"

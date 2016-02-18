@@ -50,6 +50,7 @@ module_spec = {
 					'exists and is a valid Git repository',
 			},
 			'validate_config': CheckGitConfig,
+			'module_specific_options': (),
 		}
 	}
 }

@@ -14,7 +14,9 @@ from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.Package import Package
 
 class circular_dependency_handler(object):
-	
+
+	MAX_AFFECTING_USE = 10
+
 	def __init__(self, depgraph, graph):
 		self.depgraph = depgraph
 		self.graph = graph
@@ -156,13 +158,28 @@ class circular_dependency_handler(object):
 				total_flags = set()
 				total_flags.update(affecting_use, required_use_flags)
 				total_flags.difference_update(untouchable_flags)
-				if len(total_flags) <= 10:
+				if len(total_flags) <= self.MAX_AFFECTING_USE:
 					affecting_use = total_flags
 
 			affecting_use = tuple(affecting_use)
 
 			if not affecting_use:
 				continue
+
+			if len(affecting_use) > self.MAX_AFFECTING_USE:
+				# Limit the number of combinations explored (bug #555698).
+				# First, discard irrelevent flags that are not enabled.
+				# Since extract_affecting_use doesn't distinguish between
+				# positive and negative effects (flag? vs. !flag?), assume
+				# a positive relationship.
+				current_use = self.depgraph._pkg_use_enabled(parent)
+				affecting_use = tuple(flag for flag in affecting_use
+					if flag in current_use)
+
+				if len(affecting_use) > self.MAX_AFFECTING_USE:
+					# There are too many USE combinations to explore in
+					# a reasonable amount of time.
+					continue
 
 			#We iterate over all possible settings of these use flags and gather
 			#a set of possible changes

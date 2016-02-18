@@ -13,7 +13,6 @@ import portage
 from portage import os
 from portage.progress import ProgressBar
 #from portage.emaint.defaults import DEFAULT_OPTIONS
-#from portage.util._argparse import ArgumentParser
 from portage.util import writemsg, writemsg_level
 from portage.output import create_color_func
 good = create_color_func("GOOD")
@@ -21,9 +20,11 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
+from portage.util._async.AsyncFunction import AsyncFunction
 from portage import OrderedDict
 from portage import _unicode_decode
 from portage import util
+from _emerge.CompositeTask import CompositeTask
 
 
 class TaskHandler(object):
@@ -113,22 +114,32 @@ class SyncManager(object):
 			return desc
 		return []
 
-
-	def sync(self, emerge_config=None, repo=None, callback=None):
+	def async(self, emerge_config=None, repo=None, master_hooks=True):
 		self.emerge_config = emerge_config
-		self.callback = callback or self._sync_callback
+		self.settings, self.trees, self.mtimedb = emerge_config
+		self.xterm_titles = "notitles" not in self.settings.features
+		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
+		return SyncRepo(sync_task=AsyncFunction(target=self.sync,
+			kwargs=dict(emerge_config=emerge_config, repo=repo,
+			master_hooks=master_hooks)),
+			sync_callback=self._sync_callback)
+
+	def sync(self, emerge_config=None, repo=None, master_hooks=True):
+		self.callback = None
 		self.repo = repo
 		self.exitcode = 1
+		self.updatecache_flg = False
+		hooks_enabled = master_hooks or not repo.sync_hooks_only_on_change
 		if repo.sync_type in self.module_names:
 			tasks = [self.module_controller.get_class(repo.sync_type)]
 		else:
 			msg = "\n%s: Sync module '%s' is not an installed/known type'\n" \
 				% (bad("ERROR"), repo.sync_type)
-			return self.exitcode, msg
+			return self.exitcode, msg, self.updatecache_flg, hooks_enabled
 
 		rval = self.pre_sync(repo)
 		if rval != os.EX_OK:
-			return rval, None
+			return rval, None, self.updatecache_flg, hooks_enabled
 
 		# need to pass the kwargs dict to the modules
 		# so they are available if needed.
@@ -147,15 +158,20 @@ class SyncManager(object):
 		taskmaster = TaskHandler(callback=self.do_callback)
 		taskmaster.run_tasks(tasks, func, status, options=task_opts)
 
-		self.perform_post_sync_hook(repo.name, repo.sync_uri, repo.location)
+		if (master_hooks or self.updatecache_flg or
+			not repo.sync_hooks_only_on_change):
+			hooks_enabled = True
+			self.perform_post_sync_hook(
+				repo.name, repo.sync_uri, repo.location)
 
-		return self.exitcode, None
+		return self.exitcode, None, self.updatecache_flg, hooks_enabled
 
 
 	def do_callback(self, result):
 		#print("result:", result, "callback()", self.callback)
 		exitcode, updatecache_flg = result
 		self.exitcode = exitcode
+		self.updatecache_flg = updatecache_flg
 		if exitcode == 0:
 			msg = "=== Sync completed for %s" % self.repo.name
 			self.logger(self.xterm_titles, msg)
@@ -191,13 +207,10 @@ class SyncManager(object):
 
 
 	def pre_sync(self, repo):
-		self.settings, self.trees, self.mtimedb = self.emerge_config
-		self.xterm_titles = "notitles" not in self.settings.features
 		msg = ">>> Syncing repository '%s' into '%s'..." \
 			% (repo.name, repo.location)
 		self.logger(self.xterm_titles, msg)
 		writemsg_level(msg + "\n")
-		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
 		try:
 			st = os.stat(repo.location)
 		except OSError:
@@ -205,6 +218,13 @@ class SyncManager(object):
 
 		self.usersync_uid = None
 		spawn_kwargs = {}
+		# Redirect command stderr to stdout, in order to prevent
+		# spurious cron job emails (bug 566132).
+		spawn_kwargs["fd_pipes"] = {
+			0: sys.__stdin__.fileno(),
+			1: sys.__stdout__.fileno(),
+			2: sys.__stdout__.fileno()
+		}
 		spawn_kwargs["env"] = self.settings.environ()
 		if repo.sync_user is not None:
 			def get_sync_user_data(sync_user):
@@ -310,17 +330,59 @@ class SyncManager(object):
 		os.umask(0o022)
 		return os.EX_OK
 
+	def _sync_callback(self, proc):
+		"""
+		This is called in the parent process, serially, for each of the
+		sync jobs when they complete. Some cache backends such as sqlite
+		may require that cache access be performed serially in the
+		parent process like this.
+		"""
+		repo = proc.kwargs['repo']
+		exitcode = proc.returncode
+		updatecache_flg = False
+		if proc.returncode == os.EX_OK:
+			exitcode, message, updatecache_flg, hooks_enabled = proc.result
 
-	def _sync_callback(self, exitcode, updatecache_flg):
 		if updatecache_flg and "metadata-transfer" not in self.settings.features:
 			updatecache_flg = False
 
 		if updatecache_flg and \
 			os.path.exists(os.path.join(
-			self.repo.location, 'metadata', 'md5-cache')):
+			repo.location, 'metadata', 'md5-cache')):
 
 			# Only update cache for repo.location since that's
 			# the only one that's been synced here.
 			action_metadata(self.settings, self.portdb, self.emerge_config.opts,
-				porttrees=[self.repo.location])
+				porttrees=[repo.location])
+
+
+class SyncRepo(CompositeTask):
+	"""
+	Encapsulates a sync operation and the callback which executes afterwards,
+	so both can be considered as a single composite task. This is useful
+	since we don't want to consider a particular repo's sync operation as
+	complete until after the callback has executed (bug 562264).
+
+	The kwargs and result properties expose attributes that are accessed
+	by SyncScheduler.
+	"""
+
+	__slots__ = ('sync_task', 'sync_callback')
+
+	@property
+	def kwargs(self):
+		return self.sync_task.kwargs
+
+	@property
+	def result(self):
+		return self.sync_task.result
+
+	def _start(self):
+		self._start_task(self.sync_task, self._sync_task_exit)
+
+	def _sync_task_exit(self, sync_task):
+		self._current_task = None
+		self.returncode = sync_task.returncode
+		self.sync_callback(self.sync_task)
+		self._async_wait()
 

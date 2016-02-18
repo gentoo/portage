@@ -18,6 +18,9 @@ if sys.hexversion >= 0x3000000:
 
 class database(fs_template.FsBased):
 
+	validation_chf = 'mtime'
+	chf_types = ('mtime', 'md5')
+
 	autocommits = False
 	synchronous = False
 	# cache_bytes is used together with page_size (set at sqlite build time)
@@ -28,10 +31,12 @@ class database(fs_template.FsBased):
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
 		self._import_sqlite()
-		self._allowed_keys = ["_mtime_", "_eclasses_"]
+		self._allowed_keys = ["_eclasses_"]
 		self._allowed_keys.extend(self._known_keys)
-		self._allowed_keys.sort()
+		self._allowed_keys.extend('_%s_' % k for k in self.chf_types)
 		self._allowed_keys_set = frozenset(self._allowed_keys)
+		self._allowed_keys = sorted(self._allowed_keys_set)
+
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 

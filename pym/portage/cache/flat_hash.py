@@ -160,3 +160,8 @@ class md5_database(database):
 
 	validation_chf = 'md5'
 	store_eclass_paths = False
+
+
+class mtime_md5_database(database):
+	validation_chf = 'mtime'
+	chf_types = ('mtime', 'md5')

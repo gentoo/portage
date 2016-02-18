@@ -37,7 +37,7 @@ class CVSSync(NewBase):
 			"cd %s; exec cvs -z0 -d %s co -P -d %s %s" %
 			(portage._shell_quote(os.path.dirname(self.repo.location)), portage._shell_quote(cvs_root),
 				portage._shell_quote(os.path.basename(self.repo.location)),
-				portage._shell_quote(self.repo.sync_cvs_repo)),
+				portage._shell_quote(self.repo.module_specific_options["sync-cvs-repo"])),
 				**portage._native_kwargs(self.spawn_kwargs)) != os.EX_OK:
 			msg = "!!! cvs checkout error; exiting."
 			self.logger(self.xterm_titles, msg)

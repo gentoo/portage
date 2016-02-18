@@ -191,3 +191,11 @@ ___eapi_enables_failglob_in_global_scope() {
 ___eapi_enables_globstar() {
 	[[ ${1-${EAPI-0}} =~ ^(4-python|5-progress)$ ]]
 }
+
+___eapi_bash_3_2() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
+___eapi_bash_4_2() {
+	[[ ${1-${EAPI-0}} =~ ^(6)$ ]]
+}

@@ -56,7 +56,7 @@ def _get_legacy_global(name):
 	portage.features = settings.features
 	constructed.add('features')
 
-	portage.groups = settings["ACCEPT_KEYWORDS"].split()
+	portage.groups = settings.get("ACCEPT_KEYWORDS", "").split()
 	constructed.add('groups')
 
 	portage.pkglines = settings.packages

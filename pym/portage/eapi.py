@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -68,6 +68,10 @@ def eapi_has_required_use_at_most_one_of(eapi):
 def eapi_has_use_dep_defaults(eapi):
 	return eapi not in ("0", "1", "2", "3")
 
+def eapi_requires_posixish_locale(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "5-hdepend")
+
 def eapi_has_repo_deps(eapi):
 	return eapi in ("4-python", "5-progress")
 
@@ -81,7 +85,7 @@ def eapi_supports_stable_use_forcing_and_masking(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi):
-	return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi", "5")
+	return eapi in ("4-python", "5-progress")
 
 def eapi_has_use_aliases(eapi):
 	return eapi in ("4-python", "5-progress")
@@ -98,7 +102,7 @@ def eapi_has_targetroot(eapi):
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
 	'feature_flag_test feature_flag_targetroot '
-	'hdepend iuse_defaults iuse_effective '
+	'hdepend iuse_defaults iuse_effective posixish_locale '
 	'repo_deps required_use required_use_at_most_one_of slot_operator slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults')
 
@@ -129,6 +133,7 @@ def _get_eapi_attrs(eapi):
 		hdepend = (eapi is not None and eapi_has_hdepend(eapi)),
 		iuse_defaults = (eapi is None or eapi_has_iuse_defaults(eapi)),
 		iuse_effective = (eapi is not None and eapi_has_iuse_effective(eapi)),
+		posixish_locale = (eapi is not None and eapi_requires_posixish_locale(eapi)),
 		repo_deps = (eapi is None or eapi_has_repo_deps(eapi)),
 		required_use = (eapi is None or eapi_has_required_use(eapi)),
 		required_use_at_most_one_of = (eapi is None or eapi_has_required_use_at_most_one_of(eapi)),

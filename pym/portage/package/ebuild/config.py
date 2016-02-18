@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 import copy
-import errno
 from itertools import chain
 import grp
 import logging
@@ -16,6 +15,7 @@ import platform
 import pwd
 import re
 import sys
+import traceback
 import warnings
 
 from _emerge.Package import Package
@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep.soname.SonameAtom:SonameAtom',
 	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
+	'portage.util.locale:check_locale,split_LC_ALL',
 )
 from portage import bsd_chflags, \
 	load_mod, os, selinux, _unicode_decode
@@ -159,8 +160,8 @@ class config(object):
 		'repository', 'RESTRICT', 'LICENSE',)
 
 	_module_aliases = {
-		"cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
-		"portage.cache.metadata_overlay.database" : "portage.cache.flat_hash.database",
+		"cache.metadata_overlay.database" : "portage.cache.flat_hash.mtime_md5_database",
+		"portage.cache.metadata_overlay.database" : "portage.cache.flat_hash.mtime_md5_database",
 	}
 
 	_case_insensitive_vars = special_env_vars.case_insensitive_vars
@@ -443,7 +444,7 @@ class config(object):
 				(user_auxdbmodule, modules_file))
 
 			self.modules["default"] = {
-				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.database",
+				"portdbapi.auxdbmodule":  "portage.cache.flat_hash.mtime_md5_database",
 			}
 
 			self.configlist=[]
@@ -515,6 +516,8 @@ class config(object):
 				v = confs.get("SYNC")
 				if v is not None:
 					portdir_sync = v
+				if 'PORTAGE_RSYNC_EXTRA_OPTS' in confs:
+					self['PORTAGE_RSYNC_EXTRA_OPTS'] = confs['PORTAGE_RSYNC_EXTRA_OPTS']
 
 			self["PORTDIR"] = portdir
 			self["PORTDIR_OVERLAY"] = portdir_overlay
@@ -535,13 +538,13 @@ class config(object):
 			#filling PORTDIR and PORTDIR_OVERLAY variable for compatibility
 			main_repo = self.repositories.mainRepo()
 			if main_repo is not None:
-				self["PORTDIR"] = main_repo.user_location
+				self["PORTDIR"] = main_repo.location
 				self.backup_changes("PORTDIR")
 				expand_map["PORTDIR"] = self["PORTDIR"]
 
 			# repoman controls PORTDIR_OVERLAY via the environment, so no
 			# special cases are needed here.
-			portdir_overlay = list(self.repositories.repoUserLocationList())
+			portdir_overlay = list(self.repositories.repoLocationList())
 			if portdir_overlay and portdir_overlay[0] == self["PORTDIR"]:
 				portdir_overlay = portdir_overlay[1:]
 
@@ -834,7 +837,8 @@ class config(object):
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
 			if "USE_ORDER" not in self:
-				self.backupenv["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
+				self["USE_ORDER"] = "env:pkg:conf:defaults:pkginternal:repo:env.d"
+				self.backup_changes("USE_ORDER")
 
 			if "CBUILD" not in self and "CHOST" in self:
 				self["CBUILD"] = self["CHOST"]
@@ -1084,7 +1088,7 @@ class config(object):
 		"""Validate miscellaneous settings and display warnings if necessary.
 		(This code was previously in the global scope of portage.py)"""
 
-		groups = self["ACCEPT_KEYWORDS"].split()
+		groups = self.get("ACCEPT_KEYWORDS", "").split()
 		archlist = self.archlist()
 		if not archlist:
 			writemsg(_("--- 'profiles/arch.list' is empty or "
@@ -1261,13 +1265,13 @@ class config(object):
 				use = frozenset(settings['PORTAGE_USE'].split())
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
-				settings.mycpv, use, settings['LICENSE'], settings['SLOT'], settings.get('PORTAGE_REPO_NAME'))
+				settings.mycpv, use, settings.get('LICENSE', ''), settings.get('SLOT'), settings.get('PORTAGE_REPO_NAME'))
 			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
 			return values
 
 		def _restrict(self, use, settings):
 			try:
-				restrict = set(use_reduce(settings['RESTRICT'], uselist=use, flat=True))
+				restrict = set(use_reduce(settings.get('RESTRICT', ''), uselist=use, flat=True))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -1978,7 +1982,7 @@ class config(object):
 		# doesn't work properly as negative values are lost in the config
 		# object (bug #139600)
 		backuped_accept_keywords = self.configdict["backupenv"].get("ACCEPT_KEYWORDS", "")
-		global_accept_keywords = self["ACCEPT_KEYWORDS"]
+		global_accept_keywords = self.get("ACCEPT_KEYWORDS", "")
 
 		return self._keywords_manager.getMissingKeywords(cpv, metadata["SLOT"], \
 			metadata.get("KEYWORDS", ""), metadata.get('repository'), \
@@ -2571,7 +2575,23 @@ class config(object):
 		try:
 			return self._getitem(key)
 		except KeyError:
-			return '' # for backward compat, don't raise KeyError
+			if portage._internal_caller:
+				stack = traceback.format_stack()[:-1] + traceback.format_exception(*sys.exc_info())[1:]
+				try:
+					# Ensure that output is written to terminal.
+					with open("/dev/tty", "w") as f:
+						f.write("=" * 96 + "\n")
+						f.write("=" * 8 + " Traceback for invalid call to portage.package.ebuild.config.config.__getitem__ " + "=" * 8 + "\n")
+						f.writelines(stack)
+						f.write("=" * 96 + "\n")
+				except Exception:
+					pass
+				raise
+			else:
+				warnings.warn(_("Passing nonexistent key %r to %s is deprecated. Use %s instead.") %
+					(key, "portage.package.ebuild.config.config.__getitem__",
+					"portage.package.ebuild.config.config.get"), DeprecationWarning, stacklevel=2)
+				return ""
 
 	def _getitem(self, mykey):
 
@@ -2698,10 +2718,9 @@ class config(object):
 				filter_calling_env = True
 
 		environ_whitelist = self._environ_whitelist
-		for x in self:
+		for x, myvalue in self.iteritems():
 			if x in environ_filter:
 				continue
-			myvalue = self[x]
 			if not isinstance(myvalue, basestring):
 				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
 					(x, myvalue), noiselevel=-1)
@@ -2773,6 +2792,21 @@ class config(object):
 			phase_func = _phase_func_map.get(phase)
 			if phase_func is not None:
 				mydict["EBUILD_PHASE_FUNC"] = phase_func
+
+		if eapi_attrs.posixish_locale:
+			split_LC_ALL(mydict)
+			mydict["LC_COLLATE"] = "C"
+			if not check_locale(silent=True, env=mydict):
+				# try another locale
+				for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
+					mydict["LC_CTYPE"] = l
+					if check_locale(silent=True, env=mydict):
+						# TODO: output the following only once
+#						writemsg(_("!!! LC_CTYPE unsupported, using %s instead\n")
+#								% mydict["LC_CTYPE"])
+						break
+				else:
+					raise AssertionError("C locale did not pass the test!")
 
 		return mydict
 

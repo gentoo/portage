@@ -99,7 +99,7 @@ class SyncBase(object):
 		emerge_config = self.options.get('emerge_config')
 		if emerge_config is not None:
 			for name in emerge_config.opts.get('--sync-submodule', []):
-				paths.append(_SUBMODULE_PATH_MAP[name])
+				paths.extend(_SUBMODULE_PATH_MAP[name])
 		return tuple(paths)
 
 

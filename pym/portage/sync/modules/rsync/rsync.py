@@ -55,12 +55,17 @@ class RsyncSync(NewBase):
 		enter_invalid = '--ask-enter-invalid' in opts
 		out = portage.output.EOutput()
 		syncuri = self.repo.sync_uri
-		vcs_dirs = frozenset(VCS_DIRS)
-		vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
+		if self.repo.module_specific_options.get(
+			'sync-rsync-vcs-ignore', 'false').lower() == 'true':
+			vcs_dirs = ()
+		else:
+			vcs_dirs = frozenset(VCS_DIRS)
+			vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
 
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
-				"control (contains %s).\n!!! Aborting rsync sync.\n") % \
+				"control (contains %s).\n!!! Aborting rsync sync "
+				"(override with \"sync-rsync-vcs-ignore = true\" in repos.conf).\n") % \
 				(self.repo.location, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return (1, False)
 		self.timeout=180
@@ -72,8 +77,10 @@ class RsyncSync(NewBase):
 			rsync_opts = self._validate_rsync_opts(rsync_opts, syncuri)
 		self.rsync_opts = self._rsync_opts_extend(opts, rsync_opts)
 
-		self.extra_rsync_opts = portage.util.shlex_split(
-			self.settings.get("PORTAGE_RSYNC_EXTRA_OPTS",""))
+		self.extra_rsync_opts = list()
+		if self.repo.module_specific_options.get('sync-rsync-extra-opts'):
+			self.extra_rsync_opts.extend(portage.util.shlex_split(
+				self.repo.module_specific_options['sync-rsync-extra-opts']))
 
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(
@@ -105,10 +112,10 @@ class RsyncSync(NewBase):
 		if syncuri.startswith("file://"):
 			self.proto = "file"
 			dosyncuri = syncuri[6:]
-			is_synced, exitcode = self._do_rsync(
+			is_synced, exitcode, updatecache_flg = self._do_rsync(
 				dosyncuri, timestamp, opts)
 			self._process_exitcode(exitcode, dosyncuri, out, 1)
-			return (exitcode, exitcode == os.EX_OK)
+			return (exitcode, updatecache_flg)
 
 		retries=0
 		try:
@@ -131,7 +138,7 @@ class RsyncSync(NewBase):
 		else:
 			# getaddrinfo needs the brackets stripped
 			getaddrinfo_host = hostname[1:-1]
-		updatecache_flg=True
+		updatecache_flg = False
 		all_rsync_opts = set(self.rsync_opts)
 		all_rsync_opts.update(self.extra_rsync_opts)
 
@@ -233,7 +240,8 @@ class RsyncSync(NewBase):
 			if dosyncuri.startswith('ssh://'):
 				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
-			is_synced, exitcode = self._do_rsync(dosyncuri, timestamp, opts)
+			is_synced, exitcode, updatecache_flg = self._do_rsync(
+				dosyncuri, timestamp, opts)
 			if is_synced:
 				break
 
@@ -244,7 +252,6 @@ class RsyncSync(NewBase):
 			else:
 				# over retries
 				# exit loop
-				updatecache_flg=False
 				exitcode = EXCEEDED_MAX_RETRIES
 				break
 		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
@@ -375,6 +382,7 @@ class RsyncSync(NewBase):
 
 
 	def _do_rsync(self, syncuri, timestamp, opts):
+		updatecache_flg = False
 		is_synced = False
 		if timestamp != 0 and "--quiet" not in opts:
 			print(">>> Checking server timestamp ...")
@@ -482,7 +490,7 @@ class RsyncSync(NewBase):
 				print(">>> In order to force sync, remove '%s'." % self.servertimestampfile)
 				print(">>>")
 				print()
-				return is_synced, exitcode
+				return is_synced, exitcode, updatecache_flg
 			elif (servertimestamp != 0) and (servertimestamp < timestamp):
 				self.logger(self.xterm_titles,
 					">>> Server out of date: %s" % syncuri)
@@ -536,6 +544,8 @@ class RsyncSync(NewBase):
 							os.unlink(self.servertimestampfile)
 						except OSError:
 							pass
+					else:
+						updatecache_flg = True
 
 				if exitcode in [0,1,3,4,11,14,20,21]:
 					is_synced = True
@@ -547,4 +557,4 @@ class RsyncSync(NewBase):
 			# --prune-empty-directories.  Retry for a server that supports
 			# at least rsync protocol version 29 (>=rsync-2.6.4).
 			pass
-		return is_synced, exitcode
+		return is_synced, exitcode, updatecache_flg

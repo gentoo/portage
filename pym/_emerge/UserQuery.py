@@ -1,11 +1,12 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import signal
 import sys
 
+from portage import _unicode_decode
 from portage.output import bold, create_color_func
 
 
@@ -47,17 +48,23 @@ class UserQuery(object):
 		elif colours is None:
 			colours=[bold]
 		colours=(colours*len(responses))[:len(responses)]
+		responses = [_unicode_decode(x) for x in responses]
 		if "--alert" in self.myopts:
 			prompt = '\a' + prompt
 		print(bold(prompt), end=' ')
 		try:
 			while True:
 				if sys.hexversion >= 0x3000000:
-					response=input("["+"/".join([colours[i](responses[i])
-								  for i in range(len(responses))])+"] ")
+					try:
+						response = input("[%s] " %
+							"/".join([colours[i](responses[i])
+							for i in range(len(responses))]))
+					except UnicodeDecodeError as e:
+						response = _unicode_decode(e.object).rstrip('\n')
 				else:
 					response=raw_input("["+"/".join([colours[i](responses[i])
 									  for i in range(len(responses))])+"] ")
+					response = _unicode_decode(response)
 				if response or not enter_invalid:
 					for key in responses:
 						# An empty response will match the

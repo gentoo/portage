@@ -44,6 +44,7 @@ module_spec = {
 					'exists and is a valid repository',
 			},
 			'validate_config': CheckSyncConfig,
+			'module_specific_options': (),
 		},
 	}
 }

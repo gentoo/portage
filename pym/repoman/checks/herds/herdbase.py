@@ -3,7 +3,7 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2 or later
 
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 
 import errno
 import xml.etree.ElementTree
@@ -22,10 +22,14 @@ except (ImportError, SystemError, RuntimeError, Exception):
 
 from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, ParseError, PermissionDenied
+from portage import os
+
+from repoman.errors import err
 
 __all__ = [
-	"make_herd_base"
+	"make_herd_base", "get_herd_base"
 ]
+
 
 def _make_email(nick_name):
 	if not nick_name.endswith('@gentoo.org'):
@@ -47,6 +51,7 @@ class HerdBase(object):
 	def maintainer_in_herd(self, nick_name, herd_name):
 		return _make_email(nick_name) in self.herd_to_emails[herd_name]
 
+
 class _HerdsTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
 	Implements doctype() as required to avoid deprecation warnings with
@@ -55,13 +60,15 @@ class _HerdsTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	def doctype(self, name, pubid, system):
 		pass
 
+
 def make_herd_base(filename):
 	herd_to_emails = dict()
 	all_emails = set()
 
 	try:
-		xml_tree = xml.etree.ElementTree.parse(_unicode_encode(filename,
-				encoding=_encodings['fs'], errors='strict'),
+		xml_tree = xml.etree.ElementTree.parse(
+			_unicode_encode(
+				filename, encoding=_encodings['fs'], errors='strict'),
 			parser=xml.etree.ElementTree.XMLParser(
 				target=_HerdsTreeBuilder()))
 	except ExpatError as e:
@@ -96,6 +103,19 @@ def make_herd_base(filename):
 		herd_to_emails[herd_name] = herd_emails
 
 	return HerdBase(herd_to_emails, all_emails)
+
+
+def get_herd_base(repoman_settings):
+	try:
+		herd_base = make_herd_base(
+			os.path.join(repoman_settings["PORTDIR"], "metadata/herds.xml"))
+	except (EnvironmentError, ParseError, PermissionDenied) as e:
+		err(str(e))
+	except FileNotFound:
+		# TODO: Download as we do for metadata.dtd, but add a way to
+		# disable for non-gentoo repoman users who may not have herds.
+		herd_base = None
+	return herd_base
 
 
 if __name__ == '__main__':

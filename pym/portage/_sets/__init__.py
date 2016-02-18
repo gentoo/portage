@@ -118,6 +118,10 @@ class SetConfig(object):
 		parser.set("world", "class", "portage.sets.base.DummyPackageSet")
 		parser.set("world", "packages", "@profile @selected @system")
 
+		parser.remove_section("profile")
+		parser.add_section("profile")
+		parser.set("profile", "class", "portage.sets.ProfilePackageSet.ProfilePackageSet")
+
 		parser.remove_section("selected")
 		parser.add_section("selected")
 		parser.set("selected", "class", "portage.sets.files.WorldSelectedSet")

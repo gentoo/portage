@@ -224,10 +224,10 @@ class bindbapi(fakedbapi):
 			self.bintree.populate()
 		return fakedbapi.cp_list(self, *pargs, **kwargs)
 
-	def cp_all(self):
+	def cp_all(self, sort=False):
 		if not self.bintree.populated:
 			self.bintree.populate()
-		return fakedbapi.cp_all(self)
+		return fakedbapi.cp_all(self, sort=sort)
 
 	def cpv_all(self):
 		if not self.bintree.populated:
@@ -777,7 +777,7 @@ class binarytree(object):
 				self._update_pkgindex_header(pkgindex.header)
 				self._pkgindex_write(pkgindex)
 
-		if getbinpkgs and not self.settings["PORTAGE_BINHOST"]:
+		if getbinpkgs and not self.settings.get("PORTAGE_BINHOST"):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 

@@ -1,12 +1,15 @@
 #!@PREFIX_PORTAGE_PYTHON@ -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
 
+import argparse
 import platform
 import signal
 import sys
+import textwrap
+
 # This block ensures that ^C interrupts are handled quietly.
 try:
 
@@ -48,13 +51,15 @@ from portage import _shell_quote
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
-from portage.util._argparse import ArgumentParser
+from portage.exception import PermissionDenied, PortageKeyError, \
+	PortagePackageException, UnsupportedAPIException
+import portage.util
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
-parser = ArgumentParser(description=description, usage=usage)
+parser = argparse.ArgumentParser(description=description, usage=usage)
 
 force_help = "When used together with the digest or manifest " + \
 	"command, this option forces regeneration of digests for all " + \
@@ -94,8 +99,6 @@ if not opts.ignore_default_opts:
 
 debug = opts.debug
 force = opts.force
-
-import portage.util, portage.const
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
@@ -273,7 +276,7 @@ try:
 	metadata = dict(zip(Package.metadata_keys,
 		portage.db[portage.settings['EROOT']][mytree].dbapi.aux_get(
 		cpv, Package.metadata_keys, myrepo=myrepo)))
-except KeyError:
+except PortageKeyError:
 	# aux_get failure, message should have been shown on stderr.
 	sys.exit(1)
 
@@ -304,17 +307,13 @@ def stale_env_warning():
 			msg = ("Existing ${T}/environment for '%s' will be sourced. " + \
 				"Run 'clean' to start with a fresh environment.") % \
 				(tmpsettings["PF"], )
-			from textwrap import wrap
-			msg = wrap(msg, 70)
+			msg = textwrap.wrap(msg, 70)
 			for x in msg:
 				portage.writemsg(">>> %s\n" % x)
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
 					'.ebuild_changed'), 'w').close()
-
-from portage.exception import PermissionDenied, \
-	PortagePackageException, UnsupportedAPIException
 
 if 'digest' in tmpsettings.features:
 	if pargs and pargs[0] not in ("digest", "manifest"):
@@ -344,8 +343,7 @@ for arg in pargs:
 		# aux_get error
 		a = 1
 	except UnsupportedAPIException as e:
-		from textwrap import wrap
-		msg = wrap(str(e), 70)
+		msg = textwrap.wrap(str(e), 70)
 		del e
 		for x in msg:
 			portage.writemsg("!!! %s\n" % x, noiselevel=-1)

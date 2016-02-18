@@ -1,4 +1,4 @@
-# Copyright 2011-2014 Gentoo Foundation
+# Copyright 2011-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -14,7 +14,7 @@ from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
-from repoman.utilities import _update_copyright_year
+from repoman.copyrights import update_copyright_year
 
 class SimpleRepomanTestCase(TestCase):
 
@@ -38,7 +38,7 @@ class SimpleRepomanTestCase(TestCase):
 		)
 
 		for year, before, after in test_cases:
-			self.assertEqual(_update_copyright_year(year, before), after)
+			self.assertEqual(update_copyright_year(year, before), after)
 
 	def _must_skip(self):
 		xmllint = find_binary("xmllint")
@@ -186,7 +186,7 @@ class SimpleRepomanTestCase(TestCase):
 
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
-		
+
 		git_test = (
 			("", repoman_cmd + ("manifest",)),
 			("", git_cmd + ("config", "--global", "user.name", committer_name,)),
@@ -229,6 +229,7 @@ class SimpleRepomanTestCase(TestCase):
 			"PORTAGE_GRPNAME" : os.environ["PORTAGE_GRPNAME"],
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
+			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
 			"PYTHONPATH" : pythonpath,
 		}
 

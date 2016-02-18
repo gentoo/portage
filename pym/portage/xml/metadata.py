@@ -80,6 +80,8 @@ class _Maintainer(object):
 	@ivar name: Maintainer's name. Used for both Gentoo and upstream.
 	@type description: str or None
 	@ivar description: Description of what a maintainer does. Gentoo only.
+	@type maint_type: str or None
+	@ivar maint_type: GLEP67 maintainer type (project or person). Gentoo only.
 	@type restrict: str or None
 	@ivar restrict: e.g. &gt;=portage-2.2 means only maintains versions
 		of Portage greater than 2.2. Should be DEPEND string with < and >
@@ -92,6 +94,7 @@ class _Maintainer(object):
 		self.email = None
 		self.name = None
 		self.description = None
+		self.maint_type = node.get('type')
 		self.restrict = node.get('restrict')
 		self.status = node.get('status')
 		for attr in node:

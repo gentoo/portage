@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -41,6 +41,9 @@ class PortageException(Exception):
 					encoding=_encodings['content'], errors='backslashreplace')
 			else:
 				return repr(self.value)
+
+class PortageKeyError(KeyError, PortageException):
+	__doc__ = KeyError.__doc__
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""

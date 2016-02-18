@@ -105,8 +105,8 @@ class PackageVirtualDbapi(dbapi):
 		self._match_cache[cache_key] = cpv_list
 		return cpv_list[:]
 
-	def cp_all(self):
-		return list(self._cp_map)
+	def cp_all(self, sort=False):
+		return sorted(self._cp_map) if sort else list(self._cp_map)
 
 	def cpv_all(self):
 		return list(self._cpv_map)

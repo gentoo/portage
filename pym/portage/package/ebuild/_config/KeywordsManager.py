@@ -112,29 +112,18 @@ class KeywordsManager(object):
 		if self._getMissingKeywords(pkg, pgroups, mygroups):
 			return False
 
-		if pkg.cpv._settings.local_config:
-			# If replacing all keywords with unstable variants would mask the
-			# package, then it's considered stable.
-			unstable = []
-			for kw in mygroups:
-				if kw[:1] != "~":
-					kw = "~" + kw
-				unstable.append(kw)
+		# If replacing all keywords with unstable variants would mask the
+		# package, then it's considered stable for the purposes of
+		# use.stable.mask/force interpretation. For unstable configurations,
+		# this guarantees that the effective use.force/mask settings for a
+		# particular ebuild do not change when that ebuild is stabilized.
+		unstable = []
+		for kw in mygroups:
+			if kw[:1] != "~":
+				kw = "~" + kw
+			unstable.append(kw)
 
-			return bool(self._getMissingKeywords(pkg, pgroups, set(unstable)))
-		else:
-			# For repoman, if the package has an effective stable keyword that
-			# intersects with the effective ACCEPT_KEYWORDS for the current
-			# profile, then consider it stable.
-			for kw in pgroups:
-				if kw[:1] != "~":
-					if kw in mygroups or '*' in mygroups:
-						return True
-					if kw == '*':
-						for x in mygroups:
-							if x[:1] != "~":
-								return True
-			return False
+		return bool(self._getMissingKeywords(pkg, pgroups, set(unstable)))
 
 	def getMissingKeywords(self,
 							cpv,

@@ -23,6 +23,10 @@ module_spec = {
 				'exists': 'Returns a boolean if the specified directory exists',
 				},
 			'validate_config': CheckSyncConfig,
+			'module_specific_options': (
+				'sync-rsync-extra-opts',
+				'sync-rsync-vcs-ignore',
+				),
 			}
 		}
 	}

@@ -1,9 +1,10 @@
 #!@PREFIX_PORTAGE_PYTHON@ -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
 
+import argparse
 import signal
 import sys
 # This block ensures that ^C interrupts are handled quietly.
@@ -46,7 +47,6 @@ portage._internal_caller = True
 from portage import os
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
-from portage.util._argparse import ArgumentParser
 portage.proxy.lazyimport.lazyimport(globals(),
 	're',
 	'subprocess',
@@ -802,15 +802,25 @@ def envvar(argv):
 		print("ERROR: insufficient parameters!")
 		return 2
 
+	exit_status = 0
+
 	for arg in argv:
 		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
 			print("WARNING: 'portageq envvar %s' is deprecated. Use any of "
 				"'get_repos, get_repo_path, repos_config' instead."
 				% arg, file=sys.stderr)
+
+		value = portage.settings.get(arg)
+		if value is None:
+			value = ""
+			exit_status = 1
+
 		if verbose:
-			print(arg + "=" + portage._shell_quote(portage.settings[arg]))
+			print(arg + "=" + portage._shell_quote(value))
 		else:
-			print(portage.settings[arg])
+			print(value)
+
+	return exit_status
 
 docstrings['envvar'] = """<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
@@ -1312,7 +1322,7 @@ def usage(argv):
 	print()
 	print('Pkgcore pquery compatible options:')
 	print()
-	parser = ArgumentParser(add_help=False,
+	parser = argparse.ArgumentParser(add_help=False,
 		usage='portageq pquery [options] [atom ...]')
 	add_pquery_arguments(parser)
 	parser.print_help()
@@ -1344,7 +1354,7 @@ def main(argv):
 	if nocolor in ('yes', 'true'):
 		portage.output.nocolor()
 
-	parser = ArgumentParser(add_help=False)
+	parser = argparse.ArgumentParser(add_help=False)
 
 	# used by envvar
 	parser.add_argument("-v", dest="verbose", action="store_true")

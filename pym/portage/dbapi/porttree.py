@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -23,7 +23,7 @@ from portage.cache import volatile
 from portage.cache.cache_errors import CacheError
 from portage.cache.mappings import Mapping
 from portage.dbapi import dbapi
-from portage.exception import PortageException, \
+from portage.exception import PortageException, PortageKeyError, \
 	FileNotFound, InvalidAtom, InvalidData, \
 	InvalidDependString, InvalidPackageName
 from portage.localization import _
@@ -435,7 +435,7 @@ class portdbapi(dbapi):
 			writemsg(_("!!! aux_get(): ebuild for " \
 				"'%s' does not exist at:\n") % (cpv,), noiselevel=-1)
 			writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
-			raise KeyError(cpv)
+			raise PortageKeyError(cpv)
 
 		# Pull pre-generated metadata from the metadata/cache/
 		# directory if it exists and is valid, otherwise fall
@@ -481,12 +481,12 @@ class portdbapi(dbapi):
 	def aux_get(self, mycpv, mylist, mytree=None, myrepo=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
-		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
+		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
 		cache_me = False
 		if myrepo is not None:
 			mytree = self.treemap.get(myrepo)
 			if mytree is None:
-				raise KeyError(myrepo)
+				raise PortageKeyError(myrepo)
 
 		if mytree is not None and len(self.porttrees) == 1 \
 			and mytree == self.porttrees[0]:
@@ -507,22 +507,22 @@ class portdbapi(dbapi):
 		try:
 			cat, pkg = mycpv.split("/", 1)
 		except ValueError:
-			# Missing slash. Can't find ebuild so raise KeyError.
-			raise KeyError(mycpv)
+			# Missing slash. Can't find ebuild so raise PortageKeyError.
+			raise PortageKeyError(mycpv)
 
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
 		if not myebuild:
 			writemsg("!!! aux_get(): %s\n" % \
 				_("ebuild not found for '%s'") % mycpv, noiselevel=1)
-			raise KeyError(mycpv)
+			raise PortageKeyError(mycpv)
 
 		mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
 
 		if doregen:
 			if myebuild in self._broken_ebuilds:
-				raise KeyError(mycpv)
+				raise PortageKeyError(mycpv)
 
 			proc = EbuildMetadataPhase(cpv=mycpv,
 				ebuild_hash=ebuild_hash, portdb=self,
@@ -534,7 +534,7 @@ class portdbapi(dbapi):
 
 			if proc.returncode != os.EX_OK:
 				self._broken_ebuilds.add(myebuild)
-				raise KeyError(mycpv)
+				raise PortageKeyError(mycpv)
 
 			mydata = proc.metadata
 
@@ -706,7 +706,7 @@ class portdbapi(dbapi):
 		else:
 			return 0
 
-	def cp_all(self, categories=None, trees=None, reverse=False):
+	def cp_all(self, categories=None, trees=None, reverse=False, sort=True):
 		"""
 		This returns a list of all keys in our tree or trees
 		@param categories: optional list of categories to search or 
@@ -714,6 +714,7 @@ class portdbapi(dbapi):
 		@param trees: optional list of trees to search the categories in or
 			defaults to self.porttrees
 		@param reverse: reverse sort order (default is False)
+		@param sort: return sorted results (default is True)
 		@rtype list of [cat/pkg,...]
 		"""
 		d = {}
@@ -732,7 +733,8 @@ class portdbapi(dbapi):
 						continue
 					d[atom.cp] = None
 		l = list(d)
-		l.sort(reverse=reverse)
+		if sort:
+			l.sort(reverse=reverse)
 		return l
 
 	def cp_list(self, mycp, use_cache=1, mytree=None):
@@ -807,9 +809,9 @@ class portdbapi(dbapi):
 		return mylist
 
 	def freeze(self):
-		for x in "bestmatch-visible", "cp-list", "match-all", \
-			"match-all-cpv-only", "match-visible", "minimum-all", \
-			"minimum-visible":
+		for x in ("bestmatch-visible", "cp-list", "match-all",
+			"match-all-cpv-only", "match-visible", "minimum-all",
+			"minimum-all-ignore-profile", "minimum-visible"):
 			self.xcache[x]={}
 		self.frozen=1
 
@@ -868,8 +870,9 @@ class portdbapi(dbapi):
 				myval = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-		elif level in ("bestmatch-visible", "match-all", "match-visible",
-			"minimum-all", "minimum-visible"):
+		elif level in ("bestmatch-visible", "match-all",
+			"match-visible", "minimum-all", "minimum-all-ignore-profile",
+			"minimum-visible"):
 			# Find the minimum matching visible version. This is optimized to
 			# minimize the number of metadata accesses (improves performance
 			# especially in cases where metadata needs to be generated).
@@ -879,7 +882,9 @@ class portdbapi(dbapi):
 				mylist = match_from_list(mydep,
 					self.cp_list(mykey, mytree=mytree))
 
-			visibility_filter = level not in ("match-all", "minimum-all")
+			ignore_profile = level in ("minimum-all-ignore-profile",)
+			visibility_filter = level not in ("match-all",
+				"minimum-all", "minimum-all-ignore-profile")
 			single_match = level not in ("match-all", "match-visible")
 			myval = []
 			aux_keys = list(self._aux_cache_keys)
@@ -920,7 +925,8 @@ class portdbapi(dbapi):
 						continue
 
 					if mydep.unevaluated_atom.use is not None and \
-						not self._match_use(mydep, pkg_str, metadata):
+						not self._match_use(mydep, pkg_str, metadata,
+						ignore_profile=ignore_profile):
 						continue
 
 					myval.append(pkg_str)

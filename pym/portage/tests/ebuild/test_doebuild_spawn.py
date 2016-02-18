@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
@@ -65,6 +65,7 @@ class DoebuildSpawnTestCase(TestCase):
 			settings['PORTAGE_PYTHON'] = _python_interpreter
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
+			settings['PYTHONDONTWRITEBYTECODE'] = os.environ.get('PYTHONDONTWRITEBYTECODE', '')
 			settings['T'] = os.path.join(
 				settings['PORTAGE_BUILDDIR'], 'temp')
 			for x in ('PORTAGE_BUILDDIR', 'T'):

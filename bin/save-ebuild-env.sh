@@ -51,7 +51,7 @@ __save_ebuild_env() {
 		__dump_trace die \
 		__quiet_mode __vecho __elog_base eqawarn elog \
 		einfo einfon ewarn eerror ebegin __eend eend KV_major \
-		KV_minor KV_micro KV_to_int get_KV __1 __1 has \
+		KV_minor KV_micro KV_to_int get_KV has \
 		__has_phase_defined_up_to \
 		hasv hasq __qa_source __qa_call \
 		addread addwrite adddeny addpredict __sb_append_var \
@@ -75,7 +75,8 @@ __save_ebuild_env() {
 		__ebuild_main __ebuild_phase __ebuild_phase_with_hooks \
 		__ebuild_arg_to_phase __ebuild_phase_funcs default \
 		__unpack_tar __unset_colors \
-		__source_env_files __try_source \
+		__source_env_files __try_source __check_bash_version \
+		__bashpid __start_distcc \
 		__eqaquote __eqatag \
 		${QA_INTERCEPTORS}
 
@@ -89,7 +90,11 @@ __save_ebuild_env() {
 	___eapi_has_package_manager_build_group && unset -f package_manager_build_group
 
 	# PREFIX: compgen is not compiled in during bootstrap
-	type compgen >& /dev/null && unset -f $(compgen -A function ___eapi_)
+	if type compgen >& /dev/null ; then
+		# Clear out the triple underscore namespace as it is reserved by the PM.
+		unset -f $(compgen -A function ___)
+		unset ${!___*}
+	fi
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \

@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Gentoo Foundation
+# Copyright 2012-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -134,6 +134,7 @@ class PortdbCacheTestCase(TestCase):
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
+			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
 			"PYTHONPATH" : pythonpath,
 		}
 

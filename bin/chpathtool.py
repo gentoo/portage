@@ -7,17 +7,11 @@ doc = """Helper tool for converting installed files to custom prefixes.
 In other words, eprefixy $D for Gentoo/Prefix."""
 __doc__ = doc
 
-
+import argparse
 import io
 import os
 import stat
 import sys
-
-try:
-	from argparse import ArgumentParser
-except ImportError:
-	ArgumentParser = None
-	from optparse import OptionParser
 
 CONTENT_ENCODING = 'utf_8'
 FS_ENCODING = 'utf_8'
@@ -152,33 +146,16 @@ def chpath_inplace_symlink(filename, st, old, new):
 
 def main(argv):
 
-	if ArgumentParser is not None:
-		parser = ArgumentParser(description=doc)
-		parser.add_argument('location', default=None,
-			help='root directory (e.g. $D)')
-		parser.add_argument('old', default=None,
-			help='original build prefix (e.g. /)')
-		parser.add_argument('new', default=None,
-			help='new install prefix (e.g. $EPREFIX)')
-		opts = parser.parse_args(argv)
+	parser = argparse.ArgumentParser(description=doc)
+	parser.add_argument('location', default=None,
+		help='root directory (e.g. $D)')
+	parser.add_argument('old', default=None,
+		help='original build prefix (e.g. /)')
+	parser.add_argument('new', default=None,
+		help='new install prefix (e.g. $EPREFIX)')
+	opts = parser.parse_args(argv)
 
-		location, old, new = opts.location, opts.old, opts.new
-	else:
-		# Argument parsing compatibility for Python 2.6 using optparse.
-			parser = OptionParser(description=doc,
-				usage="usage: %prog [-h] location old new\n\n" + \
-				"  location: root directory (e.g. $D)\n" + \
-				"  old:      original build prefix (e.g. /)\n" + \
-				"  new:      new install prefix (e.g. $EPREFIX)")
-
-			(opts, args) = parser.parse_args()
-
-			if len(args) != 3:
-				parser.print_usage()
-				parser.error("%s: error: expected 3 arguments, got %i"
-					% (__file__, len(args)))
-
-			location, old, new = args[0:3]
+	location, old, new = opts.location, opts.old, opts.new
 
 	is_text_file = IsTextFile()
 

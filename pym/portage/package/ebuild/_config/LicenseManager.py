@@ -1,4 +1,4 @@
-# Copyright 201-2012 Gentoo Foundation
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -119,7 +119,7 @@ class LicenseManager(object):
 		cp = cpv_getkey(cpv)
 		cpdict = self._plicensedict.get(cp)
 		if cpdict:
-			if not hasattr(cpv, slot):
+			if not hasattr(cpv, "slot"):
 				cpv = _pkg_str(cpv, slot=slot, repo=repo)
 			plicence_list = ordered_by_atom_specificity(cpdict, cpv)
 			if plicence_list:

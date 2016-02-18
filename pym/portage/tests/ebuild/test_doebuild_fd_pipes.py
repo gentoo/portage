@@ -1,7 +1,5 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-
-import textwrap
 
 import portage
 from portage import os
@@ -10,7 +8,6 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
-from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.Package import Package
 from _emerge.PipeReader import PipeReader
 
@@ -31,19 +28,16 @@ class DoebuildFdPipesTestCase(TestCase):
 		supported for API consumers (see bug #475812).
 		"""
 
-		ebuild_body = textwrap.dedent("""
-			S=${WORKDIR}
-			pkg_info() { echo info ; }
-			pkg_nofetch() { echo nofetch ; }
-			pkg_pretend() { echo pretend ; }
-			pkg_setup() { echo setup ; }
-			src_unpack() { echo unpack ; }
-			src_prepare() { echo prepare ; }
-			src_configure() { echo configure ; }
-			src_compile() { echo compile ; }
-			src_test() { echo test ; }
-			src_install() { echo install ; }
-		""")
+		output_fd = 200
+		ebuild_body = ['S=${WORKDIR}']
+		for phase_func in ('pkg_info', 'pkg_nofetch', 'pkg_pretend',
+			'pkg_setup', 'src_unpack', 'src_prepare', 'src_configure',
+			'src_compile', 'src_test', 'src_install'):
+			ebuild_body.append(('%s() { echo ${EBUILD_PHASE}'
+				' 1>&%s; }') % (phase_func, output_fd))
+
+		ebuild_body.append('')
+		ebuild_body = '\n'.join(ebuild_body)
 
 		ebuilds = {
 			'app-misct/foo-1': {
@@ -60,6 +54,7 @@ class DoebuildFdPipesTestCase(TestCase):
 		self.assertEqual(true_binary is None, False,
 			"true command not found")
 
+		dev_null = open(os.devnull, 'wb')
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		try:
 			QueryCommand._db = playground.trees
@@ -75,6 +70,7 @@ class DoebuildFdPipesTestCase(TestCase):
 			settings.features.add("test")
 			settings['PORTAGE_PYTHON'] = portage._python_interpreter
 			settings['PORTAGE_QUIET'] = "1"
+			settings['PYTHONDONTWRITEBYTECODE'] = os.environ.get("PYTHONDONTWRITEBYTECODE", "")
 
 			fake_bin = os.path.join(settings["EPREFIX"], "bin")
 			portage.util.ensure_dirs(fake_bin)
@@ -105,7 +101,11 @@ class DoebuildFdPipesTestCase(TestCase):
 					doebuild_kwargs={"settings" : settings,
 						"mydbapi": portdb, "tree": "porttree",
 						"vartree": root_config.trees["vartree"],
-						"fd_pipes": {1: pw, 2: pw},
+						"fd_pipes": {
+							1: dev_null.fileno(),
+							2: dev_null.fileno(),
+							output_fd: pw,
+						},
 						"prev_mtimes": {}})
 
 				consumer = PipeReader(
@@ -133,5 +133,6 @@ class DoebuildFdPipesTestCase(TestCase):
 					self.assertEqual(phase, output)
 
 		finally:
+			dev_null.close()
 			playground.cleanup()
 			QueryCommand._db = None
