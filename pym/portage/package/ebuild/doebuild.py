@@ -1033,7 +1033,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if mf is not None:
 				dist_digests = mf.getTypeDigests("DIST")
 			if not fetch(fetchme, mysettings, listonly=listonly,
-				fetchonly=fetchonly, allow_missing_digests=True,
+				fetchonly=fetchonly, allow_missing_digests=False,
 				digests=dist_digests):
 				spawn_nofetch(mydbapi, myebuild, settings=mysettings,
 					fd_pipes=fd_pipes)
