@@ -396,7 +396,7 @@ preinst_suid_scan() {
 					__vecho "- ${install_path} is an approved suid file"
 				else
 					__vecho ">>> Removing sbit on non registered ${install_path}"
-					for x in 5 4 3 2 1 0; do sleep 0.25 ; done
+					LC_ALL=C sleep 1.5
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {

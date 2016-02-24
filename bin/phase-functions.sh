@@ -985,12 +985,7 @@ __ebuild_main() {
 					"You have 5 seconds to abort..."
 				echo
 
-				local x
-				for x in 1 2 3 4 5 6 7 8; do
-					LC_ALL=C sleep 0.25
-				done
-
-				sleep 3
+				sleep 5
 			fi
 
 			cd "$PORTAGE_BUILDDIR"
