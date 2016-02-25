@@ -8,5 +8,7 @@ python:
 script:
     - ./setup.py test
     - ./setup.py install --root=/tmp/install-root
+    # prevent repoman tests from trying to fetch metadata.dtd
+    - cp cnf/metadata.dtd /tmp/install-root/usr/lib/portage/
     - sudo rsync -a /tmp/install-root/. /
     - python -b -Wd -m portage.tests.runTests
