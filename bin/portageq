@@ -1028,6 +1028,12 @@ class HerdMatcher(object):
 		herds = self._herds
 		return any(x in herds for x in metadata_xml.herds())
 
+# Match if metadata.xml contains no maintainer (orphaned package)
+def match_orphaned(metadata_xml):
+	if not metadata_xml.maintainers():
+		return True
+	else:
+		return False
 
 def pquery(parser, opts, args):
 	portdb = portage.db[portage.root]['porttree'].dbapi
@@ -1090,6 +1096,8 @@ def pquery(parser, opts, args):
 		for x in opts.herd:
 			herds.extend(x.split(","))
 		xml_matchers.append(HerdMatcher(herds))
+	if opts.orphaned:
+		xml_matchers.append(match_orphaned)
 
 	if opts.repo is not None:
 		repos = [portdb.repositories[opts.repo]]
@@ -1248,6 +1256,11 @@ def add_pquery_arguments(parser):
 					"longopt": "--maintainer-email",
 					"action": "append",
 					"help": "comma-separated list of maintainer email regexes to search for"
+				},
+				{
+					"longopt": "--orphaned",
+					"action": "store_true",
+					"help": "match only orphaned (maintainer-needed) packages"
 				}
 			)
 		),
