@@ -1223,7 +1223,7 @@ pquery.__doc__ = docstrings['pquery']
 # DO NOT CHANGE CODE BEYOND THIS POINT - IT'S NOT NEEDED!
 #
 
-non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'main', 'usage', 'uses_eroot'])
+non_commands = frozenset(['elog', 'eval_atom_use', 'exithandler', 'match_orphaned', 'main', 'usage', 'uses_eroot'])
 commands = sorted(k for k, v in globals().items() \
 	if k not in non_commands and isinstance(v, types.FunctionType) and v.__module__ == "__main__")
 
