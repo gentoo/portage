@@ -1020,14 +1020,6 @@ class MaintainerEmailMatcher(object):
 				break
 		return match
 
-class HerdMatcher(object):
-	def __init__(self, herds):
-		self._herds = frozenset(herds)
-
-	def __call__(self, metadata_xml):
-		herds = self._herds
-		return any(x in herds for x in metadata_xml.herds())
-
 # Match if metadata.xml contains no maintainer (orphaned package)
 def match_orphaned(metadata_xml):
 	if not metadata_xml.maintainers():
@@ -1091,11 +1083,6 @@ def pquery(parser, opts, args):
 		for x in opts.maintainer_email:
 			maintainer_emails.extend(x.split(","))
 		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
-	if opts.herd is not None:
-		herds  = []
-		for x in opts.herd:
-			herds.extend(x.split(","))
-		xml_matchers.append(HerdMatcher(herds))
 	if opts.orphaned:
 		xml_matchers.append(match_orphaned)
 
@@ -1247,11 +1234,6 @@ def add_pquery_arguments(parser):
 		(
 			'Package matching options',
 			(
-				{
-					"longopt": "--herd",
-					"action": "append",
-					"help": "exact match on a herd"
-				},
 				{
 					"longopt": "--maintainer-email",
 					"action": "append",
