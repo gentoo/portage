@@ -1,5 +1,5 @@
 
-'''live.py
+'''ruby.py
 Performs Ruby eclass checks
 '''
 
@@ -19,6 +19,12 @@ class RubyEclassChecks(ScanBase):
 		self.old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
 
 	def check(self, **kwargs):
+		'''Check ebuilds that inherit the ruby eclasses
+
+		@param pkg: Package in which we check (object).
+		@param ebuild: Ebuild which we check (object).
+		@returns: dictionary
+		'''
 		pkg = kwargs.get('pkg')
 		ebuild = kwargs.get('ebuild')
 		is_inherited = lambda eclass: eclass in pkg.inherited

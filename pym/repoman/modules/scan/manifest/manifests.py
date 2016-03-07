@@ -13,8 +13,16 @@ from portage.util import writemsg_level
 
 
 class Manifests(ScanBase):
+	'''Creates as well as checks pkg Manifest entries/files'''
 
 	def __init__(self, **kwargs):
+		'''Class init
+
+		@param options: the run time cli options
+		@param portdb: portdb instance
+		@param qatracker: QATracker instance
+		@param repo_settings: repository settings instance
+		'''
 		self.options = kwargs.get('options')
 		self.portdb = kwargs.get('portdb')
 		self.qatracker = kwargs.get('qatracker')
@@ -22,6 +30,12 @@ class Manifests(ScanBase):
 		self.generated_manifest = False
 
 	def check(self, **kwargs):
+		'''Perform a changelog and untracked checks on the ebuild
+
+		@param xpkg: Package in which we check (object).
+		@param checkdirlist: list of files in the current package directory
+		@returns: dictionary
+		'''
 		checkdir = kwargs.get('checkdir')
 		xpkg = kwargs.get('xpkg')
 		self.generated_manifest = False
@@ -84,6 +98,12 @@ class Manifests(ScanBase):
 		return {'continue': False}
 
 	def create_manifest(self, checkdir, fetchlist_dict):
+		'''Creates a Manifest file
+
+		@param checkdir: the directory to generate the Manifest in
+		@param fetchlist_dict: dictionary of files to fetch and/or include
+							in the manifest
+		'''
 		try:
 			distdir = self.repoman_settings['DISTDIR']
 			mf = self.repoman_settings.repositories.get_repo_for_location(
@@ -103,6 +123,10 @@ class Manifests(ScanBase):
 			portage._doebuild_manifest_exempt_depend -= 1
 
 	def digest_check(self, xpkg, checkdir):
+		'''Check the manifest entries, report any Q/A errors
+
+		@param xpkg: the cat/pkg name to check
+		@param checkdir: the directory path to check'''
 		self.repoman_settings['O'] = checkdir
 		self.repoman_settings['PORTAGE_QUIET'] = '1'
 		if not portage.digestcheck([], self.repoman_settings, strict=1):
@@ -111,4 +135,5 @@ class Manifests(ScanBase):
 
 	@property
 	def runInPkgs(self):
+		'''Package level scans'''
 		return (True, [self.check])

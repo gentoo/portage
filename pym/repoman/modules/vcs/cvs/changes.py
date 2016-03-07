@@ -7,8 +7,14 @@ from itertools import chain
 
 from repoman._portage import portage
 from repoman.modules.vcs.changes import ChangesBase
+from repoman.modules.vcs.vcs import vcs_files_to_cps
+from repoman._subprocess import repoman_getstatusoutput
+
+from portage import _encodings, _unicode_encode
 from portage import cvstree, os
+from portage.output import green
 from portage.package.ebuild.digestgen import digestgen
+
 
 class Changes(ChangesBase):
 	'''Class object to scan and hold the resultant data
@@ -20,7 +26,8 @@ class Changes(ChangesBase):
 	def __init__(self, options, repo_settings):
 		'''Class init
 
-		@param options: commandline options
+		@param options: the run time cli options
+		@param repo_settings: RepoSettings instance
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 		self._tree = None
@@ -44,11 +51,15 @@ class Changes(ChangesBase):
 		return self._unadded
 
 	@staticmethod
-	def clear_attic(myheaders):
+	def clear_attic(headers):
+		'''Clear the attic (inactive files)
+
+		@param headers: file headers
+		'''
 		cvs_header_re = re.compile(br'^#\s*\$Header.*\$$')
 		attic_str = b'/Attic/'
 		attic_replace = b'/'
-		for x in myheaders:
+		for x in headers:
 			f = open(
 				_unicode_encode(x, encoding=_encodings['fs'], errors='strict'),
 				mode='rb')
@@ -63,29 +74,44 @@ class Changes(ChangesBase):
 			if modified:
 				portage.util.write_atomic(x, b''.join(mylines), mode='wb')
 
-	def thick_manifest(self, myupdates, myheaders, no_expansion, expansion):
+	def thick_manifest(self, updates, headers, no_expansion, expansion):
+		'''Create a thick manifest
+
+		@param updates:
+		@param headers:
+		@param no_expansion:
+		@param expansion:
+		'''
 		headerstring = "'\$(Header|Id).*\$'"
 
-		for myfile in myupdates:
+		for _file in updates:
 
 			# for CVS, no_expansion contains files that are excluded from expansion
-			if myfile in no_expansion:
+			if _file in no_expansion:
 				continue
 
-			myout = repoman_getstatusoutput(
-				"egrep -q %s %s" % (headerstring, portage._shell_quote(myfile)))
-			if myout[0] == 0:
-				myheaders.append(myfile)
+			_out = repoman_getstatusoutput(
+				"egrep -q %s %s" % (headerstring, portage._shell_quote(_file)))
+			if _out[0] == 0:
+				headers.append(_file)
 
-		print("%s have headers that will change." % green(str(len(myheaders))))
+		print("%s have headers that will change." % green(str(len(headers))))
 		print(
 			"* Files with headers will"
 			" cause the manifests to be changed and committed separately.")
 
-	def digest_regen(self, myupdates, myremoved, mymanifests, scanner, broken_changelog_manifests):
-		if myupdates or myremoved:
+	def digest_regen(self, updates, removed, manifests, scanner, broken_changelog_manifests):
+		'''Regenerate manifests
+
+		@param updates: updated files
+		@param removed: removed files
+		@param manifests: Manifest files
+		@param scanner: The repoman.scanner.Scanner instance
+		@param broken_changelog_manifests: broken changelog manifests
+		'''
+		if updates or removed:
 			for x in sorted(vcs_files_to_cps(
-				chain(myupdates, myremoved, mymanifests),
+				chain(updates, removed, manifests),
 				scanner.repolevel, scanner.reposplit, scanner.categories)):
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)

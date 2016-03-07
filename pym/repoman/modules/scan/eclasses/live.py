@@ -21,6 +21,10 @@ class LiveEclassChecks(ScanBase):
 		self.repo_settings = kwargs.get('repo_settings')
 
 	def is_live(self, **kwargs):
+		'''Test if the ebuild inherits a live eclass
+
+		@returns: dictionary, including {live_ebuild}
+		'''
 		return {'continue': False,
 			'live_ebuild': LIVE_ECLASSES.intersection(
 				kwargs.get('ebuild').inherited)}
@@ -35,6 +39,7 @@ class LiveEclassChecks(ScanBase):
 		@param y_ebuild: Ebuild which we check (string).
 		@param keywords: The keywords of the ebuild.
 		@param global_pmaskdict: A global dictionary of all the masks.
+		@returns: dictionary
 		'''
 		pkg = kwargs.get("pkg")
 		package = kwargs.get('xpkg')
@@ -71,4 +76,5 @@ class LiveEclassChecks(ScanBase):
 
 	@property
 	def runInEbuilds(self):
+		'''Ebuild level scans'''
 		return (True, [self.is_live, self.check])

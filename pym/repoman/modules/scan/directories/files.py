@@ -36,6 +36,7 @@ class FileChecks(ScanBase):
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
 		@param changed: dictionary instance
+		@returns: dictionary
 		'''
 		checkdir = kwargs.get('checkdir')
 		checkdirlist = kwargs.get('checkdirlist')

@@ -47,7 +47,11 @@ def FindVCS(cwd=None):
 	outvcs = []
 
 	def seek(depth=None):
-		""" Seek for VCSes that have a top-level data directory only. """
+		'''Seek for VCSes that have a top-level data directory only.
+
+		@param depth: integer
+		@returns: list of strings
+		'''
 		retvcs = []
 		pathprep = cwd
 
@@ -127,6 +131,13 @@ def vcs_files_to_cps(vcs_file_iter, repolevel, reposplit, categories):
 
 
 def vcs_new_changed(relative_path, mychanged, mynew):
+	'''Check if any vcs tracked file have been modified
+
+	@param relative_path:
+	@param mychanged: iterable of changed files
+	@param mynew: iterable of new files
+	@returns boolean
+	'''
 	for x in chain(mychanged, mynew):
 		if x == relative_path:
 			return True

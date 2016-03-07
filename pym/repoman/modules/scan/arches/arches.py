@@ -4,13 +4,25 @@ from repoman.modules.scan.scanbase import ScanBase
 
 
 class ArchChecks(ScanBase):
+	'''Perform arch keyword checks'''
 
 	def __init__(self, **kwargs):
+		'''Class init
+
+		@param options: the run time cli options
+		@param repo_settings: repository settings instance
+		@param profiles: dictionary
+		'''
 		self.options = kwargs.get('options')
 		self.repo_settings = kwargs.get('repo_settings')
 		self.profiles = kwargs.get('profiles')
 
 	def check(self, **kwargs):
+		'''Determines the arches for the ebuild following the profile rules
+
+		@param ebuild: Ebuild which we check (object).
+		@returns: dictionary, including arches set
+		'''
 		ebuild = kwargs.get('ebuild')
 		if self.options.ignore_arches:
 			arches = [[
@@ -59,4 +71,5 @@ class ArchChecks(ScanBase):
 
 	@property
 	def runInEbuilds(self):
+		'''Ebuild level scans'''
 		return (True, [self.check])

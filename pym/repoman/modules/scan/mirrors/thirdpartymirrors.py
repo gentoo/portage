@@ -31,6 +31,7 @@ class ThirdPartyMirrors(ScanBase):
 
 		@param ebuild: Ebuild which we check (object).
 		@param src_uri_error: boolean
+		@returns: dictionary
 		'''
 		ebuild = kwargs.get('ebuild')
 		if kwargs.get('src_uri_error'):

@@ -70,5 +70,10 @@ class Status(object):
 
 	@staticmethod
 	def isVcsDir(dirname):
+		'''Does the directory belong to the vcs system
+
+		@param dirname: string, directory name
+		@returns: Boolean
+		'''
 		return dirname in [".git"]
 

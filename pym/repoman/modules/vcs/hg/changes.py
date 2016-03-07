@@ -20,7 +20,8 @@ class Changes(ChangesBase):
 	def __init__(self, options, repo_settings):
 		'''Class init
 
-		@param options: commandline options
+		@param options: the run time cli options
+		@param repo_settings: RepoSettings instance
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 
@@ -67,14 +68,27 @@ class Changes(ChangesBase):
 		return self._deleted
 
 
-	def digest_regen(self, myupdates, myremoved, mymanifests, scanner, broken_changelog_manifests):
+	def digest_regen(self, updates, removed, manifests, scanner, broken_changelog_manifests):
+		'''Regenerate manifests
+
+		@param updates: updated files
+		@param removed: removed files
+		@param manifests: Manifest files
+		@param scanner: The repoman.scanner.Scanner instance
+		@param broken_changelog_manifests: broken changelog manifests
+		'''
 		if broken_changelog_manifests:
 			for x in broken_changelog_manifests:
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
 
 	def commit(self, myfiles, commitmessagefile):
-		'''Hg commit the changes'''
+		'''Hg commit function
+
+		@param commitfiles: list of files to commit
+		@param commitmessagefile: file containing the commit message
+		@returns: The sub-command exit value or 0
+		'''
 		commit_cmd = []
 		commit_cmd.append(self.vcs)
 		commit_cmd.extend(self.vcs_settings.vcs_global_opts)
@@ -85,6 +99,7 @@ class Changes(ChangesBase):
 
 		if self.options.pretend:
 			print("(%s)" % (" ".join(commit_cmd),))
+			return 0
 		else:
 			retval = spawn(commit_cmd, env=self.repo_settings.commit_env)
 		return retval

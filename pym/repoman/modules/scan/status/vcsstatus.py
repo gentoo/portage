@@ -24,6 +24,7 @@ class VCSStatus(ScanBase):
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
 		@param xpkg: the current package being checked
+		@returns: dictionary including {eadded}
 		'''
 		checkdir = kwargs.get('checkdir')
 		checkdir_relative = kwargs.get('checkdir_relative')

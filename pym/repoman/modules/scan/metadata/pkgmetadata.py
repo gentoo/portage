@@ -64,6 +64,7 @@ class PkgMetadata(ScanBase):
 		@param checkdir: string, directory path
 		@param checkdirlist: list of checkdir's
 		@param repolevel: integer
+		@returns: dictionary, including {muselist}
 		'''
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')

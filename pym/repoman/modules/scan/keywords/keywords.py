@@ -38,6 +38,7 @@ class KeywordChecks(ScanBase):
 		@param ebuild_archs: Just the architectures (no prefixes) of the ebuild.
 		@param changed: Changes instance
 		@param live_ebuild: A boolean that determines if this is a live ebuild.
+		@returns: dictionary
 		'''
 		pkg = kwargs.get('pkg')
 		xpkg =kwargs.get('xpkg')

@@ -36,6 +36,7 @@ class USEFlagChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@param y_ebuild: Ebuild which we check (string).
 		@param muselist: Local USE flags of the package
+		@returns: dictionary, including {ebuild_UsedUseFlags, used_useflags}
 		'''
 		pkg = kwargs.get('pkg')
 		package = kwargs.get('xpkg')

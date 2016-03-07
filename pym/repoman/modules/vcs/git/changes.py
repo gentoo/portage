@@ -24,7 +24,8 @@ class Changes(ChangesBase):
 	def __init__(self, options, repo_settings):
 		'''Class init
 
-		@param options: commandline options
+		@param options: the run time cli options
+		@param repo_settings: RepoSettings instance
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 
@@ -63,13 +64,25 @@ class Changes(ChangesBase):
 		del unadded
 		return self._unadded
 
-	def digest_regen(self, myupdates, myremoved, mymanifests, scanner, broken_changelog_manifests):
+	def digest_regen(self, updates, removed, manifests, scanner, broken_changelog_manifests):
+		'''Regenerate manifests
+
+		@param updates: updated files
+		@param removed: removed files
+		@param manifests: Manifest files
+		@param scanner: The repoman.scanner.Scanner instance
+		@param broken_changelog_manifests: broken changelog manifests
+		'''
 		if broken_changelog_manifests:
 			for x in broken_changelog_manifests:
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
 
 	def update_index(self, mymanifests, myupdates):
+		'''Update the vcs's modified index if it is needed
+
+		@param mymanifests: manifest files updated
+		@param myupdates: other files updated'''
 		# It's not safe to use the git commit -a option since there might
 		# be some modified files elsewhere in the working tree that the
 		# user doesn't want to commit. Therefore, call git update-index
@@ -92,7 +105,12 @@ class Changes(ChangesBase):
 				sys.exit(retval)
 
 	def commit(self, myfiles, commitmessagefile):
-		'''Git commit the changes'''
+		'''Git commit function
+
+		@param commitfiles: list of files to commit
+		@param commitmessagefile: file containing the commit message
+		@returns: The sub-command exit value or 0
+		'''
 		retval = super(Changes, self).commit(myfiles, commitmessagefile)
 		if retval != os.EX_OK:
 			if self.repo_settings.repo_config.sign_commit and not self.vcs_settings.status.supports_gpg_sign():

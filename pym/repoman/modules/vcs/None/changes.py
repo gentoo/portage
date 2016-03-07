@@ -15,7 +15,8 @@ class Changes(ChangesBase):
 	def __init__(self, options, repo_settings):
 		'''Class init
 
-		@param options: commandline options
+		@param options: the run time cli options
+		@param repo_settings: RepoSettings instance
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 
@@ -23,11 +24,19 @@ class Changes(ChangesBase):
 		'''VCS type scan function, looks for all detectable changes'''
 		pass
 
-	def add_items(self, myautoadd):
-		'''Nothing to add them to'''
+	def add_items(self, autoadd):
+		'''Add files to the vcs's modified or new index
+
+		@param autoadd: the files to add to the vcs modified index'''
 		pass
 
 	def commit(self, myfiles, commitmessagefile):
+		'''None commit function
+
+		@param commitfiles: list of files to commit
+		@param commitmessagefile: file containing the commit message
+		@returns: The sub-command exit value or 0
+		'''
 		commit_cmd = []
 		# substitute a bogus vcs value for pretend output
 		commit_cmd.append("pretend")

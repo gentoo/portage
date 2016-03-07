@@ -23,11 +23,10 @@ class ProfileDependsChecks(ScanBase):
 		'''Class init
 
 		@param qatracker: QATracker instance
-		@param repo_settings: repository settings instance
-		@param vcs_settings: VCSSettings instance
-		@param checks: checks dictionary
 		@param portdb: portdb instance
 		@param profiles: dictionary
+		@param options: cli options
+		@param repo_settings: repository settings instance
 		@param include_arches: set
 		@param caches: dictionary of our caches
 		@param repoman_incrementals: tuple

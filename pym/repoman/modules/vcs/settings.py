@@ -1,3 +1,6 @@
+'''
+Repoman VCSSettings modules
+'''
 
 from __future__ import print_function, unicode_literals
 
@@ -14,6 +17,12 @@ class VCSSettings(object):
 	'''Holds various VCS settings'''
 
 	def __init__(self, options=None, repoman_settings=None, repo_settings=None):
+		'''Class init function
+
+		@param options: the run time cli options
+		@param repoman_settings: portage.config settings instance
+		@param repo_settings: RepoSettings instance
+		'''
 		self.options = options
 		self.repoman_settings = repoman_settings
 		self.repo_settings = repo_settings
@@ -82,6 +91,8 @@ class VCSSettings(object):
 
 	@property
 	def status(self):
+		'''Initializes and returns the class instance
+		of the vcs's Status class'''
 		if not self._status:
 			status = self.module_controller.get_class('%s_status' % self.vcs)
 			self._status = status(self.qatracker, self.eadded)
@@ -89,6 +100,8 @@ class VCSSettings(object):
 
 	@property
 	def changes(self):
+		'''Initializes and returns the class instance
+		of the vcs's Changes class'''
 		if not self._changes:
 			changes = self.module_controller.get_class('%s_changes' % self.vcs)
 			self._changes = changes(self.options, self.repo_settings)

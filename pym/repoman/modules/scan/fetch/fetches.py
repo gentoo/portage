@@ -38,6 +38,7 @@ class FetchChecks(ScanBase):
 		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
+		@returns: dictionary, including {src_uri_error}
 		'''
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')

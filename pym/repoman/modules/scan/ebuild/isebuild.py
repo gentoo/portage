@@ -32,9 +32,10 @@ class IsEbuild(ScanBase):
 	def check(self, **kwargs):
 		'''Test the file for qualifications that is is an ebuild
 
-		@param checkdirlist: list of files in teh current package directory
+		@param checkdirlist: list of files in the current package directory
 		@param checkdir: current package directory path
 		@param xpkg: current package directory being checked
+		@returns: dictionary, including {pkgs, allvalid, can_force}
 		'''
 		checkdirlist = kwargs.get('checkdirlist')
 		checkdir = kwargs.get('checkdir')

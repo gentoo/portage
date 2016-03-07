@@ -31,8 +31,8 @@ class MultiCheck(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild').result()
-		pkg = kwargs.get('pkg').result()
+		ebuild = kwargs.get('ebuild')
+		pkg = kwargs.get('pkg')
 		try:
 			# All ebuilds should have utf_8 encoding.
 			f = io.open(

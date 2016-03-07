@@ -21,6 +21,7 @@ class EAPIChecks(ScanBase):
 		'''
 		@param pkg: Package in which we check (object).
 		@param ebuild: Ebuild which we check (object).
+		@returns: dictionary
 		'''
 		ebuild = kwargs.get('ebuild')
 
@@ -44,4 +45,5 @@ class EAPIChecks(ScanBase):
 
 	@property
 	def runInEbuilds(self):
+		'''Ebuild level scans'''
 		return (True, [self.check])

@@ -123,7 +123,7 @@ class Status(object):
 
 	@staticmethod
 	def isVcsDir(dirname):
-		'''Is the directory belong to the vcs system
+		'''Does the directory belong to the vcs system
 
 		@param dirname: string, directory name
 		@returns: Boolean

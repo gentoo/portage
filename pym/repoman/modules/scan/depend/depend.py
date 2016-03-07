@@ -11,12 +11,24 @@ from repoman.qa_data import suspect_virtual, suspect_rdepend
 
 
 class DependChecks(ScanBase):
+	'''Perform dependency checks'''
 
 	def __init__(self, **kwargs):
+		'''
+		@param portdb: portdb instance
+		@param qatracker: QATracker instance
+		'''
 		self.qatracker = kwargs.get('qatracker')
 		self.portdb = kwargs.get('portdb')
 
 	def check(self, **kwargs):
+		'''Checks the ebuild dependencies for errors
+
+		@param pkg: Package in which we check (object).
+		@param ebuild: Ebuild which we check (object).
+		@returns: dictionary including {unknown_pkgs, type_list,
+										badlicsyntax, baddepsyntax}
+		'''
 		ebuild = kwargs.get('ebuild')
 		pkg = kwargs.get('pkg')
 
@@ -137,4 +149,5 @@ class DependChecks(ScanBase):
 
 	@property
 	def runInEbuilds(self):
+		'''Ebuild level scans'''
 		return (True, [self.check])
