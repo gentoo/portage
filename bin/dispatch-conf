@@ -1,5 +1,5 @@
 #!/usr/bin/python -bO
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -16,6 +16,7 @@ from __future__ import print_function, unicode_literals
 import atexit
 import io
 import re
+import subprocess
 import sys
 
 from stat import ST_GID, ST_MODE, ST_UID
@@ -137,9 +138,15 @@ class dispatch:
                 path, basename = os.path.split(path)
                 find_opts = "-maxdepth 1"
 
-            with os.popen(FIND_EXTANT_CONFIGS %
-                (path, find_opts, basename)) as proc:
-                confs += self.massage(proc.readlines())
+            try:
+                path_list = _unicode_decode(subprocess.check_output(
+                    portage.util.shlex_split(FIND_EXTANT_CONFIGS %
+                    (path, find_opts, basename))),
+                    errors='strict').splitlines()
+            except subprocess.CalledProcessError:
+                pass
+            else:
+                confs.extend(self.massage(path_list))
 
         if self.options['use-rcs'] == 'yes':
             for rcs_util in ("rcs", "ci", "co", "rcsmerge"):
