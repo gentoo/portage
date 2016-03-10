@@ -1,6 +1,26 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.2.28
+==================================
+* Bug Fixes:
+    - Bug 572494 BinpkgFetcher: suppress PORTAGE_SSH_OPTS KeyError message
+    - Bug 572476 binarytree: fix PORTAGE_BINHOST KeyError
+    - Bug 572826 Fix KeyError for ACCEPT_KEYWORDS and ARCH
+    - Bug 540882 repoman: Re-add an if that bypasses the changes scan
+    - Bug 573070 Clarify no binary packages error
+    - Bug 573056 isolated-functions.sh: Output error message for nofatal die
+    - Bug 573386 UserQuery: handle unicode
+    - Bug 543706 Make config update tools stand out
+    - Bug 527004 Be extra clear on INSTALL_MASK & dirs
+    - Bug 574082 repoman: Deprecate games.eclass
+    - Bug 576488 portdbapi.aux_get: don't cache in memory unless frozen
+    - Bug 573920 eapply_user: allow empty directories
+    - Bug 576958 repoman: Make the output quiet when options.quiet=True
+* Add sync-git-clone-extra-opts and sync-git-pull-extra-opts
+* GLEP 67 portageq updates
+* repoman: Fix _here_doc_re for "Unquoted Variable" false positives
+
 portage-2.2.27
 ==================================
 * Bug Fixes:
