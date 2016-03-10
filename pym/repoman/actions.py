@@ -57,7 +57,8 @@ class Actions(object):
 
 	def inform(self, can_force, result):
 		'''Inform the user of all the problems found'''
-		if self.suggest['ignore_masked'] or self.suggest['include_dev']:
+		if ((self.suggest['ignore_masked'] or self.suggest['include_dev'])
+				and not self.options.quiet):
 			self._suggest()
 		if self.options.mode != 'commit':
 			self._non_commit(result)
@@ -199,6 +200,8 @@ class Actions(object):
 
 		self.add_manifest(mymanifests, myheaders, myupdates, myremoved, commitmessage)
 
+		if self.options.quiet:
+			return
 		print()
 		if self.vcs_settings.vcs:
 			print("Commit complete.")
@@ -230,17 +233,25 @@ class Actions(object):
 		if result['full']:
 			print(bold("Note: type \"repoman full\" for a complete listing."))
 		if result['warn'] and not result['fail']:
-			utilities.repoman_sez(
-				"\"You're only giving me a partial QA payment?\n"
-				"              I'll take it this time, but I'm not happy.\"")
+			if self.options.quiet:
+				print(bold("Non-Fatal QA errors found"))
+			else:
+				utilities.repoman_sez(
+					"\"You're only giving me a partial QA payment?\n"
+					"              I'll take it this time, but I'm not happy.\""
+					)
 		elif not result['fail']:
-			utilities.repoman_sez(
-				"\"If everyone were like you, I'd be out of business!\"")
+			if self.options.quiet:
+				print("No QA issues found")
+			else:
+				utilities.repoman_sez(
+					"\"If everyone were like you, I'd be out of business!\"")
 		elif result['fail']:
 			print(bad("Please fix these important QA issues first."))
-			utilities.repoman_sez(
-				"\"Make your QA payment on time"
-				" and you'll never see the likes of me.\"\n")
+			if not self.options.quiet:
+				utilities.repoman_sez(
+					"\"Make your QA payment on time"
+					" and you'll never see the likes of me.\"\n")
 			sys.exit(1)
 
 
