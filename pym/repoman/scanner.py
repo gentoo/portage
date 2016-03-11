@@ -263,7 +263,7 @@ class Scanner(object):
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
-			self.changelog_modified = changelog_path in self.changed.changelogs
+			dynamic_data["changelog_modified"] = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, dynamic_data)
 		return dynamic_data['can_force']

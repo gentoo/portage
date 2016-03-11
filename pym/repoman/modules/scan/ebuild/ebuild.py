@@ -74,9 +74,10 @@ class Ebuild(ScanBase):
 		self.xpkg = kwargs.get('xpkg')
 		self.y_ebuild = kwargs.get('y_ebuild')
 		self.changed = kwargs.get('changed')
+		changelog_modified = kwargs.get('changelog_modified')
 		self._set_paths(**kwargs)
 
-		if self.checks['changelog'] and not self.changelog_modified \
+		if self.checks['changelog'] and not changelog_modified \
 			and self.ebuild_path in self.changed.new_ebuilds:
 			self.qatracker.add_error('changelog.ebuildadded', self.relative_path)
 
