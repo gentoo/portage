@@ -1165,9 +1165,9 @@ def egencache_main(args):
 	if options.write_timestamp:
 		timestamp_path = os.path.join(repo_path, 'metadata', 'timestamp.chk')
 		try:
-			with open(timestamp_path, 'w') as f:
-				f.write(time.strftime('%s\n' % TIMESTAMP_FORMAT, time.gmtime()))
-		except IOError:
+			portage.util.write_atomic(timestamp_path,
+				time.strftime('%s\n' % TIMESTAMP_FORMAT, time.gmtime()))
+		except (EnvironmentError, portage.exception.PortageException):
 			ret.append(os.EX_IOERR)
 		else:
 			ret.append(os.EX_OK)
