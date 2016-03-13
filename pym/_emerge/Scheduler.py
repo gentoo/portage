@@ -586,18 +586,15 @@ class Scheduler(PollScheduler):
 
 		blocker_db = self._blocker_db[new_pkg.root]
 
-		blocker_dblinks = []
+		blocked_pkgs = []
 		for blocking_pkg in blocker_db.findInstalledBlockers(new_pkg):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
 				continue
-			blocker_dblinks.append(portage.dblink(
-				blocking_pkg.category, blocking_pkg.pf, blocking_pkg.root,
-				self.pkgsettings[blocking_pkg.root], treetype="vartree",
-				vartree=self.trees[blocking_pkg.root]["vartree"]))
+			blocked_pkgs.append(blocking_pkg)
 
-		return blocker_dblinks
+		return blocked_pkgs
 
 	def _generate_digests(self):
 		"""

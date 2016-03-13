@@ -168,6 +168,7 @@ class vardbapi(dbapi):
 		self._conf_mem_file = self._eroot + CONFIG_MEMORY_FILE
 		self._fs_lock_obj = None
 		self._fs_lock_count = 0
+		self._slot_locks = {}
 
 		if vartree is None:
 			vartree = portage.db[settings['EROOT']]['vartree']
@@ -283,6 +284,38 @@ class vardbapi(dbapi):
 			unlockfile(self._fs_lock_obj)
 			self._fs_lock_obj = None
 		self._fs_lock_count -= 1
+
+	def _slot_lock(self, slot_atom):
+		"""
+		Acquire a slot lock (reentrant).
+
+		WARNING: The varbapi._slot_lock method is not safe to call
+		in the main process when that process is scheduling
+		install/uninstall tasks in parallel, since the locks would
+		be inherited by child processes. In order to avoid this sort
+		of problem, this method should be called in a subprocess
+		(typically spawned by the MergeProcess class).
+		"""
+		lock, counter = self._slot_locks.get(slot_atom, (None, 0))
+		if lock is None:
+			lock_path = self.getpath("%s:%s" % (slot_atom.cp, slot_atom.slot))
+			ensure_dirs(os.path.dirname(lock_path))
+			lock = lockfile(lock_path, wantnewlockfile=True)
+		self._slot_locks[slot_atom] = (lock, counter + 1)
+
+	def _slot_unlock(self, slot_atom):
+		"""
+		Release a slot lock (or decrementing recursion level).
+		"""
+		lock, counter = self._slot_locks.get(slot_atom, (None, 0))
+		if lock is None:
+			raise AssertionError("not locked")
+		counter -= 1
+		if counter == 0:
+			unlockfile(lock)
+			del self._slot_locks[slot_atom]
+		else:
+			self._slot_locks[slot_atom] = (lock, counter)
 
 	def _bump_mtime(self, cpv):
 		"""
@@ -1590,6 +1623,7 @@ class dblink(object):
 		# compliance with RESTRICT=preserve-libs.
 		self._preserve_libs = "preserve-libs" in mysettings.features
 		self._contents = ContentsCaseSensitivityManager(self)
+		self._slot_locks = []
 
 	def __hash__(self):
 		return hash(self._hash_key)
@@ -1622,6 +1656,58 @@ class dblink(object):
 
 	def unlockdb(self):
 		self.vartree.dbapi.unlock()
+
+	def _slot_locked(f):
+		"""
+		A decorator function which, when parallel-install is enabled,
+		acquires and releases slot locks for the current package and
+		blocked packages. This is required in order to account for
+		interactions with blocked packages (involving resolution of
+		file collisions).
+		"""
+		def wrapper(self, *args, **kwargs):
+			if "parallel-install" in self.settings.features:
+				self._acquire_slot_locks(
+					kwargs.get("mydbapi", self.vartree.dbapi))
+			try:
+				return f(self, *args, **kwargs)
+			finally:
+				self._release_slot_locks()
+		return wrapper
+
+	def _acquire_slot_locks(self, db):
+		"""
+		Acquire slot locks for the current package and blocked packages.
+		"""
+
+		slot_atoms = []
+
+		try:
+			slot = self.mycpv.slot
+		except AttributeError:
+			slot, = db.aux_get(self.mycpv, ["SLOT"])
+			slot = slot.partition("/")[0]
+
+		slot_atoms.append(portage.dep.Atom(
+			"%s:%s" % (self.mycpv.cp, slot)))
+
+		for blocker in self._blockers or []:
+			slot_atoms.append(blocker.slot_atom)
+
+		# Sort atoms so that locks are acquired in a predictable
+		# order, preventing deadlocks with competitors that may
+		# be trying to acquire overlapping locks.
+		slot_atoms.sort()
+		for slot_atom in slot_atoms:
+			self.vartree.dbapi._slot_lock(slot_atom)
+			self._slot_locks.append(slot_atom)
+
+	def _release_slot_locks(self):
+		"""
+		Release all slot locks.
+		"""
+		while self._slot_locks:
+			self.vartree.dbapi._slot_unlock(self._slot_locks.pop())
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -1863,6 +1949,7 @@ class dblink(object):
 				plib_registry.unlock()
 				self.vartree.dbapi._fs_unlock()
 
+	@_slot_locked
 	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
 		ldpath_mtimes=None, others_in_slot=None, needed=None,
 		preserve_paths=None):
@@ -3929,9 +4016,14 @@ class dblink(object):
 		prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
 		# check for package collisions
-		blockers = self._blockers
-		if blockers is None:
-			blockers = []
+		blockers = []
+		for blocker in self._blockers or []:
+			blocker = self.vartree.dbapi._dblink(blocker.cpv)
+			# It may have been unmerged before lock(s)
+			# were aquired.
+			if blocker.exists():
+				blockers.append(blocker)
+
 		collisions, dirs_ro, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, filelist, linklist)
@@ -4993,6 +5085,7 @@ class dblink(object):
 			else:
 				proc.wait()
 
+	@_slot_locked
 	def merge(self, mergeroot, inforoot, myroot=None, myebuild=None, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
