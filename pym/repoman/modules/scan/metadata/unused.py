@@ -3,11 +3,23 @@ from repoman.modules.scan.scanbase import ScanBase
 
 
 class UnusedCheck(ScanBase):
+	'''Checks and reports any un-used metadata.xml use flag descriptions'''
 
 	def __init__(self, **kwargs):
+		'''UnusedCheck init function
+
+		@param qatracker: QATracker instance
+		'''
 		self.qatracker = kwargs.get('qatracker')
 
 	def check(self, **kwargs):
+		'''Reports on any unused metadata.xml use descriptions
+
+		@param xpkg: the pacakge being checked
+		@param muselist: use flag list
+		@param used_useflags: use flag list
+		@param validity_fuse: Fuse instance
+		'''
 		xpkg = kwargs.get('xpkg')
 		muselist = kwargs.get('muselist')
 		used_useflags = kwargs.get('used_useflags')
@@ -22,13 +34,6 @@ class UnusedCheck(ScanBase):
 		return {'continue': False}
 
 	@property
-	def runInPkgs(self):
-		return (False, [])
-
-	@property
-	def runInEbuilds(self):
-		return (False, [])
-
-	@property
 	def runInFinal(self):
+		'''Final scans at the package level'''
 		return (True, [self.check])
