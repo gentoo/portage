@@ -35,15 +35,16 @@ class IsEbuild(ScanBase):
 		@param checkdirlist: list of files in the current package directory
 		@param checkdir: current package directory path
 		@param xpkg: current package directory being checked
-		@returns: dictionary, including {pkgs, allvalid, can_force}
+		@param validity_fuse: Fuse instance
+		@returns: dictionary, including {pkgs, can_force}
 		'''
 		checkdirlist = kwargs.get('checkdirlist')
 		checkdir = kwargs.get('checkdir')
 		xpkg = kwargs.get('xpkg')
+		fuse = kwargs.get('validity_fuse')
 		self.continue_ = False
 		ebuildlist = []
 		pkgs = {}
-		allvalid = True
 		for y in checkdirlist:
 			file_is_ebuild = y.endswith(".ebuild")
 			file_should_be_non_executable = y in no_exec or file_is_ebuild
@@ -62,15 +63,15 @@ class IsEbuild(ScanBase):
 				try:
 					myaux = dict(zip(allvars, self.portdb.aux_get(cpv, allvars)))
 				except KeyError:
-					allvalid = False
+					fuse.pop()
 					self.qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
 					continue
 				except IOError:
-					allvalid = False
+					fuse.pop()
 					self.qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
 					continue
 				if not portage.eapi_is_supported(myaux["EAPI"]):
-					allvalid = False
+					fuse.pop()
 					self.qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
 					continue
 				pkgs[pf] = Package(
@@ -85,7 +86,7 @@ class IsEbuild(ScanBase):
 			# positives confuse users.
 			self.continue_ = True
 
-		return {'continue': self.continue_, 'pkgs': pkgs, 'allvalid': allvalid,
+		return {'continue': self.continue_, 'pkgs': pkgs,
 			'can_force': not self.continue_}
 
 	@property

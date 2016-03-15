@@ -127,13 +127,16 @@ class Ebuild(ScanBase):
 	def pkg_invalid(self, **kwargs):
 		'''Sets some pkg info and checks for invalid packages
 
-		@returns: dictionary, including {pkg object, allvalid}
+		@param validity_fuse: Fuse instance
+		@returns: dictionary, including {pkg object}
 		'''
+		fuse = kwargs.get('validity_fuse')
 		if self.pkg.invalid:
 			for k, msgs in self.pkg.invalid.items():
 				for msg in msgs:
 					self.qatracker.add_error(k, "%s: %s" % (self.relative_path, msg))
-			return {'continue': True, 'allvalid': False, 'pkg': self.pkg}
+			fuse.pop()
+			return {'continue': True, 'pkg': self.pkg}
 		return {'continue': False, 'pkg': self.pkg}
 
 	@property
