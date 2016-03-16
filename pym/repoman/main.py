@@ -25,6 +25,7 @@ from portage.util import formatter
 
 from repoman.actions import Actions
 from repoman.argparser import parse_args
+from repoman.fuse import Fuse
 from repoman.qa_data import (
 	format_qa_output, format_qa_output_column, qahelp,
 	qawarnings, qacats)
@@ -75,7 +76,7 @@ def repoman_main(argv):
 	# Set this to False when an extraordinary issue (generally
 	# something other than a QA issue) makes it impossible to
 	# commit (like if Manifest generation fails).
-	can_force = True
+	can_force = Fuse()
 
 	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
 	if portdir is None:
@@ -110,7 +111,7 @@ def repoman_main(argv):
 	# Perform the main checks
 	scanner = Scanner(repo_settings, myreporoot, config_root, options,
 					vcs_settings, mydir, env)
-	can_force = scanner.scan_pkgs(can_force)
+	scanner.scan_pkgs(can_force)
 
 	commitmessage = None
 

@@ -42,6 +42,7 @@ class IsEbuild(ScanBase):
 		checkdir = kwargs.get('checkdir')
 		xpkg = kwargs.get('xpkg')
 		fuse = kwargs.get('validity_fuse')
+		can_force = kwargs.get('can_force')
 		self.continue_ = False
 		ebuildlist = []
 		pkgs = {}
@@ -85,9 +86,9 @@ class IsEbuild(ScanBase):
 			# metadata leads to false positives for several checks, and false
 			# positives confuse users.
 			self.continue_ = True
+			can_force.pop()
 
-		return {'continue': self.continue_, 'pkgs': pkgs,
-			'can_force': not self.continue_}
+		return {'continue': self.continue_, 'pkgs': pkgs}
 
 	@property
 	def runInPkgs(self):

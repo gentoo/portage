@@ -205,7 +205,6 @@ class Scanner(object):
 			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
 
 	def scan_pkgs(self, can_force):
-		dynamic_data = {'can_force': can_force}
 		for xpkg in self.effective_scanlist:
 			xpkg_continue = False
 			# ebuilds and digests added to cvs respectively.
@@ -268,7 +267,7 @@ class Scanner(object):
 			dynamic_data["changelog_modified"] = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, dynamic_data)
-		return dynamic_data['can_force']
+		return
 
 
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
