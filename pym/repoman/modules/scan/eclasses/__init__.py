@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_kwargs': {
 			},
+			'mod_kwargs': ['qatracker', 'repo_metadata', 'repo_settings',
+			],
+			'func_kwargs': {
+			},
 		},
 		'ruby-module': {
 			'name': "ruby",
@@ -25,6 +29,10 @@ module_spec = {
 			'class': "RubyEclassChecks",
 			'description': doc,
 			'functions': ['check'],
+			'func_kwargs': {
+			},
+			'mod_kwargs': ['qatracker'
+			],
 			'func_kwargs': {
 			},
 		},

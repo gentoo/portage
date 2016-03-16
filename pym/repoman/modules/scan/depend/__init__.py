@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker', 'portdb'
+			],
+			'func_kwargs': {
+			},
 		},
 		'profile-module': {
 			'name': "profile",
@@ -27,6 +31,12 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker', 'portdb', 'profiles', 'options',
+				'repo_settings', 'include_arches', 'caches',
+				'repoman_incrementals', 'env', 'have', 'dev_keywords'
+			],
+			'func_kwargs': {
+			},
 		},
 		'unknown-module': {
 			'name': "unknown",
@@ -35,6 +45,10 @@ module_spec = {
 			'description': doc,
 			'functions': ['check'],
 			'func_desc': {
+			},
+			'mod_kwargs': ['qatracker',
+			],
+			'func_kwargs': {
 			},
 		},
 	}

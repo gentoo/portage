@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check', 'create_manifest', 'digest_check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['options', 'portdb', 'qatracker', 'repo_settings',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }

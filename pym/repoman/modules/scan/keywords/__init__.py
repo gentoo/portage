@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['prepare', 'check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker', 'options', 'repo_metadata', 'profiles',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }

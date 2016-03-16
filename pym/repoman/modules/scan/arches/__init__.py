@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['options', 'repo_settings', 'profiles'
+			],
+			'func_kwargs': {'ebuild': None,
+			},
 		},
 	}
 }

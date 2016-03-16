@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['vcs_settings', 'checks',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }

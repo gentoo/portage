@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_kwargs': {
 			},
+			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings', 'vcs_settings',
+			],
+			'func_kwargs': {
+			},
 		},
 		'mtime-module': {
 			'name': "mtime",
@@ -25,6 +29,10 @@ module_spec = {
 			'class': "MtimeChecks",
 			'description': doc,
 			'functions': ['check'],
+			'func_kwargs': {
+			},
+			'mod_kwargs': ['vcs_settings',
+			],
 			'func_kwargs': {
 			},
 		},

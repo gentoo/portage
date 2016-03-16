@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings', 'vcs_settings',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }

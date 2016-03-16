@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_dtd',
+			],
+			'func_kwargs': {
+			},
 		},
 		'ebuild-metadata': {
 			'name': "ebuild_metadata",
@@ -26,6 +30,10 @@ module_spec = {
 			'description': doc,
 			'functions': ['check'],
 			'func_desc': {
+			},
+			'mod_kwargs': ['qatracker',
+			],
+			'func_kwargs': {
 			},
 		},
 		'description-metadata': {
@@ -36,6 +44,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker',
+			],
+			'func_kwargs': {
+			},
 		},
 		'license-metadata': {
 			'name': "license",
@@ -44,6 +56,10 @@ module_spec = {
 			'description': doc,
 			'functions': ['check'],
 			'func_desc': {
+			},
+			'mod_kwargs': ['qatracker', 'repo_metadata',
+			],
+			'func_kwargs': {
 			},
 		},
 		'restrict-metadata': {
@@ -54,6 +70,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker',
+			],
+			'func_kwargs': {
+			},
 		},
 		'unused-metadata': {
 			'name': "unused",
@@ -62,6 +82,10 @@ module_spec = {
 			'description': doc,
 			'functions': ['check'],
 			'func_desc': {
+			},
+			'mod_kwargs': ['qatracker',
+			],
+			'func_kwargs': {
 			},
 		},
 	}

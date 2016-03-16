@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['is_forced'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['options',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }

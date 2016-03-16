@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings'
+			],
+			'func_kwargs': {
+			},
 		},
 		'ebuild-module': {
 			'name': "ebuild",
@@ -27,6 +31,10 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker', 'repo_settings', 'vcs_settings', 'checks',
+			],
+			'func_kwargs': {
+			},
 		},
 		'multicheck-module': {
 			'name': "multicheck",
@@ -34,6 +42,10 @@ module_spec = {
 			'class': "MultiCheck",
 			'description': doc,
 			'functions': ['check'],
+			'func_kwargs': {
+			},
+			'mod_kwargs': ['qatracker', 'options'
+			],
 			'func_kwargs': {
 			},
 		},

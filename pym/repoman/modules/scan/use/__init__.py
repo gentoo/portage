@@ -18,6 +18,10 @@ module_spec = {
 			'functions': ['check', 'getUsedUseFlags'],
 			'func_desc': {
 			},
+			'mod_kwargs': ['qatracker', 'uselist',
+			],
+			'func_kwargs': {
+			},
 		},
 	}
 }
