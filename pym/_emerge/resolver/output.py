@@ -723,8 +723,7 @@ class Display(object):
 				elif set_name == "selected":
 					world = root_config.sets[set_name].findAtomForPackage(
 						pkg, modified_use=self.conf.pkg_use_enabled(pkg))
-				elif (user_set is None and
-                                            root_config.sets[set_name].__class__.__name__ == "StaticFileSet"):
+				elif user_set is None and root_config.sets[set_name].isUserSet():
 					user_set = root_config.sets[set_name].findAtomForPackage(
 						pkg, modified_use=self.conf.pkg_use_enabled(pkg))
 			if not (self.conf.oneshot or world) and \
