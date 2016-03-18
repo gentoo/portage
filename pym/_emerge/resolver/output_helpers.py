@@ -596,7 +596,8 @@ class PkgInfo(object):
 	__slots__ = ("attr_display", "built", "cp",
 		"ebuild_path", "fetch_symbol", "merge",
 		"oldbest", "oldbest_list", "operation", "ordered", "previous_pkg",
-		"repo_name", "repo_path_real", "slot", "sub_slot", "system", "use", "ver", "world")
+		"repo_name", "repo_path_real", "set", "slot", "sub_slot", "system",
+		"use", "ver", "world")
 
 
 	def __init__(self):
@@ -612,12 +613,13 @@ class PkgInfo(object):
 		self.previous_pkg = None
 		self.repo_path_real = ''
 		self.repo_name = ''
+		self.set = None
 		self.slot = ''
 		self.sub_slot = ''
-		self.system = False
+		self.system = None
 		self.use = ''
 		self.ver = ''
-		self.world = False
+		self.world = None
 		self.attr_display = PkgAttrDisplay()
 
 class PkgAttrDisplay(SlotObject):
