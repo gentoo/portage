@@ -173,8 +173,8 @@ class PackageSet(object):
 						cpv_slot_list):
 						yield atom
 
-        def isUserSet(self):
-                return False
+	def isUserSet(self):
+		return False
 
 class EditablePackageSet(PackageSet):
 

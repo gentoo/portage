@@ -175,8 +175,8 @@ class StaticFileSet(EditablePackageSet):
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
 
-        def isUserSet(self):
-            return True
+	def isUserSet(self):
+		return True
 	
 class ConfigFileSet(PackageSet):
 	def __init__(self, filename):
