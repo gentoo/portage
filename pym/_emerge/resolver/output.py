@@ -271,8 +271,8 @@ class Display(object):
 					return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
 				elif pkg_info.world:
 					return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
-				elif pkg_info.set:
-					return colorize("PKG_BINARY_MERGE_SET", pkg_str)
+				elif pkg_info.user_set:
+					return colorize("PKG_BINARY_MERGE_USER_SET", pkg_str)
 				else:
 					return colorize("PKG_BINARY_MERGE", pkg_str)
 			else:
@@ -280,8 +280,8 @@ class Display(object):
 					return colorize("PKG_MERGE_SYSTEM", pkg_str)
 				elif pkg_info.world:
 					return colorize("PKG_MERGE_WORLD", pkg_str)
-				elif pkg_info.set:
-					return colorize("PKG_MERGE_SET", pkg_str)
+				elif pkg_info.user_set:
+					return colorize("PKG_MERGE_USER_SET", pkg_str)
 				else:
 					return colorize("PKG_MERGE", pkg_str)
 		elif pkg_info.operation == "uninstall":
@@ -291,8 +291,8 @@ class Display(object):
 				return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
 			elif pkg_info.world:
 				return colorize("PKG_NOMERGE_WORLD", pkg_str)
-			elif pkg_info.set:
-				return colorize("PKG_NOMERGE_SET", pkg_str)
+			elif pkg_info.user_set:
+				return colorize("PKG_NOMERGE_USER_SET", pkg_str)
 			else:
 				return colorize("PKG_NOMERGE", pkg_str)
 
@@ -709,10 +709,10 @@ class Display(object):
 		"""Checks for any occurances of the package in the portage sets
 
 		@param pkg: _emerge.Package.Package instance
-		@rtype set, system, and world booleans
+		@rtype user_set, system, and world booleans
 		"""
 		root_config = self.conf.roots[pkg.root]
-		set = None
+		user_set = None
 		system = None
 		world = None
 		try:
@@ -723,9 +723,9 @@ class Display(object):
 				elif set_name == "selected":
 					world = root_config.sets[set_name].findAtomForPackage(
 						pkg, modified_use=self.conf.pkg_use_enabled(pkg))
-				elif (set is None and
+				elif (user_set is None and
                                             root_config.sets[set_name].__class__.__name__ == "StaticFileSet"):
-					set = root_config.sets[set_name].findAtomForPackage(
+					user_set = root_config.sets[set_name].findAtomForPackage(
 						pkg, modified_use=self.conf.pkg_use_enabled(pkg))
 			if not (self.conf.oneshot or world) and \
 				pkg.root == self.conf.target_root and \
@@ -738,7 +738,7 @@ class Display(object):
 		except InvalidDependString:
 			# This is reported elsewhere if relevant.
 			pass
-		return set, system, world
+		return user_set, system, world
 
 
 	@staticmethod
@@ -875,7 +875,7 @@ class Display(object):
 				self.oldlp = self.conf.columnwidth - 30
 				self.newlp = self.oldlp - 30
 				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info)
-				pkg_info.set, pkg_info.system, pkg_info.world = \
+				pkg_info.user_set, pkg_info.system, pkg_info.world = \
 					self.check_sets(pkg)
 				if 'interactive' in pkg.properties and \
 					pkg.operation == 'merge':
