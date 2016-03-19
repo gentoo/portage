@@ -5126,9 +5126,9 @@ class depgraph(object):
 					break
 
 			writemsg("\nemerge: there are no %s to satisfy " %
-                ("binary packages" if
-                 self._frozen_config.myopts.get("--usepkgonly", "y") == True
-                 else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
+				("binary packages" if
+				self._frozen_config.myopts.get("--usepkgonly", "y") == True
+				else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
 				not cp_exists and \
 				self._frozen_config.myopts.get(
@@ -6937,7 +6937,7 @@ class depgraph(object):
 		for root in implicit_libc_roots:
 			vardb = self._frozen_config.trees[root]["vartree"].dbapi
 			for atom in self._expand_virt_from_graph(root,
- 				portage.const.LIBC_PACKAGE_ATOM):
+				portage.const.LIBC_PACKAGE_ATOM):
 				if atom.blocker:
 					continue
 				for pkg in self._dynamic_config._package_tracker.match(root, atom):
