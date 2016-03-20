@@ -120,17 +120,6 @@ class MaskManager(object):
 		#to allow profiles to override masks from their parent profiles.
 		profile_pkgmasklines = []
 		profile_pkgunmasklines = []
-		# PREFIX LOCAL: Prefix has unmasks for stuff in profiles/package.mask
-		# If we don't consider the repomasks here, those unmasks are
-		# lost, causing lots of issues (e.g. Portage being masked)
-		# for minimal/concentrated code change, empty repo_pkgmasklines here
-		# such that they don't count double
-		import collections
-		_profile_node = collections.namedtuple('_profile_node',
-			'location portage1_directories')
-		repo_pkgmasklines = []
-		repo_pkgunmasklines = []
-		# END PREFIX LOCAL
 		for x in profiles:
 			profile_pkgmasklines.append(grabfile_package(
 				os.path.join(x.location, "package.mask"),
