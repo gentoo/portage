@@ -70,8 +70,8 @@ class Colors(object):
 
 def get_python_executable(ver):
 	"""Find the right python executable for |ver|"""
-	if ver == 'pypy':
-		prog = 'pypy'
+	if ver in ('pypy', 'pypy3'):
+		prog = ver
 	else:
 		prog = 'python' + ver
 	return os.path.join(EPREFIX, 'usr', 'bin', prog)

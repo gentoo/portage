@@ -968,6 +968,12 @@ Specifies CVS repository.
 Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
 the newest commit). If set to 0, the depth is unlimited.
 .TP
+.B sync\-git\-clone\-extra\-opts
+Extra options to give to git when cloning repository (git clone).
+.TP
+.B sync\-git\-pull\-extra\-opts
+Extra options to give to git when updating repository (git pull).
+.TP
 .B sync\-hooks\-only\-on\-change
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the

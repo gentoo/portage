@@ -50,7 +50,10 @@ module_spec = {
 					'exists and is a valid Git repository',
 			},
 			'validate_config': CheckGitConfig,
-			'module_specific_options': (),
+			'module_specific_options': (
+				'sync-git-clone-extra-opts',
+				'sync-git-pull-extra-opts',
+				),
 		}
 	}
 }

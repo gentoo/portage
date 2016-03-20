@@ -54,6 +54,8 @@ class GitSync(NewBase):
 			git_cmd_opts += " --quiet"
 		if self.repo.sync_depth is not None:
 			git_cmd_opts += " --depth %d" % self.repo.sync_depth
+		if self.repo.module_specific_options.get('sync-git-clone-extra-opts'):
+			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-clone-extra-opts']
 		git_cmd = "%s clone%s %s ." % (self.bin_command, git_cmd_opts,
 			portage._shell_quote(sync_uri))
 		writemsg_level(git_cmd + "\n")
@@ -79,6 +81,8 @@ class GitSync(NewBase):
 		git_cmd_opts = ""
 		if self.settings.get("PORTAGE_QUIET") == "1":
 			git_cmd_opts += " --quiet"
+		if self.repo.module_specific_options.get('sync-git-pull-extra-opts'):
+			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-pull-extra-opts']
 		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
 		writemsg_level(git_cmd + "\n")
 

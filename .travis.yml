@@ -8,5 +8,8 @@ python:
 script:
     - ./setup.py test
     - ./setup.py install --root=/tmp/install-root
+    # prevent repoman tests from trying to fetch metadata.dtd
+    - mkdir -p /tmp/install-root/usr/lib/portage/cnf
+    - cp cnf/metadata.dtd /tmp/install-root/usr/lib/portage/cnf/
     - sudo rsync -a /tmp/install-root/. /
     - python -b -Wd -m portage.tests.runTests

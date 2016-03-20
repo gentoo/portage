@@ -1089,6 +1089,9 @@ if ___eapi_has_eapply_user; then
 		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
 		local d applied
+		local prev_shopt=$(shopt -p nullglob)
+		shopt -s nullglob
+
 		# possibilities:
 		# 1. ${CATEGORY}/${P}-${PR} (note: -r0 desired to avoid applying
 		#    ${P} twice)
@@ -1096,11 +1099,13 @@ if ___eapi_has_eapply_user; then
 		# 3. ${CATEGORY}/${PN}
 		# all of the above may be optionally followed by a slot
 		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{,:${SLOT%/*}}; do
-			if [[ -d ${d} ]]; then
+			if [[ -n $(echo "${d}"/*.diff) || -n $(echo "${d}"/*.patch) ]]; then
 				eapply "${d}"
 				applied=1
 			fi
 		done
+
+		${prev_shopt}
 
 		[[ -n ${applied} ]] && ewarn "User patches applied."
 	}

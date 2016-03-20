@@ -550,7 +550,7 @@ class portdbapi(dbapi):
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = [mydata.get(x, "") for x in mylist]
 
-		if cache_me:
+		if cache_me and self.frozen:
 			aux_cache = {}
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
@@ -817,6 +817,7 @@ class portdbapi(dbapi):
 
 	def melt(self):
 		self.xcache = {}
+		self._aux_cache = {}
 		self.frozen = 0
 
 	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):

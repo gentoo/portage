@@ -7,7 +7,6 @@ import time
 
 import portage
 from portage import os
-from portage import shutil
 from portage import _unicode_decode
 from portage.const import PORTAGE_BASE_PATH, PORTAGE_PYM_PATH
 from portage.process import find_binary
@@ -273,11 +272,9 @@ class SimpleRepomanTestCase(TestCase):
 			# involving canonical vs. non-canonical paths.
 			test_repo_symlink = os.path.join(eroot, "test_repo_symlink")
 			os.symlink(test_repo_location, test_repo_symlink)
-			# repoman checks metadata.dtd for recent CTIME, so copy the file in
-			# order to ensure that the CTIME is current
-			# NOTE: if we don't have the file around, let repoman try to fetch it.
-			if os.path.exists(metadata_dtd):
-				shutil.copyfile(metadata_dtd, os.path.join(distdir, "metadata.dtd"))
+			metadata_dtd_dest = os.path.join(test_repo_location, 'metadata/dtd/metadata.dtd')
+			os.makedirs(os.path.dirname(metadata_dtd_dest))
+			os.symlink(metadata_dtd, metadata_dtd_dest)
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
