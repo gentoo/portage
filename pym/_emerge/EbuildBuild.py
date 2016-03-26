@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import io
 
 import _emerge.emergelog
+from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.EbuildExecuter import EbuildExecuter
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.EbuildBinpkg import EbuildBinpkg
@@ -325,8 +326,12 @@ class EbuildBuild(CompositeTask):
 						pkg=self.pkg, scheduler=self.scheduler,
 						settings=self.settings)
 					binpkg_tasks.add(task)
-					task.addExitListener(
-						self._record_binpkg_info)
+					# Guarantee that _record_binpkg_info is called
+					# immediately after EbuildBinpkg. Note that
+					# task.addExitListener does not provide the
+					# necessary guarantee (see bug 578204).
+					binpkg_tasks.add(self._RecordBinpkgInfo(
+						ebuild_binpkg=task, ebuild_build=self))
 
 		if binpkg_tasks:
 			self._start_task(binpkg_tasks, self._buildpkg_exit)
@@ -334,6 +339,19 @@ class EbuildBuild(CompositeTask):
 
 		self._final_exit(build)
 		self.wait()
+
+	class _RecordBinpkgInfo(AsynchronousTask):
+		"""
+		This class wraps the EbuildBuild _record_binpkg_info method
+		with an AsynchronousTask interface, so that it can be
+		scheduled as a member of a TaskSequence.
+		"""
+
+		__slots__ = ('ebuild_binpkg', 'ebuild_build',)
+
+		def _start(self):
+			self.ebuild_build._record_binpkg_info(self.ebuild_binpkg)
+			AsynchronousTask._start(self)
 
 	def _buildpkg_exit(self, packager):
 		"""
