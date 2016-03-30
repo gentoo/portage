@@ -1,5 +1,10 @@
 # -*- coding:utf-8 -*-
 
+'''
+moudules/scan.py
+Module specific package scan list generator
+'''
+
 import logging
 import os
 import sys
@@ -8,6 +13,15 @@ from repoman.errors import caterror
 
 
 def scan(repolevel, reposplit, startdir, categories, repo_settings):
+	'''Generate a list of pkgs to scan
+
+	@param repolevel: integer, number of subdirectories deep from the tree root
+	@param reposplit: list of the path subdirs
+	@param startdir: the top level directory to begin scanning from
+	@param categories: list of known categories
+	@param repo_settings: repository settings instance
+	@returns: scanlist, sorted list of pkgs to scan
+	'''
 	scanlist = []
 	if repolevel == 2:
 		# we are inside a category directory
