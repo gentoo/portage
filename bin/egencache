@@ -775,12 +775,16 @@ class GenChangeLogs(object):
 			# This cp has not been added to the repo.
 			return
 
+		lmod = long(lmod)
+
 		try:
-			cmod = os.stat('ChangeLog').st_mtime
+			cmod = os.stat('ChangeLog')[stat.ST_MTIME]
 		except OSError:
 			cmod = 0
 
-		if float(cmod) >= float(lmod):
+		# Use exact comparison, since commit times are
+		# not necessarily ordered.
+		if cmod == lmod:
 			return
 
 		try:
@@ -903,6 +907,7 @@ class GenChangeLogs(object):
 				'\n%s\n\n' % '\n'.join(self._wrapper.fill(x) for x in body))
 
 		output.close()
+		os.utime(self._changelog_output, (lmod, lmod))
 
 	def _task_iter(self):
 		if not os.path.isdir(os.environ.get('GIT_DIR', os.path.join(self._repo_path, '.git'))):
