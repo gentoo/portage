@@ -60,7 +60,6 @@ class XmlLint(object):
 		self.repoman_settings = repoman_settings
 		self._is_capable = metadata_dtd is not None
 		self.binary = None
-		self._is_capable = False
 		self._check_capable()
 
 	def _check_capable(self):
