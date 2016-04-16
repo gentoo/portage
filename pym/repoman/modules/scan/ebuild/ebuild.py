@@ -8,6 +8,7 @@ from repoman.modules.scan.scanbase import ScanBase
 # import our initialized portage instance
 from repoman._portage import portage
 from portage import os
+from portage.util.futures import InvalidStateError
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 
@@ -127,15 +128,18 @@ class Ebuild(ScanBase):
 	def pkg_invalid(self, **kwargs):
 		'''Sets some pkg info and checks for invalid packages
 
-		@param validity_fuse: Fuse instance
+		@param validity_future: Future instance
 		@returns: dictionary, including {pkg object}
 		'''
-		fuse = kwargs.get('validity_fuse')
+		fuse = kwargs.get('validity_future')
 		if self.pkg.invalid:
 			for k, msgs in self.pkg.invalid.items():
 				for msg in msgs:
 					self.qatracker.add_error(k, "%s: %s" % (self.relative_path, msg))
-			fuse.pop()
+			try:
+				fuse.set_result(False)
+			except InvalidStateError:
+				pass
 			return {'continue': True, 'pkg': self.pkg}
 		return {'continue': False, 'pkg': self.pkg}
 

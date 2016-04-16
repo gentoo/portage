@@ -9,6 +9,7 @@ from _emerge.RootConfig import RootConfig
 from repoman._portage import portage
 
 from portage import os
+from portage.util.futures import InvalidStateError
 
 from repoman.qa_data import no_exec, allvars
 from repoman.modules.scan.scanbase import ScanBase
@@ -35,13 +36,13 @@ class IsEbuild(ScanBase):
 		@param checkdirlist: list of files in the current package directory
 		@param checkdir: current package directory path
 		@param xpkg: current package directory being checked
-		@param validity_fuse: Fuse instance
+		@param validity_future: Future instance
 		@returns: dictionary, including {pkgs, can_force}
 		'''
 		checkdirlist = kwargs.get('checkdirlist')
 		checkdir = kwargs.get('checkdir')
 		xpkg = kwargs.get('xpkg')
-		fuse = kwargs.get('validity_fuse')
+		fuse = kwargs.get('validity_future')
 		can_force = kwargs.get('can_force')
 		self.continue_ = False
 		ebuildlist = []
@@ -64,15 +65,24 @@ class IsEbuild(ScanBase):
 				try:
 					myaux = dict(zip(allvars, self.portdb.aux_get(cpv, allvars)))
 				except KeyError:
-					fuse.pop()
+					try:
+						fuse.set_result(False)
+					except InvalidStateError:
+						pass
 					self.qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
 					continue
 				except IOError:
-					fuse.pop()
+					try:
+						fuse.set_result(False)
+					except InvalidStateError:
+						pass
 					self.qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
 					continue
 				if not portage.eapi_is_supported(myaux["EAPI"]):
-					fuse.pop()
+					try:
+						fuse.set_result(False)
+					except InvalidStateError:
+						pass
 					self.qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
 					continue
 				pkgs[pf] = Package(
@@ -86,7 +96,10 @@ class IsEbuild(ScanBase):
 			# metadata leads to false positives for several checks, and false
 			# positives confuse users.
 			self.continue_ = True
-			can_force.pop()
+			try:
+				fuse.set_result(False)
+			except InvalidStateError:
+				pass
 
 		return {'continue': self.continue_, 'pkgs': pkgs}
 

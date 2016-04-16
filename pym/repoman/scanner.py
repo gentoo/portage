@@ -9,7 +9,7 @@ import portage
 from portage import normalize_path
 from portage import os
 from portage.output import green
-from repoman.fuse import Fuse
+from portage.util.futures import Future
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
@@ -232,7 +232,7 @@ class Scanner(object):
 				'repolevel': self.repolevel,
 				'catdir': catdir,
 				'pkgdir': pkgdir,
-				'validity_fuse': Fuse()
+				'validity_future': Future()
 				}
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
