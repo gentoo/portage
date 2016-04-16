@@ -202,7 +202,18 @@ class Scanner(object):
 					'fetches', 'pkgmetadata']:
 			mod_class = MODULE_CONTROLLER.get_class(mod)
 			logging.debug("Initializing class name: %s", mod_class.__name__)
-			self.modules[mod_class.__name__] = mod_class(**self.kwargs)
+			self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod))
+
+	def set_kwargs(self, mod):
+		'''Creates a limited set of kwargs to pass to the module's __init__()
+
+		@param mod: module name string
+		@returns: dictionary
+		'''
+		kwargs = {}
+		for key in MODULE_CONTROLLER.modules[mod]['mod_kwargs']:
+			kwargs[key] = self.kwargs[key]
+		return kwargs
 
 	def scan_pkgs(self, can_force):
 		for xpkg in self.effective_scanlist:
@@ -295,7 +306,7 @@ class Scanner(object):
 				if mod[0]:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
-					self.modules[mod[1]] = mod_class(**self.kwargs)
+					self.modules[mod[1]] = mod_class(**self.set_kwargs(mod))
 				logging.debug("scan_ebuilds: module: %s", mod[1])
 				do_it, functions = self.modules[mod[1]].runInEbuilds
 				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
@@ -329,7 +340,7 @@ class Scanner(object):
 			if mod[0]:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
 				logging.debug("Initializing class name: %s", mod_class.__name__)
-				self.modules[mod[1]] = mod_class(**self.kwargs)
+				self.modules[mod[1]] = mod_class(**self.set_kwargs(mod))
 			logging.debug("scan_ebuilds final checks: module: %s", mod[1])
 			do_it, functions = self.modules[mod[1]].runInFinal
 			logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
