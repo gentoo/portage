@@ -128,7 +128,7 @@ class SimpleRepomanTestCase(TestCase):
 		}
 		licenses = ["GPL-2"]
 		arch_list = ["x86"]
-		metadata_dtd = os.path.join(PORTAGE_BASE_PATH, "cnf/metadata.dtd")
+		metadata_xsd = os.path.join(PORTAGE_BASE_PATH, "cnf/metadata.xsd")
 		metadata_xml_files = (
 			(
 				"dev-libs/A",
@@ -269,9 +269,9 @@ class SimpleRepomanTestCase(TestCase):
 			# involving canonical vs. non-canonical paths.
 			test_repo_symlink = os.path.join(eroot, "test_repo_symlink")
 			os.symlink(test_repo_location, test_repo_symlink)
-			metadata_dtd_dest = os.path.join(test_repo_location, 'metadata/dtd/metadata.dtd')
-			os.makedirs(os.path.dirname(metadata_dtd_dest))
-			os.symlink(metadata_dtd, metadata_dtd_dest)
+			metadata_xsd_dest = os.path.join(test_repo_location, 'metadata/xml-schema/metadata.xsd')
+			os.makedirs(os.path.dirname(metadata_xsd_dest))
+			os.symlink(metadata_xsd, metadata_xsd_dest)
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
