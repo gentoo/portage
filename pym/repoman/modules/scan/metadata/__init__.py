@@ -20,7 +20,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_dtd',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'xpkg': None, 'checkdir': None, 'checkdirlist': None,
+				'repolevel': None, 'muselist': 'set',
 			},
 		},
 		'ebuild-metadata': {
@@ -33,7 +34,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'ebuild': None, 'catdir': None, 'live_ebuild': None,
+				'xpkg': None, 'y_ebuild': None,
 			},
 		},
 		'description-metadata': {
@@ -46,7 +48,7 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'ebuild': None, 'pkg': None,
 			},
 		},
 		'license-metadata': {
@@ -59,7 +61,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'repo_metadata',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'xpkg': None, 'ebuild': None, 'y_ebuild': None,
+				'badlicsyntax': None,
 			},
 		},
 		'restrict-metadata': {
@@ -72,7 +75,7 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'xpkg': None, 'ebuild': None, 'y_ebuild': None,
 			},
 		},
 		'unused-metadata': {
@@ -85,7 +88,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'xpkg': None, 'muselist': None, 'used_useflags': None,
+				'validity_future': None,
 			},
 		},
 	}

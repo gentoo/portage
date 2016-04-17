@@ -20,7 +20,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'uselist',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'pkg': None, 'xpkg': None, 'ebuild': None,
+				'y_ebuild': None, 'muselist': None, 'ebuild_UsedUseFlags': 'set',
+				'used_useflags': None,
 			},
 		},
 	}

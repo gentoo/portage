@@ -20,7 +20,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'options', 'repo_metadata', 'profiles',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'pkg': None, 'xpkg': None, 'ebuild': None,
+				'y_ebuild': None, 'changed': None, 'live_ebuild': None,
 			},
 		},
 	}

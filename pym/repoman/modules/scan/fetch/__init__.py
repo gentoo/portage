@@ -20,7 +20,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings', 'vcs_settings',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'xpkg': None, 'checkdir': None,
+				'checkdir_relative': None, 'changed': None,
+				'src_uri_error': 'Future',
 			},
 		},
 	}

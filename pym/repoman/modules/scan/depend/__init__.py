@@ -20,7 +20,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'portdb'
 			],
-			'func_kwargs': {
+			'func_kwargs': {'ebuild': None, 'pkg': None, 'unknown_pkgs': 'set',
+				'type_list': [], 'badlicsyntax': 'Future',
+				'baddepsyntax': 'Future',
 			},
 		},
 		'profile-module': {
@@ -35,7 +37,8 @@ module_spec = {
 				'repo_settings', 'include_arches', 'caches',
 				'repoman_incrementals', 'env', 'have', 'dev_keywords'
 			],
-			'func_kwargs': {
+			'func_kwargs': {'arches': 'set', 'ebuild': None, 'pkg': None,
+				'unknown_pkgs': 'set', 'baddepsyntax': 'Future',
 			},
 		},
 		'unknown-module': {
@@ -48,7 +51,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'ebuild': None, 'unknown_pkgs': 'set',
+				'baddepsyntax': 'Future',
 			},
 		},
 	}

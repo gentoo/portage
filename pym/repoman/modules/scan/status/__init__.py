@@ -20,7 +20,8 @@ module_spec = {
 			},
 			'mod_kwargs': ['vcs_settings', 'checks',
 			],
-			'func_kwargs': {
+			'func_kwargs': {'checkdir': None, 'checkdir_relative': None,
+				'xpkg': None, 'eadded': 'Future',
 			},
 		},
 	}
