@@ -47,7 +47,7 @@ class ResolverPlayground(object):
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
-<maintainer>
+<maintainer type="person">
 <email>maintainer-needed@gentoo.org</email>
 <description>Description of the maintainership</description>
 </maintainer>
