@@ -18,7 +18,7 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_dtd',
+			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_xsd',
 			],
 			'func_kwargs': {
 				'checkdir': (None, None),

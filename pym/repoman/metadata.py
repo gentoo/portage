@@ -33,8 +33,9 @@ metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
 	% (metadata_xml_encoding,)
 metadata_doctype_name = 'pkgmetadata'
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
+metadata_xsd_uri = 'http://www.gentoo.org/xml-schema/metadata.xsd'
 # force refetch if the local copy creation time is older than this
-metadata_dtd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
+metadata_xsd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
 
 
 def parse_metadata_use(xml_tree):
@@ -86,36 +87,36 @@ def parse_metadata_use(xml_tree):
 	return uselist
 
 
-def fetch_metadata_dtd(metadata_dtd, repoman_settings):
+def fetch_metadata_xsd(metadata_xsd, repoman_settings):
 	"""
-	Fetch metadata.dtd if it doesn't exist or the ctime is older than
-	metadata_dtd_ctime_interval.
+	Fetch metadata.xsd if it doesn't exist or the ctime is older than
+	metadata_xsd_ctime_interval.
 	@rtype: bool
 	@return: True if successful, otherwise False
 	"""
 
 	must_fetch = True
-	metadata_dtd_st = None
+	metadata_xsd_st = None
 	current_time = int(time.time())
 	try:
-		metadata_dtd_st = os.stat(metadata_dtd)
+		metadata_xsd_st = os.stat(metadata_xsd)
 	except EnvironmentError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
 			raise
 		del e
 	else:
-		# Trigger fetch if metadata.dtd mtime is old or clock is wrong.
-		if abs(current_time - metadata_dtd_st.st_ctime) \
-			< metadata_dtd_ctime_interval:
+		# Trigger fetch if metadata.xsd mtime is old or clock is wrong.
+		if abs(current_time - metadata_xsd_st.st_ctime) \
+			< metadata_xsd_ctime_interval:
 			must_fetch = False
 
 	if must_fetch:
 		print()
 		print(
-			"%s the local copy of metadata.dtd "
+			"%s the local copy of metadata.xsd "
 			"needs to be refetched, doing that now" % green("***"))
 		print()
-		parsed_url = urlparse(metadata_dtd_uri)
+		parsed_url = urlparse(metadata_xsd_uri)
 		setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
 		fcmd = repoman_settings.get(setting)
 		if not fcmd:
@@ -125,29 +126,29 @@ def fetch_metadata_dtd(metadata_dtd, repoman_settings):
 				return False
 
 		destdir = repoman_settings["DISTDIR"]
-		fd, metadata_dtd_tmp = tempfile.mkstemp(
-			prefix='metadata.dtd.', dir=destdir)
+		fd, metadata_xsd_tmp = tempfile.mkstemp(
+			prefix='metadata.xsd.', dir=destdir)
 		os.close(fd)
 
 		try:
 			if not portage.getbinpkg.file_get(
-				metadata_dtd_uri, destdir, fcmd=fcmd,
-				filename=os.path.basename(metadata_dtd_tmp)):
+				metadata_xsd_uri, destdir, fcmd=fcmd,
+				filename=os.path.basename(metadata_xsd_tmp)):
 				logging.error(
-					"failed to fetch metadata.dtd from '%s'" % metadata_dtd_uri)
+					"failed to fetch metadata.xsd from '%s'" % metadata_xsd_uri)
 				return False
 
 			try:
 				portage.util.apply_secpass_permissions(
-					metadata_dtd_tmp,
+					metadata_xsd_tmp,
 					gid=portage.data.portage_gid, mode=0o664, mask=0o2)
 			except portage.exception.PortageException:
 				pass
 
-			shutil.move(metadata_dtd_tmp, metadata_dtd)
+			shutil.move(metadata_xsd_tmp, metadata_xsd)
 		finally:
 			try:
-				os.unlink(metadata_dtd_tmp)
+				os.unlink(metadata_xsd_tmp)
 			except OSError:
 				pass
 

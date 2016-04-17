@@ -56,11 +56,11 @@ class Scanner(object):
 			portage.util.stack_lists([self.categories], incremental=1))
 		self.categories = self.repo_settings.repoman_settings.categories
 
-		metadata_dtd = None
+		metadata_xsd = None
 		for path in reversed(self.repo_settings.repo_config.eclass_db.porttrees):
-			path = os.path.join(path, 'metadata/dtd/metadata.dtd')
+			path = os.path.join(path, 'metadata/xml-schema/metadata.xsd')
 			if os.path.exists(path):
-				metadata_dtd = path
+				metadata_xsd = path
 				break
 
 		self.portdb = repo_settings.portdb
@@ -189,7 +189,7 @@ class Scanner(object):
 			"qatracker": self.qatracker,
 			"vcs_settings": self.vcs_settings,
 			"options": self.options,
-			"metadata_dtd": metadata_dtd,
+			"metadata_xsd": metadata_xsd,
 			"uselist": uselist,
 			"checks": self.checks,
 			"repo_metadata": self.repo_metadata,

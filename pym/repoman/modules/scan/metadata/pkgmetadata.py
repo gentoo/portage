@@ -46,17 +46,17 @@ class PkgMetadata(ScanBase):
 		@param repo_settings: settings instance
 		@param qatracker: QATracker instance
 		@param options: argparse options instance
-		@param metadata_dtd: path of metadata.dtd
+		@param metadata_xsd: path of metadata.xsd
 		'''
 		super(PkgMetadata, self).__init__(**kwargs)
 		repo_settings = kwargs.get('repo_settings')
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
-		metadata_dtd = kwargs.get('metadata_dtd')
+		metadata_xsd = kwargs.get('metadata_xsd')
 		self.repoman_settings = repo_settings.repoman_settings
 		self.musedict = {}
 		self.xmllint = XmlLint(self.options, self.repoman_settings,
-			metadata_dtd=metadata_dtd)
+			metadata_xsd=metadata_xsd)
 
 	def check(self, **kwargs):
 		'''Performs the checks on the metadata.xml for the package
