@@ -153,14 +153,12 @@ pkg_preinst() {
 			(
 				"dev-libs/A",
 				{
-					"herd" : "base-system",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
 			(
 				"dev-libs/B",
 				{
-					"herd" : "no-herd",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
