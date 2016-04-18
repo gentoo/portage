@@ -9,7 +9,6 @@ from _emerge.RootConfig import RootConfig
 from repoman._portage import portage
 
 from portage import os
-from portage.util.futures import InvalidStateError
 
 from repoman.qa_data import no_exec, allvars
 from repoman.modules.scan.scanbase import ScanBase
@@ -65,24 +64,15 @@ class IsEbuild(ScanBase):
 				try:
 					myaux = dict(zip(allvars, self.portdb.aux_get(cpv, allvars)))
 				except KeyError:
-					try:
-						fuse.set_result(False)
-					except InvalidStateError:
-						pass
+					self.set_result_pass([(fuse, False)])
 					self.qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
 					continue
 				except IOError:
-					try:
-						fuse.set_result(False)
-					except InvalidStateError:
-						pass
+					self.set_result_pass([(fuse, False)])
 					self.qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
 					continue
 				if not portage.eapi_is_supported(myaux["EAPI"]):
-					try:
-						fuse.set_result(False)
-					except InvalidStateError:
-						pass
+					self.set_result_pass([(fuse, False)])
 					self.qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
 					continue
 				pkgs[pf] = Package(
@@ -96,12 +86,12 @@ class IsEbuild(ScanBase):
 			# metadata leads to false positives for several checks, and false
 			# positives confuse users.
 			self.continue_ = True
-			try:
-				fuse.set_result(False)
-			except InvalidStateError:
-				pass
-
-		return {'continue': self.continue_, 'pkgs': pkgs}
+			self.set_result_pass([(can_force, False)])
+		# set our updated data
+		self.set_result_raise([
+			(kwargs.get('pkgs'), pkgs),
+			])
+		return self.continue_
 
 	@property
 	def runInPkgs(self):

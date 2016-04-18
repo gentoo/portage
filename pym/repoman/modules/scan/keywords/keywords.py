@@ -26,7 +26,7 @@ class KeywordChecks(ScanBase):
 	def prepare(self, **kwargs):
 		'''Prepare the checks for the next package.'''
 		self.slot_keywords = {}
-		return {'continue': False}
+		return False
 
 	def check(self, **kwargs):
 		'''Perform the check.
@@ -40,9 +40,9 @@ class KeywordChecks(ScanBase):
 		@param live_ebuild: A boolean that determines if this is a live ebuild.
 		@returns: dictionary
 		'''
-		pkg = kwargs.get('pkg')
+		pkg = kwargs.get('pkg').result()
 		xpkg =kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		y_ebuild = kwargs.get('y_ebuild')
 		changed = kwargs.get('changed')
 		live_ebuild = kwargs.get('live_ebuild')
@@ -57,7 +57,7 @@ class KeywordChecks(ScanBase):
 		self._checkForMaskLikeKeywords(xpkg, y_ebuild, ebuild.keywords)
 
 		self.slot_keywords[pkg.slot].update(ebuild.archs)
-		return {'continue': False}
+		return False
 
 	@staticmethod
 	def _isKeywordStable(keyword):

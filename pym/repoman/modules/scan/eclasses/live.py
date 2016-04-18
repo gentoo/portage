@@ -25,9 +25,11 @@ class LiveEclassChecks(ScanBase):
 
 		@returns: dictionary, including {live_ebuild}
 		'''
-		return {'continue': False,
-			'live_ebuild': LIVE_ECLASSES.intersection(
-				kwargs.get('ebuild').inherited)}
+		# update the dynamic data
+		dyn_live = kwargs.get('live_ebuild')
+		dyn_live.update(LIVE_ECLASSES.intersection(
+				kwargs.get('ebuild').inherited))
+		return False
 
 	def check(self, **kwargs):
 		'''Ebuilds that inherit a "Live" eclass (darcs, subversion, git, cvs,
@@ -41,15 +43,15 @@ class LiveEclassChecks(ScanBase):
 		@param global_pmaskdict: A global dictionary of all the masks.
 		@returns: dictionary
 		'''
-		pkg = kwargs.get("pkg")
+		pkg = kwargs.get("pkg").result()
 		package = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		y_ebuild = kwargs.get('y_ebuild')
 		keywords = ebuild.keywords
 
 		if not (kwargs.get('live_ebuild') and
 				self.repo_settings.repo_config.name == "gentoo"):
-			return {'continue': False}
+			return False
 
 		is_stable = lambda kw: not kw.startswith("~") and not kw.startswith("-")
 		bad_stable_keywords = list(filter(is_stable, keywords))
@@ -62,7 +64,7 @@ class LiveEclassChecks(ScanBase):
 		good_keywords_exist = len(bad_stable_keywords) < len(keywords)
 		if good_keywords_exist and not self._has_global_mask(pkg, self.pmaskdict):
 			self.qatracker.add_error("LIVEVCS.unmasked", ebuild.relative_path)
-		return {'continue': False}
+		return False
 
 	@staticmethod
 	def _has_global_mask(pkg, global_pmaskdict):

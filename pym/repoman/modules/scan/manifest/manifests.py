@@ -88,14 +88,14 @@ class Manifests(ScanBase):
 								portage.writemsg_stdout(
 									"   %s::%s\n" % (pf, distfile))
 				# continue, skip remaining main loop code
-				return {'continue': True}
+				return True
 			elif failed:
 				sys.exit(1)
 		if not self.generated_manifest:
 			self.digest_check(xpkg, checkdir)
 		if self.options.mode == 'manifest-check':
-			return {'continue': True}
-		return {'continue': False}
+			return True
+		return False
 
 	def create_manifest(self, checkdir, fetchlist_dict):
 		'''Creates a Manifest file

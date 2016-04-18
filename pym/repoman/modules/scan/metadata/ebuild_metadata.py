@@ -20,7 +20,7 @@ class EbuildMetadata(ScanBase):
 		self.qatracker = kwargs.get('qatracker')
 
 	def invalidchar(self, **kwargs):
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		for k, v in ebuild.metadata.items():
 			if not isinstance(v, basestring):
 				continue
@@ -31,10 +31,10 @@ class EbuildMetadata(ScanBase):
 					"%s: %s variable contains non-ASCII "
 					"character at position %s" %
 					(ebuild.relative_path, k, m.start() + 1))
-		return {'continue': False}
+		return False
 
 	def missing(self, **kwargs):
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		for pos, missing_var in enumerate(missingvars):
 			if not ebuild.metadata.get(missing_var):
 				if kwargs.get('catdir') == "virtual" and \
@@ -45,22 +45,22 @@ class EbuildMetadata(ScanBase):
 				myqakey = missingvars[pos] + ".missing"
 				self.qatracker.add_error(myqakey, '%s/%s.ebuild'
 					% (kwargs.get('xpkg'), kwargs.get('y_ebuild')))
-		return {'continue': False}
+		return False
 
 	def old_virtual(self, **kwargs):
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		if ebuild.metadata.get("PROVIDE"):
 			self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
-		return {'continue': False}
+		return False
 
 	def virtual(self, **kwargs):
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		if kwargs.get('catdir') == "virtual":
 			for var in ("HOMEPAGE", "LICENSE"):
 				if ebuild.metadata.get(var):
 					myqakey = var + ".virtual"
 					self.qatracker.add_error(myqakey, ebuild.relative_path)
-		return {'continue': False}
+		return False
 
 	@property
 	def runInPkgs(self):

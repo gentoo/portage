@@ -23,7 +23,7 @@ class ArchChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary, including arches set
 		'''
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		if self.options.ignore_arches:
 			arches = [[
 				self.repo_settings.repoman_settings["ARCH"], self.repo_settings.repoman_settings["ARCH"],
@@ -67,7 +67,10 @@ class ArchChecks(ScanBase):
 				# Use an empty profile for checking dependencies of
 				# packages that have empty KEYWORDS.
 				arches.add(('**', '**', ('**',)))
-		return {'continue': False, 'arches': arches}
+		# update the dynamic data
+		dyn_arches = kwargs.get('arches')
+		dyn_arches.update(arches)
+		return False
 
 	@property
 	def runInEbuilds(self):

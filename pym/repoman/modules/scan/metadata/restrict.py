@@ -21,7 +21,7 @@ class RestrictChecks(ScanBase):
 
 	def check(self, **kwargs):
 		xpkg = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		y_ebuild = kwargs.get('y_ebuild')
 		myrestrict = None
 
@@ -41,7 +41,7 @@ class RestrictChecks(ScanBase):
 				for mybad in mybadrestrict:
 					self.qatracker.add_error("RESTRICT.invalid",
 						"%s/%s.ebuild: %s" % (xpkg, y_ebuild, mybad))
-		return {'continue': False}
+		return False
 
 	@property
 	def runInPkgs(self):

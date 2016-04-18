@@ -86,7 +86,7 @@ class FileChecks(ScanBase):
 			finally:
 				if f is not None:
 					f.close()
-		return {'continue': False}
+		return False
 
 	@property
 	def runInPkgs(self):

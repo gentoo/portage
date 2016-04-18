@@ -23,11 +23,11 @@ class EAPIChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 
 		if not self._checkBanned(ebuild):
 			self._checkDeprecated(ebuild)
-		return {'continue': False}
+		return False
 
 	def _checkBanned(self, ebuild):
 		if self.repo_settings.repo_config.eapi_is_banned(ebuild.eapi):

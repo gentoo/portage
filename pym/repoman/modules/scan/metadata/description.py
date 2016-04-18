@@ -21,8 +21,8 @@ class DescriptionChecks(ScanBase):
 		@param pkg: Package in which we check (object).
 		@param ebuild: Ebuild which we check (object).
 		'''
-		ebuild = kwargs.get('ebuild')
-		pkg = kwargs.get('pkg')
+		ebuild = kwargs.get('ebuild').result()
+		pkg = kwargs.get('pkg').result()
 		# 14 is the length of DESCRIPTION=""
 		if len(pkg._metadata['DESCRIPTION']) > max_desc_len:
 			self.qatracker.add_error(
@@ -30,7 +30,7 @@ class DescriptionChecks(ScanBase):
 				"%s: DESCRIPTION is %d characters (max %d)" %
 				(ebuild.relative_path, len(
 					pkg._metadata['DESCRIPTION']), max_desc_len))
-		return {'continue': False}
+		return False
 
 	@property
 	def runInPkgs(self):

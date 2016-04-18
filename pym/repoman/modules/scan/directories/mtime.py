@@ -15,14 +15,14 @@ class MtimeChecks(ScanBase):
 		@param changed: dictionary instance
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		changed = kwargs.get('changed')
-		pkg = kwargs.get('pkg')
+		pkg = kwargs.get('pkg').result()
 		if not self.vcs_settings.vcs_preserves_mtime:
 			if ebuild.ebuild_path not in changed.new_ebuilds and \
 					ebuild.ebuild_path not in changed.ebuilds:
 				pkg.mtime = None
-		return {'continue': False}
+		return False
 
 	@property
 	def runInEbuilds(self):

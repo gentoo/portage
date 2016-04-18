@@ -21,7 +21,7 @@ module_spec = {
 			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings'
 			],
 			'func_kwargs': {'checkdirlist': 'list', 'checkdir': None, 'xpkg': None,
-				'validity_fuse': None, 'can_force': 'Future', 'pkgs': 'dict',
+				'validity_fuse': None, 'can_force': None, 'pkgs': 'dict',
 			},
 		},
 		'ebuild-module': {

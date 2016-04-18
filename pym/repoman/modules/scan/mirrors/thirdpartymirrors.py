@@ -33,9 +33,9 @@ class ThirdPartyMirrors(ScanBase):
 		@param src_uri_error: boolean
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild')
-		if kwargs.get('src_uri_error'):
-			return {'continue': True}
+		ebuild = kwargs.get('ebuild').result()
+		if self.get_result(kwargs.get('src_uri_error'), False):
+			return True
 		for uri in portage.dep.use_reduce(
 			ebuild.metadata["SRC_URI"], matchall=True, is_src_uri=True,
 			eapi=ebuild.eapi, flat=True):
@@ -52,7 +52,7 @@ class ThirdPartyMirrors(ScanBase):
 				"SRC_URI.mirror",
 				"%s: '%s' found in thirdpartymirrors, use '%s'" % (
 					ebuild.relative_path, mirror, new_uri))
-		return {'continue': False}
+		return False
 
 	@property
 	def runInEbuilds(self):

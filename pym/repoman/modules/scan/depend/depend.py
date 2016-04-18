@@ -26,11 +26,10 @@ class DependChecks(ScanBase):
 
 		@param pkg: Package in which we check (object).
 		@param ebuild: Ebuild which we check (object).
-		@returns: dictionary including {unknown_pkgs, type_list,
-										badlicsyntax, baddepsyntax}
+		@returns: boolean
 		'''
-		ebuild = kwargs.get('ebuild')
-		pkg = kwargs.get('pkg')
+		ebuild = kwargs.get('ebuild').result()
+		pkg = kwargs.get('pkg').result()
 
 		unknown_pkgs = set()
 
@@ -144,8 +143,16 @@ class DependChecks(ScanBase):
 		badlicsyntax = badlicsyntax > 0
 		#badprovsyntax = badprovsyntax > 0
 
-		return {'continue': False, 'unknown_pkgs': unknown_pkgs, 'type_list': type_list,
-			'badlicsyntax': badlicsyntax, 'baddepsyntax': baddepsyntax}
+		# update the dynamic data
+		dyn_unknown = kwargs.get('unknown_pkgs')
+		dyn_unknown.update(unknown_pkgs)
+		dyn_type_list = kwargs.get('type_list')
+		dyn_type_list.extend(type_list)
+		self.set_result_pass([
+			(kwargs.get('badlicsyntax'), badlicsyntax),
+			(kwargs.get('baddepsyntax'), baddepsyntax),
+			])
+		return False
 
 	@property
 	def runInEbuilds(self):

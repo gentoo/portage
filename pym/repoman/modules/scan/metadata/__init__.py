@@ -21,7 +21,7 @@ module_spec = {
 			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_dtd',
 			],
 			'func_kwargs': {'xpkg': None, 'checkdir': None, 'checkdirlist': None,
-				'repolevel': None, 'muselist': 'set',
+				'repolevel': None, 'muselist': 'Future',
 			},
 		},
 		'ebuild-metadata': {

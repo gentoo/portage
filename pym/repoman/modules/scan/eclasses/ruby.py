@@ -25,8 +25,8 @@ class RubyEclassChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary
 		'''
-		pkg = kwargs.get('pkg')
-		ebuild = kwargs.get('ebuild')
+		pkg = kwargs.get('pkg').result()
+		ebuild = kwargs.get('ebuild').result()
 		is_inherited = lambda eclass: eclass in pkg.inherited
 		is_old_ruby_eclass_inherited = filter(
 			is_inherited, self.old_ruby_eclasses)
@@ -40,7 +40,7 @@ class RubyEclassChecks(ScanBase):
 						"IUSE.rubydeprecated",
 						(ebuild.relative_path + ": Deprecated ruby target: %s")
 						% myruby)
-		return {'continue': False}
+		return False
 
 	@property
 	def runInEbuilds(self):

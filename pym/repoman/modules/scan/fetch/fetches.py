@@ -130,7 +130,9 @@ class FetchChecks(ScanBase):
 					self.qatracker.add_error(
 						"file.name",
 						"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
-		return {'continue': False, 'src_uri_error': self._src_uri_error}
+		# update the dynamic data
+		self.set_result_pass([(kwargs.get('src_uri_error'), self._src_uri_error)])
+		return False
 
 	def digests(self, checkdir):
 		'''Returns the freshly loaded digests

@@ -8,7 +8,6 @@ from repoman.modules.scan.scanbase import ScanBase
 # import our initialized portage instance
 from repoman._portage import portage
 from portage import os
-from portage.util.futures import InvalidStateError
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 
@@ -86,7 +85,9 @@ class Ebuild(ScanBase):
 			# ebuild not added to vcs
 			self.qatracker.add_error(
 				"ebuild.notadded", self.xpkg + "/" + self.y_ebuild + ".ebuild")
-		return {'continue': False, 'ebuild': self}
+		# update the dynamic data
+		self.set_result_raise([('ebuild', self)])
+		return False
 
 	def set_pkg_data(self, **kwargs):
 		'''Sets some classwide data needed for some of the checks
@@ -100,7 +101,7 @@ class Ebuild(ScanBase):
 		self.inherited = self.pkg.inherited
 		self.keywords = self.metadata["KEYWORDS"].split()
 		self.archs = set(kw.lstrip("~") for kw in self.keywords if not kw.startswith("-"))
-		return {'continue': False}
+		return False
 
 	def bad_split_check(self, **kwargs):
 		'''Checks for bad category/package splits.
@@ -117,13 +118,13 @@ class Ebuild(ScanBase):
 			if is_pv_toolong or is_pv_toolong2:
 				self.qatracker.add_error(
 					"ebuild.invalidname", self.xpkg + "/" + self.y_ebuild + ".ebuild")
-				return {'continue': True}
+				return True
 		elif myesplit[0] != pkgdir:
 			print(pkgdir, myesplit[0])
 			self.qatracker.add_error(
 				"ebuild.namenomatch", self.xpkg + "/" + self.y_ebuild + ".ebuild")
-			return {'continue': True}
-		return {'continue': False}
+			return True
+		return False
 
 	def pkg_invalid(self, **kwargs):
 		'''Sets some pkg info and checks for invalid packages
@@ -136,12 +137,18 @@ class Ebuild(ScanBase):
 			for k, msgs in self.pkg.invalid.items():
 				for msg in msgs:
 					self.qatracker.add_error(k, "%s: %s" % (self.relative_path, msg))
-			try:
-				fuse.set_result(False)
-			except InvalidStateError:
-				pass
-			return {'continue': True, 'pkg': self.pkg}
-		return {'continue': False, 'pkg': self.pkg}
+			# update the dynamic data
+			self.set_result_pass([
+				(fuse, False),])
+			self.set_result_raise([
+				(kwargs.get('pkg'), self.pkg),
+				])
+			return True
+		# update the dynamic data
+		self.set_result_raise([
+			(kwargs.get('pkg'), self.pkg),
+			])
+		return False
 
 	@property
 	def runInEbuilds(self):

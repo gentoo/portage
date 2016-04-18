@@ -26,9 +26,9 @@ class LicenseChecks(ScanBase):
 		@param y_ebuild: Ebuild which we check (string).
 		'''
 		xpkg = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild')
+		ebuild = kwargs.get('ebuild').result()
 		y_ebuild = kwargs.get('y_ebuild')
-		if not kwargs.get('badlicsyntax'):
+		if not self.get_result(kwargs.get('badlicsyntax'), False):
 			# Parse the LICENSE variable, remove USE conditions and flatten it.
 			licenses = portage.dep.use_reduce(
 				ebuild.metadata["LICENSE"], matchall=1, flat=True)
@@ -43,7 +43,7 @@ class LicenseChecks(ScanBase):
 				elif lic in self.repo_metadata['lic_deprecated']:
 					self.qatracker.add_error("LICENSE.deprecated",
 						"%s: %s" % (ebuild.relative_path, lic))
-		return {'continue': False}
+		return False
 
 	@property
 	def runInPkgs(self):

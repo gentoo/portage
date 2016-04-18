@@ -28,6 +28,8 @@ MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
 # initial development debug info
 logging.debug("module_names: %s", MODULE_NAMES)
 
+DATA_TYPES = {'dict': dict, 'Future': Future, 'list': list, 'set': set}
+
 
 class Scanner(object):
 	'''Primary scan class.  Operates all the small Q/A tests and checks'''
@@ -177,6 +179,9 @@ class Scanner(object):
 				chain(self.changed.changed, self.changed.new, self.changed.removed),
 				self.repolevel, self.reposplit, self.categories))
 
+		self.pkgs = None
+		self.eadded = False
+
 		# Create our kwargs dict here to initialize the plugins with
 		self.kwargs = {
 			"repo_settings": self.repo_settings,
@@ -213,6 +218,28 @@ class Scanner(object):
 		kwargs = {}
 		for key in MODULE_CONTROLLER.modules[mod]['mod_kwargs']:
 			kwargs[key] = self.kwargs[key]
+		return kwargs
+
+	@staticmethod
+	def set_func_kwargs(mod, dynamic_data=None):
+		'''Updates the dynamic_data dictionary with any new key, value pairs.
+		Creates a limited set of kwargs to pass to the modulefunctions to run
+
+		@param mod: module name string
+		@param dynamic_data: dictionary structure
+		@returns: dictionary
+		'''
+		func_kwargs = MODULE_CONTROLLER.modules[mod]['func_kwargs']
+		# determine new keys
+		required = set(func_kwargs.viewkeys())
+		exist = set(dynamic_data.viewkeys())
+		new = exist.difference(required)
+		# update dynamic_data with initialized entries
+		for key in new:
+			dynamic_data[key] = DATA_TYPES[func_kwargs['key']]()
+		kwargs = {}
+		for key in required:
+			kwargs[key] = dynamic_data[key]
 		return kwargs
 
 	def scan_pkgs(self, can_force):
@@ -252,8 +279,8 @@ class Scanner(object):
 				do_it, functions = self.modules[mod].runInPkgs
 				if do_it:
 					for func in functions:
-						rdata = func(**dynamic_data)
-						if rdata.get('continue', False):
+						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
 							# Do not try to do any more QA checks on this package since missing
@@ -261,7 +288,6 @@ class Scanner(object):
 							# positives confuse users.
 							xpkg_continue = True
 							break
-						dynamic_data.update(rdata)
 
 			if xpkg_continue:
 				continue
@@ -313,8 +339,8 @@ class Scanner(object):
 				if do_it:
 					for func in functions:
 						logging.debug("\tRunning function: %s", func)
-						rdata = func(**dynamic_data)
-						if rdata.get('continue', False):
+						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
 							# Do not try to do any more QA checks on this package since missing
@@ -323,9 +349,6 @@ class Scanner(object):
 							y_ebuild_continue = True
 							# logging.debug("\t>>> Continuing")
 							break
-						# logging.debug("rdata: %s", rdata)
-						dynamic_data.update(rdata)
-						# logging.debug("dynamic_data: %s", dynamic_data)
 
 			if y_ebuild_continue:
 				continue
@@ -347,14 +370,11 @@ class Scanner(object):
 			if do_it:
 				for func in functions:
 					logging.debug("\tRunning function: %s", func)
-					rdata = func(**dynamic_data)
-					if rdata.get('continue', False):
+					_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+					if _continue:
 						xpkg_complete = True
 						# logging.debug("\t>>> Continuing")
 						break
-					# logging.debug("rdata: %s", rdata)
-					dynamic_data.update(rdata)
-					# logging.debug("dynamic_data: %s", dynamic_data)
 
 		if xpkg_complete:
 			return

@@ -31,7 +31,11 @@ class VCSStatus(ScanBase):
 		xpkg = kwargs.get('xpkg')
 		if self.check_not_added:
 			self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
-		return {'continue': False, 'eadded': self.vcs_settings.status.eadded}
+		# update the dynamic data
+		self.set_result_pass([
+			(kwargs.get('eadded'), self.vcs_settings.status.eadded),
+			])
+		return False
 
 	@property
 	def runInPkgs(self):

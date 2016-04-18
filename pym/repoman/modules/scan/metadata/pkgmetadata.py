@@ -73,7 +73,11 @@ class PkgMetadata(ScanBase):
 
 		self.musedict = {}
 		if self.options.mode in ['manifest']:
-			return {'continue': False, 'muselist': frozenset(self.musedict)}
+			# update the dynamic data
+			self.set_result_raise([
+				(kwargs.get('muselist'), frozenset(self.musedict))
+				])
+			return False
 
 		# metadata.xml file check
 		if "metadata.xml" not in checkdirlist:
@@ -184,7 +188,11 @@ class PkgMetadata(ScanBase):
 				if not self.xmllint.check(checkdir, repolevel):
 					self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 			del metadata_bad
-		return {'continue': False, 'muselist': frozenset(self.musedict)}
+		# update the dynamic data
+		self.set_result_raise([
+			(kwargs.get('muselist'), frozenset(self.musedict))
+			])
+		return False
 
 	@property
 	def runInPkgs(self):

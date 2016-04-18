@@ -20,8 +20,8 @@ class Options(ScanBase):
 			# The dep_check() calls are the most expensive QA test. If --force
 			# is enabled, there's no point in wasting time on these since the
 			# user is intent on forcing the commit anyway.
-			return {'continue': True}
-		return {'continue': False}
+			return True
+		return False
 
 	@property
 	def runInEbuilds(self):

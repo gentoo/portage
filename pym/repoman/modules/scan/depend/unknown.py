@@ -16,13 +16,13 @@ class DependUnknown(ScanBase):
 	def check(self, **kwargs):
 		'''Perform unknown dependancy checks
 
-		@param ebuild: Ebuild which we check (object).
-		@param baddepsyntax: boolean
+		@param ebuild: Future.result == Ebuild which we check (object).
+		@param baddepsyntax: Future.result == boolean
 		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild')
-		baddepsyntax = kwargs.get('baddepsyntax')
+		ebuild = kwargs.get('ebuild').result()
+		baddepsyntax = self.get_result(kwargs.get('baddepsyntax'), False)
 		unknown_pkgs = kwargs.get('unknown_pkgs')
 
 		if not baddepsyntax and unknown_pkgs:
@@ -33,7 +33,7 @@ class DependUnknown(ScanBase):
 				self.qatracker.add_error(
 					"dependency.unknown", "%s: %s: %s"
 					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
-		return {'continue': False}
+		return False
 
 	@property
 	def runInEbuilds(self):
