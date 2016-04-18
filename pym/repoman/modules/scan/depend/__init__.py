@@ -21,8 +21,7 @@ module_spec = {
 			'mod_kwargs': ['qatracker', 'portdb'
 			],
 			'func_kwargs': {'ebuild': None, 'pkg': None, 'unknown_pkgs': 'set',
-				'type_list': 'list', 'badlicsyntax': 'Future',
-				'baddepsyntax': 'Future',
+				'badlicsyntax': 'Future', 'baddepsyntax': 'Future',
 			},
 		},
 		'profile-module': {
