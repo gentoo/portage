@@ -1,5 +1,5 @@
 #!/usr/bin/python -bO
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -1009,7 +1009,7 @@ list_preserved_libs.__doc__ = docstrings['list_preserved_libs']
 
 class MaintainerEmailMatcher(object):
 	def __init__(self, maintainer_emails):
-		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
+		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails), re.I)
 
 	def __call__(self, metadata_xml):
 		match = False
