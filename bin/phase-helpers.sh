@@ -806,7 +806,7 @@ __eapi4_src_install() {
 
 __eapi6_src_prepare() {
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
-		eapply "${PATCHES[@]}"
+		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
 	fi
