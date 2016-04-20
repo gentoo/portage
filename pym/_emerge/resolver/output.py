@@ -271,6 +271,8 @@ class Display(object):
 					return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
 				elif pkg_info.world:
 					return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
+				elif pkg_info.user_set:
+					return colorize("PKG_BINARY_MERGE_USER_SET", pkg_str)
 				else:
 					return colorize("PKG_BINARY_MERGE", pkg_str)
 			else:
@@ -278,6 +280,8 @@ class Display(object):
 					return colorize("PKG_MERGE_SYSTEM", pkg_str)
 				elif pkg_info.world:
 					return colorize("PKG_MERGE_WORLD", pkg_str)
+				elif pkg_info.user_set:
+					return colorize("PKG_MERGE_USER_SET", pkg_str)
 				else:
 					return colorize("PKG_MERGE", pkg_str)
 		elif pkg_info.operation == "uninstall":
@@ -287,6 +291,8 @@ class Display(object):
 				return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
 			elif pkg_info.world:
 				return colorize("PKG_NOMERGE_WORLD", pkg_str)
+			elif pkg_info.user_set:
+				return colorize("PKG_NOMERGE_USER_SET", pkg_str)
 			else:
 				return colorize("PKG_NOMERGE", pkg_str)
 
@@ -699,18 +705,21 @@ class Display(object):
 		return
 
 
-	def check_system_world(self, pkg):
-		"""Checks for any occurances of the package in the system or world sets
+	def check_sets(self, pkg):
+		"""Checks for any occurances of the package in portage sets
 
 		@param pkg: _emerge.Package.Package instance
-		@rtype system and world booleans
+		@rtype user_set, system, and world booleans
 		"""
 		root_config = self.conf.roots[pkg.root]
 		system_set = root_config.sets["system"]
 		world_set  = root_config.sets["selected"]
-		system = False
-		world = False
+		user_set = None
+		system = None
+		world = None
 		try:
+			user_set = self.conf.user_sets[pkg.root].findAtomForPackage(
+				pkg, modified_use=self.conf.pkg_use_enabled(pkg))
 			system = system_set.findAtomForPackage(
 				pkg, modified_use=self.conf.pkg_use_enabled(pkg))
 			world = world_set.findAtomForPackage(
@@ -726,7 +735,7 @@ class Display(object):
 		except InvalidDependString:
 			# This is reported elsewhere if relevant.
 			pass
-		return system, world
+		return user_set, system, world
 
 
 	@staticmethod
@@ -863,8 +872,8 @@ class Display(object):
 				self.oldlp = self.conf.columnwidth - 30
 				self.newlp = self.oldlp - 30
 				pkg_info.oldbest = self.convert_myoldbest(pkg, pkg_info)
-				pkg_info.system, pkg_info.world = \
-					self.check_system_world(pkg)
+				pkg_info.user_set, pkg_info.system, pkg_info.world = \
+					self.check_sets(pkg)
 				if 'interactive' in pkg.properties and \
 					pkg.operation == 'merge':
 					pkg_info.attr_display.interactive = True

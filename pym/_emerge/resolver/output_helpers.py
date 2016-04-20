@@ -13,6 +13,7 @@ __all__ = (
 import io
 import re
 import sys
+from itertools import chain
 
 from portage import os
 from portage import _encodings, _unicode_encode
@@ -212,6 +213,14 @@ class _DisplayConfig(object):
 		self.target_root = frozen_config.target_root
 		self.running_root = frozen_config._running_root
 		self.roots = frozen_config.roots
+
+		# Create a single merged user set for each root
+		self.user_sets = {}
+		for root_name, root in self.roots.items():
+			self.user_sets[root_name] = InternalPackageSet(initial_atoms= \
+				chain.from_iterable(pkgset.getAtoms() \
+				for pkgset in root.sets.values() \
+				if pkgset.user_set))
 
 		self.blocker_parents = dynamic_config._blocker_parents
 		self.reinstall_nodes = dynamic_config._reinstall_nodes
@@ -596,7 +605,8 @@ class PkgInfo(object):
 	__slots__ = ("attr_display", "built", "cp",
 		"ebuild_path", "fetch_symbol", "merge",
 		"oldbest", "oldbest_list", "operation", "ordered", "previous_pkg",
-		"repo_name", "repo_path_real", "slot", "sub_slot", "system", "use", "ver", "world")
+		"repo_name", "repo_path_real", "user_set", "slot", "sub_slot",
+                "system", "use", "ver", "world")
 
 
 	def __init__(self):
@@ -612,12 +622,13 @@ class PkgInfo(object):
 		self.previous_pkg = None
 		self.repo_path_real = ''
 		self.repo_name = ''
+		self.user_set = None
 		self.slot = ''
 		self.sub_slot = ''
-		self.system = False
+		self.system = None
 		self.use = ''
 		self.ver = ''
-		self.world = False
+		self.world = None
 		self.attr_display = PkgAttrDisplay()
 
 class PkgAttrDisplay(SlotObject):
