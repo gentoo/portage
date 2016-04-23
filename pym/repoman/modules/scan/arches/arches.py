@@ -69,7 +69,7 @@ class ArchChecks(ScanBase):
 				arches.add(('**', '**', ('**',)))
 		# update the dynamic data
 		dyn_arches = kwargs.get('arches')
-		#dyn_arches.clear()
+		dyn_arches.clear()
 		dyn_arches.update(arches)
 		return False
 
