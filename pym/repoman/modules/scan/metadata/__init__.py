@@ -48,7 +48,7 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'ebuild': None, 'pkg': None,
+			'func_kwargs': {'ebuild': None, 'pkg': 'Future',
 			},
 		},
 		'license-metadata': {

@@ -86,7 +86,7 @@ class Ebuild(ScanBase):
 			self.qatracker.add_error(
 				"ebuild.notadded", self.xpkg + "/" + self.y_ebuild + ".ebuild")
 		# update the dynamic data
-		self.set_result_raise([('ebuild', self)])
+		self.set_result_raise([(kwargs.get('ebuild'), self)])
 		return False
 
 	def set_pkg_data(self, **kwargs):

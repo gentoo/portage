@@ -23,7 +23,7 @@ class UnusedCheck(ScanBase):
 		@param validity_future: Future instance
 		'''
 		xpkg = kwargs.get('xpkg')
-		muselist = kwargs.get('muselist').result()
+		muselist = self.get_result(kwargs.get('muselist'), set())
 		used_useflags = kwargs.get('used_useflags')
 		valid_state = self.get_result(kwargs['validity_future'], True)
 		# check if there are unused local USE-descriptions in metadata.xml

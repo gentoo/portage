@@ -42,20 +42,21 @@ class USEFlagChecks(ScanBase):
 		package = kwargs.get('xpkg')
 		ebuild = kwargs.get('ebuild').result()
 		y_ebuild = kwargs.get('y_ebuild')
-		localUseFlags = kwargs.get('muselist').result()
+		localUseFlags = self.get_result(kwargs.get('muselist'), set())
+		dyn_ebuild_used = kwargs.get('ebuild_UsedUseFlags')
+		dyn_used = kwargs.get('used_useflags')
 		# reset state variables for the run
 		self.useFlags = []
 		self.defaultUseFlags = []
 		self.usedUseFlags = set()
+		dyn_ebuild_used.clear()
+		# perform the checks
 		self._checkGlobal(pkg)
 		self._checkMetadata(package, ebuild, y_ebuild, localUseFlags)
 		self._checkRequiredUSE(pkg, ebuild)
 		# update the dynamic data
-		used_useflags = kwargs.get('used_useflags').union(self.usedUseFlags)
-		dyn_ebuild_used = kwargs.get('ebuild_UsedUseFlags')
-		dyn_ebuild_used.update(self.usedUseFlags)
-		dyn_used = kwargs.get('used_useflags')
-		dyn_used.update(used_useflags)
+		dyn_ebuild_used.union(self.usedUseFlags)
+		dyn_used.update(self.usedUseFlags)
 		return False
 
 

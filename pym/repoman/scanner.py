@@ -203,11 +203,6 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		for mod in ['manifests', 'isebuild', 'keywords', 'files', 'vcsstatus',
-					'fetches', 'pkgmetadata']:
-			mod_class = MODULE_CONTROLLER.get_class(mod)
-			logging.debug("Initializing class name: %s", mod_class.__name__)
-			self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod))
 
 	def set_kwargs(self, mod):
 		'''Creates a limited set of kwargs to pass to the module's __init__()
@@ -231,16 +226,24 @@ class Scanner(object):
 		'''
 		func_kwargs = MODULE_CONTROLLER.modules[mod]['func_kwargs']
 		# determine new keys
-		required = set(func_kwargs.viewkeys())
-		exist = set(dynamic_data.viewkeys())
-		new = exist.difference(required)
+		required = set(list(func_kwargs))
+		exist = set(list(dynamic_data))
+		new = required.difference(exist)
 		# update dynamic_data with initialized entries
 		for key in new:
-			dynamic_data[key] = DATA_TYPES[func_kwargs['key']]()
+			logging.debug("set_func_kwargs(); adding: %s, %s",
+				key, func_kwargs[key])
+			dynamic_data[key] = DATA_TYPES[func_kwargs[key]]()
 		kwargs = {}
 		for key in required:
 			kwargs[key] = dynamic_data[key]
 		return kwargs
+
+	def reset_futures(self, dynamic_data):
+		for key in list(dynamic_data):
+			#if key in ['ebuild', 'pkg']:  # and isinstance(dynamic_data[key], Future):
+			if isinstance(dynamic_data[key], Future) and key not in ['muselist']:
+				dynamic_data[key] = Future()
 
 	def scan_pkgs(self, can_force):
 		for xpkg in self.effective_scanlist:
@@ -270,16 +273,26 @@ class Scanner(object):
 				'repolevel': self.repolevel,
 				'catdir': catdir,
 				'pkgdir': pkgdir,
-				'validity_future': Future()
+				'validity_future': Future(),
+				'y_ebuild': None,
+				# this needs to be reset at the pkg level only,
+				# easiest is to just initialize it here
+				'muselist': Future(),
 				}
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in ['Manifests', 'IsEbuild', 'KeywordChecks', 'FileChecks',
-						'VCSStatus', 'FetchChecks', 'PkgMetadata']:
-				logging.debug("scan_pkgs; module: %s", mod)
-				do_it, functions = self.modules[mod].runInPkgs
+			for mod in [('manifests', 'Manifests'), ('isebuild', 'IsEbuild'),
+						('keywords', 'KeywordChecks'), ('files', 'FileChecks'),
+						('vcsstatus', 'VCSStatus'), ('fetches', 'FetchChecks'),
+						('pkgmetadata', 'PkgMetadata'),
+						]:
+				mod_class = MODULE_CONTROLLER.get_class(mod[0])
+				logging.debug("Initializing class name: %s", mod_class.__name__)
+				self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod[0]))
+				logging.debug("scan_pkgs; module: %s", mod[1])
+				do_it, functions = self.modules[mod[1]].runInPkgs
 				if do_it:
 					for func in functions:
-						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+						_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
 						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
@@ -312,6 +325,7 @@ class Scanner(object):
 		dynamic_data['used_useflags'] = set()
 
 		for y_ebuild in ebuildlist:
+			self.reset_futures(dynamic_data)
 			dynamic_data['y_ebuild'] = y_ebuild
 			y_ebuild_continue = False
 
@@ -320,7 +334,8 @@ class Scanner(object):
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
-				('description', 'DescriptionChecks'), (None, 'KeywordChecks'),
+				('description', 'DescriptionChecks'),
+				('keywords', 'KeywordChecks'),
 				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
@@ -329,17 +344,17 @@ class Scanner(object):
 				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
 				('unknown', 'DependUnknown'),
 				]:
-				if mod[0]:
+				if mod[0] and mod[1] not in self.modules:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
 					logging.debug("Initializing class name: %s", mod_class.__name__)
-					self.modules[mod[1]] = mod_class(**self.set_kwargs(mod))
+					self.modules[mod[1]] = mod_class(**self.set_kwargs(mod[0]))
 				logging.debug("scan_ebuilds: module: %s", mod[1])
 				do_it, functions = self.modules[mod[1]].runInEbuilds
 				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 				if do_it:
 					for func in functions:
 						logging.debug("\tRunning function: %s", func)
-						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+						_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
 						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
@@ -363,14 +378,14 @@ class Scanner(object):
 			if mod[0]:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
 				logging.debug("Initializing class name: %s", mod_class.__name__)
-				self.modules[mod[1]] = mod_class(**self.set_kwargs(mod))
+				self.modules[mod[1]] = mod_class(**self.set_kwargs(mod[0]))
 			logging.debug("scan_ebuilds final checks: module: %s", mod[1])
 			do_it, functions = self.modules[mod[1]].runInFinal
 			logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 			if do_it:
 				for func in functions:
 					logging.debug("\tRunning function: %s", func)
-					_continue = func(**self.set_func_kwargs(mod, dynamic_data))
+					_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
 					if _continue:
 						xpkg_complete = True
 						# logging.debug("\t>>> Continuing")

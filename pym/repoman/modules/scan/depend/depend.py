@@ -145,6 +145,7 @@ class DependChecks(ScanBase):
 
 		# update the dynamic data
 		dyn_unknown = kwargs.get('unknown_pkgs')
+		dyn_unknown.clear()
 		dyn_unknown.update(unknown_pkgs)
 		self.set_result_pass([
 			(kwargs.get('badlicsyntax'), badlicsyntax),

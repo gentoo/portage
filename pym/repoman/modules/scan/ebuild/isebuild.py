@@ -13,6 +13,7 @@ from portage import os
 from repoman.qa_data import no_exec, allvars
 from repoman.modules.scan.scanbase import ScanBase
 
+
 class IsEbuild(ScanBase):
 	'''Performs basic tests to confirm it is an ebuild'''
 
@@ -88,9 +89,13 @@ class IsEbuild(ScanBase):
 			self.continue_ = True
 			self.set_result_pass([(can_force, False)])
 		# set our updated data
-		self.set_result_raise([
-			(kwargs.get('pkgs'), pkgs),
-			])
+		dyn_pkgs = kwargs.get('pkgs')
+		# clear() sets it to None,
+		# we don't want to kill the pointer reference
+		# just set it back to an empty dict()
+		for key in list(dyn_pkgs):
+			dyn_pkgs.pop(key)
+		dyn_pkgs.update(pkgs)
 		return self.continue_
 
 	@property

@@ -25,10 +25,11 @@ class LiveEclassChecks(ScanBase):
 
 		@returns: dictionary, including {live_ebuild}
 		'''
+		ebuild = kwargs.get('ebuild').result()
 		# update the dynamic data
 		dyn_live = kwargs.get('live_ebuild')
-		dyn_live.update(LIVE_ECLASSES.intersection(
-				kwargs.get('ebuild').inherited))
+		#dyn_live.clear()
+		dyn_live.update(LIVE_ECLASSES.intersection(ebuild.inherited))
 		return False
 
 	def check(self, **kwargs):
