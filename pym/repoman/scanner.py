@@ -9,7 +9,7 @@ import portage
 from portage import normalize_path
 from portage import os
 from portage.output import green
-from portage.util.futures import Future
+from portage.util.futures.futures import Future
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
