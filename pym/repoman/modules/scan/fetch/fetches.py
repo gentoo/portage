@@ -32,13 +32,22 @@ class FetchChecks(ScanBase):
 		self.vcs_settings = kwargs.get('vcs_settings')
 		self._src_uri_error = False
 
+		# TODO: Build a regex instead here, for the SRC_URI.mirror check.
+		self.thirdpartymirrors = {}
+		profile_thirdpartymirrors = self.repo_settings.repoman_settings.thirdpartymirrors().items()
+		for mirror_alias, mirrors in profile_thirdpartymirrors:
+			for mirror in mirrors:
+				if not mirror.endswith("/"):
+					mirror += "/"
+				self.thirdpartymirrors[mirror] = mirror_alias
+
 	def check(self, **kwargs):
 		'''Checks the ebuild sources and files for errors
 
 		@param xpkg: the pacakge being checked
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
-		@returns: dictionary, including {src_uri_error}
+		@returns: boolean
 		'''
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')
@@ -130,9 +139,6 @@ class FetchChecks(ScanBase):
 					self.qatracker.add_error(
 						"file.name",
 						"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
-		# update the dynamic data
-		dyn_src_uri_error = kwargs.get('src_uri_error')
-		dyn_src_uri_error.set(self._src_uri_error)
 		return False
 
 	def digests(self, checkdir):
@@ -147,7 +153,38 @@ class FetchChecks(ScanBase):
 		del mf
 		return _digests
 
+	def check_mirrors(self, **kwargs):
+		'''Check that URIs don't reference a server from thirdpartymirrors
+
+		@param ebuild: Ebuild which we check (object).
+		@returns: boolean
+		'''
+		ebuild = kwargs.get('ebuild').get()
+
+		for uri in portage.dep.use_reduce(
+			ebuild.metadata["SRC_URI"], matchall=True, is_src_uri=True,
+			eapi=ebuild.eapi, flat=True):
+			contains_mirror = False
+			for mirror, mirror_alias in self.thirdpartymirrors.items():
+				if uri.startswith(mirror):
+					contains_mirror = True
+					break
+			if not contains_mirror:
+				continue
+
+			new_uri = "mirror://%s/%s" % (mirror_alias, uri[len(mirror):])
+			self.qatracker.add_error(
+				"SRC_URI.mirror",
+				"%s: '%s' found in thirdpartymirrors, use '%s'" % (
+					ebuild.relative_path, mirror, new_uri))
+		return False
+
 	@property
 	def runInPkgs(self):
 		'''Package level scans'''
 		return (True, [self.check])
+
+	@property
+	def runInEbuilds(self):
+		'''Ebuild level scans'''
+		return (True, [self.check_mirrors])

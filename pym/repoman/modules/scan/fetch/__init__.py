@@ -24,7 +24,7 @@ module_spec = {
 				'changed': (None, None),
 				'checkdir': (None, None),
 				'checkdir_relative': (None, None),
-				'src_uri_error': ('Future', 'UNSET'),
+				'ebuild': (None, None),
 				'xpkg': (None, None),
 			},
 		},

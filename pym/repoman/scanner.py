@@ -377,7 +377,7 @@ class Scanner(object):
 			# need to set it up for ==> self.modules_list or some other ordered list
 			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
 				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
-				('thirdpartymirrors', 'ThirdPartyMirrors'),
+				('fetches', 'FetchChecks'),
 				('description', 'DescriptionChecks'),
 				('keywords', 'KeywordChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
