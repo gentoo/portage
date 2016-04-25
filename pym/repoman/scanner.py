@@ -294,6 +294,10 @@ class Scanner(object):
 			checkdir_relative = os.path.join(".", checkdir_relative)
 			checkdirlist = os.listdir(checkdir)
 
+			# Run the status check
+			if self.checks['ebuild_notadded']:
+				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
+
 			dynamic_data = {
 				'checkdirlist': ExtendedFuture(checkdirlist),
 				'checkdir': checkdir,
@@ -322,7 +326,7 @@ class Scanner(object):
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in [('manifests', 'Manifests'), ('isebuild', 'IsEbuild'),
 						('keywords', 'KeywordChecks'), ('files', 'FileChecks'),
-						('vcsstatus', 'VCSStatus'), ('fetches', 'FetchChecks'),
+						('fetches', 'FetchChecks'),
 						('pkgmetadata', 'PkgMetadata'),
 						]:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
