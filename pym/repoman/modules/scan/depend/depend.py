@@ -28,8 +28,8 @@ class DependChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: boolean
 		'''
-		ebuild = kwargs.get('ebuild').result()
-		pkg = kwargs.get('pkg').result()
+		ebuild = kwargs.get('ebuild').get()
+		pkg = kwargs.get('pkg').get()
 
 		unknown_pkgs = set()
 
@@ -145,12 +145,11 @@ class DependChecks(ScanBase):
 
 		# update the dynamic data
 		dyn_unknown = kwargs.get('unknown_pkgs')
-		dyn_unknown.clear()
-		dyn_unknown.update(unknown_pkgs)
-		self.set_result_pass([
-			(kwargs.get('badlicsyntax'), badlicsyntax),
-			(kwargs.get('baddepsyntax'), baddepsyntax),
-			])
+		dyn_unknown.set(unknown_pkgs)
+		dyn_badlicsyntax = kwargs.get('badlicsyntax')
+		dyn_badlicsyntax.set(badlicsyntax, ignore_InvalidState=True)
+		dyn_baddepsyntax = kwargs.get('baddepsyntax')
+		dyn_baddepsyntax.set(baddepsyntax, ignore_InvalidState=True)
 		return False
 
 	@property

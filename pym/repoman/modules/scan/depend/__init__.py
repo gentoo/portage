@@ -20,8 +20,12 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'portdb'
 			],
-			'func_kwargs': {'ebuild': None, 'pkg': None, 'unknown_pkgs': 'set',
-				'badlicsyntax': 'Future', 'baddepsyntax': 'Future',
+			'func_kwargs': {
+				'baddepsyntax': ('Future', False),
+				'badlicsyntax': ('Future', False),
+				'ebuild': (None, None),
+				'pkg': (None, None),
+				'unknown_pkgs': ('Future', 'UNSET'),
 			},
 		},
 		'profile-module': {
@@ -36,8 +40,12 @@ module_spec = {
 				'repo_settings', 'include_arches', 'caches',
 				'repoman_incrementals', 'env', 'have', 'dev_keywords'
 			],
-			'func_kwargs': {'arches': None, 'ebuild': None, 'pkg': None,
-				'unknown_pkgs': None, 'baddepsyntax': None,
+			'func_kwargs': {
+				'arches': (None, None),
+				'baddepsyntax': (None, None),
+				'ebuild': (None, None),
+				'pkg': (None, None),
+				'unknown_pkgs': (None, None),
 			},
 		},
 		'unknown-module': {
@@ -50,8 +58,10 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'ebuild': None, 'unknown_pkgs': 'set',
-				'baddepsyntax': None,
+			'func_kwargs': {
+				'baddepsyntax': (None, None),
+				'ebuild': (None, None),
+				'unknown_pkgs': ('Future', 'UNSET'),
 			},
 		},
 	}

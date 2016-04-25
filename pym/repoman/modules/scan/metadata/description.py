@@ -21,8 +21,8 @@ class DescriptionChecks(ScanBase):
 		@param pkg: Package in which we check (object).
 		@param ebuild: Ebuild which we check (object).
 		'''
-		ebuild = kwargs.get('ebuild').result()
-		pkg = kwargs.get('pkg').result()
+		ebuild = kwargs.get('ebuild').get()
+		pkg = kwargs.get('pkg').get()
 		# 14 is the length of DESCRIPTION=""
 		if len(pkg._metadata['DESCRIPTION']) > max_desc_len:
 			self.qatracker.add_error(

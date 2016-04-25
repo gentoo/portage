@@ -39,7 +39,7 @@ class FileChecks(ScanBase):
 		@returns: dictionary
 		'''
 		checkdir = kwargs.get('checkdir')
-		checkdirlist = kwargs.get('checkdirlist')
+		checkdirlist = kwargs.get('checkdirlist').get()
 		checkdir_relative = kwargs.get('checkdir_relative')
 		changed = kwargs.get('changed').changed
 		new = kwargs.get('changed').new

@@ -131,7 +131,8 @@ class FetchChecks(ScanBase):
 						"file.name",
 						"%s/files/%s: char '%s'" % (checkdir, y, y[index]))
 		# update the dynamic data
-		self.set_result_pass([(kwargs.get('src_uri_error'), self._src_uri_error)])
+		dyn_src_uri_error = kwargs.get('src_uri_error')
+		dyn_src_uri_error.set(self._src_uri_error)
 		return False
 
 	def digests(self, checkdir):

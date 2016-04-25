@@ -23,7 +23,7 @@ class ArchChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary, including arches set
 		'''
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		if self.options.ignore_arches:
 			arches = [[
 				self.repo_settings.repoman_settings["ARCH"], self.repo_settings.repoman_settings["ARCH"],
@@ -69,8 +69,7 @@ class ArchChecks(ScanBase):
 				arches.add(('**', '**', ('**',)))
 		# update the dynamic data
 		dyn_arches = kwargs.get('arches')
-		dyn_arches.clear()
-		dyn_arches.update(arches)
+		dyn_arches.set(arches)
 		return False
 
 	@property

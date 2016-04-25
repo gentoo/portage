@@ -1,8 +1,6 @@
 
 from repoman.modules.scan.scanbase import ScanBase
 
-from portage.util.futures import InvalidStateError
-
 
 class UnusedCheck(ScanBase):
 	'''Checks and reports any un-used metadata.xml use flag descriptions'''
@@ -23,9 +21,9 @@ class UnusedCheck(ScanBase):
 		@param validity_future: Future instance
 		'''
 		xpkg = kwargs.get('xpkg')
-		muselist = self.get_result(kwargs.get('muselist'), set())
+		muselist = kwargs.get('muselist').get()
 		used_useflags = kwargs.get('used_useflags')
-		valid_state = self.get_result(kwargs['validity_future'], True)
+		valid_state = kwargs.get('validity_future').get()
 		# check if there are unused local USE-descriptions in metadata.xml
 		# (unless there are any invalids, to avoid noise)
 		if valid_state:

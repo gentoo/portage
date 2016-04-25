@@ -9,7 +9,7 @@ import portage
 from portage import normalize_path
 from portage import os
 from portage.output import green
-from portage.util.futures.futures import Future
+from portage.util.futures.extendedfutures import ExtendedFuture
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
@@ -28,7 +28,7 @@ MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
 # initial development debug info
 logging.debug("module_names: %s", MODULE_NAMES)
 
-DATA_TYPES = {'dict': dict, 'Future': Future, 'list': list, 'set': set}
+DATA_TYPES = {'dict': dict, 'Future': ExtendedFuture, 'list': list, 'set': set}
 
 
 class Scanner(object):
@@ -203,6 +203,8 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
+		self.ext_futures = {}
+		self.pkg_level_futures = None
 
 	def set_kwargs(self, mod):
 		'''Creates a limited set of kwargs to pass to the module's __init__()
@@ -215,8 +217,7 @@ class Scanner(object):
 			kwargs[key] = self.kwargs[key]
 		return kwargs
 
-	@staticmethod
-	def set_func_kwargs(mod, dynamic_data=None):
+	def set_func_kwargs(self, mod, dynamic_data=None):
 		'''Updates the dynamic_data dictionary with any new key, value pairs.
 		Creates a limited set of kwargs to pass to the modulefunctions to run
 
@@ -233,17 +234,49 @@ class Scanner(object):
 		for key in new:
 			logging.debug("set_func_kwargs(); adding: %s, %s",
 				key, func_kwargs[key])
-			dynamic_data[key] = DATA_TYPES[func_kwargs[key]]()
+			logging.debug("set_func_kwargs(); adding: %s, %s",
+				key, func_kwargs[key])
+			if func_kwargs[key][0] in ['Future', 'ExtendedFuture']:
+				if key not in self.ext_futures:
+					logging.debug(
+						"Adding a new key: %s to the ExtendedFuture dict", key)
+					self.ext_futures[key] = func_kwargs[key]
+				self._set_future(dynamic_data, key, func_kwargs[key])
+			else:  # builtin python data type
+				dynamic_data[key] = DATA_TYPES[func_kwargs[key][0]]()
 		kwargs = {}
 		for key in required:
 			kwargs[key] = dynamic_data[key]
 		return kwargs
 
 	def reset_futures(self, dynamic_data):
-		for key in list(dynamic_data):
-			#if key in ['ebuild', 'pkg']:  # and isinstance(dynamic_data[key], Future):
-			if isinstance(dynamic_data[key], Future) and key not in ['muselist']:
-				dynamic_data[key] = Future()
+		'''Reset any Future data types
+
+		@param dynamic_data: dictionary
+		'''
+		for key in list(self.ext_futures):
+			if key not in self.pkg_level_futures:
+				self._set_future(dynamic_data, key, self.ext_futures[key])
+
+	@staticmethod
+	def _set_future(dynamic_data, key, data):
+		'''Set a dynamic_data key to a new ExtendedFuture instance
+
+		@param dynamic_data: dictionary
+		@param key: tuple of (dictionary-key, default-value)
+		'''
+		#print("***", key, data)
+		if data[0] in ['Future', 'ExtendedFuture']:
+			if data[1] in ['UNSET']:
+				#print("adding unset default")
+				dynamic_data[key] = ExtendedFuture()
+			else:
+				if data[1] in DATA_TYPES:
+					default = DATA_TYPES[data[1]]()
+				else:
+					default = data[1]
+				#print("adding default:", default)
+				dynamic_data[key] = ExtendedFuture(default)
 
 	def scan_pkgs(self, can_force):
 		for xpkg in self.effective_scanlist:
@@ -264,7 +297,7 @@ class Scanner(object):
 			checkdirlist = os.listdir(checkdir)
 
 			dynamic_data = {
-				'checkdirlist': checkdirlist,
+				'checkdirlist': ExtendedFuture(checkdirlist),
 				'checkdir': checkdir,
 				'xpkg': xpkg,
 				'changed': self.changed,
@@ -273,12 +306,21 @@ class Scanner(object):
 				'repolevel': self.repolevel,
 				'catdir': catdir,
 				'pkgdir': pkgdir,
-				'validity_future': Future(),
+				'pkgs': ExtendedFuture({}),
+				'validity_future': ExtendedFuture(True),
 				'y_ebuild': None,
 				# this needs to be reset at the pkg level only,
 				# easiest is to just initialize it here
-				'muselist': Future(),
+				'muselist': ExtendedFuture(set()),
+				'src_uri_error': ExtendedFuture(),
 				}
+			self.pkg_level_futures = [
+				'checkdirlist',
+				'muselist',
+				'pkgs',
+				'src_uri_error',
+				'validity_future',
+				]
 			# need to set it up for ==> self.modules or some other ordered list
 			for mod in [('manifests', 'Manifests'), ('isebuild', 'IsEbuild'),
 						('keywords', 'KeywordChecks'), ('files', 'FileChecks'),
@@ -306,7 +348,7 @@ class Scanner(object):
 				continue
 
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
-			self.pkgs = dynamic_data['pkgs']
+			self.pkgs = dynamic_data['pkgs'].get()
 			ebuildlist = sorted(self.pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 

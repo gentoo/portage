@@ -20,8 +20,11 @@ module_spec = {
 			},
 			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings', 'vcs_settings',
 			],
-			'func_kwargs': {'checkdir': None, 'checkdirlist': None,
-				'checkdir_relative': None, 'changed': None,
+			'func_kwargs': {
+				'changed': (None, None),
+				'checkdir': (None, None),
+				'checkdirlist': (None, None),
+				'checkdir_relative': (None, None),
 			},
 		},
 		'mtime-module': {
@@ -34,7 +37,10 @@ module_spec = {
 			},
 			'mod_kwargs': ['vcs_settings',
 			],
-			'func_kwargs': {'ebuild': None, 'changed': None, 'pkg': None,
+			'func_kwargs': {
+				'changed': (None, None),
+				'ebuild': (None, None),
+				'pkg': (None, None),
 			},
 		},
 	}

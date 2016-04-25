@@ -25,8 +25,8 @@ class RubyEclassChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary
 		'''
-		pkg = kwargs.get('pkg').result()
-		ebuild = kwargs.get('ebuild').result()
+		pkg = kwargs.get('pkg').get()
+		ebuild = kwargs.get('ebuild').get()
 		is_inherited = lambda eclass: eclass in pkg.inherited
 		is_old_ruby_eclass_inherited = filter(
 			is_inherited, self.old_ruby_eclasses)

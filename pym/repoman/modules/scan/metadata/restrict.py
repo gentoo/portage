@@ -21,7 +21,7 @@ class RestrictChecks(ScanBase):
 
 	def check(self, **kwargs):
 		xpkg = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
 		myrestrict = None
 

@@ -68,15 +68,14 @@ class PkgMetadata(ScanBase):
 		'''
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')
-		checkdirlist = kwargs.get('checkdirlist')
+		checkdirlist = kwargs.get('checkdirlist').get()
 		repolevel = kwargs.get('repolevel')
 
 		self.musedict = {}
 		if self.options.mode in ['manifest']:
 			# update the dynamic data
-			self.set_result_raise([
-				(kwargs.get('muselist'), frozenset(self.musedict))
-				])
+			dyn_muselist = kwargs.get('muselist')
+			dyn_muselist.set(frozenset(self.musedict))
 			return False
 
 		# metadata.xml file check
@@ -189,9 +188,8 @@ class PkgMetadata(ScanBase):
 					self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 			del metadata_bad
 		# update the dynamic data
-		self.set_result_raise([
-			(kwargs.get('muselist'), frozenset(self.musedict))
-			])
+		dyn_muselist = kwargs.get('muselist')
+		dyn_muselist.set(frozenset(self.musedict))
 		return False
 
 	@property

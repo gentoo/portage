@@ -21,9 +21,9 @@ class DependUnknown(ScanBase):
 		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild').result()
-		baddepsyntax = self.get_result(kwargs.get('baddepsyntax'), False)
-		unknown_pkgs = kwargs.get('unknown_pkgs')
+		ebuild = kwargs.get('ebuild').get()
+		baddepsyntax = kwargs.get('baddepsyntax').get()
+		unknown_pkgs = kwargs.get('unknown_pkgs').get()
 
 		if not baddepsyntax and unknown_pkgs:
 			type_map = {}

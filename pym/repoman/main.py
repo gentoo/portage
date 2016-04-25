@@ -22,8 +22,8 @@ import portage.repository.config
 from portage.output import create_color_func, nocolor
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
-from portage.util.futures import (
-	Future,
+from portage.util.futures.extendedfutures import (
+	ExtendedFuture,
 	InvalidStateError,
 )
 
@@ -79,7 +79,7 @@ def repoman_main(argv):
 	# Set this to False when an extraordinary issue (generally
 	# something other than a QA issue) makes it impossible to
 	# commit (like if Manifest generation fails).
-	can_force = Future()
+	can_force = ExtendedFuture(True)
 
 	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
 	if portdir is None:
@@ -174,14 +174,9 @@ def repoman_main(argv):
 	qa_output = qa_output.getvalue()
 	qa_output = qa_output.splitlines(True)
 
-	try:
-		can_force = can_force.result()
-	except InvalidStateError:
-		can_force = True
-
 	# output the results
 	actions = Actions(repo_settings, options, scanner, vcs_settings)
-	if actions.inform(can_force, result):
+	if actions.inform(can_force.get(), result):
 		# perform any other actions
 		actions.perform(qa_output)
 

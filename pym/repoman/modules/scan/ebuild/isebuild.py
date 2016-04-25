@@ -39,7 +39,7 @@ class IsEbuild(ScanBase):
 		@param validity_future: Future instance
 		@returns: dictionary, including {pkgs, can_force}
 		'''
-		checkdirlist = kwargs.get('checkdirlist')
+		checkdirlist = kwargs.get('checkdirlist').get()
 		checkdir = kwargs.get('checkdir')
 		xpkg = kwargs.get('xpkg')
 		fuse = kwargs.get('validity_future')
@@ -65,15 +65,15 @@ class IsEbuild(ScanBase):
 				try:
 					myaux = dict(zip(allvars, self.portdb.aux_get(cpv, allvars)))
 				except KeyError:
-					self.set_result_pass([(fuse, False)])
+					fuse.set(False, ignore_InvalidState=True)
 					self.qatracker.add_error("ebuild.syntax", os.path.join(xpkg, y))
 					continue
 				except IOError:
-					self.set_result_pass([(fuse, False)])
+					fuse.set(False, ignore_InvalidState=True)
 					self.qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
 					continue
 				if not portage.eapi_is_supported(myaux["EAPI"]):
-					self.set_result_pass([(fuse, False)])
+					fuse.set(False, ignore_InvalidState=True)
 					self.qatracker.add_error("EAPI.unsupported", os.path.join(xpkg, y))
 					continue
 				pkgs[pf] = Package(
@@ -87,15 +87,10 @@ class IsEbuild(ScanBase):
 			# metadata leads to false positives for several checks, and false
 			# positives confuse users.
 			self.continue_ = True
-			self.set_result_pass([(can_force, False)])
+			can_force.set(False, ignore_InvalidState=True)
 		# set our updated data
 		dyn_pkgs = kwargs.get('pkgs')
-		# clear() sets it to None,
-		# we don't want to kill the pointer reference
-		# just set it back to an empty dict()
-		for key in list(dyn_pkgs):
-			dyn_pkgs.pop(key)
-		dyn_pkgs.update(pkgs)
+		dyn_pkgs.set(pkgs)
 		return self.continue_
 
 	@property

@@ -23,7 +23,7 @@ class EAPIChecks(ScanBase):
 		@param ebuild: Ebuild which we check (object).
 		@returns: dictionary
 		'''
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 
 		if not self._checkBanned(ebuild):
 			self._checkDeprecated(ebuild)

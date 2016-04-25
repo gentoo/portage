@@ -40,12 +40,12 @@ class KeywordChecks(ScanBase):
 		@param live_ebuild: A boolean that determines if this is a live ebuild.
 		@returns: dictionary
 		'''
-		pkg = kwargs.get('pkg').result()
+		pkg = kwargs.get('pkg').get()
 		xpkg =kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
 		changed = kwargs.get('changed')
-		live_ebuild = kwargs.get('live_ebuild')
+		live_ebuild = kwargs.get('live_ebuild').get()
 		if not self.options.straight_to_stable:
 			self._checkAddedWithStableKeywords(
 				xpkg, ebuild, y_ebuild, ebuild.keywords, changed)

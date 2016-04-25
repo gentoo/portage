@@ -32,9 +32,8 @@ class VCSStatus(ScanBase):
 		if self.check_not_added:
 			self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
 		# update the dynamic data
-		self.set_result_pass([
-			(kwargs.get('eadded'), self.vcs_settings.status.eadded),
-			])
+		dyn_eadded = kwargs.get('eadded')
+		dyn_eadded.set(self.vcs_settings.status.eadded)
 		return False
 
 	@property

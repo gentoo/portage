@@ -26,9 +26,9 @@ class LicenseChecks(ScanBase):
 		@param y_ebuild: Ebuild which we check (string).
 		'''
 		xpkg = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
-		if not self.get_result(kwargs.get('badlicsyntax'), False):
+		if not kwargs.get('badlicsyntax').get():
 			# Parse the LICENSE variable, remove USE conditions and flatten it.
 			licenses = portage.dep.use_reduce(
 				ebuild.metadata["LICENSE"], matchall=1, flat=True)

@@ -20,8 +20,12 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'repo_metadata', 'repo_settings',
 			],
-			'func_kwargs': {'live_ebuild': 'set', 'pkg': None, 'xpkg': None,
-				'ebuild': None, 'y_ebuild': None,
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'live_ebuild': ('Future', 'UNSET'),
+				'pkg': (None, None),
+				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'ruby-module': {
@@ -34,7 +38,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker'
 			],
-			'func_kwargs': {'pkg': None, 'ebuild': None,
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'pkg': (None, None),
 			},
 		},
 	}

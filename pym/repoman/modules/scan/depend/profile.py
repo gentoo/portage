@@ -56,11 +56,11 @@ class ProfileDependsChecks(ScanBase):
 		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
-		arches = kwargs.get('arches')
-		ebuild = kwargs.get('ebuild').result()
-		pkg = kwargs.get('pkg').result()
-		baddepsyntax = self.get_result(kwargs.get('baddepsyntax'), False)
-		unknown_pkgs = kwargs.get('unknown_pkgs')
+		arches = kwargs.get('arches').get()
+		ebuild = kwargs.get('ebuild').get()
+		pkg = kwargs.get('pkg').get()
+		baddepsyntax = kwargs.get('baddepsyntax').get()
+		unknown_pkgs = kwargs.get('unknown_pkgs').get()
 
 		relevant_profiles = []
 		for keyword, arch, groups in arches:

@@ -38,24 +38,20 @@ class USEFlagChecks(ScanBase):
 		@param muselist: Local USE flags of the package
 		@returns: dictionary, including {ebuild_UsedUseFlags, used_useflags}
 		'''
-		pkg = kwargs.get('pkg').result()
+		pkg = kwargs.get('pkg').get()
 		package = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
-		localUseFlags = self.get_result(kwargs.get('muselist'), set())
-		dyn_ebuild_used = kwargs.get('ebuild_UsedUseFlags')
+		localUseFlags = kwargs.get('muselist').get()
 		dyn_used = kwargs.get('used_useflags')
 		# reset state variables for the run
 		self.useFlags = []
 		self.defaultUseFlags = []
 		self.usedUseFlags = set()
-		dyn_ebuild_used.clear()
 		# perform the checks
 		self._checkGlobal(pkg)
 		self._checkMetadata(package, ebuild, y_ebuild, localUseFlags)
 		self._checkRequiredUSE(pkg, ebuild)
-		# update the dynamic data
-		dyn_ebuild_used.union(self.usedUseFlags)
 		dyn_used.update(self.usedUseFlags)
 		return False
 

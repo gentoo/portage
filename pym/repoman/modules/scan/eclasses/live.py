@@ -25,11 +25,10 @@ class LiveEclassChecks(ScanBase):
 
 		@returns: dictionary, including {live_ebuild}
 		'''
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		# update the dynamic data
 		dyn_live = kwargs.get('live_ebuild')
-		#dyn_live.clear()
-		dyn_live.update(LIVE_ECLASSES.intersection(ebuild.inherited))
+		dyn_live.set(LIVE_ECLASSES.intersection(ebuild.inherited))
 		return False
 
 	def check(self, **kwargs):
@@ -46,12 +45,12 @@ class LiveEclassChecks(ScanBase):
 		'''
 		pkg = kwargs.get("pkg").result()
 		package = kwargs.get('xpkg')
-		ebuild = kwargs.get('ebuild').result()
+		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
 		keywords = ebuild.keywords
+		live_ebuild = kwargs.get('live_ebuild').get()
 
-		if not (kwargs.get('live_ebuild') and
-				self.repo_settings.repo_config.name == "gentoo"):
+		if not live_ebuild and self.repo_settings.repo_config.name == "gentoo":
 			return False
 
 		is_stable = lambda kw: not kw.startswith("~") and not kw.startswith("-")

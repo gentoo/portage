@@ -86,7 +86,8 @@ class Ebuild(ScanBase):
 			self.qatracker.add_error(
 				"ebuild.notadded", self.xpkg + "/" + self.y_ebuild + ".ebuild")
 		# update the dynamic data
-		self.set_result_raise([(kwargs.get('ebuild'), self)])
+		dyn_ebuild = kwargs.get('ebuild')
+		dyn_ebuild.set(self)
 		return False
 
 	def set_pkg_data(self, **kwargs):
@@ -95,7 +96,8 @@ class Ebuild(ScanBase):
 		@param pkgs: the dynamic list of ebuilds
 		@returns: dictionary
 		'''
-		self.pkg = kwargs.get('pkgs')[self.y_ebuild]
+		pkgs = kwargs.get('pkgs').get()
+		self.pkg = pkgs[self.y_ebuild]
 		self.metadata = self.pkg._metadata
 		self.eapi = self.metadata["EAPI"]
 		self.inherited = self.pkg.inherited
@@ -133,21 +135,17 @@ class Ebuild(ScanBase):
 		@returns: dictionary, including {pkg object}
 		'''
 		fuse = kwargs.get('validity_future')
+		dyn_pkg = kwargs.get('pkg')
 		if self.pkg.invalid:
 			for k, msgs in self.pkg.invalid.items():
 				for msg in msgs:
 					self.qatracker.add_error(k, "%s: %s" % (self.relative_path, msg))
 			# update the dynamic data
-			self.set_result_pass([
-				(fuse, False),])
-			self.set_result_raise([
-				(kwargs.get('pkg'), self.pkg),
-				])
+			fuse.set(False, ignore_InvalidState=True)
+			dyn_pkg.set(self.pkg)
 			return True
 		# update the dynamic data
-		self.set_result_raise([
-			(kwargs.get('pkg'), self.pkg),
-			])
+		dyn_pkg.set(self.pkg)
 		return False
 
 	@property

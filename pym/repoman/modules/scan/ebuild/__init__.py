@@ -20,8 +20,13 @@ module_spec = {
 			},
 			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings'
 			],
-			'func_kwargs': {'checkdirlist': 'list', 'checkdir': None, 'xpkg': None,
-				'validity_future': 'Future', 'can_force': None, 'pkgs': 'dict',
+			'func_kwargs': {
+				'can_force': (None, None),
+				'checkdir': (None, None),
+				'checkdirlist': (None, None),
+				'pkgs': ('Future', 'dict'),
+				'validity_future': ('Future', True),
+				'xpkg': (None, None),
 			},
 		},
 		'ebuild-module': {
@@ -34,10 +39,18 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'repo_settings', 'vcs_settings', 'checks',
 			],
-			'func_kwargs': {'xpkg': None, 'y_ebuild': None, 'changed': None,
-				'changelog_modified': None, 'pkg': 'Future', 'pkgs': None,
-				'ebuild': 'Future', 'validity_future': None, 'pkgdir': None,
-				'repolevel': None, 'catdir': None,
+			'func_kwargs': {
+				'catdir': (None, None),
+				'changed': (None, None),
+				'changelog_modified': (None, None),
+				'ebuild': ('Future', 'UNSET'),
+				'pkg': ('Future', 'UNSET'),
+				'pkgdir': (None, None),
+				'pkgs': (None, None),
+				'repolevel': (None, None),
+				'validity_future': (None, None),
+				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'multicheck-module': {
@@ -50,7 +63,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'options'
 			],
-			'func_kwargs': {'ebuild': None, 'pkg': None,
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'pkg': (None, None),
 			},
 		},
 	}

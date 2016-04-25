@@ -20,7 +20,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['options', 'repo_settings', 'profiles'
 			],
-			'func_kwargs': {'ebuild': None, 'arches': 'set',
+			'func_kwargs': {
+				'arches': ('Future', 'set'),
+				'ebuild': (None, None),
 			},
 		},
 	}

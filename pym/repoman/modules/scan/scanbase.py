@@ -1,7 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from portage.util.futures import InvalidStateError
-
 
 class ScanBase(object):
 	'''Skeleton class for performing a scan for one or more items
@@ -34,40 +32,6 @@ class ScanBase(object):
 		# Include any additional dynamic data that needs to be added or updated.
 		return False  # used as a continue True/False value
 	"""
-
-	@staticmethod
-	def set_result_pass(items):
-		'''Set Future instance results, pass on InvalidStateError
-
-		@param items: iterable of key, value tuples
-		'''
-		for key, value in items:
-			try:
-				key.set_result(value)
-			except InvalidStateError:
-				pass
-
-	@staticmethod
-	def set_result_raise(items):
-		'''Set Future instance results, raises an exception on InvalidStateError
-
-		@param items: iterable of key, value tuples
-		'''
-		for key, value in items:
-			key.set_result(value)
-
-	def get_result(self, future, unset_value=None):
-		'''Returns a Future result, or the unset value passed in
-
-		@param future: The Future instance being queried
-		@param unset_value:
-		@returns: Future result
-		'''
-		try:
-			result = future.result()
-		except InvalidStateError:
-			result = unset_value
-		return result
 
 	@property
 	def runInPkgs(self):

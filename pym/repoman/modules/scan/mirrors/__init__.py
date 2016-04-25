@@ -20,7 +20,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['repo_settings', 'qatracker',
 			],
-			'func_kwargs': {'ebuild': None, 'src_uri_error': None,
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'src_uri_error': (None, None),
 			},
 		},
 	}

@@ -20,8 +20,12 @@ module_spec = {
 			},
 			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_dtd',
 			],
-			'func_kwargs': {'xpkg': None, 'checkdir': None, 'checkdirlist': None,
-				'repolevel': None, 'muselist': 'Future',
+			'func_kwargs': {
+				'checkdir': (None, None),
+				'checkdirlist': (None, None),
+				'muselist': ('Future', 'set'),
+				'repolevel': (None, None),
+				'xpkg': (None, None),
 			},
 		},
 		'ebuild-metadata': {
@@ -34,8 +38,12 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'ebuild': None, 'catdir': None, 'live_ebuild': None,
-				'xpkg': None, 'y_ebuild': None,
+			'func_kwargs': {
+				'catdir': (None, None),
+				'ebuild': (None, None),
+				'live_ebuild': (None, None),
+				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'description-metadata': {
@@ -48,7 +56,9 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'ebuild': None, 'pkg': 'Future',
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'pkg': ('Future', 'UNSET'),
 			},
 		},
 		'license-metadata': {
@@ -61,8 +71,11 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker', 'repo_metadata',
 			],
-			'func_kwargs': {'xpkg': None, 'ebuild': None, 'y_ebuild': None,
-				'badlicsyntax': None,
+			'func_kwargs': {
+				'badlicsyntax': (None, None),
+				'ebuild': (None, None),
+				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'restrict-metadata': {
@@ -75,7 +88,10 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'xpkg': None, 'ebuild': None, 'y_ebuild': None,
+			'func_kwargs': {
+				'ebuild': (None, None),
+				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'unused-metadata': {
@@ -88,8 +104,11 @@ module_spec = {
 			},
 			'mod_kwargs': ['qatracker',
 			],
-			'func_kwargs': {'xpkg': None, 'muselist': None, 'used_useflags': None,
-				'validity_future': None,
+			'func_kwargs': {
+				'muselist': (None, None),
+				'used_useflags': (None, None),
+				'validity_future': (None, None),
+				'xpkg': (None, None),
 			},
 		},
 	}
