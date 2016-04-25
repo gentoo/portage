@@ -378,7 +378,7 @@ class Scanner(object):
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
 				('description', 'DescriptionChecks'),
 				('keywords', 'KeywordChecks'),
-				('arches', 'ArchChecks'), ('depend', 'DependChecks'),
+				('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
 				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),

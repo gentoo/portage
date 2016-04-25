@@ -41,7 +41,6 @@ module_spec = {
 				'repoman_incrementals', 'env', 'have', 'dev_keywords'
 			],
 			'func_kwargs': {
-				'arches': (None, None),
 				'baddepsyntax': (None, None),
 				'ebuild': (None, None),
 				'pkg': (None, None),

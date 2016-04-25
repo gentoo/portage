@@ -9,6 +9,7 @@ from _emerge.Package import Package
 # import our initialized portage instance
 from repoman._portage import portage
 from repoman.modules.scan.scanbase import ScanBase
+from repoman.modules.scan.depend._gen_arches import _gen_arches
 from portage.dep import Atom
 
 
@@ -56,14 +57,14 @@ class ProfileDependsChecks(ScanBase):
 		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
-		arches = kwargs.get('arches').get()
 		ebuild = kwargs.get('ebuild').get()
 		pkg = kwargs.get('pkg').get()
 		baddepsyntax = kwargs.get('baddepsyntax').get()
 		unknown_pkgs = kwargs.get('unknown_pkgs').get()
 
 		relevant_profiles = []
-		for keyword, arch, groups in arches:
+		for keyword, arch, groups in _gen_arches(ebuild, self.options,
+			self.repo_settings, self.profiles):
 			if arch not in self.profiles:
 				# A missing profile will create an error further down
 				# during the KEYWORDS verification.
