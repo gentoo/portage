@@ -23,7 +23,6 @@ module_spec = {
 			'func_kwargs': {
 				'checkdir': (None, None),
 				'checkdir_relative': (None, None),
-				'eadded': ('Future', 'UNSET'),
 				'xpkg': (None, None),
 			},
 		},

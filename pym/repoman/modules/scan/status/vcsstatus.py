@@ -24,16 +24,13 @@ class VCSStatus(ScanBase):
 		@param checkdir: string, directory path
 		@param checkdir_relative: repolevel determined path
 		@param xpkg: the current package being checked
-		@returns: dictionary including {eadded}
+		@returns: boolean
 		'''
 		checkdir = kwargs.get('checkdir')
 		checkdir_relative = kwargs.get('checkdir_relative')
 		xpkg = kwargs.get('xpkg')
 		if self.check_not_added:
 			self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
-		# update the dynamic data
-		dyn_eadded = kwargs.get('eadded')
-		dyn_eadded.set(self.vcs_settings.status.eadded)
 		return False
 
 	@property

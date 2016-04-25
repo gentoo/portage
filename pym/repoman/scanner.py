@@ -180,7 +180,6 @@ class Scanner(object):
 				self.repolevel, self.reposplit, self.categories))
 
 		self.pkgs = None
-		self.eadded = False
 
 		# Create our kwargs dict here to initialize the plugins with
 		self.kwargs = {
@@ -285,7 +284,6 @@ class Scanner(object):
 			logging.info("checking package %s", xpkg)
 			# save memory by discarding xmatch caches from previous package(s)
 			self.caches['arch_xmatch'].clear()
-			self.eadded = []
 			catdir, pkgdir = xpkg.split("/")
 			checkdir = self.repo_settings.repodir + "/" + xpkg
 			checkdir_relative = ""
