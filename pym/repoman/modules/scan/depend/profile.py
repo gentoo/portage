@@ -9,6 +9,7 @@ from _emerge.Package import Package
 # import our initialized portage instance
 from repoman._portage import portage
 from repoman.modules.scan.scanbase import ScanBase
+from repoman.modules.scan.depend._depend_checks import _depend_checks
 from repoman.modules.scan.depend._gen_arches import _gen_arches
 from portage.dep import Atom
 
@@ -34,6 +35,7 @@ class ProfileDependsChecks(ScanBase):
 		@param env: the environment
 		@param have: dictionary instance
 		@param dev_keywords: developer profile keywords
+		@param repo_metadata: dictionary of various repository items.
 		'''
 		self.qatracker = kwargs.get('qatracker')
 		self.portdb = kwargs.get('portdb')
@@ -46,6 +48,7 @@ class ProfileDependsChecks(ScanBase):
 		self.env = kwargs.get('env')
 		self.have = kwargs.get('have')
 		self.dev_keywords = kwargs.get('dev_keywords')
+		self.repo_metadata = kwargs.get('repo_metadata')
 
 	def check(self, **kwargs):
 		'''Perform profile dependant dependancy checks
@@ -59,8 +62,8 @@ class ProfileDependsChecks(ScanBase):
 		'''
 		ebuild = kwargs.get('ebuild').get()
 		pkg = kwargs.get('pkg').get()
-		baddepsyntax = kwargs.get('baddepsyntax').get()
-		unknown_pkgs = kwargs.get('unknown_pkgs').get()
+		unknown_pkgs, baddepsyntax = _depend_checks(
+			ebuild, pkg, self.portdb, self.qatracker, self.repo_metadata)
 
 		relevant_profiles = []
 		for keyword, arch, groups in _gen_arches(ebuild, self.options,
@@ -226,6 +229,16 @@ class ProfileDependsChecks(ScanBase):
 								"%s: %s: %s(%s)\n%s"
 								% (ebuild.relative_path, mytype, keyword,
 									prof, pformat(atoms, indent=6)))
+
+		if not baddepsyntax and unknown_pkgs:
+			type_map = {}
+			for mytype, atom in unknown_pkgs:
+				type_map.setdefault(mytype, set()).add(atom)
+			for mytype, atoms in type_map.items():
+				self.qatracker.add_error(
+					"dependency.unknown", "%s: %s: %s"
+					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
+
 		return False
 
 	@property

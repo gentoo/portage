@@ -61,23 +61,6 @@ module_spec = {
 				'pkg': ('Future', 'UNSET'),
 			},
 		},
-		'license-metadata': {
-			'name': "license",
-			'sourcefile': "license",
-			'class': "LicenseChecks",
-			'description': doc,
-			'functions': ['check'],
-			'func_desc': {
-			},
-			'mod_kwargs': ['qatracker', 'repo_metadata',
-			],
-			'func_kwargs': {
-				'badlicsyntax': (None, None),
-				'ebuild': (None, None),
-				'xpkg': (None, None),
-				'y_ebuild': (None, None),
-			},
-		},
 		'restrict-metadata': {
 			'name': "restrict",
 			'sourcefile': "restrict",

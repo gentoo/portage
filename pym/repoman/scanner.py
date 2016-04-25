@@ -380,13 +380,11 @@ class Scanner(object):
 				('thirdpartymirrors', 'ThirdPartyMirrors'),
 				('description', 'DescriptionChecks'),
 				('keywords', 'KeywordChecks'),
-				('depend', 'DependChecks'),
 				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
-				('license', 'LicenseChecks'), ('restrict', 'RestrictChecks'),
+				('restrict', 'RestrictChecks'),
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
 				# Options.is_forced() is used to bypass further checks
 				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
-				('unknown', 'DependUnknown'),
 				]:
 				if mod[0] and mod[1] not in self.modules:
 					mod_class = MODULE_CONTROLLER.get_class(mod[0])
