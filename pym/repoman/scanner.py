@@ -299,6 +299,7 @@ class Scanner(object):
 				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
 
 			dynamic_data = {
+				'changelog_modified': False,
 				'checkdirlist': ExtendedFuture(checkdirlist),
 				'checkdir': checkdir,
 				'xpkg': xpkg,
@@ -308,7 +309,6 @@ class Scanner(object):
 				'repolevel': self.repolevel,
 				'catdir': catdir,
 				'pkgdir': pkgdir,
-				'pkgs': ExtendedFuture({}),
 				'validity_future': ExtendedFuture(True),
 				'y_ebuild': None,
 				# this needs to be reset at the pkg level only,
@@ -324,7 +324,7 @@ class Scanner(object):
 				'validity_future',
 				]
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in [('manifests', 'Manifests'), ('isebuild', 'IsEbuild'),
+			for mod in [('manifests', 'Manifests'), ('ebuild', 'Ebuild'),
 						('keywords', 'KeywordChecks'), ('files', 'FileChecks'),
 						('fetches', 'FetchChecks'),
 						('pkgmetadata', 'PkgMetadata'),

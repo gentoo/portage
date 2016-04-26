@@ -10,25 +10,6 @@ module_spec = {
 	'name': 'ebuild',
 	'description': doc,
 	'provides':{
-		'isebuild-module': {
-			'name': "isebuild",
-			'sourcefile': "isebuild",
-			'class': "IsEbuild",
-			'description': doc,
-			'functions': ['check'],
-			'func_desc': {
-			},
-			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings'
-			],
-			'func_kwargs': {
-				'can_force': (None, None),
-				'checkdir': (None, None),
-				'checkdirlist': (None, None),
-				'pkgs': ('Future', 'dict'),
-				'validity_future': ('Future', True),
-				'xpkg': (None, None),
-			},
-		},
 		'ebuild-module': {
 			'name': "ebuild",
 			'sourcefile': "ebuild",
@@ -37,16 +18,20 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker', 'repo_settings', 'vcs_settings', 'checks',
+			'mod_kwargs': ['qatracker', 'repo_settings', 'vcs_settings',
+				'checks', 'portdb'
 			],
 			'func_kwargs': {
+				'can_force': (None, None),
 				'catdir': (None, None),
 				'changed': (None, None),
 				'changelog_modified': (None, None),
+				'checkdir': (None, None),
+				'checkdirlist': (None, None),
 				'ebuild': ('Future', 'UNSET'),
 				'pkg': ('Future', 'UNSET'),
 				'pkgdir': (None, None),
-				'pkgs': (None, None),
+				'pkgs': ('Future', 'dict'),
 				'repolevel': (None, None),
 				'validity_future': (None, None),
 				'xpkg': (None, None),
