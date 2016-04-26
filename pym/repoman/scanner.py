@@ -179,8 +179,6 @@ class Scanner(object):
 				chain(self.changed.changed, self.changed.new, self.changed.removed),
 				self.repolevel, self.reposplit, self.categories))
 
-		self.pkgs = None
-
 		# Create our kwargs dict here to initialize the plugins with
 		self.kwargs = {
 			"repo_settings": self.repo_settings,
@@ -348,8 +346,8 @@ class Scanner(object):
 				continue
 
 			# Sort ebuilds in ascending order for the KEYWORDS.dropped check.
-			self.pkgs = dynamic_data['pkgs'].get()
-			ebuildlist = sorted(self.pkgs.values())
+			pkgs = dynamic_data['pkgs'].get()
+			ebuildlist = sorted(pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
 			if self.checks['changelog'] and "ChangeLog" not in checkdirlist:
