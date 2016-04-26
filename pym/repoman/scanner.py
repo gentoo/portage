@@ -233,8 +233,6 @@ class Scanner(object):
 		for key in new:
 			logging.debug("set_func_kwargs(); adding: %s, %s",
 				key, func_kwargs[key])
-			logging.debug("set_func_kwargs(); adding: %s, %s",
-				key, func_kwargs[key])
 			if func_kwargs[key][0] in ['Future', 'ExtendedFuture']:
 				if key not in self.ext_futures:
 					logging.debug(
