@@ -260,17 +260,14 @@ class Scanner(object):
 		@param dynamic_data: dictionary
 		@param key: tuple of (dictionary-key, default-value)
 		'''
-		#print("***", key, data)
 		if data[0] in ['Future', 'ExtendedFuture']:
 			if data[1] in ['UNSET']:
-				#print("adding unset default")
 				dynamic_data[key] = ExtendedFuture()
 			else:
 				if data[1] in DATA_TYPES:
 					default = DATA_TYPES[data[1]]()
 				else:
 					default = data[1]
-				#print("adding default:", default)
 				dynamic_data[key] = ExtendedFuture(default)
 
 	def scan_pkgs(self, can_force):
