@@ -200,7 +200,7 @@ class Scanner(object):
 		}
 		# initialize the plugin checks here
 		self.modules = {}
-		self.ext_futures = {}
+		self._ext_futures = {}
 		self.pkg_level_futures = None
 
 	def set_kwargs(self, mod):
@@ -232,10 +232,10 @@ class Scanner(object):
 			logging.debug("set_func_kwargs(); adding: %s, %s",
 				key, func_kwargs[key])
 			if func_kwargs[key][0] in ['Future', 'ExtendedFuture']:
-				if key not in self.ext_futures:
+				if key not in self._ext_futures:
 					logging.debug(
 						"Adding a new key: %s to the ExtendedFuture dict", key)
-					self.ext_futures[key] = func_kwargs[key]
+					self._ext_futures[key] = func_kwargs[key]
 				self._set_future(dynamic_data, key, func_kwargs[key])
 			else:  # builtin python data type
 				dynamic_data[key] = DATA_TYPES[func_kwargs[key][0]]()
@@ -249,9 +249,9 @@ class Scanner(object):
 
 		@param dynamic_data: dictionary
 		'''
-		for key in list(self.ext_futures):
+		for key in list(self._ext_futures):
 			if key not in self.pkg_level_futures:
-				self._set_future(dynamic_data, key, self.ext_futures[key])
+				self._set_future(dynamic_data, key, self._ext_futures[key])
 
 	@staticmethod
 	def _set_future(dynamic_data, key, data):
