@@ -107,13 +107,13 @@ class Scanner(object):
 		self.repo_settings.repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
 		self.repo_settings.repoman_settings.backup_changes('PORTAGE_ARCHLIST')
 
-		self.profiles = setup_profile(profile_list)
+		profiles = setup_profile(profile_list)
 
-		check_profiles(self.profiles, self.repo_settings.repoman_settings.archlist())
+		check_profiles(profiles, self.repo_settings.repoman_settings.archlist())
 
 		scanlist = scan(self.repolevel, self.reposplit, startdir, self.categories, self.repo_settings)
 
-		self.dev_keywords = dev_profile_keywords(self.profiles)
+		self.dev_keywords = dev_profile_keywords(profiles)
 
 		self.qatracker = self.vcs_settings.qatracker
 
@@ -123,7 +123,7 @@ class Scanner(object):
 		if self.vcs_settings.vcs is None:
 			self.options.echangelog = 'n'
 
-		self.checks = {}
+		checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,
 		# which invalidates changelog.ebuildadded and changelog.missing
 		# checks.
@@ -135,7 +135,7 @@ class Scanner(object):
 		# TODO: shouldn't this just be switched on the repo, iso the VCS?
 		is_echangelog_enabled = self.options.echangelog in ('y', 'force')
 		self.vcs_settings.vcs_is_cvs_or_svn = self.vcs_settings.vcs in ('cvs', 'svn')
-		self.checks['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
+		checks['changelog'] = not is_echangelog_enabled and self.vcs_settings.vcs_is_cvs_or_svn
 
 		if self.options.mode == "manifest" or self.options.quiet:
 			pass
@@ -170,7 +170,7 @@ class Scanner(object):
 
 		# Disable the "self.modules['Ebuild'].notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
-		self.checks['ebuild_notadded'] = not \
+		checks['ebuild_notadded'] = not \
 			(self.vcs_settings.vcs == "svn" and self.repolevel < 3 and self.options.mode != "commit")
 
 		self.effective_scanlist = scanlist
@@ -188,9 +188,9 @@ class Scanner(object):
 			"options": self.options,
 			"metadata_xsd": metadata_xsd,
 			"uselist": uselist,
-			"checks": self.checks,
+			"checks": checks,
 			"repo_metadata": self.repo_metadata,
-			"profiles": self.profiles,
+			"profiles": profiles,
 			"include_arches": self.include_arches,
 			"caches": self.caches,
 			"repoman_incrementals": self.repoman_incrementals,
@@ -291,7 +291,7 @@ class Scanner(object):
 			checkdirlist = os.listdir(checkdir)
 
 			# Run the status check
-			if self.checks['ebuild_notadded']:
+			if self.kwargs['checks']['ebuild_notadded']:
 				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
 
 			dynamic_data = {
@@ -350,7 +350,7 @@ class Scanner(object):
 			ebuildlist = sorted(pkgs.values())
 			ebuildlist = [pkg.pf for pkg in ebuildlist]
 
-			if self.checks['changelog'] and "ChangeLog" not in checkdirlist:
+			if self.kwargs['checks']['changelog'] and "ChangeLog" not in checkdirlist:
 				self.qatracker.add_error("changelog.missing", xpkg + "/ChangeLog")
 
 			changelog_path = os.path.join(checkdir_relative, "ChangeLog")
