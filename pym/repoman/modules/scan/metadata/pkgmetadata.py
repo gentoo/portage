@@ -36,8 +36,10 @@ from portage import os
 from portage import _encodings, _unicode_encode
 from portage.dep import Atom
 
+from .use_flags import USEFlagChecks
 
-class PkgMetadata(ScanBase):
+
+class PkgMetadata(ScanBase, USEFlagChecks):
 	'''Package metadata.xml checks'''
 
 	def __init__(self, **kwargs):
@@ -53,8 +55,10 @@ class PkgMetadata(ScanBase):
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
 		metadata_xsd = kwargs.get('metadata_xsd')
+		self.globalUseFlags = kwargs.get('uselist')
 		self.repoman_settings = repo_settings.repoman_settings
 		self.musedict = {}
+		self.muselist = set()
 		self.xmllint = XmlLint(self.options, self.repoman_settings,
 			metadata_xsd=metadata_xsd)
 
@@ -64,7 +68,7 @@ class PkgMetadata(ScanBase):
 		@param checkdir: string, directory path
 		@param checkdirlist: list of checkdir's
 		@param repolevel: integer
-		@returns: dictionary, including {muselist}
+		@returns: boolean
 		'''
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')
@@ -73,9 +77,7 @@ class PkgMetadata(ScanBase):
 
 		self.musedict = {}
 		if self.options.mode in ['manifest']:
-			# update the dynamic data
-			dyn_muselist = kwargs.get('muselist')
-			dyn_muselist.set(frozenset(self.musedict))
+			self.muselist = frozenset(self.musedict)
 			return False
 
 		# metadata.xml file check
@@ -187,12 +189,38 @@ class PkgMetadata(ScanBase):
 				if not self.xmllint.check(checkdir, repolevel):
 					self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 			del metadata_bad
-		# update the dynamic data
-		dyn_muselist = kwargs.get('muselist')
-		dyn_muselist.set(frozenset(self.musedict))
+		self.muselist = frozenset(self.musedict)
+		return False
+
+	def check_unused(self, **kwargs):
+		'''Reports on any unused metadata.xml use descriptions
+
+		@param xpkg: the pacakge being checked
+		@param used_useflags: use flag list
+		@param validity_future: Future instance
+		'''
+		xpkg = kwargs.get('xpkg')
+		valid_state = kwargs.get('validity_future').get()
+		# check if there are unused local USE-descriptions in metadata.xml
+		# (unless there are any invalids, to avoid noise)
+		if valid_state:
+			for myflag in self.muselist.difference(self.usedUseFlags):
+				self.qatracker.add_error(
+					"metadata.warning",
+					"%s/metadata.xml: unused local USE-description: '%s'"
+					% (xpkg, myflag))
 		return False
 
 	@property
 	def runInPkgs(self):
 		'''Package level scans'''
 		return (True, [self.check])
+
+	@property
+	def runInEbuilds(self):
+		return (True, [self.check_useflags])
+
+	@property
+	def runInFinal(self):
+		'''Final scans at the package level'''
+		return (True, [self.check_unused])

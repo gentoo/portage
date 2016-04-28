@@ -13,7 +13,7 @@ class ScanBase(object):
 		'''
 		# Since no two checks are identicle as to what kwargs are needed,
 		# this does not define any from it here.
-		pass
+		super(ScanBase, self).__init__()
 
 	""" # sample check
 	def check_foo(self, **kwargs):

@@ -18,14 +18,18 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['repo_settings', 'qatracker', 'options', 'metadata_xsd',
+			'mod_kwargs': ['repo_settings', 'qatracker', 'options',
+				'metadata_xsd', 'uselist',
 			],
 			'func_kwargs': {
 				'checkdir': (None, None),
 				'checkdirlist': (None, None),
-				'muselist': ('Future', 'set'),
+				'ebuild': (None, None),
+				'pkg': (None, None),
 				'repolevel': (None, None),
+				'validity_future': (None, None),
 				'xpkg': (None, None),
+				'y_ebuild': (None, None),
 			},
 		},
 		'ebuild-metadata': {
@@ -75,23 +79,6 @@ module_spec = {
 				'ebuild': (None, None),
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
-			},
-		},
-		'unused-metadata': {
-			'name': "unused",
-			'sourcefile': "unused",
-			'class': "UnusedCheck",
-			'description': doc,
-			'functions': ['check'],
-			'func_desc': {
-			},
-			'mod_kwargs': ['qatracker',
-			],
-			'func_kwargs': {
-				'muselist': (None, None),
-				'used_useflags': (None, None),
-				'validity_future': (None, None),
-				'xpkg': (None, None),
 			},
 		},
 	}

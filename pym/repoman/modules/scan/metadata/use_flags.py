@@ -9,10 +9,9 @@ from repoman._portage import portage
 
 from portage import eapi
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
-from repoman.modules.scan.scanbase import ScanBase
 
 
-class USEFlagChecks(ScanBase):
+class USEFlagChecks(object):
 	'''Performs checks on USE flags listed in the ebuilds and metadata.xml'''
 
 	def __init__(self, **kwargs):
@@ -21,38 +20,33 @@ class USEFlagChecks(ScanBase):
 		@param qatracker: QATracker instance
 		@param globalUseFlags: Global USE flags
 		'''
-		super(USEFlagChecks, self).__init__(**kwargs)
-		self.qatracker = kwargs.get('qatracker')
-		self.globalUseFlags = kwargs.get('uselist')
+		super(USEFlagChecks, self).__init__()
+		self.qatracker = None
+		self.globalUseFlags = None
 		self.useFlags = []
 		self.defaultUseFlags = []
 		self.usedUseFlags = set()
 
-	def check(self, **kwargs):
+	def check_useflags(self, **kwargs):
 		'''Perform the check.
 
 		@param pkg: Package in which we check (object).
 		@param xpkg: Package in which we check (string).
 		@param ebuild: Ebuild which we check (object).
 		@param y_ebuild: Ebuild which we check (string).
-		@param muselist: Local USE flags of the package
 		@returns: dictionary, including {ebuild_UsedUseFlags, used_useflags}
 		'''
 		pkg = kwargs.get('pkg').get()
 		package = kwargs.get('xpkg')
 		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
-		localUseFlags = kwargs.get('muselist').get()
-		dyn_used = kwargs.get('used_useflags')
 		# reset state variables for the run
 		self.useFlags = []
 		self.defaultUseFlags = []
-		self.usedUseFlags = set()
 		# perform the checks
 		self._checkGlobal(pkg)
-		self._checkMetadata(package, ebuild, y_ebuild, localUseFlags)
+		self._checkMetadata(package, ebuild, y_ebuild, self.muselist)
 		self._checkRequiredUSE(pkg, ebuild)
-		dyn_used.update(self.usedUseFlags)
 		return False
 
 
@@ -98,8 +92,3 @@ class USEFlagChecks(ScanBase):
 					"REQUIRED_USE.syntax",
 					"%s: REQUIRED_USE: %s" % (ebuild.relative_path, e))
 				del e
-
-	@property
-	def runInEbuilds(self):
-		'''Ebuild level scans'''
-		return (True, [self.check])

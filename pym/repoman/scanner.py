@@ -358,8 +358,6 @@ class Scanner(object):
 
 
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
-		# detect unused local USE-descriptions
-		dynamic_data['used_useflags'] = set()
 
 		for y_ebuild in ebuildlist:
 			self.reset_futures(dynamic_data)
@@ -373,7 +371,7 @@ class Scanner(object):
 				('fetches', 'FetchChecks'),
 				('description', 'DescriptionChecks'),
 				('keywords', 'KeywordChecks'),
-				('use_flags', 'USEFlagChecks'), ('ruby', 'RubyEclassChecks'),
+				('pkgmetadata', 'PkgMetadata'), ('ruby', 'RubyEclassChecks'),
 				('restrict', 'RestrictChecks'),
 				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
 				# Options.is_forced() is used to bypass further checks
@@ -409,8 +407,8 @@ class Scanner(object):
 		# initialize per pkg plugin final checks here
 		# need to set it up for ==> self.modules_list or some other ordered list
 		xpkg_complete = False
-		for mod in [('unused', 'UnusedChecks')]:
-			if mod[0]:
+		for mod in [('pkgmetadata', 'PkgMetadata')]:
+			if mod[0] and mod[1] not in self.modules:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
 				logging.debug("Initializing class name: %s", mod_class.__name__)
 				self.modules[mod[1]] = mod_class(**self.set_kwargs(mod[0]))
