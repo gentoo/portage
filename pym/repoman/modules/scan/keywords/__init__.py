@@ -23,7 +23,6 @@ module_spec = {
 			'func_kwargs': {
 				'changed': (None, None),
 				'ebuild': ('Future', 'UNSET'),
-				'live_ebuild': ('Future', 'UNSET'),
 				'pkg': ('Future', 'UNSET'),
 				'xpkg': None,
 				'y_ebuild': (None, None),

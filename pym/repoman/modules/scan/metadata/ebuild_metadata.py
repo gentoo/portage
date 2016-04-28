@@ -35,13 +35,12 @@ class EbuildMetadata(ScanBase):
 
 	def missing(self, **kwargs):
 		ebuild = kwargs.get('ebuild').get()
-		live_ebuild = kwargs.get('live_ebuild').get()
 		for pos, missing_var in enumerate(missingvars):
 			if not ebuild.metadata.get(missing_var):
 				if kwargs.get('catdir') == "virtual" and \
 					missing_var in ("HOMEPAGE", "LICENSE"):
 					continue
-				if live_ebuild and missing_var == "KEYWORDS":
+				if ebuild.is_live and missing_var == "KEYWORDS":
 					continue
 				myqakey = missingvars[pos] + ".missing"
 				self.qatracker.add_error(myqakey, '%s/%s.ebuild'

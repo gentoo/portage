@@ -37,7 +37,6 @@ class KeywordChecks(ScanBase):
 		@param y_ebuild: Ebuild which we check (string).
 		@param ebuild_archs: Just the architectures (no prefixes) of the ebuild.
 		@param changed: Changes instance
-		@param live_ebuild: A boolean that determines if this is a live ebuild.
 		@returns: dictionary
 		'''
 		pkg = kwargs.get('pkg').get()
@@ -45,12 +44,11 @@ class KeywordChecks(ScanBase):
 		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
 		changed = kwargs.get('changed')
-		live_ebuild = kwargs.get('live_ebuild').get()
 		if not self.options.straight_to_stable:
 			self._checkAddedWithStableKeywords(
 				xpkg, ebuild, y_ebuild, ebuild.keywords, changed)
 
-		self._checkForDroppedKeywords(pkg, ebuild, ebuild.archs, live_ebuild)
+		self._checkForDroppedKeywords(pkg, ebuild, ebuild.archs)
 
 		self._checkForInvalidKeywords(ebuild, xpkg, y_ebuild)
 
@@ -77,11 +75,11 @@ class KeywordChecks(ScanBase):
 					(package, y_ebuild, " ".join(stable_keywords)))
 
 	def _checkForDroppedKeywords(
-		self, pkg, ebuild, ebuild_archs, live_ebuild):
+		self, pkg, ebuild, ebuild_archs):
 		previous_keywords = self.slot_keywords.get(pkg.slot)
 		if previous_keywords is None:
 			self.slot_keywords[pkg.slot] = set()
-		elif ebuild_archs and "*" not in ebuild_archs and not live_ebuild:
+		elif ebuild_archs and "*" not in ebuild_archs and not ebuild.is_live:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
 				self.qatracker.add_error(

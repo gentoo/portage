@@ -45,7 +45,6 @@ module_spec = {
 			'func_kwargs': {
 				'catdir': (None, None),
 				'ebuild': (None, None),
-				'live_ebuild': (None, None),
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},

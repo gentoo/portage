@@ -13,6 +13,7 @@ from repoman.qa_data import no_exec, allvars
 # import our initialized portage instance
 from repoman._portage import portage
 from portage import os
+from portage.const import LIVE_ECLASSES
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 
@@ -218,6 +219,14 @@ class Ebuild(ScanBase):
 		dyn_pkgs = kwargs.get('pkgs')
 		dyn_pkgs.set(pkgs)
 		return self.continue_
+
+	@property
+	def is_live(self):
+		'''Test if the ebuild inherits a live eclass
+
+		@returns: boolean
+		'''
+		return set(LIVE_ECLASSES.intersection(self.inherited))
 
 	@property
 	def runInPkgs(self):
