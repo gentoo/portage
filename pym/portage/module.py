@@ -4,9 +4,12 @@
 
 from __future__ import print_function
 
+import warnings
+
 from portage import os
 from portage.exception import PortageException
 from portage.cache.mappings import ProtectedDict
+from portage.localization import _
 
 
 class InvalidModuleName(PortageException):
@@ -46,7 +49,14 @@ class Module(object):
 		for submodule in self.module_spec['provides']:
 			kid = self.module_spec['provides'][submodule]
 			kidname = kid['name']
-			kid['module_name'] = '.'.join([mod_name, kid['sourcefile']])
+			try:
+				kid['module_name'] = '.'.join([mod_name, kid['sourcefile']])
+			except KeyError:
+				kid['module_name'] = '.'.join([mod_name, self.name])
+				warnings.warn(
+					_("%s module's module_spec is old and needs updating. "
+						"Backward compatibility may be removed in the future.")
+					% (self.name), UserWarning, stacklevel=2)
 			kid['is_imported'] = False
 			self.kids[kidname] = kid
 			self.kids_names.append(kidname)
