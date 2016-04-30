@@ -52,7 +52,7 @@ class LiveEclassChecks(ScanBase):
 
 		if bad_stable_keywords:
 			self.qatracker.add_error(
-				"LIVEVCS.stable", "%s/%s.ebuild with stable keywords :%s" % (
+				"LIVEVCS.stable", "%s/%s.ebuild with stable keywords: %s" % (
 					package, y_ebuild, bad_stable_keywords))
 
 		good_keywords_exist = len(bad_stable_keywords) < len(keywords)
