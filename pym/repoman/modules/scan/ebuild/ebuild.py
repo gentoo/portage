@@ -14,6 +14,7 @@ from repoman.qa_data import no_exec, allvars
 from repoman._portage import portage
 from portage import os
 from portage.const import LIVE_ECLASSES
+from portage.exception import InvalidPackageName
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
 
@@ -199,6 +200,10 @@ class Ebuild(ScanBase):
 				except IOError:
 					fuse.set(False, ignore_InvalidState=True)
 					self.qatracker.add_error("ebuild.output", os.path.join(xpkg, y))
+					continue
+				except InvalidPackageName:
+					fuse.set(False, ignore_InvalidState=True)
+					self.qatracker.add_error("ebuild.invalidname", os.path.join(xpkg, y))
 					continue
 				if not portage.eapi_is_supported(myaux["EAPI"]):
 					fuse.set(False, ignore_InvalidState=True)
