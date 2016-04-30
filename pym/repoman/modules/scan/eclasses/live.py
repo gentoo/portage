@@ -26,19 +26,27 @@ class LiveEclassChecks(ScanBase):
 		@param xpkg: Package in which we check (string).
 		@param ebuild: Ebuild which we check (object).
 		@param y_ebuild: Ebuild which we check (string).
-		@returns: dictionary
+		@returns: boolean
 		'''
 		pkg = kwargs.get("pkg").result()
 		package = kwargs.get('xpkg')
 		ebuild = kwargs.get('ebuild').get()
 		y_ebuild = kwargs.get('y_ebuild')
-		keywords = ebuild.keywords
 
 		if ebuild.live_ebuild and self.repo_settings.repo_config.name == "gentoo":
 			return self.check_live(pkg, package, ebuild, y_ebuild)
 		return False
 
-	def check_live(pkg, package, ebuild, y_ebuild):
+	def check_live(self, pkg, package, ebuild, y_ebuild):
+		'''Perform the live vcs check
+
+		@param pkg: Package in which we check (object).
+		@param xpkg: Package in which we check (string).
+		@param ebuild: Ebuild which we check (object).
+		@param y_ebuild: Ebuild which we check (string).
+		@returns: boolean
+		'''
+		keywords = ebuild.keywords
 		is_stable = lambda kw: not kw.startswith("~") and not kw.startswith("-")
 		bad_stable_keywords = list(filter(is_stable, keywords))
 
