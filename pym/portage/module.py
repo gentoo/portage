@@ -4,12 +4,11 @@
 
 from __future__ import print_function
 
-import warnings
-
 from portage import os
 from portage.exception import PortageException
 from portage.cache.mappings import ProtectedDict
 from portage.localization import _
+from portage.util import writemsg
 
 
 class InvalidModuleName(PortageException):
@@ -53,10 +52,10 @@ class Module(object):
 				kid['module_name'] = '.'.join([mod_name, kid['sourcefile']])
 			except KeyError:
 				kid['module_name'] = '.'.join([mod_name, self.name])
-				warnings.warn(
-					_("%s module's module_spec is old and needs updating. "
-						"Backward compatibility may be removed in the future.")
-					% (self.name), UserWarning, stacklevel=2)
+				msg = ("%s module's module_spec is old, missing attribute: "
+						"'sourcefile'.  Backward compatibility may be "
+						"removed in the future.\nFile: %s\n")
+				writemsg(_(msg) % (self.name, self._module.__file__))
 			kid['is_imported'] = False
 			self.kids[kidname] = kid
 			self.kids_names.append(kidname)
