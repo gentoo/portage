@@ -79,7 +79,7 @@ class KeywordChecks(ScanBase):
 		previous_keywords = self.slot_keywords.get(pkg.slot)
 		if previous_keywords is None:
 			self.slot_keywords[pkg.slot] = set()
-		elif ebuild_archs and "*" not in ebuild_archs and not ebuild.is_live:
+		elif ebuild_archs and "*" not in ebuild_archs and not ebuild.live_ebuild:
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
 			if dropped_keywords:
 				self.qatracker.add_error(

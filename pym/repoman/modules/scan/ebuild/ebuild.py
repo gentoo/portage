@@ -45,6 +45,7 @@ class Ebuild(ScanBase):
 		self.metadata = None
 		self.eapi = None
 		self.inherited = None
+		self.live_ebuild = None
 		self.keywords = None
 		self.pkgs = {}
 
@@ -109,6 +110,7 @@ class Ebuild(ScanBase):
 		self.metadata = self.pkg._metadata
 		self.eapi = self.metadata["EAPI"]
 		self.inherited = self.pkg.inherited
+		self.live_ebuild = LIVE_ECLASSES.intersection(self.inherited)
 		self.keywords = self.metadata["KEYWORDS"].split()
 		self.archs = set(kw.lstrip("~") for kw in self.keywords if not kw.startswith("-"))
 		return False
@@ -219,14 +221,6 @@ class Ebuild(ScanBase):
 		dyn_pkgs = kwargs.get('pkgs')
 		dyn_pkgs.set(pkgs)
 		return self.continue_
-
-	@property
-	def is_live(self):
-		'''Test if the ebuild inherits a live eclass
-
-		@returns: boolean
-		'''
-		return set(LIVE_ECLASSES.intersection(self.inherited))
 
 	@property
 	def runInPkgs(self):

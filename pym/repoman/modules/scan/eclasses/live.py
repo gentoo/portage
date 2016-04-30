@@ -34,15 +34,17 @@ class LiveEclassChecks(ScanBase):
 		y_ebuild = kwargs.get('y_ebuild')
 		keywords = ebuild.keywords
 
-		if not ebuild.is_live and self.repo_settings.repo_config.name == "gentoo":
-			return False
+		if ebuild.live_ebuild and self.repo_settings.repo_config.name == "gentoo":
+			return self.check_live(pkg, package, ebuild, y_ebuild)
+		return False
 
+	def check_live(pkg, package, ebuild, y_ebuild):
 		is_stable = lambda kw: not kw.startswith("~") and not kw.startswith("-")
 		bad_stable_keywords = list(filter(is_stable, keywords))
 
 		if bad_stable_keywords:
 			self.qatracker.add_error(
-				"LIVEVCS.stable", "%s/%s.ebuild with stable keywords:%s " % (
+				"LIVEVCS.stable", "%s/%s.ebuild with stable keywords :%s" % (
 					package, y_ebuild, bad_stable_keywords))
 
 		good_keywords_exist = len(bad_stable_keywords) < len(keywords)
