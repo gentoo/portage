@@ -96,7 +96,7 @@ def FindVCS(cwd=None):
 	return outvcs
 
 
-def vcs_files_to_cps(vcs_file_iter, repolevel, reposplit, categories):
+def vcs_files_to_cps(vcs_file_iter, repodir, repolevel, reposplit, categories):
 	"""
 	Iterate over the given modified file paths returned from the vcs,
 	and return a frozenset containing category/pn strings for each
@@ -127,7 +127,10 @@ def vcs_files_to_cps(vcs_file_iter, repolevel, reposplit, categories):
 			if len(f_split) > 3 and f_split[1] in categories:
 				modified_cps.append("/".join(f_split[1:3]))
 
-	return frozenset(modified_cps)
+	# Exclude packages that have been removed, since calling
+	# code assumes that the packages exist.
+	return frozenset(x for x in frozenset(modified_cps)
+		if os.path.exists(os.path.join(repodir, x)))
 
 
 def vcs_new_changed(relative_path, mychanged, mynew):

@@ -370,6 +370,7 @@ class Actions(object):
 			committer_name = utilities.get_committer_name(env=self.repoman_settings)
 			for x in sorted(vcs_files_to_cps(
 				chain(myupdates, mymanifests, myremoved),
+				self.repo_settings.repodir,
 				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
 				catdir, pkgdir = x.split("/")
 				checkdir = self.repo_settings.repodir + "/" + x

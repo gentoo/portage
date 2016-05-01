@@ -112,6 +112,7 @@ class Changes(ChangesBase):
 		if updates or removed:
 			for x in sorted(vcs_files_to_cps(
 				chain(updates, removed, manifests),
+				self.repo_settings.repodir,
 				scanner.repolevel, scanner.reposplit, scanner.categories)):
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)

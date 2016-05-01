@@ -177,6 +177,7 @@ class Scanner(object):
 		if self.options.if_modified == "y":
 			self.effective_scanlist = sorted(vcs_files_to_cps(
 				chain(self.changed.changed, self.changed.new, self.changed.removed),
+				self.repo_settings.repodir,
 				self.repolevel, self.reposplit, self.categories))
 
 		# Create our kwargs dict here to initialize the plugins with
