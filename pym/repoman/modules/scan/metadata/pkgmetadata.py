@@ -130,8 +130,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					(xpkg, metadata_doctype_name, doctype_name))
 
 		# load USE flags from metadata.xml
-		self.musedict, metadata_bad = self._parse_metadata_use(
-			_metadata_xml, xpkg, metadata_bad)
+		self.musedict = self._parse_metadata_use(_metadata_xml, xpkg)
 		for atom in chain(*self.musedict.values()):
 			if atom is None:
 				continue
@@ -151,15 +150,8 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
 			validator = etree.XMLSchema(file=self.metadata_xsd)
-			try:
-				validator.assertValid(_metadata_xml)
-			except etree.DocumentInvalid as error:
-				self.qatracker.add_error(
-					"metadata.bad",
-					xpkg + "/metadata.xml: %s"
-					% (str(error))
-					)
-		del metadata_bad
+			if not validator.validate(_metadata_xml):
+				self._add_validate_errors(xpkg, validator.error_log)
 		self.muselist = frozenset(self.musedict)
 		return False
 
@@ -182,7 +174,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					% (xpkg, myflag))
 		return False
 
-	def _parse_metadata_use(self, xml_tree, xpkg, metadata_bad):
+	def _parse_metadata_use(self, xml_tree, xpkg):
 		"""
 		Records are wrapped in XML as per GLEP 56
 		returns a dict with keys constisting of USE flag names and values
@@ -192,7 +184,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 
 		usetags = xml_tree.findall("use")
 		if not usetags:
-			return uselist, metadata_bad
+			return uselist
 
 		# It's possible to have multiple 'use' elements.
 		for usetag in usetags:
@@ -203,37 +195,37 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 
 			for flag in flags:
 				pkg_flag = flag.get("name")
-				if pkg_flag is None:
-					metadata_bad = True
-					self.qatracker.add_error(
-						"metadata.bad",
-						"%s/metadata.xml: line: %s, '%s', missing attribute: name"
-						% (xpkg, flag.sourceline, flag.text))
-					continue
-				flag_restrict = flag.get("restrict")
+				if pkg_flag is not None:
+					flag_restrict = flag.get("restrict")
 
-				# emulate the Element.itertext() method from python-2.7
-				inner_text = []
-				stack = []
-				stack.append(flag)
-				while stack:
-					obj = stack.pop()
-					if isinstance(obj, basestring):
-						inner_text.append(obj)
-						continue
-					if isinstance(obj.text, basestring):
-						inner_text.append(obj.text)
-					if isinstance(obj.tail, basestring):
-						stack.append(obj.tail)
-					stack.extend(reversed(obj))
+					# emulate the Element.itertext() method from python-2.7
+					inner_text = []
+					stack = []
+					stack.append(flag)
+					while stack:
+						obj = stack.pop()
+						if isinstance(obj, basestring):
+							inner_text.append(obj)
+							continue
+						if isinstance(obj.text, basestring):
+							inner_text.append(obj.text)
+						if isinstance(obj.tail, basestring):
+							stack.append(obj.tail)
+						stack.extend(reversed(obj))
 
-				if pkg_flag not in uselist:
-					uselist[pkg_flag] = {}
+					if flag.get("name") not in uselist:
+						uselist[flag.get("name")] = {}
 
-				# (flag_restrict can be None)
-				uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
+					# (flag_restrict can be None)
+					uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
+		return uselist
 
-		return uselist, metadata_bad
+	def _add_validate_errors(self, xpkg, log):
+		for error in log:
+			self.qatracker.add_error(
+				"metadata.bad",
+				"%s/metadata.xml: line: %s, %s"
+				% (xpkg, error.line, error.message))
 
 	@property
 	def runInPkgs(self):
