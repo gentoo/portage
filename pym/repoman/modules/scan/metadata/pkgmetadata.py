@@ -206,8 +206,14 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
 			validator = etree.XMLSchema(file=self.metadata_xsd)
-			if not validator.validate(_metadata_xml):
-				self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
+			try:
+				validator.assertValid(_metadata_xml)
+			except etree.DocumentInvalid as error:
+				self.qatracker.add_error(
+					"metadata.bad",
+					xpkg + "/metadata.xml: %s"
+					% (str(error))
+					)
 		del metadata_bad
 		self.muselist = frozenset(self.musedict)
 		return False
