@@ -28,7 +28,6 @@ from repoman.modules.scan.scanbase import ScanBase
 
 from portage.exception import InvalidAtom
 from portage import os
-from portage import exception
 from portage.dep import Atom
 
 from .use_flags import USEFlagChecks
@@ -41,55 +40,6 @@ metadata_xml_encoding = 'UTF-8'
 metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
 	% (metadata_xml_encoding,)
 metadata_doctype_name = 'pkgmetadata'
-
-
-def parse_metadata_use(xml_tree):
-	"""
-	Records are wrapped in XML as per GLEP 56
-	returns a dict with keys constisting of USE flag names and values
-	containing their respective descriptions
-	"""
-	uselist = {}
-
-	usetags = xml_tree.findall("use")
-	if not usetags:
-		return uselist
-
-	# It's possible to have multiple 'use' elements.
-	for usetag in usetags:
-		flags = usetag.findall("flag")
-		if not flags:
-			# DTD allows use elements containing no flag elements.
-			continue
-
-		for flag in flags:
-			pkg_flag = flag.get("name")
-			if pkg_flag is None:
-				raise exception.ParseError("missing 'name' attribute for 'flag' tag")
-			flag_restrict = flag.get("restrict")
-
-			# emulate the Element.itertext() method from python-2.7
-			inner_text = []
-			stack = []
-			stack.append(flag)
-			while stack:
-				obj = stack.pop()
-				if isinstance(obj, basestring):
-					inner_text.append(obj)
-					continue
-				if isinstance(obj.text, basestring):
-					inner_text.append(obj.text)
-				if isinstance(obj.tail, basestring):
-					stack.append(obj.tail)
-				stack.extend(reversed(obj))
-
-			if pkg_flag not in uselist:
-				uselist[pkg_flag] = {}
-
-			# (flag_restrict can be None)
-			uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
-
-	return uselist
 
 
 class PkgMetadata(ScanBase, USEFlagChecks):
@@ -180,28 +130,23 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					(xpkg, metadata_doctype_name, doctype_name))
 
 		# load USE flags from metadata.xml
-		try:
-			self.musedict = parse_metadata_use(_metadata_xml)
-		except portage.exception.ParseError as e:
-			metadata_bad = True
-			self.qatracker.add_error(
-				"metadata.bad", "%s/metadata.xml: %s" % (xpkg, e))
-		else:
-			for atom in chain(*self.musedict.values()):
-				if atom is None:
-					continue
-				try:
-					atom = Atom(atom)
-				except InvalidAtom as e:
+		self.musedict, metadata_bad = self._parse_metadata_use(
+			_metadata_xml, xpkg, metadata_bad)
+		for atom in chain(*self.musedict.values()):
+			if atom is None:
+				continue
+			try:
+				atom = Atom(atom)
+			except InvalidAtom as e:
+				self.qatracker.add_error(
+					"metadata.bad",
+					"%s/metadata.xml: Invalid atom: %s" % (xpkg, e))
+			else:
+				if atom.cp != xpkg:
 					self.qatracker.add_error(
 						"metadata.bad",
-						"%s/metadata.xml: Invalid atom: %s" % (xpkg, e))
-				else:
-					if atom.cp != xpkg:
-						self.qatracker.add_error(
-							"metadata.bad",
-							"%s/metadata.xml: Atom contains "
-							"unexpected cat/pn: %s" % (xpkg, atom))
+						"%s/metadata.xml: Atom contains "
+						"unexpected cat/pn: %s" % (xpkg, atom))
 
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
@@ -236,6 +181,59 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					"%s/metadata.xml: unused local USE-description: '%s'"
 					% (xpkg, myflag))
 		return False
+
+	def _parse_metadata_use(self, xml_tree, xpkg, metadata_bad):
+		"""
+		Records are wrapped in XML as per GLEP 56
+		returns a dict with keys constisting of USE flag names and values
+		containing their respective descriptions
+		"""
+		uselist = {}
+
+		usetags = xml_tree.findall("use")
+		if not usetags:
+			return uselist, metadata_bad
+
+		# It's possible to have multiple 'use' elements.
+		for usetag in usetags:
+			flags = usetag.findall("flag")
+			if not flags:
+				# DTD allows use elements containing no flag elements.
+				continue
+
+			for flag in flags:
+				pkg_flag = flag.get("name")
+				if pkg_flag is None:
+					metadata_bad = True
+					self.qatracker.add_error(
+						"metadata.bad",
+						"%s/metadata.xml: line: %s, '%s', missing attribute: name"
+						% (xpkg, flag.sourceline, flag.text))
+					continue
+				flag_restrict = flag.get("restrict")
+
+				# emulate the Element.itertext() method from python-2.7
+				inner_text = []
+				stack = []
+				stack.append(flag)
+				while stack:
+					obj = stack.pop()
+					if isinstance(obj, basestring):
+						inner_text.append(obj)
+						continue
+					if isinstance(obj.text, basestring):
+						inner_text.append(obj.text)
+					if isinstance(obj.tail, basestring):
+						stack.append(obj.tail)
+					stack.extend(reversed(obj))
+
+				if pkg_flag not in uselist:
+					uselist[pkg_flag] = {}
+
+				# (flag_restrict can be None)
+				uselist[pkg_flag][flag_restrict] = " ".join("".join(inner_text).split())
+
+		return uselist, metadata_bad
 
 	@property
 	def runInPkgs(self):
