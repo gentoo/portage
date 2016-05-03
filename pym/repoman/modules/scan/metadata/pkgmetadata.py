@@ -24,8 +24,6 @@ except (ImportError, SystemError, RuntimeError, Exception):
 # import our initialized portage instance
 from repoman._portage import portage
 from repoman.metadata import metadata_dtd_uri
-from repoman.checks.herds.herdbase import get_herd_base
-from repoman.checks.herds.metadata import check_metadata, UnknownHerdsError
 from repoman.modules.scan.scanbase import ScanBase
 
 from portage.exception import InvalidAtom
@@ -204,16 +202,6 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 							"metadata.bad",
 							"%s/metadata.xml: Atom contains "
 							"unexpected cat/pn: %s" % (xpkg, atom))
-
-		# Run other metadata.xml checkers
-		try:
-			check_metadata(_metadata_xml, get_herd_base(
-				self.repoman_settings))
-		except (UnknownHerdsError, ) as e:
-			metadata_bad = True
-			self.qatracker.add_error(
-				"metadata.bad", "%s/metadata.xml: %s" % (xpkg, e))
-			del e
 
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
