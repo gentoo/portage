@@ -10,6 +10,7 @@ from portage import normalize_path
 from portage import os
 from portage.output import green
 from portage.util.futures.extendedfutures import ExtendedFuture
+from repoman.metadata import get_metadata_xsd
 from repoman.modules.commit import repochecks
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
@@ -55,13 +56,6 @@ class Scanner(object):
 		self.repo_settings.repoman_settings.categories = frozenset(
 			portage.util.stack_lists([self.categories], incremental=1))
 		self.categories = self.repo_settings.repoman_settings.categories
-
-		metadata_xsd = None
-		for path in reversed(self.repo_settings.repo_config.eclass_db.porttrees):
-			path = os.path.join(path, 'metadata/xml-schema/metadata.xsd')
-			if os.path.exists(path):
-				metadata_xsd = path
-				break
 
 		self.portdb = repo_settings.portdb
 		self.portdb.settings = self.repo_settings.repoman_settings
@@ -187,7 +181,7 @@ class Scanner(object):
 			"qatracker": self.qatracker,
 			"vcs_settings": self.vcs_settings,
 			"options": self.options,
-			"metadata_xsd": metadata_xsd,
+			"metadata_xsd": get_metadata_xsd(self.repo_settings),
 			"uselist": uselist,
 			"checks": checks,
 			"repo_metadata": self.repo_metadata,

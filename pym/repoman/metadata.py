@@ -99,3 +99,24 @@ def fetch_metadata_xsd(metadata_xsd, repoman_settings):
 				pass
 
 	return True
+
+
+def get_metadata_xsd(repo_settings):
+	'''Locate and or fetch the metadata.xsd file
+
+	@param repo_settings: RepoSettings instance
+	@returns: path to the metadata.xsd file
+	'''
+	metadata_xsd = None
+	for path in reversed(repo_settings.repo_config.eclass_db.porttrees):
+		path = os.path.join(path, 'metadata/xml-schema/metadata.xsd')
+		if os.path.exists(path):
+			metadata_xsd = path
+			break
+	if metadata_xsd is None:
+		metadata_xsd = os.path.join(
+			repo_settings.repoman_settings["DISTDIR"], 'metadata.xsd'
+			)
+
+		fetch_metadata_xsd(metadata_xsd, repo_settings.repoman_settings)
+	return metadata_xsd

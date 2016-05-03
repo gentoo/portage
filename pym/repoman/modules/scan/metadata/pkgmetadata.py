@@ -26,7 +26,6 @@ from repoman._portage import portage
 from repoman.metadata import metadata_dtd_uri
 from repoman.checks.herds.herdbase import get_herd_base
 from repoman.checks.herds.metadata import check_metadata, UnknownHerdsError
-from repoman._xml import XmlLint
 from repoman.modules.scan.scanbase import ScanBase
 
 from portage.exception import InvalidAtom
@@ -110,13 +109,11 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		repo_settings = kwargs.get('repo_settings')
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
-		metadata_xsd = kwargs.get('metadata_xsd')
+		self.metadata_xsd = kwargs.get('metadata_xsd')
 		self.globalUseFlags = kwargs.get('uselist')
 		self.repoman_settings = repo_settings.repoman_settings
 		self.musedict = {}
 		self.muselist = set()
-		self.xmllint = XmlLint(self.options, self.repoman_settings,
-			metadata_xsd=metadata_xsd)
 
 	def check(self, **kwargs):
 		'''Performs the checks on the metadata.xml for the package
@@ -129,7 +126,6 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		xpkg = kwargs.get('xpkg')
 		checkdir = kwargs.get('checkdir')
 		checkdirlist = kwargs.get('checkdirlist').get()
-		repolevel = kwargs.get('repolevel')
 
 		self.musedict = {}
 		if self.options.mode in ['manifest']:
@@ -221,7 +217,8 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 
 		# Only carry out if in package directory or check forced
 		if not metadata_bad:
-			if not self.xmllint.check(checkdir, repolevel):
+			validator = etree.XMLSchema(file=self.metadata_xsd)
+			if not validator.validate(_metadata_xml):
 				self.qatracker.add_error("metadata.bad", xpkg + "/metadata.xml")
 		del metadata_bad
 		self.muselist = frozenset(self.musedict)
