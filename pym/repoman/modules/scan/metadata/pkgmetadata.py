@@ -106,7 +106,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 				"xml declaration encoding should be '%s', not '%s'" %
 				(xpkg, metadata_xml_encoding, xml_encoding))
 
-		if not _metadata_xml.docinfo:
+		if not _metadata_xml.docinfo.doctype:
 			metadata_bad = True
 			self.qatracker.add_error(
 				"metadata.bad",
