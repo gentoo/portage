@@ -59,34 +59,16 @@ else
 	# These dummy functions are for things that are likely to be called
 	# in global scope, even though they are completely useless during
 	# the "depend" phase.
-	for x in diropts docompress exeopts get_KV insopts \
-		KV_major KV_micro KV_minor KV_to_int \
-		libopts register_die_hook register_success_hook \
-		__strip_duplicate_slashes \
-		use_with use_enable ; do
-		eval "${x}() {
-			if ___eapi_disallows_helpers_in_global_scope; then
-				die \"\${FUNCNAME}() calls are not allowed in global scope\"
-			fi
-		}"
-	done
-	# These dummy functions return false in non-strict EAPIs, in order to ensure that
-	# `use multislot` is false for the "depend" phase.
-	funcs="use useq usev"
+	funcs="diropts docompress exeopts get_KV insopts
+		KV_major KV_micro KV_minor KV_to_int
+		libopts register_die_hook register_success_hook
+		__strip_duplicate_slashes
+		use useq usev use_with use_enable"
 	___eapi_has_usex && funcs+=" usex"
 	___eapi_has_in_iuse && funcs+=" in_iuse"
-	for x in ${funcs} ; do
-		eval "${x}() {
-			if ___eapi_disallows_helpers_in_global_scope; then
-				die \"\${FUNCNAME}() calls are not allowed in global scope\"
-			else
-				return 1
-			fi
-		}"
-	done
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
-	funcs="best_version has_version portageq"
+	funcs+=" best_version has_version portageq"
 	___eapi_has_master_repositories && funcs+=" master_repositories"
 	___eapi_has_repository_path && funcs+=" repository_path"
 	___eapi_has_available_eclasses && funcs+=" available_eclasses"
