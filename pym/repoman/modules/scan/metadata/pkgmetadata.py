@@ -221,11 +221,16 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		return uselist
 
 	def _add_validate_errors(self, xpkg, log):
+		listed = set()
 		for error in log:
-			self.qatracker.add_error(
-				"metadata.bad",
-				"%s/metadata.xml: line: %s, %s"
-				% (xpkg, error.line, error.message))
+			msg_prefix = error.message.split(":",1)[0]
+			info = "%s %s" % (error.line, msg_prefix)
+			if info not in listed:
+				listed.add(info)
+				self.qatracker.add_error(
+					"metadata.bad",
+					"%s/metadata.xml: line: %s, %s"
+					% (xpkg, error.line, error.message))
 
 	@property
 	def runInPkgs(self):
