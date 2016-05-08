@@ -108,8 +108,8 @@ class EbuildHeader(LineCheck):
 				return errors.COPYRIGHT_ERROR
 		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return errors.LICENSE_ERROR
-		elif num == 2 and line.rstrip('\n') != self.id_header:
-			return errors.ID_HEADER_ERROR
+		#elif num == 2 and line.rstrip('\n') != self.id_header:
+		#	return errors.ID_HEADER_ERROR
 
 
 class EbuildWhitespace(LineCheck):
