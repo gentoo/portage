@@ -1,10 +1,11 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
 
 import errno
 import io
+import logging
 import re
 import stat
 import sys
@@ -15,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
 		'verify_all,_apply_hash_filter,_filter_unaccelarated_hashes',
 	'portage.repository.config:_find_invalid_path_char',
-	'portage.util:write_atomic',
+	'portage.util:write_atomic,writemsg_level',
 )
 
 from portage import os
@@ -387,7 +388,17 @@ class Manifest(object):
 
 		if max_mtime is not None:
 			for path in preserved_stats:
-				os.utime(path, (max_mtime, max_mtime))
+				try:
+					os.utime(path, (max_mtime, max_mtime))
+				except OSError as e:
+					# Even though we have write permission, utime fails
+					# with EPERM if path is owned by a different user.
+					# Only warn in this case, since it's not a problem
+					# unless this repo is being prepared for distribution
+					# via rsync.
+					writemsg_level('!!! utime(\'%s\', (%s, %s)): %s\n' %
+						(path, max_mtime, max_mtime, e),
+						level=logging.WARNING, noiselevel=-1)
 
 	def sign(self):
 		""" Sign the Manifest """
