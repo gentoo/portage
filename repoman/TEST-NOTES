@@ -1,0 +1,45 @@
+UnitTests
+---------
+
+Portage has some tests that use the unittest framework that ships with python (2.3-2.4ish)
+Tests have a specific naming convention.
+
+in pym/portage/tests/ there is a runTest script that invokes pym/portage/tests/__init__.py
+
+This init looks at a hardcoded list of test dirs to search for tests.
+If you add a new dir and don't see your new tests, make sure that the dir is in this list.
+
+On the subject of adding more directories; the layout is basically 1 directory per portage
+file at this point (we have few files, and even fewer large files).  Inside of the dir
+you should have files of the form test_${function}.py.
+
+So if I was to write a vercmp test, and vercmp is in portage_versions.
+
+pym/portage/tests/portage_versions/test_vercmp.py
+
+would be the filename.
+
+The __init__.py file now does recursive tests, but you need to tell it so.  For example, if
+you had cache tests the dir format would be something like...
+
+pym/portage/tests/cache/flat_hash/test_foo.py
+
+and you would put "cache/flat_hash" into the testDirs variable in __init__.py.
+
+
+Skipping
+--------
+
+Please use the portage.tests.* classes as they support throwing a SkipException for
+tests that are known to fail.  Normally one uses testing to do Test Driven Development
+(TDD); however we do not do that here.  Therefore there are times when legitimate tests
+exist but fail due to code in trunk.  We would still like the suite to pass in some instances
+because the suite is built around two things, testing functionality in the current code as
+well as poking holes in the current code (isvalidatom is an example).  So sometimes we desire
+a test to point out that "this needs fixing" but it doesn't affect portage's overall
+functionality.  You should raise portage.tests.SkipException in that case.
+
+emerge
+------
+
+The emerge namespace currently has 0 tests (and no runner)

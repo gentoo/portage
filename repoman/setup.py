@@ -32,12 +32,9 @@ import sys
 
 x_scripts = {
 	'bin': [
-		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
-		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg',
+		'bin/repoman',
 	],
 	'sbin': [
-		'bin/archive-conf', 'bin/dispatch-conf', 'bin/emaint', 'bin/env-update',
-		'bin/etc-update', 'bin/fixpackages', 'bin/regenworld'
 	],
 }
 
@@ -614,8 +611,8 @@ def get_manpages():
 
 
 setup(
-	name = 'portage',
-	version = '2.2.28',
+	name = 'repoman',
+	version = '2.3.0',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
@@ -626,14 +623,7 @@ setup(
 	scripts = list(find_scripts()),
 
 	data_files = list(get_manpages()) + [
-		['$sysconfdir', ['cnf/etc-update.conf', 'cnf/dispatch-conf.conf']],
-		['$logrotatedir', ['cnf/logrotate.d/elog-save-summary']],
-		['$portage_confdir', [
-			'cnf/make.conf.example', 'cnf/make.globals', 'cnf/repos.conf']],
-		['$portage_setsdir', ['cnf/sets/portage.conf']],
 		['$docdir', ['NEWS', 'RELEASE-NOTES']],
-		['$portage_base/bin', ['bin/deprecated-path']],
-		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
 	cmdclass = {
