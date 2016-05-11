@@ -26,8 +26,13 @@ except KeyboardInterrupt:
 	sys.exit(1)
 
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	pym_path = osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "pym")
+here = osp.realpath(__file__)
+if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.dirname(here))), ".portage_not_installed")):
+	# Add the repoman subpkg
+	pym_path = osp.join(osp.dirname(osp.dirname(here)), "pym")
+	sys.path.insert(0, pym_path)
+	# Add the base portage pkg
+	pym_path = osp.join(osp.dirname(osp.dirname(osp.dirname(here))), "pym")
 	sys.path.insert(0, pym_path)
 import portage
 portage._internal_caller = True
