@@ -99,7 +99,7 @@ gcc_warn_check() {
 				eerror "${f}"
 				eerror
 				eerror " Please file a bug about this at http://bugs.gentoo.org/"
-				eerror " with the maintaining herd of the package."
+				eerror " with the maintainer of the package."
 				eerror
 			else
 				__vecho -ne '\n'
@@ -137,7 +137,7 @@ gcc_warn_check() {
 				eerror "${f}"
 				eerror
 				eerror " Please file a bug about this at http://bugs.gentoo.org/"
-				eerror " with the maintaining herd of the package."
+				eerror " with the maintainer of the package."
 				eerror
 			else
 				__vecho -ne '\n'

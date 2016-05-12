@@ -49,7 +49,7 @@ elf_check() {
 		__vecho -ne '\n'
 		eqawarn "QA Notice: The following files contain insecure RUNPATHs"
 		eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
-		eqawarn " with the maintaining herd of the package."
+		eqawarn " with the maintainer of the package."
 		eqawarn "${f}${f:+${x:+\n}}${x}"
 		__vecho -ne '\n'
 		if [[ -n ${x} ]] || has stricter ${FEATURES} ; then
