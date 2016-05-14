@@ -10,10 +10,13 @@ from portage import os
 from portage import _unicode_decode
 from portage.const import PORTAGE_BASE_PATH, PORTAGE_PYM_PATH
 from portage.process import find_binary
-from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 from repoman.copyrights import update_copyright_year
+from repoman.tests import TestCase
+
+REPOMAN_BASE_PATH = os.path.join(PORTAGE_BASE_PATH, 'repoman')
+
 
 class SimpleRepomanTestCase(TestCase):
 
@@ -128,7 +131,7 @@ class SimpleRepomanTestCase(TestCase):
 		}
 		licenses = ["GPL-2"]
 		arch_list = ["x86"]
-		metadata_xsd = os.path.join(PORTAGE_BASE_PATH, "cnf/metadata.xsd")
+		metadata_xsd = os.path.join(REPOMAN_BASE_PATH, "cnf/metadata.xsd")
 		metadata_xml_files = (
 			(
 				"dev-libs/A",

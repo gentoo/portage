@@ -29,7 +29,12 @@ os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)
-sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
+repoman_pym = osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))
+sys.path.insert(0, repoman_pym)
+
+# Add in the parent portage python modules
+portage_pym = osp.dirname(osp.dirname(repoman_pym))+'/pym'
+sys.path.insert(0, portage_pym)
 
 import portage
 portage._internal_caller = True
@@ -41,7 +46,7 @@ portage._disable_legacy_globals()
 if os.environ.get('NOCOLOR') in ('yes', 'true'):
 	portage.output.nocolor()
 
-import portage.tests as tests
+import repoman.tests as tests
 from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")
 path = [x for x in path if x]
