@@ -73,7 +73,7 @@ else:
 	except ImportError:
 		pass
 	else:
-		from repoman.metadata import parse_metadata_use
+		from portage.xml.metadata import parse_metadata_use
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622

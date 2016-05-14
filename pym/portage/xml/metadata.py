@@ -30,7 +30,7 @@
 
 from __future__ import unicode_literals
 
-__all__ = ('MetaDataXML',)
+__all__ = ('MetaDataXML', 'parse_metadata_use')
 
 import sys
 
@@ -63,6 +63,11 @@ import xml.etree.ElementTree
 from portage import _encodings, _unicode_encode
 from portage.util import unique_everseen
 
+if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
+	basestring = str
+
+
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
 	Implements doctype() as required to avoid deprecation warnings with
@@ -85,7 +90,7 @@ class _Maintainer(object):
 	@type restrict: str or None
 	@ivar restrict: e.g. &gt;=portage-2.2 means only maintains versions
 		of Portage greater than 2.2. Should be DEPEND string with < and >
-		converted to &lt; and &gt; respectively. 
+		converted to &lt; and &gt; respectively.
 	@type status: str or None
 	@ivar status: If set, either 'active' or 'inactive'. Upstream only.
 	"""
@@ -180,7 +185,7 @@ class _Upstream(object):
 			lang = elem.get('lang')
 			result.append((elem.text, lang))
 		return result
-	
+
 	def upstream_maintainers(self):
 		"""Retrieve upstream maintainer information from xml node."""
 		return [_Maintainer(m) for m in self.node.findall('maintainer')]
@@ -424,3 +429,51 @@ class MetaDataXML(object):
 		maintainers = list(unique_everseen(maintainers))
 		maint_str = " ".join(maintainers)
 		return maint_str
+
+
+def parse_metadata_use(xml_tree):
+	"""
+	Records are wrapped in XML as per GLEP 56
+	returns a dict with keys constisting of USE flag names and values
+	containing their respective descriptions
+	"""
+	uselist = {}
+
+	usetags = xml_tree.findall("use")
+	if not usetags:
+		return uselist
+
+	# It's possible to have multiple 'use' elements.
+	for usetag in usetags:
+		flags = usetag.findall("flag")
+		if not flags:
+			# DTD allows use elements containing no flag elements.
+			continue
+
+		for flag in flags:
+			pkg_flag = flag.get("name")
+			if pkg_flag is not None:
+				flag_restrict = flag.get("restrict")
+
+				# emulate the Element.itertext() method from python-2.7
+				inner_text = []
+				stack = []
+				stack.append(flag)
+				while stack:
+					obj = stack.pop()
+					if isinstance(obj, basestring):
+						inner_text.append(obj)
+						continue
+					if isinstance(obj.text, basestring):
+						inner_text.append(obj.text)
+					if isinstance(obj.tail, basestring):
+						stack.append(obj.tail)
+					stack.extend(reversed(obj))
+
+				if flag.get("name") not in uselist:
+					uselist[flag.get("name")] = {}
+
+				# (flag_restrict can be None)
+				uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
+	return uselist
+

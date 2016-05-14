@@ -29,12 +29,9 @@ from repoman.modules.scan.scanbase import ScanBase
 from portage.exception import InvalidAtom
 from portage import os
 from portage.dep import Atom
+from portage.xml.metadata import parse_metadata_use
 
 from .use_flags import USEFlagChecks
-
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 metadata_xml_encoding = 'UTF-8'
 metadata_xml_declaration = '<?xml version="1.0" encoding="%s"?>' \
@@ -130,7 +127,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					(xpkg, metadata_doctype_name, doctype_name))
 
 		# load USE flags from metadata.xml
-		self.musedict = self._parse_metadata_use(_metadata_xml, xpkg)
+		self.musedict = parse_metadata_use(_metadata_xml)
 		for atom in chain(*self.musedict.values()):
 			if atom is None:
 				continue
@@ -173,52 +170,6 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 					"%s/metadata.xml: unused local USE-description: '%s'"
 					% (xpkg, myflag))
 		return False
-
-	def _parse_metadata_use(self, xml_tree, xpkg):
-		"""
-		Records are wrapped in XML as per GLEP 56
-		returns a dict with keys constisting of USE flag names and values
-		containing their respective descriptions
-		"""
-		uselist = {}
-
-		usetags = xml_tree.findall("use")
-		if not usetags:
-			return uselist
-
-		# It's possible to have multiple 'use' elements.
-		for usetag in usetags:
-			flags = usetag.findall("flag")
-			if not flags:
-				# DTD allows use elements containing no flag elements.
-				continue
-
-			for flag in flags:
-				pkg_flag = flag.get("name")
-				if pkg_flag is not None:
-					flag_restrict = flag.get("restrict")
-
-					# emulate the Element.itertext() method from python-2.7
-					inner_text = []
-					stack = []
-					stack.append(flag)
-					while stack:
-						obj = stack.pop()
-						if isinstance(obj, basestring):
-							inner_text.append(obj)
-							continue
-						if isinstance(obj.text, basestring):
-							inner_text.append(obj.text)
-						if isinstance(obj.tail, basestring):
-							stack.append(obj.tail)
-						stack.extend(reversed(obj))
-
-					if flag.get("name") not in uselist:
-						uselist[flag.get("name")] = {}
-
-					# (flag_restrict can be None)
-					uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
-		return uselist
 
 	def _add_validate_errors(self, xpkg, log):
 		listed = set()
