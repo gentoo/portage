@@ -10,7 +10,6 @@ from distutils.command.build_scripts import build_scripts
 from distutils.command.clean import clean
 from distutils.command.install import install
 from distutils.command.install_data import install_data
-from distutils.command.install_lib import install_lib
 from distutils.command.install_scripts import install_scripts
 from distutils.command.sdist import sdist
 from distutils.dep_util import newer
@@ -19,10 +18,8 @@ from distutils.util import change_root, subst_vars
 
 import codecs
 import collections
-import glob
 import os
 import os.path
-import re
 import subprocess
 import sys
 
@@ -33,8 +30,6 @@ import sys
 x_scripts = {
 	'bin': [
 		'bin/repoman',
-	],
-	'sbin': [
 	],
 }
 
@@ -83,113 +78,6 @@ class build_man(Command):
 					f.writelines(data)
 
 
-class docbook(Command):
-	""" Build docs using docbook. """
-
-	user_options = [
-		('doc-formats=', None, 'Documentation formats to build (all xmlto formats for docbook are allowed, comma-separated'),
-	]
-
-	def initialize_options(self):
-		self.doc_formats = 'xhtml,xhtml-nochunks'
-
-	def finalize_options(self):
-		self.doc_formats = self.doc_formats.replace(',', ' ').split()
-
-	def run(self):
-		if not os.path.isdir('doc/fragment'):
-			mkpath('doc/fragment')
-
-		with open('doc/fragment/date', 'w'):
-			pass
-		with open('doc/fragment/version', 'w') as f:
-			f.write('<releaseinfo>%s</releaseinfo>' % self.distribution.get_version())
-
-		for f in self.doc_formats:
-			print('Building docs in %s format...' % f)
-			subprocess.check_call(['xmlto', '-o', 'doc',
-				'-m', 'doc/custom.xsl', f, 'doc/portage.docbook'])
-
-
-class epydoc(Command):
-	""" Build API docs using epydoc. """
-
-	user_options = [
-	]
-
-	def initialize_options(self):
-		self.build_lib = None
-
-	def finalize_options(self):
-		self.set_undefined_options('build_py', ('build_lib', 'build_lib'))
-
-	def run(self):
-		self.run_command('build_py')
-
-		print('Building API documentation...')
-
-		process_env = os.environ.copy()
-		pythonpath = self.build_lib
-		try:
-			pythonpath += ':' + process_env['PYTHONPATH']
-		except KeyError:
-			pass
-		process_env['PYTHONPATH'] = pythonpath
-
-		subprocess.check_call(['epydoc', '-o', 'epydoc',
-			'--name', self.distribution.get_name(),
-			'--url', self.distribution.get_url(),
-			'-qq', '--no-frames', '--show-imports',
-			'--exclude', 'portage.tests',
-			'_emerge', 'portage'],
-			env = process_env)
-		os.remove('epydoc/api-objects.txt')
-
-
-class install_docbook(install_data):
-	""" install_data for docbook docs """
-
-	user_options = install_data.user_options
-
-	def initialize_options(self):
-		install_data.initialize_options(self)
-		self.htmldir = None
-
-	def finalize_options(self):
-		self.set_undefined_options('install', ('htmldir', 'htmldir'))
-		install_data.finalize_options(self)
-
-	def run(self):
-		if not os.path.exists('doc/portage.html'):
-			self.run_command('docbook')
-		self.data_files = [
-			(self.htmldir, glob.glob('doc/*.html')),
-		]
-		install_data.run(self)
-
-
-class install_epydoc(install_data):
-	""" install_data for epydoc docs """
-
-	user_options = install_data.user_options
-
-	def initialize_options(self):
-		install_data.initialize_options(self)
-		self.htmldir = None
-
-	def finalize_options(self):
-		self.set_undefined_options('install', ('htmldir', 'htmldir'))
-		install_data.finalize_options(self)
-
-	def run(self):
-		if not os.path.exists('epydoc/index.html'):
-			self.run_command('epydoc')
-		self.data_files = [
-			(os.path.join(self.htmldir, 'api'), glob.glob('epydoc/*')),
-		]
-		install_data.run(self)
-
-
 class x_build_scripts_custom(build_scripts):
 	def finalize_options(self):
 		build_scripts.finalize_options(self)
@@ -225,14 +113,6 @@ class x_build_scripts_bin(x_build_scripts_custom):
 	dir_name = 'bin'
 
 
-class x_build_scripts_sbin(x_build_scripts_custom):
-	dir_name = 'sbin'
-
-
-class x_build_scripts_portagebin(x_build_scripts_custom):
-	dir_name = 'portage'
-
-
 class x_build_scripts(build_scripts):
 	def initialize_option(self):
 		build_scripts.initialize_options(self)
@@ -242,36 +122,10 @@ class x_build_scripts(build_scripts):
 
 	def run(self):
 		self.run_command('build_scripts_bin')
-		self.run_command('build_scripts_portagebin')
-		self.run_command('build_scripts_sbin')
 
 
 class x_clean(clean):
 	""" clean extended for doc & post-test cleaning """
-
-	@staticmethod
-	def clean_docs():
-		def get_doc_outfiles():
-			for dirpath, _dirnames, filenames in os.walk('doc'):
-				for f in filenames:
-					if f.endswith('.docbook') or f == 'custom.xsl':
-						pass
-					else:
-						yield os.path.join(dirpath, f)
-
-				# do not recurse
-				break
-
-
-		for f in get_doc_outfiles():
-			print('removing %s' % repr(f))
-			os.remove(f)
-
-		if os.path.isdir('doc/fragment'):
-			remove_tree('doc/fragment')
-
-		if os.path.isdir('epydoc'):
-			remove_tree('epydoc')
 
 	def clean_tests(self):
 		# do not remove incorrect dirs accidentally
@@ -410,54 +264,6 @@ class x_install_data(install_data):
 		self.data_files = old_data_files
 
 
-class x_install_lib(install_lib):
-	""" install_lib command with Portage path substitution """
-
-	user_options = install_lib.user_options
-
-	def initialize_options(self):
-		install_lib.initialize_options(self)
-		self.portage_base = None
-		self.portage_bindir = None
-		self.portage_confdir = None
-
-	def finalize_options(self):
-		install_lib.finalize_options(self)
-		self.set_undefined_options('install',
-			('portage_base', 'portage_base'),
-			('portage_bindir', 'portage_bindir'),
-			('portage_confdir', 'portage_confdir'))
-
-	def install(self):
-		ret = install_lib.install(self)
-
-		def rewrite_file(path, val_dict):
-			path = os.path.join(self.install_dir, path)
-			print('Rewriting %s' % path)
-			with codecs.open(path, 'r', 'utf-8') as f:
-				data = f.read()
-
-			for varname, val in val_dict.items():
-				regexp = r'(?m)^(%s\s*=).*$' % varname
-				repl = r'\1 %s' % repr(val)
-
-				data = re.sub(regexp, repl, data)
-
-			with codecs.open(path, 'w', 'utf-8') as f:
-				f.write(data)
-
-		rewrite_file('portage/__init__.py', {
-			'VERSION': self.distribution.get_version(),
-		})
-		rewrite_file('portage/const.py', {
-			'PORTAGE_BASE_PATH': self.portage_base,
-			'PORTAGE_BIN_PATH': self.portage_bindir,
-			'PORTAGE_CONFIG_PATH': self.portage_confdir,
-		})
-
-		return ret
-
-
 class x_install_scripts_custom(install_scripts):
 	def initialize_options(self):
 		install_scripts.initialize_options(self)
@@ -480,16 +286,6 @@ class x_install_scripts_bin(x_install_scripts_custom):
 	var_name = 'bindir'
 
 
-class x_install_scripts_sbin(x_install_scripts_custom):
-	dir_name = 'sbin'
-	var_name = 'sbindir'
-
-
-class x_install_scripts_portagebin(x_install_scripts_custom):
-	dir_name = 'portage'
-	var_name = 'portage_bindir'
-
-
 class x_install_scripts(install_scripts):
 	def initialize_option(self):
 		pass
@@ -499,8 +295,6 @@ class x_install_scripts(install_scripts):
 
 	def run(self):
 		self.run_command('install_scripts_bin')
-		self.run_command('install_scripts_portagebin')
-		self.run_command('install_scripts_sbin')
 
 
 class x_sdist(sdist):
@@ -576,7 +370,7 @@ class test(Command):
 		self.run_command('build_tests')
 		subprocess.check_call([
 			sys.executable, '-bWd',
-			os.path.join(self.build_lib, 'portage/tests/runTests.py')
+			os.path.join(self.build_lib, 'repoman/tests/runTests.py')
 		])
 
 
@@ -631,21 +425,12 @@ setup(
 		'build_man': build_man,
 		'build_scripts': x_build_scripts,
 		'build_scripts_bin': x_build_scripts_bin,
-		'build_scripts_portagebin': x_build_scripts_portagebin,
-		'build_scripts_sbin': x_build_scripts_sbin,
 		'build_tests': build_tests,
 		'clean': x_clean,
-		'docbook': docbook,
-		'epydoc': epydoc,
 		'install': x_install,
 		'install_data': x_install_data,
-		'install_docbook': install_docbook,
-		'install_epydoc': install_epydoc,
-		'install_lib': x_install_lib,
 		'install_scripts': x_install_scripts,
 		'install_scripts_bin': x_install_scripts_bin,
-		'install_scripts_portagebin': x_install_scripts_portagebin,
-		'install_scripts_sbin': x_install_scripts_sbin,
 		'sdist': x_sdist,
 		'test': test,
 	},
