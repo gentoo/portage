@@ -36,7 +36,8 @@ sys.path.insert(0, repoman_pym)
 portage_pym = osp.dirname(osp.dirname(repoman_pym))+'/pym'
 sys.path.insert(0, portage_pym)
 
-import portage
+# import our centrally initialized portage instance
+from repoman._portage import portage
 portage._internal_caller = True
 
 # Ensure that we don't instantiate portage.settings, so that tests should

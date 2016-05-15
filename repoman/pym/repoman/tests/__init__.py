@@ -22,7 +22,8 @@ try:
 except ImportError:
 	unittest_skip_shims = True
 
-import portage
+from repoman._portage import portage
+
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
