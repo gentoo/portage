@@ -3,5 +3,13 @@ Features/major bugfixes are listed in NEWS
 
 repoman-2.3.0_rc1
 ==================================
-* initial release
+* Initial test release
 * Bug Fixes:
+    - Bug 579460 Disable the $ID header check
+    - Bug 546010 Handle removed packages in vcs_files_to_cps
+    - Bug 581594 Fix commit 8e7971169c2 missing self in func() parameters
+    - Bug 581598 Add InvalidPackageName exception trap
+    - Bug 405017 Fix copyright update
+* Includes the stage2 re-writes, the checks are now in a modular system
+  which is not yet fully plug-in capable.  Becoming fully plug-in capable and
+  configurable is to be done in the stage3 rewites.

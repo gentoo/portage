@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.0_rc1
+==================================
+* Initial test release of the now split portage/repoman pkgs
+* Bug Fixes:
+    - Bug 577720 Colorize packages in user sets
+    - Bug 577126 egencache --write-timestamp: use write_atomic
+* portageq: Case-insensitive match maintainer emails
+* qa: gcc-warnings: force text mode w/grep
+* qa-checks: change "herd" to "maintainer"
+* qa-checks: executable-issues: improve logic & output
+
 portage-2.2.28
 ==================================
 * Bug Fixes:
