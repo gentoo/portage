@@ -3,3 +3,5 @@ __pycache__/
 *.class
 /build
 /tags
+
+repoman/build
