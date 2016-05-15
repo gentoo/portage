@@ -108,7 +108,11 @@ def get_metadata_xsd(repo_settings):
 	@returns: path to the metadata.xsd file
 	'''
 	metadata_xsd = None
-	for path in reversed(repo_settings.repo_config.eclass_db.porttrees):
+	paths = list(repo_settings.repo_config.eclass_db.porttrees)
+	paths.reverse()
+	# add the test copy
+	paths.append("/usr/lib/portage/cnf/")
+	for path in paths:
 		path = os.path.join(path, 'metadata/xml-schema/metadata.xsd')
 		if os.path.exists(path):
 			metadata_xsd = path
