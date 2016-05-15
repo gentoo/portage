@@ -121,6 +121,8 @@ def main(argv):
 			else:
 				pyversions.extend(ver.split())
 
+	here = os.path.dirname(__file__)
+	run_path = os.path.join(here, 'pym/repoman/tests/runTests.py')
 	tempdir = None
 	try:
 		# Set up a single tempdir for all the tests to use.
@@ -132,7 +134,7 @@ def main(argv):
 		statuses = []
 		for ver in pyversions:
 			prog = get_python_executable(ver)
-			cmd = [prog, '-b', '-Wd', 'pym/repoman/tests/runTests.py'] + args
+			cmd = [prog, '-b', '-Wd', run_path] + args
 			if os.access(prog, os.X_OK):
 				print('%sTesting with Python %s...%s' %
 					(colors.GOOD, ver, colors.NORMAL))
