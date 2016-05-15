@@ -22,19 +22,19 @@ try:
 except ImportError:
 	unittest_skip_shims = True
 
+import repoman
+from repoman import REPOMAN_BASE_PATH
 from repoman._portage import portage
 
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-from portage.const import (EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
-	PORTAGE_BIN_PATH)
+from portage.const import EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BIN_PATH
 
-
-if portage._not_installed:
-	cnf_path = os.path.join(PORTAGE_BASE_PATH, 'cnf')
+if repoman._not_installed:
+	cnf_path = os.path.join(REPOMAN_BASE_PATH, 'cnf')
 	cnf_etc_path = cnf_path
-	cnf_bindir = os.path.join(PORTAGE_BASE_PATH, 'repoman/bin')
+	cnf_bindir = os.path.join(REPOMAN_BASE_PATH, 'bin')
 	cnf_sbindir = cnf_bindir
 else:
 	cnf_path = os.path.join(EPREFIX or '/', GLOBAL_CONFIG_PATH)

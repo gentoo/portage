@@ -145,7 +145,7 @@ class x_clean(clean):
 			print('removing %s symlink' % repr(conf_dir))
 			os.unlink(conf_dir)
 
-		pni_file = os.path.join(top_dir, '.portage_not_installed')
+		pni_file = os.path.join(top_dir, '.repoman_not_installed')
 		if os.path.exists(pni_file):
 			print('removing %s' % repr(pni_file))
 			os.unlink(pni_file)
@@ -350,9 +350,9 @@ class build_tests(x_build_scripts_custom):
 		print('Symlinking %s -> %s' % (conf_dir, conf_src))
 		os.symlink(conf_src, conf_dir)
 
-		# create $build_lib/../.portage_not_installed
+		# create $build_lib/../.repoman_not_installed
 		# to enable proper paths in tests
-		with open(os.path.join(self.top_dir, '.portage_not_installed'), 'w'):
+		with open(os.path.join(self.top_dir, '.repoman_not_installed'), 'w'):
 			pass
 
 
