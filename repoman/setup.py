@@ -23,6 +23,8 @@ import os.path
 import subprocess
 import sys
 
+# change the cwd to this one
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_epydoc'.

@@ -18,9 +18,7 @@ script:
     - sudo rsync -a /tmp/install-root/. /
     - python -b -Wd -m portage.tests.runTests
     # repoman test block
-    - cd repoman
-    - ./setup.py test
-    - ./setup.py install --root=/tmp/install-root
-    - cd ..
+    - repoman/setup.py test
+    - repoman/setup.py install --root=/tmp/install-root
     - sudo rsync -a /tmp/install-root/. /
     - python -b -Wd -m repoman.tests.runTests
