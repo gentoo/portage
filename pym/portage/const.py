@@ -278,7 +278,7 @@ SUPPORTED_XPAK_EXTENSIONS = (".tbz2", ".xpak")
 TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"	# to be used with time.gmtime()
 
 # Top-level names of Python packages installed by Portage.
-PORTAGE_PYM_PACKAGES = ("_emerge", "portage", "repoman")
+PORTAGE_PYM_PACKAGES = ("_emerge", "portage")
 
 RETURNCODE_POSTINST_FAILURE = 5
 
