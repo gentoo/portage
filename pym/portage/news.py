@@ -9,6 +9,7 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayInstalledRestriction",
 	"count_unread_news", "display_news_notifications"]
 
+import fnmatch
 import io
 import logging
 import os as _os
@@ -270,7 +271,8 @@ class NewsItem(object):
 			# Optimization to ignore regex matchines on lines that
 			# will never match
 			format_match = _formatRE.match(line)
-			if format_match is not None and format_match.group(1) != '1.0':
+			if (format_match is not None and
+					not fnmatch.fnmatch(format_match.group(1), '1.*')):
 				invalids.append((i + 1, line.rstrip('\n')))
 				break
 			if not line.startswith('D'):
