@@ -4,7 +4,7 @@
 
 from __future__ import print_function
 
-from distutils.core import setup, Command
+from distutils.core import setup, Command, Extension
 from distutils.command.build import build
 from distutils.command.build_scripts import build_scripts
 from distutils.command.clean import clean
@@ -30,6 +30,9 @@ import sys
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_epydoc'.
 
+# Dictionary of scripts.  The structure is
+#   key   = location in filesystem to install the scripts
+#   value = list of scripts, path relative to top source directory
 x_scripts = {
 	'bin': [
 		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
@@ -41,6 +44,10 @@ x_scripts = {
 	],
 }
 
+# Dictionary custom modules written in C/C++ here.  The structure is
+#   key   = module name
+#   value = list of C/C++ source code, path relative to top source directory
+x_c_helpers = {}
 
 class x_build(build):
 	""" Build command with extra build_man call. """
@@ -635,6 +642,8 @@ setup(
 		['$portage_base/bin', ['bin/deprecated-path']],
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
+
+	ext_modules = [Extension(name=n, sources=m) for n, m in x_c_helpers.items()],
 
 	cmdclass = {
 		'build': x_build,
