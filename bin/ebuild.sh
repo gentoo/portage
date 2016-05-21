@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -703,12 +703,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		fi
 	fi
 fi
-
-# unset USE_EXPAND variables that contain only the special "*" token
-for x in ${USE_EXPAND} ; do
-	[ "${!x}" == "*" ] && unset ${x}
-done
-unset x
 
 if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
 then
