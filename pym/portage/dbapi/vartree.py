@@ -3724,19 +3724,21 @@ class dblink(object):
 	def _is_install_masked(self, relative_path, install_mask):
 		ret = False
 		for pattern in install_mask:
+			# if pattern starts with -, possibly exclude this path
+			is_inclusive = not pattern.startswith('-')
+			if not is_inclusive:
+				pattern = pattern[1:]
 			# absolute path pattern
 			if pattern.startswith('/'):
 				# match either exact path or one of parent dirs
 				# the latter is done via matching pattern/*
 				if (fnmatch.fnmatch(relative_path, pattern[1:])
 						or fnmatch.fnmatch(relative_path, pattern[1:] + '/*')):
-					ret = True
-					break
+					ret = is_inclusive
 			# filename
 			else:
 				if fnmatch.fnmatch(os.path.basename(relative_path), pattern):
-					ret = True
-					break
+					ret = is_inclusive
 		return ret
 
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
