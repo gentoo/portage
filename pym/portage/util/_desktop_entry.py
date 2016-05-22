@@ -9,7 +9,8 @@ import sys
 import portage
 from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.util import writemsg
-from portage.util.configparser import ConfigParserError, RawConfigParser
+from portage.util.configparser import (ConfigParserError, RawConfigParser,
+	read_configs)
 
 
 def parse_desktop_entry(path):
@@ -20,22 +21,7 @@ def parse_desktop_entry(path):
 	"""
 	parser = RawConfigParser()
 
-	# use read_file/readfp in order to control decoding of unicode
-	try:
-		# Python >=3.2
-		read_file = parser.read_file
-	except AttributeError:
-		read_file = parser.readfp
-
-	with io.open(_unicode_encode(path,
-		encoding=_encodings['fs'], errors='strict'),
-		mode='r', encoding=_encodings['repo.content'],
-		errors='replace') as f:
-		content = f.read()
-
-	# In Python 3.2, read_file does not support bytes in file names
-	# (see bug #429544), so use StringIO to hide the file name.
-	read_file(io.StringIO(content))
+	read_configs(parser, [path])
 
 	return parser
 
