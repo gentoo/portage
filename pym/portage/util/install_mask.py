@@ -35,19 +35,21 @@ class InstallMask(object):
 		"""
 		ret = False
 		for pattern in self._install_mask:
+			# if pattern starts with -, possibly exclude this path
+			is_inclusive = not pattern.startswith('-')
+			if not is_inclusive:
+				pattern = pattern[1:]
 			# absolute path pattern
 			if pattern.startswith('/'):
 				# match either exact path or one of parent dirs
 				# the latter is done via matching pattern/*
 				if (fnmatch.fnmatch(path, pattern[1:])
 						or fnmatch.fnmatch(path, pattern[1:] + '/*')):
-					ret = True
-					break
+					ret = is_inclusive
 			# filename
 			else:
 				if fnmatch.fnmatch(os.path.basename(path), pattern):
-					ret = True
-					break
+					ret = is_inclusive
 		return ret
 
 
