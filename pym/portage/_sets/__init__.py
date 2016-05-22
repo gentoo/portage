@@ -9,14 +9,6 @@ __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 import io
 import logging
 import sys
-try:
-	from configparser import NoOptionError, ParsingError
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import SafeConfigParser, NoOptionError, ParsingError
 import portage
 from portage import os
 from portage import load_mod
@@ -29,6 +21,8 @@ from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
 from portage.util import writemsg_level
+from portage.util.configparser import (SafeConfigParser,
+	NoOptionError, ParsingError)
 
 SETPREFIX = "@"
 

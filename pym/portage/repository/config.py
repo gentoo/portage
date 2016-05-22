@@ -9,14 +9,6 @@ import warnings
 import sys
 import re
 
-try:
-	from configparser import Error as ConfigParserError
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import SafeConfigParser, Error as ConfigParserError
 import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
@@ -25,6 +17,7 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
+from portage.util.configparser import SafeConfigParser, ConfigParserError
 from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _

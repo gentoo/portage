@@ -6,14 +6,11 @@ import re
 import subprocess
 import sys
 
-try:
-	from configparser import Error as ConfigParserError, RawConfigParser
-except ImportError:
-	from ConfigParser import Error as ConfigParserError, RawConfigParser
-
 import portage
 from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.util import writemsg
+from portage.util.configparser import ConfigParserError, RawConfigParser
+
 
 def parse_desktop_entry(path):
 	"""
