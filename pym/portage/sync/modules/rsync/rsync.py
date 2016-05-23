@@ -111,7 +111,7 @@ class RsyncSync(NewBase):
 
 		if syncuri.startswith("file://"):
 			self.proto = "file"
-			dosyncuri = syncuri[6:]
+			dosyncuri = syncuri[7:]
 			is_synced, exitcode, updatecache_flg = self._do_rsync(
 				dosyncuri, timestamp, opts)
 			self._process_exitcode(exitcode, dosyncuri, out, 1)
