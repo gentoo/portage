@@ -41,7 +41,7 @@ class SyncLocalTestCase(TestCase):
 			[test_repo]
 			location = %(EPREFIX)s/var/repositories/test_repo
 			sync-type = %(sync-type)s
-			sync-uri = file:/%(EPREFIX)s/var/repositories/test_repo_sync
+			sync-uri = file://%(EPREFIX)s/var/repositories/test_repo_sync
 			auto-sync = %(auto-sync)s
 			%(repo_extra_keys)s
 		""")
