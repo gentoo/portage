@@ -2378,7 +2378,7 @@ def load_emerge_config(emerge_config=None, **kargs):
 		if v and v.strip():
 			kwargs[k] = v
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
-				**portage._native_kwargs(kwargs))
+				**kwargs)
 
 	for root_trees in emerge_config.trees.values():
 		settings = root_trees["vartree"].settings

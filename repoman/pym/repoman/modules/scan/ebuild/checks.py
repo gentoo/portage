@@ -917,7 +917,7 @@ def checks_init(experimental_inherit=False):
 				isinstance(v, type)
 				and issubclass(v, LineCheck)
 				and v not in _base_check_classes)), (
-			InheritEclass(k, **portage._native_kwargs(kwargs))
+			InheritEclass(k, **kwargs)
 			for k, kwargs in _eclass_info.items())))
 
 

@@ -310,8 +310,7 @@ class Display(object):
 				kwargs["myrepo"] = pkg.repo
 			myfilesdict = None
 			try:
-				myfilesdict = db.getfetchsizes(pkg.cpv,
-					**portage._native_kwargs(kwargs))
+				myfilesdict = db.getfetchsizes(pkg.cpv, **kwargs)
 			except InvalidDependString as e:
 				# FIXME: validate SRC_URI earlier
 				depstr, = db.aux_get(pkg.cpv,

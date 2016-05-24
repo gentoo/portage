@@ -62,7 +62,7 @@ class GitSync(NewBase):
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! git clone error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
@@ -92,7 +92,7 @@ class GitSync(NewBase):
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)

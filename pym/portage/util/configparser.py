@@ -23,7 +23,6 @@ except ImportError:
 		NoOptionError, ParsingError, RawConfigParser, SafeConfigParser)
 
 from portage import _encodings
-from portage import _native_kwargs
 from portage import _unicode_encode
 
 
@@ -66,12 +65,12 @@ def read_configs(parser, paths):
 				# because it assumes that f.name is a native string rather
 				# than binary when constructing error messages.
 				kwargs = {source_kwarg: p}
-				read_file(f, **_native_kwargs(kwargs))
+				read_file(f, **kwargs)
 			finally:
 				if f is not None:
 					f.close()
 		elif isinstance(p, io.StringIO):
 			kwargs = {source_kwarg: "<io.StringIO>"}
-			read_file(p, **_native_kwargs(kwargs))
+			read_file(p, **kwargs)
 		else:
 			raise TypeError("Unsupported type %r of element %r of 'paths' argument" % (type(p), p))

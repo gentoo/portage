@@ -41,7 +41,7 @@ class WebRsync(SyncBase):
 
 		exitcode = portage.process.spawn_bash("%s" % \
 			(self.bin_command),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! emerge-webrsync error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)

@@ -246,8 +246,7 @@ class NewsItem(object):
 		for values in self.restrictions.values():
 			any_match = False
 			for restriction in values:
-				if restriction.checkRestriction(
-					**portage._native_kwargs(kwargs)):
+				if restriction.checkRestriction(**kwargs):
 					any_match = True
 			if not any_match:
 				all_match = False

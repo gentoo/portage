@@ -166,7 +166,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	settings['EBUILD_PHASE'] = phase
 	try:
-		return spawn(cmd, settings, **portage._native_kwargs(kwargs))
+		return spawn(cmd, settings, **kwargs)
 	finally:
 		settings.pop('EBUILD_PHASE', None)
 
@@ -1633,14 +1633,14 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	try:
 		if keywords.get("returnpid"):
 			return spawn_func(mystring, env=mysettings.environ(),
-				**portage._native_kwargs(keywords))
+				**keywords)
 
 		proc = EbuildSpawnProcess(
 			background=False, args=mystring,
 			scheduler=SchedulerInterface(portage._internal_caller and
 				global_event_loop() or EventLoop(main=False)),
 			spawn_func=spawn_func,
-			settings=mysettings, **portage._native_kwargs(keywords))
+			settings=mysettings, **keywords)
 
 		proc.start()
 		proc.wait()
