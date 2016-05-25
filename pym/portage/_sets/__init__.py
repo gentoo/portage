@@ -117,7 +117,6 @@ class SetConfig(object):
 		parser.set("usersets", "multiset", "true")
 		parser.set("usersets", "directory", "%(PORTAGE_CONFIGROOT)setc/portage/sets")
 		parser.set("usersets", "world-candidate", "true")
-		parser.set("usersets", "user-set", "true")
 
 		parser.remove_section("live-rebuild")
 		parser.add_section("live-rebuild")
@@ -146,7 +145,6 @@ class SetConfig(object):
 		if not setname in self.psets:
 			options["name"] = setname
 			options["world-candidate"] = "False"
-			options["user-set"] = "False"
 			
 			# for the unlikely case that there is already a section with the requested setname
 			import random
@@ -215,9 +213,6 @@ class SetConfig(object):
 						if parser.has_option(sname, "world-candidate") and \
 							parser.getboolean(sname, "world-candidate"):
 							newsets[x].world_candidate = True
-						if parser.has_option(sname, "user-set") and \
-							parser.getboolean(sname, "user-set"):
-							newsets[x].user_set = True
 					self.psets.update(newsets)
 				else:
 					self.errors.append(_("Section '%(section)s' is configured as multiset, but '%(class)s' "
@@ -237,9 +232,6 @@ class SetConfig(object):
 						if parser.has_option(sname, "world-candidate") and \
 							parser.getboolean(sname, "world-candidate"):
 							self.psets[setname].world_candidate = True
-						if parser.has_option(sname, "user-set") and \
-							parser.getboolean(sname, "user-set"):
-							self.psets[setname].user_set = True
 					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue

@@ -28,7 +28,6 @@ class PackageSet(object):
 		self.errors = []
 		self._nonatoms = set()
 		self.world_candidate = False
-		self.user_set = False
 		self._allow_wildcard = allow_wildcard
 		self._allow_repo = allow_repo
 
