@@ -707,7 +707,7 @@ class Display(object):
 		"""
 		root_config = self.conf.roots[pkg.root]
 		system_set = root_config.sets["system"]
-		world_set  = root_config.sets["selected"]
+		world_set  = self.conf.selected_sets[pkg.root]
 		system = False
 		world = False
 		try:
