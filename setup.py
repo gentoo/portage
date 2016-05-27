@@ -47,7 +47,11 @@ x_scripts = {
 # Dictionary custom modules written in C/C++ here.  The structure is
 #   key   = module name
 #   value = list of C/C++ source code, path relative to top source directory
-x_c_helpers = {}
+x_c_helpers = {
+	'portage.util.libc' : [
+		'src/portage_util_libc.c',
+	],
+}
 
 class x_build(build):
 	""" Build command with extra build_man call. """
