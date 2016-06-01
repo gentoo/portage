@@ -9,24 +9,28 @@ from itertools import chain
 from portage import os
 
 
-_vcs_type = collections.namedtuple('_vcs_type', 'name dir_name')
+_vcs_type = collections.namedtuple('_vcs_type', 'name dir_name file_name')
 
 _FindVCS_data = (
 	_vcs_type(
 		name='git',
-		dir_name='.git'
+		dir_name='.git',
+		file_name='.git'
 	),
 	_vcs_type(
 		name='bzr',
-		dir_name='.bzr'
+		dir_name='.bzr',
+		file_name=''
 	),
 	_vcs_type(
 		name='hg',
-		dir_name='.hg'
+		dir_name='.hg',
+		file_name=''
 	),
 	_vcs_type(
 		name='svn',
-		dir_name='.svn'
+		dir_name='.svn',
+		file_name=''
 	)
 )
 
@@ -64,6 +68,14 @@ def FindVCS(cwd=None):
 							'name': vcs_type.name,
 							'vcs_dir': os.path.abspath(vcs_dir)})
 					retvcs.append(vcs_type.name)
+				elif vcs_type.file_name:
+					vcs_file = os.path.join(pathprep, vcs_type.file_name)
+					if os.path.exists(vcs_file):
+						logging.debug(
+							'FindVCS: found %(name)s file: %(vcs_file)s' % {
+								'name': vcs_type.name,
+								'vcs_file': os.path.abspath(vcs_file)})
+						retvcs.append(vcs_type.name)
 
 			if retvcs:
 				break
