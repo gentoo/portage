@@ -905,10 +905,9 @@ class binarytree(object):
 						}
 
 						for k in ("PORTAGE_SSH_OPTS",):
-							try:
-								fcmd_vars[k] = self.settings[k]
-							except KeyError:
-								pass
+							v = self.settings.get(k)
+							if v is not None:
+								fcmd_vars[k] = v
 
 						success = portage.getbinpkg.file_get(
 							fcmd=fcmd, fcmd_vars=fcmd_vars)
