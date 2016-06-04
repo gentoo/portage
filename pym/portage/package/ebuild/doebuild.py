@@ -337,7 +337,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
-	mysettings["FILESDIR"] = pkg_dir+"/files"
 	mysettings["PF"]       = mypv
 
 	if hasattr(mydbapi, 'repositories'):
@@ -390,6 +389,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+	mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
 	# Prefix forward compatability
 	eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
