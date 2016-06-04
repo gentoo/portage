@@ -2784,9 +2784,6 @@ class config(object):
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
 
-		if phase == 'depend':
-			mydict.pop('FILESDIR', None)
-
 		if phase not in ("pretend", "setup", "preinst", "postinst") or \
 			not eapi_exports_replace_vars(eapi):
 			mydict.pop("REPLACING_VERSIONS", None)
