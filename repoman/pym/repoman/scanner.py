@@ -12,6 +12,7 @@ from portage.output import green
 from portage.util.futures.extendedfutures import ExtendedFuture
 from repoman.metadata import get_metadata_xsd
 from repoman.modules.commit import repochecks
+from repoman.modules.commit import manifest
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
 from repoman.modules.scan.scan import scan
@@ -280,11 +281,14 @@ class Scanner(object):
 			if self.repolevel < 2:
 				checkdir_relative = os.path.join(catdir, checkdir_relative)
 			checkdir_relative = os.path.join(".", checkdir_relative)
-			checkdirlist = os.listdir(checkdir)
 
 			# Run the status check
 			if self.kwargs['checks']['ebuild_notadded']:
 				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
+
+			manifester = manifest.Manifest(**self.kwargs)
+			manifester.update_manifest(checkdir)
+			checkdirlist = os.listdir(checkdir)
 
 			dynamic_data = {
 				'changelog_modified': False,
