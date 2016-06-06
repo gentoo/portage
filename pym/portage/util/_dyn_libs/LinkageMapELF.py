@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -11,6 +11,7 @@ from portage import _os_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
+from portage.const import EPREFIX
 from portage.exception import CommandNotFound, InvalidData
 from portage.localization import _
 from portage.util import getlibpaths
@@ -259,7 +260,7 @@ class LinkageMapELF(object):
 					continue
 				plibs.update((x, cpv) for x in items)
 		if plibs:
-			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
+			args = [os.path.join(EPREFIX or "/", "usr/bin/scanelf"), "-qF", "%a;%F;%S;%r;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 				for x in plibs)
 			try:
