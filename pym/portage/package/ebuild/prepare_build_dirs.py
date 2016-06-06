@@ -19,6 +19,7 @@ from portage.localization import _
 from portage.output import colorize
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, normalize_path, writemsg
+from portage.const import EPREFIX
 
 def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 	"""
@@ -153,12 +154,12 @@ def _prepare_features_dirs(mysettings):
 
 	features_dirs = {
 		"ccache":{
-			"path_dir": "/usr/%s/ccache/bin" % (libdir,),
+			"path_dir": "%s/usr/%s/ccache/bin" % (EPREFIX, libdir),
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
-			"path_dir": "/usr/%s/distcc/bin" % (libdir,),
+			"path_dir": "%s/usr/%s/distcc/bin" % (EPREFIX, libdir),
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
