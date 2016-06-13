@@ -49,3 +49,5 @@ USEQ_ERROR = (
 	'Ebuild calls deprecated useq function on line: %d')
 HASQ_ERROR = (
 	'Ebuild calls deprecated hasq function on line: %d')
+URI_HTTPS = (
+	'Ebuild uses http:// but should use https:// on line: %d')

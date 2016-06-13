@@ -228,7 +228,8 @@ qahelp = {
 		"The ebuild makes use of an obsolete construct"),
 	"upstream.workaround": (
 		"The ebuild works around an upstream bug,"
-		" an upstream bug should be filed and tracked in bugs.gentoo.org")
+		" an upstream bug should be filed and tracked in bugs.gentoo.org"),
+	"uri.https": "URI uses http:// but should use https://",
 }
 
 qacats = list(qahelp)
@@ -276,6 +277,7 @@ qawarnings = set((
 	"usage.obsolete",
 	"upstream.workaround",
 	"IUSE.rubydeprecated",
+	"uri.https",
 ))
 
 
