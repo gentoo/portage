@@ -504,6 +504,7 @@ class Actions(object):
 		try:
 			for x in sorted(vcs_files_to_cps(
 				chain(myupdates, myremoved, mymanifests),
+				self.scanner.repo_settings.repodir,
 				self.scanner.repolevel, self.scanner.reposplit, self.scanner.categories)):
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				manifest_path = os.path.join(self.repoman_settings["O"], "Manifest")
