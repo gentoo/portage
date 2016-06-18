@@ -3,11 +3,52 @@
 
 from _emerge.Package import Package
 
+from portage.dep import Atom
+
 from repoman.check_missingslot import check_missingslot
 # import our initialized portage instance
 from repoman._portage import portage
 from repoman.qa_data import suspect_virtual, suspect_rdepend
 
+def check_slotop(depstr, is_valid_flag, badsyntax, mytype,
+	qatracker, relative_path):
+	'''Checks if RDEPEND uses ':=' slot operator
+	in '||' style dependencies.'''
+
+	try:
+		# to find use of ':=' in '||' we preserve
+		# tree structure of dependencies
+		my_dep_tree = portage.dep.use_reduce(
+			depstr,
+			flat=False,
+			matchall=1,
+			is_valid_flag=is_valid_flag,
+			opconvert=True,
+			token_class=portage.dep.Atom)
+	except portage.exception.InvalidDependString as e:
+		my_dep_tree = None
+		badsyntax.append(str(e))
+
+	def _traverse_tree(dep_tree, in_any_of):
+		# leaf
+		if isinstance(dep_tree, Atom):
+			atom = dep_tree
+			if in_any_of and atom.slot_operator == '=':
+				qatracker.add_error("dependency.badslotop",
+					"%s: %s: '%s' uses ':=' slot operator under '||' dep clause." %
+					(relative_path, mytype, atom))
+
+		# branches
+		if isinstance(dep_tree, list):
+			if len(dep_tree) == 0:
+				return
+			# entering any-of
+			if dep_tree[0] == '||':
+				_traverse_tree(dep_tree[1:], in_any_of=True)
+			else:
+				for branch in dep_tree:
+					_traverse_tree(branch, in_any_of=in_any_of)
+	_traverse_tree(my_dep_tree, False)
 
 def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 	'''Checks the ebuild dependencies for errors
@@ -116,6 +157,10 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 					ebuild.relative_path, ebuild.metadata)
 
 		type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
+
+		if runtime:
+			check_slotop(mydepstr, pkg.iuse.is_valid_flag,
+				badsyntax, mytype, qatracker, ebuild.relative_path)
 
 	for m, b in zip(type_list, badsyntax):
 		if m.endswith("DEPEND"):

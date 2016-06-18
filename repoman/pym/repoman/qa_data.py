@@ -58,6 +58,8 @@ qahelp = {
 		"Ebuild has a dependency that refers to an unknown package"
 		" (which may be valid if it is a blocker for a renamed/removed package,"
 		" or is an alternative choice provided by an overlay)"),
+	"dependency.badslotop": (
+		"RDEPEND contains ':=' slot operator under '||' dependency."),
 	"file.executable": (
 		"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need"
 		" the executable bit"),
