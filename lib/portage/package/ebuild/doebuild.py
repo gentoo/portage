@@ -211,7 +211,6 @@ def _doebuild_path(settings, eapi=None):
 	if portage_bin_path[0] != portage.const.PORTAGE_BIN_PATH:
 		# Add a fallback path for restarting failed builds (bug 547086)
 		portage_bin_path.append(portage.const.PORTAGE_BIN_PATH)
-	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
 	rootpath_set = frozenset(rootpath)
@@ -219,9 +218,12 @@ def _doebuild_path(settings, eapi=None):
 		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
 	prefixes = []
-	if eprefix:
-		prefixes.append(eprefix)
-	prefixes.append("/")
+	# tools in EPREFIX can only be executed when ROOT is /.
+	if settings["ROOT"] == "/":
+		prefixes.append(settings["EPREFIX"])
+	# settings["EPREFIX"] could be overridden during cross-eprefix
+	if portage.const.EPREFIX != settings["EPREFIX"]:
+		prefixes.append(portage.const.EPREFIX)
 
 	path = overrides
 
@@ -245,6 +247,7 @@ def _doebuild_path(settings, eapi=None):
 	path.extend(prerootpath)
 
 	for prefix in prefixes:
+		prefix = prefix if prefix else "/"
 		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
 			# Respect order defined in ROOTPATH
 			x_abs = os.path.join(prefix, x)
