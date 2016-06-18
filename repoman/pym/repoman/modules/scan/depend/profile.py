@@ -51,7 +51,7 @@ class ProfileDependsChecks(ScanBase):
 		self.repo_metadata = kwargs.get('repo_metadata')
 
 	def check(self, **kwargs):
-		'''Perform profile dependant dependancy checks
+		'''Perform profile dependant dependency checks
 
 		@param arches:
 		@param pkg: Package in which we check (object).
