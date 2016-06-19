@@ -5231,12 +5231,19 @@ class dblink(object):
 
 	def _quickpkg_dblink(self, backup_dblink, background, logfile):
 
+		build_time = backup_dblink.getfile('BUILD_TIME')
+		try:
+			build_time = long(build_time.strip())
+		except ValueError:
+			build_time = 0
+
 		trees = QueryCommand.get_db()[self.settings["EROOT"]]
 		bintree = trees["bintree"]
-		binpkg_path = bintree.getname(backup_dblink.mycpv)
-		if os.path.exists(binpkg_path) and \
-			catsplit(backup_dblink.mycpv)[1] not in bintree.invalids:
-			return os.EX_OK
+
+		for binpkg in reversed(
+			bintree.dbapi.match('={}'.format(backup_dblink.mycpv))):
+			if binpkg.build_time == build_time:
+				return os.EX_OK
 
 		self.lockdb()
 		try:
