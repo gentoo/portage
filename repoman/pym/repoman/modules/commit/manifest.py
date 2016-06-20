@@ -41,7 +41,6 @@ class Manifest(object):
 			fetchlist_dict = portage.FetchlistDict(
 				checkdir, self.repoman_settings, self.portdb)
 			if self.options.mode == 'manifest' and self.options.force:
-				portage._doebuild_manifest_exempt_depend += 1
 				self._create_manifest(checkdir, fetchlist_dict)
 			self.repoman_settings["O"] = checkdir
 			try:
@@ -92,6 +91,7 @@ class Manifest(object):
 		@param fetchlist_dict: dictionary of files to fetch and/or include
 							in the manifest
 		'''
+		portage._doebuild_manifest_exempt_depend += 1
 		try:
 			distdir = self.repoman_settings['DISTDIR']
 			mf = self.repoman_settings.repositories.get_repo_for_location(
