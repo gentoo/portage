@@ -306,13 +306,17 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 		if not libdir_contents_changed:
 			makelinks = False
 
-	ldconfig = "/sbin/ldconfig"
 	if "CHOST" in settings and "CBUILD" in settings and \
 		settings["CHOST"] != settings["CBUILD"]:
 		ldconfig = find_binary("%s-ldconfig" % settings["CHOST"])
+	else:
+		ldconfig = os.path.join(eroot, "sbin", "ldconfig")
+
+	if not (os.access(ldconfig, os.X_OK) and os.path.isfile(ldconfig)):
+		ldconfig = None
 
 	# Only run ldconfig as needed
-	if makelinks and ldconfig and not eprefix:
+	if makelinks and ldconfig:
 		# ldconfig has very different behaviour between FreeBSD and Linux
 		if ostype == "Linux" or ostype.lower().endswith("gnu"):
 			# We can't update links if we haven't cleaned other versions first, as
