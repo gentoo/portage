@@ -60,9 +60,15 @@ class Scanner(object):
 
 		self.portdb = repo_settings.portdb
 		self.portdb.settings = self.repo_settings.repoman_settings
+
+		digest_only = self.options.mode != 'manifest-check' \
+			and self.options.digest == 'y'
+		self.generate_manifest = digest_only or self.options.mode in \
+			("manifest", 'commit', 'fix')
+
 		# We really only need to cache the metadata that's necessary for visibility
 		# filtering. Anything else can be discarded to reduce memory consumption.
-		if self.options.mode != "manifest" and self.options.digest != "y":
+		if not self.generate_manifest:
 			# Don't do this when generating manifests, since that uses
 			# additional keys if spawn_nofetch is called (RESTRICT and
 			# DEFINED_PHASES).
@@ -286,8 +292,8 @@ class Scanner(object):
 			if self.kwargs['checks']['ebuild_notadded']:
 				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
 
-			manifester = manifest.Manifest(**self.kwargs)
-			manifester.update_manifest(checkdir)
+			if self.generate_manifest:
+				manifest.Manifest(**self.kwargs).update_manifest(checkdir)
 			checkdirlist = os.listdir(checkdir)
 
 			dynamic_data = {

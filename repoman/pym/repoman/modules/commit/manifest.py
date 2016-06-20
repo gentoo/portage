@@ -33,55 +33,52 @@ class Manifest(object):
 		@returns: dictionary
 		'''
 		self.generated_manifest = False
-		self.digest_only = self.options.mode != 'manifest-check' \
-			and self.options.digest == 'y'
-		if self.options.mode in ("manifest", 'commit', 'fix') or self.digest_only:
-			failed = False
-			self.auto_assumed = set()
-			fetchlist_dict = portage.FetchlistDict(
-				checkdir, self.repoman_settings, self.portdb)
-			if self.options.mode == 'manifest' and self.options.force:
-				self._discard_dist_digests(checkdir, fetchlist_dict)
-			self.repoman_settings["O"] = checkdir
-			try:
-				self.generated_manifest = digestgen(
-					mysettings=self.repoman_settings, myportdb=self.portdb)
-			except portage.exception.PermissionDenied as e:
-				self.generated_manifest = False
-				writemsg_level(
-					"!!! Permission denied: '%s'\n" % (e,),
-					level=logging.ERROR, noiselevel=-1)
+		failed = False
+		self.auto_assumed = set()
+		fetchlist_dict = portage.FetchlistDict(
+			checkdir, self.repoman_settings, self.portdb)
+		if self.options.mode == 'manifest' and self.options.force:
+			self._discard_dist_digests(checkdir, fetchlist_dict)
+		self.repoman_settings["O"] = checkdir
+		try:
+			self.generated_manifest = digestgen(
+				mysettings=self.repoman_settings, myportdb=self.portdb)
+		except portage.exception.PermissionDenied as e:
+			self.generated_manifest = False
+			writemsg_level(
+				"!!! Permission denied: '%s'\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
 
-			if not self.generated_manifest:
-				writemsg_level(
-					"Unable to generate manifest.",
-					level=logging.ERROR, noiselevel=-1)
-				failed = True
+		if not self.generated_manifest:
+			writemsg_level(
+				"Unable to generate manifest.",
+				level=logging.ERROR, noiselevel=-1)
+			failed = True
 
-			if self.options.mode == "manifest":
-				if not failed and self.options.force and self.auto_assumed and \
-					'assume-digests' in self.repoman_settings.features:
-					# Show which digests were assumed despite the --force option
-					# being given. This output will already have been shown by
-					# digestgen() if assume-digests is not enabled, so only show
-					# it here if assume-digests is enabled.
-					pkgs = list(fetchlist_dict)
-					pkgs.sort()
-					portage.writemsg_stdout(
-						"  digest.assumed %s" %
-						portage.output.colorize(
-							"WARN", str(len(self.auto_assumed)).rjust(18)) + "\n")
-					for cpv in pkgs:
-						fetchmap = fetchlist_dict[cpv]
-						pf = portage.catsplit(cpv)[1]
-						for distfile in sorted(fetchmap):
-							if distfile in self.auto_assumed:
-								portage.writemsg_stdout(
-									"   %s::%s\n" % (pf, distfile))
-				# continue, skip remaining main loop code
-				return True
-			elif failed:
-				sys.exit(1)
+		if self.options.mode == "manifest":
+			if not failed and self.options.force and self.auto_assumed and \
+				'assume-digests' in self.repoman_settings.features:
+				# Show which digests were assumed despite the --force option
+				# being given. This output will already have been shown by
+				# digestgen() if assume-digests is not enabled, so only show
+				# it here if assume-digests is enabled.
+				pkgs = list(fetchlist_dict)
+				pkgs.sort()
+				portage.writemsg_stdout(
+					"  digest.assumed %s" %
+					portage.output.colorize(
+						"WARN", str(len(self.auto_assumed)).rjust(18)) + "\n")
+				for cpv in pkgs:
+					fetchmap = fetchlist_dict[cpv]
+					pf = portage.catsplit(cpv)[1]
+					for distfile in sorted(fetchmap):
+						if distfile in self.auto_assumed:
+							portage.writemsg_stdout(
+								"   %s::%s\n" % (pf, distfile))
+			# continue, skip remaining main loop code
+			return True
+		elif failed:
+			sys.exit(1)
 		return False
 
 	def _discard_dist_digests(self, checkdir, fetchlist_dict):
