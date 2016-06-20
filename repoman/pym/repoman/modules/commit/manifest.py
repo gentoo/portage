@@ -41,7 +41,7 @@ class Manifest(object):
 			fetchlist_dict = portage.FetchlistDict(
 				checkdir, self.repoman_settings, self.portdb)
 			if self.options.mode == 'manifest' and self.options.force:
-				self._create_manifest(checkdir, fetchlist_dict)
+				self._discard_dist_digests(checkdir, fetchlist_dict)
 			self.repoman_settings["O"] = checkdir
 			try:
 				self.generated_manifest = digestgen(
@@ -84,8 +84,15 @@ class Manifest(object):
 				sys.exit(1)
 		return False
 
-	def _create_manifest(self, checkdir, fetchlist_dict):
-		'''Creates a Manifest file
+	def _discard_dist_digests(self, checkdir, fetchlist_dict):
+		'''Discard DIST digests for files that exist in DISTDIR
+
+		This method is intended to be called prior to digestgen, only for
+		manifest mode with the --force option, in order to discard DIST
+		digests that we intend to update. This is necessary because
+		digestgen never replaces existing digests, since otherwise it
+		would be too easy for ebuild developers to accidentally corrupt
+		existing DIST digests.
 
 		@param checkdir: the directory to generate the Manifest in
 		@param fetchlist_dict: dictionary of files to fetch and/or include
