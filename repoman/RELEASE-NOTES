@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.0
+==================================
+* Bug Fixes:
+    - Bug 584786 Add support for .git as a file when --separate-git-dir is used
+    - Bug 585864 fix missing vcs_files_to_cps repodir argument
+    - Bug 585388 fix KeyError during manifest generation
+* New QA error: slot operator under '||' alternative
+
 repoman-2.3.0_rc1
 ==================================
 * Initial test release
