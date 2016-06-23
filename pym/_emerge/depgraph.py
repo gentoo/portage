@@ -1822,6 +1822,15 @@ class depgraph(object):
 						# necessarily relevant.
 						continue
 
+					if (not self._too_deep(parent.depth) and
+						not self._frozen_config.excluded_pkgs.
+						findAtomForPackage(parent,
+						modified_use=self._pkg_use_enabled(parent)) and
+						self._upgrade_available(parent)):
+						# This parent may be irrelevant, since an
+						# update is available (see bug 584626).
+						continue
+
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
 				if not atom_set.findAtomForPackage(candidate_pkg,
@@ -2112,6 +2121,18 @@ class depgraph(object):
 				set()).update(reinstalls)
 
 		self._dynamic_config._need_restart = True
+
+	def _upgrade_available(self, pkg):
+		"""
+		Detect cases where an upgrade of the given package is available
+		within the same slot.
+		"""
+		for available_pkg in self._iter_similar_available(pkg,
+			pkg.slot_atom):
+			if available_pkg > pkg:
+				return True
+
+		return False
 
 	def _downgrade_probe(self, pkg):
 		"""

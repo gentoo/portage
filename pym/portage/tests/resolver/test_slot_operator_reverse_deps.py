@@ -79,7 +79,11 @@ class SlotOperatorReverseDepsTestCase(TestCase):
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = [],
+				mergelist = [
+					'sys-devel/llvm-3.8.0-r2',
+					'sys-devel/clang-3.8.0-r100',
+					'media-libs/mesa-11.2.2',
+				],
 			),
 
 			ResolverPlaygroundTestCase(

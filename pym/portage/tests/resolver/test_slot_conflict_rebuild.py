@@ -91,7 +91,7 @@ class SlotConflictRebuildTestCase(TestCase):
 			# upgrade and we don't want to trigger unnecessary rebuilds.
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True},
+				options = {"--update": True, "--deep": True, "--backtrack": 4},
 				success = True,
 				mergelist = ["app-misc/D-2", "app-misc/E-0"]),
 
