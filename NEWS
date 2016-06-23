@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.0
+-----------------
+* Final release
+* Includes numerous bugfixes
+
 portage-2.3.0_rc1
 -----------------
 * New split release for the repoman Q/A tool

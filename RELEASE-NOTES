@@ -1,6 +1,27 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.0
+==================================
+* Bug Fixes:
+    - Bug 576888 dblink: add locks for parallel-install with blockers
+    - Bug 579626 __eapi6_src_prepare: handle empty PATCHES array
+    - Bug 579292 egencache --update-changelogs: fix timestamp assumptions
+    - Bug 578204 EbuildBuild: call _record_binpkg_info earlier
+    - Bug 577862 localized_size: handle UnicodeDecodeError
+    - Bug 582388 Manifest._apply_max_mtime: handle EPERM from utime
+    - Bug 576788 dispatch-conf: fix popen UnicodeDecode error
+    - Bug 583560 news.py: Check only for major version when parsing
+    - Bug 577720 Revert "Colorize packages in user sets
+    - Bug 583164 Colorize packages in world_sets
+    - Bug 584530 xtermTitle: support tmux
+    - Bug 572494 binarytree._populate: suppress PORTAGE_SSH_OPTS KeyError
+    - Bug 582802 Account for EPREFIX in ccache and distcc dirs
+    - Bug 583754 LinkageMapELF: Account for EPREFIX in scanelf path
+    - Bug 574626 eapply: use gpatch for bsd userland
+    - Bug 586410 unmerge-backup: check BUILD_TIME of existing binary package
+
+
 portage-2.3.0_rc1
 ==================================
 * Initial test release of the now split portage/repoman pkgs
