@@ -294,6 +294,8 @@ class Scanner(object):
 
 			if self.generate_manifest:
 				manifest.Manifest(**self.kwargs).update_manifest(checkdir)
+				if self.options.mode == 'manifest':
+					continue
 			checkdirlist = os.listdir(checkdir)
 
 			dynamic_data = {
