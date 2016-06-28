@@ -13,7 +13,7 @@ except (SystemExit, KeyboardInterrupt):
 	raise
 except (ImportError, SystemError, RuntimeError, Exception):
 	# broken or missing xml support
-	# http://bugs.python.org/issue14988
+	# https://bugs.python.org/issue14988
 	# This means that python is built without xml support.
 	# We tolerate global scope import failures for optional
 	# modules, so that ImportModulesTestCase can succeed (or

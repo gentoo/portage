@@ -12,7 +12,7 @@ simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
 keyword and variable substitution, but not some of the more advanced BASH
 features like arrays and special parameter expansions. For more details, see
 the Simple lexical analysis documentation:
-\fLhttp://docs.python.org/3/library/shlex.html\fR. Note that if you source
+\fLhttps://docs.python.org/3/library/shlex.html\fR. Note that if you source
 files, they need to be in the same shlex syntax for portage to read them.
 If make.conf is a directory, then all the files in that directory will
 be sorted in ascending alphabetical order by file name and summed
@@ -62,7 +62,7 @@ with the '@' symbol. License groups are defined in the \fIlicense_groups\fR
 file (see \fBportage\fR(5)). In addition to license and group names, the
 \fI*\fR and \fI-*\fR wildcard tokens are also supported. Refer to GLEP 23
 for further information:
-\fIhttp://www.gentoo.org/proj/en/glep/glep-0023.html\fR.
+\fIhttps://wiki.gentoo.org/wiki/GLEP:23\fR.
 .br
 Defaults to the value of * -@EULA.
 .br
@@ -136,7 +136,7 @@ compile/run if the optimizations are too extreme.
 
 For more information, see the \fIInvoking GCC\fR section of the gcc manual:
 .br
-http://gcc.gnu.org/onlinedocs/
+https://gcc.gnu.org/onlinedocs/
 .TP
 .B CHOST
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
@@ -144,13 +144,11 @@ step as \fI\-\-host=${CHOST}\fR.  This way you can force the build\-host.
 
 For more information:
 .br
-http://gcc.gnu.org/onlinedocs/gcc\-4.1.1/gcc/Submodel\-Options.html
+https://gcc.gnu.org/onlinedocs/gcc\-6.1.0/gcc/Submodel\-Options.html
 .br
-http://gcc.gnu.org/onlinedocs/gcc\-3.3/gcc/Submodel\-Options.html
+https://gcc.gnu.org/onlinedocs/gcc\-5.4.0/gcc/Submodel\-Options.html
 .br
-http://gcc.gnu.org/onlinedocs/gcc\-3.2/gcc/Submodel\-Options.html
-.br
-http://gcc.gnu.org/onlinedocs/gcc\-2.95.3/gcc_2.html
+https://gcc.gnu.org/onlinedocs/gcc\-4.9.3/gcc/Submodel\-Options.html
 .TP
 \fBCLEAN_DELAY\fR = \fIinteger\fR
 Determines how long the countdown delay will be after running
@@ -480,7 +478,7 @@ configures new enough distcc to use the proxy.
 .TP
 .B news
 Enable GLEP 42 news support. See
-\fIhttp://www.gentoo.org/proj/en/glep/glep-0042.html\fR.
+\fIhttps://wiki.gentoo.org/wiki/GLEP:42\fR.
 .TP
 .B noauto
 When utilizing \fBebuild\fR(1), only run the function requested. Also, forces
@@ -688,7 +686,7 @@ more modern build systems.
 
 For more information, see the \fIInvoking GCC\fR section of the gcc manual:
 .br
-http://gcc.gnu.org/onlinedocs/
+https://gcc.gnu.org/onlinedocs/
 .TP
 \fBGENTOO_MIRRORS\fR = \fI[URIs]\fR
 Insert your space\-separated list of local mirrors here.  These
@@ -1150,7 +1148,7 @@ USE from the environment variables, such as LINGUAS, defined by files in
 .RE
 
 .SH "REPORTING BUGS"
-Please report bugs via http://bugs.gentoo.org/
+Please report bugs via https://bugs.gentoo.org/
 .SH "AUTHORS"
 .nf
 Daniel Robbins <drobbins@gentoo.org>

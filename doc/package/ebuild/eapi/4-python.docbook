@@ -1,7 +1,7 @@
 <section id='package-ebuild-eapi-4-python'>
 	<title>EAPI 4-python</title>
 	<para>
-		Also see the <ulink url="http://people.apache.org/~Arfrever/EAPI_4-python_Specification">official EAPI 4-python Specification</ulink>.
+		Also see the <ulink url="https://people.apache.org/~Arfrever/EAPI_4-python_Specification">official EAPI 4-python Specification</ulink>.
 	</para>
 	<section id='package-ebuild-eapi-4-python-helpers'>
 		<title>Helpers</title>

@@ -321,7 +321,7 @@ class tbz2(object):
 			to break them. This makes it safe to use hardlinks to create
 			cheap snapshots of the repository, which is useful for solving
 			race conditions on binhosts as described here:
-			http://code.google.com/p/chromium-os/issues/detail?id=3225.
+			https://crbug.com/185031
 			Default is True.
 		"""
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.

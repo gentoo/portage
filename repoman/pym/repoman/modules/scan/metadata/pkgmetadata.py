@@ -13,7 +13,7 @@ except (SystemExit, KeyboardInterrupt):
 	raise
 except (ImportError, SystemError, RuntimeError, Exception):
 	# broken or missing xml support
-	# http://bugs.python.org/issue14988
+	# https://bugs.python.org/issue14988
 	msg = ["Please emerge dev-python/lxml in order to use repoman."]
 	from portage.output import EOutput
 	out = EOutput()

@@ -14,7 +14,7 @@ class Mapping(object):
 	Mapping and MutableMapping from the collections module, but 2to3
 	doesn't currently account for this change:
 
-	    http://bugs.python.org/issue2876
+	    https://bugs.python.org/issue2876
 
 	As a workaround for the above issue, use this class as a substitute
 	for UserDict.DictMixin so that code converted via 2to3 will run.
@@ -140,7 +140,7 @@ class UserDict(MutableMapping):
 	Use this class as a substitute for UserDict.UserDict so that
 	code converted via 2to3 will run:
 
-	     http://bugs.python.org/issue2876
+	     https://bugs.python.org/issue2876
 	"""
 
 	__slots__ = ('data',)

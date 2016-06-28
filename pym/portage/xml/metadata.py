@@ -48,7 +48,7 @@ else:
 		raise
 	except (ImportError, SystemError, RuntimeError, Exception):
 		# broken or missing xml support
-		# http://bugs.python.org/issue14988
+		# https://bugs.python.org/issue14988
 		import xml.etree.ElementTree as etree
 
 try:

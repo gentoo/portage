@@ -592,7 +592,7 @@ portage-2.1.7
   for the rationale behind this change.
 * If using python3, you may notice that some types of program output which
   require a tty device (like the wget progress bar) will be disabled. This
-  is due to an upstream python issue: http://bugs.python.org/issue5380. See
+  is due to an upstream python issue: https://bugs.python.org/issue5380. See
   bug #287648 for more information.
 * Licenses in the @EULA license group are now masked by the default
   ACCEPT_LICENSE setting. You can unmask all licenses by setting
@@ -625,7 +625,7 @@ portage-2.1.6
   updated accordingly, though links exist for backward compability.
 * -* support in package.keywords was changed as it was inconsistent with
   ACCEPT_KEYWORDS behavior (also see
-  http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
+  https://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
   Previously having -* in package.keywords matched packages with KEYWORDS="-*",
   now it resets the ACCEPT_KEYWORDS list for the given atom like it does when
   used in ACCEPT_KEYWORDS.

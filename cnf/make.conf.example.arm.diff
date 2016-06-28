@@ -36,7 +36,7 @@
 +# -march=strongarm110 code will not run on a regular StrongARM).
 +#
 +# For a full listing of supported CPU models, please refer to the GCC website:
-+# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
++# https://gcc.gnu.org/onlinedocs/gcc-4.9.3/gcc/ARM-Options.html
 +#
 +# Netwinder:
 +#CFLAGS="-mcpu=strongarm110 -O2 -pipe"

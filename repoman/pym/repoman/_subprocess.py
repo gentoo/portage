@@ -23,7 +23,7 @@ def repoman_getstatusoutput(cmd):
 	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
 		not os.path.isabs(args[0]):
 		# Python 3.1 _execvp throws TypeError for non-absolute executable
-		# path passed as bytes (see http://bugs.python.org/issue8513).
+		# path passed as bytes (see https://bugs.python.org/issue8513).
 		fullname = find_binary(args[0])
 		if fullname is None:
 			raise portage.exception.CommandNotFound(args[0])
@@ -56,7 +56,7 @@ class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
 		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
 			not os.path.isabs(args[0]):
 			# Python 3.1 _execvp throws TypeError for non-absolute executable
-			# path passed as bytes (see http://bugs.python.org/issue8513).
+			# path passed as bytes (see https://bugs.python.org/issue8513).
 			fullname = find_binary(args[0])
 			if fullname is None:
 				raise portage.exception.CommandNotFound(args[0])

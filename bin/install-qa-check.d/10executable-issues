@@ -48,7 +48,7 @@ elf_check() {
 	if [[ -n ${f}${x} ]] ; then
 		__vecho -ne '\n'
 		eqawarn "QA Notice: The following files contain insecure RUNPATHs"
-		eqawarn " Please file a bug about this at http://bugs.gentoo.org/"
+		eqawarn " Please file a bug about this at https://bugs.gentoo.org/"
 		eqawarn " with the maintainer of the package."
 		eqawarn "${f}${f:+${x:+\n}}${x}"
 		__vecho -ne '\n'
@@ -121,7 +121,7 @@ elf_check() {
 		eqawarn "QA Notice: The following files contain writable and executable sections"
 		eqawarn " Files with such sections will not work properly (or at all!) on some"
 		eqawarn " architectures/operating systems.  A bug should be filed at"
-		eqawarn " http://bugs.gentoo.org/ to make sure the issue is fixed."
+		eqawarn " https://bugs.gentoo.org/ to make sure the issue is fixed."
 		eqawarn " For more information, see:"
 		eqawarn
 		eqawarn "   https://wiki.gentoo.org/wiki/Hardened/GNU_stack_quickstart"

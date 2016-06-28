@@ -119,7 +119,7 @@ lib_check() {
 	# When installing static libraries into /usr/lib and shared libraries into
 	# /lib, we have to make sure we have a linker script in /usr/lib along side
 	# the static library, or gcc will utilize the static lib when linking :(.
-	# http://bugs.gentoo.org/4411
+	# https://bugs.gentoo.org/4411
 	local abort="no"
 	local a s
 	for a in "${ED}"usr/lib*/*.a ; do

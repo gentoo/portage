@@ -31,7 +31,7 @@
  #
 -#CFLAGS="-O2 -pipe"
 +# For a full listing of supported CPU models, please refer to the GCC website:
-+# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/SH-Options.html
++# https://gcc.gnu.org/onlinedocs/gcc-4.9.3/gcc/SH-Options.html
  #
 +#CFLAGS="-m4 -O2 -pipe"
 +

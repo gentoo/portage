@@ -13,7 +13,7 @@ class ArrayFromfileEofTestCase(TestCase):
 	def testArrayFromfileEof(self):
 		# This tests if the following python issue is fixed
 		# in the currently running version of python:
-		#   http://bugs.python.org/issue5334
+		#   https://bugs.python.org/issue5334
 
 		input_data = "an arbitrary string"
 		input_bytes = _unicode_encode(input_data,

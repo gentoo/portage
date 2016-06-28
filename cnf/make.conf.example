@@ -215,7 +215,7 @@
 #     one of them sync from the rotations above. The other boxes can then rsync
 #     from the local rsync server, reducing the load on the mirrors.
 #     Instructions for setting up a local rsync server are available here:
-#     http://www.gentoo.org/doc/en/rsync.xml
+#     https://wiki.gentoo.org/wiki/Local_Mirror
 #
 #SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 #

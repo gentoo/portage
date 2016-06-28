@@ -10,7 +10,7 @@ class SyncfsProcess(ForkProcess):
 	Isolate ctypes usage in a subprocess, in order to avoid
 	potential problems with stale cached libraries as
 	described in bug #448858, comment #14 (also see
-	http://bugs.python.org/issue14597).
+	https://bugs.python.org/issue14597).
 	"""
 
 	__slots__ = ('paths',)

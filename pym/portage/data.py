@@ -197,7 +197,7 @@ def _get_global(k):
 
 			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
 				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see http://bugs.python.org/issue8513).
+				# path passed as bytes (see https://bugs.python.org/issue8513).
 				fullname = portage.process.find_binary(cmd[0])
 				if fullname is None:
 					globals()[k] = v

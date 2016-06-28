@@ -1867,8 +1867,8 @@ def _check_build_log(mysettings, out=None):
 			"are limited to system packages "
 			"for which it is impossible to run "
 			"autotools during stage building. "
-			"See http://www.gentoo.org/p"
-			"roj/en/qa/autofailure.xml for more information."),
+			"See https://wiki.gentoo.org/wiki/Project:Quality_Assurance/Autotools_failures"
+            " for more information."),
 			wrap_width))
 		_eqawarn(msg)
 

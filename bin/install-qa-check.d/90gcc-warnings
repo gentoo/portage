@@ -98,7 +98,7 @@ gcc_warn_check() {
 				eerror
 				eerror "${f}"
 				eerror
-				eerror " Please file a bug about this at http://bugs.gentoo.org/"
+				eerror " Please file a bug about this at https://bugs.gentoo.org/"
 				eerror " with the maintainer of the package."
 				eerror
 			else
@@ -136,7 +136,7 @@ gcc_warn_check() {
 				eerror
 				eerror "${f}"
 				eerror
-				eerror " Please file a bug about this at http://bugs.gentoo.org/"
+				eerror " Please file a bug about this at https://bugs.gentoo.org/"
 				eerror " with the maintainer of the package."
 				eerror
 			else
