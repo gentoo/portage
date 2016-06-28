@@ -27,8 +27,10 @@ if sys.hexversion >= 0x3000000:
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
+# Note: This URI is hardcoded in all metadata.xml files.  We can't
+# change it without updating all the xml files in the tree.
 metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
-metadata_xsd_uri = 'http://www.gentoo.org/xml-schema/metadata.xsd'
+metadata_xsd_uri = 'https://www.gentoo.org/xml-schema/metadata.xsd'
 # force refetch if the local copy creation time is older than this
 metadata_xsd_ctime_interval = 60 * 60 * 24 * 7  # 7 days
 
