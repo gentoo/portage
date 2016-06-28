@@ -270,8 +270,6 @@ qawarnings = set((
 	"repo.eapi.deprecated",
 	"usage.obsolete",
 	"upstream.workaround",
-	"LIVEVCS.stable",
-	"LIVEVCS.unmasked",
 	"IUSE.rubydeprecated",
 ))
 
