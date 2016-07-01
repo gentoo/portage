@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Feb 2016" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jul 2016" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -360,6 +360,18 @@ the specified configuration file(s), or enable the
 \fB\-\-autounmask\-write\fR option. The
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
+.TP
+.BR "\-\-autounmask\-continue [ y | n ]"
+Automatically apply autounmask changes to configuration
+files, and continue to execute the specified command. If
+the dependency calculation is not entirely successful, then
+emerge will simply abort without modifying any configuration
+files.
+\fBWARNING:\fR
+This option is intended to be used only with great caution,
+since it is possible for it to make nonsensical configuration
+changes which may lead to system breakage. Therefore, it is
+advisable to use \fB\-\-ask\fR together with this option.
 .TP
 .BR "\-\-autounmask\-only [ y | n ]"
 Instead of doing any package building, just unmask

@@ -109,6 +109,16 @@ pkg_preinst() {
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
 			},
+			"dev-libs/C-1": {
+				"EAPI" : "6",
+				"KEYWORDS": "~x86",
+				"RDEPEND": "dev-libs/D[flag]",
+			},
+			"dev-libs/D-1": {
+				"EAPI" : "6",
+				"KEYWORDS": "~x86",
+				"IUSE" : "flag",
+			},
 			"virtual/foo-0": {
 				"EAPI" : "5",
 				"KEYWORDS": "x86",
@@ -300,6 +310,11 @@ pkg_preinst() {
 			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
+
+			emerge_cmd + ("--autounmask-continue", "dev-libs/C",),
+			# Verify that the above --autounmask-continue command caused
+			# USE=flag to be applied correctly to dev-libs/D.
+			portageq_cmd + ("match", eroot, "dev-libs/D[flag]"),
 
 			# Test cross-prefix usage, including chpathtool for binpkgs.
 			({"EPREFIX" : cross_prefix},) + \

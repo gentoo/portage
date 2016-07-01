@@ -431,6 +431,7 @@ class _dynamic_depgraph_config(object):
 		self._slot_operator_replace_installed = backtrack_parameters.slot_operator_replace_installed
 		self._prune_rebuilds = backtrack_parameters.prune_rebuilds
 		self._need_restart = False
+		self._need_config_reload = False
 		# For conditions that always require user intervention, such as
 		# unsatisfied REQUIRED_USE (currently has no autounmask support).
 		self._skip_restart = False
@@ -438,6 +439,7 @@ class _dynamic_depgraph_config(object):
 
 		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
+		self._displayed_autounmask = False
 		self._success_without_autounmask = False
 		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
@@ -4179,10 +4181,29 @@ class depgraph(object):
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
+			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
+				"--pretend" not in self._frozen_config.myopts):
+				# This will return false if it fails or if the user
+				# aborts via --ask.
+				if self._display_autounmask(autounmask_continue=True):
+					self._apply_autounmask_continue_state()
+					self._dynamic_config._need_config_reload = True
+					return True, myfavorites
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
+
+	def _apply_autounmask_continue_state(self):
+		"""
+		Apply autounmask changes to Package instances, so that their
+		state will be consistent configuration file changes.
+		"""
+		for node in self._dynamic_config._serialized_tasks_cache:
+			if isinstance(node, Package):
+				effective_use = self._pkg_use_enabled(node)
+				if effective_use != node.use.enabled:
+					node._metadata['USE'] = ' '.join(effective_use)
 
 	def _apply_parent_use_changes(self):
 		"""
@@ -7994,14 +8015,19 @@ class depgraph(object):
 
 		return display(self, mylist, favorites, verbosity)
 
-	def _display_autounmask(self):
+	def _display_autounmask(self, autounmask_continue=False):
 		"""
 		Display --autounmask message and optionally write it to config files
 		(using CONFIG_PROTECT). The message includes the comments and the changes.
 		"""
 
+		if self._dynamic_config._displayed_autounmask:
+			return
+
+		self._dynamic_config._displayed_autounmask = True
+
 		ask = "--ask" in self._frozen_config.myopts
-		autounmask_write = \
+		autounmask_write = autounmask_continue or \
 				self._frozen_config.myopts.get("--autounmask-write",
 								   ask) is True
 		autounmask_unrestricted_atoms = \
@@ -8286,7 +8312,7 @@ class depgraph(object):
 				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
-		if write_to_file:
+		if write_to_file and not autounmask_continue:
 			for root in roots:
 				settings = self._frozen_config.roots[root].settings
 				protect_obj[root] = ConfigProtect(
@@ -8313,7 +8339,8 @@ class depgraph(object):
 						(file_to_write_to, e))
 			if file_contents is not None:
 				file_contents.extend(changes)
-				if protect_obj[root].isprotected(file_to_write_to):
+				if (not autounmask_continue and
+					protect_obj[root].isprotected(file_to_write_to)):
 					# We want to force new_protect_filename to ensure
 					# that the user will see all our changes via
 					# dispatch-conf, even if file_to_write_to doesn't
@@ -8372,6 +8399,8 @@ class depgraph(object):
 		elif write_to_file and roots:
 			writemsg("\nAutounmask changes successfully written.\n",
 				noiselevel=-1)
+			if autounmask_continue:
+				return True
 			for root in roots:
 				chk_updated_cfg_files(root,
 					[os.path.join(os.sep, USER_CONFIG_PATH)])
@@ -8892,6 +8921,9 @@ class depgraph(object):
 	def need_config_change(self):
 		return self._dynamic_config._success_without_autounmask or \
 			self._dynamic_config._required_use_unsatisfied
+
+	def need_config_reload(self):
+		return self._dynamic_config._need_config_reload
 
 	def autounmask_breakage_detected(self):
 		try:
