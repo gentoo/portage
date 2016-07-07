@@ -238,7 +238,7 @@ MANIFEST2_HASH_FUNCTIONS = ("SHA256", "SHA512", "WHIRLPOOL")
 MANIFEST2_HASH_DEFAULTS = frozenset(["SHA256", "SHA512", "WHIRLPOOL"])
 MANIFEST2_REQUIRED_HASH  = "SHA256"
 
-MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
+MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD", "MANIFEST", "ECLASS", "DATA", "OTHER", "EXEC")
 
 # The EPREFIX for the current install is hardcoded here, but access to this
 # constant should be minimal, in favor of access via the EPREFIX setting of
