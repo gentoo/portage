@@ -1,13 +1,13 @@
 certificate version 0.1
-pusher FDE8EF85AE5719A3 1467493542 -0700
+pusher FDE8EF85AE5719A3 1468409525 -0700
 pushee git+ssh://git.gentoo.org/proj/portage.git
-nonce 1467493541-deb62b7bf5b9921e9fc1
+nonce 1468409524-5b90672bb9d4009c7336
 
-f833f30eb2bb32f941d92ceb22e40e7daa0f4ea2 e2d88ef3ff5958571ef2da5f69e8756522390f0f refs/heads/master
+e2d88ef3ff5958571ef2da5f69e8756522390f0f 9abbda7d054761ae6c333d3e6d420632b9658b6d refs/heads/master
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iEYEABECAAYFAld4LKYACgkQ/ejvha5XGaMsbwCgr8SumgiOBaa1G+LHhuSth3TD
-YWwAn2AW6xAT0ddu4vnu2My+LG8cHjzo
-=FFRM
+iEYEABECAAYFAleGJrUACgkQ/ejvha5XGaMIDwCg8Nqs8Rc7uaVsIfEYhlf2Lt9R
+5RQAn2+u2iWBThvad0tSPr/9CZVula82
+=9aOi
 -----END PGP SIGNATURE-----
