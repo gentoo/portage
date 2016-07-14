@@ -79,11 +79,26 @@ class GitSync(NewBase):
 		'''
 
 		git_cmd_opts = ""
-		if self.settings.get("PORTAGE_QUIET") == "1":
+		quiet = self.settings.get("PORTAGE_QUIET") == "1"
+		if quiet:
 			git_cmd_opts += " --quiet"
 		if self.repo.module_specific_options.get('sync-git-pull-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-pull-extra-opts']
-		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
+		if self.repo.sync_depth is None:
+			git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
+		else:
+			# Since the default merge strategy typically fails when
+			# the depth is not unlimited, use `git fetch` followed by
+			# `git reset --hard`.
+			remote_branch = portage._unicode_decode(
+				subprocess.check_output([self.bin_command, 'rev-parse',
+				'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+				cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
+
+			git_cmd_opts += " --depth %d" % self.repo.sync_depth
+			git_cmd = "%s fetch %s%s" % (self.bin_command,
+				remote_branch.partition('/')[0], git_cmd_opts)
+
 		writemsg_level(git_cmd + "\n")
 
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
@@ -93,6 +108,14 @@ class GitSync(NewBase):
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
 			**self.spawn_kwargs)
+
+		if exitcode == os.EX_OK and self.repo.sync_depth is not None:
+			reset_cmd = [self.bin_command, 'reset', '--hard', remote_branch]
+			if quiet:
+				reset_cmd.append('--quiet')
+			exitcode = subprocess.call(reset_cmd,
+				cwd=portage._unicode_encode(self.repo.location))
+
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
