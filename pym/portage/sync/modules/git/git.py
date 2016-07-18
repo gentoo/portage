@@ -89,7 +89,7 @@ class GitSync(NewBase):
 		else:
 			# Since the default merge strategy typically fails when
 			# the depth is not unlimited, use `git fetch` followed by
-			# `git reset --hard`.
+			# `git reset --merge`.
 			remote_branch = portage._unicode_decode(
 				subprocess.check_output([self.bin_command, 'rev-parse',
 				'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
@@ -110,7 +110,7 @@ class GitSync(NewBase):
 			**self.spawn_kwargs)
 
 		if exitcode == os.EX_OK and self.repo.sync_depth is not None:
-			reset_cmd = [self.bin_command, 'reset', '--hard', remote_branch]
+			reset_cmd = [self.bin_command, 'reset', '--merge', remote_branch]
 			if quiet:
 				reset_cmd.append('--quiet')
 			exitcode = subprocess.call(reset_cmd,
