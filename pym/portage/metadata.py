@@ -149,7 +149,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 					src[dest_chf_key] = dest_chf_getter(ebuild_hash)
 
 				if dest is not None:
-					if not (dest[dest_chf_key] == src[dest_chf_key] and \
+					if not (dest.get(dest_chf_key) == src[dest_chf_key] and \
 						tree_data.eclass_db.validate_and_rewrite_cache(
 							dest['_eclasses_'], tree_data.dest_db.validation_chf,
 							tree_data.dest_db.store_eclass_paths) is not None and \
