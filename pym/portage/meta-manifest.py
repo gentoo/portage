@@ -205,6 +205,20 @@ class MetaManifest(manifest.Manifest):
 				if not f.endswith("Manifest"):
 					self.fhashdict[ftype][f] = perform_multiple_checksums(fpath, self.hashes)
 
+	def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
+                digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
+                if hash_filter is not None:
+                        digests = _apply_hash_filter(digests, hash_filter)
+                try:
+                        if ftype not in ('DIST'):
+                                ok, reason = verify_all(self._getAbsname(ftype, fname), digests)
+                                if not ok:
+                                        raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
+                                return ok, reason
+                except FileNotFound as e:
+                        if not ignoreMissing:
+                                raise
+                        return False, _("File Not Found: '%s'") % str(e)
 
 
 if __name__ == '__main__':
