@@ -164,11 +164,10 @@ class MetaManifest(manifest.Manifest):
 				except UnicodeDecodeError:
                         	        continue
 				fpath = os.path.join(eclass_dir, f)
-				ftype = guessManifestFileType(fpath)
+				ftype = guessManifestFileType(fpath, is_pkg=False)
 				f = fpath.replace(self.pkgdir, "")
-				if not f.endswith("MetaManifest"):
+				if not f.endswith("Manifest"):
 					self.fhashdict[ftype][f] = perform_multiple_checksums(fpath, self.hashes)
-		print(self.fhashdict, 10)
 
 	def create_cat(self):
 		'''Creates a MetaManifest file in the selected category'''
