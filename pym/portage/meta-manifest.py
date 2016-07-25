@@ -128,6 +128,27 @@ class MetaManifest(manifest.Manifest):
 		else:
 			self.create_cat()
 
+	def create_master(self):
+		'''Creates a MetaManifest file from all the MetaManifest files of the repository'''
+		self.find_reporoot()
+		myrepodir = self.reporoot
+		self.pkgdir = self.reporoot
+		self.fhashdict = {}
+		for ftype in MANIFEST2_IDENTIFIERS:
+			self.fhashdict[ftype] = {}
+		for file in os.listdir(myrepodir):
+			fpath = os.path.join(myrepodir, file)
+			if os.path.isfile(fpath):
+				if not fpath.endswith('Manifest'):
+					ftype = guessManifestFileType(fpath, is_pkg=False)
+					self.fhashdict[ftype][f] = perform_multiple_checksums(fpath, self.hashes)
+			else:
+				for mf in os.listdir(fpath):
+					mfpath = os.path.join(fpath, mf)
+					if mfpath.endswith('Manifest'):
+						f = mfpath.replace(self.reporoot, "")
+						self.fhashdict["MANIFEST"][f] = perform_multiple_checksums(mfpath, self.hashes) 
+
 	def create_eclass(self):
 		'''Creates a MetaManifest file in the eclass directory'''
 		eclass_dir = self.pkgdir
