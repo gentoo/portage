@@ -172,19 +172,19 @@ class MetaManifest(manifest.Manifest):
 	def create_cat(self):
 		'''Creates a MetaManifest file in the selected category'''
 		catdir = self.pkgdir
-		self.fhashdict = {}
-		self.fhashdict["MANIFEST"] = {}
-		for catdir, catdir_dir, pkg_files in os.walk(catdir):
-			for f in pkg_files:
-				try:
-					f = _unicode_decode(f,encoding=_encodings['fs'], errors='strict')
-					catdir = _unicode_decode(catdir,encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					continue
-				if f == "Manifest" :
-					fpath = os.path.join(catdir, f)
-					f = fpath.replace(self.pkgdir, "")
-					self.fhashdict["MANIFEST"][f] = perform_multiple_checksums(fpath, self.hashes) 
+		for ftype in MANIFEST2_IDENTIFIERS:
+                        self.fhashdict[ftype] = {}
+		for pkg_dir in os.listdir(catdir):
+			pkg_dir = os.path.join(catdir, pkg_dir)
+			if os.path.isdir(pkg_dir):
+				for file in os.listdir(pkg_dir):
+					fpath = os.path.join(pkg_dir, file)
+					if os.path.isfile(fpath) and fpath.endswith('Manifest'):
+						new_mf = MetaManifest(fpath.replace('Manifest', ""))
+						new_mf.verify_manifest()
+						f = fpath.replace(self.pkgdir, "")
+						self.fhashdict["MANIFEST"][f] = perform_multiple_checksums(fpath, self.hashes)
+
 	def create_profile(self):
 		'''Creates a MetaManifest file in the profiles directory'''
 		profiledir = self.pkgdir
