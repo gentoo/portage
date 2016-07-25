@@ -117,11 +117,14 @@ class MetaManifest(manifest.Manifest):
 
 	def create(self):
 		'''Creates a MetaManifest file'''
-		dir = self.pkgdir
-		if dir.endswith("profiles/"):
+		repodir = self.pkgdir
+		repotype = self.find_repotype(repodir)
+		if repotype == 'profile':
 			self.create_profile()
-		elif dir.endswith("eclass/"):
+		elif repotype == 'eclass':
 			self.create_eclass()
+		elif repotype == 'root':
+			self.create_master()
 		else:
 			self.create_cat()
 
