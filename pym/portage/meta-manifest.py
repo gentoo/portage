@@ -198,11 +198,11 @@ class MetaManifest(manifest.Manifest):
 				except UnicodeDecodeError:
 					continue
 				fpath = os.path.join(profiledir, f)
-				ftype = guessManifestFileType(fpath)
+				ftype = guessManifestFileType(fpath, is_pkg=False)
 				if ftype == "OTHER":
 					ftype = "DATA"
 				f = fpath.replace(self.pkgdir, "")
-				if not f.endswith("MetaManifest"):
+				if not f.endswith("Manifest"):
 					self.fhashdict[ftype][f] = perform_multiple_checksums(fpath, self.hashes)
 
 
