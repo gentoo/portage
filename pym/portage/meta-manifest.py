@@ -221,6 +221,43 @@ class MetaManifest(manifest.Manifest):
                         return False, _("File Not Found: '%s'") % str(e)
 
 
+	def validate_signature(self):
+		'''Validate the Manifest's file signature.'''
+		self.gkeys = GkeysInterface('portage', '/')
+		is_good, has_sig = self.gkeys.verify_file(self.getFullname())
+		return (is_good, has_sig)
+
+	def verify_manifest(self, verify_pkgs = True):
+		'''Verifies the manifest's validity'''
+		mfdir = self.pkgdir
+		mftype = self.find_repotype(mfdir)
+		if mftype == 'root':
+			for ftype in MANIFEST2_IDENTIFIERS:
+				for f in self.fhashdict[ftype]:
+					if ftype != 'MANIFEST':
+						self.checkFileHashes(ftype, f, ignoreMissing=False)
+					else:
+						mfpath = os.path.join(mfdir, f.replace("Manifest", ""))
+						missing = False
+						if not os.path.exists(mfpath) and self.find_repotype(f) is 'category':
+							missing = true
+						self.checkFileHashes('MANIFEST', f, ignoreMissing=missing)
+						new_mf = MetaManifest(mfpath)
+						new_mf.verify_manifest(verify_pkgs=verify_pkgs)
+		elif mftype == 'category':
+			for f in self.fhashdict['MANIFEST']:
+				mfpath = os.path.join(mfdir, f.replace("Manifest", ""))
+				if not os.path.exists(mfpath) and self.find_repotype(f) is 'package':
+					self.checkFileHashes('MANIFEST', f, ignoreMissing=True)
+				else:
+					self.checkFileHashes('MANIFEST', f, ignoreMissing=False)
+				if verify_pkgs:
+					new_mfpath = os.path.join(mfdir, f.replace("Manifest", ""))
+					new_mf = MetaManifest(new_mfpath)
+					new_mf.verify_manifest(verify_pkgs=verify_pkgs)
+		else:
+			self.checkAllHashes(ignoreMissingFiles=False)
+
 if __name__ == '__main__':
 	try:
 
@@ -231,7 +268,7 @@ if __name__ == '__main__':
 		meta_manifest = MetaManifest(args.directory)
 		meta_manifest.create()
 		meta_manifest.write(sign=True)
-
+		#meta_manifest.verify_manifest(verify_pkgs=True)
 	except KeyboardInterrupt:
 		print('interrupted ...', file=sys.stderr)
 		exit(1)
