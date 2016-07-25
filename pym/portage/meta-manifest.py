@@ -157,7 +157,6 @@ class MetaManifest(manifest.Manifest):
 			self.fhashdict[ftype] = {}
 
 		for eclass_dir, eclassdir_dir, files in os.walk(eclass_dir):
-			print(eclass_dir, eclassdir_dir, files)
 			for f in files:
 				try:
                                         f = _unicode_decode(f,encoding=_encodings['fs'], errors='strict')
