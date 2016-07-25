@@ -19,15 +19,21 @@ portage.proxy.lazyimport.lazyimport(globals(),
         'portage.util:write_atomic,writemsg_level',
 )
 
+from gkeys.gkeysinterface import GkeysInterface
+from gkeys.config import GKeysConfig
+from pyGPG.gpg import GPG
+from gkeys.lib import GkeysGPG
+
+from portage import manifest
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
-import manifest
+from portage.manifest import guessManifestFileType
 from portage.exception import DigestException, FileNotFound, \
         InvalidDataType, MissingParameter, PermissionDenied, \
         PortageException, PortagePackageException
-from const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
+from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
         MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
@@ -38,30 +44,9 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-def guessManifestFileType(filename):
-        """ Perform a best effort guess of which type the given filename is, avoid using this if possible """
-        if filename.startswith("files" + os.sep + "digest-"):
-                return None
-        elif filename.startswith("files" + os.sep):
-                return "AUX"
-        elif filename.endswith(".ebuild"):
-                return "EBUILD"
-        elif filename == "Manifest" or filename == "MetaManifest":
-                return "MANIFEST"
-        elif filename.endswith(".eclass"):
-                return "ECLASS"
-        elif filename in ["ChangeLog", "metadata.xml"]:
-                return "MISC"
-        elif filename.endswith(".sh"):
-	        return "EXEC"
-        else:
-                return "OTHER"
 
 class MetaManifest(manifest.Manifest):
-
-	def getFullname(self):
-                """ Returns the absolute path to the Manifest file for this instance """
-                return os.path.join(self.pkgdir, "MetaManifest")
+	'''Subclass of the Manifest class for Manifest files outside the packages'''
 
 	def sign(self):
 		'''Signs MetaManifest file with the default PORTAGE_GPG_KEY''' 
