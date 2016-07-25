@@ -69,10 +69,10 @@ class MetaManifest(manifest.Manifest):
 					"Unable to access directory: PORTAGE_GPG_DIR='%s'" %
 					portage_settings["PORTAGE_GPG_DIR"])
 		gpgvars = {"FILE": filename}
-		for k in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
-			v = portage_settings.get(k)
-			if v is not None:
-				gpgvars[k] = v
+		for setting in ("PORTAGE_GPG_DIR", "PORTAGE_GPG_KEY"):
+			keyvar = portage_settings.get(setting)
+			if keyvar is not None:
+				gpgvars[setting] = keyvar
 		gpgcmd = portage.util.varexpand(gpgcmd, mydict=gpgvars)
 		gpgcmd = portage.util.shlex_split(gpgcmd)
 		gpgcmd = [portage._unicode_encode(arg, encoding=portage._encodings['fs'], errors='strict') for arg in gpgcmd]
