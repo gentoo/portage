@@ -1,8 +1,9 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
 
+import difflib
 import re
 import portage
 from portage import os
@@ -28,7 +29,8 @@ class search(object):
 	# public interface
 	#
 	def __init__(self, root_config, spinner, searchdesc,
-		verbose, usepkg, usepkgonly, search_index=True):
+		verbose, usepkg, usepkgonly, search_index=True,
+		search_similarity=None, fuzzy=True):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -42,6 +44,9 @@ class search(object):
 		self.spinner = None
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
+		self.fuzzy = fuzzy
+		self.search_similarity = (80 if search_similarity is None
+			else search_similarity)
 		self.matches = {"pkg" : []}
 		self.mlen = 0
 
@@ -248,10 +253,25 @@ class search(object):
 		if self.searchkey.startswith('@'):
 			match_category = 1
 			self.searchkey = self.searchkey[1:]
+		fuzzy = False
 		if regexsearch:
 			self.searchre=re.compile(self.searchkey,re.I)
 		else:
 			self.searchre=re.compile(re.escape(self.searchkey), re.I)
+
+			# Fuzzy search does not support regular expressions, therefore
+			# it is disabled for regular expression searches.
+			if self.fuzzy:
+				fuzzy = True
+				cutoff = float(self.search_similarity) / 100
+				seq_match = difflib.SequenceMatcher()
+				seq_match.set_seq2(self.searchkey.lower())
+
+				def fuzzy_search(match_string):
+					seq_match.set_seq1(match_string.lower())
+					return (seq_match.real_quick_ratio() >= cutoff and
+						seq_match.quick_ratio() >= cutoff and
+						seq_match.ratio() >= cutoff)
 
 		for package in self._cp_all():
 			self._spinner_update()
@@ -262,6 +282,8 @@ class search(object):
 				match_string  = package.split("/")[-1]
 
 			if self.searchre.search(match_string):
+				yield ("pkg", package)
+			elif fuzzy and fuzzy_search(match_string):
 				yield ("pkg", package)
 			elif self.searchdesc: # DESCRIPTION searching
 				# Use _first_cp to avoid an expensive visibility check,

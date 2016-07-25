@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -141,6 +141,7 @@ def insert_optional_args(args):
 		'--deselect'             : y_or_n,
 		'--binpkg-respect-use'   : y_or_n,
 		'--fail-clean'           : y_or_n,
+		'--fuzzy-search'         : y_or_n,
 		'--getbinpkg'            : y_or_n,
 		'--getbinpkgonly'        : y_or_n,
 		'--jobs'       : valid_integers,
@@ -458,6 +459,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--fuzzy-search": {
+			"help": "Enable or disable fuzzy search",
+			"choices": true_y_or_n
+		},
+
 		"--ignore-built-slot-operator-deps": {
 			"help": "Ignore the slot/sub-slot := operator parts of dependencies that have "
 				"been recorded when packages where built. This option is intended "
@@ -658,6 +664,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices": y_or_n
 		},
 
+		"--search-similarity": {
+			"help": ("Set minimum similarity percentage for fuzzy seach "
+				"(a floating-point number between 0 and 100)"),
+			"action": "store"
+		},
+
 		"--select": {
 			"shortopt" : "-w",
 			"help"    : "add specified packages to the world set " + \
@@ -855,6 +867,9 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.fail_clean in true_y:
 		myoptions.fail_clean = True
 
+	if myoptions.fuzzy_search in true_y:
+		myoptions.fuzzy_search = True
+
 	if myoptions.getbinpkg in true_y:
 		myoptions.getbinpkg = True
 	else:
@@ -1008,6 +1023,21 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.rebuilt_binaries_timestamp,))
 
 		myoptions.rebuilt_binaries_timestamp = rebuilt_binaries_timestamp
+
+	if myoptions.search_similarity:
+		try:
+			search_similarity = float(myoptions.search_similarity)
+		except ValueError:
+			parser.error("Invalid --search-similarity parameter "
+				"(not a number): '{}'\n".format(
+				myoptions.search_similarity))
+
+		if search_similarity < 0 or search_similarity > 100:
+			parser.error("Invalid --search-similarity parameter "
+				"(not between 0 and 100): '{}'\n".format(
+				myoptions.search_similarity))
+
+		myoptions.search_similarity = search_similarity
 
 	if myoptions.use_ebuild_visibility in true_y:
 		myoptions.use_ebuild_visibility = True

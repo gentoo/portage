@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -1974,7 +1974,10 @@ def action_search(root_config, myopts, myfiles, spinner):
 			spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts, "--usepkg" in myopts,
 			"--usepkgonly" in myopts,
-			search_index = myopts.get("--search-index", "y") != "n")
+			search_index=myopts.get("--search-index", "y") != "n",
+			search_similarity=myopts.get("--search-similarity"),
+			fuzzy=myopts.get("--fuzzy-search") != "n",
+			)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
