@@ -82,6 +82,39 @@ class MetaManifest(manifest.Manifest):
 		else:
 			raise portage.exception.PortageException("!!! gpg exited with '" + str(return_code) + "' status")
 
+	def find_reporoot(self):
+		'''Finds reporoot'''
+		repodir = self.pkgdir
+		while len(set(['metadata', 'eclass', 'profiles']).intersection(os.listdir(repodir))) == 0:
+			myrepo = repodir.split(os.path.sep)[1:-1]
+			if myrepo[-1] not in myrepo[:-1]:
+				repodir = repodir.replace(("/" +  myrepo[-1]), "")
+			else:
+				raise("Invalid path")
+		self.reporoot = repodir
+
+	def find_repolevel(self, path):
+		'''Finds repolevel'''
+		self.find_reporoot()
+		path = path.replace(self.reporoot, "")
+		myrepo = path.split(os.path.sep)
+		repolevel = len(myrepo)
+		return repolevel
+
+	def find_repotype(self, path):
+		'''Finds the type of the repo directory'''
+		if len(set(['metadata', 'eclass', 'profiles']).intersection(os.listdir(path))) > 0:
+			return 'root'
+		elif path.endswith("eclass/"):
+			return 'eclass'
+		elif path.endswith("profiles/"):
+			return 'profile'
+		else:
+			if self.find_repolevel(path) == 2:
+				return 'category'
+			else:
+				return 'package'
+
 	def create(self):
 		'''Creates a MetaManifest file'''
 		dir = self.pkgdir
