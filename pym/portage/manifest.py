@@ -166,8 +166,8 @@ class Manifest(object):
 			list(self.hashes) if hashname not in hashfunc_map)
 		self.hashes.add("size")
 		self.hashes.add(MANIFEST2_REQUIRED_HASH)
-		for t in MANIFEST2_IDENTIFIERS:
-			self.fhashdict[t] = {}
+		for ftype in MANIFEST2_IDENTIFIERS:
+			self.fhashdict[ftype] = {}
 		if not from_scratch:
 			self._read()
 		if fetchlist_dict != None:
@@ -458,6 +458,7 @@ class Manifest(object):
 		distfiles to raise a FileNotFound exception for (if no file or existing
 		checksums are available), and defaults to all distfiles when not
 		specified."""
+
 		if not self.allow_create:
 			return
 		if checkExisting:
