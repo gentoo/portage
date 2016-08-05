@@ -7415,36 +7415,38 @@ class depgraph(object):
 						selected_nodes = set()
 						if gather_deps(ignore_priority,
 							mergeable_nodes, selected_nodes, node):
-							# When selecting asap_nodes, we need to ensure
-							# that we haven't selected a large runtime cycle
-							# that is obviously sub-optimal. This will be
-							# obvious if any of the non-asap selected_nodes
-							# is a leaf node when medium_soft deps are
-							# ignored.
-							if prefer_asap and asap_nodes and \
-								len(selected_nodes) > 1:
-								for node in selected_nodes.difference(
-									asap_nodes):
-									if not mygraph.child_nodes(node,
-										ignore_priority =
-										DepPriorityNormalRange.ignore_medium_soft):
-										selected_nodes = None
-										break
-							if selected_nodes:
-								if smallest_cycle is None or \
-									len(selected_nodes) < len(smallest_cycle):
-									smallest_cycle = selected_nodes
+							if smallest_cycle is None or \
+								len(selected_nodes) < len(smallest_cycle):
+								smallest_cycle = selected_nodes
 
 					selected_nodes = smallest_cycle
 
-					if selected_nodes and debug:
-						writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
-							(len(selected_nodes),), noiselevel=-1)
+					if selected_nodes is not None:
 						cycle_digraph = mygraph.copy()
 						cycle_digraph.difference_update([x for x in
 							cycle_digraph if x not in selected_nodes])
-						cycle_digraph.debug_print()
-						writemsg("\n", noiselevel=-1)
+
+						leaves = cycle_digraph.leaf_nodes()
+						if leaves:
+							# NOTE: This case should only be triggered when
+							# prefer_asap is True, since otherwise these
+							# leaves would have been selected to merge
+							# before this point. Since these "leaves" may
+							# actually have some low-priority dependencies
+							# that we have intentionally ignored, select
+							# only one node here, so that merge order
+							# accounts for as many dependencies as possible.
+							selected_nodes = [leaves[0]]
+
+						if debug:
+							writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
+								(len(selected_nodes),), noiselevel=-1)
+							cycle_digraph.debug_print()
+							writemsg("\n", noiselevel=-1)
+
+							if leaves:
+								writemsg("runtime cycle leaf: %s\n\n" %
+									(selected_nodes[0],), noiselevel=-1)
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
