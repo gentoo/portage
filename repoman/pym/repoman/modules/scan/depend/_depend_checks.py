@@ -27,7 +27,7 @@ def check_slotop(depstr, is_valid_flag, badsyntax, mytype,
 			token_class=portage.dep.Atom)
 	except portage.exception.InvalidDependString as e:
 		my_dep_tree = None
-		badsyntax.append(str(e))
+		badsyntax.append((mytype, str(e)))
 
 	def _traverse_tree(dep_tree, in_any_of):
 		# leaf
@@ -67,7 +67,7 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 		"java-pkg-opt-2" in ebuild.inherited,
 	inherited_wxwidgets_eclass = "wxwidgets" in ebuild.inherited
 	# operator_tokens = set(["||", "(", ")"])
-	type_list, badsyntax = [], []
+	badsyntax = []
 	for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
 		mydepstr = ebuild.metadata[mytype]
 
@@ -83,7 +83,7 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 				is_valid_flag=pkg.iuse.is_valid_flag, token_class=token_class)
 		except portage.exception.InvalidDependString as e:
 			atoms = None
-			badsyntax.append(str(e))
+			badsyntax.append((mytype, str(e)))
 
 		if atoms and mytype.endswith("DEPEND"):
 			if runtime and \
@@ -156,13 +156,11 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 				check_missingslot(atom, mytype, ebuild.eapi, portdb, qatracker,
 					ebuild.relative_path, ebuild.metadata)
 
-		type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
-
 		if runtime:
 			check_slotop(mydepstr, pkg.iuse.is_valid_flag,
 				badsyntax, mytype, qatracker, ebuild.relative_path)
 
-	for m, b in zip(type_list, badsyntax):
+	for m, b in badsyntax:
 		if m.endswith("DEPEND"):
 			qacat = "dependency.syntax"
 		else:
@@ -171,9 +169,9 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 			qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
 
 	# data required for some other tests
-	badlicsyntax = len([z for z in type_list if z == "LICENSE"])
-	badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
-	baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax
+	badlicsyntax = len([z for z in badsyntax if z[0] == "LICENSE"])
+	badprovsyntax = len([z for z in badsyntax if z[0] == "PROVIDE"])
+	baddepsyntax = len(badsyntax) != badlicsyntax + badprovsyntax
 	badlicsyntax = badlicsyntax > 0
 	#badprovsyntax = badprovsyntax > 0
 
