@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 
+import collections
 
 from _emerge.Package import Package
 
@@ -160,7 +161,12 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 			check_slotop(mydepstr, pkg.iuse.is_valid_flag,
 				badsyntax, mytype, qatracker, ebuild.relative_path)
 
+	dedup = collections.defaultdict(set)
 	for m, b in badsyntax:
+		if b in dedup[m]:
+			continue
+		dedup[m].add(b)
+
 		if m.endswith("DEPEND"):
 			qacat = "dependency.syntax"
 		else:
