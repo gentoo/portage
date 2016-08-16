@@ -161,6 +161,7 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 			check_slotop(mydepstr, pkg.iuse.is_valid_flag,
 				badsyntax, mytype, qatracker, ebuild.relative_path)
 
+	baddepsyntax = False
 	dedup = collections.defaultdict(set)
 	for m, b in badsyntax:
 		if b in dedup[m]:
@@ -168,18 +169,12 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 		dedup[m].add(b)
 
 		if m.endswith("DEPEND"):
+			baddepsyntax = True
 			qacat = "dependency.syntax"
 		else:
 			qacat = m + ".syntax"
 		qatracker.add_error(
 			qacat, "%s: %s: %s" % (ebuild.relative_path, m, b))
-
-	# data required for some other tests
-	badlicsyntax = len([z for z in badsyntax if z[0] == "LICENSE"])
-	badprovsyntax = len([z for z in badsyntax if z[0] == "PROVIDE"])
-	baddepsyntax = len(badsyntax) != badlicsyntax + badprovsyntax
-	badlicsyntax = badlicsyntax > 0
-	#badprovsyntax = badprovsyntax > 0
 
 	# Parse the LICENSE variable, remove USE conditions and flatten it.
 	licenses = portage.dep.use_reduce(
