@@ -328,7 +328,20 @@ class Scheduler(PollScheduler):
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
 		for task in list(self._running_tasks.values()):
-			task.cancel()
+			if task.isAlive():
+				# This task should keep the main loop running until
+				# it has had an opportunity to clean up after itself.
+				# Rely on its exit hook to remove it from
+				# self._running_tasks when it has finished cleaning up.
+				task.cancel()
+			else:
+				# This task has been waiting to be started in one of
+				# self._task_queues which are all cleared below. It
+				# will never be started, so purged it from
+				# self._running_tasks so that it won't keep the main
+				# loop running.
+				del self._running_tasks[id(task)]
+
 		for q in self._task_queues.values():
 			q.clear()
 
