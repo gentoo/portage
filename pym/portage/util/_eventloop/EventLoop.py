@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -576,6 +576,21 @@ class EventLoop(object):
 
 		del self._poll_event_handlers[f]
 		return True
+
+	def run_until_complete(self, future):
+		"""
+		Run until the Future is done.
+
+		@type future: asyncio.Future
+		@param future: a Future to wait for
+		@rtype: object
+		@return: the Future's result
+		@raise: the Future's exception
+		"""
+		while not future.done():
+			self.iteration()
+
+		return future.result()
 
 _can_poll_device = None
 
