@@ -6,6 +6,7 @@
 import os
 import shutil
 import sys
+import warnings
 
 import portage
 from portage import _encodings
@@ -72,9 +73,13 @@ def rename(src, dest):
 		setfscreate()
 
 def settype(newtype):
-	ret = getcontext().split(":")
-	ret[2] = newtype
-	return ":".join(ret)
+	try:
+		ret = getcontext().split(":")
+		ret[2] = newtype
+		return ":".join(ret)
+	except IndexError:
+		warnings.warn("Invalid SELinux context: %s" % getcontext())
+		return None
 
 def setexec(ctx="\n"):
 	ctx = _native_string(ctx, encoding=_encodings['content'], errors='strict')
@@ -122,15 +127,16 @@ class spawn_wrapper(object):
 		self._con = settype(selinux_type)
 
 	def __call__(self, *args, **kwargs):
+		if self._con is not None:
+			pre_exec = kwargs.get("pre_exec")
 
-		pre_exec = kwargs.get("pre_exec")
+			def _pre_exec():
+				if pre_exec is not None:
+					pre_exec()
+				setexec(self._con)
 
-		def _pre_exec():
-			if pre_exec is not None:
-				pre_exec()
-			setexec(self._con)
+			kwargs["pre_exec"] = _pre_exec
 
-		kwargs["pre_exec"] = _pre_exec
 		return self._spawn_func(*args, **kwargs)
 
 def symlink(target, link, reflnk):
