@@ -7,7 +7,7 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 helper=${__PORTAGE_HELPER:-${0##*/}}
 
 if [[ ${helper} == dodoc ]] ; then
-	if [ $# -eq 0 ] ; then
+	if [[ $# -eq 0 ]] ; then
 		# default_src_install may call dodoc with no arguments
 		# when DOC is defined but empty, so simply return
 		# sucessfully in this case.
@@ -18,7 +18,7 @@ if [[ ${helper} == dodoc ]] ; then
 	export INSDESTTREE=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
 fi
 
-if [ $# -lt 1 ] ; then
+if [[ $# -lt 1 ]] ; then
 	__helpers_die "${helper}: at least one argument needed"
 	exit 1
 fi
@@ -58,14 +58,14 @@ mkdir -p "$TMP"/{1,2}
 _doins() {
 	local mysrc="$1" mydir="$2" cleanup="" rval
 
-	if [ -L "$mysrc" ] ; then
+	if [[ -L "$mysrc" ]] ; then
 		# Our fake $DISTDIR contains symlinks that should
 		# not be reproduced inside $D. In order to ensure
 		# that things like dodoc "$DISTDIR"/foo.pdf work
 		# as expected, we dereference symlinked files that
 		# refer to absolute paths inside
 		# $PORTAGE_ACTUAL_DISTDIR/.
-		if [ $PRESERVE_SYMLINKS = y ] && \
+		if [[ $PRESERVE_SYMLINKS = y ]] && \
 			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
 			rm -rf "${ED}$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
 			cp -P "$mysrc" "${ED}$INSDESTTREE/$mydir/${mysrc##*/}"
@@ -80,7 +80,7 @@ _doins() {
 	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}/${mydir}"
 	rval=$?
 	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
-	[ $rval -ne 0 ] && echo "!!! ${helper}: $mysrc does not exist" 1>&2
+	[[ $rval -ne 0 ]] && echo "!!! ${helper}: $mysrc does not exist" 1>&2
 	return $rval
 }
 
@@ -99,7 +99,7 @@ failed=0
 for x in "$@" ; do
 	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
 		[[ $PRESERVE_SYMLINKS = y && -d $x && ! -L $x ]] ; then
-		if [ "${DOINSRECUR}" == "n" ] ; then
+		if [[ "${DOINSRECUR}" == "n" ]] ; then
 			if [[ ${helper} == dodoc ]] ; then
 				echo "!!! ${helper}: $x is a directory" 1>&2
 				((failed|=1))
@@ -107,10 +107,10 @@ for x in "$@" ; do
 			continue
 		fi
 
-		while [ "$x" != "${x%/}" ] ; do
+		while [[ "$x" != "${x%/}" ]] ; do
 			x=${x%/}
 		done
-		if [ "$x" = "${x%/*}" ] ; then
+		if [[ "$x" = "${x%/*}" ]] ; then
 			pushd "$PWD" >/dev/null
 		else
 			pushd "${x%/*}" >/dev/null
@@ -122,7 +122,7 @@ for x in "$@" ; do
 		# name of the symlink will be used for the name
 		# of the installed directory, as discussed in
 		# bug #239529.
-		while [ -L "$x" ] ; do
+		while [[ -L "$x" ]] ; do
 			pushd "$(readlink "$x")" >/dev/null
 			x=${PWD##*/}
 			pushd "${PWD%/*}" >/dev/null

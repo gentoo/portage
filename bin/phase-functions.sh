@@ -124,7 +124,7 @@ __filter_readonly_variables() {
 			LC_NUMERIC LC_PAPER LC_TIME"
 	fi
 	if ! has --allow-extra-vars $* ; then
-		if [ "${EMERGE_FROM}" = binary ] ; then
+		if [[ "${EMERGE_FROM}" = binary ]] ; then
 			# preserve additional variables from build time,
 			# while excluding untrusted variables
 			filtered_vars+=" ${binpkg_untrusted_vars}"
@@ -151,7 +151,7 @@ __preprocess_ebuild_env() {
 	# indicating that the environment may contain stale FEATURES and
 	# SANDBOX_{DENY,PREDICT,READ,WRITE} variables that should be filtered out.
 	# Otherwise, we don't need to filter the environment.
-	[ -f "${T}/environment.raw" ] || return 0
+	[[ -f "${T}/environment.raw" ]] || return 0
 
 	__filter_readonly_variables $_portage_filter_opts < "${T}"/environment \
 		>> "$T/environment.filtered" || return $?
@@ -183,7 +183,7 @@ __preprocess_ebuild_env() {
 		>> "$T/environment.success" || exit $?
 	) > "${T}/environment.filtered"
 	local retval
-	if [ -e "${T}/environment.success" ] ; then
+	if [[ -e "${T}/environment.success" ]] ; then
 		__filter_readonly_variables --filter-features < \
 			"${T}/environment.filtered" > "${T}/environment"
 		retval=$?
@@ -236,7 +236,7 @@ __dyn_unpack() {
 		__vecho ">>> WORKDIR is up-to-date, keeping..."
 		return 0
 	fi
-	if [ ! -d "${WORKDIR}" ]; then
+	if [[ ! -d "${WORKDIR}" ]]; then
 		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
@@ -250,10 +250,10 @@ __dyn_unpack() {
 }
 
 __dyn_clean() {
-	if [ -z "${PORTAGE_BUILDDIR}" ]; then
+	if [[ -z "${PORTAGE_BUILDDIR}" ]]; then
 		echo "Aborting clean phase because PORTAGE_BUILDDIR is unset!"
 		return 1
-	elif [ ! -d "${PORTAGE_BUILDDIR}" ] ; then
+	elif [[ ! -d "${PORTAGE_BUILDDIR}" ]] ; then
 		return 0
 	fi
 	if has chflags $FEATURES ; then
@@ -280,7 +280,7 @@ __dyn_clean() {
 		rm -rf "${WORKDIR}"
 	fi
 
-	if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
+	if [[ -f "${PORTAGE_BUILDDIR}/.unpacked" ]]; then
 		find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 
@@ -298,7 +298,7 @@ __dyn_clean() {
 
 __abort_handler() {
 	local msg
-	if [ "$2" != "fail" ]; then
+	if [[ "$2" != "fail" ]]; then
 		msg="${EBUILD}: ${1} aborted; exiting."
 	else
 		msg="${EBUILD}: ${1} failed; exiting."
@@ -480,7 +480,7 @@ __dyn_test() {
 	trap "__abort_test" SIGINT SIGQUIT
 	__start_distcc
 
-	if [ -d "${S}" ]; then
+	if [[ -d "${S}" ]]; then
 		cd "${S}"
 	else
 		cd "${WORKDIR}"
@@ -513,7 +513,7 @@ __dyn_test() {
 }
 
 __dyn_install() {
-	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
+	[[ -z "$PORTAGE_BUILDDIR" ]] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if has noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
@@ -650,7 +650,7 @@ __dyn_install() {
 	${PORTAGE_BZIP2_COMMAND} -f9 environment
 
 	cp "${EBUILD}" "${PF}.ebuild"
-	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
+	[[ -n "${PORTAGE_REPO_NAME}" ]]  && echo "${PORTAGE_REPO_NAME}" > repository
 	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
 	then
 		>> DEBUGBUILD
@@ -714,7 +714,7 @@ __dyn_help() {
 	fi
 	echo "  merge to    : ${ROOT}"
 	echo
-	if [ -n "$USE" ]; then
+	if [[ -n "$USE" ]]; then
 		echo "Additionally, support for the following optional features will be enabled:"
 		echo
 		echo "  ${USE}"
@@ -727,7 +727,7 @@ __dyn_help() {
 # Translate a known ebuild(1) argument into the precise
 # name of it's corresponding ebuild phase.
 __ebuild_arg_to_phase() {
-	[ $# -ne 1 ] && die "expected exactly 1 arg, got $#: $*"
+	[[ $# -ne 1 ]] && die "expected exactly 1 arg, got $#: $*"
 	local arg=$1
 	local phase_func=""
 
@@ -782,7 +782,7 @@ __ebuild_arg_to_phase() {
 }
 
 __ebuild_phase_funcs() {
-	[ $# -ne 2 ] && die "expected exactly 2 args, got $#: $*"
+	[[ $# -ne 2 ]] && die "expected exactly 2 args, got $#: $*"
 	local eapi=$1
 	local phase_func=$2
 	local all_phases="src_compile pkg_config src_configure pkg_info
@@ -930,7 +930,7 @@ __ebuild_main() {
 			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
 			__ebuild_phase_with_hooks pkg_${1}
 		else
 			set -x
@@ -971,7 +971,7 @@ __ebuild_main() {
 				addwrite "$DISTCC_DIR"
 
 			x=LIBDIR_$ABI
-			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
+			[[ -z "$PKG_CONFIG_PATH" && -n "$ABI" && -n "${!x}" ]] && \
 				export PKG_CONFIG_PATH=${EPREFIX}/usr/${!x}/pkgconfig
 
 			if has noauto $FEATURES && \
@@ -989,7 +989,7 @@ __ebuild_main() {
 			fi
 
 			cd "$PORTAGE_BUILDDIR"
-			if [ ! -d build-info ] ; then
+			if [[ ! -d build-info ]] ; then
 				mkdir build-info
 				cp "$EBUILD" "build-info/$PF.ebuild"
 			fi
@@ -1001,7 +1001,7 @@ __ebuild_main() {
 			;;
 		esac
 
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
 			__dyn_${1}
 		else
 			set -x
@@ -1015,7 +1015,7 @@ __ebuild_main() {
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
 			__dyn_${1}
 		else
 			set -x

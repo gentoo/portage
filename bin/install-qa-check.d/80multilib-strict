@@ -24,7 +24,7 @@ multilib_strict_check() {
 				set +o noglob
 				set -${shopts}
 			fi
-			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
+			if [[ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ]] ; then
 				local x
 				for x in "${QA_MULTILIB_PATHS[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}/multilib-strict.log"

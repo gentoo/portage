@@ -22,16 +22,16 @@ install_symlink_html_docs() {
 	fi
 	cd "${ED}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
-	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
+	if [[ -n "${DOC_SYMLINKS_DIR}" ]] ; then
 		local mydocdir docdir
 		for docdir in "${HTMLDOC_DIR:-does/not/exist}" "${PF}/html" "${PF}/HTML" "${P}/html" "${P}/HTML" ; do
-			if [ -d "usr/share/doc/${docdir}" ] ; then
+			if [[ -d "usr/share/doc/${docdir}" ]]; then
 				mydocdir="/usr/share/doc/${docdir}"
 			fi
 		done
-		if [ -n "${mydocdir}" ] ; then
+		if [[ -n "${mydocdir}" ]]; then
 			local mysympath
-			if [ -z "${SLOT}" -o "${SLOT%/*}" = "0" ] ; then
+			if [[ -z "${SLOT}" || "${SLOT%/*}" = "0" ]]; then
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
 			else
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT%/*}"
@@ -46,8 +46,8 @@ install_symlink_html_docs() {
 # replacement for "readlink -f" or "realpath"
 READLINK_F_WORKS=""
 canonicalize() {
-	if [[ -z ${READLINK_F_WORKS} ]] ; then
-		if [[ $(readlink -f -- /../ 2>/dev/null) == "/" ]] ; then
+	if [[ -z ${READLINK_F_WORKS} ]]; then
+		if [[ $(readlink -f -- /../ 2>/dev/null) == "/" ]]; then
 			READLINK_F_WORKS=true
 		else
 			READLINK_F_WORKS=false
@@ -235,18 +235,18 @@ install_qa_check() {
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
-			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
+			rpath=${l%%;*}; l=${l#*;}; [[ "${rpath}" = "  -  " ]] && rpath=""
 			needed=${l%%;*}; l=${l#*;}
 			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 			echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 		done }
 
-		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
+		[[ -n "${QA_SONAME_NO_SYMLINK}" ]] && \
 			echo "${QA_SONAME_NO_SYMLINK}" > \
 			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
 
 		if has binchecks ${RESTRICT} && \
-			[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ] ; then
+			[[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ]] ; then
 			eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
 			eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
 		fi
@@ -301,7 +301,7 @@ install_mask() {
 }
 
 preinst_mask() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -331,7 +331,7 @@ preinst_mask() {
 }
 
 preinst_sfperms() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -345,7 +345,7 @@ preinst_sfperms() {
 		local i
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
-			if [ -n "$(find "$i" -perm -2000)" ] ; then
+			if [[ -n "$(find "$i" -perm -2000)" ]]; then
 				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ED}}"
 				chmod o-r "$i"
 				eend $?
@@ -357,7 +357,7 @@ preinst_sfperms() {
 		done
 		find "${ED}" -type f -perm -2000 -print0 | \
 		while read -r -d $'\0' i ; do
-			if [ -n "$(find "$i" -perm -4000)" ] ; then
+			if [[ -n "$(find "$i" -perm -4000)" ]]; then
 				# This case is already handled
 				# by the SetUID check above.
 				true
@@ -371,7 +371,7 @@ preinst_sfperms() {
 }
 
 preinst_suid_scan() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -390,7 +390,7 @@ preinst_suid_scan() {
 		addwrite "${sfconf}"
 		__vecho ">>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
-			if [ -s "${sfconf}" ]; then
+			if [[ -s "${sfconf}" ]]; then
 				install_path=/${i#${ED}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					__vecho "- ${install_path} is an approved suid file"
@@ -415,7 +415,7 @@ preinst_suid_scan() {
 }
 
 preinst_selinux_labels() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -423,8 +423,8 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
-			[ -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [[ -f /selinux/context || -f /sys/fs/selinux/context ]] && \
+			[[ -x /usr/sbin/setfiles && -x /usr/sbin/selinuxconfig ]]; then
 			__vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
@@ -475,7 +475,7 @@ __dyn_package() {
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
+	[[ -z "${PORTAGE_BINPKG_TMPFILE}" ]] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
@@ -484,7 +484,7 @@ __dyn_package() {
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
 		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
-	if [ $? -ne 0 ]; then
+	if [[ $? -ne 0 ]]; then
 		rm -f "${PORTAGE_BINPKG_TMPFILE}"
 		die "Failed to append metadata to the tbz2 file"
 	fi
@@ -496,7 +496,7 @@ __dyn_package() {
 		md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
 		md5_hash=${md5_hash##* }
 	fi
-	[ -n "${md5_hash}" ] && \
+	[[ -n "${md5_hash}" ]] && \
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	__vecho ">>> Done."
 
@@ -583,7 +583,7 @@ install_hooks() {
 	local ret=0
 	shopt -s nullglob
 	for fp in "${hooks_dir}"/*; do
-		if [ -x "$fp" ]; then
+		if [[ -x "$fp" ]]; then
 			"$fp"
 			ret=$(( $ret | $? ))
 		fi
@@ -596,9 +596,9 @@ eqatag() {
 	__eqatag "${@}"
 }
 
-if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
+if [[ -n "${MISC_FUNCTIONS_ARGS}" ]]; then
 	__source_all_bashrcs
-	[ "$PORTAGE_DEBUG" == "1" ] && set -x
+	[[ "$PORTAGE_DEBUG" == "1" ]] && set -x
 	for x in ${MISC_FUNCTIONS_ARGS}; do
 		${x}
 	done

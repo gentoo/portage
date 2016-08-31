@@ -22,16 +22,16 @@ TMP=$(mktemp -d "${T}/.doexe_tmp_XXXXXX")
 ret=0
 
 for x in "$@" ; do
-	if [ -L "${x}" ] ; then
+	if [[ -L "${x}" ]] ; then
 		cp "$x" "$TMP"
 		mysrc=$TMP/${x##*/}
-	elif [ -d "${x}" ] ; then
+	elif [[ -d "${x}" ]] ; then
 		__vecho "doexe: warning, skipping directory ${x}"
 		continue
 	else
 		mysrc="${x}"
 	fi
-	if [ -e "$mysrc" ] ; then
+	if [[ -e "$mysrc" ]] ; then
 		install $EXEOPTIONS "$mysrc" "$ED$_E_EXEDESTTREE_"
 	else
 		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2

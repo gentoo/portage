@@ -31,7 +31,7 @@ argv0=$0
 # Use portageq from the same directory/prefix as the current script, so
 # that we don't have to rely on PATH including the current EPREFIX.
 scriptpath=${BASH_SOURCE[0]}
-if [ -x "${scriptpath%/*}/portageq" ]; then
+if [[ -x "${scriptpath%/*}/portageq" ]]; then
 	portageq=${scriptpath%/*}/portageq
 elif type -P portageq > /dev/null ; then
 	portageq=portageq
@@ -59,7 +59,7 @@ repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
-if [ -n "${PORTAGE_NICENESS}" ]; then
+if [[ -n "${PORTAGE_NICENESS}" ]]; then
 	renice $PORTAGE_NICENESS $$ > /dev/null
 fi
 
@@ -120,7 +120,7 @@ get_utc_second_from_string() {
 get_portage_timestamp() {
 	local portage_current_timestamp=0
 
-	if [ -f "${repo_location}/metadata/timestamp.x" ]; then
+	if [[ -f "${repo_location}/metadata/timestamp.x" ]]; then
 		portage_current_timestamp=$(cut -f 1 -d " " "${repo_location}/metadata/timestamp.x" )
 	fi
 
@@ -132,9 +132,9 @@ fetch_file() {
 	local FILE="$2"
 	local opts
 
-	if [ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]; then
+	if [[ "${FETCHCOMMAND/wget/}" != "${FETCHCOMMAND}" ]]; then
 		opts="--continue $(nvecho -q)"
-	elif [ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]; then
+	elif [[ "${FETCHCOMMAND/curl/}" != "${FETCHCOMMAND}" ]]; then
 		opts="--continue-at - $(nvecho -s -f)"
 	else
 		rm -f "${DISTDIR}/${FILE}"
@@ -161,9 +161,9 @@ check_file_digest() {
 	if type -P md5sum > /dev/null; then
 		local md5sum_output=$(md5sum "${file}")
 		local digest_content=$(< "${digest}")
-		[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ] && r=0
+		[[ "${md5sum_output%%[[:space:]]*}" = "${digest_content%%[[:space:]]*}" ]] && r=0
 	elif type -P md5 > /dev/null; then
-		[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ] && r=0
+		[[ "$(md5 -q "${file}")" == "$(cut -d ' ' -f 1 "${digest}")" ]] && r=0
 	else
 		eecho "cannot check digest: no suitable md5/md5sum binaries found"
 	fi
@@ -176,7 +176,7 @@ check_file_signature() {
 	local file="$2"
 	local r=1
 
-	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
+	if [[ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]]; then
 
 		__vecho "Checking signature ..."
 
@@ -252,7 +252,7 @@ sync_local() {
 		emerge --metadata
 	fi
 	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
-	[ -x "${post_sync}" ] && "${post_sync}"
+	[[ -x "${post_sync}" ]] && "${post_sync}"
 	# --quiet suppresses output if there are no relevant news items
 	has news ${FEATURES} && emerge --check-news --quiet
 	return 0
@@ -292,13 +292,13 @@ do_snapshot() {
 			local digest="${file}.md5sum"
 			local signature="${file}.gpgsig"
 
-			if [ -s "${DISTDIR}/${file}" -a -s "${DISTDIR}/${digest}" -a -s "${DISTDIR}/${signature}" ] ; then
+			if [[ -s "${DISTDIR}/${file}" && -s "${DISTDIR}/${digest}" && -s "${DISTDIR}/${signature}" ]]; then
 				check_file_digest "${DISTDIR}/${digest}" "${DISTDIR}/${file}" && \
 				check_file_signature "${DISTDIR}/${signature}" "${DISTDIR}/${file}" && \
 				have_files=1
 			fi
 
-			if [ ${have_files} -eq 0 ] ; then
+			if [[ ${have_files} -eq 0 ]] ; then
 				fetch_file "${mirror}/snapshots/${digest}" "${digest}" && \
 				fetch_file "${mirror}/snapshots/${signature}" "${signature}" && \
 				fetch_file "${mirror}/snapshots/${file}" "${file}" && \
@@ -312,13 +312,13 @@ do_snapshot() {
 			# we want to try and retrieve
 			# from a different mirror
 			#
-			if [ ${have_files} -eq 1 ]; then
+			if [[ ${have_files} -eq 1 ]]; then
 
 				__vecho "Getting snapshot timestamp ..."
 				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 
-				if [ ${ignore_timestamp} == 0 ]; then
-					if [ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]; then
+				if [[ ${ignore_timestamp} == 0 ]]; then
+					if [[ ${snapshot_timestamp} -lt $(get_portage_timestamp) ]]; then
 						wecho "portage is newer than snapshot"
 						have_files=0
 					fi
@@ -329,7 +329,7 @@ do_snapshot() {
 					# Check that this snapshot
 					# is what it claims to be ...
 					#
-					if [ ${snapshot_timestamp} -lt ${utc_seconds} ] || \
+					if [[ ${snapshot_timestamp} -lt ${utc_seconds} ]] || \
 						[ ${snapshot_timestamp} -gt $((${utc_seconds}+ 2*86400)) ]; then
 
 						wecho "snapshot timestamp is not in acceptable period"
@@ -338,7 +338,7 @@ do_snapshot() {
 				fi
 			fi
 
-			if [ ${have_files} -eq 1 ]; then
+			if [[ ${have_files} -eq 1 ]]; then
 				break
 			else
 				#
@@ -348,10 +348,10 @@ do_snapshot() {
 			fi
 		done
 
-		[ ${have_files} -eq 1 ] && break
+		[[ ${have_files} -eq 1 ]] && break
 	done
 
-	if [ ${have_files} -eq 1 ]; then
+	if [[ ${have_files} -eq 1 ]]; then
 		sync_local "${DISTDIR}/${file}" && r=0
 	else
 		__vecho "${date} snapshot was not found"
@@ -386,7 +386,7 @@ do_latest_snapshot() {
 	# Daily snapshots are created at 00:45 and are not
 	# available until after 01:00. Don't waste time trying
 	# to fetch a snapshot before it's been created.
-	if [ ${start_hour} -lt 1 ] ; then
+	if [[ ${start_hour} -lt 1 ]] ; then
 		(( start_time -= 86400 ))
 	fi
 	local snapshot_date=$(get_date_part ${start_time} "%Y%m%d")
@@ -398,19 +398,19 @@ do_latest_snapshot() {
 		# snapshots are created at 00:45
 		(( approx_snapshot_time = snapshot_date_seconds + 86400 + 2700 ))
 		(( timestamp_difference = existing_timestamp - approx_snapshot_time ))
-		[ ${timestamp_difference} -lt 0 ] && (( timestamp_difference = -1 * timestamp_difference ))
+		[[ ${timestamp_difference} -lt 0 ]] && (( timestamp_difference = -1 * timestamp_difference ))
 		snapshot_date=$(get_date_part ${snapshot_date_seconds} "%Y%m%d")
 
 		timestamp_problem=""
-		if [ ${timestamp_difference} -eq 0 ]; then
+		if [[ ${timestamp_difference} -eq 0 ]]; then
 			timestamp_problem="is identical to"
-		elif [ ${timestamp_difference} -lt ${min_time_diff} ]; then
+		elif [[ ${timestamp_difference} -lt ${min_time_diff} ]]; then
 			timestamp_problem="is possibly identical to"
-		elif [ ${approx_snapshot_time} -lt ${existing_timestamp} ] ; then
+		elif [[ ${approx_snapshot_time} -lt ${existing_timestamp} ]]; then
 			timestamp_problem="is newer than"
 		fi
 
-		if [ -n "${timestamp_problem}" ]; then
+		if [[ -n "${timestamp_problem}" ]]; then
 			ewarn "Latest snapshot date: ${snapshot_date}"
 			ewarn
 			ewarn "Approximate snapshot timestamp: ${approx_snapshot_time}"
@@ -492,7 +492,7 @@ main() {
 	cd "${TMPDIR}" || exit 1
 
 	${keep} || DISTDIR=${TMPDIR}
-	[ ! -d "${DISTDIR}" ] && mkdir -p "${DISTDIR}"
+	[[ ! -d "${DISTDIR}" ]] && mkdir -p "${DISTDIR}"
 
 	if ${keep} && [[ ! -w ${DISTDIR} ]] ; then
 		eecho "DISTDIR is not writable: ${DISTDIR}"

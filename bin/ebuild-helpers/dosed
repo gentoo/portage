@@ -24,8 +24,8 @@ mysed="s:${ED}::g"
 
 for x in "$@" ; do
 	y=$ED${x#/}
-	if [ -e "${y}" ] ; then
-		if [ -f "${y}" ] ; then
+	if [[ -e "${y}" ]] ; then
+		if [[ -f "${y}" ]] ; then
 			file_found=1
 			sed -i -e "${mysed}" "${y}"
 		else
@@ -38,7 +38,7 @@ for x in "$@" ; do
 	fi
 done
 
-if [ $file_found = 0 ] ; then
+if [[ $file_found = 0 ]] ; then
 	echo "!!! ${0##*/}: $y does not exist" 1>&2
 	((ret|=1))
 fi
