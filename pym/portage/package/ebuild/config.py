@@ -1372,6 +1372,21 @@ class config(object):
 
 			return value
 
+	def _setcpv_recursion_gate(f):
+		"""
+		Raise AssertionError for recursive setcpv calls.
+		"""
+		def wrapper(self, *args, **kwargs):
+			if hasattr(self, '_setcpv_active'):
+				raise AssertionError('setcpv recursion detected')
+			self._setcpv_active = True
+			try:
+				return f(self, *args, **kwargs)
+			finally:
+				del self._setcpv_active
+		return wrapper
+
+	@_setcpv_recursion_gate
 	def setcpv(self, mycpv, use_cache=None, mydb=None):
 		"""
 		Load a particular CPV into the config, this lets us see the
