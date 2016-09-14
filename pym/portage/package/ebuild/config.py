@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -2790,7 +2790,8 @@ class config(object):
 		if eapi_attrs.posixish_locale:
 			split_LC_ALL(mydict)
 			mydict["LC_COLLATE"] = "C"
-			if not check_locale(silent=True, env=mydict):
+			# check_locale() returns None when check can not be executed.
+			if check_locale(silent=True, env=mydict) is False:
 				# try another locale
 				for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
 					mydict["LC_CTYPE"] = l
