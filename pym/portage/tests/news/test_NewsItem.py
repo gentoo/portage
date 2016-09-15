@@ -17,6 +17,7 @@ Author: Ciaran McCreesh <ciaranm@gentoo.org>
 Content-Type: text/plain
 Posted: 01-Nov-2005
 Revision: 1
+News-Item-Format: 1.0
 #Display-If-Installed:
 #Display-If-Profile:
 #Display-If-Arch:
