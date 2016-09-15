@@ -108,6 +108,9 @@ class Actions(object):
 						" --commitmsgfile='%s'\n" % self.options.commitmsgfile)
 				else:
 					raise
+			if commitmessage[:9] in ("cat/pkg: ", "CAT/PKG: "):
+				commitmessage = self.msg_prefix() + commitmessage[9:]
+
 		if not commitmessage or not commitmessage.strip():
 			commitmessage = self.get_new_commit_message(qa_output)
 
@@ -516,12 +519,14 @@ class Actions(object):
 			portage.writemsg("!!! Disabled FEATURES='sign'\n")
 			self.repo_settings.sign_manifests = False
 
+	def msg_prefix(self):
+		prefix = ""
+		if self.scanner.repolevel > 1:
+			prefix = "/".join(self.scanner.reposplit[1:]) + ": "
+		return prefix
 
 	def get_new_commit_message(self, qa_output):
-		msg_prefix = ""
-		if self.scanner.repolevel > 1:
-			msg_prefix = "/".join(self.scanner.reposplit[1:]) + ": "
-
+		msg_prefix = self.msg_prefix()
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and utilities.editor_is_executable(editor):
