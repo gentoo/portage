@@ -280,26 +280,26 @@ class NewsItem(object):
 
 		if news_format is None:
 			invalids.append((0, 'News-Item-Format unspecified'))
-
-		# Parse the rest
-		for i, line in enumerate(lines):
-			# Optimization to ignore regex matches on lines that
-			# will never match
-			if not line.startswith('D'):
-				continue
-			restricts = {  _installedRE : DisplayInstalledRestriction,
-					_profileRE : DisplayProfileRestriction,
-					_keywordRE : DisplayKeywordRestriction }
-			for regex, restriction in restricts.items():
-				match = regex.match(line)
-				if match:
-					restrict = restriction(match.groups()[0].strip(), news_format)
-					if not restrict.isValid():
-						invalids.append((i + 1, line.rstrip("\n")))
-					else:
-						self.restrictions.setdefault(
-							id(restriction), []).append(restrict)
+		else:
+			# Parse the rest
+			for i, line in enumerate(lines):
+				# Optimization to ignore regex matches on lines that
+				# will never match
+				if not line.startswith('D'):
 					continue
+				restricts = {  _installedRE : DisplayInstalledRestriction,
+						_profileRE : DisplayProfileRestriction,
+						_keywordRE : DisplayKeywordRestriction }
+				for regex, restriction in restricts.items():
+					match = regex.match(line)
+					if match:
+						restrict = restriction(match.groups()[0].strip(), news_format)
+						if not restrict.isValid():
+							invalids.append((i + 1, line.rstrip("\n")))
+						else:
+							self.restrictions.setdefault(
+								id(restriction), []).append(restrict)
+						continue
 
 		if invalids:
 			self._valid = False
