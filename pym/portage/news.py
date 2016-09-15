@@ -197,6 +197,7 @@ _formatRE = re.compile("News-Item-Format:\s*([^\s]*)\s*$")
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
 _keywordRE = re.compile("Display-If-Keyword:(.*)\n")
+_valid_profile_RE = re.compile(r'^[^*]+(/\*)?$')
 
 class NewsItem(object):
 	"""
@@ -266,14 +267,24 @@ class NewsItem(object):
 		f.close()
 		self.restrictions = {}
 		invalids = []
+		news_format = None
+
+		# Look for News-Item-Format
 		for i, line in enumerate(lines):
-			# Optimization to ignore regex matchines on lines that
-			# will never match
 			format_match = _formatRE.match(line)
-			if (format_match is not None and
-					not fnmatch.fnmatch(format_match.group(1), '1.*')):
+			if format_match is not None:
+				news_format = format_match.group(1)
+				if fnmatch.fnmatch(news_format, '[12].*'):
+					break
 				invalids.append((i + 1, line.rstrip('\n')))
-				break
+
+		if news_format is None:
+			invalids.append((0, 'News-Item-Format unspecified'))
+
+		# Parse the rest
+		for i, line in enumerate(lines):
+			# Optimization to ignore regex matches on lines that
+			# will never match
 			if not line.startswith('D'):
 				continue
 			restricts = {  _installedRE : DisplayInstalledRestriction,
@@ -282,13 +293,14 @@ class NewsItem(object):
 			for regex, restriction in restricts.items():
 				match = regex.match(line)
 				if match:
-					restrict = restriction(match.groups()[0].strip())
+					restrict = restriction(match.groups()[0].strip(), news_format)
 					if not restrict.isValid():
 						invalids.append((i + 1, line.rstrip("\n")))
 					else:
 						self.restrictions.setdefault(
 							id(restriction), []).append(restrict)
 					continue
+
 		if invalids:
 			self._valid = False
 			msg = []
@@ -321,13 +333,21 @@ class DisplayProfileRestriction(DisplayRestriction):
 	if the user is running a specific profile.
 	"""
 
-	def __init__(self, profile):
+	def __init__(self, profile, news_format):
 		self.profile = profile
+		self.format = news_format
+
+	def isValid(self):
+		if fnmatch.fnmatch(self.format, '1.*') and '*' in self.profile:
+			return False
+		if fnmatch.fnmatch(self.format, '2.*') and not _valid_profile_RE.match(self.profile):
+			return False
+		return True
 
 	def checkRestriction(self, **kwargs):
-		if self.profile == kwargs['profile']:
-			return True
-		return False
+		if fnmatch.fnmatch(self.format, '2.*') and self.profile.endswith('/*'):
+			return (kwargs['profile'].startswith(self.profile[:-1]))
+		return (kwargs['profile'] == self.profile)
 
 class DisplayKeywordRestriction(DisplayRestriction):
 	"""
@@ -335,8 +355,9 @@ class DisplayKeywordRestriction(DisplayRestriction):
 	if the user is running a specific keyword.
 	"""
 
-	def __init__(self, keyword):
+	def __init__(self, keyword, news_format):
 		self.keyword = keyword
+		self.format = news_format
 
 	def checkRestriction(self, **kwargs):
 		if kwargs['config'].get('ARCH', '') == self.keyword:
@@ -349,10 +370,15 @@ class DisplayInstalledRestriction(DisplayRestriction):
 	if the user has that item installed.
 	"""
 
-	def __init__(self, atom):
+	def __init__(self, atom, news_format):
 		self.atom = atom
+		self.format = news_format
 
 	def isValid(self):
+		if fnmatch.fnmatch(self.format, '1.*'):
+			return isvalidatom(self.atom, eapi='0')
+		if fnmatch.fnmatch(self.format, '2.*'):
+			return isvalidatom(self.atom, eapi='5')
 		return isvalidatom(self.atom)
 
 	def checkRestriction(self, **kwargs):
