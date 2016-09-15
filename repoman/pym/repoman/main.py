@@ -116,8 +116,6 @@ def repoman_main(argv):
 					vcs_settings, mydir, env)
 	scanner.scan_pkgs(can_force)
 
-	commitmessage = None
-
 	if options.if_modified == "y" and len(scanner.effective_scanlist) < 1:
 		logging.warning("--if-modified is enabled, but no modified packages were found!")
 
@@ -144,6 +142,14 @@ def repoman_main(argv):
 	if result['fail'] or \
 		(result['warn'] and not (options.quiet or options.mode == "scan")):
 		result['full'] = 0
+
+	commitmessage = None
+	if options.commitmsg:
+		commitmessage = options.commitmsg
+	elif options.commitmsgfile:
+		# we don't need the actual text of the commit message here
+		# the filename will do for the next code block
+		commitmessage = options.commitmsgfile
 
 	# Save QA output so that it can be conveniently displayed
 	# in $EDITOR while the user creates a commit message.
