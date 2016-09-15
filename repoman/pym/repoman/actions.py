@@ -108,7 +108,7 @@ class Actions(object):
 						" --commitmsgfile='%s'\n" % self.options.commitmsgfile)
 				else:
 					raise
-			if commitmessage[:9] in ("cat/pkg: ", "CAT/PKG: "):
+			if commitmessage[:9].lower() in ("cat/pkg: ",):
 				commitmessage = self.msg_prefix() + commitmessage[9:]
 
 		if not commitmessage or not commitmessage.strip():

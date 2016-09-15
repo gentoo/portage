@@ -109,7 +109,11 @@ Behave as if no package.mask entries exist (not allowed with commit mode)
 Adds a commit message via the command line
 .TP
 \fB-M\fR, \fB--commitmsgfile\fR
-Adds a commit message from the specified file
+Adds a commit message from the specified file.  This option also will perform
+an automatic text substitution of a leading "cat/pkg: " string (upper or lower
+case) with the actual category/package prefix as defined by the required message
+format.  Use this option for templating a common commit message for multiple
+package updates.
 .TP
 \fB-V\fR, \fB--version\fR
 Show version info
