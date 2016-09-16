@@ -10,7 +10,7 @@ from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 
 
 class Status(object):
-	'''Performs status checks on the svn repository'''
+	'''Performs status checks on the git repository'''
 
 	def __init__(self, qatracker, eadded):
 		'''Class init
@@ -22,7 +22,7 @@ class Status(object):
 		self.eadded = eadded
 
 	def check(self, checkdir, checkdir_relative, xpkg):
-		'''Perform the svn status check
+		'''Perform the git status check
 
 		@param checkdir: string of the directory being checked
 		@param checkdir_relative: string of the relative directory being checked
