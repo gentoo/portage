@@ -58,7 +58,13 @@ def linux_ro_checker(dir_list):
 				# to the left of the ' - ', after the attr's, so split it there
 				mount = line.split(' - ', 1)
 				_dir, attr1 = mount[0].split()[4:6]
-				attr2 = mount[1].split()[2]
+				# check for situation with invalid entries for /home and /root in /proc/self/mountinfo
+				# root path is missing sometimes on WSL
+				# for example: 16 1 0:16 / /root rw,noatime - lxfs  rw
+				try:
+					attr2 = mount[1].split()[2]
+				except IndexError:
+					attr2 = mount[1].split()[1]
 				if attr1.startswith('ro') or attr2.startswith('ro'):
 					ro_filesystems.add(_dir)
 
