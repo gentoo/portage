@@ -24,7 +24,7 @@ class FsBased(template.database):
 
 	def __init__(self, *args, **config):
 
-		for x, y in (("gid", -1), ("perms", -1)):
+		for x, y in (("gid", -1), ("perms", 0o644)):
 			if x in config:
 				# Since Python 3.4, chown requires int type (no proxies).
 				setattr(self, "_" + x, int(config[x]))
