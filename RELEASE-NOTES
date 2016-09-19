@@ -1,6 +1,30 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.1
+==================================
+* Bug Fixes:
+    - Bug 587198 chpathtool.py: fix byte comparison logic for python3
+    - Bug 584626 Add a unit test which reproduces the bug and
+                 depgraph: fix missed llvm update
+    - Bug 582624 Add emerge --autounmask-continue option
+    - Bug 568934 portage.cache: write md5 instead of mtime
+    - Bug 552814 GitSync.update: respect sync-depth
+                 use git reset --merge instead of --hard
+    - Bug 477727 flat_hash: use mkstemp in _setitem
+    - Bug 590514 depgraph._serialize_tasks: improve runtime cycle handling
+    - Bug 65566  emerge: add --fuzzy-search and --search-similarity
+    - Bug 425554 Scheduler._terminate_tasks: purge _running_tasks
+    - Bug 591760 EventLoop: add run_until_complete method
+    - Bug 584328 config.environ: handle missing ctypes for check_locale
+                 locale.py: fix decoding for python2 plus some locales
+                 locale.py: add a C module to help check locale
+    - Bug 577372 Support News-Item-Format 2.0
+    - Bug 594284 writeable_check: handle/warn about invalid entries in
+                 /proc/self/mountinfo
+    - selinux: fix crash for invalid context
+
+
 portage-2.3.0
 ==================================
 * Bug Fixes:

@@ -2,6 +2,12 @@ News (mainly features/major bug fixes)
 
 portage-2.3.0
 -----------------
+* Support News-Item-Format 2.0
+* emerge: add --fuzzy-search and --search-similarity
+* Add emerge --autounmask-continue option
+
+portage-2.3.0
+-----------------
 * Final release
 * Includes numerous bugfixes
 
