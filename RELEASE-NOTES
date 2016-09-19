@@ -11,7 +11,6 @@ portage-2.3.1
     - Bug 568934 portage.cache: write md5 instead of mtime
     - Bug 552814 GitSync.update: respect sync-depth
                  use git reset --merge instead of --hard
-    - Bug 477727 flat_hash: use mkstemp in _setitem
     - Bug 590514 depgraph._serialize_tasks: improve runtime cycle handling
     - Bug 65566  emerge: add --fuzzy-search and --search-similarity
     - Bug 425554 Scheduler._terminate_tasks: purge _running_tasks
@@ -23,6 +22,7 @@ portage-2.3.1
     - Bug 594284 writeable_check: handle/warn about invalid entries in
                  /proc/self/mountinfo
     - selinux: fix crash for invalid context
+    - Chromium-Bug 477727 flat_hash: use mkstemp in _setitem
 
 
 portage-2.3.0
