@@ -90,10 +90,16 @@ class GitSync(NewBase):
 			# Since the default merge strategy typically fails when
 			# the depth is not unlimited, use `git fetch` followed by
 			# `git reset --merge`.
-			remote_branch = portage._unicode_decode(
-				subprocess.check_output([self.bin_command, 'rev-parse',
-				'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
-				cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
+			try:
+				remote_branch = portage._unicode_decode(
+					subprocess.check_output([self.bin_command, 'rev-parse',
+					'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+					cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
+			except subprocess.CalledProcessError as e:
+				msg = "!!! git rev-parse error in %s" % self.repo.location
+				self.logger(self.xterm_titles, msg)
+				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+				return (e.returncode, False)
 
 			git_cmd_opts += " --depth %d" % self.repo.sync_depth
 			git_cmd = "%s fetch %s%s" % (self.bin_command,
