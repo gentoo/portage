@@ -478,13 +478,13 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			possible_libexecdirs = (libdir, "lib", "libexec")
 			masquerades = []
 			if distcc:
-				masquerades.append("distcc")
+				masquerades.append(("distcc", "distcc"))
 			if icecream:
-				masquerades.append("icecc")
+				masquerades.append(("icecream", "icecc"))
 			if ccache:
-				masquerades.append("ccache")
+				masquerades.append(("ccache", "ccache"))
 
-			for m in masquerades:
+			for feature, m in masquerades:
 				for l in possible_libexecdirs:
 					p = os.path.join(os.sep, eprefix_lstrip,
 							"usr", l, m, "bin")
@@ -494,6 +494,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				else:
 					writemsg(("Warning: %s requested but no masquerade dir"
 						+ "can be found in /usr/lib*/%s/bin\n") % (m, m))
+					mysettings.features.remove(feature)
 
 		if 'MAKEOPTS' not in mysettings:
 			nproc = get_cpu_count()
