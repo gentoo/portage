@@ -167,9 +167,14 @@ export SANDBOX_ON=0
 
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
-# See bug #239560 and bug #469338.
-cd "${PORTAGE_PYM_PATH}" || \
-	die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
+# See bug #239560, bug #469338, and bug #595028.
+if [[ -d ${HOME} ]]; then
+	# Use portage's temporary HOME directory if available.
+	cd "${HOME}" || die
+else
+	cd "${PORTAGE_PYM_PATH}" || \
+		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
+fi
 
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
