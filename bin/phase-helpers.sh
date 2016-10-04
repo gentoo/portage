@@ -958,7 +958,7 @@ if ___eapi_has_einstalldocs; then
 				local d
 				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do
-					[[ -s ${d} ]] && docinto / && dodoc "${d}"
+					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
 			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
 				[[ ${DOCS[@]} ]] && docinto / && dodoc -r "${DOCS[@]}"
