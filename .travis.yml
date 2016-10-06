@@ -10,6 +10,7 @@ python:
 install: "pip install lxml"
 
 script:
+    - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
     - ./setup.py test
     - ./setup.py install --root=/tmp/install-root
     # prevent repoman tests from trying to fetch metadata.xsd

@@ -13,6 +13,25 @@ Dependencies
 Python and Bash should be the only hard dependencies. Python 2.7 is the
 minimum supported version.
 
+Native Extensions
+=================
+
+Portage includes some optional native extensions which can be built
+in the source tree by running the following command:
+
+    python setup.py build_ext --inplace --portage-ext-modules
+
+The following setup.cfg settings can be used to enable building of
+native extensions for all invocations of the build_ext command (the
+build_ext command is invoked automatically by other build commands):
+
+   [build_ext]
+   portage-ext-modules=true
+
+Currently, the native extensions only include libc bindings which are
+used to validate LC_CTYPE and LC_COLLATE behavior for EAPI 6. If the
+native extensions have not been built, then portage will use ctypes
+instead.
 
 Licensing and Legalese
 =======================

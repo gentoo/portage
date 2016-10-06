@@ -6,6 +6,7 @@ from __future__ import print_function
 
 from distutils.core import setup, Command, Extension
 from distutils.command.build import build
+from distutils.command.build_ext import build_ext as _build_ext
 from distutils.command.build_scripts import build_scripts
 from distutils.command.clean import clean
 from distutils.command.install import install
@@ -624,6 +625,25 @@ def get_manpages():
 				yield [os.path.join('$mandir', topdir, 'man%s' % g), mans]
 
 
+class build_ext(_build_ext):
+	user_options = _build_ext.user_options + [
+		('portage-ext-modules', None,
+		 "enable portage's C/C++ extensions (cross-compiling is not supported)"),
+	]
+
+	boolean_options = _build_ext.boolean_options + [
+		'portage-ext-modules',
+	]
+
+	def initialize_options(self):
+		_build_ext.initialize_options(self)
+		self.portage_ext_modules = None
+
+	def run(self):
+		if self.portage_ext_modules:
+			_build_ext.run(self)
+
+
 setup(
 	name = 'portage',
 	version = '2.3.1',
@@ -651,6 +671,7 @@ setup(
 
 	cmdclass = {
 		'build': x_build,
+		'build_ext': build_ext,
 		'build_man': build_man,
 		'build_scripts': x_build_scripts,
 		'build_scripts_bin': x_build_scripts_bin,
