@@ -36,6 +36,12 @@ class FetchChecks(ScanBase):
 		self.thirdpartymirrors = {}
 		profile_thirdpartymirrors = self.repo_settings.repoman_settings.thirdpartymirrors().items()
 		for mirror_alias, mirrors in profile_thirdpartymirrors:
+			# Skip thirdpartymirrors that do not list more than one mirror
+			# anymore. There is no point in using mirror:// there and this
+			# means that the thirdpartymirrors entry will most likely
+			# be removed anyway.
+			if len(mirrors) <= 1:
+				continue
 			for mirror in mirrors:
 				if not mirror.endswith("/"):
 					mirror += "/"
