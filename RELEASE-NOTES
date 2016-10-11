@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.2
+==================================
+* Bug Fixes:
+    - Bug 594822 GitSync.update: handle git rev-list failure
+    - Bug 594982 doebuild_environment: disable ccache/distcc/icecc when necessary
+    - Bug 595028 ebuild.sh: start phases in temporary HOME if available
+    - Bug 595146 locks: use fcntl.flock if fcntl.lockf is broken
+    - Bug 596102 einstalldocs: check whether default docs are indeed files
+    - Bug 594744 setup.py: enable libc bindings optionally
+
+
 portage-2.3.1
 ==================================
 * Bug Fixes:
