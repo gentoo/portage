@@ -256,6 +256,7 @@
 			<xs:enumeration value='ctan'/>
 			<xs:enumeration value='freecode'/>
 			<xs:enumeration value='freshmeat'/>
+			<xs:enumeration value='gentoo'/>
 			<xs:enumeration value='github'/>
 			<xs:enumeration value='gitlab'/>
 			<xs:enumeration value='gitorious'/>
