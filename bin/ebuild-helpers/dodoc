@@ -8,7 +8,7 @@ if ___eapi_dodoc_supports_-r; then
 	__PORTAGE_HELPER='dodoc' exec doins "$@"
 fi
 
-if [ $# -lt 1 ] ; then
+if [[ $# -lt 1 ]] ; then
 	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
@@ -18,18 +18,18 @@ if ! ___eapi_has_prefix_variables; then
 fi
 
 dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
-if [ ! -d "${dir}" ] ; then
+if [[ ! -d "${dir}" ]] ; then
 	install -d "${dir}"
 fi
 
 ret=0
 for x in "$@" ; do
-	if [ -d "${x}" ] ; then
+	if [[ -d "${x}" ]] ; then
 		eqawarn "QA Notice: dodoc argument '${x}' is a directory"
-	elif [ -s "${x}" ] ; then
+	elif [[ -s "${x}" ]] ; then
 		install -m0644 "${x}" "${dir}" || { ((ret|=1)); continue; }
 		ecompress --queue "${dir}/${x##*/}"
-	elif [ ! -e "${x}" ] ; then
+	elif [[ ! -e "${x}" ]] ; then
 		echo "!!! ${0##*/}: $x does not exist" 1>&2
 		((ret|=1))
 	fi

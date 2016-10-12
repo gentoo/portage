@@ -98,7 +98,7 @@ funk_up_dir() {
 		# absolute symlinks to files that aren't merged
 		# yet (bug #405327).
 		if [[ ${olddest} == /* ]] ; then
-			[ -e "${D}${olddest}" ] && continue
+			[[ -e "${D}${olddest}" ]] && continue
 			skip_dir_dest=${T}/ecompress-skip/${olddest#${EPREFIX}}
 		else
 			skip_dir_dest=${T}/ecompress-skip/${actual_dir#${ED}}/${brokenlink%/*}/${olddest}

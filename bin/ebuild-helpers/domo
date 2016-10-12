@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 mynum=${#}
-if [ ${mynum} -lt 1 ] ; then
+if [[ ${mynum} -lt 1 ]] ; then
 	__helpers_die "${0}: at least one argument needed"
 	exit 1
 fi
@@ -14,17 +14,17 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
-if [ ! -d "${ED}${DESTTREE}/share/locale" ] ; then
+if [[ ! -d "${ED}${DESTTREE}/share/locale" ]] ; then
 	install -d "${ED}${DESTTREE}/share/locale/"
 fi
 
 ret=0
 
 for x in "$@" ; do
-	if [ -e "${x}" ] ; then
+	if [[ -e "${x}" ]] ; then
 		mytiny="${x##*/}"
 		mydir="${ED}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
-		if [ ! -d "${mydir}" ] ; then
+		if [[ ! -d "${mydir}" ]] ; then
 			install -d "${mydir}"
 		fi
 		install -m0644 "${x}" "${mydir}/${MOPREFIX}.mo"

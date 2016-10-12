@@ -249,7 +249,7 @@ inherit() {
 	local B_RDEPEND
 	local B_PDEPEND
 	local B_HDEPEND
-	while [ "$1" ]; do
+	while [[ "$1" ]]; do
 		location=""
 		potential_location=""
 
@@ -293,12 +293,12 @@ inherit() {
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND B_HDEPEND
-			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
-			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
-			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
-			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
-			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-			[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
+			[[ "${IUSE+set}"       = set ]] && B_IUSE="${IUSE}"
+			[[ "${REQUIRED_USE+set}" = set ]] && B_REQUIRED_USE="${REQUIRED_USE}"
+			[[ "${DEPEND+set}"     = set ]] && B_DEPEND="${DEPEND}"
+			[[ "${RDEPEND+set}"    = set ]] && B_RDEPEND="${RDEPEND}"
+			[[ "${PDEPEND+set}"    = set ]] && B_PDEPEND="${PDEPEND}"
+			[[ "${HDEPEND+set}"    = set ]] && B_HDEPEND="${HDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
 			#turn on glob expansion
 			set +f
@@ -312,30 +312,30 @@ inherit() {
 
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
-			[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
-			[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-			[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-			[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
+			[[ "${IUSE+set}"         = set ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[[ "${REQUIRED_USE+set}" = set ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+			[[ "${DEPEND+set}"       = set ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+			[[ "${RDEPEND+set}"      = set ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+			[[ "${PDEPEND+set}"      = set ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+			[[ "${HDEPEND+set}"      = set ]] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
 
-			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
-			[ "${B_IUSE+set}"     = set ] || unset IUSE
+			[[ "${B_IUSE+set}"     = set ]] && IUSE="${B_IUSE}"
+			[[ "${B_IUSE+set}"     = set ]] || unset IUSE
 			
-			[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
-			[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
+			[[ "${B_REQUIRED_USE+set}"     = set ]] && REQUIRED_USE="${B_REQUIRED_USE}"
+			[[ "${B_REQUIRED_USE+set}"     = set ]] || unset REQUIRED_USE
 
-			[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
-			[ "${B_DEPEND+set}"   = set ] || unset DEPEND
+			[[ "${B_DEPEND+set}"   = set ]] && DEPEND="${B_DEPEND}"
+			[[ "${B_DEPEND+set}"   = set ]] || unset DEPEND
 
-			[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
-			[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
+			[[ "${B_RDEPEND+set}"  = set ]] && RDEPEND="${B_RDEPEND}"
+			[[ "${B_RDEPEND+set}"  = set ]] || unset RDEPEND
 
-			[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
-			[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
+			[[ "${B_PDEPEND+set}"  = set ]] && PDEPEND="${B_PDEPEND}"
+			[[ "${B_PDEPEND+set}"  = set ]] || unset PDEPEND
 
-			[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
-			[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
+			[[ "${B_HDEPEND+set}"  = set ]] && HDEPEND="${B_HDEPEND}"
+			[[ "${B_HDEPEND+set}"  = set ]] || unset HDEPEND
 
 			#turn on glob expansion
 			set +f
@@ -370,7 +370,7 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
-	if [ -z "$ECLASS" ]; then
+	if [[ -z "$ECLASS" ]]; then
 		die "EXPORT_FUNCTIONS without a defined ECLASS"
 	fi
 	eval $__export_funcs_var+=\" $*\"
@@ -415,8 +415,8 @@ __source_all_bashrcs() {
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
 
-	[ ! -z "${OCC}" ] && export CC="${OCC}"
-	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
+	[[ ! -z "${OCC}" ]] && export CC="${OCC}"
+	[[ ! -z "${OCXX}" ]] && export CXX="${OCXX}"
 }
 
 # @FUNCTION: __source_env_files
@@ -488,14 +488,14 @@ fi
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -Pf ${BIN})
-		if [ "$?" != "0" ]; then
+		if [[ "$?" != "0" ]]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
 			FUNC_SRC="${BIN}() {
-				if [ \$ECLASS_DEPTH -gt 0 ]; then
+				if [[ \$ECLASS_DEPTH -gt 0 ]]; then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
 					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
@@ -530,7 +530,7 @@ trap 'exit 1' SIGTERM
 
 if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	! [[ $EMERGE_FROM = ebuild && $EBUILD_PHASE = setup ]] && \
-	[ -f "${T}"/environment ] ; then
+	[[ -f "${T}"/environment ]] ; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
@@ -552,9 +552,9 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	export SANDBOX_ON=0
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		y="PORTAGE_${x}"
-		if [ -z "${!x}" ] ; then
+		if [[ -z "${!x}" ]] ; then
 			export ${x}="${!y}"
-		elif [ -n "${!y}" ] && [ "${!y}" != "${!x}" ] ; then
+		elif [[ -n "${!y}" ]] && [[ "${!y}" != "${!x}" ]] ; then
 			# filter out dupes
 			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
 				sort -z -u | tr "\0" ":")"
@@ -625,7 +625,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 		fi
 
-		[ "${EAPI+set}" = set ] || EAPI=0
+		[[ "${EAPI+set}" = set ]] || EAPI=0
 
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
@@ -697,7 +697,7 @@ fi
 
 # unset USE_EXPAND variables that contain only the special "*" token
 for x in ${USE_EXPAND} ; do
-	[ "${!x}" == "*" ] && unset ${x}
+	[[ "${!x}" == "*" ]] && unset ${x}
 done
 unset x
 
@@ -710,8 +710,8 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	export SANDBOX_ON="0"
 	set -f
 
-	if [ -n "${dbkey}" ] ; then
-		if [ ! -d "${dbkey%/*}" ]; then
+	if [[ -n "${dbkey}" ]] ; then
+		if [[ ! -d "${dbkey%/*}" ]]; then
 			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
 		fi
 		# Make it group writable. 666&~002==664
@@ -728,7 +728,7 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	fi
 
 	# The extra $(echo) commands remove newlines.
-	if [ -n "${dbkey}" ] ; then
+	if [[ -n "${dbkey}" ]] ; then
 		> "${dbkey}"
 		for f in ${auxdbkeys} ; do
 			echo $(echo ${!f}) >> "${dbkey}" || exit $?

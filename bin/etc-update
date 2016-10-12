@@ -124,8 +124,8 @@ scan() {
 		find_opts+=( "$name_opt" )
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
-		if [ ! -w "${path}" ] ; then
-			[ -e "${path}" ] || continue
+		if [[ ! -w "${path}" ]] ; then
+			[[ -e "${path}" ]] || continue
 			die "Need write access to ${path}"
 		fi
 
@@ -361,7 +361,7 @@ read_int() {
 }
 
 do_file() {
-	interactive_echo() { [ "${OVERWRITE_ALL}" != "yes" ] && [ "${DELETE_ALL}" != "yes" ] && echo; }
+	interactive_echo() { [[ "${OVERWRITE_ALL}" != "yes" ]] && [[ "${DELETE_ALL}" != "yes" ]] && echo; }
 	interactive_echo
 	local -i my_input
 	local -i linecnt
@@ -519,12 +519,12 @@ do_cfg() {
 		case ${my_input} in
 			1)	echo "Replacing ${ofile} with ${file}"
 				do_mv_ln ${mv_opts} "${file}" "${ofile}"
-				[ -n "${OVERWRITE_ALL}" ] && my_input=-1
+				[[ -n "${OVERWRITE_ALL}" ]] && my_input=-1
 				continue
 				;;
 			2)	echo "Deleting ${file}"
 				rm ${rm_opts} "${file}"
-				[ -n "${DELETE_ALL}" ] && my_input=-1
+				[[ -n "${DELETE_ALL}" ]] && my_input=-1
 				continue
 				;;
 			3)	do_merge "${file}" "${ofile}"
@@ -663,10 +663,10 @@ die() {
 	trap SIGINT
 	local msg=$1 exitcode=${2:-1}
 
-	if [ ${exitcode} -eq 0 ] ; then
+	if [[ ${exitcode} -eq 0 ]] ; then
 		${QUIET} || printf 'Exiting: %b\n' "${msg}"
 		scan > /dev/null
-		! ${QUIET} && [ ${count} -gt 0 ] && echo "NOTE: ${count} updates remaining"
+		! ${QUIET} && [[ ${count} -gt 0 ]] && echo "NOTE: ${count} updates remaining"
 	else
 		error "${msg}"
 	fi

@@ -40,7 +40,7 @@ ignored_flag_check() {
 
 		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
 
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
 				done
@@ -69,7 +69,7 @@ ignored_flag_check() {
 		f=$(scanelf -qyRF '#k%p' -k .hash "${ED}")
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
 				done
