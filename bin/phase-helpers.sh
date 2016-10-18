@@ -805,6 +805,8 @@ __eapi4_src_install() {
 }
 
 __eapi6_src_prepare() {
+	declare -r _DEFAULT_SRC_PREPARE_CALLED
+
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
 		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
@@ -981,6 +983,8 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
+		declare -r _DEFAULT_EAPPLY_CALLED
+
 		local failed patch_cmd=patch
 		local -x LC_COLLATE=POSIX
 
