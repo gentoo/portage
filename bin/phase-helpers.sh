@@ -981,6 +981,11 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
+		# keep path in __dyn_prepare in sync!
+		local tagfile=${T}/.portage_patches_applied
+		[[ -f ${tagfile} ]] && return
+		>> "${tagfile}"
+
 		local failed patch_cmd=patch
 		local -x LC_COLLATE=POSIX
 
