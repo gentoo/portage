@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2016" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Oct 2016" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -663,7 +663,9 @@ Portage would have to waste time validating ownership for each and every sync
 operation.
 .TP
 .B webrsync-gpg
-Enable GPG verification when using \fIemerge\-webrsync\fR.
+Enable legacy GPG verification mode when using \fIemerge\-webrsync\fR.
+This feature is deprecated. By default, the new \fBgkeys\fR(1) verification
+mode will be used when this feature is not enabled.
 .TP
 .B xattr
 Preserve extended attributes (filesystem-stored metadata) when installing
