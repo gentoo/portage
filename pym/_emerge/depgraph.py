@@ -8237,11 +8237,10 @@ class depgraph(object):
 									continue
 								stack.append(os.path.join(p, child))
 			#If the directory is empty add a file with name  pattern file_name.default
-                        if last_file_path == None:
-                                last_file_path=file_path+"/autonmask"
-                                with open(last_file_path,"a+") as default:
-                                        default.write("#"+file_name)
-
+			if last_file_path == None:
+				last_file_path=file_path+"/autonmask"
+				with open(last_file_path,"a+") as default:
+					default.write("#"+file_name)
 			return last_file_path
 
 		write_to_file = autounmask_write and not pretend
