@@ -8247,6 +8247,12 @@ class depgraph(object):
 									child.endswith("~"):
 									continue
 								stack.append(os.path.join(p, child))
+			# If the directory is empty add a file with name
+			# pattern file_name.default
+			if last_file_path is None:
+				last_file_path = os.path.join(file_path, file_path, "zz-autounmask")
+				with open(last_file_path, "a+") as default:
+					default.write("# " + file_name)
 
 			return last_file_path
 
