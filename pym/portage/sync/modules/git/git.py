@@ -89,7 +89,7 @@ class GitSync(NewBase):
 		else:
 			# Since the default merge strategy typically fails when
 			# the depth is not unlimited, use `git fetch` followed by
-			# `git reset --merge`.
+			# `git update-index --refresh`, then `git reset --merge`.
 			try:
 				remote_branch = portage._unicode_decode(
 					subprocess.check_output([self.bin_command, 'rev-parse',
@@ -116,11 +116,22 @@ class GitSync(NewBase):
 			**self.spawn_kwargs)
 
 		if exitcode == os.EX_OK and self.repo.sync_depth is not None:
-			reset_cmd = [self.bin_command, 'reset', '--merge', remote_branch]
-			if quiet:
-				reset_cmd.append('--quiet')
-			exitcode = subprocess.call(reset_cmd,
+			# update-index --refresh is needed on some filesystems
+			# (e.g. with overlayfs on squashfs)
+			update_index_cmd = [self.bin_command, 'update-index']
+			if quiet: # -q needs to go first
+				update_index_cmd.append('-q')
+			update_index_cmd.append('--refresh')
+
+			exitcode = subprocess.call(update_index_cmd,
 				cwd=portage._unicode_encode(self.repo.location))
+
+			if exitcode == os.EX_OK:
+				reset_cmd = [self.bin_command, 'reset', '--merge', remote_branch]
+				if quiet:
+					reset_cmd.append('--quiet')
+				exitcode = subprocess.call(reset_cmd,
+					cwd=portage._unicode_encode(self.repo.location))
 
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
