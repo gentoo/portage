@@ -188,13 +188,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
-			# Pull in virt_atom which refers to the specific version
-			# of the virtual whose deps we're expanding. Also pull
-			# in the original input atom, so that callers can reliably
-			# check to see if a given input atom has been selected,
-			# as in depgraph._slot_operator_update_probe.
+			# Replace the original atom "x" with "virt_atom" which refers
+			# to the specific version of the virtual whose deps we're
+			# expanding. The virt_atom._orig_atom attribute is used
+			# by depgraph to map virt_atom back to the original atom.
+			# We specifically exclude the original atom "x" from the
+			# the expanded output here, since otherwise it could trigger
+			# incorrect dep_zapdeps behavior (see bug #597752).
 			mycheck[1].append(virt_atom)
-			mycheck[1].append(x)
 			a.append(mycheck[1])
 			if atom_graph is not None:
 				virt_atom_node = (virt_atom, id(virt_atom))

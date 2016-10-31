@@ -4453,7 +4453,11 @@ class depgraph(object):
 				# _UNREACHABLE_DEPTH for complete mode.
 				virt_depth = parent.depth
 
-			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
+			chosen_atom_ids = frozenset(chain(
+				(id(atom) for atom in mycheck[1]),
+				(id(atom._orig_atom) for atom in mycheck[1]
+					if hasattr(atom, '_orig_atom')),
+			))
 			selected_atoms = OrderedDict()
 			node_stack = [(parent, None, None)]
 			traversed_nodes = set()
