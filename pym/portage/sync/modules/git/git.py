@@ -118,10 +118,7 @@ class GitSync(NewBase):
 		if exitcode == os.EX_OK and self.repo.sync_depth is not None:
 			# update-index --refresh is needed on some filesystems
 			# (e.g. with overlayfs on squashfs)
-			update_index_cmd = [self.bin_command, 'update-index']
-			if quiet: # -q needs to go first
-				update_index_cmd.append('-q')
-			update_index_cmd.append('--refresh')
+			update_index_cmd = [self.bin_command, 'update-index', '-q', '--unmerged', '--refresh']
 
 			exitcode = subprocess.call(update_index_cmd,
 				cwd=portage._unicode_encode(self.repo.location))
