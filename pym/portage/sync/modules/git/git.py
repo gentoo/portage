@@ -101,6 +101,12 @@ class GitSync(NewBase):
 				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 				return (e.returncode, False)
 
+			# For shallow fetch, unreachable objects must be pruned
+			# manually, since otherwise automatic git gc calls will
+			# eventually warn about them (see bug 599008).
+			subprocess.call(['git', 'prune'],
+				cwd=portage._unicode_encode(self.repo.location))
+
 			git_cmd_opts += " --depth %d" % self.repo.sync_depth
 			git_cmd = "%s fetch %s%s" % (self.bin_command,
 				remote_branch.partition('/')[0], git_cmd_opts)
