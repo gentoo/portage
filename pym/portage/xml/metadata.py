@@ -61,7 +61,7 @@ except (ImportError, SystemError, RuntimeError, Exception):
 import re
 import xml.etree.ElementTree
 from portage import _encodings, _unicode_encode
-from portage.util import unique_everseen
+from portage.util import cmp_sort_key, unique_everseen
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
@@ -430,6 +430,19 @@ class MetaDataXML(object):
 		maint_str = " ".join(maintainers)
 		return maint_str
 
+# lang with higher value is preferred
+_lang_pref = {
+	""  :  0,
+	"en":  1,
+}
+
+
+def _cmp_lang(a, b):
+	a_score = _lang_pref.get(a.get("lang", ""), -1)
+	b_score = _lang_pref.get(b.get("lang", ""), -1)
+
+	return a_score - b_score
+
 
 def parse_metadata_use(xml_tree):
 	"""
@@ -443,6 +456,9 @@ def parse_metadata_use(xml_tree):
 	if not usetags:
 		return uselist
 
+	# Sort by language preference in descending order.
+	usetags.sort(key=cmp_sort_key(_cmp_lang), reverse=True)
+
 	# It's possible to have multiple 'use' elements.
 	for usetag in usetags:
 		flags = usetag.findall("flag")
@@ -454,6 +470,16 @@ def parse_metadata_use(xml_tree):
 			pkg_flag = flag.get("name")
 			if pkg_flag is not None:
 				flag_restrict = flag.get("restrict")
+
+				# Descriptions may exist for multiple languages, so
+				# ignore all except the first description found for a
+				# particular value of restrict (see bug 599060).
+				try:
+					uselist[pkg_flag][flag_restrict]
+				except KeyError:
+					pass
+				else:
+					continue
 
 				# emulate the Element.itertext() method from python-2.7
 				inner_text = []
