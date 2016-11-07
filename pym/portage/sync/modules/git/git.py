@@ -79,32 +79,11 @@ class GitSync(NewBase):
 		'''
 
 		git_cmd_opts = ""
-		quiet = self.settings.get("PORTAGE_QUIET") == "1"
-		if quiet:
+		if self.settings.get("PORTAGE_QUIET") == "1":
 			git_cmd_opts += " --quiet"
 		if self.repo.module_specific_options.get('sync-git-pull-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-pull-extra-opts']
-		if self.repo.sync_depth is None:
-			git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
-		else:
-			# Since the default merge strategy typically fails when
-			# the depth is not unlimited, use `git fetch` followed by
-			# `git update-index --refresh`, then `git reset --merge`.
-			try:
-				remote_branch = portage._unicode_decode(
-					subprocess.check_output([self.bin_command, 'rev-parse',
-					'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
-					cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
-			except subprocess.CalledProcessError as e:
-				msg = "!!! git rev-parse error in %s" % self.repo.location
-				self.logger(self.xterm_titles, msg)
-				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
-				return (e.returncode, False)
-
-			git_cmd_opts += " --depth %d" % self.repo.sync_depth
-			git_cmd = "%s fetch %s%s" % (self.bin_command,
-				remote_branch.partition('/')[0], git_cmd_opts)
-
+		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
 		writemsg_level(git_cmd + "\n")
 
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
@@ -114,22 +93,6 @@ class GitSync(NewBase):
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
 			**self.spawn_kwargs)
-
-		if exitcode == os.EX_OK and self.repo.sync_depth is not None:
-			# update-index --refresh is needed on some filesystems
-			# (e.g. with overlayfs on squashfs)
-			update_index_cmd = [self.bin_command, 'update-index', '-q', '--unmerged', '--refresh']
-
-			exitcode = subprocess.call(update_index_cmd,
-				cwd=portage._unicode_encode(self.repo.location))
-
-			if exitcode == os.EX_OK:
-				reset_cmd = [self.bin_command, 'reset', '--merge', remote_branch]
-				if quiet:
-					reset_cmd.append('--quiet')
-				exitcode = subprocess.call(reset_cmd,
-					cwd=portage._unicode_encode(self.repo.location))
-
 		if exitcode != os.EX_OK:
 			msg = "!!! git pull error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
