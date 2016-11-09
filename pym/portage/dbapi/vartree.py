@@ -4252,6 +4252,20 @@ class dblink(object):
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		self.vartree.dbapi._fs_lock()
 		try:
+			# This prunes any libraries from the registry that no longer
+			# exist on disk, in case they have been manually removed.
+			# This has to be done prior to merge, since after merge it
+			# is non-trivial to distinguish these files from files
+			# that have just been merged.
+			plib_registry = self.vartree.dbapi._plib_registry
+			if plib_registry:
+				plib_registry.lock()
+				try:
+					plib_registry.load()
+					plib_registry.store()
+				finally:
+					plib_registry.unlock()
+
 			# Always behave like --noconfmem is enabled for downgrades
 			# so that people who don't know about this option are less
 			# likely to get confused when doing upgrade/downgrade cycles.
