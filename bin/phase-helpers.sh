@@ -518,8 +518,11 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
-				if ___eapi_supports_txz; then
-					__unpack_tar "xz -d" || return 1
+				if ___eapi_unpack_supports_txz; then
+					if ! tar xof "$srcdir$x"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
