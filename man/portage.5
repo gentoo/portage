@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Nov 2015" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Nov 2016" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -960,6 +960,13 @@ since operations performed by these tools are inherently
 .TP
 .B priority
 Specifies priority of given repository.
+.TP
+.B strict\-misc\-digests
+This setting determines whether digests are checked for files declared
+in the Manifest with MISC type (includes ChangeLog and metadata.xml
+files). Defaults to true.
+.br
+Valid values: true, false.
 .TP
 .B sync\-cvs\-repo
 Specifies CVS repository.

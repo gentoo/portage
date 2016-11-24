@@ -80,7 +80,7 @@ class RepoConfig(object):
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest',
+		'profile_formats', 'sign_commit', 'sign_manifest', 'strict_misc_digests',
 		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
@@ -171,6 +171,9 @@ class RepoConfig(object):
 		self.sync_depth = repo_opts.get('sync-depth')
 		self.sync_hooks_only_on_change = repo_opts.get(
 			'sync-hooks-only-on-change', 'false').lower() == 'true'
+
+		self.strict_misc_digests = repo_opts.get(
+			'strict-misc-digests', 'true').lower() == 'true'
 
 		self.module_specific_options = {}
 
@@ -326,6 +329,7 @@ class RepoConfig(object):
 		kwds['allow_missing'] = self.allow_missing_manifest
 		kwds['allow_create'] = self.create_manifest
 		kwds['hashes'] = self.manifest_hashes
+		kwds['strict_misc_digests'] = self.strict_misc_digests
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
 		kwds['find_invalid_path_char'] = self.find_invalid_path_char
@@ -403,6 +407,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "format: " + self.format)
 		if self.location:
 			repo_msg.append(indent + "location: " + self.location)
+		if not self.strict_misc_digests:
+			repo_msg.append(indent + "strict-misc-digests: false")
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -500,7 +506,7 @@ class RepoConfigLoader(object):
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
-							'force', 'masters', 'priority',
+							'force', 'masters', 'priority', 'strict_misc_digests',
 							'sync_depth', 'sync_hooks_only_on_change',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							'module_specific_options'):
@@ -922,12 +928,13 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
+		bool_keys = ("strict_misc_digests",)
 		str_or_int_keys = ("auto_sync", "format", "location",
 			"main_repo", "priority",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
-		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
+		keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
 			config_string += "\n[%s]\n" % repo_name
@@ -935,7 +942,10 @@ class RepoConfigLoader(object):
 				if key == "main_repo" and repo_name != "DEFAULT":
 					continue
 				if getattr(repo, key) is not None:
-					if key in str_or_int_keys:
+					if key in bool_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"),
+							'true' if getattr(repo, key) else 'false')
+					elif key in str_or_int_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
 					elif key in str_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))

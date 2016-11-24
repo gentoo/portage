@@ -129,7 +129,7 @@ class Manifest(object):
 	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
 		allow_missing=False, allow_create=True, hashes=None,
-		find_invalid_path_char=None):
+		find_invalid_path_char=None, strict_misc_digests=True):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
 			The fetchlist_dict parameter is required only for generation of
@@ -173,6 +173,7 @@ class Manifest(object):
 			self.guessType = guessManifestFileType
 		self.allow_missing = allow_missing
 		self.allow_create = allow_create
+		self.strict_misc_digests = strict_misc_digests
 
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
@@ -461,7 +462,8 @@ class Manifest(object):
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
 			allow_create=self.allow_create, hashes=self.hashes,
-			find_invalid_path_char=self._find_invalid_path_char)
+			find_invalid_path_char=self._find_invalid_path_char,
+			strict_misc_digests=self.strict_misc_digests)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
 		cat = self._pkgdir_category()
 
