@@ -1699,11 +1699,6 @@ class config(object):
 		ebuild_force_test = not restrict_test and \
 			self.get("EBUILD_FORCE_TEST") == "1"
 
-		if ebuild_force_test and \
-			not hasattr(self, "_ebuild_force_test_msg_shown"):
-				self._ebuild_force_test_msg_shown = True
-				writemsg(_("Forcing test.\n"), noiselevel=-1)
-
 		if "test" in explicit_iuse or iuse_implicit_match("test"):
 			if "test" not in self.features:
 				use.discard("test")
