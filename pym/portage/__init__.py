@@ -217,7 +217,7 @@ class _unicode_func_wrapper(object):
 	and return values to unicode from bytes. Function calls
 	will raise UnicodeEncodeError if an argument fails to be
 	encoded with the required encoding. Return values that
-	are single strings are decoded with errors='replace'. Return 
+	are single strings are decoded with errors='replace'. Return
 	values that are lists of strings are decoded with errors='strict'
 	and elements that fail to be decoded are omitted from the returned
 	list.
