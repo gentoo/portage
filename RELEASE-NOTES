@@ -1,7 +1,33 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.3.2
+portage-2.3.3
+==================================
+* Bug Fixes:
+    - Bug 597752 _expand_new_virtuals: constrain output for dep_zapdeps
+    - Bug 599060 parse_metadata_use: apply English language preference
+    - Bug 599240 preserve-libs: handle manually removed libraries better
+    - Bug 600346 dep_zapdeps: make package selections internally consistent
+    - Bug 600128 repos.conf: support strict-misc-digests attribute
+    - Bug 600660 unpack: fix txz unpack support
+    - Bug 600804 _post_src_install_uid_fix: allow files with portage group
+                 permissions
+    - Bug 601466 bin/ebuild: fix EBUILD_FORCE_TEST / RESTRICT interaction
+    - Bug 554070 depgraph: select highest version involved in slot conflict
+    - Bug 598116 _emerge/depgraph.py: Autounmask-write fails when there isn't
+                 a file in package.*/
+* Reverted commits:
+    - Bug 597918 Revert "emerge-webrsync: use gkeys to verify OpenPGP signatures
+                 (too soon, needs some additional gkeys work and release,
+                 this code was not yet in a portage release)
+    - Bug 552814 Revert "GitSync.update: respect sync-depth
+                 (Shallow fetch is not a practical default at this time,
+                  given performance issues introduced by `git update-index`
+                  and `git prune` (see bug 599008).
+                 )
+
+
+    portage-2.3.2
 ==================================
 * Bug Fixes:
     - Bug 594822 GitSync.update: handle git rev-list failure

@@ -1,5 +1,15 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.3
+-----------------
+* Reverted commits:
+    - Bug 552814 Revert "GitSync.update: respect sync-depth
+                 (Shallow fetch is not a practical default at this time,
+                  given performance issues introduced by `git update-index`
+                  and `git prune` (see bug 599008).
+                 )
+
+
 portage-2.3.1
 -----------------
 * Support News-Item-Format 2.0
