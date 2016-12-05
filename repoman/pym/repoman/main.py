@@ -36,6 +36,7 @@ from repoman.repos import RepoSettings
 from repoman.scanner import Scanner
 from repoman import utilities
 from repoman.modules.vcs.settings import VCSSettings
+from repoman import VERSION
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -62,7 +63,7 @@ def repoman_main(argv):
 		sys.argv, qahelp, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
 
 	if options.version:
-		print("Repoman", portage.VERSION)
+		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
 		sys.exit(0)
 
 	logger = logging.getLogger()
