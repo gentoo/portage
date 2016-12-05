@@ -631,7 +631,7 @@ if VERSION == 'HEAD':
 				return VERSION
 			if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, '.git')):
 				encoding = _encodings['fs']
-				cmd = [BASH_BINARY, "-c", ("cd %s ; git describe --tags || exit $? ; " + \
+				cmd = [BASH_BINARY, "-c", ("cd %s ; git describe --match 'portage-*' || exit $? ; " + \
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
 					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
