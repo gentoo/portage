@@ -1,6 +1,21 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.1
+==================================
+* Bug Fixes:
+    - Bug 586864 skip QA checks in manifest mode
+    - Bug 591184 fix erroneous LICENSE.syntax
+    - use https to fetch metadata.xsd
+    - update links to https
+    - Make LIVEVCS.* checks fatal
+    - fix _depend_checks baddepsyntax accounting
+    - Fix commitmessage assignment not being done
+    - Add cat/pkg: substtution in the commitsgfile text
+    - Disable SRC_URI.mirror warnings when there is only 1 mirror
+    - Fix version output string to say Repoman, fix live versioning,
+      add portage version to --version output.
+
 repoman-2.3.0
 ==================================
 * Bug Fixes:
