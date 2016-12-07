@@ -10,6 +10,7 @@ from distutils.command.build_scripts import build_scripts
 from distutils.command.clean import clean
 from distutils.command.install import install
 from distutils.command.install_data import install_data
+from distutils.command.install_lib import install_lib
 from distutils.command.install_scripts import install_scripts
 from distutils.command.sdist import sdist
 from distutils.dep_util import newer
@@ -20,6 +21,7 @@ import codecs
 import collections
 import os
 import os.path
+import re
 import subprocess
 import sys
 
@@ -266,6 +268,43 @@ class x_install_data(install_data):
 		self.data_files = old_data_files
 
 
+class x_install_lib(install_lib):
+	""" install_lib command with Portage path substitution """
+
+	user_options = install_lib.user_options
+
+	def initialize_options(self):
+		install_lib.initialize_options(self)
+
+	def finalize_options(self):
+		install_lib.finalize_options(self)
+		self.set_undefined_options('install',)
+
+	def install(self):
+		ret = install_lib.install(self)
+
+		def rewrite_file(path, val_dict):
+			path = os.path.join(self.install_dir, path)
+			print('Rewriting %s' % path)
+			with codecs.open(path, 'r', 'utf-8') as f:
+				data = f.read()
+
+			for varname, val in val_dict.items():
+				regexp = r'(?m)^(%s\s*=).*$' % varname
+				repl = r'\1 %s' % repr(val)
+
+				data = re.sub(regexp, repl, data)
+
+			with codecs.open(path, 'w', 'utf-8') as f:
+				f.write(data)
+
+		rewrite_file('repoman/__init__.py', {
+			'VERSION': self.distribution.get_version(),
+		})
+
+		return ret
+
+
 class x_install_scripts_custom(install_scripts):
 	def initialize_options(self):
 		install_scripts.initialize_options(self)
@@ -431,6 +470,7 @@ setup(
 		'clean': x_clean,
 		'install': x_install,
 		'install_data': x_install_data,
+		'install_lib': x_install_lib,
 		'install_scripts': x_install_scripts,
 		'install_scripts_bin': x_install_scripts_bin,
 		'sdist': x_sdist,

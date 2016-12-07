@@ -27,6 +27,7 @@ from repoman.copyrights import update_copyright
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities
 from repoman.modules.vcs.vcs import vcs_files_to_cps
+from repoman import VERSION
 
 bad = create_color_func("BAD")
 
@@ -336,7 +337,8 @@ class Actions(object):
 			portage_version = "Unknown"
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer = "\n\nPackage-Manager: portage-%s" % portage_version
+			commit_footer = "\n\nPackage-Manager: Portage-%s, Repoman-%s" % (
+							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
 			if self.repo_settings.sign_manifests:
