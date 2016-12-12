@@ -15,6 +15,7 @@ repoman-2.3.1
     - Disable SRC_URI.mirror warnings when there is only 1 mirror
     - Fix version output string to say Repoman, fix live versioning,
       add portage version to --version output.
+    - Add repoman version to "Package manager:" commit footer
 
 repoman-2.3.0
 ==================================
