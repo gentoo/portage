@@ -241,6 +241,8 @@ class slot_conflict_handler(object):
 		Print all slot conflicts in a human readable way.
 		"""
 		_pkg_use_enabled = self.depgraph._pkg_use_enabled
+		usepkgonly = "--usepkgonly" in self.myopts
+		need_rebuild = {}
 		verboseconflicts = "--verbose-conflicts" in self.myopts
 		any_omitted_parents = False
 		msg = self.conflict_msg
@@ -394,6 +396,29 @@ class slot_conflict_handler(object):
 								selected_for_display.update(
 										best_matches.values())
 						elif type in ("soname", "slot"):
+							# Check for packages that might need to
+							# be rebuilt, but cannot be rebuilt for
+							# some reason.
+							for ppkg, atom, other_pkg in parents:
+								if not (isinstance(ppkg, Package) and ppkg.installed):
+									continue
+								if not (atom.soname or atom.slot_operator_built):
+									continue
+								if self.depgraph._frozen_config.excluded_pkgs.findAtomForPackage(ppkg,
+									modified_use=self.depgraph._pkg_use_enabled(ppkg)):
+									selected_for_display.add((ppkg, atom))
+									need_rebuild[ppkg] = 'matched by --exclude argument'
+								elif self.depgraph._frozen_config.useoldpkg_atoms.findAtomForPackage(ppkg,
+									modified_use=self.depgraph._pkg_use_enabled(ppkg)):
+									selected_for_display.add((ppkg, atom))
+									need_rebuild[ppkg] = 'matched by --useoldpkg-atoms argument'
+								elif usepkgonly:
+									# This case is tricky, so keep quiet in order to avoid false-positives.
+									pass
+								elif not self.depgraph._equiv_ebuild_visible(ppkg):
+									selected_for_display.add((ppkg, atom))
+									need_rebuild[ppkg] = 'ebuild is masked or unavailable'
+
 							for ppkg, atom, other_pkg in parents:
 								selected_for_display.add((ppkg, atom))
 								if not verboseconflicts:
@@ -611,9 +636,17 @@ class slot_conflict_handler(object):
 			msg.append(colorize("INFORM",
 				"NOTE: Use the '--verbose-conflicts'"
 				" option to display parents omitted above"))
-			msg.append("\n\n")
-		else:
 			msg.append("\n")
+
+		if need_rebuild:
+			msg.append("\n!!! The slot conflict(s) shown above involve package(s) which may need to\n")
+			msg.append("!!! be rebuilt in order to solve the conflict(s). However, the following\n")
+			msg.append("!!! package(s) cannot be rebuilt for the reason(s) shown:\n\n")
+			for ppkg, reason in need_rebuild.items():
+				msg.append("%s%s: %s\n" % (indent, ppkg, reason))
+			msg.append("\n")
+
+		msg.append("\n")
 
 	def get_explanation(self):
 		msg = ""
