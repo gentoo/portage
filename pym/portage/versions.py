@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -359,6 +359,12 @@ class _pkg_str(_unicode):
 	Instances are typically created in dbapi.cp_list() or the Atom contructor,
 	and propagate from there. Generally, code that pickles these objects will
 	manually convert them to a plain unicode object first.
+
+	Instances of this class will have missing attributes for metadata that
+	has not been passed into the constructor. The missing attributes are
+	used to distinguish missing metadata values from undefined metadata values.
+	For example, the repo attribute will be missing if the 'repository' key
+	is missing from the metadata dictionary.
 	"""
 
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,

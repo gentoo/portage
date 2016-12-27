@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -743,7 +743,7 @@ class binarytree(object):
 
 					for k in self._pkgindex_allowed_pkg_keys:
 						v = pkg_metadata.get(k)
-						if v is not None:
+						if v:
 							d[k] = v
 					d["CPV"] = mycpv
 
@@ -1041,12 +1041,12 @@ class binarytree(object):
 				noiselevel=-1)
 			return
 		metadata = self._read_metadata(full_path, s)
-		slot = metadata.get("SLOT")
+		invalid_depend = False
 		try:
 			self._eval_use_flags(cpv, metadata)
 		except portage.exception.InvalidDependString:
-			slot = None
-		if slot is None:
+			invalid_depend = True
+		if invalid_depend or not metadata.get("SLOT"):
 			writemsg(_("!!! Invalid binary package: '%s'\n") % full_path,
 				noiselevel=-1)
 			return
@@ -1126,6 +1126,21 @@ class binarytree(object):
 		return cpv
 
 	def _read_metadata(self, filename, st, keys=None):
+		"""
+		Read metadata from a binary package. The returned metadata
+		dictionary will contain empty strings for any values that
+		are undefined (this is important because the _pkg_str class
+		distinguishes between missing and undefined values).
+
+		@param filename: File path of the binary package
+		@type filename: string
+		@param st: stat result for the binary package
+		@type st: os.stat_result
+		@param keys: optional list of specific metadata keys to retrieve
+		@type keys: iterable
+		@rtype: dict
+		@return: package metadata
+		"""
 		if keys is None:
 			keys = self.dbapi._aux_cache_keys
 			metadata = self.dbapi._aux_cache_slot_dict()
@@ -1139,10 +1154,14 @@ class binarytree(object):
 				metadata[k] = _unicode(st.st_size)
 			else:
 				v = binary_metadata.get(_unicode_encode(k))
-				if v is not None:
+				if v is None:
+					if k == "EAPI":
+						metadata[k] = "0"
+					else:
+						metadata[k] = ""
+				else:
 					v = _unicode_decode(v)
 					metadata[k] = " ".join(v.split())
-		metadata.setdefault("EAPI", "0")
 		return metadata
 
 	def _inject_file(self, pkgindex, cpv, filename):
