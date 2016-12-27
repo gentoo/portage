@@ -4,6 +4,7 @@
 import errno
 import logging
 import subprocess
+import sys
 
 import portage
 from portage import _encodings
@@ -12,6 +13,7 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
+from portage.dep.soname.multilib_category import compute_multilib_category
 from portage.exception import CommandNotFound, InvalidData
 from portage.localization import _
 from portage.util import getlibpaths
@@ -20,6 +22,12 @@ from portage.util import normalize_path
 from portage.util import varexpand
 from portage.util import writemsg_level
 from portage.util._dyn_libs.NeededEntry import NeededEntry
+from portage.util.elf.header import ELFHeader
+
+if sys.hexversion >= 0x3000000:
+	_unicode = str
+else:
+	_unicode = unicode
 
 # Map ELF e_machine values from NEEDED.ELF.2 to approximate multilib
 # categories. This approximation will produce incorrect results on x32
@@ -283,15 +291,26 @@ class LinkageMapELF(object):
 					l = l[3:].rstrip("\n")
 					if not l:
 						continue
-					fields = l.split(";")
-					if len(fields) < 5:
-						writemsg_level(_("\nWrong number of fields " \
-							"returned from scanelf: %s\n\n") % (l,),
+					try:
+						entry = NeededEntry.parse("scanelf", l)
+					except InvalidData as e:
+						writemsg_level("\n%s\n\n" % (e,),
 							level=logging.ERROR, noiselevel=-1)
 						continue
-					fields[1] = fields[1][root_len:]
-					owner = plibs.pop(fields[1], None)
-					lines.append((owner, "scanelf", ";".join(fields)))
+					try:
+						with open(_unicode_encode(entry.filename,
+							encoding=_encodings['fs'],
+							errors='strict'), 'rb') as f:
+							elf_header = ELFHeader.read(f)
+					except EnvironmentError as e:
+						if e.errno != errno.ENOENT:
+							raise
+						# File removed concurrently.
+						continue
+					entry.multilib_category = compute_multilib_category(elf_header)
+					entry.filename = entry.filename[root_len:]
+					owner = plibs.pop(entry.filename, None)
+					lines.append((owner, "scanelf", _unicode(entry)))
 				proc.wait()
 				proc.stdout.close()
 
