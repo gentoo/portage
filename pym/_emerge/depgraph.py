@@ -1044,7 +1044,14 @@ class depgraph(object):
 			writemsg(str(pkg.slot_atom), noiselevel=-1)
 			if pkg.root_config.settings["ROOT"] != "/":
 				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
-			writemsg("\n", noiselevel=-1)
+			writemsg("\n\n", noiselevel=-1)
+
+			selected_pkg = next(self._dynamic_config._package_tracker.match(
+				pkg.root, pkg.slot_atom), None)
+
+			writemsg("  selected: %s\n" % (selected_pkg,), noiselevel=-1)
+			writemsg("  skipped: %s (see unsatisfied dependency below)\n"
+				% (pkg,), noiselevel=-1)
 
 			for parent, root, atom in parent_atoms:
 				self._show_unsatisfied_dep(root, atom, myparent=parent)
