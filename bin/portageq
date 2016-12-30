@@ -1082,6 +1082,8 @@ def pquery(parser, opts, args):
 		maintainer_emails = []
 		for x in opts.maintainer_email:
 			maintainer_emails.extend(x.split(","))
+		if opts.no_regex: # Escape regex-special characters for an exact match
+			maintainer_emails = [re.escape(x) for x in maintainer_emails]
 		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
 	if opts.orphaned:
 		xml_matchers.append(match_orphaned)
@@ -1238,6 +1240,11 @@ def add_pquery_arguments(parser):
 					"longopt": "--maintainer-email",
 					"action": "append",
 					"help": "comma-separated list of maintainer email regexes to search for"
+				},
+				{
+					"longopt": "--no-regex",
+					"action": "store_true",
+					"help": "Use exact matching instead of regex matching for --maintainer-email"
 				},
 				{
 					"longopt": "--orphaned",
