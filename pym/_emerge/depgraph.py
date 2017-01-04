@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -9130,8 +9130,12 @@ class _dep_check_composite_db(dbapi):
 			# into the same slot.
 			return True
 
-		in_graph = next(self._depgraph._dynamic_config._package_tracker.match(
-			self._root, pkg.slot_atom, installed=False), None)
+		# Use reversed iteration in order to get descending order here,
+		# so that the highest version involved in a slot conflict is
+		# selected (see bug 554070).
+		in_graph = next(reversed(list(
+			self._depgraph._dynamic_config._package_tracker.match(
+			self._root, pkg.slot_atom, installed=False))), None)
 
 		if in_graph is None:
 			# Mask choices for packages which are not the highest visible
