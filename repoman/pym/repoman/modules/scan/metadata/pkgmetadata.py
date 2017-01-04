@@ -166,7 +166,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 		if valid_state:
 			for myflag in self.muselist.difference(self.usedUseFlags):
 				self.qatracker.add_error(
-					"metadata.warning",
+					"metadata.bad",
 					"%s/metadata.xml: unused local USE-description: '%s'"
 					% (xpkg, myflag))
 		return False
