@@ -327,6 +327,7 @@ suspect_rdepend = frozenset([
 	"sys-devel/pmake",
 	"virtual/linux-sources",
 	"virtual/linuxtv-dvb-headers",
+	"virtual/os-headers",
 	"virtual/pkgconfig",
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
