@@ -22,7 +22,7 @@
 # Example:
 #USE="X gtk gnome -alsa"
 
-# Host and optimization settings 
+# Host and optimization settings
 # ==============================
 #
 # For optimal performance, enable a CFLAGS setting appropriate for your CPU.
@@ -143,7 +143,7 @@
 #     defined.
 #PORTDIR_OVERLAY=/usr/local/portage
 
-# Fetching files 
+# Fetching files
 # ==============
 #
 # If you need to set a proxy for wget or lukemftp, add the appropriate "export
@@ -228,7 +228,7 @@
 #
 # PORTAGE_RSYNC_EXTRA_OPTS can be used to feed additional options to the rsync
 #     command used by `emerge --sync`. This will not change the default options
-#     which are set by PORTAGE_RSYNC_OPTS (don't change those unless you know 
+#     which are set by PORTAGE_RSYNC_OPTS (don't change those unless you know
 #     exactly what you're doing).
 #PORTAGE_RSYNC_EXTRA_OPTS=""
 #
@@ -291,7 +291,7 @@
 #     Note that to display ccache statistics outside of portage, you must
 #     remember to give the correct path to the cache.
 #
-#        $ CCACHE_DIR=/var/tmp/ccache ccache -s 
+#        $ CCACHE_DIR=/var/tmp/ccache ccache -s
 #
 #CCACHE_DIR="${PORTAGE_TMPDIR}/ccache"
 
@@ -306,11 +306,11 @@
 # PORTAGE_ELOG_SYSTEM: selects the module(s) to process the log messages. Modules
 #                      included in portage are (empty means logging is disabled):
 #                          echo (display messages again when emerge exits)
-#                          save (saves one log per package in $PORT_LOGDIR/elog, 
+#                          save (saves one log per package in $PORT_LOGDIR/elog,
 #                                /var/log/portage/elog if $PORT_LOGDIR is unset)
 #                          custom (passes all messages to $PORTAGE_ELOG_COMMAND)
 #                          syslog (sends all messages to syslog)
-#                          mail (send all messages to the mailserver defined 
+#                          mail (send all messages to the mailserver defined
 #                                in $PORTAGE_ELOG_MAILURI)
 #                          save_summary (like "save" but merges all messages
 #                                        in $PORT_LOGDIR/elog/summary.log,
@@ -327,7 +327,7 @@
 
 # PORTAGE_ELOG_COMMAND: only used with the "custom" logging module. Specifies a command
 #                      to process log messages. Two variables are expanded:
-#                          ${PACKAGE} - expands to the cpv entry of the processed 
+#                          ${PACKAGE} - expands to the cpv entry of the processed
 #                                       package (see $PVR in ebuild(5))
 #                          ${LOGFILE} - absolute path to the logfile
 #						Both variables have to be quoted with single quotes
