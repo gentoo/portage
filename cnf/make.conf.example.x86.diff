@@ -13,7 +13,7 @@
 +# All K6's are i586.
 +CHOST="i686-pc-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +48,65 @@

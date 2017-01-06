@@ -17,7 +17,7 @@
 +#
 +CHOST="armv4l-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +52,22 @@

@@ -11,7 +11,7 @@
 +
 +CHOST="s390-ibm-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -76,7 +83,7 @@

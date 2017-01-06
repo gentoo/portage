@@ -11,7 +11,7 @@
 +# profile and of freebsd-lib package.
 +CHOST="sparc64-gentoo-freebsd6.2"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -76,7 +83,7 @@

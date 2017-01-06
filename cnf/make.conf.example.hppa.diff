@@ -16,7 +16,7 @@
 +#CHOST="hppa1.1-unknown-linux-gnu"
 +#CHOST="hppa2.0-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,14 +51,38 @@
