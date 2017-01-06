@@ -299,6 +299,7 @@ suspect_rdepend = frozenset([
 	"dev-lang/swig",
 	"dev-lang/yasm",
 	"dev-perl/extutils-pkgconfig",
+	"dev-qt/linguist-tools",
 	"dev-util/byacc",
 	"dev-util/cmake",
 	"dev-util/ftjam",
