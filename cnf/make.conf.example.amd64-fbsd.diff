@@ -9,7 +9,7 @@
 +#
 +CHOST="x86_64-gentoo-freebsd7.1"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +44,35 @@

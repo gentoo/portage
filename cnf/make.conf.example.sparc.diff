@@ -13,7 +13,7 @@
 +#
 +# CHOST="sparc-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +48,34 @@

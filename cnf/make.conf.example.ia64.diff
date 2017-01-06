@@ -11,7 +11,7 @@
 +
 +CHOST="ia64-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -76,7 +83,7 @@

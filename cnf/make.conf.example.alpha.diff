@@ -15,7 +15,7 @@
 +#CHOST="alphaev67-unknown-linux-gnu"
 +CHOST="alpha-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +50,18 @@

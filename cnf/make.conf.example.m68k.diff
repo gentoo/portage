@@ -11,7 +11,7 @@
 +#
 +CHOST="m68k-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -41,7 +48,7 @@
