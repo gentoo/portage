@@ -135,7 +135,7 @@
 #     ${CATEGORY}:${PF}:YYYYMMDD-HHMMSS.log in the directory specified.
 #     If the directory does not exist, it will be created automatically and
 #     group permissions will be applied to it.  If the directory already
-#     exists, portage will not modify it's permissions.
+#     exists, portage will not modify its permissions.
 #PORT_LOGDIR=""
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
@@ -258,7 +258,7 @@
 #PORTAGE_NICENESS=3
 #
 # PORTAGE_IONICE_COMMAND provides a command for portage to call in order to
-#     adjust the io priority of portage and it's subprocesses. Default is
+#     adjust the io priority of portage and its subprocesses. Default is
 #     unset.
 #PORTAGE_IONICE_COMMAND="ionice -c 3 -p \${PID}"
 #
