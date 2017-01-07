@@ -11,8 +11,10 @@ if sys.hexversion >= 0x3000000:
 from repoman.modules.scan.scanbase import ScanBase
 from repoman.qa_data import missingvars
 
-NON_ASCII_RE = re.compile(r'[^\x00-\x7f]')
+from portage.dep import use_reduce
 
+NON_ASCII_RE = re.compile(r'[^\x00-\x7f]')
+URISCHEME_RE = re.compile(r'^[a-z][0-9a-z\-\.\+]+://')
 
 class EbuildMetadata(ScanBase):
 
@@ -62,10 +64,21 @@ class EbuildMetadata(ScanBase):
 					self.qatracker.add_error(myqakey, ebuild.relative_path)
 		return False
 
+	def homepage_urischeme(self, **kwargs):
+		ebuild = kwargs.get('ebuild').get()
+		if kwargs.get('catdir') != "virtual":
+			for homepage in use_reduce(ebuild.metadata["HOMEPAGE"],
+				matchall=True,flat=True):
+				if URISCHEME_RE.match(homepage) is None:
+					self.qatracker.add_error(
+						"HOMEPAGE.missingurischeme", ebuild.relative_path)
+		return False
+
 	@property
 	def runInPkgs(self):
 		return (False, [])
 
 	@property
 	def runInEbuilds(self):
-		return (True, [self.invalidchar, self.missing, self.old_virtual, self.virtual])
+		return (True, [self.invalidchar, self.missing, self.old_virtual,
+			self.virtual, self.homepage_urischeme])

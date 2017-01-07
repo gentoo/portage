@@ -115,6 +115,8 @@ qahelp = {
 		"Ebuilds that have a missing or empty HOMEPAGE variable"),
 	"HOMEPAGE.virtual": (
 		"Virtuals that have a non-empty HOMEPAGE variable"),
+	"HOMEPAGE.missingurischeme": (
+		"HOMEPAGE is missing an URI scheme"),
 	"PDEPEND.suspect": (
 		"PDEPEND contains a package that usually only belongs in DEPEND."),
 	"LICENSE.syntax": (
