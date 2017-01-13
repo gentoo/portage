@@ -20,6 +20,9 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
+if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
+	long = int
 
 VERSION = "HEAD"
 
