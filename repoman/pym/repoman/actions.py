@@ -128,6 +128,10 @@ class Actions(object):
 					myupdates, mymanifests, myremoved, mychanged, myautoadd,
 					mynew, commitmessage)
 
+		lastline = commitmessage.splitlines()[-1]
+		if not ':' in lastline:
+			commitmessage += '\n'
+
 		commit_footer = self.get_commit_footer()
 		commitmessage += commit_footer
 
@@ -337,7 +341,7 @@ class Actions(object):
 			portage_version = "Unknown"
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer = "\n\nPackage-Manager: Portage-%s, Repoman-%s" % (
+			commit_footer = "\nPackage-Manager: Portage-%s, Repoman-%s" % (
 							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
@@ -351,7 +355,7 @@ class Actions(object):
 				unameout += platform.processor()
 			else:
 				unameout += platform.machine()
-			commit_footer = "\n\n"
+			commit_footer = "\n"
 			if dco_sob:
 				commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 			commit_footer += "(Portage version: %s/%s/%s" % \
