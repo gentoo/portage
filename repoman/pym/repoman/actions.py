@@ -6,6 +6,7 @@ import errno
 import io
 import logging
 import platform
+import re
 import signal
 import sys
 import tempfile
@@ -128,8 +129,9 @@ class Actions(object):
 					myupdates, mymanifests, myremoved, mychanged, myautoadd,
 					mynew, commitmessage)
 
-		lastline = commitmessage.splitlines()[-1]
-		if not ':' in lastline:
+		lines = commitmessage.splitlines()
+		lastline = lines[-1]
+		if len(lines) == 1 or re.match(r'^\S+:\s', lastline) is None:
 			commitmessage += '\n'
 
 		commit_footer = self.get_commit_footer()
