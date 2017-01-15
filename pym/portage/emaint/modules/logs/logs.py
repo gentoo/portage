@@ -40,7 +40,6 @@ class CleanLogs(object):
 				'NUM': int: number of days
 				'pretend': boolean
 		"""
-		messages = []
 		num_of_days = None
 		pretend = False
 		if kwargs:
@@ -70,10 +69,12 @@ class CleanLogs(object):
 					clean_cmd.remove("-delete")
 
 		if not clean_cmd:
-			return []
+			return (True, None)
 		rval = self._clean_logs(clean_cmd, settings)
-		messages += self._convert_errors(rval)
-		return messages
+		errors = self._convert_errors(rval)
+		if errors:
+			return (False, errors)
+		return (True, None)
 
 
 	@staticmethod

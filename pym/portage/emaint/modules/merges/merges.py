@@ -239,7 +239,9 @@ class MergesHandler(object):
 		for pkg, mtime in failed_pkgs.items():
 			mtime_str = time.ctime(int(mtime))
 			errors.append("'%s' failed to merge on '%s'" % (pkg, mtime_str))
-		return errors
+		if errors:
+			return (False, errors)
+		return (True, None)
 
 
 	def fix(self, **kwargs):
@@ -247,13 +249,13 @@ class MergesHandler(object):
 		module_output = kwargs.get('module_output', None)
 		failed_pkgs = self._failed_pkgs()
 		if not failed_pkgs:
-			return ['No failed merges found.']
+			return (True, ['No failed merges found.'])
 
 		pkg_invalid_entries = set()
 		pkg_atoms = set()
 		self._get_pkg_atoms(failed_pkgs, pkg_atoms, pkg_invalid_entries)
 		if pkg_invalid_entries:
-			return pkg_invalid_entries
+			return (False, pkg_invalid_entries)
 
 		try:
 			self._tracking_file.save(failed_pkgs)
@@ -261,7 +263,7 @@ class MergesHandler(object):
 			errors = ['Unable to save failed merges to tracking file: %s\n'
 				% str(ex)]
 			errors.append(', '.join(sorted(failed_pkgs)))
-			return errors
+			return (False, errors)
 		self._remove_failed_dirs(failed_pkgs)
 		results = self._emerge_pkg_atoms(module_output, pkg_atoms)
 		# list any new failed merges
@@ -276,12 +278,14 @@ class MergesHandler(object):
 			if not vardb.cpv_exists(pkg_name):
 				still_failed_pkgs[pkg] = mtime
 		self._tracking_file.save(still_failed_pkgs)
-		return results
+		if still_failed_pkgs:
+			return (False, results)
+		return (True, results)
 
 
 	def purge(self, **kwargs):
 		"""Attempt to remove previously saved tracking file."""
 		if not self._tracking_file.exists():
-			return ['Tracking file not found.']
+			return (True, ['Tracking file not found.'])
 		self._tracking_file.purge()
-		return ['Removed tracking file.']
+		return (True, ['Removed tracking file.'])
