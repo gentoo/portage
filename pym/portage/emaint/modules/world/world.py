@@ -65,7 +65,9 @@ class WorldHandler(object):
 			errors += ["'%s' is not installed" % x for x in self.not_installed]
 		else:
 			errors.append(self.world_file + " could not be opened for reading")
-		return errors
+		if errors:
+			return (1, errors)
+		return (os.EX_OK, None)
 
 	def fix(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -83,7 +85,9 @@ class WorldHandler(object):
 				except portage.exception.PortageException:
 					errors.append("%s could not be opened for writing" % \
 						self.world_file)
-			return errors
+			if errors:
+				return (1, errors)
+			return (os.EX_OK, None)
 		finally:
 			world_set.unlock()
 

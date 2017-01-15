@@ -115,6 +115,7 @@ class TaskHandler(object):
 		"""Runs the module tasks"""
 		if tasks is None or func is None:
 			return
+		returncode = os.EX_OK
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
@@ -135,14 +136,20 @@ class TaskHandler(object):
 				# them for other tasks if there is more to do.
 				'options': options.copy()
 				}
-			result = getattr(inst, func)(**kwargs)
+			rcode, msgs = getattr(inst, func)(**kwargs)
 			if show_progress:
 				# make sure the final progress is displayed
 				self.progress_bar.display()
 				print()
 				self.progress_bar.stop()
 			if self.callback:
-				self.callback(result)
+				self.callback(msgs)
+			# Keep the last error code when using the 'all' command.
+			if rcode != os.EX_OK:
+				returncode = rcode
+
+		if returncode != os.EX_OK:
+			sys.exit(returncode)
 
 
 def print_results(results):

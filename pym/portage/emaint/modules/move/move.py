@@ -123,7 +123,10 @@ class MoveHandler(object):
 				errors.append("'%s' has outdated metadata" % cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
-		return errors
+
+		if errors:
+			return (1, errors)
+		return (os.EX_OK, None)
 
 	def fix(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -156,7 +159,9 @@ class MoveHandler(object):
 		# Searching for updates in all the metadata is relatively slow, so this
 		# is where the progress bar comes out of indeterminate mode.
 		self._tree.dbapi.update_ents(allupdates, onProgress=onProgress)
-		return errors
+		if errors:
+			return(1, errors)
+		return (os.EX_OK, None)
 
 class MoveInstalled(MoveHandler):
 

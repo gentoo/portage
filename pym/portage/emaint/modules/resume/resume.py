@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
+import os
 
 
 class CleanResume(object):
@@ -37,7 +38,7 @@ class CleanResume(object):
 			finally:
 				if onProgress:
 					onProgress(maxval, i+1)
-		return messages
+		return (os.EX_OK, messages)
 
 	def fix(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -56,3 +57,4 @@ class CleanResume(object):
 					onProgress(maxval, i+1)
 		if delete_count:
 			mtimedb.commit()
+		return (os.EX_OK, None)
