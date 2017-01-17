@@ -127,8 +127,8 @@ class SyncRepos(object):
 				% (bold(", ".join(repos))) + "\n   ...returning"
 				]
 			if return_messages:
-				return msgs
-			return
+				return (1, msgs)
+			return (1, None)
 		return self._sync(selected, return_messages,
 			emaint_opts=options)
 
@@ -211,8 +211,8 @@ class SyncRepos(object):
 			msgs.append("Emaint sync, nothing to sync... returning")
 			if return_messages:
 				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
-				return msgs
-			return
+				return (os.EX_OK, msgs)
+			return (os.EX_OK, None)
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
@@ -232,6 +232,7 @@ class SyncRepos(object):
 		sync_scheduler.wait()
 		retvals = sync_scheduler.retvals
 		msgs.extend(sync_scheduler.msgs)
+		returncode = sync_scheduler.returncode
 
 		if retvals:
 			msgs.extend(self.rmessage(retvals, 'sync'))
@@ -244,6 +245,8 @@ class SyncRepos(object):
 			rcode = sync_manager.perform_post_sync_hook('')
 			if rcode:
 				msgs.extend(self.rmessage([('None', rcode)], 'post-sync'))
+				if rcode != os.EX_OK:
+					returncode = rcode
 
 		# Reload the whole config.
 		portage._sync_mode = False
@@ -254,8 +257,8 @@ class SyncRepos(object):
 			self.emerge_config.opts)
 
 		if return_messages:
-			return msgs
-		return
+			return (returncode, msgs)
+		return (returncode, None)
 
 
 	def _do_pkg_moves(self):
@@ -323,6 +326,7 @@ class SyncScheduler(AsyncScheduler):
 		self._init_graph()
 		self.retvals = []
 		self.msgs = []
+		self.returncode = os.EX_OK
 
 	def _init_graph(self):
 		'''
@@ -360,6 +364,9 @@ class SyncScheduler(AsyncScheduler):
 			returncode, message, updatecache_flg, hooks_enabled = task.result
 			if message:
 				self.msgs.append(message)
+		else:
+			# Keep the last unsuccessful sync return code.
+			self.returncode = returncode
 		repo = task.kwargs['repo'].name
 		self._running_repos.remove(repo)
 		self.retvals.append((repo, returncode))
