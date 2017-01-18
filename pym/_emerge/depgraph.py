@@ -1449,10 +1449,7 @@ class depgraph(object):
 						continue
 
 					for parent, atom in self._dynamic_config._parent_atoms.get(other, []):
-						atom_set = InternalPackageSet(
-							initial_atoms=(atom,), allow_repo=True)
-						if not atom_set.findAtomForPackage(pkg,
-							modified_use=self._pkg_use_enabled(pkg)):
+						if not atom.match(pkg.with_use(self._pkg_use_enabled(pkg))):
 							self._dynamic_config._conflict_missed_update[pkg].setdefault(
 								"slot conflict", set())
 							self._dynamic_config._conflict_missed_update[pkg]["slot conflict"].add(
