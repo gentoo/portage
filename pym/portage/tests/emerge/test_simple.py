@@ -382,6 +382,7 @@ pkg_preinst() {
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
+			"PORT_LOGDIR" : portage_tmpdir,
 			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
 			"PYTHONPATH" : pythonpath,
 			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,

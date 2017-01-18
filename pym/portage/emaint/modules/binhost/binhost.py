@@ -86,7 +86,9 @@ class BinhostHandler(object):
 		stale = set(metadata).difference(cpv_all)
 		for cpv in stale:
 			errors.append("'%s' is not in the repository" % cpv)
-		return errors
+		if errors:
+			return (False, errors)
+		return (True, None)
 
 	def fix(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -177,4 +179,4 @@ class BinhostHandler(object):
 			if maxval == 0:
 				maxval = 1
 			onProgress(maxval, maxval)
-		return None
+		return (True, None)

@@ -37,7 +37,7 @@ class CleanResume(object):
 			finally:
 				if onProgress:
 					onProgress(maxval, i+1)
-		return messages
+		return (True, messages)
 
 	def fix(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -56,3 +56,4 @@ class CleanResume(object):
 					onProgress(maxval, i+1)
 		if delete_count:
 			mtimedb.commit()
+		return (True, None)

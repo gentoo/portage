@@ -115,6 +115,7 @@ class TaskHandler(object):
 		"""Runs the module tasks"""
 		if tasks is None or func is None:
 			return
+		returncodes = []
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
@@ -135,14 +136,17 @@ class TaskHandler(object):
 				# them for other tasks if there is more to do.
 				'options': options.copy()
 				}
-			result = getattr(inst, func)(**kwargs)
+			returncode, msgs = getattr(inst, func)(**kwargs)
+			returncodes.append(returncode)
 			if show_progress:
 				# make sure the final progress is displayed
 				self.progress_bar.display()
 				print()
 				self.progress_bar.stop()
 			if self.callback:
-				self.callback(result)
+				self.callback(msgs)
+
+		return returncodes
 
 
 def print_results(results):
@@ -237,4 +241,6 @@ def emaint_main(myargv):
 	task_opts = options.__dict__
 	task_opts['return-messages'] = True
 	taskmaster = TaskHandler(callback=print_results, module_output=sys.stdout)
-	taskmaster.run_tasks(tasks, func, status, options=task_opts)
+	returncodes = taskmaster.run_tasks(tasks, func, status, options=task_opts)
+
+	sys.exit(False in returncodes)
