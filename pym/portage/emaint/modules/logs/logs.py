@@ -8,6 +8,11 @@ from portage.util import shlex_split, varexpand
 ## default clean command from make.globals
 ## PORT_LOGDIR_CLEAN = 'find "${PORT_LOGDIR}" -type f ! -name "summary.log*" -mtime +7 -delete'
 
+ERROR_MESSAGES = {
+	78	: "PORT_LOGDIR variable not set or PORT_LOGDIR not a directory.",
+	127	: "PORT_LOGDIR_CLEAN command not found."
+}
+
 class CleanLogs(object):
 
 	short_desc = "Clean PORT_LOGDIR logs"
@@ -81,7 +86,7 @@ class CleanLogs(object):
 	def _clean_logs(clean_cmd, settings):
 		logdir = settings.get("PORT_LOGDIR")
 		if logdir is None or not os.path.isdir(logdir):
-			return
+			return 78
 
 		variables = {"PORT_LOGDIR" : logdir}
 		cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
@@ -97,8 +102,10 @@ class CleanLogs(object):
 	def _convert_errors(rval):
 		msg = []
 		if rval != os.EX_OK:
-			msg.append("PORT_LOGDIR_CLEAN command returned %s"
-				% ("%d" % rval if rval else "None"))
+			if rval in ERROR_MESSAGES:
+				msg.append(ERROR_MESSAGES[rval])
+			else:
+				msg.append("PORT_LOGDIR_CLEAN command returned %s" % rval)
 			msg.append("See the make.conf(5) man page for "
 				"PORT_LOGDIR_CLEAN usage instructions.")
 		return msg
