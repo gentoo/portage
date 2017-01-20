@@ -84,6 +84,7 @@ class SyncRepos(object):
 		self.xterm_titles = "notitles" not in \
 			self.emerge_config.target_config.settings.features
 		emergelog(self.xterm_titles, " === sync")
+		self.retvals = []
 
 
 	def auto_sync(self, **kwargs):
@@ -230,14 +231,14 @@ class SyncRepos(object):
 
 		sync_scheduler.start()
 		sync_scheduler.wait()
-		retvals = sync_scheduler.retvals
+		self.retvals = sync_scheduler.retvals
 		msgs.extend(sync_scheduler.msgs)
 		returncode = True
 
-		if retvals:
-			msgs.extend(self.rmessage(retvals, 'sync'))
-			for repo, returncode in retvals:
-				if returncode != os.EX_OK:
+		if self.retvals:
+			msgs.extend(self.rmessage(self.retvals, 'sync'))
+			for repo, retval in self.retvals:
+				if retval != os.EX_OK:
 					returncode = False
 					break
 		else:
