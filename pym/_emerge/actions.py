@@ -2000,10 +2000,13 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 	syncer = SyncRepos(emerge_config)
 
 
-	retvals = syncer.auto_sync(options={'return-messages': False})
+	success, msgs = syncer.auto_sync(options={'return-messages': False})
 
-	if retvals:
-		return retvals[0][1]
+	if not success:
+		retvals = syncer.retvals
+		for repo, retval in retvals:
+			if retval != os.EX_OK:
+				return retval
 	return os.EX_OK
 
 
