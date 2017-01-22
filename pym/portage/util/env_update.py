@@ -312,7 +312,9 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 	else:
 		ldconfig = os.path.join(eroot, "sbin", "ldconfig")
 
-	if not (os.access(ldconfig, os.X_OK) and os.path.isfile(ldconfig)):
+	if ldconfig is None:
+		pass
+	elif not (os.access(ldconfig, os.X_OK) and os.path.isfile(ldconfig)):
 		ldconfig = None
 
 	# Only run ldconfig as needed
