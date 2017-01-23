@@ -236,8 +236,8 @@ class SyncRepos(object):
 
 		if retvals:
 			msgs.extend(self.rmessage(retvals, 'sync'))
-			for repo, returncode in retvals:
-				if returncode != os.EX_OK:
+			for repo, retval in retvals:
+				if retval != os.EX_OK:
 					returncode = False
 					break
 		else:

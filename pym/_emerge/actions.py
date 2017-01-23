@@ -2000,11 +2000,9 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 	syncer = SyncRepos(emerge_config)
 
 
-	retvals = syncer.auto_sync(options={'return-messages': False})
+	success, msgs = syncer.auto_sync(options={'return-messages': False})
 
-	if retvals:
-		return retvals[0][1]
-	return os.EX_OK
+	return os.EX_OK if success else 1
 
 
 def action_uninstall(settings, trees, ldpath_mtimes,
