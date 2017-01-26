@@ -362,6 +362,7 @@ class SyncScheduler(AsyncScheduler):
 		# that hooks will be called in a backward-compatible manner
 		# even if all sync tasks have failed.
 		hooks_enabled = True
+		returncode = task.returncode
 		if task.returncode == os.EX_OK:
 			returncode, message, updatecache_flg, hooks_enabled = task.result
 			if message:
