@@ -305,6 +305,10 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	if unshare_net or unshare_ipc:
 		find_library("c")
 
+	# Force instantiation of portage.data.userpriv_groups before the
+	# fork, so that the result is cached in the main process.
+	bool(groups)
+
 	parent_pid = os.getpid()
 	pid = None
 	try:
