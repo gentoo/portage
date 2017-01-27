@@ -28,10 +28,9 @@ class CleanLogs(object):
 
 
 	def check(self, **kwargs):
-		if kwargs:
-			options = kwargs.get('options', None)
-			if options:
-				options['pretend'] = True
+		options = kwargs.get('options', None)
+		if options:
+			options['pretend'] = True
 		return self.clean(**kwargs)
 
 
@@ -48,16 +47,15 @@ class CleanLogs(object):
 		"""
 		num_of_days = None
 		pretend = False
-		if kwargs:
-			# convuluted, I know, but portage.settings does not exist in
-			# kwargs.get() when called from _emerge.main.clean_logs()
-			settings = kwargs.get('settings', None)
-			if not settings:
-				settings = portage.settings
-			options = kwargs.get('options', None)
-			if options:
-				num_of_days = options.get('NUM', None)
-				pretend = options.get('pretend', False)
+
+		# convoluted, I know, but portage.settings does not exist in
+		# kwargs.get() when called from _emerge.main.clean_logs()
+		settings = kwargs.get('settings', getattr(portage, 'settings', {}))
+
+		options = kwargs.get('options', None)
+		if options:
+			num_of_days = options.get('NUM', None)
+			pretend = options.get('pretend', False)
 
 		clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
 		if clean_cmd:
