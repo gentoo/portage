@@ -4,8 +4,9 @@
 
 from __future__ import print_function
 
-from distutils.core import setup, Command
+from distutils.core import setup, Command, Extension
 from distutils.command.build import build
+from distutils.command.build_ext import build_ext as _build_ext
 from distutils.command.build_scripts import build_scripts
 from distutils.command.clean import clean
 from distutils.command.install import install
@@ -30,10 +31,13 @@ import sys
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_epydoc'.
 
+# Dictionary of scripts.  The structure is
+#   key   = location in filesystem to install the scripts
+#   value = list of scripts, path relative to top source directory
 x_scripts = {
 	'bin': [
 		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
-		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg', 'bin/repoman'
+		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg',
 	],
 	'sbin': [
 		'bin/archive-conf', 'bin/dispatch-conf', 'bin/emaint', 'bin/env-update',
@@ -41,6 +45,14 @@ x_scripts = {
 	],
 }
 
+# Dictionary custom modules written in C/C++ here.  The structure is
+#   key   = module name
+#   value = list of C/C++ source code, path relative to top source directory
+x_c_helpers = {
+	'portage.util.libc' : [
+		'src/portage_util_libc.c',
+	],
+}
 
 class x_build(build):
 	""" Build command with extra build_man call. """
@@ -144,7 +156,7 @@ class epydoc(Command):
 			'--url', self.distribution.get_url(),
 			'-qq', '--no-frames', '--show-imports',
 			'--exclude', 'portage.tests',
-			'_emerge', 'portage', 'repoman'],
+			'_emerge', 'portage'],
 			env = process_env)
 		os.remove('epydoc/api-objects.txt')
 
@@ -613,9 +625,28 @@ def get_manpages():
 				yield [os.path.join('$mandir', topdir, 'man%s' % g), mans]
 
 
+class build_ext(_build_ext):
+	user_options = _build_ext.user_options + [
+		('portage-ext-modules', None,
+		 "enable portage's C/C++ extensions (cross-compiling is not supported)"),
+	]
+
+	boolean_options = _build_ext.boolean_options + [
+		'portage-ext-modules',
+	]
+
+	def initialize_options(self):
+		_build_ext.initialize_options(self)
+		self.portage_ext_modules = None
+
+	def run(self):
+		if self.portage_ext_modules:
+			_build_ext.run(self)
+
+
 setup(
 	name = 'portage',
-	version = '2.2.28',
+	version = '2.3.3',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
@@ -636,8 +667,11 @@ setup(
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
+	ext_modules = [Extension(name=n, sources=m) for n, m in x_c_helpers.items()],
+
 	cmdclass = {
 		'build': x_build,
+		'build_ext': build_ext,
 		'build_man': build_man,
 		'build_scripts': x_build_scripts,
 		'build_scripts_bin': x_build_scripts_bin,

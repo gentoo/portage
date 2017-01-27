@@ -30,6 +30,7 @@ module_spec = {
 	'provides':{
 		'cvs-module': {
 			'name': "cvs",
+			'sourcefile': "cvs",
 			'class': "CVSSync",
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],

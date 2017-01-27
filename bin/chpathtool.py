@@ -89,7 +89,7 @@ def chpath_inplace(filename, is_text_file, old, new):
 		if not in_byte:
 			break
 
-		if in_byte == old[matched_byte_count]:
+		if in_byte == old[matched_byte_count:matched_byte_count+1]:
 			matched_byte_count += 1
 			if matched_byte_count == len_old:
 				modified = True

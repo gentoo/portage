@@ -57,14 +57,14 @@ else:
 
 noiselimit = 0
 
-def initialize_logger(level=logging.WARN):
+def initialize_logger(level=logging.WARNING):
 	"""Sets up basic logging of portage activities
 	Args:
 		level: the level to emit messages at ('info', 'debug', 'warning' ...)
 	Returns:
 		None
 	"""
-	logging.basicConfig(level=logging.WARN, format='[%(levelname)-4s] %(message)s')
+	logging.basicConfig(level=level, format='[%(levelname)-4s] %(message)s')
 
 def writemsg(mystr, noiselevel=0, fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
@@ -1286,7 +1286,7 @@ class atomic_ofstream(ObjectProxy):
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
 						encoding=_encodings['fs'], errors='strict'),
-						mode=mode, **portage._native_kwargs(kargs)))
+						mode=mode, **kargs))
 				return
 			except IOError as e:
 				if canonical_path == filename:
@@ -1794,7 +1794,7 @@ def find_updated_config_files(target_root, config_protect):
 
 			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
 				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see http://bugs.python.org/issue8513).
+				# path passed as bytes (see https://bugs.python.org/issue8513).
 				fullname = portage.process.find_binary(cmd[0])
 				if fullname is None:
 					raise portage.exception.CommandNotFound(cmd[0])

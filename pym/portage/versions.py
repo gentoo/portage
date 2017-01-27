@@ -1,5 +1,5 @@
 # versions.py -- core Portage functionality
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -128,7 +128,7 @@ def vercmp(ver1, ver2, silent=1):
 		positive number
 		>>> vercmp('1.0_p3','1.0_p3')
 		0
-	
+
 	@param pkg1: version to compare with (see ver_regexp in portage.versions.py)
 	@type pkg1: string (example: "2.1.2-r3")
 	@param pkg2: version to compare againts (see ver_regexp in portage.versions.py)
@@ -136,7 +136,7 @@ def vercmp(ver1, ver2, silent=1):
 	@rtype: None or float
 	@return:
 	1. positive if ver1 is greater than ver2
-	2. negative if ver1 is less than ver2 
+	2. negative if ver1 is less than ver2
 	3. 0 if ver1 equals ver2
 	4. None if ver1 or ver2 are invalid (see ver_regexp in portage.versions.py)
 	"""
@@ -146,7 +146,7 @@ def vercmp(ver1, ver2, silent=1):
 
 	match1 = ver_regexp.match(ver1)
 	match2 = ver_regexp.match(ver2)
-	
+
 	# checking that the versions are valid
 	if not match1 or not match1.groups():
 		if not silent:
@@ -162,7 +162,7 @@ def vercmp(ver1, ver2, silent=1):
 		return 1
 	elif match2.group(1) and not match1.group(1):
 		return -1
-	
+
 	# building lists of the version parts before the suffix
 	# first part is simple
 	list1 = [int(match1.group(2))]
@@ -226,7 +226,7 @@ def vercmp(ver1, ver2, silent=1):
 	# main version is equal, so now compare the _suffix part
 	list1 = match1.group(6).split("_")[1:]
 	list2 = match2.group(6).split("_")[1:]
-	
+
 	for i in range(0, max(len(list1), len(list2))):
 		# Implicit _p0 is given a value of -1, so that 1 < 1_p0
 		if len(list1) <= i:
@@ -292,7 +292,7 @@ def vercmp(ver1, ver2, silent=1):
 		r2 = r4
 	rval = (r1 > r2) - (r1 < r2)
 	return rval
-	
+
 def pkgcmp(pkg1, pkg2):
 	"""
 	Compare 2 package versions created in pkgsplit format.
@@ -309,10 +309,10 @@ def pkgcmp(pkg1, pkg2):
 	@param pkg2: package to compare againts
 	@type pkg2: list (example: ['test', '1.0', 'r1'])
 	@rtype: None or integer
-	@return: 
+	@return:
 		1. None if package names are not the same
 		2. 1 if pkg1 is greater than pkg2
-		3. -1 if pkg1 is less than pkg2 
+		3. -1 if pkg1 is less than pkg2
 		4. 0 if pkg1 equals pkg2
 	"""
 	if pkg1[0] != pkg2[0]:
@@ -339,7 +339,7 @@ def _pkgsplit(mypkg, eapi=None):
 		rev = '0'
 	rev = 'r' + rev
 
-	return  (m.group('pn'), m.group('ver'), rev) 
+	return  (m.group('pn'), m.group('ver'), rev)
 
 _cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
@@ -347,9 +347,9 @@ _missing_cat = 'null'
 def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
-	
+
 	@param mydata: Data to split
-	@type mydata: string 
+	@type mydata: string
 	@param silent: suppress error messages
 	@type silent: Boolean (integer)
 	@rype: list
@@ -384,6 +384,12 @@ class _pkg_str(_unicode):
 	Instances are typically created in dbapi.cp_list() or the Atom contructor,
 	and propagate from there. Generally, code that pickles these objects will
 	manually convert them to a plain unicode object first.
+
+	Instances of this class will have missing attributes for metadata that
+	has not been passed into the constructor. The missing attributes are
+	used to distinguish missing metadata values from undefined metadata values.
+	For example, the repo attribute will be missing if the 'repository' key
+	is missing from the metadata dictionary.
 	"""
 
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
@@ -474,7 +480,6 @@ class _pkg_str(_unicode):
 			return self._stable
 		except AttributeError:
 			try:
-				metadata = self._metadata
 				settings = self._settings
 			except AttributeError:
 				raise AttributeError('stable')

@@ -109,6 +109,16 @@ pkg_preinst() {
 				"LICENSE": "GPL-2",
 				"MISC_CONTENT": install_something,
 			},
+			"dev-libs/C-1": {
+				"EAPI" : "6",
+				"KEYWORDS": "~x86",
+				"RDEPEND": "dev-libs/D[flag]",
+			},
+			"dev-libs/D-1": {
+				"EAPI" : "6",
+				"KEYWORDS": "~x86",
+				"IUSE" : "flag",
+			},
 			"virtual/foo-0": {
 				"EAPI" : "5",
 				"KEYWORDS": "x86",
@@ -153,14 +163,12 @@ pkg_preinst() {
 			(
 				"dev-libs/A",
 				{
-					"herd" : "base-system",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
 			(
 				"dev-libs/B",
 				{
-					"herd" : "no-herd",
 					"flags" : "<flag name='flag'>Description of how USE='flag' affects this package</flag>",
 				},
 			),
@@ -303,6 +311,11 @@ pkg_preinst() {
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 
+			emerge_cmd + ("--autounmask-continue", "dev-libs/C",),
+			# Verify that the above --autounmask-continue command caused
+			# USE=flag to be applied correctly to dev-libs/D.
+			portageq_cmd + ("match", eroot, "dev-libs/D[flag]"),
+
 			# Test cross-prefix usage, including chpathtool for binpkgs.
 			({"EPREFIX" : cross_prefix},) + \
 				emerge_cmd + ("--usepkgonly", "dev-libs/A"),
@@ -369,6 +382,7 @@ pkg_preinst() {
 			"PORTAGE_PYTHON" : portage_python,
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PORTAGE_TMPDIR" : portage_tmpdir,
+			"PORT_LOGDIR" : portage_tmpdir,
 			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
 			"PYTHONPATH" : pythonpath,
 			"__PORTAGE_TEST_PATH_OVERRIDE" : fake_bin,

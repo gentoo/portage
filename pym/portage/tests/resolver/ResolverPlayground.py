@@ -47,8 +47,7 @@ class ResolverPlayground(object):
 	metadata_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
-<herd>%(herd)s</herd>
-<maintainer>
+<maintainer type="person">
 <email>maintainer-needed@gentoo.org</email>
 <description>Description of the maintainership</description>
 </maintainer>
@@ -380,27 +379,6 @@ class ResolverPlayground(object):
 
 				#Create profile symlink
 				os.symlink(sub_profile_dir, os.path.join(user_config_dir, "make.profile"))
-
-				#Create minimal herds.xml
-				herds_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE herds SYSTEM "http://www.gentoo.org/dtd/herds.dtd">
-<?xml-stylesheet href="/xsl/herds.xsl" type="text/xsl" ?>
-<?xml-stylesheet href="/xsl/guide.xsl" type="text/xsl" ?>
-<herds>
-<herd>
-  <name>base-system</name>
-  <email>base-system@gentoo.org</email>
-  <description>Core system utilities and libraries.</description>
-  <maintainer>
-    <email>base-system@gentoo.orgg</email>
-    <name>Base System</name>
-    <role>Base System Maintainer</role>
-  </maintainer>
-</herd>
-</herds>
-"""
-				with open(os.path.join(metadata_dir, "metadata.xml"), 'w') as f:
-					f.write(herds_xml)
 
 		make_conf = {
 			"ACCEPT_KEYWORDS": "x86",

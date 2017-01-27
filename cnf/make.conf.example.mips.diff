@@ -11,7 +11,7 @@
 +
 +CHOST="mips-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +46,15 @@

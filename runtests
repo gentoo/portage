@@ -42,7 +42,7 @@ class Colors(object):
 	_COLORS_YES = ('y', 'yes', 'true')
 	_COLORS_NO = ('n', 'no', 'false')
 
-	GOOD = BAD = NORMAL = ''
+	WARN = GOOD = BAD = NORMAL = ''
 
 	def __init__(self, colorize=None):
 		if colorize is None:
@@ -63,6 +63,7 @@ class Colors(object):
 				raise ValueError('--colors is invalid: %s' % colorize)
 
 		if colorize:
+			self.WARN = '\033[1;33m'
 			self.GOOD = '\033[1;32m'
 			self.BAD = '\033[1;31m'
 			self.NORMAL = '\033[0m'
@@ -135,11 +136,14 @@ def main(argv):
 			if os.access(prog, os.X_OK):
 				print('%sTesting with Python %s...%s' %
 					(colors.GOOD, ver, colors.NORMAL))
-				statuses.append(subprocess.call(cmd))
+				statuses.append((ver, subprocess.call(cmd)))
 			elif not ignore_missing:
 				print('%sCould not find requested Python %s%s' %
 					(colors.BAD, ver, colors.NORMAL))
-				statuses.append(1)
+				statuses.append((ver, 1))
+			else:
+				print('%sSkip Python %s...%s' %
+					(colors.WARN, ver, colors.NORMAL))
 			print()
 	finally:
 		if tempdir is not None:
@@ -154,7 +158,9 @@ def main(argv):
 	width = 10
 	header = '| %-*s | %s' % (width, 'Version', 'Status')
 	print('%s\n|%s' % (header, '-' * (len(header) - 1)))
-	for ver, status in zip(pyversions, statuses):
+	exit_status = 0
+	for ver, status in statuses:
+		exit_status += status
 		if status:
 			color = colors.BAD
 			msg = 'FAIL'
@@ -163,7 +169,7 @@ def main(argv):
 			msg = 'PASS'
 		print('| %s%-*s%s | %s%s%s' %
 			(color, width, ver, colors.NORMAL, color, msg, colors.NORMAL))
-	exit(sum(statuses))
+	exit(exit_status)
 
 
 if __name__ == '__main__':

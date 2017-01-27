@@ -18,8 +18,8 @@ if sys.hexversion >= 0x3000000:
 
 class database(fs_template.FsBased):
 
-	validation_chf = 'mtime'
-	chf_types = ('mtime', 'md5')
+	validation_chf = 'md5'
+	chf_types = ('md5', 'mtime')
 
 	autocommits = False
 	synchronous = False

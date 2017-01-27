@@ -48,7 +48,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 				eout.ebegin(_("checking auxfile checksums ;-)"))
 				mf.checkTypeHashes("AUX", hash_filter=hash_filter)
 				eout.eend(0)
-			if mf.fhashdict.get("MISC"):
+			if mf.strict_misc_digests and mf.fhashdict.get("MISC"):
 				eout.ebegin(_("checking miscfile checksums ;-)"))
 				mf.checkTypeHashes("MISC", ignoreMissingFiles=True,
 					hash_filter=hash_filter)

@@ -1,4 +1,4 @@
-# Copyright 1998-2011 Gentoo Foundation
+# Copyright 1998-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -231,7 +231,7 @@ class LinkageMapMachO(object):
 					continue
 				plibs.update((x, cpv) for x in items)
 		if plibs:
-			args = [EPREFIX + "/usr/bin/scanmacho", "-qF", "%a;%F;%S;%n"]
+			args = [os.path.join(EPREFIX or "/", "usr/bin/scanmacho"), "-qF", "%a;%F;%S;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 				for x in plibs)
 			try:

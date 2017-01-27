@@ -11,7 +11,7 @@
 +
 +CHOST="powerpc64-unknown-linux-gnu"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,9 +46,38 @@

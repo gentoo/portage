@@ -167,7 +167,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	settings['EBUILD_PHASE'] = phase
 	try:
-		return spawn(cmd, settings, **portage._native_kwargs(kwargs))
+		return spawn(cmd, settings, **kwargs)
 	finally:
 		settings.pop('EBUILD_PHASE', None)
 
@@ -481,13 +481,13 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			possible_libexecdirs = (libdir, "lib", "libexec")
 			masquerades = []
 			if distcc:
-				masquerades.append("distcc")
+				masquerades.append(("distcc", "distcc"))
 			if icecream:
-				masquerades.append("icecc")
+				masquerades.append(("icecream", "icecc"))
 			if ccache:
-				masquerades.append("ccache")
+				masquerades.append(("ccache", "ccache"))
 
-			for m in masquerades:
+			for feature, m in masquerades:
 				for l in possible_libexecdirs:
 					p = os.path.join(os.sep, eprefix_lstrip,
 							"usr", l, m, "bin")
@@ -497,6 +497,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				else:
 					writemsg(("Warning: %s requested but no masquerade dir"
 						+ "can be found in /usr/lib*/%s/bin\n") % (m, m))
+					mysettings.features.remove(feature)
 
 		if 'MAKEOPTS' not in mysettings:
 			nproc = get_cpu_count()
@@ -1708,14 +1709,14 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	try:
 		if keywords.get("returnpid"):
 			return spawn_func(mystring, env=mysettings.environ(),
-				**portage._native_kwargs(keywords))
+				**keywords)
 
 		proc = EbuildSpawnProcess(
 			background=False, args=mystring,
 			scheduler=SchedulerInterface(portage._internal_caller and
 				global_event_loop() or EventLoop(main=False)),
 			spawn_func=spawn_func,
-			settings=mysettings, **portage._native_kwargs(keywords))
+			settings=mysettings, **keywords)
 
 		proc.start()
 		proc.wait()
@@ -1946,8 +1947,8 @@ def _check_build_log(mysettings, out=None):
 			"are limited to system packages "
 			"for which it is impossible to run "
 			"autotools during stage building. "
-			"See http://www.gentoo.org/p"
-			"roj/en/qa/autofailure.xml for more information."),
+			"See https://wiki.gentoo.org/wiki/Project:Quality_Assurance/Autotools_failures"
+            " for more information."),
 			wrap_width))
 		_eqawarn(msg)
 
@@ -2086,7 +2087,7 @@ def _postinst_bsdflags(mysettings):
 def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
-	user or group are automatically mapped to PORTAGE_INST_UID and
+	user and group are automatically mapped to PORTAGE_INST_UID and
 	PORTAGE_INST_GID if necessary. The chown system call may clear
 	S_ISUID and S_ISGID bits, so those bits are restored if
 	necessary.
@@ -2232,8 +2233,11 @@ def _post_src_install_uid_fix(mysettings, out):
 					mystat.st_ino not in counted_inodes:
 					counted_inodes.add(mystat.st_ino)
 					size += mystat.st_size
-				if mystat.st_uid != portage_uid and \
-					mystat.st_gid != portage_gid:
+
+				# Only remap the UID/GID if both match the portage user,
+				# in order to avoid interference with ebuilds that install
+				# files with portage group permissions (see bug 600804).
+				if (mystat.st_uid, mystat.st_gid) != (portage_uid, portage_gid):
 					continue
 				myuid = -1
 				mygid = -1

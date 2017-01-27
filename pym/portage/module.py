@@ -7,6 +7,8 @@ from __future__ import print_function
 from portage import os
 from portage.exception import PortageException
 from portage.cache.mappings import ProtectedDict
+from portage.localization import _
+from portage.util import writemsg
 
 
 class InvalidModuleName(PortageException):
@@ -46,7 +48,14 @@ class Module(object):
 		for submodule in self.module_spec['provides']:
 			kid = self.module_spec['provides'][submodule]
 			kidname = kid['name']
-			kid['module_name'] = '.'.join([mod_name, self.name])
+			try:
+				kid['module_name'] = '.'.join([mod_name, kid['sourcefile']])
+			except KeyError:
+				kid['module_name'] = '.'.join([mod_name, self.name])
+				msg = ("%s module's module_spec is old, missing attribute: "
+						"'sourcefile'.  Backward compatibility may be "
+						"removed in the future.\nFile: %s\n")
+				writemsg(_(msg) % (self.name, self._module.__file__))
 			kid['is_imported'] = False
 			self.kids[kidname] = kid
 			self.kids_names.append(kidname)
@@ -81,6 +90,7 @@ class Modules(object):
 	def __init__(self, path, namepath):
 		self._module_path = path
 		self._namepath = namepath
+		self.parents = []
 		self._modules = self._get_all_modules()
 		self.modules = ProtectedDict(self._modules)
 		self.module_names = sorted(self._modules)
@@ -111,10 +121,11 @@ class Modules(object):
 				kid = new_module.kids[module_name]
 				kid['parent'] = new_module
 				kids[kid['name']] = kid
+			self.parents.append(entry)
 		return kids
 
 	def get_module_names(self):
-		"""Convienence function to return the list of installed modules
+		"""Convenience function to return the list of installed modules
 		available
 
 		@rtype: list

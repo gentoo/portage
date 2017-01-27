@@ -30,7 +30,7 @@
 
 from __future__ import unicode_literals
 
-__all__ = ('MetaDataXML',)
+__all__ = ('MetaDataXML', 'parse_metadata_use')
 
 import sys
 
@@ -48,7 +48,7 @@ else:
 		raise
 	except (ImportError, SystemError, RuntimeError, Exception):
 		# broken or missing xml support
-		# http://bugs.python.org/issue14988
+		# https://bugs.python.org/issue14988
 		import xml.etree.ElementTree as etree
 
 try:
@@ -61,7 +61,12 @@ except (ImportError, SystemError, RuntimeError, Exception):
 import re
 import xml.etree.ElementTree
 from portage import _encodings, _unicode_encode
-from portage.util import unique_everseen
+from portage.util import cmp_sort_key, unique_everseen
+
+if sys.hexversion >= 0x3000000:
+	# pylint: disable=W0622
+	basestring = str
+
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -85,7 +90,7 @@ class _Maintainer(object):
 	@type restrict: str or None
 	@ivar restrict: e.g. &gt;=portage-2.2 means only maintains versions
 		of Portage greater than 2.2. Should be DEPEND string with < and >
-		converted to &lt; and &gt; respectively. 
+		converted to &lt; and &gt; respectively.
 	@type status: str or None
 	@ivar status: If set, either 'active' or 'inactive'. Upstream only.
 	"""
@@ -180,7 +185,7 @@ class _Upstream(object):
 			lang = elem.get('lang')
 			result.append((elem.text, lang))
 		return result
-	
+
 	def upstream_maintainers(self):
 		"""Retrieve upstream maintainer information from xml node."""
 		return [_Maintainer(m) for m in self.node.findall('maintainer')]
@@ -424,3 +429,77 @@ class MetaDataXML(object):
 		maintainers = list(unique_everseen(maintainers))
 		maint_str = " ".join(maintainers)
 		return maint_str
+
+# lang with higher value is preferred
+_lang_pref = {
+	""  :  0,
+	"en":  1,
+}
+
+
+def _cmp_lang(a, b):
+	a_score = _lang_pref.get(a.get("lang", ""), -1)
+	b_score = _lang_pref.get(b.get("lang", ""), -1)
+
+	return a_score - b_score
+
+
+def parse_metadata_use(xml_tree):
+	"""
+	Records are wrapped in XML as per GLEP 56
+	returns a dict with keys constisting of USE flag names and values
+	containing their respective descriptions
+	"""
+	uselist = {}
+
+	usetags = xml_tree.findall("use")
+	if not usetags:
+		return uselist
+
+	# Sort by language preference in descending order.
+	usetags.sort(key=cmp_sort_key(_cmp_lang), reverse=True)
+
+	# It's possible to have multiple 'use' elements.
+	for usetag in usetags:
+		flags = usetag.findall("flag")
+		if not flags:
+			# DTD allows use elements containing no flag elements.
+			continue
+
+		for flag in flags:
+			pkg_flag = flag.get("name")
+			if pkg_flag is not None:
+				flag_restrict = flag.get("restrict")
+
+				# Descriptions may exist for multiple languages, so
+				# ignore all except the first description found for a
+				# particular value of restrict (see bug 599060).
+				try:
+					uselist[pkg_flag][flag_restrict]
+				except KeyError:
+					pass
+				else:
+					continue
+
+				# emulate the Element.itertext() method from python-2.7
+				inner_text = []
+				stack = []
+				stack.append(flag)
+				while stack:
+					obj = stack.pop()
+					if isinstance(obj, basestring):
+						inner_text.append(obj)
+						continue
+					if isinstance(obj.text, basestring):
+						inner_text.append(obj.text)
+					if isinstance(obj.tail, basestring):
+						stack.append(obj.tail)
+					stack.extend(reversed(obj))
+
+				if flag.get("name") not in uselist:
+					uselist[flag.get("name")] = {}
+
+				# (flag_restrict can be None)
+				uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
+	return uselist
+

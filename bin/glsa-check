@@ -7,6 +7,8 @@ from __future__ import print_function
 import argparse
 import sys
 import codecs
+from functools import reduce
+import operator
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
@@ -14,6 +16,7 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 import portage
 portage._internal_caller = True
 from portage import os
+from portage.glsa import match
 from portage.output import green, red, nocolor, white
 
 __program__ = "glsa-check"
@@ -176,7 +179,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 		if verbose:
 			access = ("[%-8s] " % myglsa.access)
 		else:
-			access=""
+			access = ""
 
 		fd1.write(color(myglsa.nr) + " " + color(status) + " " + color(access) + myglsa.title + " (")
 		if not verbose:
@@ -185,11 +188,15 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 			if len(myglsa.packages) > 3:
 				fd1.write("... ")
 		else:
-			for pkg in myglsa.packages:
-				mylist = vardb.match(pkg)
+			for cpv in myglsa.packages.keys():
+				pkg = myglsa.packages[cpv]
+				for path in pkg:
+					v_installed = reduce(operator.add, [match(v, vardb) for v in path["vul_atoms"]], [])
+					u_installed = reduce(operator.add, [match(u, vardb) for u in path["unaff_atoms"]], [])
+				mylist = sorted(set(v_installed).difference(set(u_installed)))
 				if len(mylist) > 0:
-					pkg = color(" ".join(mylist))
-				fd1.write(" " + pkg + " ")
+					cpv = color(" ".join(mylist))
+				fd1.write(" " + cpv + " ")
 
 		fd1.write(")")
 		if list_cve:
@@ -230,7 +237,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 						sys.stderr.write(emergecmd+"\n")
 					exitcode = os.system(emergecmd)
 					# system() returns the exitcode in the high byte of a 16bit integer
-					if exitcode >= 1<<8:
+					if exitcode >= 1 << 8:
 						exitcode >>= 8
 					if exitcode:
 						sys.exit(exitcode)

@@ -1,11 +1,11 @@
-.TH "EMAINT" "1" "May 2015" "Portage VERSION" "Portage"
+.TH "EMAINT" "1" "Jan 2017" "Portage VERSION" "Portage"
 .SH NAME
-emaint \- performs package managment related system health checks and maintenance
+emaint \- performs package management related system health checks and maintenance
 .SH SYNOPSIS
 .BR emaint
 [\fIoptions\fR]
 [\fBall\fR | \fBbinhost\fR | \fBcleanresume\fR | \
-\fBmerges\fR | \fBmovebin\fR | \fBmoveinst\fR | \fBworld\fR]
+\fBmerges\fR | \fBmovebin\fR | \fBmoveinst\fR | \fBsync\fR | \fBworld\fR]
 .SH DESCRIPTION
 The emaint program provides a command line interface to package
 management health checks and maintenance.
@@ -85,7 +85,7 @@ deleted.
 .SH OPTIONS sync command only
 .TP
 .B \-a, \-\-auto
-Sync repositories which have its auto\-sync setting set yes, true.
+Sync repositories which have their auto\-sync setting set yes, true.
 .TP
 .B \-A, \-\-allrepos
 Sync all repositories which have a sync\-uri specified.
@@ -99,7 +99,7 @@ specified multiple times, in order to sync multiple submodules.
 Currently, this option has no effect for sync protocols other
 than rsync.
 .SH "REPORTING BUGS"
-Please report bugs via http://bugs.gentoo.org/
+Please report bugs via https://bugs.gentoo.org/
 .SH AUTHORS
 .nf
 Pavel Kazakov <nullishzero@gentoo.org>

@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -97,8 +97,22 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-def action_build(settings, trees, mtimedb,
-	myopts, myaction, myfiles, spinner):
+def action_build(emerge_config, trees=DeprecationWarning,
+	mtimedb=DeprecationWarning, myopts=DeprecationWarning,
+	myaction=DeprecationWarning, myfiles=DeprecationWarning, spinner=None):
+
+	if not isinstance(emerge_config, _emerge_config):
+		warnings.warn("_emerge.actions.action_build() now expects "
+			"an _emerge_config instance as the first parameter",
+			DeprecationWarning, stacklevel=2)
+		emerge_config = load_emerge_config(
+			action=myaction, args=myfiles, trees=trees, opts=myopts)
+		adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	settings, trees, mtimedb = emerge_config
+	myopts = emerge_config.opts
+	myaction = emerge_config.action
+	myfiles = emerge_config.args
 
 	if '--usepkgonly' not in myopts:
 		old_tree_timestamp_warn(settings['PORTDIR'], settings)
@@ -327,6 +341,11 @@ def action_build(settings, trees, mtimedb,
 			root_config = trees[settings['EROOT']]['root_config']
 			display_missing_pkg_set(root_config, e.value)
 			return 1
+
+		if success and mydepgraph.need_config_reload():
+			load_emerge_config(emerge_config=emerge_config)
+			adjust_configs(emerge_config.opts, emerge_config.trees)
+			settings, trees, mtimedb = emerge_config
 
 		if "--autounmask-only" in myopts:
 			mydepgraph.display_problems()
@@ -1956,7 +1975,10 @@ def action_search(root_config, myopts, myfiles, spinner):
 			spinner, "--searchdesc" in myopts,
 			"--quiet" not in myopts, "--usepkg" in myopts,
 			"--usepkgonly" in myopts,
-			search_index = myopts.get("--search-index", "y") != "n")
+			search_index=myopts.get("--search-index", "y") != "n",
+			search_similarity=myopts.get("--search-similarity"),
+			fuzzy=myopts.get("--fuzzy-search") != "n",
+			)
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
@@ -1979,11 +2001,9 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 	syncer = SyncRepos(emerge_config)
 
 
-	retvals = syncer.auto_sync(options={'return-messages': False})
+	success, msgs = syncer.auto_sync(options={'return-messages': False})
 
-	if retvals:
-		return retvals[0][1]
-	return os.EX_OK
+	return os.EX_OK if success else 1
 
 
 def action_uninstall(settings, trees, ldpath_mtimes,
@@ -2379,13 +2399,19 @@ def load_emerge_config(emerge_config=None, **kargs):
 		if v and v.strip():
 			kwargs[k] = v
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
-				**portage._native_kwargs(kwargs))
+				**kwargs)
 
 	for root_trees in emerge_config.trees.values():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
-		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
+		root_config = RootConfig(settings, root_trees, setconfig)
+		if "root_config" in root_trees:
+			# Propagate changes to the existing instance,
+			# which may be referenced by a depgraph.
+			root_trees["root_config"].update(root_config)
+		else:
+			root_trees["root_config"] = root_config
 
 	target_eroot = emerge_config.trees._target_eroot
 	emerge_config.target_config = \
@@ -3267,10 +3293,7 @@ def run_action(emerge_config):
 				except OSError:
 					writemsg("Please install eselect to use this feature.\n",
 							noiselevel=-1)
-		retval = action_build(emerge_config.target_config.settings,
-			emerge_config.trees, emerge_config.target_config.mtimedb,
-			emerge_config.opts, emerge_config.action,
-			emerge_config.args, spinner)
+		retval = action_build(emerge_config, spinner=spinner)
 		post_emerge(emerge_config.action, emerge_config.opts,
 			emerge_config.args, emerge_config.target_config.root,
 			emerge_config.trees, emerge_config.target_config.mtimedb, retval)

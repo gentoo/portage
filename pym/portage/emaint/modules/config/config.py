@@ -36,7 +36,8 @@ class CleanConfig(object):
 			if onProgress:
 				onProgress(maxval, i+1)
 				i += 1
-		return self._format_output(messages)
+		msgs = self._format_output(messages)
+		return (True, msgs)
 
 	def fix(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
@@ -65,7 +66,8 @@ class CleanConfig(object):
 				i += 1
 		if modified:
 			writedict(configs, self.target)
-		return self._format_output(messages, True)
+		msgs = self._format_output(messages, True)
+		return (True, msgs)
 
 	def _format_output(self, messages=[], cleaned=False):
 		output = []

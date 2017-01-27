@@ -14,6 +14,7 @@ module_spec = {
 	'provides':{
 		'rsync-module': {
 			'name': "rsync",
+			'sourcefile': "rsync",
 			'class': "RsyncSync",
 			'description': doc,
 			'functions': ['sync', 'new', 'exists'],

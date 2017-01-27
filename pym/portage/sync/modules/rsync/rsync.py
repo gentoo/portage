@@ -438,7 +438,7 @@ class RsyncSync(NewBase):
 
 				pids.extend(portage.process.spawn(
 					command, returnpid=True,
-					**portage._native_kwargs(self.spawn_kwargs)))
+					**self.spawn_kwargs))
 				exitcode = os.waitpid(pids[0], 0)[1]
 				if self.usersync_uid is not None:
 					portage.util.apply_permissions(tmpservertimestampfile,
@@ -522,7 +522,7 @@ class RsyncSync(NewBase):
 				exitcode = None
 				try:
 					exitcode = portage.process.spawn(command,
-						**portage._native_kwargs(self.spawn_kwargs))
+						**self.spawn_kwargs)
 				finally:
 					if exitcode is None:
 						# interrupted

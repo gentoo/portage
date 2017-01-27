@@ -29,10 +29,10 @@ def clean_logs(settings):
 		return
 
 	cleanlogs = CleanLogs()
-	errors = cleanlogs.clean(settings=settings)
-	if errors:
+	returncode, msgs = cleanlogs.clean(settings=settings)
+	if not returncode:
 		out = portage.output.EOutput()
-		for msg in errors:
+		for msg in msgs:
 			out.eerror(msg)
 
 def display_news_notification(root_config, myopts):

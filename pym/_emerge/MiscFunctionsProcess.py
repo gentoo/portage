@@ -40,8 +40,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		# think this is a real phase.
 		phase_backup = self.settings.pop("EBUILD_PHASE", None)
 		try:
-			return spawn(" ".join(args), self.settings,
-				**portage._native_kwargs(kwargs))
+			return spawn(" ".join(args), self.settings, **kwargs)
 		finally:
 			if phase_backup is not None:
 				self.settings["EBUILD_PHASE"] = phase_backup

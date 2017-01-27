@@ -11,7 +11,13 @@ openrc_check() {
 			[[ ! -e ${i} ]] && continue
 			if [[ ${d} == /etc/init.d && ${i} != *.sh ]] ; then
 				# skip non-shell-script for bug #451386
-				[[ $(head -n1 "${i}") =~ ^#!.*[[:space:]/](runscript|sh)$ ]] || continue
+				[[ $(head -n1 "${i}") =~ ^#!.*[[:space:]/](openrc-run|runscript|sh)$ ]] || continue
+				if [[ $(head -n1 "${i}") == '#!/sbin/runscript' ]] ; then
+					eqawarn "QA Notice: #!/sbin/runscript is deprecated, use #!/sbin/openrc-run instead:"
+					while read -r ;
+						do eqawarn "   ${REPLY}"
+					done <<< "${i//${ED}}"
+				fi
 			fi
 			bash -n "${i}" || die "The init.d file has syntax errors: ${i}"
 		done

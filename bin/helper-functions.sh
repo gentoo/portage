@@ -20,12 +20,17 @@ makeopts_jobs() {
 __multijob_init() {
 	# Setup a pipe for children to write their pids to when they finish.
 	# We have to allocate two fd's because POSIX has undefined behavior
-	# when you open a FIFO for simultaneous read/write. #487056
+	# when using one single fd for both read and write. #487056
+	# However, opening an fd for read or write only will block until the
+	# opposite end is opened as well. Thus we open the first fd for both
+	# read and write to not block ourselve, but use it for reading only.
+	# The second fd really is opened for write only, as Cygwin supports
+	# just one single read fd per FIFO. #583962
 	local pipe=$(mktemp -t multijob.XXXXXX)
 	rm -f "${pipe}"
 	mkfifo -m 600 "${pipe}"
-	__redirect_alloc_fd mj_write_fd "${pipe}"
 	__redirect_alloc_fd mj_read_fd "${pipe}"
+	__redirect_alloc_fd mj_write_fd "${pipe}" '>'
 	rm -f "${pipe}"
 
 	# See how many children we can fork based on the user's settings.

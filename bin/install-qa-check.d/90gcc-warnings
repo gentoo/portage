@@ -81,8 +81,10 @@ gcc_warn_check() {
 		local grep_cmd=grep
 		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
 
-		# force C locale to work around slow unicode locales #160234
-		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
+		# Force C locale to work around slow multibyte locales. #160234
+		# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
+		# binary when we run in the C locale.
+		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
 		if [[ -n ${f} ]] ; then
 			abort="yes"
 			# for now, don't make this fatal (see bug #337031)
@@ -96,8 +98,8 @@ gcc_warn_check() {
 				eerror
 				eerror "${f}"
 				eerror
-				eerror " Please file a bug about this at http://bugs.gentoo.org/"
-				eerror " with the maintaining herd of the package."
+				eerror " Please file a bug about this at https://bugs.gentoo.org/"
+				eerror " with the maintainer of the package."
 				eerror
 			else
 				__vecho -ne '\n'
@@ -134,8 +136,8 @@ gcc_warn_check() {
 				eerror
 				eerror "${f}"
 				eerror
-				eerror " Please file a bug about this at http://bugs.gentoo.org/"
-				eerror " with the maintaining herd of the package."
+				eerror " Please file a bug about this at https://bugs.gentoo.org/"
+				eerror " with the maintainer of the package."
 				eerror
 			else
 				__vecho -ne '\n'

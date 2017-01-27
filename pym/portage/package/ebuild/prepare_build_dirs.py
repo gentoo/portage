@@ -154,12 +154,10 @@ def _prepare_features_dirs(mysettings):
 
 	features_dirs = {
 		"ccache":{
-			"path_dir": EPREFIX+"/usr/%s/ccache/bin" % (libdir,),
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
-			"path_dir": EPREFIX+"/usr/%s/distcc/bin" % (libdir,),
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
@@ -180,10 +178,6 @@ def _prepare_features_dirs(mysettings):
 				basedir = kwargs["default_dir"]
 				mysettings[kwargs["basedir_var"]] = basedir
 			try:
-				path_dir = kwargs["path_dir"]
-				if not os.path.isdir(path_dir):
-					raise DirectoryNotFound(path_dir)
-
 				mydirs = [mysettings[kwargs["basedir_var"]]]
 				if "subdirs" in kwargs:
 					for subdir in kwargs["subdirs"]:

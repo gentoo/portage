@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -431,6 +431,7 @@ class _dynamic_depgraph_config(object):
 		self._slot_operator_replace_installed = backtrack_parameters.slot_operator_replace_installed
 		self._prune_rebuilds = backtrack_parameters.prune_rebuilds
 		self._need_restart = False
+		self._need_config_reload = False
 		# For conditions that always require user intervention, such as
 		# unsatisfied REQUIRED_USE (currently has no autounmask support).
 		self._skip_restart = False
@@ -438,6 +439,7 @@ class _dynamic_depgraph_config(object):
 
 		self._buildpkgonly_deps_unsatisfied = False
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
+		self._displayed_autounmask = False
 		self._success_without_autounmask = False
 		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
@@ -1042,7 +1044,14 @@ class depgraph(object):
 			writemsg(str(pkg.slot_atom), noiselevel=-1)
 			if pkg.root_config.settings["ROOT"] != "/":
 				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
-			writemsg("\n", noiselevel=-1)
+			writemsg("\n\n", noiselevel=-1)
+
+			selected_pkg = next(self._dynamic_config._package_tracker.match(
+				pkg.root, pkg.slot_atom), None)
+
+			writemsg("  selected: %s\n" % (selected_pkg,), noiselevel=-1)
+			writemsg("  skipped: %s (see unsatisfied dependency below)\n"
+				% (pkg,), noiselevel=-1)
 
 			for parent, root, atom in parent_atoms:
 				self._show_unsatisfied_dep(root, atom, myparent=parent)
@@ -1440,10 +1449,7 @@ class depgraph(object):
 						continue
 
 					for parent, atom in self._dynamic_config._parent_atoms.get(other, []):
-						atom_set = InternalPackageSet(
-							initial_atoms=(atom,), allow_repo=True)
-						if not atom_set.findAtomForPackage(pkg,
-							modified_use=self._pkg_use_enabled(pkg)):
+						if not atom.match(pkg.with_use(self._pkg_use_enabled(pkg))):
 							self._dynamic_config._conflict_missed_update[pkg].setdefault(
 								"slot conflict", set())
 							self._dynamic_config._conflict_missed_update[pkg]["slot conflict"].add(
@@ -1822,6 +1828,15 @@ class depgraph(object):
 						# necessarily relevant.
 						continue
 
+					if (not self._too_deep(parent.depth) and
+						not self._frozen_config.excluded_pkgs.
+						findAtomForPackage(parent,
+						modified_use=self._pkg_use_enabled(parent)) and
+						self._upgrade_available(parent)):
+						# This parent may be irrelevant, since an
+						# update is available (see bug 584626).
+						continue
+
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
 				if not atom_set.findAtomForPackage(candidate_pkg,
@@ -2112,6 +2127,18 @@ class depgraph(object):
 				set()).update(reinstalls)
 
 		self._dynamic_config._need_restart = True
+
+	def _upgrade_available(self, pkg):
+		"""
+		Detect cases where an upgrade of the given package is available
+		within the same slot.
+		"""
+		for available_pkg in self._iter_similar_available(pkg,
+			pkg.slot_atom):
+			if available_pkg > pkg:
+				return True
+
+		return False
 
 	def _downgrade_probe(self, pkg):
 		"""
@@ -4158,10 +4185,29 @@ class depgraph(object):
 			self._dynamic_config._needed_license_changes) :
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
+			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
+				"--pretend" not in self._frozen_config.myopts):
+				# This will return false if it fails or if the user
+				# aborts via --ask.
+				if self._display_autounmask(autounmask_continue=True):
+					self._apply_autounmask_continue_state()
+					self._dynamic_config._need_config_reload = True
+					return True, myfavorites
 			return False, myfavorites
 
 		# We're true here unless we are missing binaries.
 		return (True, myfavorites)
+
+	def _apply_autounmask_continue_state(self):
+		"""
+		Apply autounmask changes to Package instances, so that their
+		state will be consistent configuration file changes.
+		"""
+		for node in self._dynamic_config._serialized_tasks_cache:
+			if isinstance(node, Package):
+				effective_use = self._pkg_use_enabled(node)
+				if effective_use != node.use.enabled:
+					node._metadata['USE'] = ' '.join(effective_use)
 
 	def _apply_parent_use_changes(self):
 		"""
@@ -4175,8 +4221,7 @@ class depgraph(object):
 				pargs, kwargs = item
 				kwargs = kwargs.copy()
 				kwargs['collect_use_changes'] = True
-				if not self._show_unsatisfied_dep(*pargs,
-					**portage._native_kwargs(kwargs)):
+				if not self._show_unsatisfied_dep(*pargs, **kwargs):
 					remaining_items.append(item)
 			if len(remaining_items) != len(self._dynamic_config._unsatisfied_deps_for_display):
 				self._dynamic_config._unsatisfied_deps_for_display = remaining_items
@@ -4327,8 +4372,7 @@ class depgraph(object):
 		not been scheduled for replacement.
 		"""
 		kwargs["trees"] = self._dynamic_config._graph_trees
-		return self._select_atoms_highest_available(*pargs,
-			**portage._native_kwargs(kwargs))
+		return self._select_atoms_highest_available(*pargs, **kwargs)
 
 	def _select_atoms_highest_available(self, root, depstring,
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
@@ -4413,7 +4457,11 @@ class depgraph(object):
 				# _UNREACHABLE_DEPTH for complete mode.
 				virt_depth = parent.depth
 
-			chosen_atom_ids = frozenset(id(atom) for atom in mycheck[1])
+			chosen_atom_ids = frozenset(chain(
+				(id(atom) for atom in mycheck[1]),
+				(id(atom._orig_atom) for atom in mycheck[1]
+					if hasattr(atom, '_orig_atom')),
+			))
 			selected_atoms = OrderedDict()
 			node_stack = [(parent, None, None)]
 			traversed_nodes = set()
@@ -5126,9 +5174,9 @@ class depgraph(object):
 					break
 
 			writemsg("\nemerge: there are no %s to satisfy " %
-                ("binary packages" if
-                 self._frozen_config.myopts.get("--usepkgonly", "y") == True
-                 else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
+				("binary packages" if
+				self._frozen_config.myopts.get("--usepkgonly", "y") == True
+				else "ebuilds") + green(xinfo) + ".\n", noiselevel=-1)
 			if isinstance(myparent, AtomArg) and \
 				not cp_exists and \
 				self._frozen_config.myopts.get(
@@ -6027,8 +6075,15 @@ class depgraph(object):
 					# will always end with a break statement below
 					# this point.
 					if find_existing_node:
-						e_pkg = next(self._dynamic_config._package_tracker.match(
-							root, pkg.slot_atom, installed=False), None)
+						# Use reversed iteration in order to get
+						# descending order here, so that the highest
+						# version involved in a slot conflict is
+						# selected. This is needed for correct operation
+						# of conflict_downgrade logic in the dep_zapdeps
+						# function (see bug 554070).
+						e_pkg = next(reversed(list(
+							self._dynamic_config._package_tracker.match(
+							root, pkg.slot_atom, installed=False))), None)
 
 						if not e_pkg:
 							break
@@ -6937,7 +6992,7 @@ class depgraph(object):
 		for root in implicit_libc_roots:
 			vardb = self._frozen_config.trees[root]["vartree"].dbapi
 			for atom in self._expand_virt_from_graph(root,
- 				portage.const.LIBC_PACKAGE_ATOM):
+				portage.const.LIBC_PACKAGE_ATOM):
 				if atom.blocker:
 					continue
 				for pkg in self._dynamic_config._package_tracker.match(root, atom):
@@ -7375,36 +7430,38 @@ class depgraph(object):
 						selected_nodes = set()
 						if gather_deps(ignore_priority,
 							mergeable_nodes, selected_nodes, node):
-							# When selecting asap_nodes, we need to ensure
-							# that we haven't selected a large runtime cycle
-							# that is obviously sub-optimal. This will be
-							# obvious if any of the non-asap selected_nodes
-							# is a leaf node when medium_soft deps are
-							# ignored.
-							if prefer_asap and asap_nodes and \
-								len(selected_nodes) > 1:
-								for node in selected_nodes.difference(
-									asap_nodes):
-									if not mygraph.child_nodes(node,
-										ignore_priority =
-										DepPriorityNormalRange.ignore_medium_soft):
-										selected_nodes = None
-										break
-							if selected_nodes:
-								if smallest_cycle is None or \
-									len(selected_nodes) < len(smallest_cycle):
-									smallest_cycle = selected_nodes
+							if smallest_cycle is None or \
+								len(selected_nodes) < len(smallest_cycle):
+								smallest_cycle = selected_nodes
 
 					selected_nodes = smallest_cycle
 
-					if selected_nodes and debug:
-						writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
-							(len(selected_nodes),), noiselevel=-1)
+					if selected_nodes is not None:
 						cycle_digraph = mygraph.copy()
 						cycle_digraph.difference_update([x for x in
 							cycle_digraph if x not in selected_nodes])
-						cycle_digraph.debug_print()
-						writemsg("\n", noiselevel=-1)
+
+						leaves = cycle_digraph.leaf_nodes()
+						if leaves:
+							# NOTE: This case should only be triggered when
+							# prefer_asap is True, since otherwise these
+							# leaves would have been selected to merge
+							# before this point. Since these "leaves" may
+							# actually have some low-priority dependencies
+							# that we have intentionally ignored, select
+							# only one node here, so that merge order
+							# accounts for as many dependencies as possible.
+							selected_nodes = [leaves[0]]
+
+						if debug:
+							writemsg("\nruntime cycle digraph (%s nodes):\n\n" %
+								(len(selected_nodes),), noiselevel=-1)
+							cycle_digraph.debug_print()
+							writemsg("\n", noiselevel=-1)
+
+							if leaves:
+								writemsg("runtime cycle leaf: %s\n\n" %
+									(selected_nodes[0],), noiselevel=-1)
 
 					if prefer_asap and asap_nodes and not selected_nodes:
 						# We failed to find any asap nodes to merge, so ignore
@@ -7975,14 +8032,19 @@ class depgraph(object):
 
 		return display(self, mylist, favorites, verbosity)
 
-	def _display_autounmask(self):
+	def _display_autounmask(self, autounmask_continue=False):
 		"""
 		Display --autounmask message and optionally write it to config files
 		(using CONFIG_PROTECT). The message includes the comments and the changes.
 		"""
 
+		if self._dynamic_config._displayed_autounmask:
+			return
+
+		self._dynamic_config._displayed_autounmask = True
+
 		ask = "--ask" in self._frozen_config.myopts
-		autounmask_write = \
+		autounmask_write = autounmask_continue or \
 				self._frozen_config.myopts.get("--autounmask-write",
 								   ask) is True
 		autounmask_unrestricted_atoms = \
@@ -8189,6 +8251,12 @@ class depgraph(object):
 									child.endswith("~"):
 									continue
 								stack.append(os.path.join(p, child))
+			# If the directory is empty add a file with name
+			# pattern file_name.default
+			if last_file_path is None:
+				last_file_path = os.path.join(file_path, file_path, "zz-autounmask")
+				with open(last_file_path, "a+") as default:
+					default.write("# " + file_name)
 
 			return last_file_path
 
@@ -8267,7 +8335,7 @@ class depgraph(object):
 				writemsg(format_msg(license_msg[root]), noiselevel=-1)
 
 		protect_obj = {}
-		if write_to_file:
+		if write_to_file and not autounmask_continue:
 			for root in roots:
 				settings = self._frozen_config.roots[root].settings
 				protect_obj[root] = ConfigProtect(
@@ -8294,7 +8362,8 @@ class depgraph(object):
 						(file_to_write_to, e))
 			if file_contents is not None:
 				file_contents.extend(changes)
-				if protect_obj[root].isprotected(file_to_write_to):
+				if (not autounmask_continue and
+					protect_obj[root].isprotected(file_to_write_to)):
 					# We want to force new_protect_filename to ensure
 					# that the user will see all our changes via
 					# dispatch-conf, even if file_to_write_to doesn't
@@ -8353,6 +8422,8 @@ class depgraph(object):
 		elif write_to_file and roots:
 			writemsg("\nAutounmask changes successfully written.\n",
 				noiselevel=-1)
+			if autounmask_continue:
+				return True
 			for root in roots:
 				chk_updated_cfg_files(root,
 					[os.path.join(os.sep, USER_CONFIG_PATH)])
@@ -8511,8 +8582,7 @@ class depgraph(object):
 			writemsg("\n", noiselevel=-1)
 
 		for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
-			self._show_unsatisfied_dep(*pargs,
-				**portage._native_kwargs(kwargs))
+			self._show_unsatisfied_dep(*pargs, **kwargs)
 
 		if self._dynamic_config._buildpkgonly_deps_unsatisfied:
 			self._show_merge_list()
@@ -8875,12 +8945,14 @@ class depgraph(object):
 		return self._dynamic_config._success_without_autounmask or \
 			self._dynamic_config._required_use_unsatisfied
 
+	def need_config_reload(self):
+		return self._dynamic_config._need_config_reload
+
 	def autounmask_breakage_detected(self):
 		try:
 			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 				self._show_unsatisfied_dep(
-					*pargs, check_autounmask_breakage=True,
-					**portage._native_kwargs(kwargs))
+					*pargs, check_autounmask_breakage=True, **kwargs)
 		except self._autounmask_breakage:
 			return True
 		return False
@@ -9055,8 +9127,12 @@ class _dep_check_composite_db(dbapi):
 			# into the same slot.
 			return True
 
-		in_graph = next(self._depgraph._dynamic_config._package_tracker.match(
-			self._root, pkg.slot_atom, installed=False), None)
+		# Use reversed iteration in order to get descending order here,
+		# so that the highest version involved in a slot conflict is
+		# selected (see bug 554070).
+		in_graph = next(reversed(list(
+			self._depgraph._dynamic_config._package_tracker.match(
+			self._root, pkg.slot_atom, installed=False))), None)
 
 		if in_graph is None:
 			# Mask choices for packages which are not the highest visible

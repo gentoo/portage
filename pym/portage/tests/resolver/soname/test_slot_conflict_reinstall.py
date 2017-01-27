@@ -89,6 +89,7 @@ class SonameSlotConflictReinstallTestCase(TestCase):
 					"--ignore-soname-deps": "n",
 					"--update": True,
 					"--usepkgonly": True,
+					"--backtrack": 10,
 				},
 				success = True,
 				mergelist = [

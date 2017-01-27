@@ -32,7 +32,7 @@
 		uses Pythons <classname>ConfigParser</classname> module, which implements
 		the syntax usually found in .ini files. At its core it allows various
 		named sections that each can contain any number of key-value pairs, see
-		the <ulink url="http://doc.python.org/lib/module-ConfigParser.html" type="text/html">Python documentation</ulink>
+		the <ulink url="https://doc.python.org/lib/module-ConfigParser.html" type="text/html">Python documentation</ulink>
 		for the full details.
 		</para>
 		<para>
@@ -157,7 +157,7 @@
 		longer description than usual. So it 
 		needs more than one line.
 		
-		homepage: http://www.foobar.org
+		homepage: https://www.foobar.org/
 		
 		author: John Doe &lt;john@doe.com&gt;
 		</programlisting>

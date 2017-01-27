@@ -9,14 +9,6 @@ import warnings
 import sys
 import re
 
-try:
-	from configparser import Error as ConfigParserError
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import SafeConfigParser, Error as ConfigParserError
 import portage
 from portage import eclass_cache, os
 from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
@@ -25,6 +17,8 @@ from portage.eapi import eapi_allows_directories_on_profile_level_and_repository
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
+from portage.util.configparser import (SafeConfigParser, ConfigParserError,
+	read_configs)
 from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _
@@ -86,7 +80,7 @@ class RepoConfig(object):
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
 		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest',
+		'profile_formats', 'sign_commit', 'sign_manifest', 'strict_misc_digests',
 		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
@@ -177,6 +171,9 @@ class RepoConfig(object):
 		self.sync_depth = repo_opts.get('sync-depth')
 		self.sync_hooks_only_on_change = repo_opts.get(
 			'sync-hooks-only-on-change', 'false').lower() == 'true'
+
+		self.strict_misc_digests = repo_opts.get(
+			'strict-misc-digests', 'true').lower() == 'true'
 
 		self.module_specific_options = {}
 
@@ -332,10 +329,11 @@ class RepoConfig(object):
 		kwds['allow_missing'] = self.allow_missing_manifest
 		kwds['allow_create'] = self.create_manifest
 		kwds['hashes'] = self.manifest_hashes
+		kwds['strict_misc_digests'] = self.strict_misc_digests
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
 		kwds['find_invalid_path_char'] = self.find_invalid_path_char
-		return manifest.Manifest(*args, **portage._native_kwargs(kwds))
+		return manifest.Manifest(*args, **kwds)
 
 	def update(self, new_repo):
 		"""Update repository with options in another RepoConfig"""
@@ -409,6 +407,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "format: " + self.format)
 		if self.location:
 			repo_msg.append(indent + "location: " + self.location)
+		if not self.strict_misc_digests:
+			repo_msg.append(indent + "strict-misc-digests: false")
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -506,7 +506,7 @@ class RepoConfigLoader(object):
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
 						for k in ('aliases', 'auto_sync', 'eclass_overrides',
-							'force', 'masters', 'priority',
+							'force', 'masters', 'priority', 'strict_misc_digests',
 							'sync_depth', 'sync_hooks_only_on_change',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							'module_specific_options'):
@@ -549,15 +549,6 @@ class RepoConfigLoader(object):
 		"""Parse files in paths to load config"""
 		parser = SafeConfigParser(defaults=default_opts)
 
-		# use read_file/readfp in order to control decoding of unicode
-		try:
-			# Python >=3.2
-			read_file = parser.read_file
-			source_kwarg = 'source'
-		except AttributeError:
-			read_file = parser.readfp
-			source_kwarg = 'filename'
-
 		recursive_paths = []
 		for p in paths:
 			if isinstance(p, basestring):
@@ -565,31 +556,7 @@ class RepoConfigLoader(object):
 			else:
 				recursive_paths.append(p)
 
-		for p in recursive_paths:
-			if isinstance(p, basestring):
-				f = None
-				try:
-					f = io.open(_unicode_encode(p,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['repo.content'],
-						errors='replace')
-				except EnvironmentError:
-					pass
-				else:
-					# The 'source' keyword argument is needed since otherwise
-					# ConfigParser in Python <3.3.3 may throw a TypeError
-					# because it assumes that f.name is a native string rather
-					# than binary when constructing error messages.
-					kwargs = {source_kwarg: p}
-					read_file(f, **portage._native_kwargs(kwargs))
-				finally:
-					if f is not None:
-						f.close()
-			elif isinstance(p, io.StringIO):
-				kwargs = {source_kwarg: "<io.StringIO>"}
-				read_file(p, **portage._native_kwargs(kwargs))
-			else:
-				raise TypeError("Unsupported type %r of element %r of 'paths' argument" % (type(p), p))
+		read_configs(parser, recursive_paths)
 
 		prepos['DEFAULT'] = RepoConfig("DEFAULT",
 			parser.defaults(), local_config=local_config)
@@ -961,12 +928,13 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
+		bool_keys = ("strict_misc_digests",)
 		str_or_int_keys = ("auto_sync", "format", "location",
 			"main_repo", "priority",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
-		keys = str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
+		keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
 			config_string += "\n[%s]\n" % repo_name
@@ -974,7 +942,10 @@ class RepoConfigLoader(object):
 				if key == "main_repo" and repo_name != "DEFAULT":
 					continue
 				if getattr(repo, key) is not None:
-					if key in str_or_int_keys:
+					if key in bool_keys:
+						config_string += "%s = %s\n" % (key.replace("_", "-"),
+							'true' if getattr(repo, key) else 'false')
+					elif key in str_or_int_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), getattr(repo, key))
 					elif key in str_tuple_keys:
 						config_string += "%s = %s\n" % (key.replace("_", "-"), " ".join(getattr(repo, key)))

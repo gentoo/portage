@@ -83,6 +83,11 @@ class Socks5Server(object):
 				data = yield from reader.readexactly(1)
 				addr_len, = struct.unpack('!B', data)
 				addr = yield from reader.readexactly(addr_len)
+				try:
+					addr = addr.decode('idna')
+				except UnicodeDecodeError:
+					rpl = 0x04  # host unreachable
+
 			elif atyp == 0x04:  # IPv6
 				data = yield from reader.readexactly(16)
 				addr = socket.inet_ntop(socket.AF_INET6, data)

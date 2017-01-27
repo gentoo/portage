@@ -8,8 +8,9 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno
 import fcntl
-import platform
+import multiprocessing
 import sys
+import tempfile
 import time
 import warnings
 
@@ -27,15 +28,59 @@ if sys.hexversion >= 0x3000000:
 
 HARDLINK_FD = -2
 _HARDLINK_POLL_LATENCY = 3 # seconds
-_default_lock_fn = fcntl.lockf
-
-if platform.python_implementation() == 'PyPy':
-	# workaround for https://bugs.pypy.org/issue747
-	_default_lock_fn = fcntl.flock
 
 # Used by emerge in order to disable the "waiting for lock" message
 # so that it doesn't interfere with the status display.
 _quiet = False
+
+
+_lock_fn = None
+
+
+def _get_lock_fn():
+	"""
+	Returns fcntl.lockf if proven to work, and otherwise returns fcntl.flock.
+	On some platforms fcntl.lockf is known to be broken.
+	"""
+	global _lock_fn
+	if _lock_fn is not None:
+		return _lock_fn
+
+	def _test_lock(fd, lock_path):
+		os.close(fd)
+		try:
+			with open(lock_path, 'a') as f:
+				fcntl.lockf(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+		except EnvironmentError as e:
+			if e.errno == errno.EAGAIN:
+				# Parent process holds lock, as expected.
+				sys.exit(0)
+
+		# Something went wrong.
+		sys.exit(1)
+
+	fd, lock_path = tempfile.mkstemp()
+	try:
+		try:
+			fcntl.lockf(fd, fcntl.LOCK_EX)
+		except EnvironmentError:
+			pass
+		else:
+			proc = multiprocessing.Process(target=_test_lock,
+				args=(fd, lock_path))
+			proc.start()
+			proc.join()
+			if proc.exitcode == os.EX_OK:
+				# Use fcntl.lockf because the test passed.
+				_lock_fn = fcntl.lockf
+				return _lock_fn
+	finally:
+		os.close(fd)
+		os.unlink(lock_path)
+
+	# Fall back to fcntl.flock.
+	_lock_fn = fcntl.flock
+	return _lock_fn
 
 
 _open_fds = set()
@@ -146,7 +191,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = portage._eintr_func_wrapper(_default_lock_fn)
+	locking_method = portage._eintr_func_wrapper(_get_lock_fn())
 	try:
 		if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
 			raise IOError(errno.ENOSYS, "Function not implemented")

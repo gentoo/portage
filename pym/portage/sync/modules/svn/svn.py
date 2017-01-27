@@ -37,7 +37,7 @@ class SVNSync(NewBase):
 			"cd %s; exec svn co %s ." %
 			(portage._shell_quote(self.repo.location),
 			portage._shell_quote(svn_root)),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! svn checkout error; exiting."
 			self.logger(self.xterm_titles, msg)
@@ -62,7 +62,7 @@ class SVNSync(NewBase):
 		exitcode = portage.process.spawn_bash(
 			"cd %s; exec svn update" % \
 			(portage._shell_quote(self.repo.location),),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! svn update error; exiting."
 			self.logger(self.xterm_titles, msg)
@@ -81,7 +81,7 @@ class SVNSync(NewBase):
 		exitcode = portage.process.spawn_bash(
 			"cd %s; exec svn upgrade" %
 			(portage._shell_quote(self.repo.location),),
-			**portage._native_kwargs(self.spawn_kwargs))
+			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! svn upgrade error; exiting."
 			self.logger(self.xterm_titles, msg)

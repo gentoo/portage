@@ -15,7 +15,7 @@ import textwrap
 import traceback
 
 import portage
-from portage.util import writemsg_level
+from portage.util import _unicode_decode, writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
 
 
@@ -34,13 +34,15 @@ def _check_locale(silent):
 	"""
 	The inner locale check function.
 	"""
-
-	libc_fn = find_library("c")
-	if libc_fn is None:
-		return None
-	libc = LoadLibrary(libc_fn)
-	if libc is None:
-		return None
+	try:
+		from portage.util import libc
+	except ImportError:
+		libc_fn = find_library("c")
+		if libc_fn is None:
+			return None
+		libc = LoadLibrary(libc_fn)
+		if libc is None:
+			return None
 
 	lc = list(range(ord('a'), ord('z')+1))
 	uc = list(range(ord('A'), ord('Z')+1))
@@ -62,7 +64,7 @@ def _check_locale(silent):
 			"as LC_CTYPE in make.conf.")
 		msg = [l for l in textwrap.wrap(msg, 70)]
 		msg.append("")
-		chars = lambda l: ''.join(chr(x) for x in l)
+		chars = lambda l: ''.join(_unicode_decode(chr(x)) for x in l)
 		if uc != ruc:
 			msg.extend([
 				"  %s -> %s" % (chars(lc), chars(ruc)),

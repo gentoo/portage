@@ -9,14 +9,6 @@ __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 import io
 import logging
 import sys
-try:
-	from configparser import NoOptionError, ParsingError
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import SafeConfigParser, NoOptionError, ParsingError
 import portage
 from portage import os
 from portage import load_mod
@@ -29,6 +21,8 @@ from portage.const import _ENABLE_SET_CONFIG
 from portage.exception import PackageSetNotFound
 from portage.localization import _
 from portage.util import writemsg_level
+from portage.util.configparser import (SafeConfigParser,
+	NoOptionError, ParsingError, read_configs)
 
 SETPREFIX = "@"
 
@@ -56,32 +50,7 @@ class SetConfig(object):
 			})
 
 		if _ENABLE_SET_CONFIG:
-			# use read_file/readfp in order to control decoding of unicode
-			try:
-				# Python >=3.2
-				read_file = self._parser.read_file
-			except AttributeError:
-				read_file = self._parser.readfp
-
-			for p in paths:
-				f = None
-				try:
-					f = io.open(_unicode_encode(p,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='r', encoding=_encodings['repo.content'],
-						errors='replace')
-				except EnvironmentError:
-					pass
-				else:
-					try:
-						read_file(f)
-					except ParsingError as e:
-						writemsg_level(_unicode_decode(
-							_("!!! Error while reading sets config file: %s\n")
-							) % e, level=logging.ERROR, noiselevel=-1)
-				finally:
-					if f is not None:
-						f.close()
+			read_configs(self._parser, paths)
 		else:
 			self._create_default_config()
 

@@ -17,6 +17,7 @@ import sys
 from portage import os
 from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
+from portage.exception import PackageSetNotFound
 from portage.localization import localized_size
 from portage.output import (blue, bold, colorize, create_color_func,
 	green, red, teal, turquoise, yellow)
@@ -212,6 +213,16 @@ class _DisplayConfig(object):
 		self.target_root = frozen_config.target_root
 		self.running_root = frozen_config._running_root
 		self.roots = frozen_config.roots
+
+		# Create a set of selected packages for each root
+		self.selected_sets = {}
+		for root_name, root in self.roots.items():
+			try:
+				self.selected_sets[root_name] = InternalPackageSet(
+					initial_atoms=root.setconfig.getSetAtoms("selected"))
+			except PackageSetNotFound:
+				# A nested set could not be resolved, so ignore nested sets.
+				self.selected_sets[root_name] = root.sets["selected"]
 
 		self.blocker_parents = dynamic_config._blocker_parents
 		self.reinstall_nodes = dynamic_config._reinstall_nodes

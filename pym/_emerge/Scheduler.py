@@ -328,7 +328,20 @@ class Scheduler(PollScheduler):
 	def _terminate_tasks(self):
 		self._status_display.quiet = True
 		for task in list(self._running_tasks.values()):
-			task.cancel()
+			if task.isAlive():
+				# This task should keep the main loop running until
+				# it has had an opportunity to clean up after itself.
+				# Rely on its exit hook to remove it from
+				# self._running_tasks when it has finished cleaning up.
+				task.cancel()
+			else:
+				# This task has been waiting to be started in one of
+				# self._task_queues which are all cleared below. It
+				# will never be started, so purged it from
+				# self._running_tasks so that it won't keep the main
+				# loop running.
+				del self._running_tasks[id(task)]
+
 		for q in self._task_queues.values():
 			q.clear()
 
@@ -586,18 +599,15 @@ class Scheduler(PollScheduler):
 
 		blocker_db = self._blocker_db[new_pkg.root]
 
-		blocker_dblinks = []
+		blocked_pkgs = []
 		for blocking_pkg in blocker_db.findInstalledBlockers(new_pkg):
 			if new_pkg.slot_atom == blocking_pkg.slot_atom:
 				continue
 			if new_pkg.cpv == blocking_pkg.cpv:
 				continue
-			blocker_dblinks.append(portage.dblink(
-				blocking_pkg.category, blocking_pkg.pf, blocking_pkg.root,
-				self.pkgsettings[blocking_pkg.root], treetype="vartree",
-				vartree=self.trees[blocking_pkg.root]["vartree"]))
+			blocked_pkgs.append(blocking_pkg)
 
-		return blocker_dblinks
+		return blocked_pkgs
 
 	def _generate_digests(self):
 		"""

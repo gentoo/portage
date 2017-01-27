@@ -8,6 +8,12 @@ from portage.util import shlex_split, varexpand
 ## default clean command from make.globals
 ## PORT_LOGDIR_CLEAN = 'find "${PORT_LOGDIR}" -type f ! -name "summary.log*" -mtime +7 -delete'
 
+ERROR_MESSAGES = {
+	78	: "PORT_LOGDIR variable not set or PORT_LOGDIR not a directory.",
+	127	: "PORT_LOGDIR_CLEAN command not found."
+}
+
+
 class CleanLogs(object):
 
 	short_desc = "Clean PORT_LOGDIR logs"
@@ -31,16 +37,15 @@ class CleanLogs(object):
 
 	def clean(self, **kwargs):
 		"""Log directory cleaning function
-		
+
 		@param **kwargs: optional dictionary of values used in this function are:
 			settings: portage settings instance: defaults to portage.settings
 				"PORT_LOGDIR": directory to clean
 				"PORT_LOGDIR_CLEAN": command for cleaning the logs.
-			options: dict: 
+			options: dict:
 				'NUM': int: number of days
 				'pretend': boolean
 		"""
-		messages = []
 		num_of_days = None
 		pretend = False
 		if kwargs:
@@ -70,17 +75,19 @@ class CleanLogs(object):
 					clean_cmd.remove("-delete")
 
 		if not clean_cmd:
-			return []
+			return (True, None)
 		rval = self._clean_logs(clean_cmd, settings)
-		messages += self._convert_errors(rval)
-		return messages
+		errors = self._convert_errors(rval)
+		if errors:
+			return (False, errors)
+		return (True, None)
 
 
 	@staticmethod
 	def _clean_logs(clean_cmd, settings):
 		logdir = settings.get("PORT_LOGDIR")
 		if logdir is None or not os.path.isdir(logdir):
-			return
+			return 78
 
 		variables = {"PORT_LOGDIR" : logdir}
 		cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
@@ -96,8 +103,10 @@ class CleanLogs(object):
 	def _convert_errors(rval):
 		msg = []
 		if rval != os.EX_OK:
-			msg.append("PORT_LOGDIR_CLEAN command returned %s"
-				% ("%d" % rval if rval else "None"))
+			if rval in ERROR_MESSAGES:
+				msg.append(ERROR_MESSAGES[rval])
+			else:
+				msg.append("PORT_LOGDIR_CLEAN command returned %s" % rval)
 			msg.append("See the make.conf(5) man page for "
 				"PORT_LOGDIR_CLEAN usage instructions.")
 		return msg

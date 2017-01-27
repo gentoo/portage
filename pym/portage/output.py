@@ -234,7 +234,7 @@ def nc_len(mystr):
 	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
 	return len(tmp)
 
-_legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix)')
+_legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux)')
 _disable_xtermTitle = None
 _max_xtermTitle_len = 253
 

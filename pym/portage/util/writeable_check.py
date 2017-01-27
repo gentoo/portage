@@ -44,6 +44,7 @@ def linux_ro_checker(dir_list):
 	read-only, may be empty.
 	"""
 	ro_filesystems = set()
+	invalids = []
 
 	try:
 		with io.open("/proc/self/mountinfo", mode='r',
@@ -57,8 +58,27 @@ def linux_ro_checker(dir_list):
 				# there can be a variable number of fields
 				# to the left of the ' - ', after the attr's, so split it there
 				mount = line.split(' - ', 1)
-				_dir, attr1 = mount[0].split()[4:6]
-				attr2 = mount[1].split()[2]
+				try:
+					_dir, attr1 = mount[0].split()[4:6]
+				except ValueError:
+					# If it raises ValueError we can simply ignore the line.
+					invalids.append(line)
+					continue
+				# check for situation with invalid entries for /home and /root in /proc/self/mountinfo
+				# root path is missing sometimes on WSL
+				# for example: 16 1 0:16 / /root rw,noatime - lxfs  rw
+				if len(mount) > 1:
+					try:
+						attr2 = mount[1].split()[2]
+					except IndexError:
+						try:
+							attr2 = mount[1].split()[1]
+						except IndexError:
+							invalids.append(line)
+							continue
+				else:
+					invalids.append(line)
+					continue
 				if attr1.startswith('ro') or attr2.startswith('ro'):
 					ro_filesystems.add(_dir)
 
@@ -68,6 +88,10 @@ def linux_ro_checker(dir_list):
 		writemsg_level(_("!!! /proc/self/mountinfo cannot be read"),
 			level=logging.WARNING, noiselevel=-1)
 		return []
+
+	for line in invalids:
+		writemsg_level(_("!!! /proc/self/mountinfo contains unrecognized line: %s\n")
+			% line.rstrip(), level=logging.WARNING, noiselevel=-1)
 
 	ro_devs = {}
 	for x in ro_filesystems:

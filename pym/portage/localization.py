@@ -38,5 +38,9 @@ def localized_size(num_bytes):
 
 	# always round up, so that small files don't end up as '0 KiB'
 	num_kib = math.ceil(num_bytes / 1024)
-	formatted_num = locale.format('%d', num_kib, grouping=True)
+	try:
+		formatted_num = locale.format('%d', num_kib, grouping=True)
+	except UnicodeDecodeError:
+		# failure to decode locale data
+		formatted_num = str(num_kib)
 	return (_unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB')

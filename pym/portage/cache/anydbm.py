@@ -36,8 +36,8 @@ from portage.cache import cache_errors
 
 class database(fs_template.FsBased):
 
-	validation_chf = 'mtime'
-	chf_types = ('mtime', 'md5')
+	validation_chf = 'md5'
+	chf_types = ('md5', 'mtime')
 
 	autocommits = True
 	cleanse_keys = True

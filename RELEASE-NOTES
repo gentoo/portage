@@ -1,6 +1,99 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.3
+==================================
+* Bug Fixes:
+    - Bug 597752 _expand_new_virtuals: constrain output for dep_zapdeps
+    - Bug 599060 parse_metadata_use: apply English language preference
+    - Bug 599240 preserve-libs: handle manually removed libraries better
+    - Bug 600346 dep_zapdeps: make package selections internally consistent
+    - Bug 600128 repos.conf: support strict-misc-digests attribute
+    - Bug 600660 unpack: fix txz unpack support
+    - Bug 600804 _post_src_install_uid_fix: allow files with portage group
+                 permissions
+    - Bug 601466 bin/ebuild: fix EBUILD_FORCE_TEST / RESTRICT interaction
+    - Bug 554070 depgraph: select highest version involved in slot conflict
+    - Bug 598116 _emerge/depgraph.py: Autounmask-write fails when there isn't
+                 a file in package.*/
+* Reverted commits:
+    - Bug 597918 Revert "emerge-webrsync: use gkeys to verify OpenPGP signatures
+                 (too soon, needs some additional gkeys work and release,
+                 this code was not yet in a portage release)
+    - Bug 552814 Revert "GitSync.update: respect sync-depth
+                 (Shallow fetch is not a practical default at this time,
+                  given performance issues introduced by `git update-index`
+                  and `git prune` (see bug 599008).
+                 )
+
+
+    portage-2.3.2
+==================================
+* Bug Fixes:
+    - Bug 594822 GitSync.update: handle git rev-list failure
+    - Bug 594982 doebuild_environment: disable ccache/distcc/icecc when necessary
+    - Bug 595028 ebuild.sh: start phases in temporary HOME if available
+    - Bug 595146 locks: use fcntl.flock if fcntl.lockf is broken
+    - Bug 596102 einstalldocs: check whether default docs are indeed files
+    - Bug 594744 setup.py: enable libc bindings optionally
+
+
+portage-2.3.1
+==================================
+* Bug Fixes:
+    - Bug 587198 chpathtool.py: fix byte comparison logic for python3
+    - Bug 584626 Add a unit test which reproduces the bug and
+                 depgraph: fix missed llvm update
+    - Bug 582624 Add emerge --autounmask-continue option
+    - Bug 568934 portage.cache: write md5 instead of mtime
+    - Bug 552814 GitSync.update: respect sync-depth
+                 use git reset --merge instead of --hard
+    - Bug 590514 depgraph._serialize_tasks: improve runtime cycle handling
+    - Bug 65566  emerge: add --fuzzy-search and --search-similarity
+    - Bug 425554 Scheduler._terminate_tasks: purge _running_tasks
+    - Bug 591760 EventLoop: add run_until_complete method
+    - Bug 584328 config.environ: handle missing ctypes for check_locale
+                 locale.py: fix decoding for python2 plus some locales
+                 locale.py: add a C module to help check locale
+    - Bug 577372 Support News-Item-Format 2.0
+    - Bug 594284 writeable_check: handle/warn about invalid entries in
+                 /proc/self/mountinfo
+    - selinux: fix crash for invalid context
+    - Chromium-Bug 477727 flat_hash: use mkstemp in _setitem
+
+
+portage-2.3.0
+==================================
+* Bug Fixes:
+    - Bug 576888 dblink: add locks for parallel-install with blockers
+    - Bug 579626 __eapi6_src_prepare: handle empty PATCHES array
+    - Bug 579292 egencache --update-changelogs: fix timestamp assumptions
+    - Bug 578204 EbuildBuild: call _record_binpkg_info earlier
+    - Bug 577862 localized_size: handle UnicodeDecodeError
+    - Bug 582388 Manifest._apply_max_mtime: handle EPERM from utime
+    - Bug 576788 dispatch-conf: fix popen UnicodeDecode error
+    - Bug 583560 news.py: Check only for major version when parsing
+    - Bug 577720 Revert "Colorize packages in user sets
+    - Bug 583164 Colorize packages in world_sets
+    - Bug 584530 xtermTitle: support tmux
+    - Bug 572494 binarytree._populate: suppress PORTAGE_SSH_OPTS KeyError
+    - Bug 582802 Account for EPREFIX in ccache and distcc dirs
+    - Bug 583754 LinkageMapELF: Account for EPREFIX in scanelf path
+    - Bug 574626 eapply: use gpatch for bsd userland
+    - Bug 586410 unmerge-backup: check BUILD_TIME of existing binary package
+
+
+portage-2.3.0_rc1
+==================================
+* Initial test release of the now split portage/repoman pkgs
+* Bug Fixes:
+    - Bug 577720 Colorize packages in user sets
+    - Bug 577126 egencache --write-timestamp: use write_atomic
+* portageq: Case-insensitive match maintainer emails
+* qa: gcc-warnings: force text mode w/grep
+* qa-checks: change "herd" to "maintainer"
+* qa-checks: executable-issues: improve logic & output
+
 portage-2.2.28
 ==================================
 * Bug Fixes:
@@ -560,7 +653,7 @@ portage-2.1.7
   for the rationale behind this change.
 * If using python3, you may notice that some types of program output which
   require a tty device (like the wget progress bar) will be disabled. This
-  is due to an upstream python issue: http://bugs.python.org/issue5380. See
+  is due to an upstream python issue: https://bugs.python.org/issue5380. See
   bug #287648 for more information.
 * Licenses in the @EULA license group are now masked by the default
   ACCEPT_LICENSE setting. You can unmask all licenses by setting
@@ -593,7 +686,7 @@ portage-2.1.6
   updated accordingly, though links exist for backward compability.
 * -* support in package.keywords was changed as it was inconsistent with
   ACCEPT_KEYWORDS behavior (also see
-  http://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
+  https://dev.gentoo.org/~genone/docs/KEYWORDS.stupid).
   Previously having -* in package.keywords matched packages with KEYWORDS="-*",
   now it resets the ACCEPT_KEYWORDS list for the given atom like it does when
   used in ACCEPT_KEYWORDS.

@@ -310,8 +310,7 @@ class Display(object):
 				kwargs["myrepo"] = pkg.repo
 			myfilesdict = None
 			try:
-				myfilesdict = db.getfetchsizes(pkg.cpv,
-					**portage._native_kwargs(kwargs))
+				myfilesdict = db.getfetchsizes(pkg.cpv, **kwargs)
 			except InvalidDependString as e:
 				# FIXME: validate SRC_URI earlier
 				depstr, = db.aux_get(pkg.cpv,
@@ -707,7 +706,7 @@ class Display(object):
 		"""
 		root_config = self.conf.roots[pkg.root]
 		system_set = root_config.sets["system"]
-		world_set  = root_config.sets["selected"]
+		world_set  = self.conf.selected_sets[pkg.root]
 		system = False
 		world = False
 		try:

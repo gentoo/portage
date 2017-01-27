@@ -1,0 +1,39 @@
+Release Notes; upgrade information mainly.
+Features/major bugfixes are listed in NEWS
+
+repoman-2.3.1
+==================================
+* Bug Fixes:
+    - Bug 586864 skip QA checks in manifest mode
+    - Bug 591184 fix erroneous LICENSE.syntax
+    - use https to fetch metadata.xsd
+    - update links to https
+    - Make LIVEVCS.* checks fatal
+    - fix _depend_checks baddepsyntax accounting
+    - Fix commitmessage assignment not being done
+    - Add cat/pkg: substtution in the commitsgfile text
+    - Disable SRC_URI.mirror warnings when there is only 1 mirror
+    - Fix version output string to say Repoman, fix live versioning,
+      add portage version to --version output.
+    - Add repoman version to "Package manager:" commit footer
+
+repoman-2.3.0
+==================================
+* Bug Fixes:
+    - Bug 584786 Add support for .git as a file when --separate-git-dir is used
+    - Bug 585864 fix missing vcs_files_to_cps repodir argument
+    - Bug 585388 fix KeyError during manifest generation
+* New QA error: slot operator under '||' alternative
+
+repoman-2.3.0_rc1
+==================================
+* Initial test release
+* Bug Fixes:
+    - Bug 579460 Disable the $ID header check
+    - Bug 546010 Handle removed packages in vcs_files_to_cps
+    - Bug 581594 Fix commit 8e7971169c2 missing self in func() parameters
+    - Bug 581598 Add InvalidPackageName exception trap
+    - Bug 405017 Fix copyright update
+* Includes the stage2 re-writes, the checks are now in a modular system
+  which is not yet fully plug-in capable.  Becoming fully plug-in capable and
+  configurable is to be done in the stage3 rewites.

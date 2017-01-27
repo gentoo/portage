@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -16,6 +16,7 @@ from portage.util import ensure_dirs
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures.futures import Future
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
@@ -140,19 +141,23 @@ class IpcDaemonTestCase(TestCase):
 				build_dir.unlock()
 			shutil.rmtree(tmpdir)
 
-	def _timeout_callback(self):
-		self._timed_out = True
+	def _timeout_callback(self, task_scheduler):
+		task_scheduler.cancel()
+		self._exit_callback(task_scheduler)
+
+	def _exit_callback(self, task_scheduler):
+		if not self._run_done.done():
+			self._run_done.set_result(True)
 
 	def _run(self, event_loop, task_scheduler, timeout):
-		self._timed_out = False
-		timeout_id = event_loop.timeout_add(timeout, self._timeout_callback)
+		self._run_done = Future()
+		timeout_id = event_loop.timeout_add(timeout,
+			self._timeout_callback, task_scheduler)
+		task_scheduler.addExitListener(self._exit_callback)
 
 		try:
 			task_scheduler.start()
-			while not self._timed_out and task_scheduler.poll() is None:
-				event_loop.iteration()
-			if self._timed_out:
-				task_scheduler.cancel()
+			event_loop.run_until_complete(self._run_done)
 			task_scheduler.wait()
 		finally:
 			event_loop.source_remove(timeout_id)

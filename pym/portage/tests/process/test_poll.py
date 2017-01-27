@@ -78,7 +78,7 @@ class PipeReaderArrayTestCase(PipeReaderTestCase):
 
 	def __init__(self, *args, **kwargs):
 		super(PipeReaderArrayTestCase, self).__init__(*args, **kwargs)
-		# http://bugs.python.org/issue5380
+		# https://bugs.python.org/issue5380
 		# https://bugs.pypy.org/issue956
 		self.todo = True
 

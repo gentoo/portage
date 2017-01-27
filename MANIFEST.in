@@ -12,7 +12,6 @@ include cnf/make.conf.example.*
 
 # extra files for tests
 include .portage_not_installed
-include cnf/metadata.dtd
 
 # extra scripts
 include misc/*

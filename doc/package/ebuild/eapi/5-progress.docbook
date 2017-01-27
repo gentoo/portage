@@ -1,7 +1,7 @@
 <section id='package-ebuild-eapi-5-progress'>
 	<title>EAPI 5-progress</title>
 	<para>
-		Also see the <ulink url="http://people.apache.org/~Arfrever/EAPI_5-progress_Specification">official EAPI 5-progress Specification</ulink>.
+		Also see the <ulink url="https://people.apache.org/~Arfrever/EAPI_5-progress_Specification">official EAPI 5-progress Specification</ulink>.
 	</para>
 	<section id='package-ebuild-eapi-5-progress-helpers'>
 		<title>Helpers</title>

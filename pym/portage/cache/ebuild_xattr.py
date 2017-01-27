@@ -59,7 +59,7 @@ class database(fs_template.FsBased):
 				s+=hundred
 		except IOError as e:
 			# ext based give wrong errno
-			# http://bugzilla.kernel.org/show_bug.cgi?id=12793
+			# https://bugzilla.kernel.org/show_bug.cgi?id=12793
 			if e.errno in (errno.E2BIG, errno.ENOSPC):
 				result = len(s)-100
 			else:

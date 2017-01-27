@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -10,6 +10,7 @@ import errno
 import io
 import stat
 import sys
+import tempfile
 import os as _os
 from portage import os
 from portage import _encodings
@@ -66,27 +67,14 @@ class database(fs_template.FsBased):
 			raise cache_errors.CacheCorruption(cpv, e)
 
 	def _setitem(self, cpv, values):
-		s = cpv.rfind("/")
-		fp = os.path.join(self.location,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
 		try:
-			myf = io.open(_unicode_encode(fp,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='w', encoding=_encodings['repo.content'],
-				errors='backslashreplace')
-		except (IOError, OSError) as e:
-			if errno.ENOENT == e.errno:
-				try:
-					self._ensure_dirs(cpv)
-					myf = io.open(_unicode_encode(fp,
-						encoding=_encodings['fs'], errors='strict'),
-						mode='w', encoding=_encodings['repo.content'],
-						errors='backslashreplace')
-				except (OSError, IOError) as e:
-					raise cache_errors.CacheCorruption(cpv, e)
-			else:
-				raise cache_errors.CacheCorruption(cpv, e)
+			fd, fp = tempfile.mkstemp(dir=self.location)
+		except EnvironmentError as e:
+			raise cache_errors.CacheCorruption(cpv, e)
 
-		try:
+		with io.open(fd, mode='w',
+			encoding=_encodings['repo.content'],
+			errors='backslashreplace') as myf:
 			for k in self._write_keys:
 				v = values.get(k)
 				if not v:
@@ -95,8 +83,7 @@ class database(fs_template.FsBased):
 				# k and v are coerced to unicode, in order to prevent TypeError
 				# when writing raw bytes to TextIOWrapper with Python 2.
 				myf.write("%s=%s\n" % (k, v))
-		finally:
-			myf.close()
+
 		self._ensure_access(fp)
 
 		#update written.  now we move it.
@@ -104,9 +91,21 @@ class database(fs_template.FsBased):
 		new_fp = os.path.join(self.location,cpv)
 		try:
 			os.rename(fp, new_fp)
-		except (OSError, IOError) as e:
-			os.remove(fp)
-			raise cache_errors.CacheCorruption(cpv, e)
+		except EnvironmentError as e:
+			success = False
+			try:
+				if errno.ENOENT == e.errno:
+					try:
+						self._ensure_dirs(cpv)
+						os.rename(fp, new_fp)
+						success = True
+					except EnvironmentError as e:
+						raise cache_errors.CacheCorruption(cpv, e)
+				else:
+					raise cache_errors.CacheCorruption(cpv, e)
+			finally:
+				if not success:
+					os.remove(fp)
 
 	def _delitem(self, cpv):
 #		import pdb;pdb.set_trace()
@@ -163,5 +162,5 @@ class md5_database(database):
 
 
 class mtime_md5_database(database):
-	validation_chf = 'mtime'
-	chf_types = ('mtime', 'md5')
+	validation_chf = 'md5'
+	chf_types = ('md5', 'mtime')

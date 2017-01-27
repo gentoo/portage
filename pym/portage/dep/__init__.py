@@ -1603,10 +1603,18 @@ class Atom(_unicode):
 		if pkg.cp == self.cp:
 			return bool(match_from_list(self, [pkg]))
 		else:
-			for provided_cp in pkg.provided_cps:
-				if provided_cp == self.cp:
-					return bool(match_from_list(
-						self.replace(self.cp, provided_cp, 1), [pkg]))
+			try:
+				provided_cps = pkg.provided_cps
+			except AttributeError:
+				# Since _pkg_str instances lack PROVIDE metadata,
+				# just ignore this case (PROVIDE has been deprecated
+				# for years).
+				pass
+			else:
+				for provided_cp in provided_cps:
+					if provided_cp == self.cp:
+						return bool(match_from_list(
+							self.replace(self.cp, provided_cp, 1), [pkg]))
 		return False
 
 _extended_cp_re_cache = {}

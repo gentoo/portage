@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -1378,6 +1378,21 @@ class config(object):
 
 			return value
 
+	def _setcpv_recursion_gate(f):
+		"""
+		Raise AssertionError for recursive setcpv calls.
+		"""
+		def wrapper(self, *args, **kwargs):
+			if hasattr(self, '_setcpv_active'):
+				raise AssertionError('setcpv recursion detected')
+			self._setcpv_active = True
+			try:
+				return f(self, *args, **kwargs)
+			finally:
+				del self._setcpv_active
+		return wrapper
+
+	@_setcpv_recursion_gate
 	def setcpv(self, mycpv, use_cache=None, mydb=None):
 		"""
 		Load a particular CPV into the config, this lets us see the
@@ -1689,11 +1704,6 @@ class config(object):
 
 		ebuild_force_test = not restrict_test and \
 			self.get("EBUILD_FORCE_TEST") == "1"
-
-		if ebuild_force_test and \
-			not hasattr(self, "_ebuild_force_test_msg_shown"):
-				self._ebuild_force_test_msg_shown = True
-				writemsg(_("Forcing test.\n"), noiselevel=-1)
 
 		if "test" in explicit_iuse or iuse_implicit_match("test"):
 			if "test" not in self.features:
@@ -2796,7 +2806,8 @@ class config(object):
 		if eapi_attrs.posixish_locale:
 			split_LC_ALL(mydict)
 			mydict["LC_COLLATE"] = "C"
-			if not check_locale(silent=True, env=mydict):
+			# check_locale() returns None when check can not be executed.
+			if check_locale(silent=True, env=mydict) is False:
 				# try another locale
 				for l in ("C.UTF-8", "en_US.UTF-8", "en_GB.UTF-8", "C"):
 					mydict["LC_CTYPE"] = l

@@ -53,6 +53,7 @@ from portage import _unicode_encode
 from portage.const import VDB_PATH
 from portage.exception import PermissionDenied, PortageKeyError, \
 	PortagePackageException, UnsupportedAPIException
+from portage.localization import _
 import portage.util
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
@@ -244,7 +245,11 @@ if mytree == "porttree" and build_dir_phases.intersection(pargs):
 	ebuild_changed = \
 		portage.portdb._pull_valid_cache(cpv, ebuild, ebuild_portdir)[0] is None
 
-tmpsettings = portage.config(clone=portage.settings)
+# Make configuration adjustments to portage.portdb.doebuild_settings,
+# in order to enforce consistency for EBUILD_FORCE_TEST support
+# (see bug 601466).
+tmpsettings = portage.portdb.doebuild_settings
+
 tmpsettings["PORTAGE_VERBOSE"] = "1"
 tmpsettings.backup_changes("PORTAGE_VERBOSE")
 
@@ -265,12 +270,24 @@ if "test" in pargs:
 	tmpsettings["EBUILD_FORCE_TEST"] = "1"
 	tmpsettings.backup_changes("EBUILD_FORCE_TEST")
 	tmpsettings.features.add("test")
+	portage.writemsg(_("Forcing test.\n"), noiselevel=-1)
 
 tmpsettings.features.discard("fail-clean")
 
 if "merge" in pargs and "noauto" in tmpsettings.features:
 	print("Disabling noauto in features... merge disables it. (qmerge doesn't)")
 	tmpsettings.features.discard("noauto")
+
+if 'digest' in tmpsettings.features:
+	if pargs and pargs[0] not in ("digest", "manifest"):
+		pargs = ['digest'] + pargs
+	# We only need to build digests on the first pass.
+	tmpsettings.features.discard('digest')
+
+# Now that configuration adjustments are complete, create a clone of
+# tmpsettings. The current instance refers to portdb.doebuild_settings,
+# and we want to avoid the possibility of unintended side-effects.
+tmpsettings = portage.config(clone=tmpsettings)
 
 try:
 	metadata = dict(zip(Package.metadata_keys,
@@ -314,12 +331,6 @@ def stale_env_warning():
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
 					'.ebuild_changed'), 'w').close()
-
-if 'digest' in tmpsettings.features:
-	if pargs and pargs[0] not in ("digest", "manifest"):
-		pargs = ['digest'] + pargs
-	# We only need to build digests on the first pass.
-	tmpsettings.features.discard('digest')
 
 checked_for_stale_env = False
 

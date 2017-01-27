@@ -14,7 +14,7 @@
 +# profile and of freebsd-lib package.
 +CHOST="i686-gentoo-freebsd6.1"
 +
- # Host and optimization settings 
+ # Host and optimization settings
  # ==============================
  #
 @@ -39,10 +49,34 @@

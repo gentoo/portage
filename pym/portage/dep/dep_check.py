@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
+import collections
 import logging
 import operator
 
@@ -188,13 +189,14 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				raise ParseError("%s: %s '%s'" % \
 					(pkg, mycheck[1], depstring))
 
-			# Pull in virt_atom which refers to the specific version
-			# of the virtual whose deps we're expanding. Also pull
-			# in the original input atom, so that callers can reliably
-			# check to see if a given input atom has been selected,
-			# as in depgraph._slot_operator_update_probe.
+			# Replace the original atom "x" with "virt_atom" which refers
+			# to the specific version of the virtual whose deps we're
+			# expanding. The virt_atom._orig_atom attribute is used
+			# by depgraph to map virt_atom back to the original atom.
+			# We specifically exclude the original atom "x" from the
+			# the expanded output here, since otherwise it could trigger
+			# incorrect dep_zapdeps behavior (see bug #597752).
 			mycheck[1].append(virt_atom)
-			mycheck[1].append(x)
 			a.append(mycheck[1])
 			if atom_graph is not None:
 				virt_atom_node = (virt_atom, id(virt_atom))
@@ -353,6 +355,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_use_satisfied = True
 		all_use_unmasked = True
 		conflict_downgrade = False
+		slot_atoms = collections.defaultdict(list)
 		slot_map = {}
 		cp_map = {}
 		for atom in atoms:
@@ -417,9 +420,31 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
 			slot_map[avail_slot] = avail_pkg
+			slot_atoms[avail_slot].append(atom)
 			highest_cpv = cp_map.get(avail_pkg.cp)
-			if highest_cpv is None or \
-				vercmp(avail_pkg.version, highest_cpv.version) > 0:
+			all_match_current = None
+			all_match_previous = None
+			if (highest_cpv is not None and
+				highest_cpv.slot == avail_pkg.slot):
+				# If possible, make the package selection internally
+				# consistent by choosing a package that satisfies all
+				# atoms which match a package in the same slot. Later on,
+				# the package version chosen here is used in the
+				# has_upgrade/has_downgrade logic to prefer choices with
+				# upgrades, and a package choice that is not internally
+				# consistent will lead the has_upgrade/has_downgrade logic
+				# to produce invalid results (see bug 600346).
+				all_match_current = all(a.match(avail_pkg)
+					for a in slot_atoms[avail_slot])
+				all_match_previous = all(a.match(highest_cpv)
+					for a in slot_atoms[avail_slot])
+				if all_match_previous and not all_match_current:
+					continue
+
+			current_higher = (highest_cpv is None or
+				vercmp(avail_pkg.version, highest_cpv.version) > 0)
+
+			if current_higher or (all_match_current and not all_match_previous):
 				cp_map[avail_pkg.cp] = avail_pkg
 
 		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,

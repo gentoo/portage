@@ -518,8 +518,11 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
-				if ___eapi_supports_txz; then
-					__unpack_tar "xz -d" || return 1
+				if ___eapi_unpack_supports_txz; then
+					if ! tar xof "$srcdir$x"; then
+						__helpers_die "$myfail"
+						return 1
+					fi
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -806,7 +809,7 @@ __eapi4_src_install() {
 
 __eapi6_src_prepare() {
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
-		eapply "${PATCHES[@]}"
+		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
 	fi
@@ -958,7 +961,7 @@ if ___eapi_has_einstalldocs; then
 				local d
 				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do
-					[[ -s ${d} ]] && docinto / && dodoc "${d}"
+					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
 			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
 				[[ ${DOCS[@]} ]] && docinto / && dodoc -r "${DOCS[@]}"
@@ -981,8 +984,11 @@ fi
 
 if ___eapi_has_eapply; then
 	eapply() {
-		local failed
+		local failed patch_cmd=patch
 		local -x LC_COLLATE=POSIX
+
+		# for bsd userland support, use gpatch if available
+		type -P gpatch > /dev/null && patch_cmd=gpatch
 
 		_eapply_patch() {
 			local f=${1}
@@ -995,7 +1001,7 @@ if ___eapi_has_eapply; then
 			# -s to silence progress output
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			patch -p1 -f -s -g0 --no-backup-if-mismatch \
+			${patch_cmd} -p1 -f -s -g0 --no-backup-if-mismatch \
 				"${patch_options[@]}" < "${f}"
 			failed=${?}
 			if ! eend "${failed}"; then

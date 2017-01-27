@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -bO
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -1011,7 +1011,7 @@ list_preserved_libs.__doc__ = docstrings['list_preserved_libs']
 
 class MaintainerEmailMatcher(object):
 	def __init__(self, maintainer_emails):
-		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails))
+		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails), re.I)
 
 	def __call__(self, metadata_xml):
 		match = False
@@ -1084,6 +1084,8 @@ def pquery(parser, opts, args):
 		maintainer_emails = []
 		for x in opts.maintainer_email:
 			maintainer_emails.extend(x.split(","))
+		if opts.no_regex: # Escape regex-special characters for an exact match
+			maintainer_emails = [re.escape(x) for x in maintainer_emails]
 		xml_matchers.append(MaintainerEmailMatcher(maintainer_emails))
 	if opts.orphaned:
 		xml_matchers.append(match_orphaned)
@@ -1242,6 +1244,11 @@ def add_pquery_arguments(parser):
 					"help": "comma-separated list of maintainer email regexes to search for"
 				},
 				{
+					"longopt": "--no-regex",
+					"action": "store_true",
+					"help": "Use exact matching instead of regex matching for --maintainer-email"
+				},
+				{
 					"longopt": "--orphaned",
 					"action": "store_true",
 					"help": "match only orphaned (maintainer-needed) packages"
@@ -1283,7 +1290,7 @@ def add_pquery_arguments(parser):
 				kwargs["help"] = opt_info["help"]
 			except KeyError:
 				pass
-			arg_group.add_argument(*pargs, **portage._native_kwargs(kwargs))
+			arg_group.add_argument(*pargs, **kwargs)
 
 
 def usage(argv):
