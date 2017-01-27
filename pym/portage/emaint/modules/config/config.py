@@ -10,13 +10,13 @@ class CleanConfig(object):
 
 	short_desc = "Discard any no longer installed configs from emerge's tracker list"
 
+	@staticmethod
+	def name():
+		return "cleanconfmem"
+
 	def __init__(self):
 		self._root = portage.settings["ROOT"]
 		self.target = os.path.join(portage.settings["EROOT"], PRIVATE_PATH, 'config')
-
-	def name():
-		return "cleanconfmem"
-	name = staticmethod(name)
 
 	def load_configlist(self):
 		return grabdict(self.target)

@@ -9,9 +9,9 @@ class WorldHandler(object):
 
 	short_desc = "Fix problems in the world file"
 
+	@staticmethod
 	def name():
 		return "world"
-	name = staticmethod(name)
 
 	def __init__(self):
 		self.invalid = []
