@@ -8,9 +8,9 @@ class CleanResume(object):
 
 	short_desc = "Discard emerge --resume merge lists"
 
+	@staticmethod
 	def name():
 		return "cleanresume"
-	name = staticmethod(name)
 
 	def check(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)

@@ -18,9 +18,9 @@ class CleanLogs(object):
 
 	short_desc = "Clean PORT_LOGDIR logs"
 
+	@staticmethod
 	def name():
 		return "logs"
-	name = staticmethod(name)
 
 
 	def can_progressbar(self, func):
