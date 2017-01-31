@@ -205,9 +205,15 @@ class SyncRepos(object):
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
-		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
-		if not selected_repos:
+		valid_repos = []
+		for repo in selected_repos:
+			if repo.sync_type is None:
+				msgs.extend([warn(" * ") + "Missing sync-type for repo: " + \
+					repo.name +  ", skipping...\n"])
+			else:
+				valid_repos.append(repo)
+		if not valid_repos:
 			msgs.append("Emaint sync, nothing to sync... returning")
 			if return_messages:
 				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
@@ -223,7 +229,7 @@ class SyncRepos(object):
 			if 'parallel-fetch' in self.emerge_config.
 			target_config.settings.features else 1)
 		sync_scheduler = SyncScheduler(emerge_config=self.emerge_config,
-			selected_repos=selected_repos, sync_manager=sync_manager,
+			selected_repos=valid_repos, sync_manager=sync_manager,
 			max_jobs=max_jobs,
 			event_loop=global_event_loop() if portage._internal_caller else
 				EventLoop(main=False))
