@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -231,7 +231,7 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
 			return (False, st)
 	return (True, st)
 
-_fetch_resume_size_re = re.compile('(^[\d]+)([KMGTPEZY]?$)')
+_fetch_resume_size_re = re.compile(r'(^[\d]+)([KMGTPEZY]?$)')
 
 _size_suffix_map = {
 	''  : 0,

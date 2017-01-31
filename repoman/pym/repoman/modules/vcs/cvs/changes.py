@@ -82,7 +82,7 @@ class Changes(ChangesBase):
 		@param no_expansion:
 		@param expansion:
 		'''
-		headerstring = "'\$(Header|Id).*\$'"
+		headerstring = r"'\$(Header|Id).*\$'"
 
 		for _file in updates:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python -bO
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -222,7 +222,7 @@ class dispatch:
                 # Filter out comments and whitespace-only changes.
                 # Note: be nice to also ignore lines that only differ in whitespace...
                 wsc_lines = []
-                for x in ['^[-+]\s*#', '^[-+]\s*$']:
+                for x in [r'^[-+]\s*#', r'^[-+]\s*$']:
                    wsc_lines += list(filter(re.compile(x).match, mylines))
                 same_wsc = len(mylines) == len(wsc_lines)
 

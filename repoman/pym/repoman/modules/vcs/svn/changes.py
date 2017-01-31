@@ -110,7 +110,7 @@ class Changes(ChangesBase):
 				if keyword is not None:
 					enabled_keywords.append(keyword)
 
-			headerstring = "'\$(%s).*\$'" % "|".join(enabled_keywords)
+			headerstring = r"'\$(%s).*\$'" % "|".join(enabled_keywords)
 
 			_out = repoman_getstatusoutput(
 				"egrep -q %s %s" % (headerstring, portage._shell_quote(_file)))

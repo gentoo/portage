@@ -1,4 +1,4 @@
-# Copyright 2003-2014 Gentoo Foundation
+# Copyright 2003-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import absolute_import, unicode_literals
@@ -210,7 +210,7 @@ def getText(node, format, textfd = None):
 	rValue = textfd.getvalue()
 	if format == "strip":
 		rValue = rValue.strip(" \n\t")
-		rValue = re.sub("[\s]{2,}", " ", rValue)
+		rValue = re.sub(r"[\s]{2,}", " ", rValue)
 	return rValue
 
 def getMultiTagsText(rootnode, tagname, format):
