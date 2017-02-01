@@ -68,6 +68,7 @@ from portage._global_updates import _global_updates
 from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.localization import _
 from portage.metadata import action_metadata
+from portage.emaint.main import print_results
 
 from _emerge.clear_caches import clear_caches
 from _emerge.countdown import countdown
@@ -1999,8 +2000,10 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 
 	syncer = SyncRepos(emerge_config)
 
-
-	success, msgs = syncer.auto_sync(options={'return-messages': False})
+	return_messages = "--quiet" not in emerge_config.opts
+	success, msgs = syncer.auto_sync(options={'return-messages': return_messages})
+	if return_messages:
+		print_results(msgs)
 
 	return os.EX_OK if success else 1
 
