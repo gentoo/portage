@@ -149,38 +149,7 @@ class SyncRepos(object):
 
 	def _get_repos(self, auto_sync_only=True):
 		selected_repos = []
-		unknown_repo_names = []
-		missing_sync_type = []
-		if self.emerge_config.args:
-			for repo_name in self.emerge_config.args:
-				#print("_get_repos(): repo_name =", repo_name)
-				try:
-					repo = self.emerge_config.target_config.settings.repositories[repo_name]
-				except KeyError:
-					unknown_repo_names.append(repo_name)
-				else:
-					selected_repos.append(repo)
-					if repo.sync_type is None:
-						missing_sync_type.append(repo)
-
-			if unknown_repo_names:
-				writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
-					" ".join(unknown_repo_names),
-					level=logging.ERROR, noiselevel=-1)
-
-			if missing_sync_type:
-				writemsg_level("!!! %s\n" %
-					_("Missing sync-type for repo(s): %s") %
-					" ".join(repo.name for repo in missing_sync_type),
-					level=logging.ERROR, noiselevel=-1)
-
-			if unknown_repo_names or missing_sync_type:
-				writemsg_level("Missing or unknown repos... returning",
-					level=logging.INFO, noiselevel=2)
-				return []
-
-		else:
-			selected_repos.extend(self.emerge_config.target_config.settings.repositories)
+		selected_repos.extend(self.emerge_config.target_config.settings.repositories)
 		#print("_get_repos(), selected =", selected_repos)
 		if auto_sync_only:
 			return self._filter_auto(selected_repos)
@@ -198,20 +167,58 @@ class SyncRepos(object):
 	def _sync(self, selected_repos, return_messages,
 		emaint_opts=None):
 
+		# No repos defined or no auto-sync repos when the caller is auto_sync().
+		if not selected_repos:
+			if return_messages:
+				return (True, ["Nothing to sync... returning"])
+			return (True, None)
+
 		if emaint_opts is not None:
 			for k, v in emaint_opts.items():
 				if v is not None:
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
-		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
-		if not selected_repos:
-			msgs.append("Nothing to sync... returning")
+		if self.emerge_config.args:
+			emerge_repos = []
+			unknown_repo_names = []
+			skipped_repo_names = []
+			auto_sync_repos = {repo.name: repo for repo in selected_repos}
+			for repo_name in self.emerge_config.args:
+				#print("_sync(): repo_name =", repo_name)
+				try:
+					repo = self.emerge_config.target_config.settings.repositories[repo_name]
+				except KeyError:
+					unknown_repo_names.append(repo_name)
+				else:
+					if repo_name not in auto_sync_repos:
+						skipped_repo_names.append(repo_name)
+					else:
+						emerge_repos.append(auto_sync_repos[repo_name])
+			if unknown_repo_names:
+				msgs.append(warn(" * ") + "Unknown repo(s): %s\n" %
+					" ".join(unknown_repo_names));
+			if skipped_repo_names:
+				msgs.append(warn(" * ") + "auto-sync is disabled for repo(s): %s" %
+					" ".join(skipped_repo_names) + ", skipping...\n")
+			selected_repos = emerge_repos
+
+		valid_repos = []
+		missing_sync_type = []
+		for repo in selected_repos:
+			if repo.sync_type is not None:
+				valid_repos.append(repo)
+			else:
+				missing_sync_type.append(repo.name)
+		if missing_sync_type:
+			msgs.append(warn(" * ") + "Missing sync-type for repo(s): %s" %
+				" ".join(missing_sync_type) + ", skipping...\n")
+		if not valid_repos:
 			if return_messages:
-				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
-				return (True, msgs)
-			return (True, None)
+				msgs.append(red(" * ") + "No valid repos found.")
+				return (False, msgs)
+			return (False, None)
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
@@ -222,7 +229,7 @@ class SyncRepos(object):
 			if 'parallel-fetch' in self.emerge_config.
 			target_config.settings.features else 1)
 		sync_scheduler = SyncScheduler(emerge_config=self.emerge_config,
-			selected_repos=selected_repos, sync_manager=sync_manager,
+			selected_repos=valid_repos, sync_manager=sync_manager,
 			max_jobs=max_jobs,
 			event_loop=global_event_loop() if portage._internal_caller else
 				EventLoop(main=False))
