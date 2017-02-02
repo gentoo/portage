@@ -8,7 +8,6 @@ __all__ = ['movefile']
 import errno
 import fnmatch
 import os as _os
-import shutil as _shutil
 import stat
 import sys
 import textwrap
@@ -23,6 +22,8 @@ from portage.localization import _
 from portage.process import spawn
 from portage.util import writemsg
 from portage.util._xattr import xattr
+from portage.util.file_copy import copyfile
+
 
 def _apply_stat(src_stat, dest):
 	_os.chown(dest, src_stat.st_uid, src_stat.st_gid)
@@ -114,7 +115,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		_copyfile = selinux.copyfile
 		_rename = selinux.rename
 	else:
-		_copyfile = _shutil.copyfile
+		_copyfile = copyfile
 		_rename = _os.rename
 
 	lchown = _unicode_func_wrapper(portage.data.lchown, encoding=encoding)

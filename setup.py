@@ -23,6 +23,7 @@ import collections
 import glob
 import os
 import os.path
+import platform
 import re
 import subprocess
 import sys
@@ -53,6 +54,14 @@ x_c_helpers = {
 		'src/portage_util_libc.c',
 	],
 }
+
+if platform.system() == 'Linux':
+	x_c_helpers.update({
+		'portage.util.file_copy.reflink_linux': [
+			'src/portage_util_file_copy_reflink_linux.c',
+		],
+	})
+
 
 class x_build(build):
 	""" Build command with extra build_man call. """
