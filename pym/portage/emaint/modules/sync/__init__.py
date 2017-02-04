@@ -21,7 +21,7 @@ module_spec = {
 					"short": "-r", "long": "--repo",
 					"help": "(sync module only): -r, --repo  Sync the specified repo",
 					'status': "Syncing %s",
-					'action': 'store',
+					'nargs': '+',
 					'func': 'repo',
 					},
 				'allrepos': {

@@ -122,9 +122,11 @@ class SyncRepos(object):
 			repos = repos.split()
 		available = self._get_repos(auto_sync_only=False)
 		selected = self._match_repos(repos, available)
-		if not selected:
+		if len(selected) < len(repos):
+			selected_repo_names = [repo.name for repo in selected]
+			missing_repo_names = set(repos) - set(selected_repo_names)
 			msgs = [red(" * ") + "Emaint sync, The specified repos were not found: %s"
-				% (bold(", ".join(repos))) + "\n   ...returning"
+				% (bold(", ".join(missing_repo_names))) + "\n   ...returning"
 				]
 			if return_messages:
 				return (False, msgs)
