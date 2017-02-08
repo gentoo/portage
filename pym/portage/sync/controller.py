@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -8,6 +8,7 @@ import sys
 import logging
 import grp
 import pwd
+import warnings
 
 import portage
 from portage import os
@@ -107,6 +108,14 @@ class SyncManager(object):
 						level=logging.WARN, noiselevel=2)
 			self.hooks[_dir] = hooks
 
+	def __getattr__(self, name):
+		if name == 'async':
+			warnings.warn("portage.sync.controller.SyncManager.async "
+				"has been renamed to sync_async",
+				DeprecationWarning, stacklevel=2)
+			return self.sync_async
+		else:
+			raise AttributeError(name)
 
 	def get_module_descriptions(self, mod):
 		desc = self.module_controller.get_func_descriptions(mod)
@@ -114,7 +123,7 @@ class SyncManager(object):
 			return desc
 		return []
 
-	def async(self, emerge_config=None, repo=None, master_hooks=True):
+	def sync_async(self, emerge_config=None, repo=None, master_hooks=True):
 		self.emerge_config = emerge_config
 		self.settings, self.trees, self.mtimedb = emerge_config
 		self.xterm_titles = "notitles" not in self.settings.features

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -434,7 +434,7 @@ class SyncScheduler(AsyncScheduler):
 		self._running_repos.add(node)
 		self._update_leaf_nodes()
 
-		return self._sync_manager.async(
+		return self._sync_manager.sync_async(
 			emerge_config=self._emerge_config,
 			repo=self._repo_map[node],
 			master_hooks=self._master_hooks(node))
