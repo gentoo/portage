@@ -29,15 +29,14 @@ class Status(object):
 		@param xpkg: string of the package being checked
 		@returns: boolean
 		'''
-		myf = repoman_popen(
+		with repoman_popen(
 			"git ls-files --others %s" %
-			(portage._shell_quote(checkdir_relative),))
-		for l in myf:
-			if l[:-1][-7:] == ".ebuild":
-				self.qatracker.add_error(
-					"ebuild.notadded",
-					os.path.join(xpkg, os.path.basename(l[:-1])))
-		myf.close()
+			(portage._shell_quote(checkdir_relative),)) as myf:
+			for l in myf:
+				if l[:-1][-7:] == ".ebuild":
+					self.qatracker.add_error(
+						"ebuild.notadded",
+						os.path.join(xpkg, os.path.basename(l[:-1])))
 		return True
 
 	@staticmethod
