@@ -34,6 +34,7 @@ class OptionItem(object):
 		self.type = opt.get('type')
 		self.dest = opt.get('dest')
 		self.choices = opt.get('choices')
+		self.nargs = opt.get('nargs')
 
 	@property
 	def pargs(self):
@@ -60,6 +61,8 @@ class OptionItem(object):
 			kwargs['dest'] = self.dest
 		if self.choices is not None:
 			kwargs['choices'] = self.choices
+		if self.nargs is not None:
+			kwargs['nargs'] = self.nargs
 		return kwargs
 
 def usage(module_controller):
