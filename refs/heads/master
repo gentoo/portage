@@ -1,12 +1,13 @@
 certificate version 0.1
-pusher FDE8EF85AE5719A3 1486976121 -0800
-pushee git+ssh://git.gentoo.org/proj/portage.git
-nonce 1486976122-1884e004c6a8df2bd11a
+pusher Mike Gilbert <floppym@gentoo.org> 1487178412 -0500
+pushee ssh://git.gentoo.org/proj/portage.git
+nonce 1487178412-a389c18a2500b627e6a0
 
-04e5f8dee2130901386f4f1b65328bbf0b8104c1 f57ae38b978069e50c2b1bf2d41bffed23ecc11d refs/heads/master
+f57ae38b978069e50c2b1bf2d41bffed23ecc11d 186c01953709bf397ce7e701fd4e7b2b305ff5f5 refs/heads/master
 -----BEGIN PGP SIGNATURE-----
 
-iF0EABECAB0WIQSG5RNTeMgVEruefzL96O+FrlcZowUCWKF0eQAKCRD96O+FrlcZ
-o4PGAJ9vSYMhtkQChAvYLvd/qiu0t0LuxQCeOmdKosPmeH7dXNcrOv1IeL+6Tbs=
-=o0z4
+iIkEABEIADEWIQSC6+o3VgHHi7vNKkVHG+cz7ykaPwUCWKSKrBMcZmxvcHB5bUBn
+ZW50b28ub3JnAAoJEEcb5zPvKRo/UMwA/RCd7fXnA7zE0qd4pxpJgqhy5gKr34bQ
+l0eSv3LwtPt2AQC/BHSdm20sKHYErJL7UOQ5zbsMp6iil61Ai5Cv9204JA==
+=dC5s
 -----END PGP SIGNATURE-----
