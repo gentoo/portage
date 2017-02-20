@@ -1999,9 +1999,13 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 			action=action, args=[], trees=trees, opts=opts)
 
 	syncer = SyncRepos(emerge_config)
-
 	return_messages = "--quiet" not in emerge_config.opts
-	success, msgs = syncer.auto_sync(options={'return-messages': return_messages})
+	options = {'return-messages' : return_messages}
+	if emerge_config.args:
+		options['repo'] = emerge_config.args
+		success, msgs = syncer.repo(options=options)
+	else:
+		success, msgs = syncer.auto_sync(options=options)
 	if return_messages:
 		print_results(msgs)
 
