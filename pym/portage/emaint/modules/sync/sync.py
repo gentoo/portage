@@ -148,43 +148,11 @@ class SyncRepos(object):
 
 
 	def _get_repos(self, auto_sync_only=True):
-		selected_repos = []
-		unknown_repo_names = []
-		missing_sync_type = []
-		if self.emerge_config.args:
-			for repo_name in self.emerge_config.args:
-				#print("_get_repos(): repo_name =", repo_name)
-				try:
-					repo = self.emerge_config.target_config.settings.repositories[repo_name]
-				except KeyError:
-					unknown_repo_names.append(repo_name)
-				else:
-					selected_repos.append(repo)
-					if repo.sync_type is None:
-						missing_sync_type.append(repo)
-
-			if unknown_repo_names:
-				writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
-					" ".join(unknown_repo_names),
-					level=logging.ERROR, noiselevel=-1)
-
-			if missing_sync_type:
-				writemsg_level("!!! %s\n" %
-					_("Missing sync-type for repo(s): %s") %
-					" ".join(repo.name for repo in missing_sync_type),
-					level=logging.ERROR, noiselevel=-1)
-
-			if unknown_repo_names or missing_sync_type:
-				writemsg_level("Missing or unknown repos... returning",
-					level=logging.INFO, noiselevel=2)
-				return []
-
-		else:
-			selected_repos.extend(self.emerge_config.target_config.settings.repositories)
-		#print("_get_repos(), selected =", selected_repos)
+		repos = self.emerge_config.target_config.settings.repositories
+		#print("_get_repos(), repos =", repos)
 		if auto_sync_only:
-			return self._filter_auto(selected_repos)
-		return selected_repos
+			return self._filter_auto(repos)
+		return repos
 
 
 	def _filter_auto(self, repos):
