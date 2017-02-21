@@ -89,47 +89,50 @@ class SyncRepos(object):
 	def auto_sync(self, **kwargs):
 		'''Sync auto-sync enabled repos'''
 		options = kwargs.get('options', None)
-		selected = self._get_repos(True)
 		if options:
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		success, repos, msgs = self._get_repos(auto_sync_only=True)
+		if not success:
+			if return_messages:
+				return (False, msgs)
+			return (False, None)
+		return self._sync(repos, return_messages, emaint_opts=options)
 
 
 	def all_repos(self, **kwargs):
 		'''Sync all repos defined in repos.conf'''
-		selected = self._get_repos(auto_sync_only=False)
 		options = kwargs.get('options', None)
 		if options:
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		success, repos, msgs = self._get_repos(auto_sync_only=False)
+		if not success:
+			if return_messages:
+				return (False, msgs)
+			return (False, None)
+		return self._sync(repos, return_messages, emaint_opts=options)
 
 
 	def repo(self, **kwargs):
 		'''Sync the specified repo'''
 		options = kwargs.get('options', None)
 		if options:
-			repos = options.get('repo', '')
+			repo_names = options.get('repo', '')
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		if isinstance(repos, _basestring):
-			repos = repos.split()
-		available = self._get_repos(auto_sync_only=False)
-		selected = self._match_repos(repos, available)
-		if not selected:
-			msgs = [red(" * ") + "The specified repos were not found: %s" %
-				(bold(", ".join(repos))) + "\n   ...returning"]
+		if isinstance(repo_names, _basestring):
+			repo_names = repo_names.split()
+		success, repos, msgs = self._get_repos(auto_sync_only=False,
+			match_repos=repo_names)
+		if not success:
 			if return_messages:
 				return (False, msgs)
 			return (False, None)
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		return self._sync(repos, return_messages, emaint_opts=options)
 
 
 	@staticmethod
@@ -147,44 +150,40 @@ class SyncRepos(object):
 		return selected
 
 
-	def _get_repos(self, auto_sync_only=True):
-		selected_repos = []
-		unknown_repo_names = []
-		missing_sync_type = []
-		if self.emerge_config.args:
-			for repo_name in self.emerge_config.args:
-				#print("_get_repos(): repo_name =", repo_name)
-				try:
-					repo = self.emerge_config.target_config.settings.repositories[repo_name]
-				except KeyError:
-					unknown_repo_names.append(repo_name)
-				else:
-					selected_repos.append(repo)
-					if repo.sync_type is None:
-						missing_sync_type.append(repo)
+	def _get_repos(self, auto_sync_only=True, match_repos=None):
+		msgs = []
+		repos = self.emerge_config.target_config.settings.repositories
+		if match_repos is not None:
+			repos = self._match_repos(match_repos, repos)
+			if len(repos) < len(match_repos):
+				available = [repo.name for repo in repos]
+				missing = [repo for repo in match_repos if repo not in available]
+				msgs.append(red(" * ") + "The specified repo(s) were not found: %s" %
+					(" ".join(repo for repo in missing)) + \
+					"\n   ...returning")
+				return (False, repos, msgs)
 
-			if unknown_repo_names:
-				writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
-					" ".join(unknown_repo_names),
-					level=logging.ERROR, noiselevel=-1)
-
-			if missing_sync_type:
-				writemsg_level("!!! %s\n" %
-					_("Missing sync-type for repo(s): %s") %
-					" ".join(repo.name for repo in missing_sync_type),
-					level=logging.ERROR, noiselevel=-1)
-
-			if unknown_repo_names or missing_sync_type:
-				writemsg_level("Missing or unknown repos... returning",
-					level=logging.INFO, noiselevel=2)
-				return []
-
-		else:
-			selected_repos.extend(self.emerge_config.target_config.settings.repositories)
-		#print("_get_repos(), selected =", selected_repos)
 		if auto_sync_only:
-			return self._filter_auto(selected_repos)
-		return selected_repos
+			repos = self._filter_auto(repos)
+
+		sync_disabled = [repo for repo in repos if repo.sync_type is None]
+		if sync_disabled:
+			repos = [repo for repo in repos if repo.sync_type is not None]
+			if match_repos is not None:
+				msgs.append(red(" * " ) + "The specified repo(s) have sync disabled: %s" %
+					" ".join(repo.name for repo in sync_disabled) + \
+					"\n   ...returning")
+				return (False, repos, msgs)
+
+		missing_sync_uri = [repo for repo in repos if repo.sync_uri is None]
+		if missing_sync_uri:
+			repos = [repo for repo in repos if repo.sync_uri is not None]
+			msgs.append(red(" * ") + "The specified repo(s) are missing sync-uri: %s" %
+				" ".join(repo.name for repo in missing_sync_uri) + \
+				"\n   ...returning")
+			return (False, repos, msgs)
+
+		return (True, repos, msgs)
 
 
 	def _filter_auto(self, repos):
@@ -195,8 +194,13 @@ class SyncRepos(object):
 		return selected
 
 
-	def _sync(self, selected_repos, return_messages,
-		emaint_opts=None):
+	def _sync(self, selected_repos, return_messages, emaint_opts=None):
+		msgs = []
+		if not selected_repos:
+			if return_messages:
+				msgs.append("Nothing to sync... returning")
+				return (True, msgs)
+			return (True, None)
 
 		if emaint_opts is not None:
 			for k, v in emaint_opts.items():
@@ -204,14 +208,6 @@ class SyncRepos(object):
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
-		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
-		msgs = []
-		if not selected_repos:
-			msgs.append("Nothing to sync... returning")
-			if return_messages:
-				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
-				return (True, msgs)
-			return (True, None)
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
