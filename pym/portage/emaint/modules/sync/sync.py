@@ -89,25 +89,45 @@ class SyncRepos(object):
 	def auto_sync(self, **kwargs):
 		'''Sync auto-sync enabled repos'''
 		options = kwargs.get('options', None)
-		selected = self._get_repos(True)
 		if options:
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		success, selected, msgs = self._get_repos(True)
+		if not success:
+			if return_messages:
+				msgs.append(red(" * ") + \
+					"Errors were encountered while getting repos... returning")
+				return (False, msgs)
+			return (False, None)
+		if not selected:
+			if return_messages:
+				msgs.append("Nothing to sync... returning")
+				return (True, msgs)
+			return (True, None)
+		return self._sync(selected, return_messages, emaint_opts=options)
 
 
 	def all_repos(self, **kwargs):
 		'''Sync all repos defined in repos.conf'''
-		selected = self._get_repos(auto_sync_only=False)
 		options = kwargs.get('options', None)
 		if options:
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		success, selected, msgs = self._get_repos(auto_sync_only=False)
+		if not success:
+			if return_messages:
+				msgs.append(red(" * ") + \
+					"Errors were encountered while getting repos... returning")
+				return (False, msgs)
+			return (False, None)
+		if not selected:
+			if return_messages:
+				msgs.append("Nothing to sync... returning")
+				return (True, msgs)
+			return (True, None)
+		return self._sync(selected, return_messages, emaint_opts=options)
 
 
 	def repo(self, **kwargs):
@@ -120,16 +140,17 @@ class SyncRepos(object):
 			return_messages = False
 		if isinstance(repos, _basestring):
 			repos = repos.split()
-		available = self._get_repos(auto_sync_only=False)
+		success, available, msgs = self._get_repos(auto_sync_only=False)
+		# Ignore errors from _get_repos(), we only want to know if the repo
+		# exists.
 		selected = self._match_repos(repos, available)
 		if not selected:
-			msgs = [red(" * ") + "The specified repos were not found: %s" %
-				(bold(", ".join(repos))) + "\n   ...returning"]
+			msgs.append(red(" * ") + "The specified repos are invalid or missing: %s" %
+				(bold(", ".join(repos))) + "\n   ...returning")
 			if return_messages:
 				return (False, msgs)
 			return (False, None)
-		return self._sync(selected, return_messages,
-			emaint_opts=options)
+		return self._sync(selected, return_messages, emaint_opts=options)
 
 
 	@staticmethod
@@ -148,10 +169,11 @@ class SyncRepos(object):
 
 
 	def _get_repos(self, auto_sync_only=True):
+		msgs = []
+		emerge_repos = []
 		selected_repos = []
-		unknown_repo_names = []
-		missing_sync_type = []
 		if self.emerge_config.args:
+			unknown_repo_names = []
 			for repo_name in self.emerge_config.args:
 				#print("_get_repos(): repo_name =", repo_name)
 				try:
@@ -159,32 +181,37 @@ class SyncRepos(object):
 				except KeyError:
 					unknown_repo_names.append(repo_name)
 				else:
-					selected_repos.append(repo)
-					if repo.sync_type is None:
-						missing_sync_type.append(repo)
-
+					emerge_repos.append(repo)
 			if unknown_repo_names:
-				writemsg_level("!!! %s\n" % _("Unknown repo(s): %s") %
-					" ".join(unknown_repo_names),
-					level=logging.ERROR, noiselevel=-1)
-
-			if missing_sync_type:
-				writemsg_level("!!! %s\n" %
-					_("Missing sync-type for repo(s): %s") %
-					" ".join(repo.name for repo in missing_sync_type),
-					level=logging.ERROR, noiselevel=-1)
-
-			if unknown_repo_names or missing_sync_type:
-				writemsg_level("Missing or unknown repos... returning",
-					level=logging.INFO, noiselevel=2)
-				return []
-
+				msgs.append(warn(" * ") + "Unknown repo(s): %s\n" %
+					" ".join(unknown_repo_names));
+				return (False, emerge_repos, msgs)
+			selected_repos = emerge_repos
 		else:
 			selected_repos.extend(self.emerge_config.target_config.settings.repositories)
-		#print("_get_repos(), selected =", selected_repos)
+
+		valid_repos = []
+		missing_sync_type = []
+		for repo in selected_repos:
+			if repo.sync_type is None:
+				missing_sync_type.append(repo.name)
+			else:
+				valid_repos.append(repo)
+		if missing_sync_type:
+			msgs.append(warn(" * ") + "Missing sync-type for repo(s): %s" %
+				" ".join(missing_sync_type) + "\n")
+			return (False, valid_repos, msgs)
+
 		if auto_sync_only:
-			return self._filter_auto(selected_repos)
-		return selected_repos
+			selected_repos = self._filter_auto(selected_repos)
+		#print("_get_repos(), selected =", selected_repos)
+		if emerge_repos:
+			skipped_repos = set(emerge_repos) - set(selected_repos)
+			if skipped_repos:
+				msgs.append(warn(" * ") + "auto-sync is disabled for repo(s): %s" %
+					" ".join(repo.name for repo in skipped_repos) + "\n")
+				return (False, selected_repos, msgs)
+		return (True, selected_repos, msgs)
 
 
 	def _filter_auto(self, repos):
@@ -204,14 +231,7 @@ class SyncRepos(object):
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
-		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
-		if not selected_repos:
-			msgs.append("Nothing to sync... returning")
-			if return_messages:
-				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
-				return (True, msgs)
-			return (True, None)
 		# Portage needs to ensure a sane umask for the files it creates.
 		os.umask(0o22)
 
