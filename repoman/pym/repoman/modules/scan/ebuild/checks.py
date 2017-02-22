@@ -417,6 +417,7 @@ class InheritDeprecated(LineCheck):
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"clutter": "gnome2",
+		"confutils": False,
 		"distutils": "distutils-r1",
 		"games": False,
 		"gems": "ruby-fakegem",
