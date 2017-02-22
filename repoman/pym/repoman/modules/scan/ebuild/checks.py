@@ -420,6 +420,7 @@ class InheritDeprecated(LineCheck):
 		"distutils": "distutils-r1",
 		"games": False,
 		"gems": "ruby-fakegem",
+		"gpe": False,
 		"gst-plugins-bad": "gstreamer",
 		"gst-plugins-base": "gstreamer",
 		"gst-plugins-good": "gstreamer",
