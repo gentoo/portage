@@ -18,6 +18,7 @@ _decompressors = {
 	"lzip": "lzip -d",
 	"lzop": "lzop -d",
 	"xz": "xz -d",
+	"zstd": "zstd -d",
 }
 
 _compression_re = re.compile(b'^(' +
@@ -26,7 +27,8 @@ _compression_re = re.compile(b'^(' +
 	b'(?P<lz4>(?:\x04\x22\x4d\x18|\x02\x21\x4c\x18))|' +
 	b'(?P<lzip>LZIP)|' +
 	b'(?P<lzop>\x89LZO\x00\x0d\x0a\x1a\x0a)|' +
-	b'(?P<xz>\xfd\x37\x7a\x58\x5a\x00))')
+	b'(?P<xz>\xfd\x37\x7a\x58\x5a\x00)|' +
+	b'(?P<zstd>([\x22-\x28]\xb5\x2f\xfd)))')
 
 _max_compression_re_len = 9
 
@@ -41,6 +43,7 @@ def compression_probe(f):
 		lzip
 		lzop
 		xz
+		zstd
 
 	@param f: a file path, or file-like object
 	@type f: str or file

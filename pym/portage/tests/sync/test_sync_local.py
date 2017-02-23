@@ -42,7 +42,7 @@ class SyncLocalTestCase(TestCase):
 			location = %(EPREFIX)s/var/repositories/test_repo
 			sync-type = %(sync-type)s
 			sync-uri = file:/%(EPREFIX)s/var/repositories/test_repo_sync
-			auto-sync = yes
+			auto-sync = %(auto-sync)s
 			%(repo_extra_keys)s
 		""")
 
@@ -71,8 +71,15 @@ class SyncLocalTestCase(TestCase):
 
 		cmds = {}
 		for cmd in ("emerge", "emaint"):
-			cmds[cmd] =  (portage._python_interpreter,
-				"-b", "-Wd", os.path.join(self.bindir, cmd))
+			for bindir in (self.bindir, self.sbindir):
+				path = os.path.join(bindir, cmd)
+				if os.path.exists(path):
+					cmds[cmd] =  (portage._python_interpreter,
+						"-b", "-Wd", path)
+					break
+			else:
+				raise AssertionError('%s binary not found in %s or %s' %
+					(cmd, self.bindir, self.sbindir))
 
 		git_binary = find_binary("git")
 		git_cmd = (git_binary,)
@@ -80,9 +87,11 @@ class SyncLocalTestCase(TestCase):
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
 
-		def repos_set_conf(sync_type, dflt_keys=None, xtra_keys=None):
+		def repos_set_conf(sync_type, dflt_keys=None, xtra_keys=None,
+			auto_sync="yes"):
 			env["PORTAGE_REPOSITORIES"] = repos_conf % {\
 				"EPREFIX": eprefix, "sync-type": sync_type,
+				"auto-sync": auto_sync,
 				"default_keys": "" if dflt_keys is None else dflt_keys,
 				"repo_extra_keys": "" if xtra_keys is None else xtra_keys}
 
@@ -93,6 +102,12 @@ class SyncLocalTestCase(TestCase):
 			os.unlink(os.path.join(metadata_dir, 'timestamp.chk'))
 
 		sync_cmds = (
+			(homedir, lambda: repos_set_conf("rsync", auto_sync="no")),
+			(homedir, cmds["emerge"] + ("--sync",)),
+			(homedir, lambda: self.assertFalse(os.path.exists(
+				os.path.join(repo.location, "dev-libs", "A")
+				), "dev-libs/A found, expected missing")),
+			(homedir, lambda: repos_set_conf("rsync", auto_sync="yes")),
 			(homedir, cmds["emerge"] + ("--sync",)),
 			(homedir, lambda: self.assertTrue(os.path.exists(
 				os.path.join(repo.location, "dev-libs", "A")

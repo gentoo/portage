@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -73,7 +73,7 @@ shortmapping={
 "V":"--version"
 }
 
-COWSAY_MOO = """
+COWSAY_MOO = r"""
 
   Larry loves Gentoo (%s)
 

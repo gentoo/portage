@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2014 Gentoo Foundation
+# Copyright 2006-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -193,7 +193,7 @@ class NewsManager(object):
 			if unread_lock:
 				unlockfile(unread_lock)
 
-_formatRE = re.compile("News-Item-Format:\s*([^\s]*)\s*$")
+_formatRE = re.compile(r"News-Item-Format:\s*([^\s]*)\s*$")
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
 _keywordRE = re.compile("Display-If-Keyword:(.*)\n")

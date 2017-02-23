@@ -1,5 +1,5 @@
 # test_varExpand.py -- Portage Unit Testing Functionality
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -22,7 +22,7 @@ class VarExpandTestCase(TestCase):
 					(result, varDict[key], "${%s}" % key, varDict))
 
 	def testVarExpandBackslashes(self):
-		"""
+		r"""
 		We want to behave like bash does when expanding a variable
 		assignment in a sourced file, in which case it performs
 		backslash removal for \\ and \$ but nothing more. It also

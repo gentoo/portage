@@ -130,6 +130,9 @@ class FetchChecks(ScanBase):
 					self.qatracker.add_error(
 						"file.size", "(%d KiB) %s/files/%s" % (
 							mystat.st_size // 1024, xpkg, y))
+				elif mystat.st_size == 0:
+					self.qatracker.add_error(
+						"file.empty", "%s/files/%s" % (xpkg, y))
 
 				index = self.repo_settings.repo_config.find_invalid_path_char(y)
 				if index != -1:

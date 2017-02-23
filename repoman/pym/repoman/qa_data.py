@@ -67,6 +67,8 @@ qahelp = {
 		"Files in the files directory must be under 20 KiB"),
 	"file.size.fatal": (
 		"Files in the files directory must be under 60 KiB"),
+	"file.empty": (
+		"Empty file in the files directory"),
 	"file.name": (
 		"File/dir name must be composed"
 		" of only the following chars: %s " % allowed_filename_chars),
@@ -262,6 +264,7 @@ qawarnings = set((
 	"ebuild.minorsyn",
 	"ebuild.badheader",
 	"ebuild.patches",
+	"file.empty",
 	"file.size",
 	"inherit.unused",
 	"inherit.deprecated",

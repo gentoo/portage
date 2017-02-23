@@ -8,8 +8,8 @@ and correctness of an ebuild."""
 
 from __future__ import unicode_literals
 
-import codecs
 from itertools import chain
+import operator
 import re
 import time
 
@@ -416,19 +416,21 @@ class InheritDeprecated(LineCheck):
 		"base": False,
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
+		"clutter": "gnome2",
+		"confutils": False,
 		"distutils": "distutils-r1",
 		"games": False,
 		"gems": "ruby-fakegem",
-		"mono": "mono-env",
-		"python": "python-r1 / python-single-r1 / python-any-r1",
-		"ruby": "ruby-ng",
-		"x-modular": "xorg-2",
+		"gpe": False,
 		"gst-plugins-bad": "gstreamer",
 		"gst-plugins-base": "gstreamer",
 		"gst-plugins-good": "gstreamer",
 		"gst-plugins-ugly": "gstreamer",
 		"gst-plugins10": "gstreamer",
-		"clutter": "gnome2",
+		"mono": "mono-env",
+		"python": "python-r1 / python-single-r1 / python-any-r1",
+		"ruby": "ruby-ng",
+		"x-modular": "xorg-2",
 	}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
@@ -923,11 +925,10 @@ def checks_init(experimental_inherit=False):
 
 _here_doc_re = re.compile(r'.*<<[-]?(\w+)\s*(>\s*\S+\s*)?$')
 _ignore_comment_re = re.compile(r'^\s*#')
+_continuation_re = re.compile(r'(\\)*$')
 
 
 def run_checks(contents, pkg):
-	unicode_escape_codec = codecs.lookup('unicode_escape')
-	unicode_escape = lambda x: unicode_escape_codec.decode(x)[0]
 	if _constant_checks is None:
 		checks_init()
 	checks = _constant_checks
@@ -957,32 +958,21 @@ def run_checks(contents, pkg):
 		# 		cow
 		# This will merge these lines like so:
 		# 	inherit foo bar moo cow
-		try:
-			# A normal line will end in the two bytes: <\> <\n>.  So decoding
-			# that will result in python thinking the <\n> is being escaped
-			# and eat the single <\> which makes it hard for us to detect.
-			# Instead, strip the newline (which we know all lines have), and
-			# append a <0>.  Then when python escapes it, if the line ended
-			# in a <\>, we'll end up with a <\0> marker to key off of.  This
-			# shouldn't be a problem with any valid ebuild ...
-			line_escaped = unicode_escape(line.rstrip('\n') + '0')
-		except SystemExit:
-			raise
-		except:
-			# Who knows what kind of crazy crap an ebuild will have
-			# in it -- don't allow it to kill us.
-			line_escaped = line
+		# A line ending with an even number of backslashes does not count,
+		# because the last backslash is escaped. Therefore, search for an
+		# odd number of backslashes.
+		line_escaped = operator.sub(*_continuation_re.search(line).span()) % 2 == 1
 		if multiline:
 			# Chop off the \ and \n bytes from the previous line.
 			multiline = multiline[:-2] + line
-			if not line_escaped.endswith('\0'):
+			if not line_escaped:
 				line = multiline
 				num = multinum
 				multiline = None
 			else:
 				continue
 		else:
-			if line_escaped.endswith('\0'):
+			if line_escaped:
 				multinum = num
 				multiline = line
 				continue

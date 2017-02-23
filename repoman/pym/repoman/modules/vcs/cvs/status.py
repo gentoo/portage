@@ -63,9 +63,9 @@ class Status(object):
 			None (calls sys.exit on fatal problems)
 		"""
 
-		cmd = ("cvs -n up 2>/dev/null | "
-				"egrep '^[^\?] .*' | "
-				"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+		cmd = (r"cvs -n up 2>/dev/null | "
+				r"egrep '^[^\?] .*' | "
+				r"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		msg = ("Performing a %s with a little magic grep to check for updates."
 				% green("cvs -n up"))
 

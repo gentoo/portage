@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -58,7 +58,7 @@ class GetConfigTestCase(TestCase):
 		# Test the mode which is used to parse /etc/env.d and /etc/profile.env.
 
 		cases = {
-			'LESS_TERMCAP_mb': "$\E[01;31m", # bug #410625
+			'LESS_TERMCAP_mb': r"$\E[01;31m", # bug #410625
 		}
 
 		with tempfile.NamedTemporaryFile(mode='wb') as f:

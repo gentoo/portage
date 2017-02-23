@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -31,3 +31,10 @@ class PopenProcess(SubProcess):
 		self._reg_id = None
 		self._waitpid_cb(pid, condition)
 		self.wait()
+
+	def _set_returncode(self, wait_retval):
+		SubProcess._set_returncode(self, wait_retval)
+		if self.proc.returncode is None:
+			# Suppress warning messages like this:
+			# ResourceWarning: subprocess 1234 is still running
+			self.proc.returncode = self.returncode

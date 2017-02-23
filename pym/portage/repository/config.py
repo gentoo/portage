@@ -75,7 +75,8 @@ class RepoConfig(object):
 	"""Stores config of one repository"""
 
 	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
-		'auto_sync', 'cache_formats', 'create_manifest', 'disable_manifest',
+		'auto_sync', 'cache_formats', 'clone_depth',
+		'create_manifest', 'disable_manifest',
 		'eapi', 'eclass_db', 'eclass_locations', 'eclass_overrides',
 		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
 		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
@@ -168,7 +169,13 @@ class RepoConfig(object):
 			auto_sync = auto_sync.strip().lower()
 		self.auto_sync = auto_sync
 
+		self.clone_depth = repo_opts.get('clone-depth')
 		self.sync_depth = repo_opts.get('sync-depth')
+
+		if self.sync_depth is not None:
+			warnings.warn(_("repos.conf: sync-depth is deprecated,"
+				" use clone-depth instead"))
+
 		self.sync_hooks_only_on_change = repo_opts.get(
 			'sync-hooks-only-on-change', 'false').lower() == 'true'
 
@@ -505,7 +512,8 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'auto_sync', 'eclass_overrides',
+						for k in ('aliases', 'auto_sync',
+							'clone_depth', 'eclass_overrides',
 							'force', 'masters', 'priority', 'strict_misc_digests',
 							'sync_depth', 'sync_hooks_only_on_change',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
@@ -929,8 +937,8 @@ class RepoConfigLoader(object):
 
 	def config_string(self):
 		bool_keys = ("strict_misc_digests",)
-		str_or_int_keys = ("auto_sync", "format", "location",
-			"main_repo", "priority",
+		str_or_int_keys = ("auto_sync", "clone_depth", "format", "location",
+			"main_repo", "priority", "sync_depth",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)

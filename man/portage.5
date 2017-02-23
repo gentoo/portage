@@ -925,6 +925,10 @@ Valid values: yes, no, true, false.
 If unset, the repo will be treated as set
 yes, true.
 .TP
+.B clone\-depth
+Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
+the newest commit). If set to 0, the depth is unlimited.
+.TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
 .br
@@ -972,8 +976,7 @@ Valid values: true, false.
 Specifies CVS repository.
 .TP
 .B sync\-depth
-Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
-the newest commit). If set to 0, the depth is unlimited.
+This is a deprecated alias for the \fBclone\-depth\fR option.
 .TP
 .B sync\-git\-clone\-extra\-opts
 Extra options to give to git when cloning repository (git clone).

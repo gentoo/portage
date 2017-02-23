@@ -1,7 +1,9 @@
 *.py[co]
 __pycache__/
 *.class
+*.so
 /build
 /tags
+setup.cfg
 
 repoman/build

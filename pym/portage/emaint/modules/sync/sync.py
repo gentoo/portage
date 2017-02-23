@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -123,9 +123,8 @@ class SyncRepos(object):
 		available = self._get_repos(auto_sync_only=False)
 		selected = self._match_repos(repos, available)
 		if not selected:
-			msgs = [red(" * ") + "Emaint sync, The specified repos were not found: %s"
-				% (bold(", ".join(repos))) + "\n   ...returning"
-				]
+			msgs = [red(" * ") + "The specified repos were not found: %s" %
+				(bold(", ".join(repos))) + "\n   ...returning"]
 			if return_messages:
 				return (False, msgs)
 			return (False, None)
@@ -208,7 +207,7 @@ class SyncRepos(object):
 		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
 		if not selected_repos:
-			msgs.append("Emaint sync, nothing to sync... returning")
+			msgs.append("Nothing to sync... returning")
 			if return_messages:
 				msgs.extend(self.rmessage([('None', os.EX_OK)], 'sync'))
 				return (True, msgs)
@@ -434,7 +433,7 @@ class SyncScheduler(AsyncScheduler):
 		self._running_repos.add(node)
 		self._update_leaf_nodes()
 
-		return self._sync_manager.async(
+		return self._sync_manager.sync_async(
 			emerge_config=self._emerge_config,
 			repo=self._repo_map[node],
 			master_hooks=self._master_hooks(node))

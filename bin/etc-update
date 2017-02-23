@@ -649,10 +649,21 @@ do_distconf() {
 		elif [[ -L ${efile} || -L ${file} ]] ; then
 			# not the same file types
 			continue
-		elif diff_command "${file}" "${efile}" &> /dev/null; then
-			# replace identical copy
-			mv "${file}" "${efile}"
-			break
+		else
+			local ret=
+			if [[ ${using_editor} == 0 ]] ; then
+				diff_command "${file}" "${efile}" &> /dev/null
+				ret=$?
+			else
+				# fall back to plain diff
+				diff -q "${file}" "${efile}" &> /dev/null
+				ret=$?
+			fi
+			if [[ ${ret} == 0 ]] ; then
+				# replace identical copy
+				mv "${file}" "${efile}"
+				break
+			fi
 		fi
 	done
 }

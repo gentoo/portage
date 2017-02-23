@@ -1,5 +1,5 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -61,7 +61,7 @@ def isadded(entries, path):
 	mylines = myfile.readlines()
 	myfile.close()
 
-	rep = re.compile("^\/%s\/" % re.escape(filename))
+	rep = re.compile(r"^\/%s\/" % re.escape(filename))
 	for x in mylines:
 		if rep.search(x):
 			return 1
@@ -201,7 +201,7 @@ def findall(entries, recursive=0, basedir=""):
 	myremoved = findremoved(entries, recursive, basedir)
 	return [mynew, mychanged, mymissing, myunadded, myremoved]
 
-ignore_list = re.compile("(^|/)(RCS(|LOG)|SCCS|CVS(|\.adm)|cvslog\..*|tags|TAGS|\.(make\.state|nse_depinfo)|.*~|(\.|)#.*|,.*|_$.*|.*\$|\.del-.*|.*\.(old|BAK|bak|orig|rej|a|olb|o|obj|so|exe|Z|elc|ln)|core)$")
+ignore_list = re.compile(r"(^|/)(RCS(|LOG)|SCCS|CVS(|\.adm)|cvslog\..*|tags|TAGS|\.(make\.state|nse_depinfo)|.*~|(\.|)#.*|,.*|_$.*|.*\$|\.del-.*|.*\.(old|BAK|bak|orig|rej|a|olb|o|obj|so|exe|Z|elc|ln)|core)$")
 def apply_cvsignore_filter(list):
 	x = 0
 	while x < len(list):
