@@ -53,9 +53,14 @@ class GitSync(NewBase):
 		if self.settings.get("PORTAGE_QUIET") == "1":
 			git_cmd_opts += " --quiet"
 		if self.repo.clone_depth is not None:
-			git_cmd_opts += " --depth %d" % self.repo.clone_depth
+			if self.repo.clone_depth != 0:
+				git_cmd_opts += " --depth %d" % self.repo.clone_depth
 		elif self.repo.sync_depth is not None:
-			git_cmd_opts += " --depth %d" % self.repo.sync_depth
+			if self.repo.sync_depth != 0:
+				git_cmd_opts += " --depth %d" % self.repo.sync_depth
+		else:
+			# default
+			git_cmd_opts += " --depth 1"
 		if self.repo.module_specific_options.get('sync-git-clone-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-clone-extra-opts']
 		git_cmd = "%s clone%s %s ." % (self.bin_command, git_cmd_opts,
