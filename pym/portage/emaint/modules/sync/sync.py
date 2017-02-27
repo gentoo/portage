@@ -137,9 +137,9 @@ class SyncRepos(object):
 
 	@staticmethod
 	def _match_repos(repos, available):
-		'''Internal search, matches up the repo.name in repos
+		'''Internal search, matches up the repo name or alias in repos.
 
-		@param repos: list, of repo names to match
+		@param repos: list of repo names or aliases to match
 		@param avalable: list of repo objects to search
 		@return: list of repo objects that match
 		'''
@@ -147,6 +147,12 @@ class SyncRepos(object):
 		for repo in available:
 			if repo.name in repos:
 				selected.append(repo)
+				continue
+			if repo.aliases is not None:
+				for alias in repo.aliases:
+					if alias in repos:
+						selected.append(repo)
+						break
 		return selected
 
 
@@ -154,14 +160,23 @@ class SyncRepos(object):
 		msgs = []
 		repos = self.emerge_config.target_config.settings.repositories
 		if match_repos is not None:
+			# Discard duplicate repository names or aliases.
+			match_repos = set(match_repos)
 			repos = self._match_repos(match_repos, repos)
 			if len(repos) < len(match_repos):
-				available = [repo.name for repo in repos]
-				missing = [repo for repo in match_repos if repo not in available]
-				msgs.append(red(" * ") + "The specified repo(s) were not found: %s" %
-					(" ".join(repo for repo in missing)) + \
-					"\n   ...returning")
-				return (False, repos, msgs)
+				# Build a set of all the matched repos' names and aliases so we
+				# can do a set difference for names that are missing.
+				repo_names = set()
+				for repo in repos:
+					repo_names.add(repo.name)
+					if repo.aliases is not None:
+						repo_names = repo_names.union(repo.aliases)
+				missing = match_repos - repo_names
+				if missing:
+					msgs.append(red(" * ") + "The specified repo(s) were not found: %s" %
+						(" ".join(repo_name for repo_name in missing)) + \
+						"\n   ...returning")
+					return (False, repos, msgs)
 
 		if auto_sync_only:
 			repos = self._filter_auto(repos)
