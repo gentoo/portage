@@ -1,5 +1,5 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -12,6 +12,19 @@ import errno
 import stat
 import subprocess
 import tempfile
+
+
+# Summary of all available hashes and their implementations,
+# most preferred first. Please keep this in sync with logic below.
+# ================================================================
+#
+# MD5: python-fchksum, hashlib, mhash, hashlib/md5
+# SHA1: hashlib, mhash, hashlib/sha1
+# SHA256: hashlib, pycrypto, mhash
+# SHA512: hashlib, mhash
+# RMD160: hashlib, pycrypto, mhash
+# WHIRLPOOL: hashlib, mhash, bundled
+
 
 #dict of all available hash functions
 hashfunc_map = {}
