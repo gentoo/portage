@@ -4690,8 +4690,7 @@ class dblink(object):
 					os.unlink(mysrc)
 					os.symlink(myto, mysrc)
 
-				mymd5 = portage.checksum._new_md5(
-					_unicode_encode(myto)).hexdigest()
+				mymd5 = md5(_unicode_encode(myto)).hexdigest()
 
 			protected = False
 			if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
@@ -4725,8 +4724,7 @@ class dblink(object):
 						# of the link target path string is used
 						# for cfgfiledict (symlinks are
 						# protected since bug #485598).
-						destmd5 = portage.checksum._new_md5(
-							_unicode_encode(mydest_link)).hexdigest()
+						destmd5 = md5(_unicode_encode(mydest_link)).hexdigest()
 
 					elif stat.S_ISREG(mydmode):
 						destmd5 = perform_md5(mydest,
