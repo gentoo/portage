@@ -116,6 +116,28 @@ try:
 except ImportError:
 	pass
 
+try:
+	# added in pycryptodome
+	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
+	blake2bhash_ = getattr(BLAKE2b, 'new', None)
+	if blake2bhash_ is not None:
+		blake2bhash = _generate_hash_function("BLAKE2B",
+			blake2bhash_, origin="pycrypto")
+	blake2shash_ = getattr(BLAKE2s, 'new', None)
+	if blake2shash_ is not None:
+		blake2shash = _generate_hash_function("BLAKE2S",
+			blake2shash_, origin="pycrypto")
+	sha3_256hash_ = getattr(SHA3_256, 'new', None)
+	if sha3_256hash_ is not None:
+		sha3_256hash = _generate_hash_function("SHA3_256",
+			sha3_256hash_, origin="pycrypto")
+	sha3_512hash_ = getattr(SHA3_512, 'new', None)
+	if sha3_512hash_ is not None:
+		sha3_512hash = _generate_hash_function("SHA3_512",
+			sha3_512hash_, origin="pycrypto")
+except ImportError:
+	pass
+
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
 try:
