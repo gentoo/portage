@@ -24,6 +24,10 @@ import tempfile
 # SHA512: hashlib, mhash
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
+# BLAKE2B (512): hashlib (3.6+)
+# BLAKE2S (512): hashlib (3.6+)
+# SHA3_256: hashlib (3.6+)
+# SHA3_512: hashlib (3.6+)
 
 
 #dict of all available hash functions
@@ -121,7 +125,15 @@ try:
 	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
 	sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
-	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
+	for local_name, hash_name in (
+			("rmd160", "ripemd160"),
+			("whirlpool", "whirlpool"),
+			# available since Python 3.6
+			("BLAKE2B", "blake2b"),
+			("BLAKE2S", "blake2s"),
+			("SHA3_256", "sha3_256"),
+			("SHA3_512", "sha3_512"),
+			):
 		try:
 			hashlib.new(hash_name)
 		except ValueError:
