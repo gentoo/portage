@@ -18,8 +18,8 @@ import tempfile
 # most preferred first. Please keep this in sync with logic below.
 # ================================================================
 #
-# MD5: python-fchksum, hashlib, mhash, hashlib/md5
-# SHA1: hashlib, mhash, hashlib/sha1
+# MD5: python-fchksum, hashlib, mhash
+# SHA1: hashlib, mhash
 # SHA256: hashlib, pycrypto, mhash
 # SHA512: hashlib, mhash
 # RMD160: hashlib, pycrypto, mhash
@@ -76,21 +76,6 @@ class _generate_hash_function(object):
 
 # Define hash functions, try to use the best module available. Later definitions
 # override earlier ones
-
-# Use the internal modules as last fallback
-try:
-	from hashlib import md5 as _new_md5
-except ImportError:
-	from md5 import new as _new_md5
-
-md5hash = _generate_hash_function("MD5", _new_md5, origin="internal")
-
-try:
-	from hashlib import sha1 as _new_sha1
-except ImportError:
-	from sha import new as _new_sha1
-
-sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
 
 # Try to use mhash if available
 # mhash causes GIL presently, so it gets less priority than hashlib and
