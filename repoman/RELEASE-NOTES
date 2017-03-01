@@ -1,6 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.2
+==================================
+* Bug Fixes:
+    - Bug 544938 add dev-qt/linguist-tools to RDEPEND.suspect set
+    - Bug 602002 make unused local USE flags an error
+    - Bug 533554 add HOMEPAGE.missingurischeme check
+    - Bug 610414 use regular expression to detect line continuations
+    - Bug 610954 Warn about stale CVS keywords in ebuild header
+    - Bug 611296 Don't update years in non-Gentoo copyright lines
+* Add virtual/linuxtv-dvb-headers to RDEPEND.suspect set
+* Add virtual/os-headers to RDEPEND.suspect set
+* Add gentoo to remote-id type
+* Define long for python3 Fixes: 006b168c1bb6
+* Commit footer improvements
+* Check for empty files in filesdir
+* Deprecate gpe.eclass, confutils.eclass
+
+
 repoman-2.3.1
 ==================================
 * Bug Fixes:
