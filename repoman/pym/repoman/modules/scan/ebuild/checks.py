@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # repoman: Checks
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to ascertain the quality
@@ -89,7 +89,8 @@ class EbuildHeader(LineCheck):
 	gentoo_license = (
 		'# Distributed under the terms'
 		' of the GNU General Public License v2')
-	id_header = '# $Id$'
+	id_header_re = re.compile(r'.*\$(Id|Header)(:.*)?\$.*')
+	blank_line_re = re.compile(r'^$')
 	ignore_comment = False
 
 	def new(self, pkg):
@@ -108,8 +109,10 @@ class EbuildHeader(LineCheck):
 				return errors.COPYRIGHT_ERROR
 		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return errors.LICENSE_ERROR
-		#elif num == 2 and line.rstrip('\n') != self.id_header:
-		#	return errors.ID_HEADER_ERROR
+		elif num == 2 and self.id_header_re.match(line):
+			return errors.ID_HEADER_ERROR
+		elif num == 2 and not self.blank_line_re.match(line):
+			return errors.NO_BLANK_LINE_ERROR
 
 
 class EbuildWhitespace(LineCheck):
