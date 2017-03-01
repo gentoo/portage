@@ -1,6 +1,41 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.4
+==================================
+* Bug Fixes:
+    - Bug 575178 emaint typo fix
+    - Bug 602964 slot_conflict_handler: report packages that can't be rebuilt
+    - Bug 598080 LinkageMapELF: compute multilib category for preserved libs
+    - Bug 603826 binarytree._read_metadata: return empty strings for undefined values
+    - Bug 602854 depgraph: clarify "update has been skipped" message
+    - Bug 604164 portageq: allow disabling regex matching of maintainer emails
+    - Bug 554070 _dep_check_composite_db: select highest in slot conflict
+    - Bug 532100 env-update: call ldconfig if found in EROOT
+    - Bug 604474 bin/socks5-server.py: convert address from bytes to str
+    - Bug 583962 __multijob_init: work around Cygwin FIFO shortcoming
+    - Bug 400763 glsa-check: Apply list only affected versions
+    - Bug 606464 depgraph: fix 'SonameAtom' object is not subscriptable
+    - Bug 567478 emaint: exit with non-zero status code when module fails
+    - Bug 605612 Properly retrieve the count attribute and adjust logic to
+                 properly support both GLSA formats
+    - Bug 606832 env-update: skip os.access call when ldconfig is None
+    - Bug 606588 action_sync: fix TypeError: 'int' object is not subscriptable
+    - Bug 607236 emerge: fix error handling for clean_logs
+    - Bug 582098 spawn: instantiate userpriv_groups before fork
+    - Bug 607418 Fix Python 3.6 "DeprecationWarning: invalid escape sequence" warnings
+    - Bug 607922 SyncManager: rename async method to sync_async
+    - Bug 608594 PopenProcess: suppress ResourceWarning subprocess "still running"
+    - Bug 610328 emerge: sync given repos even if auto-sync is false
+    - Bug 609462 compression_probe: support zstandard (zstd) decompression
+    - Bug 552814 repos.conf: rename sync-depth option to clone-depth
+    - Bug 544440 etc-update: fix hang when using_editor is set
+    - Bug 610670 grabfile_package: support -* in profile "packages" files
+    - Bug 610708 GitSync: fix spurious "sync-depth is deprecated" messages
+    - Bug 567478, 576282, 601054 sync.py: validate repos in _get_repos()
+    - Bug 610852 sync.py: recognize repo aliases when updating repositories
+
+
 portage-2.3.3
 ==================================
 * Bug Fixes:
