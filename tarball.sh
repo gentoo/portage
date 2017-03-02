@@ -15,8 +15,11 @@ export DEST="${TMP}/${PKG}-${V}"
 
 ./tabcheck.py $(
 	find ./ -name .git -o -name .hg -prune -o -type f ! -name '*.py' -print \
-		| xargs grep -l "#\!@PREFIX_PORTAGE_PYTHON@"
-	find ./ -name .git -o -name .hg -prune -o -type f -name '*.py' -print
+		| xargs grep -l "#\!@PREFIX_PORTAGE_PYTHON@" \
+		| grep -v "^\./repoman/"
+	find ./ -name .git -o -name .hg -prune -o -type f -name '*.py' -print \
+		| grep -v "^\./repoman/"
+
 )
 
 if [[ -e ${DEST} ]]; then
@@ -25,7 +28,7 @@ if [[ -e ${DEST} ]]; then
 fi
 
 install -d -m0755 ${DEST}
-rsync -a --exclude='.git' --exclude='.hg' . ${DEST}
+rsync -a --exclude='.git' --exclude='.hg' --exclude="repoman/" . ${DEST}
 sed -i -e '/^VERSION\s*=/s/^.*$/VERSION = "'${V}-prefix'"/' ${DEST}/pym/portage/__init__.py
 sed -i -e "/version = /s/'[^']\+'/'${V}-prefix'/" ${DEST}/setup.py
 sed -i -e "1s/VERSION/${V}-prefix/" ${DEST}/man/{,ru/}*.[15]
