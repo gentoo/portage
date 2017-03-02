@@ -479,13 +479,20 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0,
 		eapi = read_corresponding_eapi_file(
 			myfilename, default=eapi_default)
 	mybasename = os.path.basename(myfilename)
+	is_packages_file = mybasename == 'packages'
 	atoms = []
 	for pkg, source_file in pkgs:
 		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
+			if is_packages_file and pkg == '-*':
+				if remember_source_file:
+					atoms.append((pkg, source_file))
+				else:
+					atoms.append(pkg)
+				continue
 			pkg = pkg[1:]
-		if pkg[:1] == '*' and mybasename == 'packages':
+		if pkg[:1] == '*' and is_packages_file:
 			pkg = pkg[1:]
 		try:
 			pkg = Atom(pkg, allow_wildcard=allow_wildcard,

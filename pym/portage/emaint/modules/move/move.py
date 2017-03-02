@@ -167,9 +167,10 @@ class MoveInstalled(MoveHandler):
 
 	short_desc = "Perform package move updates for installed packages"
 
+	@staticmethod
 	def name():
 		return "moveinst"
-	name = staticmethod(name)
+
 	def __init__(self):
 		eroot = portage.settings['EROOT']
 		MoveHandler.__init__(self, portage.db[eroot]["vartree"], portage.db[eroot]["porttree"])
@@ -178,9 +179,10 @@ class MoveBinary(MoveHandler):
 
 	short_desc = "Perform package move updates for binary packages"
 
+	@staticmethod
 	def name():
 		return "movebin"
-	name = staticmethod(name)
+
 	def __init__(self):
 		eroot = portage.settings['EROOT']
 		MoveHandler.__init__(self, portage.db[eroot]["bintree"], portage.db[eroot]['porttree'])

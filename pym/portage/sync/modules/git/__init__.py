@@ -21,8 +21,6 @@ class CheckGitConfig(CheckSyncConfig):
 
 	def _check_depth(self, attr):
 		d = getattr(self.repo, attr)
-		# default
-		setattr(self.repo, attr, 1)
 
 		if d is not None:
 			try:
@@ -33,8 +31,6 @@ class CheckGitConfig(CheckSyncConfig):
 					% (attr.replace('_', '-'), d),
 					level=self.logger.ERROR, noiselevel=-1)
 			else:
-				if d == 0:
-					d = None
 				setattr(self.repo, attr, d)
 
 

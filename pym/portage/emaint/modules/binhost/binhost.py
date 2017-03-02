@@ -19,9 +19,9 @@ class BinhostHandler(object):
 
 	short_desc = "Generate a metadata index for binary packages"
 
+	@staticmethod
 	def name():
 		return "binhost"
-	name = staticmethod(name)
 
 	def __init__(self):
 		eroot = portage.settings['EROOT']

@@ -244,9 +244,6 @@ MANIFEST1_REQUIRED_HASH  = "MD5"
 # - Set manifest-hashes in gentoo-x86/metadata/layout.conf as follows:
 #     manifest-hashes = SHA512 WHIRLPOOL
 #
-# After SHA-3 is approved:
-# - Add new hashes to MANIFEST2_HASH_*.
-#
 # After SHA-3 is supported in stable portage:
 # - Set manifest-hashes in gentoo-x86/metadata/layout.conf as follows:
 #     manifest-hashes = SHA3 SHA512 WHIRLPOOL
@@ -254,7 +251,8 @@ MANIFEST1_REQUIRED_HASH  = "MD5"
 # After layout.conf settings correspond to defaults in stable portage:
 # - Remove redundant settings from gentoo-x86/metadata/layout.conf.
 
-MANIFEST2_HASH_FUNCTIONS = ("SHA256", "SHA512", "WHIRLPOOL")
+MANIFEST2_HASH_FUNCTIONS = ("SHA256", "SHA512", "WHIRLPOOL",
+		"BLAKE2B", "BLAKE2S", "SHA3_256", "SHA3_512")
 MANIFEST2_HASH_DEFAULTS = frozenset(["SHA256", "SHA512", "WHIRLPOOL"])
 MANIFEST2_REQUIRED_HASH  = "SHA256"
 

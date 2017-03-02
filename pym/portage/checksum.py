@@ -1,5 +1,5 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -12,6 +12,23 @@ import errno
 import stat
 import subprocess
 import tempfile
+
+
+# Summary of all available hashes and their implementations,
+# most preferred first. Please keep this in sync with logic below.
+# ================================================================
+#
+# MD5: python-fchksum, hashlib, mhash
+# SHA1: hashlib, mhash
+# SHA256: hashlib, pycrypto, mhash
+# SHA512: hashlib, mhash
+# RMD160: hashlib, pycrypto, mhash
+# WHIRLPOOL: hashlib, mhash, bundled
+# BLAKE2B (512): hashlib (3.6+)
+# BLAKE2S (512): hashlib (3.6+)
+# SHA3_256: hashlib (3.6+)
+# SHA3_512: hashlib (3.6+)
+
 
 #dict of all available hash functions
 hashfunc_map = {}
@@ -64,21 +81,6 @@ class _generate_hash_function(object):
 # Define hash functions, try to use the best module available. Later definitions
 # override earlier ones
 
-# Use the internal modules as last fallback
-try:
-	from hashlib import md5 as _new_md5
-except ImportError:
-	from md5 import new as _new_md5
-
-md5hash = _generate_hash_function("MD5", _new_md5, origin="internal")
-
-try:
-	from hashlib import sha1 as _new_sha1
-except ImportError:
-	from sha import new as _new_sha1
-
-sha1hash = _generate_hash_function("SHA1", _new_sha1, origin="internal")
-
 # Try to use mhash if available
 # mhash causes GIL presently, so it gets less priority than hashlib and
 # pycrypto. However, it might be the only accelerated implementation of
@@ -103,14 +105,36 @@ except ImportError:
 # is broken somehow.
 try:
 	from Crypto.Hash import SHA256, RIPEMD
-	sha256hash = getattr(SHA256, 'new', None)
-	if sha256hash is not None:
+	sha256hash_ = getattr(SHA256, 'new', None)
+	if sha256hash_ is not None:
 		sha256hash = _generate_hash_function("SHA256",
-			sha256hash, origin="pycrypto")
-	rmd160hash = getattr(RIPEMD, 'new', None)
-	if rmd160hash is not None:
+			sha256hash_, origin="pycrypto")
+	rmd160hash_ = getattr(RIPEMD, 'new', None)
+	if rmd160hash_ is not None:
 		rmd160hash = _generate_hash_function("RMD160",
-			rmd160hash, origin="pycrypto")
+			rmd160hash_, origin="pycrypto")
+except ImportError:
+	pass
+
+try:
+	# added in pycryptodome
+	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
+	blake2bhash_ = getattr(BLAKE2b, 'new', None)
+	if blake2bhash_ is not None:
+		blake2bhash = _generate_hash_function("BLAKE2B",
+			blake2bhash_, origin="pycrypto")
+	blake2shash_ = getattr(BLAKE2s, 'new', None)
+	if blake2shash_ is not None:
+		blake2shash = _generate_hash_function("BLAKE2S",
+			blake2shash_, origin="pycrypto")
+	sha3_256hash_ = getattr(SHA3_256, 'new', None)
+	if sha3_256hash_ is not None:
+		sha3_256hash = _generate_hash_function("SHA3_256",
+			sha3_256hash_, origin="pycrypto")
+	sha3_512hash_ = getattr(SHA3_512, 'new', None)
+	if sha3_512hash_ is not None:
+		sha3_512hash = _generate_hash_function("SHA3_512",
+			sha3_512hash_, origin="pycrypto")
 except ImportError:
 	pass
 
@@ -123,7 +147,15 @@ try:
 	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
 	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
 	sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
-	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
+	for local_name, hash_name in (
+			("rmd160", "ripemd160"),
+			("whirlpool", "whirlpool"),
+			# available since Python 3.6
+			("BLAKE2B", "blake2b"),
+			("BLAKE2S", "blake2s"),
+			("SHA3_256", "sha3_256"),
+			("SHA3_512", "sha3_512"),
+			):
 		try:
 			hashlib.new(hash_name)
 		except ValueError:

@@ -14,8 +14,10 @@ from portage import shutil
 from portage import util
 
 
-_copyright_re1 = re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d ')
-_copyright_re2 = re.compile(br'^(# Copyright )(\d\d\d\d) ')
+_copyright_re1 = \
+	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo Foundation)\b')
+_copyright_re2 = \
+	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo Foundation)\b')
 
 
 class _copyright_repl(object):
@@ -29,7 +31,7 @@ class _copyright_repl(object):
 			return matchobj.group(0)
 		else:
 			return matchobj.group(1) + matchobj.group(2) + \
-				b'-' + self.year + b' '
+				b'-' + self.year + matchobj.group(3)
 
 
 def update_copyright_year(year, line):
@@ -49,7 +51,7 @@ def update_copyright_year(year, line):
 	year = _unicode_encode(year)
 	line = _unicode_encode(line)
 
-	line = _copyright_re1.sub(br'\1-' + year + b' ', line)
+	line = _copyright_re1.sub(br'\1-' + year + br'\2', line)
 	line = _copyright_re2.sub(_copyright_repl(year), line)
 	if not is_bytes:
 		line = _unicode_decode(line)

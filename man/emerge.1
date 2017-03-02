@@ -8,7 +8,7 @@ emerge \- Command\-line interface to the Portage system
 \fI@set\fR | \fIatom\fR] ...
 .TP
 .BR emerge
-\fB\-\-sync\fR | \fB\-\-version\fR
+\fB\-\-sync\fR [\fIrepo\fR | \fIalias\fR] ...
 .TP
 .BR emerge
 \fB\-\-info\fR [\fIatom\fR]
@@ -17,7 +17,7 @@ emerge \- Command\-line interface to the Portage system
 \fB\-\-search\fR \fIsomestring\fR
 .TP
 .BR emerge
-\fB\-\-help\fR
+\fB\-\-help\fR | \fB\-\-version\fR
 .SH "DESCRIPTION"
 \fBemerge\fR is the definitive command\-line interface to the Portage
 system.  It is primarily used for installing packages, and \fBemerge\fR
@@ -245,7 +245,9 @@ matched as regular expressions.
 .TP
 .BR \-\-sync
 Updates repositories, for which auto\-sync, sync\-type and sync\-uri attributes are
-set in repos.conf. See \fBportage\fR(5) for more information.
+set in repos.conf. A list of repos or aliases can be specified, in which case
+they  will be updated regardless of their auto\-sync attribute. See
+\fBportage\fR(5) for more information.
 The \fBPORTAGE_SYNC_STALE\fR variable configures
 warnings that are shown when emerge \-\-sync has not
 been executed recently.

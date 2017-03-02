@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, unicode_literals
@@ -9,6 +9,7 @@ __all__ = [
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'hashlib:md5',
 	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.data:portage_gid,portage_uid,secpass',
 	'portage.dbapi.dep_expand:dep_expand',
@@ -1132,11 +1133,7 @@ class vardbapi(dbapi):
 		packages that own it. This is used to optimize owner lookups
 		by narrowing the search down to a smaller number of packages.
 		"""
-		try:
-			from hashlib import md5 as _new_hash
-		except ImportError:
-			from md5 import new as _new_hash
-
+		_new_hash = md5
 		_hash_bits = 16
 		_hex_chars = _hash_bits // 4
 
@@ -4734,8 +4731,7 @@ class dblink(object):
 					os.unlink(mysrc)
 					os.symlink(myto, mysrc)
 
-				mymd5 = portage.checksum._new_md5(
-					_unicode_encode(myto)).hexdigest()
+				mymd5 = md5(_unicode_encode(myto)).hexdigest()
 
 			protected = False
 			if stat.S_ISLNK(mymode) or stat.S_ISREG(mymode):
@@ -4769,8 +4765,7 @@ class dblink(object):
 						# of the link target path string is used
 						# for cfgfiledict (symlinks are
 						# protected since bug #485598).
-						destmd5 = portage.checksum._new_md5(
-							_unicode_encode(mydest_link)).hexdigest()
+						destmd5 = md5(_unicode_encode(mydest_link)).hexdigest()
 
 					elif stat.S_ISREG(mydmode):
 						destmd5 = perform_md5(mydest,

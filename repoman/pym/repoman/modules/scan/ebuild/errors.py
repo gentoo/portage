@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # repoman: Error Messages
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -10,7 +10,9 @@ COPYRIGHT_ERROR = (
 LICENSE_ERROR = (
 	'Invalid Gentoo/GPL License on line: %d')
 ID_HEADER_ERROR = (
-	'Malformed Id header on line: %d')
+	'Stale CVS header on line: %d')
+NO_BLANK_LINE_ERROR = (
+	'Non-blank line after header on line: %d')
 LEADING_SPACES_ERROR = (
 	'Ebuild contains leading spaces on line: %d')
 TRAILING_WHITESPACE_ERROR = (
