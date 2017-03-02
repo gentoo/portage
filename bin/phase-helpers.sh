@@ -572,14 +572,14 @@ econf() {
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
-			# preserve timestamp, see bug #440304
-			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
+			cp -p "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			sed -i \
 				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
-				"${ECONF_SOURCE}/configure" \
+				"${ECONF_SOURCE}/configure._portage_tmp_.${pid}" \
 				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
-			touch -r "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
-			rm -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}"
+			# preserve timestamp, see bug #440304
+			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
+			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
 		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
