@@ -12,7 +12,6 @@ man_MANS = \
 	etc-update.1 \
 	make.conf.5 \
 	portage.5 \
-	quickpkg.1 \
-	repoman.1
+	quickpkg.1
 
 EXTRA_DIST = $(man_MANS)

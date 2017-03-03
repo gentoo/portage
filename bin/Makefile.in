@@ -23,8 +23,7 @@ usr_binprogs = \
 	emerge-webrsync \
 	emirrordist \
 	portageq \
-	quickpkg \
-	repoman
+	quickpkg
 
 usr_sbinprogs = \
 	archive-conf \
