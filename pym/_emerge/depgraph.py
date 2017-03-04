@@ -2362,7 +2362,7 @@ class depgraph(object):
 		if ebuild is None:
 			changed = False
 		else:
-			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
+			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
 				depvars = Package._dep_keys
 			else:
 				depvars = Package._runtime_keys
@@ -2998,7 +2998,7 @@ class depgraph(object):
 
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
-			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
+			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
 				# Pull in build time deps as requested, but marked them as
 				# "optional" since they are not strictly required. This allows
 				# more freedom in the merge order calculation for solving

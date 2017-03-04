@@ -558,6 +558,7 @@ class ResolverPlaygroundTestCase(object):
 	def __init__(self, request, **kwargs):
 		self.all_permutations = kwargs.pop("all_permutations", False)
 		self.ignore_mergelist_order = kwargs.pop("ignore_mergelist_order", False)
+		self.ignore_cleanlist_order = kwargs.pop("ignore_cleanlist_order", False)
 		self.ambiguous_merge_order = kwargs.pop("ambiguous_merge_order", False)
 		self.ambiguous_slot_collision_solutions = kwargs.pop("ambiguous_slot_collision_solutions", False)
 		self.check_repo_names = kwargs.pop("check_repo_names", False)
@@ -674,6 +675,10 @@ class ResolverPlaygroundTestCase(object):
 									("merge_order_assertions, expected: %s" % \
 									str((node1, node2))) + \
 									", got: " + str(got))
+
+			elif key == "cleanlist" and self.ignore_cleanlist_order:
+				got = set(got)
+				expected = set(expected)
 
 			elif key == "slot_collision_solutions" and \
 				self.ambiguous_slot_collision_solutions:
