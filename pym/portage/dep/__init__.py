@@ -677,8 +677,6 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 			need_simple_token = True
 			stack[level].append(token)	
 		else:
-			missing_white_space_check(token, pos)
-
 			if need_bracket:
 				raise InvalidDependString(
 					_("expected: '(', got: '%s', token %s") % (token, pos+1))
@@ -698,12 +696,14 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 						token = token_class(token, eapi=eapi,
 							is_valid_flag=is_valid_flag)
 					except InvalidAtom as e:
+						missing_white_space_check(token, pos)
 						raise InvalidDependString(
 							_("Invalid atom (%s), token %s") \
 							% (e, pos+1), errors=(e,))
 					except SystemExit:
 						raise
 					except Exception as e:
+						missing_white_space_check(token, pos)
 						raise InvalidDependString(
 							_("Invalid token '%s', token %s") % (token, pos+1))
 
