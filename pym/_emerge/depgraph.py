@@ -1597,9 +1597,6 @@ class depgraph(object):
 				atom.package and atom.slot_operator_built):
 				continue
 
-			if pkg not in conflict_pkgs:
-				continue
-
 			for other_pkg in slot_nodes:
 				if other_pkg in conflict_pkgs:
 					continue
@@ -2569,18 +2566,25 @@ class depgraph(object):
 			# runtime_pkg_mask, since that would trigger an
 			# infinite backtracking loop.
 			if self._dynamic_config._allow_backtracking:
-				if dep.parent in self._dynamic_config._runtime_pkg_mask:
-					if debug:
-						writemsg(
-							"!!! backtracking loop detected: %s %s\n" % \
-							(dep.parent,
-							self._dynamic_config._runtime_pkg_mask[
-							dep.parent]), noiselevel=-1)
-				elif dep.atom.package and dep.atom.slot_operator_built and \
-					self._slot_operator_unsatisfied_probe(dep):
+				if (dep.parent not in self._dynamic_config._runtime_pkg_mask and
+					dep.atom.package and dep.atom.slot_operator_built and
+					self._slot_operator_unsatisfied_probe(dep)):
 					self._slot_operator_unsatisfied_backtrack(dep)
 					return 1
 				else:
+					# This is for backward-compatibility with previous
+					# behavior, so that installed packages with unsatisfied
+					# dependencies trigger an error message but do not
+					# cause the dependency calculation to fail. Only do
+					# this if the parent is already in the runtime package
+					# mask, since otherwise we need to backtrack.
+					if (dep.parent.installed and
+						dep.parent in self._dynamic_config._runtime_pkg_mask and
+						not any(self._iter_match_pkgs_any(
+						dep.parent.root_config, dep.atom))):
+						self._dynamic_config._initially_unsatisfied_deps.append(dep)
+						return 1
+
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency. Note that when
 					# want_restart_for_use_change sets the need_restart
