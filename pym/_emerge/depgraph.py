@@ -2304,7 +2304,7 @@ class depgraph(object):
 				# Check for slot update first, since we don't want to
 				# trigger reinstall of the child package when a newer
 				# slot will be used instead.
-				if rebuild_if_new_slot:
+				if rebuild_if_new_slot and dep.want_update:
 					new_dep = self._slot_operator_update_probe(dep,
 						new_child_slot=True)
 					if new_dep is not None:
@@ -6241,7 +6241,7 @@ class depgraph(object):
 							if highest_installed is None or pkg.version > highest_installed.version:
 								highest_installed = pkg
 
-					if highest_installed:
+					if highest_installed and self._want_update_pkg(parent, highest_installed):
 						non_installed = [pkg for pkg in matched_packages \
 							if not pkg.installed and pkg.version > highest_installed.version]
 
@@ -6285,10 +6285,17 @@ class depgraph(object):
 							built_timestamp != installed_timestamp:
 							return built_pkg, existing_node
 
+			inst_pkg = None
 			for pkg in matched_packages:
+				if pkg.installed:
+					inst_pkg = pkg
 				if pkg.installed and pkg.invalid:
 					matched_packages = [x for x in \
 						matched_packages if x is not pkg]
+
+			if (inst_pkg is not None and parent is not None and
+				not self._want_update_pkg(parent, inst_pkg)):
+				return inst_pkg, existing_node
 
 			if avoid_update:
 				for pkg in matched_packages:

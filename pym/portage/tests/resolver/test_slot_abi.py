@@ -170,15 +170,13 @@ class SlotAbiTestCase(TestCase):
 
 		test_cases = (
 
+			# The first 2 test cases don't trigger a libreoffice rebuild
+			# because sys-libs/db is the only package requested, and a
+			# rebuild is not necessary because the sys-libs/db:4.7 slot
+			# remains installed.
 			ResolverPlaygroundTestCase(
 				["sys-libs/db"],
 				options = {"--oneshot": True},
-				success = True,
-				mergelist = ["sys-libs/db-4.8", "app-office/libreoffice-3.5.4.2"]),
-
-			ResolverPlaygroundTestCase(
-				["sys-libs/db"],
-				options = {"--oneshot": True, "--ignore-built-slot-operator-deps": "y"},
 				success = True,
 				mergelist = ["sys-libs/db-4.8"]),
 
@@ -186,7 +184,7 @@ class SlotAbiTestCase(TestCase):
 				["sys-libs/db"],
 				options = {"--oneshot": True, "--usepkg": True},
 				success = True,
-				mergelist = ["[binary]sys-libs/db-4.8", "app-office/libreoffice-3.5.4.2"]),
+				mergelist = ["[binary]sys-libs/db-4.8"]),
 
 			ResolverPlaygroundTestCase(
 				["sys-libs/db"],

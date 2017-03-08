@@ -251,13 +251,27 @@ class SonameSlotConflictReinstallTestCase(TestCase):
 				success = True,
 				mergelist = [
 					'[binary]app-misc/B-2',
+					'[binary]app-misc/A-2',
+				]
+			),
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {
+					"--ignore-soname-deps": "n",
+					"--usepkgonly": True,
+					"--update": True,
+					"--deep": True,
+				},
+				success = True,
+				mergelist = [
+					'[binary]app-misc/B-2',
 					'[binary]app-misc/C-1',
 					'[binary]app-misc/A-2',
 				]
 			),
 		)
 
-		world = []
+		world = ['app-misc/A']
 
 		playground = ResolverPlayground(binpkgs=binpkgs,
 			installed=installed, world=world, debug=False)

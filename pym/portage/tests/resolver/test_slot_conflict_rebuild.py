@@ -165,7 +165,7 @@ class SlotConflictRebuildTestCase(TestCase):
 				["app-misc/A"],
 				ignore_mergelist_order=True,
 				all_permutations=True,
-				options = {"--backtrack": 3, '--deep': True},
+				options = {"--backtrack": 3, '--update': True, '--deep': True},
 				success = True,
 				mergelist = expected_mergelist),
 		)
@@ -228,6 +228,12 @@ class SlotConflictRebuildTestCase(TestCase):
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["app-misc/A"],
+				success = True,
+				mergelist = ['app-misc/A-2']),
+
+			ResolverPlaygroundTestCase(
+				["app-misc/A"],
+				options={"--update": True, "--deep": True},
 				success = True,
 				mergelist = ['app-misc/B-2', 'app-misc/C-1', 'app-misc/A-2']),
 		)
