@@ -132,14 +132,16 @@ except ImportError:
 try:
 	# added in pycryptodome
 	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
+	import functools
+
 	blake2bhash_ = getattr(BLAKE2b, 'new', None)
 	if blake2bhash_ is not None:
 		blake2bhash = _generate_hash_function("BLAKE2B",
-			blake2bhash_, origin="pycrypto")
+			functools.partial(blake2bhash_, digest_bytes=64), origin="pycrypto")
 	blake2shash_ = getattr(BLAKE2s, 'new', None)
 	if blake2shash_ is not None:
 		blake2shash = _generate_hash_function("BLAKE2S",
-			blake2shash_, origin="pycrypto")
+			functools.partial(blake2shash_, digest_bytes=32), origin="pycrypto")
 	sha3_256hash_ = getattr(SHA3_256, 'new', None)
 	if sha3_256hash_ is not None:
 		sha3_256hash = _generate_hash_function("SHA3_256",
