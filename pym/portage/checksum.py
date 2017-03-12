@@ -59,6 +59,18 @@ class _generate_hash_function(object):
 		hashfunc_map[hashtype] = self
 		hashorigin_map[hashtype] = origin
 
+	def checksum_str(self, data):
+		"""
+		Obtain a checksum of a byte-string.
+
+		@param data: Data to hash
+		@type data: bytes
+		@return: The hash of the data (hex-digest)
+		"""
+		checksum = self._hashobject()
+		checksum.update(data)
+		return checksum.hexdigest()
+
 	def checksum_file(self, filename):
 		"""
 		Run a checksum against a file.
@@ -461,3 +473,20 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 			raise portage.exception.DigestException(x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)")
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal
+
+
+def checksum_str(data, hashname="MD5"):
+	"""
+	Run a specific checksum against a byte string.
+
+	@param filename: Data to checksum
+	@type filename: Bytes
+	@param hashname: The type of hash function to run
+	@type hashname: String
+	@rtype: String
+	@return: The hash (hex-digest) of the data
+	"""
+	if hashname not in hashfunc_map:
+		raise portage.exception.DigestException(hashname + \
+			" hash function not available (needs dev-python/pycrypto)")
+	return hashfunc_map[hashname].checksum_str(data)
