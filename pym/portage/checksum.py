@@ -24,10 +24,10 @@ import tempfile
 # SHA512: hashlib, mhash
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib (3.6+)
-# BLAKE2S (512): hashlib (3.6+)
-# SHA3_256: hashlib (3.6+)
-# SHA3_512: hashlib (3.6+)
+# BLAKE2B (512): hashlib (3.6+), pycrypto
+# BLAKE2S (512): hashlib (3.6+), pycrypto
+# SHA3_256: hashlib (3.6+), pycrypto
+# SHA3_512: hashlib (3.6+), pycrypto
 
 
 #dict of all available hash functions
