@@ -7,7 +7,7 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
+	'portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,' + \
 		'verify_all,_apply_hash_filter,_hash_filter',
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list',
@@ -1546,7 +1546,7 @@ class binarytree(object):
 		if metadata is None:
 			return digests
 
-		for k in hashfunc_map:
+		for k in get_valid_checksum_keys():
 			v = metadata.get(k)
 			if not v:
 				continue

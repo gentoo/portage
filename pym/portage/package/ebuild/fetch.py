@@ -29,7 +29,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import OrderedDict, os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
-from portage.checksum import (hashfunc_map, perform_md5, verify_all,
+from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
 	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
@@ -551,6 +551,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	distdir_writable = can_fetch and not fetch_to_ro
 	failed_files = set()
 	restrict_fetch_msg = False
+	valid_hashes = frozenset(get_valid_checksum_keys())
+	valid_hashes.discard("size")
 
 	for myfile in filedict:
 		"""
@@ -564,11 +566,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		orig_digests = mydigests.get(myfile, {})
 
 		if not (allow_missing_digests or listonly):
-			verifiable_hash_types = set(orig_digests).intersection(hashfunc_map)
-			verifiable_hash_types.discard("size")
+			verifiable_hash_types = set(orig_digests).intersection(valid_hashes)
 			if not verifiable_hash_types:
-				expected = set(hashfunc_map)
-				expected.discard("size")
+				expected = set(valid_hashes)
 				expected = " ".join(sorted(expected))
 				got = set(orig_digests)
 				got.discard("size")
