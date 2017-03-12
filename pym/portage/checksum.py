@@ -59,7 +59,7 @@ class _generate_hash_function(object):
 		hashfunc_map[hashtype] = self
 		hashorigin_map[hashtype] = origin
 
-	def __call__(self, filename):
+	def checksum_file(self, filename):
 		"""
 		Run a checksum against a file.
 	
@@ -186,11 +186,14 @@ if "WHIRLPOOL" not in hashfunc_map:
 	from portage.util.whirlpool import new as _new_whirlpool
 	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
+
 # There is only one implementation for size
-def getsize(filename):
-	size = os.stat(filename).st_size
-	return (size, size)
-hashfunc_map["size"] = getsize
+class SizeHash(object):
+	def checksum_file(self, filename):
+		size = os.stat(filename).st_size
+		return (size, size)
+
+hashfunc_map["size"] = SizeHash()
 
 # end actual hash functions
 
@@ -420,7 +423,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 			if hashname not in hashfunc_map:
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
-			myhash, mysize = hashfunc_map[hashname](myfilename)
+			myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
 		except (OSError, IOError) as e:
 			if e.errno in (errno.ENOENT, errno.ESTALE):
 				raise portage.exception.FileNotFound(myfilename)
