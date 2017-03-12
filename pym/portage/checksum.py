@@ -19,10 +19,10 @@ import tempfile
 # most preferred first. Please keep this in sync with logic below.
 # ================================================================
 #
-# MD5: hashlib, mhash
-# SHA1: hashlib, mhash
-# SHA256: hashlib, pycrypto, mhash
-# SHA512: hashlib, mhash
+# MD5: hashlib
+# SHA1: hashlib
+# SHA256: hashlib
+# SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
 # BLAKE2B (512): hashlib (3.6+), pycrypto
@@ -100,10 +100,6 @@ class _generate_hash_function(object):
 # WHIRLPOOL available.
 try:
 	import mhash, functools
-	md5hash = _generate_hash_function("MD5", functools.partial(mhash.MHASH, mhash.MHASH_MD5), origin="mhash")
-	sha1hash = _generate_hash_function("SHA1", functools.partial(mhash.MHASH, mhash.MHASH_SHA1), origin="mhash")
-	sha256hash = _generate_hash_function("SHA256", functools.partial(mhash.MHASH, mhash.MHASH_SHA256), origin="mhash")
-	sha512hash = _generate_hash_function("SHA512", functools.partial(mhash.MHASH, mhash.MHASH_SHA512), origin="mhash")
 	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
 		if hasattr(mhash, 'MHASH_%s' % local_name.upper()):
 			globals()['%shash' % local_name] = \
@@ -117,11 +113,7 @@ except ImportError:
 # Check for 'new' attributes, since they can be missing if the module
 # is broken somehow.
 try:
-	from Crypto.Hash import SHA256, RIPEMD
-	sha256hash_ = getattr(SHA256, 'new', None)
-	if sha256hash_ is not None:
-		sha256hash = _generate_hash_function("SHA256",
-			sha256hash_, origin="pycrypto")
+	from Crypto.Hash import RIPEMD
 	rmd160hash_ = getattr(RIPEMD, 'new', None)
 	if rmd160hash_ is not None:
 		rmd160hash = _generate_hash_function("RMD160",
