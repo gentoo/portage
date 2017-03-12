@@ -102,11 +102,10 @@ class _generate_hash_function(object):
 # WHIRLPOOL available.
 try:
 	import mhash
-	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
-		if hasattr(mhash, 'MHASH_%s' % local_name.upper()):
-			globals()['%shash' % local_name] = \
-				_generate_hash_function(local_name.upper(), \
-				functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name.upper())), \
+	for local_name, hash_name in (("RMD160", "RIPEMD160"), ("WHIRLPOOL", "WHIRLPOOL")):
+		if hasattr(mhash, 'MHASH_%s' % hash_name):
+			_generate_hash_function(local_name,
+				functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name)),
 				origin='mhash')
 except ImportError:
 	pass
@@ -118,7 +117,7 @@ try:
 	from Crypto.Hash import RIPEMD
 	rmd160hash_ = getattr(RIPEMD, 'new', None)
 	if rmd160hash_ is not None:
-		rmd160hash = _generate_hash_function("RMD160",
+		_generate_hash_function("RMD160",
 			rmd160hash_, origin="pycrypto")
 except ImportError:
 	pass
@@ -129,19 +128,19 @@ try:
 
 	blake2bhash_ = getattr(BLAKE2b, 'new', None)
 	if blake2bhash_ is not None:
-		blake2bhash = _generate_hash_function("BLAKE2B",
+		_generate_hash_function("BLAKE2B",
 			functools.partial(blake2bhash_, digest_bytes=64), origin="pycrypto")
 	blake2shash_ = getattr(BLAKE2s, 'new', None)
 	if blake2shash_ is not None:
-		blake2shash = _generate_hash_function("BLAKE2S",
+		_generate_hash_function("BLAKE2S",
 			functools.partial(blake2shash_, digest_bytes=32), origin="pycrypto")
 	sha3_256hash_ = getattr(SHA3_256, 'new', None)
 	if sha3_256hash_ is not None:
-		sha3_256hash = _generate_hash_function("SHA3_256",
+		_generate_hash_function("SHA3_256",
 			sha3_256hash_, origin="pycrypto")
 	sha3_512hash_ = getattr(SHA3_512, 'new', None)
 	if sha3_512hash_ is not None:
-		sha3_512hash = _generate_hash_function("SHA3_512",
+		_generate_hash_function("SHA3_512",
 			sha3_512hash_, origin="pycrypto")
 except ImportError:
 	pass
@@ -150,20 +149,20 @@ except ImportError:
 try:
 	import sha3
 
-	sha3_256hash = _generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
-	sha3_512hash = _generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
+	_generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
+	_generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
 except ImportError:
 	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
-md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
-sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
-sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
+_generate_hash_function("MD5", hashlib.md5, origin="hashlib")
+_generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
+_generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
+_generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
 for local_name, hash_name in (
-		("rmd160", "ripemd160"),
-		("whirlpool", "whirlpool"),
+		("RMD160", "ripemd160"),
+		("WHIRLPOOL", "whirlpool"),
 		# available since Python 3.6
 		("BLAKE2B", "blake2b"),
 		("BLAKE2S", "blake2s"),
@@ -175,9 +174,8 @@ for local_name, hash_name in (
 	except ValueError:
 		pass
 	else:
-		globals()['%shash' % local_name] = \
-			_generate_hash_function(local_name.upper(), \
-			functools.partial(hashlib.new, hash_name), \
+		_generate_hash_function(local_name,
+			functools.partial(hashlib.new, hash_name),
 			origin='hashlib')
 
 _whirlpool_unaccelerated = False
@@ -185,7 +183,7 @@ if "WHIRLPOOL" not in hashfunc_map:
 	# Bundled WHIRLPOOL implementation
 	_whirlpool_unaccelerated = True
 	from portage.util.whirlpool import new as _new_whirlpool
-	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
+	_generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
 
 # There is only one implementation for size
