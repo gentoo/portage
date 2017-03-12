@@ -247,6 +247,21 @@ if 'RMD160' not in hashfunc_map or 'WHIRLPOOL' not in hashfunc_map:
 		pass
 
 
+# Support pygost as fallback streebog provider
+# It's mostly provided as a reference implementation; it's pure Python,
+# slow and reads all data to memory (i.e. doesn't hash on update()...)
+if 'STREEBOG256' not in hashfunc_map or 'STREEBOG512' not in hashfunc_map:
+	try:
+		import pygost.gost34112012
+
+		_generate_hash_function("STREEBOG256",
+			functools.partial(pygost.gost34112012.GOST34112012, digest_size=32), origin="pygost")
+		_generate_hash_function("STREEBOG512",
+			functools.partial(pygost.gost34112012.GOST34112012, digest_size=64), origin="pygost")
+	except ImportError:
+		pass
+
+
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
 	# Bundled WHIRLPOOL implementation
