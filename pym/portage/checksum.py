@@ -19,7 +19,7 @@ import tempfile
 # most preferred first. Please keep this in sync with logic below.
 # ================================================================
 #
-# MD5: python-fchksum, hashlib, mhash
+# MD5: hashlib, mhash
 # SHA1: hashlib, mhash
 # SHA256: hashlib, pycrypto, mhash
 # SHA512: hashlib, mhash
@@ -185,15 +185,6 @@ if "WHIRLPOOL" not in hashfunc_map:
 	_whirlpool_unaccelerated = True
 	from portage.util.whirlpool import new as _new_whirlpool
 	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
-
-# Use python-fchksum if available, prefer it over all other MD5 implementations
-try:
-	from fchksum import fmd5t as md5hash
-	hashfunc_map["MD5"] = md5hash
-	hashorigin_map["MD5"] = "python-fchksum"
-
-except ImportError:
-	pass
 
 # There is only one implementation for size
 def getsize(filename):
