@@ -9,6 +9,8 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
 import errno
+import functools
+import hashlib
 import stat
 import sys
 import subprocess
@@ -99,7 +101,7 @@ class _generate_hash_function(object):
 # pycrypto. However, it might be the only accelerated implementation of
 # WHIRLPOOL available.
 try:
-	import mhash, functools
+	import mhash
 	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
 		if hasattr(mhash, 'MHASH_%s' % local_name.upper()):
 			globals()['%shash' % local_name] = \
@@ -124,7 +126,6 @@ except ImportError:
 try:
 	# added in pycryptodome
 	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
-	import functools
 
 	blake2bhash_ = getattr(BLAKE2b, 'new', None)
 	if blake2bhash_ is not None:
@@ -156,34 +157,28 @@ except ImportError:
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
-try:
-	import hashlib, functools
-	
-	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
-	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
-	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-	sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
-	for local_name, hash_name in (
-			("rmd160", "ripemd160"),
-			("whirlpool", "whirlpool"),
-			# available since Python 3.6
-			("BLAKE2B", "blake2b"),
-			("BLAKE2S", "blake2s"),
-			("SHA3_256", "sha3_256"),
-			("SHA3_512", "sha3_512"),
-			):
-		try:
-			hashlib.new(hash_name)
-		except ValueError:
-			pass
-		else:
-			globals()['%shash' % local_name] = \
-				_generate_hash_function(local_name.upper(), \
-				functools.partial(hashlib.new, hash_name), \
-				origin='hashlib')
-
-except ImportError:
-	pass
+md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
+sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
+sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
+sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
+for local_name, hash_name in (
+		("rmd160", "ripemd160"),
+		("whirlpool", "whirlpool"),
+		# available since Python 3.6
+		("BLAKE2B", "blake2b"),
+		("BLAKE2S", "blake2s"),
+		("SHA3_256", "sha3_256"),
+		("SHA3_512", "sha3_512"),
+		):
+	try:
+		hashlib.new(hash_name)
+	except ValueError:
+		pass
+	else:
+		globals()['%shash' % local_name] = \
+			_generate_hash_function(local_name.upper(), \
+			functools.partial(hashlib.new, hash_name), \
+			origin='hashlib')
 
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
