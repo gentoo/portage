@@ -135,6 +135,44 @@ if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
 		pass
 
 
+# Support pygcrypt as fallback using optimized routines from libgcrypt
+# (GnuPG).
+gcrypt_algos = frozenset(('RMD160', 'WHIRLPOOL', 'SHA3_256', 'SHA3_512'))
+if gcrypt_algos.difference(hashfunc_map):
+	try:
+		import binascii
+		import pygcrypt.hashcontext
+
+		class GCryptHashWrapper(object):
+			def __init__(self, algo):
+				self._obj = pygcrypt.hashcontext.HashContext(algo=algo)
+
+			def update(self, data):
+				self._obj.write(data)
+
+			def hexdigest(self):
+				return binascii.b2a_hex(self._obj.read()).decode()
+
+		name_mapping = {
+			'RMD160': 'ripemd160',
+			'WHIRLPOOL': 'whirlpool',
+			'SHA3_256': 'sha3-256',
+			'SHA3_512': 'sha3-512',
+		}
+
+		for local_name, gcry_name in name_mapping.items():
+			try:
+				pygcrypt.hashcontext.HashContext(algo=gcry_name)
+			except Exception: # yes, it throws Exception...
+				pass
+			else:
+				_generate_hash_function(local_name,
+						functools.partial(GCryptHashWrapper, gcry_name),
+						origin="pygcrypt")
+	except ImportError:
+		pass
+
+
 # Use pycrypto when available, prefer it over the internal fallbacks
 # Check for 'new' attributes, since they can be missing if the module
 # is broken somehow.
