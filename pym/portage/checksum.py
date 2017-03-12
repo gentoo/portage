@@ -137,7 +137,8 @@ if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
 
 # Support pygcrypt as fallback using optimized routines from libgcrypt
 # (GnuPG).
-gcrypt_algos = frozenset(('RMD160', 'WHIRLPOOL', 'SHA3_256', 'SHA3_512'))
+gcrypt_algos = frozenset(('RMD160', 'WHIRLPOOL', 'SHA3_256', 'SHA3_512',
+	'STREEBOG256', 'STREEBOG512'))
 if gcrypt_algos.difference(hashfunc_map):
 	try:
 		import binascii
@@ -158,6 +159,8 @@ if gcrypt_algos.difference(hashfunc_map):
 			'WHIRLPOOL': 'whirlpool',
 			'SHA3_256': 'sha3-256',
 			'SHA3_512': 'sha3-512',
+			'STREEBOG256': 'stribog256',
+			'STREEBOG512': 'stribog512',
 		}
 
 		for local_name, gcry_name in name_mapping.items():
