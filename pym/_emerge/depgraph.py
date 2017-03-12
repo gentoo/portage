@@ -3066,6 +3066,11 @@ class depgraph(object):
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 
+		if pkg.onlydeps and \
+			self._frozen_config.myopts.get("--onlydeps-with-rdeps") == 'n':
+			edepend["RDEPEND"] = ""
+			edepend["PDEPEND"] = ""
+
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
 			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
