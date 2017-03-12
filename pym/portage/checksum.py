@@ -10,6 +10,7 @@ from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
 import errno
 import stat
+import sys
 import subprocess
 import tempfile
 
@@ -26,8 +27,8 @@ import tempfile
 # WHIRLPOOL: hashlib, mhash, bundled
 # BLAKE2B (512): hashlib (3.6+), pycrypto
 # BLAKE2S (512): hashlib (3.6+), pycrypto
-# SHA3_256: hashlib (3.6+), pycrypto
-# SHA3_512: hashlib (3.6+), pycrypto
+# SHA3_256: hashlib (3.6+), pysha3, pycrypto
+# SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
 
 #dict of all available hash functions
@@ -135,6 +136,15 @@ try:
 	if sha3_512hash_ is not None:
 		sha3_512hash = _generate_hash_function("SHA3_512",
 			sha3_512hash_, origin="pycrypto")
+except ImportError:
+	pass
+
+# Support using pysha3 as fallback for python<3.6
+try:
+	import sha3
+
+	sha3_256hash = _generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
+	sha3_512hash = _generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
 except ImportError:
 	pass
 
