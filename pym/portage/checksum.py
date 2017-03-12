@@ -93,66 +93,11 @@ class _generate_hash_function(object):
 
 		return (checksum.hexdigest(), size)
 
-# Define hash functions, try to use the best module available. Later definitions
-# override earlier ones
 
-# Try to use mhash if available
-# mhash causes GIL presently, so it gets less priority than hashlib and
-# pycrypto. However, it might be the only accelerated implementation of
-# WHIRLPOOL available.
-try:
-	import mhash
-	for local_name, hash_name in (("RMD160", "RIPEMD160"), ("WHIRLPOOL", "WHIRLPOOL")):
-		if hasattr(mhash, 'MHASH_%s' % hash_name):
-			_generate_hash_function(local_name,
-				functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name)),
-				origin='mhash')
-except ImportError:
-	pass
+# Define hash functions, try to use the best module available. Preferred
+# modules should go first, latter ones should check if the hashes aren't
+# already defined.
 
-# Use pycrypto when available, prefer it over the internal fallbacks
-# Check for 'new' attributes, since they can be missing if the module
-# is broken somehow.
-try:
-	from Crypto.Hash import RIPEMD
-	rmd160hash_ = getattr(RIPEMD, 'new', None)
-	if rmd160hash_ is not None:
-		_generate_hash_function("RMD160",
-			rmd160hash_, origin="pycrypto")
-except ImportError:
-	pass
-
-try:
-	# added in pycryptodome
-	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
-
-	blake2bhash_ = getattr(BLAKE2b, 'new', None)
-	if blake2bhash_ is not None:
-		_generate_hash_function("BLAKE2B",
-			functools.partial(blake2bhash_, digest_bytes=64), origin="pycrypto")
-	blake2shash_ = getattr(BLAKE2s, 'new', None)
-	if blake2shash_ is not None:
-		_generate_hash_function("BLAKE2S",
-			functools.partial(blake2shash_, digest_bytes=32), origin="pycrypto")
-	sha3_256hash_ = getattr(SHA3_256, 'new', None)
-	if sha3_256hash_ is not None:
-		_generate_hash_function("SHA3_256",
-			sha3_256hash_, origin="pycrypto")
-	sha3_512hash_ = getattr(SHA3_512, 'new', None)
-	if sha3_512hash_ is not None:
-		_generate_hash_function("SHA3_512",
-			sha3_512hash_, origin="pycrypto")
-except ImportError:
-	pass
-
-# Support using pysha3 as fallback for python<3.6
-try:
-	import sha3
-
-	_generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
-	_generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
-except ImportError:
-	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
 # Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
@@ -178,6 +123,89 @@ for local_name, hash_name in (
 			functools.partial(hashlib.new, hash_name),
 			origin='hashlib')
 
+
+# Support using pysha3 as fallback for python<3.6
+if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
+	try:
+		import sha3
+
+		_generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
+		_generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
+	except ImportError:
+		pass
+
+
+# Use pycrypto when available, prefer it over the internal fallbacks
+# Check for 'new' attributes, since they can be missing if the module
+# is broken somehow.
+if 'RMD160' not in hashfunc_map:
+	try:
+		from Crypto.Hash import RIPEMD
+		rmd160hash_ = getattr(RIPEMD, 'new', None)
+		if rmd160hash_ is not None:
+			_generate_hash_function("RMD160",
+				rmd160hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
+# The following hashes were added in pycryptodome (pycrypto fork)
+if 'BLAKE2B' not in hashfunc_map:
+	try:
+		from Crypto.Hash import BLAKE2b
+		blake2bhash_ = getattr(BLAKE2b, 'new', None)
+		if blake2bhash_ is not None:
+			_generate_hash_function("BLAKE2B",
+				functools.partial(blake2bhash_, digest_bytes=64), origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'BLAKE2S' not in hashfunc_map:
+	try:
+		from Crypto.Hash import BLAKE2s
+		blake2shash_ = getattr(BLAKE2s, 'new', None)
+		if blake2shash_ is not None:
+			_generate_hash_function("BLAKE2S",
+				functools.partial(blake2shash_, digest_bytes=32), origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'SHA3_256' not in hashfunc_map:
+	try:
+		from Crypto.Hash import SHA3_256
+		sha3_256hash_ = getattr(SHA3_256, 'new', None)
+		if sha3_256hash_ is not None:
+			_generate_hash_function("SHA3_256",
+				sha3_256hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'SHA3_512' not in hashfunc_map:
+	try:
+		from Crypto.Hash import SHA3_512
+		sha3_512hash_ = getattr(SHA3_512, 'new', None)
+		if sha3_512hash_ is not None:
+			_generate_hash_function("SHA3_512",
+				sha3_512hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
+
+# Try to use mhash if available
+# mhash causes GIL presently, so it gets less priority than hashlib and
+# pycrypto. However, it might be the only accelerated implementation of
+# WHIRLPOOL available.
+if 'RMD160' not in hashfunc_map or 'WHIRLPOOL' not in hashfunc_map:
+	try:
+		import mhash
+		for local_name, hash_name in (("RMD160", "RIPEMD160"), ("WHIRLPOOL", "WHIRLPOOL")):
+			if local_name not in hashfunc_map and hasattr(mhash, 'MHASH_%s' % hash_name):
+				_generate_hash_function(local_name,
+					functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name)),
+					origin='mhash')
+	except ImportError:
+		pass
+
+
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
 	# Bundled WHIRLPOOL implementation
@@ -195,6 +223,7 @@ class SizeHash(object):
 hashfunc_map["size"] = SizeHash()
 
 # end actual hash functions
+
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
