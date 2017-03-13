@@ -278,6 +278,9 @@ class SizeHash(object):
 
 hashfunc_map["size"] = SizeHash()
 
+# cache all supported hash methods in a frozenset
+hashfunc_keys = frozenset(hashfunc_map)
+
 # end actual hash functions
 
 
@@ -312,15 +315,15 @@ def _perform_md5_merge(x, **kwargs):
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
-	for k in hashfunc_map:
+	for k in hashfunc_keys:
 		mydict[k] = perform_checksum(x, k, calc_prelink)[0]
 	return mydict
 
 def get_valid_checksum_keys():
-	return list(hashfunc_map)
+	return hashfunc_keys
 
 def get_hash_origin(hashtype):
-	if hashtype not in hashfunc_map:
+	if hashtype not in hashfunc_keys:
 		raise KeyError(hashtype)
 	return hashorigin_map.get(hashtype, "unknown")
 
@@ -334,7 +337,7 @@ def _filter_unaccelarated_hashes(digests):
 	due to minimization of dependencies.
 	"""
 	if _whirlpool_unaccelerated and "WHIRLPOOL" in digests:
-		verifiable_hash_types = set(digests).intersection(hashfunc_map)
+		verifiable_hash_types = set(digests).intersection(hashfunc_keys)
 		verifiable_hash_types.discard("size")
 		if len(verifiable_hash_types) > 1:
 			digests = dict(digests)
@@ -383,7 +386,7 @@ def _apply_hash_filter(digests, hash_filter):
 	@type hash_filter: callable
 	"""
 
-	verifiable_hash_types = set(digests).intersection(hashfunc_map)
+	verifiable_hash_types = set(digests).intersection(hashfunc_keys)
 	verifiable_hash_types.discard("size")
 	modified = False
 	if len(verifiable_hash_types) > 1:
@@ -430,10 +433,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
 
-	verifiable_hash_types = set(mydict).intersection(hashfunc_map)
+	verifiable_hash_types = set(mydict).intersection(hashfunc_keys)
 	verifiable_hash_types.discard("size")
 	if not verifiable_hash_types:
-		expected = set(hashfunc_map)
+		expected = set(hashfunc_keys)
 		expected.discard("size")
 		expected = list(expected)
 		expected.sort()
@@ -448,7 +451,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	for x in sorted(mydict):
 		if   x == "size":
 			continue
-		elif x in hashfunc_map:
+		elif x in hashfunc_keys:
 			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
@@ -504,7 +507,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 				# This happens during uninstallation of prelink.
 				prelink_capable = False
 		try:
-			if hashname not in hashfunc_map:
+			if hashname not in hashfunc_keys:
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
 			myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
@@ -541,7 +544,7 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	"""
 	rVal = {}
 	for x in hashes:
-		if x not in hashfunc_map:
+		if x not in hashfunc_keys:
 			raise portage.exception.DigestException(x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)")
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal
@@ -558,7 +561,7 @@ def checksum_str(data, hashname="MD5"):
 	@rtype: String
 	@return: The hash (hex-digest) of the data
 	"""
-	if hashname not in hashfunc_map:
+	if hashname not in hashfunc_keys:
 		raise portage.exception.DigestException(hashname + \
 			" hash function not available (needs dev-python/pycrypto)")
 	return hashfunc_map[hashname].checksum_str(data)
