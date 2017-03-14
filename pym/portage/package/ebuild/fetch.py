@@ -551,7 +551,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	distdir_writable = can_fetch and not fetch_to_ro
 	failed_files = set()
 	restrict_fetch_msg = False
-	valid_hashes = frozenset(get_valid_checksum_keys())
+	valid_hashes = set(get_valid_checksum_keys())
 	valid_hashes.discard("size")
 
 	for myfile in filedict:
@@ -568,8 +568,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		if not (allow_missing_digests or listonly):
 			verifiable_hash_types = set(orig_digests).intersection(valid_hashes)
 			if not verifiable_hash_types:
-				expected = set(valid_hashes)
-				expected = " ".join(sorted(expected))
+				expected = " ".join(sorted(valid_hashes))
 				got = set(orig_digests)
 				got.discard("size")
 				got = " ".join(sorted(got))
