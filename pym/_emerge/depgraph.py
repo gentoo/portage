@@ -387,7 +387,10 @@ class _dynamic_depgraph_config(object):
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
 		# Contains all Blocker -> Blocked Package edges
-		self._blocked_pkgs = digraph()
+		# Do not initialize this until the depgraph _validate_blockers
+		# method is called, so that the _in_blocker_conflict method can
+		# assert that _validate_blockers has been called first.
+		self._blocked_pkgs = None
 		# Contains world packages that have been protected from
 		# uninstallation but may not have been added to the graph
 		# if the graph is not complete yet.
@@ -1466,8 +1469,21 @@ class depgraph(object):
 
 		self._solve_non_slot_operator_slot_conflicts()
 
+		if not self._validate_blockers():
+			# Blockers don't trigger the _skip_restart flag, since
+			# backtracking may solve blockers when it solves slot
+			# conflicts (or by blind luck).
+			raise self._unknown_internal_error()
+
+		# Both _process_slot_conflict and _slot_operator_trigger_reinstalls
+		# can call _slot_operator_update_probe, which requires that
+		# self._dynamic_config._blocked_pkgs has been initialized by a
+		# call to the _validate_blockers method.
 		for conflict in self._dynamic_config._package_tracker.slot_conflicts():
 			self._process_slot_conflict(conflict)
+
+		if self._dynamic_config._allow_backtracking:
+			self._slot_operator_trigger_reinstalls()
 
 	def _process_slot_conflict(self, conflict):
 		"""
@@ -1829,9 +1845,12 @@ class depgraph(object):
 						not self._frozen_config.excluded_pkgs.
 						findAtomForPackage(parent,
 						modified_use=self._pkg_use_enabled(parent)) and
-						self._upgrade_available(parent)):
+						(self._upgrade_available(parent) or
+						(parent.installed and self._in_blocker_conflict(parent)))):
 						# This parent may be irrelevant, since an
-						# update is available (see bug 584626).
+						# update is available (see bug 584626), or
+						# it could be uninstalled in order to solve
+						# a blocker conflict (bug 612772).
 						continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
@@ -2124,6 +2143,24 @@ class depgraph(object):
 				set()).update(reinstalls)
 
 		self._dynamic_config._need_restart = True
+
+	def _in_blocker_conflict(self, pkg):
+		"""
+		Check if pkg is involved in a blocker conflict. This method
+		only works after the _validate_blockers method has been called.
+		"""
+
+		if self._dynamic_config._blocked_pkgs is None:
+			raise AssertionError(
+				'_in_blocker_conflict called before _validate_blockers')
+
+		if pkg in self._dynamic_config._blocked_pkgs:
+			return True
+
+		if pkg in self._dynamic_config._blocker_parents:
+			return True
+
+		return False
 
 	def _upgrade_available(self, pkg):
 		"""
@@ -2925,7 +2962,8 @@ class depgraph(object):
 		self._dynamic_config._blocker_parents.discard(pkg)
 		self._dynamic_config._irrelevant_blockers.discard(pkg)
 		self._dynamic_config._unsolvable_blockers.discard(pkg)
-		self._dynamic_config._blocked_pkgs.discard(pkg)
+		if self._dynamic_config._blocked_pkgs is not None:
+			self._dynamic_config._blocked_pkgs.discard(pkg)
 		self._dynamic_config._blocked_world_pkgs.pop(pkg, None)
 
 		for child in children:
@@ -6619,6 +6657,10 @@ class depgraph(object):
 		installed simultaneously. Also add runtime blockers from all installed
 		packages if any of them haven't been added already (bug 128809)."""
 
+		# The _in_blocker_conflict method needs to assert that this method
+		# has been called before it, by checking that it is not None.
+		self._dynamic_config._blocked_pkgs = digraph()
+
 		if "--buildpkgonly" in self._frozen_config.myopts or \
 			"--nodeps" in self._frozen_config.myopts:
 			return True
@@ -7105,15 +7147,6 @@ class depgraph(object):
 			raise self._unknown_internal_error()
 
 		self._process_slot_conflicts()
-
-		if self._dynamic_config._allow_backtracking:
-			self._slot_operator_trigger_reinstalls()
-
-		if not self._validate_blockers():
-			# Blockers don't trigger the _skip_restart flag, since
-			# backtracking may solve blockers when it solves slot
-			# conflicts (or by blind luck).
-			raise self._unknown_internal_error()
 
 	def _serialize_tasks(self):
 
