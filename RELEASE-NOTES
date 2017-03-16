@@ -1,6 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.5
+==================================
+* Bug Fixes:
+    - Bug 598444 auto-enable --with-bdeps if --usepkg is not enabled
+    - Bug 611838 use_reduce: reserve missing_white_space_check for invalid tokens
+    - Bug 612042 depgraph: fix backtracking for slot operator rebuilds
+    - Bug 612094 depgraph: fix runtime package mask interaction with slot
+                           operator rebuilds
+    - Bug 611896 config.setcpv: fix handling of IUSE changes
+    - Bug 597736 Support STREEBOG{256,512} hash function
+    - Bug 607868 movefile: support in-kernel file copying on Linux
+    - Bug 612772 depgraph: fix slot operator rebuild for llvm:0 to llvm:4 upgrade
+    - Bug 612846 depgraph: fix missed atom_not_selected initialization
+* Numerous patches updating checksums code and python module imports for them
+  including new checksum methods
+* New linux in kernel movefile support via a new "C" extension module
+
+
 portage-2.3.4
 ==================================
 * Bug Fixes:

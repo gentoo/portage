@@ -1,5 +1,12 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.5
+-----------------
+* Numerous patches updating checksums code and python module imports for them
+  including new checksum methods
+* New linux in kernel movefile support via a new "C" extension module
+
+
 portage-2.3.3
 -----------------
 * Reverted commits:
