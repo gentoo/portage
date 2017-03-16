@@ -1895,7 +1895,9 @@ class depgraph(object):
 			all_candidate_pkgs = None
 
 			for atom in atoms:
-				atom_not_selected = False
+				# The _select_atoms_probe method is expensive, so initialization
+				# of this variable is only performed on demand.
+				atom_not_selected = None
 
 				if not atom.package:
 					unevaluated_atom = None
@@ -1977,8 +1979,8 @@ class depgraph(object):
 						if selected_atoms is None:
 							selected_atoms = self._select_atoms_probe(
 								dep.child.root, replacement_parent)
-						if unevaluated_atom not in selected_atoms:
-							atom_not_selected = True
+						atom_not_selected = unevaluated_atom not in selected_atoms
+						if atom_not_selected:
 							break
 
 					if not insignificant and \
@@ -1988,6 +1990,15 @@ class depgraph(object):
 						candidate_pkg_atoms.append(
 							(pkg, unevaluated_atom or atom))
 						candidate_pkgs.append(pkg)
+
+				# When unevaluated_atom is None, it means that atom is
+				# an soname atom which is unconditionally selected, and
+				# _select_atoms_probe is not applicable.
+				if atom_not_selected is None and unevaluated_atom is not None:
+					if selected_atoms is None:
+						selected_atoms = self._select_atoms_probe(
+							dep.child.root, replacement_parent)
+					atom_not_selected = unevaluated_atom not in selected_atoms
 
 				if atom_not_selected:
 					continue
