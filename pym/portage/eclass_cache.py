@@ -48,7 +48,7 @@ class hashed_path(object):
 			# we don't care to allow .mD5 as an alias for .md5
 			raise AttributeError(attr)
 		hashname = attr.upper()
-		if hashname not in checksum.hashfunc_map:
+		if hashname not in checksum.get_valid_checksum_keys():
 			raise AttributeError(attr)
 		val = checksum.perform_checksum(self.location, hashname)[0]
 		setattr(self, attr, val)

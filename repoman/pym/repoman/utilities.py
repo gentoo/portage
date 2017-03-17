@@ -30,7 +30,7 @@ import sys
 import time
 import textwrap
 import difflib
-from tempfile import mkstemp
+import tempfile
 
 # import our initialized portage instance
 from repoman._portage import portage
@@ -187,23 +187,24 @@ def get_commit_message_with_editor(editor, message=None, prefix=""):
 	@rtype: string or None
 	@return: A string on success or None if an error occurs.
 	"""
-	fd, filename = mkstemp()
+	commitmessagedir = tempfile.mkdtemp(".repoman.msg")
+	filename = os.path.join(commitmessagedir, "COMMIT_EDITMSG")
 	try:
-		os.write(
-			fd, _unicode_encode(_(
-				prefix +
-				"\n\n# Please enter the commit message "
-				"for your changes.\n# (Comment lines starting "
-				"with '#' will not be included)\n"),
-				encoding=_encodings['content'], errors='backslashreplace'))
-		if message:
-			os.write(fd, b"#\n")
-			for line in message:
-				os.write(
-					fd, _unicode_encode(
-						"#" + line, encoding=_encodings['content'],
-						errors='backslashreplace'))
-		os.close(fd)
+		with open(filename, "wb") as mymsg:
+			mymsg.write(
+				_unicode_encode(_(
+					prefix +
+					"\n\n# Please enter the commit message "
+					"for your changes.\n# (Comment lines starting "
+					"with '#' will not be included)\n"),
+					encoding=_encodings['content'], errors='backslashreplace'))
+			if message:
+				mymsg.write(b"#\n")
+				for line in message:
+					mymsg.write(
+						_unicode_encode(
+							"#" + line, encoding=_encodings['content'],
+							errors='backslashreplace'))
 		retval = os.system(editor + " '%s'" % filename)
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
 			return None
@@ -220,7 +221,7 @@ def get_commit_message_with_editor(editor, message=None, prefix=""):
 		return "".join(line for line in mylines if not line.startswith("#"))
 	finally:
 		try:
-			os.unlink(filename)
+			shutil.rmtree(commitmessagedir)
 		except OSError:
 			pass
 
@@ -409,7 +410,7 @@ def UpdateChangeLog(
 	except EnvironmentError:
 		pass
 
-	f, clnew_path = mkstemp()
+	f, clnew_path = tempfile.mkstemp()
 
 	# construct correct header first
 	try:

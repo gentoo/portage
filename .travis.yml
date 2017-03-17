@@ -8,7 +8,14 @@ python:
     - pypy
 
 # command to install dependencies
-install: "pip install lxml"
+install:
+    - pip install lxml
+    # python3.6+ has sha3 built-in, for older versions install pysha3
+    # (except for pypy where pysha3 is broken)
+    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] || ${TRAVIS_PYTHON_VERSION} == pypy ]] || pip install pysha3"
+    # always install pygost for Streebog
+    # (except for py3.3 which it does not support)
+    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.3 ]] || pip install pygost"
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg

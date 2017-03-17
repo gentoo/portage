@@ -13,7 +13,7 @@ import warnings
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.checksum:hashfunc_map,perform_multiple_checksums,' + \
+	'portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,' + \
 		'verify_all,_apply_hash_filter,_filter_unaccelarated_hashes',
 	'portage.repository.config:_find_invalid_path_char',
 	'portage.util:write_atomic,writemsg_level',
@@ -154,7 +154,7 @@ class Manifest(object):
 
 		self.hashes.update(hashes.intersection(MANIFEST2_HASH_FUNCTIONS))
 		self.hashes.difference_update(hashname for hashname in \
-			list(self.hashes) if hashname not in hashfunc_map)
+			list(self.hashes) if hashname not in get_valid_checksum_keys())
 		self.hashes.add("size")
 		self.hashes.add(MANIFEST2_REQUIRED_HASH)
 		for t in MANIFEST2_IDENTIFIERS:

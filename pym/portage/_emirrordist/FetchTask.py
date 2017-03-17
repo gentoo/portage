@@ -574,7 +574,7 @@ class FetchTask(CompositeTask):
 		else:
 			for hash_name in self.digests:
 				if hash_name != "size" and \
-					hash_name in portage.checksum.hashfunc_map:
+					hash_name in portage.checksum.get_valid_checksum_keys():
 					return hash_name
 
 		return None

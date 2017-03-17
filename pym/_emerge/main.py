@@ -516,6 +516,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"help":"include unnecessary build time dependencies",
 			"choices":("y", "n")
 		},
+		"--with-bdeps-auto": {
+			"help":("automatically enable --with-bdeps for installation"
+				" actions, unless --usepkg is enabled"),
+			"choices":("y", "n")
+		},
 		"--reinstall": {
 			"help":"specify conditions to trigger package reinstallation",
 			"choices":["changed-use"]

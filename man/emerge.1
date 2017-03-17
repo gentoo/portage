@@ -986,12 +986,43 @@ The default is set to "y" (on).
 .TP
 .BR "\-\-with\-bdeps < y | n >"
 In dependency calculations, pull in build time dependencies
-that are not strictly required. This defaults to \'n\' for
-installation actions, meaning they will not be installed, and
-\'y\' for the \fB\-\-depclean\fR action, meaning they will not be removed.
+that are not strictly required. This option is automatically enabled for
+installation actions, meaning they will be installed, and defaults to
+\(aqy\(aq for the \fB\-\-depclean\fR action, meaning they will not be
+removed. In order to prevent the \fB\-\-with\-bdeps\fR option from being
+automatically enabled for installation actions, specify
+\fB\-\-with\-bdeps\-auto=n\fR in either the command line or
+\fBEMERGE_DEFAULT_OPTS\fR.
+
+Since many users of binary packages do not want unnecessary build time
+dependencies installed, this option is not automatically enabled for
+installation actions when the \fB\-\-usepkg\fR option is enabled. In
+order to pull in build time dependencies for binary packages with
+\fB\-\-usepkg\fR, \fB\-\-with\-bdeps=y\fR must be specified explicitly.
+This also applies to options that enable the \fB\-\-usepkg\fR option
+implicitly, such as \fB\-\-getbinpkg\fR.
+
 This setting can be added to
 \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
 command line.
+.TP
+.BR "\-\-with\-bdeps\-auto < y | n >"
+This option is used to enable or disable the program logic that causes
+\fB\-\-with\-bdeps\fR is to be automatically enabled for installation
+actions. This option is enabled by default. Use
+\fB\-\-with\-bdeps\-auto=n\fR to prevent \fB\-\-with\-bdeps\fR from
+being automatically enabled for installation actions. This setting can
+be added to \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later
+overridden via the command line.
+
+\fBNOTE:\fR The program logic that causes \fB\-\-with\-bdeps\fR to be
+automatically enabled for installation actions does not affect removal
+actions such as the \fB\-\-depclean\fR action. Therefore, when
+\fB\-\-with\-bdeps\-auto=n\fR is specified in \fBEMERGE_DEFAULT_OPTS\fR,
+it does not affect the default \fB\-\-with\-bdeps=y\fR setting that
+applies to the \fB\-\-depclean\fR action. The default
+\fB\-\-with\-bdeps=y\fR setting that applies to the \fB\-\-depclean\fR
+action can be overridden only by specifying \fB\-\-with\-bdeps=n\fR.
 .TP
 .BR "\-\-with\-test\-deps [ y | n ]"
 For packages matched by arguments, this option will pull in dependencies

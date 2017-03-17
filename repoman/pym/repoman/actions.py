@@ -7,6 +7,7 @@ import io
 import logging
 import platform
 import re
+import shutil
 import signal
 import sys
 import tempfile
@@ -457,15 +458,15 @@ class Actions(object):
 			myfiles += myremoved
 		myfiles.sort()
 
-		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-		mymsg = os.fdopen(fd, "wb")
-		mymsg.write(_unicode_encode(commitmessage))
-		mymsg.close()
+		commitmessagedir = tempfile.mkdtemp(".repoman.msg")
+		commitmessagefile = os.path.join(commitmessagedir, "COMMIT_EDITMSG")
+		with open(commitmessagefile, "wb") as mymsg:
+			mymsg.write(_unicode_encode(commitmessage))
 
 		retval = self.vcs_settings.changes.commit(myfiles, commitmessagefile)
 		# cleanup the commit message before possibly exiting
 		try:
-			os.unlink(commitmessagefile)
+			shutil.rmtree(commitmessagedir)
 		except OSError:
 			pass
 		if retval != os.EX_OK:
@@ -478,10 +479,10 @@ class Actions(object):
 
 	def priming_commit(self, myupdates, myremoved, commitmessage):
 		myfiles = myupdates + myremoved
-		fd, commitmessagefile = tempfile.mkstemp(".repoman.msg")
-		mymsg = os.fdopen(fd, "wb")
-		mymsg.write(_unicode_encode(commitmessage))
-		mymsg.close()
+		commitmessagedir = tempfile.mkdtemp(".repoman.msg")
+		commitmessagefile = os.path.join(commitmessagedir, "COMMIT_EDITMSG")
+		with open(commitmessagefile, "wb") as mymsg:
+			mymsg.write(_unicode_encode(commitmessage))
 
 		separator = '-' * 78
 
@@ -500,7 +501,7 @@ class Actions(object):
 		retval = self.vcs_settings.changes.commit(myfiles, commitmessagefile)
 		# cleanup the commit message before possibly exiting
 		try:
-			os.unlink(commitmessagefile)
+			shutil.rmtree(commitmessagedir)
 		except OSError:
 			pass
 		if retval != os.EX_OK:

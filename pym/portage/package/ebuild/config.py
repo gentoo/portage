@@ -1629,6 +1629,10 @@ class config(object):
 		elif previous_penv:
 			has_changed = True
 
+		if not (previous_iuse == iuse and
+			previous_iuse_effective is not None == eapi_attrs.iuse_effective):
+			has_changed = True
+
 		if has_changed:
 			self.reset(keeping_pkg=1)
 
@@ -1651,8 +1655,7 @@ class config(object):
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
-		if not has_changed and previous_iuse == iuse and \
-			(previous_iuse_effective is not None == eapi_attrs.iuse_effective):
+		if not has_changed:
 			return
 
 		# Filter out USE flags that aren't part of IUSE. This has to

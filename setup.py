@@ -23,6 +23,7 @@ import collections
 import glob
 import os
 import os.path
+import platform
 import re
 import subprocess
 import sys
@@ -53,6 +54,14 @@ x_c_helpers = {
 		'src/portage_util_libc.c',
 	],
 }
+
+if platform.system() == 'Linux':
+	x_c_helpers.update({
+		'portage.util.file_copy.reflink_linux': [
+			'src/portage_util_file_copy_reflink_linux.c',
+		],
+	})
+
 
 class x_build(build):
 	""" Build command with extra build_man call. """
@@ -646,7 +655,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.4',
+	version = '2.3.5',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

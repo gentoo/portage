@@ -387,7 +387,10 @@ class _dynamic_depgraph_config(object):
 		# Contains only unsolvable Package -> Blocker edges
 		self._unsolvable_blockers = digraph()
 		# Contains all Blocker -> Blocked Package edges
-		self._blocked_pkgs = digraph()
+		# Do not initialize this until the depgraph _validate_blockers
+		# method is called, so that the _in_blocker_conflict method can
+		# assert that _validate_blockers has been called first.
+		self._blocked_pkgs = None
 		# Contains world packages that have been protected from
 		# uninstallation but may not have been added to the graph
 		# if the graph is not complete yet.
@@ -1466,8 +1469,21 @@ class depgraph(object):
 
 		self._solve_non_slot_operator_slot_conflicts()
 
+		if not self._validate_blockers():
+			# Blockers don't trigger the _skip_restart flag, since
+			# backtracking may solve blockers when it solves slot
+			# conflicts (or by blind luck).
+			raise self._unknown_internal_error()
+
+		# Both _process_slot_conflict and _slot_operator_trigger_reinstalls
+		# can call _slot_operator_update_probe, which requires that
+		# self._dynamic_config._blocked_pkgs has been initialized by a
+		# call to the _validate_blockers method.
 		for conflict in self._dynamic_config._package_tracker.slot_conflicts():
 			self._process_slot_conflict(conflict)
+
+		if self._dynamic_config._allow_backtracking:
+			self._slot_operator_trigger_reinstalls()
 
 	def _process_slot_conflict(self, conflict):
 		"""
@@ -1595,9 +1611,6 @@ class depgraph(object):
 
 			if not atom.soname and not (
 				atom.package and atom.slot_operator_built):
-				continue
-
-			if pkg not in conflict_pkgs:
 				continue
 
 			for other_pkg in slot_nodes:
@@ -1832,9 +1845,12 @@ class depgraph(object):
 						not self._frozen_config.excluded_pkgs.
 						findAtomForPackage(parent,
 						modified_use=self._pkg_use_enabled(parent)) and
-						self._upgrade_available(parent)):
+						(self._upgrade_available(parent) or
+						(parent.installed and self._in_blocker_conflict(parent)))):
 						# This parent may be irrelevant, since an
-						# update is available (see bug 584626).
+						# update is available (see bug 584626), or
+						# it could be uninstalled in order to solve
+						# a blocker conflict (bug 612772).
 						continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
@@ -1879,7 +1895,9 @@ class depgraph(object):
 			all_candidate_pkgs = None
 
 			for atom in atoms:
-				atom_not_selected = False
+				# The _select_atoms_probe method is expensive, so initialization
+				# of this variable is only performed on demand.
+				atom_not_selected = None
 
 				if not atom.package:
 					unevaluated_atom = None
@@ -1961,8 +1979,8 @@ class depgraph(object):
 						if selected_atoms is None:
 							selected_atoms = self._select_atoms_probe(
 								dep.child.root, replacement_parent)
-						if unevaluated_atom not in selected_atoms:
-							atom_not_selected = True
+						atom_not_selected = unevaluated_atom not in selected_atoms
+						if atom_not_selected:
 							break
 
 					if not insignificant and \
@@ -1972,6 +1990,15 @@ class depgraph(object):
 						candidate_pkg_atoms.append(
 							(pkg, unevaluated_atom or atom))
 						candidate_pkgs.append(pkg)
+
+				# When unevaluated_atom is None, it means that atom is
+				# an soname atom which is unconditionally selected, and
+				# _select_atoms_probe is not applicable.
+				if atom_not_selected is None and unevaluated_atom is not None:
+					if selected_atoms is None:
+						selected_atoms = self._select_atoms_probe(
+							dep.child.root, replacement_parent)
+					atom_not_selected = unevaluated_atom not in selected_atoms
 
 				if atom_not_selected:
 					continue
@@ -2127,6 +2154,24 @@ class depgraph(object):
 				set()).update(reinstalls)
 
 		self._dynamic_config._need_restart = True
+
+	def _in_blocker_conflict(self, pkg):
+		"""
+		Check if pkg is involved in a blocker conflict. This method
+		only works after the _validate_blockers method has been called.
+		"""
+
+		if self._dynamic_config._blocked_pkgs is None:
+			raise AssertionError(
+				'_in_blocker_conflict called before _validate_blockers')
+
+		if pkg in self._dynamic_config._blocked_pkgs:
+			return True
+
+		if pkg in self._dynamic_config._blocker_parents:
+			return True
+
+		return False
 
 	def _upgrade_available(self, pkg):
 		"""
@@ -2304,7 +2349,7 @@ class depgraph(object):
 				# Check for slot update first, since we don't want to
 				# trigger reinstall of the child package when a newer
 				# slot will be used instead.
-				if rebuild_if_new_slot:
+				if rebuild_if_new_slot and dep.want_update:
 					new_dep = self._slot_operator_update_probe(dep,
 						new_child_slot=True)
 					if new_dep is not None:
@@ -2362,7 +2407,7 @@ class depgraph(object):
 		if ebuild is None:
 			changed = False
 		else:
-			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
+			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
 				depvars = Package._dep_keys
 			else:
 				depvars = Package._runtime_keys
@@ -2569,18 +2614,25 @@ class depgraph(object):
 			# runtime_pkg_mask, since that would trigger an
 			# infinite backtracking loop.
 			if self._dynamic_config._allow_backtracking:
-				if dep.parent in self._dynamic_config._runtime_pkg_mask:
-					if debug:
-						writemsg(
-							"!!! backtracking loop detected: %s %s\n" % \
-							(dep.parent,
-							self._dynamic_config._runtime_pkg_mask[
-							dep.parent]), noiselevel=-1)
-				elif dep.atom.package and dep.atom.slot_operator_built and \
-					self._slot_operator_unsatisfied_probe(dep):
+				if (dep.parent not in self._dynamic_config._runtime_pkg_mask and
+					dep.atom.package and dep.atom.slot_operator_built and
+					self._slot_operator_unsatisfied_probe(dep)):
 					self._slot_operator_unsatisfied_backtrack(dep)
 					return 1
 				else:
+					# This is for backward-compatibility with previous
+					# behavior, so that installed packages with unsatisfied
+					# dependencies trigger an error message but do not
+					# cause the dependency calculation to fail. Only do
+					# this if the parent is already in the runtime package
+					# mask, since otherwise we need to backtrack.
+					if (dep.parent.installed and
+						dep.parent in self._dynamic_config._runtime_pkg_mask and
+						not any(self._iter_match_pkgs_any(
+						dep.parent.root_config, dep.atom))):
+						self._dynamic_config._initially_unsatisfied_deps.append(dep)
+						return 1
+
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency. Note that when
 					# want_restart_for_use_change sets the need_restart
@@ -2921,7 +2973,8 @@ class depgraph(object):
 		self._dynamic_config._blocker_parents.discard(pkg)
 		self._dynamic_config._irrelevant_blockers.discard(pkg)
 		self._dynamic_config._unsolvable_blockers.discard(pkg)
-		self._dynamic_config._blocked_pkgs.discard(pkg)
+		if self._dynamic_config._blocked_pkgs is not None:
+			self._dynamic_config._blocked_pkgs.discard(pkg)
 		self._dynamic_config._blocked_world_pkgs.pop(pkg, None)
 
 		for child in children:
@@ -2998,7 +3051,7 @@ class depgraph(object):
 
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
-			if self._dynamic_config.myparams.get("bdeps", "n") == "y":
+			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
 				# Pull in build time deps as requested, but marked them as
 				# "optional" since they are not strictly required. This allows
 				# more freedom in the merge order calculation for solving
@@ -6241,7 +6294,7 @@ class depgraph(object):
 							if highest_installed is None or pkg.version > highest_installed.version:
 								highest_installed = pkg
 
-					if highest_installed:
+					if highest_installed and self._want_update_pkg(parent, highest_installed):
 						non_installed = [pkg for pkg in matched_packages \
 							if not pkg.installed and pkg.version > highest_installed.version]
 
@@ -6285,10 +6338,17 @@ class depgraph(object):
 							built_timestamp != installed_timestamp:
 							return built_pkg, existing_node
 
+			inst_pkg = None
 			for pkg in matched_packages:
+				if pkg.installed:
+					inst_pkg = pkg
 				if pkg.installed and pkg.invalid:
 					matched_packages = [x for x in \
 						matched_packages if x is not pkg]
+
+			if (inst_pkg is not None and parent is not None and
+				not self._want_update_pkg(parent, inst_pkg)):
+				return inst_pkg, existing_node
 
 			if avoid_update:
 				for pkg in matched_packages:
@@ -6607,6 +6667,10 @@ class depgraph(object):
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously. Also add runtime blockers from all installed
 		packages if any of them haven't been added already (bug 128809)."""
+
+		# The _in_blocker_conflict method needs to assert that this method
+		# has been called before it, by checking that it is not None.
+		self._dynamic_config._blocked_pkgs = digraph()
 
 		if "--buildpkgonly" in self._frozen_config.myopts or \
 			"--nodeps" in self._frozen_config.myopts:
@@ -7094,15 +7158,6 @@ class depgraph(object):
 			raise self._unknown_internal_error()
 
 		self._process_slot_conflicts()
-
-		if self._dynamic_config._allow_backtracking:
-			self._slot_operator_trigger_reinstalls()
-
-		if not self._validate_blockers():
-			# Blockers don't trigger the _skip_restart flag, since
-			# backtracking may solve blockers when it solves slot
-			# conflicts (or by blind luck).
-			raise self._unknown_internal_error()
 
 	def _serialize_tasks(self):
 

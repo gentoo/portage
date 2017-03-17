@@ -9,7 +9,10 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_decode, _unicode_encode
 import errno
+import functools
+import hashlib
 import stat
+import sys
 import subprocess
 import tempfile
 
@@ -18,16 +21,16 @@ import tempfile
 # most preferred first. Please keep this in sync with logic below.
 # ================================================================
 #
-# MD5: python-fchksum, hashlib, mhash
-# SHA1: hashlib, mhash
-# SHA256: hashlib, pycrypto, mhash
-# SHA512: hashlib, mhash
+# MD5: hashlib
+# SHA1: hashlib
+# SHA256: hashlib
+# SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib (3.6+)
-# BLAKE2S (512): hashlib (3.6+)
-# SHA3_256: hashlib (3.6+)
-# SHA3_512: hashlib (3.6+)
+# BLAKE2B (512): hashlib (3.6+), pycrypto
+# BLAKE2S (512): hashlib (3.6+), pycrypto
+# SHA3_256: hashlib (3.6+), pysha3, pycrypto
+# SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
 
 #dict of all available hash functions
@@ -58,7 +61,19 @@ class _generate_hash_function(object):
 		hashfunc_map[hashtype] = self
 		hashorigin_map[hashtype] = origin
 
-	def __call__(self, filename):
+	def checksum_str(self, data):
+		"""
+		Obtain a checksum of a byte-string.
+
+		@param data: Data to hash
+		@type data: bytes
+		@return: The hash of the data (hex-digest)
+		"""
+		checksum = self._hashobject()
+		checksum.update(data)
+		return checksum.hexdigest()
+
+	def checksum_file(self, filename):
 		"""
 		Run a checksum against a file.
 	
@@ -78,120 +93,196 @@ class _generate_hash_function(object):
 
 		return (checksum.hexdigest(), size)
 
-# Define hash functions, try to use the best module available. Later definitions
-# override earlier ones
+
+# Define hash functions, try to use the best module available. Preferred
+# modules should go first, latter ones should check if the hashes aren't
+# already defined.
+
+
+# Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
+# Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
+_generate_hash_function("MD5", hashlib.md5, origin="hashlib")
+_generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
+_generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
+_generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
+for local_name, hash_name in (
+		("RMD160", "ripemd160"),
+		("WHIRLPOOL", "whirlpool"),
+		# available since Python 3.6
+		("BLAKE2B", "blake2b"),
+		("BLAKE2S", "blake2s"),
+		("SHA3_256", "sha3_256"),
+		("SHA3_512", "sha3_512"),
+		):
+	try:
+		hashlib.new(hash_name)
+	except ValueError:
+		pass
+	else:
+		_generate_hash_function(local_name,
+			functools.partial(hashlib.new, hash_name),
+			origin='hashlib')
+
+
+# Support using pysha3 as fallback for python<3.6
+if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
+	try:
+		import sha3
+
+		_generate_hash_function("SHA3_256", sha3.sha3_256, origin="pysha3")
+		_generate_hash_function("SHA3_512", sha3.sha3_512, origin="pysha3")
+	except ImportError:
+		pass
+
+
+# Support pygcrypt as fallback using optimized routines from libgcrypt
+# (GnuPG).
+gcrypt_algos = frozenset(('RMD160', 'WHIRLPOOL', 'SHA3_256', 'SHA3_512',
+	'STREEBOG256', 'STREEBOG512'))
+if gcrypt_algos.difference(hashfunc_map):
+	try:
+		import binascii
+		import pygcrypt.hashcontext
+
+		class GCryptHashWrapper(object):
+			def __init__(self, algo):
+				self._obj = pygcrypt.hashcontext.HashContext(algo=algo)
+
+			def update(self, data):
+				self._obj.write(data)
+
+			def hexdigest(self):
+				return binascii.b2a_hex(self._obj.read()).decode()
+
+		name_mapping = {
+			'RMD160': 'ripemd160',
+			'WHIRLPOOL': 'whirlpool',
+			'SHA3_256': 'sha3-256',
+			'SHA3_512': 'sha3-512',
+			'STREEBOG256': 'stribog256',
+			'STREEBOG512': 'stribog512',
+		}
+
+		for local_name, gcry_name in name_mapping.items():
+			try:
+				pygcrypt.hashcontext.HashContext(algo=gcry_name)
+			except Exception: # yes, it throws Exception...
+				pass
+			else:
+				_generate_hash_function(local_name,
+						functools.partial(GCryptHashWrapper, gcry_name),
+						origin="pygcrypt")
+	except ImportError:
+		pass
+
+
+# Use pycrypto when available, prefer it over the internal fallbacks
+# Check for 'new' attributes, since they can be missing if the module
+# is broken somehow.
+if 'RMD160' not in hashfunc_map:
+	try:
+		from Crypto.Hash import RIPEMD
+		rmd160hash_ = getattr(RIPEMD, 'new', None)
+		if rmd160hash_ is not None:
+			_generate_hash_function("RMD160",
+				rmd160hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
+# The following hashes were added in pycryptodome (pycrypto fork)
+if 'BLAKE2B' not in hashfunc_map:
+	try:
+		from Crypto.Hash import BLAKE2b
+		blake2bhash_ = getattr(BLAKE2b, 'new', None)
+		if blake2bhash_ is not None:
+			_generate_hash_function("BLAKE2B",
+				functools.partial(blake2bhash_, digest_bytes=64), origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'BLAKE2S' not in hashfunc_map:
+	try:
+		from Crypto.Hash import BLAKE2s
+		blake2shash_ = getattr(BLAKE2s, 'new', None)
+		if blake2shash_ is not None:
+			_generate_hash_function("BLAKE2S",
+				functools.partial(blake2shash_, digest_bytes=32), origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'SHA3_256' not in hashfunc_map:
+	try:
+		from Crypto.Hash import SHA3_256
+		sha3_256hash_ = getattr(SHA3_256, 'new', None)
+		if sha3_256hash_ is not None:
+			_generate_hash_function("SHA3_256",
+				sha3_256hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
+if 'SHA3_512' not in hashfunc_map:
+	try:
+		from Crypto.Hash import SHA3_512
+		sha3_512hash_ = getattr(SHA3_512, 'new', None)
+		if sha3_512hash_ is not None:
+			_generate_hash_function("SHA3_512",
+				sha3_512hash_, origin="pycrypto")
+	except ImportError:
+		pass
+
 
 # Try to use mhash if available
 # mhash causes GIL presently, so it gets less priority than hashlib and
 # pycrypto. However, it might be the only accelerated implementation of
 # WHIRLPOOL available.
-try:
-	import mhash, functools
-	md5hash = _generate_hash_function("MD5", functools.partial(mhash.MHASH, mhash.MHASH_MD5), origin="mhash")
-	sha1hash = _generate_hash_function("SHA1", functools.partial(mhash.MHASH, mhash.MHASH_SHA1), origin="mhash")
-	sha256hash = _generate_hash_function("SHA256", functools.partial(mhash.MHASH, mhash.MHASH_SHA256), origin="mhash")
-	sha512hash = _generate_hash_function("SHA512", functools.partial(mhash.MHASH, mhash.MHASH_SHA512), origin="mhash")
-	for local_name, hash_name in (("rmd160", "ripemd160"), ("whirlpool", "whirlpool")):
-		if hasattr(mhash, 'MHASH_%s' % local_name.upper()):
-			globals()['%shash' % local_name] = \
-				_generate_hash_function(local_name.upper(), \
-				functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name.upper())), \
-				origin='mhash')
-except ImportError:
-	pass
+if 'RMD160' not in hashfunc_map or 'WHIRLPOOL' not in hashfunc_map:
+	try:
+		import mhash
+		for local_name, hash_name in (("RMD160", "RIPEMD160"), ("WHIRLPOOL", "WHIRLPOOL")):
+			if local_name not in hashfunc_map and hasattr(mhash, 'MHASH_%s' % hash_name):
+				_generate_hash_function(local_name,
+					functools.partial(mhash.MHASH, getattr(mhash, 'MHASH_%s' % hash_name)),
+					origin='mhash')
+	except ImportError:
+		pass
 
-# Use pycrypto when available, prefer it over the internal fallbacks
-# Check for 'new' attributes, since they can be missing if the module
-# is broken somehow.
-try:
-	from Crypto.Hash import SHA256, RIPEMD
-	sha256hash_ = getattr(SHA256, 'new', None)
-	if sha256hash_ is not None:
-		sha256hash = _generate_hash_function("SHA256",
-			sha256hash_, origin="pycrypto")
-	rmd160hash_ = getattr(RIPEMD, 'new', None)
-	if rmd160hash_ is not None:
-		rmd160hash = _generate_hash_function("RMD160",
-			rmd160hash_, origin="pycrypto")
-except ImportError:
-	pass
 
-try:
-	# added in pycryptodome
-	from Crypto.Hash import BLAKE2b, BLAKE2s, SHA3_256, SHA3_512
-	blake2bhash_ = getattr(BLAKE2b, 'new', None)
-	if blake2bhash_ is not None:
-		blake2bhash = _generate_hash_function("BLAKE2B",
-			blake2bhash_, origin="pycrypto")
-	blake2shash_ = getattr(BLAKE2s, 'new', None)
-	if blake2shash_ is not None:
-		blake2shash = _generate_hash_function("BLAKE2S",
-			blake2shash_, origin="pycrypto")
-	sha3_256hash_ = getattr(SHA3_256, 'new', None)
-	if sha3_256hash_ is not None:
-		sha3_256hash = _generate_hash_function("SHA3_256",
-			sha3_256hash_, origin="pycrypto")
-	sha3_512hash_ = getattr(SHA3_512, 'new', None)
-	if sha3_512hash_ is not None:
-		sha3_512hash = _generate_hash_function("SHA3_512",
-			sha3_512hash_, origin="pycrypto")
-except ImportError:
-	pass
+# Support pygost as fallback streebog provider
+# It's mostly provided as a reference implementation; it's pure Python,
+# slow and reads all data to memory (i.e. doesn't hash on update()...)
+if 'STREEBOG256' not in hashfunc_map or 'STREEBOG512' not in hashfunc_map:
+	try:
+		import pygost.gost34112012
 
-# Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
-# Need special handling for RMD160/WHIRLPOOL as they may not always be provided by hashlib.
-try:
-	import hashlib, functools
-	
-	md5hash = _generate_hash_function("MD5", hashlib.md5, origin="hashlib")
-	sha1hash = _generate_hash_function("SHA1", hashlib.sha1, origin="hashlib")
-	sha256hash = _generate_hash_function("SHA256", hashlib.sha256, origin="hashlib")
-	sha512hash = _generate_hash_function("SHA512", hashlib.sha512, origin="hashlib")
-	for local_name, hash_name in (
-			("rmd160", "ripemd160"),
-			("whirlpool", "whirlpool"),
-			# available since Python 3.6
-			("BLAKE2B", "blake2b"),
-			("BLAKE2S", "blake2s"),
-			("SHA3_256", "sha3_256"),
-			("SHA3_512", "sha3_512"),
-			):
-		try:
-			hashlib.new(hash_name)
-		except ValueError:
-			pass
-		else:
-			globals()['%shash' % local_name] = \
-				_generate_hash_function(local_name.upper(), \
-				functools.partial(hashlib.new, hash_name), \
-				origin='hashlib')
+		_generate_hash_function("STREEBOG256",
+			functools.partial(pygost.gost34112012.GOST34112012, digest_size=32), origin="pygost")
+		_generate_hash_function("STREEBOG512",
+			functools.partial(pygost.gost34112012.GOST34112012, digest_size=64), origin="pygost")
+	except ImportError:
+		pass
 
-except ImportError:
-	pass
 
 _whirlpool_unaccelerated = False
 if "WHIRLPOOL" not in hashfunc_map:
 	# Bundled WHIRLPOOL implementation
 	_whirlpool_unaccelerated = True
 	from portage.util.whirlpool import new as _new_whirlpool
-	whirlpoolhash = _generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
+	_generate_hash_function("WHIRLPOOL", _new_whirlpool, origin="bundled")
 
-# Use python-fchksum if available, prefer it over all other MD5 implementations
-try:
-	from fchksum import fmd5t as md5hash
-	hashfunc_map["MD5"] = md5hash
-	hashorigin_map["MD5"] = "python-fchksum"
-
-except ImportError:
-	pass
 
 # There is only one implementation for size
-def getsize(filename):
-	size = os.stat(filename).st_size
-	return (size, size)
-hashfunc_map["size"] = getsize
+class SizeHash(object):
+	def checksum_file(self, filename):
+		size = os.stat(filename).st_size
+		return (size, size)
+
+hashfunc_map["size"] = SizeHash()
+
+# cache all supported hash methods in a frozenset
+hashfunc_keys = frozenset(hashfunc_map)
 
 # end actual hash functions
+
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
@@ -224,15 +315,15 @@ def _perform_md5_merge(x, **kwargs):
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
-	for k in hashfunc_map:
+	for k in hashfunc_keys:
 		mydict[k] = perform_checksum(x, k, calc_prelink)[0]
 	return mydict
 
 def get_valid_checksum_keys():
-	return list(hashfunc_map)
+	return hashfunc_keys
 
 def get_hash_origin(hashtype):
-	if hashtype not in hashfunc_map:
+	if hashtype not in hashfunc_keys:
 		raise KeyError(hashtype)
 	return hashorigin_map.get(hashtype, "unknown")
 
@@ -246,7 +337,7 @@ def _filter_unaccelarated_hashes(digests):
 	due to minimization of dependencies.
 	"""
 	if _whirlpool_unaccelerated and "WHIRLPOOL" in digests:
-		verifiable_hash_types = set(digests).intersection(hashfunc_map)
+		verifiable_hash_types = set(digests).intersection(hashfunc_keys)
 		verifiable_hash_types.discard("size")
 		if len(verifiable_hash_types) > 1:
 			digests = dict(digests)
@@ -295,7 +386,7 @@ def _apply_hash_filter(digests, hash_filter):
 	@type hash_filter: callable
 	"""
 
-	verifiable_hash_types = set(digests).intersection(hashfunc_map)
+	verifiable_hash_types = set(digests).intersection(hashfunc_keys)
 	verifiable_hash_types.discard("size")
 	modified = False
 	if len(verifiable_hash_types) > 1:
@@ -342,10 +433,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
 
-	verifiable_hash_types = set(mydict).intersection(hashfunc_map)
+	verifiable_hash_types = set(mydict).intersection(hashfunc_keys)
 	verifiable_hash_types.discard("size")
 	if not verifiable_hash_types:
-		expected = set(hashfunc_map)
+		expected = set(hashfunc_keys)
 		expected.discard("size")
 		expected = list(expected)
 		expected.sort()
@@ -360,7 +451,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 	for x in sorted(mydict):
 		if   x == "size":
 			continue
-		elif x in hashfunc_map:
+		elif x in hashfunc_keys:
 			myhash = perform_checksum(filename, x, calc_prelink=calc_prelink)[0]
 			if mydict[x] != myhash:
 				if strict:
@@ -416,10 +507,10 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 				# This happens during uninstallation of prelink.
 				prelink_capable = False
 		try:
-			if hashname not in hashfunc_map:
+			if hashname not in hashfunc_keys:
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
-			myhash, mysize = hashfunc_map[hashname](myfilename)
+			myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
 		except (OSError, IOError) as e:
 			if e.errno in (errno.ENOENT, errno.ESTALE):
 				raise portage.exception.FileNotFound(myfilename)
@@ -453,7 +544,24 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	"""
 	rVal = {}
 	for x in hashes:
-		if x not in hashfunc_map:
+		if x not in hashfunc_keys:
 			raise portage.exception.DigestException(x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)")
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal
+
+
+def checksum_str(data, hashname="MD5"):
+	"""
+	Run a specific checksum against a byte string.
+
+	@param filename: Data to checksum
+	@type filename: Bytes
+	@param hashname: The type of hash function to run
+	@type hashname: String
+	@rtype: String
+	@return: The hash (hex-digest) of the data
+	"""
+	if hashname not in hashfunc_keys:
+		raise portage.exception.DigestException(hashname + \
+			" hash function not available (needs dev-python/pycrypto)")
+	return hashfunc_map[hashname].checksum_str(data)

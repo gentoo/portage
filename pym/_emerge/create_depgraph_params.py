@@ -13,6 +13,8 @@ def create_depgraph_params(myopts, myaction):
 	# deep:      go into the dependencies of already merged packages
 	# empty:     pretend nothing is merged
 	# complete:  completely account for all known dependencies
+	# bdeps:     satisfy build time dependencies of packages that are
+	#   already built, even though they are not strictly required
 	# remove:    build graph for use in removing packages
 	# rebuilt_binaries: replace installed packages with rebuilt binaries
 	# rebuild_if_new_slot: rebuild or reinstall packages when
@@ -32,6 +34,9 @@ def create_depgraph_params(myopts, myaction):
 	bdeps = myopts.get("--with-bdeps")
 	if bdeps is not None:
 		myparams["bdeps"] = bdeps
+	elif myaction == "remove" or (
+		myopts.get("--with-bdeps-auto") != "n" and "--usepkg" not in myopts):
+		myparams["bdeps"] = "auto"
 
 	ignore_built_slot_operator_deps = myopts.get("--ignore-built-slot-operator-deps")
 	if ignore_built_slot_operator_deps is not None:
