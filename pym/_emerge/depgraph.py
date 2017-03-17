@@ -1844,14 +1844,29 @@ class depgraph(object):
 					if (not self._too_deep(parent.depth) and
 						not self._frozen_config.excluded_pkgs.
 						findAtomForPackage(parent,
-						modified_use=self._pkg_use_enabled(parent)) and
-						(self._upgrade_available(parent) or
-						(parent.installed and self._in_blocker_conflict(parent)))):
-						# This parent may be irrelevant, since an
-						# update is available (see bug 584626), or
-						# it could be uninstalled in order to solve
-						# a blocker conflict (bug 612772).
-						continue
+						modified_use=self._pkg_use_enabled(parent))):
+						# Check for common reasons that the parent's
+						# dependency might be irrelevant.
+						if self._upgrade_available(parent):
+							# This parent could be replaced by
+							# an upgrade (bug 584626).
+							continue
+						if parent.installed and self._in_blocker_conflict(parent):
+							# This parent could be uninstalled in order
+							# to solve a blocker conflict (bug 612772).
+							continue
+						if self._dynamic_config.digraph.has_edge(parent,
+							existing_pkg):
+							# There is a direct circular dependency between
+							# parent and existing_pkg. This type of
+							# relationship tends to prevent updates
+							# of packages (bug 612874). Since candidate_pkg
+							# is available, we risk a missed update if we
+							# don't try to eliminate this parent from the
+							# graph. Therefore, we give candidate_pkg a
+							# chance, and assume that it will be masked
+							# by backtracking if necessary.
+							continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
