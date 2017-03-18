@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -31,6 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild.prepare_build_dirs:_prepare_fake_distdir',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
@@ -1350,37 +1351,6 @@ def _prepare_env_file(settings):
 	env_extractor.start()
 	env_extractor.wait()
 	return env_extractor.returncode
-
-def _prepare_fake_distdir(settings, alist):
-	orig_distdir = settings["DISTDIR"]
-	settings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
-	edpath = settings["DISTDIR"] = \
-		os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
-	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
-
-	# Remove any unexpected files or directories.
-	for x in os.listdir(edpath):
-		symlink_path = os.path.join(edpath, x)
-		st = os.lstat(symlink_path)
-		if x in alist and stat.S_ISLNK(st.st_mode):
-			continue
-		if stat.S_ISDIR(st.st_mode):
-			shutil.rmtree(symlink_path)
-		else:
-			os.unlink(symlink_path)
-
-	# Check for existing symlinks and recreate if necessary.
-	for x in alist:
-		symlink_path = os.path.join(edpath, x)
-		target = os.path.join(orig_distdir, x)
-		try:
-			link_target = os.readlink(symlink_path)
-		except OSError:
-			os.symlink(target, symlink_path)
-		else:
-			if link_target != target:
-				os.unlink(symlink_path)
-				os.symlink(target, symlink_path)
 
 def _spawn_actionmap(settings):
 	features = settings.features
