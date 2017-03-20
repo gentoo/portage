@@ -6062,7 +6062,8 @@ class depgraph(object):
 										identical_binary = True
 										break
 
-						if not identical_binary and pkg.built:
+						if (not identical_binary and pkg.built and
+							(use_ebuild_visibility or matched_packages)):
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).

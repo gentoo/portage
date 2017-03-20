@@ -104,6 +104,32 @@ class BinaryPkgEbuildVisibilityTestCase(TestCase):
 					'[binary]app-misc/foo-3',
 				],
 			),
+
+			# The default behavior is to enforce ebuild visibility as
+			# long as a visible package is available to satisfy the
+			# current atom. In the following test case, ebuild visibility
+			# is ignored in order to satisfy the =app-misc/foo-3 atom.
+			ResolverPlaygroundTestCase(
+				["=app-misc/foo-3"],
+				options = {
+					"--usepkg": True,
+				},
+				success = True,
+				mergelist = [
+					'[binary]app-misc/foo-3',
+				],
+			),
+
+			# Verify that --use-ebuild-visibility works with --usepkg
+			# when no other visible package is available.
+			ResolverPlaygroundTestCase(
+				["=app-misc/foo-3"],
+				options = {
+					"--use-ebuild-visibility": "y",
+					"--usepkg": True,
+				},
+				success = False,
+			),
 		)
 
 		playground = ResolverPlayground(binpkgs=binpkgs, ebuilds=ebuilds,
