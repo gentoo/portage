@@ -32,9 +32,11 @@ class MirrorDistTask(CompositeTask):
 		self._config = config
 		self._term_rlock = threading.RLock()
 		self._term_callback_handle = None
+		self._fetch_iterator = None
 
 	def _start(self):
-		fetch = TaskScheduler(iter(FetchIterator(self._config)),
+		self._fetch_iterator = FetchIterator(self._config)
+		fetch = TaskScheduler(iter(self._fetch_iterator),
 			max_jobs=self._config.options.jobs,
 			max_load=self._config.options.load_average,
 			event_loop=self._config.event_loop)
@@ -226,6 +228,8 @@ class MirrorDistTask(CompositeTask):
 					self._term_callback)
 
 	def _term_callback(self):
+		if self._fetch_iterator is not None:
+			self._fetch_iterator.terminate()
 		self.cancel()
 		self.wait()
 
