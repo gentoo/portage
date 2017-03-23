@@ -30,7 +30,7 @@ script:
               -e "s|@portageuser@|portage|"
               -e "s|@rootuser@|root|"
               -e "s|@rootuid@|0|"
-              -e "s|@rootgid@|0)|"
+              -e "s|@rootgid@|0|"
               -e "s|@sysconfdir@|/etc|"
               -i '{}' +
     - ./setup.py test
