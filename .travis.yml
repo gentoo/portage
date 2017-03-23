@@ -21,16 +21,16 @@ script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
     - find . -type f -exec
           sed -e "s|@PORTAGE_EPREFIX@||"
-              -e "s|@PORTAGE_MV@|/bin/mv|"
-              -e "s|@PORTAGE_BASH@|/bin/bash|"
+              -e "s|@PORTAGE_MV@|$(type -P mv)|"
+              -e "s|@PORTAGE_BASH@|$(type -P bash)|"
               -e "s|@PREFIX_PORTAGE_PYTHON@|$(type -P python)|"
               -e "s|@DEFAULT_PATH@|/usr/bin:/bin|"
               -e "s|@EXTRA_PATH@|/usr/sbin:/sbin|"
-              -e "s|@portagegroup@|portage|"
-              -e "s|@portageuser@|portage|"
-              -e "s|@rootuser@|root|"
-              -e "s|@rootuid@|0|"
-              -e "s|@rootgid@|0|"
+              -e "s|@portagegroup@|$(id -gn)|"
+              -e "s|@portageuser@|$(id -un)|"
+              -e "s|@rootuser@|$(id -un)|"
+              -e "s|@rootuid@|$(id -u)|"
+              -e "s|@rootgid@|$(id -g)|"
               -e "s|@sysconfdir@|/etc|"
               -i '{}' +
     - ./setup.py test
