@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 export DESTTREE=/usr
@@ -726,11 +726,11 @@ einstall() {
 }
 
 __eapi0_pkg_nofetch() {
-	[ -z "${SRC_URI}" ] && return
+	[[ -z ${A} ]] && return
 
-	elog "The following are listed in SRC_URI for ${PN}:"
+	elog "The following files cannot be fetched for ${PN}:"
 	local x
-	for x in $(echo ${SRC_URI}); do
+	for x in ${A}; do
 		elog "   ${x}"
 	done
 }
