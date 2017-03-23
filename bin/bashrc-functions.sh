@@ -2,11 +2,6 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-portageq() {
-	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}}\
-	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}/portageq" "$@"
-}
-
 register_die_hook() {
 	local x
 	for x in $* ; do
