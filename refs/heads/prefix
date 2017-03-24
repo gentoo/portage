@@ -1,13 +1,13 @@
 certificate version 0.1
-pusher Fabian Groffen <grobian@gentoo.org> 1490341381 +0100
+pusher Fabian Groffen <grobian@gentoo.org> 1490382590 +0100
 pushee git+ssh://git.gentoo.org/proj/portage.git
-nonce 1490341381-d3ac34472d076bda6520
+nonce 1490382590-af8dd1ae7394fff950fc
 
-2c8af75d7929f4db1e606056cc11dbc4a0668370 337b7fa533809196abcbf79b4a43172d595e943e refs/heads/prefix
+337b7fa533809196abcbf79b4a43172d595e943e 65b336275435fabceacd8829e042eb8b745ecf4f refs/heads/prefix
 -----BEGIN PGP SIGNATURE-----
 
-iHEEABEKADEWIQSDHIpHdkhfn9Ptmh5fdfYHxcdOiQUCWNTOBRMcZ3JvYmlhbkBn
-ZW50b28ub3JnAAoJEF919gfFx06J5jcAoIIQDD8YQtsTNiT663VRMqbqV8WUAJ49
-BUBXYoRzqvwjRoDkjFYTC5yRFQ==
-=ayDQ
+iHEEABEKADEWIQSDHIpHdkhfn9Ptmh5fdfYHxcdOiQUCWNVu/hMcZ3JvYmlhbkBn
+ZW50b28ub3JnAAoJEF919gfFx06JZeEAnjT11orjJMU5M9C2X3SsneoO+cEjAKCT
+gtBN3iAZL+/+d2MsStoLgVzaLQ==
+=xpIf
 -----END PGP SIGNATURE-----
