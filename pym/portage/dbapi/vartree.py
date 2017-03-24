@@ -2944,24 +2944,21 @@ class dblink(object):
 			os_filename_arg.path.join(destroot,
 			filename.lstrip(os_filename_arg.path.sep)))
 
-		pkgfiles = self.getcontents()
-
+		dstfile = destfile
+		pkgfiles = dict((k, k) for k in self.getcontents())
 		preserve_case = None
 		if "case-insensitive-fs" in self.settings.features:
-			destfile = destfile.lower()
-			preserve_case = dict((k.lower(), k) for k in pkgfiles)
+			dstfile = destfile.lower()
 			pkgfiles = dict((k.lower(), v) for k, v in pkgfiles.items())
 
-		if pkgfiles and destfile in pkgfiles:
-			if preserve_case is not None:
-				return self._contents.contains(preserve_case[destfile])
+		if dstfile in pkgfiles:
 			return self._contents.unmap_key(destfile)
 		if pkgfiles:
-			basename = os_filename_arg.path.basename(destfile)
+			basename = os_filename_arg.path.basename(dstfile)
 			if self._contents_basenames is None:
 
 				try:
-					for x in pkgfiles:
+					for _, x in pkgfiles.items():
 						_unicode_encode(x,
 							encoding=_encodings['merge'],
 							errors='strict')
@@ -2970,7 +2967,7 @@ class dblink(object):
 					# different value of sys.getfilesystemencoding(),
 					# so fall back to utf_8 if appropriate.
 					try:
-						for x in pkgfiles:
+						for _, x in pkgfiles.items():
 							_unicode_encode(x,
 								encoding=_encodings['fs'],
 								errors='strict')
@@ -3001,7 +2998,7 @@ class dblink(object):
 
 				if os is _os_merge:
 					try:
-						for x in pkgfiles:
+						for _, x in pkgfiles.items():
 							_unicode_encode(x,
 								encoding=_encodings['merge'],
 								errors='strict')
@@ -3010,7 +3007,7 @@ class dblink(object):
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
-							for x in pkgfiles:
+							for _, x in pkgfiles.items():
 								_unicode_encode(x,
 									encoding=_encodings['fs'],
 									errors='strict')
@@ -3021,13 +3018,13 @@ class dblink(object):
 
 				self._contents_inodes = {}
 				parent_paths = set()
-				for x in pkgfiles:
+				for x, r in pkgfiles.items():
 					p_path = os.path.dirname(x)
 					if p_path in parent_paths:
 						continue
 					parent_paths.add(p_path)
 					try:
-						s = os.stat(p_path)
+						s = os.stat(os.path.dirname(r))
 					except OSError:
 						pass
 					else:
@@ -3047,9 +3044,7 @@ class dblink(object):
 				for p_path in p_path_list:
 					x = os_filename_arg.path.join(p_path, basename)
 					if x in pkgfiles:
-						if preserve_case is not None:
-							return self._contents.unmap_key(preserve_case[x])
-						return self._contents.unmap_key(x)
+						return self._contents.unmap_key(pkgfiles[x])
 
 		return False
 
