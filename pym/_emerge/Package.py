@@ -46,7 +46,7 @@ class Package(Task):
 		"LICENSE", "MD5", "PDEPEND", "PROVIDE", "PROVIDES",
 		"RDEPEND", "repository", "REQUIRED_USE",
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
-		"SLOT", "USE", "_mtime_"]
+		"SLOT", "USE", "_mtime_", "EPREFIX"]
 
 	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('DEPEND', 'HDEPEND')
