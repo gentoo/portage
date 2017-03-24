@@ -21,6 +21,7 @@ script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
     - find . -type f -exec
           sed -e "s|@PORTAGE_EPREFIX@||"
+              -e "s|@PORTAGE_BASE@|${PWD}|"
               -e "s|@PORTAGE_MV@|$(type -P mv)|"
               -e "s|@PORTAGE_BASH@|$(type -P bash)|"
               -e "s|@PREFIX_PORTAGE_PYTHON@|$(type -P python)|"
