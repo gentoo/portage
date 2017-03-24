@@ -19,7 +19,6 @@ from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
 from portage.exception import InvalidData, InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
-from portage.const import EPREFIX
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -47,7 +46,7 @@ class Package(Task):
 		"LICENSE", "MD5", "PDEPEND", "PROVIDE", "PROVIDES",
 		"RDEPEND", "repository", "REQUIRED_USE",
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
-		"SLOT", "USE", "_mtime_", "EPREFIX"]
+		"SLOT", "USE", "_mtime_"]
 
 	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('DEPEND', 'HDEPEND')
@@ -377,13 +376,6 @@ class Package(Task):
 		if missing_keywords:
 			masks['KEYWORDS'] = missing_keywords
 
-		if self.built and not self.installed:
-			# we can have an old binary which has no EPREFIX information
-			if "EPREFIX" not in self.metadata:
-				masks['EPREFIX.missing'] = ''
-			if len(self.metadata["EPREFIX"].strip()) < len(EPREFIX):
-				masks['EPREFIX.tooshort'] = self.metadata["EPREFIX"].strip()
-
 		try:
 			missing_properties = settings._getMissingProperties(
 				self.cpv, self._metadata)
@@ -427,10 +419,7 @@ class Package(Task):
 			if 'EAPI.unsupported' in masks:
 				return False
 
-			if self.built and not self.installed and ( \
-				'EPREFIX.missing' in masks or \
-				'EPREFIX.tooshort' in masks) or \
-				'invalid' in masks:
+			if 'invalid' in masks:
 				return False
 
 			if not self.installed and ( \
