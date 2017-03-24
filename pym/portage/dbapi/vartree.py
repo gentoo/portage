@@ -52,7 +52,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.const import CACHE_PATH, CONFIG_MEMORY_FILE, \
-	MERGING_IDENTIFIER, PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX, EPREFIX_LSTRIP, BASH_BINARY
+	MERGING_IDENTIFIER, PORTAGE_PACKAGE_ATOM, PRIVATE_PATH, VDB_PATH, EPREFIX
 from portage.dbapi import dbapi
 from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
