@@ -2954,10 +2954,8 @@ class dblink(object):
 
 		if pkgfiles and destfile in pkgfiles:
 			if preserve_case is not None:
-				return preserve_case[destfile]
-			return destfile
-		#if self._contents.contains(destfile):
-		#	return self._contents.unmap_key(destfile)
+				return self._contents.contains(preserve_case[destfile])
+			return self._contents.unmap_key(destfile)
 		if pkgfiles:
 			basename = os_filename_arg.path.basename(destfile)
 			if self._contents_basenames is None:
@@ -3050,10 +3048,8 @@ class dblink(object):
 					x = os_filename_arg.path.join(p_path, basename)
 					if x in pkgfiles:
 						if preserve_case is not None:
-							return preserve_case[x]
-						return x
-					#if self._contents.contains(x):
-					#	return self._contents.unmap_key(x)
+							return self._contents.unmap_key(preserve_case[x])
+						return self._contents.unmap_key(x)
 
 		return False
 
