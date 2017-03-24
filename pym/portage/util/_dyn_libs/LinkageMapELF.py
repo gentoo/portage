@@ -23,7 +23,6 @@ from portage.util import varexpand
 from portage.util import writemsg_level
 from portage.util._dyn_libs.NeededEntry import NeededEntry
 from portage.util.elf.header import ELFHeader
-from portage.const import EPREFIX
 
 if sys.hexversion >= 0x3000000:
 	_unicode = str
