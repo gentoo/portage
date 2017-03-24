@@ -2495,18 +2495,19 @@ def getgccversion(chost=None):
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
-	try:
-		proc = subprocess.Popen(
-			[ubinpath + "/" + chost + "-" + clang_ver_command[0]] + clang_ver_command[1:],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	except OSError:
-		myoutput = None
-		mystatus = 1
-	else:
-		myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
-		mystatus = proc.wait()
-	if mystatus == os.EX_OK:
-		return clang_ver_prefix + getclangversion(myoutput)
+	if chost:
+		try:
+			proc = subprocess.Popen(
+				[ubinpath + "/" + chost + "-" + clang_ver_command[0]] + clang_ver_command[1:],
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+		except OSError:
+			myoutput = None
+			mystatus = 1
+		else:
+			myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+			mystatus = proc.wait()
+		if mystatus == os.EX_OK:
+			return clang_ver_prefix + getclangversion(myoutput)
 
 	try:
 		proc = subprocess.Popen([ubinpath + "/" + clang_ver_command[0]] + clang_ver_command[1:],
