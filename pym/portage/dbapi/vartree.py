@@ -1149,10 +1149,7 @@ class vardbapi(dbapi):
 				self._add_path("", pkg_hash)
 
 			for x in db._contents.keys():
-				path = x[eroot_len:]
-				if "case-insensitive-fs" in self._vardb.settings.features:
-					path = path.lower()
-				self._add_path(path, pkg_hash)
+				self._add_path(x[eroot_len:], pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
 
@@ -1334,8 +1331,6 @@ class vardbapi(dbapi):
 
 							if is_basename:
 								for p in dblink(cpv)._contents.keys():
-									if case_insensitive:
-										p = p.lower()
 									if os.path.basename(p) == name:
 										owners.append((cpv, dblink(cpv).
 										_contents.unmap_key(
@@ -1393,8 +1388,6 @@ class vardbapi(dbapi):
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk._contents.keys():
-							if case_insensitive:
-								p = p.lower()
 							if os.path.basename(p) == name:
 								search_pkg.results.append((dblnk,
 									dblnk._contents.unmap_key(
@@ -2944,21 +2937,18 @@ class dblink(object):
 			os_filename_arg.path.join(destroot,
 			filename.lstrip(os_filename_arg.path.sep)))
 
-		dstfile = destfile
-		pkgfiles = dict((k, k) for k in self.getcontents())
-		preserve_case = None
 		if "case-insensitive-fs" in self.settings.features:
-			dstfile = destfile.lower()
-			pkgfiles = dict((k.lower(), v) for k, v in pkgfiles.items())
+			destfile = destfile.lower()
 
-		if dstfile in pkgfiles:
+		if self._contents.contains(destfile):
 			return self._contents.unmap_key(destfile)
-		if pkgfiles:
-			basename = os_filename_arg.path.basename(dstfile)
+
+		if self.getcontents():
+			basename = os_filename_arg.path.basename(destfile)
 			if self._contents_basenames is None:
 
 				try:
-					for _, x in pkgfiles.items():
+					for x in self._contents.keys():
 						_unicode_encode(x,
 							encoding=_encodings['merge'],
 							errors='strict')
@@ -2967,7 +2957,7 @@ class dblink(object):
 					# different value of sys.getfilesystemencoding(),
 					# so fall back to utf_8 if appropriate.
 					try:
-						for _, x in pkgfiles.items():
+						for x in self._contents.keys():
 							_unicode_encode(x,
 								encoding=_encodings['fs'],
 								errors='strict')
@@ -2977,7 +2967,7 @@ class dblink(object):
 						os = portage.os
 
 				self._contents_basenames = set(
-					os.path.basename(x) for x in pkgfiles)
+					os.path.basename(x) for x in self._contents.keys())
 			if basename not in self._contents_basenames:
 				# This is a shortcut that, in most cases, allows us to
 				# eliminate this package as an owner without the need
@@ -2998,7 +2988,7 @@ class dblink(object):
 
 				if os is _os_merge:
 					try:
-						for _, x in pkgfiles.items():
+						for x in self._contents.keys():
 							_unicode_encode(x,
 								encoding=_encodings['merge'],
 								errors='strict')
@@ -3007,7 +2997,7 @@ class dblink(object):
 						# different value of sys.getfilesystemencoding(),
 						# so fall back to utf_8 if appropriate.
 						try:
-							for _, x in pkgfiles.items():
+							for x in self._contents.keys():
 								_unicode_encode(x,
 									encoding=_encodings['fs'],
 									errors='strict')
@@ -3018,13 +3008,13 @@ class dblink(object):
 
 				self._contents_inodes = {}
 				parent_paths = set()
-				for x, r in pkgfiles.items():
+				for x in self._contents.keys():
 					p_path = os.path.dirname(x)
 					if p_path in parent_paths:
 						continue
 					parent_paths.add(p_path)
 					try:
-						s = os.stat(os.path.dirname(r))
+						s = os.stat(p_path)
 					except OSError:
 						pass
 					else:
@@ -3043,8 +3033,8 @@ class dblink(object):
 			if p_path_list:
 				for p_path in p_path_list:
 					x = os_filename_arg.path.join(p_path, basename)
-					if x in pkgfiles:
-						return self._contents.unmap_key(pkgfiles[x])
+					if self._contents.contains(x):
+						return self._contents.unmap_key(x)
 
 		return False
 
