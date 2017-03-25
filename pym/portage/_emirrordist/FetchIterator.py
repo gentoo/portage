@@ -1,6 +1,8 @@
 # Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import threading
+
 from portage import os
 from portage.checksum import (_apply_hash_filter,
 	_filter_unaccelarated_hashes, _hash_filter)
@@ -13,6 +15,19 @@ class FetchIterator(object):
 	def __init__(self, config):
 		self._config = config
 		self._log_failure = config.log_failure
+		self._terminated = threading.Event()
+
+	def terminate(self):
+		"""
+		Schedules early termination of the __iter__ method, which is
+		useful because under some conditions it's possible for __iter__
+		to loop for a long time without yielding to the caller. For
+		example, it's useful when there are many ebuilds with stale
+		cache and RESTRICT=mirror.
+
+		This method is thread-safe (and safe for signal handlers).
+		"""
+		self._terminated.set()
 
 	def _iter_every_cp(self):
 		# List categories individually, in order to start yielding quicker,
@@ -37,6 +52,9 @@ class FetchIterator(object):
 
 		for cp in self._iter_every_cp():
 
+			if self._terminated.is_set():
+				return
+
 			for tree in portdb.porttrees:
 
 				# Reset state so the Manifest is pulled once
@@ -45,6 +63,9 @@ class FetchIterator(object):
 				repo_config = get_repo_for_location(tree)
 
 				for cpv in portdb.cp_list(cp, mytree=tree):
+
+					if self._terminated.is_set():
+						return
 
 					try:
 						restrict, = portdb.aux_get(cpv, ("RESTRICT",),

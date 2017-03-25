@@ -18,7 +18,6 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		self._error_count = 0
 		self._running_tasks = set()
 		self._remaining_tasks = True
-		self._term_check_id = None
 		self._loadavg_check_id = None
 
 	def _poll(self):
@@ -65,7 +64,6 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		self._schedule()
 
 	def _start(self):
-		self._term_check_id = self._event_loop.idle_add(self._termination_check)
 		if self._max_load is not None and \
 			self._loadavg_latency is not None and \
 			(self._max_jobs is True or self._max_jobs > 1):
@@ -74,6 +72,12 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 			self._loadavg_check_id = self._event_loop.timeout_add(
 				self._loadavg_latency, self._schedule)
 		self._schedule()
+
+	def _cleanup(self):
+		super(AsyncScheduler, self)._cleanup()
+		if self._loadavg_check_id is not None:
+			self._event_loop.source_remove(self._loadavg_check_id)
+			self._loadavg_check_id = None
 
 	def _wait(self):
 		# Loop while there are jobs to be scheduled.
@@ -86,13 +90,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		while self._is_work_scheduled():
 			self._event_loop.iteration()
 
-		if self._term_check_id is not None:
-			self._event_loop.source_remove(self._term_check_id)
-			self._term_check_id = None
-
-		if self._loadavg_check_id is not None:
-			self._event_loop.source_remove(self._loadavg_check_id)
-			self._loadavg_check_id = None
+		self._cleanup()
 
 		if self._error_count > 0:
 			self.returncode = 1

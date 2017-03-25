@@ -1844,14 +1844,29 @@ class depgraph(object):
 					if (not self._too_deep(parent.depth) and
 						not self._frozen_config.excluded_pkgs.
 						findAtomForPackage(parent,
-						modified_use=self._pkg_use_enabled(parent)) and
-						(self._upgrade_available(parent) or
-						(parent.installed and self._in_blocker_conflict(parent)))):
-						# This parent may be irrelevant, since an
-						# update is available (see bug 584626), or
-						# it could be uninstalled in order to solve
-						# a blocker conflict (bug 612772).
-						continue
+						modified_use=self._pkg_use_enabled(parent))):
+						# Check for common reasons that the parent's
+						# dependency might be irrelevant.
+						if self._upgrade_available(parent):
+							# This parent could be replaced by
+							# an upgrade (bug 584626).
+							continue
+						if parent.installed and self._in_blocker_conflict(parent):
+							# This parent could be uninstalled in order
+							# to solve a blocker conflict (bug 612772).
+							continue
+						if self._dynamic_config.digraph.has_edge(parent,
+							existing_pkg):
+							# There is a direct circular dependency between
+							# parent and existing_pkg. This type of
+							# relationship tends to prevent updates
+							# of packages (bug 612874). Since candidate_pkg
+							# is available, we risk a missed update if we
+							# don't try to eliminate this parent from the
+							# graph. Therefore, we give candidate_pkg a
+							# chance, and assume that it will be masked
+							# by backtracking if necessary.
+							continue
 
 				atom_set = InternalPackageSet(initial_atoms=(atom,),
 					allow_repo=True)
@@ -4874,6 +4889,9 @@ class depgraph(object):
 		vardb = self._frozen_config.roots[root].trees["vartree"].dbapi
 		bindb = self._frozen_config.roots[root].trees["bintree"].dbapi
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
+		use_ebuild_visibility = self._frozen_config.myopts.get(
+			'--use-ebuild-visibility', 'n') != 'n'
+
 		for db, pkg_type, built, installed, db_keys in dbs:
 			if installed:
 				continue
@@ -4960,6 +4978,7 @@ class depgraph(object):
 								eapi=pkg.eapi):
 								required_use_unsatisfied.append(pkg)
 								continue
+
 						root_slot = (pkg.root, pkg.slot_atom)
 						if pkg.built and root_slot in self._rebuild.rebuild_list:
 							mreasons = ["need to rebuild from source"]
@@ -4973,6 +4992,21 @@ class depgraph(object):
 							self._dynamic_config.ignored_binaries.get(
 							pkg, {}).get("changed_deps")):
 							mreasons = ["changed deps"]
+						elif (pkg.built and use_ebuild_visibility and
+							not self._equiv_ebuild_visible(pkg)):
+							equiv_ebuild = self._equiv_ebuild(pkg)
+							if equiv_ebuild is None:
+								if portdb.cpv_exists(pkg.cpv):
+									mreasons = ["ebuild corrupt"]
+								else:
+									mreasons = ["ebuild not available"]
+							elif not mreasons:
+								mreasons = get_masking_status(
+									equiv_ebuild, pkgsettings, root_config,
+									use=self._pkg_use_enabled(equiv_ebuild))
+								if mreasons:
+									metadata = equiv_ebuild._metadata
+
 					masked_packages.append(
 						(root_config, pkgsettings, cpv, repo, metadata, mreasons))
 
@@ -5533,6 +5567,14 @@ class depgraph(object):
 		"""
 		return depth + n if isinstance(depth, int) else depth
 
+	def _equiv_ebuild(self, pkg):
+		try:
+			return self._pkg(
+				pkg.cpv, "ebuild", pkg.root_config, myrepo=pkg.repo)
+		except portage.exception.PackageNotFound:
+			return next(self._iter_match_pkgs(pkg.root_config,
+				"ebuild", Atom("=%s" % (pkg.cpv,))), None)
+
 	def _equiv_ebuild_visible(self, pkg, autounmask_level=None):
 		try:
 			pkg_eb = self._pkg(
@@ -6006,11 +6048,11 @@ class depgraph(object):
 						# reinstall the same exact version only due
 						# to a KEYWORDS mask. See bug #252167.
 
+						identical_binary = False
 						if pkg.type_name != "ebuild" and matched_packages:
 							# Don't re-install a binary package that is
 							# identical to the currently installed package
 							# (see bug #354441).
-							identical_binary = False
 							if usepkg and pkg.installed:
 								for selected_pkg in matched_packages:
 									if selected_pkg.type_name == "binary" and \
@@ -6020,12 +6062,14 @@ class depgraph(object):
 										identical_binary = True
 										break
 
-							if not identical_binary:
+						if (not identical_binary and pkg.built and
+							(use_ebuild_visibility or matched_packages)):
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
 								# If --usepkgonly is enabled, assume that
-								# the ebuild status should be ignored.
+								# the ebuild status should be ignored unless
+								# --use-ebuild-visibility has been specified.
 								if not use_ebuild_visibility and (usepkgonly or useoldpkg):
 									if pkg.installed and pkg.masks:
 										continue

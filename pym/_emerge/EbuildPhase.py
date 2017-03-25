@@ -11,7 +11,8 @@ from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
-from portage.package.ebuild.prepare_build_dirs import _prepare_workdir
+from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
+		_prepare_fake_filesdir)
 from portage.util import writemsg
 
 try:
@@ -45,10 +46,10 @@ class EbuildPhase(CompositeTask):
 	# FEATURES displayed prior to setup phase
 	_features_display = (
 		"ccache", "compressdebug", "distcc", "distcc-pump", "fakeroot",
-		"installsources", "keeptemp", "keepwork", "nostrip",
-		"preserve-libs", "sandbox", "selinux", "sesandbox",
-		"splitdebug", "suidctl", "test", "userpriv",
-		"usersandbox"
+		"installsources", "keeptemp", "keepwork", "network-sandbox",
+		"network-sandbox-proxy", "nostrip", "preserve-libs", "sandbox",
+		"selinux", "sesandbox", "splitdebug", "suidctl", "test",
+		"userpriv", "usersandbox"
 	)
 
 	# Locked phases
@@ -168,6 +169,9 @@ class EbuildPhase(CompositeTask):
 		return logfile
 
 	def _start_ebuild(self):
+
+		if self.phase == "unpack":
+			_prepare_fake_filesdir(self.settings)
 
 		fd_pipes = self.fd_pipes
 		if fd_pipes is None:

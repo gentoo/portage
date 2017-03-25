@@ -25,8 +25,10 @@ class PollScheduler(object):
 			a non-main thread)
 		@type main: bool
 		"""
+		self._term_rlock = threading.RLock()
 		self._terminated = threading.Event()
 		self._terminated_tasks = False
+		self._term_check_handle = None
 		self._max_jobs = 1
 		self._max_load = None
 		self._scheduling = False
@@ -44,6 +46,21 @@ class PollScheduler(object):
 	def _is_background(self):
 		return self._background
 
+	def _cleanup(self):
+		"""
+		Cleanup any callbacks that have been registered with the global
+		event loop.
+		"""
+		# The self._term_check_handle attribute requires locking
+		# since it's modified by the thread safe terminate method.
+		with self._term_rlock:
+			if self._term_check_handle not in (None, False):
+				self._term_check_handle.cancel()
+			# This prevents the terminate method from scheduling
+			# any more callbacks (since _cleanup must eliminate all
+			# callbacks in order to ensure complete cleanup).
+			self._term_check_handle = False
+
 	def terminate(self):
 		"""
 		Schedules asynchronous, graceful termination of the scheduler
@@ -51,26 +68,36 @@ class PollScheduler(object):
 
 		This method is thread-safe (and safe for signal handlers).
 		"""
-		self._terminated.set()
+		with self._term_rlock:
+			if self._term_check_handle is None:
+				self._terminated.set()
+				self._term_check_handle = self._event_loop.call_soon_threadsafe(
+					self._termination_check, True)
 
-	def _termination_check(self):
+	def _termination_check(self, retry=False):
 		"""
 		Calls _terminate_tasks() if appropriate. It's guaranteed not to
-		call it while _schedule_tasks() is being called. The check should
-		be executed for each iteration of the event loop, for response to
-		termination signals at the earliest opportunity. It always returns
-		True, for continuous scheduling via idle_add.
+		call it while _schedule_tasks() is being called. This method must
+		only be called via the event loop thread.
+
+		@param retry: If True then reschedule if scheduling state prevents
+			immediate termination.
+		@type retry: bool
 		"""
-		if not self._scheduling and \
-			self._terminated.is_set() and \
+		if self._terminated.is_set() and \
 			not self._terminated_tasks:
-			self._scheduling = True
-			try:
-				self._terminated_tasks = True
-				self._terminate_tasks()
-			finally:
-				self._scheduling = False
-		return True
+			if not self._scheduling:
+				self._scheduling = True
+				try:
+					self._terminated_tasks = True
+					self._terminate_tasks()
+				finally:
+					self._scheduling = False
+
+			elif retry:
+				with self._term_rlock:
+					self._term_check_handle = self._event_loop.call_soon(
+						self._termination_check, True)
 
 	def _terminate_tasks(self):
 		"""

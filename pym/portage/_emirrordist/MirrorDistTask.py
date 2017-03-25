@@ -24,16 +24,19 @@ if sys.hexversion >= 0x3000000:
 
 class MirrorDistTask(CompositeTask):
 
-	__slots__ = ('_config', '_terminated', '_term_check_id')
+	__slots__ = ('_config', '_fetch_iterator', '_term_rlock',
+		'_term_callback_handle')
 
 	def __init__(self, config):
 		CompositeTask.__init__(self, scheduler=config.event_loop)
 		self._config = config
-		self._terminated = threading.Event()
+		self._term_rlock = threading.RLock()
+		self._term_callback_handle = None
+		self._fetch_iterator = None
 
 	def _start(self):
-		self._term_check_id = self.scheduler.idle_add(self._termination_check)
-		fetch = TaskScheduler(iter(FetchIterator(self._config)),
+		self._fetch_iterator = FetchIterator(self._config)
+		fetch = TaskScheduler(iter(self._fetch_iterator),
 			max_jobs=self._config.options.jobs,
 			max_load=self._config.options.load_average,
 			event_loop=self._config.event_loop)
@@ -203,17 +206,33 @@ class MirrorDistTask(CompositeTask):
 		logging.info("added %i files" % added_file_count)
 		logging.info("added %i bytes total" % added_byte_count)
 
-	def terminate(self):
-		self._terminated.set()
+	def _cleanup(self):
+		"""
+		Cleanup any callbacks that have been registered with the global
+		event loop.
+		"""
+		# The self._term_callback_handle attribute requires locking
+		# since it's modified by the thread safe terminate method.
+		with self._term_rlock:
+			if self._term_callback_handle not in (None, False):
+				self._term_callback_handle.cancel()
+			# This prevents the terminate method from scheduling
+			# any more callbacks (since _cleanup must eliminate all
+			# callbacks in order to ensure complete cleanup).
+			self._term_callback_handle = False
 
-	def _termination_check(self):
-		if self._terminated.is_set():
-			self.cancel()
-			self.wait()
-		return True
+	def terminate(self):
+		with self._term_rlock:
+			if self._term_callback_handle is None:
+				self._term_callback_handle = self.scheduler.call_soon_threadsafe(
+					self._term_callback)
+
+	def _term_callback(self):
+		if self._fetch_iterator is not None:
+			self._fetch_iterator.terminate()
+		self.cancel()
+		self.wait()
 
 	def _wait(self):
 		CompositeTask._wait(self)
-		if self._term_check_id is not None:
-			self.scheduler.source_remove(self._term_check_id)
-			self._term_check_id = None
+		self._cleanup()

@@ -2,6 +2,7 @@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import signal
 import sys
 
 import portage
@@ -10,4 +11,11 @@ portage._disable_legacy_globals()
 from portage._emirrordist.main import emirrordist_main
 
 if __name__ == "__main__":
+
+	def debug_signal(_signum, _frame):
+		import pdb
+		pdb.set_trace()
+
+	signal.signal(signal.SIGUSR1, debug_signal)
+
 	sys.exit(emirrordist_main(sys.argv[1:]))

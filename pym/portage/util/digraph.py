@@ -93,6 +93,15 @@ class digraph(object):
 			del self.nodes[node]
 		self.order = order
 
+	def has_edge(self, child, parent):
+		"""
+		Return True if the given edge exists.
+		"""
+		try:
+			return child in self.nodes[parent][0]
+		except KeyError:
+			return False
+
 	def remove_edge(self, child, parent):
 		"""
 		Remove edge in the direction from child to parent. Note that it is

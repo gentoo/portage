@@ -1055,6 +1055,7 @@ class Scheduler(PollScheduler):
 				else:
 					signal.signal(signal.SIGCONT, signal.SIG_DFL)
 
+			self._termination_check()
 			if received_signal:
 				sys.exit(received_signal[0])
 
@@ -1090,6 +1091,10 @@ class Scheduler(PollScheduler):
 			self._pkg_count.maxval = len([x for x in self._mergelist \
 				if isinstance(x, Package) and x.operation == "merge"])
 			self._status_display.maxval = self._pkg_count.maxval
+
+		# Cleanup any callbacks that have been registered with the global
+		# event loop by calls to the terminate method.
+		self._cleanup()
 
 		self._logger.log(" *** Finished. Cleaning up...")
 
@@ -1393,7 +1398,6 @@ class Scheduler(PollScheduler):
 		blocker_db.discardBlocker(pkg)
 
 	def _main_loop(self):
-		term_check_id = self._event_loop.idle_add(self._termination_check)
 		loadavg_check_id = None
 		if self._max_load is not None and \
 			self._loadavg_latency is not None and \
@@ -1420,7 +1424,6 @@ class Scheduler(PollScheduler):
 			while self._is_work_scheduled():
 				self._event_loop.iteration()
 		finally:
-			self._event_loop.source_remove(term_check_id)
 			if loadavg_check_id is not None:
 				self._event_loop.source_remove(loadavg_check_id)
 

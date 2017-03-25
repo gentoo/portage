@@ -396,3 +396,16 @@ def _ensure_log_subdirs(logdir, subdir):
 	while subdir_split:
 		current = os.path.join(current, subdir_split.pop())
 		ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
+
+def _prepare_fake_filesdir(settings):
+	real_filesdir = settings["O"]+"/files"
+	symlink_path = settings["FILESDIR"]
+
+	try:
+		link_target = os.readlink(symlink_path)
+	except OSError:
+		os.symlink(real_filesdir, symlink_path)
+	else:
+		if link_target != real_filesdir:
+			os.unlink(symlink_path)
+			os.symlink(real_filesdir, symlink_path)
