@@ -89,12 +89,13 @@ __save_ebuild_env() {
 	___eapi_has_package_manager_build_user && unset -f package_manager_build_user
 	___eapi_has_package_manager_build_group && unset -f package_manager_build_group
 
-	# PREFIX: compgen is not compiled in during bootstrap
+	# BEGIN PREFIX LOCAL: compgen is not compiled in during bootstrap
 	if type compgen >& /dev/null ; then
 		# Clear out the triple underscore namespace as it is reserved by the PM.
 		unset -f $(compgen -A function ___)
 		unset ${!___*}
 	fi
+	# END PREFIX LOCAL
 
 	# portage config variables and variables set directly by portage
 	unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \

@@ -23,7 +23,6 @@ from portage import _encodings, _unicode_decode, _unicode_encode, os
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
-from portage.const import EPREFIX
 from portage.package.ebuild._spawn_nofetch import spawn_nofetch
 
 class EbuildBuild(CompositeTask):

@@ -31,7 +31,6 @@ from portage import os, shutil
 from portage import _encodings, _unicode_decode
 from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
 from portage.process import find_binary, spawn
-from portage.const import EPREFIX
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -45,7 +44,7 @@ oldmask = os.umask(0o077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
-        mydir = EPREFIX+"/tmp/dispatch-conf."
+        mydir = "/tmp/dispatch-conf."
         for x in range(0,8):
             if int(random() * 3) == 0:
                 mydir += chr(int(65+random()*26.0))

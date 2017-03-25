@@ -21,7 +21,9 @@ world_writable_check() {
 		eqawarn
 	fi
 
+	# PREFIX LOCAL: keep offset prefix in the reported files
 	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${D}:/:")
+	# END PREFIX LOCAL
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 

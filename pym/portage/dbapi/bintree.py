@@ -28,7 +28,6 @@ from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	ParseError, PermissionDenied, PortageException
-from portage.const import EAPI
 from portage.localization import _
 from portage import _movefile
 from portage import os

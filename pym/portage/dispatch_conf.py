@@ -22,7 +22,6 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
 from portage.util.path import iter_parents
-from portage.const import EPREFIX
 
 RCS_BRANCH = '1.1.1'
 RCS_LOCK = 'rcs -ko -M -l'

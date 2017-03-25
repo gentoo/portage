@@ -21,7 +21,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
-from portage.const import COLOR_MAP_FILE, EPREFIX
+from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
 from portage.localization import _

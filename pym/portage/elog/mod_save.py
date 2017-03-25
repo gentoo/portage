@@ -13,7 +13,6 @@ from portage import _unicode_encode
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
 from portage.util import apply_permissions, ensure_dirs, normalize_path
-from portage.const import EPREFIX_LSTRIP
 
 def process(mysettings, key, logentries, fulltext):
 

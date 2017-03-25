@@ -62,7 +62,6 @@ from portage.util.changelog import ChangeLogTypeSort
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
 from portage.versions import vercmp
-from portage.const import EPREFIX
 
 try:
 	from xml.etree import ElementTree

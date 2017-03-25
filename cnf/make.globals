@@ -65,9 +65,6 @@ FEATURES="assume-digests binpkg-logs
 COLLISION_IGNORE="/lib/modules/* *.py[co] *\$py.class"
 UNINSTALL_IGNORE="/lib/modules/*"
 
-# Prefix: we want preserve-libs, not sure how mainline goes about this
-FEATURES="${FEATURES} preserve-libs"
-
 # Force EPREFIX, ED and EROOT to exist in all EAPIs, not just 3 and up
 FEATURES="${FEATURES} force-prefix"
 

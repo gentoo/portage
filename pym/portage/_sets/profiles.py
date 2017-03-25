@@ -8,7 +8,6 @@ from portage.util import grabfile_package, stack_lists
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean
 from portage.util import writemsg_level
-from portage.const import EPREFIX
 
 __all__ = ["PackagesSystemSet"]
 

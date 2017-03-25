@@ -15,8 +15,6 @@ import os
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-EPREFIX_LSTRIP          = EPREFIX.lstrip(os.path.sep)
-
 # There are two types of variables here which can easily be confused,
 # resulting in arbitrary bugs, mainly exposed with an offset
 # installation (Prefix).  The two types relate to the usage of

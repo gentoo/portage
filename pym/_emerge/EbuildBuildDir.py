@@ -5,7 +5,6 @@ from _emerge.AsynchronousLock import AsynchronousLock
 
 import portage
 from portage import os
-import sys
 from portage.exception import PortageException
 from portage.util.SlotObject import SlotObject
 
