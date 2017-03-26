@@ -23,10 +23,6 @@ except ImportError:
 
 	from portage.exception import PortageException
 
-	_PENDING = 'PENDING'
-	_CANCELLED = 'CANCELLED'
-	_FINISHED = 'FINISHED'
-
 	class Error(PortageException):
 		pass
 
@@ -37,12 +33,40 @@ except ImportError:
 	class InvalidStateError(Error):
 		pass
 
-	class Future(object):
+	Future = None
+
+from portage.util._eventloop.global_event_loop import global_event_loop
+
+_PENDING = 'PENDING'
+_CANCELLED = 'CANCELLED'
+_FINISHED = 'FINISHED'
+
+class _EventLoopFuture(object):
+		"""
+		This class provides (a subset of) the asyncio.Future interface, for
+		use with the EventLoop class, because EventLoop is currently
+		missing some of the asyncio.AbstractEventLoop methods that
+		asyncio.Future requires.
+		"""
 
 		# Class variables serving as defaults for instance variables.
 		_state = _PENDING
 		_result = None
 		_exception = None
+		_loop = None
+
+		def __init__(self, loop=None):
+			"""Initialize the future.
+
+			The optional loop argument allows explicitly setting the event
+			loop object used by the future. If it's not provided, the future uses
+			the default event loop.
+			"""
+			if loop is None:
+				self._loop = global_event_loop()
+			else:
+				self._loop = loop
+			self._callbacks = []
 
 		def cancel(self):
 			"""Cancel the future and schedule callbacks.
@@ -54,7 +78,26 @@ except ImportError:
 			if self._state != _PENDING:
 				return False
 			self._state = _CANCELLED
+			self._schedule_callbacks()
 			return True
+
+		def _schedule_callbacks(self):
+			"""Internal: Ask the event loop to call all callbacks.
+
+			The callbacks are scheduled to be called as soon as possible. Also
+			clears the callback list.
+			"""
+			callbacks = self._callbacks[:]
+			if not callbacks:
+				return
+
+			self._callbacks[:] = []
+			for callback in callbacks:
+				self._loop.call_soon(callback, self)
+
+		def cancelled(self):
+			"""Return True if the future was cancelled."""
+			return self._state == _CANCELLED
 
 		def done(self):
 			"""Return True if the future is done.
@@ -93,6 +136,29 @@ except ImportError:
 				raise InvalidStateError('Exception is not set.')
 			return self._exception
 
+		def add_done_callback(self, fn):
+			"""Add a callback to be run when the future becomes done.
+
+			The callback is called with a single argument - the future object. If
+			the future is already done when this is called, the callback is
+			scheduled with call_soon.
+			"""
+			if self._state != _PENDING:
+				self._loop.call_soon(fn, self)
+			else:
+				self._callbacks.append(fn)
+
+		def remove_done_callback(self, fn):
+			"""Remove all instances of a callback from the "call when done" list.
+
+			Returns the number of callbacks removed.
+			"""
+			filtered_callbacks = [f for f in self._callbacks if f != fn]
+			removed_count = len(self._callbacks) - len(filtered_callbacks)
+			if removed_count:
+				self._callbacks[:] = filtered_callbacks
+			return removed_count
+
 		def set_result(self, result):
 			"""Mark the future done and set its result.
 
@@ -103,6 +169,7 @@ except ImportError:
 				raise InvalidStateError('{}: {!r}'.format(self._state, self))
 			self._result = result
 			self._state = _FINISHED
+			self._schedule_callbacks()
 
 		def set_exception(self, exception):
 			"""Mark the future done and set an exception.
@@ -116,3 +183,8 @@ except ImportError:
 				exception = exception()
 			self._exception = exception
 			self._state = _FINISHED
+			self._schedule_callbacks()
+
+
+if Future is None:
+	Future = _EventLoopFuture

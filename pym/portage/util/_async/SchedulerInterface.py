@@ -13,7 +13,8 @@ class SchedulerInterface(SlotObject):
 
 	_event_loop_attrs = ("IO_ERR", "IO_HUP", "IO_IN",
 		"IO_NVAL", "IO_OUT", "IO_PRI",
-		"call_soon", "call_soon_threadsafe", "child_watch_add",
+		"call_soon", "call_soon_threadsafe",
+		"child_watch_add", "create_future",
 		"idle_add", "io_add_watch", "iteration", "run_until_complete",
 		"source_remove", "timeout_add")
 

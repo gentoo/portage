@@ -16,7 +16,6 @@ from portage.util import ensure_dirs
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.util.futures.futures import Future
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
@@ -150,7 +149,7 @@ class IpcDaemonTestCase(TestCase):
 			self._run_done.set_result(True)
 
 	def _run(self, event_loop, task_scheduler, timeout):
-		self._run_done = Future()
+		self._run_done = event_loop.create_future()
 		timeout_id = event_loop.timeout_add(timeout,
 			self._timeout_callback, task_scheduler)
 		task_scheduler.addExitListener(self._exit_callback)

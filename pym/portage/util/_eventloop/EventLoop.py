@@ -22,6 +22,11 @@ try:
 except ImportError:
 	import dummy_threading as threading
 
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util.futures.futures:_EventLoopFuture',
+)
+
 from portage import OrderedDict
 from portage.util import writemsg_level
 from ..SlotObject import SlotObject
@@ -156,6 +161,15 @@ class EventLoop(object):
 		self._sigchld_write = None
 		self._sigchld_src_id = None
 		self._pid = os.getpid()
+
+	def create_future(self):
+		"""
+		Create a Future object attached to the loop. This returns
+		an instance of _EventLoopFuture, because EventLoop is currently
+		missing some of the asyncio.AbstractEventLoop methods that
+		asyncio.Future requires.
+		"""
+		return _EventLoopFuture(loop=self)
 
 	def _new_source_id(self):
 		"""
