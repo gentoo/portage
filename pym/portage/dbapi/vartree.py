@@ -1369,32 +1369,28 @@ class vardbapi(dbapi):
 				global_event_loop() or EventLoop(main=False))
 			root = self._vardb._eroot
 
-			def search_pkg(cpv):
+			def search_pkg(cpv, search_future):
 				dblnk = self._vardb._dblink(cpv)
+				results = []
 				for path, name, is_basename in path_info_list:
 					if is_basename:
 						for p in dblnk._contents.keys():
 							if os.path.basename(p) == name:
-								search_pkg.results.append((dblnk,
+								results.append((dblnk,
 									dblnk._contents.unmap_key(
 										p)[len(root):]))
 					else:
 						key = dblnk._match_contents(path)
 						if key is not False:
-							search_pkg.results.append(
+							results.append(
 								(dblnk, key[len(root):]))
-				search_pkg.complete = True
-				return False
-
-			search_pkg.results = []
+				search_future.set_result(results)
 
 			for cpv in self._vardb.cpv_all():
-				del search_pkg.results[:]
-				search_pkg.complete = False
-				event_loop.idle_add(search_pkg, cpv)
-				while not search_pkg.complete:
-					event_loop.iteration()
-				for result in search_pkg.results:
+				search_future = event_loop.create_future()
+				event_loop.call_soon(search_pkg, cpv, search_future)
+				event_loop.run_until_complete(search_future)
+				for result in search_future.result():
 					yield result
 
 class vartree(object):

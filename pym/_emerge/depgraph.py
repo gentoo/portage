@@ -3668,17 +3668,20 @@ class depgraph(object):
 	def select_files(self, args):
 		# Use the global event loop for spinner progress
 		# indication during file owner lookups (bug #461412).
-		spinner_id = None
+		def spinner_cb():
+			self._frozen_config.spinner.update()
+			spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
+
+		spinner_cb.handle = None
 		try:
 			spinner = self._frozen_config.spinner
 			if spinner is not None and \
 				spinner.update is not spinner.update_quiet:
-				spinner_id = self._event_loop.idle_add(
-					self._frozen_config.spinner.update)
+				spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
 			return self._select_files(args)
 		finally:
-			if spinner_id is not None:
-				self._event_loop.source_remove(spinner_id)
+			if spinner_cb.handle is not None:
+				spinner_cb.handle.cancel()
 
 	def _select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
