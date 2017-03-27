@@ -170,8 +170,7 @@ class SpawnProcess(SubProcess):
 
 	def _pipe_logger_exit(self, pipe_logger):
 		self._pipe_logger = None
-		self._unregister()
-		self.wait()
+		self._async_waitpid()
 
 	def _waitpid_loop(self):
 		SubProcess._waitpid_loop(self)
