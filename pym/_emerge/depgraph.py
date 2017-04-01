@@ -6649,6 +6649,21 @@ class depgraph(object):
 				# will be appropriately reported as a slot collision
 				# (possibly solvable via backtracking).
 				pkg = matches[-1] # highest match
+
+				if (self._dynamic_config._allow_backtracking and
+					not self._want_installed_pkg(pkg) and (dep.atom.soname or (
+					dep.atom.package and dep.atom.slot_operator_built))):
+					# If pkg was already scheduled for rebuild by the previous
+					# calculation, then pulling in the installed instance will
+					# trigger a slot conflict that may go unsolved. Therefore,
+					# trigger a rebuild of the parent if appropriate.
+					dep.child = pkg
+					new_dep = self._slot_operator_update_probe(dep)
+					if new_dep is not None:
+						self._slot_operator_update_backtrack(
+							dep, new_dep=new_dep)
+						continue
+
 				if not self._add_pkg(pkg, dep):
 					return 0
 				if not self._create_graph(allow_unsatisfied=True):
