@@ -347,6 +347,21 @@ def action_build(emerge_config, trees=DeprecationWarning,
 			adjust_configs(emerge_config.opts, emerge_config.trees)
 			settings, trees, mtimedb = emerge_config
 
+			# After config reload, the freshly instantiated binarytree
+			# instances need to load remote metadata if --getbinpkg
+			# is enabled. Use getbinpkg_refresh=False to use cached
+			# metadata, since the cache is already fresh.
+			if "--getbinpkg" in emerge_config.opts:
+				for root_trees in emerge_config.trees.values():
+					try:
+						root_trees["bintree"].populate(
+							getbinpkgs=True,
+							getbinpkg_refresh=False)
+					except ParseError as e:
+						writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
+								 % e, noiselevel=-1)
+						return 1
+
 		if "--autounmask-only" in myopts:
 			mydepgraph.display_problems()
 			return 0

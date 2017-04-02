@@ -510,8 +510,16 @@ class binarytree(object):
 			except PortageException:
 				pass
 
-	def populate(self, getbinpkgs=0):
-		"populates the binarytree"
+	def populate(self, getbinpkgs=False, getbinpkg_refresh=True):
+		"""
+		Populates the binarytree with package metadata.
+
+		@param getbinpkgs: include remote packages
+		@type getbinpkgs: bool
+		@param getbinpkg_refresh: attempt to refresh the cache
+			of remote package metadata if getbinpkgs is also True
+		@type getbinpkg_refresh: bool
+		"""
 
 		if self._populating:
 			return
@@ -522,13 +530,13 @@ class binarytree(object):
 				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
 			self._populating = True
-			self._populate(getbinpkgs)
+			self._populate(getbinpkgs, getbinpkg_refresh=getbinpkg_refresh)
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
 			self._populating = False
 
-	def _populate(self, getbinpkgs=0):
+	def _populate(self, getbinpkgs=False, getbinpkg_refresh=True):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
@@ -831,6 +839,9 @@ class binarytree(object):
 				# slash, so join manually...
 				url = base_url.rstrip("/") + "/Packages"
 				f = None
+
+				if not getbinpkg_refresh and local_timestamp:
+					raise UseCachedCopyOfRemoteIndex()
 
 				try:
 					ttl = float(pkgindex.header.get("TTL", 0))
