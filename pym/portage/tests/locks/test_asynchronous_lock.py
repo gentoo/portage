@@ -1,6 +1,7 @@
 # Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import itertools
 import signal
 import tempfile
 
@@ -17,7 +18,8 @@ class AsynchronousLockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			for force_async in (True, False):
+			for force_async, async_unlock in itertools.product(
+				(True, False), repeat=2):
 				for force_dummy in (True, False):
 					async_lock = AsynchronousLock(path=path,
 						scheduler=scheduler, _force_async=force_async,
@@ -26,7 +28,10 @@ class AsynchronousLockTestCase(TestCase):
 					async_lock.start()
 					self.assertEqual(async_lock.wait(), os.EX_OK)
 					self.assertEqual(async_lock.returncode, os.EX_OK)
-					async_lock.unlock()
+					if async_unlock:
+						scheduler.run_until_complete(async_lock.async_unlock())
+					else:
+						async_lock.unlock()
 
 				async_lock = AsynchronousLock(path=path,
 					scheduler=scheduler, _force_async=force_async,
@@ -34,8 +39,10 @@ class AsynchronousLockTestCase(TestCase):
 				async_lock.start()
 				self.assertEqual(async_lock.wait(), os.EX_OK)
 				self.assertEqual(async_lock.returncode, os.EX_OK)
-				async_lock.unlock()
-
+				if async_unlock:
+					scheduler.run_until_complete(async_lock.async_unlock())
+				else:
+					async_lock.unlock()
 		finally:
 			shutil.rmtree(tempdir)
 
