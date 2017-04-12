@@ -2553,7 +2553,7 @@ def nice(settings):
 	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
 		out.eerror("Failed to change nice value to '%s'" % \
-			settings["PORTAGE_NICENESS"])
+			settings.get("PORTAGE_NICENESS", "0"))
 		out.eerror("%s\n" % str(e))
 
 def ionice(settings):
