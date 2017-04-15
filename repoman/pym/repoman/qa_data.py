@@ -195,6 +195,9 @@ qahelp = {
 		"Some files listed in SRC_URI aren't referenced in the Manifest"),
 	"digest.unused": (
 		"Some files listed in the Manifest aren't referenced in SRC_URI"),
+	"ebuild.absdosym": (
+		"This ebuild uses absolute target to dosym where relative symlink"
+		" could be used instead"),
 	"ebuild.majorsyn": (
 		"This ebuild has a major syntax error"
 		" that may cause the ebuild to fail partially or fully"),
@@ -262,6 +265,7 @@ qawarnings = set((
 	"RDEPEND.suspect",
 	"virtual.suspect",
 	"RESTRICT.invalid",
+	"ebuild.absdosym",
 	"ebuild.minorsyn",
 	"ebuild.badheader",
 	"ebuild.patches",
