@@ -463,14 +463,12 @@ hasv() {
 }
 
 has() {
-	local needle=$1
+	local needle=$'\a'"$1"$'\a'
 	shift
+	local IFS=$'\a'
+	local haystack=$'\a'"$@"$'\a'
 
-	local x
-	for x in "$@"; do
-		[ "${x}" = "${needle}" ] && return 0
-	done
-	return 1
+	[[ "${haystack}" == *"${needle}"* ]]
 }
 
 __repo_attr() {
