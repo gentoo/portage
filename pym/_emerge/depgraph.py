@@ -6901,6 +6901,12 @@ class depgraph(object):
 			self._dynamic_config._blocker_uninstalls = digraph()
 			self._dynamic_config.digraph.difference_update(previous_uninstall_tasks)
 
+		# Revert state from previous calls.
+		self._dynamic_config._blocker_parents.update(
+			self._dynamic_config._irrelevant_blockers)
+		self._dynamic_config._irrelevant_blockers.clear()
+		self._dynamic_config._unsolvable_blockers.clear()
+
 		for blocker in self._dynamic_config._blocker_parents.leaf_nodes():
 			self._spinner_update()
 			root_config = self._frozen_config.roots[blocker.root]
