@@ -2176,9 +2176,9 @@ class depgraph(object):
 		only works after the _validate_blockers method has been called.
 		"""
 
-		if self._dynamic_config._blocked_pkgs is None:
-			raise AssertionError(
-				'_in_blocker_conflict called before _validate_blockers')
+		if (self._dynamic_config._blocked_pkgs is None
+			and not self._validate_blockers()):
+			raise self._unknown_internal_error()
 
 		if pkg in self._dynamic_config._blocked_pkgs:
 			return True
@@ -6728,7 +6728,14 @@ class depgraph(object):
 		packages within the graph.  If necessary, create hard deps to ensure
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously. Also add runtime blockers from all installed
-		packages if any of them haven't been added already (bug 128809)."""
+		packages if any of them haven't been added already (bug 128809).
+
+		Normally, this method is called only after the graph is complete, and
+		after _solve_non_slot_operator_slot_conflicts has had an opportunity
+		to solve slot conflicts (possibly removing some blockers). It can also
+		be called earlier, in order to get a preview of the blocker data, but
+		then it needs to be called again after the graph is complete.
+		"""
 
 		# The _in_blocker_conflict method needs to assert that this method
 		# has been called before it, by checking that it is not None.
