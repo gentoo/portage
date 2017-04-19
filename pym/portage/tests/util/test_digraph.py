@@ -88,7 +88,9 @@ class DigraphTest(TestCase):
 		g.add("D", "A", 2)
 
 		f = g.clone()
-		for x in g, f:
+		h = digraph()
+		h.update(f)
+		for x in g, f, h:
 			self.assertEqual(bool(x), True)
 			self.assertEqual(x.contains("A"), True)
 			self.assertEqual(x.firstzero(), None)
