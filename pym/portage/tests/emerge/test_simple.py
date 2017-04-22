@@ -3,6 +3,7 @@
 
 import subprocess
 import sys
+import re
 
 import portage
 from portage import os
@@ -228,6 +229,11 @@ pkg_preinst() {
 		cross_root = os.path.join(eprefix, "cross_root")
 		cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
 
+		sync_repo_config = settings.repositories.config_string()
+		# Ignore the repo in SyncRepos.auto_sync() by setting auto-sync to 'no'.
+		sync_repo_config = re.sub(r"^auto-sync =.*\n", "auto-sync = no\n",
+			sync_repo_config, flags=re.MULTILINE)
+
 		test_commands = (
 			env_update_cmd,
 			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
@@ -257,6 +263,8 @@ pkg_preinst() {
 				emerge_cmd + ("--metadata",),
 			emerge_cmd + ("--metadata",),
 			rm_cmd + ("-rf", cachedir),
+			({"PORTAGE_REPOSITORIES" : sync_repo_config},) + \
+				emerge_cmd + ("--sync",),
 			emerge_cmd + ("--oneshot", "virtual/foo"),
 			lambda: self.assertFalse(os.path.exists(
 				os.path.join(pkgdir, "virtual", "foo-0.tbz2"))),
