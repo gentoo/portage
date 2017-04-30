@@ -1,6 +1,6 @@
-#!/usr/bin/python -bO
+#!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
