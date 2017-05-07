@@ -66,7 +66,7 @@ initreflink_linux(void)
  * (errno is set appropriately).
  */
 static ssize_t
-cfr_wrapper(int fd_out, int fd_in, loff_t *off_out, size_t len)
+cfr_wrapper(int fd_out, int fd_in, off_t *off_out, size_t len)
 {
 #ifdef __NR_copy_file_range
     return syscall(__NR_copy_file_range, fd_in, NULL, fd_out,
@@ -96,7 +96,7 @@ cfr_wrapper(int fd_out, int fd_in, loff_t *off_out, size_t len)
  * reaches EOF.
  */
 static off_t
-do_lseek_data(int fd_out, int fd_in, loff_t *off_out) {
+do_lseek_data(int fd_out, int fd_in, off_t *off_out) {
 #ifdef SEEK_DATA
     /* Use lseek SEEK_DATA/SEEK_HOLE for sparse file support,
      * as suggested in the copy_file_range man page.
@@ -189,7 +189,7 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
     ssize_t buf_bytes, buf_offset, copyfunc_ret;
     struct stat stat_in, stat_out;
     char* buf;
-    ssize_t (*copyfunc)(int, int, loff_t *, size_t);
+    ssize_t (*copyfunc)(int, int, off_t *, size_t);
 
     if (!PyArg_ParseTuple(args, "ii", &fd_in, &fd_out))
         return NULL;

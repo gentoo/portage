@@ -676,7 +676,10 @@ setup(
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
-	ext_modules = [Extension(name=n, sources=m) for n, m in x_c_helpers.items()],
+	ext_modules = [Extension(name=n, sources=m,
+		extra_compile_args=['-D_FILE_OFFSET_BITS=64',
+		'-D_LARGEFILE_SOURCE', '-D_LARGEFILE64_SOURCE'])
+		for n, m in x_c_helpers.items()],
 
 	cmdclass = {
 		'build': x_build,
