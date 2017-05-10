@@ -323,12 +323,14 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
                 if (buf == NULL) {
                     error = errno;
 
-                /* For the read call, the fd_in file offset must be
-                 * exactly equal to offset_out. Use lseek to ensure
-                 * correct state, in case an EINTR retry caused it to
-                 * get out of sync somewhow.
+                /* For the read call, the fd_in file offset must be exactly
+                 * equal to offset_out + buf_bytes, where buf_bytes is the
+                 * amount of buffered data that has not been written to
+                 * to the output file yet. Use lseek to ensure correct state,
+                 * in case an EINTR retry caused it to get out of sync
+                 * somewhow.
                  */
-                } else if (lseek(fd_in, offset_out, SEEK_SET) < 0) {
+                } else if (lseek(fd_in, offset_out + buf_bytes, SEEK_SET) < 0) {
                     error = errno;
                 } else {
                     while (1) {
@@ -345,6 +347,7 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
 
                             } else if (buf_bytes < 0) {
                                 error = errno;
+                                buf_bytes = 0;
                                 break;
                             }
                         }
