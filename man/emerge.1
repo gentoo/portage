@@ -363,12 +363,20 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-backtrack < y | n >"
+Allow backtracking after autounmask has detected that
+configuration changes are necessary. This option is not
+recommended, since it can cause a large amount of time to
+be wasted by backtracking calculations, even though there
+is no guarantee that it will produce a solution. This
+option is disabled by default.
+.TP
 .BR "\-\-autounmask\-continue [ y | n ]"
 Automatically apply autounmask changes to configuration
 files, and continue to execute the specified command. If
 the dependency calculation is not entirely successful, then
 emerge will simply abort without modifying any configuration
-files.
+files. This option implies \fB\-\-autounmask\-backtrack=y\fR.
 \fBWARNING:\fR
 This option is intended to be used only with great caution,
 since it is possible for it to make nonsensical configuration

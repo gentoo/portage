@@ -326,6 +326,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--autounmask-backtrack": {
+			"help": ("continue backtracking when there are autounmask "
+				"configuration changes"),
+			"choices":("y", "n")
+		},
+
 		"--autounmask-continue": {
 			"help"    : "write autounmask changes and continue",
 			"choices" : true_y_or_n

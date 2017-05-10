@@ -444,6 +444,7 @@ class _dynamic_depgraph_config(object):
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._displayed_autounmask = False
 		self._success_without_autounmask = False
+		self._autounmask_backtrack_disabled = False
 		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
@@ -1129,7 +1130,8 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
+		if self._dynamic_config._slot_conflict_handler is None:
+			self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
 		handler = self._dynamic_config._slot_conflict_handler
 
 		conflict = handler.get_conflict()
@@ -4243,17 +4245,7 @@ class depgraph(object):
 		# set below is reserved for cases where there are *zero* other
 		# problems. For reference, see backtrack_depgraph, where it skips the
 		# get_best_run() call when success_without_autounmask is True.
-
-		digraph_nodes = self._dynamic_config.digraph.nodes
-
-		if any(x in digraph_nodes for x in
-			self._dynamic_config._needed_unstable_keywords) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_p_mask_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_use_config_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_license_changes) :
+		if self._have_autounmask_changes():
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
 			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
@@ -8564,6 +8556,17 @@ class depgraph(object):
 				"experimental or unstable packages.\n",
 				noiselevel=-1)
 
+		if self._dynamic_config._autounmask_backtrack_disabled:
+			msg = [
+				"In order to avoid wasting time, backtracking has terminated early",
+				"due to the above autounmask change(s). The --autounmask-backtrack=y",
+				"option can be used to force further backtracking, but there is no",
+				"guarantee that it will produce a solution.",
+			]
+			writemsg("\n", noiselevel=-1)
+			for line in msg:
+				writemsg(" %s %s\n" % (colorize("WARN", "*"), line),
+					noiselevel=-1)
 
 	def display_problems(self):
 		"""
@@ -9072,8 +9075,57 @@ class depgraph(object):
 			not self._dynamic_config._skip_restart
 
 	def need_config_change(self):
-		return self._dynamic_config._success_without_autounmask or \
-			self._dynamic_config._required_use_unsatisfied
+		"""
+		Returns true if backtracking should terminate due to a needed
+		configuration change.
+		"""
+		if (self._dynamic_config._success_without_autounmask or
+			self._dynamic_config._required_use_unsatisfied):
+			return True
+
+		if (self._dynamic_config._slot_conflict_handler is None and
+			not self._accept_blocker_conflicts() and
+			any(self._dynamic_config._package_tracker.slot_conflicts())):
+			self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
+			if self._dynamic_config._slot_conflict_handler.changes:
+				# Terminate backtracking early if the slot conflict
+				# handler finds some changes to suggest. The case involving
+				# sci-libs/L and sci-libs/M in SlotCollisionTestCase will
+				# otherwise fail with --autounmask-backtrack=n, since
+				# backtracking will eventually lead to some autounmask
+				# changes. Changes suggested by the slot conflict handler
+				# are more likely to be useful.
+				return True
+
+		if (self._dynamic_config._allow_backtracking and
+			self._frozen_config.myopts.get("--autounmask-backtrack") != 'y' and
+			self._have_autounmask_changes()):
+
+			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
+				self._frozen_config.myopts.get("--autounmask-backtrack") != 'n'):
+				# --autounmask-continue implies --autounmask-backtrack=y behavior,
+				# for backward compatibility.
+				return False
+
+			# This disables backtracking when there are autounmask
+			# config changes. The display_problems method will notify
+			# the user that --autounmask-backtrack=y can be used to
+			# force backtracking in this case.
+			self._dynamic_config._autounmask_backtrack_disabled = True
+			return True
+
+		return False
+
+	def _have_autounmask_changes(self):
+		digraph_nodes = self._dynamic_config.digraph.nodes
+		return (any(x in digraph_nodes for x in
+			self._dynamic_config._needed_unstable_keywords) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_p_mask_changes) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_use_config_changes) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_license_changes))
 
 	def need_config_reload(self):
 		return self._dynamic_config._need_config_reload
