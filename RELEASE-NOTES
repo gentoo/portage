@@ -4,6 +4,35 @@ Features/major bugfixes are listed in NEWS
 portage-2.3.5
 ==================================
 * Bug Fixes:
+    - Bug 612874 depgraph: avoid missed update with slot operator and circ dep
+    - Bug 612960 emerge: fix --use-ebuild-visibility to reject binary packages
+    - Bug 613360 emerge: fix --usepkg when ebuild is not available
+    - Bug 591760 EventLoop: implement call_soon for asyncio compat
+                 Future: implement add_done_callback for asyncio compat
+                 emerge: use asyncio interfaces for spinner during owner lookup
+    - Bug 613132 phase-helpers.sh: Loop over A rather than SRC_URI in __eapi0_pkg_nofetch
+    - Bug 313990 SpawnProcess: fix event loop recursion in _pipe_logger_exit
+    - Bug 490562 pkg_use_display: show masked/forced state of USE_EXPAND flags
+    - Bug 614390 depgraph: trigger slot operator rebuilds via _complete_graph
+    - Bug 614474 emerge: fix --autounmask-continue to work with --getbinpkg
+    - Bug 614108 AsynchronousLock: add async_unlock method
+    - Bug 614116 EbuildBuild: eliminate call to digestgen
+                 EbuildBuild: async spawn_nofetch in _fetchonly_exit
+    - Bug 615238 Prevent crash if os.nice() fails
+    - Bug 379899 dosym: Make implicit basename a fatal error
+    - Bug 615982 depgraph._in_blocker_conflict: call _validate_blockers if needed
+    - Bug 612262 man/emerge.1: fix quickpkg input in tb2file section
+    - Bug 617550 Eventloop: fix deadlock involving idle_add/call_soon
+    - Bug 617778 file_copy: replace loff_t with off_t for portability
+    - Bug 618086 file_copy: fix lseek offset after EINTR
+    - Bug 615680 emerge: terminate backtracking early for autounmask changes
+    - Bug 540562 emerge: default --backtrack=10
+    - Bug 294719 emerge: add --onlydeps-with-rdeps=<y|n> option
+
+
+portage-2.3.5
+==================================
+* Bug Fixes:
     - Bug 598444 auto-enable --with-bdeps if --usepkg is not enabled
     - Bug 611838 use_reduce: reserve missing_white_space_check for invalid tokens
     - Bug 612042 depgraph: fix backtracking for slot operator rebuilds
