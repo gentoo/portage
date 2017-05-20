@@ -1,7 +1,7 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.3.5
+portage-2.3.6
 ==================================
 * Bug Fixes:
     - Bug 612874 depgraph: avoid missed update with slot operator and circ dep
