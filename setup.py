@@ -655,7 +655,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.5',
+	version = '2.3.6',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
@@ -676,7 +676,10 @@ setup(
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
 
-	ext_modules = [Extension(name=n, sources=m) for n, m in x_c_helpers.items()],
+	ext_modules = [Extension(name=n, sources=m,
+		extra_compile_args=['-D_FILE_OFFSET_BITS=64',
+		'-D_LARGEFILE_SOURCE', '-D_LARGEFILE64_SOURCE'])
+		for n, m in x_c_helpers.items()],
 
 	cmdclass = {
 		'build': x_build,

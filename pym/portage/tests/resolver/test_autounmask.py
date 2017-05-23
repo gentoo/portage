@@ -81,19 +81,72 @@ class AutounmaskTestCase(TestCase):
 				#Make sure we restart if needed.
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1", "dev-libs/B"],
-					options={"--autounmask": True},
+					options={"--autounmask": True, "--autounmask-backtrack": "y"},
 					all_permutations=True,
 					success=False,
 					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
 					use_changes={ "dev-libs/B-1": {"foo": True} }),
+
+				# With --autounmask-backtrack=y:
+				#[ebuild  N     ] dev-libs/C-1
+				#[ebuild  N     ] dev-libs/B-1  USE="foo -bar"
+				#[ebuild  N     ] dev-libs/A-1
+				#
+				#The following USE changes are necessary to proceed:
+				# (see "package.use" in the portage(5) man page for more details)
+				## required by dev-libs/A-1::test_repo
+				## required by dev-libs/A:1 (argument)
+				#>=dev-libs/B-1 foo
+
+				# Without --autounmask-backtrack=y:
+				#[ebuild  N     ] dev-libs/B-1  USE="foo -bar"
+				#[ebuild  N     ] dev-libs/A-1
+				#
+				#The following USE changes are necessary to proceed:
+				# (see "package.use" in the portage(5) man page for more details)
+				## required by dev-libs/A-1::test_repo
+				## required by dev-libs/A:1 (argument)
+				#>=dev-libs/B-1 foo
+
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1", "dev-libs/A:2", "dev-libs/B"],
-					options={"--autounmask": True},
+					options={"--autounmask": True, "--autounmask-backtrack": "y"},
 					all_permutations=True,
 					success=False,
 					mergelist=["dev-libs/D-1", "dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1", "dev-libs/A-2"],
 					ignore_mergelist_order=True,
 					use_changes={ "dev-libs/B-1": {"foo": True, "bar": True} }),
+
+				# With --autounmask-backtrack=y:
+				#[ebuild  N     ] dev-libs/C-1
+				#[ebuild  N     ] dev-libs/D-1
+				#[ebuild  N     ] dev-libs/B-1  USE="bar foo"
+				#[ebuild  N     ] dev-libs/A-2
+				#[ebuild  N     ] dev-libs/A-1
+				#
+				#The following USE changes are necessary to proceed:
+				# (see "package.use" in the portage(5) man page for more details)
+				## required by dev-libs/A-2::test_repo
+				## required by dev-libs/A:2 (argument)
+				#>=dev-libs/B-1 bar foo
+
+				# Without --autounmask-backtrack=y:
+				#[ebuild  N     ] dev-libs/B-1  USE="bar foo"
+				#[ebuild  N     ] dev-libs/A-1
+				#[ebuild  N     ] dev-libs/A-2
+				#
+				#The following USE changes are necessary to proceed:
+				# (see "package.use" in the portage(5) man page for more details)
+				## required by dev-libs/A-1::test_repo
+				## required by dev-libs/A:1 (argument)
+				#>=dev-libs/B-1 foo bar
+
+				# NOTE: The --autounmask-backtrack=n behavior is acceptable, but
+				# it would be nicer if it added the dev-libs/C-1 and dev-libs/D-1
+				# deps to the depgraph without backtracking. It could add two
+				# instances of dev-libs/B-1 to the graph with different USE flags,
+				# and then use _solve_non_slot_operator_slot_conflicts to eliminate
+				# the redundant instance.
 
 				#Test keywording.
 				#The simple case.

@@ -79,6 +79,7 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
 				["@world"],
 				options={
 					"--autounmask": "y",
+					"--autounmask-backtrack": "y",
 					"--complete-graph": True,
 					"--selective": True,
 					"--deep": 1
@@ -89,11 +90,63 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
 				unsatisfied_deps=["dev-libs/initially-unsatisfied"],
 				success=False),
 
+			# With --autounmask-backtrack=y:
+			#[ebuild  N    ~] dev-libs/A-2 
+			#[ebuild  N     ] dev-libs/C-1 
+			#[ebuild  N     ] dev-libs/D-1 
+			#[ebuild  N     ] dev-libs/B-1 
+			#
+			#The following keyword changes are necessary to proceed:
+			# (see "package.accept_keywords" in the portage(5) man page for more details)
+			## required by dev-libs/C-1::test_repo
+			## required by @selected
+			## required by @world (argument)
+			#=dev-libs/A-2 ~x86
+			#
+			#!!! Problems have been detected with your world file
+			#!!! Please run emaint --check world
+			#
+			#
+			#!!! Ebuilds for the following packages are either all
+			#!!! masked or don't exist:
+			#dev-libs/broken
+			#
+			#emerge: there are no ebuilds to satisfy "dev-libs/initially-unsatisfied".
+			#(dependency required by "dev-libs/broken-1::test_repo" [installed])
+			#(dependency required by "@selected" [set])
+			#(dependency required by "@world" [argument])
+
+			# Without --autounmask-backtrack=y:
+			#!!! Multiple package instances within a single package slot have been pulled
+			#!!! into the dependency graph, resulting in a slot conflict:
+			#
+			#dev-libs/A:0
+			#
+			#  (dev-libs/A-1:0/0::test_repo, ebuild scheduled for merge) pulled in by
+			#    (no parents that aren't satisfied by other packages in this slot)
+			#
+			#  (dev-libs/A-2:0/0::test_repo, ebuild scheduled for merge) pulled in by
+			#    >=dev-libs/A-2 required by (dev-libs/C-1:0/0::test_repo, ebuild scheduled for merge)
+			#    ^^           ^
+			#
+			#The following keyword changes are necessary to proceed:
+			# (see "package.accept_keywords" in the portage(5) man page for more details)
+			## required by dev-libs/C-1::test_repo
+			## required by @selected
+			## required by @world (argument)
+			#=dev-libs/A-2 ~x86
+			#
+			#emerge: there are no ebuilds to satisfy "dev-libs/initially-unsatisfied".
+			#(dependency required by "dev-libs/broken-1::test_repo" [installed])
+			#(dependency required by "@selected" [set])
+			#(dependency required by "@world" [argument])
+
 			# Test --deep = True
 			ResolverPlaygroundTestCase(
 				["@world"],
 				options={
 					"--autounmask": "y",
+					"--autounmask-backtrack": "y",
 					"--complete-graph": True,
 					"--selective": True,
 					"--deep": True
@@ -103,6 +156,14 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
 				unstable_keywords=["dev-libs/A-2"],
 				unsatisfied_deps=["dev-libs/initially-unsatisfied"],
 				success=False),
+
+			# The effects of --autounmask-backtrack are the same as the previous test case.
+			# Both test cases can randomly succeed with --autounmask-backtrack=n, when
+			# "backtracking due to unsatisfied dep" randomly occurs before the autounmask
+			# unstable keyword change. It would be possible to eliminate backtracking here
+			# by recognizing that there are no alternatives to satisfy the dev-libs/broken
+			# atom in the world file. Then the test cases will consistently succeed with
+			# --autounmask-backtrack=n.
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,

@@ -44,8 +44,10 @@ class digraph(object):
 			priorities = []
 			self.nodes[node][1][parent] = priorities
 			self.nodes[parent][0][node] = priorities
-		priorities.append(priority)
-		priorities.sort()
+
+		if not priorities or priorities[-1] is not priority:
+			priorities.append(priority)
+			priorities.sort()
 
 	def discard(self, node):
 		"""
@@ -72,6 +74,26 @@ class digraph(object):
 
 		del self.nodes[node]
 		self.order.remove(node)
+
+	def update(self, other):
+		"""
+		Add all nodes and edges from another digraph instance.
+		"""
+		for node in other.order:
+			children, parents, node = other.nodes[node]
+			if parents:
+				for parent, priorities in parents.items():
+					for priority in priorities:
+						self.add(node, parent, priority=priority)
+			else:
+				self.add(node, None)
+
+	def clear(self):
+		"""
+		Remove all nodes and edges.
+		"""
+		self.nodes.clear()
+		del self.order[:]
 
 	def difference_update(self, t):
 		"""

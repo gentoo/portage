@@ -444,6 +444,7 @@ class _dynamic_depgraph_config(object):
 		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
 		self._displayed_autounmask = False
 		self._success_without_autounmask = False
+		self._autounmask_backtrack_disabled = False
 		self._required_use_unsatisfied = False
 		self._traverse_ignored_deps = False
 		self._complete_mode = False
@@ -1129,7 +1130,8 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
+		if self._dynamic_config._slot_conflict_handler is None:
+			self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
 		handler = self._dynamic_config._slot_conflict_handler
 
 		conflict = handler.get_conflict()
@@ -2176,9 +2178,9 @@ class depgraph(object):
 		only works after the _validate_blockers method has been called.
 		"""
 
-		if self._dynamic_config._blocked_pkgs is None:
-			raise AssertionError(
-				'_in_blocker_conflict called before _validate_blockers')
+		if (self._dynamic_config._blocked_pkgs is None
+			and not self._validate_blockers()):
+			raise self._unknown_internal_error()
 
 		if pkg in self._dynamic_config._blocked_pkgs:
 			return True
@@ -3064,6 +3066,11 @@ class depgraph(object):
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
 
+		if pkg.onlydeps and \
+			self._frozen_config.myopts.get("--onlydeps-with-rdeps") == 'n':
+			edepend["RDEPEND"] = ""
+			edepend["PDEPEND"] = ""
+
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
 			if self._dynamic_config.myparams.get("bdeps") in ("y", "auto"):
@@ -3668,17 +3675,20 @@ class depgraph(object):
 	def select_files(self, args):
 		# Use the global event loop for spinner progress
 		# indication during file owner lookups (bug #461412).
-		spinner_id = None
+		def spinner_cb():
+			self._frozen_config.spinner.update()
+			spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
+
+		spinner_cb.handle = None
 		try:
 			spinner = self._frozen_config.spinner
 			if spinner is not None and \
 				spinner.update is not spinner.update_quiet:
-				spinner_id = self._event_loop.idle_add(
-					self._frozen_config.spinner.update)
+				spinner_cb.handle = self._event_loop.call_soon(spinner_cb)
 			return self._select_files(args)
 		finally:
-			if spinner_id is not None:
-				self._event_loop.source_remove(spinner_id)
+			if spinner_cb.handle is not None:
+				spinner_cb.handle.cancel()
 
 	def _select_files(self, myfiles):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
@@ -4240,17 +4250,7 @@ class depgraph(object):
 		# set below is reserved for cases where there are *zero* other
 		# problems. For reference, see backtrack_depgraph, where it skips the
 		# get_best_run() call when success_without_autounmask is True.
-
-		digraph_nodes = self._dynamic_config.digraph.nodes
-
-		if any(x in digraph_nodes for x in
-			self._dynamic_config._needed_unstable_keywords) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_p_mask_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_use_config_changes) or \
-			any(x in digraph_nodes for x in
-			self._dynamic_config._needed_license_changes) :
+		if self._have_autounmask_changes():
 			#We failed if the user needs to change the configuration
 			self._dynamic_config._success_without_autounmask = True
 			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
@@ -6646,6 +6646,21 @@ class depgraph(object):
 				# will be appropriately reported as a slot collision
 				# (possibly solvable via backtracking).
 				pkg = matches[-1] # highest match
+
+				if (self._dynamic_config._allow_backtracking and
+					not self._want_installed_pkg(pkg) and (dep.atom.soname or (
+					dep.atom.package and dep.atom.slot_operator_built))):
+					# If pkg was already scheduled for rebuild by the previous
+					# calculation, then pulling in the installed instance will
+					# trigger a slot conflict that may go unsolved. Therefore,
+					# trigger a rebuild of the parent if appropriate.
+					dep.child = pkg
+					new_dep = self._slot_operator_update_probe(dep)
+					if new_dep is not None:
+						self._slot_operator_update_backtrack(
+							dep, new_dep=new_dep)
+						continue
+
 				if not self._add_pkg(pkg, dep):
 					return 0
 				if not self._create_graph(allow_unsatisfied=True):
@@ -6710,7 +6725,14 @@ class depgraph(object):
 		packages within the graph.  If necessary, create hard deps to ensure
 		correct merge order such that mutually blocking packages are never
 		installed simultaneously. Also add runtime blockers from all installed
-		packages if any of them haven't been added already (bug 128809)."""
+		packages if any of them haven't been added already (bug 128809).
+
+		Normally, this method is called only after the graph is complete, and
+		after _solve_non_slot_operator_slot_conflicts has had an opportunity
+		to solve slot conflicts (possibly removing some blockers). It can also
+		be called earlier, in order to get a preview of the blocker data, but
+		then it needs to be called again after the graph is complete.
+		"""
 
 		# The _in_blocker_conflict method needs to assert that this method
 		# has been called before it, by checking that it is not None.
@@ -6882,6 +6904,12 @@ class depgraph(object):
 		if previous_uninstall_tasks:
 			self._dynamic_config._blocker_uninstalls = digraph()
 			self._dynamic_config.digraph.difference_update(previous_uninstall_tasks)
+
+		# Revert state from previous calls.
+		self._dynamic_config._blocker_parents.update(
+			self._dynamic_config._irrelevant_blockers)
+		self._dynamic_config._irrelevant_blockers.clear()
+		self._dynamic_config._unsolvable_blockers.clear()
 
 		for blocker in self._dynamic_config._blocker_parents.leaf_nodes():
 			self._spinner_update()
@@ -8533,6 +8561,17 @@ class depgraph(object):
 				"experimental or unstable packages.\n",
 				noiselevel=-1)
 
+		if self._dynamic_config._autounmask_backtrack_disabled:
+			msg = [
+				"In order to avoid wasting time, backtracking has terminated early",
+				"due to the above autounmask change(s). The --autounmask-backtrack=y",
+				"option can be used to force further backtracking, but there is no",
+				"guarantee that it will produce a solution.",
+			]
+			writemsg("\n", noiselevel=-1)
+			for line in msg:
+				writemsg(" %s %s\n" % (colorize("WARN", "*"), line),
+					noiselevel=-1)
 
 	def display_problems(self):
 		"""
@@ -9041,8 +9080,57 @@ class depgraph(object):
 			not self._dynamic_config._skip_restart
 
 	def need_config_change(self):
-		return self._dynamic_config._success_without_autounmask or \
-			self._dynamic_config._required_use_unsatisfied
+		"""
+		Returns true if backtracking should terminate due to a needed
+		configuration change.
+		"""
+		if (self._dynamic_config._success_without_autounmask or
+			self._dynamic_config._required_use_unsatisfied):
+			return True
+
+		if (self._dynamic_config._slot_conflict_handler is None and
+			not self._accept_blocker_conflicts() and
+			any(self._dynamic_config._package_tracker.slot_conflicts())):
+			self._dynamic_config._slot_conflict_handler = slot_conflict_handler(self)
+			if self._dynamic_config._slot_conflict_handler.changes:
+				# Terminate backtracking early if the slot conflict
+				# handler finds some changes to suggest. The case involving
+				# sci-libs/L and sci-libs/M in SlotCollisionTestCase will
+				# otherwise fail with --autounmask-backtrack=n, since
+				# backtracking will eventually lead to some autounmask
+				# changes. Changes suggested by the slot conflict handler
+				# are more likely to be useful.
+				return True
+
+		if (self._dynamic_config._allow_backtracking and
+			self._frozen_config.myopts.get("--autounmask-backtrack") != 'y' and
+			self._have_autounmask_changes()):
+
+			if (self._frozen_config.myopts.get("--autounmask-continue") is True and
+				self._frozen_config.myopts.get("--autounmask-backtrack") != 'n'):
+				# --autounmask-continue implies --autounmask-backtrack=y behavior,
+				# for backward compatibility.
+				return False
+
+			# This disables backtracking when there are autounmask
+			# config changes. The display_problems method will notify
+			# the user that --autounmask-backtrack=y can be used to
+			# force backtracking in this case.
+			self._dynamic_config._autounmask_backtrack_disabled = True
+			return True
+
+		return False
+
+	def _have_autounmask_changes(self):
+		digraph_nodes = self._dynamic_config.digraph.nodes
+		return (any(x in digraph_nodes for x in
+			self._dynamic_config._needed_unstable_keywords) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_p_mask_changes) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_use_config_changes) or
+			any(x in digraph_nodes for x in
+			self._dynamic_config._needed_license_changes))
 
 	def need_config_reload(self):
 		return self._dynamic_config._need_config_reload
@@ -9377,7 +9465,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 
 	debug = "--debug" in myopts
 	mydepgraph = None
-	max_retries = myopts.get('--backtrack', 3)
+	max_retries = myopts.get('--backtrack', 10)
 	max_depth = max(1, (max_retries + 1) // 2)
 	allow_backtracking = max_retries > 0
 	backtracker = Backtracker(max_depth)

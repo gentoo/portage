@@ -21,9 +21,8 @@ from _emerge.TaskSequence import TaskSequence
 import portage
 from portage import _encodings, _unicode_decode, _unicode_encode, os
 from portage.package.ebuild.digestcheck import digestcheck
-from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import _check_temp_dir
-from portage.package.ebuild._spawn_nofetch import spawn_nofetch
+from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
 
 class EbuildBuild(CompositeTask):
 
@@ -166,12 +165,22 @@ class EbuildBuild(CompositeTask):
 	def _fetchonly_exit(self, fetcher):
 		self._final_exit(fetcher)
 		if self.returncode != os.EX_OK:
+			self.returncode = None
 			portdb = self.pkg.root_config.trees[self._tree].dbapi
-			spawn_nofetch(portdb, self._ebuild_path, settings=self.settings)
-		elif 'digest' in self.settings.features:
-			if not digestgen(mysettings=self.settings,
-				myportdb=self.pkg.root_config.trees[self._tree].dbapi):
-				self.returncode = 1
+			self._start_task(SpawnNofetchWithoutBuilddir(
+				background=self.background,
+				portdb=portdb,
+				ebuild_path=self._ebuild_path,
+				scheduler=self.scheduler,
+				settings=self.settings),
+				self._nofetch_without_builddir_exit)
+			return
+
+		self.wait()
+
+	def _nofetch_without_builddir_exit(self, nofetch):
+		self._final_exit(nofetch)
+		self.returncode = 1
 		self.wait()
 
 	def _pre_clean_exit(self, pre_clean_phase):

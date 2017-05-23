@@ -283,6 +283,7 @@ __dyn_clean() {
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
+		rm -f "${PORTAGE_BUILDDIR}/files"
 	fi
 
 	if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then

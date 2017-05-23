@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 
+import collections
 from itertools import chain
 import sys
 
@@ -60,6 +61,10 @@ class UseFlagDisplay(object):
 	sort_separated = cmp_sort_key(_cmp_separated)
 	del _cmp_separated
 
+
+_flag_info = collections.namedtuple('_flag_info', ('flag', 'display'))
+
+
 def pkg_use_display(pkg, opts, modified_use=None):
 	settings = pkg.root_config.settings
 	use_expand = pkg.use.expand
@@ -81,27 +86,29 @@ def pkg_use_display(pkg, opts, modified_use=None):
 			if f.startswith(flag_prefix):
 				use_expand_flags.add(f)
 				use_enabled.setdefault(
-					varname.upper(), []).append(f[len(flag_prefix):])
+					varname.upper(), []).append(
+						_flag_info(f, f[len(flag_prefix):]))
 
 		for f in pkg.iuse.all:
 			if f.startswith(flag_prefix):
 				use_expand_flags.add(f)
 				if f not in use:
 					use_disabled.setdefault(
-						varname.upper(), []).append(f[len(flag_prefix):])
+						varname.upper(), []).append(
+							_flag_info(f, f[len(flag_prefix):]))
 
 	var_order = set(use_enabled)
 	var_order.update(use_disabled)
 	var_order = sorted(var_order)
 	var_order.insert(0, 'USE')
 	use.difference_update(use_expand_flags)
-	use_enabled['USE'] = list(use)
+	use_enabled['USE'] = list(_flag_info(f, f) for f in use)
 	use_disabled['USE'] = []
 
 	for f in pkg.iuse.all:
 		if f not in use and \
 			f not in use_expand_flags:
-			use_disabled['USE'].append(f)
+			use_disabled['USE'].append(_flag_info(f, f))
 
 	flag_displays = []
 	for varname in var_order:
@@ -109,9 +116,9 @@ def pkg_use_display(pkg, opts, modified_use=None):
 			continue
 		flags = []
 		for f in use_enabled.get(varname, []):
-			flags.append(UseFlagDisplay(f, True, f in forced_flags))
+			flags.append(UseFlagDisplay(f.display, True, f.flag in forced_flags))
 		for f in use_disabled.get(varname, []):
-			flags.append(UseFlagDisplay(f, False, f in forced_flags))
+			flags.append(UseFlagDisplay(f.display, False, f.flag in forced_flags))
 		if alphabetical_use:
 			flags.sort(key=UseFlagDisplay.sort_combined)
 		else:

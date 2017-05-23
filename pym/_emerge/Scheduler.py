@@ -616,9 +616,6 @@ class Scheduler(PollScheduler):
 		tasks are started.
 		"""
 
-		if '--fetchonly' in self.myopts:
-			return os.EX_OK
-
 		digest = '--digest' in self.myopts
 		if not digest:
 			for pkgsettings in self.pkgsettings.values():

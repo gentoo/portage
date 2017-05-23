@@ -50,7 +50,7 @@ so this syntax shouldn't be used.
 .BR tbz2file
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg
-[category/]<package>\fR or \fBquickpkg /var/db/pkg/<category>/<package>\fR.
+[category/]<package>\fR or \fBquickpkg [category/]<package>\fR.
 .TP
 .BR file
 A \fIfile\fR must be a file or directory that has been installed by one or
@@ -363,12 +363,20 @@ the specified configuration file(s), or enable the
 \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
+.BR "\-\-autounmask\-backtrack < y | n >"
+Allow backtracking after autounmask has detected that
+configuration changes are necessary. This option is not
+recommended, since it can cause a large amount of time to
+be wasted by backtracking calculations, even though there
+is no guarantee that it will produce a solution. This
+option is disabled by default.
+.TP
 .BR "\-\-autounmask\-continue [ y | n ]"
 Automatically apply autounmask changes to configuration
 files, and continue to execute the specified command. If
 the dependency calculation is not entirely successful, then
 emerge will simply abort without modifying any configuration
-files.
+files. This option implies \fB\-\-autounmask\-backtrack=y\fR.
 \fBWARNING:\fR
 This option is intended to be used only with great caution,
 since it is possible for it to make nonsensical configuration
@@ -404,7 +412,7 @@ precedence over existing changes. This option is automatically enabled with
 .BR \-\-backtrack=COUNT
 Specifies an integer number of times to backtrack if
 dependency calculation fails due to a conflict or an
-unsatisfied dependency (default: \'3\').
+unsatisfied dependency (default: \'10\').
 .TP
 .BR "\-\-binpkg\-changed\-deps [ y | n ]"
 Tells emerge to ignore binary packages for which the corresponding
@@ -715,6 +723,11 @@ it possible for \fB\-\-deep\fR to be disabled by default.
 .BR "\-\-onlydeps " (\fB\-o\fR)
 Only merge (or pretend to merge) the dependencies of the packages
 specified, not the packages themselves.
+.TP
+.BR "\-\-onlydeps\-with\-rdeps < y | n >"
+Include run time dependencies when \fB\-\-onlydeps\fR is specified.
+When this is disabled only build time dependencies are included. This
+option is enabled by default.
 .TP
 .BR "\-\-package\-moves [ y | n ]"
 Perform package moves when necessary. This option is enabled

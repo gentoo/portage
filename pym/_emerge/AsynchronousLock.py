@@ -35,7 +35,7 @@ class AsynchronousLock(AsynchronousTask):
 
 	__slots__ = ('path', 'scheduler',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
-		'_force_thread')
+		'_force_thread', '_unlock_future')
 
 	_use_process_by_default = True
 
@@ -84,6 +84,11 @@ class AsynchronousLock(AsynchronousTask):
 		return self.returncode
 
 	def unlock(self):
+		"""
+		This method is deprecated in favor of async_unlock, since waiting
+		for the child process to respond can trigger event loop recursion
+		which is incompatible with asyncio.
+		"""
 		if self._imp is None:
 			raise AssertionError('not locked')
 		if isinstance(self._imp, (_LockProcess, _LockThread)):
@@ -91,6 +96,28 @@ class AsynchronousLock(AsynchronousTask):
 		else:
 			unlockfile(self._imp)
 		self._imp = None
+
+	def async_unlock(self):
+		"""
+		Release the lock asynchronously. Release notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is None
+		"""
+		if self._imp is None:
+			raise AssertionError('not locked')
+		if self._unlock_future is not None:
+			raise AssertionError("already unlocked")
+		if isinstance(self._imp, (_LockProcess, _LockThread)):
+			unlock_future = self._imp.async_unlock()
+		else:
+			unlockfile(self._imp)
+			unlock_future = self.scheduler.create_future()
+			self.scheduler.call_soon(unlock_future.set_result, None)
+		self._imp = None
+		self._unlock_future = unlock_future
+		return unlock_future
+
 
 class _LockThread(AbstractPollTask):
 	"""
@@ -105,7 +132,7 @@ class _LockThread(AbstractPollTask):
 	"""
 
 	__slots__ = ('path',) + \
-		('_force_dummy', '_lock_obj', '_thread',)
+		('_force_dummy', '_lock_obj', '_thread', '_unlock_future')
 
 	def _start(self):
 		self._registered = True
@@ -132,12 +159,34 @@ class _LockThread(AbstractPollTask):
 		pass
 
 	def unlock(self):
+		"""
+		This method is deprecated in favor of async_unlock, for compatibility
+		with _LockProcess.
+		"""
+		self._unlock()
+		self._unlock_future.set_result(None)
+
+	def _unlock(self):
 		if self._lock_obj is None:
 			raise AssertionError('not locked')
 		if self.returncode is None:
 			raise AssertionError('lock not acquired yet')
+		if self._unlock_future is not None:
+			raise AssertionError("already unlocked")
+		self._unlock_future = self.scheduler.create_future()
 		unlockfile(self._lock_obj)
 		self._lock_obj = None
+
+	def async_unlock(self):
+		"""
+		Release the lock asynchronously. Release notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is None
+		"""
+		self._unlock()
+		self.scheduler.call_soon(self._unlock_future.set_result, None)
+		return self._unlock_future
 
 	def _unregister(self):
 		self._registered = False
@@ -156,7 +205,8 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path',) + \
-		('_acquired', '_kill_test', '_proc', '_files', '_reg_id', '_unlocked')
+		('_acquired', '_kill_test', '_proc', '_files',
+		 '_reg_id','_unlock_future')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -223,12 +273,15 @@ class _LockProcess(AbstractPollTask):
 				return
 
 			if not self.cancelled and \
-				not self._unlocked:
+				self._unlock_future is None:
 				# We don't want lost locks going unnoticed, so it's
 				# only safe to ignore if either the cancel() or
 				# unlock() methods have been previously called.
 				raise AssertionError("lock process failed with returncode %s" \
 					% (proc.returncode,))
+
+		if self._unlock_future is not None:
+			self._unlock_future.set_result(None)
 
 	def _cancel(self):
 		if self._proc is not None:
@@ -271,16 +324,36 @@ class _LockProcess(AbstractPollTask):
 				os.close(pipe_in)
 
 	def unlock(self):
+		"""
+		This method is deprecated in favor of async_unlock, since waiting
+		for the child process to respond can trigger event loop recursion
+		which is incompatible with asyncio.
+		"""
+		self._unlock()
+		self._proc.wait()
+		self._proc = None
+
+	def _unlock(self):
 		if self._proc is None:
 			raise AssertionError('not locked')
-		if self.returncode is None:
+		if not self._acquired:
 			raise AssertionError('lock not acquired yet')
 		if self.returncode != os.EX_OK:
 			raise AssertionError("lock process failed with returncode %s" \
 				% (self.returncode,))
-		self._unlocked = True
+		if self._unlock_future is not None:
+			raise AssertionError("already unlocked")
+		self._unlock_future = self.scheduler.create_future()
 		os.write(self._files['pipe_out'], b'\0')
 		os.close(self._files['pipe_out'])
 		self._files = None
-		self._proc.wait()
-		self._proc = None
+
+	def async_unlock(self):
+		"""
+		Release the lock asynchronously. Release notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is None
+		"""
+		self._unlock()
+		return self._unlock_future

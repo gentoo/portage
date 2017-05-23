@@ -12,7 +12,7 @@ import errno
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
-		("_dummy_pipe_fd", "_files", "_reg_id")
+		("_dummy_pipe_fd", "_files", "_reg_id", "_waitpid_id")
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.
@@ -101,6 +101,23 @@ class SubProcess(AbstractPollTask):
 
 		return self.returncode
 
+	def _async_waitpid(self):
+		"""
+		Wait for exit status of self.pid asynchronously, and then
+		set the returncode and notify exit listeners. This is
+		prefered over _waitpid_loop, since the synchronous nature
+		of _waitpid_loop can cause event loop recursion.
+		"""
+		if self._waitpid_id is None:
+			self._waitpid_id = self.scheduler.child_watch_add(
+				self.pid, self._async_waitpid_cb)
+
+	def _async_waitpid_cb(self, pid, condition, user_data=None):
+		if pid != self.pid:
+			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
+		self._set_returncode((pid, condition))
+		self.wait()
+
 	def _waitpid_loop(self):
 		source_id = self.scheduler.child_watch_add(
 			self.pid, self._waitpid_cb)
@@ -128,6 +145,10 @@ class SubProcess(AbstractPollTask):
 		if self._reg_id is not None:
 			self.scheduler.source_remove(self._reg_id)
 			self._reg_id = None
+
+		if self._waitpid_id is not None:
+			self.scheduler.source_remove(self._waitpid_id)
+			self._waitpid_id = None
 
 		if self._files is not None:
 			for f in self._files.values():
