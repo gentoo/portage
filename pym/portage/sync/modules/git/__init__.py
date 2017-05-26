@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Git plug-in module for portage.
@@ -52,7 +52,10 @@ module_spec = {
 			},
 			'validate_config': CheckGitConfig,
 			'module_specific_options': (
+				'sync-git-clone-env',
 				'sync-git-clone-extra-opts',
+				'sync-git-env',
+				'sync-git-pull-env',
 				'sync-git-pull-extra-opts',
 				),
 		}
