@@ -876,6 +876,15 @@ class depgraph(object):
 					self._dynamic_config.ignored_binaries.pop(pkg)
 					break
 
+				# NOTE: The Package.__ge__ implementation accounts for
+				# differences in build_time, so the warning about "ignored"
+				# packages will be triggered if both packages are the same
+				# version and selected_pkg is not the most recent build.
+				if (selected_pkg.type_name == "binary" and
+					selected_pkg >= pkg):
+					self._dynamic_config.ignored_binaries.pop(pkg)
+					break
+
 				if selected_pkg.installed and \
 					selected_pkg.cpv == pkg.cpv and \
 					selected_pkg.build_time == pkg.build_time:
