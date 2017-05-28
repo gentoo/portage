@@ -369,7 +369,8 @@ hurt \fBemerge\fR's ability to parallelize.
 .I Note:
 In a cascading profile setup, you can remove packages in children
 profiles which were added by parent profiles by prefixing the atom with
-a '\-'.
+a '\-'. The '\-*' wildcard discards all @system and @profile packages
+added by parent profiles.
 
 .I Example:
 .nf
