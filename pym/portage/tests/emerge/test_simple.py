@@ -311,7 +311,10 @@ pkg_preinst() {
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 
-			emerge_cmd + ("--autounmask-continue", "dev-libs/C",),
+			# If EMERGE_DEFAULT_OPTS contains --autounmask=n, then --autounmask
+			# must be specified with --autounmask-continue.
+			({"EMERGE_DEFAULT_OPTS" : "--autounmask=n"},) + \
+				emerge_cmd + ("--autounmask", "--autounmask-continue", "dev-libs/C",),
 			# Verify that the above --autounmask-continue command caused
 			# USE=flag to be applied correctly to dev-libs/D.
 			portageq_cmd + ("match", eroot, "dev-libs/D[flag]"),

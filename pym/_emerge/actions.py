@@ -2862,6 +2862,12 @@ def run_action(emerge_config):
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 	apply_priorities(emerge_config.target_config.settings)
 
+	if ("--autounmask-continue" in emerge_config.opts and
+		emerge_config.opts.get("--autounmask") == "n"):
+		writemsg_level(
+			" %s --autounmask-continue has been disabled by --autounmask=n\n" %
+			warn("*"), level=logging.WARNING, noiselevel=-1)
+
 	for fmt in emerge_config.target_config.settings.get("PORTAGE_BINPKG_FORMAT", "").split():
 		if not fmt in portage.const.SUPPORTED_BINPKG_FORMATS:
 			if "--pkg-format" in emerge_config.opts:
