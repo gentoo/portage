@@ -131,6 +131,7 @@ def insert_optional_args(args):
 		'--autounmask-only'      : y_or_n,
 		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
+		'--autounmask-use-only'  : y_or_n,
 		'--autounmask-write'     : y_or_n,
 		'--binpkg-changed-deps'  : y_or_n,
 		'--buildpkg'             : y_or_n,
@@ -355,6 +356,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask-write": {
 			"help"    : "write changes made by --autounmask to disk",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-use-only": {
+			"help"    : "only calculate required USE flag changes",
 			"choices" : true_y_or_n
 		},
 
@@ -802,6 +808,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask_write in true_y:
 		myoptions.autounmask_write = True
+
+	if myoptions.autounmask_use_only in true_y:
+		myoptions.autounmask_use_only = True
 
 	if myoptions.binpkg_changed_deps is not None:
 		if myoptions.binpkg_changed_deps in true_y:
