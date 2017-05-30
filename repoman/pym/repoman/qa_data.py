@@ -358,6 +358,7 @@ ruby_deprecated = frozenset([
 	"ruby_targets_ree18",
 	"ruby_targets_ruby18",
 	"ruby_targets_ruby19",
+	"ruby_targets_ruby20",
 ])
 
 
