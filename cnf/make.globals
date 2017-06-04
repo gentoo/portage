@@ -107,7 +107,7 @@ CONFIG_PROTECT="/etc"
 CONFIG_PROTECT_MASK="/etc/env.d"
 
 # Disable auto-use
-USE_ORDER="env:pkg:conf:defaults:pkginternal:repo:env.d"
+USE_ORDER="env:pkg:conf:defaults:pkginternal:features:repo:env.d"
 
 # Mode bits for ${WORKDIR} (see ebuild.5).
 PORTAGE_WORKDIR_MODE="0700"

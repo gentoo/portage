@@ -1,68 +1,88 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
 
-class FeaturesTestUse(TestCase):
 
-	def testFeaturesTestUse(self):
-		ebuilds = {
-			"dev-libs/A-1" : {
-				"IUSE": "test"
-			},
-			"dev-libs/B-1" : {
-				"IUSE": "test foo"
-			},
-		}
+class TestDepend(TestCase):
+	ebuilds = {
+		"dev-libs/A-1" : {
+			"IUSE": "test",
+			"DEPEND": "test? ( dev-libs/B )",
+		},
+		"dev-libs/B-1" : {
+		},
+	}
 
-		installed = {
-			"dev-libs/A-1" : {
-				"USE": "",
-				"IUSE": "test"
-			},
-			"dev-libs/B-1" : {
-				"USE": "foo",
-				"IUSE": "test foo"
-			},
-		}
+	installed = {
+		"dev-libs/A-1" : {
+			"USE": "",
+			"IUSE": "test",
+			"DEPEND": "test? ( dev-libs/B )",
+		},
+	}
 
+	def test_default_use_test(self):
+		"""
+		Test that FEATURES=test enables USE=test by default.
+		"""
 		user_config = {
-			"make.conf" : ("FEATURES=test", "USE=\"-test -foo\"")
+			"make.conf" : ("FEATURES=test", "USE=\"\"")
 		}
-
-		test_cases = (
-
-			# USE=test state should not trigger --newuse rebuilds, as
-			# specified in bug #373209, comment #3.
-			ResolverPlaygroundTestCase(
-				["dev-libs/A"],
-				options = {"--newuse": True, "--selective": True},
-				success = True,
-				mergelist = []),
-
-			# USE=-test -> USE=test, with USE=test forced by FEATURES=test
-			ResolverPlaygroundTestCase(
+		test_case = ResolverPlaygroundTestCase(
 				["dev-libs/A"],
 				options = {},
 				success = True,
-				mergelist = ["dev-libs/A-1"]),
+				mergelist = ["dev-libs/B-1", "dev-libs/A-1"])
 
-			# USE=foo -> USE=-foo, with USE=test forced by FEATURES=test
-			ResolverPlaygroundTestCase(
-				["dev-libs/B"],
-				options = {"--newuse": True, "--selective": True},
-				success = True,
-				mergelist = ["dev-libs/B-1"]),
-		)
-
-		playground = ResolverPlayground(ebuilds=ebuilds,
-			installed=installed, user_config=user_config, debug=False)
+		playground = ResolverPlayground(ebuilds=self.ebuilds,
+			user_config=user_config, debug=False)
 		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+			playground.run_TestCase(test_case)
+			self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
 			playground.cleanup()
 
+	def test_no_forced_use_test(self):
+		"""
+		Test that FEATURES=test no longer forces USE=test.
+		"""
+		user_config = {
+			"make.conf" : ("FEATURES=test", "USE=\"-test\"")
+		}
+		test_case = ResolverPlaygroundTestCase(
+				["dev-libs/A"],
+				options = {},
+				success = True,
+				mergelist = ["dev-libs/A-1"])
+
+		playground = ResolverPlayground(ebuilds=self.ebuilds,
+			user_config=user_config, debug=False)
+		try:
+			playground.run_TestCase(test_case)
+			self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def test_newuse(self):
+		"""
+		Test that --newuse now detects USE=test changes.
+		"""
+		user_config = {
+			"make.conf" : ("FEATURES=test", "USE=\"\"")
+		}
+		test_case = ResolverPlaygroundTestCase(
+				["dev-libs/A"],
+				options = {"--newuse": True, "--selective": True},
+				success = True,
+				mergelist = ["dev-libs/B-1", "dev-libs/A-1"])
+
+		playground = ResolverPlayground(ebuilds=self.ebuilds,
+			user_config=user_config, debug=False)
+		try:
+			playground.run_TestCase(test_case)
+			self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
