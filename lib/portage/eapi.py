@@ -170,7 +170,7 @@ def _get_eapi_attrs(eapi):
 		exports_EBUILD_PHASE_FUNC = (eapi is None or eapi_exports_EBUILD_PHASE_FUNC(eapi)),
 		exports_PORTDIR = (eapi is None or eapi_exports_PORTDIR(eapi)),
 		exports_ECLASSDIR = (eapi is not None and eapi_exports_ECLASSDIR(eapi)),
-		feature_flag_test = True,
+		feature_flag_test = False,
 		feature_flag_targetroot = (eapi is not None and eapi_has_targetroot(eapi)),
 		hdepend = (eapi is not None and eapi_has_hdepend(eapi)),
 		iuse_defaults = (eapi is None or eapi_has_iuse_defaults(eapi)),
