@@ -23,11 +23,10 @@ if [ $# -lt 1 ] ; then
 	exit 1
 fi
 
+DOINS_ARGS=()
 if [[ "$1" == "-r" ]] ; then
-	DOINSRECUR=y
+	DOINS_ARGS+=( --recursive )
 	shift
-else
-	DOINSRECUR=n
 fi
 
 if ! ___eapi_has_prefix_variables; then
@@ -44,116 +43,47 @@ if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
 fi
 
 if ___eapi_doins_and_newins_preserve_symlinks; then
-	PRESERVE_SYMLINKS=y
-else
-	PRESERVE_SYMLINKS=n
+	DOINS_ARGS+=( --preserve_symlinks )
 fi
 
-export TMP=$(mktemp -d "${T}/.doins_tmp_XXXXXX")
-# Use separate directories to avoid potential name collisions.
-mkdir -p "$TMP"/{1,2}
+if ___eapi_helpers_can_die; then
+	DOINS_ARGS+=( --helpers_can_die )
+fi
 
-[[ ! -d ${ED}${INSDESTTREE} ]] && dodir "${INSDESTTREE}"
+if [[ -n "${INSOPTIONS}" ]]; then
+	DOINS_ARGS+=( "--insoptions=${INSOPTIONS}" )
+fi
 
-_doins() {
-	local mysrc="$1" mydir="$2" cleanup="" rval
+if [[ -n "${DIROPTIONS}" ]]; then
+	DOINS_ARGS+=( "--diroptions=${DIROPTIONS}" )
+fi
 
-	if [ -L "$mysrc" ] ; then
-		# Our fake $DISTDIR contains symlinks that should
-		# not be reproduced inside $D. In order to ensure
-		# that things like dodoc "$DISTDIR"/foo.pdf work
-		# as expected, we dereference symlinked files that
-		# refer to absolute paths inside
-		# $PORTAGE_ACTUAL_DISTDIR/.
-		if [ $PRESERVE_SYMLINKS = y ] && \
-			! [[ $(readlink "$mysrc") == "$PORTAGE_ACTUAL_DISTDIR"/* ]] ; then
-			rm -rf "${ED}$INSDESTTREE/$mydir/${mysrc##*/}" || return $?
-			cp -P "$mysrc" "${ED}$INSDESTTREE/$mydir/${mysrc##*/}"
-			return $?
-		else
-			cp "$mysrc" "$TMP/2/${mysrc##*/}" || return $?
-			mysrc="$TMP/2/${mysrc##*/}"
-			cleanup=$mysrc
-		fi
-	fi
+if [[ -n "${PORTAGE_ACTUAL_DISTDIR}" ]]; then
+	DOINS_ARGS+=( "--distdir=${PORTAGE_ACTUAL_DISTDIR}" )
+fi
 
-	install ${INSOPTIONS} "${mysrc}" "${ED}${INSDESTTREE}/${mydir}"
-	rval=$?
-	[[ -n ${cleanup} ]] && rm -f "${cleanup}"
-	[ $rval -ne 0 ] && echo "!!! ${helper}: $mysrc does not exist" 1>&2
-	return $rval
-}
+if [[ "${DOINSSTRICTOPTION}" == 1 ]]; then
+	DOINS_ARGS+=( --strict_option )
+fi
 
-_xdoins() {
-	local -i failed=0
-	while read -r -d $'\0' x ; do
-		_doins "$x" "${x%/*}"
-		((failed|=$?))
-	done
-	return $failed
-}
+if has xattr ${FEATURES}; then
+	DOINS_ARGS+=(
+		--enable_copy_xattr
+		"--xattr_exclude=${PORTAGE_XATTR_EXCLUDE}"
+	)
+fi
 
-success=0
-failed=0
+DOINS_ARGS+=(
+	"--helper=${helper}"
+	"--dest=${ED}${INSDESTTREE}"
+)
 
-for x in "$@" ; do
-	if [[ $PRESERVE_SYMLINKS = n && -d $x ]] || \
-		[[ $PRESERVE_SYMLINKS = y && -d $x && ! -L $x ]] ; then
-		if [ "${DOINSRECUR}" == "n" ] ; then
-			if [[ ${helper} == dodoc ]] ; then
-				echo "!!! ${helper}: $x is a directory" 1>&2
-				((failed|=1))
-			fi
-			continue
-		fi
-
-		while [ "$x" != "${x%/}" ] ; do
-			x=${x%/}
-		done
-		if [ "$x" = "${x%/*}" ] ; then
-			pushd "$PWD" >/dev/null
-		else
-			pushd "${x%/*}" >/dev/null
-		fi
-		x=${x##*/}
-		x_orig=$x
-		# Follow any symlinks recursively until we've got
-		# a normal directory for 'find' to traverse. The
-		# name of the symlink will be used for the name
-		# of the installed directory, as discussed in
-		# bug #239529.
-		while [ -L "$x" ] ; do
-			pushd "$(readlink "$x")" >/dev/null
-			x=${PWD##*/}
-			pushd "${PWD%/*}" >/dev/null
-		done
-		if [[ $x != $x_orig ]] ; then
-			mv "$x" "$TMP/1/$x_orig"
-			pushd "$TMP/1" >/dev/null
-		fi
-		find "$x_orig" -type d -exec dodir "${INSDESTTREE}/{}" \;
-		find "$x_orig" \( -type f -or -type l \) -print0 | _xdoins
-		if [[ ${PIPESTATUS[1]} -eq 0 ]] ; then
-			# NOTE: Even if only an empty directory is installed here, it
-			# still counts as success, since an empty directory given as
-			# an argument to doins -r should not trigger failure.
-			((success|=1))
-		else
-			((failed|=1))
-		fi
-		if [[ $x != $x_orig ]] ; then
-			popd >/dev/null
-			mv "$TMP/1/$x_orig" "$x"
-		fi
-		while popd >/dev/null 2>&1 ; do true ; done
-	else
-		_doins "${x}"
-		if [[ $? -eq 0 ]] ; then
-			((success|=1))
-		else
-			((failed|=1))
-		fi
-	fi
-done
-rm -rf "$TMP"
-[[ $failed -ne 0 || $success -eq 0 ]] && { __helpers_die "${helper} failed"; exit 1; } || exit 0
+# Explicitly set PYTHONPATH to non empty.
+# If PYTHONPATH is empty (not unset), it means "add current working directory
+# to the import path" if the Python is prior to 3.4, which would cause
+# unexpected import. See also #469338.
+PYTHONPATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}${PYTHONPATH:+:}${PYTHONPATH}" \
+	"${PORTAGE_PYTHON:-/usr/bin/python}" \
+	"${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/doins.py \
+	"${DOINS_ARGS[@]}" -- "$@" || \
+{ __helpers_die "${helper} failed"; exit 1; }
