@@ -141,7 +141,6 @@ class bindbapi(fakedbapi):
 				return [aux_cache.get(x, "") for x in wants]
 		mysplit = mycpv.split("/")
 		mylist = []
-		tbz2name = mysplit[1]+".tbz2"
 		if not self.bintree._remotepkgs or \
 			not self.bintree.isremote(mycpv):
 			try:
@@ -1448,9 +1447,10 @@ class binarytree(object):
 	@staticmethod
 	def _parse_build_id(filename):
 		build_id = -1
-		hyphen = filename.rfind("-", 0, -6)
+		suffixlen = len(".xpak")
+		hyphen = filename.rfind("-", 0, -(suffixlen + 1))
 		if hyphen != -1:
-			build_id = filename[hyphen+1:-5]
+			build_id = filename[hyphen+1:-suffixlen]
 		try:
 			build_id = long(build_id)
 		except ValueError:
@@ -1497,7 +1497,7 @@ class binarytree(object):
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[instance_key].get("PATH")
 			if not rel_url:
-				rel_url = pkgname+".tbz2"
+				rel_url = pkgname + ".tbz2"
 			remote_base_uri = self._remotepkgs[instance_key]["BASE_URI"]
 			url = remote_base_uri.rstrip("/") + "/" + rel_url.lstrip("/")
 		else:
