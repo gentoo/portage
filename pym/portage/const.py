@@ -206,7 +206,6 @@ EAPI                     = 6
 
 HASHING_BLOCKSIZE        = 32768
 MANIFEST1_HASH_FUNCTIONS = ("MD5", "SHA256", "RMD160")
-MANIFEST1_REQUIRED_HASH  = "MD5"
 
 # Past events:
 #
