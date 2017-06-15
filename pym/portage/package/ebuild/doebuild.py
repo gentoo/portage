@@ -68,11 +68,19 @@ from portage.exception import (DigestException, FileNotFound,
 from portage.localization import _
 from portage.output import colormap
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
-from portage.util import apply_recursive_permissions, \
-	apply_secpass_permissions, noiselimit, \
-	writemsg, writemsg_stdout, write_atomic
+from portage.process import find_binary
+from portage.util import ( apply_recursive_permissions,
+	apply_secpass_permissions,
+	noiselimit,
+	shlex_split,
+	varexpand,
+	writemsg,
+	writemsg_stdout,
+	write_atomic
+	)
 from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile
+from portage.util.compression_probe import _compressors
 from portage.util.socks5 import get_socks5_proxy
 from portage.versions import _pkgsplit
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -517,6 +525,26 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			else:
 				mysettings["KV"] = ""
 			mysettings.backup_changes("KV")
+
+		binpkg_compression = mysettings.get("BINPKG_COMPRESSION", "bzip2")
+		try:
+			compression = _compressors[binpkg_compression]
+		except KeyError as e:
+			writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+		else:
+			try:
+				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
+			except IndexError as e:
+				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+			else:
+				if find_binary(compression_binary) is None:
+					missing_package = compression["package"]
+					writemsg("Warning: File compression unsupported %s. Missing package: %s" % (binpkg_compression, missing_package))
+				else:
+					cmd = [varexpand(x, mydict=settings) for x in shlex_split(compression["compress"])]
+					# Filter empty elements
+					cmd = [x for x in cmd if x != ""]
+					mysettings['PORTAGE_COMPRESSION_COMMAND'] = ' '.join(cmd)
 
 _doebuild_manifest_cache = None
 _doebuild_broken_ebuilds = set()

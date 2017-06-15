@@ -6,8 +6,15 @@ import logging
 from _emerge.SpawnProcess import SpawnProcess
 import portage
 from portage.localization import _
-from portage.util.compression_probe import (compression_probe,
-	_decompressors)
+from portage.util.compression_probe import (
+	compression_probe,
+	_compressors,
+)
+from portage.process import find_binary
+from portage.util import (
+	shlex_split,
+	varexpand,
+)
 import signal
 import subprocess
 
@@ -28,8 +35,11 @@ class BinpkgExtractorAsync(SpawnProcess):
 					tar_options.append(portage._shell_quote("--xattrs-exclude=%s" % x))
 				tar_options = " ".join(tar_options)
 
-		decomp_cmd = _decompressors.get(
-			compression_probe(self.pkg_path))
+		decomp = _compressors.get(compression_probe(self.pkg_path))
+		if decomp is not None:
+			decomp_cmd = decomp.get("decompress")
+		else:
+			decomp_cmd = None
 		if decomp_cmd is None:
 			self.scheduler.output("!!! %s\n" %
 				_("File compression header unrecognized: %s") %
@@ -38,6 +48,31 @@ class BinpkgExtractorAsync(SpawnProcess):
 			self.returncode = 1
 			self._async_wait()
 			return
+
+		try:
+			decompression_binary = shlex_split(varexpand(decomp_cmd, mydict=self.env))[0]
+		except IndexError:
+			decompression_binary = ""
+
+		if find_binary(decompression_binary) is None:
+			# Try alternative command if it exists
+			if _compressors.get(compression_probe(self.pkg_path)).get("decompress_alt"):
+				decomp_cmd = _compressors.get(
+					compression_probe(self.pkg_path)).get("decompress_alt")
+			try:
+				decompression_binary = shlex_split(varexpand(decomp_cmd, mydict=self.env))[0]
+			except IndexError:
+				decompression_binary = ""
+
+			if find_binary(decompression_binary) is None:
+				missing_package = _compressors.get(compression_probe(self.pkg_path)).get("package")
+				self.scheduler.output("!!! %s\n" %
+					_("File compression unsupported %s.\n Command was: %s.\n Maybe missing package: %s") %
+					(self.pkg_path, varexpand(decomp_cmd, mydict=self.env), missing_package), log_path=self.logfile,
+					background=self.background, level=logging.ERROR)
+				self.returncode = 1
+				self._async_wait()
+				return
 
 		# Add -q to decomp_cmd opts, in order to avoid "trailing garbage
 		# after EOF ignored" warning messages due to xpak trailer.
