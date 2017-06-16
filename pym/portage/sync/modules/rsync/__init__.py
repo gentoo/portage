@@ -17,11 +17,12 @@ module_spec = {
 			'sourcefile': "rsync",
 			'class': "RsyncSync",
 			'description': doc,
-			'functions': ['sync', 'new', 'exists'],
+			'functions': ['sync', 'new', 'exists', 'retrieve_head'],
 			'func_desc': {
 				'sync': 'Performs rsync transfers on the repository',
 				'new': 'Creates the new repository at the specified location',
 				'exists': 'Returns a boolean if the specified directory exists',
+				'retrieve_head': 'Returns the head commit based on metadata/timestamp.commit',
 				},
 			'validate_config': CheckSyncConfig,
 			'module_specific_options': (

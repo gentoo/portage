@@ -130,3 +130,15 @@ class GitSync(NewBase):
 			cwd=portage._unicode_encode(self.repo.location))
 
 		return (os.EX_OK, current_rev != previous_rev)
+
+	def retrieve_head(self, **kwargs):
+		'''Get information about the head commit'''
+		if kwargs:
+			self._kwargs(kwargs)
+		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
+		try:
+			ret = (os.EX_OK, subprocess.check_output(rev_cmd,
+				cwd=portage._unicode_encode(self.repo.location)))
+		except CalledProcessError:
+			ret = (1, False)
+		return ret
