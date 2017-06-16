@@ -148,7 +148,8 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		phase in _networked_phases
+		phase in _networked_phases or \
+		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features

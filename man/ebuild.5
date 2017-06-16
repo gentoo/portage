@@ -689,6 +689,10 @@ binaries that are not compatible with debugedit.
 .I mirror
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .TP
+.I network\-sandbox
+Disables the network namespace for specific packages.
+Should not be used in the main Gentoo tree.
+.TP
 .I preserve\-libs
 Disables preserve\-libs for specific packages. Note than when a package is
 merged, RESTRICT=preserve\-libs applies if either the new instance or the
