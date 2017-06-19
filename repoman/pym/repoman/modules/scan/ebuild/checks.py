@@ -416,14 +416,18 @@ class InheritDeprecated(LineCheck):
 
 	# deprecated eclass : new eclass (False if no new eclass)
 	deprecated_eclasses = {
+		"autotools-multilib": "multilib-minimal",
+		"autotools-utils": False,
 		"base": False,
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"clutter": "gnome2",
 		"confutils": False,
 		"distutils": "distutils-r1",
+		"fdo-mime": "xdg-utils",
 		"games": False,
 		"gems": "ruby-fakegem",
+		"git-2": "git-r3",
 		"gpe": False,
 		"gst-plugins-bad": "gstreamer",
 		"gst-plugins-base": "gstreamer",
@@ -434,6 +438,7 @@ class InheritDeprecated(LineCheck):
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
 		"x-modular": "xorg-2",
+		"xfconf": False,
 	}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
