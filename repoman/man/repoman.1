@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Feb 2017" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "Jun 2017" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -254,7 +254,7 @@ An ebuild was added but the ChangeLog was not modified
 Missing ChangeLog files
 .TP
 .B changelog.notadded
-ChangeLogs that exist but have not been added to cvs
+ChangeLogs that exist but have not been added to the vcs
 .TP
 .B dependency.bad
 User-visible ebuilds with unsatisfied dependencies (matched against *visible*
@@ -317,7 +317,7 @@ Ebuild files that do not have the same name as their parent directory
 Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.
 .TP
 .B ebuild.notadded
-Ebuilds that exist but have not been added to cvs
+Ebuilds that exist but have not been added to the vcs
 .TP
 .B ebuild.output
 A simple sourcing of the ebuild produces output; this breaks ebuild policy.
