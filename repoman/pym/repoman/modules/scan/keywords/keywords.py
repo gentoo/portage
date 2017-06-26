@@ -26,6 +26,7 @@ class KeywordChecks(ScanBase):
 	def prepare(self, **kwargs):
 		'''Prepare the checks for the next package.'''
 		self.slot_keywords = {}
+		self.dropped_keywords = {}
 		return False
 
 	def check(self, **kwargs):
@@ -57,6 +58,19 @@ class KeywordChecks(ScanBase):
 		self.slot_keywords[pkg.slot].update(ebuild.archs)
 		return False
 
+	def check_dropped_keywords(self, **kwargs):
+		'''Report on any dropped keywords for the latest ebuild in a slot
+
+		@returns: boolean
+		'''
+		for ebuild, arches in self.dropped_keywords.values():
+			if arches:
+				self.qatracker.add_error(
+					"KEYWORDS.dropped", "%s: %s" % (
+						ebuild,
+						" ".join(sorted(arches))))
+		return False
+
 	@staticmethod
 	def _isKeywordStable(keyword):
 		return not keyword.startswith("~") and not keyword.startswith("-")
@@ -80,12 +94,9 @@ class KeywordChecks(ScanBase):
 		if previous_keywords is None:
 			self.slot_keywords[pkg.slot] = set()
 		elif ebuild_archs and "*" not in ebuild_archs and not ebuild.live_ebuild:
+			self.slot_keywords[pkg.slot].update(ebuild_archs)
 			dropped_keywords = previous_keywords.difference(ebuild_archs)
-			if dropped_keywords:
-				self.qatracker.add_error(
-					"KEYWORDS.dropped", "%s: %s" % (
-						ebuild.relative_path,
-						" ".join(sorted(dropped_keywords))))
+			self.dropped_keywords[pkg.slot] = (ebuild.relative_path, { arch for arch in dropped_keywords})
 
 	def _checkForInvalidKeywords(self, ebuild, xpkg, y_ebuild):
 		myuse = ebuild.keywords
@@ -131,3 +142,8 @@ class KeywordChecks(ScanBase):
 	def runInEbuilds(self):
 		'''Ebuild level scans'''
 		return (True, [self.check])
+
+	@property
+	def runInFinal(self):
+		'''Final package level scans'''
+		return (True, [self.check_dropped_keywords])
