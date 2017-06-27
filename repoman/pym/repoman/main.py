@@ -24,7 +24,6 @@ from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
 from portage.util.futures.extendedfutures import (
 	ExtendedFuture,
-	InvalidStateError,
 )
 
 from repoman.actions import Actions
