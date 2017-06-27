@@ -3,7 +3,6 @@
 Performs Ruby eclass checks
 '''
 
-from repoman.qa_data import ruby_deprecated
 from repoman.modules.scan.scanbase import ScanBase
 
 
@@ -16,6 +15,7 @@ class RubyEclassChecks(ScanBase):
 		'''
 		super(RubyEclassChecks, self).__init__(**kwargs)
 		self.qatracker = kwargs.get('qatracker')
+		self.repo_settings = kwargs.get('repo_settings')
 		self.old_ruby_eclasses = ["ruby-ng", "ruby-fakegem", "ruby"]
 
 	def check(self, **kwargs):
@@ -32,7 +32,8 @@ class RubyEclassChecks(ScanBase):
 			is_inherited, self.old_ruby_eclasses)
 
 		if is_old_ruby_eclass_inherited:
-			ruby_intersection = pkg.iuse.all.intersection(ruby_deprecated)
+			ruby_intersection = pkg.iuse.all.intersection(
+				self.repo_settings.qadata.ruby_deprecated)
 
 			if ruby_intersection:
 				for myruby in ruby_intersection:

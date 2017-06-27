@@ -9,7 +9,6 @@ from portage.dep import Atom
 from repoman.check_missingslot import check_missingslot
 # import our initialized portage instance
 from repoman._portage import portage
-from repoman.qa_data import suspect_virtual, suspect_rdepend
 
 def check_slotop(depstr, is_valid_flag, badsyntax, mytype,
 	qatracker, relative_path):
@@ -51,7 +50,7 @@ def check_slotop(depstr, is_valid_flag, badsyntax, mytype,
 					_traverse_tree(branch, in_any_of=in_any_of)
 	_traverse_tree(my_dep_tree, False)
 
-def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
+def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata, qadata):
 	'''Checks the ebuild dependencies for errors
 
 	@param pkg: Package in which we check (object).
@@ -111,11 +110,11 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 
 				if pkg.category != "virtual":
 					if not is_blocker and \
-						atom.cp in suspect_virtual:
+						atom.cp in qadata.suspect_virtual:
 						qatracker.add_error(
 							'virtual.suspect', ebuild.relative_path +
 							": %s: consider using '%s' instead of '%s'" %
-							(mytype, suspect_virtual[atom.cp], atom))
+							(mytype, qadata.suspect_virtual[atom.cp], atom))
 					if not is_blocker and \
 						atom.cp.startswith("perl-core/"):
 						qatracker.add_error('dependency.perlcore',
@@ -141,7 +140,7 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 						" wxwidgets.eclass" % (ebuild.relative_path, mytype))
 				elif runtime:
 					if not is_blocker and \
-						atom.cp in suspect_rdepend:
+						atom.cp in qadata.suspect_rdepend:
 						qatracker.add_error(
 							mytype + '.suspect',
 							ebuild.relative_path + ": '%s'" % atom)
