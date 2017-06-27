@@ -27,7 +27,7 @@ class RepoSettings(object):
 	def __init__(
 		self, config_root, portdir, portdir_overlay,
 		repoman_settings=None, vcs_settings=None, options=None,
-		qawarnings=None):
+		qadata=None):
 		self.config_root = config_root
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
@@ -40,6 +40,14 @@ class RepoSettings(object):
 			self.repositories.get_repo_for_location(self.repodir)
 		except KeyError:
 			self._add_repo(config_root, portdir_overlay)
+
+		logging.debug("RepoSettings: init(); load qadata")
+		# load the repo specific configuration
+		self.qadata = qadata
+		if not self.qadata.load_repo_config(self.repodir, options):
+			logging.error("Aborting...")
+			sys.exit(1)
+		logging.debug("RepoSettings: qadata loaded: %s", qadata.no_exec)
 
 		self.root = self.repoman_settings['EROOT']
 		self.trees = {
@@ -60,7 +68,7 @@ class RepoSettings(object):
 				del self.repositories[repo.name]
 
 		if self.repo_config.allow_provide_virtual:
-			qawarnings.add("virtual.oldstyle")
+			qadata.qawarnings.add("virtual.oldstyle")
 
 		if self.repo_config.sign_commit and options.mode in ("commit", "fix", "manifest"):
 			if vcs_settings.vcs:
