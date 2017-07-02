@@ -337,7 +337,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			return [mydbapi._pkg_str(cpv, atom.repo)
 				for cpv in mydbapi.match(atom)]
 
-	# Sort the deps into installed, not installed but already 
+	# Sort the deps into installed, not installed but already
 	# in the graph and other, not installed and not in the graph
 	# and other, with values of [[required_atom], availablility]
 	for x, satisfied in zip(deps, satisfieds):
@@ -713,8 +713,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	else:
 		try:
 			mysplit = use_reduce(depstring, uselist=myusesplit,
-			masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
-			opconvert=True, token_class=Atom, eapi=eapi)
+				masklist=mymasks, matchall=(use=="all"), excludeall=useforce,
+				opconvert=True, token_class=Atom, eapi=eapi)
 		except InvalidDependString as e:
 			return [0, "%s" % (e,)]
 
