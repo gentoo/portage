@@ -15,20 +15,10 @@ from repoman.modules.commit import repochecks
 from repoman.modules.commit import manifest
 from repoman.profile import check_profiles, dev_profile_keywords, setup_profile
 from repoman.repos import repo_metadata
+from repoman.modules.scan.module import ModuleConfig
 from repoman.modules.scan.scan import scan
 from repoman.modules.vcs.vcs import vcs_files_to_cps
 
-from portage.module import Modules
-
-MODULES_PATH = os.path.join(os.path.dirname(__file__), "modules", "scan")
-# initial development debug info
-logging.debug("module path: %s", MODULES_PATH)
-
-MODULE_CONTROLLER = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
-
-MODULE_NAMES = MODULE_CONTROLLER.module_names[:]
-# initial development debug info
-logging.debug("module_names: %s", MODULE_NAMES)
 
 DATA_TYPES = {'dict': dict, 'Future': ExtendedFuture, 'list': list, 'set': set}
 
@@ -124,6 +114,12 @@ class Scanner(object):
 		if self.vcs_settings.vcs is None:
 			self.options.echangelog = 'n'
 
+		# Initialize the ModuleConfig class here
+		# TODO Add layout.conf masters repository.yml config to the list to load/stack
+		self.moduleconfig = ModuleConfig([
+				'/home/bdolbec/git/gentoo/metadata/repoman/repository.yml',
+				])
+
 		checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,
 		# which invalidates changelog.ebuildadded and changelog.missing
@@ -212,7 +208,7 @@ class Scanner(object):
 		@returns: dictionary
 		'''
 		kwargs = {}
-		for key in MODULE_CONTROLLER.modules[mod]['mod_kwargs']:
+		for key in self.moduleconfig.controller.modules[mod]['mod_kwargs']:
 			kwargs[key] = self.kwargs[key]
 		return kwargs
 
@@ -224,7 +220,7 @@ class Scanner(object):
 		@param dynamic_data: dictionary structure
 		@returns: dictionary
 		'''
-		func_kwargs = MODULE_CONTROLLER.modules[mod]['func_kwargs']
+		func_kwargs = self.moduleconfig.controller.modules[mod]['func_kwargs']
 		# determine new keys
 		required = set(list(func_kwargs))
 		exist = set(list(dynamic_data))
@@ -324,19 +320,16 @@ class Scanner(object):
 				'validity_future',
 				]
 			# need to set it up for ==> self.modules or some other ordered list
-			for mod in [('manifests', 'Manifests'), ('ebuild', 'Ebuild'),
-						('keywords', 'KeywordChecks'), ('files', 'FileChecks'),
-						('fetches', 'FetchChecks'),
-						('pkgmetadata', 'PkgMetadata'),
-						]:
-				mod_class = MODULE_CONTROLLER.get_class(mod[0])
+			logging.debug("***** starting pkgs_loop: %s", self.moduleconfig.pkgs_loop)
+			for mod in self.moduleconfig.pkgs_loop:
+				mod_class = self.moduleconfig.controller.get_class(mod)
 				logging.debug("Initializing class name: %s", mod_class.__name__)
-				self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod[0]))
-				logging.debug("scan_pkgs; module: %s", mod[1])
-				do_it, functions = self.modules[mod[1]].runInPkgs
+				self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod))
+				logging.debug("scan_pkgs; module: %s", mod_class.__name__)
+				do_it, functions = self.modules[mod_class.__name__].runInPkgs
 				if do_it:
 					for func in functions:
-						_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
+						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
 						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
@@ -373,28 +366,19 @@ class Scanner(object):
 
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
-			for mod in [('ebuild', 'Ebuild'), ('live', 'LiveEclassChecks'),
-				('eapi', 'EAPIChecks'), ('ebuild_metadata', 'EbuildMetadata'),
-				('fetches', 'FetchChecks'),
-				('description', 'DescriptionChecks'),
-				('keywords', 'KeywordChecks'),
-				('pkgmetadata', 'PkgMetadata'), ('ruby', 'RubyEclassChecks'),
-				('restrict', 'RestrictChecks'),
-				('mtime', 'MtimeChecks'), ('multicheck', 'MultiCheck'),
-				# Options.is_forced() is used to bypass further checks
-				('options', 'Options'), ('profile', 'ProfileDependsChecks'),
-				]:
-				if mod[0] and mod[1] not in self.modules:
-					mod_class = MODULE_CONTROLLER.get_class(mod[0])
-					logging.debug("Initializing class name: %s", mod_class.__name__)
-					self.modules[mod[1]] = mod_class(**self.set_kwargs(mod[0]))
-				logging.debug("scan_ebuilds: module: %s", mod[1])
-				do_it, functions = self.modules[mod[1]].runInEbuilds
+			for mod in self.moduleconfig.ebuilds_loop:
+				if mod:
+					mod_class = self.moduleconfig.controller.get_class(mod)
+					if mod_class.__name__ not in self.modules:
+						logging.debug("Initializing class name: %s", mod_class.__name__)
+						self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod))
+				logging.debug("scan_ebuilds: module: %s", mod_class.__name__)
+				do_it, functions = self.modules[mod_class.__name__].runInEbuilds
 				logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 				if do_it:
 					for func in functions:
 						logging.debug("\tRunning function: %s", func)
-						_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
+						_continue = func(**self.set_func_kwargs(mod, dynamic_data))
 						if _continue:
 							# If we can't access all the metadata then it's totally unsafe to
 							# commit since there's no way to generate a correct Manifest.
@@ -414,18 +398,19 @@ class Scanner(object):
 		# initialize per pkg plugin final checks here
 		# need to set it up for ==> self.modules_list or some other ordered list
 		xpkg_complete = False
-		for mod in [('pkgmetadata', 'PkgMetadata'), ('keywords', 'KeywordChecks')]:
-			if mod[0] and mod[1] not in self.modules:
-				mod_class = MODULE_CONTROLLER.get_class(mod[0])
-				logging.debug("Initializing class name: %s", mod_class.__name__)
-				self.modules[mod[1]] = mod_class(**self.set_kwargs(mod[0]))
-			logging.debug("scan_ebuilds final checks: module: %s", mod[1])
-			do_it, functions = self.modules[mod[1]].runInFinal
+		for mod in self.moduleconfig.final_loop:
+			if mod:
+				mod_class = self.moduleconfig.controller.get_class(mod)
+				if mod_class.__name__ not in self.modules:
+					logging.debug("Initializing class name: %s", mod_class.__name__)
+					self.modules[mod_class.__name__] = mod_class(**self.set_kwargs(mod))
+			logging.debug("scan_ebuilds final checks: module: %s", mod_class.__name__)
+			do_it, functions = self.modules[mod_class.__name__].runInFinal
 			logging.debug("do_it: %s, functions: %s", do_it, [x.__name__ for x in functions])
 			if do_it:
 				for func in functions:
 					logging.debug("\tRunning function: %s", func)
-					_continue = func(**self.set_func_kwargs(mod[0], dynamic_data))
+					_continue = func(**self.set_func_kwargs(mod, dynamic_data))
 					if _continue:
 						xpkg_complete = True
 						# logging.debug("\t>>> Continuing")
