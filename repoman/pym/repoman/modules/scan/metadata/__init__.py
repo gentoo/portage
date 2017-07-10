@@ -31,6 +31,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['pkgs', 'ebuilds', 'final'],
 		},
 		'ebuild-metadata': {
 			'name': "ebuild_metadata",
@@ -48,6 +49,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 		'description-metadata': {
 			'name': "description",
@@ -63,6 +65,7 @@ module_spec = {
 				'ebuild': (None, None),
 				'pkg': ('Future', 'UNSET'),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 		'restrict-metadata': {
 			'name': "restrict",
@@ -79,6 +82,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }

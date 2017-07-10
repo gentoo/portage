@@ -22,6 +22,7 @@ module_spec = {
 			],
 			'func_kwargs': {
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }
