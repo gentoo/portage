@@ -205,3 +205,18 @@ class Modules(object):
 			raise InvalidModuleName(
 				"Module name '%s' was invalid or not found" % modname)
 		return desc
+
+	def get_spec(self, modname, var):
+		"""Retrieves the module class exported spec variable
+
+		@type modname: string
+		@param modname: the module class name
+		@type dictionary
+		@return: the modules class exported options descriptions
+		"""
+		if modname and modname in self.module_names:
+			value = self._modules[modname].get(var, None)
+		else:
+			raise InvalidModuleName(
+				"Module name '%s' was invalid or not found" % modname)
+		return value
