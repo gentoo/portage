@@ -116,9 +116,7 @@ class Scanner(object):
 
 		# Initialize the ModuleConfig class here
 		# TODO Add layout.conf masters repository.yml config to the list to load/stack
-		self.moduleconfig = ModuleConfig([
-				'/home/bdolbec/git/gentoo/metadata/repoman/repository.yml',
-				])
+		self.moduleconfig = ModuleConfig(self.repo_settings.masters_list)
 
 		checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,
