@@ -63,7 +63,7 @@ class Module(object):
 
 	def get_class(self, name):
 		if not name or name not in self.kids_names:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%name + "part of the module '%s'" %self.name)
 		kid = self.kids[name]
 		if kid['is_imported']:
@@ -142,7 +142,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['parent'].get_class(modname)
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -157,7 +157,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['description']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -172,7 +172,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['functions']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -187,7 +187,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			desc = self._modules[modname]['func_desc']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return desc
 
@@ -203,5 +203,20 @@ class Modules(object):
 			desc = self._modules[modname].get('opt_desc')
 		else:
 			raise InvalidModuleName(
-				"Module name '%s' was invalid or not found" % modname)
+				"Module name '%s' is invalid or not found" % modname)
 		return desc
+
+	def get_spec(self, modname, var):
+		"""Retrieves the module class exported spec variable
+
+		@type modname: string
+		@param modname: the module class name
+		@type dictionary
+		@return: the modules class exported options descriptions
+		"""
+		if modname and modname in self.module_names:
+			value = self._modules[modname].get(var, None)
+		else:
+			raise InvalidModuleName(
+				"Module name '%s' is invalid or not found" % modname)
+		return value
