@@ -25,10 +25,11 @@ class ModuleConfig(object):
 
 		@param configpaths: ordered list of filepaths to load
 		'''
-		self.configpaths = configpaths
+		self.configpaths = [os.path.join(path, 'repository.yml') for path in configpaths]
+		logging.debug("ModuleConfig; configpaths: %s", self.configpaths)
 
 		self.controller = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
-		logging.debug("module_names: %s", self.controller.module_names)
+		logging.debug("ModuleConfig; module_names: %s", self.controller.module_names)
 
 		self._configs = None
 		self.enabled = []
@@ -40,7 +41,6 @@ class ModuleConfig(object):
 		for loop in ['pkgs', 'ebuilds', 'final']:
 			logging.debug("ModuleConfig; Processing loop %s", loop)
 			setattr(self, '%s_loop' % loop, self._determine_list(loop))
-
 
 	def load_configs(self, configpaths=None):
 		'''load the config files in order'''
