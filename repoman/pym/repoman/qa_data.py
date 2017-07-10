@@ -28,21 +28,31 @@ class QAData(object):
 		self.no_exec = None
 
 
-	def load_repo_config(self, repopath, options):
+	def load_repo_config(self, repopaths, options):
 		'''Load the repository repoman qa_data.yml config
 
-		@param repopath: string, The path of the repository being scanned
+		@param repopaths: list of strings, The path of the repository being scanned
 						 This could be a parent repository using the
 						 repoman_masters layout.conf variable
 		'''
-		filepath = os.path.join(repopath, 'metadata/repoman/qa_data.yml')
-		logging.debug("QAData: reading file: %s", filepath)
-		try:
-			with open(filepath, 'r') as qadata_file:
-				qadata = yaml.safe_load(qadata_file.read())
-		except IOError as error:
-			logging.error("Failed to load 'qa_data.yml' file at path: %s", filepath)
-			logging.eception(error)
+		qadata = {}
+		for path in repopaths:
+			filepath = os.path.join(path, 'qa_data.yaml')
+			logging.debug("QAData: reading file: %s", filepath)
+			try:
+				with open(filepath, 'r') as qadata_file:
+					new_qadata = yaml.safe_load(qadata_file.read())
+					logging.debug("QAData: updating qadata with new values from: %s", filepath)
+					qadata.update(new_qadata)
+			except FileNotFoundError:
+				# skip a master that may not have our file
+				logging.debug("QAData: File not found at path: %s", filepath)
+			except IOError as error:
+				logging.error("QAData: Failed to load 'qa_data.yaml' file at path: %s", filepath)
+				logging.exception(error)
+				return False
+		if qadata == {}:
+			logging.error("QAData: Failed to load a valid 'qa_data.yaml' file at paths: %s", repopaths)
 			return False
 		self.max_desc_len = qadata.get('max_description_length', 80)
 		self.allowed_filename_chars = qadata.get("allowed_filename_chars", "a-zA-Z0-9._-+:")
@@ -69,7 +79,7 @@ class QAData(object):
 		for x in self.missingvars:
 			x += ".missing"
 			if x not in self.qacats:
-				logging.warning('* missingvars values need to be added to qahelp ("%s")' % x)
+				logging.warning('QAData: * missingvars values need to be added to qahelp ("%s")' % x)
 				self.qacats.append(x)
 				self.qawarnings.add(x)
 
