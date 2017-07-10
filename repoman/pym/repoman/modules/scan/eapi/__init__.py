@@ -23,6 +23,7 @@ module_spec = {
 			'func_kwargs': {
 				'ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }
