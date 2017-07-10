@@ -42,10 +42,18 @@ class RepoSettings(object):
 		except KeyError:
 			self._add_repo(config_root, portdir_overlay)
 
+		# Determine the master config loading list
+		self.masters_list = []
+		# get out repo masters value
+		masters = self.repositories.get_repo_for_location(self.repodir).masters
+		for repo in masters:
+			self.masters_list.append(os.path.join(repo.location, 'metadata', 'repoman'))
+		self.masters_list.append(os.path.join(self.repodir, 'metadata', 'repoman'))
+
 		logging.debug("RepoSettings: init(); load qadata")
 		# load the repo specific configuration
 		self.qadata = qadata
-		if not self.qadata.load_repo_config(self.repodir, options):
+		if not self.qadata.load_repo_config(self.masters_list, options):
 			logging.error("Aborting...")
 			sys.exit(1)
 		logging.debug("RepoSettings: qadata loaded: %s", qadata.no_exec)
