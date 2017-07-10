@@ -26,6 +26,7 @@ module_spec = {
 				'checkdirlist': (None, None),
 				'checkdir_relative': (None, None),
 			},
+			'module_runsIn': ['pkgs'],
 		},
 		'mtime-module': {
 			'name': "mtime",
@@ -42,6 +43,7 @@ module_spec = {
 				'ebuild': (None, None),
 				'pkg': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }

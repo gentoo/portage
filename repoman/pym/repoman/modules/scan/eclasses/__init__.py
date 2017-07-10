@@ -26,6 +26,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 		'ruby-module': {
 			'name': "ruby",
@@ -41,6 +42,7 @@ module_spec = {
 				'ebuild': (None, None),
 				'pkg': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }

@@ -37,6 +37,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['pkgs', 'ebuilds'],
 		},
 		'multicheck-module': {
 			'name': "multicheck",
@@ -52,6 +53,7 @@ module_spec = {
 				'ebuild': (None, None),
 				'pkg': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 	}
 }
