@@ -8,7 +8,7 @@ import io
 from portage import _encodings, _unicode_encode
 
 from repoman.modules.scan.scanbase import ScanBase
-from .checks import run_checks, checks_init
+from repoman.modules.linechecks.controller import LineCheckController
 
 
 class MultiCheck(ScanBase):
@@ -22,7 +22,11 @@ class MultiCheck(ScanBase):
 		'''
 		self.qatracker = kwargs.get('qatracker')
 		self.options = kwargs.get('options')
-		checks_init(self.options.experimental_inherit == 'y')
+		self.controller = LineCheckController(
+				kwargs.get('repo_settings'),
+				kwargs.get('linechecks')
+				)
+		self.controller.checks_init(self.options.experimental_inherit == 'y')
 
 	def check(self, **kwargs):
 		'''Check the ebuild for utf-8 encoding
@@ -40,7 +44,7 @@ class MultiCheck(ScanBase):
 					errors='strict'),
 				mode='r', encoding=_encodings['repo.content'])
 			try:
-				for check_name, e in run_checks(f, pkg):
+				for check_name, e in self.controller.run_checks(f, pkg):
 					self.qatracker.add_error(
 						check_name, ebuild.relative_path + ': %s' % e)
 			finally:

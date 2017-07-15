@@ -193,6 +193,7 @@ class Scanner(object):
 			"env": self.env,
 			"have": self.have,
 			"dev_keywords": self.dev_keywords,
+			"linechecks": self.moduleconfig.linechecks,
 		}
 		# initialize the plugin checks here
 		self.modules = {}
