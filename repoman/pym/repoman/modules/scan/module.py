@@ -25,7 +25,7 @@ class ModuleConfig(object):
 
 		@param configpaths: ordered list of filepaths to load
 		'''
-		self.configpaths = [os.path.join(path, 'repository.yml') for path in configpaths]
+		self.configpaths = [os.path.join(path, 'repository.yaml') for path in configpaths]
 		logging.debug("ModuleConfig; configpaths: %s", self.configpaths)
 
 		self.controller = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
@@ -41,13 +41,17 @@ class ModuleConfig(object):
 		for loop in ['pkgs', 'ebuilds', 'final']:
 			logging.debug("ModuleConfig; Processing loop %s", loop)
 			setattr(self, '%s_loop' % loop, self._determine_list(loop))
+		self.linechecks = stack_lists(c['linechecks_modules'].split() for c in self._configs)
 
 	def load_configs(self, configpaths=None):
-		'''load the config files in order'''
+		'''load the config files in order
+
+		@param configpaths: ordered list of filepaths to load
+		'''
 		if configpaths:
 			self.configpaths = configpaths
 		elif not self.configpaths:
-			logging.error("ModuleConfig; Error: No repository.yml files defined")
+			logging.error("ModuleConfig; Error: No repository.yaml files defined")
 		configs = []
 		for path in self.configpaths:
 			logging.debug("ModuleConfig; Processing: %s", path)
