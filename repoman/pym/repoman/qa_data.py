@@ -8,6 +8,7 @@ from _emerge.Package import Package
 
 # import our initialized portage instance
 from repoman._portage import portage
+from repoman.config import load_config
 
 
 class QAData(object):
@@ -35,22 +36,7 @@ class QAData(object):
 						 This could be a parent repository using the
 						 repoman_masters layout.conf variable
 		'''
-		qadata = {}
-		for path in repopaths:
-			filepath = os.path.join(path, 'qa_data.yaml')
-			logging.debug("QAData: reading file: %s", filepath)
-			try:
-				with open(filepath, 'r') as qadata_file:
-					new_qadata = yaml.safe_load(qadata_file.read())
-					logging.debug("QAData: updating qadata with new values from: %s", filepath)
-					qadata.update(new_qadata)
-			except FileNotFoundError:
-				# skip a master that may not have our file
-				logging.debug("QAData: File not found at path: %s", filepath)
-			except IOError as error:
-				logging.error("QAData: Failed to load 'qa_data.yaml' file at path: %s", filepath)
-				logging.exception(error)
-				return False
+		qadata = load_config([os.path.join(path,'qa_data.yaml') for path in repopaths], 'yaml')
 		if qadata == {}:
 			logging.error("QAData: Failed to load a valid 'qa_data.yaml' file at paths: %s", repopaths)
 			return False
@@ -93,7 +79,7 @@ class QAData(object):
 
 		# file.executable
 		self.no_exec = frozenset(qadata.get("no_exec_files", []))
-		logging.debug("QAData: completed loading file: %s", filepath)
+		logging.debug("QAData: completed loading file: %s", repopaths)
 		return True
 
 
