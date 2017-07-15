@@ -47,7 +47,7 @@ module_spec = {
 			'functions': ['check'],
 			'func_kwargs': {
 			},
-			'mod_kwargs': ['qatracker', 'options'
+			'mod_kwargs': ['qatracker', 'options', 'repo_settings', 'linechecks',
 			],
 			'func_kwargs': {
 				'ebuild': (None, None),
