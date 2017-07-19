@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.path:first_existing',
-	'portage.util._urlopen:urlopen@_urlopen',
+	'portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476',
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
@@ -851,9 +851,9 @@ class binarytree(object):
 						download_timestamp + ttl > time.time():
 						raise UseCachedCopyOfRemoteIndex()
 
-				# Don't use urlopen for https, since it doesn't support
-				# certificate/hostname verification (bug #469888).
-				if parsed_url.scheme not in ('https',):
+				# Don't use urlopen for https, unless
+				# PEP 476 is supported (bug #469888).
+				if parsed_url.scheme not in ('https',) or _have_pep_476():
 					try:
 						f = _urlopen(url, if_modified_since=local_timestamp)
 						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
@@ -965,6 +965,8 @@ class binarytree(object):
 					"\n")
 				rmt_idx = pkgindex
 			except EnvironmentError as e:
+				# This includes URLError which is raised for SSL
+				# certificate errors when PEP 476 is supported.
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % _hide_url_passwd(base_url))
 				# With Python 2, the EnvironmentError message may

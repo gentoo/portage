@@ -26,6 +26,18 @@ if sys.hexversion >= 0x3000000:
 #  and the file-'mtime'
 TIMESTAMP_TOLERANCE = 5
 
+
+def have_pep_476():
+	"""
+	Test whether ssl certificate verification is enabled by default for
+	stdlib http clients (PEP 476).
+
+	@returns: bool, True if ssl certificate verification is enabled by
+		default
+	"""
+	return hasattr(__import__('ssl'), '_create_unverified_context')
+
+
 def urlopen(url, if_modified_since=None):
 	parse_result = urllib_parse.urlparse(url)
 	if parse_result.scheme not in ("http", "https"):
