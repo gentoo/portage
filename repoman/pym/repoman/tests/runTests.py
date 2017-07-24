@@ -17,7 +17,7 @@ def debug_signal(signum, frame):
 	pdb.set_trace()
 
 if platform.python_implementation() == 'Jython':
-	debug_signum = signal.SIGUSR2 # bug #424259
+	debug_signum = signal.SIGUSR2  # bug #424259
 else:
 	debug_signum = signal.SIGUSR1
 
