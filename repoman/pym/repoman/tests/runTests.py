@@ -3,7 +3,8 @@
 # Copyright 2006-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, sys
+import os
+import sys
 import os.path as osp
 import grp
 import platform
