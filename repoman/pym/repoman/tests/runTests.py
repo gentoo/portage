@@ -35,7 +35,7 @@ repoman_pym = osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))
 sys.path.insert(0, repoman_pym)
 
 # Add in the parent portage python modules
-portage_pym = osp.dirname(osp.dirname(repoman_pym))+'/pym'
+portage_pym = osp.dirname(osp.dirname(repoman_pym)) + '/pym'
 sys.path.insert(0, portage_pym)
 
 # import our centrally initialized portage instance
