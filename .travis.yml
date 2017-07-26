@@ -16,6 +16,8 @@ install:
     - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] ]] || pip install pyblake2"
     # always install pygost for Streebog
     - pip install pygost
+    # pyyaml is needed for building
+    - pip install pyyaml
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
