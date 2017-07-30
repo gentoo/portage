@@ -526,7 +526,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 				mysettings["KV"] = ""
 			mysettings.backup_changes("KV")
 
-		binpkg_compression = mysettings.get("BINPKG_COMPRESSION", "bzip2")
+		binpkg_compression = mysettings.get("BINPKG_COMPRESS", "bzip2")
 		try:
 			compression = _compressors[binpkg_compression]
 		except KeyError as e:

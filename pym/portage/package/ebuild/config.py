@@ -1172,12 +1172,12 @@ class config(object):
 				writemsg(_("!!! See https://bugs.pypy.org/issue833 for details.\n"),
 					noiselevel=-1)
 
-		binpkg_compression = self.get("BINPKG_COMPRESSION")
+		binpkg_compression = self.get("BINPKG_COMPRESS")
 		if binpkg_compression:
 			try:
 				compression = _compressors[binpkg_compression]
 			except KeyError as e:
-				writemsg("!!! BINPKG_COMPRESSION contains invalid or "
+				writemsg("!!! BINPKG_COMPRESS contains invalid or "
 					"unsupported compression method: %s" % e.args[0],
 					noiselevel=-1)
 			else:
@@ -1186,14 +1186,14 @@ class config(object):
 						portage.util.varexpand(compression["compress"],
 						mydict=self))[0]
 				except IndexError as e:
-					writemsg("!!! BINPKG_COMPRESSION contains invalid or "
+					writemsg("!!! BINPKG_COMPRESS contains invalid or "
 						"unsupported compression method: %s" % e.args[0],
 						noiselevel=-1)
 				else:
 					if portage.process.find_binary(
 						compression_binary) is None:
 						missing_package = compression["package"]
-						writemsg("!!! BINPKG_COMPRESSION unsupported %s. "
+						writemsg("!!! BINPKG_COMPRESS unsupported %s. "
 							"Missing package: %s" %
 							(binpkg_compression, missing_package),
 							noiselevel=-1)

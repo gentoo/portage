@@ -137,7 +137,7 @@ def quickpkg_atom(options, infos, arg, eout):
 			binpkg_tmpfile = os.path.join(bintree.pkgdir,
 				cpv + ".tbz2." + str(os.getpid()))
 			ensure_dirs(os.path.dirname(binpkg_tmpfile))
-			binpkg_compression = settings.get("BINPKG_COMPRESSION", "bzip2")
+			binpkg_compression = settings.get("BINPKG_COMPRESS", "bzip2")
 			try:
 				compression = _compressors[binpkg_compression]
 			except KeyError as e:

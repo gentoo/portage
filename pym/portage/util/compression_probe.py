@@ -13,38 +13,38 @@ from portage.exception import FileNotFound, PermissionDenied
 
 _compressors = {
 	"bzip2": {
-		"compress": "${PORTAGE_BZIP2_COMMAND} ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "${PORTAGE_BZIP2_COMMAND} ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "${PORTAGE_BUNZIP2_COMMAND}",
 		"decompress_alt": "${PORTAGE_BZIP2_COMMAND} -d",
 		"package": "app-arch/bzip2",
 	},
 	"gzip": {
-		"compress": "gzip ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "gzip ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "gzip -d",
 		"package": "app-arch/gzip",
 	},
 	"lz4": {
-		"compress": "lz4 ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "lz4 ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "lz4 -d",
 		"package": "app-arch/lz4",
 	},
 	"lzip": {
-		"compress": "lzip ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "lzip ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "lzip -d",
 		"package": "app-arch/lzip",
 	},
 	"lzop": {
-		"compress": "lzop ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "lzop ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "lzop -d",
 		"package": "app-arch/lzop",
 	},
 	"xz": {
-		"compress": "xz ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "xz ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "xz -d",
 		"package": "app-arch/xz-utils",
 	},
 	"zstd": {
-		"compress": "zstd ${BINPKG_COMPRESSION_ARGS}",
+		"compress": "zstd ${BINPKG_COMPRESS_FLAGS}",
 		"decompress": "zstd -d",
 		"package": "app-arch/zstd",
 	},
