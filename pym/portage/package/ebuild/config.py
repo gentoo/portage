@@ -25,6 +25,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep.soname.SonameAtom:SonameAtom',
 	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
+	'portage.util.compression_probe:_compressors',
 	'portage.util.locale:check_locale,split_LC_ALL',
 )
 from portage import bsd_chflags, \
@@ -1170,6 +1171,32 @@ class config(object):
 			if warning_shown and platform.python_implementation() == 'PyPy':
 				writemsg(_("!!! See https://bugs.pypy.org/issue833 for details.\n"),
 					noiselevel=-1)
+
+		binpkg_compression = self.get("BINPKG_COMPRESSION")
+		if binpkg_compression:
+			try:
+				compression = _compressors[binpkg_compression]
+			except KeyError as e:
+				writemsg("!!! BINPKG_COMPRESSION contains invalid or "
+					"unsupported compression method: %s" % e.args[0],
+					noiselevel=-1)
+			else:
+				try:
+					compression_binary = shlex_split(
+						portage.util.varexpand(compression["compress"],
+						mydict=self))[0]
+				except IndexError as e:
+					writemsg("!!! BINPKG_COMPRESSION contains invalid or "
+						"unsupported compression method: %s" % e.args[0],
+						noiselevel=-1)
+				else:
+					if portage.process.find_binary(
+						compression_binary) is None:
+						missing_package = compression["package"]
+						writemsg("!!! BINPKG_COMPRESSION unsupported %s. "
+							"Missing package: %s" %
+							(binpkg_compression, missing_package),
+							noiselevel=-1)
 
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
