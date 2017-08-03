@@ -14,6 +14,11 @@ import tempfile
 import time
 from itertools import chain
 
+try:
+	from urllib.parse import parse_qs, urlsplit, urlunsplit
+except ImportError:
+	from urlparse import parse_qs, urlsplit, urlunsplit
+
 from _emerge.UserQuery import UserQuery
 
 from repoman._portage import portage
@@ -324,6 +329,13 @@ class Actions(object):
 		return (changes.new, changes.changed, changes.removed,
 				changes.no_expansion, changes.expansion)
 
+	https_bugtrackers = frozenset([
+		'bitbucket.org',
+		'bugs.gentoo.org',
+		'github.com',
+		'gitlab.com',
+	])
+
 	def get_commit_footer(self):
 		portage_version = getattr(portage, "VERSION", None)
 		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
@@ -345,6 +357,36 @@ class Actions(object):
 
 		# Common part of commit footer
 		commit_footer = "\n"
+		for bug in self.options.bug:
+			# case 1: pure number NNNNNN
+			if bug.isdigit():
+				bug = 'https://bugs.gentoo.org/%s' % (bug, )
+			else:
+				purl = urlsplit(bug)
+				qs = parse_qs(purl.query)
+				# case 2: long Gentoo bugzilla URL to shorten
+				if (purl.netloc == 'bugs.gentoo.org' and
+						purl.path == '/show_bug.cgi' and
+						tuple(qs.keys()) == ('id',)):
+					bug = urlunsplit(('https', purl.netloc,
+							qs['id'][-1], '', purl.fragment))
+				# case 3: bug tracker w/ http -> https
+				elif (purl.scheme == 'http' and
+						purl.netloc in self.https_bugtrackers):
+					bug = urlunsplit(('https',) + purl[1:])
+			commit_footer += "Bug: %s\n" % (bug, )
+
+		for closes in self.options.closes:
+			# case 1: pure number NNNN
+			if closes.isdigit():
+				closes = 'https://github.com/gentoo/gentoo/pull/%s' % (closes, )
+			else:
+				purl = urlsplit(closes)
+				# case 2: bug tracker w/ http -> https
+				if purl.netloc in self.https_bugtrackers:
+					closes = urlunsplit(('https',) + purl[1:])
+			commit_footer += "Closes: %s\n" % (closes, )
+
 		if dco_sob:
 			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 
