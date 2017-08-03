@@ -342,25 +342,26 @@ class Actions(object):
 			sys.stderr.write("Failed to insert portage version in message!\n")
 			sys.stderr.flush()
 			portage_version = "Unknown"
+
+		# Common part of commit footer
+		commit_footer = "\n"
+		if dco_sob:
+			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer = "\nPackage-Manager: Portage-%s, Repoman-%s" % (
+			commit_footer += "Package-Manager: Portage-%s, Repoman-%s" % (
 							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
 			if self.repo_settings.sign_manifests:
 				commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
-			if dco_sob:
-				commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
 		else:
 			unameout = platform.system() + " "
 			if platform.system() in ["Darwin", "SunOS"]:
 				unameout += platform.processor()
 			else:
 				unameout += platform.machine()
-			commit_footer = "\n"
-			if dco_sob:
-				commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 			commit_footer += "(Portage version: %s/%s/%s" % \
 				(portage_version, self.vcs_settings.vcs, unameout)
 			if report_options:
