@@ -57,12 +57,12 @@ class KeywordsManager(object):
 			pkgdict = grabdict_package(
 				os.path.join(abs_user_config, "package.keywords"),
 				recursive=1, allow_wildcard=True, allow_repo=True,
-				verify_eapi=False)
+				verify_eapi=False, allow_build_id=True)
 
 			for k, v in grabdict_package(
 				os.path.join(abs_user_config, "package.accept_keywords"),
 				recursive=1, allow_wildcard=True, allow_repo=True,
-				verify_eapi=False).items():
+				verify_eapi=False, allow_build_id=True).items():
 				pkgdict.setdefault(k, []).extend(v)
 
 			accept_keywords_defaults = global_accept_keywords.split()
