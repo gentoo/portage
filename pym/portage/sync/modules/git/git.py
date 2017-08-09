@@ -139,6 +139,6 @@ class GitSync(NewBase):
 		try:
 			ret = (os.EX_OK, subprocess.check_output(rev_cmd,
 				cwd=portage._unicode_encode(self.repo.location)))
-		except CalledProcessError:
+		except subprocess.CalledProcessError:
 			ret = (1, False)
 		return ret
