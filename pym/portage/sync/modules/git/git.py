@@ -137,8 +137,9 @@ class GitSync(NewBase):
 			self._kwargs(kwargs)
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
 		try:
-			ret = (os.EX_OK, subprocess.check_output(rev_cmd,
-				cwd=portage._unicode_encode(self.repo.location)))
+			ret = (os.EX_OK,
+				portage._unicode_decode(subprocess.check_output(rev_cmd,
+				cwd=portage._unicode_encode(self.repo.location))))
 		except subprocess.CalledProcessError:
 			ret = (1, False)
 		return ret
