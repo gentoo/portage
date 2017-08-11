@@ -1,5 +1,20 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.7
+-----------------
+* eapply_user combines patch basenames from all matched directories into a
+  list, and applies them in POSIX sorted order. This allows patches in
+  more-specific directories to override patches of the same basename found
+  in less-specific directories. An empty patch (or /dev/null symlink) negates
+  a patch with the same basename found in a less-specific directory.
+* FEATURES=multilib-strict no longer recurses into subdirectories, in order
+  to avoid false-positives. The MULTILIB_STRICT_EXEMPT variable only served
+  to filter false-positives that were triggered by recursion, so it will no
+  longer be needed.
+* New emerge --autounmask-keep-keywords and --onlydeps-with-rdeps=<y|n>
+  options.
+
+
 portage-2.3.5
 -----------------
 * Numerous patches updating checksums code and python module imports for them

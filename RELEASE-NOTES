@@ -1,6 +1,20 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.7
+==================================
+* Bug Fixes:
+    - Bug 424423 multilib-strict: disable recursion into subdirectories
+    - Bug 608880 eapply_user: combine sort for all dirs
+    - Bug 610670 man/portage.5: document -* in profile "packages" files
+    - Bug 619612 emerge: warn for --autounmask-continue with --autounmask=n
+    - Bug 619620 depgraph: account for binpkg-multi-instance in unused warning
+    - Bug 619626 depgraph: prune unnecessary rebuilds for --autounmask-continue
+    - Bug 622480 emerge: add --autounmask-keep-keywords option
+    - Bug 623648 fuzzy search: weigh category similarity independently
+    - Bug 625246 emerge --getbinpkg: https support for If-Modified-Since
+
+
 portage-2.3.6
 ==================================
 * Bug Fixes:
