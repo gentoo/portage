@@ -129,6 +129,7 @@ def insert_optional_args(args):
 		'--autounmask'           : y_or_n,
 		'--autounmask-continue'  : y_or_n,
 		'--autounmask-only'      : y_or_n,
+		'--autounmask-keep-keywords' : y_or_n,
 		'--autounmask-keep-masks': y_or_n,
 		'--autounmask-unrestricted-atoms' : y_or_n,
 		'--autounmask-write'     : y_or_n,
@@ -345,6 +346,11 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--autounmask-unrestricted-atoms": {
 			"help"    : "write autounmask changes with >= atoms if possible",
+			"choices" : true_y_or_n
+		},
+
+		"--autounmask-keep-keywords": {
+			"help"    : "don't add package.accept_keywords entries",
 			"choices" : true_y_or_n
 		},
 
@@ -796,6 +802,9 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myoptions.autounmask_unrestricted_atoms in true_y:
 		myoptions.autounmask_unrestricted_atoms = True
+
+	if myoptions.autounmask_keep_keywords in true_y:
+		myoptions.autounmask_keep_keywords = True
 
 	if myoptions.autounmask_keep_masks in true_y:
 		myoptions.autounmask_keep_masks = True

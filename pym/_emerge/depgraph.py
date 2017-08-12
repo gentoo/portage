@@ -5707,6 +5707,7 @@ class depgraph(object):
 		if self._dynamic_config._autounmask is not True:
 			return
 
+		autounmask_keep_keywords = self._frozen_config.myopts.get("--autounmask-keep-keywords", "n") != "n"
 		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
 		autounmask_level = self._AutounmaskLevel()
 
@@ -5716,14 +5717,16 @@ class depgraph(object):
 		autounmask_level.allow_license_changes = True
 		yield autounmask_level
 
-		autounmask_level.allow_unstable_keywords = True
-		yield autounmask_level
+		if not autounmask_keep_keywords:
+			autounmask_level.allow_unstable_keywords = True
+			yield autounmask_level
 
-		if not autounmask_keep_masks:
-
+		if not (autounmask_keep_keywords or autounmask_keep_masks):
+			autounmask_level.allow_unstable_keywords = True
 			autounmask_level.allow_missing_keywords = True
 			yield autounmask_level
 
+		if not autounmask_keep_masks:
 			# 4. USE + license + masks
 			# Try to respect keywords while discarding
 			# package.mask (see bug #463394).
@@ -5732,6 +5735,7 @@ class depgraph(object):
 			autounmask_level.allow_unmasks = True
 			yield autounmask_level
 
+		if not (autounmask_keep_keywords or autounmask_keep_masks):
 			autounmask_level.allow_unstable_keywords = True
 
 			for missing_keyword, unmask in ((False, True), (True, True)):
