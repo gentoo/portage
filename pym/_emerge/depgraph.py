@@ -5708,6 +5708,7 @@ class depgraph(object):
 			return
 
 		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
+		autounmask_use_only = self._frozen_config.myopts.get("--autounmask-use-only", "n") != "n"
 		autounmask_level = self._AutounmaskLevel()
 
 		autounmask_level.allow_use_changes = True
@@ -5715,6 +5716,9 @@ class depgraph(object):
 
 		autounmask_level.allow_license_changes = True
 		yield autounmask_level
+
+		if autounmask_use_only:
+			return
 
 		autounmask_level.allow_unstable_keywords = True
 		yield autounmask_level
