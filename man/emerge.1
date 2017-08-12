@@ -400,6 +400,11 @@ If \-\-autounmask is enabled, no package.unmask or ** keyword changes
 will be created. This leads to unsatisfied dependencies if
 no other solution exists.
 .TP
+.BR "\-\-autounmask\-use\-only [ y | n ]"
+If \-\-autounmask is enabled, only package.use changes will be created.
+This leads to unsatisfied dependencies if any package.unmask or keyword
+changes are required.
+.TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
 to config files, respecting \fBCONFIG_PROTECT\fR and \fB\-\-ask\fR.
