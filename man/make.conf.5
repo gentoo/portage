@@ -110,6 +110,31 @@ ACCEPT_RESTRICT="*"
 ACCEPT_RESTRICT="* -bindist"
 .fi
 .TP
+\fBBINPKG_COMPRESS\fR = \fI"compression"\fR
+This variable is used to determine the compression used for \fIbinary
+packages\fR. Supported settings and compression algorithms are: bzip2, gzip,
+lz4, lzip, lzop, xz, zstd.
+.br
+Defaults to "bzip2".
+.br
+.I Example:
+.nf
+# Set it to use lz4:
+BINPKG_COMPRESS="lz4"
+.fi
+.TP
+\fBBINPKG_COMPRESS_FLAGS\fR = \fI"arguments for compression command"\fR
+This variable is used to add additional arguments to the compression command
+selected by \fBBINPKG_COMPRESS\fR.
+.br
+Defaults to "".
+.br
+.I Example:
+.nf
+# Set it to use compression level 9:
+BINPKG_COMPRESS_FLAGS="-9"
+.fi
+.TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself

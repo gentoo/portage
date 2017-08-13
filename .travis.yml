@@ -1,7 +1,6 @@
 language: python
 python:
     - 2.7
-    - 3.3
     - 3.4
     - 3.5
     - 3.6
@@ -14,8 +13,7 @@ install:
     # (except for pypy where pysha3 is broken)
     - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] || ${TRAVIS_PYTHON_VERSION} == pypy ]] || pip install pysha3"
     # always install pygost for Streebog
-    # (except for py3.3 which it does not support)
-    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.3 ]] || pip install pygost"
+    - pip install pygost
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg

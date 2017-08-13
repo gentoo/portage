@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.3
+==================================
+* Bug Fixes:
+    - Bug 571546 Change how the tmp file for the commit msg is made
+* flag URIs using http:// when https:// is available
+* Add a check for relative dosym candidates
+* Make all shebangs prefix friendly
+* Mark ruby-2.0 as deprecated
+* Detect inconsistent metadata.xml indentation
+* Warn about dropped keywords only for latest in SLOT.
+
+
 repoman-2.3.2
 ==================================
 * Bug Fixes:

@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jan 2017" "Portage VERSION" "Portage"
+.TH "PORTAGE" "31" "May 2017" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -369,7 +369,8 @@ hurt \fBemerge\fR's ability to parallelize.
 .I Note:
 In a cascading profile setup, you can remove packages in children
 profiles which were added by parent profiles by prefixing the atom with
-a '\-'.
+a '\-'. The '\-*' wildcard discards all @system and @profile packages
+added by parent profiles.
 
 .I Example:
 .nf
@@ -978,8 +979,30 @@ Specifies CVS repository.
 .B sync\-depth
 This is a deprecated alias for the \fBclone\-depth\fR option.
 .TP
+.B sync\-git\-clone\-env
+Set environment variables for git when cloning repository (git clone).
+This will override settings from sync-git-env.
+.RS
+.TP
+.I Example:
+sync-git-clone-env="VAR1=word1 word2" VAR2=word3 "VAR3=$word 5 6"
+.br
+Gives three variables "VAR1", "VAR2", "VAR3" with the values "word1 word2",
+"word3", "$word 5 6".
+.RE
+.TP
 .B sync\-git\-clone\-extra\-opts
 Extra options to give to git when cloning repository (git clone).
+.TP
+.B sync\-git\-env
+Set environment variables for git when cloning or pulling the repository.
+These will be overridden by setting them again in sync-git-clone-env and sync-git-pull-env.
+See also example for sync-git-clone-env.
+.TP
+.B sync\-git\-pull\-env
+Set environment variables for git when updating repository (git pull).
+This will override settings from sync-git-env.
+See also example for sync-git-clone-env.
 .TP
 .B sync\-git\-pull\-extra\-opts
 Extra options to give to git when updating repository (git pull).

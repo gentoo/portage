@@ -528,11 +528,15 @@ class x_install_scripts(install_scripts):
 
 
 class x_sdist(sdist):
-	""" sdist defaulting to .tar.bz2 format """
+	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
 
 	def finalize_options(self):
 		if self.formats is None:
 			self.formats = ['bztar']
+		if self.owner is None:
+			self.owner = 'root'
+		if self.group is None:
+			self.group = 'root'
 
 		sdist.finalize_options(self)
 
@@ -655,7 +659,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.6',
+	version = '2.3.7',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

@@ -1,5 +1,5 @@
 # repoman: Argument parser
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to parse CLI arguments."""
@@ -56,6 +56,20 @@ def parse_args(argv, qahelp, repoman_default_opts):
 		'-a', '--ask', dest='ask', action='store_true',
 		default=False,
 		help='Request a confirmation before commiting')
+
+	parser.add_argument(
+		'-b', '--bug', dest='bug', action='append', metavar='<BUG-NO|BUG-URL>',
+		default=[],
+		help=(
+			'Mention a Gentoo or upstream bug in the commit footer; '
+			'takes either Gentoo bug number or full bug URL'))
+
+	parser.add_argument(
+		'-c', '--closes', dest='closes', action='append', metavar='<PR-NO|PR-URL>',
+		default=[],
+		help=(
+			'Adds a Closes footer to close GitHub pull request (or compatible); '
+			'takes either GitHub PR number or full PR URL'))
 
 	parser.add_argument(
 		'-m', '--commitmsg', dest='commitmsg',

@@ -264,14 +264,32 @@ class search(object):
 			if self.fuzzy:
 				fuzzy = True
 				cutoff = float(self.search_similarity) / 100
-				seq_match = difflib.SequenceMatcher()
-				seq_match.set_seq2(self.searchkey.lower())
+				if match_category:
+					# Weigh the similarity of category and package
+					# names independently, in order to avoid matching
+					# lots of irrelevant packages in the same category
+					# when the package name is much shorter than the
+					# category name.
+					part_split = portage.catsplit
+				else:
+					part_split = lambda match_string: (match_string,)
 
-				def fuzzy_search(match_string):
+				part_matchers = []
+				for part in part_split(self.searchkey):
+					seq_match = difflib.SequenceMatcher()
+					seq_match.set_seq2(part.lower())
+					part_matchers.append(seq_match)
+
+				def fuzzy_search_part(seq_match, match_string):
 					seq_match.set_seq1(match_string.lower())
 					return (seq_match.real_quick_ratio() >= cutoff and
 						seq_match.quick_ratio() >= cutoff and
 						seq_match.ratio() >= cutoff)
+
+				def fuzzy_search(match_string):
+					return all(fuzzy_search_part(seq_match, part)
+						for seq_match, part in zip(
+						part_matchers, part_split(match_string)))
 
 		for package in self._cp_all():
 			self._spinner_update()

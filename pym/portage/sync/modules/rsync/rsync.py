@@ -303,6 +303,18 @@ class RsyncSync(NewBase):
 			return (1, False)
 		return self.update()
 
+	def retrieve_head(self, **kwargs):
+		'''Get information about the head commit'''
+		if kwargs:
+			self._kwargs(kwargs)
+		last_sync = portage.grabfile(os.path.join(self.repo.location, "metadata", "timestamp.commit"))
+		ret = (1, False)
+		if last_sync:
+			try:
+				ret = (os.EX_OK, last_sync[0].split()[0])
+			except IndexError:
+				pass
+		return ret
 
 	def _set_rsync_defaults(self):
 		portage.writemsg("PORTAGE_RSYNC_OPTS empty or unset, using hardcoded defaults\n")

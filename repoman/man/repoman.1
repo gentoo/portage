@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Feb 2017" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "Jun 2017" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -20,6 +20,20 @@ BASH.
 .TP
 \fB-a\fR, \fB--ask\fR
 Request a confirmation before commiting
+.TP
+\fB-b\fR, \fB--bug\fR
+Include a bug reference in the commit message footer. The argument can
+be either a Gentoo bug number or a full bug URL (either Gentoo
+or upstream). Gentoo bug URLs are automatically shortened to
+the canonical \fBhttps://bugs.gentoo.org/NNNNNN\fR form, and HTTPS
+is forced for known bug trackers.
+.TP
+\fB-c\fR, \fB--closes\fR
+Include a \fBCloses\fR tag in the commit message footer that can be used
+to close pull requests (and issues) on GitHub and other compatible
+services (GitLab, Bitbucket). The argument can be either a PR number for
+the gentoo/gentoo GitHub repository or a full PR/bug URL. For bug URLs,
+HTTPS is forced automatically for known bug/PR trackers.
 .TP
 \fB\-\-digest=<y|n>\fR
 Automatically update Manifest digests for modified files. This
@@ -254,7 +268,7 @@ An ebuild was added but the ChangeLog was not modified
 Missing ChangeLog files
 .TP
 .B changelog.notadded
-ChangeLogs that exist but have not been added to cvs
+ChangeLogs that exist but have not been added to the vcs
 .TP
 .B dependency.bad
 User-visible ebuilds with unsatisfied dependencies (matched against *visible*
@@ -317,7 +331,7 @@ Ebuild files that do not have the same name as their parent directory
 Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.
 .TP
 .B ebuild.notadded
-Ebuilds that exist but have not been added to cvs
+Ebuilds that exist but have not been added to the vcs
 .TP
 .B ebuild.output
 A simple sourcing of the ebuild produces output; this breaks ebuild policy.

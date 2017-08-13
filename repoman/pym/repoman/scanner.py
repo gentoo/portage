@@ -414,7 +414,7 @@ class Scanner(object):
 		# initialize per pkg plugin final checks here
 		# need to set it up for ==> self.modules_list or some other ordered list
 		xpkg_complete = False
-		for mod in [('pkgmetadata', 'PkgMetadata')]:
+		for mod in [('pkgmetadata', 'PkgMetadata'), ('keywords', 'KeywordChecks')]:
 			if mod[0] and mod[1] not in self.modules:
 				mod_class = MODULE_CONTROLLER.get_class(mod[0])
 				logging.debug("Initializing class name: %s", mod_class.__name__)

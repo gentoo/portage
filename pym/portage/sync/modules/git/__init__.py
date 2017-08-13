@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Git plug-in module for portage.
@@ -43,16 +43,20 @@ module_spec = {
 			'sourcefile': "git",
 			'class': "GitSync",
 			'description': doc,
-			'functions': ['sync', 'new', 'exists'],
+			'functions': ['sync', 'new', 'exists', 'retrieve_head'],
 			'func_desc': {
 				'sync': 'Performs a git pull on the repository',
 				'new': 'Creates the new repository at the specified location',
 				'exists': 'Returns a boolean of whether the specified dir ' +
 					'exists and is a valid Git repository',
+				'retrieve_head': 'Returns the head commit hash',
 			},
 			'validate_config': CheckGitConfig,
 			'module_specific_options': (
+				'sync-git-clone-env',
 				'sync-git-clone-extra-opts',
+				'sync-git-env',
+				'sync-git-pull-env',
 				'sync-git-pull-extra-opts',
 				),
 		}

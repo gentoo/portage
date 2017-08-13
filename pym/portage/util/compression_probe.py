@@ -11,14 +11,43 @@ if sys.hexversion >= 0x3000000:
 from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, PermissionDenied
 
-_decompressors = {
-	"bzip2": "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}",
-	"gzip": "gzip -d",
-	"lz4": "lz4 -d",
-	"lzip": "lzip -d",
-	"lzop": "lzop -d",
-	"xz": "xz -d",
-	"zstd": "zstd -d",
+_compressors = {
+	"bzip2": {
+		"compress": "${PORTAGE_BZIP2_COMMAND} ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "${PORTAGE_BUNZIP2_COMMAND}",
+		"decompress_alt": "${PORTAGE_BZIP2_COMMAND} -d",
+		"package": "app-arch/bzip2",
+	},
+	"gzip": {
+		"compress": "gzip ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "gzip -d",
+		"package": "app-arch/gzip",
+	},
+	"lz4": {
+		"compress": "lz4 ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "lz4 -d",
+		"package": "app-arch/lz4",
+	},
+	"lzip": {
+		"compress": "lzip ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "lzip -d",
+		"package": "app-arch/lzip",
+	},
+	"lzop": {
+		"compress": "lzop ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "lzop -d",
+		"package": "app-arch/lzop",
+	},
+	"xz": {
+		"compress": "xz ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "xz -d",
+		"package": "app-arch/xz-utils",
+	},
+	"zstd": {
+		"compress": "zstd ${BINPKG_COMPRESS_FLAGS}",
+		"decompress": "zstd -d",
+		"package": "app-arch/zstd",
+	},
 }
 
 _compression_re = re.compile(b'^(' +

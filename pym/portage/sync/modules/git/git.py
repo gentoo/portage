@@ -1,4 +1,4 @@
-# Copyright 2005-2015 Gentoo Foundation
+# Copyright 2005-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -6,7 +6,7 @@ import subprocess
 
 import portage
 from portage import os
-from portage.util import writemsg_level
+from portage.util import writemsg_level, shlex_split
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -50,6 +50,16 @@ class GitSync(NewBase):
 			sync_uri = sync_uri[6:]
 
 		git_cmd_opts = ""
+		if self.repo.module_specific_options.get('sync-git-env'):
+			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-env'])
+			env = dict((k, v) for k, _, v in (assignment.partition('=') for assignment in shlexed_env) if k)
+			self.spawn_kwargs['env'].update(env)
+
+		if self.repo.module_specific_options.get('sync-git-clone-env'):
+			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-clone-env'])
+			clone_env = dict((k, v) for k, _, v in (assignment.partition('=') for assignment in shlexed_env) if k)
+			self.spawn_kwargs['env'].update(clone_env)
+
 		if self.settings.get("PORTAGE_QUIET") == "1":
 			git_cmd_opts += " --quiet"
 		if self.repo.clone_depth is not None:
@@ -86,6 +96,16 @@ class GitSync(NewBase):
 		'''
 
 		git_cmd_opts = ""
+		if self.repo.module_specific_options.get('sync-git-env'):
+			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-env'])
+			env = dict((k, v) for k, _, v in (assignment.partition('=') for assignment in shlexed_env) if k)
+			self.spawn_kwargs['env'].update(env)
+
+		if self.repo.module_specific_options.get('sync-git-pull-env'):
+			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-pull-env'])
+			pull_env = dict((k, v) for k, _, v in (assignment.partition('=') for assignment in shlexed_env) if k)
+			self.spawn_kwargs['env'].update(pull_env)
+
 		if self.settings.get("PORTAGE_QUIET") == "1":
 			git_cmd_opts += " --quiet"
 		if self.repo.module_specific_options.get('sync-git-pull-extra-opts'):
@@ -110,3 +130,16 @@ class GitSync(NewBase):
 			cwd=portage._unicode_encode(self.repo.location))
 
 		return (os.EX_OK, current_rev != previous_rev)
+
+	def retrieve_head(self, **kwargs):
+		'''Get information about the head commit'''
+		if kwargs:
+			self._kwargs(kwargs)
+		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
+		try:
+			ret = (os.EX_OK,
+				portage._unicode_decode(subprocess.check_output(rev_cmd,
+				cwd=portage._unicode_encode(self.repo.location))))
+		except subprocess.CalledProcessError:
+			ret = (1, False)
+		return ret

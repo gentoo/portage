@@ -1,5 +1,5 @@
-#!/usr/bin/python
-# Copyright 2010-2015 Gentoo Foundation
+#!/usr/bin/env python
+# Copyright 2010-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Note: We don't want to import portage modules directly because we do things

@@ -129,8 +129,11 @@ class NewBase(SyncBase):
 		'''Do the initial download and install of the repository'''
 		raise NotImplementedError
 
-
 	def update(self):
 		'''Update existing repository
 		'''
+		raise NotImplementedError
+
+	def retrieve_head(self, **kwargs):
+		'''Get information about the head commit'''
 		raise NotImplementedError

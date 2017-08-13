@@ -5,6 +5,7 @@ from __future__ import division, print_function, unicode_literals
 
 import collections
 import errno
+import functools
 import io
 import logging
 import stat
@@ -856,23 +857,26 @@ class depgraph(object):
 				for parent in self._forced_rebuilds[root][child]:
 					writemsg_stdout("    %s\n" % (parent,), noiselevel=-1)
 
-	def _show_ignored_binaries(self):
+	def _eliminate_ignored_binaries(self):
 		"""
-		Show binaries that have been ignored because their USE didn't
-		match the user's config.
+		Eliminate any package from self._dynamic_config.ignored_binaries
+		for which a more optimal alternative exists.
 		"""
-		if not self._dynamic_config.ignored_binaries \
-			or '--quiet' in self._frozen_config.myopts:
-			return
-
-		ignored_binaries = {}
-
 		for pkg in list(self._dynamic_config.ignored_binaries):
 
 			for selected_pkg in self._dynamic_config._package_tracker.match(
 				pkg.root, pkg.slot_atom):
 
 				if selected_pkg > pkg:
+					self._dynamic_config.ignored_binaries.pop(pkg)
+					break
+
+				# NOTE: The Package.__ge__ implementation accounts for
+				# differences in build_time, so the warning about "ignored"
+				# packages will be triggered if both packages are the same
+				# version and selected_pkg is not the most recent build.
+				if (selected_pkg.type_name == "binary" and
+					selected_pkg >= pkg):
 					self._dynamic_config.ignored_binaries.pop(pkg)
 					break
 
@@ -885,10 +889,67 @@ class depgraph(object):
 					self._dynamic_config.ignored_binaries.pop(pkg)
 					break
 
-			else:
-				for reason, info in self._dynamic_config.\
-					ignored_binaries[pkg].items():
-					ignored_binaries.setdefault(reason, {})[pkg] = info
+	def _ignored_binaries_autounmask_backtrack(self):
+		"""
+		Check if there are ignored binaries that would have been
+		accepted with the current autounmask USE changes.
+
+		@rtype: bool
+		@return: True if there are unnecessary rebuilds that
+			can be avoided by backtracking
+		"""
+		if not all([
+			self._dynamic_config._allow_backtracking,
+			self._dynamic_config._needed_use_config_changes,
+			self._dynamic_config.ignored_binaries]):
+			return False
+
+		self._eliminate_ignored_binaries()
+
+		# _eliminate_ignored_binaries may have eliminated
+		# all of the ignored binaries
+		if not self._dynamic_config.ignored_binaries:
+			return False
+
+		use_changes = collections.defaultdict(
+			functools.partial(collections.defaultdict, dict))
+		for pkg, (new_use, changes) in self._dynamic_config._needed_use_config_changes.items():
+			if pkg in self._dynamic_config.digraph:
+				use_changes[pkg.root][pkg.slot_atom] = (pkg, new_use)
+
+		for pkg in self._dynamic_config.ignored_binaries:
+			selected_pkg, new_use = use_changes[pkg.root].get(
+				pkg.slot_atom, (None, None))
+			if new_use is None:
+				continue
+
+			if new_use != pkg.use.enabled:
+				continue
+
+			if selected_pkg > pkg:
+				continue
+
+			return True
+
+		return False
+
+	def _show_ignored_binaries(self):
+		"""
+		Show binaries that have been ignored because their USE didn't
+		match the user's config.
+		"""
+		if not self._dynamic_config.ignored_binaries \
+			or '--quiet' in self._frozen_config.myopts:
+			return
+
+		self._eliminate_ignored_binaries()
+
+		ignored_binaries = {}
+
+		for pkg in self._dynamic_config.ignored_binaries:
+			for reason, info in self._dynamic_config.\
+				ignored_binaries[pkg].items():
+				ignored_binaries.setdefault(reason, {})[pkg] = info
 
 		if self._dynamic_config.myparams.get(
 			"binpkg_respect_use") in ("y", "n"):
@@ -4245,6 +4306,13 @@ class depgraph(object):
 				self._dynamic_config._skip_restart = True
 				return False, myfavorites
 
+		if (not self._dynamic_config._prune_rebuilds and
+			self._ignored_binaries_autounmask_backtrack()):
+			config = self._dynamic_config._backtrack_infos.setdefault("config", {})
+			config["prune_rebuilds"] = True
+			self._dynamic_config._need_restart = True
+			return False, myfavorites
+
 		# Any failures except those due to autounmask *alone* should return
 		# before this point, since the success_without_autounmask flag that's
 		# set below is reserved for cases where there are *zero* other
@@ -5639,6 +5707,7 @@ class depgraph(object):
 		if self._dynamic_config._autounmask is not True:
 			return
 
+		autounmask_keep_keywords = self._frozen_config.myopts.get("--autounmask-keep-keywords", "n") != "n"
 		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
 		autounmask_level = self._AutounmaskLevel()
 
@@ -5648,14 +5717,16 @@ class depgraph(object):
 		autounmask_level.allow_license_changes = True
 		yield autounmask_level
 
-		autounmask_level.allow_unstable_keywords = True
-		yield autounmask_level
+		if not autounmask_keep_keywords:
+			autounmask_level.allow_unstable_keywords = True
+			yield autounmask_level
 
-		if not autounmask_keep_masks:
-
+		if not (autounmask_keep_keywords or autounmask_keep_masks):
+			autounmask_level.allow_unstable_keywords = True
 			autounmask_level.allow_missing_keywords = True
 			yield autounmask_level
 
+		if not autounmask_keep_masks:
 			# 4. USE + license + masks
 			# Try to respect keywords while discarding
 			# package.mask (see bug #463394).
@@ -5664,6 +5735,7 @@ class depgraph(object):
 			autounmask_level.allow_unmasks = True
 			yield autounmask_level
 
+		if not (autounmask_keep_keywords or autounmask_keep_masks):
 			autounmask_level.allow_unstable_keywords = True
 
 			for missing_keyword, unmask in ((False, True), (True, True)):
@@ -6224,13 +6296,14 @@ class depgraph(object):
 							iuses = pkg.iuse.all
 							old_use = self._pkg_use_enabled(pkg)
 							if myeb:
-								pkgsettings.setcpv(myeb)
+								now_use = self._pkg_use_enabled(myeb)
+								forced_flags = set(chain(
+									myeb.use.force, myeb.use.mask))
 							else:
 								pkgsettings.setcpv(pkg)
-							now_use = pkgsettings["PORTAGE_USE"].split()
-							forced_flags = set()
-							forced_flags.update(pkgsettings.useforce)
-							forced_flags.update(pkgsettings.usemask)
+								now_use = pkgsettings["PORTAGE_USE"].split()
+								forced_flags = set(chain(
+									pkgsettings.useforce, pkgsettings.usemask))
 							cur_iuse = iuses
 							if myeb and not usepkgonly and not useoldpkg:
 								cur_iuse = myeb.iuse.all

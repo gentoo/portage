@@ -572,14 +572,14 @@ econf() {
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
-			# preserve timestamp, see bug #440304
-			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
+			cp -p "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			sed -i \
 				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
-				"${ECONF_SOURCE}/configure" \
+				"${ECONF_SOURCE}/configure._portage_tmp_.${pid}" \
 				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
-			touch -r "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
-			rm -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}"
+			# preserve timestamp, see bug #440304
+			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
+			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
 		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
 			find "${WORKDIR}" -type f '(' \
@@ -1094,22 +1094,43 @@ if ___eapi_has_eapply_user; then
 
 		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
-		local d applied
+		local applied d f
+		local -A _eapply_user_patches
 		local prev_shopt=$(shopt -p nullglob)
 		shopt -s nullglob
 
-		# possibilities:
+		# Patches from all matched directories are combined into a
+		# sorted (POSIX order) list of the patch basenames. Patches
+		# in more-specific directories override patches of the same
+		# basename found in less-specific directories. An empty patch
+		# (or /dev/null symlink) negates a patch with the same
+		# basename found in a less-specific directory.
+		#
+		# order of specificity:
 		# 1. ${CATEGORY}/${P}-${PR} (note: -r0 desired to avoid applying
 		#    ${P} twice)
 		# 2. ${CATEGORY}/${P}
 		# 3. ${CATEGORY}/${PN}
 		# all of the above may be optionally followed by a slot
-		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{,:${SLOT%/*}}; do
-			if [[ -n $(echo "${d}"/*.diff) || -n $(echo "${d}"/*.patch) ]]; then
-				eapply "${d}"
-				applied=1
-			fi
+		for d in "${basedir}"/${CATEGORY}/{${P}-${PR},${P},${PN}}{:${SLOT%/*},}; do
+			for f in "${d}"/*; do
+				if [[ ( ${f} == *.diff || ${f} == *.patch ) &&
+					-z ${_eapply_user_patches[${f##*/}]} ]]; then
+					_eapply_user_patches[${f##*/}]=${f}
+				fi
+			done
 		done
+
+		if [[ ${#_eapply_user_patches[@]} -gt 0 ]]; then
+			while read -r -d '' f; do
+				f=${_eapply_user_patches[${f}]}
+				if [[ -s ${f} ]]; then
+					eapply "${f}"
+					applied=1
+				fi
+			done < <(printf -- '%s\0' "${!_eapply_user_patches[@]}" |
+				LC_ALL=C sort -z)
+		fi
 
 		${prev_shopt}
 

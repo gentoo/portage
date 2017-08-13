@@ -239,7 +239,10 @@ class UseManager(object):
 		ret = ExtendedAtomDict(dict)
 		if user_config:
 			pusedict = grabdict_package(
-				os.path.join(location, file_name), recursive=1, newlines=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
+				os.path.join(location, file_name),
+				recursive=1, newlines=1, allow_wildcard=True,
+				allow_repo=True, verify_eapi=False,
+				allow_build_id=True)
 			for k, v in pusedict.items():
 				l = []
 				use_expand_prefix = ''

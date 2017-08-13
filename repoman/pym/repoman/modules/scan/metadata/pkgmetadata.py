@@ -3,8 +3,10 @@
 '''Package Metadata Checks operations'''
 
 import sys
+import re
 
 from itertools import chain
+from collections import Counter
 
 try:
 	from lxml import etree
@@ -95,6 +97,14 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 			del e
 			self.muselist = frozenset(self.musedict)
 			return False
+
+		indentation_chars = Counter()
+		for l in etree.tostring(_metadata_xml).splitlines():
+			indentation_chars.update(re.match(b"\s*", l).group(0))
+		if len(indentation_chars) > 1:
+			self.qatracker.add_error("metadata.warning", "%s/metadata.xml: %s" %
+				(xpkg, "inconsistent use of tabs and spaces in indentation")
+			)
 
 		xml_encoding = _metadata_xml.docinfo.encoding
 		if xml_encoding.upper() != metadata_xml_encoding:

@@ -30,6 +30,7 @@ for x in "$@" ; do
 
 	# These will be automatically decompressed by ecompressdir.
 	if has ${suffix} Z gz bz2 ; then
+		eqawarn "QA Notice: doman argument '${x}' is compressed, this is not portable"
 		realname=${x%.*}
 		suffix=${realname##*.}
 	fi

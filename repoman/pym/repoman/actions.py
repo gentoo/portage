@@ -14,6 +14,11 @@ import tempfile
 import time
 from itertools import chain
 
+try:
+	from urllib.parse import parse_qs, urlsplit, urlunsplit
+except ImportError:
+	from urlparse import parse_qs, urlsplit, urlunsplit
+
 from _emerge.UserQuery import UserQuery
 
 from repoman._portage import portage
@@ -324,6 +329,13 @@ class Actions(object):
 		return (changes.new, changes.changed, changes.removed,
 				changes.no_expansion, changes.expansion)
 
+	https_bugtrackers = frozenset([
+		'bitbucket.org',
+		'bugs.gentoo.org',
+		'github.com',
+		'gitlab.com',
+	])
+
 	def get_commit_footer(self):
 		portage_version = getattr(portage, "VERSION", None)
 		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
@@ -342,25 +354,56 @@ class Actions(object):
 			sys.stderr.write("Failed to insert portage version in message!\n")
 			sys.stderr.flush()
 			portage_version = "Unknown"
+
+		# Common part of commit footer
+		commit_footer = "\n"
+		for bug in self.options.bug:
+			# case 1: pure number NNNNNN
+			if bug.isdigit():
+				bug = 'https://bugs.gentoo.org/%s' % (bug, )
+			else:
+				purl = urlsplit(bug)
+				qs = parse_qs(purl.query)
+				# case 2: long Gentoo bugzilla URL to shorten
+				if (purl.netloc == 'bugs.gentoo.org' and
+						purl.path == '/show_bug.cgi' and
+						tuple(qs.keys()) == ('id',)):
+					bug = urlunsplit(('https', purl.netloc,
+							qs['id'][-1], '', purl.fragment))
+				# case 3: bug tracker w/ http -> https
+				elif (purl.scheme == 'http' and
+						purl.netloc in self.https_bugtrackers):
+					bug = urlunsplit(('https',) + purl[1:])
+			commit_footer += "Bug: %s\n" % (bug, )
+
+		for closes in self.options.closes:
+			# case 1: pure number NNNN
+			if closes.isdigit():
+				closes = 'https://github.com/gentoo/gentoo/pull/%s' % (closes, )
+			else:
+				purl = urlsplit(closes)
+				# case 2: bug tracker w/ http -> https
+				if purl.netloc in self.https_bugtrackers:
+					closes = urlunsplit(('https',) + purl[1:])
+			commit_footer += "Closes: %s\n" % (closes, )
+
+		if dco_sob:
+			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer = "\nPackage-Manager: Portage-%s, Repoman-%s" % (
+			commit_footer += "Package-Manager: Portage-%s, Repoman-%s" % (
 							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
 			if self.repo_settings.sign_manifests:
 				commit_footer += "\nManifest-Sign-Key: %s" % (gpg_key, )
-			if dco_sob:
-				commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
 		else:
 			unameout = platform.system() + " "
 			if platform.system() in ["Darwin", "SunOS"]:
 				unameout += platform.processor()
 			else:
 				unameout += platform.machine()
-			commit_footer = "\n"
-			if dco_sob:
-				commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
 			commit_footer += "(Portage version: %s/%s/%s" % \
 				(portage_version, self.vcs_settings.vcs, unameout)
 			if report_options:

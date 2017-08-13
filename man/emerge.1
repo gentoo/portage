@@ -395,6 +395,13 @@ using the \'=\' operator will be written. With this
 option, \'>=\' operators will be used whenever possible.
 USE and license changes always use the latter behavior.
 .TP
+.BR "\-\-autounmask\-keep\-keywords [ y | n ]"
+If \-\-autounmask is enabled, no package.accept_keywords changes will
+be created. This leads to unsatisfied dependencies if any keyword
+changes are required. This option does not imply \-\-autounmask\-keep\-masks,
+so \-\-autounmask is still allowed to create package.unmask changes unless
+the \-\-autounmask\-keep\-masks is also specified.
+.TP
 .BR "\-\-autounmask\-keep\-masks [ y | n ]"
 If \-\-autounmask is enabled, no package.unmask or ** keyword changes
 will be created. This leads to unsatisfied dependencies if
