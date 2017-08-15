@@ -256,6 +256,63 @@ install_qa_check() {
 	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 }
 
+postinst_qa_check() {
+	local d f paths qa_checks=()
+	if ! ___eapi_has_prefix_variables; then
+		local EPREFIX= EROOT=${ROOT}
+	fi
+
+	cd "${EROOT}" || die "cd failed"
+
+	# Collect the paths for QA checks, highest prio first.
+	paths=(
+		# sysadmin overrides
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/local/lib/postinst-qa-check.d
+		# system-wide package installs
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/postinst-qa-check.d
+	)
+
+	# Now repo-specific checks.
+	# (yes, PORTAGE_ECLASS_LOCATIONS contains repo paths...)
+	for d in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
+		paths+=(
+			"${d}"/metadata/postinst-qa-check.d
+		)
+	done
+
+	paths+=(
+		# Portage built-in checks
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/portage/postinst-qa-check.d
+		"${PORTAGE_BIN_PATH}"/postinst-qa-check.d
+	)
+
+	# Collect file names of QA checks. We need them early to support
+	# overrides properly.
+	for d in "${paths[@]}"; do
+		for f in "${d}"/*; do
+			[[ -f ${f} ]] && qa_checks+=( "${f##*/}" )
+		done
+	done
+
+	# Now we need to sort the filenames lexically, and process
+	# them in order.
+	while read -r -d '' f; do
+		# Find highest priority file matching the basename.
+		for d in "${paths[@]}"; do
+			[[ -f ${d}/${f} ]] && break
+		done
+
+		# Run in a subshell to treat it like external script,
+		# but use 'source' to pass all variables through.
+		(
+			# Allow inheriting eclasses.
+			# XXX: we want this only in repository-wide checks.
+			_IN_INSTALL_QA_CHECK=1
+			source "${d}/${f}" || eerror "Post-postinst QA check ${f} failed to run"
+		)
+	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
+}
+
 install_mask() {
 	local root="$1"
 	shift

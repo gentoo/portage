@@ -1738,7 +1738,10 @@ _post_phase_cmds = {
 		"preinst_sfperms",
 		"preinst_selinux_labels",
 		"preinst_suid_scan",
-		]
+		],
+
+	"postinst" : [
+		"postinst_qa_check"],
 }
 
 def _post_phase_userpriv_perms(mysettings):
