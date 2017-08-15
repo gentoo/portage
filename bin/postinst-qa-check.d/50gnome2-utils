@@ -1,0 +1,38 @@
+# check for missing calls to gnome2-utils regen functions
+
+gnome2_icon_cache_check() {
+	local d f files=() find_args
+	for d in usr/share/icons/*/; do
+		# gnome2_icon_cache_update updates only themes with an index
+		[[ -f ${d}/index.theme ]] || continue
+
+		find_args=()
+		# if the cache does not exist at all, we complain for any file
+		# otherwise, we look for files newer than the cache
+		[[ -f ${d}/icon-theme.cache ]] &&
+			find_args+=( -newer "${d}"/icon-theme.cache )
+
+		# (use -mindepth 2 to easily skip the cache files)
+		while read -r -d $'\0' f; do
+			files+=( "${f}" )
+		done < <(find "${d}" -mindepth 2 -type f "${find_args[@]}" -print0)
+	done
+
+	if [[ ${files[@]} ]]; then
+		eqawarn "QA Notice: new icons were found installed but GTK+ icon cache"
+		eqawarn "has not been updated:"
+		eqatag -v gnome2-utils.icon-cache "${files[@]/#//}"
+		eqawarn "Please make sure to call gnome2_icon_cache_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+gnome2_utils_postinst_check() {
+	cd "${EROOT}" || die
+	gnome2_icon_cache_check
+}
+
+gnome2_utils_postinst_check
+: # guarantee successful exit
+
+# vim:ft=sh
