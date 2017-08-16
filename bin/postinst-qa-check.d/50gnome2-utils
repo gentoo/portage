@@ -16,6 +16,14 @@ gnome2_icon_cache_check() {
 		while read -r -d $'\0' f; do
 			files+=( "${f}" )
 		done < <(find "${d}" -mindepth 2 -type f "${find_args[@]}" -print0)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		# (note: yes, it will eagerly repeat the update for next dirs
+		# but that's a minor issue)
+		if [[ ${files[@]} ]]; then
+			gtk-update-icon-cache -qf "${d}"
+		fi
 	done
 
 	if [[ ${files[@]} ]]; then

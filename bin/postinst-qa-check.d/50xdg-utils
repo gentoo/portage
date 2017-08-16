@@ -17,6 +17,14 @@ xdg_desktop_database_check() {
 			files+=( "${f}" )
 		done < <(find "${d}" -name '*.desktop' "${find_args[@]}" \
 			-exec grep -lZi '^MimeType=' {} +)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		# (note: yes, it will eagerly repeat the update for next dirs
+		# but it's a minor issue and we have only one dir anyway)
+		if [[ ${files[@]} ]]; then
+			update-desktop-database "${d}"
+		fi
 	done
 
 	if [[ ${files[@]} ]]; then
@@ -42,6 +50,14 @@ xdg_mimeinfo_database_check() {
 		while read -r -d $'\0' f; do
 			files+=( "${f}" )
 		done < <(find "${d}" -name '*.xml' "${find_args[@]}" -print0)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		# (note: yes, it will eagerly repeat the update for next dirs
+		# but it's a minor issue and we have only one dir anyway)
+		if [[ ${files[@]} ]]; then
+			update-mime-database "${d}"
+		fi
 	done
 
 	if [[ ${files[@]} ]]; then
