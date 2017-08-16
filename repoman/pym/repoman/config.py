@@ -144,8 +144,11 @@ def load_config(conf_dirs, file_extensions=None, valid_versions=None):
 
 		if config:
 			if config['version'] not in valid_versions:
-				raise ConfigError("Invalid file version: %s in: %s\nPlease upgrade repoman: current valid versions: %s"
-					% (config['version'], filename, valid_versions))
+				raise ConfigError(
+					"Invalid file version: %s in: %s\nPlease upgrade to "
+					">=app-portage/repoman-%s, current valid API versions: %s"
+					% (config['version'], filename,
+						config['repoman_version'], valid_versions))
 			result = merge_config(result, config)
 
 	return result

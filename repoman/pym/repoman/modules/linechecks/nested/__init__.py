@@ -16,6 +16,7 @@ module_spec = {
 			'class': "EbuildNestedDie",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

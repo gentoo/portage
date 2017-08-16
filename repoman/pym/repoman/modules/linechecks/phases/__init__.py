@@ -29,6 +29,7 @@ module_spec = {
 			'class': "SrcUnpackPatches",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

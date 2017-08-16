@@ -69,7 +69,7 @@ class LineChecksConfig(object):
 			self.infopaths = infopaths
 		elif not self.infopaths:
 			logging.error("LineChecksConfig; Error: No linechecks.yaml files defined")
-		configs = load_config(self.infopaths, 'yaml')
+		configs = load_config(self.infopaths, 'yaml', self.repo_settings.repoman_settings.valid_versions)
 		if configs == {}:
 			logging.error("LineChecksConfig: Failed to load a valid 'linechecks.yaml' file at paths: %s", self.infopaths)
 			return False

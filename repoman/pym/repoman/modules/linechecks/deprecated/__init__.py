@@ -41,6 +41,7 @@ module_spec = {
 			'class': "InheritDeprecated",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

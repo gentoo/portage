@@ -16,6 +16,7 @@ module_spec = {
 			'class': "UriUseHttps",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

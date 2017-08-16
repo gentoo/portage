@@ -47,10 +47,12 @@ os.umask(0o22)
 LOGLEVEL = logging.WARNING
 portage.util.initialize_logger(LOGLEVEL)
 
+VALID_VERSIONS = [1,]
 
 def repoman_main(argv):
 	config_root = os.environ.get("PORTAGE_CONFIGROOT")
 	repoman_settings = portage.config(config_root=config_root, local_config=False)
+	repoman_settings.valid_versions = VALID_VERSIONS
 
 	if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 		repoman_settings.get('TERM') == 'dumb' or \
@@ -92,6 +94,7 @@ def repoman_main(argv):
 		config_root, portdir, portdir_overlay,
 		repoman_settings, vcs_settings, options, qadata)
 	repoman_settings = repo_settings.repoman_settings
+	repoman_settings.valid_versions = VALID_VERSIONS
 
 	# Now set repo_settings
 	vcs_settings.repo_settings = repo_settings

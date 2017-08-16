@@ -28,14 +28,14 @@ class QAData(object):
 		self.no_exec = None
 
 
-	def load_repo_config(self, repopaths, options):
+	def load_repo_config(self, repopaths, options, valid_versions):
 		'''Load the repository repoman qa_data.yml config
 
 		@param repopaths: list of strings, The path of the repository being scanned
 						 This could be a parent repository using the
 						 repoman_masters layout.conf variable
 		'''
-		qadata = load_config([os.path.join(path,'qa_data.yaml') for path in repopaths], 'yaml')
+		qadata = load_config([os.path.join(path,'qa_data.yaml') for path in repopaths], 'yaml', valid_versions)
 		if qadata == {}:
 			logging.error("QAData: Failed to load a valid 'qa_data.yaml' file at paths: %s", repopaths)
 			return False

@@ -22,6 +22,7 @@ module_spec = {
 			'class': "Eapi3EbuildAssignment",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

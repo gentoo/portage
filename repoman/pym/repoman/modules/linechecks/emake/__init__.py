@@ -22,6 +22,7 @@ module_spec = {
 			'class': "WantAutoDefaultValue",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 
