@@ -111,16 +111,16 @@ def quickpkg_atom(options, infos, arg, eout):
 					in settings.features))
 				def protect(filename):
 					if not confprot.isprotected(filename):
-						return 1
+						return False
 					if include_unmodified_config:
 						file_data = contents[filename]
 						if file_data[0] == "obj":
 							orig_md5 = file_data[2].lower()
 							cur_md5 = perform_md5(filename, calc_prelink=1)
 							if orig_md5 == cur_md5:
-								return 1
+								return False
 					excluded_config_files.append(filename)
-					return os.EX_OK
+					return True
 			existing_metadata = dict(zip(fix_metadata_keys,
 				vardb.aux_get(cpv, fix_metadata_keys)))
 			category, pf = portage.catsplit(cpv)
