@@ -22,6 +22,7 @@ module_spec = {
 			'class': "EbuildUselessDodoc",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

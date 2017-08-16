@@ -29,6 +29,7 @@ module_spec = {
 			},
 			'module_runsIn': ['pkgs', 'ebuilds', 'final'],
 		},
-	}
+	},
+	'version': 1,
 }
 

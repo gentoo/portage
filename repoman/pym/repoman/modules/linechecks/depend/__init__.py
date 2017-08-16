@@ -16,6 +16,7 @@ module_spec = {
 			'class': "ImplicitRuntimeDeps",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

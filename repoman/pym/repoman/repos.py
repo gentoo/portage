@@ -53,7 +53,7 @@ class RepoSettings(object):
 		logging.debug("RepoSettings: init(); load qadata")
 		# load the repo specific configuration
 		self.qadata = qadata
-		if not self.qadata.load_repo_config(self.masters_list, options):
+		if not self.qadata.load_repo_config(self.masters_list, options, repoman_settings.valid_versions):
 			logging.error("Aborting...")
 			sys.exit(1)
 		logging.debug("RepoSettings: qadata loaded: %s", qadata.no_exec)

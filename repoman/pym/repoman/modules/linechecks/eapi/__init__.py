@@ -46,6 +46,7 @@ module_spec = {
 			'class': "Eapi4GoneVars",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

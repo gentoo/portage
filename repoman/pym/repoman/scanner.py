@@ -116,7 +116,8 @@ class Scanner(object):
 
 		# Initialize the ModuleConfig class here
 		# TODO Add layout.conf masters repository.yml config to the list to load/stack
-		self.moduleconfig = ModuleConfig(self.repo_settings.masters_list)
+		self.moduleconfig = ModuleConfig(self.repo_settings.masters_list,
+										self.repo_settings.repoman_settings.valid_versions)
 
 		checks = {}
 		# The --echangelog option causes automatic ChangeLog generation,

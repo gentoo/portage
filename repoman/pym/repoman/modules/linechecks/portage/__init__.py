@@ -22,6 +22,7 @@ module_spec = {
 			'class': "PortageInternalVariableAssignment",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

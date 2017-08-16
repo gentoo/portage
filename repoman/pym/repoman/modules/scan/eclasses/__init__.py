@@ -44,6 +44,7 @@ module_spec = {
 			},
 			'module_runsIn': ['ebuilds'],
 		},
-	}
+	},
+	'version': 1,
 }
 

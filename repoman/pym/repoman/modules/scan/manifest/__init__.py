@@ -26,6 +26,7 @@ module_spec = {
 			},
 			'module_runsIn': ['pkgs'],
 		},
-	}
+	},
+	'version': 1,
 }
 

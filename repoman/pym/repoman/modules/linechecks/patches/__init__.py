@@ -16,6 +16,7 @@ module_spec = {
 			'class': "EbuildPatches",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

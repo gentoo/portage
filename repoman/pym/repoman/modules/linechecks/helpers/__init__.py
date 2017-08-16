@@ -16,6 +16,7 @@ module_spec = {
 			'class': "NoOffsetWithHelpers",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

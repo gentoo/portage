@@ -16,6 +16,7 @@ module_spec = {
 			'class': "BuiltWithUse",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

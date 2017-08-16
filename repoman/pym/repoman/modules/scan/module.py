@@ -10,6 +10,7 @@ import yaml
 
 from portage.module import InvalidModuleName, Modules
 from portage.util import stack_lists
+from repoman.config import ConfigError
 
 MODULES_PATH = os.path.dirname(__file__)
 # initial development debug info
@@ -20,7 +21,7 @@ class ModuleConfig(object):
 	'''Holds the scan modules configuration information and
 	creates the ordered list of modulles to run'''
 
-	def __init__(self, configpaths):
+	def __init__(self, configpaths, valid_versions=None):
 		'''Module init
 
 		@param configpaths: ordered list of filepaths to load
@@ -37,13 +38,13 @@ class ModuleConfig(object):
 		self.ebuilds_loop = []
 		self.final_loop = []
 		self.modules_forced = ['ebuild', 'mtime']
-		self.load_configs()
+		self.load_configs(valid_versions=valid_versions)
 		for loop in ['pkgs', 'ebuilds', 'final']:
 			logging.debug("ModuleConfig; Processing loop %s", loop)
 			setattr(self, '%s_loop' % loop, self._determine_list(loop))
 		self.linechecks = stack_lists(c['linechecks_modules'].split() for c in self._configs)
 
-	def load_configs(self, configpaths=None):
+	def load_configs(self, configpaths=None, valid_versions=None):
 		'''load the config files in order
 
 		@param configpaths: ordered list of filepaths to load
@@ -62,6 +63,8 @@ class ModuleConfig(object):
 				except IOError as error:
 					logging,error("Failed to load file: %s", inputfile)
 					logging.exception(error)
+			if configs[-1]['version'] not in valid_versions:
+				raise ConfigError("Invalid file version: %s in: %s\nPlease upgrade repoman" % (configs['version'], path))
 			logging.debug("ModuleConfig; completed : %s", path)
 		logging.debug("ModuleConfig; new _configs: %s", configs)
 		self._configs = configs

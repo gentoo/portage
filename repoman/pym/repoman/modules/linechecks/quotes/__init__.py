@@ -22,6 +22,7 @@ module_spec = {
 			'class': "EbuildQuotedA",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

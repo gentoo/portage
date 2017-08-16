@@ -16,6 +16,7 @@ module_spec = {
 			'class': "EbuildNonRelativeDosym",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

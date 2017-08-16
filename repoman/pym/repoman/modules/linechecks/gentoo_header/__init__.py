@@ -16,6 +16,7 @@ module_spec = {
 			'class': "EbuildHeader",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

@@ -22,6 +22,7 @@ module_spec = {
 			'class': "NoAsNeeded",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 

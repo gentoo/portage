@@ -22,6 +22,7 @@ module_spec = {
 			'class': "EbuildBlankLine",
 			'description': doc,
 		},
-	}
+	},
+	'version': 1,
 }
 
