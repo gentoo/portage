@@ -9,7 +9,7 @@ xdg_desktop_database_check() {
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mimeinfo.cache ]] &&
-			find_args+=( -newer "${d}"/mimeinfo.cache )
+			find_args+=( -newercm "${d}"/mimeinfo.cache )
 
 		# look for any .desktop files that are newer than the cache
 		# and that have any mime types defined
@@ -37,7 +37,7 @@ xdg_mimeinfo_database_check() {
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mime.cache ]] &&
-			find_args+=( -newer "${d}"/mime.cache )
+			find_args+=( -newercm "${d}"/mime.cache )
 
 		while read -r -d $'\0' f; do
 			files+=( "${f}" )

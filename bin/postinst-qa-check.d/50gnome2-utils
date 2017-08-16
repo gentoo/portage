@@ -10,7 +10,7 @@ gnome2_icon_cache_check() {
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/icon-theme.cache ]] &&
-			find_args+=( -newer "${d}"/icon-theme.cache )
+			find_args+=( -newercm "${d}"/icon-theme.cache )
 
 		# (use -mindepth 2 to easily skip the cache files)
 		while read -r -d $'\0' f; do
