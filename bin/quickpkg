@@ -163,7 +163,16 @@ def quickpkg_atom(options, infos, arg, eout):
 				with tarfile.open(mode="w|",format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT, fileobj=proc.stdin) as tar:
 					tar_contents(contents, root, tar, protect=protect, xattrs=xattrs)
 				proc.stdin.close()
-				proc.wait()
+				if proc.wait() != os.EX_OK:
+					eout.eend(1)
+					eout.eerror("Compressor failed for package %s" % cpv)
+					retval |= 1
+					try:
+						os.unlink(binpkg_tmpfile)
+					except OSError as e:
+						if e.errno not in (errno.ENOENT, errno.ESTALE):
+							raise
+					continue
 			xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
 		finally:
 			if have_lock:
