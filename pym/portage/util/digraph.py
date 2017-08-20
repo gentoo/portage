@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 __all__ = ['digraph']
 
+import bisect
 from collections import deque
 import sys
 
@@ -46,8 +47,7 @@ class digraph(object):
 			self.nodes[parent][0][node] = priorities
 
 		if not priorities or priorities[-1] is not priority:
-			priorities.append(priority)
-			priorities.sort()
+			bisect.insort(priorities, priority)
 
 	def discard(self, node):
 		"""
