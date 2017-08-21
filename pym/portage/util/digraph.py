@@ -170,7 +170,7 @@ class digraph(object):
 		children = []
 		if hasattr(ignore_priority, '__call__'):
 			for child, priorities in self.nodes[node][0].items():
-				for priority in priorities:
+				for priority in reversed(priorities):
 					if not ignore_priority(priority):
 						children.append(child)
 						break
@@ -187,7 +187,7 @@ class digraph(object):
 		parents = []
 		if hasattr(ignore_priority, '__call__'):
 			for parent, priorities in self.nodes[node][1].items():
-				for priority in priorities:
+				for priority in reversed(priorities):
 					if not ignore_priority(priority):
 						parents.append(parent)
 						break
@@ -212,7 +212,7 @@ class digraph(object):
 			for node in self.order:
 				is_leaf_node = True
 				for child, priorities in self.nodes[node][0].items():
-					for priority in priorities:
+					for priority in reversed(priorities):
 						if not ignore_priority(priority):
 							is_leaf_node = False
 							break
@@ -246,7 +246,7 @@ class digraph(object):
 			for node in self.order:
 				is_root_node = True
 				for parent, priorities in self.nodes[node][1].items():
-					for priority in priorities:
+					for priority in reversed(priorities):
 						if not ignore_priority(priority):
 							is_root_node = False
 							break
