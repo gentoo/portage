@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.8
+==================================
+* Bug Fixes:
+    - Bug 628010 quickpkg: revert accidental changes to "protect" function
+    - Bug 628060 quickpkg: revert premature return from quickpkg_atom
+
+
 portage-2.3.7
 ==================================
 * Bug Fixes:

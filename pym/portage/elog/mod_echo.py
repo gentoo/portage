@@ -1,5 +1,5 @@
 # elog/mod_echo.py - elog dispatch module
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -16,7 +16,12 @@ if sys.hexversion >= 0x3000000:
 _items = []
 def process(mysettings, key, logentries, fulltext):
 	global _items
-	_items.append((mysettings["ROOT"], key, logentries))
+	logfile = None
+	# output logfile explicitly only if it isn't in tempdir, otherwise
+	# it will be removed anyway
+	if "PORT_LOGDIR" in mysettings:
+		logfile = mysettings["PORTAGE_LOG_FILE"]
+	_items.append((mysettings["ROOT"], key, logentries, logfile))
 
 def finalize():
 	# For consistency, send all message types to stdout.
@@ -34,7 +39,7 @@ def finalize():
 def _finalize():
 	global _items
 	printer = EOutput()
-	for root, key, logentries in _items:
+	for root, key, logentries, logfile in _items:
 		print()
 		if root == "/":
 			printer.einfo(_("Messages for package %s:") %
@@ -42,6 +47,8 @@ def _finalize():
 		else:
 			printer.einfo(_("Messages for package %(pkg)s merged to %(root)s:") %
 				{"pkg": colorize("INFORM", key), "root": root})
+		if logfile is not None:
+			printer.einfo(_("Log file: %s") % colorize("INFORM", logfile))
 		print()
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:

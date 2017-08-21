@@ -13,6 +13,8 @@ portage-2.3.7
   longer be needed.
 * New emerge --autounmask-keep-keywords and --onlydeps-with-rdeps=<y|n>
   options.
+* Set compression method for binpackages via BINPKG_COMPRESS variable
+* Support for environment variables for git cmd in repos.conf via sync-git-env
 
 
 portage-2.3.5
