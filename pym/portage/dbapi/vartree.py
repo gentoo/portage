@@ -3420,13 +3420,14 @@ class dblink(object):
 			dirs_ro = set()
 			symlink_collisions = []
 			destroot = self.settings['ROOT']
+			totfiles = len(file_list) + len(symlink_list)
 			showMessage(_(" %s checking %d files for package collisions\n") % \
-				(colorize("GOOD", "*"), len(file_list) + len(symlink_list)))
+				(colorize("GOOD", "*"), totfiles))
 			for i, (f, f_type) in enumerate(chain(
 				((f, "reg") for f in file_list),
 				((f, "sym") for f in symlink_list))):
 				if i % 1000 == 0 and i != 0:
-					showMessage(_("%d files checked ...\n") % i)
+					showMessage(_("%d files remaining ...\n") % (totfiles - i))
 
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
