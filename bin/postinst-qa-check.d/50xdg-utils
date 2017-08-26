@@ -1,0 +1,81 @@
+# check for missing calls to xdg-utils regen functions
+
+xdg_desktop_database_check() {
+	local d f files=()
+	for d in usr/share/applications; do
+		[[ -d ${d} ]] || continue
+
+		find_args=()
+		# if the cache does not exist at all, we complain for any file
+		# otherwise, we look for files newer than the cache
+		[[ -f ${d}/mimeinfo.cache ]] &&
+			find_args+=( -newer "${d}"/mimeinfo.cache )
+
+		# look for any .desktop files that are newer than the cache
+		# and that have any mime types defined
+		while read -r -d $'\0' f; do
+			files+=( "${f}" )
+		done < <(find "${d}" -name '*.desktop' "${find_args[@]}" \
+			-exec grep -lZi '^MimeType=' {} +)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		# (note: yes, it will eagerly repeat the update for next dirs
+		# but it's a minor issue and we have only one dir anyway)
+		if [[ ${files[@]} ]]; then
+			update-desktop-database "${d}"
+		fi
+	done
+
+	if [[ ${files[@]} ]]; then
+		eqawarn "QA Notice: .desktop files with MimeType= were found installed"
+		eqawarn "but desktop mimeinfo cache has not been updated:"
+		eqatag -v xdg-utils.desktop "${files[@]/#//}"
+		eqawarn "Please make sure to call xdg_desktop_database_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+xdg_mimeinfo_database_check() {
+	local d f files=()
+	for d in usr/share/mime; do
+		[[ -d ${d} ]] || continue
+
+		find_args=()
+		# if the cache does not exist at all, we complain for any file
+		# otherwise, we look for files newer than the cache
+		[[ -f ${d}/mime.cache ]] &&
+			find_args+=( -newer "${d}"/mime.cache )
+
+		while read -r -d $'\0' f; do
+			files+=( "${f}" )
+		done < <(find "${d}" -name '*.xml' "${find_args[@]}" -print0)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		# (note: yes, it will eagerly repeat the update for next dirs
+		# but it's a minor issue and we have only one dir anyway)
+		if [[ ${files[@]} ]]; then
+			update-mime-database "${d}"
+		fi
+	done
+
+	if [[ ${files[@]} ]]; then
+		eqawarn "QA Notice: mime-info files were found installed but mime-info"
+		eqawarn "cache has not been updated:"
+		eqatag -v xdg-utils.mime-info "${files[@]/#//}"
+		eqawarn "Please make sure to call xdg_mimeinfo_database_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
+xdg_utils_postinst_check() {
+	cd "${EROOT}" || die
+	xdg_desktop_database_check
+	xdg_mimeinfo_database_check
+}
+
+xdg_utils_postinst_check
+: # guarantee successful exit
+
+# vim:ft=sh
