@@ -1,12 +1,12 @@
 certificate version 0.1
-pusher 0x5F75F607C5C74E89 1503826417 +0200
+pusher FDE8EF85AE5719A3 1503901205 -0700
 pushee git+ssh://git.gentoo.org/proj/portage.git
-nonce 1503826417-af58c1a057c1c83ee8f5
+nonce 1503901201-7b7b80386f1d1a52c5d5
 
-83b44fc48c07a4d8f0b6cb361f61b1493965fcb2 aac6f2ab43afb78bd183a6d4a06c131cf70bba51 refs/heads/master
+aac6f2ab43afb78bd183a6d4a06c131cf70bba51 9750e66503012fe7ca29b4a5c6447aae8b6c539c refs/heads/master
 -----BEGIN PGP SIGNATURE-----
 
-iF0EABEKAB0WIQSDHIpHdkhfn9Ptmh5fdfYHxcdOiQUCWaKR8QAKCRBfdfYHxcdO
-if9OAJ4m6NDgbIMwVstCCC5o3shTanZlDACfSn5TmTkdakxQ8Zwgwq6dISiFQyU=
-=Z5Um
+iF0EABECAB0WIQSG5RNTeMgVEruefzL96O+FrlcZowUCWaO2FQAKCRD96O+FrlcZ
+o/UnAJoDZUBNfRkLoKSFJelhvkdSNdLCogCeOep5mSnJxFiM9oV8usFkMeS2+Qw=
+=3m0W
 -----END PGP SIGNATURE-----
