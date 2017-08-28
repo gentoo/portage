@@ -638,7 +638,7 @@ __dyn_install() {
 					s1=$(human ${s1})
 					if [[ ${s2} -gt 1024 ]] ; then
 						s2=$(human ${s2})
-						s1=$(padl ${s1} ${s2})
+						s1=$(padl "${s1}" "${s2}")
 					fi
 					out+=" (${s1})"
 				fi
