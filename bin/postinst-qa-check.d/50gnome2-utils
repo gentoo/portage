@@ -6,7 +6,12 @@ gnome2_icon_cache_check() {
 		# gnome2_icon_cache_update updates only themes with an index
 		[[ -f ${d}/index.theme ]] || continue
 
-		find_args=()
+		find_args=(
+			# gtk-update-icon-cache supports only specific file
+			# suffixes; match that to avoid false positives
+			'(' -name '*.png' -o -name '*.svg'
+				-o -name '*.xpm' -o -name '*.icon' ')'
+		)
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/icon-theme.cache ]] &&
