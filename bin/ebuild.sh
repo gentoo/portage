@@ -66,6 +66,7 @@ else
 		use useq usev use_with use_enable"
 	___eapi_has_usex && funcs+=" usex"
 	___eapi_has_in_iuse && funcs+=" in_iuse"
+	___eapi_has_get_libdir && funcs+=" get_libdir"
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
