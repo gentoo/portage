@@ -121,6 +121,10 @@ __helpers_die() {
 }
 
 die() {
+	# restore PATH since die calls basename & sed
+	# TODO: make it pure bash
+	[[ -n ${_PORTAGE_ORIG_PATH} ]] && PATH=${_PORTAGE_ORIG_PATH}
+
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
 

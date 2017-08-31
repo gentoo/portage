@@ -80,8 +80,12 @@ else
 	done
 	unset funcs x
 
+	# prevent the shell from finding external executables
+	# note: we can't use empty because it implies current directory
+	_PORTAGE_ORIG_PATH=${PATH}
+	export PATH=/dev/null
 	command_not_found_handle() {
-		die "Command not found while sourcing ebuild: ${*}"
+		die "External commands disallowed while sourcing ebuild: ${*}"
 	}
 fi
 
