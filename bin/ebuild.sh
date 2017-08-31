@@ -79,6 +79,10 @@ else
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset funcs x
+
+	command_not_found_handle() {
+		die "Command not found while sourcing ebuild: ${*}"
+	}
 fi
 
 # Don't use sandbox's BASH_ENV for new shells because it does
