@@ -14,7 +14,7 @@ import re
 # to enter the config instance from the external environment or
 # configuration files.
 env_blacklist = frozenset((
-	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
+	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "DOCS", "EAPI",
 	"EBUILD_FORCE_TEST", "EBUILD_PHASE",
 	"EBUILD_PHASE_FUNC", "EBUILD_SKIP_MANIFEST",
 	"ED", "EMERGE_FROM", "EPREFIX", "EROOT",
