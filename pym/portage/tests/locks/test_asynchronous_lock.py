@@ -5,6 +5,11 @@ import itertools
 import signal
 import tempfile
 
+try:
+	import dummy_threading
+except ImportError:
+	dummy_threading = None
+
 from portage import os
 from portage import shutil
 from portage.tests import TestCase
@@ -20,7 +25,8 @@ class AsynchronousLockTestCase(TestCase):
 			path = os.path.join(tempdir, 'lock_me')
 			for force_async, async_unlock in itertools.product(
 				(True, False), repeat=2):
-				for force_dummy in (True, False):
+				for force_dummy in ((False,) if dummy_threading is None
+					else (True, False)):
 					async_lock = AsynchronousLock(path=path,
 						scheduler=scheduler, _force_async=force_async,
 						_force_thread=True,
