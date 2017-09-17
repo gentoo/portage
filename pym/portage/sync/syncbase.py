@@ -102,6 +102,10 @@ class SyncBase(object):
 				paths.extend(_SUBMODULE_PATH_MAP[name])
 		return tuple(paths)
 
+	def retrieve_head(self, **kwargs):
+		'''Get information about the head commit'''
+		raise NotImplementedError
+
 
 class NewBase(SyncBase):
 	'''Subclasses Syncbase adding a new() and runs it
@@ -132,8 +136,4 @@ class NewBase(SyncBase):
 	def update(self):
 		'''Update existing repository
 		'''
-		raise NotImplementedError
-
-	def retrieve_head(self, **kwargs):
-		'''Get information about the head commit'''
 		raise NotImplementedError
