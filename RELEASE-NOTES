@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.9
+==================================
+* Bug Fixes:
+    - Bug 627106 Add DOCS to environment blacklist
+    - Bug 628386 dev-python/pycparser-2.18 breaks "ebuild" command
+    - Bug 629010 Ban get_libdir in global scope
+    - Bug 629146 RepoConfigLoader: Fix compatibility with Python 3.7
+    - Bug 629148 gnome2-utils postinst: Restrict file types for false positives
+    - Bug 630538 Fix emerge --info when using webrsync (regression)
+    - Bug 630730 AsynchronousLock: missing dummy_threading for Python 3.7
+
+
 portage-2.3.8
 ==================================
 * Bug Fixes:
