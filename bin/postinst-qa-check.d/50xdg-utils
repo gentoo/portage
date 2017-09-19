@@ -5,7 +5,7 @@ xdg_desktop_database_check() {
 	for d in usr/share/applications; do
 		[[ -d ${d} ]] || continue
 
-		find_args=()
+		local files=() find_args=()
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mimeinfo.cache ]] &&
@@ -23,15 +23,16 @@ xdg_desktop_database_check() {
 		# (note: yes, it will eagerly repeat the update for next dirs
 		# but it's a minor issue and we have only one dir anyway)
 		if [[ ${files[@]} ]]; then
+			all_files+=("${files[@]}")
 			addwrite "${d}"
 			update-desktop-database "${d}"
 		fi
 	done
 
-	if [[ ${files[@]} ]]; then
+	if [[ ${all_files[@]} ]]; then
 		eqawarn "QA Notice: .desktop files with MimeType= were found installed"
 		eqawarn "but desktop mimeinfo cache has not been updated:"
-		eqatag -v xdg-utils.desktop "${files[@]/#//}"
+		eqatag -v xdg-utils.desktop "${all_files[@]/#//}"
 		eqawarn "Please make sure to call xdg_desktop_database_update()"
 		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
 	fi
@@ -42,7 +43,7 @@ xdg_mimeinfo_database_check() {
 	for d in usr/share/mime; do
 		[[ -d ${d} ]] || continue
 
-		find_args=()
+		local files=() find_args=()
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mime.cache ]] &&
@@ -57,15 +58,16 @@ xdg_mimeinfo_database_check() {
 		# (note: yes, it will eagerly repeat the update for next dirs
 		# but it's a minor issue and we have only one dir anyway)
 		if [[ ${files[@]} ]]; then
+			all_files+=("${files[@]}")
 			addwrite "${d}"
 			update-mime-database "${d}"
 		fi
 	done
 
-	if [[ ${files[@]} ]]; then
+	if [[ ${all_files[@]} ]]; then
 		eqawarn "QA Notice: mime-info files were found installed but mime-info"
 		eqawarn "cache has not been updated:"
-		eqatag -v xdg-utils.mime-info "${files[@]/#//}"
+		eqatag -v xdg-utils.mime-info "${all_files[@]/#//}"
 		eqawarn "Please make sure to call xdg_mimeinfo_database_update()"
 		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
 	fi
