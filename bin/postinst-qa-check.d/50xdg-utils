@@ -1,7 +1,7 @@
 # check for missing calls to xdg-utils regen functions
 
 xdg_desktop_database_check() {
-	local d f files=()
+	local d f files=() missing
 	for d in usr/share/applications; do
 		[[ -d ${d} ]] || continue
 
@@ -9,7 +9,7 @@ xdg_desktop_database_check() {
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mimeinfo.cache ]] &&
-			find_args+=( -newercm "${d}"/mimeinfo.cache )
+			find_args+=( -newercm "${d}"/mimeinfo.cache ) || missing=1
 
 		# look for any .desktop files that are newer than the cache
 		# and that have any mime types defined
@@ -29,7 +29,9 @@ xdg_desktop_database_check() {
 		fi
 	done
 
-	if [[ ${all_files[@]} ]]; then
+	# The eqatag call is prohibitively expensive if the cache is
+	# missing and there are a large number of files.
+	if [[ -z ${missing} && ${all_files[@]} ]]; then
 		eqawarn "QA Notice: .desktop files with MimeType= were found installed"
 		eqawarn "but desktop mimeinfo cache has not been updated:"
 		eqatag -v xdg-utils.desktop "${all_files[@]/#//}"
@@ -39,7 +41,7 @@ xdg_desktop_database_check() {
 }
 
 xdg_mimeinfo_database_check() {
-	local d f files=()
+	local d f files=() missing
 	for d in usr/share/mime; do
 		[[ -d ${d} ]] || continue
 
@@ -47,7 +49,7 @@ xdg_mimeinfo_database_check() {
 		# if the cache does not exist at all, we complain for any file
 		# otherwise, we look for files newer than the cache
 		[[ -f ${d}/mime.cache ]] &&
-			find_args+=( -newercm "${d}"/mime.cache )
+			find_args+=( -newercm "${d}"/mime.cache ) || missing=1
 
 		while read -r -d $'\0' f; do
 			files+=( "${f}" )
@@ -64,7 +66,9 @@ xdg_mimeinfo_database_check() {
 		fi
 	done
 
-	if [[ ${all_files[@]} ]]; then
+	# The eqatag call is prohibitively expensive if the cache is
+	# missing and there are a large number of files.
+	if [[ -z ${missing} && ${all_files[@]} ]]; then
 		eqawarn "QA Notice: mime-info files were found installed but mime-info"
 		eqawarn "cache has not been updated:"
 		eqatag -v xdg-utils.mime-info "${all_files[@]/#//}"
