@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.10
+==================================
+* Bug Fixes:
+    - Bug 631454 First run of postinst_qa_check consumes too much time
+      and reports false positives
+
+
 portage-2.3.9
 ==================================
 * Bug Fixes:
