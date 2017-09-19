@@ -7,7 +7,7 @@
 #
 # We're sourcing ebuild.sh here so that we inherit all of it's goodness,
 # including bashrc trickery.  This approach allows us to do our miscellaneous
-# shell work withing the same env that ebuild.sh has, but without polluting
+# shell work within the same env that ebuild.sh has, but without polluting
 # ebuild.sh itself with unneeded logic and shell code.
 #
 # XXX hack: clear the args so ebuild.sh doesn't see them
