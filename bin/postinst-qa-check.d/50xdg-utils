@@ -1,7 +1,7 @@
 # check for missing calls to xdg-utils regen functions
 
 xdg_desktop_database_check() {
-	local d f files=() missing
+	local d f missing
 	for d in usr/share/applications; do
 		[[ -d ${d} ]] || continue
 
@@ -20,8 +20,6 @@ xdg_desktop_database_check() {
 
 		# if any files were found, update the db to avoid repeating
 		# the warning for subsequent packages
-		# (note: yes, it will eagerly repeat the update for next dirs
-		# but it's a minor issue and we have only one dir anyway)
 		if [[ ${files[@]} ]]; then
 			all_files+=("${files[@]}")
 			addwrite "${d}"
@@ -41,7 +39,7 @@ xdg_desktop_database_check() {
 }
 
 xdg_mimeinfo_database_check() {
-	local d f files=() missing
+	local d f missing
 	for d in usr/share/mime; do
 		[[ -d ${d} ]] || continue
 
@@ -57,8 +55,6 @@ xdg_mimeinfo_database_check() {
 
 		# if any files were found, update the db to avoid repeating
 		# the warning for subsequent packages
-		# (note: yes, it will eagerly repeat the update for next dirs
-		# but it's a minor issue and we have only one dir anyway)
 		if [[ ${files[@]} ]]; then
 			all_files+=("${files[@]}")
 			addwrite "${d}"

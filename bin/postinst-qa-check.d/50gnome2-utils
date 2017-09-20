@@ -1,7 +1,7 @@
 # check for missing calls to gnome2-utils regen functions
 
 gnome2_icon_cache_check() {
-	local d f all_files=() find_args missing
+	local d f all_files=() missing
 	for d in usr/share/icons/*/; do
 		# gnome2_icon_cache_update updates only themes with an index
 		[[ -f ${d}/index.theme ]] || continue
@@ -24,8 +24,6 @@ gnome2_icon_cache_check() {
 
 		# if any files were found, update the db to avoid repeating
 		# the warning for subsequent packages
-		# (note: yes, it will eagerly repeat the update for next dirs
-		# but that's a minor issue)
 		if [[ ${files[@]} ]]; then
 			all_files+=("${files[@]}")
 			addwrite "${d}"
