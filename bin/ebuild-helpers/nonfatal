@@ -1,0 +1,14 @@
+#!/bin/bash
+# Copyright 1999-2018 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+if ! ___eapi_has_nonfatal; then
+	die "${0##*/} not supported in this EAPI"
+fi
+if [[ $# -lt 1 ]]; then
+	die "${0##*/}: Missing argument"
+fi
+
+PORTAGE_NONFATAL=1 exec "$@"
