@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 export DESTTREE=/usr
@@ -111,6 +111,10 @@ exeopts() {
 }
 
 libopts() {
+	if ! ___eapi_has_dolib_libopts; then
+		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+	fi
+
 	export LIBOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
