@@ -1,8 +1,13 @@
 #!/bin/bash
-# Copyright 2009-2013 Gentoo Foundation
+# Copyright 2009-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+if ! ___eapi_has_dohtml; then
+	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	exit 1
+fi
 
 if ___eapi_has_dohtml_deprecated; then
 	eqawarn "'${0##*/}' is deprecated in EAPI '$EAPI'"
