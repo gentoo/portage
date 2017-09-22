@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -613,7 +613,7 @@ class RepoConfigLoader(object):
 			portdir_sync = settings.get("SYNC", "")
 
 		default_opts['sync-rsync-extra-opts'] = \
-			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", None)
+			settings.get("PORTAGE_RSYNC_EXTRA_OPTS", "")
 
 		try:
 			self._parse(paths, prepos, settings.local_config, default_opts)

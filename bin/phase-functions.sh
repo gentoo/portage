@@ -598,10 +598,55 @@ __dyn_install() {
 
 	# record build & installed size in build log
 	if type -P du &>/dev/null; then
-		local sz=( $(du -ks "${WORKDIR}") )
-		einfo "Final size of build directory: ${sz[0]} KiB"
-		sz=( $(du -ks "${D}") )
-		einfo "Final size of installed tree: ${sz[0]} KiB"
+		local nsz=( $(du -ks "${WORKDIR}") )
+		local isz=( $(du -ks "${D}") )
+
+		# subshell to avoid polluting the caller env with the helper
+		# functions below
+		(
+			# align $1 to the right to the width of the widest of $1 and $2
+			padl() {
+				local s1=$1
+				local s2=$2
+				local width=${#s1}
+				[[ ${#s2} -gt ${width} ]] && width=${#s2}
+				printf "%*s" ${width} "${s1}"
+			}
+
+			# transform number in KiB into MiB, GiB or TiB based on size
+			human() {
+				local s1=$1
+				local units=( KiB MiB GiB TiB )
+
+				s1=$((s1 * 10))
+				while [[ ${s1} -gt 10240 && ${#units[@]} -gt 1 ]] ; do
+					s1=$((s1 / 1024 ))
+					units=( ${units[@]:1} )
+				done
+
+				local r=${s1: -1}
+				s1=$((s1 / 10))
+				printf "%s.%s %s" "${s1}" "${r}" "${units[0]}"
+			}
+
+			size() {
+				local s1=$1
+				local s2=$2
+				local out="$(padl "${s1}" "${s2}") KiB"
+
+				if [[ ${s1} -gt 1024 ]] ; then
+					s1=$(human ${s1})
+					if [[ ${s2} -gt 1024 ]] ; then
+						s2=$(human ${s2})
+						s1=$(padl "${s1}" "${s2}")
+					fi
+					out+=" (${s1})"
+				fi
+				echo "${out}"
+			}
+			einfo "Final size of build directory: $(size ${nsz[0]} ${isz[0]})"
+			einfo "Final size of installed tree:  $(size ${isz[0]} ${nsz[0]})"
+		)
 		__vecho
 	fi
 

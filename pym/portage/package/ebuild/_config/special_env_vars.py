@@ -14,7 +14,7 @@ import re
 # to enter the config instance from the external environment or
 # configuration files.
 env_blacklist = frozenset((
-	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
+	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "DOCS", "EAPI",
 	"EBUILD_FORCE_TEST", "EBUILD_PHASE",
 	"EBUILD_PHASE_FUNC", "EBUILD_SKIP_MANIFEST",
 	"ED", "EMERGE_FROM", "EPREFIX", "EROOT",
@@ -27,7 +27,7 @@ env_blacklist = frozenset((
 	"PORTAGE_INTERNAL_CALLER", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_PIPE_FD", "PORTAGE_REPO_NAME",
 	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "REPOSITORY",
-	"RESTRICT", "ROOT", "SLOT", "SRC_URI", "_"
+	"REQUIRED_USE", "RESTRICT", "ROOT", "SLOT", "SRC_URI", "_"
 ))
 
 environ_whitelist = []

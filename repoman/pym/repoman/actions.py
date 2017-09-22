@@ -357,7 +357,9 @@ class Actions(object):
 
 		# Common part of commit footer
 		commit_footer = "\n"
-		for bug in self.options.bug:
+		for tag, bug in chain(
+				(('Bug', x) for x in self.options.bug),
+				(('Closes', x) for x in self.options.closes)):
 			# case 1: pure number NNNNNN
 			if bug.isdigit():
 				bug = 'https://bugs.gentoo.org/%s' % (bug, )
@@ -374,18 +376,7 @@ class Actions(object):
 				elif (purl.scheme == 'http' and
 						purl.netloc in self.https_bugtrackers):
 					bug = urlunsplit(('https',) + purl[1:])
-			commit_footer += "Bug: %s\n" % (bug, )
-
-		for closes in self.options.closes:
-			# case 1: pure number NNNN
-			if closes.isdigit():
-				closes = 'https://github.com/gentoo/gentoo/pull/%s' % (closes, )
-			else:
-				purl = urlsplit(closes)
-				# case 2: bug tracker w/ http -> https
-				if purl.netloc in self.https_bugtrackers:
-					closes = urlunsplit(('https',) + purl[1:])
-			commit_footer += "Closes: %s\n" % (closes, )
+			commit_footer += "%s: %s\n" % (tag, bug)
 
 		if dco_sob:
 			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )

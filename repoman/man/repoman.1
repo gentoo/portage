@@ -27,13 +27,23 @@ be either a Gentoo bug number or a full bug URL (either Gentoo
 or upstream). Gentoo bug URLs are automatically shortened to
 the canonical \fBhttps://bugs.gentoo.org/NNNNNN\fR form, and HTTPS
 is forced for known bug trackers.
+
+When pushing to the Gentoo repository, the reference to the commit
+will be automatically added as a comment on the bug.
 .TP
 \fB-c\fR, \fB--closes\fR
 Include a \fBCloses\fR tag in the commit message footer that can be used
-to close pull requests (and issues) on GitHub and other compatible
-services (GitLab, Bitbucket). The argument can be either a PR number for
-the gentoo/gentoo GitHub repository or a full PR/bug URL. For bug URLs,
-HTTPS is forced automatically for known bug/PR trackers.
+to close bugs and pull requests. The argument can be either a Gentoo bug
+number or a full PR/bug URL. Gentoo bug URLs are automatically shortened
+to the canonical \fBhttps://bugs.gentoo.org/NNNNNN\fR form, and HTTPS
+is forced for known bug trackers.
+
+When pushing to the Gentoo repository, the referenced bugs will be
+closed as RESOLVED/FIXED automatically with a comment referencing
+the commit. Furthermore, GitHub pull requests will be closed as well
+due to the automatic GitHub mirroring.
+
+Other platforms using the \fBCloses\fR tag include GitLab and Bitbucket.
 .TP
 \fB\-\-digest=<y|n>\fR
 Automatically update Manifest digests for modified files. This

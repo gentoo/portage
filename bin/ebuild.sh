@@ -66,6 +66,7 @@ else
 		use useq usev use_with use_enable"
 	___eapi_has_usex && funcs+=" usex"
 	___eapi_has_in_iuse && funcs+=" in_iuse"
+	___eapi_has_get_libdir && funcs+=" get_libdir"
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
@@ -78,6 +79,14 @@ else
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
 	unset funcs x
+
+	# prevent the shell from finding external executables
+	# note: we can't use empty because it implies current directory
+	_PORTAGE_ORIG_PATH=${PATH}
+	export PATH=/dev/null
+	command_not_found_handle() {
+		die "External commands disallowed while sourcing ebuild: ${*}"
+	}
 fi
 
 # Don't use sandbox's BASH_ENV for new shells because it does

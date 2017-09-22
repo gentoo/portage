@@ -1,11 +1,15 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import dummy_threading
 import fcntl
 import errno
 import logging
 import sys
+
+try:
+	import dummy_threading
+except ImportError:
+	dummy_threading = None
 
 try:
 	import threading

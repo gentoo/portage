@@ -1817,7 +1817,8 @@ _post_phase_cmds = {
 		],
 
 	"postinst" : [
-		"postinst_aix"]
+		"postinst_aix",
+		"postinst_qa_check"],
 }
 
 def _post_phase_userpriv_perms(mysettings):
