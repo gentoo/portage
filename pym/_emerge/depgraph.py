@@ -3584,6 +3584,15 @@ class depgraph(object):
 						if atom_set.findAtomForPackage(pkg2, modified_use=self._pkg_use_enabled(pkg2)):
 							atom_pkg_graph.add(pkg2, atom)
 
+			# In order for the following eliminate_pkg loop to produce
+			# deterministic results, the order of the pkgs list must
+			# not be random (bug 631894). Prefer to eliminate installed
+			# packages first, in case rebuilds are needed, and also sort
+			# in ascending order so that older versions are eliminated
+			# first.
+			pkgs = (sorted(pkg for pkg in pkgs if pkg.installed) +
+				sorted(pkg for pkg in pkgs if not pkg.installed))
+
 			for pkg in pkgs:
 				eliminate_pkg = True
 				for atom in atom_pkg_graph.parent_nodes(pkg):
