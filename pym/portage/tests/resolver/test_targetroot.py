@@ -13,7 +13,7 @@ class TargetRootTestCase(TestCase):
 			"dev-lang/python-3.2": {
 				"EAPI": "5-hdepend",
 				"IUSE": "targetroot",
-				"HDEPEND": "targetroot? ( ~dev-lang/python-3.2 )",
+				"BDEPEND": "targetroot? ( ~dev-lang/python-3.2 )",
 			},
 			"dev-libs/A-1": {
 				"EAPI": "4",

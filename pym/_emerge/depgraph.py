@@ -3289,16 +3289,16 @@ class depgraph(object):
 			# Removal actions never traverse ignored buildtime
 			# dependencies, so it's safe to discard them early.
 			edepend["DEPEND"] = ""
-			edepend["HDEPEND"] = ""
+			edepend["BDEPEND"] = ""
 			ignore_build_time_deps = True
 
 		ignore_depend_deps = ignore_build_time_deps
-		ignore_hdepend_deps = ignore_build_time_deps
+		ignore_bdepend_deps = ignore_build_time_deps
 
 		if removal_action:
 			depend_root = myroot
 		else:
-			if eapi_attrs.hdepend:
+			if eapi_attrs.bdepend:
 				depend_root = myroot
 			else:
 				depend_root = self._frozen_config._running_root.root
@@ -3315,8 +3315,8 @@ class depgraph(object):
 		if not self._rebuild.rebuild:
 			if ignore_depend_deps:
 				edepend["DEPEND"] = ""
-			if ignore_hdepend_deps:
-				edepend["HDEPEND"] = ""
+			if ignore_bdepend_deps:
+				edepend["BDEPEND"] = ""
 
 		# Since build-time deps tend to be a superset of run-time deps, order
 		# dep processing such that build-time deps are popped from
@@ -3331,10 +3331,10 @@ class depgraph(object):
 				self._priority(buildtime=True,
 				optional=(pkg.built or ignore_depend_deps),
 				ignored=ignore_depend_deps)),
-			(self._frozen_config._running_root.root, edepend["HDEPEND"],
+			(self._frozen_config._running_root.root, edepend["BDEPEND"],
 				self._priority(buildtime=True,
-				optional=(pkg.built or ignore_hdepend_deps),
-				ignored=ignore_hdepend_deps)),
+				optional=(pkg.built or ignore_bdepend_deps),
+				ignored=ignore_bdepend_deps)),
 		)
 
 		debug = "--debug" in self._frozen_config.myopts

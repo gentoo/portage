@@ -4,17 +4,17 @@
 <title>Metadata</title>
 <section id='package-ebuild-eapi-7-metadata-dependencies'>
 <title>Dependencies</title>
-<section id='package-ebuild-eapi-7-metadata-dependencies-hdepend'>
-<title>HDEPEND</title>
+<section id='package-ebuild-eapi-7-metadata-dependencies-bdepend'>
+<title>BDEPEND</title>
 <para>
-The HDEPEND variable is used to represent build-time host dependencies. For
+The BDEPEND variable is used to represent build-time host dependencies. For
 build-time target dependencies, use DEPEND (if the host is the target then both
-HDEPEND and DEPEND will be installed on it). For EAPIs that support HDEPEND,
+BDEPEND and DEPEND will be installed on it). For EAPIs that support BDEPEND,
 the emerge --root-deps option will have no effect, since it is not needed
-when build-time dependencies are correctly specified with HDEPEND and DEPEND.
-If ebuilds using EAPIs which <emphasis>do not</emphasis> support HDEPEND are
+when build-time dependencies are correctly specified with BDEPEND and DEPEND.
+If ebuilds using EAPIs which <emphasis>do not</emphasis> support BDEPEND are
 built in the same emerge run as those using EAPIs which <emphasis>do</emphasis>
-support HDEPEND, the emerge --root-deps option will only apply to the former.
+support BDEPEND, the emerge --root-deps option will only apply to the former.
 </para>
 </section>
 </section>

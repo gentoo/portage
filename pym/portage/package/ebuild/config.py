@@ -155,7 +155,7 @@ class config(object):
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
 		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
-	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'BDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
