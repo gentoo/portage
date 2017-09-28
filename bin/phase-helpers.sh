@@ -640,7 +640,7 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir; then
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir || ___eapi_econf_passes_--with-sysroot; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
@@ -662,6 +662,12 @@ econf() {
 
 				if [[ ${conf_help} == *--htmldir* ]]; then
 					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--with-sysroot; then
+				if [[ ${conf_help} == *--with-sysroot* ]]; then
+					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
 			fi
 		fi
