@@ -1,10 +1,10 @@
-<section id='package-ebuild-eapi-5-hdepend'>
-<title>EAPI 5-hdepend</title>
-<section id='package-ebuild-eapi-5-hdepend-metadata'>
+<section id='package-ebuild-eapi-7'>
+<title>EAPI 7</title>
+<section id='package-ebuild-eapi-7-metadata'>
 <title>Metadata</title>
-<section id='package-ebuild-eapi-5-hdepend-metadata-dependencies'>
+<section id='package-ebuild-eapi-7-metadata-dependencies'>
 <title>Dependencies</title>
-<section id='package-ebuild-eapi-5-hdepend-metadata-dependencies-hdepend'>
+<section id='package-ebuild-eapi-7-metadata-dependencies-hdepend'>
 <title>HDEPEND</title>
 <para>
 The HDEPEND variable is used to represent build-time host dependencies. For

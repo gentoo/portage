@@ -918,7 +918,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 6
-			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress 5-hdepend; then
+			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi6_src_prepare; }
 				[[ ${phase_func} == src_install ]] && \

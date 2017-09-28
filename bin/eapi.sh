@@ -31,7 +31,7 @@ ___eapi_has_prefix_variables() {
 }
 
 ___eapi_has_HDEPEND() {
-	[[ ${1-${EAPI-0}} =~ ^(5-hdepend)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_RDEPEND_DEPEND_fallback() {
@@ -49,11 +49,11 @@ ___eapi_has_dosed() {
 }
 
 ___eapi_has_einstall() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_dohtml() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_dohtml_deprecated() {
@@ -61,7 +61,7 @@ ___eapi_has_dohtml_deprecated() {
 }
 
 ___eapi_has_dolib_libopts() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_docompress() {
@@ -73,7 +73,7 @@ ___eapi_has_nonfatal() {
 }
 
 ___eapi_has_nonfatal_as_executable() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_doheader() {
@@ -85,23 +85,23 @@ ___eapi_has_usex() {
 }
 
 ___eapi_has_get_libdir() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_einstalldocs() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_eapply() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_eapply_user() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_in_iuse() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_has_master_repositories() {
@@ -143,7 +143,7 @@ ___eapi_unpack_supports_xz() {
 }
 
 ___eapi_unpack_supports_txz() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_econf_passes_--disable-dependency-tracking() {
@@ -155,7 +155,7 @@ ___eapi_econf_passes_--disable-silent-rules() {
 }
 
 ___eapi_econf_passes_--docdir_and_--htmldir() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_use_enable_and_use_with_support_empty_third_argument() {
@@ -179,29 +179,29 @@ ___eapi_helpers_can_die() {
 }
 
 ___eapi_unpack_is_case_sensitive() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5)$ ]]
 }
 
 ___eapi_unpack_supports_absolute_paths() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5)$ ]]
 }
 
 ___eapi_die_can_respect_nonfatal() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_domo_respects_into() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_DESTTREE_INSDESTTREE() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_enables_globstar() {
@@ -209,7 +209,7 @@ ___eapi_enables_globstar() {
 }
 
 ___eapi_bash_3_2() {
-	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
 ___eapi_bash_4_2() {

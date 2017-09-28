@@ -70,7 +70,7 @@ def eapi_has_use_dep_defaults(eapi):
 
 def eapi_requires_posixish_locale(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
-			"5", "5-progress", "5-hdepend")
+			"5", "5-progress")
 
 def eapi_has_repo_deps(eapi):
 	return eapi in ("4-python", "5-progress")
@@ -94,7 +94,8 @@ def eapi_has_automatic_unpack_dependencies(eapi):
 	return eapi in ("5-progress",)
 
 def eapi_has_hdepend(eapi):
-	return eapi in ("5-hdepend",)
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "6")
 
 def eapi_has_targetroot(eapi):
 	return eapi in ()

@@ -7,6 +7,8 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground, Resolv
 class TargetRootTestCase(TestCase):
 
 	def testTargetRoot(self):
+		self.skipTest('No EAPI supports targetroot currently')
+
 		ebuilds = {
 			"dev-lang/python-3.2": {
 				"EAPI": "5-hdepend",
