@@ -97,7 +97,7 @@ def eapi_has_hdepend(eapi):
 	return eapi in ("5-hdepend",)
 
 def eapi_has_targetroot(eapi):
-	return eapi in ("5-hdepend",)
+	return eapi in ()
 
 def eapi_empty_groups_always_true(eapi):
 	return eapi in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",

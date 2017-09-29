@@ -42,7 +42,7 @@ PROFILE_PATH             = USER_CONFIG_PATH + "/make.profile"
 MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
 DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
 
-# variables used with targetroot (these need to be absolute, but not
+# variables used with target_root (these need to be absolute, but not
 # have a leading '/' since they are used directly with os.path.join on EROOT)
 VDB_PATH                 = "var/db/pkg"
 CACHE_PATH               = "var/cache/edb"
