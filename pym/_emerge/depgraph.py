@@ -1457,6 +1457,19 @@ class depgraph(object):
 
 		# Remove 'non_conflict_node' and or_tuples from 'forced'.
 		forced = set(pkg for pkg in forced if isinstance(pkg, Package))
+
+		# Add dependendencies of forced packages.
+		stack = list(forced)
+		traversed = set()
+		while stack:
+			pkg = stack.pop()
+			traversed.add(pkg)
+			for child in conflict_graph.child_nodes(pkg):
+				if (isinstance(child, Package) and
+					child not in traversed):
+					forced.add(child)
+					stack.append(child)
+
 		non_forced = set(pkg for pkg in conflict_pkgs if pkg not in forced)
 
 		if debug:
