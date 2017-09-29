@@ -1337,7 +1337,8 @@ class depgraph(object):
 					self._dynamic_config._parent_atoms.get(pkg, []))
 
 			for parent, atom in all_parent_atoms:
-				is_arg_parent = isinstance(parent, AtomArg)
+				is_arg_parent = (inst_pkg is not None and
+					not self._want_installed_pkg(inst_pkg))
 				is_non_conflict_parent = parent not in conflict_pkgs and \
 					parent not in indirect_conflict_pkgs
 
