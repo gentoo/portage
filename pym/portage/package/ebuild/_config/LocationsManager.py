@@ -73,6 +73,10 @@ class LocationsManager(object):
 
 		self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
 
+		# TODO: Set this via the constructor using
+		# PORTAGE_OVERRIDE_EPREFIX.
+		self.broot = portage.const.EPREFIX
+
 	def load_profiles(self, repositories, known_repository_paths):
 		known_repository_paths = set(os.path.realpath(x)
 			for x in known_repository_paths)
