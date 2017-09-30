@@ -101,10 +101,13 @@ __filter_readonly_variables() {
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
-	# Don't filter/interfere with prefix variables unless they are
-	# supported by the current EAPI.
+	# Don't filter/interfere with prefix and BROOT variables
+	# unless they are supported by the current EAPI.
 	if ___eapi_has_prefix_variables; then
 		filtered_vars+=" ED EPREFIX EROOT"
+	fi
+	if ___eapi_has_BROOT; then
+		filtered_vars+=" BROOT"
 	fi
 
 	if has --filter-sandbox $* ; then

@@ -163,7 +163,7 @@ qahelp = {
 	"variable.readonly": (
 		"Assigning a readonly variable"),
 	"variable.usedwithhelpers": (
-		"Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers"),
+		"Ebuild uses D, ROOT, BROOT, ED, EROOT or EPREFIX with helpers"),
 	"LIVEVCS.stable": (
 		"This ebuild is a live checkout from a VCS but has stable keywords."),
 	"LIVEVCS.unmasked": (

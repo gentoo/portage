@@ -302,6 +302,7 @@ class LocationsManager(object):
 		self._check_var_directory("ROOT", self.target_root)
 
 		self.eroot = self.target_root.rstrip(os.sep) + self.eprefix + os.sep
+		self.broot = portage.const.EPREFIX
 
 		self.global_config_path = GLOBAL_CONFIG_PATH
 		if portage.const.EPREFIX:

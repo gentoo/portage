@@ -38,8 +38,9 @@ from portage.const import CACHE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
-from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
-	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs
+from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
+	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs,
+	eapi_has_broot)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, IsADirectory, \
 		PortageException
@@ -371,6 +372,7 @@ class config(object):
 			locations_manager.set_root_override(make_conf.get("ROOT"))
 			target_root = locations_manager.target_root
 			eroot = locations_manager.eroot
+			broot = locations_manager.broot
 			self.global_config_path = locations_manager.global_config_path
 
 			# The expand_map is used for variable substitution
@@ -501,6 +503,7 @@ class config(object):
 			self["ROOT"] = target_root
 			self["EPREFIX"] = eprefix
 			self["EROOT"] = eroot
+			self["BROOT"] = broot
 			known_repos = []
 			portdir = ""
 			portdir_overlay = ""
@@ -668,6 +671,8 @@ class config(object):
 			self.backup_changes("EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
+			self["BROOT"] = broot
+			self.backup_changes("BROOT")
 
 			# The prefix of the running portage instance is used in the
 			# ebuild environment to implement the --host-root option for
@@ -2757,6 +2762,9 @@ class config(object):
 
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
+
+		if not eapi_has_broot(eapi):
+			mydict.pop("BROOT", None)
 
 		# Prefix variables are supported beginning with EAPI 3, or when
 		# force-prefix is in FEATURES, since older EAPIs would otherwise be

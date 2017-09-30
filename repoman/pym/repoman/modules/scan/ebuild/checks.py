@@ -17,7 +17,7 @@ import time
 from repoman._portage import portage
 
 from portage.eapi import (
-	eapi_supports_prefix, eapi_has_implicit_rdepend,
+	eapi_supports_prefix, eapi_has_broot, eapi_has_implicit_rdepend,
 	eapi_has_src_prepare_and_src_configure, eapi_has_dosed_dohard,
 	eapi_exports_AA, eapi_has_pkg_pretend)
 
@@ -166,7 +166,8 @@ class EbuildQuote(LineCheck):
 		r'(^$)|(^\s*#.*)|(^\s*\w+=.*)' +
 		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
 	ignore_comment = False
-	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
+	var_names = [
+		"D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "BROOT", "WORKDIR"]
 
 	# EAPI=3/Prefix vars
 	var_names += ["ED", "EPREFIX", "EROOT"]
@@ -257,6 +258,15 @@ class Eapi3EbuildAssignment(EbuildAssignment):
 
 	def check_eapi(self, eapi):
 		return eapi_supports_prefix(eapi)
+
+
+class Eapi7EbuildAssignment(EbuildAssignment):
+	"""Ensure ebuilds don't assign to readonly EAPI 7-introduced variables."""
+
+	readonly_assignment = re.compile(r'\s*(export\s+)?BROOT=')
+
+	def check_eapi(self, eapi):
+		return eapi_has_broot(eapi)
 
 
 class EbuildNestedDie(LineCheck):
@@ -358,9 +368,9 @@ class EbuildQuotedA(LineCheck):
 
 
 class NoOffsetWithHelpers(LineCheck):
-	""" Check that the image location, the alternate root offset, and the
-	offset prefix (D, ROOT, ED, EROOT and EPREFIX) are not used with
-	helpers """
+	""" Check that the image location, the alternate root offset, the build
+	prefix, and the offset prefix (D, ROOT, BROOT, ED, EROOT and EPREFIX)
+	are not used with helpers """
 
 	repoman_check_name = 'variable.usedwithhelpers'
 	# Ignore matches in quoted strings like this:
@@ -368,7 +378,7 @@ class NoOffsetWithHelpers(LineCheck):
 	_install_funcs = (
 		'docinto|do(compress|dir|hard)'
 		'|exeinto|fowners|fperms|insinto|into')
-	_quoted_vars = 'D|ROOT|ED|EROOT|EPREFIX'
+	_quoted_vars = 'D|ROOT|BROOT|ED|EROOT|EPREFIX'
 	re = re.compile(
 		r'^[^#"\']*\b(%s)\s+"?\$\{?(%s)\b.*' %
 		(_install_funcs, _quoted_vars))

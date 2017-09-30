@@ -750,6 +750,9 @@ else
 	if ___eapi_has_prefix_variables; then
 		declare -r ED EPREFIX EROOT
 	fi
+	if ___eapi_has_BROOT; then
+		declare -r BROOT
+	fi
 
 	# If ${EBUILD_FORCE_TEST} == 1 and USE came from ${T}/environment
 	# then it might not have USE=test like it's supposed to here.
