@@ -5972,11 +5972,16 @@ class depgraph(object):
 
 			new_use, changes = self._dynamic_config._needed_use_config_changes.get(pkg)
 			for ppkg, atom in parent_atoms:
-				if not atom.use or \
-					not any(x in atom.use.required for x in changes):
+				if not atom.use:
 					continue
-				else:
-					return True
+
+				# Backtrack only if changes break a USE dependency.
+				enabled = atom.use.enabled
+				disabled = atom.use.disabled
+				for k, v in changes.items():
+					want_enabled = k in enabled
+					if (want_enabled or k in disabled) and want_enabled != v:
+						return True
 
 			return False
 
