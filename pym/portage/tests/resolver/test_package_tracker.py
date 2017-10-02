@@ -10,18 +10,19 @@ from _emerge.resolver.package_tracker import PackageTracker, PackageTrackerDbapi
 class PackageTrackerTestCase(TestCase):
 
 	FakePackage = collections.namedtuple("FakePackage",
-		["root", "cp", "cpv", "slot", "slot_atom", "version", "repo"])
+		["root", "cp", "cpv", "slot", "slot_atom", "version", "repo", "installed"])
 
 	FakeConflict = collections.namedtuple("FakeConflict",
 		["description", "root", "pkgs"])
 
-	def make_pkg(self, root, atom, repo="test_repo"):
+	def make_pkg(self, root, atom, installed=False, repo="test_repo"):
 		atom = Atom(atom)
 		slot_atom = Atom("%s:%s" % (atom.cp, atom.slot))
 		slot = atom.slot
+		installed = installed
 
 		return self.FakePackage(root=root, cp=atom.cp, cpv=atom.cpv,
-			slot=slot, slot_atom=slot_atom, version=atom.version, repo=repo)
+			slot=slot, slot_atom=slot_atom, version=atom.version, repo=repo, installed=False)
 
 	def make_conflict(self, description, root, pkgs):
 		return self.FakeConflict(description=description, root=root, pkgs=pkgs)
@@ -98,7 +99,7 @@ class PackageTrackerTestCase(TestCase):
 	def test_dbapi_interface(self):
 		p = PackageTracker()
 		dbapi = PackageTrackerDbapiWrapper("/", p)
-		installed = self.make_pkg("/", "=dev-libs/X-0:0")
+		installed = self.make_pkg("/", "=dev-libs/X-0:0", installed=True)
 		x1 = self.make_pkg("/", "=dev-libs/X-1:0")
 		x2 = self.make_pkg("/", "=dev-libs/X-2:0")
 		x3 = self.make_pkg("/", "=dev-libs/X-3:0")
@@ -124,7 +125,7 @@ class PackageTrackerTestCase(TestCase):
 
 		check_dbapi([])
 
-		p.add_installed_pkg(installed)
+		p.add_pkg(installed)
 		check_dbapi([installed])
 
 		p.add_pkg(x1)
@@ -148,8 +149,8 @@ class PackageTrackerTestCase(TestCase):
 
 	def test_installed(self):
 		p = PackageTracker()
-		x1 = self.make_pkg("/", "=dev-libs/X-1:0")
-		x1b = self.make_pkg("/", "=dev-libs/X-1.1:0")
+		x1 = self.make_pkg("/", "=dev-libs/X-1:0", installed=True)
+		x1b = self.make_pkg("/", "=dev-libs/X-1.1:0", installed=True)
 		x2 = self.make_pkg("/", "=dev-libs/X-2:0")
 		x3 = self.make_pkg("/", "=dev-libs/X-3:1")
 
@@ -166,11 +167,11 @@ class PackageTrackerTestCase(TestCase):
 			for x, y in zip(matches, expected):
 				self.assertTrue(x is y)
 
-		p.add_installed_pkg(x1)
+		p.add_pkg(x1)
 		check_installed(x1, True, 1)
 		check_matches("dev-libs/X", [x1])
 
-		p.add_installed_pkg(x1)
+		p.add_pkg(x1)
 		check_installed(x1, True, 1)
 		check_matches("dev-libs/X", [x1])
 
@@ -178,11 +179,11 @@ class PackageTrackerTestCase(TestCase):
 		check_installed(x1, False, 1)
 		check_matches("dev-libs/X", [x2])
 
-		p.add_installed_pkg(x1)
+		p.add_pkg(x1)
 		check_installed(x1, False, 1)
 		check_matches("dev-libs/X", [x2])
 
-		p.add_installed_pkg(x1b)
+		p.add_pkg(x1b)
 		check_installed(x1, False, 1)
 		check_installed(x1b, False, 1)
 		check_matches("dev-libs/X", [x2])
@@ -194,8 +195,8 @@ class PackageTrackerTestCase(TestCase):
 
 	def test_conflicts(self):
 		p = PackageTracker()
-		installed1 = self.make_pkg("/", "=dev-libs/X-0:0")
-		installed2 = self.make_pkg("/", "=dev-libs/X-0.1:0")
+		installed1 = self.make_pkg("/", "=dev-libs/X-0:0", installed=True)
+		installed2 = self.make_pkg("/", "=dev-libs/X-0.1:0", installed=True)
 		x1 = self.make_pkg("/", "=dev-libs/X-1:0")
 		x2 = self.make_pkg("/", "=dev-libs/X-2:0")
 		x3 = self.make_pkg("/", "=dev-libs/X-3:0")
@@ -223,8 +224,8 @@ class PackageTrackerTestCase(TestCase):
 		check_conflicts([])
 		check_conflicts([])
 
-		p.add_installed_pkg(installed1)
-		p.add_installed_pkg(installed2)
+		p.add_pkg(installed1)
+		p.add_pkg(installed2)
 		check_conflicts([])
 
 		p.add_pkg(x1)
