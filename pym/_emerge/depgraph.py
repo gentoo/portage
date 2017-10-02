@@ -451,7 +451,7 @@ class _dynamic_depgraph_config(object):
 		self._complete_mode = False
 		self._slot_operator_deps = {}
 		self._installed_sonames = collections.defaultdict(list)
-		self._package_tracker = PackageTracker(
+		self._package_tracker = PackageTracker( self,
 			soname_deps=depgraph._frozen_config.soname_deps_enabled)
 		# Track missed updates caused by solved conflicts.
 		self._conflict_missed_update = collections.defaultdict(dict)
@@ -606,7 +606,7 @@ class depgraph(object):
 
 				if not dynamic_deps:
 					for pkg in vardb:
-						self._dynamic_config._package_tracker.add_installed_pkg(pkg)
+						self._dynamic_config._package_tracker.add_pkg(pkg)
 						self._add_installed_sonames(pkg)
 				else:
 					max_jobs = self._frozen_config.myopts.get("--jobs")
@@ -625,7 +625,7 @@ class depgraph(object):
 		portdb = fake_vartree._portdb
 		for pkg in fake_vartree.dbapi:
 			self._spinner_update()
-			self._dynamic_config._package_tracker.add_installed_pkg(pkg)
+			self._dynamic_config._package_tracker.add_pkg(pkg)
 			self._add_installed_sonames(pkg)
 			ebuild_path, repo_path = \
 				portdb.findname2(pkg.cpv, myrepo=pkg.repo)
