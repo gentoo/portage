@@ -1,6 +1,8 @@
 # check for missing calls to xdg-utils regen functions
 
 xdg_desktop_database_check() {
+	type -P update-desktop-database &>/dev/null || return
+
 	local d f missing
 	for d in usr/share/applications; do
 		[[ -d ${d} ]] || continue
@@ -39,6 +41,8 @@ xdg_desktop_database_check() {
 }
 
 xdg_mimeinfo_database_check() {
+	type -P update-mime-database &>/dev/null || return
+
 	local d f missing
 	for d in usr/share/mime; do
 		[[ -d ${d} ]] || continue

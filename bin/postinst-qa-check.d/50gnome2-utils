@@ -1,6 +1,8 @@
 # check for missing calls to gnome2-utils regen functions
 
 gnome2_icon_cache_check() {
+	type -P gtk-update-icon-cache &>/dev/null || return
+
 	local d f all_files=() missing
 	for d in usr/share/icons/*/; do
 		# gnome2_icon_cache_update updates only themes with an index
