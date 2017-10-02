@@ -1,24 +1,12 @@
 certificate version 0.1
-pusher BABF1D5FF8C8110A! 1506963388 +0200
-pushee git.gentoo.org:proj/portage.git
-nonce 1506963387-7dd84c10bed342c1ea24
+pusher FDE8EF85AE5719A3 1506965282 -0700
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1506965283-060869578b7eb7bb9455
 
-d82bf7c0a2cfa9590849aa7fd3ea1257a7f45006 38deed53c51aa9e75bd8c933f84121af993af7a2 refs/heads/master
+38deed53c51aa9e75bd8c933f84121af993af7a2 c2636e6802fb4eb173b2da54d278322cb8edb5e5 refs/heads/master
 -----BEGIN PGP SIGNATURE-----
 
-iQKTBAABCgB9FiEEXr8g+Zb7PCLMb8pAur8dX/jIEQoFAlnSb7xfFIAAAAAALgAo
-aXNzdWVyLWZwckBub3RhdGlvbnMub3BlbnBncC5maWZ0aGhvcnNlbWFuLm5ldDVF
-QkYyMEY5OTZGQjNDMjJDQzZGQ0E0MEJBQkYxRDVGRjhDODExMEEACgkQur8dX/jI
-EQrIxg//SaNqH75JC0T/sreKDN24xUw9NHW4+yAgEx/edQo9OwlHLH/UBObmUAf1
-DgbnNO7L6CFTGUTh3MJ2fhlzvC5BDv0dmdYg+YlpEIv3xLwA8LklhXm8/IGdSPpj
-yaMdSKCXk3xTdZCOTqetu9MckhB6xZnniBZdBHEYGjnwv9EZm6r9doaL1pXE1JjR
-/yORZA+flmn8sHCRshy/AzqcYgJfd+I1IYUwKLkvHBTelxNQ3jDADjJk91Px4YSc
-3CqoKUPvWZk5y5/g7UJgI9sp2ljc7MSfbZeeSRzBeksIWt7Blp0bb36SwxyEymKr
-MvyvvLj4nm8sxpF7BZTzrVZ/8GYxu/9nmpffFEm37pkeDMNo+alUY1b0NHa3w1Tk
-Qjhox4w/ZxOEPxvbBHwhp2A3BlgCgTb6pyf/IZdOMhfuoQX4uCiPuAfqnJn3Kxvy
-0lzXrCYgTyEM1y5EGaIGCrbqpwkaCv+XvPjuN1UHAvaGmisdcVC76rllfL/PqKx4
-pKJyxM86Jcv5r0lD/n9DprVExRk1ajrLpHlVerVqU19usvBuR5a4Hj0tAFs5kgZR
-aoO9cu3eDNHYLLxxYqpdCVoX4wQ42phF6zzMzLvhrGVLP9onDDMI1PZZIECfAP56
-hM3D3+l0SRIoJ+/gZnNEN6c7beLDIRiw5QNwE49C8Tu+0N0e9aw=
-=APT9
+iF0EABECAB0WIQSG5RNTeMgVEruefzL96O+FrlcZowUCWdJ3IgAKCRD96O+FrlcZ
+ozeDAKDbtyr/DrcPyxv89J+Pc90WeSxhNwCgrzE87cHSmX+fKuxJwjXrpLPUevI=
+=mCbv
 -----END PGP SIGNATURE-----
