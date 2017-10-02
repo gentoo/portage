@@ -1,12 +1,36 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+# Refactored in Sept 2017 by Daniel Robbins to allow for slot rebuilds to be detected in real-time with minimal code,
+# and various other improvements. Needs to be validated to ensure it doesn't break any assumptions in existing Portage
+# code. This works for a Funtoo non-backtracking slot-overhaul version of depgraph.py but I want to get it working
+# for upstream Gentoo portage as well, with backtracking. I also plan to add more verbose documentation once the code
+# has settled.
+
+# Notable changes:
+#
+# add_installed_pkg() is deprecated as add_pkg() now determines if package is installed by looking at pkg.installed.
+# Just replace add_installed_pkg() calls with add_pkg() calls.
+#
+# Some caching has been removed as the code is in flux, and can be added back later as necessary. Shouldn't impact
+# functionality, just speed.
+#
+# the PackageTracker() constructor now takes a dynamic_config instance as its first argument so it can access the
+# digraph.
+#
+# get_subslot_rebuilds() is the new method that very efficiently identifies necessary subslot rebuilds.
+#
+# Various unused methods were removed. Hopefully I didn't remove too much for upstream gentoo Portage.
+#
+# Trying to document behavior as well as key variables and assumptions of code.
+
 from __future__ import print_function
 
 import bisect
 import collections
 
 import portage
+from _emerge.Package import Package
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:Atom,match_from_list',
 	'portage.util:cmp_sort_key',
@@ -28,130 +52,101 @@ class PackageConflict(_PackageConflict):
 	def __len__(self):
 		return len(self.pkgs)
 
-
 class PackageTracker(object):
-	"""
-	This class tracks packages which are currently
-	installed and packages which have been pulled into
-	the dependency graph.
-
-	It automatically tracks conflicts between packages.
-
-	Possible conflicts:
-		1) Packages that share the same SLOT.
-		2) Packages with the same cpv.
-		Not yet implemented:
-		3) Packages that block each other.
-	"""
 
 	def __init__(self, soname_deps=False):
 		"""
 		@param soname_deps: enable soname match support
 		@type soname_deps: bool
 		"""
-		# Mapping from package keys to set of packages.
-		self._cp_pkg_map = collections.defaultdict(list)
-		self._cp_vdb_pkg_map = collections.defaultdict(list)
+		# _installed_map records the list of to-be-merged packages.
+		self._installed_map = collections.defaultdict(list)
+
+		# _queued_map records the list of already-installed packages.
+		self._queued_map = collections.defaultdict(list)
+
 		# List of package keys that may contain conflicts.
-		# The insetation order must be preserved.
+		# The insertion order is used to track first potential conflict, second potential, etc.
 		self._multi_pkgs = []
 
-		# Cache for result of conflicts().
-		self._conflicts_cache = None
+		self._subslot_replacements = {}
 
-		# Records for each pulled package which installed package
-		# are replaced.
-		self._replacing = collections.defaultdict(list)
-		# Records which pulled packages replace this package.
-		self._replaced_by = collections.defaultdict(list)
-
-		self._match_cache = collections.defaultdict(dict)
 		if soname_deps:
 			self._provides_index = collections.defaultdict(list)
 		else:
 			self._provides_index = None
 
 	def add_pkg(self, pkg):
-		"""
-		Add a new package to the tracker. Records conflicts as necessary.
-		"""
+
 		cp_key = pkg.root, pkg.cp
 
-		if any(other is pkg for other in self._cp_pkg_map[cp_key]):
+		if pkg.installed:
+			target = self._installed_map
+			other = self._queued_map
+		else:
+			target = self._queued_map
+			other = self._installed_map
+
+		# don't add multiple copies of the same package
+		if any(foo is pkg for foo in target):
 			return
 
-		self._cp_pkg_map[cp_key].append(pkg)
+		# add package
+		target[cp_key].append(pkg)
 
-		if len(self._cp_pkg_map[cp_key]) > 1:
-			self._conflicts_cache = None
-			if len(self._cp_pkg_map[cp_key]) == 2:
+		# use classic logic for tracking multi_pkgs:
+		if not pkg.installed:
+			if len(target[cp_key]) == 2:
 				self._multi_pkgs.append(cp_key)
 
-		self._replacing[pkg] = []
-		for installed in self._cp_vdb_pkg_map.get(cp_key, []):
-			if installed.slot_atom == pkg.slot_atom or \
-				installed.cpv == pkg.cpv:
-				self._replacing[pkg].append(installed)
-				self._replaced_by[installed].append(pkg)
+		to_remove = []
 
-		self._add_provides(pkg)
+		# if adding installed pkg, we look at queued pkgs, and vice versa:
+		for other_pkg in other.get(cp_key, []):
+			if pkg.slot_atom == other_pkg.slot_atom:
+				if pkg.cpv == other_pkg.cpv:
 
-		self._match_cache.pop(cp_key, None)
+					# adding an installed package will wipe out the matching to-be-merged package, and vice-versa:
+					to_remove.append(other_pkg)
 
-	def _add_provides(self, pkg):
-		if (self._provides_index is not None and
-			pkg.provides is not None):
+				# we are processing a to-be-merged pkg and found an installed pkg with differing sub-slot:
+				if not pkg.installed and pkg.sub_slot != other_pkg.sub_slot:
+
+					# found sub-slot replacement/upgrade! We can look at parents to easily figure out sub-slot rebuilds.
+					self._subslot_replacements[cp_key] = True
+
+		# do all removals outside of the previous loop, since we don't want to modify a dict while iterating over it:
+		for other_pkg in to_remove:
+			other[cp_key].remove(other_pkg)
+
+		if (self._provides_index is not None and pkg.provides is not None):
 			index = self._provides_index
 			root = pkg.root
 			for atom in pkg.provides:
 				# Use bisect.insort for ordered match results.
 				bisect.insort(index[(root, atom)], pkg)
 
-	def add_installed_pkg(self, installed):
-		"""
-		Add an installed package during vdb load. These packages
-		are not returned by matched_pull as long as add_pkg hasn't
-		been called with them. They are only returned by match_final.
-		"""
-		cp_key = installed.root, installed.cp
-		if any(other is installed for other in self._cp_vdb_pkg_map[cp_key]):
-			return
-
-		self._cp_vdb_pkg_map[cp_key].append(installed)
-
-		for pkg in self._cp_pkg_map.get(cp_key, []):
-			if installed.slot_atom == pkg.slot_atom or \
-				installed.cpv == pkg.cpv:
-				self._replacing[pkg].append(installed)
-				self._replaced_by[installed].append(pkg)
-
-		self._match_cache.pop(cp_key, None)
-
 	def remove_pkg(self, pkg):
-		"""
-		Removes the package from the tracker.
-		Raises KeyError if it isn't present.
-		"""
 		cp_key = pkg.root, pkg.cp
-		try:
-			self._cp_pkg_map.get(cp_key, []).remove(pkg)
-		except ValueError:
-			raise KeyError(pkg)
+		for my_map in [ self._queued_map, self._installed_map ]:
+			try:
+				my_map.get(cp_key, []).remove(pkg)
+			except ValueError:
+				if my_map is self._queued_map:
+					raise KeyError(pkg)
+				else:
+					pass
+			if not my_map[cp_key]:
+				del my_map[cp_key]
 
-		if self._cp_pkg_map[cp_key]:
-			self._conflicts_cache = None
+		if len(self._queued_map[cp_key]) == 1:
+			self._multi_pkgs = [other_cp_key for other_cp_key in self._multi_pkgs if other_cp_key != cp_key]
 
-		if not self._cp_pkg_map[cp_key]:
-			del self._cp_pkg_map[cp_key]
-		elif len(self._cp_pkg_map[cp_key]) == 1:
-			self._multi_pkgs = [other_cp_key for other_cp_key in self._multi_pkgs \
-			if other_cp_key != cp_key]
+		# This code is necessary to ensure that self._subslot_replacements is properly updated when a pkg is removed
+		# from the package tracker:
 
-		for installed in self._replacing[pkg]:
-			self._replaced_by[installed].remove(pkg)
-			if not self._replaced_by[installed]:
-				del self._replaced_by[installed]
-		del self._replacing[pkg]
+		if not pkg.installed and cp_key in self._subslot_replacements:
+			del self._subslot_replacements[cp_key]
 
 		if self._provides_index is not None:
 			index = self._provides_index
@@ -166,17 +161,21 @@ class PackageTracker(object):
 				if not items:
 					del index[key]
 
-		self._match_cache.pop(cp_key, None)
-
 	def discard_pkg(self, pkg):
-		"""
-		Removes the package from the tracker.
-		Does not raises KeyError if it is not present.
-		"""
 		try:
 			self.remove_pkg(pkg)
 		except KeyError:
 			pass
+
+	def get_subslot_rebuilds(self, dynamic_config):
+
+		out = []
+		for root, pkg in self._subslot_replacements.keys():
+			# we have identified a subslot replacement. Parents will need to be rebuilt:
+			for node in dynamic_config.digraph.parent_nodes(pkg):
+				if isinstance(node, Package):
+					out.append((pkg,node))
+		return out
 
 	def match(self, root, atom, installed=True):
 		"""
@@ -184,74 +183,73 @@ class PackageTracker(object):
 		If 'installed' is True, installed non-replaced
 		packages may also be returned.
 		"""
+
+		# TODO: add caching back
+
 		if atom.soname:
 			return iter(self._provides_index.get((root, atom), []))
 
 		cp_key = root, atom.cp
-		cache_key = root, atom, atom.unevaluated_atom, installed
-		try:
-			return iter(self._match_cache.get(cp_key, {})[cache_key])
-		except KeyError:
-			pass
-
-		candidates = self._cp_pkg_map.get(cp_key, [])[:]
+		candidates = self._queued_map.get(cp_key, [])[:]
 
 		if installed:
-			for installed in self._cp_vdb_pkg_map.get(cp_key, []):
-				if installed not in self._replaced_by:
-					candidates.append(installed)
+			candidates.extend(self._installed_map.get(cp_key, []))
 
 		ret = match_from_list(atom, candidates)
 		ret.sort(key=cmp_sort_key(lambda x, y: vercmp(x.version, y.version)))
-		self._match_cache[cp_key][cache_key] = ret
 
 		return iter(ret)
 
 	def conflicts(self):
 		"""
-		Iterates over the curently existing conflicts.
+		Iterates over the currently existing conflicts.
 		"""
-		if self._conflicts_cache is None:
-			self._conflicts_cache = []
+		out = []
 
-			for cp_key in self._multi_pkgs:
+		for cp_key in self._multi_pkgs:
 
-				# Categorize packages according to cpv and slot.
-				slot_map = collections.defaultdict(list)
-				cpv_map = collections.defaultdict(list)
-				for pkg in self._cp_pkg_map[cp_key]:
-					slot_key = pkg.root, pkg.slot_atom
-					cpv_key = pkg.root, pkg.cpv
-					slot_map[slot_key].append(pkg)
-					cpv_map[cpv_key].append(pkg)
+			# A cp_key in _multi_pkgs has a /potential/ conflict. We need to interrogate the contents of the
+			# cp_key to see.
 
-				# Slot conflicts.
-				for slot_key in slot_map:
-					slot_pkgs = slot_map[slot_key]
-					if len(slot_pkgs) > 1:
-						self._conflicts_cache.append(PackageConflict(
-							description = "slot conflict",
-							root = slot_key[0],
-							atom = slot_key[1],
-							pkgs = tuple(slot_pkgs),
+			# Categorize packages according to cpv and slot.
+			slot_map = collections.defaultdict(list)
+			cpv_map = collections.defaultdict(list)
+			# for each to-be-merged package:
+			for pkg in self._queued_map[cp_key]:
+				# confusing: note that pkg.slot_atom actually contains "catpkg:slot"
+				slot_key = pkg.root, pkg.slot_atom
+				cpv_key = pkg.root, pkg.cpv
+				slot_map[slot_key].append(pkg)
+				cpv_map[cpv_key].append(pkg)
+
+			# for each "catpkg:slot" value:
+			for slot_key in slot_map:
+				# slot_pkgs = all packages to-be-installed in the same slot
+				slot_pkgs = slot_map[slot_key]
+				if len(slot_pkgs) > 1:
+					out.append(PackageConflict(
+						description = "slot conflict",
+						root = slot_key[0],
+						atom = slot_key[1],
+						pkgs = tuple(slot_pkgs),
+					))
+
+			# CPV conflicts. This is where we have two different versions in the same slot.
+			for cpv_key in cpv_map:
+				cpv_pkgs = cpv_map[cpv_key]
+				if len(cpv_pkgs) > 1:
+					# Make sure this cpv conflict is not a slot conflict at the same time.
+					# Ignore it if it is.
+					slots = set(pkg.slot for pkg in cpv_pkgs)
+					if len(slots) > 1:
+						out.append(PackageConflict(
+							description = "cpv conflict",
+							root = cpv_key[0],
+							atom = cpv_key[1],
+							pkgs = tuple(cpv_pkgs),
 							))
 
-				# CPV conflicts.
-				for cpv_key in cpv_map:
-					cpv_pkgs = cpv_map[cpv_key]
-					if len(cpv_pkgs) > 1:
-						# Make sure this cpv conflict is not a slot conflict at the same time.
-						# Ignore it if it is.
-						slots = set(pkg.slot for pkg in cpv_pkgs)
-						if len(slots) > 1:
-							self._conflicts_cache.append(PackageConflict(
-								description = "cpv conflict",
-								root = cpv_key[0],
-								atom = cpv_key[1],
-								pkgs = tuple(cpv_pkgs),
-								))
-
-		return iter(self._conflicts_cache)
+		return out
 
 	def slot_conflicts(self):
 		"""
@@ -269,16 +267,12 @@ class PackageTracker(object):
 		present in the tracker, including the installed
 		packages.
 		"""
-		for cp_key in self._cp_pkg_map:
-			if cp_key[0] == root:
-				for pkg in self._cp_pkg_map[cp_key]:
-					yield pkg
 
-		for cp_key in self._cp_vdb_pkg_map:
-			if cp_key[0] == root:
-				for installed in self._cp_vdb_pkg_map[cp_key]:
-					if installed not in self._replaced_by:
-						yield installed
+		for mymap in [ self._queued_map, self._installed_map ]:
+			for cp_key in mymap:
+				if cp_key[0] == root:
+					for pkg in mymap[cp_key]:
+						yield pkg
 
 	def contains(self, pkg, installed=True):
 		"""
@@ -287,14 +281,14 @@ class PackageTracker(object):
 		non-replaced installed packages.
 		"""
 		cp_key = pkg.root, pkg.cp
-		for other in self._cp_pkg_map.get(cp_key, []):
+
+		for other in self._queued_map.get(cp_key, []):
 			if other is pkg:
 				return True
 
 		if installed:
-			for installed in self._cp_vdb_pkg_map.get(cp_key, []):
-				if installed is pkg and \
-					installed not in self._replaced_by:
+			for installed in self._installed_map.get(cp_key, []):
+				if installed is pkg:
 					return True
 
 		return False
@@ -309,7 +303,7 @@ class PackageTracker(object):
 
 class PackageTrackerDbapiWrapper(object):
 	"""
-	A wrpper class that provides parts of the legacy
+	A wrapper class that provides parts of the legacy
 	dbapi interface. Remove it once all consumers have
 	died.
 	"""
@@ -333,3 +327,5 @@ class PackageTrackerDbapiWrapper(object):
 
 	def cp_list(self, cp):
 		return self.match_pkgs(Atom(cp))
+
+# vim: ts=4 sw=4 noet tw=120
