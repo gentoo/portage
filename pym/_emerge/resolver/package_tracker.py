@@ -54,13 +54,11 @@ class PackageConflict(_PackageConflict):
 
 class PackageTracker(object):
 
-	def __init__(self, dynamic_config, soname_deps=False):
+	def __init__(self, soname_deps=False):
 		"""
 		@param soname_deps: enable soname match support
 		@type soname_deps: bool
 		"""
-		self._dynamic_config = dynamic_config
-
 		# _installed_map records the list of to-be-merged packages.
 		self._installed_map = collections.defaultdict(list)
 
@@ -169,12 +167,12 @@ class PackageTracker(object):
 		except KeyError:
 			pass
 
-	def get_subslot_rebuilds(self):
+	def get_subslot_rebuilds(self, dynamic_config):
 
 		out = []
 		for root, pkg in self._subslot_replacements.keys():
 			# we have identified a subslot replacement. Parents will need to be rebuilt:
-			for node in self._dynamic_config.digraph.parent_nodes(pkg):
+			for node in dynamic_config.digraph.parent_nodes(pkg):
 				if isinstance(node, Package):
 					out.append((pkg,node))
 		return out
