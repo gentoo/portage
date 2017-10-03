@@ -162,7 +162,10 @@ class search(object):
 		multiple package databases. If necessary, old-style virtuals
 		can be performed on atoms prior to calling this method.
 		"""
-		cp = portage.dep_getkey(atom)
+		if not isinstance(atom, portage.dep.Atom):
+			atom = portage.dep.Atom(atom)
+
+		cp = atom.cp
 		if level == "match-all":
 			matches = set()
 			for db in self._dbs:
@@ -489,6 +492,9 @@ class search(object):
 	# private interface
 	#
 	def getInstallationStatus(self,package):
+		if not isinstance(package, portage.dep.Atom):
+			package = portage.dep.Atom(package)
+
 		installed_package = self._vardb.match(package)
 		if installed_package:
 			try:

@@ -1,6 +1,20 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.11
+==================================
+* Bug Fixes:
+    - Bug 631820 postinst-qa-check.d/50xdg-utils unconditionally calls binaries
+      it doesn't depend on and gets confused
+    - Bug 631894 depgraph _minimize_children method randomly chooses packages to
+      eliminate
+    - Bug 632202 slot conflict solver interferes with @preserved-rebuild
+    - Bug 632210 SlotConflictUpdateTestCase fails with @world
+    - Bug 632598 --autounmask USE changes can trigger unnecessary backtracking
+    - Bug 632696 Files found by xdg_desktop_database_check() leak to
+      xdg_mimeinfo_database_check()
+
+
 portage-2.3.10
 ==================================
 * Bug Fixes:

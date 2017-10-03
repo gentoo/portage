@@ -1337,7 +1337,8 @@ class depgraph(object):
 					self._dynamic_config._parent_atoms.get(pkg, []))
 
 			for parent, atom in all_parent_atoms:
-				is_arg_parent = isinstance(parent, AtomArg)
+				is_arg_parent = (inst_pkg is not None and
+					not self._want_installed_pkg(inst_pkg))
 				is_non_conflict_parent = parent not in conflict_pkgs and \
 					parent not in indirect_conflict_pkgs
 
@@ -1457,6 +1458,19 @@ class depgraph(object):
 
 		# Remove 'non_conflict_node' and or_tuples from 'forced'.
 		forced = set(pkg for pkg in forced if isinstance(pkg, Package))
+
+		# Add dependendencies of forced packages.
+		stack = list(forced)
+		traversed = set()
+		while stack:
+			pkg = stack.pop()
+			traversed.add(pkg)
+			for child in conflict_graph.child_nodes(pkg):
+				if (isinstance(child, Package) and
+					child not in traversed):
+					forced.add(child)
+					stack.append(child)
+
 		non_forced = set(pkg for pkg in conflict_pkgs if pkg not in forced)
 
 		if debug:
@@ -3583,6 +3597,15 @@ class depgraph(object):
 							continue
 						if atom_set.findAtomForPackage(pkg2, modified_use=self._pkg_use_enabled(pkg2)):
 							atom_pkg_graph.add(pkg2, atom)
+
+			# In order for the following eliminate_pkg loop to produce
+			# deterministic results, the order of the pkgs list must
+			# not be random (bug 631894). Prefer to eliminate installed
+			# packages first, in case rebuilds are needed, and also sort
+			# in ascending order so that older versions are eliminated
+			# first.
+			pkgs = (sorted(pkg for pkg in pkgs if pkg.installed) +
+				sorted(pkg for pkg in pkgs if not pkg.installed))
 
 			for pkg in pkgs:
 				eliminate_pkg = True
@@ -5949,11 +5972,16 @@ class depgraph(object):
 
 			new_use, changes = self._dynamic_config._needed_use_config_changes.get(pkg)
 			for ppkg, atom in parent_atoms:
-				if not atom.use or \
-					not any(x in atom.use.required for x in changes):
+				if not atom.use:
 					continue
-				else:
-					return True
+
+				# Backtrack only if changes break a USE dependency.
+				enabled = atom.use.enabled
+				disabled = atom.use.disabled
+				for k, v in changes.items():
+					want_enabled = k in enabled
+					if (want_enabled or k in disabled) and want_enabled != v:
+						return True
 
 			return False
 

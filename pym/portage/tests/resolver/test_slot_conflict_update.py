@@ -80,7 +80,7 @@ class SlotConflictUpdateTestCase(TestCase):
 			# this behavior makes SlotConflictMaskUpdateTestCase
 			# fail.
 			ResolverPlaygroundTestCase(
-				world,
+				['@world'],
 				all_permutations = True,
 				options = {"--update": True, "--deep": True},
 				success = True,
