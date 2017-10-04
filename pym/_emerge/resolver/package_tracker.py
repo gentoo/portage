@@ -42,13 +42,13 @@ class PackageTracker(object):
 	considering installing on the system, based on the information in Portage's dependency graph. Multiple roots are
 	supported, so that situations can be modeled where ROOT is set to a non-default value (non-``/``).
 
-	You can use the add_pkg() method to add a to-be-merged package to the PackageTracker, and ``add_installed_pkg()``
-	to add an already-installed package to the package tracker. Typical use of the package tracker involves the
-	depgraph.py code populating the package tracker with calls to ``add_installed_pkg()`` to add all installed packages
-	on the system, and then it is initialized and ready for use. At that point, ``depgraph.py`` can use ``add_pkg()``
-	to add to-be-installed packages to the system.
+	You can use the add_pkg() method to add a to-be-merged package to the PackageTracker, and ``add_installed_pkg()`` to
+	add an already-installed package to the package tracker. Typical use of the package tracker involves the
+	``depgraph.py`` code populating the package tracker with calls to ``add_installed_pkg()`` to add all installed
+	packages on the system, and then it is initialized and ready for use. At that point, ``depgraph.py`` can use
+	``add_pkg()`` to add to-be-installed packages to the system.
 
-	It's worth mentioning that PackageTracker uses ``Package`` objects as arguments, and stores these objects
+	It's worth mentioning that ``PackageTracker`` uses ``Package`` objects as arguments, and stores these objects
 	internally. There are parts of the code that ensure that a ``Package`` instance is added to the PackageTracker
 	only once.
 
