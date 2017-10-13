@@ -5039,7 +5039,7 @@ class depgraph(object):
 			if atom.soname:
 				repo_list = [None]
 			elif atom.repo is None and hasattr(db, "getRepositories"):
-				repo_list = db.getRepositories()
+				repo_list = db.getRepositories(catpkg=atom.cp)
 			else:
 				repo_list = [atom.repo]
 
@@ -5490,7 +5490,7 @@ class depgraph(object):
 			atom_set = InternalPackageSet(initial_atoms=(atom,),
 				allow_repo=True)
 			if atom.repo is None and hasattr(db, "getRepositories"):
-				repo_list = db.getRepositories()
+				repo_list = db.getRepositories(catpkg=atom_exp.cp)
 			else:
 				repo_list = [atom.repo]
 

@@ -43,6 +43,8 @@ import os as _os
 import sys
 import traceback
 import warnings
+import errno
+import collections
 
 try:
 	from urllib.parse import urlparse
@@ -253,6 +255,7 @@ class portdbapi(dbapi):
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])
 
 		self._aux_cache = {}
+		self._better_cache = None
 		self._broken_ebuilds = set()
 
 	@property
@@ -342,12 +345,21 @@ class portdbapi(dbapi):
 		except KeyError:
 			return None
 
-	def getRepositories(self):
+	def getRepositories(self, catpkg=None):
 		"""
-		This function is required for GLEP 42 compliance; it will return a list of
-		repository IDs
-		TreeMap = {id: path}
+		With catpkg=None, this will return a complete list of repositories in this dbapi. With catpkg set to a value,
+		this method will return a short-list of repositories that contain this catpkg. Use this second approach if
+		possible, to avoid exhaustively searching all repos for a particular catpkg. It's faster for this method to
+		find the catpkg than for you do it yourself.
+
+		This function is required for GLEP 42 compliance.
+
+		@param catpkg: catpkg for which we want a list of repositories; we'll get a list of all repos containing this
+		  catpkg; if None, return a list of all Repositories that contain a particular catpkg.
+		@return: a list of repositories.
 		"""
+		if catpkg is not None and self._better_cache is not None and catpkg in self._better_cache:
+			return [repo.name for repo in self._better_cache[catpkg]]
 		return self._ordered_repo_name_list
 
 	def getMissingRepoNames(self):
@@ -363,7 +375,7 @@ class portdbapi(dbapi):
 		"""
 		return self.settings.repositories.ignored_repos
 
-	def findname2(self, mycpv, mytree=None, myrepo = None):
+	def findname2(self, mycpv, mytree=None, myrepo=None):
 		""" 
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
@@ -385,15 +397,32 @@ class portdbapi(dbapi):
 		if psplit is None or len(mysplit) != 2:
 			raise InvalidPackageName(mycpv)
 
+		try:
+			cp = mycpv.cp
+		except AttributeError:
+			cp = mysplit[0] + "/" + psplit[0]
+
+		if self._better_cache is None:
+			if mytree:
+				mytrees = [mytree]
+			else:
+				mytrees = reversed(self.porttrees)
+		else:
+			try:
+				repos = self._better_cache[cp]
+			except KeyError:
+				return (None, 0)
+
+			mytrees = []
+			for repo in repos:
+				if mytree is not None and mytree != repo.location:
+					continue
+				mytrees.append(repo.location)
+
 		# For optimal performace in this hot spot, we do manual unicode
 		# handling here instead of using the wrapped os module.
 		encoding = _encodings['fs']
 		errors = 'strict'
-
-		if mytree:
-			mytrees = [mytree]
-		else:
-			mytrees = reversed(self.porttrees)
 
 		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
 			mysplit[1] + ".ebuild"
@@ -764,8 +793,15 @@ class portdbapi(dbapi):
 			else:
 				# assume it's iterable
 				mytrees = mytree
-		else:
+		elif self._better_cache is None:
 			mytrees = self.porttrees
+		else:
+			try:
+				repos = self._better_cache[mycp]
+			except KeyError:
+				mytrees = []
+			else:
+				mytrees = [repo.location for repo in repos]
 		for oroot in mytrees:
 			try:
 				file_list = os.listdir(os.path.join(oroot, mycp))
@@ -814,10 +850,55 @@ class portdbapi(dbapi):
 			"minimum-all-ignore-profile", "minimum-visible"):
 			self.xcache[x]={}
 		self.frozen=1
+		self._better_cache = better_cache = collections.defaultdict(list)
+
+		# The purpose of self._better_cache is to perform an initial quick scan of all repositories
+		# using os.listdir(), which is less expensive IO-wise than exhaustively doing a stat on each
+		# repo. self._better_cache stores a list of repos in which particular catpkgs appear.
+		#
+		# For example, better_cache data may look like this:
+		#
+		# { "sys-apps/portage" : [ repo1, repo2 ] }
+		#
+		# Without this tweak, Portage will get slower and slower as more overlays are added.
+		#
+		# Also note that it is OK if this cache has some 'false positive' catpkgs in it. We use it
+		# to search for specific catpkgs listed in ebuilds. The likelihood of a false positive catpkg
+		# in our cache causing a problem is extremely low. Thus, the code below is optimized for
+		# speed rather than painstaking correctness.
+
+		valid_categories = self.settings.categories
+		for repo_loc in reversed(self.porttrees):
+			repo = self.repositories.get_repo_for_location(repo_loc)
+			try:
+				categories = os.listdir(repo_loc)
+			except OSError as e:
+				if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
+					raise
+				continue
+
+			for cat in categories:
+				if cat not in valid_categories:
+					continue
+				cat_dir = repo_loc + "/" + cat
+				try:
+					pkg_list = os.listdir(cat_dir)
+				except OSError as e:
+					if e.errno != errno.ENOTDIR:
+						raise
+					continue
+
+				for p in pkg_list:
+					catpkg_dir = cat_dir + "/" + p
+					if not os.path.isdir(catpkg_dir):
+						continue
+					catpkg = cat + "/" + p
+					better_cache[catpkg].append(repo)
 
 	def melt(self):
 		self.xcache = {}
 		self._aux_cache = {}
+		self._better_cache = None
 		self.frozen = 0
 
 	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):

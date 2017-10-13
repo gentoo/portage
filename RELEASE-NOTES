@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.12
+==================================
+* Bug Fixes:
+    - Bug 634210 optimize portdbapi performance to handle large numbers
+      of repositories (Daniel Robbins)
+
 portage-2.3.11
 ==================================
 * Bug Fixes:
