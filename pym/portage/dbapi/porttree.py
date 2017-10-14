@@ -103,6 +103,77 @@ class _dummy_list(list):
 		except ValueError:
 			pass
 
+class better_cache(object):
+
+	"""
+	The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
+	is less expensive IO-wise than exhaustively doing a stat on each repo for a particular catpkg. better_cache stores a
+	list of repos in which particular catpkgs appear. Various dbapi methods use better_cache to locate repositories of
+	interest related to particular catpkg rather than performing an exhaustive scan of all repos/overlays.
+
+	Better_cache.items data may look like this::
+
+	  { "sys-apps/portage" : [ repo1, repo2 ] }
+
+	Without better_cache, Portage will get slower and slower (due to excessive IO) as more overlays are added.
+
+	Also note that it is OK if this cache has some 'false positive' catpkgs in it. We use it to search for specific
+	catpkgs listed in ebuilds. The likelihood of a false positive catpkg in our cache causing a problem is extremely
+	low, because the user of our cache is passing us a catpkg that came from somewhere and has already undergone some
+	validation, and even then will further interrogate the short-list of repos we return to gather more information
+	on the catpkg.
+
+	Thus, the code below is optimized for speed rather than painstaking correctness. I have added a note to
+	``dbapi.getRepositories()`` to ensure that developers are aware of this just in case.
+
+	The better_cache has been redesigned to perform on-demand scans -- it will only scan a category at a time, as
+	needed. This should further optimize IO performance by not scanning category directories that are not needed by
+	Portage.
+	"""
+
+	def __init__(self, dbapi):
+		self.dbapi = dbapi
+		self.items = collections.defaultdict(list)
+		self.scanned_cats = set()
+
+		# ordered list of all portree locations we'll scan:
+		self.repo_loc_list = list(reversed(self.dbapi.porttrees))
+		# list of all categories in each repo:
+		self.repo_cats = {}
+		# repo object for each location.
+		self.repo_objs = {}
+
+		for repo_loc in self.repo_loc_list:
+			self.repo_objs[repo_loc] = self.dbapi.repositories.get_repo_for_location(repo_loc)
+			try:
+				self.repo_cats[repo_loc] = os.listdir(repo_loc)
+			except OSError as e:
+				if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
+					raise
+				continue
+
+	def __getitem__(self, catpkg):
+		cat, pkg = catpkg.split('/')
+		if cat not in self.scanned_cats:
+			self._scan_cat(cat)
+		return self.items[catpkg]
+
+	def _scan_cat(self, cat):
+		for repo_loc in self.repo_loc_list:
+			repo = self.repo_objs[repo_loc]
+			cat_dir = repo_loc + "/" + cat
+			try:
+				pkg_list = os.listdir(cat_dir)
+			except OSError as e:
+				if e.errno not in ( errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
+					raise
+				continue
+			for p in pkg_list:
+				if not os.path.isdir(cat_dir + "/" + p):
+					continue
+				self.items[cat + "/" + p].append(repo)
+		self.scanned_cats.add(cat)
+
 class portdbapi(dbapi):
 	"""this tree will scan a portage directory located at root (passed to init)"""
 	portdbapi_instances = _dummy_list()
@@ -346,11 +417,14 @@ class portdbapi(dbapi):
 			return None
 
 	def getRepositories(self, catpkg=None):
+
 		"""
 		With catpkg=None, this will return a complete list of repositories in this dbapi. With catpkg set to a value,
 		this method will return a short-list of repositories that contain this catpkg. Use this second approach if
 		possible, to avoid exhaustively searching all repos for a particular catpkg. It's faster for this method to
-		find the catpkg than for you do it yourself.
+		find the catpkg than for you do it yourself. When specifying catpkg, you should have reasonable assurance that
+		the category is valid and PMS-compliant as the caching mechanism we use does not perform validation checks for
+		categories.
 
 		This function is required for GLEP 42 compliance.
 
@@ -358,7 +432,8 @@ class portdbapi(dbapi):
 		  catpkg; if None, return a list of all Repositories that contain a particular catpkg.
 		@return: a list of repositories.
 		"""
-		if catpkg is not None and self._better_cache is not None and catpkg in self._better_cache:
+
+		if catpkg is not None and self._better_cache is not None:
 			return [repo.name for repo in self._better_cache[catpkg]]
 		return self._ordered_repo_name_list
 
@@ -796,12 +871,7 @@ class portdbapi(dbapi):
 		elif self._better_cache is None:
 			mytrees = self.porttrees
 		else:
-			try:
-				repos = self._better_cache[mycp]
-			except KeyError:
-				mytrees = []
-			else:
-				mytrees = [repo.location for repo in repos]
+			mytrees = [repo.location for repo in self._better_cache[mycp]]
 		for oroot in mytrees:
 			try:
 				file_list = os.listdir(os.path.join(oroot, mycp))
@@ -850,50 +920,7 @@ class portdbapi(dbapi):
 			"minimum-all-ignore-profile", "minimum-visible"):
 			self.xcache[x]={}
 		self.frozen=1
-		self._better_cache = better_cache = collections.defaultdict(list)
-
-		# The purpose of self._better_cache is to perform an initial quick scan of all repositories
-		# using os.listdir(), which is less expensive IO-wise than exhaustively doing a stat on each
-		# repo. self._better_cache stores a list of repos in which particular catpkgs appear.
-		#
-		# For example, better_cache data may look like this:
-		#
-		# { "sys-apps/portage" : [ repo1, repo2 ] }
-		#
-		# Without this tweak, Portage will get slower and slower as more overlays are added.
-		#
-		# Also note that it is OK if this cache has some 'false positive' catpkgs in it. We use it
-		# to search for specific catpkgs listed in ebuilds. The likelihood of a false positive catpkg
-		# in our cache causing a problem is extremely low. Thus, the code below is optimized for
-		# speed rather than painstaking correctness.
-
-		valid_categories = self.settings.categories
-		for repo_loc in reversed(self.porttrees):
-			repo = self.repositories.get_repo_for_location(repo_loc)
-			try:
-				categories = os.listdir(repo_loc)
-			except OSError as e:
-				if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
-					raise
-				continue
-
-			for cat in categories:
-				if cat not in valid_categories:
-					continue
-				cat_dir = repo_loc + "/" + cat
-				try:
-					pkg_list = os.listdir(cat_dir)
-				except OSError as e:
-					if e.errno != errno.ENOTDIR:
-						raise
-					continue
-
-				for p in pkg_list:
-					catpkg_dir = cat_dir + "/" + p
-					if not os.path.isdir(catpkg_dir):
-						continue
-					catpkg = cat + "/" + p
-					better_cache[catpkg].append(repo)
+		self._better_cache = better_cache(self)
 
 	def melt(self):
 		self.xcache = {}
