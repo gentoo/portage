@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.12
+==================================
+* better_cache to allow Portage to not slow down significantly when lots of
+  overlays are enabled. Before better_cache, all overlays were exhaustively
+  scanned for ebuild existence, causing IO to scale with number of overlays
+  enabled. (Daniel Robbins)
+
 portage-2.3.11
 ==================================
 * Bug Fixes:

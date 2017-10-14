@@ -1,5 +1,12 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.12
+----------------
+* better_cache implemented to use less expensive os.listdir() instead of
+  os.stat() operations to scan for ebuilds. Avoids exhaustively scanning
+  overlays for all ebuilds which allows Portage to not slow down significantly
+  with lots of overlays enabled. (Daniel Robbins)
+
 portage-2.3.7
 -----------------
 * eapply_user combines patch basenames from all matched directories into a

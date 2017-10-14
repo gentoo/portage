@@ -9899,3 +9899,5 @@ def _get_masking_status(pkg, pkgsettings, root_config, myrepo=None, use=None):
 			_MaskReason("invalid", "SLOT: undefined"))
 
 	return mreasons
+
+# vim: ts=4 sw=4 noet
