@@ -27,8 +27,8 @@ import tempfile
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib (3.6+), pycrypto
-# BLAKE2S (512): hashlib (3.6+), pycrypto
+# BLAKE2B (512): hashlib (3.6+), pyblake2, pycrypto
+# BLAKE2S (512): hashlib (3.6+), pyblake2, pycrypto
 # SHA3_256: hashlib (3.6+), pysha3, pycrypto
 # SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
@@ -122,6 +122,17 @@ for local_name, hash_name in (
 		_generate_hash_function(local_name,
 			functools.partial(hashlib.new, hash_name),
 			origin='hashlib')
+
+
+# Support using pyblake2 as fallback for python<3.6
+if "BLAKE2B" not in hashfunc_map or "BLAKE2S" not in hashfunc_map:
+	try:
+		import pyblake2
+
+		_generate_hash_function("BLAKE2B", pyblake2.blake2b, origin="pyblake2")
+		_generate_hash_function("BLAKE2S", pyblake2.blake2s, origin="pyblake2")
+	except ImportError:
+		pass
 
 
 # Support using pysha3 as fallback for python<3.6
