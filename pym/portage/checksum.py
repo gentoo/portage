@@ -315,7 +315,7 @@ def is_prelinkable_elf(filename):
 	finally:
 		f.close()
 	return (len(magic) == 17 and magic.startswith(b'\x7fELF') and
-		magic[16] in (b'\x02', b'\x03')) # 2=ET_EXEC, 3=ET_DYN
+		magic[16:17] in (b'\x02', b'\x03')) # 2=ET_EXEC, 3=ET_DYN
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]
