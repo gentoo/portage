@@ -56,11 +56,17 @@ initreflink_linux(void)
 
 /**
  * cfr_wrapper - A copy_file_range syscall wrapper function, having a
- * function signature that is compatible with sendfile.
+ * function signature that is compatible with sf_wrapper.
  * @fd_out: output file descriptor
  * @fd_in: input file descriptor
- * @off_out: offset of the output file
+ * @off_out: must point to a buffer that specifies the starting offset
+ * where bytes will be copied to fd_out, and this buffer is adjusted by
+ * the number of bytes copied.
  * @len: number of bytes to copy between the file descriptors
+ *
+ * Bytes are copied from fd_in starting from *off_out, and the file
+ * offset of fd_in is not changed. Effects on the file offset of
+ * fd_out are undefined.
  *
  * Return: Number of bytes written to out_fd on success, -1 on failure
  * (errno is set appropriately).
@@ -69,7 +75,8 @@ static ssize_t
 cfr_wrapper(int fd_out, int fd_in, off_t *off_out, size_t len)
 {
 #ifdef __NR_copy_file_range
-    return syscall(__NR_copy_file_range, fd_in, NULL, fd_out,
+    off_t off_in = *off_out;
+    return syscall(__NR_copy_file_range, fd_in, &off_in, fd_out,
                    off_out, len, 0);
 #else
     /* This is how it fails at runtime when the syscall is not supported. */
@@ -79,18 +86,50 @@ cfr_wrapper(int fd_out, int fd_in, off_t *off_out, size_t len)
 }
 
 /**
+ * sf_wrapper - A sendfile wrapper function, having a function signature
+ * that is compatible with cfr_wrapper.
+ * @fd_out: output file descriptor
+ * @fd_in: input file descriptor
+ * @off_out: must point to a buffer that specifies the starting offset
+ * where bytes will be copied to fd_out, and this buffer is adjusted by
+ * the number of bytes copied.
+ * @len: number of bytes to copy between the file descriptors
+ *
+ * Bytes are copied from fd_in starting from *off_out, and the file
+ * offset of fd_in is not changed. Effects on the file offset of
+ * fd_out are undefined.
+ *
+ * Return: Number of bytes written to out_fd on success, -1 on failure
+ * (errno is set appropriately).
+ */
+static ssize_t
+sf_wrapper(int fd_out, int fd_in, off_t *off_out, size_t len)
+{
+    ssize_t ret;
+    off_t off_in = *off_out;
+    /* The sendfile docs do not specify behavior of the output file
+     * offset, therefore it must be adjusted with lseek.
+     */
+    if (lseek(fd_out, *off_out, SEEK_SET) < 0)
+        return -1;
+    ret = sendfile(fd_out, fd_in, &off_in, len);
+    if (ret > 0)
+        *off_out += ret;
+    return ret;
+}
+
+
+/**
  * do_lseek_data - Adjust file offsets to the next location containing
  * data, creating sparse empty blocks in the output file as needed.
  * @fd_in: input file descriptor
  * @fd_out: output file descriptor
  * @off_out: offset of the output file
  *
- * Use lseek SEEK_DATA to adjust the fd_in file offset to the next
- * location containing data, and adjust the fd_in file offset and
- * off_out to the same location (creating sparse empty blocks as
- * needed). On success, both fd_in and fd_out file offsets are
- * guaranteed to be exactly equal to the value that off_out points to.
- * 
+ * Use lseek SEEK_DATA to adjust off_out to the next location from fd_in
+ * containing data (creates sparse empty blocks when appropriate). Effects
+ * on file offsets are undefined.
+ *
  * Return: On success, the number of bytes to copy before the next hole,
  * and -1 on failure (errno is set appropriately). Returns 0 when fd_in
  * reaches EOF.
@@ -142,13 +181,6 @@ do_lseek_data(int fd_out, int fd_in, off_t *off_out) {
      */
     offset_hole = lseek(fd_in, offset_data, SEEK_HOLE);
     if (offset_hole < 0) {
-        return -1;
-    }
-
-    /* Revert SEEK_HOLE offset change, since we're going
-     * to copy the data that comes before the hole.
-     */
-    if (lseek(fd_in, offset_data, SEEK_SET) < 0) {
         return -1;
     }
 
@@ -232,10 +264,6 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
                     break;
                 }
 
-                /* For the copyfunc call, the fd_in file offset must be
-                 * exactly equal to offset_out. The above do_lseek_data
-                 * function guarantees correct state.
-                 */
                 copyfunc_ret = copyfunc(fd_out,
                                         fd_in,
                                         &offset_out,
@@ -250,7 +278,7 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
                          * syscall is not available (less than Linux 4.5).
                          */
                         error = 0;
-                        copyfunc = sendfile;
+                        copyfunc = sf_wrapper;
                         copyfunc_ret = copyfunc(fd_out,
                                                 fd_in,
                                                 &offset_out,
@@ -284,27 +312,18 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
             } else {
                 stat_in_acquired = 1;
 
-                /* For the sendfile call, the fd_in file offset must be
-                 * exactly equal to offset_out. Use lseek to ensure
-                 * correct state, in case an EINTR retry caused it to
-                 * get out of sync somewhow.
-                 */
-                if (lseek(fd_in, offset_out, SEEK_SET) < 0) {
-                    error = errno;
-                } else {
-                    while (offset_out < stat_in.st_size) {
-                        copyfunc_ret = sendfile(fd_out,
-                                                fd_in,
-                                                &offset_out,
-                                                stat_in.st_size - offset_out);
+                while (offset_out < stat_in.st_size) {
+                    copyfunc_ret = sf_wrapper(fd_out,
+                                              fd_in,
+                                              &offset_out,
+                                              stat_in.st_size - offset_out);
 
-                        if (copyfunc_ret < 0) {
-                            error = errno;
-                            if (errno == EINVAL && !offset_out) {
-                                sendfile_works = 0;
-                            }
-                            break;
+                    if (copyfunc_ret < 0) {
+                        error = errno;
+                        if (errno == EINVAL && !offset_out) {
+                            sendfile_works = 0;
                         }
+                        break;
                     }
                 }
             }
