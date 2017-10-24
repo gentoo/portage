@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Nov 2014" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Oct 2017" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -1104,16 +1104,6 @@ Example:
 	installed)
 .fi
 
-.SS "Hooks:"
-.TP
-.B register_die_hook\fR \fI[list of function names]
-Register one or more functions to call when the ebuild fails for any reason,
-including file collisions with other packages.
-.TP
-.B register_success_hook\fR \fI[list of function names]
-Register one or more functions to call when the ebuild builds and/or installs
-successfully.
-
 .SS "Output:"
 .TP
 .B einfo\fR \fI"disposable message"
@@ -1225,70 +1215,6 @@ Please do \fBnot\fR use this in place of 'emake install DESTDIR=${D}'.
 That is the preferred way of installing make\-based packages.  Also, do
 not utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.
 
-.PD 0
-.TP
-.B prepall
-.TP
-.B prepalldocs
-.TP
-.B prepallinfo
-.TP
-.B prepallman
-.TP
-.B prepallstrip
-.PD 1
-Useful for when a package installs into \fB${D}\fR via scripts
-(i.e. makefiles).  If you want to be sure that libraries are executable,
-aclocal files are installed into the right place, doc/info/man files are
-all compressed, and that executables are all stripped of debugging symbols,
-then use these suite of functions.
-.RS
-.PD 0
-.TP
-.B prepall:
-Runs \fBprepallman\fR, \fBprepallinfo\fR, \fBprepallstrip\fR, sets
-libraries +x, and then checks aclocal directories.  Please note this
-does \fI*not*\fR run \fBprepalldocs\fR.
-.TP
-.B prepalldocs:
-Compresses all doc files in ${ED}/usr/share/doc.
-.TP
-.B prepallinfo:
-Compresses all info files in ${ED}/usr/share/info.
-.TP
-.B prepallman:
-Compresses all man files in ${ED}/usr/share/man.
-.TP
-.B prepallstrip:
-Strips all executable files of debugging symboles.  This includes libraries.
-.RE
-
-.TP
-.B prepinfo\fR \fI[dir]
-.TP
-.B prepman\fR \fI[dir]
-.TP
-.B prepstrip\fR \fI[dir]
-.PD 1
-Similar to the \fBprepall\fR functions, these are subtle in their differences.
-.RS
-.PD 0
-.TP
-.B prepinfo:
-If a \fIdir\fR is not specified, then \fBprepinfo\fR will assume the dir
-\fIusr\fR. \fBprepinfo\fR will then compress all the files in
-${ED}/\fIdir\fR/info.
-.TP
-.B prepman:
-If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir
-\fIusr\fR. \fBprepman\fR will then compress all the files in
-${ED}/\fIdir\fR/man/*/.
-.TP
-.B prepstrip:
-All the files found in ${ED}/\fIdir\fR will be stripped.  You may specify
-multiple directories.
-.RE
-.PD 1
 .TP
 .B docompress\fR \fI[\-x] <path> [list of more paths]
 .RS
