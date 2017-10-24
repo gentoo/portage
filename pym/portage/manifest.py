@@ -57,18 +57,27 @@ def manifest2AuxfileFilter(filename):
 def manifest2MiscfileFilter(filename):
 	return not (filename == "Manifest" or filename.endswith(".ebuild"))
 
-def guessManifestFileType(filename):
+def guessManifestFileType(filename, is_pkg = True):
 	""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
 	if filename.startswith("files" + os.sep + "digest-"):
-		return None
+		ftype = None
 	if filename.startswith("files" + os.sep):
-		return "AUX"
+		ftype = "AUX"
 	elif filename.endswith(".ebuild"):
-		return "EBUILD"
+		ftype = "EBUILD"
+	elif filename.endswith("Manifest"):
+		ftype = "MANIFEST"
+	elif filename.endswith(".eclass"):
+		ftype = "ECLASS"
 	elif filename in ["ChangeLog", "metadata.xml"]:
-		return "MISC"
+		ftype = "MISC"
+	elif filename.endswith(".sh"):
+		ftype = "EXEC"
+	elif is_pkg:
+		ftype = "DIST"
 	else:
-		return "DIST"
+		ftype = "OTHER"
+	return ftype
 
 def guessThinManifestFileType(filename):
 	type = guessManifestFileType(filename)
@@ -157,8 +166,8 @@ class Manifest(object):
 			list(self.hashes) if hashname not in get_valid_checksum_keys())
 		self.hashes.add("size")
 		self.hashes.add(MANIFEST2_REQUIRED_HASH)
-		for t in MANIFEST2_IDENTIFIERS:
-			self.fhashdict[t] = {}
+		for ftype in MANIFEST2_IDENTIFIERS:
+			self.fhashdict[ftype] = {}
 		if not from_scratch:
 			self._read()
 		if fetchlist_dict != None:
@@ -450,6 +459,7 @@ class Manifest(object):
 		distfiles to raise a FileNotFound exception for (if no file or existing
 		checksums are available), and defaults to all distfiles when not
 		specified."""
+
 		if not self.allow_create:
 			return
 		if checkExisting:
