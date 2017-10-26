@@ -1738,6 +1738,7 @@ _post_phase_cmds = {
 		"preinst_sfperms",
 		"preinst_selinux_labels",
 		"preinst_suid_scan",
+		"preinst_qa_check",
 		],
 
 	"postinst" : [
