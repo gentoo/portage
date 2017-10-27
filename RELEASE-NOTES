@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.13
+==================================
+* Bug Fixes:
+    - Bug 497596 fix PORTAGE_RSYNC_RETRIES
+    - Bug 635116 is_prelinkable_elf: fix for python3
+    - Bug 635126 file_copy: use sendfile return value to measure bytes copied
+    - Bug 635474 postinst_qa_check: initialize preinst state
+
+
 portage-2.3.12
 ==================================
 * Bug Fixes:
