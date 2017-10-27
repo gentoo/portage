@@ -202,6 +202,7 @@ class RsyncSync(NewBase):
 
 		# reverse, for use with pop()
 		uris.reverse()
+		uris_orig = uris[:]
 
 		effective_maxretries = maxretries
 		if effective_maxretries < 0:
@@ -210,10 +211,13 @@ class RsyncSync(NewBase):
 		while (1):
 			if uris:
 				dosyncuri = uris.pop()
-			else:
+			elif maxretries < 0 or retries > maxretries:
 				writemsg("!!! Exhausted addresses for %s\n"
 					% _unicode_decode(hostname), noiselevel=-1)
 				return (1, False)
+			else:
+				uris.extend(uris_orig)
+				dosyncuri = uris.pop()
 
 			if (retries==0):
 				if "--ask" in opts:
