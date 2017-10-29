@@ -64,9 +64,10 @@ ignored_flag_check() {
 	fi
 
 	# Check for files built without respecting LDFLAGS
-	if [[ "${LDFLAGS}" == *,--hash-style=gnu* ]] && \
+	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
 		! has binchecks ${RESTRICT} ; then
-		f=$(scanelf -qyRF '#k%p' -k .hash "${ED}")
+		f=$(LC_ALL=C comm -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED}" | LC_ALL=C sort) \
+			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED}" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
 			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then

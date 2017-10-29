@@ -27,4 +27,19 @@
 		will be called after src_compile.
 		</para>
 	</sect1>
+	<sect1 id='config-bashrc-ebuild-die-hooks'>
+		<title>Ebuild Die Hooks</title>
+		<para>
+		The register_die_hook function registers one or more names of functions
+		to call when the ebuild fails for any reason, including file collisions
+		with other packages.
+		</para>
+	</sect1>
+	<sect1 id='config-bashrc-ebuild-success-hooks'>
+		<title>Ebuild Success Hooks</title>
+		<para>
+		The register_success_hook function registers one or more names of
+		functions to call when the ebuild builds and/or installs successfully.
+		</para>
+	</sect1>
 </chapter>

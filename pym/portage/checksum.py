@@ -27,8 +27,8 @@ import tempfile
 # SHA512: hashlib
 # RMD160: hashlib, pycrypto, mhash
 # WHIRLPOOL: hashlib, mhash, bundled
-# BLAKE2B (512): hashlib (3.6+), pycrypto
-# BLAKE2S (512): hashlib (3.6+), pycrypto
+# BLAKE2B (512): hashlib (3.6+), pyblake2, pycrypto
+# BLAKE2S (512): hashlib (3.6+), pyblake2, pycrypto
 # SHA3_256: hashlib (3.6+), pysha3, pycrypto
 # SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
@@ -122,6 +122,17 @@ for local_name, hash_name in (
 		_generate_hash_function(local_name,
 			functools.partial(hashlib.new, hash_name),
 			origin='hashlib')
+
+
+# Support using pyblake2 as fallback for python<3.6
+if "BLAKE2B" not in hashfunc_map or "BLAKE2S" not in hashfunc_map:
+	try:
+		import pyblake2
+
+		_generate_hash_function("BLAKE2B", pyblake2.blake2b, origin="pyblake2")
+		_generate_hash_function("BLAKE2S", pyblake2.blake2s, origin="pyblake2")
+	except ImportError:
+		pass
 
 
 # Support using pysha3 as fallback for python<3.6
@@ -304,7 +315,7 @@ def is_prelinkable_elf(filename):
 	finally:
 		f.close()
 	return (len(magic) == 17 and magic.startswith(b'\x7fELF') and
-		magic[16] in (b'\x02', b'\x03')) # 2=ET_EXEC, 3=ET_DYN
+		magic[16:17] in (b'\x02', b'\x03')) # 2=ET_EXEC, 3=ET_DYN
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]

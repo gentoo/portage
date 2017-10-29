@@ -31,38 +31,89 @@ class PackageConflict(_PackageConflict):
 
 class PackageTracker(object):
 	"""
-	This class tracks packages which are currently
-	installed and packages which have been pulled into
-	the dependency graph.
+	**Behavior**
 
-	It automatically tracks conflicts between packages.
+	This section is intended to give you a good conceptual overview of the ``PackageTracker`` class and its general
+	behavior -- how you can expect it to behave and how in turn expects to be used successfully by the programmer.
 
-	Possible conflicts:
-		1) Packages that share the same SLOT.
-		2) Packages with the same cpv.
-		Not yet implemented:
-		3) Packages that block each other.
+	This class is used to model the behavior of a real Gentoo or other system using Portage for package management,
+	along with the installed and to-be-installed packages. The installed packages are ones that are already on the
+	system and recorded in ``/var/db/pkg``, while the to-be-installed packages are a group of packages that Portage is
+	considering installing on the system, based on the information in Portage's dependency graph. Multiple roots are
+	supported, so that situations can be modeled where ROOT is set to a non-default value (non-``/``).
+
+	You can use the add_pkg() method to add a to-be-merged package to the PackageTracker, and ``add_installed_pkg()`` to
+	add an already-installed package to the package tracker. Typical use of the package tracker involves the
+	``depgraph.py`` code populating the package tracker with calls to ``add_installed_pkg()`` to add all installed
+	packages on the system, and then it is initialized and ready for use. At that point, ``depgraph.py`` can use
+	``add_pkg()`` to add to-be-installed packages to the system.
+
+	It's worth mentioning that ``PackageTracker`` uses ``Package`` objects as arguments, and stores these objects
+	internally. There are parts of the code that ensure that a ``Package`` instance is added to the PackageTracker
+	only once.
+
+	Note that when a to-be-merged package is added to the package tracker via ``add_pkg()``, it will "cover up"
+	(replace) any installed package that shares the same root-catpkg-slot or root-catpkg-version, meaning that calling
+	the ``all_pkgs()`` or ``match()`` method will not return the installed package in the list. And the code does
+	support the scenario where ``add_installed_pkg(pkg2)`` is called *after* a call to ``add_pkg(pkg1)`` -- in this
+	case, if ``pkg1`` would 'cover up' ``pkg2``, this will be identified and handled correctly.
+
+	But the package tracker is designed to have an important behavior in this regard -- because PackageTracker has a
+	``remove()`` method, these replaced/covered-up packages are not permanently removed -- so if you ``remove()`` a
+	to-be-installed package that was "replacing" an installed package, the installed package will "reappear". This
+	removal functionality is used by the slot conflict code in ``depgraph.py`` to modify the list of to-be-installed
+	packages as it addresses slot conflicts.
+
+	One of the main purposes of the PackageTracker is to detect conflicts between packages. Conflicts are detected
+	on to-be-installed packages only.
+
+	A slot conflict is a situation where a to-be-installed package is added to the package tracker via ``add_pkg()``,
+	and there is already a to-be-installed package added that has the same root, catpkg and slot. These cannot co-exist.
+
+	A cpv conflict is a situation where a to-be-installed package is added to the package tracker via ``add_pkg()``, and
+	there is already a to-be-installed package add that has the same root, catpkg, and version+revision. These cannot
+	co-exist.
+
+	The package tracker does not prevent slot and cpv conflicts from occurring. Instead, it allows them to be recorded
+	and the ``conflicts()`` and ``slot_conflicts()`` method will cause the package tracker to look at its internal data
+	structures and generate ``PackageConflict()`` objects for each conflict it finds.
+
+	The ``match()`` method is used extensively by ``depgraph.py`` to find packages that match a particular dependency
+	atom. The code now also supports soname dependencies.
+
+	**Future Functionality**
+
+	The package tracker may be extended in the future to track additional useful information:
+
+	* Packages that block one another. This information is not currently injected into the package tracker.
+
+	* Sub-slot conflicts. It is possible to identify situations where a to-be-installed package is in a new sub-slot.
+	  In this case, the depgraph can be queried for parents of this dependency, and these parents can be scheduled
+	  to be rebuilt.
+
+	:ivar _cp_pkg_map: The collection of to-be-installed (not yet merged) packages. We care about conflicts in these
+		packages.
+	:ivar _cp_vdb_pkg_map: The collection of already-installed packages.
+	:ivar _multi_pkgs: A list of keys in ``self._cp_pkg_map`` that have potential slot and cpv conflicts.
+	:ivar _replacing: The mechanism by which ``PackageTracker`` records to-be-installed packages that 'cover up'
+		already-installed packages. ``self._replacing[cp_key] = [ new_pkg_that_replaced_cp_key... ]``.
+	:ivar _replaced_by: ``self.replaced_by[cp_key] == [ replaced_pkg_1, replaced_pkg_2 ]``
 	"""
 
 	def __init__(self, soname_deps=False):
+
 		"""
-		@param soname_deps: enable soname match support
-		@type soname_deps: bool
+		:param soname_deps bool: Determines whether support for soname deps should be enabled or not.
 		"""
-		# Mapping from package keys to set of packages.
+
 		self._cp_pkg_map = collections.defaultdict(list)
 		self._cp_vdb_pkg_map = collections.defaultdict(list)
-		# List of package keys that may contain conflicts.
-		# The insetation order must be preserved.
 		self._multi_pkgs = []
 
 		# Cache for result of conflicts().
 		self._conflicts_cache = None
 
-		# Records for each pulled package which installed package
-		# are replaced.
 		self._replacing = collections.defaultdict(list)
-		# Records which pulled packages replace this package.
 		self._replaced_by = collections.defaultdict(list)
 
 		self._match_cache = collections.defaultdict(dict)
@@ -258,7 +309,7 @@ class PackageTracker(object):
 		Iterates over present slot conflicts.
 		This is only intended for consumers that haven't been
 		updated to deal with other kinds of conflicts.
-		This funcion should be removed once all consumers are updated.
+		This function should be removed once all consumers are updated.
 		"""
 		return (conflict for conflict in self.conflicts() \
 			if conflict.description == "slot conflict")

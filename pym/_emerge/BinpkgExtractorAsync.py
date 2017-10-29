@@ -74,21 +74,27 @@ class BinpkgExtractorAsync(SpawnProcess):
 				self._async_wait()
 				return
 
-		# Add -q to decomp_cmd opts, in order to avoid "trailing garbage
-		# after EOF ignored" warning messages due to xpak trailer.
+		pkg_xpak = portage.xpak.tbz2(self.pkg_path)
+		pkg_xpak.scan()
+
 		# SIGPIPE handling (128 + SIGPIPE) should be compatible with
 		# assert_sigpipe_ok() that's used by the ebuild unpack() helper.
 		self.args = [self._shell_binary, "-c",
-			("%s -cq -- %s | tar -xp %s -C %s -f - ; " + \
-			"p=(${PIPESTATUS[@]}) ; " + \
-			"if [[ ${p[0]} != 0 && ${p[0]} != %d ]] ; then " % (128 + signal.SIGPIPE) + \
-			"echo bzip2 failed with status ${p[0]} ; exit ${p[0]} ; fi ; " + \
-			"if [ ${p[1]} != 0 ] ; then " + \
-			"echo tar failed with status ${p[1]} ; exit ${p[1]} ; fi ; " + \
+			("cmd0=(head -c-%d -- %s) cmd1=(%s) cmd2=(tar -xp %s -C %s -f -); " + \
+			'"${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}"; ' + \
+			"p=(${PIPESTATUS[@]}) ; for i in {0..2}; do " + \
+			"if [[ ${p[$i]} != 0 && ${p[$i]} != %d ]] ; then " + \
+			"echo command $(eval \"echo \\\"'\\${cmd$i[*]}'\\\"\") " + \
+			"failed with status ${p[$i]} ; exit ${p[$i]} ; fi ; done; " + \
+			"if [ ${p[$i]} != 0 ] ; then " + \
+			"echo command $(eval \"echo \\\"'\\${cmd$i[*]}'\\\"\") " + \
+			"failed with status ${p[$i]} ; exit ${p[$i]} ; fi ; " + \
 			"exit 0 ;") % \
-			(decomp_cmd,
+			(pkg_xpak.xpaksize,
 			portage._shell_quote(self.pkg_path),
+			decomp_cmd,
 			tar_options,
-			portage._shell_quote(self.image_dir))]
+			portage._shell_quote(self.image_dir),
+			128 + signal.SIGPIPE)]
 
 		SpawnProcess._start(self)

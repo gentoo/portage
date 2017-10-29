@@ -1,6 +1,27 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.13
+==================================
+* Bug Fixes:
+    - Bug 497596 fix PORTAGE_RSYNC_RETRIES
+    - Bug 635116 is_prelinkable_elf: fix for python3
+    - Bug 635126 file_copy: use sendfile return value to measure bytes copied
+    - Bug 635474 postinst_qa_check: initialize preinst state
+
+
+portage-2.3.12
+==================================
+* Bug Fixes:
+    - Bug 455232 fix ignored LDFLAGS check, enabled by adding
+      "-Wl,--defsym=__gentoo_check_ldflags__=0" to LDFLAGS
+    - Bug 630132 remove trailer when decompressing binary packages
+    - Bug 633842 PORTAGE_LOG_FILE KeyError
+    - Bug 634210 optimize portdbapi performance to handle large numbers of
+      repositories (Daniel Robbins)
+    - Bug 634378 use debugedit from rpm if necessary
+
+
 portage-2.3.11
 ==================================
 * Bug Fixes:

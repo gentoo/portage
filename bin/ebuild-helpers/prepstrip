@@ -84,7 +84,19 @@ esac
 
 prepstrip_sources_dir=${EPREFIX}/usr/src/debug/${CATEGORY}/${PF}
 
-type -P debugedit >/dev/null && debugedit_found=true || debugedit_found=false
+debugedit=$(type -P debugedit)
+if [[ -z ${debugedit} ]]; then
+	debugedit_paths=(
+		"${EPREFIX}/usr/libexec/rpm/debugedit"
+	)
+	for x in "${debugedit_paths[@]}"; do
+		if [[ -x ${x} ]]; then
+			debugedit=${x}
+			break
+		fi
+	done
+fi
+[[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
 __multijob_init
@@ -101,8 +113,8 @@ save_elf_sources() {
 	if ! ${debugedit_found} ; then
 		if ! ${debugedit_warned} ; then
 			debugedit_warned=true
-			ewarn "FEATURES=installsources is enabled but the debugedit binary could not"
-			ewarn "be found. This feature will not work unless debugedit is installed!"
+			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
+			ewarn "found. This feature will not work unless debugedit or rpm is installed!"
 		fi
 		return 0
 	fi
@@ -112,7 +124,7 @@ save_elf_sources() {
 	# since we're editing the ELF here, we should recompute the build-id
 	# (the -i flag below).  save that output so we don't need to recompute
 	# it later on in the save_elf_debug step.
-	buildid=$(debugedit -i \
+	buildid=$("${debugedit}" -i \
 		-b "${WORKDIR}" \
 		-d "${prepstrip_sources_dir}" \
 		-l "${tmpdir}/sources/${x##*/}.${BASHPID:-$(__bashpid)}" \

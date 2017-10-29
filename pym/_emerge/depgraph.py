@@ -357,6 +357,47 @@ class _rebuild_config(object):
 
 class _dynamic_depgraph_config(object):
 
+	"""
+	``dynamic_depgraph_config`` is an object that is used to collect settings and important data structures that are
+	used in calculating Portage dependencies. Each depgraph created by the depgraph.py code gets its own
+	``dynamic_depgraph_config``, whereas ``frozen_depgraph_config`` is shared among all depgraphs.
+
+	**self.digraph**
+
+	Of particular importance is the instance variable ``self.digraph``, which is an instance of
+	``portage.util.digraph``, a directed graph data structure. ``portage.util.digraph`` is used for a variety of
+	purposes in the Portage codebase, but in this particular scenario as ``self.digraph``, it is used to create a
+	dependency tree of Portage packages. So for ``self.digraph``, each *node* of the directed graph is a ``Package``,
+	while *edges* connect nodes and each edge can have a Priority. The Priority setting is used to help resolve
+	circular dependencies, and should be interpreted in the direction of parent to child.
+
+	Conceptually, think of ``self.digraph`` as containing user-specified packages or sets at the very top, with
+	dependencies hanging down as children, and dependencies of those children as children of children, etc. The depgraph
+	is intended to model dependency relationships, not the order that packages should be installed.
+
+	**resolving the digraph**
+
+	To convert a digraph to an ordered list of packages to merge in an order where all dependencies are properly
+	satisfied, we would first start by looking at leaf nodes, which are nodes that have no dependencies of their own. We
+	could then traverse the digraph upwards from the leaf nodes, towards the parents. Along the way, depending on emerge
+	options, we could make decisions what packages should be installed or rebuilt. This is how ``self.digraph`` is used
+	in the code.
+
+	**digraph creation**
+
+	The ``depgraph.py`` code creates the digraph by first adding emerge arguments to the digraph as the main parents,
+	so if ``@world`` is specified, then the world set is added as the main parents. Then, ``emerge`` will determine
+	the dependencies of these packages, and depending on what options are passed to ``emerge``, will look at installed
+	packages, binary packages and available ebuilds that could be merged to satisfy dependencies, and these will be
+	added as children in the digraph. Children of children will be added as dependencies as needed, depending on the
+	depth setting used by ``emerge``.
+
+	As the digraph is created, it is perfectly fine for Packages to be added to the digraph that conflict with one
+	another. After the digraph has been fully populated to the necessary depth, code within ``depgraph.py`` will
+	identify any conflicts that are modeled within the digraph and determine the best way to handle them.
+
+	"""
+
 	def __init__(self, depgraph, myparams, allow_backtracking, backtrack_parameters):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
@@ -4998,7 +5039,7 @@ class depgraph(object):
 			if atom.soname:
 				repo_list = [None]
 			elif atom.repo is None and hasattr(db, "getRepositories"):
-				repo_list = db.getRepositories()
+				repo_list = db.getRepositories(catpkg=atom.cp)
 			else:
 				repo_list = [atom.repo]
 
@@ -5449,7 +5490,7 @@ class depgraph(object):
 			atom_set = InternalPackageSet(initial_atoms=(atom,),
 				allow_repo=True)
 			if atom.repo is None and hasattr(db, "getRepositories"):
-				repo_list = db.getRepositories()
+				repo_list = db.getRepositories(catpkg=atom_exp.cp)
 			else:
 				repo_list = [atom.repo]
 

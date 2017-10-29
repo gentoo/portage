@@ -680,8 +680,12 @@ install_qa_check_xcoff() {
 	fi
 }
 
+preinst_qa_check() {
+	postinst_qa_check preinst
+}
+
 postinst_qa_check() {
-	local d f paths qa_checks=()
+	local d f paths qa_checks=() PORTAGE_QA_PHASE=${1:-postinst}
 	if ! ___eapi_has_prefix_variables; then
 		local EPREFIX= EROOT=${ROOT}
 	fi
@@ -691,23 +695,23 @@ postinst_qa_check() {
 	# Collect the paths for QA checks, highest prio first.
 	paths=(
 		# sysadmin overrides
-		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/local/lib/postinst-qa-check.d
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/local/lib/${PORTAGE_QA_PHASE}-qa-check.d
 		# system-wide package installs
-		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/postinst-qa-check.d
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/${PORTAGE_QA_PHASE}-qa-check.d
 	)
 
 	# Now repo-specific checks.
 	# (yes, PORTAGE_ECLASS_LOCATIONS contains repo paths...)
 	for d in "${PORTAGE_ECLASS_LOCATIONS[@]}"; do
 		paths+=(
-			"${d}"/metadata/postinst-qa-check.d
+			"${d}"/metadata/${PORTAGE_QA_PHASE}-qa-check.d
 		)
 	done
 
 	paths+=(
 		# Portage built-in checks
-		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/portage/postinst-qa-check.d
-		"${PORTAGE_BIN_PATH}"/postinst-qa-check.d
+		"${PORTAGE_OVERRIDE_EPREFIX}"/usr/lib/portage/${PORTAGE_QA_PHASE}-qa-check.d
+		"${PORTAGE_BIN_PATH}"/${PORTAGE_QA_PHASE}-qa-check.d
 	)
 
 	# Collect file names of QA checks. We need them early to support
@@ -732,7 +736,7 @@ postinst_qa_check() {
 			# Allow inheriting eclasses.
 			# XXX: we want this only in repository-wide checks.
 			_IN_INSTALL_QA_CHECK=1
-			source "${d}/${f}" || eerror "Post-postinst QA check ${f} failed to run"
+			source "${d}/${f}" || eerror "Post-${PORTAGE_QA_PHASE} QA check ${f} failed to run"
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 }

@@ -12,6 +12,8 @@ install:
     # python3.6+ has sha3 built-in, for older versions install pysha3
     # (except for pypy where pysha3 is broken)
     - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] || ${TRAVIS_PYTHON_VERSION} == pypy ]] || pip install pysha3"
+    # python3.6+ has blake2 built-in, for older versions install pyblake2
+    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] ]] || pip install pyblake2"
     # always install pygost for Streebog
     - pip install pygost
 
