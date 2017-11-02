@@ -323,8 +323,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	want_update_pkg = trees[myroot].get("want_update_pkg")
 	downgrade_probe = trees[myroot].get("downgrade_probe")
 	vardb = None
+	vardb_match_pkgs = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
+		vardb_match_pkgs = getattr(vardb, 'match_pkgs', None)
 	if use_binaries:
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
@@ -355,6 +357,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_use_satisfied = True
 		all_use_unmasked = True
 		conflict_downgrade = False
+		installed_downgrade = False
 		slot_atoms = collections.defaultdict(list)
 		slot_map = {}
 		cp_map = {}
@@ -418,6 +421,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
+
+			if vardb_match_pkgs is not None and downgrade_probe is not None:
+				inst_pkg = vardb_match_pkgs(avail_slot)
+				if (inst_pkg and avail_pkg < inst_pkg[-1] and
+					not downgrade_probe(inst_pkg[-1])):
+					installed_downgrade = True
 
 			slot_map[avail_slot] = avail_pkg
 			slot_atoms[avail_slot].append(atom)
@@ -487,7 +496,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_installed.append(this_choice)
 					else:
 						unsat_use_non_installed.append(this_choice)
-			elif conflict_downgrade:
+			elif conflict_downgrade or installed_downgrade:
 				other.append(this_choice)
 			else:
 				all_in_graph = True
