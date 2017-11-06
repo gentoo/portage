@@ -26,8 +26,7 @@ from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
-from portage.const import (MANIFEST2_HASH_DEFAULTS,
-	MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
+from portage.const import (MANIFEST2_HASH_DEFAULTS, MANIFEST2_IDENTIFIERS)
 from portage.localization import _
 
 _manifest_re = re.compile(
@@ -128,7 +127,7 @@ class Manifest(object):
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
-		allow_missing=False, allow_create=True, hashes=None,
+		allow_missing=False, allow_create=True, hashes=None, required_hashes=None,
 		find_invalid_path_char=None, strict_misc_digests=True):
 		""" Create new Manifest instance for package in pkgdir.
 		    Do not parse Manifest file if from_scratch == True (only for internal use)
@@ -148,15 +147,21 @@ class Manifest(object):
 		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
 		self.fhashdict = {}
 		self.hashes = set()
+		self.required_hashes = set()
 
 		if hashes is None:
 			hashes = MANIFEST2_HASH_DEFAULTS
+		if required_hashes is None:
+			required_hashes = hashes
 
 		self.hashes.update(hashes)
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in get_valid_checksum_keys())
 		self.hashes.add("size")
-		self.hashes.add(MANIFEST2_REQUIRED_HASH)
+
+		self.required_hashes.update(required_hashes)
+		self.required_hashes.intersection_update(self.hashes)
+
 		for t in MANIFEST2_IDENTIFIERS:
 			self.fhashdict[t] = {}
 		if not from_scratch:
@@ -269,9 +274,11 @@ class Manifest(object):
 	def checkIntegrity(self):
 		for t in self.fhashdict:
 			for f in self.fhashdict[t]:
-				if MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
-					raise MissingParameter(_("Missing %s checksum: %s %s") %
-						(MANIFEST2_REQUIRED_HASH, t, f))
+				diff = self.required_hashes.difference(
+						set(self.fhashdict[t][f]))
+				if diff:
+					raise MissingParameter(_("Missing %s checksum(s): %s %s") %
+						(' '.join(diff), t, f))
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it. Returns
@@ -422,7 +429,7 @@ class Manifest(object):
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
-		if not MANIFEST2_REQUIRED_HASH in self.fhashdict[ftype][fname]:
+		if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
 			self.updateFileHashes(ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing)
 	
 	def removeFile(self, ftype, fname):
@@ -462,6 +469,7 @@ class Manifest(object):
 			fetchlist_dict=self.fetchlist_dict, from_scratch=True,
 			thin=self.thin, allow_missing=self.allow_missing,
 			allow_create=self.allow_create, hashes=self.hashes,
+			required_hashes=self.required_hashes,
 			find_invalid_path_char=self._find_invalid_path_char,
 			strict_misc_digests=self.strict_misc_digests)
 		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
@@ -487,7 +495,7 @@ class Manifest(object):
 			requiredDistfiles = distlist.copy()
 		required_hash_types = set()
 		required_hash_types.add("size")
-		required_hash_types.add(MANIFEST2_REQUIRED_HASH)
+		required_hash_types.update(self.required_hashes)
 		for f in distlist:
 			fname = os.path.join(self.distdir, f)
 			mystat = None

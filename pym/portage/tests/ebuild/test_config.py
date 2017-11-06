@@ -228,6 +228,7 @@ class ConfigTestCase(TestCase):
 						"profile-formats = pms",
 						"thin-manifests = true",
 						"manifest-hashes = SHA256 SHA512 WHIRLPOOL",
+						"manifest-required-hashes = SHA512",
 						"# use implicit masters"
 					),
 			}
