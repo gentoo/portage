@@ -26,7 +26,7 @@ from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
-from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
+from portage.const import (MANIFEST2_HASH_DEFAULTS,
 	MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
@@ -710,10 +710,7 @@ class Manifest(object):
 		myfile.close()
 		for l in lines:
 			mysplit = l.split()
-			if len(mysplit) == 4 and mysplit[0] in MANIFEST1_HASH_FUNCTIONS \
-				and 1 not in rVal:
-				rVal.append(1)
-			elif len(mysplit) > 4 and mysplit[0] in MANIFEST2_IDENTIFIERS \
+			if len(mysplit) > 4 and mysplit[0] in MANIFEST2_IDENTIFIERS \
 				and ((len(mysplit) - 3) % 2) == 0 and not 2 in rVal:
 				rVal.append(2)
 		return rVal
