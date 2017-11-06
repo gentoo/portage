@@ -13,6 +13,7 @@ from repoman._portage import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage.checksum import get_valid_checksum_keys
 
 from repoman.errors import err
 from repoman.profile import ProfileDesc, valid_profile_types
@@ -116,7 +117,7 @@ class RepoSettings(object):
 				sys.exit(1)
 
 			unsupported_hashes = manifest_hashes.difference(
-				portage.const.MANIFEST2_HASH_FUNCTIONS)
+				get_valid_checksum_keys())
 			if unsupported_hashes:
 				msg = (
 					"The 'manifest-hashes' setting in the '%s' repository's "

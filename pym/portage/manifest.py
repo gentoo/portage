@@ -27,7 +27,7 @@ from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
 from portage.const import (MANIFEST1_HASH_FUNCTIONS, MANIFEST2_HASH_DEFAULTS,
-	MANIFEST2_HASH_FUNCTIONS, MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
+	MANIFEST2_IDENTIFIERS, MANIFEST2_REQUIRED_HASH)
 from portage.localization import _
 
 _manifest_re = re.compile(
@@ -152,7 +152,7 @@ class Manifest(object):
 		if hashes is None:
 			hashes = MANIFEST2_HASH_DEFAULTS
 
-		self.hashes.update(hashes.intersection(MANIFEST2_HASH_FUNCTIONS))
+		self.hashes.update(hashes)
 		self.hashes.difference_update(hashname for hashname in \
 			list(self.hashes) if hashname not in get_valid_checksum_keys())
 		self.hashes.add("size")
@@ -251,7 +251,7 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
-		valid_hashes = set(MANIFEST2_HASH_FUNCTIONS)
+		valid_hashes = set(get_valid_checksum_keys())
 		valid_hashes.add('size')
 		mytypes = list(self.fhashdict)
 		mytypes.sort()

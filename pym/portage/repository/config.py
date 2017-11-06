@@ -11,7 +11,8 @@ import re
 
 import portage
 from portage import eclass_cache, os
-from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
+from portage.checksum import get_valid_checksum_keys
+from portage.const import (MANIFEST2_REQUIRED_HASH,
 	PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
@@ -1060,7 +1061,7 @@ def parse_layout_conf(repo_location, repo_name=None):
 				"layout_filename":layout_filename}),
 				DeprecationWarning)
 		unsupported_hashes = manifest_hashes.difference(
-			MANIFEST2_HASH_FUNCTIONS)
+			get_valid_checksum_keys())
 		if unsupported_hashes:
 			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has a "
