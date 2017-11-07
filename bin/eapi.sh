@@ -151,7 +151,11 @@ ___eapi_has_package_manager_build_group() {
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(5|5-progress|6)$ ]]
+}
+
+___eapi_best_version_and_has_version_support_-b_-d_-r() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_unpack_supports_xz() {
