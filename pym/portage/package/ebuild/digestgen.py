@@ -11,6 +11,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
+from portage.const import MANIFEST2_HASH_DEFAULTS
 from portage.dbapi.porttree import FetchlistDict
 from portage.dep import use_reduce
 from portage.exception import InvalidDependString, FileNotFound, \
@@ -58,6 +59,8 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 			mf = mysettings.repositories.get_repo_for_location(mytree)
 
 		repo_required_hashes = mf.manifest_required_hashes
+		if repo_required_hashes is None:
+			repo_required_hashes = MANIFEST2_HASH_DEFAULTS
 		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
 			fetchlist_dict=fetchlist_dict)
 
