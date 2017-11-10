@@ -1163,8 +1163,23 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 
 			if retval == os.EX_OK:
 				if mydo == "package" and bintree is not None:
-					bintree.inject(mysettings.mycpv,
+					pkg = bintree.inject(mysettings.mycpv,
 						filename=mysettings["PORTAGE_BINPKG_TMPFILE"])
+					if pkg is not None:
+						infoloc = os.path.join(
+							mysettings["PORTAGE_BUILDDIR"], "build-info")
+						build_info = {
+							"BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
+						}
+						if pkg.build_id is not None:
+							build_info["BUILD_ID"] = "%s\n" % pkg.build_id
+						for k, v in build_info.items():
+							with io.open(_unicode_encode(
+								os.path.join(infoloc, k),
+								encoding=_encodings['fs'], errors='strict'),
+								mode='w', encoding=_encodings['repo.content'],
+								errors='strict') as f:
+								f.write(v)
 			else:
 				if "PORTAGE_BINPKG_TMPFILE" in mysettings:
 					try:
