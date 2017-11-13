@@ -39,6 +39,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._xattr:xattr',
 	'portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry',
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
+	'portage.util._dyn_libs.NeededEntry:NeededEntry',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
@@ -1094,18 +1095,55 @@ class vardbapi(dbapi):
 				removed += 1
 
 		if removed:
-			self.writeContentsToContentsFile(pkg, new_contents)
+			# Also remove corresponding NEEDED lines, so that they do
+			# no corrupt LinkageMap data for preserve-libs.
+			needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
+			new_needed = None
+			try:
+				with io.open(_unicode_encode(needed_filename,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace') as f:
+					needed_lines = f.readlines()
+			except IOError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					raise
+			else:
+				new_needed = []
+				for l in needed_lines:
+					l = l.rstrip("\n")
+					if not l:
+						continue
+					try:
+						entry = NeededEntry.parse(needed_filename, l)
+					except InvalidData as e:
+						writemsg_level("\n%s\n\n" % (e,),
+							level=logging.ERROR, noiselevel=-1)
+						continue
 
-	def writeContentsToContentsFile(self, pkg, new_contents):
+					filename = os.path.join(root, entry.filename.lstrip(os.sep))
+					if filename in new_contents:
+						new_needed.append(entry)
+
+			self.writeContentsToContentsFile(pkg, new_contents, new_needed=new_needed)
+
+	def writeContentsToContentsFile(self, pkg, new_contents, new_needed=None):
 		"""
 		@param pkg: package to write contents file for
 		@type pkg: dblink
 		@param new_contents: contents to write to CONTENTS file
 		@type new_contents: contents dictionary of the form
 					{u'/path/to/file' : (contents_attribute 1, ...), ...}
+		@param new_needed: new NEEDED entries
+		@type new_needed: list of NeededEntry
 		"""
 		root = self.settings['ROOT']
 		self._bump_mtime(pkg.mycpv)
+		if new_needed is not None:
+			f = atomic_ofstream(os.path.join(pkg.dbdir, LinkageMap._needed_aux_key))
+			for entry in new_needed:
+				f.write(_unicode(entry))
+			f.close()
 		f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
 		write_contents(new_contents, root, f)
 		f.close()
