@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.14
+----------------
+* Repository metadata/layout.conf supports manifest-required-hashes
+  attribute (default value is SHA512).
+
 portage-2.3.12
 ----------------
 * better_cache implemented to use less expensive os.listdir() instead of

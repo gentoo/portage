@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.14
+==================================
+* Bug Fixes:
+    - Bug 635540 dep_zapdeps: install new package, avoid downgrade
+    - Bug 637284 vardbapi.removeFromContents: update NEEDED
+    - Bug 632026 dep_check: use DNF to optimize overlapping virtual || deps
+
+
 portage-2.3.13
 ==================================
 * Bug Fixes:
