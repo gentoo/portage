@@ -1,0 +1,12 @@
+certificate version 0.1
+pusher FDE8EF85AE5719A3 1510874549 -0800
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1510874548-81059d3b1a61090ed530
+
+0000000000000000000000000000000000000000 25ce021c8630fb75bab1bcce70f06fdafcd5c5a7 refs/heads/bug_637902
+-----BEGIN PGP SIGNATURE-----
+
+iF0EABECAB0WIQSG5RNTeMgVEruefzL96O+FrlcZowUCWg4dtQAKCRD96O+FrlcZ
+o7BqAJ9nlactYtbMXhnqQrDj5evclgIeogCfY7LFUAZ+Lj/dYCJFEJ1bRciAMpw=
+=6vYk
+-----END PGP SIGNATURE-----
