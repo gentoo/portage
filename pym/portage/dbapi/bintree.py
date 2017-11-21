@@ -523,21 +523,9 @@ class binarytree(object):
 		if self._populating:
 			return
 
-		pkgindex_lock = None
-		try:
-			if os.access(self.pkgdir, os.W_OK):
-				pkgindex_lock = lockfile(self._pkgindex_file,
-					wantnewlockfile=1)
-			self._populating = True
-			self._populate(getbinpkgs, getbinpkg_refresh=getbinpkg_refresh)
-		finally:
-			if pkgindex_lock:
-				unlockfile(pkgindex_lock)
-			self._populating = False
-
-	def _populate(self, getbinpkgs=False, getbinpkg_refresh=True):
-		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
-			return 0
+		if not os.path.isdir(self.pkgdir) and not getbinpkgs:
+			self.populated = True
+			return
 
 		# Clear all caches in case populate is called multiple times
 		# as may be the case when _global_updates calls populate()
@@ -545,6 +533,41 @@ class binarytree(object):
 		# operate on local packages (getbinpkgs=0).
 		self._remotepkgs = None
 		self.dbapi.clear()
+
+		self._populating = True
+		try:
+			update_pkgindex = self._populate_local()
+
+			if update_pkgindex and self.dbapi.writable:
+				# If the Packages file needs to be updated, then _populate_local
+				# needs to be called once again while the file is locked, so
+				# that changes made by a concurrent process cannot be lost. This
+				# case is avoided when possible, in order to minimize lock
+				# contention.
+				pkgindex_lock = None
+				try:
+					pkgindex_lock = lockfile(self._pkgindex_file,
+						wantnewlockfile=True)
+					update_pkgindex = self._populate_local()
+					if update_pkgindex:
+						self._pkgindex_write(update_pkgindex)
+				finally:
+					if pkgindex_lock:
+						unlockfile(pkgindex_lock)
+
+			if getbinpkgs:
+				if not self.settings.get("PORTAGE_BINHOST"):
+					writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
+						noiselevel=-1)
+				else:
+					self._populate_remote(getbinpkg_refresh=getbinpkg_refresh)
+
+		finally:
+			self._populating = False
+
+		self.populated = True
+
+	def _populate_local(self):
 		_instance_key = self.dbapi._instance_key
 		if True:
 			pkg_paths = {}
@@ -557,7 +580,6 @@ class binarytree(object):
 			pkgindex = self._load_pkgindex()
 			if not self._pkgindex_version_supported(pkgindex):
 				pkgindex = self._new_pkgindex()
-			header = pkgindex.header
 			metadata = {}
 			basename_index = {}
 			for d in pkgindex.packages:
@@ -773,22 +795,16 @@ class binarytree(object):
 				if instance_key not in pkg_paths:
 					del metadata[instance_key]
 
-			# Do not bother to write the Packages index if $PKGDIR/All/ exists
-			# since it will provide no benefit due to the need to read CATEGORY
-			# from xpak.
-			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
+			if update_pkgindex:
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
-				self._pkgindex_write(pkgindex)
 
-		if getbinpkgs and not self.settings.get("PORTAGE_BINHOST"):
-			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
-				noiselevel=-1)
+		return pkgindex if update_pkgindex else None
 
-		if not getbinpkgs or 'PORTAGE_BINHOST' not in self.settings:
-			self.populated=1
-			return
+	def _populate_remote(self, getbinpkg_refresh=True):
+
+		self._remote_has_index = False
 		self._remotepkgs = {}
 		for base_url in self.settings["PORTAGE_BINHOST"].split():
 			parsed_url = urlparse(base_url)
@@ -802,7 +818,7 @@ class binarytree(object):
 				user_passwd = user + "@"
 				if ":" in user:
 					user, passwd = user.split(":", 1)
-			port_args = []
+
 			if port is not None:
 				port_str = ":%s" % (port,)
 				if host.endswith(port_str):
@@ -1008,22 +1024,18 @@ class binarytree(object):
 				for d in pkgindex.packages:
 					cpv = _pkg_str(d["CPV"], metadata=d,
 						settings=self.settings)
-					instance_key = _instance_key(cpv)
 					# Local package instances override remote instances
 					# with the same instance_key.
-					if instance_key in metadata:
+					if self.dbapi.cpv_exists(cpv):
 						continue
 
 					d["CPV"] = cpv
 					d["BASE_URI"] = remote_base_uri
 					d["PKGINDEX_URI"] = url
-					self._remotepkgs[instance_key] = d
-					metadata[instance_key] = d
+					self._remotepkgs[self.dbapi._instance_key(cpv)] = d
 					self.dbapi.cpv_inject(cpv)
 
 				self._remote_has_index = True
-
-		self.populated=1
 
 	def inject(self, cpv, filename=None):
 		"""Add a freshly built package to the database.  This updates
