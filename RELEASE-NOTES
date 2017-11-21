@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.15
+==================================
+* Bug Fixes:
+    - Bug 607872 UseManager: reject atoms with USE flags
+    - Bug 636798 binarytree.populate: avoid lock when possible
+    - Bug 637902 quickpkg: fix stat sanity check for binpkg-multi-instance
+    - Bug 638148 Fix mis-parsing Manifests with numerical checksums
+
+
 portage-2.3.14
 ==================================
 * Bug Fixes:
