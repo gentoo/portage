@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.16
+==================================
+* Bug Fixes:
+    - Bug 638292 avoid unnecessary $PKGDIR/Packages index re-write
+    - Bug 638320 emaint binhost: use _populate_local instead of _populate
+
+
 portage-2.3.15
 ==================================
 * Bug Fixes:
