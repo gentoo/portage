@@ -532,7 +532,6 @@ class binarytree(object):
 		# prior to performing package moves since it only wants to
 		# operate on local packages (getbinpkgs=0).
 		self._remotepkgs = None
-		self.dbapi.clear()
 
 		self._populating = True
 		try:
@@ -568,6 +567,7 @@ class binarytree(object):
 		self.populated = True
 
 	def _populate_local(self):
+		self.dbapi.clear()
 		_instance_key = self.dbapi._instance_key
 		if True:
 			pkg_paths = {}

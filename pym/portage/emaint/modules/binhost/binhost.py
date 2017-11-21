@@ -123,7 +123,7 @@ class BinhostHandler(object):
 				self._pkgindex_file, wantnewlockfile=1)
 			try:
 				# Repopulate with lock held.
-				bintree._populate()
+				bintree._populate_local()
 				cpv_all = self._bintree.dbapi.cpv_all()
 				cpv_all.sort()
 
