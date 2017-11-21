@@ -429,7 +429,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 	return eapi
 
 def grabdict_package(myfilename, juststrings=0, recursive=0, newlines=0,
-	allow_wildcard=False, allow_repo=False, allow_build_id=False,
+	allow_wildcard=False, allow_repo=False, allow_build_id=False, allow_use=True,
 	verify_eapi=False, eapi=None, eapi_default="0"):
 	""" Does the same thing as grabdict except it validates keys
 		with isvalidatom()"""
@@ -458,6 +458,10 @@ def grabdict_package(myfilename, juststrings=0, recursive=0, newlines=0,
 				writemsg(_("--- Invalid atom in %s: %s\n") % (filename, e),
 					noiselevel=-1)
 			else:
+				if not allow_use and k.use:
+					writemsg(_("--- Atom is not allowed to have USE flag(s) in %s: %s\n") % (filename, k),
+						noiselevel=-1)
+					continue
 				atoms.setdefault(k, []).extend(v)
 
 	if juststrings:

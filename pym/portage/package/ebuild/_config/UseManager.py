@@ -196,7 +196,8 @@ class UseManager(object):
 		file_dict = grabdict_package(file_name, recursive=recursive,
 			allow_wildcard=extended_syntax, allow_repo=extended_syntax,
 			verify_eapi=(not extended_syntax), eapi=eapi,
-			eapi_default=eapi_default, allow_build_id=allow_build_id)
+			eapi_default=eapi_default, allow_build_id=allow_build_id,
+			allow_use=False)
 		if eapi is not None and eapi_filter is not None and not eapi_filter(eapi):
 			if file_dict:
 				writemsg(_("--- EAPI '%s' does not support '%s': '%s'\n") %
@@ -242,7 +243,7 @@ class UseManager(object):
 				os.path.join(location, file_name),
 				recursive=1, newlines=1, allow_wildcard=True,
 				allow_repo=True, verify_eapi=False,
-				allow_build_id=True)
+				allow_build_id=True, allow_use=False)
 			for k, v in pusedict.items():
 				l = []
 				use_expand_prefix = ''
