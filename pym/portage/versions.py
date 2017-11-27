@@ -50,7 +50,7 @@ _pkg = {
 	"dots_allowed_in_PN":    r'[\w+][\w+.-]*?',
 }
 
-_v = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
+_v = r'(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
 _rev = r'\d+'
 _vr = _v + '(-r(' + _rev + '))?'
 
@@ -156,21 +156,15 @@ def vercmp(ver1, ver2, silent=1):
 			print(_("!!! syntax error in version: %s") % ver2)
 		return None
 
-	# shortcut for cvs ebuilds (new style)
-	if match1.group(1) and not match2.group(1):
-		return 1
-	elif match2.group(1) and not match1.group(1):
-		return -1
-
 	# building lists of the version parts before the suffix
 	# first part is simple
-	list1 = [int(match1.group(2))]
-	list2 = [int(match2.group(2))]
+	list1 = [int(match1.group(1))]
+	list2 = [int(match2.group(1))]
 
 	# this part would greatly benefit from a fixed-length version pattern
-	if match1.group(3) or match2.group(3):
-		vlist1 = match1.group(3)[1:].split(".")
-		vlist2 = match2.group(3)[1:].split(".")
+	if match1.group(2) or match2.group(2):
+		vlist1 = match1.group(2)[1:].split(".")
+		vlist2 = match2.group(2)[1:].split(".")
 
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
@@ -206,10 +200,10 @@ def vercmp(ver1, ver2, silent=1):
 	# may seem counter-intuitive. However, if you really think about it, it
 	# seems like it's probably safe to assume that this is the behavior that
 	# is intended by anyone who would use versions such as these.
-	if len(match1.group(5)):
-		list1.append(ord(match1.group(5)))
-	if len(match2.group(5)):
-		list2.append(ord(match2.group(5)))
+	if len(match1.group(4)):
+		list1.append(ord(match1.group(4)))
+	if len(match2.group(4)):
+		list2.append(ord(match2.group(4)))
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
@@ -223,8 +217,8 @@ def vercmp(ver1, ver2, silent=1):
 			return rval
 
 	# main version is equal, so now compare the _suffix part
-	list1 = match1.group(6).split("_")[1:]
-	list2 = match2.group(6).split("_")[1:]
+	list1 = match1.group(5).split("_")[1:]
+	list2 = match2.group(5).split("_")[1:]
 
 	for i in range(0, max(len(list1), len(list2))):
 		# Implicit _p0 is given a value of -1, so that 1 < 1_p0
@@ -257,12 +251,12 @@ def vercmp(ver1, ver2, silent=1):
 				return rval
 
 	# the suffix part is equal to, so finally check the revision
-	if match1.group(10):
-		r1 = int(match1.group(10))
+	if match1.group(9):
+		r1 = int(match1.group(9))
 	else:
 		r1 = 0
-	if match2.group(10):
-		r2 = int(match2.group(10))
+	if match2.group(9):
+		r2 = int(match2.group(9))
 	else:
 		r2 = 0
 	rval = (r1 > r2) - (r1 < r2)
