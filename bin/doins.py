@@ -1,4 +1,7 @@
 #!/usr/bin/python -b
+# Copyright 2017 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+#
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -25,6 +28,7 @@ import subprocess
 import sys
 
 from portage.util import movefile
+from portage.util.file_copy import copyfile
 
 
 def _warn(helper, msg):
@@ -177,12 +181,7 @@ class _InsInProcessInstallRunner(object):
 			if e.errno != errno.ENOENT:
 				raise
 		try:
-			# TODO: Consider to use portage.util.file_copy.copyfile
-			# introduced by
-			# https://gitweb.gentoo.org/proj/portage.git/commit/
-			#   ?id=8ab5c8835931fd9ec098dbf4c5f416eb32e4a3a4
-			# after uprev.
-			shutil.copyfile(source, dest)
+			copyfile(source, dest)
 			_set_attributes(self._parsed_options, dest)
 			if self._copy_xattr:
 				movefile._copyxattr(
