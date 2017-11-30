@@ -1,0 +1,6 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: portage
+Upstream-Contact: Zac Medico <zmedico@gentoo.org>
+Source: https://gitweb.gentoo.org/proj/portage.git/
+Copyright: Copyright 1999-2017 Gentoo Foundation
+License: GPL-2+ (See LICENSE)
