@@ -656,38 +656,6 @@ class Scheduler(PollScheduler):
 
 		return os.EX_OK
 
-	def _env_sanity_check(self):
-		"""
-		Verify a sane environment before trying to build anything from source.
-		"""
-		have_src_pkg = False
-		for x in self._mergelist:
-			if isinstance(x, Package) and not x.built:
-				have_src_pkg = True
-				break
-
-		if not have_src_pkg:
-			return os.EX_OK
-
-		for settings in self.pkgsettings.values():
-			for var in ("ARCH", ):
-				value = settings.get(var)
-				if value and value.strip():
-					continue
-				msg = _("%(var)s is not set... "
-					"Are you missing the '%(configroot)s%(profile_path)s' symlink? "
-					"Is the symlink correct? "
-					"Is your portage tree complete?") % \
-					{"var": var, "configroot": settings["PORTAGE_CONFIGROOT"],
-					"profile_path": portage.const.PROFILE_PATH}
-
-				out = portage.output.EOutput()
-				for line in textwrap.wrap(msg, 70):
-					out.eerror(line)
-				return FAILURE
-
-		return os.EX_OK
-
 	def _check_manifests(self):
 		# Verify all the manifests now so that the user is notified of failure
 		# as soon as possible.
@@ -999,10 +967,6 @@ class Scheduler(PollScheduler):
 		failed_pkgs = self._failed_pkgs
 
 		rval = self._generate_digests()
-		if rval != os.EX_OK:
-			return rval
-
-		rval = self._env_sanity_check()
 		if rval != os.EX_OK:
 			return rval
 

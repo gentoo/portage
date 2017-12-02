@@ -1098,7 +1098,9 @@ class config(object):
 
 		profile_broken = False
 
-		if not self.profile_path:
+		# getmaskingstatus requires ARCH for ACCEPT_KEYWORDS support
+		arch = self.get('ARCH')
+		if not self.profile_path or not arch:
 			profile_broken = True
 		else:
 			# If any one of these files exists, then
