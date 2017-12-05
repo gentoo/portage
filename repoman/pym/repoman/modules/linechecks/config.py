@@ -15,6 +15,7 @@ from copy import deepcopy
 
 from repoman._portage import portage
 from repoman.config import load_config
+from repoman import _not_installed
 
 # Avoid a circular import issue in py2.7
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -46,8 +47,7 @@ class LineChecksConfig(object):
 		@param configpaths: ordered list of filepaths to load
 		'''
 		self.repo_settings = repo_settings
-		self.infopaths = [os.path.join(path, 'linechecks.yaml') for path in self.repo_settings.masters_list]
-		logging.debug("LineChecksConfig; configpaths: %s", self.infopaths)
+		self.infopaths = None
 		self.info_config = None
 		self._config = None
 		self.usex_supported_eapis = None
@@ -58,7 +58,21 @@ class LineChecksConfig(object):
 		self.eclass_info = {}
 		self.eclass_info_experimental_inherit = {}
 		self.errors = {}
+		self.set_infopaths()
 		self.load_checks_info()
+
+	def set_infopaths(self):
+		if _not_installed:
+			cnfdir = os.path.realpath(os.path.join(os.path.dirname(
+				os.path.dirname(os.path.dirname(os.path.dirname(
+				os.path.dirname(__file__))))), 'cnf/linechecks'))
+		else:
+			cnfdir = os.path.join(portage.const.EPREFIX or '/', 'usr/share/repoman/linechecks')
+		repomanpaths = [os.path.join(cnfdir, _file_) for _file_ in os.listdir(cnfdir)]
+		logging.debug("LineChecksConfig; repomanpaths: %s", repomanpaths)
+		repopaths = [os.path.join(path, 'linechecks.yaml') for path in self.repo_settings.masters_list]
+		self.infopaths = repomanpaths + repopaths
+		logging.debug("LineChecksConfig; configpaths: %s", self.infopaths)
 
 	def load_checks_info(self, infopaths=None):
 		'''load the config files in order
@@ -69,6 +83,7 @@ class LineChecksConfig(object):
 			self.infopaths = infopaths
 		elif not self.infopaths:
 			logging.error("LineChecksConfig; Error: No linechecks.yaml files defined")
+
 		configs = load_config(self.infopaths, 'yaml', self.repo_settings.repoman_settings.valid_versions)
 		if configs == {}:
 			logging.error("LineChecksConfig: Failed to load a valid 'linechecks.yaml' file at paths: %s", self.infopaths)
