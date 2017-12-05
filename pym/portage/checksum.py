@@ -161,7 +161,8 @@ if False:
 
 		class GCryptHashWrapper(object):
 			def __init__(self, algo):
-				self._obj = pygcrypt.hashcontext.HashContext(algo=algo)
+				self._obj = pygcrypt.hashcontext.HashContext(algo=algo,
+						secure=False)
 
 			def update(self, data):
 				self._obj.write(data)
