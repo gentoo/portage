@@ -6,6 +6,7 @@ import os
 from _emerge.Package import Package
 
 # import our initialized portage instance
+from repoman import _not_installed
 from repoman._portage import portage
 from repoman.config import load_config
 
@@ -35,14 +36,26 @@ class QAData(object):
 						 This could be a parent repository using the
 						 repoman_masters layout.conf variable
 		'''
-		qadata = load_config([os.path.join(path,'qa_data.yaml') for path in repopaths], 'yaml', valid_versions)
+		# add our base qahelp
+		if _not_installed:
+			cnfdir = os.path.realpath(os.path.join(os.path.dirname(
+				os.path.dirname(os.path.dirname(__file__))), 'cnf/qa_data'))
+		else:
+			cnfdir = os.path.join(portage.const.EPREFIX or '/', 'usr/share/repoman/qa_data')
+		repomanpaths = [os.path.join(cnfdir, _file_) for _file_ in os.listdir(cnfdir)]
+		logging.debug("QAData: cnfdir: %s, repomanpaths: %s", cnfdir, repomanpaths)
+		repopaths = [os.path.join(path,'qa_data.yaml') for path in repopaths]
+		infopaths = repomanpaths + repopaths
+
+		qadata = load_config(infopaths, None, valid_versions)
 		if qadata == {}:
-			logging.error("QAData: Failed to load a valid 'qa_data.yaml' file at paths: %s", repopaths)
+			logging.error("QAData: Failed to load a valid 'qa_data.yaml' file at paths: %s", infopaths)
 			return False
 		self.max_desc_len = qadata.get('max_description_length', 80)
 		self.allowed_filename_chars = qadata.get("allowed_filename_chars", "a-zA-Z0-9._-+:")
 
-		self.qahelp = qadata.get('qahelp', {})
+		self.qahelp = qadata["qahelp"]
+		logging.debug("qa_help primary keys: %s", sorted(self.qahelp))
 
 		self.qacats = []
 		for x in sorted(self.qahelp):
