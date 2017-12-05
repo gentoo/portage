@@ -85,7 +85,7 @@ class ModuleConfig(object):
 				if loop in self.controller.get_spec(mod, 'module_runsIn'):
 					mlist.append(mod)
 		except InvalidModuleName:
-			logging.error("ModuleConfig; unkown module: %s, skipping", mod)
+			logging.error("ModuleConfig; unknown module: %s, skipping", mod)
 
 		logging.debug("ModuleConfig; mlist: %s", mlist)
 		return mlist
