@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.17
+==================================
+* Bug Fixes:
+    - Bug 586214 fix KeyError when profile is missing ARCH variable
+    - Bug 615620 disable pygcrypt checksum backend
+    - Bug 624526 rewrite doins in python
+    - Bug 639346 eval disjunctive build deps earlier
+
+
 portage-2.3.16
 ==================================
 * Bug Fixes:
