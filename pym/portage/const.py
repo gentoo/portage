@@ -83,7 +83,7 @@ MACOSSANDBOX_BINARY      = "/usr/bin/sandbox-exec"
 MACOSSANDBOX_PROFILE     = '''(version 1)
 (allow default)
 (deny file-write*)
-(allow file-write*
+(allow file-write* file-write-setugid
 @@MACOSSANDBOX_PATHS@@)
 (allow file-write-data
 @@MACOSSANDBOX_PATHS_CONTENT_ONLY@@)'''
