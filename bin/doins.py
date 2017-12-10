@@ -405,7 +405,11 @@ def _doins(opts, install_runner, relpath, source_root):
 				not os.readlink(source).startswith(
 					opts.distdir)):
 				linkto = os.readlink(source)
-				shutil.rmtree(dest, ignore_errors=True)
+				try:
+					os.unlink(dest)
+				except OSError as e:
+					if e.errno == errno.EISDIR:
+						shutil.rmtree(dest, ignore_errors=True)
 				os.symlink(linkto, dest)
 				return True
 		except Exception:
