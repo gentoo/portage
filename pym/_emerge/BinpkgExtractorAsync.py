@@ -80,7 +80,7 @@ class BinpkgExtractorAsync(SpawnProcess):
 		# SIGPIPE handling (128 + SIGPIPE) should be compatible with
 		# assert_sigpipe_ok() that's used by the ebuild unpack() helper.
 		self.args = [self._shell_binary, "-c",
-			("cmd0=(head -c-%d -- %s) cmd1=(%s) cmd2=(tar -xp %s -C %s -f -); " + \
+			("cmd0=(head -c %d -- %s) cmd1=(%s) cmd2=(tar -xp %s -C %s -f -); " + \
 			'"${cmd0[@]}" | "${cmd1[@]}" | "${cmd2[@]}"; ' + \
 			"p=(${PIPESTATUS[@]}) ; for i in {0..2}; do " + \
 			"if [[ ${p[$i]} != 0 && ${p[$i]} != %d ]] ; then " + \
@@ -90,7 +90,7 @@ class BinpkgExtractorAsync(SpawnProcess):
 			"echo command $(eval \"echo \\\"'\\${cmd$i[*]}'\\\"\") " + \
 			"failed with status ${p[$i]} ; exit ${p[$i]} ; fi ; " + \
 			"exit 0 ;") % \
-			(pkg_xpak.xpaksize,
+			(pkg_xpak.filestat.st_size - pkg_xpak.xpaksize,
 			portage._shell_quote(self.pkg_path),
 			decomp_cmd,
 			tar_options,
