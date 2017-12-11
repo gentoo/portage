@@ -4,16 +4,16 @@
 
 register_die_hook() {
 	local x
-	for x in $* ; do
-		has $x $EBUILD_DEATH_HOOKS || \
+	for x in "$@" ; do
+		has "$x" "$EBUILD_DEATH_HOOKS" || \
 			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
 	done
 }
 
 register_success_hook() {
 	local x
-	for x in $* ; do
-		has $x $EBUILD_SUCCESS_HOOKS || \
+	for x in "$@" ; do
+		has "$x" "$EBUILD_SUCCESS_HOOKS" || \
 			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
 	done
 }
@@ -31,14 +31,16 @@ __strip_duplicate_slashes() {
 KV_major() {
 	[[ -z $1 ]] && return 1
 
-	local KV=$@
+	local KV
+	KV=$*
 	echo "${KV%%.*}"
 }
 
 KV_minor() {
 	[[ -z $1 ]] && return 1
 
-	local KV=$@
+	local KV
+	KV=$*
 	KV=${KV#*.}
 	echo "${KV%%.*}"
 }
@@ -46,7 +48,8 @@ KV_minor() {
 KV_micro() {
 	[[ -z $1 ]] && return 1
 
-	local KV=$@
+	local KV
+	KV=$*
 	KV=${KV#*.*.}
 	echo "${KV%%[^[:digit:]]*}"
 }
@@ -54,10 +57,11 @@ KV_micro() {
 KV_to_int() {
 	[[ -z $1 ]] && return 1
 
-	local KV_MAJOR=$(KV_major "$1")
-	local KV_MINOR=$(KV_minor "$1")
-	local KV_MICRO=$(KV_micro "$1")
-	local KV_int=$(( KV_MAJOR * 65536 + KV_MINOR * 256 + KV_MICRO ))
+	local KV_MAJOR KV_MINOR KV_MICRO KV_int
+	KV_MAJOR=$(KV_major "$1")
+	KV_MINOR=$(KV_minor "$1")
+	KV_MICRO=$(KV_micro "$1")
+	KV_int=$(( KV_MAJOR * 65536 + KV_MINOR * 256 + KV_MICRO ))
 
 	# We make version 2.2.0 the minimum version we will handle as
 	# a sanity check ... if its less, we fail ...
@@ -74,7 +78,7 @@ get_KV() {
 	[[ -z ${_RC_GET_KV_CACHE} ]] \
 		&& _RC_GET_KV_CACHE=$(uname -r)
 
-	echo $(KV_to_int "${_RC_GET_KV_CACHE}")
+	KV_to_int "${_RC_GET_KV_CACHE}"
 
 	return $?
 }
