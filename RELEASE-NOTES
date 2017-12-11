@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.18
+==================================
+* Bug Fixes:
+    - Bug 640290 PORTAGE_XATTR_EXCLUDE: add common user.* attributes
+    - Bug 640318 handle binary package IUSE_IMPLICIT divergence
+    - Bug 640376 doins: remove file before creating symlink
+    - Bug 640450 fix binary package extraction for USERLAND_BSD
+
+
 portage-2.3.17
 ==================================
 * Bug Fixes:
