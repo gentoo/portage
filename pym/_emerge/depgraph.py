@@ -3234,7 +3234,15 @@ class depgraph(object):
 			if ignore_hdepend_deps:
 				edepend["HDEPEND"] = ""
 
+		# Since build-time deps tend to be a superset of run-time deps, order
+		# dep processing such that build-time deps are popped from
+		# _dep_disjunctive_stack first, so that choices for build-time
+		# deps influence choices for run-time deps (bug 639346).
 		deps = (
+			(myroot, edepend["RDEPEND"],
+				self._priority(runtime=True)),
+			(myroot, edepend["PDEPEND"],
+				self._priority(runtime_post=True)),
 			(depend_root, edepend["DEPEND"],
 				self._priority(buildtime=True,
 				optional=(pkg.built or ignore_depend_deps),
@@ -3243,10 +3251,6 @@ class depgraph(object):
 				self._priority(buildtime=True,
 				optional=(pkg.built or ignore_hdepend_deps),
 				ignored=ignore_hdepend_deps)),
-			(myroot, edepend["RDEPEND"],
-				self._priority(runtime=True)),
-			(myroot, edepend["PDEPEND"],
-				self._priority(runtime_post=True))
 		)
 
 		debug = "--debug" in self._frozen_config.myopts

@@ -50,9 +50,10 @@ _pkg = {
 	"dots_allowed_in_PN":    r'[\w+][\w+.-]*?',
 }
 
-_v = r'(cvs\.)?(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
-# PREFIX hack: -r(\d+) -> -r(\d+|0\d+\.\d+) (see below)
+_v = r'(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
+# PREFIX_LOCAL hack: -r(\d+) -> -r(\d+|0\d+\.\d+) (see below)
 _rev = r'(\d+|0\d+\.\d+)'
+# END_PREFIX_LOCAL
 _vr = _v + '(-r(' + _rev + '))?'
 
 _cp = {
@@ -157,21 +158,15 @@ def vercmp(ver1, ver2, silent=1):
 			print(_("!!! syntax error in version: %s") % ver2)
 		return None
 
-	# shortcut for cvs ebuilds (new style)
-	if match1.group(1) and not match2.group(1):
-		return 1
-	elif match2.group(1) and not match1.group(1):
-		return -1
-
 	# building lists of the version parts before the suffix
 	# first part is simple
-	list1 = [int(match1.group(2))]
-	list2 = [int(match2.group(2))]
+	list1 = [int(match1.group(1))]
+	list2 = [int(match2.group(1))]
 
 	# this part would greatly benefit from a fixed-length version pattern
-	if match1.group(3) or match2.group(3):
-		vlist1 = match1.group(3)[1:].split(".")
-		vlist2 = match2.group(3)[1:].split(".")
+	if match1.group(2) or match2.group(2):
+		vlist1 = match1.group(2)[1:].split(".")
+		vlist2 = match2.group(2)[1:].split(".")
 
 		for i in range(0, max(len(vlist1), len(vlist2))):
 			# Implcit .0 is given a value of -1, so that 1.0.0 > 1.0, since it
@@ -207,10 +202,10 @@ def vercmp(ver1, ver2, silent=1):
 	# may seem counter-intuitive. However, if you really think about it, it
 	# seems like it's probably safe to assume that this is the behavior that
 	# is intended by anyone who would use versions such as these.
-	if len(match1.group(5)):
-		list1.append(ord(match1.group(5)))
-	if len(match2.group(5)):
-		list2.append(ord(match2.group(5)))
+	if len(match1.group(4)):
+		list1.append(ord(match1.group(4)))
+	if len(match2.group(4)):
+		list2.append(ord(match2.group(4)))
 
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
@@ -224,8 +219,8 @@ def vercmp(ver1, ver2, silent=1):
 			return rval
 
 	# main version is equal, so now compare the _suffix part
-	list1 = match1.group(6).split("_")[1:]
-	list2 = match2.group(6).split("_")[1:]
+	list1 = match1.group(5).split("_")[1:]
+	list2 = match2.group(5).split("_")[1:]
 
 	for i in range(0, max(len(list1), len(list2))):
 		# Implicit _p0 is given a value of -1, so that 1 < 1_p0
@@ -257,33 +252,35 @@ def vercmp(ver1, ver2, silent=1):
 			if rval:
 				return rval
 
+	# PREFIX_LOCAL
 	# The suffix part is equal too, so finally check the revision
-	# PREFIX hack: a revision starting with 0 is an 'inter-revision',
+	# Prefix hack: a revision starting with 0 is an 'inter-revision',
 	# which means that it is possible to create revisions on revisions.
 	# An example is -r01.1 which is the first revision of -r1.  Note
 	# that a period (.) is used to separate the real revision and the
 	# secondary revision number.  This trick is in use to allow revision
 	# bumps in ebuilds synced from the main tree for Prefix changes,
 	# while still staying in the main tree versioning scheme.
-	if match1.group(10):
-		if match1.group(10)[0] == '0' and '.' in match1.group(10):
-			t = match1.group(10)[1:].split(".")
+	if match1.group(9):
+		if match1.group(9)[0] == '0' and '.' in match1.group(9):
+			t = match1.group(9)[1:].split(".")
 			r1 = int(t[0])
 			r3 = int(t[1])
 		else:
-			r1 = int(match1.group(10))
+			r1 = int(match1.group(9))
 			r3 = 0
 	else:
 		r1 = 0
 		r3 = 0
-	if match2.group(10):
-		if match2.group(10)[0] == '0' and '.' in match2.group(10):
-			t = match2.group(10)[1:].split(".")
+	if match2.group(9):
+		if match2.group(9)[0] == '0' and '.' in match2.group(9):
+			t = match2.group(9)[1:].split(".")
 			r2 = int(t[0])
 			r4 = int(t[1])
 		else:
-			r2 = int(match2.group(10))
+			r2 = int(match2.group(9))
 			r4 = 0
+	# END_PREFIX_LOCAL
 	else:
 		r2 = 0
 		r4 = 0

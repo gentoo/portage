@@ -122,13 +122,13 @@ class BinhostHandler(object):
 			pkgindex_lock = locks.lockfile(
 				self._pkgindex_file, wantnewlockfile=1)
 			try:
-				# Repopulate with lock held.
-				bintree._populate()
+				# Repopulate with lock held. If _populate_local returns
+				# data then use that, since _load_pkgindex would return
+				# stale data in this case.
+				self._pkgindex = pkgindex = (bintree._populate_local() or
+					bintree._load_pkgindex())
 				cpv_all = self._bintree.dbapi.cpv_all()
 				cpv_all.sort()
-
-				pkgindex = bintree._load_pkgindex()
-				self._pkgindex = pkgindex
 
 				# Recount stale/missing packages, with lock held.
 				missing = []

@@ -13,6 +13,7 @@ from repoman._portage import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage.checksum import get_valid_checksum_keys
 
 from repoman.errors import err
 from repoman.profile import ProfileDesc, valid_profile_types
@@ -99,24 +100,28 @@ class RepoSettings(object):
 			sys.exit(1)
 
 		manifest_hashes = self.repo_config.manifest_hashes
+		manifest_required_hashes = self.repo_config.manifest_required_hashes
 		if manifest_hashes is None:
 			manifest_hashes = portage.const.MANIFEST2_HASH_DEFAULTS
+			manifest_required_hashes = manifest_hashes
 
 		if options.mode in ("commit", "fix", "manifest"):
-			if portage.const.MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+			missing_required_hashes = manifest_required_hashes.difference(
+				manifest_hashes)
+			if missing_required_hashes:
 				msg = (
 					"The 'manifest-hashes' setting in the '%s' repository's "
-					"metadata/layout.conf does not contain the '%s' hash which "
-					"is required by this portage version. You will have to "
-					"upgrade portage if you want to generate valid manifests for "
+					"metadata/layout.conf does not contain the '%s' hashes which "
+					"are listed in 'manifest-required-hashes'. Please fix that "
+					"file if you want to generate valid manifests for "
 					"this repository.") % (
-					self.repo_config.name, portage.const.MANIFEST2_REQUIRED_HASH)
+					self.repo_config.name, ' '.join(missing_required_hashes))
 				for line in textwrap.wrap(msg, 70):
 					logging.error(line)
 				sys.exit(1)
 
 			unsupported_hashes = manifest_hashes.difference(
-				portage.const.MANIFEST2_HASH_FUNCTIONS)
+				get_valid_checksum_keys())
 			if unsupported_hashes:
 				msg = (
 					"The 'manifest-hashes' setting in the '%s' repository's "

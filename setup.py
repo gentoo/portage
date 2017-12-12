@@ -173,7 +173,9 @@ class epydoc(Command):
 class install_docbook(install_data):
 	""" install_data for docbook docs """
 
-	user_options = install_data.user_options
+	user_options = install_data.user_options + [
+		('htmldir=', None, "HTML documentation install directory"),
+	]
 
 	def initialize_options(self):
 		install_data.initialize_options(self)
@@ -195,7 +197,9 @@ class install_docbook(install_data):
 class install_epydoc(install_data):
 	""" install_data for epydoc docs """
 
-	user_options = install_data.user_options
+	user_options = install_data.user_options + [
+		('htmldir=', None, "HTML documentation install directory"),
+	]
 
 	def initialize_options(self):
 		install_data.initialize_options(self)
@@ -659,7 +663,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.13',
+	version = '2.3.18',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

@@ -147,6 +147,11 @@ class x_clean(clean):
 			print('removing %s symlink' % repr(conf_dir))
 			os.unlink(conf_dir)
 
+		pym_dir = os.path.join(top_dir, 'pym')
+		if os.path.islink(pym_dir):
+			print('removing %s sylink' % repr(pym_dir))
+			os.unlink(pym_dir)
+
 		pni_file = os.path.join(top_dir, '.repoman_not_installed')
 		if os.path.exists(pni_file):
 			print('removing %s' % repr(pni_file))
@@ -339,11 +344,15 @@ class x_install_scripts(install_scripts):
 
 
 class x_sdist(sdist):
-	""" sdist defaulting to .tar.bz2 format """
+	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
 
 	def finalize_options(self):
 		if self.formats is None:
 			self.formats = ['bztar']
+		if self.owner is None:
+			self.owner = 'root'
+		if self.group is None:
+			self.group = 'root'
 
 		sdist.finalize_options(self)
 
@@ -388,6 +397,17 @@ class build_tests(x_build_scripts_custom):
 		conf_src = os.path.relpath('cnf', self.top_dir)
 		print('Symlinking %s -> %s' % (conf_dir, conf_src))
 		os.symlink(conf_src, conf_dir)
+
+		# symlink 'pym' directory
+		pym_dir = os.path.join(self.top_dir, 'pym')
+		if os.path.exists(pym_dir):
+			if not os.path.islink(pym_dir):
+				raise SystemError('%s exists and is not a symlink (collision)'
+					% repr(pym_dir))
+			os.unlink(pym_dir)
+		pym_src = 'lib'
+		print('Symlinking %s -> %s' % (pym_dir, pym_src))
+		os.symlink(pym_src, pym_dir)
 
 		# create $build_lib/../.repoman_not_installed
 		# to enable proper paths in tests
@@ -447,7 +467,7 @@ def get_manpages():
 
 setup(
 	name = 'repoman',
-	version = '2.3.4',
+	version = '2.3.6',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

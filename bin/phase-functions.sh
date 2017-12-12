@@ -945,7 +945,7 @@ __ebuild_main() {
 		# so we ensure that there can't be a stale log to
 		# interfere with our logic.
 		local x=
-		if [[ -n SANDBOX_ON ]] ; then
+		if [[ -n $SANDBOX_ON ]] ; then
 			x=$SANDBOX_ON
 			export SANDBOX_ON=0
 		fi

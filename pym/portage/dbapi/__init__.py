@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 __all__ = ["dbapi"]
 
+import functools
 import re
 
 import portage
@@ -219,6 +220,10 @@ class dbapi(object):
 		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
 		if eapi_attrs.iuse_effective:
 			iuse_implicit_match = self.settings._iuse_effective_match
+			if not self._use_mutable:
+				iuse_implicit_match = functools.partial(
+					Package._built_iuse_effective_match,
+					iuse_implicit_match, frozenset(metadata["USE"].split()))
 		else:
 			iuse_implicit_match = self.settings._iuse_implicit_match
 		usealiases = self.settings._use_manager.getUseAliases(pkg)

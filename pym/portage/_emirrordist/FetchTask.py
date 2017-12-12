@@ -20,7 +20,7 @@ from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from _emerge.CompositeTask import CompositeTask
 
-default_hash_name = portage.const.MANIFEST2_REQUIRED_HASH
+default_hash_name = portage.const.MANIFEST2_HASH_DEFAULT
 
 # Use --no-check-certificate since Manifest digests should provide
 # enough security, and certificates can be self-signed or whatnot.

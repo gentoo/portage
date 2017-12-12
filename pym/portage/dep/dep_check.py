@@ -6,14 +6,20 @@ from __future__ import unicode_literals
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
 import collections
+import itertools
 import logging
 import operator
 
 import portage
 from portage.dep import Atom, match_from_list, use_reduce
+from portage.dep._dnf import (
+	dnf_convert as _dnf_convert,
+	contains_disjunction as _contains_disjunction,
+)
 from portage.exception import InvalidDependString, ParseError
 from portage.localization import _
 from portage.util import writemsg, writemsg_level
+from portage.util.digraph import digraph
 from portage.util.SlotObject import SlotObject
 from portage.versions import vercmp, _pkg_str
 
@@ -28,7 +34,11 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	atom because it wouldn't necessarily make sense to block all the components
 	of a compound virtual.  When more than one new-style virtual is matched,
 	the matches are sorted from highest to lowest versions and the atom is
-	expanded to || ( highest match ... lowest match )."""
+	expanded to || ( highest match ... lowest match ).
+
+	The result is normalized in the same way as use_reduce, having a top-level
+	conjuction, and no redundant nested lists.
+	"""
 	newsplit = []
 	mytrees = trees[myroot]
 	portdb = mytrees["porttree"].dbapi
@@ -54,14 +64,38 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 		portdb = trees[myroot]["bintree"].dbapi
 	pprovideddict = mysettings.pprovideddict
 	myuse = kwargs["myuse"]
+	is_disjunction = mysplit and mysplit[0] == '||'
 	for x in mysplit:
 		if x == "||":
 			newsplit.append(x)
 			continue
 		elif isinstance(x, list):
-			newsplit.append(_expand_new_virtuals(x, edebug, mydbapi,
+			assert x, 'Normalization error, empty conjunction found in %s' % (mysplit,)
+			if is_disjunction:
+				assert x[0] != '||', \
+					'Normalization error, nested disjunction found in %s' % (mysplit,)
+			else:
+				assert x[0] == '||', \
+					'Normalization error, nested conjunction found in %s' % (mysplit,)
+			x_exp = _expand_new_virtuals(x, edebug, mydbapi,
 				mysettings, myroot=myroot, trees=trees, use_mask=use_mask,
-				use_force=use_force, **kwargs))
+				use_force=use_force, **kwargs)
+			if is_disjunction:
+				if len(x_exp) == 1:
+					x = x_exp[0]
+					if isinstance(x, list):
+						# Due to normalization, a conjunction must not be
+						# nested directly in another conjunction, so this
+						# must be a disjunction.
+						assert x and x[0] == '||', \
+							'Normalization error, nested conjunction found in %s' % (x_exp,)
+						newsplit.extend(x[1:])
+					else:
+						newsplit.append(x)
+				else:
+					newsplit.append(x_exp)
+			else:
+				newsplit.extend(x_exp)
 			continue
 
 		if not isinstance(x, Atom):
@@ -101,6 +135,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					a.append(Atom(x.replace(x.cp, y.cp, 1)))
 				if not a:
 					newsplit.append(x)
+				elif is_disjunction:
+					newsplit.extend(a)
 				elif len(a) == 1:
 					newsplit.append(a[0])
 				else:
@@ -218,10 +254,17 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(x)
 			if atom_graph is not None:
 				atom_graph.add((x, id(x)), graph_parent)
+		elif is_disjunction:
+			newsplit.extend(a)
 		elif len(a) == 1:
-			newsplit.append(a[0])
+			newsplit.extend(a[0])
 		else:
 			newsplit.append(['||'] + a)
+
+	# For consistency with related functions like use_reduce, always
+	# normalize the result to have a top-level conjunction.
+	if is_disjunction:
+		newsplit = [newsplit]
 
 	return newsplit
 
@@ -323,8 +366,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	want_update_pkg = trees[myroot].get("want_update_pkg")
 	downgrade_probe = trees[myroot].get("downgrade_probe")
 	vardb = None
+	vardb_match_pkgs = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
+		vardb_match_pkgs = getattr(vardb, 'match_pkgs', None)
 	if use_binaries:
 		mydbapi = trees[myroot]["bintree"].dbapi
 	else:
@@ -355,6 +400,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		all_use_satisfied = True
 		all_use_unmasked = True
 		conflict_downgrade = False
+		installed_downgrade = False
 		slot_atoms = collections.defaultdict(list)
 		slot_map = {}
 		cp_map = {}
@@ -418,6 +464,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 					if avail_pkg_use != avail_pkg:
 						avail_pkg = avail_pkg_use
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
+
+			if vardb_match_pkgs is not None and downgrade_probe is not None:
+				inst_pkg = vardb_match_pkgs(avail_slot)
+				if (inst_pkg and avail_pkg < inst_pkg[-1] and
+					not downgrade_probe(inst_pkg[-1])):
+					installed_downgrade = True
 
 			slot_map[avail_slot] = avail_pkg
 			slot_atoms[avail_slot].append(atom)
@@ -487,7 +539,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_installed.append(this_choice)
 					else:
 						unsat_use_non_installed.append(this_choice)
-			elif conflict_downgrade:
+			elif conflict_downgrade or installed_downgrade:
 				other.append(this_choice)
 			else:
 				all_in_graph = True
@@ -603,9 +655,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for choices in choice_bins:
 		if len(choices) < 2:
 			continue
-		# Prefer choices with all_installed_slots for bug #480736.
-		choices.sort(key=operator.attrgetter('all_installed_slots'),
-			reverse=True)
+		# Prefer choices with all_installed_slots for bug #480736, and
+		# choices with a smaller number of packages for bug #632026.
+		choices.sort(key=lambda x: (not x.all_installed_slots, len(x.slot_map)))
 		for choice_1 in choices[1:]:
 			cps = set(choice_1.cp_map)
 			for choice_2 in choices:
@@ -732,6 +784,9 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	except ParseError as e:
 		return [0, "%s" % (e,)]
 
+	if mysettings.local_config: # if not repoman
+		mysplit = _overlap_dnf(mysplit)
+
 	mysplit2 = dep_wordreduce(mysplit,
 		mysettings, mydbapi, mode, use_cache=use_cache)
 	if mysplit2 is None:
@@ -745,6 +800,82 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		use_binaries=use_binaries, trees=trees)
 
 	return [1, selected_atoms]
+
+
+def _overlap_dnf(dep_struct):
+	"""
+	Combine overlapping || groups using disjunctive normal form (DNF), in
+	order to minimize the number of packages chosen to satisfy cases like
+	"|| ( foo bar ) || ( bar baz )" as in bug #632026. Non-overlapping
+	groups are excluded from the conversion, since DNF leads to exponential
+	explosion of the formula.
+	"""
+	if not _contains_disjunction(dep_struct):
+		return dep_struct
+
+	# map atom.cp to disjunctions
+	cp_map = collections.defaultdict(list)
+	# graph atom.cp, with edges connecting atoms in the same disjunction
+	overlap_graph = digraph()
+	# map id(disjunction) to index in dep_struct, for deterministic output
+	order_map = {}
+	order_key = lambda x: order_map[id(x)]
+	result = []
+	for i, x in enumerate(dep_struct):
+		if isinstance(x, list):
+			assert x and x[0] == '||', \
+				'Normalization error, nested conjunction found in %s' % (dep_struct,)
+			order_map[id(x)] = i
+			prev_cp = None
+			for atom in _iter_flatten(x):
+				if isinstance(atom, Atom) and not atom.blocker:
+					cp_map[atom.cp].append(x)
+					overlap_graph.add(atom.cp, parent=prev_cp)
+					prev_cp = atom.cp
+			if prev_cp is None: # only contains blockers
+				result.append(x)
+		else:
+			result.append(x)
+
+	# group together disjunctions having atom.cp overlap
+	traversed = set()
+	for cp in overlap_graph:
+		if cp in traversed:
+			continue
+		disjunctions = {}
+		stack = [cp]
+		while stack:
+			cp = stack.pop()
+			traversed.add(cp)
+			for x in cp_map[cp]:
+				disjunctions[id(x)] = x
+			for other_cp in itertools.chain(overlap_graph.child_nodes(cp),
+				overlap_graph.parent_nodes(cp)):
+				if other_cp not in traversed:
+					stack.append(other_cp)
+
+		if len(disjunctions) > 1:
+			# convert overlapping disjunctions to DNF
+			result.extend(_dnf_convert(
+				sorted(disjunctions.values(), key=order_key)))
+		else:
+			# pass through non-overlapping disjunctions
+			result.append(disjunctions.popitem()[1])
+
+	return result
+
+
+def _iter_flatten(dep_struct):
+	"""
+	Yield nested elements of dep_struct.
+	"""
+	for x in dep_struct:
+		if isinstance(x, list):
+			for x in _iter_flatten(x):
+				yield x
+		else:
+			yield x
+
 
 def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"

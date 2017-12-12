@@ -11,8 +11,8 @@ import re
 
 import portage
 from portage import eclass_cache, os
-from portage.const import (MANIFEST2_HASH_FUNCTIONS, MANIFEST2_REQUIRED_HASH,
-	PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
+from portage.checksum import get_valid_checksum_keys
+from portage.const import (PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
@@ -85,7 +85,7 @@ class RepoConfig(object):
 		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
-		'_masters_orig', 'module_specific_options',
+		'_masters_orig', 'module_specific_options', 'manifest_required_hashes',
 		)
 
 	def __init__(self, name, repo_opts, local_config=True):
@@ -226,6 +226,7 @@ class RepoConfig(object):
 		self.create_manifest = True
 		self.disable_manifest = False
 		self.manifest_hashes = None
+		self.manifest_required_hashes = None
 		self.update_changelog = False
 		self.cache_formats = None
 		self.portage1_profiles = True
@@ -261,7 +262,7 @@ class RepoConfig(object):
 			for value in ('allow-missing-manifest',
 				'allow-provide-virtual', 'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
-				'profile-formats',
+				'manifest-required-hashes', 'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
@@ -336,6 +337,7 @@ class RepoConfig(object):
 		kwds['allow_missing'] = self.allow_missing_manifest
 		kwds['allow_create'] = self.create_manifest
 		kwds['hashes'] = self.manifest_hashes
+		kwds['required_hashes'] = self.manifest_required_hashes
 		kwds['strict_misc_digests'] = self.strict_misc_digests
 		if self.disable_manifest:
 			kwds['from_scratch'] = True
@@ -1045,22 +1047,43 @@ def parse_layout_conf(repo_location, repo_name=None):
 	data['cache-formats'] = tuple(cache_formats)
 
 	manifest_hashes = layout_data.get('manifest-hashes')
+	manifest_required_hashes = layout_data.get('manifest-required-hashes')
+
+	if manifest_required_hashes is not None and manifest_hashes is None:
+		repo_name = _get_repo_name(repo_location, cached=repo_name)
+		warnings.warn((_("Repository named '%(repo_name)s' specifies "
+			"'manifest-required-hashes' setting without corresponding "
+			"'manifest-hashes'. Portage will default it to match "
+			"the required set but please add the missing entry "
+			"to: %(layout_filename)s") %
+			{"repo_name": repo_name or 'unspecified',
+			"layout_filename":layout_filename}),
+			SyntaxWarning)
+		manifest_hashes = manifest_required_hashes
+
 	if manifest_hashes is not None:
+		# require all the hashes unless specified otherwise
+		if manifest_required_hashes is None:
+			manifest_required_hashes = manifest_hashes
+
+		manifest_required_hashes = frozenset(manifest_required_hashes.upper().split())
 		manifest_hashes = frozenset(manifest_hashes.upper().split())
-		if MANIFEST2_REQUIRED_HASH not in manifest_hashes:
+		missing_required_hashes = manifest_required_hashes.difference(
+			manifest_hashes)
+		if missing_required_hashes:
 			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has a "
 				"'manifest-hashes' setting that does not contain "
-				"the '%(hash)s' hash which is required by this "
-				"portage version. You will have to upgrade portage "
+				"the '%(hash)s' hashes which are listed in "
+				"'manifest-required-hashes'. Please fix that file "
 				"if you want to generate valid manifests for this "
 				"repository: %(layout_filename)s") %
 				{"repo_name": repo_name or 'unspecified',
-				"hash":MANIFEST2_REQUIRED_HASH,
+				"hash": ' '.join(missing_required_hashes),
 				"layout_filename":layout_filename}),
-				DeprecationWarning)
+				SyntaxWarning)
 		unsupported_hashes = manifest_hashes.difference(
-			MANIFEST2_HASH_FUNCTIONS)
+			get_valid_checksum_keys())
 		if unsupported_hashes:
 			repo_name = _get_repo_name(repo_location, cached=repo_name)
 			warnings.warn((_("Repository named '%(repo_name)s' has a "
@@ -1073,7 +1096,9 @@ def parse_layout_conf(repo_location, repo_name=None):
 				"hashes":" ".join(sorted(unsupported_hashes)),
 				"layout_filename":layout_filename}),
 				DeprecationWarning)
+
 	data['manifest-hashes'] = manifest_hashes
+	data['manifest-required-hashes'] = manifest_required_hashes
 
 	data['update-changelog'] = layout_data.get('update-changelog', 'false').lower() \
 		== 'true'

@@ -1123,7 +1123,8 @@ def profile_check(trees, myaction):
 	if myaction in ("help", "info", "search", "sync", "version"):
 		return os.EX_OK
 	for root_trees in trees.values():
-		if root_trees["root_config"].settings.profiles:
+		if (root_trees["root_config"].settings.profiles and
+			'ARCH' in root_trees["root_config"].settings):
 			continue
 		# generate some profile related warning messages
 		validate_ebuild_environment(trees)

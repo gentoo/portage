@@ -8,7 +8,6 @@ import time
 from repoman._portage import portage
 from portage import os
 from portage import _unicode_decode
-from portage.const import PORTAGE_BASE_PATH, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
@@ -204,19 +203,6 @@ class SimpleRepomanTestCase(TestCase):
 			("dev-libs/A", repoman_cmd + ("commit", "-m", "bump to version 4")),
 		)
 
-		pythonpath =  os.environ.get("PYTHONPATH")
-		if pythonpath is not None and not pythonpath.strip():
-			pythonpath = None
-		if pythonpath is not None and \
-			pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
-			pass
-		else:
-			if pythonpath is None:
-				pythonpath = ""
-			else:
-				pythonpath = ":" + pythonpath
-			pythonpath = PORTAGE_PYM_PATH + pythonpath
-
 		env = {
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
 			"DISTDIR" : distdir,
@@ -228,7 +214,6 @@ class SimpleRepomanTestCase(TestCase):
 			"PORTAGE_USERNAME" : os.environ["PORTAGE_USERNAME"],
 			"PORTAGE_REPOSITORIES" : settings.repositories.config_string(),
 			"PYTHONDONTWRITEBYTECODE" : os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
-			"PYTHONPATH" : pythonpath,
 		}
 
 		if os.environ.get("SANDBOX_ON") == "1":

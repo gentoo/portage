@@ -1,5 +1,15 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.17
+----------------
+* The doins ebuild helper has been rewritten in python for performance, and
+  it does in-kernel file copying on Linux.
+
+portage-2.3.14
+----------------
+* Repository metadata/layout.conf supports manifest-required-hashes
+  attribute (default value is SHA512).
+
 portage-2.3.12
 ----------------
 * better_cache implemented to use less expensive os.listdir() instead of

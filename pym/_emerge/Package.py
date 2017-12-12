@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 
+import functools
 import sys
 from itertools import chain
 import warnings
@@ -82,6 +83,10 @@ class Package(Task):
 
 		if eapi_attrs.iuse_effective:
 			implicit_match = self.root_config.settings._iuse_effective_match
+			if self.built:
+				implicit_match = functools.partial(
+					self._built_iuse_effective_match,
+					implicit_match, frozenset(self._metadata['USE'].split()))
 		else:
 			implicit_match = self.root_config.settings._iuse_implicit_match
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
@@ -108,6 +113,33 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
+
+	@staticmethod
+	def _built_iuse_effective_match(prof_effective_match, built_use, flag):
+		"""
+		For built packages, it is desirable for the built USE setting to be
+		independent of the profile's current IUSE_IMPLICIT state, since the
+		profile's IUSE_IMPLICT setting may have diverged. Therefore, any
+		member of the built USE setting is considered to be a valid member of
+		IUSE_EFFECTIVE. Note that the binary package may be remote, so it's
+		only possible to rely on metadata that is available in the remote
+		Packages file, and the IUSE_IMPLICIT header in the Packages file is
+		vulnerable to mutation (see bug 640318).
+
+		This function is only used for EAPIs that support IUSE_EFFECTIVE,
+		since built USE settings for earlier EAPIs may contain a large
+		number of irrelevant flags.
+
+		@param prof_effective_match: function to match IUSE_EFFECTIVE
+			values for the current profile
+		@type prof_effective_match: callable
+		@param built_use: built USE setting
+		@type built_use: frozenset
+		@return: True if flag is a valid USE value which may
+			be specified in USE dependencies, False otherwise.
+		@rtype: bool
+		"""
+		return flag in built_use or prof_effective_match(flag)
 
 	@property
 	def eapi(self):

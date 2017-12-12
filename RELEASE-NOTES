@@ -1,6 +1,48 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.18
+==================================
+* Bug Fixes:
+    - Bug 640290 PORTAGE_XATTR_EXCLUDE: add common user.* attributes
+    - Bug 640318 handle binary package IUSE_IMPLICIT divergence
+    - Bug 640376 doins: remove file before creating symlink
+    - Bug 640450 fix binary package extraction for USERLAND_BSD
+
+
+portage-2.3.17
+==================================
+* Bug Fixes:
+    - Bug 586214 fix KeyError when profile is missing ARCH variable
+    - Bug 615620 disable pygcrypt checksum backend
+    - Bug 624526 rewrite doins in python
+    - Bug 639346 eval disjunctive build deps earlier
+
+
+portage-2.3.16
+==================================
+* Bug Fixes:
+    - Bug 638292 avoid unnecessary $PKGDIR/Packages index re-write
+    - Bug 638320 emaint binhost: use _populate_local instead of _populate
+
+
+portage-2.3.15
+==================================
+* Bug Fixes:
+    - Bug 607872 UseManager: reject atoms with USE flags
+    - Bug 636798 binarytree.populate: avoid lock when possible
+    - Bug 637902 quickpkg: fix stat sanity check for binpkg-multi-instance
+    - Bug 638148 Fix mis-parsing Manifests with numerical checksums
+
+
+portage-2.3.14
+==================================
+* Bug Fixes:
+    - Bug 635540 dep_zapdeps: install new package, avoid downgrade
+    - Bug 637284 vardbapi.removeFromContents: update NEEDED
+    - Bug 632026 dep_check: use DNF to optimize overlapping virtual || deps
+
+
 portage-2.3.13
 ==================================
 * Bug Fixes:

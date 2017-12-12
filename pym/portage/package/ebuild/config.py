@@ -1104,7 +1104,9 @@ class config(object):
 
 		profile_broken = False
 
-		if not self.profile_path:
+		# getmaskingstatus requires ARCH for ACCEPT_KEYWORDS support
+		arch = self.get('ARCH')
+		if not self.profile_path or not arch:
 			profile_broken = True
 		else:
 			# If any one of these files exists, then
@@ -1697,6 +1699,12 @@ class config(object):
 			iuse_implicit_match = self._iuse_effective_match
 			portage_iuse = set(self._iuse_effective)
 			portage_iuse.update(explicit_iuse)
+			if built_use is not None:
+				# When the binary package was built, the profile may have
+				# had different IUSE_IMPLICIT settings, so any member of
+				# the built USE setting is considered to be a member of
+				# IUSE_EFFECTIVE (see bug 640318).
+				portage_iuse.update(built_use)
 			self.configdict["pkg"]["IUSE_EFFECTIVE"] = \
 				" ".join(sorted(portage_iuse))
 		else:

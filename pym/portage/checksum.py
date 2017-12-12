@@ -150,14 +150,19 @@ if "SHA3_256" not in hashfunc_map or "SHA3_512" not in hashfunc_map:
 # (GnuPG).
 gcrypt_algos = frozenset(('RMD160', 'WHIRLPOOL', 'SHA3_256', 'SHA3_512',
 	'STREEBOG256', 'STREEBOG512'))
-if gcrypt_algos.difference(hashfunc_map):
+# Note: currently disabled due to resource exhaustion bugs in pygcrypt.
+# Please do not reenable until upstream has a fix.
+# https://bugs.gentoo.org/615620
+if False:
+#if gcrypt_algos.difference(hashfunc_map):
 	try:
 		import binascii
 		import pygcrypt.hashcontext
 
 		class GCryptHashWrapper(object):
 			def __init__(self, algo):
-				self._obj = pygcrypt.hashcontext.HashContext(algo=algo)
+				self._obj = pygcrypt.hashcontext.HashContext(algo=algo,
+						secure=False)
 
 			def update(self, data):
 				self._obj.write(data)

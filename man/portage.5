@@ -1260,9 +1260,16 @@ for every file), "true" (if an entry exists for a file, enforce it), or "false"
 (don't check Manifest files at all).
 .TP
 .BR manifest\-hashes
-List of hashes to generate/check in Manifest files.  Valid hashes depend on the
-current version of portage; see the portage.const.MANIFEST2_HASH_FUNCTIONS
-constant for the current list.
+List of hashes to generate in new/updated entries Manifest files.  Valid hashes
+depend on the current version of portage; see the portage.checksum module for
+the current list.  Portage will not rewrite old entries if they satisfy
+manifest\-required\-hashes.
+.TP
+.BR manifest\-required\-hashes
+List of hashes that must be used in all Manifest entries.  If the hashes listed
+here are not present in the Manifest, Portage will refetch all distfiles
+and update the respective entries to include them.  Must be a subset
+of manifest\-hashes.  If not specified, defaults to all manifest\-hashes.
 .TP
 .BR update\-changelog " = [true|" false "]"
 The default setting for repoman's --echangelog option.

@@ -47,7 +47,7 @@ class GitSync(NewBase):
 
 		sync_uri = self.repo.sync_uri
 		if sync_uri.startswith("file://"):
-			sync_uri = sync_uri[6:]
+			sync_uri = sync_uri[7:]
 
 		git_cmd_opts = ""
 		if self.repo.module_specific_options.get('sync-git-env'):

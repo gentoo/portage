@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.6
+==================================
+* Bug Fixes:
+    - Bug 637460 Fix import paths for unit tests
+
+
+repoman-2.3.5
+==================================
+* Repository metadata/layout.conf supports manifest-required-hashes
+  attribute (default value is SHA512).
+
+
 repoman-2.3.4
 ==================================
 * Support two new options: --bug (-b) and --closes (-c)
