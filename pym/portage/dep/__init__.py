@@ -10,9 +10,8 @@ __all__ = [
 	'dep_getusedeps', 'dep_opconvert', 'flatten',
 	'get_operator', 'isjustname', 'isspecific',
 	'isvalidatom', 'match_from_list', 'match_to_list',
-	'paren_enclose', 'paren_normalize',
-	'remove_slot', 'strip_empty', 'use_reduce', 
-	'_repo_separator', '_slot_separator',
+	'paren_enclose', 'remove_slot', 'strip_empty',
+  'use_reduce', '_repo_separator', '_slot_separator',
 ]
 
 import re, sys
@@ -238,45 +237,6 @@ def strip_empty(myarr):
 	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
-
-class paren_normalize(list):
-	"""Take a dependency structure as returned by paren_reduce or use_reduce
-	and generate an equivalent structure that has no redundant lists."""
-	def __init__(self, src):
-		if portage._internal_caller:
-			warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-				('portage.dep.paren_normalize',), DeprecationWarning, stacklevel=2)
-		list.__init__(self)
-		self._zap_parens(src, self)
-
-	def _zap_parens(self, src, dest, disjunction=False):
-		if not src:
-			return dest
-		i = iter(src)
-		for x in i:
-			if isinstance(x, basestring):
-				if x in ('||', '^^'):
-					y = self._zap_parens(next(i), [], disjunction=True)
-					if len(y) == 1:
-						dest.append(y[0])
-					else:
-						dest.append(x)
-						dest.append(y)
-				elif x.endswith("?"):
-					dest.append(x)
-					dest.append(self._zap_parens(next(i), []))
-				else:
-					dest.append(x)
-			else:
-				if disjunction:
-					x = self._zap_parens(x, [])
-					if len(x) == 1:
-						dest.append(x[0])
-					else:
-						dest.append(x)
-				else:
-					self._zap_parens(x, dest)
-		return dest
 
 def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
 	"""
