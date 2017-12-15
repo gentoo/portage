@@ -142,7 +142,7 @@ class VirtualSlotResolverTestCase(TestCase):
 			# bug 526160 - test for missed pypy sub-slot update
 			ResolverPlaygroundTestCase(
 				["@world"],
-				options = {"--update": True, "--deep": True},
+				options = {"--update": True, "--deep": True, "--dynamic-deps": "y"},
 				success=True,
 				mergelist = ['dev-python/pypy-2.4.0',
 					'virtual/pypy-2.4.0',

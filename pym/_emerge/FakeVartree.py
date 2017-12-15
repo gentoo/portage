@@ -54,7 +54,7 @@ class FakeVartree(vartree):
 	is not a matching ebuild in the tree). Instances of this class are not
 	populated until the sync() method is called."""
 	def __init__(self, root_config, pkg_cache=None, pkg_root_config=None,
-		dynamic_deps=True, ignore_built_slot_operator_deps=False,
+		dynamic_deps=False, ignore_built_slot_operator_deps=False,
 		soname_deps=False):
 		self._root_config = root_config
 		self._dynamic_deps = dynamic_deps
