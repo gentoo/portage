@@ -258,7 +258,7 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
                     break;
                 } else if (len < 0) {
                     error = errno;
-                    if (errno == EINVAL && !offset_out) {
+                    if ((errno == EINVAL || errno == EOPNOTSUPP) && !offset_out) {
                         lseek_works = 0;
                     }
                     break;
