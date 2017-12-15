@@ -164,7 +164,6 @@ class UseReduce(TestCase):
 				expected_result=["||", ["A", "C"]]
 				),
 
-			# paren_reduce tests
 			UseReduceTestCase(
 				"A",
 				expected_result=["A"]),

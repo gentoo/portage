@@ -10,7 +10,7 @@ __all__ = [
 	'dep_getusedeps', 'dep_opconvert', 'flatten',
 	'get_operator', 'isjustname', 'isspecific',
 	'isvalidatom', 'match_from_list', 'match_to_list',
-	'paren_enclose', 'paren_normalize', 'paren_reduce',
+	'paren_enclose', 'paren_normalize',
 	'remove_slot', 'strip_empty', 'use_reduce', 
 	'_repo_separator', '_slot_separator',
 ]
@@ -238,108 +238,6 @@ def strip_empty(myarr):
 	warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
 		('portage.dep.strip_empty',), DeprecationWarning, stacklevel=2)
 	return [x for x in myarr if x]
-
-def paren_reduce(mystr, _deprecation_warn=True):
-	"""
-	Take a string and convert all paren enclosed entities into sublists and
-	split the list elements by spaces. All redundant brackets are removed.
-
-	Example usage:
-		>>> paren_reduce('foobar foo? ( bar baz )')
-		['foobar', 'foo?', ['bar', 'baz']]
-
-	@param mystr: The string to reduce
-	@type mystr: String
-	@rtype: Array
-	@return: The reduced string in an array
-	"""
-	if portage._internal_caller and _deprecation_warn:
-		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
-			('portage.dep.paren_reduce',), DeprecationWarning, stacklevel=2)
-	mysplit = mystr.split()
-	level = 0
-	stack = [[]]
-	need_bracket = False
-
-	for token in mysplit:
-		if token == "(":
-			need_bracket = False
-			stack.append([])
-			level += 1
-		elif token == ")":
-			if need_bracket:
-				raise InvalidDependString(
-					_("malformed syntax: '%s'") % mystr)
-			if level > 0:
-				level -= 1
-				l = stack.pop()
-				is_single = (len(l) == 1 or (len(l)==2 and (l[0] == "||" or l[0][-1] == "?")))
-
-				def ends_in_any_of_dep(k):
-					return k>=0 and stack[k] and stack[k][-1] == "||"
-
-				def ends_in_operator(k):
-					return k>=0 and stack[k] and (stack[k][-1] == "||" or stack[k][-1][-1] == "?")
-
-				def special_append():
-					"""
-					Use extend instead of append if possible. This kills all redundant brackets.
-					"""
-					if is_single and (not stack[level] or not stack[level][-1][-1] == "?"):
-						if len(l) == 1 and isinstance(l[0], list):
-							# l = [[...]]
-							stack[level].extend(l[0])
-						else:
-							stack[level].extend(l)
-					else:	
-						stack[level].append(l)
-
-				if l:
-					if not ends_in_any_of_dep(level-1) and not ends_in_operator(level):
-						#Optimize: ( ( ... ) ) -> ( ... ). Make sure there is no '||' hanging around.
-						stack[level].extend(l)
-					elif not stack[level]:
-						#An '||' in the level above forces us to keep to brackets.
-						special_append()
-					elif len(l) == 1 and ends_in_any_of_dep(level):
-						#Optimize: || ( A ) -> A
-						stack[level].pop()
-						special_append()
-					elif len(l) == 2 and (l[0] == "||" or l[0][-1] == "?") and stack[level][-1] in (l[0], "||"):
-						#Optimize: 	|| ( || ( ... ) ) -> || ( ... )
-						#			foo? ( foo? ( ... ) ) -> foo? ( ... )
-						#			|| ( foo? ( ... ) ) -> foo? ( ... )
-						stack[level].pop()
-						special_append()
-					else:
-						special_append()
-				else:
-					if stack[level] and (stack[level][-1] == "||" or stack[level][-1][-1] == "?"):
-						stack[level].pop()
-			else:
-				raise InvalidDependString(
-					_("malformed syntax: '%s'") % mystr)
-		elif token == "||":
-			if need_bracket:
-				raise InvalidDependString(
-					_("malformed syntax: '%s'") % mystr)
-			need_bracket = True
-			stack[level].append(token)
-		else:
-			if need_bracket:
-				raise InvalidDependString(
-					_("malformed syntax: '%s'") % mystr)
-
-			if token[-1] == "?":
-				need_bracket = True
-			
-			stack[level].append(token)
-
-	if level != 0 or need_bracket:
-		raise InvalidDependString(
-			_("malformed syntax: '%s'") % mystr)
-	
-	return stack[0]
 
 class paren_normalize(list):
 	"""Take a dependency structure as returned by paren_reduce or use_reduce

@@ -74,7 +74,7 @@ try:
 		'portage.output:bold,colorize',
 		'portage.package.ebuild.doebuild:doebuild,' + \
 			'doebuild_environment,spawn,spawnebuild',
-		'portage.package.ebuild.config:autouse,best_from_dict,' + \
+		'portage.package.ebuild.config:best_from_dict,' + \
 			'check_config_instance,config',
 		'portage.package.ebuild.deprecated_profile_check:' + \
 			'deprecated_profile_check',
