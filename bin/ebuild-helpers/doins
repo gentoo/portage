@@ -82,7 +82,7 @@ DOINS_ARGS+=(
 # If PYTHONPATH is empty (not unset), it means "add current working directory
 # to the import path" if the Python is prior to 3.4, which would cause
 # unexpected import. See also #469338.
-PYTHONPATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}${PYTHONPATH:+:}${PYTHONPATH}" \
+PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 	"${PORTAGE_PYTHON:-/usr/bin/python}" \
 	"${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/doins.py \
 	"${DOINS_ARGS[@]}" -- "$@" || \
