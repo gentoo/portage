@@ -4,7 +4,7 @@
 from __future__ import unicode_literals
 
 __all__ = [
-	'autouse', 'best_from_dict', 'check_config_instance', 'config',
+	'best_from_dict', 'check_config_instance', 'config',
 ]
 
 import copy
@@ -88,11 +88,6 @@ def _get_feature_flags(eapi_attrs):
 	flags = frozenset(flags)
 	_feature_flags_cache[cache_key] = flags
 	return flags
-
-def autouse(myvartree, use_cache=1, mysettings=None):
-	warnings.warn("portage.autouse() is deprecated",
-		DeprecationWarning, stacklevel=2)
-	return ""
 
 def check_config_instance(test):
 	if not isinstance(test, config):
