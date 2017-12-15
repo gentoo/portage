@@ -52,6 +52,7 @@ class ChangedDepsTestCase(TestCase):
 				options = {
 					"--update": True,
 					"--deep": True,
+					"--dynamic-deps": "y",
 					"--usepkg": True,
 				},
 				mergelist = ["app-misc/B-0"]
