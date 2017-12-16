@@ -42,7 +42,7 @@ class MultirepoTestCase(TestCase):
 			}
 
 		installed = {
-			"dev-libs/H-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )"},
+			"dev-libs/H-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )", "EAPI" : "3" },
 			"dev-libs/I-2::repo1": {"SLOT" : "2"},
 			"dev-libs/K-1::repo1": { },
 			}
@@ -277,7 +277,7 @@ class MultirepoTestCase(TestCase):
 			}
 
 		installed = {
-			"dev-libs/J-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )"},
+			"dev-libs/J-1": { "RDEPEND" : "|| ( dev-libs/I:2 dev-libs/I:1 )", "EAPI" : "3" },
 			"dev-libs/I-2::repo1": {"SLOT" : "2"},
 			}
 
