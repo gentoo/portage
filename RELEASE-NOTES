@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.19
+==================================
+* Bug Fixes:
+    - Bug 640934 doins: fix PYTHONPATH setting
+    - Bug 641088 file_copy: handle EOPNOTSUPP for NFS
+
+
 portage-2.3.18
 ==================================
 * Bug Fixes:
