@@ -35,7 +35,8 @@ from __future__ import unicode_literals
 
 from portage.util.elf.constants import (
 	EF_MIPS_ABI, EF_MIPS_ABI2, ELFCLASS32, ELFCLASS64,
-	EM_386, EM_68K, EM_AARCH64, EM_ALPHA, EM_ARM, EM_IA_64, EM_MIPS,
+	EM_386, EM_68K, EM_AARCH64, EM_ALPHA, EM_ARM, EM_ALTERA_NIOS2,
+	EM_IA_64, EM_MIPS,
 	EM_PARISC, EM_PPC, EM_PPC64, EM_S390, EM_SH, EM_SPARC,
 	EM_SPARC32PLUS, EM_SPARCV9, EM_X86_64, E_MIPS_ABI_EABI32,
 	E_MIPS_ABI_EABI64, E_MIPS_ABI_O32, E_MIPS_ABI_O64)
@@ -45,6 +46,7 @@ _machine_prefix_map = {
 	EM_68K:             "m68k",
 	EM_AARCH64:         "arm",
 	EM_ALPHA:           "alpha",
+	EM_ALTERA_NIOS2:    "nios2",
 	EM_ARM:             "arm",
 	EM_IA_64:           "ia64",
 	EM_MIPS:            "mips",

@@ -33,6 +33,7 @@ EM_SH              = 42
 EM_SPARCV9         = 43
 EM_IA_64           = 50
 EM_X86_64          = 62
+EM_ALTERA_NIOS2    = 113
 EM_AARCH64         = 183
 EM_ALPHA           = 0x9026
 
