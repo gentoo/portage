@@ -38,12 +38,14 @@ class DoIns(setup_env.BinTestCase):
 		self.init()
 		try:
 			env = setup_env.env
-			env['INSOPTIONS'] = '-m0644'
+			env['INSOPTIONS'] = '-pm0644'
 			with open(os.path.join(env['S'], 'test'), 'w'):
 				pass
 			doins('test')
 			st = os.lstat(env['D'] + '/test')
 			if stat.S_IMODE(st.st_mode) != 0o644:
+				raise tests.TestCase.failureException
+			if os.stat(os.path.join(env['S'], 'test')).st_mtime != st.st_mtime:
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -145,7 +147,7 @@ class DoIns(setup_env.BinTestCase):
 			env = setup_env.env
 			# Use an option which doins.py does not know.
 			# Then, fallback to `install` command is expected.
-			env['INSOPTIONS'] = '-p'
+			env['INSOPTIONS'] = '-b'
 			with open(os.path.join(env['S'], 'test'), 'w'):
 				pass
 			doins('test')
