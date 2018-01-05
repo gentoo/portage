@@ -2423,10 +2423,11 @@ def load_emerge_config(emerge_config=None, **kargs):
 	if emerge_config is None:
 		emerge_config = _emerge_config(**kargs)
 
+	env = kargs.get('env', os.environ)
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"),
 			("eprefix", "EPREFIX")):
-		v = os.environ.get(envvar, None)
+		v = env.get(envvar)
 		if v and v.strip():
 			kwargs[k] = v
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
