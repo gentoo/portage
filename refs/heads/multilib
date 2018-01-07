@@ -1,0 +1,14 @@
+certificate version 0.1
+pusher 0xC05330B3211CA2D4 1515317411 +0100
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1515317411-29f492453b7bd3e20158
+
+d288acc2d1413a8739e74b2c20050dc2cc3bc69c 0bfcb49daadf993b26c6b782b5121fe4a6017eea refs/heads/multilib
+-----BEGIN PGP SIGNATURE-----
+
+iLMEAAEIAB0WIQQUEEce6kYbCwkDe/sbuSpxNYmQZwUCWlHoowAKCRAbuSpxNYmQ
+Z4tHA/wJ1BcRE3P6y0QMmZ2h3i6/pq5d6rk/4WCQ1T/xxQzXiPg1Q3kooolezu85
+ZseiCBXFoaIA6jhsSb1zQXoZ1ruiSK5ijdHj398C9UfAoj/+FD9GW8O+VvZL2Oo7
+WiudgyVyCuhlmTJdaRraZiwvXzAn0WQ+CntrYDvENpWLrFZ6tA==
+=ka5X
+-----END PGP SIGNATURE-----
