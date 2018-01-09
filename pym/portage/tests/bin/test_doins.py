@@ -45,8 +45,9 @@ class DoIns(setup_env.BinTestCase):
 			st = os.lstat(env['D'] + '/test')
 			if stat.S_IMODE(st.st_mode) != 0o644:
 				raise tests.TestCase.failureException
-			if os.stat(os.path.join(env['S'], 'test')).st_mtime != st.st_mtime:
-				raise tests.TestCase.failureException
+			self.assertEqual(
+				os.stat(os.path.join(env['S'], 'test'))[stat.ST_MTIME],
+				st[stat.ST_MTIME])
 		finally:
 			self.cleanup()
 
