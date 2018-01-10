@@ -288,12 +288,20 @@ ebuilds)
 User-visible ebuilds with unsatisfied dependencies (matched against *visible*
 ebuilds) in developing arch
 .TP
+.B dependency.badinexp
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds) in experimental arch
+.TP
 .B dependency.badmasked
 Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
 .TP
 .B dependency.badmaskedindev
 Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
 developing arch
+.TP
+.B dependency.badmaskedinexp
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
+experimental arch
 .TP
 .B dependency.badtilde
 Uses the ~ dep operator with a non-zero revision part, which is useless (the

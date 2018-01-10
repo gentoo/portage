@@ -42,6 +42,12 @@ qahelp = {
 	"dependency.badmaskedindev": (
 		"Masked ebuilds with unsatisfied dependencies"
 		" (matched against *all* ebuilds) in developing arch"),
+	"dependency.badinexp": (
+		"User-visible ebuilds with unsatisfied dependencies"
+		" (matched against *visible* ebuilds) in experimental arch"),
+	"dependency.badmaskedinexp": (
+		"Masked ebuilds with unsatisfied dependencies"
+		" (matched against *all* ebuilds) in experimental arch"),
 	"dependency.badtilde": (
 		"Uses the ~ dep operator with a non-zero revision part,"
 		" which is useless (the revision is ignored)"),
@@ -249,6 +255,8 @@ qawarnings = set((
 	"dependency.badmasked",
 	"dependency.badindev",
 	"dependency.badmaskedindev",
+	"dependency.badinexp",
+	"dependency.badmaskedinexp",
 	"dependency.badtilde",
 	"dependency.missingslot",
 	"dependency.perlcore",

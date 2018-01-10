@@ -163,6 +163,8 @@ class ProfileDependsChecks(ScanBase):
 
 				if prof.status == "dev":
 					suffix = suffix + "indev"
+				elif prof.status == "exp":
+					suffix = suffix + "inexp"
 
 				for mytype in Package._dep_keys:
 
