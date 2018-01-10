@@ -184,6 +184,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"split-elog",
 	"split-log",
 	"strict",
+	"strict-keepdir",
 	"stricter",
 	"suidctl",
 	"test",

@@ -623,6 +623,10 @@ see \fBinstallsources\fR.
 Have portage react strongly to conditions that have the potential to be
 dangerous (like missing or incorrect digests for ebuilds).
 .TP
+.B strict-keepdir
+Have portage strictly require keepdir calls in ebuilds.  Empty
+directories installed without explicit keepdir will be removed.
+.TP
 .B stricter
 Have portage react strongly to conditions that may conflict with system
 security provisions (for example textrels, executable stack).  Read about

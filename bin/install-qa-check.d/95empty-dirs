@@ -1,0 +1,42 @@
+# Warn about and/or remove empty directories installed by ebuild.
+
+# Rationale: PMS prohibits ebuilds from installing empty directories.
+# Cleaning them up from the installation image provides an easy way
+# to make sure that ebuilds are not relying on it while making it easy
+# for users to override this if they need to.
+#
+# The ebuilds that need to preserve empty directories should use keepdir
+# as documented e.g.:
+# https://devmanual.gentoo.org/function-reference/install-functions/index.html
+#
+# For now, we emit QA warnings for empty directories in /var.
+# Additionally, if FEATURES=strict-keepdir is enabled we explicitly
+# remove *all* empty directories to trigger breakage.
+
+find_empty_dirs() {
+	local warn_dirs=()
+	local d striparg=
+
+	[[ ${FEATURES} == *strict-keepdir* ]] && striparg=-delete
+
+	while IFS= read -r -d $'\0' d; do
+		[[ ${d} == ${ED%/}/var/* ]] && warn_dirs+=( "${d}" )
+	done < <(find "${ED}" -depth -mindepth 1 -type d -empty -print0 ${striparg} | LC_COLLATE=C sort -z)
+
+	if [[ ${warn_dirs[@]} ]]; then
+		eqawarn "One or more empty directories installed to /var:"
+		eqawarn
+		for d in "${warn_dirs[@]}"; do
+			eqawarn "  ${d#${ED%/}}"
+		done
+		eqawarn
+		eqawarn "If those directories need to be preserved, please make sure to create"
+		eqawarn "or mark them for keeping using 'keepdir'. Future versions of Portage"
+		eqawarn "will strip empty directories from installation image."
+	fi
+}
+
+find_empty_dirs
+: # guarantee successful exit
+
+# vim:ft=sh
