@@ -1075,6 +1075,27 @@ hooks unless hooks would have executed for a master repository or the
 repository has changed since the previous sync operation. Defaults to
 no, false.
 .TP
+.B sync\-mercurial\-clone\-env
+Extra options to give to mercurial when cloning repository (hg clone).
+See also example for sync\-git\-clone\-env.
+.TP
+.B sync\-mercurial\-clone\-extra\-opts
+Extra options to give to mercurial when cloning repository (hg clone).
+.TP
+.B sync\-mercurial\-env
+Set environment variables for mercurial when cloning or pulling the repository.
+These will be overridden by setting them again in sync\-mercurial\-clone\-env and
+sync\-mercurial\-pull\-env.
+See also example for sync\-git\-clone\-env.
+.TP
+.B sync\-mercurial\-pull\-env
+Set environment variables for mercurial when updating repository (hg pull).
+This will override settings from sync\-mercurial\-env.
+See also example for sync\-git\-clone\-env.
+.TP
+.B sync\-mercurial\-pull\-extra\-opts
+Extra options to give to mercurial when updating repository (hg pull).
+.TP
 .B sync\-rcu = yes|no|true|false
 Enable read\-copy\-update (RCU) behavior for sync operations. The current
 latest immutable version of a repository will be referenced by a symlink
@@ -1113,7 +1134,8 @@ expire while it is in use by a running process.
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
-Valid non\-empty values: cvs, git, rsync, svn, webrsync (emerge-webrsync)
+Valid non\-empty values: cvs, git, mercurial, rsync, svn, webrsync
+(emerge\-webrsync)
 .br
 This attribute can be set to empty value to disable synchronization of given
 repository. Empty value is default.

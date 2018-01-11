@@ -82,6 +82,7 @@ LIBC_PACKAGE_ATOM        = "virtual/libc"
 OS_HEADERS_PACKAGE_ATOM  = "virtual/os-headers"
 CVS_PACKAGE_ATOM         = "dev-vcs/cvs"
 GIT_PACKAGE_ATOM         = "dev-vcs/git"
+HG_PACKAGE_ATOM          = "dev-vcs/mercurial"
 RSYNC_PACKAGE_ATOM       = "net-misc/rsync"
 
 INCREMENTALS             = (
