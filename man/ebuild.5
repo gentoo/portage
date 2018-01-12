@@ -1271,7 +1271,8 @@ Creates directories inside of ${ED}.
 .br
 .BR 'dodir\ /usr/lib/apache'
 creates ${ED}/usr/lib/apache.  Note that the do* functions will run
-\fBdodir\fR for you.
+\fBdodir\fR for you. If this directory will be empty when it is merged,
+then please use \fBkeepdir\fR instead.
 .TP
 .B diropts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in
