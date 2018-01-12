@@ -1285,8 +1285,9 @@ Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
 The default root is /usr.
 .TP
 .B keepdir\fR \fI<path> [more paths]
-Tells portage to leave directories behind even if they're empty.  Functions
-the same as \fBdodir\fR.
+Similar to \fBdodir\fR, but used to create directories that would otherwise
+be empty. The treatment of completely\-empty directories is undefined by
+PMS, and using \fBkeepdir\fR ensures that they are tracked.
 .TP
 .B dobin\fR \fI<binary> [list of more binaries]
 Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.
