@@ -110,6 +110,10 @@ def _parse_install_options(
 	parser.add_argument('-p', '--preserve-timestamps', action='store_true')
 	split_options = shlex.split(options)
 	namespace, remaining = parser.parse_known_args(split_options)
+	if namespace.preserve_timestamps and sys.version_info < (3, 3):
+		# -p is not supported in this case, since timestamps cannot
+		# be preserved with full precision
+		remaining.append('-p')
 	# Because parsing '--mode' option is partially supported. If unknown
 	# arg for --mode is passed, namespace.mode is set to None.
 	if remaining or namespace.mode is None:
