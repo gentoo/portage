@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -296,7 +296,7 @@ def dep_eval(deplist):
 
 class _dep_choice(SlotObject):
 	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',
-		'all_installed_slots')
+		'all_installed_slots', 'new_slot_count')
 
 def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	"""
@@ -498,9 +498,13 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			if current_higher or (all_match_current and not all_match_previous):
 				cp_map[avail_pkg.cp] = avail_pkg
 
+		new_slot_count = (len(slot_map) if graph_db is None else
+			sum(not graph_db.match_pkgs(slot_atom) for slot_atom in slot_map))
+
 		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,
 			cp_map=cp_map, all_available=all_available,
-			all_installed_slots=False)
+			all_installed_slots=False,
+			new_slot_count=new_slot_count)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -655,8 +659,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		if len(choices) < 2:
 			continue
 		# Prefer choices with all_installed_slots for bug #480736, and
-		# choices with a smaller number of packages for bug #632026.
-		choices.sort(key=lambda x: (not x.all_installed_slots, len(x.slot_map)))
+		# choices with a smaller number of new slots for bug #632026.
+		choices.sort(key=lambda x: (not x.all_installed_slots, x.new_slot_count))
 		for choice_1 in choices[1:]:
 			cps = set(choice_1.cp_map)
 			for choice_2 in choices:

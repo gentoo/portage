@@ -1,4 +1,4 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -134,6 +134,89 @@ class VirtualMinimizeChildrenTestCase(TestCase):
 
 		playground = ResolverPlayground(debug=False,
 			ebuilds=ebuilds)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+	def testVirtualPackageManager(self):
+		ebuilds = {
+			'app-admin/perl-cleaner-2.25': {
+				'RDEPEND': '''
+					|| (
+						( sys-apps/portage app-portage/portage-utils )
+						sys-apps/pkgcore
+						sys-apps/paludis
+					)'''
+			},
+			'app-portage/portage-utils-0.64': {},
+			'sys-apps/paludis-2.6.0': {},
+			'sys-apps/portage-2.3.19-r1': {},
+			'virtual/package-manager-0': {
+				'RDEPEND': '''
+					|| (
+						sys-apps/portage
+						sys-apps/paludis
+						sys-apps/pkgcore
+					)'''
+			},
+		}
+
+		test_cases = (
+			# Test bug 645002, where we want to prefer choices
+			# based on the number of new slots rather than the total
+			# number of slots. This is necessary so that perl-cleaner's
+			# deps are satisfied by the ( portage portage-utils )
+			# choice which has a larger total number of slots than the
+			# paludis choice.
+			ResolverPlaygroundTestCase(
+				[
+					'app-admin/perl-cleaner',
+					'virtual/package-manager',
+					'app-portage/portage-utils',
+				],
+				all_permutations=True,
+				success=True,
+				ambiguous_merge_order=True,
+				mergelist=(
+					(
+						'sys-apps/portage-2.3.19-r1',
+						'app-portage/portage-utils-0.64',
+						'app-admin/perl-cleaner-2.25',
+						'virtual/package-manager-0',
+					),
+				)
+			),
+			# Test paludis preference. In this case, if paludis is not
+			# included in the argument atoms then the result varies
+			# depending on whether the app-admin/perl-cleaner or
+			# virtual/package-manager dependencies are evaluated first!
+			# Therefore, include paludis in the argument atoms.
+			ResolverPlaygroundTestCase(
+				[
+					'app-admin/perl-cleaner',
+					'virtual/package-manager',
+					'sys-apps/paludis',
+				],
+				all_permutations=True,
+				success=True,
+				ambiguous_merge_order=True,
+				mergelist=(
+					'sys-apps/paludis-2.6.0',
+					(
+						'app-admin/perl-cleaner-2.25',
+						'virtual/package-manager-0',
+					),
+				)
+			),
+		)
+
+		playground = ResolverPlayground(debug=False, ebuilds=ebuilds)
 
 		try:
 			for test_case in test_cases:
