@@ -226,3 +226,64 @@ class VirtualMinimizeChildrenTestCase(TestCase):
 		finally:
 			playground.debug = False
 			playground.cleanup()
+
+	def testVirtualDevManager(self):
+		ebuilds = {
+			'sys-fs/eudev-3.1.5': {},
+			'sys-fs/static-dev-0.1': {},
+			'sys-fs/udev-233': {},
+			'virtual/dev-manager-0': {
+				'RDEPEND': '''
+					|| (
+						virtual/udev
+						sys-fs/static-dev
+					)'''
+			},
+			'virtual/udev-0': {
+				'RDEPEND': '''
+					|| (
+						>=sys-fs/eudev-2.1.1
+						>=sys-fs/udev-217
+					)'''
+			},
+		}
+
+		test_cases = (
+			# Test bug 645190, where static-dev was pulled in instead
+			# of eudev.
+			ResolverPlaygroundTestCase(
+				[
+					'virtual/dev-manager',
+				],
+				success=True,
+				mergelist=(
+					'sys-fs/eudev-3.1.5',
+					'virtual/udev-0',
+					'virtual/dev-manager-0',
+				),
+			),
+			# Test static-dev preference.
+			ResolverPlaygroundTestCase(
+				[
+					'sys-fs/static-dev',
+					'virtual/dev-manager',
+				],
+				all_permutations=True,
+				success=True,
+				mergelist=(
+					'sys-fs/static-dev-0.1',
+					'virtual/dev-manager-0',
+				),
+			),
+		)
+
+		playground = ResolverPlayground(debug=False, ebuilds=ebuilds)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()

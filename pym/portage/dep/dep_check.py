@@ -499,7 +499,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				cp_map[avail_pkg.cp] = avail_pkg
 
 		new_slot_count = (len(slot_map) if graph_db is None else
-			sum(not graph_db.match_pkgs(slot_atom) for slot_atom in slot_map))
+			sum(not graph_db.match_pkgs(slot_atom) for slot_atom in slot_map
+			if not slot_atom.cp.startswith("virtual/")))
 
 		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,
 			cp_map=cp_map, all_available=all_available,
