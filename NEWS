@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.20
+----------------
+* Support RESTRICT=network-sandbox in ebuilds.
+
 portage-2.3.17
 ----------------
 * The doins ebuild helper has been rewritten in python for performance, and

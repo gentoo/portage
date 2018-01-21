@@ -1,6 +1,23 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.20
+==================================
+* Bug Fixes:
+    - Bug 642672 fix preserve-libs for symlinks to other dirs
+    - Bug 642632 doins: implement install -p option
+    - Bug 643974 prefer || dep choices that install a new package in order
+      to allow upgrade of another package
+    - Bug 645002 fix perl-cleaner || dep handling for catalyst stage1
+    - Bug 645190 fix dev-manager || dep handling for catalyst stage1
+* The emerge --dynamic-deps option is now disabled by default. Any problems
+  that this may case can be avoided by adding either --dynamic-deps=y or
+  --changed-deps=y to the emerge options. Refer to `man emerge` for details
+  about these options.
+* Repository metadata/layout.conf default "manifest-hashes = BLAKE2B SHA512"
+  setting, consistent with gentoo repository.
+
+
 portage-2.3.19
 ==================================
 * Bug Fixes:
