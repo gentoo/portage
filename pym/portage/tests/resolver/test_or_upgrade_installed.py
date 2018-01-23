@@ -99,3 +99,62 @@ class OrUpgradeInstalledTestCase(TestCase):
 		finally:
 			playground.debug = False
 			playground.cleanup()
+
+	def testVirtualRust(self):
+		ebuilds = {
+			'dev-lang/rust-1.19.0': {},
+			'dev-lang/rust-1.23.0': {},
+			'dev-lang/rust-bin-1.19.0': {},
+			'virtual/rust-1.19.0': {
+				'RDEPEND': '|| ( =dev-lang/rust-1.19.0* =dev-lang/rust-bin-1.19.0* )'
+			},
+		}
+
+		installed = {
+			'dev-lang/rust-1.19.0': {},
+			'virtual/rust-1.19.0': {
+				'RDEPEND': '|| ( =dev-lang/rust-1.19.0* =dev-lang/rust-bin-1.19.0* )'
+			},
+		}
+
+		world = ['virtual/rust']
+
+		test_cases = (
+			# Test bug 645416, where rust-bin-1.19.0 was pulled in
+			# inappropriately due to the rust-1.23.0 update being
+			# available.
+			ResolverPlaygroundTestCase(
+				['virtual/rust'],
+				options={'--update': True, '--deep': True},
+				success=True,
+				mergelist=[]
+			),
+			# Test upgrade to rust-1.23.0, which is only possible
+			# if rust-bin-1.19.0 is installed in order to satisfy
+			# virtual/rust-1.19.0.
+			ResolverPlaygroundTestCase(
+				['=dev-lang/rust-1.23.0', 'virtual/rust'],
+				options={'--update': True, '--deep': True},
+				all_permutations=True,
+				success=True,
+				ambiguous_merge_order=True,
+				mergelist=(
+					(
+						'dev-lang/rust-1.23.0',
+						'dev-lang/rust-bin-1.19.0',
+					),
+				),
+			),
+		)
+
+		playground = ResolverPlayground(debug=False,
+			ebuilds=ebuilds, installed=installed, world=world)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()

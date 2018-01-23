@@ -463,11 +463,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						avail_pkg = avail_pkg_use
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
-			if downgrade_probe is not None:
+			if downgrade_probe is not None and graph is not None:
 				highest_in_slot = mydbapi_match_pkgs(avail_slot)
+				highest_in_slot = (highest_in_slot[-1]
+					if highest_in_slot else None)
 				if (avail_pkg and highest_in_slot and
-					avail_pkg < highest_in_slot[-1] and
-					not downgrade_probe(avail_pkg)):
+					avail_pkg < highest_in_slot and
+					not downgrade_probe(avail_pkg) and
+					(highest_in_slot.installed or
+					highest_in_slot in graph)):
 					installed_downgrade = True
 
 			slot_map[avail_slot] = avail_pkg
