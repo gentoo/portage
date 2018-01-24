@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -81,6 +81,16 @@ class RsyncSync(NewBase):
 		if self.repo.module_specific_options.get('sync-rsync-extra-opts'):
 			self.extra_rsync_opts.extend(portage.util.shlex_split(
 				self.repo.module_specific_options['sync-rsync-extra-opts']))
+
+		# Process GLEP74 verification options.
+		# Default verification to 'on' for ::gentoo, 'off' otherwise.
+		self.verify_metamanifest = (
+				self.repo.module_specific_options.get(
+					'sync-rsync-verify-metamanifest', False))
+		# Default to gentoo-keys keyring.
+		self.openpgp_key_path = (
+				self.repo.module_specific_options.get(
+					'sync-rsync-openpgp-key-path', None))
 
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(
@@ -259,6 +269,14 @@ class RsyncSync(NewBase):
 				exitcode = EXCEEDED_MAX_RETRIES
 				break
 		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
+
+		# if synced successfully, verify now
+		if exitcode == 0 and self.verify_metamanifest:
+			command = ['gemato', 'verify', '-s', self.repo.location]
+			if self.openpgp_key_path is not None:
+				command += ['-K', self.openpgp_key_path]
+			exitcode = portage.process.spawn(command, **self.spawn_kwargs)
+
 		return (exitcode, updatecache_flg)
 
 

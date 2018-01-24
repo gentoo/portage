@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Rsync plug-in module for portage.
@@ -27,7 +27,9 @@ module_spec = {
 			'validate_config': CheckSyncConfig,
 			'module_specific_options': (
 				'sync-rsync-extra-opts',
+				'sync-rsync-openpgp-key-path',
 				'sync-rsync-vcs-ignore',
+				'sync-rsync-verify-metamanifest',
 				),
 			}
 		}

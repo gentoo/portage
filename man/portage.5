@@ -1071,10 +1071,19 @@ Extra options to give to rsync on repository synchronization. It takes
 precedence over a declaration in [DEFAULT] section, that takes
 precedence over PORTAGE_RSYNC_EXTRA_OPTS.
 .TP
+.B sync\-rsync\-openpgp\-key\-path
+Path to the OpenPGP key(ring) used to verify MetaManifest. Used only
+if \fBsync\-rsync\-verify\-metamanifest\fR is enabled. If unset,
+the user's keyring is used.
+.TP
 .B sync-rsync-vcs-ignore = true|false
 Ignore vcs directories that may be present in the repository. It is the
 user's responsibility to set sync-rsync-extra-opts to protect vcs
 directories if appropriate.
+.TP
+.B sync\-rsync\-verify\-metamanifest = true|false
+Require the repository to contain a signed MetaManifest and verify
+it using \fBapp\-portage/gemato\fR. Defaults to false.
 
 .RE
 
