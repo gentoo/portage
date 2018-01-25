@@ -1,0 +1,28 @@
+# Check for CMake invalid option warnings
+
+cmake_warn_check() {
+	if [[ -n ${PORTAGE_LOG_FILE} && -r ${PORTAGE_LOG_FILE} ]] ; then
+		local cat=cat
+		[[ ${PORTAGE_LOG_FILE} == *.gz ]] && cat=zcat
+
+		local vars=()
+		while read -r l; do
+			vars+=( "${l}" )
+		done < <( "${cat}" "${PORTAGE_LOG_FILE}" \
+			| sed -n -e '/Manually-specified variables were not used by the project/,/^--/{/^    /p}' \
+			| LC_ALL=C sort -u)
+
+		if [[ ${vars} ]]; then
+			eqawarn "One or more CMake variables were not used by the project:"
+			local v
+			for v in "${vars[@]}"; do
+				eqawarn "  ${v}"
+			done
+		fi
+	fi
+}
+
+cmake_warn_check
+: # guarantee successful exit
+
+# vim:ft=sh
