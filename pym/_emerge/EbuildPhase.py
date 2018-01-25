@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -12,7 +12,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
-		_prepare_fake_filesdir)
+		_prepare_fake_distdir, _prepare_fake_filesdir)
 from portage.util import writemsg
 
 try:
@@ -171,6 +171,8 @@ class EbuildPhase(CompositeTask):
 	def _start_ebuild(self):
 
 		if self.phase == "unpack":
+			alist = self.settings.configdict["pkg"].get("A", "").split()
+			_prepare_fake_distdir(self.settings, alist)
 			_prepare_fake_filesdir(self.settings)
 
 		fd_pipes = self.fd_pipes
