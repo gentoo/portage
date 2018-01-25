@@ -1,4 +1,4 @@
-# Copyright 2010-2016 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -2847,6 +2847,15 @@ class config(object):
 						break
 				else:
 					raise AssertionError("C locale did not pass the test!")
+
+		try:
+			builddir = mydict["PORTAGE_BUILDDIR"]
+			distdir = mydict["DISTDIR"]
+		except KeyError:
+			pass
+		else:
+			mydict["PORTAGE_ACTUAL_DISTDIR"] = distdir
+			mydict["DISTDIR"] = os.path.join(builddir, "distdir")
 
 		return mydict
 
