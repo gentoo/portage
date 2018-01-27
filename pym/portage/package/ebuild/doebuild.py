@@ -1250,11 +1250,6 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 
 		mysettings.pop("REPLACING_VERSIONS", None)
 
-		# Make sure that DISTDIR is restored to it's normal value before we return!
-		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
-			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
-			del mysettings["PORTAGE_ACTUAL_DISTDIR"]
-
 		if logfile and not returnpid:
 			try:
 				if os.stat(logfile).st_size == 0:
