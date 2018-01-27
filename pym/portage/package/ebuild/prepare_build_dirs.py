@@ -412,9 +412,7 @@ def _prepare_fake_filesdir(settings):
 
 def _prepare_fake_distdir(settings, alist):
 	orig_distdir = settings["DISTDIR"]
-	settings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
-	edpath = settings["DISTDIR"] = \
-		os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+	edpath = os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
 	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
 
 	# Remove any unexpected files or directories.
