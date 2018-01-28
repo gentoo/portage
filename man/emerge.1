@@ -465,6 +465,17 @@ option also implies the \fB\-\-selective\fR option. Behavior with
 respect to changed build\-time dependencies is controlled by the
 \fB\-\-with\-bdeps\fR option.
 .TP
+.BR "\-\-changed\-deps\-report [ y | n ]"
+Tells emerge to report ebuilds for which the ebuild dependencies have
+changed since the installed instance was built. Behavior with respect to
+changed build\-time dependencies is controlled by the
+\fB\-\-with\-bdeps\fR option. If the \fB\-\-update\fR and \fB\-\-deep\fR
+options are enabled then this option is enabled automatically for a
+dependency calculation if the cost of report generation is relatively
+insignificant (any calculation exclusively involving binary packages is
+exempt). The \fIEMERGE_DEFAULT_OPTS\fR variable may be used to disable
+this by default.
+.TP
 .BR \-\-changed\-use ", " \-U
 Tells emerge to include installed packages where USE flags have
 changed since installation. This option also implies the

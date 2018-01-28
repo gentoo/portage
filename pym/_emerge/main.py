@@ -136,6 +136,7 @@ def insert_optional_args(args):
 		'--binpkg-changed-deps'  : y_or_n,
 		'--buildpkg'             : y_or_n,
 		'--changed-deps'         : y_or_n,
+		'--changed-deps-report'  : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
 		'--depclean-lib-check'   : y_or_n,
@@ -404,6 +405,12 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--changed-deps": {
 			"help"    : ("replace installed packages with "
+				"outdated dependencies"),
+			"choices" : true_y_or_n
+		},
+
+		"--changed-deps-report": {
+			"help"    : ("report installed packages with "
 				"outdated dependencies"),
 			"choices" : true_y_or_n
 		},
@@ -832,6 +839,12 @@ def parse_opts(tmpcmdline, silent=False):
 			myoptions.changed_deps = 'y'
 		else:
 			myoptions.changed_deps = 'n'
+
+	if myoptions.changed_deps_report is not None:
+		if myoptions.changed_deps_report in true_y:
+			myoptions.changed_deps_report = 'y'
+		else:
+			myoptions.changed_deps_report = 'n'
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"

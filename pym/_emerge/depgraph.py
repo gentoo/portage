@@ -462,6 +462,7 @@ class _dynamic_depgraph_config(object):
 		self._highest_pkg_cache = {}
 		self._highest_pkg_cache_cp_map = {}
 		self._flatten_atoms_cache = {}
+		self._changed_deps_pkgs = {}
 
 		# Binary packages that have been rejected because their USE
 		# didn't match the user's config. It maps packages to a set
@@ -973,6 +974,86 @@ class depgraph(object):
 			return True
 
 		return False
+
+	def _changed_deps_report(self):
+		"""
+		Report ebuilds for which the ebuild dependencies have
+		changed since the installed instance was built. This is
+		completely silent in the following cases:
+
+		  * --changed-deps or --dynamic-deps is enabled
+		  * none of the packages with changed deps are in the graph
+		"""
+		if (self._dynamic_config.myparams.get("changed_deps", "n") == "y" or
+			self._dynamic_config.myparams.get("dynamic_deps", "n") == "y"):
+			return
+
+		report_pkgs = []
+		for pkg, ebuild in self._dynamic_config._changed_deps_pkgs.items():
+			if pkg.repo != ebuild.repo:
+				continue
+			report_pkgs.append((pkg, ebuild))
+
+		if not report_pkgs:
+			return
+
+		# TODO: Detect and report various issues:
+		# - packages with unsatisfiable dependencies
+		# - packages involved directly in slot or blocker conflicts
+		# - direct parents of conflict packages
+		# - packages that prevent upgrade of dependencies to latest versions
+		graph = self._dynamic_config.digraph
+		in_graph = False
+		for pkg, ebuild in report_pkgs:
+			if pkg in graph:
+				in_graph = True
+				break
+
+		# Packages with changed deps are harmless if they're not in the
+		# graph, so it's safe to silently ignore them. This suppresses
+		# noise for the unaffected user, even though some of the changed
+		# dependencies might be worthy of revision bumps.
+		if not in_graph:
+			return
+
+		writemsg("\n%s\n\n" % colorize("WARN",
+			"!!! Detected ebuild dependency change(s) without revision bump:"),
+			noiselevel=-1)
+
+		for pkg, ebuild in report_pkgs:
+			writemsg("    %s::%s" % (pkg.cpv, pkg.repo), noiselevel=-1)
+			if pkg.root_config.settings["ROOT"] != "/":
+				writemsg(" for %s" % (pkg.root,), noiselevel=-1)
+			writemsg("\n", noiselevel=-1)
+
+		msg = []
+		if '--quiet' not in self._frozen_config.myopts:
+			msg.extend([
+			"",
+			"NOTE: Refer to the following page for more information about dependency",
+			"      change(s) without revision bump:",
+			"",
+			"          https://wiki.gentoo.org/wiki/Project:Portage/Changed_Deps",
+			"",
+			"      In order to suppress reports about dependency changes, add",
+			"      --changed-deps-report=n to the EMERGE_DEFAULT_OPTS variable in",
+			"      '/etc/portage/make.conf'.",
+			])
+
+		# Include this message for --quiet mode, since the user may be experiencing
+		# problems that are solvable by using --changed-deps.
+		msg.extend([
+			"",
+			"HINT: In order to avoid problems involving changed dependencies, use the",
+			"      --changed-deps option to automatically trigger rebuilds when changed",
+			"      dependencies are detected. Refer to the emerge man page for more",
+			"      information about this option.",
+		])
+
+		for line in msg:
+			if line:
+				line = colorize("INFORM", line)
+			writemsg(line + "\n", noiselevel=-1)
 
 	def _show_ignored_binaries(self):
 		"""
@@ -2568,6 +2649,10 @@ class depgraph(object):
 					unbuilt_deps.append(dep_struct)
 
 				changed = built_deps != unbuilt_deps
+
+				if (changed and pkg.installed and
+					self._dynamic_config.myparams.get("changed_deps_report")):
+					self._dynamic_config._changed_deps_pkgs[pkg] = ebuild
 
 		return changed
 
@@ -6354,6 +6439,8 @@ class depgraph(object):
 					changed_deps = (
 						self._dynamic_config.myparams.get(
 						"changed_deps", "n") != "n")
+					changed_deps_report = self._dynamic_config.myparams.get(
+						"changed_deps_report")
 					binpkg_changed_deps = (
 						self._dynamic_config.myparams.get(
 						"binpkg_changed_deps", "n") != "n")
@@ -6395,9 +6482,13 @@ class depgraph(object):
 									continue
 								break
 
-						if (((installed and changed_deps) or
-							(not installed and binpkg_changed_deps)) and
-							self._changed_deps(pkg)):
+						installed_changed_deps = False
+						if installed and (changed_deps or changed_deps_report):
+							installed_changed_deps = self._changed_deps(pkg)
+
+						if ((installed_changed_deps and changed_deps) or
+							(not installed and binpkg_changed_deps and
+							self._changed_deps(pkg))):
 							if not installed:
 								self._dynamic_config.\
 									ignored_binaries.setdefault(
@@ -8752,6 +8843,8 @@ class depgraph(object):
 			self._show_abi_rebuild_info()
 
 		self._show_ignored_binaries()
+
+		self._changed_deps_report()
 
 		self._display_autounmask()
 
