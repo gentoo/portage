@@ -86,6 +86,7 @@ class RepoConfig(object):
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
 		'_masters_orig', 'module_specific_options', 'manifest_required_hashes',
+		'openpgp_key_path',
 		)
 
 	def __init__(self, name, repo_opts, local_config=True):
@@ -181,6 +182,9 @@ class RepoConfig(object):
 
 		self.strict_misc_digests = repo_opts.get(
 			'strict-misc-digests', 'true').lower() == 'true'
+
+		self.openpgp_key_path = repo_opts.get(
+			'sync-openpgp-key-path', None)
 
 		self.module_specific_options = {}
 

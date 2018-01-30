@@ -87,10 +87,6 @@ class RsyncSync(NewBase):
 		self.verify_metamanifest = (
 				self.repo.module_specific_options.get(
 					'sync-rsync-verify-metamanifest', False))
-		# Default to gentoo-keys keyring.
-		self.openpgp_key_path = (
-				self.repo.module_specific_options.get(
-					'sync-rsync-openpgp-key-path', None))
 		# Support overriding job count.
 		self.verify_jobs = self.repo.module_specific_options.get(
 				'sync-rsync-verify-jobs', None)
@@ -276,8 +272,8 @@ class RsyncSync(NewBase):
 		# if synced successfully, verify now
 		if exitcode == 0 and self.verify_metamanifest:
 			command = ['gemato', 'verify', '-s', self.repo.location]
-			if self.openpgp_key_path is not None:
-				command += ['-K', self.openpgp_key_path]
+			if self.repo.openpgp_key_path is not None:
+				command += ['-K', self.repo.openpgp_key_path]
 			if self.verify_jobs is not None:
 				command += ['-j', self.verify_jobs]
 			exitcode = portage.process.spawn(command, **self.spawn_kwargs)
