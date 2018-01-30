@@ -83,10 +83,11 @@ class RsyncSync(NewBase):
 				self.repo.module_specific_options['sync-rsync-extra-opts']))
 
 		# Process GLEP74 verification options.
-		# Default verification to 'on' for ::gentoo, 'off' otherwise.
+		# Default verification to 'no'; it's enabled for ::gentoo
+		# via default repos.conf though.
 		self.verify_metamanifest = (
 				self.repo.module_specific_options.get(
-					'sync-rsync-verify-metamanifest', False))
+					'sync-rsync-verify-metamanifest', 'no') in ('yes', 'true'))
 		# Support overriding job count.
 		self.verify_jobs = self.repo.module_specific_options.get(
 				'sync-rsync-verify-jobs', None)
