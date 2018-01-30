@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.21
+==================================
+* Bug Fixes:
+    - Bug 612972 fix global scope DISTDIR setting to be consistent
+    - Bug 645416 dep_zapdeps: fix virtual/rust handling
+    - Bug 645780 add --changed-deps-report option
+* Rync tree verification with gemato and gentoo-keys
+
+
 portage-2.3.20
 ==================================
 * Bug Fixes:
