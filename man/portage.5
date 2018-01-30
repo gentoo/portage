@@ -1081,6 +1081,10 @@ Ignore vcs directories that may be present in the repository. It is the
 user's responsibility to set sync-rsync-extra-opts to protect vcs
 directories if appropriate.
 .TP
+.B sync\-rsync\-verify\-jobs
+Number of parallel jobs to use when verifying nested Manifests. Defaults
+to the apparent number of processors.
+.TP
 .B sync\-rsync\-verify\-metamanifest = true|false
 Require the repository to contain a signed MetaManifest and verify
 it using \fBapp\-portage/gemato\fR. Defaults to false.

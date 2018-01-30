@@ -91,6 +91,9 @@ class RsyncSync(NewBase):
 		self.openpgp_key_path = (
 				self.repo.module_specific_options.get(
 					'sync-rsync-openpgp-key-path', None))
+		# Support overriding job count.
+		self.verify_jobs = self.repo.module_specific_options.get(
+				'sync-rsync-verify-jobs', None)
 
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(
@@ -275,6 +278,8 @@ class RsyncSync(NewBase):
 			command = ['gemato', 'verify', '-s', self.repo.location]
 			if self.openpgp_key_path is not None:
 				command += ['-K', self.openpgp_key_path]
+			if self.verify_jobs is not None:
+				command += ['-j', self.verify_jobs]
 			exitcode = portage.process.spawn(command, **self.spawn_kwargs)
 
 		return (exitcode, updatecache_flg)
