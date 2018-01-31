@@ -13,6 +13,7 @@ import tempfile
 import portage
 from portage import os
 from portage import _unicode_decode
+from portage.exception import CommandNotFound
 from portage.util import writemsg_level
 from portage.output import create_color_func, yellow, blue, bold
 good = create_color_func("GOOD")
@@ -277,7 +278,12 @@ class RsyncSync(NewBase):
 				command += ['-K', self.repo.openpgp_key_path]
 			if self.verify_jobs is not None:
 				command += ['-j', self.verify_jobs]
-			exitcode = portage.process.spawn(command, **self.spawn_kwargs)
+			try:
+				exitcode = portage.process.spawn(command, **self.spawn_kwargs)
+			except CommandNotFound as e:
+				writemsg_level("!!! Command not found: %s\n" % (command[0],),
+					level=logging.ERROR, noiselevel=-1)
+				exitcode = 127
 
 		return (exitcode, updatecache_flg)
 
