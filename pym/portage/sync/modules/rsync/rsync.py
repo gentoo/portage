@@ -123,7 +123,7 @@ class RsyncSync(NewBase):
 		if syncuri.startswith("file://"):
 			self.proto = "file"
 			dosyncuri = syncuri[7:]
-			is_synced, exitcode, updatecache_flg = self._do_rsync(
+			unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
 				dosyncuri, timestamp, opts)
 			self._process_exitcode(exitcode, dosyncuri, out, 1)
 			return (exitcode, updatecache_flg)
@@ -219,6 +219,7 @@ class RsyncSync(NewBase):
 		if effective_maxretries < 0:
 			effective_maxretries = len(uris) - 1
 
+		local_state_unchanged = True
 		while (1):
 			if uris:
 				dosyncuri = uris.pop()
@@ -255,8 +256,10 @@ class RsyncSync(NewBase):
 			if dosyncuri.startswith('ssh://'):
 				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
-			is_synced, exitcode, updatecache_flg = self._do_rsync(
+			unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
 				dosyncuri, timestamp, opts)
+			if not unchanged:
+				local_state_unchanged = False
 			if is_synced:
 				break
 
@@ -272,7 +275,7 @@ class RsyncSync(NewBase):
 		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
 
 		# if synced successfully, verify now
-		if exitcode == 0 and self.verify_metamanifest:
+		if exitcode == 0 and not local_state_unchanged and self.verify_metamanifest:
 			command = ['gemato', 'verify', '-s', self.repo.location]
 			if self.repo.openpgp_key_path is not None:
 				command += ['-K', self.repo.openpgp_key_path]
@@ -437,6 +440,7 @@ class RsyncSync(NewBase):
 		if "--debug" in opts:
 			print(rsynccommand)
 
+		local_state_unchanged = False
 		exitcode = os.EX_OK
 		servertimestamp = 0
 		# Even if there's no timestamp available locally, fetch the
@@ -521,6 +525,7 @@ class RsyncSync(NewBase):
 
 		if exitcode == os.EX_OK:
 			if (servertimestamp != 0) and (servertimestamp == timestamp):
+				local_state_unchanged = True
 				is_synced = True
 				self.logger(self.xterm_titles,
 					">>> Cancelling sync -- Already current.")
@@ -532,7 +537,6 @@ class RsyncSync(NewBase):
 				print(">>> In order to force sync, remove '%s'." % self.servertimestampfile)
 				print(">>>")
 				print()
-				return is_synced, exitcode, updatecache_flg
 			elif (servertimestamp != 0) and (servertimestamp < timestamp):
 				self.logger(self.xterm_titles,
 					">>> Server out of date: %s" % syncuri)
@@ -599,4 +603,5 @@ class RsyncSync(NewBase):
 			# --prune-empty-directories.  Retry for a server that supports
 			# at least rsync protocol version 29 (>=rsync-2.6.4).
 			pass
-		return is_synced, exitcode, updatecache_flg
+
+		return local_state_unchanged, is_synced, exitcode, updatecache_flg
