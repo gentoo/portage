@@ -522,6 +522,7 @@ class RepoConfigLoader(object):
 							'clone_depth', 'eclass_overrides',
 							'force', 'masters', 'priority', 'strict_misc_digests',
 							'sync_depth', 'sync_hooks_only_on_change',
+							'sync_openpgp_key_path',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							'module_specific_options'):
 							v = getattr(repos_conf_opts, k, None)
@@ -944,7 +945,7 @@ class RepoConfigLoader(object):
 	def config_string(self):
 		bool_keys = ("strict_misc_digests",)
 		str_or_int_keys = ("auto_sync", "clone_depth", "format", "location",
-			"main_repo", "priority", "sync_depth",
+			"main_repo", "priority", "sync_depth", "sync_openpgp_key_path",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)
