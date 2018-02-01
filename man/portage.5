@@ -1086,6 +1086,10 @@ directories if appropriate.
 Number of parallel jobs to use when verifying nested Manifests. Defaults
 to the apparent number of processors.
 .TP
+.B sync\-rsync\-verify\-max\-age
+Warn if repository is older than the specified number of days. Disabled
+when 0. Defaults to disabled.
+.TP
 .B sync\-rsync\-verify\-metamanifest = yes|no
 Require the repository to contain a signed MetaManifest and verify
 it using \fBapp\-portage/gemato\fR. Defaults to no.
