@@ -6,6 +6,7 @@ import logging
 import time
 import signal
 import socket
+import io
 import re
 import random
 import tempfile
@@ -24,6 +25,13 @@ from portage.util import writemsg, writemsg_stdout
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import NewBase
+
+try:
+	from gemato.exceptions import GematoException
+	import gemato.openpgp
+	import gemato.recursiveloader
+except ImportError:
+	gemato = None
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
@@ -285,17 +293,57 @@ class RsyncSync(NewBase):
 
 		# if synced successfully, verify now
 		if exitcode == 0 and not local_state_unchanged and self.verify_metamanifest:
-			command = ['gemato', 'verify', '-s', self.repo.location]
-			if self.repo.sync_openpgp_key_path is not None:
-				command += ['-K', self.repo.sync_openpgp_key_path]
-			if self.verify_jobs is not None:
-				command += ['-j', str(self.verify_jobs)]
-			try:
-				exitcode = portage.process.spawn(command, **self.spawn_kwargs)
-			except CommandNotFound as e:
-				writemsg_level("!!! Command not found: %s\n" % (command[0],),
+			if gemato is None:
+				writemsg_level("!!! Unable to verify: gemato-11.0+ is required\n",
 					level=logging.ERROR, noiselevel=-1)
 				exitcode = 127
+			else:
+				# Use isolated environment if key is specified,
+				# system environment otherwise
+				if self.repo.sync_openpgp_key_path is not None:
+					openpgp_env_cls = gemato.openpgp.OpenPGPEnvironment
+				else:
+					openpgp_env_cls = gemato.openpgp.OpenPGPSystemEnvironment
+
+				try:
+					with openpgp_env_cls() as openpgp_env:
+						if self.repo.sync_openpgp_key_path is not None:
+							out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
+							with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
+								openpgp_env.import_key(f)
+							out.ebegin('Refreshing keys from keyserver')
+							openpgp_env.refresh_keys()
+							out.eend(0)
+
+						m = gemato.recursiveloader.ManifestRecursiveLoader(
+								os.path.join(self.repo.location, 'Manifest'),
+								verify_openpgp=True,
+								openpgp_env=openpgp_env,
+								max_jobs=self.verify_jobs)
+						if not m.openpgp_signed:
+							raise RuntimeError('OpenPGP signature not found on Manifest')
+
+						ts = m.find_timestamp()
+						if ts is None:
+							raise RuntimeError('Timestamp not found in Manifest')
+
+						out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
+						out.einfo('Valid OpenPGP signature found:')
+						out.einfo('- primary key: %s' % (
+							m.openpgp_signature.primary_key_fingerprint))
+						out.einfo('- subkey: %s' % (
+							m.openpgp_signature.fingerprint))
+						out.einfo('- timestamp: %s UTC' % (
+							m.openpgp_signature.timestamp))
+
+						out.ebegin('Verifying %s' % (self.repo.location,))
+						m.assert_directory_verifies()
+						out.eend(0)
+				except GematoException as e:
+					writemsg_level("!!! Manifest verification failed:\n%s\n"
+							% (e,),
+							level=logging.ERROR, noiselevel=-1)
+					exitcode = 1
 
 		return (exitcode, updatecache_flg)
 
