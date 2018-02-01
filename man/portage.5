@@ -1007,6 +1007,10 @@ See also example for sync-git-clone-env.
 .B sync\-git\-pull\-extra\-opts
 Extra options to give to git when updating repository (git pull).
 .TP
+.B sync\-git\-verify\-commit\-signature = true|false
+Require the top commit in the repository to contain a good OpenPGP
+signature. Defaults to false.
+.TP
 .B sync\-hooks\-only\-on\-change
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
