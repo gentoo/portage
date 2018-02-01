@@ -277,8 +277,8 @@ class RsyncSync(NewBase):
 		# if synced successfully, verify now
 		if exitcode == 0 and not local_state_unchanged and self.verify_metamanifest:
 			command = ['gemato', 'verify', '-s', self.repo.location]
-			if self.repo.openpgp_key_path is not None:
-				command += ['-K', self.repo.openpgp_key_path]
+			if self.repo.sync_openpgp_key_path is not None:
+				command += ['-K', self.repo.sync_openpgp_key_path]
 			if self.verify_jobs is not None:
 				command += ['-j', self.verify_jobs]
 			try:
