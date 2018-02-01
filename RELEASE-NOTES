@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.23
+==================================
+* Bug Fixes:
+    - Bug 646314 fix "gpg: Can't check signature: No public key"
+
+
 portage-2.3.22
 ==================================
 * Bug Fixes:
