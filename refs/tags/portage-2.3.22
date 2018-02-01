@@ -1,0 +1,12 @@
+certificate version 0.1
+pusher FDE8EF85AE5719A3 1517468734 -0800
+pushee git+ssh://git.gentoo.org/proj/portage.git
+nonce 1517468734-33a234b4cda90a74dd3f
+
+0000000000000000000000000000000000000000 8ee21e0904b4ea95ba0ffbd28795ec40808a23de refs/tags/portage-2.3.22
+-----BEGIN PGP SIGNATURE-----
+
+iF0EABECAB0WIQSG5RNTeMgVEruefzL96O+FrlcZowUCWnK8PgAKCRD96O+FrlcZ
+o8b7AJ95/vZcdmWpgDxvZVIbgFQEOObcjACbBpy5+4PyNzCEvndeIx3x1DTcvt0=
+=lHkv
+-----END PGP SIGNATURE-----
