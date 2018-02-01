@@ -6,6 +6,7 @@ import logging
 import time
 import signal
 import socket
+import datetime
 import io
 import re
 import random
@@ -109,6 +110,20 @@ class RsyncSync(NewBase):
 				writemsg_level("!!! sync-rsync-verify-jobs not a positive integer: %s\n" % (self.verify_jobs,),
 					level=logging.WARNING, noiselevel=-1)
 				self.verify_jobs = None
+		# Support overriding max age.
+		self.max_age = self.repo.module_specific_options.get(
+				'sync-rsync-verify-max-age', '')
+		if self.max_age:
+			try:
+				self.max_age = int(self.max_age)
+				if self.max_age < 0:
+					raise ValueError(self.max_age)
+			except ValueError:
+				writemsg_level("!!! sync-rsync-max-age not a non-negative integer: %s\n" % (self.max_age,),
+					level=logging.WARNING, noiselevel=-1)
+				self.max_age = 0
+		else:
+			self.max_age = 0
 
 		openpgp_env = None
 		if self.verify_metamanifest and gemato is not None:
@@ -339,6 +354,12 @@ class RsyncSync(NewBase):
 						ts = m.find_timestamp()
 						if ts is None:
 							raise RuntimeError('Timestamp not found in Manifest')
+						if (self.max_age != 0 and
+								(datetime.datetime.utcnow() - ts.ts).days > self.max_age):
+							out.ewarn('Manifest is over %d days old, this is suspicious!' % (self.max_age,))
+							out.ewarn('You may want to try using another mirror and/or reporting this one:')
+							out.ewarn('  %s' % (dosyncuri,))
+							out.ewarn('')
 
 						out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
 						out.einfo('Valid OpenPGP signature found:')

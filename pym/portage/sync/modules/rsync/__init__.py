@@ -29,6 +29,7 @@ module_spec = {
 				'sync-rsync-extra-opts',
 				'sync-rsync-vcs-ignore',
 				'sync-rsync-verify-jobs',
+				'sync-rsync-verify-max-age',
 				'sync-rsync-verify-metamanifest',
 				),
 			}
