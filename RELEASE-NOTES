@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.22
+==================================
+* Bug Fixes:
+    - Bug 646184 prevent gemato call with USE="-rsync-verify"
+
+
 portage-2.3.21
 ==================================
 * Bug Fixes:
