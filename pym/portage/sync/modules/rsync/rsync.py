@@ -92,6 +92,15 @@ class RsyncSync(NewBase):
 		# Support overriding job count.
 		self.verify_jobs = self.repo.module_specific_options.get(
 				'sync-rsync-verify-jobs', None)
+		if self.verify_jobs is not None:
+			try:
+				self.verify_jobs = int(self.verify_jobs)
+				if self.verify_jobs <= 0:
+					raise ValueError(self.verify_jobs)
+			except ValueError:
+				writemsg_level("!!! sync-rsync-verify-jobs not a positive integer: %s\n" % (self.verify_jobs,),
+					level=logging.WARNING, noiselevel=-1)
+				self.verify_jobs = None
 
 		# Real local timestamp file.
 		self.servertimestampfile = os.path.join(
@@ -280,7 +289,7 @@ class RsyncSync(NewBase):
 			if self.repo.sync_openpgp_key_path is not None:
 				command += ['-K', self.repo.sync_openpgp_key_path]
 			if self.verify_jobs is not None:
-				command += ['-j', self.verify_jobs]
+				command += ['-j', str(self.verify_jobs)]
 			try:
 				exitcode = portage.process.spawn(command, **self.spawn_kwargs)
 			except CommandNotFound as e:
