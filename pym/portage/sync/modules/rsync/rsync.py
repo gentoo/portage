@@ -292,7 +292,7 @@ class RsyncSync(NewBase):
 		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
 
 		# if synced successfully, verify now
-		if exitcode == 0 and not local_state_unchanged and self.verify_metamanifest:
+		if exitcode == 0 and self.verify_metamanifest:
 			if gemato is None:
 				writemsg_level("!!! Unable to verify: gemato-11.0+ is required\n",
 					level=logging.ERROR, noiselevel=-1)
@@ -315,6 +315,8 @@ class RsyncSync(NewBase):
 							openpgp_env.refresh_keys()
 							out.eend(0)
 
+						# we always verify the Manifest signature, in case
+						# we had to deal with key revocation case
 						m = gemato.recursiveloader.ManifestRecursiveLoader(
 								os.path.join(self.repo.location, 'Manifest'),
 								verify_openpgp=True,
@@ -336,9 +338,12 @@ class RsyncSync(NewBase):
 						out.einfo('- timestamp: %s UTC' % (
 							m.openpgp_signature.timestamp))
 
-						out.ebegin('Verifying %s' % (self.repo.location,))
-						m.assert_directory_verifies()
-						out.eend(0)
+						# if nothing has changed, skip the actual Manifest
+						# verification
+						if not local_state_unchanged:
+							out.ebegin('Verifying %s' % (self.repo.location,))
+							m.assert_directory_verifies()
+							out.eend(0)
 				except GematoException as e:
 					writemsg_level("!!! Manifest verification failed:\n%s\n"
 							% (e,),
