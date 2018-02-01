@@ -110,7 +110,33 @@ class RsyncSync(NewBase):
 					level=logging.WARNING, noiselevel=-1)
 				self.verify_jobs = None
 
+		openpgp_env = None
+		if self.verify_metamanifest and gemato is not None:
+			# Use isolated environment if key is specified,
+			# system environment otherwise
+			if self.repo.sync_openpgp_key_path is not None:
+				openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+			else:
+				openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment()
+
 		try:
+			# Load and update the keyring early. If it fails, then verification
+			# will not be performed and the user will have to fix it and try again,
+			# so we may as well bail out before actual rsync happens.
+			if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
+				try:
+					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
+					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
+						openpgp_env.import_key(f)
+					out.ebegin('Refreshing keys from keyserver')
+					openpgp_env.refresh_keys()
+					out.eend(0)
+				except GematoException as e:
+					writemsg_level("!!! Manifest verification impossible due to keyring problem:\n%s\n"
+							% (e,),
+							level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
 			# Real local timestamp file.
 			self.servertimestampfile = os.path.join(
 				self.repo.location, "metadata", "timestamp.chk")
@@ -299,52 +325,36 @@ class RsyncSync(NewBase):
 						level=logging.ERROR, noiselevel=-1)
 					exitcode = 127
 				else:
-					# Use isolated environment if key is specified,
-					# system environment otherwise
-					if self.repo.sync_openpgp_key_path is not None:
-						openpgp_env_cls = gemato.openpgp.OpenPGPEnvironment
-					else:
-						openpgp_env_cls = gemato.openpgp.OpenPGPSystemEnvironment
-
 					try:
-						with openpgp_env_cls() as openpgp_env:
-							if self.repo.sync_openpgp_key_path is not None:
-								out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
-								with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
-									openpgp_env.import_key(f)
-								out.ebegin('Refreshing keys from keyserver')
-								openpgp_env.refresh_keys()
-								out.eend(0)
+						# we always verify the Manifest signature, in case
+						# we had to deal with key revocation case
+						m = gemato.recursiveloader.ManifestRecursiveLoader(
+								os.path.join(self.repo.location, 'Manifest'),
+								verify_openpgp=True,
+								openpgp_env=openpgp_env,
+								max_jobs=self.verify_jobs)
+						if not m.openpgp_signed:
+							raise RuntimeError('OpenPGP signature not found on Manifest')
 
-							# we always verify the Manifest signature, in case
-							# we had to deal with key revocation case
-							m = gemato.recursiveloader.ManifestRecursiveLoader(
-									os.path.join(self.repo.location, 'Manifest'),
-									verify_openpgp=True,
-									openpgp_env=openpgp_env,
-									max_jobs=self.verify_jobs)
-							if not m.openpgp_signed:
-								raise RuntimeError('OpenPGP signature not found on Manifest')
+						ts = m.find_timestamp()
+						if ts is None:
+							raise RuntimeError('Timestamp not found in Manifest')
 
-							ts = m.find_timestamp()
-							if ts is None:
-								raise RuntimeError('Timestamp not found in Manifest')
+						out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
+						out.einfo('Valid OpenPGP signature found:')
+						out.einfo('- primary key: %s' % (
+							m.openpgp_signature.primary_key_fingerprint))
+						out.einfo('- subkey: %s' % (
+							m.openpgp_signature.fingerprint))
+						out.einfo('- timestamp: %s UTC' % (
+							m.openpgp_signature.timestamp))
 
-							out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
-							out.einfo('Valid OpenPGP signature found:')
-							out.einfo('- primary key: %s' % (
-								m.openpgp_signature.primary_key_fingerprint))
-							out.einfo('- subkey: %s' % (
-								m.openpgp_signature.fingerprint))
-							out.einfo('- timestamp: %s UTC' % (
-								m.openpgp_signature.timestamp))
-
-							# if nothing has changed, skip the actual Manifest
-							# verification
-							if not local_state_unchanged:
-								out.ebegin('Verifying %s' % (self.repo.location,))
-								m.assert_directory_verifies()
-								out.eend(0)
+						# if nothing has changed, skip the actual Manifest
+						# verification
+						if not local_state_unchanged:
+							out.ebegin('Verifying %s' % (self.repo.location,))
+							m.assert_directory_verifies()
+							out.eend(0)
 					except GematoException as e:
 						writemsg_level("!!! Manifest verification failed:\n%s\n"
 								% (e,),
@@ -353,7 +363,8 @@ class RsyncSync(NewBase):
 
 			return (exitcode, updatecache_flg)
 		finally:
-			pass
+			if openpgp_env is not None:
+				openpgp_env.close()
 
 
 	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
