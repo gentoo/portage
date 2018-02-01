@@ -1,4 +1,4 @@
-# Copyright 2005-2017 Gentoo Foundation
+# Copyright 2005-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -7,7 +7,7 @@ import subprocess
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
-from portage.output import create_color_func
+from portage.output import create_color_func, EOutput
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
@@ -71,6 +71,7 @@ class GitSync(NewBase):
 		else:
 			# default
 			git_cmd_opts += " --depth 1"
+
 		if self.repo.module_specific_options.get('sync-git-clone-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-clone-extra-opts']
 		git_cmd = "%s clone%s %s ." % (self.bin_command, git_cmd_opts,
@@ -85,6 +86,8 @@ class GitSync(NewBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
+		if not self.verify_head():
+			return (1, False)
 		return (os.EX_OK, True)
 
 
@@ -125,11 +128,52 @@ class GitSync(NewBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
+		if not self.verify_head():
+			return (1, False)
 
 		current_rev = subprocess.check_output(rev_cmd,
 			cwd=portage._unicode_encode(self.repo.location))
 
 		return (os.EX_OK, current_rev != previous_rev)
+
+	def verify_head(self):
+		if (self.repo.module_specific_options.get(
+				'sync-git-verify-commit-signature', 'false') != 'true'):
+			return True
+
+		rev_cmd = [self.bin_command, "log", "--pretty=format:%G?", "-1"]
+		try:
+			status = (portage._unicode_decode(
+				subprocess.check_output(rev_cmd,
+					cwd=portage._unicode_encode(self.repo.location)))
+				.strip())
+		except subprocess.CalledProcessError:
+			return False
+
+		out = EOutput()
+		if status == 'G':  # good signature is good
+			out.einfo('Trusted signature found on top commit')
+			return True
+		elif status == 'U':  # untrusted
+			out.ewarn('Top commit signature is valid but not trusted')
+			return True
+		else:
+			if status == 'B':
+				expl = 'bad signature'
+			elif status == 'X':
+				expl = 'expired signature'
+			elif status == 'Y':
+				expl = 'expired key'
+			elif status == 'R':
+				expl = 'revoked key'
+			elif status == 'E':
+				expl = 'unable to verify signature (missing key?)'
+			elif status == 'N':
+				expl = 'no signature'
+			else:
+				expl = 'unknown issue'
+			out.eerror('No valid signature found: %s' % (expl,))
+			return False
 
 	def retrieve_head(self, **kwargs):
 		'''Get information about the head commit'''
