@@ -110,247 +110,250 @@ class RsyncSync(NewBase):
 					level=logging.WARNING, noiselevel=-1)
 				self.verify_jobs = None
 
-		# Real local timestamp file.
-		self.servertimestampfile = os.path.join(
-			self.repo.location, "metadata", "timestamp.chk")
-
-		content = portage.util.grabfile(self.servertimestampfile)
-		timestamp = 0
-		if content:
-			try:
-				timestamp = time.mktime(time.strptime(content[0],
-					TIMESTAMP_FORMAT))
-			except (OverflowError, ValueError):
-				pass
-		del content
-
 		try:
-			self.rsync_initial_timeout = \
-				int(self.settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
-		except ValueError:
-			self.rsync_initial_timeout = 15
+			# Real local timestamp file.
+			self.servertimestampfile = os.path.join(
+				self.repo.location, "metadata", "timestamp.chk")
 
-		try:
-			maxretries=int(self.settings["PORTAGE_RSYNC_RETRIES"])
-		except SystemExit as e:
-			raise # Needed else can't exit
-		except:
-			maxretries = -1 #default number of retries
-
-		if syncuri.startswith("file://"):
-			self.proto = "file"
-			dosyncuri = syncuri[7:]
-			unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
-				dosyncuri, timestamp, opts)
-			self._process_exitcode(exitcode, dosyncuri, out, 1)
-			return (exitcode, updatecache_flg)
-
-		retries=0
-		try:
-			self.proto, user_name, hostname, port = re.split(
-				r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
-				syncuri, maxsplit=4)[1:5]
-		except ValueError:
-			writemsg_level("!!! sync-uri is invalid: %s\n" % syncuri,
-				noiselevel=-1, level=logging.ERROR)
-			return (1, False)
-
-		self.ssh_opts = self.settings.get("PORTAGE_SSH_OPTS")
-
-		if port is None:
-			port=""
-		if user_name is None:
-			user_name=""
-		if re.match(r"^\[[:\da-fA-F]*\]$", hostname) is None:
-			getaddrinfo_host = hostname
-		else:
-			# getaddrinfo needs the brackets stripped
-			getaddrinfo_host = hostname[1:-1]
-		updatecache_flg = False
-		all_rsync_opts = set(self.rsync_opts)
-		all_rsync_opts.update(self.extra_rsync_opts)
-
-		family = socket.AF_UNSPEC
-		if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
-			family = socket.AF_INET
-		elif socket.has_ipv6 and \
-			("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
-			family = socket.AF_INET6
-
-		addrinfos = None
-		uris = []
-
-		try:
-			addrinfos = getaddrinfo_validate(
-				socket.getaddrinfo(getaddrinfo_host, None,
-				family, socket.SOCK_STREAM))
-		except socket.error as e:
-			writemsg_level(
-				"!!! getaddrinfo failed for '%s': %s\n"
-				% (_unicode_decode(hostname), _unicode(e)),
-				noiselevel=-1, level=logging.ERROR)
-
-		if addrinfos:
-
-			AF_INET = socket.AF_INET
-			AF_INET6 = None
-			if socket.has_ipv6:
-				AF_INET6 = socket.AF_INET6
-
-			ips_v4 = []
-			ips_v6 = []
-
-			for addrinfo in addrinfos:
-				if addrinfo[0] == AF_INET:
-					ips_v4.append("%s" % addrinfo[4][0])
-				elif AF_INET6 is not None and addrinfo[0] == AF_INET6:
-					# IPv6 addresses need to be enclosed in square brackets
-					ips_v6.append("[%s]" % addrinfo[4][0])
-
-			random.shuffle(ips_v4)
-			random.shuffle(ips_v6)
-
-			# Give priority to the address family that
-			# getaddrinfo() returned first.
-			if AF_INET6 is not None and addrinfos and \
-				addrinfos[0][0] == AF_INET6:
-				ips = ips_v6 + ips_v4
-			else:
-				ips = ips_v4 + ips_v6
-
-			for ip in ips:
-				uris.append(syncuri.replace(
-					"//" + user_name + hostname + port + "/",
-					"//" + user_name + ip + port + "/", 1))
-
-		if not uris:
-			# With some configurations we need to use the plain hostname
-			# rather than try to resolve the ip addresses (bug #340817).
-			uris.append(syncuri)
-
-		# reverse, for use with pop()
-		uris.reverse()
-		uris_orig = uris[:]
-
-		effective_maxretries = maxretries
-		if effective_maxretries < 0:
-			effective_maxretries = len(uris) - 1
-
-		local_state_unchanged = True
-		while (1):
-			if uris:
-				dosyncuri = uris.pop()
-			elif maxretries < 0 or retries > maxretries:
-				writemsg("!!! Exhausted addresses for %s\n"
-					% _unicode_decode(hostname), noiselevel=-1)
-				return (1, False)
-			else:
-				uris.extend(uris_orig)
-				dosyncuri = uris.pop()
-
-			if (retries==0):
-				if "--ask" in opts:
-					uq = UserQuery(opts)
-					if uq.query("Do you want to sync your Portage tree " + \
-						"with the mirror at\n" + blue(dosyncuri) + bold("?"),
-						enter_invalid) == "No":
-						print()
-						print("Quitting.")
-						print()
-						sys.exit(128 + signal.SIGINT)
-				self.logger(self.xterm_titles,
-					">>> Starting rsync with " + dosyncuri)
-				if "--quiet" not in opts:
-					print(">>> Starting rsync with "+dosyncuri+"...")
-			else:
-				self.logger(self.xterm_titles,
-					">>> Starting retry %d of %d with %s" % \
-						(retries, effective_maxretries, dosyncuri))
-				writemsg_stdout(
-					"\n\n>>> Starting retry %d of %d with %s\n" % \
-					(retries, effective_maxretries, dosyncuri), noiselevel=-1)
-
-			if dosyncuri.startswith('ssh://'):
-				dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
-
-			unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
-				dosyncuri, timestamp, opts)
-			if not unchanged:
-				local_state_unchanged = False
-			if is_synced:
-				break
-
-			retries=retries+1
-
-			if maxretries < 0 or retries <= maxretries:
-				print(">>> Retrying...")
-			else:
-				# over retries
-				# exit loop
-				exitcode = EXCEEDED_MAX_RETRIES
-				break
-		self._process_exitcode(exitcode, dosyncuri, out, maxretries)
-
-		# if synced successfully, verify now
-		if exitcode == 0 and self.verify_metamanifest:
-			if gemato is None:
-				writemsg_level("!!! Unable to verify: gemato-11.0+ is required\n",
-					level=logging.ERROR, noiselevel=-1)
-				exitcode = 127
-			else:
-				# Use isolated environment if key is specified,
-				# system environment otherwise
-				if self.repo.sync_openpgp_key_path is not None:
-					openpgp_env_cls = gemato.openpgp.OpenPGPEnvironment
-				else:
-					openpgp_env_cls = gemato.openpgp.OpenPGPSystemEnvironment
-
+			content = portage.util.grabfile(self.servertimestampfile)
+			timestamp = 0
+			if content:
 				try:
-					with openpgp_env_cls() as openpgp_env:
-						if self.repo.sync_openpgp_key_path is not None:
-							out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
-							with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
-								openpgp_env.import_key(f)
-							out.ebegin('Refreshing keys from keyserver')
-							openpgp_env.refresh_keys()
-							out.eend(0)
+					timestamp = time.mktime(time.strptime(content[0],
+						TIMESTAMP_FORMAT))
+				except (OverflowError, ValueError):
+					pass
+			del content
 
-						# we always verify the Manifest signature, in case
-						# we had to deal with key revocation case
-						m = gemato.recursiveloader.ManifestRecursiveLoader(
-								os.path.join(self.repo.location, 'Manifest'),
-								verify_openpgp=True,
-								openpgp_env=openpgp_env,
-								max_jobs=self.verify_jobs)
-						if not m.openpgp_signed:
-							raise RuntimeError('OpenPGP signature not found on Manifest')
+			try:
+				self.rsync_initial_timeout = \
+					int(self.settings.get("PORTAGE_RSYNC_INITIAL_TIMEOUT", "15"))
+			except ValueError:
+				self.rsync_initial_timeout = 15
 
-						ts = m.find_timestamp()
-						if ts is None:
-							raise RuntimeError('Timestamp not found in Manifest')
+			try:
+				maxretries=int(self.settings["PORTAGE_RSYNC_RETRIES"])
+			except SystemExit as e:
+				raise # Needed else can't exit
+			except:
+				maxretries = -1 #default number of retries
 
-						out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
-						out.einfo('Valid OpenPGP signature found:')
-						out.einfo('- primary key: %s' % (
-							m.openpgp_signature.primary_key_fingerprint))
-						out.einfo('- subkey: %s' % (
-							m.openpgp_signature.fingerprint))
-						out.einfo('- timestamp: %s UTC' % (
-							m.openpgp_signature.timestamp))
+			if syncuri.startswith("file://"):
+				self.proto = "file"
+				dosyncuri = syncuri[7:]
+				unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
+					dosyncuri, timestamp, opts)
+				self._process_exitcode(exitcode, dosyncuri, out, 1)
+				return (exitcode, updatecache_flg)
 
-						# if nothing has changed, skip the actual Manifest
-						# verification
-						if not local_state_unchanged:
-							out.ebegin('Verifying %s' % (self.repo.location,))
-							m.assert_directory_verifies()
-							out.eend(0)
-				except GematoException as e:
-					writemsg_level("!!! Manifest verification failed:\n%s\n"
-							% (e,),
-							level=logging.ERROR, noiselevel=-1)
-					exitcode = 1
+			retries=0
+			try:
+				self.proto, user_name, hostname, port = re.split(
+					r"(rsync|ssh)://([^:/]+@)?(\[[:\da-fA-F]*\]|[^:/]*)(:[0-9]+)?",
+					syncuri, maxsplit=4)[1:5]
+			except ValueError:
+				writemsg_level("!!! sync-uri is invalid: %s\n" % syncuri,
+					noiselevel=-1, level=logging.ERROR)
+				return (1, False)
 
-		return (exitcode, updatecache_flg)
+			self.ssh_opts = self.settings.get("PORTAGE_SSH_OPTS")
+
+			if port is None:
+				port=""
+			if user_name is None:
+				user_name=""
+			if re.match(r"^\[[:\da-fA-F]*\]$", hostname) is None:
+				getaddrinfo_host = hostname
+			else:
+				# getaddrinfo needs the brackets stripped
+				getaddrinfo_host = hostname[1:-1]
+			updatecache_flg = False
+			all_rsync_opts = set(self.rsync_opts)
+			all_rsync_opts.update(self.extra_rsync_opts)
+
+			family = socket.AF_UNSPEC
+			if "-4" in all_rsync_opts or "--ipv4" in all_rsync_opts:
+				family = socket.AF_INET
+			elif socket.has_ipv6 and \
+				("-6" in all_rsync_opts or "--ipv6" in all_rsync_opts):
+				family = socket.AF_INET6
+
+			addrinfos = None
+			uris = []
+
+			try:
+				addrinfos = getaddrinfo_validate(
+					socket.getaddrinfo(getaddrinfo_host, None,
+					family, socket.SOCK_STREAM))
+			except socket.error as e:
+				writemsg_level(
+					"!!! getaddrinfo failed for '%s': %s\n"
+					% (_unicode_decode(hostname), _unicode(e)),
+					noiselevel=-1, level=logging.ERROR)
+
+			if addrinfos:
+
+				AF_INET = socket.AF_INET
+				AF_INET6 = None
+				if socket.has_ipv6:
+					AF_INET6 = socket.AF_INET6
+
+				ips_v4 = []
+				ips_v6 = []
+
+				for addrinfo in addrinfos:
+					if addrinfo[0] == AF_INET:
+						ips_v4.append("%s" % addrinfo[4][0])
+					elif AF_INET6 is not None and addrinfo[0] == AF_INET6:
+						# IPv6 addresses need to be enclosed in square brackets
+						ips_v6.append("[%s]" % addrinfo[4][0])
+
+				random.shuffle(ips_v4)
+				random.shuffle(ips_v6)
+
+				# Give priority to the address family that
+				# getaddrinfo() returned first.
+				if AF_INET6 is not None and addrinfos and \
+					addrinfos[0][0] == AF_INET6:
+					ips = ips_v6 + ips_v4
+				else:
+					ips = ips_v4 + ips_v6
+
+				for ip in ips:
+					uris.append(syncuri.replace(
+						"//" + user_name + hostname + port + "/",
+						"//" + user_name + ip + port + "/", 1))
+
+			if not uris:
+				# With some configurations we need to use the plain hostname
+				# rather than try to resolve the ip addresses (bug #340817).
+				uris.append(syncuri)
+
+			# reverse, for use with pop()
+			uris.reverse()
+			uris_orig = uris[:]
+
+			effective_maxretries = maxretries
+			if effective_maxretries < 0:
+				effective_maxretries = len(uris) - 1
+
+			local_state_unchanged = True
+			while (1):
+				if uris:
+					dosyncuri = uris.pop()
+				elif maxretries < 0 or retries > maxretries:
+					writemsg("!!! Exhausted addresses for %s\n"
+						% _unicode_decode(hostname), noiselevel=-1)
+					return (1, False)
+				else:
+					uris.extend(uris_orig)
+					dosyncuri = uris.pop()
+
+				if (retries==0):
+					if "--ask" in opts:
+						uq = UserQuery(opts)
+						if uq.query("Do you want to sync your Portage tree " + \
+							"with the mirror at\n" + blue(dosyncuri) + bold("?"),
+							enter_invalid) == "No":
+							print()
+							print("Quitting.")
+							print()
+							sys.exit(128 + signal.SIGINT)
+					self.logger(self.xterm_titles,
+						">>> Starting rsync with " + dosyncuri)
+					if "--quiet" not in opts:
+						print(">>> Starting rsync with "+dosyncuri+"...")
+				else:
+					self.logger(self.xterm_titles,
+						">>> Starting retry %d of %d with %s" % \
+							(retries, effective_maxretries, dosyncuri))
+					writemsg_stdout(
+						"\n\n>>> Starting retry %d of %d with %s\n" % \
+						(retries, effective_maxretries, dosyncuri), noiselevel=-1)
+
+				if dosyncuri.startswith('ssh://'):
+					dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
+
+				unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
+					dosyncuri, timestamp, opts)
+				if not unchanged:
+					local_state_unchanged = False
+				if is_synced:
+					break
+
+				retries=retries+1
+
+				if maxretries < 0 or retries <= maxretries:
+					print(">>> Retrying...")
+				else:
+					# over retries
+					# exit loop
+					exitcode = EXCEEDED_MAX_RETRIES
+					break
+			self._process_exitcode(exitcode, dosyncuri, out, maxretries)
+
+			# if synced successfully, verify now
+			if exitcode == 0 and self.verify_metamanifest:
+				if gemato is None:
+					writemsg_level("!!! Unable to verify: gemato-11.0+ is required\n",
+						level=logging.ERROR, noiselevel=-1)
+					exitcode = 127
+				else:
+					# Use isolated environment if key is specified,
+					# system environment otherwise
+					if self.repo.sync_openpgp_key_path is not None:
+						openpgp_env_cls = gemato.openpgp.OpenPGPEnvironment
+					else:
+						openpgp_env_cls = gemato.openpgp.OpenPGPSystemEnvironment
+
+					try:
+						with openpgp_env_cls() as openpgp_env:
+							if self.repo.sync_openpgp_key_path is not None:
+								out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
+								with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
+									openpgp_env.import_key(f)
+								out.ebegin('Refreshing keys from keyserver')
+								openpgp_env.refresh_keys()
+								out.eend(0)
+
+							# we always verify the Manifest signature, in case
+							# we had to deal with key revocation case
+							m = gemato.recursiveloader.ManifestRecursiveLoader(
+									os.path.join(self.repo.location, 'Manifest'),
+									verify_openpgp=True,
+									openpgp_env=openpgp_env,
+									max_jobs=self.verify_jobs)
+							if not m.openpgp_signed:
+								raise RuntimeError('OpenPGP signature not found on Manifest')
+
+							ts = m.find_timestamp()
+							if ts is None:
+								raise RuntimeError('Timestamp not found in Manifest')
+
+							out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
+							out.einfo('Valid OpenPGP signature found:')
+							out.einfo('- primary key: %s' % (
+								m.openpgp_signature.primary_key_fingerprint))
+							out.einfo('- subkey: %s' % (
+								m.openpgp_signature.fingerprint))
+							out.einfo('- timestamp: %s UTC' % (
+								m.openpgp_signature.timestamp))
+
+							# if nothing has changed, skip the actual Manifest
+							# verification
+							if not local_state_unchanged:
+								out.ebegin('Verifying %s' % (self.repo.location,))
+								m.assert_directory_verifies()
+								out.eend(0)
+					except GematoException as e:
+						writemsg_level("!!! Manifest verification failed:\n%s\n"
+								% (e,),
+								level=logging.ERROR, noiselevel=-1)
+						exitcode = 1
+
+			return (exitcode, updatecache_flg)
+		finally:
+			pass
 
 
 	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
