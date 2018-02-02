@@ -119,7 +119,16 @@ class Actions(object):
 			if commitmessage[:9].lower() in ("cat/pkg: ",):
 				commitmessage = self.msg_prefix() + commitmessage[9:]
 
-		if not commitmessage or not commitmessage.strip():
+		if commitmessage is not None and commitmessage.strip():
+			res, expl = self.verify_commit_message(commitmessage)
+			if not res:
+				print(bad("RepoMan does not like your commit message:"))
+				print(expl)
+				if self.options.force:
+					print('(but proceeding due to --force)')
+				else:
+					sys.exit(1)
+		else:
 			commitmessage = self.get_new_commit_message(qa_output)
 
 		commitmessage = commitmessage.rstrip()
@@ -585,3 +594,66 @@ class Actions(object):
 			print("* no commit message?  aborting commit.")
 			sys.exit(1)
 		return commitmessage
+
+	@staticmethod
+	def verify_commit_message(msg):
+		"""
+		Check whether the message roughly complies with GLEP66. Returns
+		(True, None) if it does, (False, <explanation>) if it does not.
+		"""
+
+		problems = []
+		paras = msg.strip().split('\n\n')
+		summary = paras.pop(0)
+
+		if ':' not in summary:
+			problems.append('summary line must start with a logical unit name, e.g. "cat/pkg:"')
+		if '\n' in summary.strip():
+			problems.append('commit message must start with a *single* line of summary, followed by empty line')
+		# accept 69 overall or unit+50, in case of very long package names
+		elif len(summary.strip()) > 69 and len(summary.split(':', 1)[-1]) > 50:
+			problems.append('summary line is too long (max 69 characters)')
+
+		multiple_footers = False
+		gentoo_bug_used = False
+		bug_closes_without_url = False
+		body_too_long = False
+
+		footer_re = re.compile(r'^[\w-]+:')
+
+		found_footer = False
+		for p in paras:
+			lines = p.splitlines()
+			# if all lines look like footer material, we assume it's footer
+			# else, we assume it's body text
+			if all(footer_re.match(l) for l in lines if l.strip()):
+				# multiple footer-like blocks?
+				if found_footer:
+					multiple_footers = True
+				found_footer = True
+				for l in lines:
+					if l.startswith('Gentoo-Bug'):
+						gentoo_bug_used = True
+					elif l.startswith('Bug:') or l.startswith('Closes:'):
+						if 'http://' not in l and 'https://' not in l:
+							bug_closes_without_url = True
+			else:
+				for l in lines:
+					# we recommend wrapping at 72 but accept up to 80;
+					# do not complain if we have single word (usually
+					# it means very long URL)
+					if len(l.strip()) > 80 and len(l.split()) > 1:
+						body_too_long = True
+
+		if multiple_footers:
+			problems.append('multiple footer-style blocks found, please combine them into one')
+		if gentoo_bug_used:
+			problems.append('please replace Gentoo-Bug with GLEP 66-compliant Bug/Closes')
+		if bug_closes_without_url:
+			problems.append('Bug/Closes footers require full URL')
+		if body_too_long:
+			problems.append('body lines should be wrapped at 72 (max 80) characters')
+
+		if problems:
+			return (False, '\n'.join('- %s' % x for x in problems))
+		return (True, None)
