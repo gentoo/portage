@@ -298,7 +298,8 @@ class _dep_choice(SlotObject):
 	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',
 		'all_installed_slots', 'new_slot_count')
 
-def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
+def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
+	minimize_slots=False):
 	"""
 	Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies.
@@ -314,7 +315,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		for x, satisfied in zip(unreduced, reduced):
 			if isinstance(x, list):
 				unresolved += dep_zapdeps(x, satisfied, myroot,
-					use_binaries=use_binaries, trees=trees)
+					use_binaries=use_binaries, trees=trees,
+					minimize_slots=minimize_slots)
 			elif not satisfied:
 				unresolved.append(x)
 		return unresolved
@@ -386,7 +388,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for x, satisfied in zip(deps, satisfieds):
 		if isinstance(x, list):
 			atoms = dep_zapdeps(x, satisfied, myroot,
-				use_binaries=use_binaries, trees=trees)
+				use_binaries=use_binaries, trees=trees,
+				minimize_slots=minimize_slots)
 		else:
 			atoms = [x]
 		if vardb is None:
@@ -663,9 +666,28 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	for choices in choice_bins:
 		if len(choices) < 2:
 			continue
-		# Prefer choices with all_installed_slots for bug #480736, and
-		# choices with a smaller number of new slots for bug #632026.
-		choices.sort(key=lambda x: (not x.all_installed_slots, x.new_slot_count))
+
+		sort_keys = []
+		# Prefer choices with all_installed_slots for bug #480736.
+		sort_keys.append(lambda x: not x.all_installed_slots)
+
+		if minimize_slots:
+			# Prefer choices having fewer new slots. When used with DNF form,
+			# this can eliminate unecessary packages that depclean would
+			# ultimately eliminate (see bug 632026). Only use this behavior
+			# when deemed necessary by the caller, since this will discard the
+			# order specified in the ebuild, and the preferences specified
+			# there can serve as a crucial sources of guidance (see bug 645002).
+
+			# NOTE: Under some conditions, new_slot_count value may have some
+			# variance from one calculation to the next because it depends on
+			# the order that packages are added to the graph. This variance can
+			# contribute to outcomes that appear to be random. Meanwhile,
+			# the order specified in the ebuild is without variance, so it
+			# does not have this problem.
+			sort_keys.append(lambda x: x.new_slot_count)
+
+		choices.sort(key=lambda x: tuple(f(x) for f in sort_keys))
 		for choice_1 in choices[1:]:
 			cps = set(choice_1.cp_map)
 			for choice_2 in choices:
@@ -792,8 +814,11 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	except ParseError as e:
 		return [0, "%s" % (e,)]
 
+	dnf = False
 	if mysettings.local_config: # if not repoman
+		orig_split = mysplit
 		mysplit = _overlap_dnf(mysplit)
+		dnf = mysplit is not orig_split
 
 	mysplit2 = dep_wordreduce(mysplit,
 		mysettings, mydbapi, mode, use_cache=use_cache)
@@ -805,7 +830,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
 	selected_atoms = dep_zapdeps(mysplit, mysplit2, myroot,
-		use_binaries=use_binaries, trees=trees)
+		use_binaries=use_binaries, trees=trees, minimize_slots=dnf)
 
 	return [1, selected_atoms]
 
@@ -817,6 +842,12 @@ def _overlap_dnf(dep_struct):
 	"|| ( foo bar ) || ( bar baz )" as in bug #632026. Non-overlapping
 	groups are excluded from the conversion, since DNF leads to exponential
 	explosion of the formula.
+
+	When dep_struct does not contain any overlapping groups, no DNF
+	conversion will be performed, and dep_struct will be returned as-is.
+	Callers can detect this case by checking if the returned object has
+	the same identity as dep_struct. If the identity is different, then
+	DNF conversion was performed.
 	"""
 	if not _contains_disjunction(dep_struct):
 		return dep_struct
@@ -847,6 +878,7 @@ def _overlap_dnf(dep_struct):
 
 	# group together disjunctions having atom.cp overlap
 	traversed = set()
+	overlap = False
 	for cp in overlap_graph:
 		if cp in traversed:
 			continue
@@ -863,6 +895,7 @@ def _overlap_dnf(dep_struct):
 					stack.append(other_cp)
 
 		if len(disjunctions) > 1:
+			overlap = True
 			# convert overlapping disjunctions to DNF
 			result.extend(_dnf_convert(
 				sorted(disjunctions.values(), key=order_key)))
@@ -870,7 +903,7 @@ def _overlap_dnf(dep_struct):
 			# pass through non-overlapping disjunctions
 			result.append(disjunctions.popitem()[1])
 
-	return result
+	return result if overlap else dep_struct
 
 
 def _iter_flatten(dep_struct):

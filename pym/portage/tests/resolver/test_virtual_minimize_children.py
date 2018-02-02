@@ -168,17 +168,15 @@ class VirtualMinimizeChildrenTestCase(TestCase):
 		}
 
 		test_cases = (
-			# Test bug 645002, where we want to prefer choices
-			# based on the number of new slots rather than the total
-			# number of slots. This is necessary so that perl-cleaner's
-			# deps are satisfied by the ( portage portage-utils )
-			# choice which has a larger total number of slots than the
-			# paludis choice.
+			# Test bug 645002, where paludis was selected to satisfy a
+			# perl-cleaner dependency because that choice contained fewer
+			# packages than the ( portage portage-utils ) choice which
+			# should have been preferred according to the order of
+			# choices specified in the ebuild.
 			ResolverPlaygroundTestCase(
 				[
 					'app-admin/perl-cleaner',
 					'virtual/package-manager',
-					'app-portage/portage-utils',
 				],
 				all_permutations=True,
 				success=True,
