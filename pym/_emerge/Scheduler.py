@@ -352,7 +352,8 @@ class Scheduler(PollScheduler):
 		"""
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
-		dynamic_deps = self.myopts.get("--dynamic-deps", "n") != "n"
+		depgraph_params = create_depgraph_params(self.myopts, None)
+		dynamic_deps = "dynamic_deps" in depgraph_params
 		ignore_built_slot_operator_deps = self.myopts.get(
 			"--ignore-built-slot-operator-deps", "n") == "y"
 		for root in self.trees:

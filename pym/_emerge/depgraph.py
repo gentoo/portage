@@ -137,7 +137,7 @@ class _frozen_depgraph_config(object):
 		self.soname_deps_enabled = (
 			("--usepkgonly" in myopts or "remove" in params) and
 			params.get("ignore_soname_deps") != "y")
-		dynamic_deps = myopts.get("--dynamic-deps", "n") != "n"
+		dynamic_deps = "dynamic_deps" in params
 		ignore_built_slot_operator_deps = myopts.get(
 			"--ignore-built-slot-operator-deps", "n") == "y"
 		for myroot in trees:
@@ -627,8 +627,7 @@ class depgraph(object):
 
 		for myroot in self._frozen_config.trees:
 
-			dynamic_deps = self._dynamic_config.myparams.get(
-				"dynamic_deps", "n") != "n"
+			dynamic_deps = "dynamic_deps" in self._dynamic_config.myparams
 			preload_installed_pkgs = \
 				"--nodeps" not in self._frozen_config.myopts
 
@@ -985,7 +984,7 @@ class depgraph(object):
 		  * none of the packages with changed deps are in the graph
 		"""
 		if (self._dynamic_config.myparams.get("changed_deps", "n") == "y" or
-			self._dynamic_config.myparams.get("dynamic_deps", "n") == "y"):
+			"dynamic_deps" in self._dynamic_config.myparams):
 			return
 
 		report_pkgs = []
