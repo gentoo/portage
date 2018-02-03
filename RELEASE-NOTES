@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.24
+==================================
+* Bug Fixes:
+    - Bug 645002 dep_zapdeps: sort by new_slot_count for DNF only
+    - Bug 645780 emerge: disable --changed-deps-report by default
+    - Bug 646458 emerge: enable --dynamic-deps=y by default once again
+
+
 portage-2.3.23
 ==================================
 * Bug Fixes:
