@@ -127,10 +127,8 @@ def create_depgraph_params(myopts, myaction):
 	if changed_deps is not None:
 		myparams['changed_deps'] = changed_deps
 
-	changed_deps_report = myopts.get('--changed-deps-report')
-	if (changed_deps_report != 'n' and
-		not (myaction == 'remove' or '--usepkgonly' in myopts) and
-		deep is True and '--update' in myopts):
+	changed_deps_report = myopts.get('--changed-deps-report', 'n') == 'y'
+	if changed_deps_report:
 		myparams['changed_deps_report'] = True
 
 	if myopts.get("--selective") == "n":
