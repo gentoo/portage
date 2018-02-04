@@ -696,7 +696,7 @@ einstall() {
 		unset EI_DESTLIBDIR
 	fi
 
-	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
+	if [ -f ./Makefile -o -f ./makefile -o -f ./GNUmakefile ] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
 			${MAKE:-make} -n prefix="${ED}usr" \
 				datadir="${ED}usr/share" \
@@ -810,7 +810,7 @@ __eapi4_src_install() {
 
 __eapi6_src_prepare() {
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
-		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
+		[[ -n ${PATCHES[*]} ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
 	fi
@@ -965,7 +965,7 @@ if ___eapi_has_einstalldocs; then
 					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
 			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
-				[[ ${DOCS[@]} ]] && docinto / && dodoc -r "${DOCS[@]}"
+				[[ ${DOCS[*]} ]] && docinto / && dodoc -r "${DOCS[@]}"
 			else
 				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
 			fi
@@ -973,7 +973,7 @@ if ___eapi_has_einstalldocs; then
 
 		(
 			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
-				[[ ${HTML_DOCS[@]} ]] && \
+				[[ ${HTML_DOCS[*]} ]] && \
 					docinto html && dodoc -r "${HTML_DOCS[@]}"
 			else
 				[[ ${HTML_DOCS} ]] && \
@@ -1014,6 +1014,7 @@ if ___eapi_has_eapply; then
 		local i found_doublehyphen
 		# first, try to split on --
 		for (( i = 1; i <= ${#@}; ++i )); do
+			# shellcheck disable=SC2199
 			if [[ ${@:i:1} == -- ]]; then
 				patch_options=( "${@:1:i-1}" )
 				files=( "${@:i+1}" )
@@ -1025,6 +1026,7 @@ if ___eapi_has_eapply; then
 		# then, try to split on first non-option
 		if [[ -z ${found_doublehyphen} ]]; then
 			for (( i = 1; i <= ${#@}; ++i )); do
+				# shellcheck disable=SC2199
 				if [[ ${@:i:1} != -* ]]; then
 					patch_options=( "${@:1:i-1}" )
 					files=( "${@:i}" )
@@ -1040,7 +1042,7 @@ if ___eapi_has_eapply; then
 			done
 		fi
 
-		if [[ -z ${files[@]} ]]; then
+		if [[ -z ${files[*]} ]]; then
 			die "eapply: no files specified"
 		fi
 
@@ -1062,7 +1064,7 @@ if ___eapi_has_eapply; then
 
 				local files=()
 				_eapply_get_files "${f}"
-				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
+				[[ -z ${files[*]} ]] && die "No *.{patch,diff} files in directory ${f}"
 
 				einfo "Applying patches from ${f} ..."
 				local f2
