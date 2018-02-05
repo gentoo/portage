@@ -696,7 +696,7 @@ einstall() {
 		unset EI_DESTLIBDIR
 	fi
 
-	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
 			${MAKE:-make} -n prefix="${ED}usr" \
 				datadir="${ED}usr/share" \
