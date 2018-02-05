@@ -767,7 +767,7 @@ portage_vars=(
 )
 
 if type -P portageq > /dev/null; then
-	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v ${portage_vars[@]})
+	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v "${portage_vars[@]}")
 else
 	[[ $OS_FAMILY == 'gentoo' ]] && die "missing portageq"
 fi
@@ -801,7 +801,7 @@ cfg_vars=(
 	mode
 )
 # default them all to ""
-eval ${cfg_vars[@]/%/=}
+eval "${cfg_vars[@]/%/=}"
 # then extract them all from the conf in one shot
 # (ugly var at end is due to printf appending a '|' to last item)
 get_config "($(printf '%s|' "${cfg_vars[@]}")NOVARFOROLDMEN)"
@@ -846,7 +846,7 @@ if ${NONINTERACTIVE_MV} ; then
 fi
 
 if ${VERBOSE} ; then
-	for v in ${portage_vars[@]} ${cfg_vars[@]} TMP SCAN_PATHS ; do
+	for v in "${portage_vars[@]}" "${cfg_vars[@]}" TMP SCAN_PATHS ; do
 		echo "${v}=${!v}"
 	done
 fi
