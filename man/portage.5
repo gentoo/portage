@@ -1007,6 +1007,10 @@ See also example for sync-git-clone-env.
 .B sync\-git\-pull\-extra\-opts
 Extra options to give to git when updating repository (git pull).
 .TP
+.B sync\-git\-verify\-commit\-signature = true|false
+Require the top commit in the repository to contain a good OpenPGP
+signature. Defaults to false.
+.TP
 .B sync\-hooks\-only\-on\-change
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
@@ -1085,6 +1089,10 @@ directories if appropriate.
 .B sync\-rsync\-verify\-jobs
 Number of parallel jobs to use when verifying nested Manifests. Defaults
 to the apparent number of processors.
+.TP
+.B sync\-rsync\-verify\-max\-age
+Warn if repository is older than the specified number of days. Disabled
+when 0. Defaults to disabled.
 .TP
 .B sync\-rsync\-verify\-metamanifest = yes|no
 Require the repository to contain a signed MetaManifest and verify
