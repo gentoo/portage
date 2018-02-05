@@ -12,7 +12,7 @@ if [[ -z ${T} ]] || [[ -z ${2} ]] ; then
 fi
 
 (($#>2)) && \
-	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${@:3}"
+	eqawarn "QA Notice: ${helper} called with more than 2 arguments: ${*:3}"
 
 stdin=
 if ___eapi_newins_supports_reading_from_standard_input && [[ $1 == "-" ]]; then
