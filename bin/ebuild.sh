@@ -232,7 +232,7 @@ debug-print-section() {
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
-	if [[ ${ECLASS_DEPTH} > 1 ]]; then
+	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
