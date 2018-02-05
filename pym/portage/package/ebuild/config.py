@@ -1307,13 +1307,13 @@ class config(object):
 		"""
 
 		def __init__(self, settings, unfiltered_use,
-			use, usemask, iuse_implicit,
+			use, usemask, iuse_effective,
 			use_expand_split, use_expand_dict):
 			self._settings = settings
 			self._unfiltered_use = unfiltered_use
 			self._use = use
 			self._usemask = usemask
-			self._iuse_implicit = iuse_implicit
+			self._iuse_effective = iuse_effective
 			self._use_expand_split = use_expand_split
 			self._use_expand_dict = use_expand_dict
 
@@ -1331,7 +1331,7 @@ class config(object):
 			if has_wildcard:
 				var_split = [ x for x in var_split if x != "*" ]
 			has_iuse = set()
-			for x in self._iuse_implicit:
+			for x in self._iuse_effective:
 				if x[:prefix_len] == prefix:
 					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
@@ -1359,47 +1359,7 @@ class config(object):
 					filtered_var_split.append(x)
 			var_split = filtered_var_split
 
-			if var_split:
-				value = ' '.join(var_split)
-			else:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				# The special '*' token is understood by ebuild.sh, which
-				# will unset the variable so that things like LINGUAS work
-				# properly (see bug #459350).
-				if has_wildcard:
-					value = '*'
-				else:
-					if has_iuse:
-						already_set = False
-						# Skip the first 'env' configdict, in order to
-						# avoid infinite recursion here, since that dict's
-						# __getitem__ calls the current __getitem__.
-						for d in self._settings.lookuplist[1:]:
-							if key in d:
-								already_set = True
-								break
-
-						if not already_set:
-							for x in self._unfiltered_use:
-								if x[:prefix_len] == prefix:
-									already_set = True
-									break
-
-						if already_set:
-							value = ''
-						else:
-							value = '*'
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						value = None
-
-			return value
+			return ' '.join(var_split)
 
 	def _setcpv_recursion_gate(f):
 		"""
@@ -1775,7 +1735,7 @@ class config(object):
 			self, unfiltered_use, use, self.usemask,
 			portage_iuse, use_expand_split, self._use_expand_dict)
 
-		use_expand_iuses = {}
+		use_expand_iuses = dict((k, set()) for k in use_expand_split)
 		for x in portage_iuse:
 			x_split = x.split('_')
 			if len(x_split) == 1:
@@ -1783,18 +1743,9 @@ class config(object):
 			for i in range(len(x_split) - 1):
 				k = '_'.join(x_split[:i+1])
 				if k in use_expand_split:
-					v = use_expand_iuses.get(k)
-					if v is None:
-						v = set()
-						use_expand_iuses[k] = v
-					v.add(x)
+					use_expand_iuses[k].add(x)
 					break
 
-		# If it's not in IUSE, variable content is allowed
-		# to pass through if it is defined somewhere.  This
-		# allows packages that support LINGUAS but don't
-		# declare it in IUSE to use the variable outside of the
-		# USE_EXPAND context.
 		for k, use_expand_iuse in use_expand_iuses.items():
 			if k + '_*' in use:
 				use.update( x for x in use_expand_iuse if x not in usemask )
