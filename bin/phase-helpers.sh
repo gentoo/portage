@@ -810,7 +810,7 @@ __eapi4_src_install() {
 
 __eapi6_src_prepare() {
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
-		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
+		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
 	fi
@@ -965,7 +965,7 @@ if ___eapi_has_einstalldocs; then
 					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
 			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
-				[[ ${DOCS[@]} ]] && docinto / && dodoc -r "${DOCS[@]}"
+				[[ ${#DOCS[@]} -gt 0 ]] && docinto / && dodoc -r "${DOCS[@]}"
 			else
 				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
 			fi
@@ -973,7 +973,7 @@ if ___eapi_has_einstalldocs; then
 
 		(
 			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
-				[[ ${HTML_DOCS[@]} ]] && \
+				[[ ${#HTML_DOCS[@]} -gt 0 ]] && \
 					docinto html && dodoc -r "${HTML_DOCS[@]}"
 			else
 				[[ ${HTML_DOCS} ]] && \
@@ -1040,7 +1040,7 @@ if ___eapi_has_eapply; then
 			done
 		fi
 
-		if [[ -z ${files[@]} ]]; then
+		if [[ ${#files[@]} -eq 0 ]]; then
 			die "eapply: no files specified"
 		fi
 
@@ -1062,7 +1062,7 @@ if ___eapi_has_eapply; then
 
 				local files=()
 				_eapply_get_files "${f}"
-				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
+				[[ ${#files[@]} -eq 0 ]] && die "No *.{patch,diff} files in directory ${f}"
 
 				einfo "Applying patches from ${f} ..."
 				local f2
