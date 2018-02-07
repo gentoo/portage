@@ -82,7 +82,7 @@ __dump_trace() {
 		lineno=${BASH_LINENO[${n} - 1]}
 		# Display function arguments
 		args=
-		if [[ -n "${BASH_ARGV[@]}" ]]; then
+		if [[ ${#BASH_ARGV[@]} -gt 0 ]]; then
 			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
 				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
 				args="${args:+${args} }'${newarg}'"
@@ -550,13 +550,13 @@ __eqatag() {
 
 	(
 		echo "- tag: ${tag}"
-		if [[ ${data[@]} ]]; then
+		if [[ ${#data[@]} -gt 0 ]]; then
 			echo "  data:"
 			for i in "${data[@]}"; do
 				echo "    ${i%%=*}: \"$(__eqaquote "${i#*=}")\""
 			done
 		fi
-		if [[ ${filenames[@]} ]]; then
+		if [[ ${#filenames[@]} -gt 0 ]]; then
 			echo "  files:"
 			for i in "${filenames[@]}"; do
 				echo "    - \"$(__eqaquote "${i}")\""
