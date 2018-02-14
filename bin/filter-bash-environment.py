@@ -2,21 +2,19 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import codecs
-import io
 import os
 import re
 import sys
 
-here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
-func_start_re = re.compile(r'^[-\w]+\s*\(\)\s*$')
-func_end_re = re.compile(r'^\}$')
+here_doc_re = re.compile(br'.*\s<<[-]?(\w+)$')
+func_start_re = re.compile(br'^[-\w]+\s*\(\)\s*$')
+func_end_re = re.compile(br'^\}$')
 
-var_assign_re = re.compile(r'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$')
-close_quote_re = re.compile(r'(\\"|"|\')\s*$')
-readonly_re = re.compile(r'^declare\s+-(\S*)r(\S*)\s+')
+var_assign_re = re.compile(br'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$')
+close_quote_re = re.compile(br'(\\"|"|\')\s*$')
+readonly_re = re.compile(br'^declare\s+-(\S*)r(\S*)\s+')
 # declare without assignment
-var_declare_re = re.compile(r'^declare(\s+-\S+)?\s+([^=\s]+)\s*$')
+var_declare_re = re.compile(br'^declare(\s+-\S+)?\s+([^=\s]+)\s*$')
 
 def have_end_quote(quote, line):
 	"""
@@ -32,16 +30,16 @@ def have_end_quote(quote, line):
 def filter_declare_readonly_opt(line):
 	readonly_match = readonly_re.match(line)
 	if readonly_match is not None:
-		declare_opts = ''
+		declare_opts = b''
 		for i in (1, 2):
 			group = readonly_match.group(i)
 			if group is not None:
 				declare_opts += group
 		if declare_opts:
-			line = 'declare -%s %s' % \
-				(declare_opts, line[readonly_match.end():])
+			line = b'declare -' + declare_opts + \
+				b' ' + line[readonly_match.end():]
 		else:
-			line = 'declare ' + line[readonly_match.end():]
+			line = b'declare ' + line[readonly_match.end():]
 	return line
 
 def filter_bash_environment(pattern, file_in, file_out):
@@ -57,7 +55,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 	for line in file_in:
 		if multi_line_quote is not None:
 			if not multi_line_quote_filter:
-				file_out.write(line.replace("\1", ""))
+				file_out.write(line.replace(b"\1", b""))
 			if have_end_quote(multi_line_quote, line):
 				multi_line_quote = None
 				multi_line_quote_filter = None
@@ -78,7 +76,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 					multi_line_quote_filter = filter_this
 				if not filter_this:
 					line = filter_declare_readonly_opt(line)
-					file_out.write(line.replace("\1", ""))
+					file_out.write(line.replace(b"\1", b""))
 				continue
 			else:
 				declare_match = var_declare_re.match(line)
@@ -98,7 +96,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 			continue
 		here_doc = here_doc_re.match(line)
 		if here_doc is not None:
-			here_doc_delim = re.compile("^%s$" % here_doc.group(1))
+			here_doc_delim = re.compile(b'^' + here_doc.group(1) + b'$')
 			file_out.write(line)
 			continue
 		# Note: here-documents are handled before functions since otherwise
@@ -141,18 +139,17 @@ if __name__ == "__main__":
 	file_in = sys.stdin
 	file_out = sys.stdout
 	if sys.hexversion >= 0x3000000:
-		file_in = codecs.iterdecode(sys.stdin.buffer.raw,
-			'utf_8', errors='replace')
-		file_out = io.TextIOWrapper(sys.stdout.buffer,
-			'utf_8', errors='backslashreplace')
-
-	var_pattern = args[0].split()
+		file_in = sys.stdin.buffer
+		file_out = sys.stdout.buffer
+		var_pattern = os.fsencode(args[0]).split()
+	else:
+		var_pattern = args[0].split()
 
 	# Filter invalid variable names that are not supported by bash.
-	var_pattern.append(r'\d.*')
-	var_pattern.append(r'.*\W.*')
+	var_pattern.append(br'\d.*')
+	var_pattern.append(br'.*\W.*')
 
-	var_pattern = "^(%s)$" % "|".join(var_pattern)
+	var_pattern = b'^(' + b'|'.join(var_pattern) + b')$'
 	filter_bash_environment(
 		re.compile(var_pattern), file_in, file_out)
 	file_out.flush()
