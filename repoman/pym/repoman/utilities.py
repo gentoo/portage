@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # repoman: Utilities
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
@@ -13,7 +13,6 @@ __all__ = [
 	"FindPackagesToScan",
 	"FindPortdir",
 	"get_commit_message_with_editor",
-	"get_commit_message_with_stdin",
 	"get_committer_name",
 	"have_ebuild_dir",
 	"have_profile_dir",
@@ -224,25 +223,6 @@ def get_commit_message_with_editor(editor, message=None, prefix=""):
 			shutil.rmtree(commitmessagedir)
 		except OSError:
 			pass
-
-
-def get_commit_message_with_stdin():
-	"""
-	Read a commit message from the user and return it.
-
-	@rtype: string or None
-	@return: A string on success or None if an error occurs.
-	"""
-	print(
-		"Please enter a commit message."
-		" Use Ctrl-d to finish or Ctrl-c to abort.")
-	commitmessage = []
-	while True:
-		commitmessage.append(sys.stdin.readline())
-		if not commitmessage[-1]:
-			break
-	commitmessage = "".join(commitmessage)
-	return commitmessage
 
 
 def FindPortdir(settings):

@@ -585,7 +585,9 @@ class Actions(object):
 				commitmessage = utilities.get_commit_message_with_editor(
 					editor, message=qa_output, prefix=msg_prefix)
 			else:
-				commitmessage = utilities.get_commit_message_with_stdin()
+				print("EDITOR is unset or invalid. Please set EDITOR to your preferred editor.")
+				print(bad("* no EDITOR found for commit message, aborting commit."))
+				sys.exit(1)
 		except KeyboardInterrupt:
 			logging.fatal("Interrupted; exiting...")
 			sys.exit(1)
