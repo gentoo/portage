@@ -129,7 +129,23 @@ class Actions(object):
 				else:
 					sys.exit(1)
 		else:
-			commitmessage = self.get_new_commit_message(qa_output)
+			commitmessage = None
+			msg_qa_output = qa_output
+			initial_message = None
+			while True:
+				commitmessage = self.get_new_commit_message(
+						msg_qa_output, commitmessage)
+				res, expl = self.verify_commit_message(commitmessage)
+				if res:
+					break
+				else:
+					full_expl = '''Issues with the commit message were found. Please fix it or remove
+the whole commit message to abort.
+
+''' + expl
+					msg_qa_output = (
+							[' %s\n' % x for x in full_expl.splitlines()]
+							+ qa_output)
 
 		commitmessage = commitmessage.rstrip()
 
@@ -577,8 +593,8 @@ class Actions(object):
 			prefix = "/".join(self.scanner.reposplit[1:]) + ": "
 		return prefix
 
-	def get_new_commit_message(self, qa_output):
-		msg_prefix = self.msg_prefix()
+	def get_new_commit_message(self, qa_output, old_message=None):
+		msg_prefix = old_message or self.msg_prefix()
 		try:
 			editor = os.environ.get("EDITOR")
 			if editor and utilities.editor_is_executable(editor):
