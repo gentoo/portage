@@ -256,6 +256,10 @@ class search(object):
 		if self.searchkey.startswith('@'):
 			match_category = 1
 			self.searchkey = self.searchkey[1:]
+		# Auto-detect category match mode (@ symbol can be deprecated
+		# after this is available in a stable version of portage).
+		if '/' in self.searchkey:
+			match_category = 1
 		fuzzy = False
 		if regexsearch:
 			self.searchre=re.compile(self.searchkey,re.I)
