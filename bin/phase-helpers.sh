@@ -1148,6 +1148,10 @@ if ___eapi_has_in_iuse; then
 	}
 fi
 
+if ___eapi_has_version_functions; then
+	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
+
 if ___eapi_has_master_repositories; then
 	master_repositories() {
 		local output repository=$1 retval
