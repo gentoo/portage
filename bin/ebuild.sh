@@ -147,6 +147,17 @@ __sb_append_var() {
 	[[ -z $1 || -n $2 ]] && die "Usage: add$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${_v}") <colon-delimited list of paths>"
 	export ${var}="${!var:+${!var}:}$1"
 }
+__sb_remove_var() {
+	local _v=$1 ; shift
+	local var="SANDBOX_${_v}"
+	[[ -z $1 || -n $2 ]] && die "Usage: add$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${_v}") <directory>"
+	local vv=:${!var}:
+	vv=${vv//:$1:/}
+	# strip leading and trailing slash now
+	vv=${vv##:}
+	vv=${vv%%:}
+	export ${var}="${vv}"
+}
 # bash-4 version:
 # local var="SANDBOX_${1^^}"
 # addread() { __sb_append_var ${0#add} "$@" ; }
@@ -154,6 +165,12 @@ addread()    { __sb_append_var READ    "$@" ; }
 addwrite()   { __sb_append_var WRITE   "$@" ; }
 adddeny()    { __sb_append_var DENY    "$@" ; }
 addpredict() { __sb_append_var PREDICT "$@" ; }
+if ___eapi_has_sandbox_rm_functions; then
+	rmread()     { __sb_remove_var READ    "$@" ; }
+	rmwrite()    { __sb_remove_var WRITE   "$@" ; }
+	rmdeny()     { __sb_remove_var DENY    "$@" ; }
+	rmpredict()  { __sb_remove_var PREDICT "$@" ; }
+fi
 
 addwrite "${PORTAGE_TMPDIR}"
 addread "/:${PORTAGE_TMPDIR}"

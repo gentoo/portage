@@ -55,6 +55,7 @@ __save_ebuild_env() {
 		__has_phase_defined_up_to \
 		hasv hasq __qa_source __qa_call \
 		addread addwrite adddeny addpredict __sb_append_var \
+		rmread rmwrite rmdeny rmpredict __sb_remove_var \
 		use usev useq has_version portageq \
 		best_version use_with use_enable register_die_hook \
 		unpack __strip_duplicate_slashes econf einstall \
