@@ -2804,6 +2804,11 @@ class config(object):
 		if not eapi_attrs.exports_ECLASSDIR:
 			mydict.pop("ECLASSDIR", None)
 
+		if not eapi_attrs.path_variables_end_with_trailing_slash:
+			for v in ("D", "ED", "ROOT", "EROOT"):
+				if v in mydict:
+					mydict[v] = mydict[v].rstrip(os.path.sep)
+
 		try:
 			builddir = mydict["PORTAGE_BUILDDIR"]
 			distdir = mydict["DISTDIR"]
