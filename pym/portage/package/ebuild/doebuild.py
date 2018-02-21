@@ -57,10 +57,11 @@ from portage.data import portage_gid, portage_uid, secpass, \
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
-	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
-	eapi_has_pkg_pretend, _get_eapi_attrs
+from portage.eapi import (eapi_exports_KV, eapi_exports_merge_type,
+	eapi_exports_replace_vars, eapi_exports_REPOSITORY,
+	eapi_has_required_use, eapi_has_src_prepare_and_src_configure,
+	eapi_has_pkg_pretend, _get_eapi_attrs,
+	eapi_path_variables_end_with_trailing_slash)
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import (DigestException, FileNotFound,
@@ -397,14 +398,14 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 	mysettings["HOME"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "homedir")
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
-	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
+	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image")
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 	mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
 	# Prefix forward compatability
 	eprefix_lstrip = mysettings["EPREFIX"].lstrip(os.sep)
 	mysettings["ED"] = os.path.join(
-		mysettings["D"], eprefix_lstrip).rstrip(os.sep) + os.sep
+		mysettings["D"], eprefix_lstrip).rstrip(os.sep)
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
@@ -445,6 +446,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 
 	if eapi_exports_REPOSITORY(eapi) and "PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]:
 		mysettings.configdict["pkg"]["REPOSITORY"] = mysettings.configdict["pkg"]["PORTAGE_REPO_NAME"]
+
+	if eapi_path_variables_end_with_trailing_slash(eapi):
+		mysettings["D"] += os.sep
+		mysettings["ED"] += os.sep
 
 	if mydo != "depend":
 		if hasattr(mydbapi, "getFetchMap") and \
