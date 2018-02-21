@@ -137,6 +137,11 @@ shift $#
 
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
+if ___eapi_has_ENV_UNSET; then
+	for x in ${ENV_UNSET}; do
+		unset "${x}"
+	done
+fi
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 

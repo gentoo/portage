@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -1817,7 +1817,7 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars = list(settings)
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
-		          'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
+		          'DISTDIR', 'ENV_UNSET', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTAGE_BUNZIP2_COMMAND',
 		          'PORTAGE_BZIP2_COMMAND',
 		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',

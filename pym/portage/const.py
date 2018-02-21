@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -89,6 +89,7 @@ INCREMENTALS             = (
 	"ACCEPT_KEYWORDS",
 	"CONFIG_PROTECT",
 	"CONFIG_PROTECT_MASK",
+	"ENV_UNSET",
 	"FEATURES",
 	"IUSE_IMPLICIT",
 	"PRELINK_PATH",
