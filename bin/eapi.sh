@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -193,5 +193,5 @@ ___eapi_bash_3_2() {
 }
 
 ___eapi_bash_4_2() {
-	[[ ${1-${EAPI-0}} =~ ^(6)$ ]]
+	! ___eapi_bash_3_2 "$@"
 }
