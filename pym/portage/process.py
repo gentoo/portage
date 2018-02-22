@@ -91,6 +91,30 @@ sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
 fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
                     os.access(FAKEROOT_BINARY, os.X_OK))
 
+
+def sanitize_fds():
+	"""
+	Set the inheritable flag to False for all open file descriptors,
+	except for those corresponding to stdin, stdout, and stderr. This
+	ensures that any unintentionally inherited file descriptors will
+	not be inherited by child processes.
+	"""
+	if _set_inheritable is not None:
+
+		whitelist = frozenset([
+			sys.__stdin__.fileno(),
+			sys.__stdout__.fileno(),
+			sys.__stderr__.fileno(),
+		])
+
+		for fd in get_open_fds():
+			if fd not in whitelist:
+				try:
+					_set_inheritable(fd, False)
+				except OSError:
+					pass
+
+
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
 	Spawns a bash shell running a specific commands

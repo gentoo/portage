@@ -58,6 +58,8 @@ import portage.util
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
+portage.process.sanitize_fds()
+
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
 parser = argparse.ArgumentParser(description=description, usage=usage)

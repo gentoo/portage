@@ -46,6 +46,7 @@ try:
 	if __name__ == "__main__":
 		from portage.exception import IsADirectory, ParseError, \
 				PermissionDenied
+		portage.process.sanitize_fds()
 		try:
 			retval = emerge_main()
 		except PermissionDenied as e:
