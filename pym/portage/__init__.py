@@ -419,54 +419,10 @@ def _shell_quote(s):
 bsd_chflags = None
 
 if platform.system() in ('FreeBSD',):
-
+	# TODO: remove this class?
 	class bsd_chflags(object):
-
-		@classmethod
-		def chflags(cls, path, flags, opts=""):
-			cmd = ['chflags']
-			if opts:
-				cmd.append(opts)
-			cmd.append('%o' % (flags,))
-			cmd.append(path)
-
-			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
-				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see https://bugs.python.org/issue8513).
-				fullname = process.find_binary(cmd[0])
-				if fullname is None:
-					raise exception.CommandNotFound(cmd[0])
-				cmd[0] = fullname
-
-			encoding = _encodings['fs']
-			cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-				for x in cmd]
-			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-				stderr=subprocess.STDOUT)
-			output = proc.communicate()[0]
-			status = proc.wait()
-			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-				return
-			# Try to generate an ENOENT error if appropriate.
-			if 'h' in opts:
-				_os_merge.lstat(path)
-			else:
-				_os_merge.stat(path)
-			# Make sure the binary exists.
-			if not portage.process.find_binary('chflags'):
-				raise portage.exception.CommandNotFound('chflags')
-			# Now we're not sure exactly why it failed or what
-			# the real errno was, so just report EPERM.
-			output = _unicode_decode(output, encoding=encoding)
-			e = OSError(errno.EPERM, output)
-			e.errno = errno.EPERM
-			e.filename = path
-			e.message = output
-			raise e
-
-		@classmethod
-		def lchflags(cls, path, flags):
-			return cls.chflags(path, flags, opts='-h')
+		chflags = os.chflags
+		lchflags = os.lchflags
 
 def load_mod(name):
 	modname = ".".join(name.split(".")[:-1])
