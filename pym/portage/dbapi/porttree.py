@@ -45,6 +45,7 @@ import traceback
 import warnings
 import errno
 import collections
+import functools
 
 try:
 	from urllib.parse import urlparse
@@ -577,11 +578,46 @@ class portdbapi(dbapi):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise PortageKeyError if error'
+		# For external API consumers, self._event_loop returns a new event
+		# loop on each access, so a local reference is needed in order
+		# to avoid instantiating more than one.
+		loop = self._event_loop
+		return loop.run_until_complete(
+			self.async_aux_get(mycpv, mylist, mytree=mytree,
+			myrepo=myrepo, loop=loop))
+
+	def async_aux_get(self, mycpv, mylist, mytree=None, myrepo=None, loop=None):
+		"""
+		Asynchronous form form of aux_get.
+
+		@param mycpv: cpv for an ebuild
+		@type mycpv: str
+		@param mylist: list of metadata keys
+		@type mylist: list
+		@param mytree: The canonical path of the tree in which the ebuild
+			is located, or None for automatic lookup
+		@type mytree: str
+		@param myrepo: name of the repo in which the ebuild is located,
+			or None for automatic lookup
+		@type myrepo: str
+		@param loop: event loop (defaults to global event loop)
+		@type loop: EventLoop
+		@return: list of metadata values
+		@rtype: asyncio.Future (or compatible)
+		"""
+		# Don't default to self._event_loop here, since that creates a
+		# local event loop for thread safety, and that could easily lead
+		# to simultaneous instantiation of multiple event loops here.
+		# Callers of this method certainly want the same event loop to
+		# be used for all calls.
+		loop = loop or global_event_loop()
+		future = loop.create_future()
 		cache_me = False
 		if myrepo is not None:
 			mytree = self.treemap.get(myrepo)
 			if mytree is None:
-				raise PortageKeyError(myrepo)
+				future.set_exception(PortageKeyError(myrepo))
+				return future
 
 		if mytree is not None and len(self.porttrees) == 1 \
 			and mytree == self.porttrees[0]:
@@ -596,43 +632,64 @@ class portdbapi(dbapi):
 			mylist).difference(self._aux_cache_keys):
 			aux_cache = self._aux_cache.get(mycpv)
 			if aux_cache is not None:
-				return [aux_cache.get(x, "") for x in mylist]
+				future.set_result([aux_cache.get(x, "") for x in mylist])
+				return future
 			cache_me = True
 
 		try:
 			cat, pkg = mycpv.split("/", 1)
 		except ValueError:
 			# Missing slash. Can't find ebuild so raise PortageKeyError.
-			raise PortageKeyError(mycpv)
+			future.set_exception(PortageKeyError(mycpv))
+			return future
 
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
 		if not myebuild:
 			writemsg("!!! aux_get(): %s\n" % \
 				_("ebuild not found for '%s'") % mycpv, noiselevel=1)
-			raise PortageKeyError(mycpv)
+			future.set_exception(PortageKeyError(mycpv))
+			return future
 
 		mydata, ebuild_hash = self._pull_valid_cache(mycpv, myebuild, mylocation)
-		doregen = mydata is None
 
-		if doregen:
-			if myebuild in self._broken_ebuilds:
-				raise PortageKeyError(mycpv)
+		if mydata is not None:
+			self._aux_get_return(
+				future, mycpv, mylist, myebuild, ebuild_hash,
+				mydata, mylocation, cache_me, None)
+			return future
 
-			proc = EbuildMetadataPhase(cpv=mycpv,
-				ebuild_hash=ebuild_hash, portdb=self,
-				repo_path=mylocation, scheduler=self._event_loop,
-				settings=self.doebuild_settings)
+		if myebuild in self._broken_ebuilds:
+			future.set_exception(PortageKeyError(mycpv))
+			return future
 
-			proc.start()
-			proc.wait()
+		proc = EbuildMetadataPhase(cpv=mycpv,
+			ebuild_hash=ebuild_hash, portdb=self,
+			repo_path=mylocation, scheduler=loop,
+			settings=self.doebuild_settings)
 
+		proc.addExitListener(functools.partial(self._aux_get_return,
+			future, mycpv, mylist, myebuild, ebuild_hash, mydata, mylocation,
+			cache_me))
+		future.add_done_callback(functools.partial(self._aux_get_cancel, proc))
+		proc.start()
+		return future
+
+	@staticmethod
+	def _aux_get_cancel(proc, future):
+		if future.cancelled() and proc.returncode is None:
+			proc.cancel()
+
+	def _aux_get_return(self, future, mycpv, mylist, myebuild, ebuild_hash,
+		mydata, mylocation, cache_me, proc):
+		if future.cancelled():
+			return
+		if proc is not None:
 			if proc.returncode != os.EX_OK:
 				self._broken_ebuilds.add(myebuild)
-				raise PortageKeyError(mycpv)
-
+				future.set_exception(PortageKeyError(mycpv))
+				return
 			mydata = proc.metadata
-
 		mydata["repository"] = self.repositories.get_name_for_location(mylocation)
 		mydata["_mtime_"] = ebuild_hash.mtime
 		eapi = mydata.get("EAPI")
@@ -651,7 +708,7 @@ class portdbapi(dbapi):
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
 
-		return returnme
+		future.set_result(returnme)
 
 	def getFetchMap(self, mypkg, useflags=None, mytree=None):
 		"""
