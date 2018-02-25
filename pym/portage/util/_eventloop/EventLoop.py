@@ -684,6 +684,34 @@ class EventLoop(object):
 	# The call_soon method inherits thread safety from the idle_add method.
 	call_soon_threadsafe = call_soon
 
+	def call_later(self, delay, callback, *args):
+		"""
+		Arrange for the callback to be called after the given delay seconds
+		(either an int or float).
+
+		An instance of asyncio.Handle is returned, which can be used to cancel
+		the callback.
+
+		callback will be called exactly once per call to call_later(). If two
+		callbacks are scheduled for exactly the same time, it is undefined
+		which will be called first.
+
+		The optional positional args will be passed to the callback when
+		it is called. If you want the callback to be called with some named
+		arguments, use a closure or functools.partial().
+
+		Use functools.partial to pass keywords to the callback.
+
+		@type delay: int or float
+		@param delay: delay seconds
+		@type callback: callable
+		@param callback: a function to call
+		@return: a handle which can be used to cancel the callback
+		@rtype: asyncio.Handle (or compatible)
+		"""
+		return self._handle(self.timeout_add(
+			delay * 1000, self._call_soon_callback(callback, args)), self)
+
 
 _can_poll_device = None
 

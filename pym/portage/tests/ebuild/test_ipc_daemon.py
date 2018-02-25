@@ -31,7 +31,7 @@ class SleepProcess(ForkProcess):
 
 class IpcDaemonTestCase(TestCase):
 
-	_SCHEDULE_TIMEOUT = 40000 # 40 seconds
+	_SCHEDULE_TIMEOUT = 40 # seconds
 
 	def testIpcDaemon(self):
 		event_loop = global_event_loop()
@@ -103,8 +103,8 @@ class IpcDaemonTestCase(TestCase):
 			# Intentionally short timeout test for EventLoop/AsyncScheduler.
 			# Use a ridiculously long sleep_time_s in case the user's
 			# system is heavily loaded (see bug #436334).
-			sleep_time_s = 600     #600.000 seconds
-			short_timeout_ms = 10  #  0.010 seconds
+			sleep_time_s = 600       # seconds
+			short_timeout_s = 0.010  # seconds
 
 			for i in range(3):
 				exit_command = ExitCommand()
@@ -123,7 +123,7 @@ class IpcDaemonTestCase(TestCase):
 
 				exit_command.reply_hook = exit_command_callback
 				start_time = time.time()
-				self._run(event_loop, task_scheduler, short_timeout_ms)
+				self._run(event_loop, task_scheduler, short_timeout_s)
 
 				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
 					remove_all_locks=True)
@@ -150,7 +150,7 @@ class IpcDaemonTestCase(TestCase):
 
 	def _run(self, event_loop, task_scheduler, timeout):
 		self._run_done = event_loop.create_future()
-		timeout_id = event_loop.timeout_add(timeout,
+		timeout_handle = event_loop.call_later(timeout,
 			self._timeout_callback, task_scheduler)
 		task_scheduler.addExitListener(self._exit_callback)
 
@@ -159,4 +159,4 @@ class IpcDaemonTestCase(TestCase):
 			event_loop.run_until_complete(self._run_done)
 			task_scheduler.wait()
 		finally:
-			event_loop.source_remove(timeout_id)
+			timeout_handle.cancel()
