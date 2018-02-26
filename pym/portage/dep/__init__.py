@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2014 Gentoo Foundation
+# Copyright 2003-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -2579,7 +2579,7 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
 			(flag not in use and is_negated)
 	
 	def is_satisfied(operator, argument):
-		if not argument:
+		if not argument and eapi_attrs.empty_groups_always_true:
 			#|| ( ) -> True
 			return True
 
