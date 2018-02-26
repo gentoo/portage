@@ -407,10 +407,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["ED"] = os.path.join(
 		mysettings["D"], eprefix_lstrip).rstrip(os.sep)
 
-	# Strip trailing slash for ROOT/EROOT (if any)
-	mysettings["ROOT"] = mysettings["ROOT"].rstrip(os.sep)
-	mysettings["EROOT"] = mysettings["EROOT"].rstrip(os.sep)
-
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
 		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
 	mysettings["PM_EBUILD_HOOK_DIR"] = os.path.join(
@@ -454,8 +450,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if eapi_path_variables_end_with_trailing_slash(eapi):
 		mysettings["D"] += os.sep
 		mysettings["ED"] += os.sep
-		mysettings["ROOT"] += os.sep
-		mysettings["EROOT"] += os.sep
 
 	if mydo != "depend":
 		if hasattr(mydbapi, "getFetchMap") and \

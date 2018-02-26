@@ -296,12 +296,12 @@ class LocationsManager(object):
 			self.target_root = "/"
 
 		self.target_root = normalize_path(os.path.abspath(
-			self.target_root)).rstrip(os.path.sep) or os.path.sep
+			self.target_root)).rstrip(os.path.sep) + os.path.sep
 
 		ensure_dirs(self.target_root)
 		self._check_var_directory("ROOT", self.target_root)
 
-		self.eroot = (self.target_root.rstrip(os.sep) + self.eprefix) or os.sep
+		self.eroot = self.target_root.rstrip(os.sep) + self.eprefix + os.sep
 		self.broot = portage.const.EPREFIX
 
 		self.global_config_path = GLOBAL_CONFIG_PATH
