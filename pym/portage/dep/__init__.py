@@ -562,6 +562,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					basestring):
 					if stack[level][-1] == "||" and not l:
 						#Optimize: || ( ) -> .
+						if not eapi_attrs.empty_groups_always_true:
+							# in EAPI 7+, we need to fail here
+							l.append((token_class or _unicode)("__const__/empty-any-of"))
 						stack[level].pop()
 					elif stack[level][-1][-1] == "?":
 						#The last token before the '(' that matches the current ')'
