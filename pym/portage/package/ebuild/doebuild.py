@@ -61,7 +61,8 @@ from portage.eapi import (eapi_exports_KV, eapi_exports_merge_type,
 	eapi_exports_replace_vars, eapi_exports_REPOSITORY,
 	eapi_has_required_use, eapi_has_src_prepare_and_src_configure,
 	eapi_has_pkg_pretend, _get_eapi_attrs,
-	eapi_path_variables_end_with_trailing_slash)
+	eapi_path_variables_end_with_trailing_slash,
+	eapi_exports_PORTDIR, eapi_exports_ECLASSDIR)
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import (DigestException, FileNotFound,
@@ -450,6 +451,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	if eapi_path_variables_end_with_trailing_slash(eapi):
 		mysettings["D"] += os.sep
 		mysettings["ED"] += os.sep
+
+	if not eapi_exports_PORTDIR(eapi):
+		del mysettings["PORTDIR"]
+	if not eapi_exports_ECLASSDIR(eapi):
+		del mysettings["ECLASSDIR"]
 
 	if mydo != "depend":
 		if hasattr(mydbapi, "getFetchMap") and \
