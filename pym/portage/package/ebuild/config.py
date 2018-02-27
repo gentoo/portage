@@ -2799,6 +2799,11 @@ class config(object):
 				else:
 					raise AssertionError("C locale did not pass the test!")
 
+		if not eapi_attrs.exports_PORTDIR:
+			mydict.pop("PORTDIR", None)
+		if not eapi_attrs.exports_ECLASSDIR:
+			mydict.pop("ECLASSDIR", None)
+
 		try:
 			builddir = mydict["PORTAGE_BUILDDIR"]
 			distdir = mydict["DISTDIR"]
