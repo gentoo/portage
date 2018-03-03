@@ -152,6 +152,15 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata, qadata):
 						qacat, "%s: %s uses the ~ operator"
 						" with a non-zero revision: '%s'" %
 						(ebuild.relative_path, mytype, atom))
+				# plain =foo-1.2.3 without revision or *
+				if atom.operator == "=" and '-r' not in atom.version:
+					qacat = 'dependency.equalsversion'
+					qatracker.add_error(
+						qacat, "%s: %s uses the = operator with"
+						" no revision: '%s'; if any revision is"
+						" acceptable, use '~' instead; if only -r0"
+						" then please append '-r0' to the dep" %
+						(ebuild.relative_path, mytype, atom))
 
 				check_missingslot(atom, mytype, ebuild.eapi, portdb, qatracker,
 					ebuild.relative_path, ebuild.metadata)
