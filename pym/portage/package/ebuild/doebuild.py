@@ -1354,11 +1354,6 @@ def _spawn_actionmap(settings):
 		("usersandbox" not in features) and \
 		"userpriv" not in restrict and \
 		"nouserpriv" not in restrict)
-	if nosandbox and ("userpriv" not in features or \
-		"userpriv" in restrict or \
-		"nouserpriv" in restrict):
-		nosandbox = ("sandbox" not in features and \
-			"usersandbox" not in features)
 
 	if not portage.process.sandbox_capable:
 		nosandbox = True
