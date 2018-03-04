@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2012-2014 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Dump and restore extended attributes.
@@ -147,12 +147,13 @@ def main(argv):
 	actions.add_argument('--dump',
 		action='store_true',
 		help='Dump the values of all extended '
-			'attributes associated with null-separated'
-			' paths read from stdin.')
+			'attributes associated with paths '
+			'passed as arguments or null-separated '
+			'paths read from stdin.')
 	actions.add_argument('--restore',
 		action='store_true',
-		help='Restore extended attributes using'
-			' a dump read from stdin.')
+		help='Restore extended attributes using '
+			'a dump read from stdin.')
 
 	options = parser.parse_args(argv)
 
@@ -160,10 +161,12 @@ def main(argv):
 		file_in = sys.stdin.buffer.raw
 	else:
 		file_in = sys.stdin
-	if not options.paths:
-		options.paths += [x for x in file_in.read().split(b'\0') if x]
 
 	if options.dump:
+		if options.paths:
+			options.paths = [unicode_encode(x) for x in options.paths]
+		else:
+			options.paths = [x for x in file_in.read().split(b'\0') if x]
 		if sys.hexversion >= 0x3000000:
 			file_out = sys.stdout.buffer
 		else:
