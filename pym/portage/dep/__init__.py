@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2014 Gentoo Foundation
+# Copyright 2003-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -562,6 +562,9 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 					basestring):
 					if stack[level][-1] == "||" and not l:
 						#Optimize: || ( ) -> .
+						if not eapi_attrs.empty_groups_always_true:
+							# in EAPI 7+, we need to fail here
+							l.append((token_class or _unicode)("__const__/empty-any-of"))
 						stack[level].pop()
 					elif stack[level][-1][-1] == "?":
 						#The last token before the '(' that matches the current ')'
@@ -2579,7 +2582,7 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
 			(flag not in use and is_negated)
 	
 	def is_satisfied(operator, argument):
-		if not argument:
+		if not argument and eapi_attrs.empty_groups_always_true:
 			#|| ( ) -> True
 			return True
 

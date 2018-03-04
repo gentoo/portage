@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -59,6 +59,10 @@ class EAPITestCase(TestCase):
 			"dev-libs/A-7.4": { "EAPI": "4", "IUSE": "foo +bar", "REQUIRED_USE": "|| ( foo bar )" }, 
 
 			"dev-libs/B-1": {"EAPI": 1, "IUSE": "+foo"}, 
+
+			#EAPI-7: implicit || ( ) no longer satisfies deps
+			"dev-libs/C-1": { "EAPI": "6", "IUSE": "foo", "RDEPEND": "|| ( foo? ( dev-libs/B ) )" }, 
+			"dev-libs/C-2": { "EAPI": "7_pre1", "IUSE": "foo", "RDEPEND": "|| ( foo? ( dev-libs/B ) )" }, 
 			}
 
 		test_cases = (
@@ -104,6 +108,9 @@ class EAPITestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/A-7.2"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/A-7.3"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/A-7.4"], success = True, mergelist = ["dev-libs/A-7.4"]),
+
+			ResolverPlaygroundTestCase(["=dev-libs/C-1"], success = True, mergelist = ["dev-libs/C-1"]),
+			ResolverPlaygroundTestCase(["=dev-libs/C-2"], success = False),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

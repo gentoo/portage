@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -50,6 +50,10 @@ class RequiredUSETestCase(TestCase):
 			"dev-libs/E-3" : {"EAPI": "5", "IUSE": "+foo bar",  "REQUIRED_USE": "?? ( foo bar )"},
 			"dev-libs/E-4" : {"EAPI": "5", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( foo bar )"},
 			"dev-libs/E-5" : {"EAPI": "5", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( )"},
+
+			"dev-libs/F-1" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
+			"dev-libs/F-2" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
+			"dev-libs/F-3" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( )"},
 			}
 
 		test_cases = (
@@ -91,6 +95,10 @@ class RequiredUSETestCase(TestCase):
 			ResolverPlaygroundTestCase(["=dev-libs/E-3"], success = True, mergelist=["dev-libs/E-3"]),
 			ResolverPlaygroundTestCase(["=dev-libs/E-4"], success = False),
 			ResolverPlaygroundTestCase(["=dev-libs/E-5"], success = True, mergelist=["dev-libs/E-5"]),
+
+			ResolverPlaygroundTestCase(["=dev-libs/F-1"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/F-2"], success = False),
+			ResolverPlaygroundTestCase(["=dev-libs/F-3"], success = True, mergelist=["dev-libs/F-3"]),
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)

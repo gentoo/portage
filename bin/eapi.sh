@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -52,8 +52,16 @@ ___eapi_has_einstall() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_has_dohtml() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_dohtml_deprecated() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ${1-${EAPI-0}} == 6 ]]
+}
+
+___eapi_has_dolib_libopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
 }
 
 ___eapi_has_docompress() {
@@ -178,6 +186,14 @@ ___eapi_die_can_respect_nonfatal() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_domo_respects_into() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
+___eapi_has_DESTTREE_INSDESTTREE() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {
@@ -193,5 +209,5 @@ ___eapi_bash_3_2() {
 }
 
 ___eapi_bash_4_2() {
-	[[ ${1-${EAPI-0}} =~ ^(6)$ ]]
+	! ___eapi_bash_3_2 "$@"
 }
