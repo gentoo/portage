@@ -14,13 +14,21 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
-# newer EAPIs force /usr consistently with other /usr/share helpers
-if ! ___eapi_domo_respects_into; then
-	DESTTREE=/usr
+if ! ___eapi_has_DESTTREE_INSDESTTREE; then
+	[[ -n ${DESTTREE} ]] &&
+		die "${0##*/}: \${DESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+else
+	# backwards compatibility
+	_E_DESTTREE_=${DESTTREE}
 fi
 
-if [ ! -d "${ED}${DESTTREE}/share/locale" ] ; then
-	install -d "${ED}${DESTTREE}/share/locale/"
+# newer EAPIs force /usr consistently with other /usr/share helpers
+if ! ___eapi_domo_respects_into; then
+	_E_DESTTREE_=/usr
+fi
+
+if [ ! -d "${ED}${_E_DESTTREE_}/share/locale" ] ; then
+	install -d "${ED}${_E_DESTTREE_}/share/locale/"
 fi
 
 ret=0
@@ -28,7 +36,7 @@ ret=0
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
-		mydir="${ED}${DESTTREE}/share/locale/${mytiny%.*}/LC_MESSAGES"
+		mydir="${ED}${_E_DESTTREE_}/share/locale/${mytiny%.*}/LC_MESSAGES"
 		if [ ! -d "${mydir}" ] ; then
 			install -d "${mydir}"
 		fi

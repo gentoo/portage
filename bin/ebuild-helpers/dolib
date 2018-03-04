@@ -13,6 +13,14 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
+if ! ___eapi_has_DESTTREE_INSDESTTREE; then
+	[[ -n ${DESTTREE} ]] &&
+		die "${0##*/}: \${DESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+else
+	# backwards compatibility
+	_E_DESTTREE_=${DESTTREE}
+fi
+
 # Setup ABI cruft
 LIBDIR_VAR="LIBDIR_${ABI}"
 if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
@@ -21,7 +29,7 @@ fi
 unset LIBDIR_VAR
 # we need this to default to lib so that things dont break
 CONF_LIBDIR=${CONF_LIBDIR:-lib}
-libdir="${ED}${DESTTREE}/${CONF_LIBDIR}"
+libdir="${ED}${_E_DESTTREE_}/${CONF_LIBDIR}"
 
 
 if [[ $# -lt 1 ]] ; then

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -15,7 +15,15 @@ if [[ ${helper} == dodoc ]] ; then
 		exit 0
 	fi
 	export INSOPTIONS=-m0644
-	export INSDESTTREE=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
+	export _E_INSDESTTREE_=usr/share/doc/${PF}/${_E_DOCDESTTREE_}
+else
+	if ! ___eapi_has_DESTTREE_INSDESTTREE; then
+		[[ -n ${INSDESTTREE} ]] &&
+			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+	else
+		# backwards compatibility
+		_E_INSDESTTREE_=${INSDESTTREE}
+	fi
 fi
 
 if [ $# -lt 1 ] ; then
@@ -33,10 +41,10 @@ if ! ___eapi_has_prefix_variables; then
 	export ED="${D}"
 fi
 
-if [[ ${INSDESTTREE#${ED}} != "${INSDESTTREE}" ]]; then
+if [[ ${_E_INSDESTTREE_#${ED}} != "${_E_INSDESTTREE_}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${D} or \${ED} with helpers." 1>&2
-	__vecho "  --> ${INSDESTTREE}" 1>&2
+	__vecho "  --> ${_E_INSDESTTREE_}" 1>&2
 	__vecho "-------------------------------------------------------" 1>&2
 	__helpers_die "${helper} used with \${D} or \${ED}"
 	exit 1
@@ -75,7 +83,7 @@ fi
 
 DOINS_ARGS+=(
 	"--helper=${helper}"
-	"--dest=${ED}${INSDESTTREE}"
+	"--dest=${ED}${_E_INSDESTTREE_}"
 )
 
 # Explicitly set PYTHONPATH to non empty.

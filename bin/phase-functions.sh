@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -584,8 +584,13 @@ __dyn_install() {
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
 	# consecutively via the ebuild command.
-	export DESTTREE=/usr
-	export INSDESTTREE=""
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export DESTTREE=/usr
+		export INSDESTTREE=""
+	else
+		export _E_DESTTREE_=/usr
+		export _E_INSDESTTREE_=""
+	fi
 	export _E_EXEDESTTREE_=""
 	export _E_DOCDESTTREE_=""
 
