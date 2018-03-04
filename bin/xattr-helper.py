@@ -42,7 +42,7 @@ else:
 
 	def unicode_encode(s):
 		if isinstance(s, str):
-			s = s.encode(_FS_ENCODING)
+			s = s.encode(_FS_ENCODING, 'surrogateescape')
 		return s
 
 
