@@ -35,7 +35,7 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 	PRESERVE_XATTR=true
 	if type -P getfattr >/dev/null && type -P setfattr >/dev/null ; then
 		dump_xattrs() {
-			getfattr -d --absolute-names "$1"
+			getfattr -d -m - --absolute-names "$1"
 		}
 		restore_xattrs() {
 			setfattr --restore=-
