@@ -2,8 +2,13 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-export DESTTREE=/usr
-export INSDESTTREE=""
+if ___eapi_has_DESTTREE_INSDESTTREE; then
+	export DESTTREE=/usr
+	export INSDESTTREE=""
+else
+	export _E_DESTTREE_=/usr
+	export _E_INSDESTTREE_=""
+fi
 export _E_EXEDESTTREE_=""
 export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
@@ -18,14 +23,14 @@ declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
 
 into() {
 	if [ "$1" == "/" ]; then
-		export DESTTREE=""
+		export _E_DESTTREE_=""
 	else
-		export DESTTREE=$1
+		export _E_DESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${DESTTREE}" ]; then
-			install -d "${ED}${DESTTREE}"
+		if [ ! -d "${ED}${_E_DESTTREE_}" ]; then
+			install -d "${ED}${_E_DESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -33,24 +38,32 @@ into() {
 			fi
 		fi
 	fi
+
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export DESTTREE=${_E_DESTTREE_}
+	fi
 }
 
 insinto() {
 	if [ "$1" == "/" ]; then
-		export INSDESTTREE=""
+		export _E_INSDESTTREE_=""
 	else
-		export INSDESTTREE=$1
+		export _E_INSDESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${INSDESTTREE}" ]; then
-			install -d "${ED}${INSDESTTREE}"
+		if [ ! -d "${ED}${_E_INSDESTTREE_}" ]; then
+			install -d "${ED}${_E_INSDESTTREE_}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
+	fi
+
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export INSDESTTREE=${_E_INSDESTTREE_}
 	fi
 }
 

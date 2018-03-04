@@ -190,6 +190,10 @@ ___eapi_domo_respects_into() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
 }
 
+___eapi_has_DESTTREE_INSDESTTREE() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {

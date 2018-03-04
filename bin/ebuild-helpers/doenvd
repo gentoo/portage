@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 if [[ $# -lt 1 ]] ; then
@@ -8,4 +8,4 @@ if [[ $# -lt 1 ]] ; then
 	exit 1
 fi
 
-INSDESTTREE='/etc/env.d/' exec doins "$@"
+_E_INSDESTTREE_='/etc/env.d/' exec doins "$@"

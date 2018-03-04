@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -13,7 +13,7 @@
 __save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
-		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
+		unset S _E_DESTTREE _E_INSDESTTREE _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
 			PORTAGE_DOCOMPRESS_SKIP
 		if [[ -n $PYTHONPATH &&
