@@ -23,8 +23,9 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util.futures.futures:_EventLoopFuture',
+	'portage.util.futures.futures:Future',
 	'portage.util.futures.executor.fork:ForkExecutor',
+	'portage.util.futures.unix_events:_PortageEventLoop',
 )
 
 from portage import OrderedDict
@@ -188,15 +189,13 @@ class EventLoop(object):
 		self._sigchld_write = None
 		self._sigchld_src_id = None
 		self._pid = os.getpid()
+		self._asyncio_wrapper = _PortageEventLoop(loop=self)
 
 	def create_future(self):
 		"""
-		Create a Future object attached to the loop. This returns
-		an instance of _EventLoopFuture, because EventLoop is currently
-		missing some of the asyncio.AbstractEventLoop methods that
-		asyncio.Future requires.
+		Create a Future object attached to the loop.
 		"""
-		return _EventLoopFuture(loop=self)
+		return Future(loop=self._asyncio_wrapper)
 
 	def _new_source_id(self):
 		"""

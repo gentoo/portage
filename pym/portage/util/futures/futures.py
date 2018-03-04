@@ -1,4 +1,4 @@
-# Copyright 2016 Gentoo Foundation
+# Copyright 2016-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # For compatibility with python versions which do not have the
@@ -41,7 +41,10 @@ except ImportError:
 
 	Future = None
 
-from portage.util._eventloop.global_event_loop import global_event_loop
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util._eventloop.global_event_loop:global_event_loop@_global_event_loop',
+)
 
 _PENDING = 'PENDING'
 _CANCELLED = 'CANCELLED'
@@ -69,7 +72,7 @@ class _EventLoopFuture(object):
 		the default event loop.
 		"""
 		if loop is None:
-			self._loop = global_event_loop()
+			self._loop = _global_event_loop()._asyncio_wrapper
 		else:
 			self._loop = loop
 		self._callbacks = []
