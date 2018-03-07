@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -12,8 +12,8 @@ dodir "$@"
 ret=$?
 
 for x in "$@"; do
-	>> "${ED}${x}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
-		{ echo "!!! ${0##*/}: cannot write .keep in ${ED}${x}" 1>&2; ret=1; }
+	>> "${ED%/}/${x#/}/.keep_${CATEGORY}_${PN}-${SLOT%/*}" || \
+		{ echo "!!! ${0##*/}: cannot write .keep in ${ED%/}/${x#/}" 1>&2; ret=1; }
 done
 
 [[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"

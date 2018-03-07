@@ -83,7 +83,7 @@ fi
 
 DOINS_ARGS+=(
 	"--helper=${helper}"
-	"--dest=${ED}${_E_INSDESTTREE_}"
+	"--dest=${ED%/}/${_E_INSDESTTREE_#/}"
 )
 
 # Explicitly set PYTHONPATH to non empty.

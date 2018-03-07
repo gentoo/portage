@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
@@ -143,7 +143,8 @@ save_elf_debug() {
 	local x=$1
 	local inode_debug=$2
 	local splitdebug=$3
-	local y=${ED}usr/lib/debug/${x:${#D}}.debug
+	local d_noslash=${D%/}
+	local y=${ED%/}/usr/lib/debug/${x:${#d_noslash}}.debug
 
 	# dont save debug info twice
 	[[ ${x} == *".debug" ]] && return 0
@@ -177,7 +178,7 @@ save_elf_debug() {
 		buildid=$(${READELF} -n "${x}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 	fi
 	if [[ -n ${buildid} ]] ; then
-		local buildid_dir="${ED}usr/lib/debug/.build-id/${buildid:0:2}"
+		local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
 		[ -L "${buildid_file}".debug ] || ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
@@ -254,7 +255,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED}##" > "${log}"
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}##" > "${log}"
 	(
 	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
@@ -324,7 +325,7 @@ do
 		set -o noglob
 		strip_this=true
 		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ /${x#${ED}} == ${m} ]] && strip_this=false && break
+			[[ /${x#${ED%/}} == ${m} ]] && strip_this=false && break
 		done
 		set +o noglob
 	else
@@ -384,10 +385,10 @@ if [[ -s ${tmpdir}/debug.sources ]] && \
    ${debugedit_found}
 then
 	__vecho "installsources: rsyncing source files"
-	[[ -d ${D}${prepstrip_sources_dir} ]] || mkdir -p "${D}${prepstrip_sources_dir}"
+	[[ -d ${D%/}/${prepstrip_sources_dir#/} ]] || mkdir -p "${D%/}/${prepstrip_sources_dir#/}"
 	grep -zv '/<[^/>]*>$' "${tmpdir}"/debug.sources | \
 		(cd "${WORKDIR}"; LANG=C sort -z -u | \
-		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D}${prepstrip_sources_dir}/" )
+		rsync -tL0 --chmod=ugo-st,a+r,go-w,Da+x,Fa-x --files-from=- "${WORKDIR}/" "${D%/}/${prepstrip_sources_dir#/}/" )
 
 	# Preserve directory structure.
 	# Needed after running save_elf_sources.
@@ -395,7 +396,7 @@ then
 	while read -r -d $'\0' emptydir
 	do
 		>> "${emptydir}"/.keepdir
-	done < <(find "${D}${prepstrip_sources_dir}/" -type d -empty -print0)
+	done < <(find "${D%/}/${prepstrip_sources_dir#/}/" -type d -empty -print0)
 fi
 
 cd "${T}"

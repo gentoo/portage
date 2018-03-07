@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -87,7 +87,7 @@ prepcompress() {
 	# Canonicalize path names and check for their existence.
 	real_d=$(canonicalize "${ED}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS[i]#/}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -98,7 +98,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS_SKIP[i]#/}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -147,7 +147,7 @@ prepcompress() {
 
 	# Split the include list into directories and files
 	for f in "${include[@]}"; do
-		if [[ -d ${ED}${f} ]]; then
+		if [[ -d ${ED%/}/${f#/} ]]; then
 			incl_d[${#incl_d[@]}]=${f}
 		else
 			incl_f[${#incl_f[@]}]=${f}
@@ -157,7 +157,7 @@ prepcompress() {
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
 	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --limit ${PORTAGE_DOCOMPRESS_SIZE_LIMIT:-0} --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED%/}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
 }
@@ -253,7 +253,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
+	rm -f "${ED%/}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 }
 
 preinst_qa_check() {
@@ -387,7 +387,7 @@ preinst_mask() {
 
 	# remove share dir if unnessesary
 	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${ED}usr/share" &> /dev/null
+		rmdir "${ED%/}/usr/share" &> /dev/null
 	fi
 }
 
@@ -407,11 +407,11 @@ preinst_sfperms() {
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
-				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ED}}"
+				ebegin ">>> SetUID and SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			else
-				ebegin ">>> SetUID: [chmod go-r] /${i#${ED}}"
+				ebegin ">>> SetUID: [chmod go-r] ${i#${ED%/}}"
 				chmod go-r "$i"
 				eend $?
 			fi
@@ -423,7 +423,7 @@ preinst_sfperms() {
 				# by the SetUID check above.
 				true
 			else
-				ebegin ">>> SetGID: [chmod o-r] /${i#${ED}}"
+				ebegin ">>> SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			fi
@@ -452,7 +452,7 @@ preinst_suid_scan() {
 		__vecho ">>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				install_path=/${i#${ED}}
+				install_path=${i#${ED%/}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					__vecho "- ${install_path} is an approved suid file"
 				else
@@ -462,7 +462,7 @@ preinst_suid_scan() {
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
 						__vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${ED}*}${install_path}" >> "${sfconf}"
+						echo "## ${ls_ret%${ED%/}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}

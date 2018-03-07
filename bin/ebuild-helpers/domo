@@ -27,8 +27,8 @@ if ! ___eapi_domo_respects_into; then
 	_E_DESTTREE_=/usr
 fi
 
-if [ ! -d "${ED}${_E_DESTTREE_}/share/locale" ] ; then
-	install -d "${ED}${_E_DESTTREE_}/share/locale/"
+if [ ! -d "${ED%/}/${_E_DESTTREE_#/}/share/locale" ] ; then
+	install -d "${ED%/}/${_E_DESTTREE_#/}/share/locale/"
 fi
 
 ret=0
@@ -36,7 +36,7 @@ ret=0
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
 		mytiny="${x##*/}"
-		mydir="${ED}${_E_DESTTREE_}/share/locale/${mytiny%.*}/LC_MESSAGES"
+		mydir="${ED%/}/${_E_DESTTREE_#/}/share/locale/${mytiny%.*}/LC_MESSAGES"
 		if [ ! -d "${mydir}" ] ; then
 			install -d "${mydir}"
 		fi
