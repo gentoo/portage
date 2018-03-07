@@ -29,8 +29,8 @@ into() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${_E_DESTTREE_}" ]; then
-			install -d "${ED}${_E_DESTTREE_}"
+		if [ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_DESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -52,8 +52,8 @@ insinto() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${_E_INSDESTTREE_}" ]; then
-			install -d "${ED}${_E_INSDESTTREE_}"
+		if [ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -75,8 +75,8 @@ exeinto() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
-			install -d "${ED}${_E_EXEDESTTREE_}"
+		if [ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -94,8 +94,8 @@ docinto() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		if [ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]; then
+			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -707,7 +707,7 @@ einstall() {
 	fi
 	unset LIBDIR_VAR
 	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
-		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
+		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
 		unset EI_DESTLIBDIR
@@ -715,22 +715,22 @@ einstall() {
 
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${ED}usr" \
-				datadir="${ED}usr/share" \
-				infodir="${ED}usr/share/info" \
-				localstatedir="${ED}var/lib" \
-				mandir="${ED}usr/share/man" \
-				sysconfdir="${ED}etc" \
+			${MAKE:-make} -n prefix="${ED%/}/usr" \
+				datadir="${ED%/}/usr/share" \
+				infodir="${ED%/}/usr/share/info" \
+				localstatedir="${ED%/}/var/lib" \
+				mandir="${ED%/}/usr/share/man" \
+				sysconfdir="${ED%/}/etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				${MAKEOPTS} -j1 \
 				"$@" ${EXTRA_EMAKE} install
 		fi
-		if ! ${MAKE:-make} prefix="${ED}usr" \
-			datadir="${ED}usr/share" \
-			infodir="${ED}usr/share/info" \
-			localstatedir="${ED}var/lib" \
-			mandir="${ED}usr/share/man" \
-			sysconfdir="${ED}etc" \
+		if ! ${MAKE:-make} prefix="${ED%/}/usr" \
+			datadir="${ED%/}/usr/share" \
+			infodir="${ED%/}/usr/share/info" \
+			localstatedir="${ED%/}/var/lib" \
+			mandir="${ED%/}/usr/share/man" \
+			sysconfdir="${ED%/}/etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} -j1 \
 			"$@" ${EXTRA_EMAKE} install

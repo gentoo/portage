@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -49,11 +49,11 @@ for x in "$@" ; do
 
 	if [[ ${mandir} == *man[0-9n] ]] ; then
 		if [[ -s ${x} ]] ; then
-			if [[ ! -d ${ED}/usr/share/man/${mandir} ]] ; then
-				install -d "${ED}/usr/share/man/${mandir}"
+			if [[ ! -d ${ED%/}/usr/share/man/${mandir} ]] ; then
+				install -d "${ED%/}/usr/share/man/${mandir}"
 			fi
 
-			install -m0644 "${x}" "${ED}/usr/share/man/${mandir}/${name}"
+			install -m0644 "${x}" "${ED%/}/usr/share/man/${mandir}/${name}"
 			((ret|=$?))
 		elif [[ ! -e ${x} ]] ; then
 			echo "!!! ${0##*/}: $x does not exist" 1>&2

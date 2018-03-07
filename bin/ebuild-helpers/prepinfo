@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -11,14 +11,14 @@ fi
 if [[ -z $1 ]] ; then
 	infodir="/usr/share/info"
 else
-	if [[ -d ${ED}$1/share/info ]] ; then
-		infodir="$1/share/info"
+	if [[ -d ${ED%/}/${1#/}/share/info ]] ; then
+		infodir="${1#/}/share/info"
 	else
-		infodir="$1/info"
+		infodir="${1#/}/info"
 	fi
 fi
 
-if [[ ! -d ${ED}${infodir} ]] ; then
+if [[ ! -d ${ED%/}/${infodir#/} ]] ; then
 	if [[ -n $1 ]] ; then
 		__vecho "${0##*/}: '${infodir}' does not exist!"
 		exit 1
@@ -27,7 +27,7 @@ if [[ ! -d ${ED}${infodir} ]] ; then
 	fi
 fi
 
-find "${ED}${infodir}" -type d -print0 | while read -r -d $'\0' x ; do
+find "${ED%/}/${infodir#/}" -type d -print0 | while read -r -d $'\0' x ; do
 	for f in "${x}"/.keepinfodir*; do
 		[[ -e ${f} ]] && continue 2
 	done

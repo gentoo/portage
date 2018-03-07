@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -23,7 +23,7 @@ file_found=0
 mysed="s:${ED}::g"
 
 for x in "$@" ; do
-	y=$ED${x#/}
+	y=${ED%/}/${x#/}
 	if [ -e "${y}" ] ; then
 		if [ -f "${y}" ] ; then
 			file_found=1

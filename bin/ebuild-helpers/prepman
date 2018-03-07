@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Do not compress man pages which are smaller than this (in bytes). #169260
@@ -12,13 +12,13 @@ if ! ___eapi_has_prefix_variables; then
 fi
 
 if [[ -z $1 ]] ; then
-	mandir="${ED}usr/share/man"
+	mandir="${ED%/}/usr/share/man"
 else
-	mandir="${ED}$1/man"
+	mandir="${ED%/}/${1#/}/man"
 fi
 
 if [[ ! -d ${mandir} ]] ; then
-	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${ED}}'"
+	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${ED%/}}'"
 	exit 0
 fi
 
@@ -34,6 +34,6 @@ for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
 	[[ -d ${subdir} ]] && really_is_mandir=1 && break
 done
 
-[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --limit ${SIZE_LIMIT} --queue "${mandir#${ED}}"
+[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --limit ${SIZE_LIMIT} --queue "${mandir#${ED%/}}"
 
 exit 0
