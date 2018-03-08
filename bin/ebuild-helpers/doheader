@@ -13,4 +13,8 @@ if [[ $# -lt 1 ]] || [[ $1 == -r && $# -lt 2 ]] ; then
 	exit 1
 fi
 
-_E_INSDESTTREE_='/usr/include/' exec doins "$@"
+export _E_INSDESTTREE_='/usr/include/'
+if ___eapi_has_DESTTREE_INSDESTTREE; then
+	export INSDESTTREE=${_E_INSDESTTREE_}
+fi
+exec doins "$@"
