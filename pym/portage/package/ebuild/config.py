@@ -157,7 +157,7 @@ class config(object):
 
 	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
-		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
+		'PROPERTIES', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 
 	_module_aliases = {
@@ -1886,8 +1886,7 @@ class config(object):
 	def _getMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -1901,8 +1900,7 @@ class config(object):
 	def _getRawMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -1918,8 +1916,7 @@ class config(object):
 		"""
 		Take a package and return a matching profile atom, or None if no
 		such atom exists. Note that a profile atom may or may not have a "*"
-		prefix. PROVIDE is not checked, so atoms will not be found for
-		old-style virtuals.
+		prefix.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -2157,35 +2154,9 @@ class config(object):
 			self._accept_chost_re.match(pkg_chost) is not None
 
 	def setinst(self, mycpv, mydbapi):
-		"""This updates the preferences for old-style virtuals,
-		affecting the behavior of dep_expand() and dep_check()
-		calls. It can change dbapi.match() behavior since that
-		calls dep_expand(). However, dbapi instances have
-		internal match caches that are not invalidated when
-		preferences are updated here. This can potentially
-		lead to some inconsistency (relevant to bug #1343)."""
-		self.modifying()
-
-		# Grab the virtuals this package provides and add them into the tree virtuals.
-		if not hasattr(mydbapi, "aux_get"):
-			provides = mydbapi["PROVIDE"]
-		else:
-			provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
-		if not provides:
-			return
-		if isinstance(mydbapi, portdbapi):
-			self.setcpv(mycpv, mydb=mydbapi)
-			myuse = self["PORTAGE_USE"]
-		elif not hasattr(mydbapi, "aux_get"):
-			myuse = mydbapi["USE"]
-		else:
-			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
-
-		# Ensure that we don't trigger the _treeVirtuals
-		# assertion in VirtualsManager._compile_virtuals().
-		self.getvirtuals()
-		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
+		"""This used to update the preferences for old-style virtuals.
+		It is no-op now."""
+		pass
 
 	def reload(self):
 		"""Reload things like /etc/profile.env that can change during runtime."""

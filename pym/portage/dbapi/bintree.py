@@ -1,4 +1,4 @@
-# Copyright 1998-2016 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -87,7 +87,7 @@ class bindbapi(fakedbapi):
 		self._aux_cache_keys = set(
 			["BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
 			"DEPEND", "EAPI", "HDEPEND", "IUSE", "KEYWORDS",
-			"LICENSE", "MD5", "PDEPEND", "PROPERTIES", "PROVIDE",
+			"LICENSE", "MD5", "PDEPEND", "PROPERTIES",
 			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
 			"SIZE", "SLOT", "USE", "_mtime_"
 			])
@@ -315,13 +315,13 @@ class binarytree(object):
 				["BASE_URI", "BUILD_ID", "BUILD_TIME", "CHOST",
 				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
 				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
-				"PKGINDEX_URI", "PROPERTIES", "PROVIDE", "PROVIDES",
+				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
 				"RDEPEND", "repository", "REQUIRES", "RESTRICT",
 				"SIZE", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
 				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
-				"PDEPEND", "PROPERTIES", "PROVIDE", "RESTRICT")
+				"PDEPEND", "PROPERTIES", "RESTRICT")
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
@@ -342,7 +342,6 @@ class binarytree(object):
 				"PATH"    : "",
 				"PDEPEND" : "",
 				"PROPERTIES" : "",
-				"PROVIDE" : "",
 				"PROVIDES": "",
 				"RDEPEND" : "",
 				"REQUIRES": "",

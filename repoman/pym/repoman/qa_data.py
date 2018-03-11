@@ -228,8 +228,6 @@ qahelp = {
 	"repo.eapi.deprecated": (
 		"The ebuild uses an EAPI which is"
 		" deprecated by the repository's metadata/layout.conf settings"),
-	"virtual.oldstyle": (
-		"The ebuild PROVIDEs an old-style virtual (see GLEP 37)"),
 	"virtual.suspect": (
 		"Ebuild contains a package"
 		" that usually should be pulled via virtual/, not directly."),

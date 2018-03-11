@@ -69,7 +69,7 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata):
 	inherited_wxwidgets_eclass = "wxwidgets" in ebuild.inherited
 	# operator_tokens = set(["||", "(", ")"])
 	badsyntax = []
-	for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES", "PROVIDE"):
+	for mytype in Package._dep_keys + ("LICENSE", "PROPERTIES"):
 		mydepstr = ebuild.metadata[mytype]
 
 		buildtime = mytype in Package._buildtime_keys

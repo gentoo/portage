@@ -135,7 +135,7 @@ _phase_func_map = {
 }
 
 _vdb_use_conditional_keys = Package._dep_keys + \
-	('LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',)
+	('LICENSE', 'PROPERTIES', 'RESTRICT',)
 
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
