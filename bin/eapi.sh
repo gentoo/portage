@@ -38,6 +38,10 @@ ___eapi_has_RDEPEND_DEPEND_fallback() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
 }
 
+___eapi_has_PORTDIR_ECLASSDIR() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
+}
+
 # HELPERS PRESENCE
 
 ___eapi_has_dohard() {
@@ -98,6 +102,10 @@ ___eapi_has_eapply_user() {
 
 ___eapi_has_in_iuse() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
+___eapi_has_version_functions() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_has_master_repositories() {
@@ -210,4 +218,8 @@ ___eapi_bash_3_2() {
 
 ___eapi_bash_4_2() {
 	! ___eapi_bash_3_2 "$@"
+}
+
+___eapi_has_ENV_UNSET() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }

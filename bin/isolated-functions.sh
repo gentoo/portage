@@ -4,6 +4,10 @@
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
 
+if ___eapi_has_version_functions; then
+	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
+
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases

@@ -57,10 +57,10 @@ from portage.data import portage_gid, portage_uid, secpass, \
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
-	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
-	eapi_has_pkg_pretend, _get_eapi_attrs
+from portage.eapi import (eapi_exports_KV, eapi_exports_merge_type,
+	eapi_exports_replace_vars, eapi_exports_REPOSITORY,
+	eapi_has_required_use, eapi_has_src_prepare_and_src_configure,
+	eapi_has_pkg_pretend, _get_eapi_attrs)
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import (DigestException, FileNotFound,
