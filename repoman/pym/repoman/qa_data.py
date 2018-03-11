@@ -130,9 +130,6 @@ qahelp = {
 	"LICENSE.syntax": (
 		"Syntax error in LICENSE"
 		" (usually an extra/missing space/parenthesis)"),
-	"PROVIDE.syntax": (
-		"Syntax error in PROVIDE"
-		" (usually an extra/missing space/parenthesis)"),
 	"PROPERTIES.syntax": (
 		"Syntax error in PROPERTIES"
 		" (usually an extra/missing space/parenthesis)"),
@@ -228,8 +225,6 @@ qahelp = {
 	"repo.eapi.deprecated": (
 		"The ebuild uses an EAPI which is"
 		" deprecated by the repository's metadata/layout.conf settings"),
-	"virtual.oldstyle": (
-		"The ebuild PROVIDEs an old-style virtual (see GLEP 37)"),
 	"virtual.suspect": (
 		"Ebuild contains a package"
 		" that usually should be pulled via virtual/, not directly."),

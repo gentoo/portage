@@ -49,12 +49,6 @@ class EbuildMetadata(ScanBase):
 					% (kwargs.get('xpkg'), kwargs.get('y_ebuild')))
 		return False
 
-	def old_virtual(self, **kwargs):
-		ebuild = kwargs.get('ebuild').get()
-		if ebuild.metadata.get("PROVIDE"):
-			self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
-		return False
-
 	def virtual(self, **kwargs):
 		ebuild = kwargs.get('ebuild').get()
 		if kwargs.get('catdir') == "virtual":
@@ -80,5 +74,5 @@ class EbuildMetadata(ScanBase):
 
 	@property
 	def runInEbuilds(self):
-		return (True, [self.invalidchar, self.missing, self.old_virtual,
+		return (True, [self.invalidchar, self.missing,
 			self.virtual, self.homepage_urischeme])

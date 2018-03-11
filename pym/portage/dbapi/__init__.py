@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -316,7 +316,7 @@ class dbapi(object):
 		maxval = len(cpv_all)
 		aux_get = self.aux_get
 		aux_update = self.aux_update
-		update_keys = Package._dep_keys + ("PROVIDE",)
+		update_keys = Package._dep_keys
 		meta_keys = update_keys + self._pkg_str_aux_keys
 		repo_dict = None
 		if isinstance(updates, dict):

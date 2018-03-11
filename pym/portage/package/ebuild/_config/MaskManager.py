@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -182,8 +182,7 @@ class MaskManager(object):
 	def _getMaskAtom(self, cpv, slot, repo, unmask_atoms=None):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -221,8 +220,7 @@ class MaskManager(object):
 	def getMaskAtom(self, cpv, slot, repo):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -249,8 +247,6 @@ class MaskManager(object):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
 		such atom exists. It HAS NOT! been cancelled by any package.unmask.
-		PROVIDE is not checked, so atoms will not be found for old-style
-		virtuals.
 
 		@param cpv: The package name
 		@type cpv: String

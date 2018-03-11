@@ -1,4 +1,4 @@
-# Copyright 2005-2012 Gentoo Foundation
+# Copyright 2005-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -12,7 +12,7 @@ class MoveHandler(object):
 	def __init__(self, tree, porttree):
 		self._tree = tree
 		self._portdb = porttree.dbapi
-		self._update_keys = Package._dep_keys + ("PROVIDE",)
+		self._update_keys = Package._dep_keys
 		self._master_repo = self._portdb.repositories.mainRepo()
 		if self._master_repo is not None:
 			self._master_repo = self._master_repo.name
