@@ -816,8 +816,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(pkg,
-						pkg._metadata["PROVIDE"], _unicode(e))
+					show_invalid_depstring_notice(pkg, _unicode(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -870,8 +869,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg,
-					pkg._metadata["PROVIDE"], _unicode(e))
+				show_invalid_depstring_notice(pkg, _unicode(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -888,8 +886,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if excluded_set.findAtomForPackage(pkg):
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg,
-					pkg._metadata["PROVIDE"], _unicode(e))
+				show_invalid_depstring_notice(pkg, _unicode(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 

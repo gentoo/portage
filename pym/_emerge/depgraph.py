@@ -1,4 +1,4 @@
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -7095,7 +7095,7 @@ class depgraph(object):
 							# matches (this can happen if an atom lacks a
 							# category).
 							show_invalid_depstring_notice(
-								pkg, depstr, "%s" % (e,))
+								pkg, "%s" % (e,))
 							del e
 							raise
 						if not success:
@@ -7108,7 +7108,7 @@ class depgraph(object):
 								# annoy the user too much (otherwise they'd be
 								# forced to manually unmerge it first).
 								continue
-							show_invalid_depstring_notice(pkg, depstr, atoms)
+							show_invalid_depstring_notice(pkg, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
 							if myatom.blocker]
@@ -7126,7 +7126,7 @@ class depgraph(object):
 						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
-								pkg, depstr, "Invalid Atom: %s" % (e,))
+								pkg, "Invalid Atom: %s" % (e,))
 							return False
 				for cpv in stale_cache:
 					del blocker_cache[cpv]

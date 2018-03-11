@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -99,7 +99,7 @@ class BlockerDB(object):
 			trees=dep_check_trees, myroot=new_pkg.root)
 		if not success:
 			# We should never get this far with invalid deps.
-			show_invalid_depstring_notice(new_pkg, depstr, atoms)
+			show_invalid_depstring_notice(new_pkg, atoms)
 			assert False
 
 		blocker_atoms = [atom.lstrip("!") for atom in atoms \
