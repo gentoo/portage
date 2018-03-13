@@ -1,4 +1,4 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -157,21 +157,6 @@ class PackageSet(object):
 			for atom in atoms:
 				if match_from_list(atom, cpv_slot_list):
 					yield atom
-		provides = pkg._metadata['PROVIDE']
-		if not provides:
-			return
-		provides = provides.split()
-		for provide in provides:
-			try:
-				provided_cp = Atom(provide).cp
-			except InvalidAtom:
-				continue
-			atoms = self._atommap.get(provided_cp)
-			if atoms:
-				for atom in atoms:
-					if match_from_list(atom.replace(provided_cp, cp),
-						cpv_slot_list):
-						yield atom
 
 class EditablePackageSet(PackageSet):
 

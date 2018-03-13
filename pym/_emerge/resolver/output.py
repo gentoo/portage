@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -316,7 +316,7 @@ class Display(object):
 				depstr, = db.aux_get(pkg.cpv,
 					["SRC_URI"], myrepo=pkg.repo)
 				show_invalid_depstring_notice(
-					pkg, depstr, _unicode(e))
+					pkg, _unicode(e))
 				raise
 			except SignatureException:
 				# missing/invalid binary package SIZE signature

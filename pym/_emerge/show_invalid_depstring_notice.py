@@ -1,4 +1,4 @@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -7,7 +7,7 @@ import portage
 from portage import os
 from portage.util import writemsg_level
 
-def show_invalid_depstring_notice(parent_node, depstring, error_msg):
+def show_invalid_depstring_notice(parent_node, error_msg):
 
 	msg1 = "\n\n!!! Invalid or corrupt dependency specification: " + \
 		"\n\n%s\n\n%s\n\n" % (error_msg, parent_node)

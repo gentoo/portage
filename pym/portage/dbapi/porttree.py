@@ -1,4 +1,4 @@
-# Copyright 1998-2015 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -314,7 +314,7 @@ class portdbapi(dbapi):
 		self._aux_cache_keys = set(
 			["DEPEND", "EAPI", "HDEPEND",
 			"INHERITED", "IUSE", "KEYWORDS", "LICENSE",
-			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
+			"PDEPEND", "PROPERTIES", "RDEPEND", "repository",
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])
 
 		self._aux_cache = {}

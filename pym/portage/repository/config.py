@@ -264,7 +264,7 @@ class RepoConfig(object):
 				self.missing_repo_name = False
 
 			for value in ('allow-missing-manifest',
-				'allow-provide-virtual', 'cache-formats',
+				'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
 				'manifest-required-hashes', 'profile-formats',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
@@ -1011,9 +1011,6 @@ def parse_layout_conf(repo_location, repo_name=None):
 		masters = tuple(masters.split())
 	data['masters'] = masters
 	data['aliases'] = tuple(layout_data.get('aliases', '').split())
-
-	data['allow-provide-virtual'] = \
-		layout_data.get('allow-provide-virtuals', 'false').lower() == 'true'
 
 	data['eapis-banned'] = tuple(layout_data.get('eapis-banned', '').split())
 	data['eapis-deprecated'] = tuple(layout_data.get('eapis-deprecated', '').split())

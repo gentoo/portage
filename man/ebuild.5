@@ -727,16 +727,6 @@ One or more ebuild phases will produce a prompt that requires user interaction.
 .RE
 .PD 1
 .TP
-.B PROVIDE\fR = \fI"virtual/TARGET"
-This variable should only be used when a package provides a virtual target.
-For example, blackdown\-jdk and sun\-jdk provide \fIvirtual/jdk\fR.  This
-allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
-or sun specifically.
-
-The \fBPROVIDE\fR variable has been deprecated. See
-\fIhttps://www.gentoo.org/glep/glep-0037.html\fR for details.
-
-.TP
 .B DOCS
 Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation
 files for the default src_install function to install using dodoc. If
