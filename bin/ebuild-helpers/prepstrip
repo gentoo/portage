@@ -255,7 +255,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}##" > "${log}"
+	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}/##" > "${log}"
 	(
 	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
