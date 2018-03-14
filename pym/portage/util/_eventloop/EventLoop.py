@@ -24,6 +24,7 @@ except ImportError:
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.futures:_EventLoopFuture',
+	'portage.util.futures.executor.fork:ForkExecutor',
 )
 
 from portage import OrderedDict
@@ -122,6 +123,7 @@ class EventLoop(object):
 		self._idle_callbacks = OrderedDict()
 		self._timeout_handlers = {}
 		self._timeout_interval = None
+		self._default_executor = None
 
 		self._poll_obj = None
 		try:
@@ -721,6 +723,46 @@ class EventLoop(object):
 		return self._handle(self.timeout_add(
 			delay * 1000, self._call_soon_callback(callback, args)), self)
 
+	def run_in_executor(self, executor, func, *args):
+		"""
+		Arrange for a func to be called in the specified executor.
+
+		The executor argument should be an Executor instance. The default
+		executor is used if executor is None.
+
+		Use functools.partial to pass keywords to the *func*.
+
+		@param executor: executor
+		@type executor: concurrent.futures.Executor or None
+		@param func: a function to call
+		@type func: callable
+		@return: a Future
+		@rtype: asyncio.Future (or compatible)
+		"""
+		if executor is None:
+			executor = self._default_executor
+			if executor is None:
+				executor = ForkExecutor(loop=self)
+				self._default_executor = executor
+		return executor.submit(func, *args)
+
+	def close(self):
+		"""Close the event loop.
+
+		This clears the queues and shuts down the executor,
+		and waits for it to finish.
+		"""
+		executor = self._default_executor
+		if executor is not None:
+			self._default_executor = None
+			executor.shutdown(wait=True)
+
+		if self._poll_obj is not None:
+			close = getattr(self._poll_obj, 'close')
+			if close is not None:
+				close()
+			self._poll_obj = None
+
 
 _can_poll_device = None
 
@@ -782,10 +824,11 @@ class _epoll_adapter(object):
 	that is associated with an epoll instance will close automatically when
 	it is garbage collected, so it's not necessary to close it explicitly.
 	"""
-	__slots__ = ('_epoll_obj',)
+	__slots__ = ('_epoll_obj', 'close')
 
 	def __init__(self, epoll_obj):
 		self._epoll_obj = epoll_obj
+		self.close = epoll_obj.close
 
 	def register(self, fd, *args):
 		self._epoll_obj.register(fd, *args)
