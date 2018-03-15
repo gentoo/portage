@@ -11,15 +11,13 @@ except ImportError:
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 
-# Use **kwargs since python2.7 does not allow arguments with defaults
-# to follow *futures.
-def wait(*futures, **kwargs):
+def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	"""
 	Use portage's internal EventLoop to emulate asyncio.wait:
 	https://docs.python.org/3/library/asyncio-task.html#asyncio.wait
 
-	@param future: future to wait for
-	@type future: asyncio.Future (or compatible)
+	@param futures: futures to wait for
+	@type futures: asyncio.Future (or compatible)
 	@param timeout: number of seconds to wait (wait indefinitely if
 		not specified)
 	@type timeout: int or float
@@ -32,14 +30,6 @@ def wait(*futures, **kwargs):
 	@return: tuple of (done, pending).
 	@rtype: asyncio.Future (or compatible)
 	"""
-	if not futures:
-		raise TypeError("wait() missing 1 required positional argument: 'future'")
-	loop = kwargs.pop('loop', None)
-	timeout = kwargs.pop('timeout', None)
-	return_when = kwargs.pop('return_when', ALL_COMPLETED)
-	if kwargs:
-		raise TypeError("wait() got an unexpected keyword argument '{}'".\
-			format(next(iter(kwargs))))
 	loop = loop or global_event_loop()
 	result_future = loop.create_future()
 	_Waiter(futures, timeout, return_when, result_future, loop)

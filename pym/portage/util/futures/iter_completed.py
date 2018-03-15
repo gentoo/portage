@@ -52,7 +52,7 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		# task_generator is exhausted
 		while future_map:
 			done, pending = loop.run_until_complete(
-				wait(*list(future_map.values()), return_when=FIRST_COMPLETED))
+				wait(list(future_map.values()), return_when=FIRST_COMPLETED))
 			for future in done:
 				del future_map[id(future)]
 				yield future
