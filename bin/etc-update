@@ -35,11 +35,15 @@ get_config() {
 OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2)
 
 case $OS_RELEASE_ID in
-	suse|opensuse) OS_FAMILY='suse' ;;
+	suse|opensuse) OS_FAMILY='suse' NEW_EXT='rpmnew';;
+	arch|manjaro) OS_FAMILY='arch' NEW_EXT='pacnew';;
 	*) OS_FAMILY='gentoo' ;;
 esac
 
 if [[ $OS_FAMILY == 'gentoo' ]]; then
+	get_basename() {
+		printf -- '%s\n' "${1:10}"
+	}
 	get_basename_find_opt() {
 		echo "._cfg????_${1}"
 	}
@@ -49,15 +53,18 @@ if [[ $OS_FAMILY == 'gentoo' ]]; then
 	get_live_file() {
 		echo "${rpath}/${rfile:10}"
 	}
-elif [[ $OS_FAMILY == 'suse' ]]; then
+elif [[ $OS_FAMILY == 'suse' ]] || [[ $OS_FAMILY == 'arch' ]]; then
+	get_basename() {
+		printf -- '%s\n' "${1%.${NEW_EXT}}"
+	}
 	get_basename_find_opt() {
-		echo "${1}.rpmnew"
+		printf -- '%s\n' "${1}.${NEW_EXT}"
 	}
 	get_scan_regexp() {
 		echo "s:\(^.*/\)\(.*\)\(\.rpmnew\):\1\2\3$b\1$b\3$b\2:"
 	}
 	get_live_file() {
-		echo "${cfg_file%.rpmnew}"
+		printf -- '%s\n' "${cfg_file%.${NEW_EXT}}"
 	}
 fi
 
@@ -160,7 +167,7 @@ scan() {
 					rm -f "${file}"
 					continue
 				fi
-				if [[ "${ofile:10}" != "${rfile:10}" ]] ||
+				if [[ $(get_basename "${ofile}") != $(get_basename "${rfile}") ]] ||
 				   [[ ${opath} != ${rpath} ]]
 				then
 					: $(( ++count ))
@@ -176,7 +183,7 @@ scan() {
 				continue
 			fi
 
-			if [[ "${ofile:10}" != "${rfile:10}" ]] ||
+			if [[ $(get_basename "${ofile}") != $(get_basename "${rfile}") ]] ||
 			   [[ ${opath} != ${rpath} ]]
 			then
 				MATCHES=0
@@ -753,6 +760,11 @@ if [[ $OS_FAMILY == 'suse' ]]; then
 	CONFIG_PROTECT='/etc'
 	CONFIG_PROTECT_MASK=''
 	[[ -f /etc/sysconfig/etc-update ]] && . /etc/sysconfig/etc-update
+elif [[ $OS_FAMILY == 'arch' ]]; then
+	PORTAGE_CONFIGROOT='/'
+	PORTAGE_TMPDIR='/tmp'
+	CONFIG_PROTECT='/etc /usr/lib /usr/share/config'
+	CONFIG_PROTECT_MASK=''
 fi
 
 portage_vars=(
