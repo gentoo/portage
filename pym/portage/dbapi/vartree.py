@@ -3747,13 +3747,6 @@ class dblink(object):
 		is_binpkg = self.settings.get("EMERGE_FROM") == "binary"
 		slot = ''
 		for var_name in ('CHOST', 'SLOT'):
-			if var_name == 'CHOST' and self.cat == 'virtual':
-				try:
-					os.unlink(os.path.join(inforoot, var_name))
-				except OSError:
-					pass
-				continue
-
 			try:
 				with io.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
