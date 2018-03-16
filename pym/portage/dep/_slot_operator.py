@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -65,7 +65,10 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 	for k in Package._runtime_keys:
 		_eval_deps(deps[k], vardbs)
 
-	if eapi_attrs.hdepend:
+	if eapi_attrs.bdepend:
+		_eval_deps(deps["BDEPEND"], [running_vardb])
+		_eval_deps(deps["DEPEND"], [target_vardb])
+	elif eapi_attrs.hdepend:
 		_eval_deps(deps["HDEPEND"], [running_vardb])
 		_eval_deps(deps["DEPEND"], [target_vardb])
 	else:

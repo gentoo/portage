@@ -176,8 +176,8 @@ class vardbapi(dbapi):
 			vartree = portage.db[settings['EROOT']]['vartree']
 		self.vartree = vartree
 		self._aux_cache_keys = set(
-			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
-			"EAPI", "HDEPEND", "HOMEPAGE",
+			["BDEPEND", "BUILD_TIME", "CHOST", "COUNTER", "DEPEND",
+			"DESCRIPTION", "EAPI", "HDEPEND", "HOMEPAGE",
 			"BUILD_ID", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
