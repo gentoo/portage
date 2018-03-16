@@ -662,23 +662,19 @@ __dyn_install() {
 	local f x
 	IFS=$' \t\n\r'
 	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE \
-		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
+		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION \
+		ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
+		CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
+		QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE ; do
+
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
 	done
-	if [[ $CATEGORY != virtual ]] ; then
-		for f in ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
-			CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-			LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
-			QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE ; do
-			x=$(echo -n ${!f})
-			[[ -n $x ]] && echo "$x" > $f
-		done
-		# whitespace preserved
-		for f in QA_AM_MAINTAINER_MODE ; do
-			[[ -n ${!f} ]] && echo "${!f}" > $f
-		done
-	fi
+	# whitespace preserved
+	for f in QA_AM_MAINTAINER_MODE ; do
+		[[ -n ${!f} ]] && echo "${!f}" > $f
+	done
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
 

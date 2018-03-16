@@ -1930,13 +1930,10 @@ def _post_src_install_write_metadata(settings):
 		if v is not None:
 			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
-	# The following variables are irrelevant for virtual packages.
-	if settings.get('CATEGORY') != 'virtual':
-
-		for k in ('CHOST',):
-			v = settings.get(k)
-			if v is not None:
-				write_atomic(os.path.join(build_info_dir, k), v + '\n')
+	for k in ('CHOST',):
+		v = settings.get(k)
+		if v is not None:
+			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
 	with io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
