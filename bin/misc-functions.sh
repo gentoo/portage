@@ -383,12 +383,13 @@ preinst_mask() {
 		fi
 	done
 
-	install_mask "${ED}" "${INSTALL_MASK}"
-
-	# remove share dir if unnessesary
-	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${ED%/}/usr/share" &> /dev/null
-	fi
+	# Store the final value of INSTALL_MASK in build-info
+	local x
+	set -f
+	local IFS=$' \t\n\r'
+	x=$(echo ${INSTALL_MASK})
+	echo "$x" > "${PORTAGE_BUILDDIR}"/build-info/INSTALL_MASK
+	set +f
 }
 
 preinst_sfperms() {
