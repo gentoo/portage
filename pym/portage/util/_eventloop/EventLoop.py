@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -9,7 +9,6 @@ import os
 import select
 import signal
 import sys
-import time
 
 try:
 	import fcntl
@@ -29,6 +28,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import OrderedDict
 from portage.util import writemsg_level
+from portage.util.monotonic import monotonic
 from ..SlotObject import SlotObject
 from .PollConstants import PollConstants
 from .PollSelectAdapter import PollSelectAdapter
@@ -515,7 +515,7 @@ class EventLoop(object):
 			self._timeout_handlers[source_id] = \
 				self._timeout_handler_class(
 					interval=interval, function=function, args=args,
-					source_id=source_id, timestamp=time.time())
+					source_id=source_id, timestamp=self.time())
 			if self._timeout_interval is None or \
 				self._timeout_interval > interval:
 				self._timeout_interval = interval
@@ -538,7 +538,7 @@ class EventLoop(object):
 				return bool(calls)
 
 			ready_timeouts = []
-			current_time = time.time()
+			current_time = self.time()
 			for x in self._timeout_handlers.values():
 				elapsed_seconds = current_time - x.timestamp
 				# elapsed_seconds < 0 means the system clock has been adjusted
@@ -558,7 +558,7 @@ class EventLoop(object):
 				calls += 1
 				x.calling = True
 				try:
-					x.timestamp = time.time()
+					x.timestamp = self.time()
 					if not x.function(*x.args):
 						self.source_remove(x.source_id)
 				finally:
@@ -683,6 +683,15 @@ class EventLoop(object):
 
 	# The call_soon method inherits thread safety from the idle_add method.
 	call_soon_threadsafe = call_soon
+
+	def time(self):
+		"""Return the time according to the event loop's clock.
+
+		This is a float expressed in seconds since an epoch, but the
+		epoch, precision, accuracy and drift are unspecified and may
+		differ per event loop.
+		"""
+		return monotonic()
 
 	def call_later(self, delay, callback, *args):
 		"""
