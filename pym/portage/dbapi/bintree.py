@@ -85,7 +85,7 @@ class bindbapi(fakedbapi):
 		self.move_ent = mybintree.move_ent
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
+			["BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
 			"DEPEND", "EAPI", "HDEPEND", "IUSE", "KEYWORDS",
 			"LICENSE", "MD5", "PDEPEND", "PROPERTIES",
 			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
@@ -312,7 +312,7 @@ class binarytree(object):
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["BASE_URI", "BUILD_ID", "BUILD_TIME", "CHOST",
+				["BASE_URI", "BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST",
 				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
 				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
 				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
@@ -320,7 +320,7 @@ class binarytree(object):
 				"SIZE", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
-				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
+				("BDEPEND", "DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
 				"PDEPEND", "PROPERTIES", "RESTRICT")
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
@@ -330,6 +330,7 @@ class binarytree(object):
 				"USE_EXPAND", "USE_EXPAND_HIDDEN", "USE_EXPAND_IMPLICIT",
 				"USE_EXPAND_UNPREFIXED"])
 			self._pkgindex_default_pkg_data = {
+				"BDEPEND" : "",
 				"BUILD_ID"           : "",
 				"BUILD_TIME"         : "",
 				"DEFINED_PHASES"     : "",

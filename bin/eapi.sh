@@ -34,6 +34,10 @@ ___eapi_has_HDEPEND() {
 	[[ ${1-${EAPI-0}} =~ ^(5-hdepend)$ ]]
 }
 
+___eapi_has_BDEPEND() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_RDEPEND_DEPEND_fallback() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
 }
