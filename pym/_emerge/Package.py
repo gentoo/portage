@@ -42,6 +42,7 @@ class Package(Task):
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
+		"BDEPEND",
 		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
 		"DEPEND", "EAPI", "HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "MD5", "PDEPEND", "PROVIDES",
@@ -49,8 +50,8 @@ class Package(Task):
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
 		"SLOT", "USE", "_mtime_"]
 
-	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
-	_buildtime_keys = ('DEPEND', 'HDEPEND')
+	_dep_keys = ('BDEPEND', 'DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('BDEPEND', 'DEPEND', 'HDEPEND')
 	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo

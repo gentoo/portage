@@ -264,6 +264,7 @@ inherit() {
 	local B_RDEPEND
 	local B_PDEPEND
 	local B_HDEPEND
+	local B_BDEPEND
 	while [ "$1" ]; do
 		location=""
 		potential_location=""
@@ -307,14 +308,17 @@ inherit() {
 			set -f
 
 			# Retain the old data and restore it later.
-			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND B_HDEPEND
+			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
+			unset B_HDEPEND B_BDEPEND
 			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
 			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 			[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
+			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
+			unset BDEPEND
 			#turn on glob expansion
 			set +f
 		fi
@@ -333,6 +337,7 @@ inherit() {
 			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
 			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 			[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
+			[ "${BDEPEND+set}"      = set ] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
 
 			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 			[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -351,6 +356,9 @@ inherit() {
 
 			[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
 			[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
+
+			[ "${B_BDEPEND+set}"  = set ] && BDEPEND="${B_BDEPEND}"
+			[ "${B_BDEPEND+set}"  = set ] || unset BDEPEND
 
 			#turn on glob expansion
 			set +f
@@ -618,9 +626,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND HDEPEND INHERITED IUSE REQUIRED_USE \
-			ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND \
-			E_HDEPEND PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset EAPI DEPEND RDEPEND PDEPEND HDEPEND BDEPEND
+		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
+		unset E_DEPEND E_RDEPEND E_PDEPEND E_HDEPEND E_BDEPEND
+		unset PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -656,10 +665,11 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
 		HDEPEND+="${HDEPEND:+ }${E_HDEPEND}"
+		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 		
-		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND E_HDEPEND \
-			__INHERITED_QA_CACHE
+		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
+		unset E_HDEPEND E_BDEPEND __INHERITED_QA_CACHE
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case ${EAPI} in
@@ -728,12 +738,15 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	fi
 
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
-		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND UNUSED_05 EAPI
-		PROPERTIES DEFINED_PHASES HDEPEND UNUSED_04
+		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
+		EAPI PROPERTIES DEFINED_PHASES HDEPEND UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
 	if ! ___eapi_has_HDEPEND; then
 		unset HDEPEND
+	fi
+	if ! ___eapi_has_BDEPEND; then
+		unset BDEPEND
 	fi
 
 	# The extra $(echo) commands remove newlines.
