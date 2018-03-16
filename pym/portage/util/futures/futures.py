@@ -11,6 +11,7 @@ __all__ = (
 	'CancelledError',
 	'Future',
 	'InvalidStateError',
+	'TimeoutError',
 )
 
 try:
@@ -18,6 +19,7 @@ try:
 		CancelledError,
 		Future,
 		InvalidStateError,
+		TimeoutError,
 	)
 except ImportError:
 
@@ -29,6 +31,10 @@ except ImportError:
 	class CancelledError(Error):
 		def __init__(self):
 			Error.__init__(self, "cancelled")
+
+	class TimeoutError(Error):
+		def __init__(self):
+			Error.__init__(self, "timed out")
 
 	class InvalidStateError(Error):
 		pass
