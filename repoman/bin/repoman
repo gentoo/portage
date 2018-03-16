@@ -44,7 +44,7 @@ try:
 	repoman_main(sys.argv[1:])
 except IOError as e:
 	if e.errno == errno.EACCES:
-		print("\nRepoman: Need user access")
+		print("\nRepoman: You don't have access permition to do this operation")
 		sys.exit(1)
 	else:
 		raise
