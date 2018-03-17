@@ -44,6 +44,8 @@ class GitSync(NewBase):
 		'''Do the initial clone of the repository'''
 		if kwargs:
 			self._kwargs(kwargs)
+		if not self.has_bin:
+			return (1, False)
 		try:
 			if not os.path.exists(self.repo.location):
 				os.makedirs(self.repo.location)
@@ -104,7 +106,8 @@ class GitSync(NewBase):
 		that he/she wants updated. We'll let the user manage branches with
 		git directly.
 		'''
-
+		if not self.has_bin:
+			return (1, False)
 		git_cmd_opts = ""
 		if self.repo.module_specific_options.get('sync-git-env'):
 			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-env'])
@@ -218,6 +221,9 @@ class GitSync(NewBase):
 		'''Get information about the head commit'''
 		if kwargs:
 			self._kwargs(kwargs)
+		if self.bin_command is None:
+			# return quietly so that we don't pollute emerge --info output
+			return (1, False)
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
 		try:
 			ret = (os.EX_OK,
