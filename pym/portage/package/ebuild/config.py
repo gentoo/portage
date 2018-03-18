@@ -2729,6 +2729,14 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
+		if eapi_attrs.sysroot and _phase_func_map.get(phase, '').startswith('src_'):
+			# TODO: implement Portage-wide support for custom SYSROOT
+			mydict["SYSROOT"] = (
+					self.get('SYSROOT', '').rstrip(os.path.sep) + os.path.sep)
+			mydict["ESYSROOT"] = (
+					mydict["SYSROOT"].rstrip(os.path.sep) + self.get("EPREFIX", "")
+					+ os.path.sep)
+
 		# Prefix variables are supported beginning with EAPI 3, or when
 		# force-prefix is in FEATURES, since older EAPIs would otherwise be
 		# useless with prefix configurations. This brings compatibility with
@@ -2740,6 +2748,7 @@ class config(object):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
+			mydict.pop("ESYSROOT", None)
 
 		if phase not in ("pretend", "setup", "preinst", "postinst") or \
 			not eapi_exports_replace_vars(eapi):
@@ -2776,7 +2785,7 @@ class config(object):
 			mydict.pop("ECLASSDIR", None)
 
 		if not eapi_attrs.path_variables_end_with_trailing_slash:
-			for v in ("D", "ED", "ROOT", "EROOT"):
+			for v in ("D", "ED", "ROOT", "EROOT", "SYSROOT", "ESYSROOT"):
 				if v in mydict:
 					mydict[v] = mydict[v].rstrip(os.path.sep)
 
