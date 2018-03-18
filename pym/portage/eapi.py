@@ -119,12 +119,16 @@ def eapi_path_variables_end_with_trailing_slash(eapi):
 	return eapi in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
 			"5", "5-progress", "6")
 
+def eapi_has_broot(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "6")
+
 def eapi_has_sysroot(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
 			"5", "5-progress", "6")
 
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
-	'bdepend dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
+	'bdepend broot dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
 	'exports_PORTDIR exports_ECLASSDIR '
 	'feature_flag_test feature_flag_targetroot '
 	'hdepend iuse_defaults iuse_effective posixish_locale '
@@ -153,6 +157,7 @@ def _get_eapi_attrs(eapi):
 
 	eapi_attrs = _eapi_attrs(
 		bdepend = (eapi is not None and eapi_has_bdepend(eapi)),
+		broot = (eapi is None or eapi_has_broot(eapi)),
 		dots_in_PN = (eapi is None or eapi_allows_dots_in_PN(eapi)),
 		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
 		empty_groups_always_true = (eapi is not None and eapi_empty_groups_always_true(eapi)),

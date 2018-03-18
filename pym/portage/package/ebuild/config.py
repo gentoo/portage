@@ -2736,6 +2736,8 @@ class config(object):
 			mydict["ESYSROOT"] = (
 					mydict["SYSROOT"].rstrip(os.path.sep) + self.get("EPREFIX", "")
 					+ os.path.sep)
+		if eapi_attrs.broot and _phase_func_map.get(phase, '').startswith('src_'):
+			mydict["BROOT"] = self.get("EPREFIX", "") + os.path.sep
 
 		# Prefix variables are supported beginning with EAPI 3, or when
 		# force-prefix is in FEATURES, since older EAPIs would otherwise be
@@ -2785,7 +2787,8 @@ class config(object):
 			mydict.pop("ECLASSDIR", None)
 
 		if not eapi_attrs.path_variables_end_with_trailing_slash:
-			for v in ("D", "ED", "ROOT", "EROOT", "SYSROOT", "ESYSROOT"):
+			for v in ("D", "ED", "ROOT", "EROOT", "SYSROOT", "ESYSROOT",
+					"BROOT"):
 				if v in mydict:
 					mydict[v] = mydict[v].rstrip(os.path.sep)
 
