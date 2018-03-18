@@ -74,9 +74,13 @@ def fetch_metadata_xsd(metadata_xsd, repoman_settings):
 				return False
 
 		destdir = repoman_settings["DISTDIR"]
-		fd, metadata_xsd_tmp = tempfile.mkstemp(
-			prefix='metadata.xsd.', dir=destdir)
-		os.close(fd)
+		try:
+			fd, metadata_xsd_tmp = tempfile.mkstemp(
+				prefix='metadata.xsd.', dir=destdir)
+			os.close(fd)
+		except OSError:
+			print('Could not write file to %s' % destdir)
+			raise
 
 		try:
 			if not portage.getbinpkg.file_get(
