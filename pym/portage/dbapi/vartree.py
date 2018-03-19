@@ -1876,6 +1876,7 @@ class dblink(object):
 			for pos, e in errors:
 				writemsg(_("!!!   line %d: %s\n") % (pos, e), noiselevel=-1)
 		self.contentscache = pkgfiles
+
 		return pkgfiles
 
 	def _prune_plib_registry(self, unmerge=False,
@@ -1953,7 +1954,7 @@ class dblink(object):
 	@_slot_locked
 	def unmerge(self, pkgfiles=None, trimworld=None, cleanup=True,
 		ldpath_mtimes=None, others_in_slot=None, needed=None,
-		preserve_paths=None):
+		preserve_paths=None, install_mask=[]):
 		"""
 		Calls prerm
 		Unmerges a given package (CPV)
@@ -1978,6 +1979,10 @@ class dblink(object):
 			LinkageMap, since they are not registered in the
 			PreservedLibsRegistry yet.
 		@type preserve_paths: set
+		@param install_mask: List of INSTALL_MASK values for the install
+			enforcing cleanup. This is needed to let unmerge() clean old
+			files that now are filtered via INSTALL_MASK.
+		@type install_mask: list
 		@rtype: Integer
 		@return:
 		1. os.EX_OK if everything went well.
@@ -2121,7 +2126,7 @@ class dblink(object):
 
 			self.vartree.dbapi._fs_lock()
 			try:
-				self._unmerge_pkgfiles(pkgfiles, others_in_slot)
+				self._unmerge_pkgfiles(pkgfiles, others_in_slot, install_mask)
 			finally:
 				self.vartree.dbapi._fs_unlock()
 			self._clear_contents_cache()
@@ -2267,7 +2272,7 @@ class dblink(object):
 		self._display_merge("%s %s %s %s\n" % \
 			(zing, desc.ljust(8), file_type, file_name))
 
-	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
+	def _unmerge_pkgfiles(self, pkgfiles, others_in_slot, new_install_mask):
 		"""
 
 		Unmerges the contents of a package from the liveFS
@@ -2277,6 +2282,9 @@ class dblink(object):
 		@type pkgfiles: Dictionary { filename: [ 'type', '?', 'md5sum' ] }
 		@param others_in_slot: all dblink instances in this slot, excluding self
 		@type others_in_slot: list
+		@param new_install_mask: List of values in INSTALL_MASK for replacing
+			package.
+		@type new_install_mask: list
 		@rtype: None
 		"""
 
@@ -2290,6 +2298,18 @@ class dblink(object):
 		if not pkgfiles:
 			showMessage(_("No package files given... Grabbing a set.\n"))
 			pkgfiles = self.getcontents()
+
+		try:
+			with io.open(_unicode_encode(
+						os.path.join(self.dbdir, "INSTALL_MASK"),
+						encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace') as f:
+				old_install_mask = f.read().split()
+		except EnvironmentError:
+			# package merged prior to emerge writing INSTALL_MASK
+			# or by another package manager
+			old_install_mask = []
 
 		if others_in_slot is None:
 			others_in_slot = []
@@ -2365,6 +2385,7 @@ class dblink(object):
 
 			unmerge_desc = {}
 			unmerge_desc["cfgpro"] = _("cfgpro")
+			unmerge_desc["masked"] = _("masked")
 			unmerge_desc["replaced"] = _("replaced")
 			unmerge_desc["!dir"] = _("!dir")
 			unmerge_desc["!empty"] = _("!empty")
@@ -2491,7 +2512,16 @@ class dblink(object):
 								(statobj.st_dev, statobj.st_ino),
 								[]).append(relative_path)
 
-					if is_owned:
+					# unmerge the file unless:
+					# a. it was INSTALL_MASK-ed previously, so it should
+					#    not have been installed in the first place, or
+					if self._is_install_masked(relative_path[1:], old_install_mask):
+						show_unmerge("---", unmerge_desc["masked"], file_type, obj)
+						continue
+					# b. it was replaced by a new version (i.e. is owned
+					#    and not covered by new INSTALL_MASK).
+					if is_owned and not self._is_install_masked(
+							relative_path[1:], new_install_mask):
 						show_unmerge("---", unmerge_desc["replaced"], file_type, obj)
 						continue
 					elif relative_path in cfgfiledict:
@@ -3390,7 +3420,7 @@ class dblink(object):
 		self.vartree.dbapi._plib_registry.pruneNonExisting()
 
 	def _collision_protect(self, srcroot, destroot, mypkglist,
-		file_list, symlink_list):
+		file_list, symlink_list, install_mask):
 
 			os = _os_merge
 
@@ -3522,6 +3552,8 @@ class dblink(object):
 						if fnmatch.fnmatch(f_match, pattern):
 							stopmerge = False
 							break
+					if self._is_install_masked(relative_path, install_mask):
+						stopmerge = False
 					if stopmerge:
 						collisions.append(f)
 			return collisions, dirs_ro, symlink_collisions, plib_collisions
@@ -3689,6 +3721,26 @@ class dblink(object):
 	def _emerge_log(self, msg):
 		emergelog(False, msg)
 
+	def _is_install_masked(self, relative_path, install_mask):
+		ret = False
+		for pattern in install_mask:
+			# if pattern starts with -, possibly exclude this path
+			is_inclusive = not pattern.startswith('-')
+			if not is_inclusive:
+				pattern = pattern[1:]
+			# absolute path pattern
+			if pattern.startswith('/'):
+				# match either exact path or one of parent dirs
+				# the latter is done via matching pattern/*
+				if (fnmatch.fnmatch(relative_path, pattern[1:])
+						or fnmatch.fnmatch(relative_path, pattern[1:] + '/*')):
+					ret = is_inclusive
+			# filename
+			else:
+				if fnmatch.fnmatch(os.path.basename(relative_path), pattern):
+					ret = is_inclusive
+		return ret
+
 	def treewalk(self, srcroot, destroot, inforoot, myebuild, cleanup=0,
 		mydbapi=None, prev_mtimes=None, counter=None):
 		"""
@@ -3841,7 +3893,7 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		# Apply INSTALL_MASK before collision-protect, since it may
+		# Update INSTALL_MASK before collision-protect, since it may
 		# be useful to avoid collisions in some scenarios.
 		# We cannot detect if this is needed or not here as INSTALL_MASK can be
 		# modified by bashrc files.
@@ -3850,6 +3902,13 @@ class dblink(object):
 			scheduler=self._scheduler, settings=self.settings)
 		phase.start()
 		phase.wait()
+
+		with io.open(_unicode_encode(
+					os.path.join(inforoot, "INSTALL_MASK"),
+					encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace') as f:
+			install_mask = f.read().split()
 
 		# We check for unicode encoding issues after src_install. However,
 		# the check must be repeated here for binary packages (it's
@@ -3921,6 +3980,10 @@ class dblink(object):
 						fpath = os.path.join(parent, fname)
 
 					relative_path = fpath[srcroot_len:]
+
+					# filter on INSTALL_MASK
+					if self._is_install_masked(relative_path, install_mask):
+						continue
 
 					if line_ending_re.search(relative_path) is not None:
 						paths_with_newlines.append(relative_path)
@@ -4021,7 +4084,7 @@ class dblink(object):
 
 		collisions, dirs_ro, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
-			others_in_slot + blockers, filelist, linklist)
+			others_in_slot + blockers, filelist, linklist, install_mask)
 
 		# Check for read-only filesystems.
 		ro_checker = get_ro_checker()
@@ -4270,7 +4333,8 @@ class dblink(object):
 			else:
 				cfgfiledict["IGNORE"]=0
 
-			rval = self._merge_contents(srcroot, destroot, cfgfiledict)
+			rval = self._merge_contents(srcroot, destroot, cfgfiledict,
+					install_mask)
 			if rval != os.EX_OK:
 				return rval
 		finally:
@@ -4351,7 +4415,7 @@ class dblink(object):
 			dblnk.settings.backup_changes("REPLACED_BY_VERSION")
 			unmerge_rval = dblnk.unmerge(ldpath_mtimes=prev_mtimes,
 				others_in_slot=others_in_slot, needed=needed,
-				preserve_paths=preserve_paths)
+				preserve_paths=preserve_paths, install_mask=install_mask)
 			dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
 			if unmerge_rval == os.EX_OK:
@@ -4523,7 +4587,7 @@ class dblink(object):
 
 		return backup_p
 
-	def _merge_contents(self, srcroot, destroot, cfgfiledict):
+	def _merge_contents(self, srcroot, destroot, cfgfiledict, install_mask):
 
 		cfgfiledict_orig = cfgfiledict.copy()
 
@@ -4550,7 +4614,8 @@ class dblink(object):
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
 		if self.mergeme(srcroot, destroot, outfile, secondhand,
-			self.settings["EPREFIX"].lstrip(os.sep), cfgfiledict, mymtime):
+				self.settings["EPREFIX"].lstrip(os.sep), cfgfiledict,
+				mymtime, install_mask):
 			return 1
 
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
@@ -4562,7 +4627,7 @@ class dblink(object):
 
 			thirdhand = []
 			if self.mergeme(srcroot, destroot, outfile, thirdhand,
-				secondhand, cfgfiledict, mymtime):
+					secondhand, cfgfiledict, mymtime, install_mask):
 				return 1
 
 			#swap hands
@@ -4576,7 +4641,7 @@ class dblink(object):
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
 			if self.mergeme(srcroot, destroot, outfile, None,
-				secondhand, cfgfiledict, mymtime):
+					secondhand, cfgfiledict, mymtime, install_mask):
 				return 1
 
 		#restore umask
@@ -4597,7 +4662,8 @@ class dblink(object):
 
 		return os.EX_OK
 
-	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
+	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge,
+			cfgfiledict, thismtime, install_mask):
 		"""
 
 		This function handles actual merging of the package contents to the livefs.
@@ -4651,6 +4717,7 @@ class dblink(object):
 		while mergelist:
 
 			relative_path = mergelist.pop()
+			instmasked = self._is_install_masked(relative_path, install_mask)
 			mysrc = join(srcroot, relative_path)
 			mydest = join(destroot, relative_path)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
@@ -4737,7 +4804,7 @@ class dblink(object):
 				destmd5 = None
 
 			moveme = True
-			if protected:
+			if protected and not instmasked:
 				mydest, protected, moveme = self._protect(cfgfiledict,
 					protect_if_modified, mymd5, myto, mydest,
 					myrealdest, mydmode, destmd5, mydest_link)
@@ -4765,7 +4832,7 @@ class dblink(object):
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto = normalize_path(os.path.join(destroot, myabsto))
 				if mydmode is not None and stat.S_ISDIR(mydmode):
-					if not protected:
+					if not protected and not instmasked:
 						# we can't merge a symlink over a directory
 						newdest = self._new_backup_path(mydest)
 						msg = []
@@ -4785,26 +4852,32 @@ class dblink(object):
 					# it later.
 					secondhand.append(mysrc[len(srcroot):])
 					continue
-				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				if moveme:
-					zing = ">>>"
-					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
-						sstat=mystat, mysettings=self.settings,
-						encoding=_encodings['merge'])
 
-				try:
-					self._merged_path(mydest, os.lstat(mydest))
-				except OSError:
-					pass
+				if instmasked:
+					zing = "###"
+					# pass mymtime through from initial stat
+				else:
+					# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
+					if moveme:
+						zing = ">>>"
+						mymtime = movefile(mysrc, mydest, newmtime=thismtime,
+							sstat=mystat, mysettings=self.settings,
+							encoding=_encodings['merge'])
+
+					try:
+						self._merged_path(mydest, os.lstat(mydest))
+					except OSError:
+						pass
 
 				if mymtime != None:
-					# Use lexists, since if the target happens to be a broken
-					# symlink then that should trigger an independent warning.
-					if not (os.path.lexists(myrealto) or
-						os.path.lexists(join(srcroot, myabsto))):
-						self._eqawarn('preinst',
-							[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
-							% (relative_path, myabsto)])
+					if not instmasked:
+						# Use lexists, since if the target happens to be a broken
+						# symlink then that should trigger an independent warning.
+						if not (os.path.lexists(myrealto) or
+							os.path.lexists(join(srcroot, myabsto))):
+							self._eqawarn('preinst',
+								[_("QA Notice: Symbolic link /%s points to /%s which does not exist.")
+								% (relative_path, myabsto)])
 
 					showMessage("%s %s -> %s\n" % (zing, mydest, myto))
 					if sys.hexversion >= 0x3030000:
@@ -4819,7 +4892,9 @@ class dblink(object):
 					return 1
 			elif stat.S_ISDIR(mymode):
 				# we are merging a directory
-				if mydmode != None:
+				if instmasked:
+					showMessage("### %s/\n" % mydest)
+				elif mydmode != None:
 					# destination exists
 
 					if bsd_chflags:
@@ -4906,10 +4981,11 @@ class dblink(object):
 					os.chown(mydest, mystat[4], mystat[5])
 					showMessage(">>> %s/\n" % mydest)
 
-				try:
-					self._merged_path(mydest, os.lstat(mydest))
-				except OSError:
-					pass
+				if not instmasked:
+					try:
+						self._merged_path(mydest, os.lstat(mydest))
+					except OSError:
+						pass
 
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
@@ -4918,7 +4994,7 @@ class dblink(object):
 
 			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
-				if not protected and \
+				if not protected and not instmasked and \
 					mydmode is not None and stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						newdest = self._new_backup_path(mydest)
@@ -4932,9 +5008,11 @@ class dblink(object):
 						self._eerror("preinst", msg)
 						mydest = newdest
 
+				if instmasked:
+					zing = "###"
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
-				if moveme:
+				elif moveme:
 					# Create hardlinks only for source files that already exist
 					# as hardlinks (having identical st_dev and st_ino).
 					hardlink_key = (mystat.st_dev, mystat.st_ino)
@@ -4967,7 +5045,9 @@ class dblink(object):
 			else:
 				# we are merging a fifo or device node
 				zing = "!!!"
-				if mydmode is None:
+				if instmasked:
+					zing = "###"
+				elif mydmode is None:
 					# destination doesn't exist
 					if movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
