@@ -1542,7 +1542,7 @@ class depgraph(object):
 			while True:
 				try:
 					node = unexplored.pop()
-				except IndexError:
+				except KeyError:
 					break
 				for child in conflict_graph.child_nodes(node):
 					# Don't explore a node more than once, in order
