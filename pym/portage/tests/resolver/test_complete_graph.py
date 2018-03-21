@@ -1,4 +1,4 @@
-# Copyright 2011-2012 Gentoo Foundation
+# Copyright 2011-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -59,6 +59,12 @@ class CompleteGraphTestCase(TestCase):
 				success = True,
 			),
 
+			ResolverPlaygroundTestCase(
+				["dev-libs/libxml2"],
+				options = {"--ignore-world" : True},
+				mergelist = ["dev-libs/libxml2-2.8.0"],
+				success = True,
+			),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
@@ -99,6 +105,12 @@ class CompleteGraphTestCase(TestCase):
 			),
 			ResolverPlaygroundTestCase(
 				[">=sys-libs/x-2"],
+				options = {"--ignore-world" : True},
+				mergelist = ["sys-libs/x-2"],
+				success = True,
+			),
+			ResolverPlaygroundTestCase(
+				[">=sys-libs/x-2"],
 				options = {"--complete-graph-if-new-ver" : "y"},
 				mergelist = ["sys-libs/x-2"],
 				slot_collision_solutions = [],
@@ -107,6 +119,12 @@ class CompleteGraphTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["<sys-libs/x-1"],
 				options = {"--complete-graph-if-new-ver" : "n", "--rebuild-if-new-slot": "n"},
+				mergelist = ["sys-libs/x-0.1"],
+				success = True,
+			),
+			ResolverPlaygroundTestCase(
+				["<sys-libs/x-1"],
+				options = {"--ignore-world" : True},
 				mergelist = ["sys-libs/x-0.1"],
 				success = True,
 			),

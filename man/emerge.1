@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jul 2016" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2018" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -629,6 +629,23 @@ to determine whether an unresolved soname dependency can be satisfied.
 Therefore, \fB\-\-usepkgonly\fR (or \fB\-\-getbinpkgonly\fR) must be
 used in order to enable soname depedency resolution when installing
 packages.
+.TP
+.BR "\-\-ignore\-world [ y | n ]"
+Ignore the @world package set and its dependencies. This may be useful
+if there is a desire to perform an action even though it might break
+the dependencies of some installed packages (it might also remove
+installed packages in order to solve blockers). This also alters the
+behavior of \fB\-\-complete\-graph\fR options so that only deep
+dependencies of packages given as arguments are included in the
+dependency graph. This option may be useful as an alternative to
+\fB\-\-nodeps\fR in cases where it is desirable to account for
+dependencies of packages given as arguments.
+
+\fBWARNING:\fR
+This option is intended to be used only with great caution, since it is
+possible for it to make nonsensical changes which may lead to system
+breakage. Therefore, it is advisable to use \fB\-\-ask\fR together with
+this option.
 .TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is

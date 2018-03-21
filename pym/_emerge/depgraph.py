@@ -163,7 +163,10 @@ class _frozen_depgraph_config(object):
 				self.trees[myroot]["bintree"] = DummyTree(
 					DbapiProvidesIndex(trees[myroot]["bintree"].dbapi))
 
-		self._required_set_names = set(["world"])
+		if params.get("ignore_world", False):
+			self._required_set_names = set()
+		else:
+			self._required_set_names = set(["world"])
 
 		atoms = ' '.join(myopts.get("--exclude", [])).split()
 		self.excluded_pkgs = _wildcard_set(atoms)
@@ -7554,6 +7557,7 @@ class depgraph(object):
 		ignored_uninstall_tasks = set()
 		have_uninstall_task = False
 		complete = "complete" in self._dynamic_config.myparams
+		ignore_world = self._dynamic_config.myparams.get("ignore_world", False)
 		asap_nodes = []
 
 		def get_nodes(**kwargs):
@@ -7971,7 +7975,7 @@ class depgraph(object):
 					# detected as early as possible, which makes it possible
 					# to avoid calling self._complete_graph() when it is
 					# unnecessary due to blockers triggering an abortion.
-					if not complete:
+					if not (complete or ignore_world):
 						# For packages in the world set, go ahead an uninstall
 						# when necessary, as long as the atom will be satisfied
 						# in the final state.

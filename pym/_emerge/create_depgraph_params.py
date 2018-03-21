@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -26,6 +26,7 @@ def create_depgraph_params(myopts, myaction):
 	# ignore_soname_deps: ignore the soname dependencies of built
 	#   packages, so that they do not trigger dependency resolution
 	#   failures, or cause packages to be rebuilt or replaced.
+	# ignore_world: ignore the @world package set and its dependencies
 	# with_test_deps: pull in test deps for packages matched by arguments
 	# changed_deps: rebuild installed packages with outdated deps
 	# changed_deps_report: report installed packages with outdated deps
@@ -55,6 +56,9 @@ def create_depgraph_params(myopts, myaction):
 		myparams["complete"] = True
 		myparams["selective"] = True
 		return myparams
+
+	if myopts.get('--ignore-world') is True:
+		myparams['ignore_world'] = True
 
 	rebuild_if_new_slot = myopts.get('--rebuild-if-new-slot')
 	if rebuild_if_new_slot is not None:

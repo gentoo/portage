@@ -1,4 +1,4 @@
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -146,6 +146,7 @@ def insert_optional_args(args):
 		'--fuzzy-search'         : y_or_n,
 		'--getbinpkg'            : y_or_n,
 		'--getbinpkgonly'        : y_or_n,
+		'--ignore-world'         : y_or_n,
 		'--jobs'       : valid_integers,
 		'--keep-going'           : y_or_n,
 		'--load-average'         : valid_floats,
@@ -501,6 +502,11 @@ def parse_opts(tmpcmdline, silent=False):
 				"exist for binary and installed packages built with "
 				"older versions of portage.",
 			"choices": y_or_n
+		},
+
+		"--ignore-world": {
+			"help"    : "ignore the @world package set and its dependencies",
+			"choices" : true_y_or_n
 		},
 
 		"--jobs": {
@@ -918,6 +924,9 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.getbinpkgonly = True
 	else:
 		myoptions.getbinpkgonly = None
+
+	if myoptions.ignore_world in true_y:
+		myoptions.ignore_world = True
 
 	if myoptions.keep_going in true_y:
 		myoptions.keep_going = True
