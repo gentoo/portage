@@ -1541,7 +1541,7 @@ class depgraph(object):
 		while unexplored:
 			while True:
 				try:
-				    node = unexplored.pop()
+					node = unexplored.pop()
 				except IndexError:
 					break
 				for child in conflict_graph.child_nodes(node):
