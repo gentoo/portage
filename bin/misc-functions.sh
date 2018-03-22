@@ -162,6 +162,31 @@ prepcompress() {
 	return 0
 }
 
+__prepall() {
+	if has chflags $FEATURES ; then
+		# Save all the file flags for restoration at the end of prepall.
+		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
+		# Remove all the file flags so that prepall can do anything necessary.
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
+		chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
+	fi
+
+	if ! ___eapi_has_docompress; then
+		while IFS= read -r -d '' mandir ; do
+			mandir=${mandir#${ED}}
+			prepman "${mandir%/man}"
+		done < <(find "${ED}" -type d -name man -print0)
+	fi
+	[[ -d ${ED%/}/usr/share/info ]] && prepinfo
+
+	___eapi_has_dostrip || prepallstrip
+
+	if has chflags $FEATURES ; then
+		# Restore all the file flags that were saved at the beginning of prepall.
+		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
+	fi
+}
+
 install_qa_check() {
 	local d f i qa_var x paths qa_checks=() checks_run=()
 	if ! ___eapi_has_prefix_variables; then
@@ -219,7 +244,7 @@ install_qa_check() {
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 
 	export STRIP_MASK
-	prepall
+	__prepall
 	___eapi_has_docompress && prepcompress
 	ecompressdir --dequeue
 	ecompress --dequeue
