@@ -16,7 +16,12 @@ if has chflags $FEATURES ; then
 	chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
 fi
 
-prepallman
+if ! ___eapi_has_docompress; then
+	while IFS= read -r -d '' mandir ; do
+		mandir=${mandir#${ED}}
+		prepman "${mandir%/man}"
+	done < <(find "${ED}" -type d -name man -print0)
+fi
 [[ -d ${ED%/}/usr/share/info ]] && prepinfo
 
 ___eapi_has_dostrip || prepallstrip
