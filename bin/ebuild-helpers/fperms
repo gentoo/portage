@@ -8,6 +8,21 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
+got_mode=
+for arg; do
+	# - can either be an option or a mode string
+	[[ ${arg} == -* && ${arg} != -[ugorwxXst] ]] && continue
+	if [[ ! ${got_mode} ]]; then
+		got_mode=1
+		continue
+	fi
+	if [[ ${arg} != /* ]]; then
+		eqawarn "Relative path passed to '${0##*/}': ${arg}"
+		eqawarn "This is unsupported. Please use 'chmod' when you need to work on files"
+		eqawarn "outside the installation image (\${ED})."
+	fi
+done
+
 # we can't prefix all arguments because
 # chmod takes random options
 slash="/"
