@@ -11,6 +11,8 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage.util._async.AsyncFunction import AsyncFunction
+from portage.util.install_mask import install_mask_dir, InstallMask
 
 
 class PackagePhase(CompositeTask):
@@ -31,7 +33,7 @@ class PackagePhase(CompositeTask):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace') as f:
-				self._pkg_install_mask = f.read()
+				self._pkg_install_mask = InstallMask(f.read())
 		except EnvironmentError:
 			self._pkg_install_mask = None
 		if self._pkg_install_mask:
@@ -48,6 +50,15 @@ class PackagePhase(CompositeTask):
 			self._start_package_phase()
 
 	def _copy_proot_exit(self, proc):
+		if self._default_exit(proc) != os.EX_OK:
+			self.wait()
+		else:
+			self._start_task(AsyncFunction(
+				target=install_mask_dir,
+				args=(self._proot, self._pkg_install_mask)),
+				self._pkg_install_mask_exit)
+
+	def _pkg_install_mask_exit(self, proc):
 		if self._default_exit(proc) != os.EX_OK:
 			self.wait()
 		else:

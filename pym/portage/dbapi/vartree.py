@@ -32,6 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'grabdict,normalize_path,new_protect_filename',
 	'portage.util.digraph:digraph',
 	'portage.util.env_update:env_update',
+	'portage.util.install_mask:install_mask_dir,InstallMask',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
 	'portage.util.path:first_existing,iter_parents',
@@ -3845,11 +3846,22 @@ class dblink(object):
 		# be useful to avoid collisions in some scenarios.
 		# We cannot detect if this is needed or not here as INSTALL_MASK can be
 		# modified by bashrc files.
-		phase = MiscFunctionsProcess(background=False,
-			commands=["preinst_mask"], phase="preinst",
-			scheduler=self._scheduler, settings=self.settings)
-		phase.start()
-		phase.wait()
+		try:
+			with io.open(_unicode_encode(os.path.join(inforoot, "INSTALL_MASK"),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace') as f:
+				install_mask = InstallMask(f.read())
+		except EnvironmentError:
+			install_mask = None
+
+		if install_mask:
+			install_mask_dir(self.settings["ED"], install_mask)
+			if any(x in self.settings.features for x in ('nodoc', 'noman', 'noinfo')):
+				try:
+					os.rmdir(os.path.join(self.settings["ED"], 'usr', 'share'))
+				except OSError:
+					pass
 
 		# We check for unicode encoding issues after src_install. However,
 		# the check must be repeated here for binary packages (it's

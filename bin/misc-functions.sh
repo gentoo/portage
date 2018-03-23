@@ -323,72 +323,6 @@ postinst_qa_check() {
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 }
 
-install_mask() {
-	local root="$1"
-	shift
-	local install_mask="$*"
-
-	# We think of $install_mask as a space-separated list of
-	# globs. We don't want globbing in the "for" loop; that is, we
-	# want to keep the asterisks in the indivual entries.
-	local shopts=$-
-	set -o noglob
-	local no_inst
-	for no_inst in ${install_mask}; do
-		# Here, $no_inst is a single "entry" potentially
-		# containing a glob. From now on, we *do* want to
-		# expand it.
-		set +o noglob
-
-		# The standard case where $no_inst is something that
-		# the shell could expand on its own.
-		if [[ -e "${root}"/${no_inst} || -L "${root}"/${no_inst} ||
-			"${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
-			__quiet_mode || einfo "Removing ${no_inst}"
-			rm -Rf "${root}"/${no_inst} >&/dev/null
-		fi
-
-		# We also want to allow the user to specify a "bare
-		# glob." For example, $no_inst="*.a" should prevent
-		# ALL files ending in ".a" from being installed,
-		# regardless of their location/depth. We achieve this
-		# by passing the pattern to `find`.
-		find "${root}" \( -path "${no_inst}" -or -name "${no_inst}" \) \
-			-print0 2> /dev/null \
-		| LC_ALL=C sort -z \
-		| while read -r -d ''; do
-			__quiet_mode || einfo "Removing /${REPLY#${root}}"
-			rm -Rf "${REPLY}" >&/dev/null
-		done
-
-	done
-	# set everything back the way we found it
-	set +o noglob
-	set -${shopts}
-}
-
-preinst_mask() {
-	if [ -z "${D}" ]; then
-		 eerror "${FUNCNAME}: D is unset"
-		 return 1
-	fi
-
-	if ! ___eapi_has_prefix_variables; then
-		local ED=${D}
-	fi
-
-	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
-	# in there in case any tools were built with -pg in CFLAGS.
-	cd "${T}"
-
-	install_mask "${ED}" "${INSTALL_MASK}"
-
-	# remove share dir if unnessesary
-	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${ED%/}/usr/share" &> /dev/null
-	fi
-}
-
 preinst_sfperms() {
 	if [ -z "${D}" ]; then
 		 eerror "${FUNCNAME}: D is unset"
@@ -511,13 +445,6 @@ __dyn_package() {
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}" || die
-
-	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
-		# The caller makes ${D} refer to a temporary copy in this
-		# case, so that this does not mask files from the normal
-		# install image.
-		install_mask "${D%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
-	fi
 
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
