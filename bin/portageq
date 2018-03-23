@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -61,6 +61,12 @@ def eval_atom_use(atom):
 		use = frozenset(os.environ['USE'].split())
 		atom = atom.evaluate_conditionals(use)
 	return atom
+
+
+def uses_configroot(function):
+	function.uses_configroot = True
+	return function
+
 
 def uses_eroot(function):
 	function.uses_eroot = True
@@ -696,6 +702,7 @@ docstrings['gentoo_mirrors'] = """
 gentoo_mirrors.__doc__ = docstrings['gentoo_mirrors']
 
 
+@uses_configroot
 @uses_eroot
 def repositories_configuration(argv):
 	if len(argv) < 1:
@@ -710,6 +717,7 @@ docstrings['repositories_configuration'] = """<eroot>
 repositories_configuration.__doc__ = docstrings['repositories_configuration']
 
 
+@uses_configroot
 @uses_eroot
 def repos_config(argv):
 	return repositories_configuration(argv)
@@ -1424,6 +1432,14 @@ def main(argv):
 			root = eroot
 
 		os.environ["ROOT"] = root
+
+		if getattr(function, "uses_configroot", False):
+			os.environ["PORTAGE_CONFIGROOT"] = eroot
+			# Disable RepoConfigLoader location validation, allowing raw
+			# configuration to pass through, since repo locations are not
+			# necessarily expected to exist if the configuration comes
+			# from a chroot.
+			portage._sync_mode = True
 
 	args = argv[2:]
 
