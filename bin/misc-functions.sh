@@ -381,14 +381,6 @@ preinst_mask() {
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}"
 
-	# remove man pages, info pages, docs if requested
-	local f
-	for f in man info doc; do
-		if has no${f} $FEATURES; then
-			INSTALL_MASK="${INSTALL_MASK} /usr/share/${f}"
-		fi
-	done
-
 	install_mask "${ED}" "${INSTALL_MASK}"
 
 	# remove share dir if unnessesary
