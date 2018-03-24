@@ -2,7 +2,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
@@ -98,8 +98,6 @@ if [[ -z ${debugedit} ]]; then
 fi
 [[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
-
-__multijob_init
 
 # Setup $T filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
@@ -256,8 +254,6 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}/##" > "${log}"
-	(
-	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
 	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
@@ -278,8 +274,6 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	else
 		rm -f "${log}"
 	fi
-	) &
-	__multijob_post_fork
 fi
 
 # Since strip creates a new inode, we need to know the initial set of
@@ -313,10 +307,8 @@ do
 		banner=true
 	fi
 
-	(
-	__multijob_child_init
-	f=$(file "${x}") || exit 0
-	[[ -z ${f} ]] && exit 0
+	f=$(file "${x}") || continue
+	[[ -z ${f} ]] && continue
 
 	if ! ${SKIP_STRIP} ; then
 		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
@@ -368,15 +360,9 @@ do
 	if ${was_not_writable} ; then
 		chmod u-w "${x}"
 	fi
-	) &
-	__multijob_post_fork
 
 done < "${inode_link}"
 done
-
-# With a bit more work, we could run the rsync processes below in
-# parallel, but not sure that'd be an overall improvement.
-__multijob_finish
 
 cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \
