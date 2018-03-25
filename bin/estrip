@@ -301,7 +301,7 @@ process_elf() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
+if ! ${RESTRICT_binchecks} ; then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
