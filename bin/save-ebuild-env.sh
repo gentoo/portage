@@ -60,7 +60,7 @@ __save_ebuild_env() {
 		unpack __strip_duplicate_slashes econf einstall \
 		__dyn_setup __dyn_unpack __dyn_clean \
 		into insinto exeinto docinto \
-		insopts diropts exeopts libopts docompress \
+		insopts diropts exeopts libopts docompress dostrip \
 		__abort_handler __abort_prepare __abort_configure __abort_compile \
 		__abort_test __abort_install __dyn_prepare __dyn_configure \
 		__dyn_compile __dyn_test __dyn_install \

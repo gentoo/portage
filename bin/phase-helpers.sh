@@ -163,6 +163,32 @@ docompress() {
 	fi
 }
 
+dostrip() {
+	___eapi_has_dostrip || die "'${FUNCNAME}' not supported in this EAPI"
+
+	local f g
+	if [[ $1 = "-x" ]]; then
+		shift
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP_SKIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP_SKIP+=( "${f}" )
+		done
+	else
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP+=( "${f}" )
+		done
+	fi
+}
+
 useq() {
 	has $EBUILD_PHASE prerm postrm || eqawarn \
 		"QA Notice: The 'useq' function is deprecated (replaced by 'use')"
