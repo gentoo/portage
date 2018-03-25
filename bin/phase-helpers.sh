@@ -20,6 +20,8 @@ export MOPREFIX=${PN}
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
+declare -a PORTAGE_DOSTRIP=( / )
+declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
 	if [ "$1" == "/" ]; then
