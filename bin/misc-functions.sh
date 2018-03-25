@@ -503,29 +503,20 @@ preinst_selinux_labels() {
 }
 
 __dyn_package() {
-	local PROOT
 
 	if ! ___eapi_has_prefix_variables; then
-		local EPREFIX= ED=${D}
+		local EPREFIX=
 	fi
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
-
 	cd "${T}" || die
 
 	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
-		PROOT=${T}/packaging/
-		# make a temporary copy of ${D} so that any modifications we do that
-		# are binpkg specific, do not influence the actual installed image.
-		rm -rf "${PROOT}" || die "failed removing stale package tree"
-		cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
-			"${D}" "${PROOT}" \
-			|| die "failed creating packaging tree"
-
-		install_mask "${PROOT%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
-	else
-		PROOT=${D}
+		# The caller makes ${D} refer to a temporary copy in this
+		# case, so that this does not mask files from the normal
+		# install image.
+		install_mask "${D%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
 	fi
 
 	local tar_options=""
@@ -539,7 +530,7 @@ __dyn_package() {
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	[ -z "${PORTAGE_COMPRESSION_COMMAND}" ] && \
         die "PORTAGE_COMPRESSION_COMMAND is unset"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
 		$PORTAGE_COMPRESSION_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
@@ -561,8 +552,6 @@ __dyn_package() {
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	__vecho ">>> Done."
 
-	# cleanup our temp tree
-	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"

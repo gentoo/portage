@@ -11,6 +11,7 @@ from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
 from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
+from _emerge.PackagePhase import PackagePhase
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 		_prepare_fake_distdir, _prepare_fake_filesdir)
 from portage.util import writemsg
@@ -169,6 +170,12 @@ class EbuildPhase(CompositeTask):
 		return logfile
 
 	def _start_ebuild(self):
+		if self.phase == "package":
+			self._start_task(PackagePhase(actionmap=self.actionmap,
+				background=self.background, fd_pipes=self.fd_pipes,
+				logfile=self._get_log_path(), scheduler=self.scheduler,
+				settings=self.settings), self._ebuild_exit)
+			return
 
 		if self.phase == "unpack":
 			alist = self.settings.configdict["pkg"].get("A", "").split()
