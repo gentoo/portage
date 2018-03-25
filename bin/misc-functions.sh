@@ -224,7 +224,8 @@ install_qa_check() {
 	ecompressdir --dequeue
 	ecompress --dequeue
 
-	"${PORTAGE_BIN_PATH}"/estrip "${ED}"
+	"${PORTAGE_BIN_PATH}"/estrip --queue /
+	"${PORTAGE_BIN_PATH}"/estrip --dequeue
 
 	# Create NEEDED.ELF.2 regardless of RESTRICT=binchecks, since this info is
 	# too useful not to have (it's required for things like preserve-libs), and

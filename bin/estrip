@@ -30,6 +30,59 @@ if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	${FEATURES_installsources} || exit 0
 fi
 
+while [[ $# -gt 0 ]] ; do
+	case $1 in
+	--ignore)
+		shift
+
+		skip_dirs=()
+		for skip; do
+			if [[ -d ${ED%/}/${skip#/} ]]; then
+				skip_dirs+=( "${ED%/}/${skip#/}" )
+			else
+				rm -f "${ED%/}/${skip#/}.estrip" || die
+			fi
+		done
+
+		if [[ ${skip_dirs[@]} ]]; then
+			find "${skip_dirs[@]}" -name '*.estrip' -delete || die
+		fi
+
+		exit 0
+		;;
+	--queue)
+		shift
+
+		find_paths=()
+		for path; do
+			if [[ -e ${ED%/}/${path#/} ]]; then
+				find_paths+=( "${ED%/}/${path#/}" )
+			fi
+		done
+
+		if [[ ${find_paths[@]} ]]; then
+			while IFS= read -r path; do
+				>> "${path}.estrip" || die
+			done < <(
+				scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}"
+				find "${find_paths[@]}" -type f ! -type l -name '*.a'
+			)
+		fi
+
+		exit 0
+		;;
+	--dequeue)
+		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		break
+		;;
+	*)
+		die "${0##*/}: unknown arguments '$*'"
+		exit 1
+		;;
+	esac
+	shift
+done
+
 PRESERVE_XATTR=false
 if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 	PRESERVE_XATTR=true
@@ -253,7 +306,7 @@ if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
-	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}/##" > "${log}"
+	scanelf -yqRBF '#k%F' -k '!.symtab' "${ED}" | sed -e "s#^${ED%/}/##" > "${log}"
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
 	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
@@ -286,16 +339,11 @@ else
 	get_inode_number() { stat -c '%i' "$1"; }
 fi
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
-while read -r x ; do
-	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
-	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(
-	# Use sort -u to eliminate duplicates for bug #445336.
-	(
-		scanelf -yqRBF '#k%F' -k '.symtab' "$@"
-		find "$@" -type f ! -type l -name '*.a'
-	) | LC_ALL=C sort -u
-)
+while IFS= read -d '' -r x ; do
+	rm -f "${x}" || die
+	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
+	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+done < <(find "${ED}" -name '*.estrip' -print0)
 
 # Now we look for unstripped binaries.
 for inode_link in $(shopt -s nullglob; echo *) ; do
