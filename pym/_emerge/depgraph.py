@@ -358,6 +358,13 @@ class _rebuild_config(object):
 		return need_restart
 
 
+class _use_changes(tuple):
+	def __new__(cls, new_use, new_changes, required_use_satisfied=True):
+		obj = tuple.__new__(cls, [new_use, new_changes])
+		obj.required_use_satisfied = required_use_satisfied
+		return obj
+
+
 class _dynamic_depgraph_config(object):
 
 	"""
@@ -6133,22 +6140,25 @@ class depgraph(object):
 
 		if new_changes != old_changes:
 			#Don't do the change if it violates REQUIRED_USE.
+			required_use_satisfied = True
 			required_use = pkg._metadata.get("REQUIRED_USE")
 			if required_use and check_required_use(required_use, old_use,
 				pkg.iuse.is_valid_flag, eapi=pkg.eapi) and \
 				not check_required_use(required_use, new_use,
 				pkg.iuse.is_valid_flag, eapi=pkg.eapi):
-				return old_use
+				required_use_satisfied = False
 
 			if any(x in pkg.use.mask for x in new_changes) or \
 				any(x in pkg.use.force for x in new_changes):
 				return old_use
 
-			self._dynamic_config._needed_use_config_changes[pkg] = (new_use, new_changes)
+			changes = _use_changes(new_use, new_changes,
+				required_use_satisfied=required_use_satisfied)
+			self._dynamic_config._needed_use_config_changes[pkg] = changes
 			backtrack_infos = self._dynamic_config._backtrack_infos
 			backtrack_infos.setdefault("config", {})
 			backtrack_infos["config"].setdefault("needed_use_config_changes", [])
-			backtrack_infos["config"]["needed_use_config_changes"].append((pkg, (new_use, new_changes)))
+			backtrack_infos["config"]["needed_use_config_changes"].append((pkg, changes))
 			if want_restart_for_use_change(pkg, new_use):
 				self._dynamic_config._need_restart = True
 		return new_use
@@ -9388,6 +9398,10 @@ class depgraph(object):
 		return self._dynamic_config._need_config_reload
 
 	def autounmask_breakage_detected(self):
+		# Check for REQUIRED_USE violations.
+		for changes in self._dynamic_config._needed_use_config_changes.values():
+			if getattr(changes, 'required_use_satisfied', None) is False:
+				return True
 		try:
 			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 				self._show_unsatisfied_dep(

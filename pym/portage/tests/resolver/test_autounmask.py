@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -61,6 +61,21 @@ class AutounmaskTestCase(TestCase):
 
 			"app-portage/B-1": { "IUSE": "foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
 			"app-portage/C-1": { "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( foo bar )", "EAPI": "4" },
+
+			"sci-mathematics/octave-4.2.2": {
+				"EAPI": 6,
+				"RDEPEND": ">=x11-libs/qscintilla-2.9.3-r2:=[qt5(+)]",
+			},
+			"x11-libs/qscintilla-2.9.4": {
+				"EAPI": 6,
+				"IUSE": "+qt4 qt5",
+				"REQUIRED_USE": "^^ ( qt4 qt5 )",
+			},
+			"x11-libs/qscintilla-2.10": {
+				"EAPI": 6,
+				"KEYWORDS": "~x86",
+				"IUSE": "qt4 +qt5",
+			},
 			}
 
 		test_cases = (
@@ -249,6 +264,14 @@ class AutounmaskTestCase(TestCase):
 				ResolverPlaygroundTestCase(
 					["=app-portage/C-1"],
 					options={ "--autounmask": True },
+					use_changes=None,
+					success=False),
+
+				# Test bug 622462, where it inappropriately unmasked a newer
+				# version rather than report unsatisfied REQUIRED_USE.
+				ResolverPlaygroundTestCase(
+					["sci-mathematics/octave"],
+					options={"--autounmask": True},
 					use_changes=None,
 					success=False),
 
