@@ -471,6 +471,13 @@ changed since the installed instance was built. Behavior with respect to
 changed build\-time dependencies is controlled by the
 \fB\-\-with\-bdeps\fR option.
 .TP
+.BR "\-\-changed\-slot [ y | n ]"
+Tells emerge to replace installed packages for which the corresponding
+ebuild SLOT metadata has changed since the packages were built. This
+option also implies the \fB\-\-selective\fR option. This may also result
+in rebuilds for any installed packages that have slot/sub\-slot :=
+operator dependencies that are sensitive to the relevant SLOT metadata.
+.TP
 .BR \-\-changed\-use ", " \-U
 Tells emerge to include installed packages where USE flags have
 changed since installation. This option also implies the

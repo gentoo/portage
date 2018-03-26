@@ -30,6 +30,7 @@ def create_depgraph_params(myopts, myaction):
 	# with_test_deps: pull in test deps for packages matched by arguments
 	# changed_deps: rebuild installed packages with outdated deps
 	# changed_deps_report: report installed packages with outdated deps
+	# changed_slot: rebuild installed packages with outdated SLOT metadata
 	# binpkg_changed_deps: reject binary packages with outdated deps
 	myparams = {"recurse" : True}
 
@@ -64,12 +65,17 @@ def create_depgraph_params(myopts, myaction):
 	if rebuild_if_new_slot is not None:
 		myparams['rebuild_if_new_slot'] = rebuild_if_new_slot
 
+	changed_slot = myopts.get('--changed-slot') is True
+	if changed_slot:
+		myparams["changed_slot"] = True
+
 	if "--update" in myopts or \
 		"--newrepo" in myopts or \
 		"--newuse" in myopts or \
 		"--reinstall" in myopts or \
 		"--noreplace" in myopts or \
 		myopts.get("--changed-deps", "n") != "n" or \
+		changed_slot or \
 		myopts.get("--selective", "n") != "n":
 		myparams["selective"] = True
 

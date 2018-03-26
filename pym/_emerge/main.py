@@ -136,6 +136,7 @@ def insert_optional_args(args):
 		'--binpkg-changed-deps'  : y_or_n,
 		'--buildpkg'             : y_or_n,
 		'--changed-deps'         : y_or_n,
+		'--changed-slot'         : y_or_n,
 		'--changed-deps-report'  : y_or_n,
 		'--complete-graph'       : y_or_n,
 		'--deep'       : valid_integers,
@@ -413,6 +414,12 @@ def parse_opts(tmpcmdline, silent=False):
 		"--changed-deps-report": {
 			"help"    : ("report installed packages with "
 				"outdated dependencies"),
+			"choices" : true_y_or_n
+		},
+
+		"--changed-slot": {
+			"help"    : ("replace installed packages with "
+				"outdated SLOT metadata"),
 			"choices" : true_y_or_n
 		},
 
@@ -851,6 +858,12 @@ def parse_opts(tmpcmdline, silent=False):
 			myoptions.changed_deps_report = 'y'
 		else:
 			myoptions.changed_deps_report = 'n'
+
+	if myoptions.changed_slot is not None:
+		if myoptions.changed_slot in true_y:
+			myoptions.changed_slot = True
+		else:
+			myoptions.changed_slot = None
 
 	if myoptions.changed_use is not False:
 		myoptions.reinstall = "changed-use"

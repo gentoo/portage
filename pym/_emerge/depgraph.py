@@ -2667,6 +2667,10 @@ class depgraph(object):
 
 		return changed
 
+	def _changed_slot(self, pkg):
+		ebuild = self._equiv_ebuild(pkg)
+		return ebuild is not None and (ebuild.slot, ebuild.sub_slot) != (pkg.slot, pkg.sub_slot)
+
 	def _create_graph(self, allow_unsatisfied=False):
 		dep_stack = self._dynamic_config._dep_stack
 		dep_disjunctive_stack = self._dynamic_config._dep_disjunctive_stack
@@ -6474,6 +6478,13 @@ class depgraph(object):
 						modified_use=self._pkg_use_enabled(pkg))):
 						if myeb and "--newrepo" in self._frozen_config.myopts and myeb.repo != pkg.repo:
 							break
+						elif self._dynamic_config.myparams.get("changed_slot") and self._changed_slot(pkg):
+							if installed:
+								break
+							else:
+								# Continue searching for a binary package
+								# with the desired SLOT metadata.
+								continue
 						elif reinstall_use or (not installed and respect_use):
 							iuses = pkg.iuse.all
 							old_use = self._pkg_use_enabled(pkg)
