@@ -39,8 +39,7 @@ from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
-	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs,
-	eapi_allows_package_provided)
+	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, IsADirectory, \
 		PortageException
@@ -805,7 +804,7 @@ class config(object):
 			for x in profiles_complex:
 				provpath = os.path.join(x.location, "package.provided")
 				if os.path.exists(provpath):
-					if x.eapi is None or eapi_allows_package_provided(x.eapi):
+					if _get_eapi_attrs(x.eapi).allows_package_provided:
 						pkgprovidedlines.append(grabfile(provpath,
 							recursive=x.portage1_directories))
 					else:
