@@ -38,8 +38,9 @@ from portage.const import CACHE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
-from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
-	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs
+from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
+	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs,
+	eapi_allows_package_provided)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, IsADirectory, \
 		PortageException
@@ -800,10 +801,19 @@ class config(object):
 			archlist = sorted(stack_lists(archlist, incremental=1))
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			pkgprovidedlines = [grabfile(
-				os.path.join(x.location, "package.provided"),
-				recursive=x.portage1_directories)
-				for x in profiles_complex]
+			pkgprovidedlines = []
+			for x in profiles_complex:
+				provpath = os.path.join(x.location, "package.provided")
+				if os.path.exists(provpath):
+					if x.eapi is None or eapi_allows_package_provided(x.eapi):
+						pkgprovidedlines.append(grabfile(provpath,
+							recursive=x.portage1_directories))
+					else:
+						# TODO: bail out?
+						writemsg((_("!!! package.provided not allowed in EAPI %s: ")
+								%x.eapi)+x.location+"\n",
+							noiselevel=-1)
+
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):

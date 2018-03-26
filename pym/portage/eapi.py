@@ -104,6 +104,10 @@ def eapi_has_automatic_unpack_dependencies(eapi):
 def eapi_has_hdepend(eapi):
 	return eapi in ("5-hdepend",)
 
+def eapi_allows_package_provided(eapi):
+	return eapi in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "6")
+
 def eapi_has_bdepend(eapi):
 	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
 			"5", "5-progress", "6")
