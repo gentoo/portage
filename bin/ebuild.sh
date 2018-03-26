@@ -59,7 +59,7 @@ else
 	# These dummy functions are for things that are likely to be called
 	# in global scope, even though they are completely useless during
 	# the "depend" phase.
-	funcs="diropts docompress exeopts get_KV insopts
+	funcs="diropts docompress dostrip exeopts get_KV insopts
 		KV_major KV_micro KV_minor KV_to_int
 		libopts register_die_hook register_success_hook
 		__strip_duplicate_slashes

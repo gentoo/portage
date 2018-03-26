@@ -19,7 +19,7 @@ fi
 prepallman
 prepallinfo
 
-prepallstrip
+___eapi_has_dostrip || prepallstrip
 
 if has chflags $FEATURES ; then
 	# Restore all the file flags that were saved at the beginning of prepall.

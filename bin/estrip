@@ -30,6 +30,64 @@ if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	${FEATURES_installsources} || exit 0
 fi
 
+[[ ${0##*/} == prepstrip ]] && prepstrip=true || prepstrip=false
+
+if ! ${prepstrip}; then
+while [[ $# -gt 0 ]] ; do
+	case $1 in
+	--ignore)
+		shift
+
+		skip_dirs=()
+		for skip; do
+			if [[ -d ${ED%/}/${skip#/} ]]; then
+				skip_dirs+=( "${ED%/}/${skip#/}" )
+			else
+				rm -f "${ED%/}/${skip#/}.estrip" || die
+			fi
+		done
+
+		if [[ ${skip_dirs[@]} ]]; then
+			find "${skip_dirs[@]}" -name '*.estrip' -delete || die
+		fi
+
+		exit 0
+		;;
+	--queue)
+		shift
+
+		find_paths=()
+		for path; do
+			if [[ -e ${ED%/}/${path#/} ]]; then
+				find_paths+=( "${ED%/}/${path#/}" )
+			fi
+		done
+
+		if [[ ${find_paths[@]} ]]; then
+			while IFS= read -r path; do
+				>> "${path}.estrip" || die
+			done < <(
+				scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}"
+				find "${find_paths[@]}" -type f ! -type l -name '*.a'
+			)
+		fi
+
+		exit 0
+		;;
+	--dequeue)
+		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		break
+		;;
+	*)
+		die "${0##*/}: unknown arguments '$*'"
+		exit 1
+		;;
+	esac
+	shift
+done
+set -- "${ED}"
+fi
+
 PRESERVE_XATTR=false
 if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 	PRESERVE_XATTR=true
@@ -292,6 +350,7 @@ else
 	get_inode_number() { stat -c '%i' "$1"; }
 fi
 cd "${tmpdir}/inodes" || die "cd failed unexpectedly"
+if ${prepstrip}; then
 while read -r x ; do
 	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
@@ -302,6 +361,13 @@ done < <(
 		find "$@" -type f ! -type l -name '*.a'
 	) | LC_ALL=C sort -u
 )
+else
+while IFS= read -d '' -r x ; do
+	rm -f "${x}" || die
+	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
+	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
+done < <(find "${ED}" -name '*.estrip' -print0)
+fi
 
 # Now we look for unstripped binaries.
 for inode_link in $(shopt -s nullglob; echo *) ; do
@@ -318,7 +384,11 @@ do
 	f=$(file "${x}") || exit 0
 	[[ -z ${f} ]] && exit 0
 
-	if ! ${SKIP_STRIP} ; then
+	if ${SKIP_STRIP} ; then
+		strip_this=false
+	elif ! ${prepstrip}; then
+		strip_this=true
+	else
 		# The noglob funk is to support STRIP_MASK="/*/booga" and to keep
 		#  the for loop from expanding the globs.
 		# The eval echo is to support STRIP_MASK="/*/{booga,bar}" sex.
@@ -328,8 +398,6 @@ do
 			[[ /${x#${ED%/}} == ${m} ]] && strip_this=false && break
 		done
 		set +o noglob
-	else
-		strip_this=false
 	fi
 
 	# In Prefix we are usually an unprivileged user, so we can't strip

@@ -20,6 +20,9 @@ export MOPREFIX=${PN}
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
+declare -a PORTAGE_DOSTRIP=( / )
+has strip ${RESTRICT} && PORTAGE_DOSTRIP=()
+declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
 	if [ "$1" == "/" ]; then
@@ -156,6 +159,32 @@ docompress() {
 				[[ ${f} = "${g}" ]] && continue 2
 			done
 			PORTAGE_DOCOMPRESS[${#PORTAGE_DOCOMPRESS[@]}]=${f}
+		done
+	fi
+}
+
+dostrip() {
+	___eapi_has_dostrip || die "'${FUNCNAME}' not supported in this EAPI"
+
+	local f g
+	if [[ $1 = "-x" ]]; then
+		shift
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP_SKIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP_SKIP+=( "${f}" )
+		done
+	else
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP+=( "${f}" )
 		done
 	fi
 }
