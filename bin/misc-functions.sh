@@ -224,6 +224,10 @@ install_qa_check() {
 	ecompressdir --dequeue
 	ecompress --dequeue
 
+	"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+	"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+	"${PORTAGE_BIN_PATH}"/estrip --dequeue
+
 	# Create NEEDED.ELF.2 regardless of RESTRICT=binchecks, since this info is
 	# too useful not to have (it's required for things like preserve-libs), and
 	# it's tempting for ebuild authors to set RESTRICT=binchecks for packages
