@@ -30,7 +30,7 @@ if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	${FEATURES_installsources} || exit 0
 fi
 
-[[ ${0##*/} == prepstrip ]] && prepstrip=true || prepstrip=false
+[[ ${__PORTAGE_HELPER} == prepstrip ]] && prepstrip=true || prepstrip=false
 
 if ! ${prepstrip}; then
 while [[ $# -gt 0 ]] ; do

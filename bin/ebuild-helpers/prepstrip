@@ -8,4 +8,4 @@ if ___eapi_has_dostrip; then
 	die "${0##*/}: ${0##*/} has been banned for EAPI '$EAPI'; use 'dostrip' instead"
 fi
 
-exec -a "${0}" "${PORTAGE_BIN_PATH}"/estrip "${@}"
+__PORTAGE_HELPER=prepstrip exec "${PORTAGE_BIN_PATH}"/estrip "${@}"
