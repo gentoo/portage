@@ -55,7 +55,9 @@ class PackagePhase(CompositeTask):
 		else:
 			self._start_task(AsyncFunction(
 				target=install_mask_dir,
-				args=(self._proot, self._pkg_install_mask)),
+				args=(os.path.join(self._proot,
+					self.settings['EPREFIX'].lstrip(os.sep)),
+					self._pkg_install_mask)),
 				self._pkg_install_mask_exit)
 
 	def _pkg_install_mask_exit(self, proc):
