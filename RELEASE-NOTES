@@ -1,6 +1,38 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.25
+==================================
+* Bug Fixes:
+    - Bug 582140 Portage does not reduce values of USE_EXPAND variables
+      to IUSE_EFFECTIVE in some cases
+    - Bug 608564 add emerge --ignore-world option to disregard @world
+      when solving dependencies
+    - Bug 622462 emerge --autounmask tries to wrongly unmask a hardmasked
+      package instead of telling user to change USE conflicting flags
+    - Bug 631358 add emerge --changed-slot option
+    - Bug 647654 filter-bash-environment.py input is not buffered, it reads
+      1 byte at a time
+    - Bug 647940 "emerge --search" fails to find a package when provided
+      with an exact match, $CAT/$PKG
+    - Bug 648062 portageq repositories_configuration <eroot> does not
+      override PORTAGE_CONFIGROOT
+    - Bug 648432 File merging is ultra-slow on FreeBSD
+    - Bug 648790 add parallel aux_get method for things like repoman to use
+    - Bug 649418 security.capability extended attribute not preserved
+      between different filesystems
+    - Bug 649464 dev-util/gtk-update-icon-cache-3.22.19 - QA Notice: new
+      icons were found installed but GTK+ icon cache has not been updated
+    - Bug 649524 prepstrip: Preservation of extended attributes using
+      getfattr+setfattr does not preserve extended attributes outside of
+      user namespace
+    - Bug 649528 prepstrip: Preservation of extended attributes using
+      xattr-helper.py broken
+    - Bug 650754 emerge --info is broken without git installed if PORTDIR
+      is a git checkout and sync-type = git
+    - Bug 651214 {PKG_,}INSTALL_MASK support for exclusions
+
+
 portage-2.3.24
 ==================================
 * Bug Fixes:

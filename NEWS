@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.25
+----------------
+* Experimental support for EAPI 7_pre1.
+
 portage-2.3.20
 ----------------
 * Support RESTRICT=network-sandbox in ebuilds.
