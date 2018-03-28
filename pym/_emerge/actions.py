@@ -1816,7 +1816,7 @@ def action_info(settings, trees, myopts, myfiles):
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'DISTDIR', 'ENV_UNSET', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTAGE_BUNZIP2_COMMAND',
+		          'PORTAGE_BINHOST', 'PORTAGE_BUNZIP2_COMMAND',
 		          'PORTAGE_BZIP2_COMMAND',
 		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'FEATURES',
