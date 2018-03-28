@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.26
+==================================
+* Bug Fixes:
+    - Bug 651826 STRIP_MASK not working, regression
+
+
 portage-2.3.25
 ==================================
 * Bug Fixes:
