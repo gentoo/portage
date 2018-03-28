@@ -363,10 +363,9 @@ done < <(
 )
 else
 while IFS= read -d '' -r x ; do
-	rm -f "${x}" || die
 	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
 	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(find "${ED}" -name '*.estrip' -print0)
+done < <(find "${ED}" -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
