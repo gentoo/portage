@@ -395,7 +395,7 @@ do
 		set -o noglob
 		strip_this=true
 		for m in $(eval echo ${STRIP_MASK}) ; do
-			[[ /${x#${ED%/}} == ${m} ]] && strip_this=false && break
+			[[ ${x#${ED%/}} == ${m} ]] && strip_this=false && break
 		done
 		set +o noglob
 	fi
