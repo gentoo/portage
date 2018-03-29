@@ -323,6 +323,29 @@ postinst_qa_check() {
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 }
 
+preinst_mask() {
+	# Remove man pages, info pages, docs if requested. This is
+	# implemented in bash in order to respect INSTALL_MASK settings
+	# from bashrc.
+	local f x
+	for f in man info doc; do
+		if has no${f} ${FEATURES}; then
+			INSTALL_MASK+=" /usr/share/${f}"
+		fi
+	done
+
+	# Store modified variables in build-info.
+	cd "${PORTAGE_BUILDDIR}"/build-info || die
+	set -f
+
+	IFS=$' \t\n\r'
+	for f in INSTALL_MASK; do
+		x=$(echo -n ${!f})
+		[[ -n ${x} ]] && echo "${x}" > "${f}"
+	done
+	set +f
+}
+
 preinst_sfperms() {
 	if [ -z "${D}" ]; then
 		 eerror "${FUNCNAME}: D is unset"

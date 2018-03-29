@@ -3846,6 +3846,11 @@ class dblink(object):
 		# be useful to avoid collisions in some scenarios.
 		# We cannot detect if this is needed or not here as INSTALL_MASK can be
 		# modified by bashrc files.
+		phase = MiscFunctionsProcess(background=False,
+			commands=["preinst_mask"], phase="preinst",
+			scheduler=self._scheduler, settings=self.settings)
+		phase.start()
+		phase.wait()
 		try:
 			with io.open(_unicode_encode(os.path.join(inforoot, "INSTALL_MASK"),
 				encoding=_encodings['fs'], errors='strict'),

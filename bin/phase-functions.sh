@@ -661,14 +661,6 @@ __dyn_install() {
 	set -f
 	local f x
 
-	# remove man pages, info pages, docs if requested
-	for f in man info doc; do
-		if has no${f} ${FEATURES} && \
-			! has "/usr/share/${f}" ${INSTALL_MASK}; then
-			INSTALL_MASK+=" /usr/share/${f}"
-		fi
-	done
-
 	IFS=$' \t\n\r'
 	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE \
 		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION \
@@ -676,7 +668,7 @@ __dyn_install() {
 		CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
 		LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
 		QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE \
-		INSTALL_MASK PKG_INSTALL_MASK; do
+		PKG_INSTALL_MASK; do
 
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
