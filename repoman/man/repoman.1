@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Jun 2017" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "Mar 2018" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -437,6 +437,12 @@ not directly.
 .B wxwidgets.eclassnotused
 Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass. Refer to
 bug #305469 for more information.
+.SH "BEHAVIOR"
+When invoked from a level higher than a package directory, \fBrepoman\fR
+will recurse through a directory tree and execute the given command
+on a per\-package basis, e.g. \fBrepoman manifest\fR at the root of
+the repository will generate manifests for every package within the
+repository.
 .SH "REPORTING BUGS"
 Please report bugs via https://bugs.gentoo.org/
 .SH AUTHORS
