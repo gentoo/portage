@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.27
+==================================
+* Bug Fixes:
+    - Bug 651952 INSTALL_MASK: honor install time config for binary packages
+
+
 portage-2.3.26
 ==================================
 * Bug Fixes:
