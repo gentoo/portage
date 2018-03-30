@@ -15,11 +15,10 @@ from portage import _unicode_decode
 from portage import util
 
 
-def parse_args(argv, qahelp, repoman_default_opts):
+def parse_args(argv, repoman_default_opts):
 	"""Use a customized optionParser to parse command line arguments for repoman
 	Args:
 		argv - a sequence of command line arguments
-		qahelp - a dict of qa warning to help message
 	Returns:
 		(opts, args), just like a call to parser.parse_args()
 	"""
