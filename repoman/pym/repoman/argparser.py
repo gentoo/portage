@@ -106,6 +106,11 @@ def parse_args(argv, repoman_default_opts):
 			' when the internal eclass database becomes outdated'))
 
 	parser.add_argument(
+		'--experimental-repository-modules', choices=('y', 'n'), metavar="<y|n>",
+		default='n',
+		help='Enable experimental repository modules')
+
+	parser.add_argument(
 		'-f', '--force', dest='force', action='store_true',
 		default=False,
 		help='Commit with QA violations')

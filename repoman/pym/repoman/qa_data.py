@@ -37,6 +37,7 @@ class QAData(object):
 						 repoman_masters layout.conf variable
 		'''
 		# add our base qahelp
+		repository_modules = options.experimental_repository_modules == 'y'
 		if _not_installed:
 			cnfdir = os.path.realpath(os.path.join(os.path.dirname(
 				os.path.dirname(os.path.dirname(__file__))), 'cnf/qa_data'))
@@ -44,7 +45,15 @@ class QAData(object):
 			cnfdir = os.path.join(portage.const.EPREFIX or '/', 'usr/share/repoman/qa_data')
 		repomanpaths = [os.path.join(cnfdir, _file_) for _file_ in os.listdir(cnfdir)]
 		logging.debug("QAData: cnfdir: %s, repomanpaths: %s", cnfdir, repomanpaths)
-		repopaths = [os.path.join(path,'qa_data.yaml') for path in repopaths]
+		if repository_modules:
+			repopaths = [os.path.join(path,'qa_data.yaml') for path in repopaths]
+		elif _not_installed:
+			repopaths = [os.path.realpath(os.path.join(os.path.dirname(
+				os.path.dirname(os.path.dirname(__file__))),
+				'cnf/repository/qa_data.yaml'))]
+		else:
+			repopaths = [os.path.join(portage.const.EPREFIX or '/',
+				'usr/share/repoman/repository/qa_data.yaml')]
 		infopaths = repomanpaths + repopaths
 
 		qadata = load_config(infopaths, None, valid_versions)

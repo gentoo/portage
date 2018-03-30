@@ -481,6 +481,10 @@ setup(
 		['$docdir', ['NEWS', 'RELEASE-NOTES']],
 		['share/repoman/qa_data', ['cnf/qa_data/qa_data.yaml']],
 		['share/repoman/linechecks', ['cnf/linechecks/linechecks.yaml']],
+		['share/repoman/repository', [
+			'cnf/repository/linechecks.yaml',
+			'cnf/repository/qa_data.yaml',
+			'cnf/repository/repository.yaml']],
 	],
 
 	cmdclass = {

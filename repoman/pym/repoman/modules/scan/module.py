@@ -8,8 +8,10 @@ import logging
 import os
 import yaml
 
+import portage
 from portage.module import InvalidModuleName, Modules
 from portage.util import stack_lists
+from repoman import _not_installed
 from repoman.config import ConfigError
 
 MODULES_PATH = os.path.dirname(__file__)
@@ -21,12 +23,20 @@ class ModuleConfig(object):
 	'''Holds the scan modules configuration information and
 	creates the ordered list of modulles to run'''
 
-	def __init__(self, configpaths, valid_versions=None):
+	def __init__(self, configpaths, valid_versions=None, repository_modules=False):
 		'''Module init
 
 		@param configpaths: ordered list of filepaths to load
 		'''
-		self.configpaths = [os.path.join(path, 'repository.yaml') for path in configpaths]
+		if repository_modules:
+			self.configpaths = [os.path.join(path, 'repository.yaml') for path in configpaths]
+		elif _not_installed:
+			self.configpaths = [os.path.realpath(os.path.join(os.path.dirname(
+				os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+				os.path.dirname(__file__)))))), 'repoman/cnf/repository/repository.yaml'))]
+		else:
+			self.configpaths = [os.path.join(portage.const.EPREFIX or '/',
+				'usr/share/repoman/repository/repository.yaml')]
 		logging.debug("ModuleConfig; configpaths: %s", self.configpaths)
 
 		self.controller = Modules(path=MODULES_PATH, namepath="repoman.modules.scan")
