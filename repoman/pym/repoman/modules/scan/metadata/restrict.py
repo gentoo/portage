@@ -7,7 +7,6 @@ Perform checks on the RESTRICT variable.
 from repoman._portage import portage
 
 from repoman.modules.scan.scanbase import ScanBase
-from repoman.qa_data import valid_restrict
 
 
 class RestrictChecks(ScanBase):
@@ -18,6 +17,7 @@ class RestrictChecks(ScanBase):
 		@param qatracker: QATracker instance
 		'''
 		self.qatracker = kwargs.get('qatracker')
+		self.repo_settings = kwargs.get('repo_settings')
 
 	def check(self, **kwargs):
 		xpkg = kwargs.get('xpkg')
@@ -35,7 +35,7 @@ class RestrictChecks(ScanBase):
 
 		if myrestrict:
 			myrestrict = set(myrestrict)
-			mybadrestrict = myrestrict.difference(valid_restrict)
+			mybadrestrict = myrestrict.difference(self.repo_settings.qadata.valid_restrict)
 
 			if mybadrestrict:
 				for mybad in mybadrestrict:
