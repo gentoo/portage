@@ -7,6 +7,7 @@ import time
 import signal
 import socket
 import datetime
+import functools
 import io
 import re
 import random
@@ -22,7 +23,9 @@ good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import writemsg, writemsg_stdout
+from portage.util.futures.futures import TimeoutError
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import NewBase
@@ -139,14 +142,23 @@ class RsyncSync(NewBase):
 			# will not be performed and the user will have to fix it and try again,
 			# so we may as well bail out before actual rsync happens.
 			if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
+
 				try:
 					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
 					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
 						openpgp_env.import_key(f)
 					out.ebegin('Refreshing keys from keyserver')
-					openpgp_env.refresh_keys()
+					retry_decorator = self._key_refresh_retry_decorator()
+					if retry_decorator is None:
+						openpgp_env.refresh_keys()
+					else:
+						loop = global_event_loop()
+						func_coroutine = functools.partial(loop.run_in_executor,
+							None, openpgp_env.refresh_keys)
+						decorated_func = retry_decorator(func_coroutine)
+						loop.run_until_complete(decorated_func())
 					out.eend(0)
-				except GematoException as e:
+				except (GematoException, TimeoutError) as e:
 					writemsg_level("!!! Manifest verification impossible due to keyring problem:\n%s\n"
 							% (e,),
 							level=logging.ERROR, noiselevel=-1)

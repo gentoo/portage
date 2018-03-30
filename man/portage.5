@@ -1,4 +1,4 @@
-.TH "PORTAGE" "31" "May 2017" "Portage VERSION" "Portage"
+.TH "PORTAGE" "31" "Apr 2018" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -1080,6 +1080,25 @@ Path to the OpenPGP key(ring) used to verify received repository. Used
 only for protocols supporting cryptographic verification, provided
 that the respective verification option is enabled. If unset, the user's
 keyring is used.
+.TP
+.B sync\-openpgp\-key\-refresh\-retry\-count = 40
+Maximum number of times to retry key refresh if it fails. Between each
+key refresh attempt, there is an exponential delay with a constant
+multiplier and a uniform random multiplier between 0 and 1.
+.TP
+.B sync\-openpgp\-key\-refresh\-retry\-delay\-exp\-base = 2
+The base of the exponential expression. The exponent is the number of
+previous refresh attempts.
+.TP
+.B sync\-openpgp\-key\-refresh\-retry\-delay\-max = 60
+Maximum delay between each retry attempt, in units of seconds. This
+places a limit on the length of the exponential delay.
+.TP
+.B sync\-openpgp\-key\-refresh\-retry\-delay\-mult = 4
+Multiplier for the exponential delay.
+.TP
+.B sync\-openpgp\-key\-refresh\-retry\-overall\-timeout = 1200
+Combined time limit for all refresh attempts, in units of seconds.
 .TP
 .B sync-rsync-vcs-ignore = true|false
 Ignore vcs directories that may be present in the repository. It is the
