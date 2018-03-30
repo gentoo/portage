@@ -7671,11 +7671,13 @@ class depgraph(object):
 				return True
 			if node not in mergeable_nodes:
 				return False
-			if node == replacement_portage and \
-				mygraph.child_nodes(node,
-				ignore_priority=priority_range.ignore_medium_soft):
-				# Make sure that portage always has all of it's
-				# RDEPENDs installed first.
+			if node == replacement_portage and any(
+				getattr(rdep, 'operation', None) != 'uninstall'
+				for rdep in mygraph.child_nodes(node,
+				ignore_priority=priority_range.ignore_medium_soft)):
+				# Make sure that portage always has all of its
+				# RDEPENDs installed first, but ignore uninstalls
+				# (these occur when new portage blocks older repoman).
 				return False
 			selected_nodes.add(node)
 			for child in mygraph.child_nodes(node,
