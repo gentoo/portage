@@ -8,6 +8,11 @@ import stat
 
 import yaml
 
+try:
+	FileNotFoundError
+except NameError:
+	FileNotFoundError = EnvironmentError
+
 
 class ConfigError(Exception):
 	"""Raised when a config file fails to load"""
