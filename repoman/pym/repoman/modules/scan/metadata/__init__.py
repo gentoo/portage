@@ -31,6 +31,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['pkgs', 'ebuilds', 'final'],
 		},
 		'ebuild-metadata': {
 			'name': "ebuild_metadata",
@@ -40,7 +41,7 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker',
+			'mod_kwargs': ['qatracker', 'repo_settings',
 			],
 			'func_kwargs': {
 				'catdir': (None, None),
@@ -48,6 +49,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 		'description-metadata': {
 			'name': "description",
@@ -57,12 +59,13 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker',
+			'mod_kwargs': ['qatracker', 'repo_settings'
 			],
 			'func_kwargs': {
 				'ebuild': (None, None),
 				'pkg': ('Future', 'UNSET'),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
 		'restrict-metadata': {
 			'name': "restrict",
@@ -72,14 +75,16 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker',
+			'mod_kwargs': ['qatracker', 'repo_settings'
 			],
 			'func_kwargs': {
 				'ebuild': (None, None),
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
-	}
+	},
+	'version': 1,
 }
 

@@ -27,7 +27,9 @@ module_spec = {
 				'xpkg': None,
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['pkgs', 'ebuilds', 'final'],
 		},
-	}
+	},
+	'version': 1,
 }
 

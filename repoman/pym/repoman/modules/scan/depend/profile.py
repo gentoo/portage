@@ -63,7 +63,8 @@ class ProfileDependsChecks(ScanBase):
 		ebuild = kwargs.get('ebuild').get()
 		pkg = kwargs.get('pkg').get()
 		unknown_pkgs, baddepsyntax = _depend_checks(
-			ebuild, pkg, self.portdb, self.qatracker, self.repo_metadata)
+			ebuild, pkg, self.portdb, self.qatracker, self.repo_metadata,
+			self.repo_settings.qadata)
 
 		relevant_profiles = []
 		for keyword, arch, groups in _gen_arches(ebuild, self.options,

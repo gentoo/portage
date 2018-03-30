@@ -26,7 +26,9 @@ module_spec = {
 				'ebuild': (None, None),
 				'pkg': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
-	}
+	},
+	'version': 1,
 }
 

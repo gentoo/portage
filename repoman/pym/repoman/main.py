@@ -24,14 +24,12 @@ from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
 from portage.util.futures.extendedfutures import (
 	ExtendedFuture,
-	InvalidStateError,
 )
 
 from repoman.actions import Actions
 from repoman.argparser import parse_args
-from repoman.qa_data import (
-	format_qa_output, format_qa_output_column, qahelp,
-	qawarnings, qacats)
+from repoman.qa_data import QAData
+from repoman.qa_data import format_qa_output, format_qa_output_column
 from repoman.repos import RepoSettings
 from repoman.scanner import Scanner
 from repoman import utilities
@@ -49,10 +47,12 @@ os.umask(0o22)
 LOGLEVEL = logging.WARNING
 portage.util.initialize_logger(LOGLEVEL)
 
+VALID_VERSIONS = [1,]
 
 def repoman_main(argv):
 	config_root = os.environ.get("PORTAGE_CONFIGROOT")
 	repoman_settings = portage.config(config_root=config_root, local_config=False)
+	repoman_settings.valid_versions = VALID_VERSIONS
 
 	if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
 		repoman_settings.get('TERM') == 'dumb' or \
@@ -60,7 +60,7 @@ def repoman_main(argv):
 		nocolor()
 
 	options, arguments = parse_args(
-		sys.argv, qahelp, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
+		sys.argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
 
 	if options.version:
 		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
@@ -72,10 +72,6 @@ def repoman_main(argv):
 		logger.setLevel(LOGLEVEL - 10 * options.verbosity)
 	else:
 		logger.setLevel(LOGLEVEL)
-
-	if options.experimental_inherit == 'y':
-		# This is experimental, so it's non-fatal.
-		qawarnings.add("inherit.missing")
 
 	# Set this to False when an extraordinary issue (generally
 	# something other than a QA issue) makes it impossible to
@@ -91,14 +87,22 @@ def repoman_main(argv):
 
 	# avoid a circular parameter repo_settings
 	vcs_settings = VCSSettings(options, repoman_settings)
+	qadata = QAData()
 
+	logging.debug("repoman_main: RepoSettings init")
 	repo_settings = RepoSettings(
 		config_root, portdir, portdir_overlay,
-		repoman_settings, vcs_settings, options, qawarnings)
+		repoman_settings, vcs_settings, options, qadata)
 	repoman_settings = repo_settings.repoman_settings
+	repoman_settings.valid_versions = VALID_VERSIONS
 
 	# Now set repo_settings
 	vcs_settings.repo_settings = repo_settings
+	# set QATracker qacats, qawarnings
+	vcs_settings.qatracker.qacats = repo_settings.qadata.qacats
+	vcs_settings.qatracker.qawarnings = repo_settings.qadata.qawarnings
+	logging.debug("repoman_main: vcs_settings done")
+	logging.debug("repoman_main: qadata: %s", repo_settings.qadata)
 
 	if 'digest' in repoman_settings.features and options.digest != 'n':
 		options.digest = 'y'
@@ -133,11 +137,11 @@ def repoman_main(argv):
 	if options.mode == "manifest":
 		sys.exit(result['fail'])
 
-	for x in qacats:
+	for x in qadata.qacats:
 		if x not in vcs_settings.qatracker.fails:
 			continue
 		result['warn'] = 1
-		if x not in qawarnings:
+		if x not in qadata.qawarnings:
 			result['fail'] = 1
 
 	if result['fail'] or \
@@ -174,7 +178,7 @@ def repoman_main(argv):
 	format_output = format_outputs.get(
 		options.output_style, format_outputs['default'])
 	format_output(f, vcs_settings.qatracker.fails, result['full'],
-		result['fail'], options, qawarnings)
+		result['fail'], options, qadata.qawarnings)
 
 	style_file.flush()
 	del console_writer, f, style_file

@@ -9,7 +9,6 @@ from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
 from repoman.modules.scan.scanbase import ScanBase
-from repoman.qa_data import no_exec, allvars
 # import our initialized portage instance
 from repoman._portage import portage
 from portage import os
@@ -178,7 +177,8 @@ class Ebuild(ScanBase):
 		pkgs = {}
 		for y in checkdirlist:
 			file_is_ebuild = y.endswith(".ebuild")
-			file_should_be_non_executable = y in no_exec or file_is_ebuild
+			file_should_be_non_executable = (
+				y in self.repo_settings.qadata.no_exec or file_is_ebuild)
 
 			if file_should_be_non_executable:
 				file_is_executable = stat.S_IMODE(
@@ -191,6 +191,7 @@ class Ebuild(ScanBase):
 				ebuildlist.append(pf)
 				catdir = xpkg.split("/")[0]
 				cpv = "%s/%s" % (catdir, pf)
+				allvars = self.repo_settings.qadata.allvars
 				try:
 					myaux = dict(zip(allvars, self.portdb.aux_get(cpv, allvars)))
 				except KeyError:

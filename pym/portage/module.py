@@ -15,6 +15,10 @@ class InvalidModuleName(PortageException):
 	"""An invalid or unknown module name."""
 
 
+class ModuleVersionError(PortageException):
+	'''An incompatible module version'''
+
+
 class Module(object):
 	"""Class to define and hold our plug-in module
 
@@ -63,7 +67,7 @@ class Module(object):
 
 	def get_class(self, name):
 		if not name or name not in self.kids_names:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%name + "part of the module '%s'" %self.name)
 		kid = self.kids[name]
 		if kid['is_imported']:
@@ -87,16 +91,17 @@ class Modules(object):
 	@param namepath: Python import path to the "modules" directory
 	"""
 
-	def __init__(self, path, namepath):
+	def __init__(self, path, namepath, compat_versions=None):
 		self._module_path = path
 		self._namepath = namepath
+		self.compat_versions = compat_versions
 		self.parents = []
 		self._modules = self._get_all_modules()
 		self.modules = ProtectedDict(self._modules)
 		self.module_names = sorted(self._modules)
 
 	def _get_all_modules(self):
-		"""scans the emaint modules dir for loadable modules
+		"""scans the _module_path dir for loadable modules
 
 		@rtype: dictionary of module_plugins
 		"""
@@ -117,6 +122,7 @@ class Modules(object):
 		kids = {}
 		for entry in importables:
 			new_module = Module(entry, self._namepath)
+			self._check_compat(new_module)
 			for module_name in new_module.kids:
 				kid = new_module.kids[module_name]
 				kid['parent'] = new_module
@@ -142,7 +148,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['parent'].get_class(modname)
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -157,7 +163,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['description']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -172,7 +178,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			mod = self._modules[modname]['functions']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return mod
 
@@ -187,7 +193,7 @@ class Modules(object):
 		if modname and modname in self.module_names:
 			desc = self._modules[modname]['func_desc']
 		else:
-			raise InvalidModuleName("Module name '%s' was invalid or not"
+			raise InvalidModuleName("Module name '%s' is invalid or not"
 				%modname + "found")
 		return desc
 
@@ -203,5 +209,32 @@ class Modules(object):
 			desc = self._modules[modname].get('opt_desc')
 		else:
 			raise InvalidModuleName(
-				"Module name '%s' was invalid or not found" % modname)
+				"Module name '%s' is invalid or not found" % modname)
 		return desc
+
+	def get_spec(self, modname, var):
+		"""Retrieves the module class exported spec variable
+
+		@type modname: string
+		@param modname: the module class name
+		@type var: string
+		@param var: the base level variable to return
+		@type dictionary
+		@return: the modules class exported options descriptions
+		"""
+		if modname and modname in self.module_names:
+			value = self._modules[modname].get(var, None)
+		else:
+			raise InvalidModuleName(
+				"Module name '%s' is invalid or not found" % modname)
+		return value
+
+	def _check_compat(self, module):
+		if self.compat_versions:
+			if not module.module_spec['version'] in self.compat_versions:
+				raise ModuleVersionError(
+					"Error loading '%s' plugin module: %s, version: %s\n"
+					"Module is not compatible with the current application version\n"
+					"Compatible module API versions are: %s"
+					% (self._namepath, module.module_spec['name'],
+						module.module_spec['version'], self.compat_versions))

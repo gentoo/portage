@@ -32,14 +32,14 @@ class EAPIChecks(ScanBase):
 	def _checkBanned(self, ebuild):
 		if self.repo_settings.repo_config.eapi_is_banned(ebuild.eapi):
 			self.qatracker.add_error(
-				"repo.eapi.banned", "%s: %s" % (ebuild.relative_path, ebuild.eapi))
+				"repo.eapi-banned", "%s: %s" % (ebuild.relative_path, ebuild.eapi))
 			return True
 		return False
 
 	def _checkDeprecated(self, ebuild):
 		if self.repo_settings.repo_config.eapi_is_deprecated(ebuild.eapi):
 			self.qatracker.add_error(
-				"repo.eapi.deprecated", "%s: %s" % (ebuild.relative_path, ebuild.eapi))
+				"repo.eapi-deprecated", "%s: %s" % (ebuild.relative_path, ebuild.eapi))
 			return True
 		return False
 
