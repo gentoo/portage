@@ -40,7 +40,7 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker',
+			'mod_kwargs': ['qatracker', 'repo_settings',
 			],
 			'func_kwargs': {
 				'catdir': (None, None),
@@ -57,7 +57,7 @@ module_spec = {
 			'functions': ['check'],
 			'func_desc': {
 			},
-			'mod_kwargs': ['qatracker',
+			'mod_kwargs': ['qatracker', 'repo_settings'
 			],
 			'func_kwargs': {
 				'ebuild': (None, None),
