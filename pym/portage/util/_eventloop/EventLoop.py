@@ -93,6 +93,21 @@ class EventLoop(object):
 			self._callback(*self._args)
 			return False
 
+	class _repeat_callback(object):
+		"""
+		Wraps an callback, and always returns True, for callbacks that
+		are supposed to run repeatedly.
+		"""
+		__slots__ = ("_args", "_callback")
+
+		def __init__(self, callback, args):
+			self._callback = callback
+			self._args = args
+
+		def __call__(self, fd, event):
+			self._callback(*self._args)
+			return True
+
 	def __init__(self, main=True):
 		"""
 		@param main: If True then this is a singleton instance for use
@@ -568,6 +583,42 @@ class EventLoop(object):
 					x.calling = False
 
 		return bool(calls)
+
+	def add_reader(self, fd, callback, *args):
+		"""
+		Start watching the file descriptor for read availability and then
+		call the callback with specified arguments.
+
+		Use functools.partial to pass keywords to the callback.
+		"""
+		self.io_add_watch(fd, self.IO_IN, self._repeat_callback(callback, args))
+
+	def remove_reader(self, fd):
+		"""
+		Stop watching the file descriptor for read availability.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		if fd is not None:
+			return self.source_remove(handler.source_id)
+		return False
+
+	def add_writer(self, fd, callback, *args):
+		"""
+		Start watching the file descriptor for write availability and then
+		call the callback with specified arguments.
+
+		Use functools.partial to pass keywords to the callback.
+		"""
+		self.io_add_watch(fd, self.IO_OUT, self._repeat_callback(callback, args))
+
+	def remove_writer(self, fd):
+		"""
+		Stop watching the file descriptor for write availability.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		if fd is not None:
+			return self.source_remove(handler.source_id)
+		return False
 
 	def io_add_watch(self, f, condition, callback, *args):
 		"""
