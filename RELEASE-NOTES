@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.28
+==================================
+* Bug Fixes:
+    - Bug 649276 gpg key refresh needs exponential backoff with jitter
+
+
 portage-2.3.27
 ==================================
 * Bug Fixes:
