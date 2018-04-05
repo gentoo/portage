@@ -69,7 +69,7 @@ class ModuleConfig(object):
 			if os.path.exists(path):
 				try:
 					with open(path, 'r') as inputfile:
-						configs.append(yaml.safe_load(inputfile.read()))
+						configs.append(yaml.safe_load(inputfile))
 				except IOError as error:
 					logging,error("Failed to load file: %s", inputfile)
 					logging.exception(error)
