@@ -67,8 +67,19 @@ class Package(Task):
 		if not self.built:
 			self._metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.eapi)
+
+		try:
+			db = self.cpv._db
+		except AttributeError:
+			if self.built:
+				# For independence from the source ebuild repository and
+				# profile implicit IUSE state, require the _db attribute
+				# for built packages.
+				raise
+			db = self.root_config.trees['porttree'].dbapi
+
 		self.cpv = _pkg_str(self.cpv, metadata=self._metadata,
-			settings=self.root_config.settings)
+			settings=self.root_config.settings, db=db)
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
 				"SLOT: invalid value: '%s'" % self._metadata["SLOT"])
@@ -82,17 +93,10 @@ class Package(Task):
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self._metadata['repository'] = self.cpv.repo
 
-		if eapi_attrs.iuse_effective:
-			implicit_match = self.root_config.settings._iuse_effective_match
-			if self.built:
-				implicit_match = functools.partial(
-					self._built_iuse_effective_match,
-					implicit_match, frozenset(self._metadata['USE'].split()))
-		else:
-			implicit_match = self.root_config.settings._iuse_implicit_match
+		implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
-		self.iuse = self._iuse(self, self._metadata["IUSE"].split(), implicit_match,
-			usealiases, self.eapi)
+		self.iuse = self._iuse(self, self._metadata["IUSE"].split(),
+			implicit_match, usealiases, self.eapi)
 
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
@@ -114,33 +118,6 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
-
-	@staticmethod
-	def _built_iuse_effective_match(prof_effective_match, built_use, flag):
-		"""
-		For built packages, it is desirable for the built USE setting to be
-		independent of the profile's current IUSE_IMPLICIT state, since the
-		profile's IUSE_IMPLICT setting may have diverged. Therefore, any
-		member of the built USE setting is considered to be a valid member of
-		IUSE_EFFECTIVE. Note that the binary package may be remote, so it's
-		only possible to rely on metadata that is available in the remote
-		Packages file, and the IUSE_IMPLICIT header in the Packages file is
-		vulnerable to mutation (see bug 640318).
-
-		This function is only used for EAPIs that support IUSE_EFFECTIVE,
-		since built USE settings for earlier EAPIs may contain a large
-		number of irrelevant flags.
-
-		@param prof_effective_match: function to match IUSE_EFFECTIVE
-			values for the current profile
-		@type prof_effective_match: callable
-		@param built_use: built USE setting
-		@type built_use: frozenset
-		@return: True if flag is a valid USE value which may
-			be specified in USE dependencies, False otherwise.
-		@rtype: bool
-		"""
-		return flag in built_use or prof_effective_match(flag)
 
 	@property
 	def eapi(self):

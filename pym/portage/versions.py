@@ -363,12 +363,12 @@ class _pkg_str(_unicode):
 
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
-		file_size=None, mtime=None):
+		file_size=None, mtime=None, db=None):
 		return _unicode.__new__(cls, cpv)
 
 	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
-		file_size=None, mtime=None):
+		file_size=None, mtime=None, db=None):
 		if not isinstance(cpv, _unicode):
 			# Avoid TypeError from _unicode.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
@@ -384,6 +384,8 @@ class _pkg_str(_unicode):
 			mtime = metadata.get('_mtime_', mtime)
 		if settings is not None:
 			self.__dict__['_settings'] = settings
+		if db is not None:
+			self.__dict__['_db'] = db
 		if eapi is not None:
 			self.__dict__['eapi'] = eapi
 

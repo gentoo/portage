@@ -50,7 +50,7 @@ from portage.util.digraph import digraph
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.versions import catpkgsplit
+from portage.versions import _pkg_str, catpkgsplit
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -6974,6 +6974,15 @@ class depgraph(object):
 				metadata = zip(db_keys, db.aux_get(cpv, db_keys, myrepo=myrepo))
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
+
+			# Ensure that this cpv is linked to the correct db, since the
+			# caller might have passed in a cpv from a different db, in
+			# order get an instance from this db with the same cpv.
+			# If db has a _db attribute, use that instead, in order to
+			# to use the underlying db of DbapiProvidesIndex or similar.
+			db = getattr(db, '_db', db)
+			if getattr(cpv, '_db', None) is not db:
+				cpv = _pkg_str(cpv, db=db)
 
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
 				installed=installed, metadata=metadata, onlydeps=onlydeps,

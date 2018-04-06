@@ -458,7 +458,7 @@ class binarytree(object):
 				if v is not None:
 					v = _unicode_decode(v)
 					metadata[k] = " ".join(v.split())
-			mynewcpv = _pkg_str(mynewcpv, metadata=metadata)
+			mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
 			new_path = self.getname(mynewcpv)
 			self._pkg_paths[
 				self.dbapi._instance_key(mynewcpv)] = new_path[len(self.pkgdir)+1:]
@@ -589,7 +589,7 @@ class binarytree(object):
 			basename_index = {}
 			for d in pkgindex.packages:
 				cpv = _pkg_str(d["CPV"], metadata=d,
-					settings=self.settings)
+					settings=self.settings, db=self.dbapi)
 				d["CPV"] = cpv
 				metadata[_instance_key(cpv)] = d
 				path = d.get("PATH")
@@ -755,8 +755,8 @@ class binarytree(object):
 					pkg_metadata.pop("CATEGORY")
 					pkg_metadata.pop("PF")
 					mycpv = _pkg_str(mycpv,
-						metadata=self.dbapi._aux_cache_slot_dict(
-						pkg_metadata))
+						metadata=self.dbapi._aux_cache_slot_dict(pkg_metadata),
+						db=self.dbapi)
 					pkg_paths[_instance_key(mycpv)] = mypath
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
@@ -1028,7 +1028,7 @@ class binarytree(object):
 				remote_base_uri = pkgindex.header.get("URI", base_url)
 				for d in pkgindex.packages:
 					cpv = _pkg_str(d["CPV"], metadata=d,
-						settings=self.settings)
+						settings=self.settings, db=self.dbapi)
 					# Local package instances override remote instances
 					# with the same instance_key.
 					if self.dbapi.cpv_exists(cpv):
@@ -1097,7 +1097,8 @@ class binarytree(object):
 				if self._remotepkgs is not None:
 					fetched = self._remotepkgs.pop(instance_key, None)
 
-		cpv = _pkg_str(cpv, metadata=metadata, settings=self.settings)
+		cpv = _pkg_str(cpv, metadata=metadata, settings=self.settings,
+			db=self.dbapi)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
@@ -1128,7 +1129,7 @@ class binarytree(object):
 				build_id = self._parse_build_id(basename)
 				metadata["BUILD_ID"] = _unicode(build_id)
 				cpv = _pkg_str(cpv, metadata=metadata,
-					settings=self.settings)
+					settings=self.settings, db=self.dbapi)
 				binpkg = portage.xpak.tbz2(full_path)
 				binary_data = binpkg.get_data()
 				binary_data[b"BUILD_ID"] = _unicode_encode(

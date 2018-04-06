@@ -166,7 +166,7 @@ class dbapi(object):
 		metadata = dict(zip(self._pkg_str_aux_keys,
 			self.aux_get(cpv, self._pkg_str_aux_keys, myrepo=repo)))
 
-		return _pkg_str(cpv, metadata=metadata, settings=self.settings)
+		return _pkg_str(cpv, metadata=metadata, settings=self.settings, db=self)
 
 	def _iter_match_repo(self, atom, cpv_iter):
 		for cpv in cpv_iter:
@@ -216,16 +216,48 @@ class dbapi(object):
 
 			yield cpv
 
-	def _match_use(self, atom, pkg, metadata, ignore_profile=False):
+	def _iuse_implicit_cnstr(self, pkg, metadata):
+		"""
+		Construct a callable that checks if a given USE flag should
+		be considered to be a member of the implicit IUSE for the
+		given package.
+
+		@param pkg: package
+		@type pkg: _pkg_str
+		@param metadata: package metadata
+		@type metadata: Mapping
+		@return: a callable that accepts a single USE flag argument,
+			and returns True only if the USE flag should be considered
+			to be a member of the implicit IUSE for the given package.
+		@rtype: callable
+		"""
 		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
 		if eapi_attrs.iuse_effective:
 			iuse_implicit_match = self.settings._iuse_effective_match
-			if not self._use_mutable:
-				iuse_implicit_match = functools.partial(
-					Package._built_iuse_effective_match,
-					iuse_implicit_match, frozenset(metadata["USE"].split()))
 		else:
 			iuse_implicit_match = self.settings._iuse_implicit_match
+
+		if not self._use_mutable and eapi_attrs.iuse_effective:
+			# For built packages, it is desirable for the built USE setting to
+			# be independent of the profile's current IUSE_IMPLICIT state, since
+			# the profile's IUSE_IMPLICT setting may have diverged. Therefore,
+			# any member of the built USE setting is considered to be a valid
+			# member of IUSE_EFFECTIVE. Note that the binary package may be
+			# remote, so it's only possible to rely on metadata that is available
+			# in the remote Packages file, and the IUSE_IMPLICIT header in the
+			# Packages file is vulnerable to mutation (see bug 640318).
+			#
+			# This behavior is only used for EAPIs that support IUSE_EFFECTIVE,
+			# since built USE settings for earlier EAPIs may contain a large
+			# number of irrelevant flags.
+			prof_iuse = iuse_implicit_match
+			enabled = frozenset(metadata["USE"].split()).__contains__
+			iuse_implicit_match = lambda flag: prof_iuse(flag) or enabled(flag)
+
+		return iuse_implicit_match
+
+	def _match_use(self, atom, pkg, metadata, ignore_profile=False):
+		iuse_implicit_match = self._iuse_implicit_cnstr(pkg, metadata)
 		usealiases = self.settings._use_manager.getUseAliases(pkg)
 		iuse = Package._iuse(None, metadata["IUSE"].split(), iuse_implicit_match, usealiases, metadata["EAPI"])
 
