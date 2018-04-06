@@ -628,8 +628,8 @@ the whole commit message to abort.
 			problems.append('summary line must start with a logical unit name, e.g. "cat/pkg:"')
 		if '\n' in summary.strip():
 			problems.append('commit message must start with a *single* line of summary, followed by empty line')
-		# accept 69 overall or unit+50, in case of very long package names
-		elif len(summary.strip()) > 69 and len(summary.split(':', 1)[-1]) > 50:
+		# accept 69 characters overall
+		elif len(summary.strip()) > 69:
 			problems.append('summary line is too long (max 69 characters)')
 
 		multiple_footers = False

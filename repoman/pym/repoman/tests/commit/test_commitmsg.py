@@ -76,8 +76,9 @@ in a single line that should trigger an explicit error',
 				r'summary.*too long')
 
 	def test_summary_with_very_long_package_name(self):
-		self.assertGood('dev-foo/foo-bar-bar-baz-bar-bar-foo-bar-bar-\
-baz-foo-baz-baz-foo: We do not fail because pkgname was long')
+		self.assertBad('dev-foo/foo-bar-bar-baz-bar-bar-foo-bar-bar-\
+baz-foo-baz-baz-foo: We do fail because GLEP66 says 69 chars maximum',
+				r'summary.*too long')
 
 	def test_multiple_footers(self):
 		self.assertBad('''dev-foo/bar: Good summary
