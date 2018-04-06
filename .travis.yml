@@ -8,6 +8,8 @@ python:
 
 # command to install dependencies
 install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -y libxml2-utils
     - pip install lxml
     # python3.6+ has sha3 built-in, for older versions install pysha3
     # (except for pypy where pysha3 is broken)
