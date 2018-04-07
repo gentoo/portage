@@ -6,7 +6,6 @@ import os
 from .EventLoop import EventLoop
 
 _default_constructor = EventLoop
-#from .GlibEventLoop import GlibEventLoop as _default_constructor
 
 # If _default_constructor doesn't support multiprocessing,
 # then _multiprocessing_constructor is used in subprocesses.
