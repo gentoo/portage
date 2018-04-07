@@ -33,11 +33,14 @@ from portage.const import EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BIN_PATH
 
 if repoman._not_installed:
 	cnf_path = os.path.join(REPOMAN_BASE_PATH, 'cnf')
+	cnf_path_repoman = cnf_path
 	cnf_etc_path = cnf_path
 	cnf_bindir = os.path.join(REPOMAN_BASE_PATH, 'bin')
 	cnf_sbindir = cnf_bindir
 else:
 	cnf_path = os.path.join(EPREFIX or '/', GLOBAL_CONFIG_PATH)
+	cnf_path_repoman = os.path.join(EPREFIX or '/',
+		sys.prefix.lstrip(os.sep), 'share', 'repoman')
 	cnf_etc_path = os.path.join(EPREFIX or '/', 'etc')
 	cnf_eprefix = EPREFIX
 	cnf_bindir = os.path.join(EPREFIX or '/', 'usr', 'bin')

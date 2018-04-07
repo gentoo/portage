@@ -26,6 +26,11 @@ from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
+try:
+	from repoman.tests import cnf_path_repoman
+except ImportError:
+	cnf_path_repoman = None
+
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
 	basestring = str
@@ -456,6 +461,11 @@ class ResolverPlayground(object):
 			with open(file_name, "w") as f:
 				for line in lines:
 					f.write("%s\n" % line)
+
+		if cnf_path_repoman is not None:
+			#Create /usr/share/repoman
+			repoman_share_dir = os.path.join(self.eroot, 'usr', 'share', 'repoman')
+			os.symlink(cnf_path_repoman, repoman_share_dir)
 
 	def _create_world(self, world, world_sets):
 		#Create /var/lib/portage/world
