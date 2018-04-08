@@ -102,6 +102,7 @@ class EventLoop(object):
 		@type main: bool
 		"""
 		self._use_signal = main and fcntl is not None
+		self._debug = bool(os.environ.get('PYTHONASYNCIODEBUG'))
 		self._thread_rlock = threading.RLock()
 		self._thread_condition = threading.Condition(self._thread_rlock)
 		self._poll_event_queue = []
@@ -762,6 +763,19 @@ class EventLoop(object):
 			if close is not None:
 				close()
 			self._poll_obj = None
+
+	def get_debug(self):
+		"""
+		Get the debug mode (bool) of the event loop.
+
+		The default value is True if the environment variable
+		PYTHONASYNCIODEBUG is set to a non-empty string, False otherwise.
+		"""
+		return self._debug
+
+	def set_debug(self, enabled):
+		"""Set the debug mode of the event loop."""
+		self._debug = enabled
 
 
 _can_poll_device = None
