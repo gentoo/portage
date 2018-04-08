@@ -747,6 +747,10 @@ class EventLoop(object):
 				self._default_executor = executor
 		return executor.submit(func, *args)
 
+	def is_closed(self):
+		"""Returns True if the event loop was closed."""
+		return self._poll_obj is None
+
 	def close(self):
 		"""Close the event loop.
 
