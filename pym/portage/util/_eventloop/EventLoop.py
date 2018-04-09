@@ -775,6 +775,29 @@ class EventLoop(object):
 		return self._handle(self.timeout_add(
 			delay * 1000, self._call_soon_callback(callback, args)), self)
 
+	def call_at(self, when, callback, *args):
+		"""
+		Arrange for the callback to be called at the given absolute
+		timestamp when (an int or float), using the same time reference as
+		AbstractEventLoop.time().
+
+		This method's behavior is the same as call_later().
+
+		An instance of asyncio.Handle is returned, which can be used to
+		cancel the callback.
+
+		Use functools.partial to pass keywords to the callback.
+
+		@type when: int or float
+		@param when: absolute timestamp when to call callback
+		@type callback: callable
+		@param callback: a function to call
+		@return: a handle which can be used to cancel the callback
+		@rtype: asyncio.Handle (or compatible)
+		"""
+		delta = when - self.time()
+		return self.call_later(delta if delta > 0 else 0, callback, *args)
+
 	def run_in_executor(self, executor, func, *args):
 		"""
 		Arrange for a func to be called in the specified executor.
