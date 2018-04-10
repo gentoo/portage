@@ -1321,7 +1321,8 @@ class binarytree(object):
 			header["URI"] = base_uri
 		else:
 			header.pop("URI", None)
-		for k in self._pkgindex_header_keys:
+		for k in list(self._pkgindex_header_keys) + \
+			self.settings.get("USE_EXPAND_UNPREFIXED", "").split():
 			v = self.settings.get(k, None)
 			if v:
 				header[k] = v
