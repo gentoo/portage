@@ -1293,6 +1293,20 @@ class binarytree(object):
 			translated_keys=self._pkgindex_translated_keys)
 
 	def _update_pkgindex_header(self, header):
+		"""
+		Add useful settings to the Packages file header, for use by
+		binhost clients.
+
+		This will return silently if the current profile is invalid or
+		does not have an IUSE_IMPLICIT variable, since it's useful to
+		maintain a cache of implicit IUSE settings for use with binary
+		packages.
+		"""
+		if not (self.settings.profile_path and
+			"IUSE_IMPLICIT" in self.settings):
+			header.setdefault("VERSION", _unicode(self._pkgindex_version))
+			return
+
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
 		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
 		if self.settings.profile_path:
