@@ -611,6 +611,7 @@ class portdbapi(dbapi):
 		# Callers of this method certainly want the same event loop to
 		# be used for all calls.
 		loop = loop or global_event_loop()
+		loop = getattr(loop, '_asyncio_wrapper', loop)
 		future = loop.create_future()
 		cache_me = False
 		if myrepo is not None:
@@ -665,7 +666,7 @@ class portdbapi(dbapi):
 
 		proc = EbuildMetadataPhase(cpv=mycpv,
 			ebuild_hash=ebuild_hash, portdb=self,
-			repo_path=mylocation, scheduler=loop,
+			repo_path=mylocation, scheduler=loop._loop,
 			settings=self.doebuild_settings)
 
 		proc.addExitListener(functools.partial(self._aux_get_return,
