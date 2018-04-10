@@ -30,6 +30,7 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@rtype: iterator
 	"""
 	loop = loop or global_event_loop()
+	loop = getattr(loop, '_asyncio_wrapper', loop)
 	max_jobs = max_jobs or multiprocessing.cpu_count()
 	max_load = max_load or multiprocessing.cpu_count()
 
@@ -43,7 +44,7 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		task_generator(),
 		max_jobs=max_jobs,
 		max_load=max_load,
-		event_loop=loop)
+		event_loop=loop._loop)
 
 	try:
 		scheduler.start()

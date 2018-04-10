@@ -29,7 +29,7 @@ class IterCompletedTestCase(TestCase):
 		# load causes the tasks to finish in an unexpected order.
 		self.todo = True
 
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		tasks = [
 			SleepProcess(seconds=0.200),
 			SleepProcess(seconds=0.100),
@@ -41,7 +41,7 @@ class IterCompletedTestCase(TestCase):
 		def future_generator():
 			for task in tasks:
 				task.future = loop.create_future()
-				task.scheduler = loop
+				task.scheduler = loop._loop
 				task.start()
 				yield task.future
 
