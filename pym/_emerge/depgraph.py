@@ -2571,17 +2571,23 @@ class depgraph(object):
 					isinstance(dep.parent, Package) and dep.parent.built):
 					continue
 
+				# If the parent is not installed, check if it needs to be
+				# rebuilt against an installed instance, since otherwise
+				# it could trigger downgrade of an installed instance as
+				# in bug #652938.
+				want_update_probe = dep.want_update or not dep.parent.installed
+
 				# Check for slot update first, since we don't want to
 				# trigger reinstall of the child package when a newer
 				# slot will be used instead.
-				if rebuild_if_new_slot and dep.want_update:
+				if rebuild_if_new_slot and want_update_probe:
 					new_dep = self._slot_operator_update_probe(dep,
 						new_child_slot=True)
 					if new_dep is not None:
 						self._slot_operator_update_backtrack(dep,
 							new_child_slot=new_dep.child)
 
-				if dep.want_update:
+				if want_update_probe:
 					if self._slot_operator_update_probe(dep):
 						self._slot_operator_update_backtrack(dep)
 
