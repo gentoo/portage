@@ -25,7 +25,8 @@ class ForkExecutor(object):
 	"""
 	def __init__(self, max_workers=None, loop=None):
 		self._max_workers = max_workers or multiprocessing.cpu_count()
-		self._loop = loop or global_event_loop()
+		loop = loop or global_event_loop()
+		self._loop = getattr(loop, '_asyncio_wrapper', loop)
 		self._submit_queue = collections.deque()
 		self._running_tasks = {}
 		self._shutdown = False
@@ -53,7 +54,7 @@ class ForkExecutor(object):
 			future, proc = self._submit_queue.popleft()
 			future.add_done_callback(functools.partial(self._cancel_cb, proc))
 			proc.addExitListener(functools.partial(self._proc_exit, future))
-			proc.scheduler = self._loop
+			proc.scheduler = self._loop._loop
 			proc.start()
 			self._running_tasks[id(proc)] = proc
 
