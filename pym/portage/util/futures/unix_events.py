@@ -2,8 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
+	'AbstractChildWatcher',
 	'DefaultEventLoopPolicy',
 )
+
+try:
+	from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
+except ImportError:
+	_AbstractChildWatcher = object
+
+import os
 
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
@@ -68,6 +76,84 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		return asyncio.Task(coro, loop=self)
 
 
+class AbstractChildWatcher(_AbstractChildWatcher):
+	def add_child_handler(self, pid, callback, *args):
+		raise NotImplementedError()
+
+	def remove_child_handler(self, pid):
+		raise NotImplementedError()
+
+	def attach_loop(self, loop):
+		raise NotImplementedError()
+
+	def close(self):
+		raise NotImplementedError()
+
+	def __enter__(self):
+		raise NotImplementedError()
+
+	def __exit__(self, a, b, c):
+		raise NotImplementedError()
+
+
+class _PortageChildWatcher(_AbstractChildWatcher):
+	def __init__(self, loop):
+		"""
+		@type loop: EventLoop
+		@param loop: an instance of portage's internal event loop
+		"""
+		self._loop = loop
+		self._callbacks = {}
+
+	def close(self):
+		pass
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, a, b, c):
+		pass
+
+	def _child_exit(self, pid, status, data):
+		self._callbacks.pop(pid)
+		callback, args = data
+		callback(pid, self._compute_returncode(status), *args)
+
+	def _compute_returncode(self, status):
+		if os.WIFSIGNALED(status):
+			return -os.WTERMSIG(status)
+		elif os.WIFEXITED(status):
+			return os.WEXITSTATUS(status)
+		else:
+			return status
+
+	def add_child_handler(self, pid, callback, *args):
+		"""
+		Register a new child handler.
+
+		Arrange for callback(pid, returncode, *args) to be called when
+		process 'pid' terminates. Specifying another callback for the same
+		process replaces the previous handler.
+		"""
+		source_id = self._callbacks.get(pid)
+		if source_id is not None:
+			self._loop.source_remove(source_id)
+		self._callbacks[pid] = self._loop.child_watch_add(
+			pid, self._child_exit, data=(callback, args))
+
+	def remove_child_handler(self, pid):
+		"""
+		Removes the handler for process 'pid'.
+
+		The function returns True if the handler was successfully removed,
+		False if there was nothing to remove.
+		"""
+		source_id = self._callbacks.pop(pid, None)
+		if source_id is not None:
+			return self._loop.source_remove(source_id)
+		return False
+
+
 class _PortageEventLoopPolicy(events.AbstractEventLoopPolicy):
 	"""
 	Implementation of asyncio.AbstractEventLoopPolicy based on portage's
@@ -86,6 +172,10 @@ class _PortageEventLoopPolicy(events.AbstractEventLoopPolicy):
 		@return: the current event loop policy
 		"""
 		return _global_event_loop()._asyncio_wrapper
+
+	def get_child_watcher(self):
+		"""Get the watcher for child processes."""
+		return _global_event_loop()._asyncio_child_watcher
 
 
 DefaultEventLoopPolicy = _PortageEventLoopPolicy

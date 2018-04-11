@@ -3,7 +3,9 @@
 
 __all__ = (
 	'ensure_future',
+	'get_child_watcher',
 	'get_event_loop',
+	'set_child_watcher',
 	'get_event_loop_policy',
 	'set_event_loop_policy',
 	'sleep',
@@ -60,6 +62,17 @@ def get_event_loop():
 	@return: the event loop for the current context
 	"""
 	return get_event_loop_policy().get_event_loop()
+
+
+def get_child_watcher():
+    """Equivalent to calling get_event_loop_policy().get_child_watcher()."""
+    return get_event_loop_policy().get_child_watcher()
+
+
+def set_child_watcher(watcher):
+    """Equivalent to calling
+    get_event_loop_policy().set_child_watcher(watcher)."""
+    return get_event_loop_policy().set_child_watcher(watcher)
 
 
 class Task(Future):

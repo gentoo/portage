@@ -25,7 +25,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.futures:Future',
 	'portage.util.futures.executor.fork:ForkExecutor',
-	'portage.util.futures.unix_events:_PortageEventLoop',
+	'portage.util.futures.unix_events:_PortageEventLoop,_PortageChildWatcher',
 )
 
 from portage import OrderedDict
@@ -190,6 +190,7 @@ class EventLoop(object):
 		self._sigchld_src_id = None
 		self._pid = os.getpid()
 		self._asyncio_wrapper = _PortageEventLoop(loop=self)
+		self._asyncio_child_watcher = _PortageChildWatcher(self)
 
 	def create_future(self):
 		"""
@@ -424,8 +425,8 @@ class EventLoop(object):
 					self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
 				signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 
-		# poll now, in case the SIGCHLD has already arrived
-		self._poll_child_processes()
+		# poll soon, in case the SIGCHLD has already arrived
+		self.call_soon(self._poll_child_processes)
 		return source_id
 
 	def _sigchld_sig_cb(self, signum, frame):
