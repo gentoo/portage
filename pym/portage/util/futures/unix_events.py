@@ -48,6 +48,8 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		self.remove_writer = loop.remove_writer
 		self.run_in_executor = loop.run_in_executor
 		self.time = loop.time
+		self.default_exception_handler = loop.default_exception_handler
+		self.call_exception_handler = loop.call_exception_handler
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
 

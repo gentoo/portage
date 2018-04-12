@@ -9,6 +9,7 @@ import os
 import select
 import signal
 import sys
+import traceback
 
 try:
 	import fcntl
@@ -841,6 +842,73 @@ class EventLoop(object):
 			if close is not None:
 				close()
 			self._poll_obj = None
+
+	def default_exception_handler(self, context):
+		"""
+		Default exception handler.
+
+		This is called when an exception occurs and no exception
+		handler is set, and can be called by a custom exception
+		handler that wants to defer to the default behavior.
+
+		The context parameter has the same meaning as in
+		`call_exception_handler()`.
+
+		@param context: exception context
+		@type context: dict
+		"""
+		message = context.get('message')
+		if not message:
+			message = 'Unhandled exception in event loop'
+
+		exception = context.get('exception')
+		if exception is not None:
+			exc_info = (type(exception), exception, exception.__traceback__)
+		else:
+			exc_info = False
+
+		log_lines = [message]
+		for key in sorted(context):
+			if key in {'message', 'exception'}:
+				continue
+			value = context[key]
+			if key == 'source_traceback':
+				tb = ''.join(traceback.format_list(value))
+				value = 'Object created at (most recent call last):\n'
+				value += tb.rstrip()
+			elif key == 'handle_traceback':
+				tb = ''.join(traceback.format_list(value))
+				value = 'Handle created at (most recent call last):\n'
+				value += tb.rstrip()
+			else:
+				value = repr(value)
+			log_lines.append('{}: {}'.format(key, value))
+
+		logging.error('\n'.join(log_lines), exc_info=exc_info)
+		os.kill(os.getpid(), signal.SIGTERM)
+
+	def call_exception_handler(self, context):
+		"""
+		Call the current event loop's exception handler.
+
+		The context argument is a dict containing the following keys:
+
+		- 'message': Error message;
+		- 'exception' (optional): Exception object;
+		- 'future' (optional): Future instance;
+		- 'handle' (optional): Handle instance;
+		- 'protocol' (optional): Protocol instance;
+		- 'transport' (optional): Transport instance;
+		- 'socket' (optional): Socket instance;
+		- 'asyncgen' (optional): Asynchronous generator that caused
+								the exception.
+
+		New keys may be introduced in the future.
+
+		@param context: exception context
+		@type context: dict
+		"""
+		self.default_exception_handler(context)
 
 	def get_debug(self):
 		"""
