@@ -96,6 +96,8 @@ class ForkExecutor(object):
 
 	def shutdown(self, wait=True):
 		self._shutdown = True
+		if not self._running_tasks and not self._shutdown_future.done():
+			self._shutdown_future.set_result(None)
 		if wait:
 			self._loop.run_until_complete(self._shutdown_future)
 
