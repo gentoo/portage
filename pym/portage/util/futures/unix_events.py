@@ -7,11 +7,15 @@ __all__ = (
 )
 
 try:
+	from asyncio.base_subprocess import BaseSubprocessTransport as _BaseSubprocessTransport
 	from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
 except ImportError:
 	_AbstractChildWatcher = object
+	_BaseSubprocessTransport = object
 
+import functools
 import os
+import subprocess
 
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
@@ -76,6 +80,100 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		@return: a task object
 		"""
 		return asyncio.Task(coro, loop=self)
+
+	def subprocess_exec(self, protocol_factory, program, *args, **kwargs):
+		"""
+		Run subprocesses asynchronously using the subprocess module.
+
+		@type protocol_factory: callable
+		@param protocol_factory: must instantiate a subclass of the
+			asyncio.SubprocessProtocol class
+		@type program: str or bytes
+		@param program: the program to execute
+		@type args: str or bytes
+		@param args: program's arguments
+		@type kwargs: varies
+		@param kwargs: subprocess.Popen parameters
+		@rtype: asyncio.Future
+		@return: Returns a pair of (transport, protocol), where transport
+			is an instance of BaseSubprocessTransport
+		"""
+
+		# python2.7 does not allow arguments with defaults after *args
+		stdin = kwargs.pop('stdin', subprocess.PIPE)
+		stdout = kwargs.pop('stdout', subprocess.PIPE)
+		stderr = kwargs.pop('stderr', subprocess.PIPE)
+
+		if subprocess.PIPE in (stdin, stdout, stderr):
+			# Requires connect_read/write_pipe implementation, for example
+			# see asyncio.unix_events._UnixReadPipeTransport.
+			raise NotImplementedError()
+
+		universal_newlines = kwargs.pop('universal_newlines', False)
+		shell = kwargs.pop('shell', False)
+		bufsize = kwargs.pop('bufsize', 0)
+
+		if universal_newlines:
+			raise ValueError("universal_newlines must be False")
+		if shell:
+			raise ValueError("shell must be False")
+		if bufsize != 0:
+			raise ValueError("bufsize must be 0")
+		popen_args = (program,) + args
+		for arg in popen_args:
+			if not isinstance(arg, (str, bytes)):
+				raise TypeError("program arguments must be "
+								"a bytes or text string, not %s"
+								% type(arg).__name__)
+		result = self.create_future()
+		self._make_subprocess_transport(
+			result, protocol_factory(), popen_args, False, stdin, stdout, stderr,
+			bufsize, **kwargs)
+		return result
+
+	def _make_subprocess_transport(self, result, protocol, args, shell,
+		stdin, stdout, stderr, bufsize, extra=None, **kwargs):
+		waiter = self.create_future()
+		transp = _UnixSubprocessTransport(self,
+			protocol, args, shell, stdin, stdout, stderr, bufsize,
+			waiter=waiter, extra=extra,
+			**kwargs)
+
+		self._loop._asyncio_child_watcher.add_child_handler(
+			transp.get_pid(), self._child_watcher_callback, transp)
+
+		waiter.add_done_callback(functools.partial(
+			self._subprocess_transport_callback, transp, protocol, result))
+
+	def _subprocess_transport_callback(self, transp, protocol, result, waiter):
+		if waiter.exception() is None:
+			result.set_result((transp, protocol))
+		else:
+			transp.close()
+			wait_transp = asyncio.ensure_future(transp._wait(), loop=self)
+			wait_transp.add_done_callback(
+				functools.partial(self._subprocess_transport_failure,
+				result, waiter.exception()))
+
+	def _child_watcher_callback(self, pid, returncode, transp):
+		self.call_soon_threadsafe(transp._process_exited, returncode)
+
+	def _subprocess_transport_failure(self, result, exception, wait_transp):
+		result.set_exception(wait_transp.exception() or exception)
+
+
+class _UnixSubprocessTransport(_BaseSubprocessTransport):
+	"""
+	This is identical to the standard library's private
+	asyncio.unix_events._UnixSubprocessTransport class, except that
+	subprocess.PIPE is not implemented for stdin, since that would
+	require connect_write_pipe support in the event loop. For example,
+	see the asyncio.unix_events._UnixWritePipeTransport class.
+	"""
+	def _start(self, args, shell, stdin, stdout, stderr, bufsize, **kwargs):
+		self._proc = subprocess.Popen(
+			args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
+			universal_newlines=False, bufsize=bufsize, **kwargs)
 
 
 class AbstractChildWatcher(_AbstractChildWatcher):
