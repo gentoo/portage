@@ -1105,9 +1105,11 @@ Ignore vcs directories that may be present in the repository. It is the
 user's responsibility to set sync-rsync-extra-opts to protect vcs
 directories if appropriate.
 .TP
-.B sync\-rsync\-verify\-jobs
-Number of parallel jobs to use when verifying nested Manifests. Defaults
-to the apparent number of processors.
+.B sync\-rsync\-verify\-jobs = 1
+Number of parallel jobs to use when verifying nested Manifests. When
+set to 0, this will use the apparent number of processors if parallel
+verification is supported by the installed version of app-portage/gemato.
+Defaults to 1.
 .TP
 .B sync\-rsync\-verify\-max\-age
 Warn if repository is older than the specified number of days. Disabled

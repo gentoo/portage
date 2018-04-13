@@ -107,12 +107,17 @@ class RsyncSync(NewBase):
 		if self.verify_jobs is not None:
 			try:
 				self.verify_jobs = int(self.verify_jobs)
-				if self.verify_jobs <= 0:
+				if self.verify_jobs < 0:
 					raise ValueError(self.verify_jobs)
 			except ValueError:
 				writemsg_level("!!! sync-rsync-verify-jobs not a positive integer: %s\n" % (self.verify_jobs,),
 					level=logging.WARNING, noiselevel=-1)
 				self.verify_jobs = None
+			else:
+				if self.verify_jobs == 0:
+					# Use the apparent number of processors if gemato
+					# supports it.
+					self.verify_jobs = None
 		# Support overriding max age.
 		self.max_age = self.repo.module_specific_options.get(
 				'sync-rsync-verify-max-age', '')
