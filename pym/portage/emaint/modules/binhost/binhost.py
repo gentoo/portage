@@ -170,6 +170,7 @@ class BinhostHandler(object):
 
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(metadata.values())
+				bintree._update_pkgindex_header(self._pkgindex.header)
 				bintree._pkgindex_write(self._pkgindex)
 
 			finally:
