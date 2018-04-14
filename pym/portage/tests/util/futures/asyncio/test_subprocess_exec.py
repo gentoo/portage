@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import subprocess
 
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -159,5 +160,34 @@ class SubprocessExecTestCase(TestCase):
 					output.cancel()
 				for f in files:
 					f.close()
+
+		self._run_test(test)
+
+	def testReadTransport(self):
+		"""
+		Test asyncio.create_subprocess_exec(stdout=subprocess.PIPE) which
+		requires an AbstractEventLoop.connect_read_pipe implementation
+		(and a ReadTransport implementation for it to return).
+		"""
+		if not hasattr(asyncio, 'create_subprocess_exec'):
+			self.skipTest('create_subprocess_exec not implemented for python2')
+
+		args_tuple = (b'hello', b'world')
+		echo_binary = find_binary("echo")
+		self.assertNotEqual(echo_binary, None)
+		echo_binary = echo_binary.encode()
+
+		def test(loop):
+			with open(os.devnull, 'rb', 0) as devnull:
+				proc = loop.run_until_complete(
+					asyncio.create_subprocess_exec(
+					echo_binary, *args_tuple,
+					stdin=devnull,
+					stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+
+			self.assertEqual(
+				tuple(loop.run_until_complete(proc.stdout.read()).split()),
+				args_tuple)
+			self.assertEqual(loop.run_until_complete(proc.wait()), os.EX_OK)
 
 		self._run_test(test)
