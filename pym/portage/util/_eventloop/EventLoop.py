@@ -125,6 +125,10 @@ class EventLoop(object):
 		self._poll_event_queue = []
 		self._poll_event_handlers = {}
 		self._poll_event_handler_ids = {}
+		# Number of current calls to self.iteration(). A number greater
+		# than 1 indicates recursion, which is not supported by asyncio's
+		# default event loop.
+		self._iteration_depth = 0
 		# Increment id for each new handler.
 		self._event_handler_id = 0
 		# New call_soon callbacks must have an opportunity to
@@ -262,7 +266,13 @@ class EventLoop(object):
 		@rtype: bool
 		@return: True if events were dispatched.
 		"""
+		self._iteration_depth += 1
+		try:
+			return self._iteration(*args)
+		finally:
+			self._iteration_depth -= 1
 
+	def _iteration(self, *args):
 		may_block = True
 
 		if args:
@@ -821,6 +831,10 @@ class EventLoop(object):
 				executor = ForkExecutor(loop=self)
 				self._default_executor = executor
 		return executor.submit(func, *args)
+
+	def is_running(self):
+		"""Return whether the event loop is currently running."""
+		return self._iteration_depth > 0
 
 	def is_closed(self):
 		"""Returns True if the event loop was closed."""

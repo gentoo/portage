@@ -43,6 +43,7 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		self.call_soon_threadsafe = loop.call_soon_threadsafe
 		self.call_later = loop.call_later
 		self.call_at = loop.call_at
+		self.is_running = loop.is_running
 		self.is_closed = loop.is_closed
 		self.close = loop.close
 		self.create_future = loop.create_future
