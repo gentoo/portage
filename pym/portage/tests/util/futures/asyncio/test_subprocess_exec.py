@@ -191,3 +191,37 @@ class SubprocessExecTestCase(TestCase):
 			self.assertEqual(loop.run_until_complete(proc.wait()), os.EX_OK)
 
 		self._run_test(test)
+
+	def testWriteTransport(self):
+		"""
+		Test asyncio.create_subprocess_exec(stdin=subprocess.PIPE) which
+		requires an AbstractEventLoop.connect_write_pipe implementation
+		(and a WriteTransport implementation for it to return).
+		"""
+		if not hasattr(asyncio, 'create_subprocess_exec'):
+			self.skipTest('create_subprocess_exec not implemented for python2')
+
+		stdin_data = b'hello world'
+		cat_binary = find_binary("cat")
+		self.assertNotEqual(cat_binary, None)
+		cat_binary = cat_binary.encode()
+
+		def test(loop):
+			proc = loop.run_until_complete(
+				asyncio.create_subprocess_exec(
+				cat_binary,
+				stdin=subprocess.PIPE,
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
+
+			# This buffers data when necessary to avoid blocking.
+			proc.stdin.write(stdin_data)
+			# Any buffered data is written asynchronously after the
+			# close method is called.
+			proc.stdin.close()
+
+			self.assertEqual(
+				loop.run_until_complete(proc.stdout.read()),
+				stdin_data)
+			self.assertEqual(loop.run_until_complete(proc.wait()), os.EX_OK)
+
+		self._run_test(test)
