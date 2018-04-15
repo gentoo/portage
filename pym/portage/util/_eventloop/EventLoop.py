@@ -609,7 +609,7 @@ class EventLoop(object):
 		Stop watching the file descriptor for read availability.
 		"""
 		handler = self._poll_event_handlers.get(fd)
-		if fd is not None:
+		if handler is not None:
 			return self.source_remove(handler.source_id)
 		return False
 
@@ -627,7 +627,7 @@ class EventLoop(object):
 		Stop watching the file descriptor for write availability.
 		"""
 		handler = self._poll_event_handlers.get(fd)
-		if fd is not None:
+		if handler is not None:
 			return self.source_remove(handler.source_id)
 		return False
 
