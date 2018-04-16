@@ -25,6 +25,7 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util.futures:asyncio',
 	'portage.util.futures.futures:Future',
 	'portage.util.futures.executor.fork:ForkExecutor',
 	'portage.util.futures.unix_events:_PortageEventLoop,_PortageChildWatcher',
@@ -781,6 +782,7 @@ class EventLoop(object):
 		@return: the Future's result
 		@raise: the Future's exception
 		"""
+		future = asyncio.ensure_future(future, loop=self._asyncio_wrapper)
 		while not future.done():
 			self.iteration()
 

@@ -30,7 +30,6 @@ from portage.util.futures import (
 	asyncio,
 	events,
 )
-from portage.util.futures.futures import Future
 
 
 class _PortageEventLoop(events.AbstractEventLoop):
@@ -45,6 +44,7 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		@param loop: an instance of portage's internal event loop
 		"""
 		self._loop = loop
+		self.run_until_complete = loop.run_until_complete
 		self.call_soon = loop.call_soon
 		self.call_soon_threadsafe = loop.call_soon_threadsafe
 		self.call_later = loop.call_later
@@ -63,19 +63,6 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		self.call_exception_handler = loop.call_exception_handler
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
-
-	def run_until_complete(self, future):
-		"""
-		Run the event loop until a Future is done.
-
-		@type future: asyncio.Future
-		@param future: a Future to wait for
-		@rtype: object
-		@return: the Future's result
-		@raise: the Future's exception
-		"""
-		return self._loop.run_until_complete(
-			asyncio.ensure_future(future, loop=self))
 
 	def create_task(self, coro):
 		"""
