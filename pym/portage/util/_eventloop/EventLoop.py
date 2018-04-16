@@ -506,10 +506,15 @@ class EventLoop(object):
 		@return: an integer ID
 		"""
 		with self._thread_condition:
-			source_id = self._call_soon_id = self._new_source_id()
-			self._idle_callbacks[source_id] = self._idle_callback_class(
-				args=args, callback=callback, source_id=source_id)
+			source_id = self._idle_add(callback, *args)
 			self._thread_condition.notify()
+		return source_id
+
+	def _idle_add(self, callback, *args):
+		"""Like idle_add(), but without thread safety."""
+		source_id = self._call_soon_id = self._new_source_id()
+		self._idle_callbacks[source_id] = self._idle_callback_class(
+			args=args, callback=callback, source_id=source_id)
 		return source_id
 
 	def _run_idle_callbacks(self):
@@ -810,11 +815,14 @@ class EventLoop(object):
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
-		return self._handle(self.idle_add(
+		return self._handle(self._idle_add(
 			self._call_soon_callback(callback, args)), self)
 
-	# The call_soon method inherits thread safety from the idle_add method.
-	call_soon_threadsafe = call_soon
+	def call_soon_threadsafe(self, callback, *args):
+		"""Like call_soon(), but thread safe."""
+		# idle_add provides thread safety
+		return self._handle(self.idle_add(
+			self._call_soon_callback(callback, args)), self)
 
 	def time(self):
 		"""Return the time according to the event loop's clock.
