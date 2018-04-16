@@ -2,6 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
+	'ALL_COMPLETED',
+	'FIRST_COMPLETED',
+	'FIRST_EXCEPTION',
 	'ensure_future',
 	'get_child_watcher',
 	'get_event_loop',
@@ -10,6 +13,7 @@ __all__ = (
 	'set_event_loop_policy',
 	'sleep',
 	'Task',
+	'wait',
 )
 
 try:
@@ -22,6 +26,13 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:DefaultEventLoopPolicy',
 )
 from portage.util.futures.futures import Future
+from portage.util.futures._asyncio.tasks import (
+	ALL_COMPLETED,
+	FIRST_COMPLETED,
+	FIRST_EXCEPTION,
+	wait,
+)
+
 
 _lock = threading.Lock()
 _policy = None

@@ -11,9 +11,9 @@ except ImportError:
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
+from portage.util.futures import asyncio
 from portage.util.futures.futures import TimeoutError
 from portage.util.futures.retry import retry
-from portage.util.futures.wait import wait
 from portage.util.monotonic import monotonic
 
 
@@ -57,7 +57,7 @@ class HangForever(object):
 
 class RetryTestCase(TestCase):
 	def testSucceedLater(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = SucceedLater(1)
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=9999,
@@ -67,51 +67,51 @@ class RetryTestCase(TestCase):
 		self.assertEqual(result, 'success')
 
 	def testSucceedNever(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=4, try_timeout=None,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception().__cause__, SucceedNeverException))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
 
 	def testSucceedNeverReraise(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(reraise=True, try_max=4, try_timeout=None,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception(), SucceedNeverException))
+		self.assertTrue(isinstance(done.pop().exception(), SucceedNeverException))
 
 	def testHangForever(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=2, try_timeout=0.1,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception().__cause__, TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, TimeoutError))
 
 	def testHangForeverReraise(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(reraise=True, try_max=2, try_timeout=0.1,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception(), TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception(), TimeoutError))
 
 	def testCancelRetry(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_timeout=0.1,
@@ -119,29 +119,29 @@ class RetryTestCase(TestCase):
 		decorated_func = decorator(func_coroutine)
 		future = decorated_func()
 		loop.call_later(0.3, future.cancel)
-		done, pending = loop.run_until_complete(wait([future]))
+		done, pending = loop.run_until_complete(asyncio.wait([future], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(done[0].cancelled())
+		self.assertTrue(done.pop().cancelled())
 
 	def testOverallTimeoutWithException(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_timeout=0.1, overall_timeout=0.3,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception().__cause__, SucceedNeverException))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
 
 	def testOverallTimeoutWithTimeoutError(self):
-		loop = global_event_loop()
+		loop = global_event_loop()._asyncio_wrapper
 		# results in TimeoutError because it hangs forever
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_timeout=0.1, overall_timeout=0.3,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
 		decorated_func = decorator(func_coroutine)
-		done, pending = loop.run_until_complete(wait([decorated_func()]))
+		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done[0].exception().__cause__, TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, TimeoutError))

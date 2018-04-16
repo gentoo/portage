@@ -6,7 +6,7 @@ import multiprocessing
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.util.futures.wait import wait, FIRST_COMPLETED
+from portage.util.futures import asyncio
 
 
 def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
@@ -53,7 +53,8 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		# task_generator is exhausted
 		while future_map:
 			done, pending = loop.run_until_complete(
-				wait(list(future_map.values()), return_when=FIRST_COMPLETED))
+				asyncio.wait(list(future_map.values()),
+				return_when=asyncio.FIRST_COMPLETED, loop=loop))
 			for future in done:
 				del future_map[id(future)]
 				yield future
