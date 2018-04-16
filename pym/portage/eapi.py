@@ -159,7 +159,7 @@ def _get_eapi_attrs(eapi):
 		dots_in_use_flags = (eapi is None or eapi_allows_dots_in_use_flags(eapi)),
 		empty_groups_always_true = (eapi is not None and eapi_empty_groups_always_true(eapi)),
 		exports_EBUILD_PHASE_FUNC = (eapi is None or eapi_exports_EBUILD_PHASE_FUNC(eapi)),
-		exports_PORTDIR = (eapi is not None and eapi_exports_PORTDIR(eapi)),
+		exports_PORTDIR = (eapi is None or eapi_exports_PORTDIR(eapi)),
 		exports_ECLASSDIR = (eapi is not None and eapi_exports_ECLASSDIR(eapi)),
 		feature_flag_test = True,
 		feature_flag_targetroot = (eapi is not None and eapi_has_targetroot(eapi)),
