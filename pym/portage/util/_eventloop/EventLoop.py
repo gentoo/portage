@@ -26,7 +26,6 @@ except ImportError:
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:asyncio',
-	'portage.util.futures.futures:Future',
 	'portage.util.futures.executor.fork:ForkExecutor',
 	'portage.util.futures.unix_events:_PortageEventLoop,_PortageChildWatcher',
 )
@@ -207,7 +206,7 @@ class EventLoop(object):
 		"""
 		Create a Future object attached to the loop.
 		"""
-		return Future(loop=self._asyncio_wrapper)
+		return asyncio.Future(loop=self._asyncio_wrapper)
 
 	def _new_source_id(self):
 		"""

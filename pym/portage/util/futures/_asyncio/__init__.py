@@ -6,6 +6,7 @@ __all__ = (
 	'FIRST_COMPLETED',
 	'FIRST_EXCEPTION',
 	'ensure_future',
+	'Future',
 	'get_child_watcher',
 	'get_event_loop',
 	'set_child_watcher',
