@@ -620,6 +620,7 @@ class EventLoop(object):
 				if mask != self._EVENT_READ:
 					selector_mask |= mask
 					callbacks.append(item)
+			self.source_remove(handler.source_id)
 		self.io_add_watch(fd, selector_mask, self._selector_callback(callbacks))
 
 	def remove_reader(self, fd):
@@ -667,6 +668,7 @@ class EventLoop(object):
 				if mask != self._EVENT_WRITE:
 					selector_mask |= mask
 					callbacks.append(item)
+			self.source_remove(handler.source_id)
 		self.io_add_watch(fd, selector_mask, self._selector_callback(callbacks))
 
 	def remove_writer(self, fd):
