@@ -29,6 +29,7 @@ from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	ParseError, PermissionDenied, PortageException
 from portage.localization import _
+from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage import _movefile
 from portage import os
 from portage import _encodings
@@ -322,6 +323,7 @@ class binarytree(object):
 			self._pkgindex_use_evaluated_keys = \
 				("BDEPEND", "DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
 				"PDEPEND", "PROPERTIES", "RESTRICT")
+			self._pkgindex_header = None
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
@@ -805,6 +807,10 @@ class binarytree(object):
 				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
 
+			self._pkgindex_header = {}
+			self._merge_pkgindex_header(pkgindex.header,
+				self._pkgindex_header)
+
 		return pkgindex if update_pkgindex else None
 
 	def _populate_remote(self, getbinpkg_refresh=True):
@@ -1041,6 +1047,8 @@ class binarytree(object):
 					self.dbapi.cpv_inject(cpv)
 
 				self._remote_has_index = True
+				self._merge_pkgindex_header(pkgindex.header,
+					self._pkgindex_header)
 
 	def inject(self, cpv, filename=None):
 		"""Add a freshly built package to the database.  This updates
@@ -1291,6 +1299,54 @@ class binarytree(object):
 			default_pkg_data=self._pkgindex_default_pkg_data,
 			inherited_keys=self._pkgindex_inherited_keys,
 			translated_keys=self._pkgindex_translated_keys)
+
+	@staticmethod
+	def _merge_pkgindex_header(src, dest):
+		"""
+		Merge Packages header settings from src to dest, in order to
+		propagate implicit IUSE and USE_EXPAND settings for use with
+		binary and installed packages. Values are appended, so the
+		result is a union of elements from src and dest.
+
+		Pull in ARCH if it's not defined, since it's used for validation
+		by emerge's profile_check function, and also for KEYWORDS logic
+		in the _getmaskingstatus function.
+
+		@param src: source mapping (read only)
+		@type src: Mapping
+		@param dest: destination mapping
+		@type dest: MutableMapping
+		"""
+		for k, v in iter_iuse_vars(src):
+			v_before = dest.get(k)
+			if v_before is not None:
+				v = v_before + ' ' + v
+			dest[k] = v
+
+		if 'ARCH' not in dest and 'ARCH' in src:
+			dest['ARCH'] = src['ARCH']
+
+	def _propagate_config(self, config):
+		"""
+		Propagate implicit IUSE and USE_EXPAND settings from the binary
+		package database to a config instance. If settings are not
+		available to propagate, then this will do nothing and return
+		False.
+
+		@param config: config instance
+		@type config: portage.config
+		@rtype: bool
+		@return: True if settings successfully propagated, False if settings
+			were not available to propagate.
+		"""
+		if self._pkgindex_header is None:
+			return False
+
+		self._merge_pkgindex_header(self._pkgindex_header,
+			config.configdict['defaults'])
+		config.regenerate()
+		config._init_iuse()
+		return True
 
 	def _update_pkgindex_header(self, header):
 		"""

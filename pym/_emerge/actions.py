@@ -78,6 +78,7 @@ from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
+from _emerge.main import profile_check
 from _emerge.MetadataRegen import MetadataRegen
 from _emerge.Package import Package
 from _emerge.ProgressHandler import ProgressHandler
@@ -2209,9 +2210,21 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	return rval
 
 def adjust_configs(myopts, trees):
-	for myroot in trees:
+	for myroot, mytrees in trees.items():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
+
+		# For --usepkgonly mode, propagate settings from the binary package
+		# database, so that it's possible to operate without dependence on
+		# a local ebuild repository and profile.
+		if ('--usepkgonly' in myopts and
+			mytrees['bintree']._propagate_config(mysettings)):
+			# Also propagate changes to the portdbapi doebuild_settings
+			# attribute which is used by Package instances for USE
+			# calculations (in support of --binpkg-respect-use).
+			mytrees['porttree'].dbapi.doebuild_settings = \
+				portage.config(clone=mysettings)
+
 		adjust_config(myopts, mysettings)
 		mysettings.lock()
 
@@ -2868,7 +2881,27 @@ def run_action(emerge_config):
 			"--usepkg", "--usepkgonly"):
 			emerge_config.opts.pop(opt, None)
 
+	# Populate the bintree with current --getbinpkg setting.
+	# This needs to happen before:
+	# * expand_set_arguments, in case any sets use the bintree
+	# * adjust_configs and profile_check, in order to propagate settings
+	#   implicit IUSE and USE_EXPAND settings from the binhost(s)
+	if (emerge_config.action in ('search', None) and
+		'--usepkg' in emerge_config.opts):
+		for mytrees in emerge_config.trees.values():
+			try:
+				mytrees['bintree'].populate(
+					getbinpkgs='--getbinpkg' in emerge_config.opts)
+			except ParseError as e:
+				writemsg('\n\n!!!%s.\nSee make.conf(5) for more info.\n'
+						 % (e,), noiselevel=-1)
+				return 1
+
 	adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	if profile_check(emerge_config.trees, emerge_config.action) != os.EX_OK:
+		return 1
+
 	apply_priorities(emerge_config.target_config.settings)
 
 	if ("--autounmask-continue" in emerge_config.opts and
@@ -2918,19 +2951,6 @@ def run_action(emerge_config):
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
-
-		if emerge_config.action in ('search', None) and \
-			"--usepkg" in emerge_config.opts:
-			# Populate the bintree with current --getbinpkg setting.
-			# This needs to happen before expand_set_arguments(), in case
-			# any sets use the bintree.
-			try:
-				mytrees["bintree"].populate(
-					getbinpkgs="--getbinpkg" in emerge_config.opts)
-			except ParseError as e:
-				writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
-						 % e, noiselevel=-1)
-				return 1
 
 	del mytrees, mydb
 

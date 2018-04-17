@@ -943,8 +943,7 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
-			self._iuse_effective = self._calc_iuse_effective()
-			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
+			self._init_iuse()
 
 			self._validate_commands()
 
@@ -960,6 +959,10 @@ class config(object):
 
 		if mycpv:
 			self.setcpv(mycpv)
+
+	def _init_iuse(self):
+		self._iuse_effective = self._calc_iuse_effective()
+		self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 	@property
 	def mygcfg(self):

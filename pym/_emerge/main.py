@@ -1269,10 +1269,6 @@ def emerge_main(args=None):
 	except locale.Error as e:
 		writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
 
-	rval = profile_check(emerge_config.trees, emerge_config.action)
-	if rval != os.EX_OK:
-		return rval
-
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
 		tmpcmdline.extend(portage.util.shlex_split(
