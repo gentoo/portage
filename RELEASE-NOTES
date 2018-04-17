@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.29
+==================================
+* Bug Fixes:
+    - Bug 649588 asyncio.AbstractEventLoop implementation based on
+      internal event loop
+    - Bug 652938 binary packages built against older subslot trigger
+      downgrade of installed package
+    - Bug 653230 app-portage/porthole PORTDIR KeyError
+    - Bug 650696 default to sync-rsync-verify-jobs = 1
+    - Bug 653352 Stripping of files broken with >=sys-apps/file-5.33
+
+
 portage-2.3.28
 ==================================
 * Bug Fixes:
