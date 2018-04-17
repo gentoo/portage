@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.30
+==================================
+* Bug Fixes:
+    - Bug 653372 emerge --search AttributeError: '_pkg_str' object has
+      no attribute '_db'
+
+
 portage-2.3.29
 ==================================
 * Bug Fixes:
