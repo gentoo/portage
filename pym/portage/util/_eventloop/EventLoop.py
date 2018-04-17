@@ -145,6 +145,7 @@ class EventLoop(object):
 		# Use deque, with thread-safe append, in order to emulate the FIFO
 		# queue behavior of the AbstractEventLoop.call_soon method.
 		self._idle_callbacks = collections.deque()
+		self._idle_callbacks_running = False
 		self._timeout_handlers = {}
 		self._timeout_interval = None
 		self._default_executor = None
@@ -586,8 +587,19 @@ class EventLoop(object):
 
 		with self._thread_rlock:
 
-			if self._run_idle_callbacks():
-				calls += 1
+			if self._idle_callbacks_running:
+				# The caller should use call_soon in order to
+				# prevent recursion here. Raise an error because
+				# _run_idle_callbacks has an internal remaining
+				# count that recursion would render meaningless.
+				raise AssertionError('idle callback recursion')
+
+			self._idle_callbacks_running = True
+			try:
+				if self._run_idle_callbacks():
+					calls += 1
+			finally:
+				self._idle_callbacks_running = False
 
 			if not self._timeout_handlers:
 				return bool(calls)
