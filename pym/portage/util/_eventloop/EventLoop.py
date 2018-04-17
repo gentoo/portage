@@ -546,8 +546,11 @@ class EventLoop(object):
 					# it got cancelled while executing another callback
 					continue
 				if x._calling:
-					# don't call it recursively
-					continue
+					# The caller should use call_soon in order to prevent
+					# recursion here. Raise an error because recursive
+					# calls would make the remaining count for this loop
+					# meaningless.
+					raise AssertionError('recursive idle callback')
 				x._calling = True
 				try:
 					if x._callback(*x._args):
