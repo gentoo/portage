@@ -55,7 +55,7 @@ class EventLoop(object):
 		__slots__ = ("callback", "data", "pid", "source_id")
 
 	class _idle_callback_class(SlotObject):
-		__slots__ = ("_args", "_callback", "_calling", "_cancelled")
+		__slots__ = ("_args", "_callback", "_cancelled")
 
 	class _io_handler_class(SlotObject):
 		__slots__ = ("args", "callback", "f", "source_id")
@@ -545,21 +545,11 @@ class EventLoop(object):
 				if x._cancelled:
 					# it got cancelled while executing another callback
 					continue
-				if x._calling:
-					# The caller should use call_soon in order to prevent
-					# recursion here. Raise an error because recursive
-					# calls would make the remaining count for this loop
-					# meaningless.
-					raise AssertionError('recursive idle callback')
-				x._calling = True
-				try:
-					if x._callback(*x._args):
-						reschedule.append(x)
-					else:
-						x._cancelled = True
-						state_change += 1
-				finally:
-					x._calling = False
+				if x._callback(*x._args):
+					reschedule.append(x)
+				else:
+					x._cancelled = True
+					state_change += 1
 		finally:
 			# Reschedule those that were not cancelled.
 			self._idle_callbacks.extend(reschedule)
