@@ -427,7 +427,8 @@ do
 				${STRIP} -g "${x}"
 			fi
 		fi
-	elif [[ ${f} == *"SB executable"* || ${f} == *"SB shared object"* ]] ; then
+	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
+		${f} == *"SB shared object"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
 	elif [[ ${f} == *"SB relocatable"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${SAFE_STRIP_FLAGS}
