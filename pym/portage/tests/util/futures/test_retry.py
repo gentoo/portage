@@ -12,7 +12,6 @@ from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures import asyncio
-from portage.util.futures.futures import TimeoutError
 from portage.util.futures.retry import retry
 from portage.util.monotonic import monotonic
 
@@ -97,7 +96,7 @@ class RetryTestCase(TestCase):
 		decorated_func = decorator(func_coroutine)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done.pop().exception().__cause__, TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))
 
 	def testHangForeverReraise(self):
 		loop = global_event_loop()._asyncio_wrapper
@@ -108,7 +107,7 @@ class RetryTestCase(TestCase):
 		decorated_func = decorator(func_coroutine)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done.pop().exception(), TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception(), asyncio.TimeoutError))
 
 	def testCancelRetry(self):
 		loop = global_event_loop()._asyncio_wrapper
@@ -144,4 +143,4 @@ class RetryTestCase(TestCase):
 		decorated_func = decorator(func_coroutine)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
-		self.assertTrue(isinstance(done.pop().exception().__cause__, TimeoutError))
+		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))

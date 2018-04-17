@@ -25,7 +25,7 @@ warn = create_color_func("WARN")
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import writemsg, writemsg_stdout
-from portage.util.futures.futures import TimeoutError
+from portage.util.futures import asyncio
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import NewBase
@@ -163,7 +163,7 @@ class RsyncSync(NewBase):
 						decorated_func = retry_decorator(func_coroutine)
 						loop.run_until_complete(decorated_func())
 					out.eend(0)
-				except (GematoException, TimeoutError) as e:
+				except (GematoException, asyncio.TimeoutError) as e:
 					writemsg_level("!!! Manifest verification impossible due to keyring problem:\n%s\n"
 							% (e,),
 							level=logging.ERROR, noiselevel=-1)

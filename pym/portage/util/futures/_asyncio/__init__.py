@@ -6,7 +6,10 @@ __all__ = (
 	'FIRST_COMPLETED',
 	'FIRST_EXCEPTION',
 	'ensure_future',
+	'CancelledError',
 	'Future',
+	'InvalidStateError',
+	'TimeoutError',
 	'get_child_watcher',
 	'get_event_loop',
 	'set_child_watcher',
@@ -26,7 +29,12 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:DefaultEventLoopPolicy',
 )
-from portage.util.futures.futures import Future
+from portage.util.futures.futures import (
+	CancelledError,
+	Future,
+	InvalidStateError,
+	TimeoutError,
+)
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,
 	FIRST_COMPLETED,

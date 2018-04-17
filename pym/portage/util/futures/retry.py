@@ -10,7 +10,7 @@ import functools
 
 from portage.exception import PortageException
 from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.util.futures.futures import TimeoutError
+from portage.util.futures import asyncio
 
 
 class RetryError(PortageException):
@@ -170,7 +170,7 @@ class _Retry(object):
 
 	def _retry_error(self):
 		if self._previous_result is None or self._previous_result.cancelled():
-			cause = TimeoutError()
+			cause = asyncio.TimeoutError()
 		else:
 			cause = self._previous_result.exception()
 
