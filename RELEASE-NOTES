@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.31
+==================================
+* Bug Fixes:
+    - Bug 653508 AssertionError: idle callback recursion
+    - Bug 640318 emerge --usepkgonly: propagate implicit IUSE and USE_EXPAND
+
+
 portage-2.3.30
 ==================================
 * Bug Fixes:
