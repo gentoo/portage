@@ -145,7 +145,7 @@ class EventLoop(object):
 		# Use deque, with thread-safe append, in order to emulate the FIFO
 		# queue behavior of the AbstractEventLoop.call_soon method.
 		self._idle_callbacks = collections.deque()
-		self._idle_callbacks_running = False
+		self._idle_callbacks_remaining = 0
 		self._timeout_handlers = {}
 		self._timeout_interval = None
 		self._default_executor = None
@@ -534,26 +534,29 @@ class EventLoop(object):
 		reschedule = []
 		# Use remaining count to avoid calling any newly scheduled callbacks,
 		# since self._idle_callbacks can be modified during the exection of
-		# these callbacks.
-		remaining = len(self._idle_callbacks)
-		try:
-			while remaining:
-				remaining -= 1
-				try:
-					x = self._idle_callbacks.popleft() # thread-safe
-				except IndexError:
-					break
-				if x._cancelled:
-					# it got cancelled while executing another callback
-					continue
-				if x._callback(*x._args):
-					reschedule.append(x)
-				else:
-					x._cancelled = True
-					state_change += 1
-		finally:
-			# Reschedule those that were not cancelled.
-			self._idle_callbacks.extend(reschedule)
+		# these callbacks. The remaining count can be reset by recursive
+		# calls to this method. Recursion must remain supported until all
+		# consumers of AsynchronousLock.unlock() have been migrated to the
+		# async_unlock() method, see bug 614108.
+		self._idle_callbacks_remaining = len(self._idle_callbacks)
+
+		while self._idle_callbacks_remaining:
+			self._idle_callbacks_remaining -= 1
+			try:
+				x = self._idle_callbacks.popleft() # thread-safe
+			except IndexError:
+				break
+			if x._cancelled:
+				# it got cancelled while executing another callback
+				continue
+			if x._callback(*x._args):
+				# Reschedule, but not until after it's called, since
+				# we don't want it to call itself in a recursive call
+				# to this method.
+				self._idle_callbacks.append(x)
+			else:
+				x._cancelled = True
+				state_change += 1
 
 		return bool(state_change)
 
@@ -587,19 +590,8 @@ class EventLoop(object):
 
 		with self._thread_rlock:
 
-			if self._idle_callbacks_running:
-				# The caller should use call_soon in order to
-				# prevent recursion here. Raise an error because
-				# _run_idle_callbacks has an internal remaining
-				# count that recursion would render meaningless.
-				raise AssertionError('idle callback recursion')
-
-			self._idle_callbacks_running = True
-			try:
-				if self._run_idle_callbacks():
-					calls += 1
-			finally:
-				self._idle_callbacks_running = False
+			if self._run_idle_callbacks():
+				calls += 1
 
 			if not self._timeout_handlers:
 				return bool(calls)
