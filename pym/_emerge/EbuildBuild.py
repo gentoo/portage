@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 
+import functools
 import io
 
 import _emerge.emergelog
@@ -23,6 +24,8 @@ from portage import _encodings, _unicode_decode, _unicode_encode, os
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+
 
 class EbuildBuild(CompositeTask):
 
@@ -185,8 +188,7 @@ class EbuildBuild(CompositeTask):
 
 	def _pre_clean_exit(self, pre_clean_phase):
 		if self._default_exit(pre_clean_phase) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		# for log handling
@@ -209,10 +211,7 @@ class EbuildBuild(CompositeTask):
 			msg_lines.append(msg)
 			fetcher._eerror(msg_lines)
 			portage.elog.elog_process(self.pkg.cpv, self.settings)
-			self.returncode = 1
-			self._current_task = None
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=1)
 			return
 
 		if already_fetched:
@@ -283,8 +282,7 @@ class EbuildBuild(CompositeTask):
 
 		if 'fetch' not in self.pkg.restrict and \
 			'nofetch' not in self.pkg.defined_phases:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		self.returncode = None
@@ -294,18 +292,32 @@ class EbuildBuild(CompositeTask):
 
 	def _nofetch_exit(self, nofetch_phase):
 		self._final_exit(nofetch_phase)
-		self._unlock_builddir()
-		self.returncode = 1
-		self.wait()
+		self._async_unlock_builddir(returncode=1)
 
-	def _unlock_builddir(self):
+	def _async_unlock_builddir(self, returncode=None):
+		"""
+		Release the lock asynchronously, and if a returncode parameter
+		is given then set self.returncode and notify exit listeners.
+		"""
+		if returncode is not None:
+			# The returncode will be set after unlock is complete.
+			self.returncode = None
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
-		self._build_dir.unlock()
+		self._start_task(
+			AsyncTaskFuture(future=self._build_dir.async_unlock()),
+			functools.partial(self._unlock_builddir_exit, returncode=returncode))
+
+	def _unlock_builddir_exit(self, unlock_task, returncode=None):
+		self._assert_current(unlock_task)
+		# Normally, async_unlock should not raise an exception here.
+		unlock_task.future.result()
+		if returncode is not None:
+			self.returncode = returncode
+			self._async_wait()
 
 	def _build_exit(self, build):
 		if self._default_exit(build) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		buildpkg = self._buildpkg
@@ -370,8 +382,7 @@ class EbuildBuild(CompositeTask):
 		"""
 
 		if self._default_exit(packager) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		if self.opts.buildpkgonly:
@@ -425,8 +436,9 @@ class EbuildBuild(CompositeTask):
 	def _clean_exit(self, clean_phase):
 		if self._final_exit(clean_phase) != os.EX_OK or \
 			self.opts.buildpkgonly:
-			self._unlock_builddir()
-		self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
+		else:
+			self.wait()
 
 	def create_install_task(self):
 		"""
@@ -461,4 +473,4 @@ class EbuildBuild(CompositeTask):
 		return task
 
 	def _install_exit(self, task):
-		self._unlock_builddir()
+		self._async_unlock_builddir()
