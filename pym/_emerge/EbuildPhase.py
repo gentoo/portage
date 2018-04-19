@@ -1,6 +1,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import gzip
 import io
 import sys
@@ -15,6 +16,7 @@ from _emerge.PackagePhase import PackagePhase
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 		_prepare_fake_distdir, _prepare_fake_filesdir)
 from portage.util import writemsg
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 
 try:
 	from portage.xml.metadata import MetaDataXML
@@ -197,13 +199,23 @@ class EbuildPhase(CompositeTask):
 		self._start_task(ebuild_process, self._ebuild_exit)
 
 	def _ebuild_exit(self, ebuild_process):
+		self._assert_current(ebuild_process)
+		if self._ebuild_lock is None:
+			self._ebuild_exit_unlocked(ebuild_process)
+		else:
+			self._start_task(
+				AsyncTaskFuture(future=self._ebuild_lock.async_unlock()),
+				functools.partial(self._ebuild_exit_unlocked, ebuild_process))
 
-		if self._ebuild_lock is not None:
-			self._ebuild_lock.unlock()
-			self._ebuild_lock = None
+	def _ebuild_exit_unlocked(self, ebuild_process, unlock_task=None):
+		if unlock_task is not None:
+			self._assert_current(unlock_task)
+			# Normally, async_unlock should not raise an exception here.
+			unlock_task.future.result()
 
 		fail = False
-		if self._default_exit(ebuild_process) != os.EX_OK:
+		if ebuild_process.returncode != os.EX_OK:
+			self.returncode = ebuild_process.returncode
 			if self.phase == "test" and \
 				"test-fail-continue" in self.settings.features:
 				# mark test phase as complete (bug #452030)
