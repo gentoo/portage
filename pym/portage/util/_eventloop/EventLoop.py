@@ -818,7 +818,7 @@ class EventLoop(object):
 		# is easily achieved by registering a done callback and waiting for
 		# it to execute.
 		waiter = self.create_future()
-		future.add_done_callback(functools.partial(waiter.set_result))
+		future.add_done_callback(waiter.set_result)
 		while not waiter.done():
 			self.iteration()
 
