@@ -812,7 +812,14 @@ class EventLoop(object):
 		@raise: the Future's exception
 		"""
 		future = asyncio.ensure_future(future, loop=self._asyncio_wrapper)
-		while not future.done():
+
+		# Since done callbacks are executed via call_soon, it's desirable
+		# to continue iterating until those callbacks have executed, which
+		# is easily achieved by registering a done callback and waiting for
+		# it to execute.
+		waiter = self.create_future()
+		future.add_done_callback(functools.partial(waiter.set_result))
+		while not waiter.done():
 			self.iteration()
 
 		return future.result()
