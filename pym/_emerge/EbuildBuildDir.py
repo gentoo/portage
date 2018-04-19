@@ -88,6 +88,9 @@ class EbuildBuildDir(SlotObject):
 		if self._lock_obj is None:
 			return
 
+		# Keep this legacy implementation until all consumers have migrated
+		# to async_unlock, since run_until_complete(self.async_unlock())
+		# would add unwanted event loop recursion here.
 		self._lock_obj.unlock()
 		self._lock_obj = None
 		self.locked = False
@@ -101,6 +104,49 @@ class EbuildBuildDir(SlotObject):
 				pass
 			finally:
 				catdir_lock.unlock()
+
+	def async_unlock(self):
+		"""
+		Release the lock asynchronously. Release notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is None
+		"""
+		result = self.scheduler.create_future()
+
+		def builddir_unlocked(future):
+			if future.exception() is not None:
+				result.set_exception(future.exception())
+			else:
+				self._lock_obj = None
+				self.locked = False
+				self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
+				catdir_lock = AsynchronousLock(
+					path=self._catdir, scheduler=self.scheduler)
+				catdir_lock.addExitListener(catdir_locked)
+				catdir_lock.start()
+
+		def catdir_locked(catdir_lock):
+			if catdir_lock.wait() != os.EX_OK:
+				result.set_result(None)
+			else:
+				try:
+					os.rmdir(self._catdir)
+				except OSError:
+					pass
+				catdir_lock.async_unlock().add_done_callback(catdir_unlocked)
+
+		def catdir_unlocked(future):
+			if future.exception() is None:
+				result.set_result(None)
+			else:
+				result.set_exception(future.exception())
+
+		if self._lock_obj is None:
+			self.scheduler.call_soon(result.set_result, None)
+		else:
+			self._lock_obj.async_unlock().add_done_callback(builddir_unlocked)
+		return result
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
