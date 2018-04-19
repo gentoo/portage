@@ -29,3 +29,8 @@ class AsyncTaskFuture(AsynchronousTask):
 		else:
 			self.returncode = 1
 		self.wait()
+
+	def _wait(self):
+		if self.returncode is None:
+			self.scheduler.run_until_complete(self.future)
+		return self.returncode
