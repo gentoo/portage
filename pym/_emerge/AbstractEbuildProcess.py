@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import functools
 import io
 import platform
 import stat
@@ -23,7 +24,8 @@ from portage.util import apply_secpass_permissions
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_build_dir', '_ipc_daemon', '_exit_command', '_exit_timeout_id')
+		('_build_dir', '_build_dir_unlock', '_ipc_daemon',
+		'_exit_command', '_exit_timeout_id')
 
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
@@ -247,7 +249,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _cancel_timeout_cb(self):
 		self._exit_timeout_id = None
-		self.wait()
+		self._async_wait()
 		return False # only run once
 
 	def _orphan_process_warn(self):
@@ -354,9 +356,7 @@ class AbstractEbuildProcess(SpawnProcess):
 					self.returncode = 1
 					if not self.cancelled:
 						self._unexpected_exit()
-			if self._build_dir is not None:
-				self._build_dir.unlock()
-				self._build_dir = None
+
 		elif not self.cancelled:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):
@@ -367,3 +367,58 @@ class AbstractEbuildProcess(SpawnProcess):
 					self.returncode = 1
 					if not self.cancelled:
 						self._unexpected_exit()
+
+	def _wait(self):
+		"""
+		Override _wait to unlock self._build_dir if necessary. Normally, it
+		should already be unlocked, so this functions only as a failsafe.
+		Execution of the failsafe code will automatically become a fatal
+		error at the same time as event loop recursion is disabled.
+		"""
+		SpawnProcess._wait(self)
+
+		if self._build_dir is not None:
+			self._build_dir_unlock = self._build_dir.async_unlock()
+			# Unlock only once.
+			self._build_dir = None
+
+		if not (self._build_dir_unlock is None or
+			self._build_dir_unlock.done()):
+			# This will automatically become a fatal error at the same
+			# time as event loop recursion is disabled.
+			self.scheduler.run_until_complete(self._build_dir_unlock)
+
+		return self.returncode
+
+	def _async_wait(self):
+		"""
+		Override _async_wait to asynchronously unlock self._build_dir
+		when necessary.
+		"""
+		if self._build_dir is None:
+			SpawnProcess._async_wait(self)
+		elif self._build_dir_unlock is None:
+			self._async_unlock_builddir(returncode=self.returncode)
+
+	def _async_unlock_builddir(self, returncode=None):
+		"""
+		Release the lock asynchronously, and if a returncode parameter
+		is given then set self.returncode and notify exit listeners.
+		"""
+		if self._build_dir_unlock is not None:
+			raise AssertionError('unlock already in progress')
+		if returncode is not None:
+			# The returncode will be set after unlock is complete.
+			self.returncode = None
+		self._build_dir_unlock = self._build_dir.async_unlock()
+		# Unlock only once.
+		self._build_dir = None
+		self._build_dir_unlock.add_done_callback(
+			functools.partial(self._unlock_builddir_exit, returncode=returncode))
+
+	def _unlock_builddir_exit(self, unlock_future, returncode=None):
+		# Normally, async_unlock should not raise an exception here.
+		unlock_future.result()
+		if returncode is not None:
+			self.returncode = returncode
+			SpawnProcess._async_wait(self)

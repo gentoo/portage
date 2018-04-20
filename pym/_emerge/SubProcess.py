@@ -116,7 +116,7 @@ class SubProcess(AbstractPollTask):
 		if pid != self.pid:
 			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
 		self._set_returncode((pid, condition))
-		self.wait()
+		self._async_wait()
 
 	def _waitpid_loop(self):
 		source_id = self.scheduler.child_watch_add(
