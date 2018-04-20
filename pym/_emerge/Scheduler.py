@@ -911,7 +911,7 @@ class Scheduler(PollScheduler):
 						clean_phase.start()
 						clean_phase.wait()
 
-				build_dir.unlock()
+				sched_iface.run_until_complete(build_dir.async_unlock())
 
 		if failures:
 			return FAILURE

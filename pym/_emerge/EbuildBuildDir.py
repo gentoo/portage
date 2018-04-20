@@ -84,27 +84,6 @@ class EbuildBuildDir(SlotObject):
 			except OSError:
 				pass
 
-	def unlock(self):
-		if self._lock_obj is None:
-			return
-
-		# Keep this legacy implementation until all consumers have migrated
-		# to async_unlock, since run_until_complete(self.async_unlock())
-		# would add unwanted event loop recursion here.
-		self._lock_obj.unlock()
-		self._lock_obj = None
-		self.locked = False
-		self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
-		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
-		catdir_lock.start()
-		if catdir_lock.wait() == os.EX_OK:
-			try:
-				os.rmdir(self._catdir)
-			except OSError:
-				pass
-			finally:
-				catdir_lock.unlock()
-
 	def async_unlock(self):
 		"""
 		Release the lock asynchronously. Release notification is available

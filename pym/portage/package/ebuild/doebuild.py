@@ -819,7 +819,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					fd_pipes=fd_pipes, returnpid=returnpid)
 			finally:
 				if builddir_lock is not None:
-					builddir_lock.unlock()
+					builddir_lock.scheduler.run_until_complete(
+						builddir_lock.async_unlock())
 
 		# get possible slot information from the deps file
 		if mydo == "depend":
@@ -943,7 +944,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 						_spawn_phase("clean", mysettings)
 					finally:
 						if builddir_lock is not None:
-							builddir_lock.unlock()
+							builddir_lock.scheduler.run_until_complete(
+								builddir_lock.async_unlock())
 							builddir_lock = None
 				else:
 					writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
@@ -1243,7 +1245,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	finally:
 
 		if builddir_lock is not None:
-			builddir_lock.unlock()
+			builddir_lock.scheduler.run_until_complete(
+				builddir_lock.async_unlock())
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)

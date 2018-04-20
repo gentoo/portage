@@ -137,7 +137,7 @@ class IpcDaemonTestCase(TestCase):
 
 		finally:
 			if build_dir is not None:
-				build_dir.unlock()
+				event_loop.run_until_complete(build_dir.async_unlock())
 			shutil.rmtree(tmpdir)
 
 	def _timeout_callback(self, task_scheduler):

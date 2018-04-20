@@ -2199,7 +2199,8 @@ class dblink(object):
 						retval = phase.wait()
 			finally:
 					if builddir_lock is not None:
-						builddir_lock.unlock()
+						scheduler.run_until_complete(
+							builddir_lock.async_unlock())
 
 		if log_path is not None:
 
