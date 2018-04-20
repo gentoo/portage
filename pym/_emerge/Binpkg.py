@@ -1,6 +1,8 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+
 import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
@@ -13,6 +15,7 @@ from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
 from portage.util import ensure_dirs
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 import portage
 from portage import os
 from portage import shutil
@@ -146,8 +149,7 @@ class Binpkg(CompositeTask):
 		if fetcher.returncode is not None:
 			self._fetched_pkg = fetcher.pkg_path
 			if self._default_exit(fetcher) != os.EX_OK:
-				self._unlock_builddir()
-				self.wait()
+				self._async_unlock_builddir(returncode=self.returncode)
 				return
 
 		if self.opts.pretend:
@@ -175,8 +177,7 @@ class Binpkg(CompositeTask):
 	def _verifier_exit(self, verifier):
 		if verifier is not None and \
 			self._default_exit(verifier) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		logger = self.logger
@@ -227,8 +228,7 @@ class Binpkg(CompositeTask):
 
 	def _clean_exit(self, clean_phase):
 		if self._default_exit(clean_phase) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		dir_path = self.settings['PORTAGE_BUILDDIR']
@@ -290,8 +290,7 @@ class Binpkg(CompositeTask):
 
 	def _env_extractor_exit(self, env_extractor):
 		if self._default_exit(env_extractor) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		setup_phase = EbuildPhase(background=self.background,
@@ -304,8 +303,7 @@ class Binpkg(CompositeTask):
 
 	def _setup_exit(self, setup_phase):
 		if self._default_exit(setup_phase) != os.EX_OK:
-			self._unlock_builddir()
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		extractor = BinpkgExtractorAsync(background=self.background,
@@ -320,10 +318,9 @@ class Binpkg(CompositeTask):
 
 	def _extractor_exit(self, extractor):
 		if self._default_exit(extractor) != os.EX_OK:
-			self._unlock_builddir()
 			self._writemsg_level("!!! Error Extracting '%s'\n" % \
 				self._pkg_path, noiselevel=-1, level=logging.ERROR)
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		try:
@@ -355,11 +352,10 @@ class Binpkg(CompositeTask):
 
 	def _chpathtool_exit(self, chpathtool):
 		if self._final_exit(chpathtool) != os.EX_OK:
-			self._unlock_builddir()
 			self._writemsg_level("!!! Error Adjusting Prefix to %s\n" %
 				(self.settings["EPREFIX"],),
 				noiselevel=-1, level=logging.ERROR)
-			self.wait()
+			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
 		# We want to install in "our" prefix, not the binary one
@@ -385,11 +381,31 @@ class Binpkg(CompositeTask):
 
 		self.wait()
 
-	def _unlock_builddir(self):
+	def _async_unlock_builddir(self, returncode=None):
+		"""
+		Release the lock asynchronously, and if a returncode parameter
+		is given then set self.returncode and notify exit listeners.
+		"""
 		if self.opts.pretend or self.opts.fetchonly:
+			if returncode is not None:
+				self.returncode = returncode
+				self._async_wait()
 			return
+		if returncode is not None:
+			# The returncode will be set after unlock is complete.
+			self.returncode = None
 		portage.elog.elog_process(self.pkg.cpv, self.settings)
-		self._build_dir.unlock()
+		self._start_task(
+			AsyncTaskFuture(future=self._build_dir.async_unlock()),
+			functools.partial(self._unlock_builddir_exit, returncode=returncode))
+
+	def _unlock_builddir_exit(self, unlock_task, returncode=None):
+		self._assert_current(unlock_task)
+		# Normally, async_unlock should not raise an exception here.
+		unlock_task.future.result()
+		if returncode is not None:
+			self.returncode = returncode
+			self._async_wait()
 
 	def create_install_task(self):
 		task = EbuildMerge(exit_hook=self._install_exit,
@@ -403,7 +419,6 @@ class Binpkg(CompositeTask):
 
 	def _install_exit(self, task):
 		self.settings.pop("PORTAGE_BINPKG_FILE", None)
-		self._unlock_builddir()
 		if task.returncode == os.EX_OK and \
 			'binpkg-logs' not in self.settings.features and \
 			self.settings.get("PORTAGE_LOG_FILE"):
@@ -411,3 +426,4 @@ class Binpkg(CompositeTask):
 				os.unlink(self.settings["PORTAGE_LOG_FILE"])
 			except OSError:
 				pass
+		self._async_unlock_builddir()
