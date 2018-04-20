@@ -617,6 +617,7 @@ def action_config(settings, trees, myopts, myfiles):
 		portage.doebuild(ebuildpath, "clean", settings=mysettings,
 			debug=debug, mydbapi=vardb, tree="vartree")
 	print()
+	return retval
 
 def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, myfiles, spinner, scheduler=None):
@@ -3203,7 +3204,7 @@ def run_action(emerge_config):
 	# HELP action
 	elif "config" == emerge_config.action:
 		validate_ebuild_environment(emerge_config.trees)
-		action_config(emerge_config.target_config.settings,
+		return action_config(emerge_config.target_config.settings,
 			emerge_config.trees, emerge_config.opts, emerge_config.args)
 
 	# SEARCH action
