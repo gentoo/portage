@@ -1,7 +1,10 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+
 from _emerge.AsynchronousLock import AsynchronousLock
+from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
 try:
 	from urllib.parse import urlparse as urllib_parse_urlparse
@@ -11,24 +14,56 @@ import stat
 import sys
 import portage
 from portage import os
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
 if sys.hexversion >= 0x3000000:
 	long = int
 
-class BinpkgFetcher(SpawnProcess):
 
-	__slots__ = ("pkg", "pretend",
-		"locked", "pkg_path", "_lock_obj")
+class BinpkgFetcher(CompositeTask):
+
+	__slots__ = ("pkg", "pretend", "logfile", "pkg_path")
 
 	def __init__(self, **kwargs):
-		SpawnProcess.__init__(self, **kwargs)
+		CompositeTask.__init__(self, **kwargs)
 		pkg = self.pkg
 		self.pkg_path = pkg.root_config.trees["bintree"].getname(
 			pkg.cpv) + ".partial"
 
 	def _start(self):
+		self._start_task(
+			_BinpkgFetcherProcess(background=self.background,
+				logfile=self.logfile, pkg=self.pkg, pkg_path=self.pkg_path,
+				pretend=self.pretend, scheduler=self.scheduler),
+			self._fetcher_exit)
 
+	def _fetcher_exit(self, fetcher):
+		self._assert_current(fetcher)
+		if not self.pretend and fetcher.returncode == os.EX_OK:
+			fetcher.sync_timestamp()
+		if fetcher.locked:
+			self._start_task(
+				AsyncTaskFuture(future=fetcher.async_unlock()),
+				functools.partial(self._fetcher_exit_unlocked, fetcher))
+		else:
+			self._fetcher_exit_unlocked(fetcher)
+
+	def _fetcher_exit_unlocked(self, fetcher, unlock_task=None):
+		if unlock_task is not None:
+			self._assert_current(unlock_task)
+			unlock_task.future.result()
+
+		self._current_task = None
+		self.returncode = fetcher.returncode
+		self._async_wait()
+
+
+class _BinpkgFetcherProcess(SpawnProcess):
+
+	__slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
+
+	def _start(self):
 		pkg = self.pkg
 		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
@@ -123,9 +158,7 @@ class BinpkgFetcher(SpawnProcess):
 			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
-	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
-		if not self.pretend and self.returncode == os.EX_OK:
+	def sync_timestamp(self):
 			# If possible, update the mtime to match the remote package if
 			# the fetcher didn't already do it automatically.
 			bintree = self.pkg.root_config.trees["bintree"]
@@ -150,9 +183,6 @@ class BinpkgFetcher(SpawnProcess):
 										(remote_mtime, remote_mtime))
 								except OSError:
 									pass
-
-		if self.locked:
-			self.unlock()
 
 	def lock(self):
 		"""
@@ -179,10 +209,11 @@ class BinpkgFetcher(SpawnProcess):
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
 
-	def unlock(self):
+	def async_unlock(self):
 		if self._lock_obj is None:
-			return
-		self._lock_obj.unlock()
+			raise AssertionError('already unlocked')
+		result = self._lock_obj.async_unlock()
 		self._lock_obj = None
 		self.locked = False
+		return result
 
