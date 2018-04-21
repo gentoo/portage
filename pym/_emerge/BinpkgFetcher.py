@@ -32,11 +32,24 @@ class BinpkgFetcher(CompositeTask):
 			pkg.cpv) + ".partial"
 
 	def _start(self):
-		self._start_task(
-			_BinpkgFetcherProcess(background=self.background,
-				logfile=self.logfile, pkg=self.pkg, pkg_path=self.pkg_path,
-				pretend=self.pretend, scheduler=self.scheduler),
-			self._fetcher_exit)
+		fetcher = _BinpkgFetcherProcess(background=self.background,
+			logfile=self.logfile, pkg=self.pkg, pkg_path=self.pkg_path,
+			pretend=self.pretend, scheduler=self.scheduler)
+
+		if not self.pretend:
+			portage.util.ensure_dirs(os.path.dirname(self.pkg_path))
+			if "distlocks" in self.pkg.root_config.settings.features:
+				self._start_task(
+					AsyncTaskFuture(future=fetcher.async_lock()),
+					functools.partial(self._start_locked, fetcher))
+				return
+
+		self._start_task(fetcher, self._fetcher_exit)
+
+	def _start_locked(self, fetcher, lock_task):
+		self._assert_current(lock_task)
+		lock_task.future.result()
+		self._start_task(fetcher, self._fetcher_exit)
 
 	def _fetcher_exit(self, fetcher):
 		self._assert_current(fetcher)
@@ -68,13 +81,8 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
 		settings = bintree.settings
-		use_locks = "distlocks" in settings.features
 		pkg_path = self.pkg_path
 
-		if not pretend:
-			portage.util.ensure_dirs(os.path.dirname(pkg_path))
-			if use_locks:
-				self.lock()
 		exists = os.path.exists(pkg_path)
 		resume = exists and os.path.basename(pkg_path) in bintree.invalids
 		if not (pretend or resume):
@@ -184,7 +192,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 								except OSError:
 									pass
 
-	def lock(self):
+	def async_lock(self):
 		"""
 		This raises an AlreadyLocked exception if lock() is called
 		while a lock is already held. In order to avoid this, call
@@ -194,17 +202,22 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		async_lock = AsynchronousLock(path=self.pkg_path,
+		result = self.scheduler.create_future()
+
+		def acquired_lock(async_lock):
+			if async_lock.wait() == os.EX_OK:
+				self.locked = True
+				result.set_result(None)
+			else:
+				result.set_exception(AssertionError(
+					"AsynchronousLock failed with returncode %s"
+					% (async_lock.returncode,)))
+
+		self._lock_obj = AsynchronousLock(path=self.pkg_path,
 			scheduler=self.scheduler)
-		async_lock.start()
-
-		if async_lock.wait() != os.EX_OK:
-			# TODO: Use CompositeTask for better handling, like in EbuildPhase.
-			raise AssertionError("AsynchronousLock failed with returncode %s" \
-				% (async_lock.returncode,))
-
-		self._lock_obj = async_lock
-		self.locked = True
+		self._lock_obj.addExitListener(acquired_lock)
+		self._lock_obj.start()
+		return result
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
