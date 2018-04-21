@@ -82,7 +82,12 @@ class CompositeTask(AsynchronousTask):
 				# a different task or None. Something is wrong.
 				raise AssertionError("self._current_task has not " + \
 					"changed since calling wait", self, task)
-			task.wait()
+
+			# This triggers less recursion than calling task.wait().
+			waiter = self.scheduler.create_future()
+			task.addExitListener(waiter.set_result)
+			while not waiter.done():
+				self.scheduler.iteration()
 			prev = task
 
 		return self.returncode
