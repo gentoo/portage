@@ -150,8 +150,13 @@ class EbuildBuild(CompositeTask):
 
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)
-		self._build_dir.lock()
+		self._start_task(
+			AsyncTaskFuture(future=self._build_dir.async_lock()),
+			self._start_pre_clean)
 
+	def _start_pre_clean(self, lock_task):
+		self._assert_current(lock_task)
+		lock_task.future.result()
 		# Cleaning needs to happen before fetch, since the build dir
 		# is used for log handling.
 		msg = " === (%s of %s) Cleaning (%s::%s)" % \
