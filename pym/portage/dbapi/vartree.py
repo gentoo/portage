@@ -2081,7 +2081,7 @@ class dblink(object):
 				builddir_lock = EbuildBuildDir(
 					scheduler=scheduler,
 					settings=self.settings)
-				builddir_lock.lock()
+				scheduler.run_until_complete(builddir_lock.async_lock())
 				prepare_build_dirs(settings=self.settings, cleanup=True)
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 

@@ -60,7 +60,7 @@ class IpcDaemonTestCase(TestCase):
 			build_dir = EbuildBuildDir(
 				scheduler=event_loop,
 				settings=env)
-			build_dir.lock()
+			event_loop.run_until_complete(build_dir.async_lock())
 			ensure_dirs(env['PORTAGE_BUILDDIR'])
 
 			input_fifo = os.path.join(env['PORTAGE_BUILDDIR'], '.ipc_in')

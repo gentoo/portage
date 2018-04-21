@@ -813,7 +813,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					scheduler=(portage._internal_caller and
 						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
-				builddir_lock.lock()
+				builddir_lock.scheduler.run_until_complete(
+					builddir_lock.async_lock())
 			try:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
@@ -939,7 +940,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 							scheduler=(portage._internal_caller and
 								global_event_loop() or EventLoop(main=False)),
 							settings=mysettings)
-						builddir_lock.lock()
+						builddir_lock.scheduler.run_until_complete(
+							builddir_lock.async_lock())
 					try:
 						_spawn_phase("clean", mysettings)
 					finally:
@@ -963,7 +965,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					scheduler=(portage._internal_caller and
 						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
-				builddir_lock.lock()
+				builddir_lock.scheduler.run_until_complete(
+					builddir_lock.async_lock())
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus

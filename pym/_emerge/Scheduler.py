@@ -799,7 +799,7 @@ class Scheduler(PollScheduler):
 			settings["PORTAGE_BUILDDIR"] = build_dir_path
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
-			build_dir.lock()
+			sched_iface.run_until_complete(build_dir.async_lock())
 			current_task = None
 
 			try:
