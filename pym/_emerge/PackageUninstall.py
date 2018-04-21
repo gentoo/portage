@@ -55,8 +55,13 @@ class PackageUninstall(CompositeTask):
 
 		self._builddir_lock = EbuildBuildDir(
 			scheduler=self.scheduler, settings=self.settings)
-		self._builddir_lock.lock()
+		self._start_task(
+			AsyncTaskFuture(future=self._builddir_lock.async_lock()),
+			self._start_unmerge)
 
+	def _start_unmerge(self, lock_task):
+		self._assert_current(lock_task)
+		lock_task.future.result()
 		portage.prepare_build_dirs(
 			settings=self.settings, cleanup=True)
 
@@ -74,6 +79,7 @@ class PackageUninstall(CompositeTask):
 			noiselevel=-1)
 		self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
 
+		cat, pf = portage.catsplit(self.pkg.cpv)
 		unmerge_task = MergeProcess(
 			mycat=cat, mypkg=pf, settings=self.settings,
 			treetype="vartree", vartree=self.pkg.root_config.trees["vartree"],
