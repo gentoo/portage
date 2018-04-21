@@ -25,7 +25,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
 		('_build_dir', '_build_dir_unlock', '_ipc_daemon',
-		'_exit_command', '_exit_timeout_id')
+		'_exit_command', '_exit_timeout_id', '_start_future')
 
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
@@ -130,15 +130,19 @@ class AbstractEbuildProcess(SpawnProcess):
 			# since we're not displaying to a terminal anyway.
 			self.settings['NOCOLOR'] = 'true'
 
+		start_ipc_daemon = False
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
+				start_ipc_daemon = True
 				if 'PORTAGE_BUILDDIR_LOCKED' not in self.settings:
 					self._build_dir = EbuildBuildDir(
 						scheduler=self.scheduler, settings=self.settings)
-					self._build_dir.lock()
-				self.settings['PORTAGE_IPC_DAEMON'] = "1"
-				self._start_ipc_daemon()
+					self._start_future = self._build_dir.async_lock()
+					self._start_future.add_done_callback(
+						functools.partial(self._start_post_builddir_lock,
+						start_ipc_daemon=start_ipc_daemon))
+					return
 			else:
 				self.settings.pop('PORTAGE_IPC_DAEMON', None)
 		else:
@@ -158,6 +162,19 @@ class AbstractEbuildProcess(SpawnProcess):
 						raise
 			else:
 				self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
+
+		self._start_post_builddir_lock(start_ipc_daemon=start_ipc_daemon)
+
+	def _start_post_builddir_lock(self, lock_future=None, start_ipc_daemon=False):
+		if lock_future is not None:
+			if lock_future is not self._start_future:
+				raise AssertionError('lock_future is not self._start_future')
+			self._start_future = None
+			lock_future.result()
+
+		if start_ipc_daemon:
+			self.settings['PORTAGE_IPC_DAEMON'] = "1"
+			self._start_ipc_daemon()
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
@@ -375,6 +392,11 @@ class AbstractEbuildProcess(SpawnProcess):
 		Execution of the failsafe code will automatically become a fatal
 		error at the same time as event loop recursion is disabled.
 		"""
+		# SpawnProcess._wait() requires the pid, so wait here for the
+		# pid to become available.
+		while self._start_future is not None:
+			self.scheduler.run_until_complete(self._start_future)
+
 		SpawnProcess._wait(self)
 
 		if self._build_dir is not None:
