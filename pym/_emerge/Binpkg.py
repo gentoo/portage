@@ -112,15 +112,25 @@ class Binpkg(CompositeTask):
 			self.wait()
 			return
 
-		pkg = self.pkg
-		pkg_count = self.pkg_count
 		if not (self.opts.pretend or self.opts.fetchonly):
-			self._build_dir.lock()
+			self._start_task(
+				AsyncTaskFuture(future=self._build_dir.async_lock()),
+				self._start_fetcher)
+		else:
+			self._start_fetcher()
+
+	def _start_fetcher(self, lock_task=None):
+		if lock_task is not None:
+			self._assert_current(lock_task)
+			lock_task.future.result()
 			# Initialize PORTAGE_LOG_FILE (clean_log won't work without it).
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 			# If necessary, discard old log so that we don't
 			# append to it.
 			self._build_dir.clean_log()
+
+		pkg = self.pkg
+		pkg_count = self.pkg_count
 		fetcher = BinpkgFetcher(background=self.background,
 			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
 			pretend=self.opts.pretend, scheduler=self.scheduler)
