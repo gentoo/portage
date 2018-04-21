@@ -87,20 +87,6 @@ class AsynchronousLock(AsynchronousTask):
 		self.returncode = self._imp.wait()
 		return self.returncode
 
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, since waiting
-		for the child process to respond can trigger event loop recursion
-		which is incompatible with asyncio.
-		"""
-		if self._imp is None:
-			raise AssertionError('not locked')
-		if isinstance(self._imp, (_LockProcess, _LockThread)):
-			self._imp.unlock()
-		else:
-			unlockfile(self._imp)
-		self._imp = None
-
 	def async_unlock(self):
 		"""
 		Release the lock asynchronously. Release notification is available
@@ -161,14 +147,6 @@ class _LockThread(AbstractPollTask):
 	def _cancel(self):
 		# There's currently no way to force thread termination.
 		pass
-
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, for compatibility
-		with _LockProcess.
-		"""
-		self._unlock()
-		self._unlock_future.set_result(None)
 
 	def _unlock(self):
 		if self._lock_obj is None:
@@ -326,16 +304,6 @@ class _LockProcess(AbstractPollTask):
 				pass
 			else:
 				os.close(pipe_in)
-
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, since waiting
-		for the child process to respond can trigger event loop recursion
-		which is incompatible with asyncio.
-		"""
-		self._unlock()
-		self._proc.wait()
-		self._proc = None
 
 	def _unlock(self):
 		if self._proc is None:
