@@ -57,8 +57,11 @@ class AsyncFunction(ForkProcess):
 			# and returned an unsuccessful returncode.
 			pass
 		self._async_func_reader = None
-		self._unregister()
-		self.wait()
+		if self.returncode is None:
+			self._async_waitpid()
+		else:
+			self._unregister()
+			self._async_wait()
 
 	def _unregister(self):
 		ForkProcess._unregister(self)
