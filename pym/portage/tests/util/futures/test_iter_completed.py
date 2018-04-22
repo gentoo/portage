@@ -19,7 +19,8 @@ class SleepProcess(ForkProcess):
 		ForkProcess._start(self)
 
 	def _future_done(self, task):
-		self.future.set_result(self.seconds)
+		if not self.future.cancelled():
+			self.future.set_result(self.seconds)
 
 	def _run(self):
 		time.sleep(self.seconds)
