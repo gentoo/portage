@@ -216,8 +216,14 @@ class EbuildBuild(CompositeTask):
 			logfile=self.settings.get('PORTAGE_LOG_FILE'),
 			pkg=self.pkg, scheduler=self.scheduler)
 
+		self._start_task(AsyncTaskFuture(
+			future=fetcher.async_already_fetched(self.settings)),
+			functools.partial(self._start_fetch, fetcher))
+
+	def _start_fetch(self, fetcher, already_fetched_task):
+		self._assert_current(already_fetched_task)
 		try:
-			already_fetched = fetcher.already_fetched(self.settings)
+			already_fetched = already_fetched_task.future.result()
 		except portage.exception.InvalidDependString as e:
 			msg_lines = []
 			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \

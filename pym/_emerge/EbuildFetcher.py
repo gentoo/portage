@@ -28,7 +28,7 @@ class EbuildFetcher(CompositeTask):
 		CompositeTask.__init__(self, **kwargs)
 		self._fetcher_proc = _EbuildFetcherProcess(**kwargs)
 
-	def already_fetched(self, settings):
+	def async_already_fetched(self, settings):
 		"""
 		Returns True if all files already exist locally and have correct
 		digests, otherwise return False. When returning True, appropriate
@@ -38,7 +38,7 @@ class EbuildFetcher(CompositeTask):
 		such messages. This will raise InvalidDependString if SRC_URI is
 		invalid.
 		"""
-		return self._fetcher_proc.already_fetched(settings)
+		return self._fetcher_proc.async_already_fetched(settings)
 
 	def _start(self):
 		self._start_task(
@@ -68,11 +68,29 @@ class _EbuildFetcherProcess(ForkProcess):
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
 		"pkg", "prefetch", "_digests", "_manifest", "_settings", "_uri_map")
 
-	def already_fetched(self, settings):
-		uri_map = self.scheduler.run_until_complete(self._async_uri_map())
-		if not uri_map:
-			return True
+	def async_already_fetched(self, settings):
+		result = self.scheduler.create_future()
 
+		def uri_map_done(uri_map_future):
+			if uri_map_future.exception() is not None or result.cancelled():
+				if not result.cancelled():
+					result.set_exception(uri_map_future.exception())
+				return
+
+			uri_map = uri_map_future.result()
+			if uri_map:
+				result.set_result(
+					self._check_already_fetched(settings, uri_map))
+			else:
+				result.set_result(True)
+
+		uri_map_future = self._async_uri_map()
+		result.add_done_callback(lambda result:
+			aux_get_future.cancel() if result.cancelled() else None)
+		uri_map_future.add_done_callback(uri_map_done)
+		return result
+
+	def _check_already_fetched(self, settings, uri_map):
 		digests = self._get_digests()
 		distdir = settings["DISTDIR"]
 		allow_missing = self._get_manifest().allow_missing
