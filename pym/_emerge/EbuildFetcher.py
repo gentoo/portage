@@ -49,7 +49,7 @@ class _EbuildFetcherProcess(ForkProcess):
 		"pkg", "prefetch", "_digests", "_manifest", "_settings", "_uri_map")
 
 	def already_fetched(self, settings):
-		uri_map = self._get_uri_map()
+		uri_map = self.scheduler.run_until_complete(self._async_uri_map())
 		if not uri_map:
 			return True
 
@@ -125,7 +125,7 @@ class _EbuildFetcherProcess(ForkProcess):
 		ebuild_path = self._get_ebuild_path()
 
 		try:
-			uri_map = self._get_uri_map()
+			uri_map = self.scheduler.run_until_complete(self._async_uri_map())
 		except portage.exception.InvalidDependString as e:
 			msg_lines = []
 			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
@@ -210,21 +210,34 @@ class _EbuildFetcherProcess(ForkProcess):
 			self._digests = self._get_manifest().getTypeDigests("DIST")
 		return self._digests
 
-	def _get_uri_map(self):
+	def _async_uri_map(self):
 		"""
-		This can raise InvalidDependString from portdbapi.getFetchMap().
+		This calls the portdbapi.async_fetch_map method and returns the
+		resulting Future (may contain InvalidDependString exception).
 		"""
 		if self._uri_map is not None:
-			return self._uri_map
+			result = self.scheduler.create_future()
+			result.set_result(self._uri_map)
+			return result
+
 		pkgdir = os.path.dirname(self._get_ebuild_path())
 		mytree = os.path.dirname(os.path.dirname(pkgdir))
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
-		self._uri_map = portdb.getFetchMap(self.pkg.cpv,
+
+		def cache_result(result):
+			try:
+				self._uri_map = result.result()
+			except Exception:
+				# The caller handles this when it retrieves the result.
+				pass
+
+		result = portdb.async_fetch_map(self.pkg.cpv,
 			useflags=use, mytree=mytree)
-		return self._uri_map
+		result.add_done_callback(cache_result)
+		return result
 
 	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
 		distdir = settings["DISTDIR"]
