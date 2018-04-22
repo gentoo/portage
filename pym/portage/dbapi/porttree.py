@@ -728,25 +728,66 @@ class portdbapi(dbapi):
 			URIs.
 		@rtype: dict
 		"""
+		loop = self._event_loop
+		return loop.run_until_complete(
+			self.async_fetch_map(mypkg, useflags=useflags,
+				mytree=mytree, loop=loop))
 
-		try:
-			eapi, myuris = self.aux_get(mypkg,
-				["EAPI", "SRC_URI"], mytree=mytree)
-		except KeyError:
-			# Convert this to an InvalidDependString exception since callers
-			# already handle it.
-			raise portage.exception.InvalidDependString(
-				"getFetchMap(): aux_get() error reading "+mypkg+"; aborting.")
+	def async_fetch_map(self, mypkg, useflags=None, mytree=None, loop=None):
+		"""
+		Asynchronous form of getFetchMap.
 
-		if not eapi_is_supported(eapi):
-			# Convert this to an InvalidDependString exception
-			# since callers already handle it.
-			raise portage.exception.InvalidDependString(
-				"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
-				(mypkg, eapi))
+		@param mypkg: cpv for an ebuild
+		@type mypkg: String
+		@param useflags: a collection of enabled USE flags, for evaluation of
+			conditionals
+		@type useflags: set, or None to enable all conditionals
+		@param mytree: The canonical path of the tree in which the ebuild
+			is located, or None for automatic lookup
+		@type mypkg: String
+		@param loop: event loop (defaults to global event loop)
+		@type loop: EventLoop
+		@return: A future that results in a dict which maps each file name to
+			a set of alternative URIs.
+		@rtype: asyncio.Future (or compatible)
+		"""
+		loop = loop or global_event_loop()
+		loop = getattr(loop, '_asyncio_wrapper', loop)
+		result = loop.create_future()
 
-		return _parse_uri_map(mypkg, {'EAPI':eapi,'SRC_URI':myuris},
-			use=useflags)
+		def aux_get_done(aux_get_future):
+			if result.cancelled():
+				return
+			if aux_get_future.exception() is not None:
+				if isinstance(future.exception(), PortageKeyError):
+					# Convert this to an InvalidDependString exception since
+					# callers already handle it.
+					result.set_exception(portage.exception.InvalidDependString(
+						"getFetchMap(): aux_get() error reading "
+						+ mypkg + "; aborting."))
+				else:
+					result.set_exception(future.exception())
+				return
+
+			eapi, myuris = aux_get_future.result()
+
+			if not eapi_is_supported(eapi):
+				# Convert this to an InvalidDependString exception
+				# since callers already handle it.
+				result.set_exception(portage.exception.InvalidDependString(
+					"getFetchMap(): '%s' has unsupported EAPI: '%s'" % \
+					(mypkg, eapi)))
+				return
+
+			result.set_result(_parse_uri_map(mypkg,
+				{'EAPI':eapi,'SRC_URI':myuris}, use=useflags))
+
+		aux_get_future = self.async_aux_get(
+			mypkg, ["EAPI", "SRC_URI"], mytree=mytree)
+		result.add_done_callback(lambda result:
+			aux_get_future.cancel() if result.cancelled() else None)
+		aux_get_future.add_done_callback(aux_get_done)
+		return result
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0, myrepo=None):
 		# returns a filename:size dictionnary of remaining downloads
