@@ -108,7 +108,9 @@ class SubProcess(AbstractPollTask):
 		prefered over _waitpid_loop, since the synchronous nature
 		of _waitpid_loop can cause event loop recursion.
 		"""
-		if self._waitpid_id is None:
+		if self.returncode is not None:
+			self._async_wait()
+		elif self._waitpid_id is None:
 			self._waitpid_id = self.scheduler.child_watch_add(
 				self.pid, self._async_waitpid_cb)
 
@@ -157,6 +159,22 @@ class SubProcess(AbstractPollTask):
 				else:
 					f.close()
 			self._files = None
+
+	def _unregister_if_appropriate(self, event):
+		"""
+		Override the AbstractPollTask._unregister_if_appropriate method to
+		call _async_waitpid instead of wait(), so that event loop recursion
+		is not triggered when the pid exit status is not yet available.
+		"""
+		if self._registered:
+			if event & self._exceptional_events:
+				self._log_poll_exception(event)
+				self._unregister()
+				self.cancel()
+				self._async_waitpid()
+			elif event & self.scheduler.IO_HUP:
+				self._unregister()
+				self._async_waitpid()
 
 	def _set_returncode(self, wait_retval):
 		"""
