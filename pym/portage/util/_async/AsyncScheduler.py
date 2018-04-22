@@ -14,7 +14,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._max_jobs = max_jobs
-		self._max_load = max_load
+		self._max_load = None if max_load is True else max_load
 		self._error_count = 0
 		self._running_tasks = set()
 		self._remaining_tasks = True

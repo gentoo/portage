@@ -69,7 +69,7 @@ class IterCompletedTestCase(TestCase):
 				yield future
 
 		for future_done_set in async_iter_completed(future_generator(),
-			max_jobs=True, max_load=None, loop=loop):
+			max_jobs=True, max_load=True, loop=loop):
 			future_done_set.cancel()
 			break
 
