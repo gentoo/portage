@@ -15,12 +15,17 @@ from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import _check_distfile, fetch
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
+from _emerge.CompositeTask import CompositeTask
 
-class EbuildFetcher(ForkProcess):
+
+class EbuildFetcher(CompositeTask):
 
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
-		"pkg", "prefetch") + \
-		("_digests", "_manifest", "_settings", "_uri_map")
+		"logfile", "pkg", "prefetch", "_fetcher_proc")
+
+	def __init__(self, **kwargs):
+		CompositeTask.__init__(self, **kwargs)
+		self._fetcher_proc = _EbuildFetcherProcess(**kwargs)
 
 	def already_fetched(self, settings):
 		"""
@@ -32,7 +37,18 @@ class EbuildFetcher(ForkProcess):
 		such messages. This will raise InvalidDependString if SRC_URI is
 		invalid.
 		"""
+		return self._fetcher_proc.already_fetched(settings)
 
+	def _start(self):
+		self._start_task(self._fetcher_proc, self._default_final_exit)
+
+
+class _EbuildFetcherProcess(ForkProcess):
+
+	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
+		"pkg", "prefetch", "_digests", "_manifest", "_settings", "_uri_map")
+
+	def already_fetched(self, settings):
 		uri_map = self._get_uri_map()
 		if not uri_map:
 			return True
