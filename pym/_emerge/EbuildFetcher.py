@@ -13,6 +13,7 @@ from portage import _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import _check_distfile, fetch
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
 from _emerge.CompositeTask import CompositeTask
@@ -40,6 +41,25 @@ class EbuildFetcher(CompositeTask):
 		return self._fetcher_proc.already_fetched(settings)
 
 	def _start(self):
+		self._start_task(
+			AsyncTaskFuture(future=self._fetcher_proc._async_uri_map()),
+			self._start_fetch)
+
+	def _start_fetch(self, uri_map_task):
+		self._assert_current(uri_map_task)
+		try:
+			uri_map = uri_map_task.future.result()
+		except portage.exception.InvalidDependString as e:
+			msg_lines = []
+			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
+				(self.pkg.cpv, e)
+			msg_lines.append(msg)
+			self._fetcher_proc._eerror(msg_lines)
+			self._current_task = None
+			self.returncode = 1
+			self._async_wait()
+			return
+
 		self._start_task(self._fetcher_proc, self._default_final_exit)
 
 
@@ -123,18 +143,8 @@ class _EbuildFetcherProcess(ForkProcess):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = self._get_ebuild_path()
-
-		try:
-			uri_map = self.scheduler.run_until_complete(self._async_uri_map())
-		except portage.exception.InvalidDependString as e:
-			msg_lines = []
-			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
-				(self.pkg.cpv, e)
-			msg_lines.append(msg)
-			self._eerror(msg_lines)
-			self._set_returncode((self.pid, 1 << 8))
-			self._async_wait()
-			return
+		# This is initialized by an earlier _async_uri_map call.
+		uri_map = self._uri_map
 
 		if not uri_map:
 			# Nothing to fetch.
