@@ -450,8 +450,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		if hasattr(mydbapi, "getFetchMap") and \
 			("A" not in mysettings.configdict["pkg"] or \
 			"AA" not in mysettings.configdict["pkg"]):
-			src_uri, = mydbapi.aux_get(mysettings.mycpv,
-				["SRC_URI"], mytree=mytree)
+			src_uri = mysettings.configdict["pkg"].get("SRC_URI")
+			if src_uri is None:
+				src_uri, = mydbapi.aux_get(mysettings.mycpv,
+					["SRC_URI"], mytree=mytree)
 			metadata = {
 				"EAPI"    : eapi,
 				"SRC_URI" : src_uri,

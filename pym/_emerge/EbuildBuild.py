@@ -35,23 +35,32 @@ class EbuildBuild(CompositeTask):
 		("_build_dir", "_buildpkg", "_ebuild_path", "_issyspkg", "_tree")
 
 	def _start(self):
-
-		pkg = self.pkg
-		settings = self.settings
-
 		if not self.opts.fetchonly:
-			rval = _check_temp_dir(settings)
+			rval = _check_temp_dir(self.settings)
 			if rval != os.EX_OK:
 				self.returncode = rval
 				self._current_task = None
 				self._async_wait()
 				return
 
+		# First get the SRC_URI metadata (it's not cached in self.pkg.metadata
+		# because some packages have an extremely large SRC_URI value).
+		self._start_task(
+			AsyncTaskFuture(
+				future=self.pkg.root_config.trees["porttree"].dbapi.\
+				async_aux_get(self.pkg.cpv, ["SRC_URI"], myrepo=self.pkg.repo)),
+			self._start_with_metadata)
+
+	def _start_with_metadata(self, aux_get_task):
+		self._assert_current(aux_get_task)
+		pkg = self.pkg
+		settings = self.settings
 		root_config = pkg.root_config
 		tree = "porttree"
 		self._tree = tree
 		portdb = root_config.trees[tree].dbapi
 		settings.setcpv(pkg)
+		settings.configdict["pkg"]["SRC_URI"], = aux_get_task.future.result()
 		settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
 		if self.opts.buildpkgonly:
 			settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
