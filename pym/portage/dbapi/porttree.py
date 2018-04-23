@@ -783,7 +783,7 @@ class portdbapi(dbapi):
 				{'EAPI':eapi,'SRC_URI':myuris}, use=useflags))
 
 		aux_get_future = self.async_aux_get(
-			mypkg, ["EAPI", "SRC_URI"], mytree=mytree)
+			mypkg, ["EAPI", "SRC_URI"], mytree=mytree, loop=loop)
 		result.add_done_callback(lambda result:
 			aux_get_future.cancel() if result.cancelled() else None)
 		aux_get_future.add_done_callback(aux_get_done)
