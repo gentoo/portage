@@ -3322,8 +3322,10 @@ class depgraph(object):
 		if removal_action:
 			depend_root = myroot
 		else:
-			if eapi_attrs.bdepend or eapi_attrs.hdepend:
+			if eapi_attrs.hdepend:
 				depend_root = myroot
+			elif eapi_attrs.bdepend:
+				depend_root = pkg.root_config.settings["ESYSROOT"]
 			else:
 				depend_root = self._frozen_config._running_root.root
 				root_deps = self._frozen_config.myopts.get("--root-deps")

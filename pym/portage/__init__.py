@@ -525,7 +525,7 @@ class _trees_dict(dict):
 		self._target_eroot = None
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None,
-	eprefix=None):
+	sysroot=None, eprefix=None):
 
 	if trees is None:
 		trees = _trees_dict()
@@ -538,7 +538,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		env = os.environ
 
 	settings = config(config_root=config_root, target_root=target_root,
-		env=env, eprefix=eprefix)
+		env=env, sysroot=sysroot, eprefix=eprefix)
 	settings.lock()
 
 	depcachedir = settings.get('PORTAGE_DEPCACHEDIR')
@@ -562,7 +562,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		if depcachedir is not None:
 			clean_env['PORTAGE_DEPCACHEDIR'] = depcachedir
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, eprefix=None)
+			env=clean_env, sysroot="/", eprefix=None)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))

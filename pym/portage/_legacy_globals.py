@@ -28,7 +28,8 @@ def _get_legacy_global(name):
 
 	kwargs = {}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"),
-			("target_root", "ROOT"), ("eprefix", "EPREFIX")):
+			("target_root", "ROOT"), ("sysroot", "SYSROOT"),
+			("eprefix", "EPREFIX")):
 		kwargs[k] = os.environ.get(envvar)
 
 	portage._initializing_globals = True
