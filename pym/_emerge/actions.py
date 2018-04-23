@@ -2438,7 +2438,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
 	env = os.environ if env is None else env
 	kwargs = {'env': env}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"),
-			("eprefix", "EPREFIX")):
+			("sysroot", "SYSROOT"), ("eprefix", "EPREFIX")):
 		v = env.get(envvar)
 		if v and v.strip():
 			kwargs[k] = v

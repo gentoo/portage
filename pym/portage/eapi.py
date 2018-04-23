@@ -123,6 +123,10 @@ def eapi_path_variables_end_with_trailing_slash(eapi):
 	return eapi in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
 			"5", "5-progress", "6")
 
+def eapi_has_sysroot(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "5-hdepend", "6")
+
 _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'allows_package_provided '
 	'bdepend dots_in_PN dots_in_use_flags exports_EBUILD_PHASE_FUNC '
@@ -132,7 +136,7 @@ _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'path_variables_end_with_trailing_slash '
 	'repo_deps required_use required_use_at_most_one_of slot_operator slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults '
-	'empty_groups_always_true')
+	'empty_groups_always_true sysroot')
 
 _eapi_attrs_cache = {}
 
@@ -176,6 +180,7 @@ def _get_eapi_attrs(eapi):
 		slot_operator = (eapi is None or eapi_has_slot_operator(eapi)),
 		src_uri_arrows = (eapi is None or eapi_has_src_uri_arrows(eapi)),
 		strong_blocks = (eapi is None or eapi_has_strong_blocks(eapi)),
+		sysroot = (eapi is None or eapi_has_sysroot(eapi)),
 		use_deps = (eapi is None or eapi_has_use_deps(eapi)),
 		use_dep_defaults = (eapi is None or eapi_has_use_dep_defaults(eapi))
 	)
