@@ -48,7 +48,8 @@ class EbuildBuild(CompositeTask):
 		self._start_task(
 			AsyncTaskFuture(
 				future=self.pkg.root_config.trees["porttree"].dbapi.\
-				async_aux_get(self.pkg.cpv, ["SRC_URI"], myrepo=self.pkg.repo)),
+				async_aux_get(self.pkg.cpv, ["SRC_URI"], myrepo=self.pkg.repo,
+				loop=self.scheduler)),
 			self._start_with_metadata)
 
 	def _start_with_metadata(self, aux_get_task):
