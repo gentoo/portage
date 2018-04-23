@@ -263,7 +263,7 @@ class _EbuildFetcherProcess(ForkProcess):
 				pass
 
 		result = portdb.async_fetch_map(self.pkg.cpv,
-			useflags=use, mytree=mytree)
+			useflags=use, mytree=mytree, loop=self.scheduler)
 		result.add_done_callback(cache_result)
 		return result
 
