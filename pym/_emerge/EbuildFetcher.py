@@ -86,7 +86,7 @@ class _EbuildFetcherProcess(ForkProcess):
 
 		uri_map_future = self._async_uri_map()
 		result.add_done_callback(lambda result:
-			aux_get_future.cancel() if result.cancelled() else None)
+			uri_map_future.cancel() if result.cancelled() else None)
 		uri_map_future.add_done_callback(uri_map_done)
 		return result
 
