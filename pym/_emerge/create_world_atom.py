@@ -11,7 +11,7 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
-def create_world_atom(pkg, args_set, root_config):
+def create_world_atom(pkg, args_set, root_config, before_install=False):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
 	atom will be returned. Atoms that are in the system set may also be stored
@@ -83,11 +83,13 @@ def create_world_atom(pkg, args_set, root_config):
 		# If there is no installed package matching the SLOT atom,
 		# it probably changed SLOT spontaneously due to USE=multislot,
 		# so just record an unslotted atom.
-		if vardb.match(slot_atom):
+		if vardb.match(slot_atom) or before_install:
 			# Now verify that the argument is precise
 			# enough to identify a specific slot.
 			matches = mydb.match(arg_atom)
 			matched_slots = set()
+			if before_install:
+				matched_slots.add(pkg.slot)
 			if mydb is vardb:
 				for cpv in matches:
 					matched_slots.add(mydb._pkg_str(cpv, None).slot)

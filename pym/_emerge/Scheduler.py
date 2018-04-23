@@ -448,6 +448,7 @@ class Scheduler(PollScheduler):
 			self._pkg_cache = {}
 			self._digraph = None
 			self._mergelist = []
+			self._world_atoms = None
 			self._deep_system_deps.clear()
 			return
 
@@ -455,6 +456,18 @@ class Scheduler(PollScheduler):
 		self._pkg_cache = graph_config.pkg_cache
 		self._digraph = graph_config.graph
 		self._mergelist = graph_config.mergelist
+
+		# Generate world atoms while the event loop is not running,
+		# since otherwise portdbapi match calls in the create_world_atom
+		# function could trigger event loop recursion.
+		self._world_atoms = {}
+		for pkg in self._mergelist:
+			if getattr(pkg, 'operation', None) != 'merge':
+				continue
+			atom = create_world_atom(pkg, self._args_set,
+				pkg.root_config, before_install=True)
+			if atom is not None:
+				self._world_atoms[pkg] = atom
 
 		if "--nodeps" in self.myopts or \
 			(self._max_jobs is not True and self._max_jobs < 2):
@@ -1939,11 +1952,7 @@ class Scheduler(PollScheduler):
 		atom = None
 
 		if pkg.operation != "uninstall":
-			# Do this before acquiring the lock, since it queries the
-			# portdbapi which can call the global event loop, triggering
-			# a concurrent call to this method or something else that
-			# needs an exclusive (non-reentrant) lock on the world file.
-			atom = create_world_atom(pkg, args_set, root_config)
+			atom = self._world_atoms.get(pkg)
 
 		try:
 
