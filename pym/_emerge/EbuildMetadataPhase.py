@@ -148,7 +148,7 @@ class EbuildMetadataPhase(SubProcess):
 							self._unregister()
 							self._async_wait()
 						else:
-							self.self._async_waitpid()
+							self._async_waitpid()
 						break
 
 		self._unregister_if_appropriate(event)
