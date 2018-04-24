@@ -29,6 +29,26 @@ class AsynchronousTask(SlotObject):
 		self._start_hook()
 		self._start()
 
+	def async_wait(self):
+		"""
+		Wait for returncode asynchronously. Notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is self.returncode
+		"""
+		waiter = self.scheduler.create_future()
+		exit_listener = lambda self: waiter.set_result(self.returncode)
+		self.addExitListener(exit_listener)
+		waiter.add_done_callback(lambda waiter:
+			self.removeExitListener(exit_listener) if waiter.cancelled() else None)
+		if self.returncode is not None:
+			# If the returncode is not None, it means the exit event has already
+			# happened, so use _async_wait() to guarantee that the exit_listener
+			# is called. This does not do any harm because a given exit listener
+			# is never called more than once.
+			self._async_wait()
+		return waiter
+
 	def _start(self):
 		self.returncode = os.EX_OK
 		self.wait()
@@ -47,6 +67,9 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def wait(self):
+		"""
+		Deprecated. Use async_wait() instead.
+		"""
 		if self.returncode is None:
 			if not self._waiting:
 				self._waiting = True

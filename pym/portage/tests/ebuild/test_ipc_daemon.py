@@ -157,6 +157,6 @@ class IpcDaemonTestCase(TestCase):
 		try:
 			task_scheduler.start()
 			event_loop.run_until_complete(self._run_done)
-			task_scheduler.wait()
+			event_loop.run_until_complete(task_scheduler.async_wait())
 		finally:
 			timeout_handle.cancel()
