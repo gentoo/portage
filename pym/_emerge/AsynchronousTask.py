@@ -16,7 +16,7 @@ class AsynchronousTask(SlotObject):
 	the task is complete and self.returncode has been set.
 	"""
 
-	__slots__ = ("background", "cancelled", "returncode") + \
+	__slots__ = ("background", "cancelled", "returncode", "scheduler") + \
 		("_exit_listeners", "_exit_listener_stack", "_start_listeners",
 		"_waiting")
 

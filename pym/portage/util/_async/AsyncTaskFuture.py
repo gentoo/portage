@@ -12,7 +12,7 @@ class AsyncTaskFuture(AsynchronousTask):
 	Wraps a Future in an AsynchronousTask, which is useful for
 	scheduling with TaskScheduler.
 	"""
-	__slots__ = ('future', 'scheduler')
+	__slots__ = ('future',)
 	def _start(self):
 		self.future.add_done_callback(self._done_callback)
 

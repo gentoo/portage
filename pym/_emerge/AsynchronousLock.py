@@ -37,7 +37,7 @@ class AsynchronousLock(AsynchronousTask):
 	signals to the main thread).
 	"""
 
-	__slots__ = ('path', 'scheduler',) + \
+	__slots__ = ('path',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
 		'_force_thread', '_unlock_future')
 

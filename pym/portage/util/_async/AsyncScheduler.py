@@ -20,6 +20,13 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		self._remaining_tasks = True
 		self._loadavg_check_id = None
 
+	@property
+	def scheduler(self):
+		"""
+		Provides compatibility with the AsynchronousTask.scheduler attribute.
+		"""
+		return self._event_loop
+
 	def _poll(self):
 		if not (self._is_work_scheduled() or self._keep_scheduling()):
 			self.wait()

@@ -11,8 +11,7 @@ from _emerge.AsynchronousTask import AsynchronousTask
 
 class AbstractPollTask(AsynchronousTask):
 
-	__slots__ = ("scheduler",) + \
-		("_registered",)
+	__slots__ = ("_registered",)
 
 	_bufsize = 4096
 
