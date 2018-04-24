@@ -557,7 +557,7 @@ do_merge() {
 
 	local file="${1}"
 	local ofile="${2}"
-	local mfile="${TMP}/${2}.merged"
+	local mfile="${TMP}/${2#/}.merged"
 	local -i my_input=0
 
 	if [[ -L ${file} && -L ${ofile} ]] ; then
