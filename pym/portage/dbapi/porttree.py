@@ -759,7 +759,7 @@ class portdbapi(dbapi):
 			if result.cancelled():
 				return
 			if aux_get_future.exception() is not None:
-				if isinstance(future.exception(), PortageKeyError):
+				if isinstance(aux_get_future.exception(), PortageKeyError):
 					# Convert this to an InvalidDependString exception since
 					# callers already handle it.
 					result.set_exception(portage.exception.InvalidDependString(
