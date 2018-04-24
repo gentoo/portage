@@ -144,8 +144,11 @@ class EbuildMetadataPhase(SubProcess):
 					break
 				else:
 					if not self._raw_metadata[-1]:
-						self._unregister()
-						self.wait()
+						if self.pid is None:
+							self._unregister()
+							self._async_wait()
+						else:
+							self.self._async_waitpid()
 						break
 
 		self._unregister_if_appropriate(event)
