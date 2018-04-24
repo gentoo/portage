@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -8,8 +8,12 @@ import subprocess
 from portage import os
 from portage import _unicode_encode, _encodings
 from portage.const import MANIFEST2_IDENTIFIERS
+from portage.dep import _repo_separator
+from portage.exception import InvalidDependString
+from portage.localization import _
 from portage.util import (atomic_ofstream, grablines,
 	shlex_split, varexpand, writemsg)
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from _emerge.CompositeTask import CompositeTask
@@ -29,6 +33,24 @@ class ManifestTask(CompositeTask):
 	def _start(self):
 		self._manifest_path = os.path.join(self.repo_config.location,
 			self.cp, "Manifest")
+
+		self._start_task(
+			AsyncTaskFuture(future=self.fetchlist_dict),
+			self._start_with_fetchlist)
+
+	def _start_with_fetchlist(self, fetchlist_task):
+		if self._default_exit(fetchlist_task) != os.EX_OK:
+			if not self.fetchlist_dict.cancelled():
+				try:
+					self.fetchlist_dict.result()
+				except InvalidDependString as e:
+					writemsg(
+						_("!!! %s%s%s: SRC_URI: %s\n") %
+						(self.cp, _repo_separator, self.repo_config.name, e),
+						noiselevel=-1)
+			self._async_wait()
+			return
+		self.fetchlist_dict = self.fetchlist_dict.result()
 		manifest_proc = ManifestProcess(cp=self.cp, distdir=self.distdir,
 			fetchlist_dict=self.fetchlist_dict, repo_config=self.repo_config,
 			scheduler=self.scheduler)

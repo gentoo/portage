@@ -1,10 +1,10 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
 from portage import os
+from portage.dbapi.porttree import _async_manifest_fetchlist
 from portage.dep import _repo_separator
-from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.util._async.AsyncScheduler import AsyncScheduler
 from .ManifestTask import ManifestTask
@@ -63,21 +63,14 @@ class ManifestScheduler(AsyncScheduler):
 				cpv_list = portdb.cp_list(cp, mytree=[repo_config.location])
 				if not cpv_list:
 					continue
-				fetchlist_dict = {}
-				try:
-					for cpv in cpv_list:
-						fetchlist_dict[cpv] = \
-							list(portdb.getFetchMap(cpv, mytree=mytree))
-				except InvalidDependString as e:
-					portage.writemsg(
-						_("!!! %s%s%s: SRC_URI: %s\n") %
-						(cp, _repo_separator, repo_config.name, e),
-						noiselevel=-1)
-					self._error_count += 1
-					continue
 
+				# Use _async_manifest_fetchlist(max_jobs=1), since we
+				# spawn concurrent ManifestTask instances.
 				yield ManifestTask(cp=cp, distdir=distdir,
-					fetchlist_dict=fetchlist_dict, repo_config=repo_config,
+					fetchlist_dict=_async_manifest_fetchlist(
+						portdb, repo_config, cp, cpv_list=cpv_list,
+						max_jobs=1, loop=self._event_loop),
+					repo_config=repo_config,
 					gpg_cmd=self._gpg_cmd, gpg_vars=self._gpg_vars,
 					force_sign_key=self._force_sign_key)
 
@@ -91,3 +84,5 @@ class ManifestScheduler(AsyncScheduler):
 					noiselevel=-1)
 
 		AsyncScheduler._task_exit(self, task)
+
+

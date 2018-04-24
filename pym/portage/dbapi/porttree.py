@@ -37,6 +37,7 @@ from portage import _unicode_encode
 from portage import OrderedDict
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import os as _os
@@ -1392,6 +1393,75 @@ class FetchlistDict(Mapping):
 
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
+
+
+def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
+	max_jobs=None, max_load=None, loop=None):
+	"""
+	Asynchronous form of FetchlistDict, with max_jobs and max_load
+	parameters in order to control async_aux_get concurrency.
+
+	@param portdb: portdbapi instance
+	@type portdb: portdbapi
+	@param repo_config: repository configuration for a Manifest
+	@type repo_config: RepoConfig
+	@param cp: cp for a Manifest
+	@type cp: str
+	@param cpv_list: list of ebuild cpv values for a Manifest
+	@type cpv_list: list
+	@param max_jobs: max number of futures to process concurrently (default
+		is multiprocessing.cpu_count())
+	@type max_jobs: int
+	@param max_load: max load allowed when scheduling a new future,
+		otherwise schedule no more than 1 future at a time (default
+		is multiprocessing.cpu_count())
+	@type max_load: int or float
+	@param loop: event loop
+	@type loop: EventLoop
+	@return: a Future resulting in a Mapping compatible with FetchlistDict
+	@rtype: asyncio.Future (or compatible)
+	"""
+	loop = loop or global_event_loop()
+	loop = getattr(loop, '_asyncio_wrapper', loop)
+	result = loop.create_future()
+	cpv_list = (portdb.cp_list(cp, mytree=repo_config.location)
+		if cpv_list is None else cpv_list)
+
+	def gather_done(gather_result):
+		# All exceptions must be consumed from gather_result before this
+		# function returns, in order to avoid triggering the event loop's
+		# exception handler.
+		e = None
+		if not gather_result.cancelled():
+			for future in gather_result.result():
+				if (future.done() and not future.cancelled() and
+					future.exception() is not None):
+					e = future.exception()
+
+		if result.cancelled():
+			return
+		elif e is None:
+			result.set_result(dict((k, list(v.result()))
+				for k, v in zip(cpv_list, gather_result.result())))
+		else:
+			result.set_exception(e)
+
+	gather_result = iter_gather(
+		# Use a generator expression for lazy evaluation, so that iter_gather
+		# controls the number of concurrent async_fetch_map calls.
+		(portdb.async_fetch_map(cpv, mytree=repo_config.location, loop=loop)
+			for cpv in cpv_list),
+		max_jobs=max_jobs,
+		max_load=max_load,
+		loop=loop,
+	)
+
+	gather_result.add_done_callback(gather_done)
+	result.add_done_callback(lambda result:
+		gather_result.cancel() if result.cancelled() else None)
+
+	return result
+
 
 def _parse_uri_map(cpv, metadata, use=None):
 

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -38,6 +38,7 @@ class PortdbCacheTestCase(TestCase):
 		portage_python = portage._python_interpreter
 		egencache_cmd = (portage_python, "-b", "-Wd",
 			os.path.join(self.bindir, "egencache"),
+			"--update-manifests", "--sign-manifests=n",
 			"--repo", "test_repo",
 			"--repositories-configuration", settings.repositories.config_string())
 		python_cmd = (portage_python, "-b", "-Wd", "-c")
