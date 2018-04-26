@@ -99,7 +99,8 @@ class PipeReader(AbstractPollTask):
 				self._read_data.append(data)
 			else:
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 				break
 
 		self._unregister_if_appropriate(event)
