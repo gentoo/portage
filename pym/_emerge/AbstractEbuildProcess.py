@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -18,6 +18,7 @@ from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import shutil, os
+from portage.util.futures import asyncio
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
@@ -420,6 +421,8 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._build_dir is None:
 			SpawnProcess._async_wait(self)
 		elif self._build_dir_unlock is None:
+			if self.returncode is None:
+				raise asyncio.InvalidStateError('Result is not ready.')
 			self._async_unlock_builddir(returncode=self.returncode)
 
 	def _async_unlock_builddir(self, returncode=None):

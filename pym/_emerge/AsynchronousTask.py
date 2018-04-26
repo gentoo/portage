@@ -1,9 +1,10 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
 
 from portage import os
+from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 
 class AsynchronousTask(SlotObject):
@@ -17,8 +18,7 @@ class AsynchronousTask(SlotObject):
 	"""
 
 	__slots__ = ("background", "cancelled", "returncode", "scheduler") + \
-		("_exit_listeners", "_exit_listener_stack", "_start_listeners",
-		"_waiting")
+		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
 
 	_cancelled_returncode = - signal.SIGINT
 
@@ -68,15 +68,19 @@ class AsynchronousTask(SlotObject):
 
 	def wait(self):
 		"""
-		Deprecated. Use async_wait() instead.
+		Wait for the returncode attribute to become ready, and return
+		it. If the returncode is not ready and the event loop is already
+		running, then the async_wait() method should be used instead of
+		wait(), because wait() will raise asyncio.InvalidStateError in
+		this case.
+
+		@rtype: int
+		@returns: the value of self.returncode
 		"""
 		if self.returncode is None:
-			if not self._waiting:
-				self._waiting = True
-				try:
-					self._wait()
-				finally:
-					self._waiting = False
+			if self.scheduler.is_running():
+				raise asyncio.InvalidStateError('Result is not ready.')
+			self.scheduler.run_until_complete(self.async_wait())
 		self._wait_hook()
 		return self.returncode
 
