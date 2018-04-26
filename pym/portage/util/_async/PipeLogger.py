@@ -1,4 +1,4 @@
-# Copyright 2008-2013 Gentoo Foundation
+# Copyright 2008-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -89,7 +89,8 @@ class PipeLogger(AbstractPollTask):
 			if not buf:
 				# EOF
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 				break
 
 			else:
