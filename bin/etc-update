@@ -32,7 +32,7 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2)
+OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | sed -e 's/"//g')
 
 case $OS_RELEASE_ID in
 	suse|opensuse) OS_FAMILY='suse' NEW_EXT='rpmnew';;
