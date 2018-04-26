@@ -35,7 +35,7 @@ get_config() {
 OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | sed -e 's/"//g')
 
 case $OS_RELEASE_ID in
-	suse|opensuse) OS_FAMILY='suse' NEW_EXT='rpmnew';;
+	suse|opensuse|opensuse-leap) OS_FAMILY='suse' NEW_EXT='rpmnew';;
 	arch|manjaro|antergos) OS_FAMILY='arch' NEW_EXT='pacnew';;
 	*) OS_FAMILY='gentoo' ;;
 esac
