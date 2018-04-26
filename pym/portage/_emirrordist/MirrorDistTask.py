@@ -231,7 +231,15 @@ class MirrorDistTask(CompositeTask):
 		if self._fetch_iterator is not None:
 			self._fetch_iterator.terminate()
 		self.cancel()
-		self.wait()
+		if self.returncode is None:
+			# In this case, the exit callback for self._current_task will
+			# trigger notification of exit listeners. Don't call _async_wait()
+			# yet, since that could trigger event loop recursion if the
+			# current (cancelled) task's exit callback does not set the
+			# returncode first.
+			pass
+		else:
+			self._async_wait()
 
 	def _wait(self):
 		CompositeTask._wait(self)
