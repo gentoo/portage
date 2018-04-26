@@ -128,10 +128,12 @@ class AbstractPollTask(AsynchronousTask):
 				self._log_poll_exception(event)
 				self._unregister()
 				self.cancel()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 			elif event & self.scheduler.IO_HUP:
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 
 	def _wait(self):
 		if self.returncode is not None:
