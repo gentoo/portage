@@ -757,7 +757,7 @@ ${SET_X} && set -x
 if [[ $OS_FAMILY == 'suse' ]]; then
 	PORTAGE_CONFIGROOT='/'
 	PORTAGE_TMPDIR='/tmp'
-	CONFIG_PROTECT='/etc'
+	CONFIG_PROTECT='/etc /usr/share'
 	CONFIG_PROTECT_MASK=''
 	[[ -f /etc/sysconfig/etc-update ]] && . /etc/sysconfig/etc-update
 elif [[ $OS_FAMILY == 'arch' ]]; then
