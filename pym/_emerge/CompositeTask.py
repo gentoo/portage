@@ -18,6 +18,7 @@ class CompositeTask(AsynchronousTask):
 			if self._current_task is self._TASK_QUEUED:
 				self.returncode = 1
 				self._current_task = None
+				self._async_wait()
 			else:
 				self._current_task.cancel()
 
