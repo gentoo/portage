@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -70,7 +70,8 @@ class AsynchronousLock(AsynchronousTask):
 
 	def _imp_exit(self, imp):
 		# call exit listeners
-		self.wait()
+		self.returncode = imp.returncode
+		self._async_wait()
 
 	def _cancel(self):
 		if isinstance(self._imp, AsynchronousTask):
@@ -251,7 +252,7 @@ class _LockProcess(AbstractPollTask):
 						level=logging.ERROR, noiselevel=-1)
 				self._unregister()
 				self.returncode = proc.returncode
-				self.wait()
+				self._async_wait()
 				return
 
 			if not self.cancelled and \
