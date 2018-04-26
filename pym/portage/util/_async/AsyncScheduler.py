@@ -29,7 +29,12 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
 	def _poll(self):
 		if not (self._is_work_scheduled() or self._keep_scheduling()):
-			self.wait()
+			self._cleanup()
+
+			if self._error_count > 0:
+				self.returncode = 1
+			else:
+				self.returncode = os.EX_OK
 		return self.returncode
 
 	def _cancel(self):
