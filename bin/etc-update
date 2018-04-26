@@ -62,7 +62,7 @@ elif [[ $OS_FAMILY == 'arch' ]]; then
 		printf -- '%s\n' "${1}.${NEW_EXT}"
 	}
 	get_scan_regexp() {
-		echo "s:\(^.*/\)\(.*\)\(\.rpmnew\):\1\2\3$b\1$b\3$b\2:"
+		echo "s:\(^.*/\)\(.*\)\(\.${NEW_EXT}\):\1\2\3$b\1$b\3$b\2:"
 	}
 	get_live_file() {
 		printf -- '%s\n' "${cfg_file%.${NEW_EXT}}"
