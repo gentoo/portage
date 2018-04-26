@@ -35,7 +35,8 @@ get_config() {
 OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | sed -e 's/"//g')
 
 case $OS_RELEASE_ID in
-	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='suse' NEW_EXT='rpmnew';;
+	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='rpm' ;;
+	fedora|rhel) OS_FAMILY='rpm' ;;
 	arch|manjaro|antergos) OS_FAMILY='arch' NEW_EXT='pacnew';;
 	*) OS_FAMILY='gentoo' ;;
 esac
@@ -53,7 +54,7 @@ if [[ $OS_FAMILY == 'gentoo' ]]; then
 	get_live_file() {
 		echo "${rpath}/${rfile:10}"
 	}
-elif [[ $OS_FAMILY == 'suse' ]] || [[ $OS_FAMILY == 'arch' ]]; then
+elif [[ $OS_FAMILY == 'arch' ]]; then
 	get_basename() {
 		printf -- '%s\n' "${1%.${NEW_EXT}}"
 	}
@@ -65,6 +66,20 @@ elif [[ $OS_FAMILY == 'suse' ]] || [[ $OS_FAMILY == 'arch' ]]; then
 	}
 	get_live_file() {
 		printf -- '%s\n' "${cfg_file%.${NEW_EXT}}"
+	}
+# In rpm we have rpmsave, rpmorig, and rpmnew.
+elif [[ $OS_FAMILY == 'rpm' ]]; then
+	get_basename() {
+		printf -- '%s\n' "${1}" |sed -e 's/\.rpmsave$//' -e 's/\.rpmnew$//' -e 's/\.rpmorig$//'
+	}
+	get_basename_find_opt() {
+		printf -- '%s\n' "${1}.rpm????"
+	}
+	get_scan_regexp() {
+		echo "s:\(^.*/\)\(.*\)\(\.\(rpmnew|rpmsave|rpmorig\)\):\1\2\3$b\1$b\3$b\2:"
+	}
+	get_live_file() {
+		printf -- '%s\n' "${cfg_file}" |sed -e 's/\.rpmsave$//' -e 's/\.rpmnew$//' -e 's/\.rpmorig$//'
 	}
 fi
 
@@ -754,7 +769,7 @@ while [[ -n $1 ]] ; do
 done
 ${SET_X} && set -x
 
-if [[ $OS_FAMILY == 'suse' ]]; then
+if [[ $OS_FAMILY == 'rpm' ]]; then
 	PORTAGE_CONFIGROOT='/'
 	PORTAGE_TMPDIR='/tmp'
 	CONFIG_PROTECT='/etc /usr/share'
