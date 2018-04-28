@@ -29,12 +29,11 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
 	def _poll(self):
 		if not (self._is_work_scheduled() or self._keep_scheduling()):
-			self._cleanup()
-
 			if self._error_count > 0:
 				self.returncode = 1
 			else:
 				self.returncode = os.EX_OK
+			self._async_wait()
 		return self.returncode
 
 	def _cancel(self):
@@ -91,7 +90,17 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 			self._event_loop.source_remove(self._loadavg_check_id)
 			self._loadavg_check_id = None
 
+	def _async_wait(self):
+		"""
+		Override _async_wait to call self._cleanup().
+		"""
+		self._cleanup()
+		super(AsyncScheduler, self)._async_wait()
+
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		# Loop while there are jobs to be scheduled.
 		while self._keep_scheduling():
 			self._event_loop.iteration()
