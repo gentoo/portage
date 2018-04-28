@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -63,7 +63,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
 		self._registered = False
 		if self.returncode is None:
 			self.returncode = os.EX_OK
-		self.wait()
+		self._async_wait()
 		return False
 
 	def _cancel(self):
@@ -71,9 +71,12 @@ class PipeReaderBlockingIO(AbstractPollTask):
 		self._registered = False
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
-		self.wait()
+		self._async_wait()
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		if self.returncode is not None:
 			return self.returncode
 		self._wait_loop()
