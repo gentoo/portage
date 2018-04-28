@@ -79,9 +79,12 @@ class FifoIpcDaemon(AbstractPollTask):
 			self.returncode = 1
 		self._unregister()
 		# notify exit listeners
-		self.wait()
+		self._async_wait()
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		if self.returncode is not None:
 			return self.returncode
 		self._wait_loop()
