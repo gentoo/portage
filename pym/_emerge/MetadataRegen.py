@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -77,18 +77,15 @@ class MetadataRegen(AsyncScheduler):
 						settings=portdb.doebuild_settings,
 						write_auxdb=self._write_auxdb)
 
-	def _wait(self):
-
-		AsyncScheduler._wait(self)
+	def _cleanup(self):
+		super(MetadataRegen, self)._cleanup()
 
 		portdb = self._portdb
 		dead_nodes = {}
 
-		self._termination_check()
-		if self._terminated_tasks:
+		if self._terminated.is_set():
 			portdb.flush_cache()
-			self.returncode = self._cancelled_returncode
-			return self.returncode
+			return
 
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
@@ -132,7 +129,6 @@ class MetadataRegen(AsyncScheduler):
 						pass
 
 		portdb.flush_cache()
-		return self.returncode
 
 	def _task_exit(self, metadata_process):
 
