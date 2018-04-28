@@ -12,7 +12,7 @@ class AsynchronousTask(SlotObject):
 	to public methods can be wrapped for implementing
 	hooks such as exit listener notification.
 
-	Sublasses should call self.wait() to notify exit listeners after
+	Sublasses should call self._async_wait() to notify exit listeners after
 	the task is complete and self.returncode has been set.
 	"""
 
@@ -51,7 +51,7 @@ class AsynchronousTask(SlotObject):
 
 	def _start(self):
 		self.returncode = os.EX_OK
-		self.wait()
+		self._async_wait()
 
 	def isAlive(self):
 		return self.returncode is None
@@ -81,6 +81,9 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		return self.returncode
 
 	def _async_wait(self):
