@@ -253,4 +253,4 @@ class MirrorDistTask(CompositeTask):
 		Override _async_wait to call self._cleanup().
 		"""
 		self._cleanup()
-		super(CompositeTask, self)._async_wait()
+		super(MirrorDistTask, self)._async_wait()
