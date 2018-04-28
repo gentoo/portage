@@ -28,9 +28,12 @@ class AsyncTaskFuture(AsynchronousTask):
 			self.returncode = os.EX_OK
 		else:
 			self.returncode = 1
-		self.wait()
+		self._async_wait()
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		if self.returncode is None:
 			self.scheduler.run_until_complete(self.future)
 		return self.returncode
