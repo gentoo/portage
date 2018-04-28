@@ -83,6 +83,9 @@ class AsynchronousLock(AsynchronousTask):
 		return self.returncode
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		if self.returncode is not None:
 			return self.returncode
 		self.returncode = self._imp.wait()
@@ -142,7 +145,7 @@ class _LockThread(AbstractPollTask):
 	def _run_lock_cb(self):
 		self._unregister()
 		self.returncode = os.EX_OK
-		self.wait()
+		self._async_wait()
 		return False
 
 	def _cancel(self):
@@ -287,7 +290,7 @@ class _LockProcess(AbstractPollTask):
 			self._acquired = True
 			self._unregister()
 			self.returncode = os.EX_OK
-			self.wait()
+			self._async_wait()
 
 		return True
 
