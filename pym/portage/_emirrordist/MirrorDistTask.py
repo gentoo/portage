@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Gentoo Foundation
+# Copyright 2013-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -46,7 +46,7 @@ class MirrorDistTask(CompositeTask):
 
 		self._assert_current(fetch)
 		if self._was_cancelled():
-			self.wait()
+			self._async_wait()
 			return
 
 		if self._config.options.delete:
@@ -63,7 +63,7 @@ class MirrorDistTask(CompositeTask):
 
 		self._assert_current(deletion)
 		if self._was_cancelled():
-			self.wait()
+			self._async_wait()
 			return
 
 		self._post_deletion()
@@ -80,7 +80,7 @@ class MirrorDistTask(CompositeTask):
 
 		self.returncode = os.EX_OK
 		self._current_task = None
-		self.wait()
+		self._async_wait()
 
 	def _update_recycle_db(self):
 
@@ -242,5 +242,15 @@ class MirrorDistTask(CompositeTask):
 			self._async_wait()
 
 	def _wait(self):
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		CompositeTask._wait(self)
 		self._cleanup()
+
+	def _async_wait(self):
+		"""
+		Override _async_wait to call self._cleanup().
+		"""
+		self._cleanup()
+		super(CompositeTask, self)._async_wait()
