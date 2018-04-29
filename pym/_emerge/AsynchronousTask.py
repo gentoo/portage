@@ -84,12 +84,6 @@ class AsynchronousTask(SlotObject):
 		self._wait_hook()
 		return self.returncode
 
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		return self.returncode
-
 	def _async_wait(self):
 		"""
 		For cases where _start exits synchronously, this method is a

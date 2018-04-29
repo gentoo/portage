@@ -52,13 +52,6 @@ class PipeReader(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
 
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		self.returncode = os.EX_OK
-		return self.returncode
-
 	def getvalue(self):
 		"""Retrieve the entire contents"""
 		return b''.join(self._read_data)

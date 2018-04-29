@@ -1,4 +1,4 @@
-# Copyright 2008-2013 Gentoo Foundation
+# Copyright 2008-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -171,16 +171,6 @@ class SpawnProcess(SubProcess):
 	def _pipe_logger_exit(self, pipe_logger):
 		self._pipe_logger = None
 		self._async_waitpid()
-
-	def _waitpid_loop(self):
-		SubProcess._waitpid_loop(self)
-
-		pipe_logger = self._pipe_logger
-		if pipe_logger is not None:
-			self._pipe_logger = None
-			pipe_logger.removeExitListener(self._pipe_logger_exit)
-			pipe_logger.cancel()
-			pipe_logger.wait()
 
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)

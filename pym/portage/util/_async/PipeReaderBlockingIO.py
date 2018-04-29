@@ -72,16 +72,6 @@ class PipeReaderBlockingIO(AbstractPollTask):
 			self.returncode = self._cancelled_returncode
 		self._async_wait()
 
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		self.returncode = os.EX_OK
-		return self.returncode
-
 	def getvalue(self):
 		"""Retrieve the entire contents"""
 		with self._thread_rlock:

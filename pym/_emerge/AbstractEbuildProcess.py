@@ -386,33 +386,6 @@ class AbstractEbuildProcess(SpawnProcess):
 					if not self.cancelled:
 						self._unexpected_exit()
 
-	def _wait(self):
-		"""
-		Override _wait to unlock self._build_dir if necessary. Normally, it
-		should already be unlocked, so this functions only as a failsafe.
-		Execution of the failsafe code will automatically become a fatal
-		error at the same time as event loop recursion is disabled.
-		"""
-		# SpawnProcess._wait() requires the pid, so wait here for the
-		# pid to become available.
-		while self._start_future is not None:
-			self.scheduler.run_until_complete(self._start_future)
-
-		SpawnProcess._wait(self)
-
-		if self._build_dir is not None:
-			self._build_dir_unlock = self._build_dir.async_unlock()
-			# Unlock only once.
-			self._build_dir = None
-
-		if not (self._build_dir_unlock is None or
-			self._build_dir_unlock.done()):
-			# This will automatically become a fatal error at the same
-			# time as event loop recursion is disabled.
-			self.scheduler.run_until_complete(self._build_dir_unlock)
-
-		return self.returncode
-
 	def _async_wait(self):
 		"""
 		Override _async_wait to asynchronously unlock self._build_dir

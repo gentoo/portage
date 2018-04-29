@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -96,26 +96,3 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		"""
 		self._cleanup()
 		super(AsyncScheduler, self)._async_wait()
-
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		# Loop while there are jobs to be scheduled.
-		while self._keep_scheduling():
-			self._event_loop.iteration()
-
-		# Clean shutdown of previously scheduled jobs. In the
-		# case of termination, this allows for basic cleanup
-		# such as flushing of buffered output to logs.
-		while self._is_work_scheduled():
-			self._event_loop.iteration()
-
-		self._cleanup()
-
-		if self._error_count > 0:
-			self.returncode = 1
-		else:
-			self.returncode = os.EX_OK 
-
-		return self.returncode

@@ -82,15 +82,6 @@ class AsynchronousLock(AsynchronousTask):
 			self._imp.poll()
 		return self.returncode
 
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		if self.returncode is not None:
-			return self.returncode
-		self.returncode = self._imp.wait()
-		return self.returncode
-
 	def async_unlock(self):
 		"""
 		Release the lock asynchronously. Release notification is available

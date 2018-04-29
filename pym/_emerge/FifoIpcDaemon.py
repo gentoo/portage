@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -80,17 +80,6 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._unregister()
 		# notify exit listeners
 		self._async_wait()
-
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		if self.returncode is None:
-			self.returncode = os.EX_OK
-		return self.returncode
 
 	def _input_handler(self, fd, event):
 		raise NotImplementedError(self)

@@ -1,4 +1,4 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import array
@@ -135,12 +135,6 @@ class AbstractPollTask(AsynchronousTask):
 				self._unregister()
 				self.returncode = self.returncode or os.EX_OK
 				self._async_wait()
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		return self.returncode
 
 	def _wait_loop(self, timeout=None):
 		loop = getattr(self.scheduler, '_asyncio_wrapper', self.scheduler)

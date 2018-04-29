@@ -15,7 +15,6 @@ class SchedulerInterface(SlotObject):
 		"IO_NVAL", "IO_OUT", "IO_PRI",
 		"child_watch_add",
 		"io_add_watch",
-		"iteration",
 		"source_remove",
 		"timeout_add",
 

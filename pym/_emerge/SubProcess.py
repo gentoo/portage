@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -61,48 +61,6 @@ class SubProcess(AbstractPollTask):
 		return self.pid is not None and \
 			self.returncode is None
 
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		if self.returncode is not None:
-			return self.returncode
-
-		if self._registered:
-			if self.cancelled:
-				self._wait_loop(timeout=self._cancel_timeout)
-				if self._registered:
-					try:
-						os.kill(self.pid, signal.SIGKILL)
-					except OSError as e:
-						if e.errno == errno.EPERM:
-							# Reported with hardened kernel (bug #358211).
-							writemsg_level(
-								"!!! kill: (%i) - Operation not permitted\n" %
-								(self.pid,), level=logging.ERROR,
-								noiselevel=-1)
-						elif e.errno != errno.ESRCH:
-							raise
-						del e
-					self._wait_loop(timeout=self._cancel_timeout)
-					if self._registered:
-						self._orphan_process_warn()
-			else:
-				self._wait_loop()
-
-			if self.returncode is not None:
-				return self.returncode
-
-		if not isinstance(self.pid, int):
-			# Get debug info for bug #403697.
-			raise AssertionError(
-				"%s: pid is non-integer: %s" %
-				(self.__class__.__name__, repr(self.pid)))
-
-		self._waitpid_loop()
-
-		return self.returncode
-
 	def _async_waitpid(self):
 		"""
 		Wait for exit status of self.pid asynchronously, and then
@@ -121,18 +79,6 @@ class SubProcess(AbstractPollTask):
 			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
 		self._set_returncode((pid, condition))
 		self._async_wait()
-
-	def _waitpid_loop(self):
-		"""
-		Deprecated. Use _async_waitpid() instead.
-		"""
-		source_id = self.scheduler.child_watch_add(
-			self.pid, self._waitpid_cb)
-		try:
-			while self.returncode is None:
-				self.scheduler.iteration()
-		finally:
-			self.scheduler.source_remove(source_id)
 
 	def _waitpid_cb(self, pid, condition, user_data=None):
 		if pid != self.pid:

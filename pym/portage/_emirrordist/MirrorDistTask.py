@@ -241,13 +241,6 @@ class MirrorDistTask(CompositeTask):
 		else:
 			self._async_wait()
 
-	def _wait(self):
-		"""
-		Deprecated. Use _async_wait() instead.
-		"""
-		CompositeTask._wait(self)
-		self._cleanup()
-
 	def _async_wait(self):
 		"""
 		Override _async_wait to call self._cleanup().
