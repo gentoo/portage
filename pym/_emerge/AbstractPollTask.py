@@ -7,6 +7,7 @@ import logging
 import os
 
 from portage.util import writemsg_level
+from portage.util.futures import asyncio
 from _emerge.AsynchronousTask import AsynchronousTask
 
 class AbstractPollTask(AsynchronousTask):
@@ -142,20 +143,15 @@ class AbstractPollTask(AsynchronousTask):
 		return self.returncode
 
 	def _wait_loop(self, timeout=None):
-
-		if timeout is None:
-			while self._registered:
-				self.scheduler.iteration()
-			return
-
-		def timeout_cb():
-			timeout_cb.timed_out = True
-			return False
-		timeout_cb.timed_out = False
-		timeout_cb.timeout_id = self.scheduler.timeout_add(timeout, timeout_cb)
-
+		loop = getattr(self.scheduler, '_asyncio_wrapper', self.scheduler)
+		tasks = [self.async_wait()]
+		if timeout is not None:
+			tasks.append(asyncio.ensure_future(
+				asyncio.sleep(timeout / 1000, loop=loop), loop=loop))
 		try:
-			while self._registered and not timeout_cb.timed_out:
-				self.scheduler.iteration()
+			loop.run_until_complete(asyncio.ensure_future(
+				asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED,
+				loop=loop), loop=loop))
 		finally:
-			self.scheduler.source_remove(timeout_cb.timeout_id)
+			for task in tasks:
+				task.cancel()
