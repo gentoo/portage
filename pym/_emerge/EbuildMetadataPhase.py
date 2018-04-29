@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -49,14 +49,14 @@ class EbuildMetadataPhase(SubProcess):
 		if not parsed_eapi:
 			# An empty EAPI setting is invalid.
 			self._eapi_invalid(None)
-			self._set_returncode((self.pid, 1 << 8))
+			self.returncode = 1
 			self._async_wait()
 			return
 
 		self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
 		if not self.eapi_supported:
 			self.metadata = {"EAPI": parsed_eapi}
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -124,8 +124,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		if isinstance(retval, int):
 			# doebuild failed before spawning
-			self._unregister()
-			self._set_returncode((self.pid, retval << 8))
+			self.returncode = retval
 			self._async_wait()
 			return
 
@@ -155,8 +154,12 @@ class EbuildMetadataPhase(SubProcess):
 
 		return True
 
-	def _set_returncode(self, wait_retval):
-		SubProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		SubProcess._async_waitpid_cb(self, *args, **kwargs)
 		# self._raw_metadata is None when _start returns
 		# early due to an unsupported EAPI
 		if self.returncode == os.EX_OK and \
