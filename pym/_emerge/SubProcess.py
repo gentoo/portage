@@ -40,7 +40,7 @@ class SubProcess(AbstractPollTask):
 		if retval[0] == 0:
 			return None
 		self._set_returncode(retval)
-		self.wait()
+		self._async_wait()
 		return self.returncode
 
 	def _cancel(self):
@@ -62,7 +62,9 @@ class SubProcess(AbstractPollTask):
 			self.returncode is None
 
 	def _wait(self):
-
+		"""
+		Deprecated. Use _async_wait() instead.
+		"""
 		if self.returncode is not None:
 			return self.returncode
 
@@ -121,6 +123,9 @@ class SubProcess(AbstractPollTask):
 		self._async_wait()
 
 	def _waitpid_loop(self):
+		"""
+		Deprecated. Use _async_waitpid() instead.
+		"""
 		source_id = self.scheduler.child_watch_add(
 			self.pid, self._waitpid_cb)
 		try:
