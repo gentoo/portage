@@ -74,8 +74,8 @@ class Scheduler(PollScheduler):
 	# max time between loadavg checks (seconds)
 	_loadavg_latency = 30
 
-	# max time between display status updates (milliseconds)
-	_max_display_latency = 3000
+	# max time between display status updates (seconds)
+	_max_display_latency = 3
 
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
@@ -1398,10 +1398,15 @@ class Scheduler(PollScheduler):
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
-		display_timeout_id = None
+
+		def display_callback():
+			self._status_display.display()
+			display_callback.handle = self._event_loop.call_later(
+				self._max_display_latency, display_callback)
+		display_callback.handle = None
+
 		if self._status_display._isatty and not self._status_display.quiet:
-			display_timeout_id = self._event_loop.timeout_add(
-				self._max_display_latency, self._status_display.display)
+			display_callback()
 		rval = os.EX_OK
 
 		try:
@@ -1410,8 +1415,8 @@ class Scheduler(PollScheduler):
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
-			if display_timeout_id is not None:
-				self._event_loop.source_remove(display_timeout_id)
+			if display_callback.handle is not None:
+				display_callback.handle.cancel()
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
@@ -1625,12 +1630,11 @@ class Scheduler(PollScheduler):
 					elapsed_seconds < self._sigcont_delay:
 
 					if self._job_delay_timeout_id is not None:
-						self._event_loop.source_remove(
-							self._job_delay_timeout_id)
+						self._job_delay_timeout_id.cancel()
 
-					self._job_delay_timeout_id = self._event_loop.timeout_add(
-						1000 * (self._sigcont_delay - elapsed_seconds),
-						self._schedule_once)
+					self._job_delay_timeout_id = self._event_loop.call_later(
+						self._sigcont_delay - elapsed_seconds,
+						self._schedule)
 					return True
 
 				# Only set this to None after the delay has expired,
@@ -1651,17 +1655,12 @@ class Scheduler(PollScheduler):
 			if elapsed_seconds > 0 and elapsed_seconds < delay:
 
 				if self._job_delay_timeout_id is not None:
-					self._event_loop.source_remove(
-						self._job_delay_timeout_id)
+					self._job_delay_timeout_id.cancel()
 
-				self._job_delay_timeout_id = self._event_loop.timeout_add(
-					1000 * (delay - elapsed_seconds), self._schedule_once)
+				self._job_delay_timeout_id = self._event_loop.call_later(
+					delay - elapsed_seconds, self._schedule)
 				return True
 
-		return False
-
-	def _schedule_once(self):
-		self._schedule()
 		return False
 
 	def _schedule_tasks_imp(self):
