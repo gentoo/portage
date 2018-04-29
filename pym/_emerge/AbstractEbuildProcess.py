@@ -64,7 +64,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
-			self._set_returncode((self.pid, 1 << 8))
+			self.returncode = 1
 			self._async_wait()
 			return
 
@@ -355,8 +355,12 @@ class AbstractEbuildProcess(SpawnProcess):
 			["%s received strange poll event: %s\n" % \
 			(self.__class__.__name__, event,)])
 
-	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		SpawnProcess._async_waitpid_cb(self, *args, **kwargs)
 
 		if self._exit_timeout_id is not None:
 			self.scheduler.source_remove(self._exit_timeout_id)
