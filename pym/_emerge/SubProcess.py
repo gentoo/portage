@@ -16,7 +16,7 @@ class SubProcess(AbstractPollTask):
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.
-	_cancel_timeout = 1000 # 1 second
+	_cancel_timeout = 1 # seconds
 
 	def _poll(self):
 		# Simply rely on _async_waitpid_cb to set the returncode.

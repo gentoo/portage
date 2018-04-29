@@ -37,7 +37,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	# doesn't hurt to be generous here since the scheduler
 	# continues to process events during this period, and it can
 	# return long before the timeout expires.
-	_exit_timeout = 10000 # 10 seconds
+	_exit_timeout = 10 # seconds
 
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
@@ -247,7 +247,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._registered:
 			# Let the process exit naturally, if possible.
 			self._exit_timeout_id = \
-				self.scheduler.timeout_add(self._exit_timeout,
+				self.scheduler.call_later(self._exit_timeout,
 				self._exit_command_timeout_cb)
 
 	def _exit_command_timeout_cb(self):
@@ -258,17 +258,14 @@ class AbstractEbuildProcess(SpawnProcess):
 			# being killed by a signal.
 			self.cancel()
 			self._exit_timeout_id = \
-				self.scheduler.timeout_add(self._cancel_timeout,
+				self.scheduler.call_later(self._cancel_timeout,
 					self._cancel_timeout_cb)
 		else:
 			self._exit_timeout_id = None
 
-		return False # only run once
-
 	def _cancel_timeout_cb(self):
 		self._exit_timeout_id = None
 		self._async_waitpid()
-		return False # only run once
 
 	def _orphan_process_warn(self):
 		phase = self.phase
@@ -363,7 +360,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		SpawnProcess._async_waitpid_cb(self, *args, **kwargs)
 
 		if self._exit_timeout_id is not None:
-			self.scheduler.source_remove(self._exit_timeout_id)
+			self._exit_timeout_id.cancel()
 			self._exit_timeout_id = None
 
 		if self._ipc_daemon is not None:
