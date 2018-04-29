@@ -25,23 +25,9 @@ class PopenProcess(SubProcess):
 	def _pipe_reader_exit(self, pipe_reader):
 		self._async_waitpid()
 
-	def _async_waitpid(self):
-		if self.returncode is None:
-			self.scheduler._asyncio_child_watcher.\
-				add_child_handler(self.pid, self._async_waitpid_cb)
-		else:
-			self._unregister()
-			self._async_wait()
-
-	def _async_waitpid_cb(self, pid, returncode):
+	def _async_waitpid_cb(self, *args, **kwargs):
+		SubProcess._async_waitpid_cb(self, *args, **kwargs)
 		if self.proc.returncode is None:
 			# Suppress warning messages like this:
 			# ResourceWarning: subprocess 1234 is still running
-			self.proc.returncode = returncode
-		self._unregister()
-		self.returncode = returncode
-		self._async_wait()
-
-	def _poll(self):
-		# Simply rely on _async_waitpid_cb to set the returncode.
-		return self.returncode
+			self.proc.returncode = self.returncode

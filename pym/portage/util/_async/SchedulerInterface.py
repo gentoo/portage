@@ -13,7 +13,6 @@ class SchedulerInterface(SlotObject):
 
 	_event_loop_attrs = ("IO_ERR", "IO_HUP", "IO_IN",
 		"IO_NVAL", "IO_OUT", "IO_PRI",
-		"child_watch_add",
 		"io_add_watch",
 		"source_remove",
 		"timeout_add",

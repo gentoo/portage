@@ -19,28 +19,7 @@ class SubProcess(AbstractPollTask):
 	_cancel_timeout = 1000 # 1 second
 
 	def _poll(self):
-		if self.returncode is not None:
-			return self.returncode
-		if self.pid is None:
-			return self.returncode
-		if self._registered:
-			return self.returncode
-
-		try:
-			# With waitpid and WNOHANG, only check the
-			# first element of the tuple since the second
-			# element may vary (bug #337465).
-			retval = os.waitpid(self.pid, os.WNOHANG)
-		except OSError as e:
-			if e.errno != errno.ECHILD:
-				raise
-			del e
-			retval = (self.pid, 1)
-
-		if retval[0] == 0:
-			return None
-		self._set_returncode(retval)
-		self._async_wait()
+		# Simply rely on _async_waitpid_cb to set the returncode.
 		return self.returncode
 
 	def _cancel(self):
@@ -71,19 +50,15 @@ class SubProcess(AbstractPollTask):
 		if self.returncode is not None:
 			self._async_wait()
 		elif self._waitpid_id is None:
-			self._waitpid_id = self.scheduler.child_watch_add(
-				self.pid, self._async_waitpid_cb)
+			self._waitpid_id = self.pid
+			self.scheduler._asyncio_child_watcher.\
+				add_child_handler(self.pid, self._async_waitpid_cb)
 
-	def _async_waitpid_cb(self, pid, condition, user_data=None):
+	def _async_waitpid_cb(self, pid, returncode):
 		if pid != self.pid:
 			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
-		self._set_returncode((pid, condition))
+		self.returncode = returncode
 		self._async_wait()
-
-	def _waitpid_cb(self, pid, condition, user_data=None):
-		if pid != self.pid:
-			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
-		self._set_returncode((pid, condition))
 
 	def _orphan_process_warn(self):
 		pass
@@ -100,7 +75,8 @@ class SubProcess(AbstractPollTask):
 			self._reg_id = None
 
 		if self._waitpid_id is not None:
-			self.scheduler.source_remove(self._waitpid_id)
+			self.scheduler._asyncio_child_watcher.\
+				remove_child_handler(self._waitpid_id)
 			self._waitpid_id = None
 
 		if self._files is not None:
@@ -126,21 +102,3 @@ class SubProcess(AbstractPollTask):
 			elif event & self.scheduler.IO_HUP:
 				self._unregister()
 				self._async_waitpid()
-
-	def _set_returncode(self, wait_retval):
-		"""
-		Set the returncode in a manner compatible with
-		subprocess.Popen.returncode: A negative value -N indicates
-		that the child was terminated by signal N (Unix only).
-		"""
-		self._unregister()
-
-		pid, status = wait_retval
-
-		if os.WIFSIGNALED(status):
-			retval = - os.WTERMSIG(status)
-		else:
-			retval = os.WEXITSTATUS(status)
-
-		self.returncode = retval
-
