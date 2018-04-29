@@ -55,7 +55,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
 					del self._threads[f]
 					if not self._threads:
 						# Thread-safe callback to EventLoop
-						self.scheduler.idle_add(self._eof)
+						self.scheduler.call_soon_threadsafe(self._eof)
 					break
 		f.close()
 
@@ -64,7 +64,6 @@ class PipeReaderBlockingIO(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = os.EX_OK
 		self._async_wait()
-		return False
 
 	def _cancel(self):
 		self._terminate.set()

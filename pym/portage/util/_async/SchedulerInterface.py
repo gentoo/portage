@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -14,7 +14,6 @@ class SchedulerInterface(SlotObject):
 	_event_loop_attrs = ("IO_ERR", "IO_HUP", "IO_IN",
 		"IO_NVAL", "IO_OUT", "IO_PRI",
 		"child_watch_add",
-		"idle_add",
 		"io_add_watch",
 		"iteration",
 		"source_remove",
