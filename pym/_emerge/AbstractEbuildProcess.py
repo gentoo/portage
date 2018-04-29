@@ -266,7 +266,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _cancel_timeout_cb(self):
 		self._exit_timeout_id = None
-		self._async_wait()
+		self._async_waitpid()
 		return False # only run once
 
 	def _orphan_process_warn(self):
