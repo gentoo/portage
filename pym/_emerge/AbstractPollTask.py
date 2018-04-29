@@ -114,8 +114,12 @@ class AbstractPollTask(AsynchronousTask):
 
 		return buf
 
+	def _async_wait(self):
+		self._unregister()
+		super(AbstractPollTask, self)._async_wait()
+
 	def _unregister(self):
-		raise NotImplementedError(self)
+		self._registered = False
 
 	def _log_poll_exception(self, event):
 		writemsg_level(
@@ -127,12 +131,10 @@ class AbstractPollTask(AsynchronousTask):
 		if self._registered:
 			if event & self._exceptional_events:
 				self._log_poll_exception(event)
-				self._unregister()
 				self.cancel()
 				self.returncode = self.returncode or os.EX_OK
 				self._async_wait()
 			elif event & self.scheduler.IO_HUP:
-				self._unregister()
 				self.returncode = self.returncode or os.EX_OK
 				self._async_wait()
 
