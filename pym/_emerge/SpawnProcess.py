@@ -117,8 +117,7 @@ class SpawnProcess(SubProcess):
 
 		if isinstance(retval, int):
 			# spawn failed
-			self._unregister()
-			self._set_returncode((self.pid, retval))
+			self.returncode = retval
 			self._async_wait()
 			return
 
@@ -172,9 +171,11 @@ class SpawnProcess(SubProcess):
 		self._pipe_logger = None
 		self._async_waitpid()
 
-	def _set_returncode(self, wait_retval):
-		SubProcess._set_returncode(self, wait_retval)
-		self._cgroup_cleanup()
+	def _unregister(self):
+		SubProcess._unregister(self)
+		if self.cgroup is not None:
+			self._cgroup_cleanup()
+			self.cgroup = None
 
 	def _cancel(self):
 		SubProcess._cancel(self)
