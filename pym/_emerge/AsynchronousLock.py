@@ -140,13 +140,12 @@ class _LockThread(AbstractPollTask):
 	def _run_lock(self):
 		self._lock_obj = lockfile(self.path, wantnewlockfile=True)
 		# Thread-safe callback to EventLoop
-		self.scheduler.idle_add(self._run_lock_cb)
+		self.scheduler.call_soon_threadsafe(self._run_lock_cb)
 
 	def _run_lock_cb(self):
 		self._unregister()
 		self.returncode = os.EX_OK
 		self._async_wait()
-		return False
 
 	def _cancel(self):
 		# There's currently no way to force thread termination.
