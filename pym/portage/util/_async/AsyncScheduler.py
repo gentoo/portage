@@ -65,6 +65,11 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 				task.addExitListener(self._task_exit)
 				task.start()
 
+		if self._loadavg_check_id is not None:
+			self._loadavg_check_id.cancel()
+			self._loadavg_check_id = self._event_loop.call_later(
+				self._loadavg_latency, self._schedule)
+
 		# Triggers cleanup and exit listeners if there's nothing left to do.
 		self.poll()
 
@@ -80,14 +85,14 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 			(self._max_jobs is True or self._max_jobs > 1):
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
-			self._loadavg_check_id = self._event_loop.timeout_add(
+			self._loadavg_check_id = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
 		self._schedule()
 
 	def _cleanup(self):
 		super(AsyncScheduler, self)._cleanup()
 		if self._loadavg_check_id is not None:
-			self._event_loop.source_remove(self._loadavg_check_id)
+			self._loadavg_check_id.cancel()
 			self._loadavg_check_id = None
 
 	def _async_wait(self):
