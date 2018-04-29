@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -108,7 +108,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 
 		if pretend:
 			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
