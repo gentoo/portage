@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -251,8 +251,12 @@ class MergeProcess(ForkProcess):
 				# in order to avoid a race condition.
 				os._exit(1)
 
-	def _set_returncode(self, wait_retval):
-		ForkProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
 		if self.returncode == portage.const.RETURNCODE_POSTINST_FAILURE:
 			self.postinst_failure = True
 			self.returncode = os.EX_OK
