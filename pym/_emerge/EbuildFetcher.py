@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -166,7 +166,7 @@ class _EbuildFetcherProcess(ForkProcess):
 
 		if not uri_map:
 			# Nothing to fetch.
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -178,7 +178,7 @@ class _EbuildFetcherProcess(ForkProcess):
 		if self.prefetch and \
 			self._prefetch_size_ok(uri_map, settings, ebuild_path):
 			self.config_pool.deallocate(settings)
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -327,8 +327,12 @@ class _EbuildFetcherProcess(ForkProcess):
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile)
 
-	def _set_returncode(self, wait_retval):
-		ForkProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		# Skip elog messages for prefetch, in order to avoid duplicates.
