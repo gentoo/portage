@@ -94,11 +94,7 @@ class AsynchronousTask(SlotObject):
 		loop recursion (or stack overflow) that synchronous calling of
 		exit listeners can cause. This method is thread-safe.
 		"""
-		self.scheduler.idle_add(self._async_wait_cb)
-
-	def _async_wait_cb(self):
-		self.wait()
-		return False
+		self.scheduler.call_soon(self.wait)
 
 	def cancel(self):
 		"""
