@@ -16,15 +16,6 @@ class AbstractPollTask(AsynchronousTask):
 
 	_bufsize = 4096
 
-	@property
-	def _exceptional_events(self):
-		return self.scheduler.IO_ERR | self.scheduler.IO_NVAL
-
-	@property
-	def _registered_events(self):
-		return self.scheduler.IO_IN | self.scheduler.IO_HUP | \
-			self._exceptional_events
-
 	def isAlive(self):
 		return bool(self._registered)
 
