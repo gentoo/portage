@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import errno
 import logging
 import sys
 
@@ -181,8 +180,7 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path',) + \
-		('_acquired', '_kill_test', '_proc', '_files',
-		 '_reg_id','_unlock_future')
+		('_acquired', '_kill_test', '_proc', '_files', '_unlock_future')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -204,8 +202,7 @@ class _LockProcess(AbstractPollTask):
 				fcntl.fcntl(in_pr, fcntl.F_SETFD,
 					fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._reg_id = self.scheduler.io_add_watch(in_pr,
-			self.scheduler.IO_IN, self._output_handler)
+		self.scheduler.add_reader(in_pr, self._output_handler)
 		self._registered = True
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
@@ -268,14 +265,8 @@ class _LockProcess(AbstractPollTask):
 			self._proc.poll()
 		return self.returncode
 
-	def _output_handler(self, f, event):
-		buf = None
-		if event & self.scheduler.IO_IN:
-			try:
-				buf = os.read(self._files['pipe_in'], self._bufsize)
-			except OSError as e:
-				if e.errno not in (errno.EAGAIN,):
-					raise
+	def _output_handler(self):
+		buf = self._read_buf(self._files['pipe_in'], None)
 		if buf:
 			self._acquired = True
 			self._unregister()
@@ -287,16 +278,13 @@ class _LockProcess(AbstractPollTask):
 	def _unregister(self):
 		self._registered = False
 
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
-
 		if self._files is not None:
 			try:
 				pipe_in = self._files.pop('pipe_in')
 			except KeyError:
 				pass
 			else:
+				self.scheduler.remove_reader(pipe_in)
 				os.close(pipe_in)
 
 	def _unlock(self):
