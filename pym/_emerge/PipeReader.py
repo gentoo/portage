@@ -17,10 +17,9 @@ class PipeReader(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_files",) + \
-		("_read_data", "_reg_ids", "_use_array")
+		("_read_data", "_use_array")
 
 	def _start(self):
-		self._reg_ids = set()
 		self._read_data = []
 
 		if self._use_array:
@@ -43,8 +42,7 @@ class PipeReader(AbstractPollTask):
 					fcntl.fcntl(fd, fcntl.F_SETFD,
 						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-			self._reg_ids.add(self.scheduler.io_add_watch(fd,
-				self._registered_events, output_handler))
+			self.scheduler.add_reader(fd, output_handler, fd)
 		self._registered = True
 
 	def _cancel(self):
@@ -60,10 +58,10 @@ class PipeReader(AbstractPollTask):
 		"""Free the memory buffer."""
 		self._read_data = None
 
-	def _output_handler(self, fd, event):
+	def _output_handler(self, fd):
 
 		while True:
-			data = self._read_buf(fd, event)
+			data = self._read_buf(fd, None)
 			if data is None:
 				break
 			if data:
@@ -74,18 +72,14 @@ class PipeReader(AbstractPollTask):
 				self._async_wait()
 				break
 
-		self._unregister_if_appropriate(event)
-
-		return True
-
-	def _array_output_handler(self, fd, event):
+	def _array_output_handler(self, fd):
 
 		for f in self.input_files.values():
 			if f.fileno() == fd:
 				break
 
 		while True:
-			data = self._read_array(f, event)
+			data = self._read_array(f, self.scheduler.IO_IN)
 			if data is None:
 				break
 			if data:
@@ -95,8 +89,6 @@ class PipeReader(AbstractPollTask):
 				self.returncode = self.returncode or os.EX_OK
 				self._async_wait()
 				break
-
-		self._unregister_if_appropriate(event)
 
 		return True
 
@@ -107,16 +99,13 @@ class PipeReader(AbstractPollTask):
 
 		self._registered = False
 
-		if self._reg_ids is not None:
-			for reg_id in self._reg_ids:
-				self.scheduler.source_remove(reg_id)
-			self._reg_ids = None
-
 		if self.input_files is not None:
 			for f in self.input_files.values():
 				if isinstance(f, int):
+					self.scheduler.remove_reader(f)
 					os.close(f)
 				else:
+					self.scheduler.remove_reader(f.fileno())
 					f.close()
 			self.input_files = None
 
