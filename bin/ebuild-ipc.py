@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
@@ -53,7 +53,7 @@ RETURNCODE_WRITE_FAILED = 2
 
 class FifoWriter(AbstractPollTask):
 
-	__slots__ = ('buf', 'fifo', '_fd', '_reg_id',)
+	__slots__ = ('buf', 'fifo', '_fd')
 
 	def _start(self):
 		try:
@@ -67,31 +67,27 @@ class FifoWriter(AbstractPollTask):
 				return
 			else:
 				raise
-		self._reg_id = self.scheduler.io_add_watch(
+		self.scheduler.add_writer(
 			self._fd,
-			self.scheduler.IO_OUT | self.scheduler.IO_HUP | \
-			self._exceptional_events, self._output_handler)
+			self._output_handler)
 		self._registered = True
 
-	def _output_handler(self, fd, event):
-		if event & self.scheduler.IO_OUT:
-			# The whole buf should be able to fit in the fifo with
-			# a single write call, so there's no valid reason for
-			# os.write to raise EAGAIN here.
-			buf = self.buf
-			while buf:
+	def _output_handler(self):
+		# The whole buf should be able to fit in the fifo with
+		# a single write call, so there's no valid reason for
+		# os.write to raise EAGAIN here.
+		fd = self._fd
+		buf = self.buf
+		while buf:
+			try:
 				buf = buf[os.write(fd, buf):]
-			self.returncode = os.EX_OK
-			self._unregister()
-			self.wait()
-			return False
-		else:
-			self._unregister_if_appropriate(event)
-			if not self._registered:
+			except EnvironmentError:
 				self.returncode = RETURNCODE_WRITE_FAILED
-				self.wait()
-				return False
-		return True
+				self._async_wait()
+				return
+
+		self.returncode = os.EX_OK
+		self._async_wait()
 
 	def _cancel(self):
 		self.returncode = self._cancelled_returncode
@@ -99,10 +95,8 @@ class FifoWriter(AbstractPollTask):
 
 	def _unregister(self):
 		self._registered = False
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
 		if self._fd is not None:
+			self.scheduler.remove_writer(self._fd)
 			os.close(self._fd)
 			self._fd = None
 
