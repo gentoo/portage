@@ -192,8 +192,11 @@ class EventLoop(object):
 			self.IO_OUT = PollConstants.POLLOUT
 			self.IO_PRI = PollConstants.POLLPRI
 
-		self._EVENT_READ = self.IO_IN | self.IO_HUP
-		self._EVENT_WRITE = self.IO_OUT
+		# These trigger both reader and writer callbacks.
+		EVENT_SHARED = self.IO_HUP | self.IO_ERR | self.IO_NVAL
+
+		self._EVENT_READ = self.IO_IN | EVENT_SHARED
+		self._EVENT_WRITE = self.IO_OUT | EVENT_SHARED
 
 		self._child_handlers = {}
 		self._sigchld_read = None
