@@ -7,7 +7,6 @@ import signal
 import sys
 import traceback
 
-import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
@@ -24,7 +23,7 @@ class MergeProcess(ForkProcess):
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'postinst_failure', 'prev_mtimes', 'unmerge',
-		'_elog_reader_fd', '_elog_reg_id',
+		'_elog_reader_fd',
 		'_buf', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
@@ -79,14 +78,8 @@ class MergeProcess(ForkProcess):
 			self.vartree.dbapi.unlock()
 			self._locked_vdb = False
 
-	def _elog_output_handler(self, fd, event):
-		output = None
-		if event & self.scheduler.IO_IN:
-			try:
-				output = os.read(fd, self._bufsize)
-			except OSError as e:
-				if e.errno not in (errno.EAGAIN, errno.EINTR):
-					raise
+	def _elog_output_handler(self):
+		output = self._read_buf(self._elog_reader_fd, None)
 		if output:
 			lines = _unicode_decode(output).split('\n')
 			if len(lines) == 1:
@@ -101,14 +94,11 @@ class MergeProcess(ForkProcess):
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
-		if event & self.scheduler.IO_HUP:
-			self.scheduler.source_remove(self._elog_reg_id)
-			self._elog_reg_id = None
+		elif output is not None: # EIO/POLLHUP
+			self.scheduler.remove_reader(self._elog_reader_fd)
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 			return False
-
-		return True
 
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
@@ -142,8 +132,7 @@ class MergeProcess(ForkProcess):
 			treetype=self.treetype, vartree=self.vartree,
 			blockers=blockers, pipe=elog_writer_fd)
 		fd_pipes[elog_writer_fd] = elog_writer_fd
-		self._elog_reg_id = self.scheduler.io_add_watch(elog_reader_fd,
-			self._registered_events, self._elog_output_handler)
+		self.scheduler.add_reader(elog_reader_fd, self._elog_output_handler)
 
 		# If a concurrent emerge process tries to install a package
 		# in the same SLOT as this one at the same time, there is an
@@ -275,10 +264,8 @@ class MergeProcess(ForkProcess):
 				pass
 
 		self._unlock_vdb()
-		if self._elog_reg_id is not None:
-			self.scheduler.source_remove(self._elog_reg_id)
-			self._elog_reg_id = None
 		if self._elog_reader_fd is not None:
+			self.scheduler.remove_reader(self._elog_reader_fd)
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 		if self._elog_keys is not None:
