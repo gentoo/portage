@@ -113,7 +113,7 @@ class AbstractPollTask(AsynchronousTask):
 		tasks = [self.async_wait()]
 		if timeout is not None:
 			tasks.append(asyncio.ensure_future(
-				asyncio.sleep(timeout / 1000, loop=loop), loop=loop))
+				asyncio.sleep(timeout, loop=loop), loop=loop))
 		try:
 			loop.run_until_complete(asyncio.ensure_future(
 				asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED,
