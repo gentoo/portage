@@ -15,7 +15,6 @@ from portage import _unicode_encode
 from portage.dep import extract_unpack_dependencies
 from portage.eapi import eapi_has_automatic_unpack_dependencies
 
-import errno
 import fcntl
 import io
 
@@ -109,8 +108,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		self._raw_metadata = []
 		files.ebuild = master_fd
-		self._reg_id = self.scheduler.io_add_watch(files.ebuild,
-			self._registered_events, self._output_handler)
+		self.scheduler.add_reader(files.ebuild, self._output_handler)
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
@@ -130,19 +128,14 @@ class EbuildMetadataPhase(SubProcess):
 
 		self.pid = retval[0]
 
-	def _output_handler(self, fd, event):
-
-		if event & self.scheduler.IO_IN:
-			while True:
-				try:
-					self._raw_metadata.append(
-						os.read(self._files.ebuild, self._bufsize))
-				except OSError as e:
-					if e.errno not in (errno.EAGAIN,):
-						raise
-					break
-				else:
-					if not self._raw_metadata[-1]:
+	def _output_handler(self):
+		while True:
+			buf = self._read_buf(self._files.ebuild, None)
+			if buf is None:
+				break # EAGAIN
+			elif buf:
+				self._raw_metadata.append(buf)
+			else: # EIO/POLLHUP
 						if self.pid is None:
 							self._unregister()
 							self._async_wait()
@@ -150,9 +143,9 @@ class EbuildMetadataPhase(SubProcess):
 							self._async_waitpid()
 						break
 
-		self._unregister_if_appropriate(event)
-
-		return True
+	def _unregister(self):
+		self.scheduler.remove_reader(self._files.ebuild)
+		SubProcess._unregister(self)
 
 	def _async_waitpid_cb(self, *args, **kwargs):
 		"""
