@@ -266,7 +266,7 @@ class _LockProcess(AbstractPollTask):
 		return self.returncode
 
 	def _output_handler(self):
-		buf = self._read_buf(self._files['pipe_in'], None)
+		buf = self._read_buf(self._files['pipe_in'])
 		if buf:
 			self._acquired = True
 			self._unregister()

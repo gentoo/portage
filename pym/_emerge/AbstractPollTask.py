@@ -19,7 +19,7 @@ class AbstractPollTask(AsynchronousTask):
 	def isAlive(self):
 		return bool(self._registered)
 
-	def _read_array(self, f, event):
+	def _read_array(self, f):
 		"""
 		NOTE: array.fromfile() is used here only for testing purposes,
 		because it has bugs in all known versions of Python (including
@@ -65,7 +65,7 @@ class AbstractPollTask(AsynchronousTask):
 
 		return buf
 
-	def _read_buf(self, fd, event):
+	def _read_buf(self, fd):
 		"""
 		Read self._bufsize into a string of bytes, handling EAGAIN and
 		EIO. This will only call os.read() once, so the caller should
@@ -78,8 +78,6 @@ class AbstractPollTask(AsynchronousTask):
 
 		@param fd: file descriptor (non-blocking mode required)
 		@type fd: int
-		@param event: poll event flags
-		@type event: int
 		@rtype: bytes or None
 		@return: A string of bytes, or None
 		"""

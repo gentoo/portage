@@ -34,7 +34,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 	def _input_handler(self):
 		# Read the whole pickle in a single atomic read() call.
-		data = self._read_buf(self._files.pipe_in, None)
+		data = self._read_buf(self._files.pipe_in)
 		if data is None:
 			pass # EAGAIN
 		elif data:

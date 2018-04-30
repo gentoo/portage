@@ -130,7 +130,7 @@ class EbuildMetadataPhase(SubProcess):
 
 	def _output_handler(self):
 		while True:
-			buf = self._read_buf(self._files.ebuild, None)
+			buf = self._read_buf(self._files.ebuild)
 			if buf is None:
 				break # EAGAIN
 			elif buf:

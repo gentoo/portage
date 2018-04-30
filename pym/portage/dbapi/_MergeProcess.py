@@ -79,7 +79,7 @@ class MergeProcess(ForkProcess):
 			self._locked_vdb = False
 
 	def _elog_output_handler(self):
-		output = self._read_buf(self._elog_reader_fd, None)
+		output = self._read_buf(self._elog_reader_fd)
 		if output:
 			lines = _unicode_decode(output).split('\n')
 			if len(lines) == 1:

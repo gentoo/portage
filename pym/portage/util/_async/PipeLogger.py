@@ -72,7 +72,7 @@ class PipeLogger(AbstractPollTask):
 		log_file = self._log_file 
 
 		while True:
-			buf = self._read_buf(fd, None)
+			buf = self._read_buf(fd)
 
 			if buf is None:
 				# not a POLLIN event, EAGAIN, etc...
