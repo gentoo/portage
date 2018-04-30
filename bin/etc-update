@@ -73,7 +73,7 @@ elif [[ $OS_FAMILY == 'rpm' ]]; then
 		printf -- '%s\n' "${1}" |sed -e 's/\.rpmsave$//' -e 's/\.rpmnew$//' -e 's/\.rpmorig$//'
 	}
 	get_basename_find_opt() {
-		printf -- '%s\n' "${1}.rpm????"
+		printf -- '%s\n' "${1}.rpm???*"
 	}
 	get_scan_regexp() {
 		echo "s:\(^.*/\)\(.*\)\(\.\(rpmnew|rpmsave|rpmorig\)\):\1\2\3$b\1$b\3$b\2:"
