@@ -12,7 +12,7 @@ import errno
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
-		("_dummy_pipe_fd", "_files", "_reg_id", "_waitpid_id")
+		("_dummy_pipe_fd", "_files", "_waitpid_id")
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.
@@ -70,10 +70,6 @@ class SubProcess(AbstractPollTask):
 
 		self._registered = False
 
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
-
 		if self._waitpid_id is not None:
 			self.scheduler._asyncio_child_watcher.\
 				remove_child_handler(self._waitpid_id)
@@ -86,19 +82,3 @@ class SubProcess(AbstractPollTask):
 				else:
 					f.close()
 			self._files = None
-
-	def _unregister_if_appropriate(self, event):
-		"""
-		Override the AbstractPollTask._unregister_if_appropriate method to
-		call _async_waitpid instead of wait(), so that event loop recursion
-		is not triggered when the pid exit status is not yet available.
-		"""
-		if self._registered:
-			if event & self._exceptional_events:
-				self._log_poll_exception(event)
-				self._unregister()
-				self.cancel()
-				self._async_waitpid()
-			elif event & self.scheduler.IO_HUP:
-				self._unregister()
-				self._async_waitpid()

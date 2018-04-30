@@ -44,18 +44,16 @@ class AbstractPollTask(AsynchronousTask):
 		| ---------------------------------------------------
 		| 0      | None
 		"""
-		buf = None
-		if event & self.scheduler.IO_IN:
-			buf = array.array('B')
-			try:
+		buf = array.array('B')
+		try:
 				buf.fromfile(f, self._bufsize)
-			except EOFError:
+		except EOFError:
 				pass
-			except TypeError:
+		except TypeError:
 				# Python 3.2:
 				# TypeError: read() didn't return bytes
 				pass
-			except IOError as e:
+		except IOError as e:
 				# EIO happens with pty on Linux after the
 				# slave end of the pty has been closed.
 				if e.errno == errno.EIO:
@@ -120,23 +118,6 @@ class AbstractPollTask(AsynchronousTask):
 
 	def _unregister(self):
 		self._registered = False
-
-	def _log_poll_exception(self, event):
-		writemsg_level(
-			"!!! %s received strange poll event: %s\n" % \
-			(self.__class__.__name__, event,),
-			level=logging.ERROR, noiselevel=-1)
-
-	def _unregister_if_appropriate(self, event):
-		if self._registered:
-			if event & self._exceptional_events:
-				self._log_poll_exception(event)
-				self.cancel()
-				self.returncode = self.returncode or os.EX_OK
-				self._async_wait()
-			elif event & self.scheduler.IO_HUP:
-				self.returncode = self.returncode or os.EX_OK
-				self._async_wait()
 
 	def _wait_loop(self, timeout=None):
 		loop = getattr(self.scheduler, '_asyncio_wrapper', self.scheduler)

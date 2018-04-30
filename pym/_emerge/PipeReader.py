@@ -79,7 +79,7 @@ class PipeReader(AbstractPollTask):
 				break
 
 		while True:
-			data = self._read_array(f, self.scheduler.IO_IN)
+			data = self._read_array(f, None)
 			if data is None:
 				break
 			if data:

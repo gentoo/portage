@@ -11,11 +11,7 @@ from ..SlotObject import SlotObject
 
 class SchedulerInterface(SlotObject):
 
-	_event_loop_attrs = ("IO_ERR", "IO_HUP", "IO_IN",
-		"IO_NVAL", "IO_OUT", "IO_PRI",
-		"io_add_watch",
-		"source_remove",
-
+	_event_loop_attrs = (
 		"add_reader",
 		"add_writer",
 		"call_at",

@@ -347,11 +347,6 @@ class AbstractEbuildProcess(SpawnProcess):
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 			self.scheduler.output(msg, log_path=log_path)
 
-	def _log_poll_exception(self, event):
-		self._elog("eerror",
-			["%s received strange poll event: %s\n" % \
-			(self.__class__.__name__, event,)])
-
 	def _async_waitpid_cb(self, *args, **kwargs):
 		"""
 		Override _async_waitpid_cb to perform cleanup that is
