@@ -62,7 +62,7 @@ class EAPITestCase(TestCase):
 
 			#EAPI-7: implicit || ( ) no longer satisfies deps
 			"dev-libs/C-1": { "EAPI": "6", "IUSE": "foo", "RDEPEND": "|| ( foo? ( dev-libs/B ) )" }, 
-			"dev-libs/C-2": { "EAPI": "7_pre1", "IUSE": "foo", "RDEPEND": "|| ( foo? ( dev-libs/B ) )" }, 
+			"dev-libs/C-2": { "EAPI": "7", "IUSE": "foo", "RDEPEND": "|| ( foo? ( dev-libs/B ) )" },
 			}
 
 		test_cases = (

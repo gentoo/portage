@@ -204,7 +204,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"xattr",
 ])
 
-EAPI                     = 6
+EAPI                     = 7
 
 HASHING_BLOCKSIZE        = 32768
 

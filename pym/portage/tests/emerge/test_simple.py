@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Gentoo Foundation
+# Copyright 2011-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -116,13 +116,13 @@ pkg_preinst() {
 				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/C-1": {
-				"EAPI" : "7_pre1",
+				"EAPI" : "7",
 				"KEYWORDS": "~x86",
 				"RDEPEND": "dev-libs/D[flag]",
 				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/D-1": {
-				"EAPI" : "7_pre1",
+				"EAPI" : "7",
 				"KEYWORDS": "~x86",
 				"IUSE" : "flag",
 				"MISC_CONTENT": install_something,

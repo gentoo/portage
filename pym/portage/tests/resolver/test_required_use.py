@@ -51,9 +51,9 @@ class RequiredUSETestCase(TestCase):
 			"dev-libs/E-4" : {"EAPI": "5", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( foo bar )"},
 			"dev-libs/E-5" : {"EAPI": "5", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( )"},
 
-			"dev-libs/F-1" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
-			"dev-libs/F-2" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
-			"dev-libs/F-3" : {"EAPI": "7_pre1", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( )"},
+			"dev-libs/F-1" : {"EAPI": "7", "IUSE": "+foo +bar", "REQUIRED_USE": "|| ( )"},
+			"dev-libs/F-2" : {"EAPI": "7", "IUSE": "+foo +bar", "REQUIRED_USE": "^^ ( )"},
+			"dev-libs/F-3" : {"EAPI": "7", "IUSE": "+foo +bar", "REQUIRED_USE": "?? ( )"},
 			}
 
 		test_cases = (
