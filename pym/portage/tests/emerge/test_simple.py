@@ -119,11 +119,13 @@ pkg_preinst() {
 				"EAPI" : "7_pre1",
 				"KEYWORDS": "~x86",
 				"RDEPEND": "dev-libs/D[flag]",
+				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/D-1": {
 				"EAPI" : "7_pre1",
 				"KEYWORDS": "~x86",
 				"IUSE" : "flag",
+				"MISC_CONTENT": install_something,
 			},
 			"virtual/foo-0": {
 				"EAPI" : "5",
@@ -326,6 +328,16 @@ pkg_preinst() {
 			portageq_cmd + ("match", eroot, "dev-libs/D[flag]"),
 
 			# Test cross-prefix usage, including chpathtool for binpkgs.
+			# EAPI 7
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("dev-libs/C",),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/C"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/D"),
+			({"ROOT": cross_root},) + emerge_cmd + ("dev-libs/D",),
+			portageq_cmd + ("has_version", cross_eroot, "dev-libs/D"),
+			# EAPI 5
 			({"EPREFIX" : cross_prefix},) + \
 				emerge_cmd + ("--usepkgonly", "dev-libs/A"),
 			({"EPREFIX" : cross_prefix},) + \
