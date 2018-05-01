@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.32
+----------------
+* EAPI 7 support.
+
 portage-2.3.29
 ----------------
 * Portage API consumers can use asyncio with portage's internal event

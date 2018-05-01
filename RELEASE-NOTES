@@ -1,6 +1,29 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.32
+==================================
+* Bug Fixes:
+    - Bug 317337 cross BDEPEND, BROOT, SYSROOT, etc
+    - Bug 403697 waitpid TypeError: an integer is required
+    - Bug 614104 AbstractPollTask._unregister_if.. event loop recursion
+    - Bug 614108 _LockProcess.unlock event loop recursion
+    - Bug 614110 BinpkgFetcher.lock event loop recursion
+    - Bug 614112 EbuildBuildDir.lock event loop recursion
+    - Bug 649276 surface key refresh exceptions early
+    - Bug 653638 emerge --config exit status is 0 after pkg_config calls die
+    - Bug 653810 EbuildFetcher._get_uri_map() event loop recursion
+    - Bug 653844 EbuildBuild._start() event loop recursion
+    - Bug 653848 EbuildMerge._merge_exit event loop recursion
+    - Bug 653856 use run_until_complete for asyncio compat
+    - Bug 653946 ManifestScheduler._iter_tasks() event loop recursion
+    - Bug 654038 FetchIterator.__iter__ event loop recursion
+    - Bug 654224 Larry's tail looks wrong
+    - Bug 654276 AbstractChildWatcher.add_child_handler asyncio compat
+    - Bug 654382 AbstractEventLoop add_reader/writer asyncio compat
+    - Bug 654472 Please implement EAPI 7
+
+
 portage-2.3.31
 ==================================
 * Bug Fixes:
