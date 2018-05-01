@@ -69,6 +69,12 @@ pkg_info() {
 }
 
 pkg_preinst() {
+	local root_arg
+	if ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+		root_arg="-b"
+	else
+		root_arg="--host-root"
+	fi
 	einfo "called pkg_preinst for $CATEGORY/$PF"
 
 	# Test that has_version and best_version work correctly with
@@ -82,11 +88,11 @@ pkg_preinst() {
 		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 	fi
 	if [[ ${EPREFIX} != ${PORTAGE_OVERRIDE_EPREFIX} ]] ; then
-		if has_version --host-root $CATEGORY/$PN:$SLOT ; then
-			einfo "has_version --host-root detects an installed instance of $CATEGORY/$PN:$SLOT"
-			einfo "best_version --host-root reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+		if has_version ${root_arg} $CATEGORY/$PN:$SLOT ; then
+			einfo "has_version ${root_arg} detects an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "best_version ${root_arg} reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
 		else
-			einfo "has_version --host-root does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "has_version ${root_arg} does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 		fi
 	fi
 }
@@ -110,12 +116,12 @@ pkg_preinst() {
 				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/C-1": {
-				"EAPI" : "6",
+				"EAPI" : "7_pre1",
 				"KEYWORDS": "~x86",
 				"RDEPEND": "dev-libs/D[flag]",
 			},
 			"dev-libs/D-1": {
-				"EAPI" : "6",
+				"EAPI" : "7_pre1",
 				"KEYWORDS": "~x86",
 				"IUSE" : "flag",
 			},
