@@ -157,9 +157,21 @@ class RsyncSync(NewBase):
 					if retry_decorator is None:
 						openpgp_env.refresh_keys()
 					else:
+						def noisy_refresh_keys():
+							"""
+							Since retry does not help for some types of
+							errors, display errors as soon as they occur.
+							"""
+							try:
+								openpgp_env.refresh_keys()
+							except Exception as e:
+								writemsg_level("%s\n" % (e,),
+									level=logging.ERROR, noiselevel=-1)
+								raise # retry
+
 						loop = global_event_loop()
 						func_coroutine = functools.partial(loop.run_in_executor,
-							None, openpgp_env.refresh_keys)
+							None, noisy_refresh_keys)
 						decorated_func = retry_decorator(func_coroutine)
 						loop.run_until_complete(decorated_func())
 					out.eend(0)
