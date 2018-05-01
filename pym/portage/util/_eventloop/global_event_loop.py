@@ -2,10 +2,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import sys
 
 from .EventLoop import EventLoop
+from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop
 
-_default_constructor = EventLoop
+_asyncio_enabled = sys.version_info >= (3, 4)
+_default_constructor = AsyncioEventLoop if _asyncio_enabled else EventLoop
 
 # If _default_constructor doesn't support multiprocessing,
 # then _multiprocessing_constructor is used in subprocesses.

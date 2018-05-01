@@ -21,6 +21,11 @@ __all__ = (
 )
 
 try:
+	import asyncio as _real_asyncio
+except ImportError:
+	_real_asyncio = None
+
+try:
 	import threading
 except ImportError:
 	import dummy_threading as threading
@@ -29,6 +34,8 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:DefaultEventLoopPolicy',
 )
+from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
+from portage.util._eventloop.global_event_loop import _asyncio_enabled
 from portage.util.futures.futures import (
 	CancelledError,
 	Future,
@@ -162,3 +169,13 @@ def _wrap_loop(loop=None):
 	@return: event loop
 	"""
 	return loop or get_event_loop()
+
+
+if _asyncio_enabled:
+	get_event_loop_policy = _real_asyncio.get_event_loop_policy
+	set_event_loop_policy = _real_asyncio.set_event_loop_policy
+
+	def _wrap_loop(loop=None):
+		loop = loop or get_event_loop()
+		return (loop if hasattr(loop, '_asyncio_wrapper')
+			else _AsyncioEventLoop(loop=loop))

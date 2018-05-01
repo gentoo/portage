@@ -33,6 +33,9 @@ class SchedulerInterface(SlotObject):
 		"time",
 
 		"_asyncio_child_watcher",
+		# This attribute it used by _wrap_loop to detect if the
+		# loop already has a suitable wrapper.
+		"_asyncio_wrapper",
 	)
 
 	__slots__ = _event_loop_attrs + ("_event_loop", "_is_background")
