@@ -912,7 +912,7 @@ ___best_version_and_has_version_common() {
 				case ${root_arg} in
 					-r) root=${EROOT} ;;
 					-d) root=${ESYSROOT} ;;
-					-b) root=${BROOT:-/${PORTAGE_OVERRIDE_EPREFIX#/}} ;;
+					-b) root=${BROOT:-/} ;;
 				esac
 			else
 				case ${root_arg} in

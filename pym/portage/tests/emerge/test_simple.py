@@ -58,6 +58,8 @@ src_install() {
 	echo "blah blah blah" > "${T}"/latin-1-$(printf "\\xa9")-regular-file || die
 	doins "${T}"/latin-1-$(printf "\\xa9")-regular-file
 	dosym latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
+
+	call_has_and_best_version
 }
 
 pkg_config() {
@@ -69,14 +71,29 @@ pkg_info() {
 }
 
 pkg_preinst() {
+	if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+		# The BROOT variable is unset during pkg_* phases for EAPI 7,
+		# therefore best/has_version -b is expected to fail if we attempt
+		# to call it for EAPI 7 here.
+		call_has_and_best_version
+	fi
+}
+
+call_has_and_best_version() {
 	local root_arg
 	if ___eapi_best_version_and_has_version_support_-b_-d_-r; then
 		root_arg="-b"
 	else
 		root_arg="--host-root"
 	fi
-	einfo "called pkg_preinst for $CATEGORY/$PF"
-
+	einfo "called ${EBUILD_PHASE_FUNC} for $CATEGORY/$PF"
+	einfo "EPREFIX=${EPREFIX}"
+	einfo "PORTAGE_OVERRIDE_EPREFIX=${PORTAGE_OVERRIDE_EPREFIX}"
+	einfo "ROOT=${ROOT}"
+	einfo "EROOT=${EROOT}"
+	einfo "SYSROOT=${SYSROOT}"
+	einfo "ESYSROOT=${ESYSROOT}"
+	einfo "BROOT=${BROOT}"
 	# Test that has_version and best_version work correctly with
 	# prefix (involves internal ROOT -> EROOT calculation in order
 	# to support ROOT override via the environment with EAPIs 3
@@ -90,7 +107,7 @@ pkg_preinst() {
 	if [[ ${EPREFIX} != ${PORTAGE_OVERRIDE_EPREFIX} ]] ; then
 		if has_version ${root_arg} $CATEGORY/$PN:$SLOT ; then
 			einfo "has_version ${root_arg} detects an installed instance of $CATEGORY/$PN:$SLOT"
-			einfo "best_version ${root_arg} reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+			einfo "best_version ${root_arg} reports that the installed instance is $(best_version ${root_arg} $CATEGORY/$PN:$SLOT)"
 		else
 			einfo "has_version ${root_arg} does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 		fi
