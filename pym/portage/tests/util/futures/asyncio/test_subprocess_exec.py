@@ -34,7 +34,7 @@ class _Reader(object):
 	def __init__(self, future, input_file, loop):
 		self._future = future
 		self._pipe_reader = PipeReader(
-			input_files={'input_file':input_file}, scheduler=loop._loop)
+			input_files={'input_file':input_file}, scheduler=loop)
 
 		self._future.add_done_callback(self._cancel_callback)
 		self._pipe_reader.addExitListener(self._eof)

@@ -54,7 +54,7 @@ class ForkExecutor(object):
 			future, proc = self._submit_queue.popleft()
 			future.add_done_callback(functools.partial(self._cancel_cb, proc))
 			proc.addExitListener(functools.partial(self._proc_exit, future))
-			proc.scheduler = self._loop._loop
+			proc.scheduler = self._loop
 			proc.start()
 			self._running_tasks[id(proc)] = proc
 

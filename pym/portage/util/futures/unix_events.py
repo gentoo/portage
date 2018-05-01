@@ -72,6 +72,28 @@ class _PortageEventLoop(events.AbstractEventLoop):
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
 
+	@property
+	def _asyncio_child_watcher(self):
+		"""
+		In order to avoid accessing the internal _loop attribute, portage
+		internals should use this property when possible.
+
+		@rtype: asyncio.AbstractChildWatcher
+		@return: the internal event loop's AbstractChildWatcher interface
+		"""
+		return self._loop._asyncio_child_watcher
+
+	@property
+	def _asyncio_wrapper(self):
+		"""
+		In order to avoid accessing the internal _loop attribute, portage
+		internals should use this property when possible.
+
+		@rtype: asyncio.AbstractEventLoop
+		@return: the internal event loop's AbstractEventLoop interface
+		"""
+		return self
+
 	def create_task(self, coro):
 		"""
 		Schedule a coroutine object.

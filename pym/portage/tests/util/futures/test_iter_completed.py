@@ -46,7 +46,7 @@ class IterCompletedTestCase(TestCase):
 		def future_generator():
 			for task in tasks:
 				task.future = loop.create_future()
-				task.scheduler = loop._loop
+				task.scheduler = loop
 				task.start()
 				yield task.future
 

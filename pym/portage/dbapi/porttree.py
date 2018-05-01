@@ -667,7 +667,7 @@ class portdbapi(dbapi):
 
 		proc = EbuildMetadataPhase(cpv=mycpv,
 			ebuild_hash=ebuild_hash, portdb=self,
-			repo_path=mylocation, scheduler=loop._loop,
+			repo_path=mylocation, scheduler=loop,
 			settings=self.doebuild_settings)
 
 		proc.addExitListener(functools.partial(self._aux_get_return,

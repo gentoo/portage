@@ -77,7 +77,7 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		task_generator(),
 		max_jobs=max_jobs,
 		max_load=max_load,
-		event_loop=loop._loop)
+		event_loop=loop)
 
 	def done_callback(future_done_set, wait_result):
 		"""Propagate results from wait_result to future_done_set."""
