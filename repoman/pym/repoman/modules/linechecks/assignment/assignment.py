@@ -1,7 +1,7 @@
 
 import re
 
-from portage.eapi import eapi_supports_prefix
+from portage.eapi import eapi_supports_prefix, eapi_has_broot
 from repoman.modules.linechecks.base import LineCheck
 
 
@@ -29,3 +29,10 @@ class Eapi3EbuildAssignment(EbuildAssignment):
 	def check_eapi(self, eapi):
 		return eapi_supports_prefix(eapi)
 
+class Eapi7EbuildAssignment(EbuildAssignment):
+	"""Ensure ebuilds don't assign to readonly EAPI 7-introduced variables."""
+
+	readonly_assignment = re.compile(r'\s*(export\s+)?BROOT=')
+
+	def check_eapi(self, eapi):
+		return eapi_has_broot(eapi)

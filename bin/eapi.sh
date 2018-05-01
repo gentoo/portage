@@ -30,6 +30,14 @@ ___eapi_has_prefix_variables() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2)$ || " ${FEATURES} " == *" force-prefix "* ]]
 }
 
+___eapi_has_BROOT() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
+___eapi_has_SYSROOT() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_HDEPEND() {
 	[[ ${1-${EAPI-0}} =~ ^(5-hdepend)$ ]]
 }
@@ -147,7 +155,11 @@ ___eapi_has_package_manager_build_group() {
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(5|5-progress|6)$ ]]
+}
+
+___eapi_best_version_and_has_version_support_-b_-d_-r() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_unpack_supports_xz() {
@@ -168,6 +180,10 @@ ___eapi_econf_passes_--disable-silent-rules() {
 
 ___eapi_econf_passes_--docdir_and_--htmldir() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
+___eapi_econf_passes_--with-sysroot() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_use_enable_and_use_with_support_empty_third_argument() {

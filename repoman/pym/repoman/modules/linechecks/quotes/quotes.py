@@ -17,7 +17,8 @@ class EbuildQuote(LineCheck):
 		r'(^$)|(^\s*#.*)|(^\s*\w+=.*)' +
 		r'|(^\s*(' + "|".join(_ignored_commands) + r')\s+)')
 	ignore_comment = False
-	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
+	var_names = [
+                "D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "BROOT", "WORKDIR"]
 
 	# EAPI=3/Prefix vars
 	var_names += ["ED", "EPREFIX", "EROOT"]

@@ -527,6 +527,12 @@ Beginning with \fBEAPI 3\fR, contains
 "${ROOT%/}${EPREFIX}/" for convenience
 purposes. Do not modify this variable.
 .TP
+.B BROOT\fR = \fI"${EPREFIX}"
+Beginning with \fBEAPI 7\fR, the absolute path to the root directory
+containing build dependencies satisfied by BDEPEND, typically
+executable build tools. This includes any applicable offset prefix. Do
+not modify this variable.
+.TP
 .B DESCRIPTION\fR = \fI"A happy little package"
 Should contain a short description of the package.
 .TP

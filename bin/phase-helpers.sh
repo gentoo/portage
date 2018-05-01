@@ -640,7 +640,7 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir; then
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir || ___eapi_econf_passes_--with-sysroot; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
@@ -662,6 +662,12 @@ econf() {
 
 				if [[ ${conf_help} == *--htmldir* ]]; then
 					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--with-sysroot; then
+				if [[ ${conf_help} == *--with-sysroot* ]]; then
+					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
 			fi
 		fi
@@ -872,46 +878,55 @@ __eapi6_src_install() {
 	einstalldocs
 }
 
-# @FUNCTION: has_version
-# @USAGE: [--host-root] <DEPEND ATOM>
-# @DESCRIPTION:
-# Return true if given package is installed. Otherwise return false.
-# Callers may override the ROOT variable in order to match packages from an
-# alternative ROOT.
-has_version() {
-
-	local atom eroot host_root=false root=${ROOT}
-	if [[ $1 == --host-root ]] ; then
-		host_root=true
-		shift
-	fi
+___best_version_and_has_version_common() {
+	local atom root root_arg
+	case $1 in
+		--host-root|-r|-d|-b)
+			root_arg=$1
+			shift ;;
+	esac
 	atom=$1
 	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
+	[ $# -gt 0 ] && die "${FUNCNAME[1]}: unused argument(s): $*"
 
-	if ${host_root} ; then
-		if ! ___eapi_best_version_and_has_version_support_--host-root; then
-			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-		fi
-		root=/
-	fi
+	case ${root_arg} in
+		"") if ___eapi_has_prefix_variables; then
+				root=${EROOT}
+			else
+				root=${ROOT}
+			fi ;;
+		--host-root)
+			if ! ___eapi_best_version_and_has_version_support_--host-root; then
+				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
+			fi
+			if ___eapi_has_prefix_variables; then
+				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
+			else
+				root=/
+			fi ;;
+		-r|-d|-b)
+			if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
+			fi
+			if ___eapi_has_prefix_variables; then
+				case ${root_arg} in
+					-r) root=${EROOT} ;;
+					-d) root=${ESYSROOT} ;;
+					-b) root=${BROOT:-/} ;;
+				esac
+			else
+				case ${root_arg} in
+					-r) root=${ROOT} ;;
+					-d) root=${SYSROOT} ;;
+					-b) root=/ ;;
+				esac
+			fi ;;
+	esac
 
-	if ___eapi_has_prefix_variables; then
-		# [[ ${root} == / ]] would be ambiguous here,
-		# since both prefixes can share root=/ while
-		# having different EPREFIX offsets.
-		if ${host_root} ; then
-			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
-		else
-			eroot=${root%/}${EPREFIX}/
-		fi
-	else
-		eroot=${root}
-	fi
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
+		"${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}"
 	else
-		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" has_version "${eroot}" "${atom}"
+		"${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}"
 	fi
 	local retval=$?
 	case "${retval}" in
@@ -919,75 +934,36 @@ has_version() {
 			return ${retval}
 			;;
 		2)
-			die "${FUNCNAME[0]}: invalid atom: ${atom}"
+			die "${FUNCNAME[1]}: invalid atom: ${atom}"
 			;;
 		*)
 			if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-				die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				die "${FUNCNAME[1]}: unexpected ebuild-ipc exit code: ${retval}"
 			else
-				die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				die "${FUNCNAME[1]}: unexpected portageq exit code: ${retval}"
 			fi
 			;;
 	esac
 }
 
+# @FUNCTION: has_version
+# @USAGE: [--host-root|-r|-d|-b] <DEPEND ATOM>
+# @DESCRIPTION:
+# Return true if given package is installed. Otherwise return false.
+# Callers may override the ROOT variable in order to match packages from an
+# alternative ROOT.
+has_version() {
+	___best_version_and_has_version_common "$@"
+}
+
 # @FUNCTION: best_version
-# @USAGE: [--host-root] <DEPEND ATOM>
+# @USAGE: [--host-root|-r|-d|-b] <DEPEND ATOM>
 # @DESCRIPTION:
 # Returns highest installed matching category/package-version (without .ebuild).
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {
-
-	local atom eroot host_root=false root=${ROOT}
-	if [[ $1 == --host-root ]] ; then
-		host_root=true
-		shift
-	fi
-	atom=$1
-	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-	if ${host_root} ; then
-		if ! ___eapi_best_version_and_has_version_support_--host-root; then
-			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-		fi
-		root=/
-	fi
-
-	if ___eapi_has_prefix_variables; then
-		# [[ ${root} == / ]] would be ambiguous here,
-		# since both prefixes can share root=/ while
-		# having different EPREFIX offsets.
-		if ${host_root} ; then
-			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
-		else
-			eroot=${root%/}${EPREFIX}/
-		fi
-	else
-		eroot=${root}
-	fi
-	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
-	else
-		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" best_version "${eroot}" "${atom}"
-	fi
-	local retval=$?
-	case "${retval}" in
-		0|1)
-			return ${retval}
-			;;
-		2)
-			die "${FUNCNAME[0]}: invalid atom: ${atom}"
-			;;
-		*)
-			if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-				die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-			else
-				die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-			fi
-			;;
-	esac
+	___best_version_and_has_version_common "$@"
 }
 
 if ___eapi_has_get_libdir; then

@@ -128,7 +128,7 @@ qahelp:
     variable:
         invalidchar: "A variable contains an invalid character that is not part of the ASCII character set"
         readonly: "Assigning a readonly variable"
-        usedwithhelpers: "Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers"
+        usedwithhelpers: "Ebuild uses D, ROOT, BROOT, ED, EROOT or EPREFIX with helpers"
     virtual:
         suspect: "Ebuild contains a package that usually should be pulled via virtual/, not directly."
     wxwidgets:
