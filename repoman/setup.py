@@ -347,8 +347,7 @@ class x_sdist(sdist):
 	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
 
 	def finalize_options(self):
-		if self.formats is None:
-			self.formats = ['bztar']
+		self.formats = ['bztar']
 		if self.owner is None:
 			self.owner = 'root'
 		if self.group is None:
