@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.33
+==================================
+* Bug Fixes:
+    - Bug 317337 fix best/has_version -b for cross-prefix
+    - Bug 654456 allow empty BINPKG_COMPRESS to disable compression
+
+
 portage-2.3.32
 ==================================
 * Bug Fixes:
