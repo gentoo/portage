@@ -17,6 +17,8 @@ from portage.util import (
 )
 import signal
 import subprocess
+import tarfile
+
 
 class BinpkgExtractorAsync(SpawnProcess):
 
@@ -38,6 +40,13 @@ class BinpkgExtractorAsync(SpawnProcess):
 		decomp = _compressors.get(compression_probe(self.pkg_path))
 		if decomp is not None:
 			decomp_cmd = decomp.get("decompress")
+		elif tarfile.is_tarfile(portage._unicode_encode(self.pkg_path,
+			encoding=portage._encodings['fs'], errors='strict')):
+			decomp_cmd = 'cat'
+			decomp = {
+				'compress': 'cat',
+				'package': 'sys-apps/coreutils',
+			}
 		else:
 			decomp_cmd = None
 		if decomp_cmd is None:
@@ -56,16 +65,15 @@ class BinpkgExtractorAsync(SpawnProcess):
 
 		if find_binary(decompression_binary) is None:
 			# Try alternative command if it exists
-			if _compressors.get(compression_probe(self.pkg_path)).get("decompress_alt"):
-				decomp_cmd = _compressors.get(
-					compression_probe(self.pkg_path)).get("decompress_alt")
+			if decomp.get("decompress_alt"):
+				decomp_cmd = decomp.get("decompress_alt")
 			try:
 				decompression_binary = shlex_split(varexpand(decomp_cmd, mydict=self.env))[0]
 			except IndexError:
 				decompression_binary = ""
 
 			if find_binary(decompression_binary) is None:
-				missing_package = _compressors.get(compression_probe(self.pkg_path)).get("package")
+				missing_package = decomp.get("package")
 				self.scheduler.output("!!! %s\n" %
 					_("File compression unsupported %s.\n Command was: %s.\n Maybe missing package: %s") %
 					(self.pkg_path, varexpand(decomp_cmd, mydict=self.env), missing_package), log_path=self.logfile,

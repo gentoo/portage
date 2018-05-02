@@ -481,7 +481,7 @@ __dyn_package() {
 	[ -z "${PORTAGE_COMPRESSION_COMMAND}" ] && \
         die "PORTAGE_COMPRESSION_COMMAND is unset"
 	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
-		$PORTAGE_COMPRESSION_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
+		$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
