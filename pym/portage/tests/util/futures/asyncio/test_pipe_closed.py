@@ -105,7 +105,6 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 
 			writer_callback.called = loop.create_future()
 			_set_nonblocking(write_end.fileno())
-			loop.add_writer(write_end.fileno(), writer_callback)
 
 			# Fill up the pipe, so that no writer callbacks should be
 			# received until the state has changed.
@@ -116,6 +115,11 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 					if e.errno != errno.EAGAIN:
 						raise
 					break
+
+			# We've seen at least one spurious writer callback when
+			# this was registered before the pipe was filled, so
+			# register it afterwards.
+			loop.add_writer(write_end.fileno(), writer_callback)
 
 			# Allow the loop to check for IO events, and assert
 			# that our future is still not done.
