@@ -2813,10 +2813,15 @@ class config(object):
 			mydict.pop("ECLASSDIR", None)
 
 		if not eapi_attrs.path_variables_end_with_trailing_slash:
-			for v in ("D", "ED", "ROOT", "EROOT", "SYSROOT", "ESYSROOT",
-					"BROOT"):
+			for v in ("D", "ED", "ROOT", "EROOT", "ESYSROOT", "BROOT"):
 				if v in mydict:
 					mydict[v] = mydict[v].rstrip(os.path.sep)
+
+		# Since SYSROOT=/ interacts badly with autotools.eclass (bug 654600),
+		# and no EAPI expects SYSROOT to have a trailing slash, always strip
+		# the trailing slash from SYSROOT.
+		if 'SYSROOT' in mydict:
+			mydict['SYSROOT'] = mydict['SYSROOT'].rstrip(os.sep)
 
 		try:
 			builddir = mydict["PORTAGE_BUILDDIR"]
