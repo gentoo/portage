@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -69,7 +69,7 @@ class LocationsManager(object):
 		if self.sysroot is None:
 			self.sysroot = "/"
 		else:
-			self.sysroot = normalize_path(os.path.abspath(self.sysroot)).rstrip(os.sep) + os.sep
+			self.sysroot = normalize_path(os.path.abspath(self.sysroot or os.sep)).rstrip(os.sep) + os.sep
 
 		self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
 
