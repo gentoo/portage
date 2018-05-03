@@ -66,7 +66,8 @@ class RsyncSync(NewBase):
 		opts = self.options.get('emerge_config').opts
 		self.usersync_uid = self.options.get('usersync_uid', None)
 		enter_invalid = '--ask-enter-invalid' in opts
-		out = portage.output.EOutput()
+		quiet = '--quiet' in opts
+		out = portage.output.EOutput(quiet=quiet)
 		syncuri = self.repo.sync_uri
 		if self.repo.module_specific_options.get(
 			'sync-rsync-vcs-ignore', 'false').lower() == 'true':
@@ -385,10 +386,12 @@ class RsyncSync(NewBase):
 							raise RuntimeError('Timestamp not found in Manifest')
 						if (self.max_age != 0 and
 								(datetime.datetime.utcnow() - ts.ts).days > self.max_age):
+							out.quiet = False
 							out.ewarn('Manifest is over %d days old, this is suspicious!' % (self.max_age,))
 							out.ewarn('You may want to try using another mirror and/or reporting this one:')
 							out.ewarn('  %s' % (dosyncuri,))
 							out.ewarn('')
+							out.quiet = quiet
 
 						out.einfo('Manifest timestamp: %s UTC' % (ts.ts,))
 						out.einfo('Valid OpenPGP signature found:')
