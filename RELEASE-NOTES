@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.34
+==================================
+* Bug Fixes:
+    - Bug 654600 SYSROOT=/ setting breaks eautoconf for firefox
+    - Bug 654664 silence emerge --sync --quiet signature info
+
+
 portage-2.3.33
 ==================================
 * Bug Fixes:
