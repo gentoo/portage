@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.36
+==================================
+* Bug Fixes:
+    - Bug 654782 autounmask fails on non satisfiable REQUIRED_USE
+    - Bug 654812 category directory left after successful merge
+    - Bug 654838 ecompress spurious imageusr directory in EAPI 7
+
+
 portage-2.3.35
 ==================================
 * Bug Fixes:
