@@ -3009,6 +3009,10 @@ class depgraph(object):
 					{"myparent" : dep.parent, "show_req_use" : pkg}))
 				self._dynamic_config._required_use_unsatisfied = True
 				self._dynamic_config._skip_restart = True
+				# Add pkg to digraph in order to enable autounmask messages
+				# for this package, which is useful when autounmask USE
+				# changes have violated REQUIRED_USE.
+				self._dynamic_config.digraph.add(pkg, dep.parent, priority=priority)
 				return 0
 
 		if not pkg.onlydeps:
@@ -9428,10 +9432,6 @@ class depgraph(object):
 		return self._dynamic_config._need_config_reload
 
 	def autounmask_breakage_detected(self):
-		# Check for REQUIRED_USE violations.
-		for changes in self._dynamic_config._needed_use_config_changes.values():
-			if getattr(changes, 'required_use_satisfied', None) is False:
-				return True
 		try:
 			for pargs, kwargs in self._dynamic_config._unsatisfied_deps_for_display:
 				self._show_unsatisfied_dep(

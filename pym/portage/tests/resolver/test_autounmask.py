@@ -251,15 +251,42 @@ class AutounmaskTestCase(TestCase):
 					use_changes={ "dev-util/R-1": { "bar": True } }),
 
 				#Test interaction with REQUIRED_USE.
+				# Some of these cases trigger USE change(s) that violate
+				# REQUIRED_USE, so the USE changes are shown along with
+				# the REQUIRED_USE violation that they would trigger.
+
+				# The following USE changes are necessary to proceed:
+				#  (see "package.use" in the portage(5) man page for more details)
+				# # required by app-portage/A-1::test_repo
+				# # required by =app-portage/A-1 (argument)
+				# >=app-portage/B-1 foo
+				#
+				# !!! The ebuild selected to satisfy "app-portage/B[foo]" has unmet requirements.
+				# - app-portage/B-1::test_repo USE="bar (forced-flag) -foo"
+				#
+				#   The following REQUIRED_USE flag constraints are unsatisfied:
+				#     exactly-one-of ( foo bar )
 				ResolverPlaygroundTestCase(
 					["=app-portage/A-1"],
 					options={ "--autounmask": True },
-					use_changes=None,
+					use_changes={"app-portage/B-1": {"foo": True}},
 					success=False),
+
+				# The following USE changes are necessary to proceed:
+				#  (see "package.use" in the portage(5) man page for more details)
+				# # required by app-portage/A-2::test_repo
+				# # required by =app-portage/A-2 (argument)
+				# >=app-portage/B-1 foo
+				#
+				# !!! The ebuild selected to satisfy "app-portage/B[foo=]" has unmet requirements.
+				# - app-portage/B-1::test_repo USE="bar (forced-flag) -foo"
+				#
+				#   The following REQUIRED_USE flag constraints are unsatisfied:
+				#     exactly-one-of ( foo bar )
 				ResolverPlaygroundTestCase(
 					["=app-portage/A-2"],
 					options={ "--autounmask": True },
-					use_changes=None,
+					use_changes={"app-portage/B-1": {"foo": True}},
 					success=False),
 				ResolverPlaygroundTestCase(
 					["=app-portage/C-1"],
@@ -269,10 +296,25 @@ class AutounmaskTestCase(TestCase):
 
 				# Test bug 622462, where it inappropriately unmasked a newer
 				# version rather than report unsatisfied REQUIRED_USE.
+				#
+				# The following USE changes are necessary to proceed:
+				#  (see "package.use" in the portage(5) man page for more details)
+				# # required by sci-mathematics/octave-4.2.2::test_repo
+				# # required by sci-mathematics/octave (argument)
+				# >=x11-libs/qscintilla-2.9.4 qt5
+				#
+				# !!! The ebuild selected to satisfy ">=x11-libs/qscintilla-2.9.3-r2:=[qt5(+)]" has unmet requirements.
+				# - x11-libs/qscintilla-2.9.4::test_repo USE="qt4 -qt5"
+				#
+				#   The following REQUIRED_USE flag constraints are unsatisfied:
+				#     exactly-one-of ( qt4 qt5 )
+				#
+				# (dependency required by "sci-mathematics/octave-4.2.2::test_repo" [ebuild])
+				# (dependency required by "sci-mathematics/octave" [argument])
 				ResolverPlaygroundTestCase(
 					["sci-mathematics/octave"],
 					options={"--autounmask": True},
-					use_changes=None,
+					use_changes={"x11-libs/qscintilla-2.9.4": {"qt5": True}},
 					success=False),
 
 				#Make sure we don't change masked/forced flags.
