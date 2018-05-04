@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -428,6 +428,10 @@ class Binpkg(CompositeTask):
 		return task
 
 	def _install_exit(self, task):
+		"""
+		@returns: Future, result is the returncode from an
+			EbuildBuildDir.async_unlock() task
+		"""
 		self.settings.pop("PORTAGE_BINPKG_FILE", None)
 		if task.returncode == os.EX_OK and \
 			'binpkg-logs' not in self.settings.features and \
@@ -437,3 +441,9 @@ class Binpkg(CompositeTask):
 			except OSError:
 				pass
 		self._async_unlock_builddir()
+		if self._current_task is None:
+			result = self.scheduler.create_future()
+			self.scheduler.call_soon(result.set_result, os.EX_OK)
+		else:
+			result = self._current_task.async_wait()
+		return result
