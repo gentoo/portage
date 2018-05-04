@@ -139,7 +139,7 @@ funk_up_dir() {
 # Move all files and directories we want to skip running compression
 # on from srctree to dsttree.
 _relocate_skip_dirs() {
-	local srctree="$1" dsttree="$2"
+	local srctree="${1%/}" dsttree="${2%/}"
 
 	[[ -d ${srctree} ]] || return 0
 
@@ -213,7 +213,7 @@ for dir in "$@" ; do
 
 	# now lets do our work
 	if [[ -n ${suffix} ]] ; then
-		__vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED%/}}"
+		__vecho "${0##*/}: $(ecompress --bin) /${actual_dir#${ED%/}/}"
 		funk_up_dir "compress" "${suffix}" "ecompress" "${size_limit}"
 		: $(( ret |= $? ))
 	fi
