@@ -33,7 +33,6 @@ class SchedulerInterface(SlotObject):
 		"time",
 
 		"_asyncio_child_watcher",
-		"_asyncio_wrapper",
 	)
 
 	__slots__ = _event_loop_attrs + ("_event_loop", "_is_background")

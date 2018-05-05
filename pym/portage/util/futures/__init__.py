@@ -5,7 +5,4 @@ __all__ = (
 	'asyncio',
 )
 
-try:
-	import asyncio
-except ImportError:
-	from portage.util.futures import _asyncio as asyncio
+from portage.util.futures import _asyncio as asyncio

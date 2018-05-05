@@ -56,7 +56,7 @@ class HangForever(object):
 
 class RetryTestCase(TestCase):
 	def testSucceedLater(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = SucceedLater(1)
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=9999,
@@ -66,7 +66,7 @@ class RetryTestCase(TestCase):
 		self.assertEqual(result, 'success')
 
 	def testSucceedNever(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=4, try_timeout=None,
@@ -77,7 +77,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
 
 	def testSucceedNeverReraise(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(reraise=True, try_max=4, try_timeout=None,
@@ -88,7 +88,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception(), SucceedNeverException))
 
 	def testHangForever(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_max=2, try_timeout=0.1,
@@ -99,7 +99,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))
 
 	def testHangForeverReraise(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(reraise=True, try_max=2, try_timeout=0.1,
@@ -110,7 +110,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception(), asyncio.TimeoutError))
 
 	def testCancelRetry(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_timeout=0.1,
@@ -123,7 +123,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(done.pop().cancelled())
 
 	def testOverallTimeoutWithException(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		func = SucceedNever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)
 		decorator = retry(try_timeout=0.1, overall_timeout=0.3,
@@ -134,7 +134,7 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
 
 	def testOverallTimeoutWithTimeoutError(self):
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		# results in TimeoutError because it hangs forever
 		func = HangForever()
 		func_coroutine = functools.partial(loop.run_in_executor, None, func)

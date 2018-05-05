@@ -109,7 +109,7 @@ class AbstractPollTask(AsynchronousTask):
 		self._registered = False
 
 	def _wait_loop(self, timeout=None):
-		loop = getattr(self.scheduler, '_asyncio_wrapper', self.scheduler)
+		loop = self.scheduler
 		tasks = [self.async_wait()]
 		if timeout is not None:
 			tasks.append(asyncio.ensure_future(

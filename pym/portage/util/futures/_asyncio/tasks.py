@@ -41,7 +41,6 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	@rtype: asyncio.Future (or compatible)
 	"""
 	loop = loop or _global_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 	result_future = loop.create_future()
 	_Waiter(futures, timeout, return_when, result_future, loop)
 	return result_future

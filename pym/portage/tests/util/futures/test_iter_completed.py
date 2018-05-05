@@ -34,7 +34,7 @@ class IterCompletedTestCase(TestCase):
 		# load causes the tasks to finish in an unexpected order.
 		self.todo = True
 
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		tasks = [
 			SleepProcess(seconds=0.200),
 			SleepProcess(seconds=0.100),
@@ -56,7 +56,7 @@ class IterCompletedTestCase(TestCase):
 
 	def testAsyncCancel(self):
 
-		loop = global_event_loop()._asyncio_wrapper
+		loop = global_event_loop()
 		input_futures = set()
 		future_count = 3
 

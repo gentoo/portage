@@ -72,7 +72,7 @@ class _EventLoopFuture(object):
 		the default event loop.
 		"""
 		if loop is None:
-			self._loop = _global_event_loop()._asyncio_wrapper
+			self._loop = _global_event_loop()
 		else:
 			self._loop = loop
 		self._callbacks = []

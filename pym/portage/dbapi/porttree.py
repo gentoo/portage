@@ -612,7 +612,6 @@ class portdbapi(dbapi):
 		# Callers of this method certainly want the same event loop to
 		# be used for all calls.
 		loop = loop or global_event_loop()
-		loop = getattr(loop, '_asyncio_wrapper', loop)
 		future = loop.create_future()
 		cache_me = False
 		if myrepo is not None:
@@ -753,7 +752,6 @@ class portdbapi(dbapi):
 		@rtype: asyncio.Future (or compatible)
 		"""
 		loop = loop or global_event_loop()
-		loop = getattr(loop, '_asyncio_wrapper', loop)
 		result = loop.create_future()
 
 		def aux_get_done(aux_get_future):
@@ -1422,7 +1420,6 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 	@rtype: asyncio.Future (or compatible)
 	"""
 	loop = loop or global_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 	result = loop.create_future()
 	cpv_list = (portdb.cp_list(cp, mytree=repo_config.location)
 		if cpv_list is None else cpv_list)

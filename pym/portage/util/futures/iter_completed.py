@@ -31,7 +31,6 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@rtype: iterator
 	"""
 	loop = loop or global_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 
 	for future_done_set in async_iter_completed(futures,
 		max_jobs=max_jobs, max_load=max_load, loop=loop):
@@ -62,7 +61,6 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@rtype: iterator
 	"""
 	loop = loop or global_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 
 	max_jobs = max_jobs or multiprocessing.cpu_count()
 	max_load = max_load or multiprocessing.cpu_count()
@@ -136,7 +134,6 @@ def iter_gather(futures, max_jobs=None, max_load=None, loop=None):
 	@rtype: asyncio.Future (or compatible)
 	"""
 	loop = loop or global_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 	result = loop.create_future()
 	futures_list = []
 

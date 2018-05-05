@@ -25,8 +25,7 @@ class ForkExecutor(object):
 	"""
 	def __init__(self, max_workers=None, loop=None):
 		self._max_workers = max_workers or multiprocessing.cpu_count()
-		loop = loop or global_event_loop()
-		self._loop = getattr(loop, '_asyncio_wrapper', loop)
+		self._loop = loop or global_event_loop()
 		self._submit_queue = collections.deque()
 		self._running_tasks = {}
 		self._shutdown = False

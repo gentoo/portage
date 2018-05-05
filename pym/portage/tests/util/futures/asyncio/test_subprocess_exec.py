@@ -24,7 +24,6 @@ def reader(input_file, loop=None):
 	@rtype: asyncio.Future (or compatible)
 	"""
 	loop = loop or asyncio.get_event_loop()
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 	future = loop.create_future()
 	_Reader(future, input_file, loop)
 	return future

@@ -125,7 +125,6 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 		instances for each of the files referenced by an ebuild.
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = getattr(loop, '_asyncio_wrapper', loop)
 	result = loop.create_future()
 	fetch_tasks = []
 
