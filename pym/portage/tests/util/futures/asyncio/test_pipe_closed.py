@@ -58,7 +58,7 @@ class ReaderPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
-		loop = asyncio.get_event_loop()
+		loop = asyncio._wrap_loop()
 		read_end = os.fdopen(read_end, 'rb', 0)
 		write_end = os.fdopen(write_end, 'wb', 0)
 		try:
@@ -95,7 +95,7 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
-		loop = asyncio.get_event_loop()
+		loop = asyncio._wrap_loop()
 		read_end = os.fdopen(read_end, 'rb', 0)
 		write_end = os.fdopen(write_end, 'wb', 0)
 		try:

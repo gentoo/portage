@@ -36,7 +36,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage import OrderedDict
 from portage.util._eventloop.EventLoop import EventLoop
-from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
@@ -325,8 +325,8 @@ class portdbapi(dbapi):
 	@property
 	def _event_loop(self):
 		if portage._internal_caller:
-			# For internal portage usage, the global_event_loop is safe.
-			return global_event_loop()
+			# For internal portage usage, asyncio._wrap_loop() is safe.
+			return asyncio._wrap_loop()
 		else:
 			# For external API consumers, use a local EventLoop, since
 			# we don't want to assume that it's safe to override the
@@ -611,7 +611,7 @@ class portdbapi(dbapi):
 		# to simultaneous instantiation of multiple event loops here.
 		# Callers of this method certainly want the same event loop to
 		# be used for all calls.
-		loop = loop or global_event_loop()
+		loop = asyncio._wrap_loop(loop)
 		future = loop.create_future()
 		cache_me = False
 		if myrepo is not None:
@@ -751,7 +751,7 @@ class portdbapi(dbapi):
 			a set of alternative URIs.
 		@rtype: asyncio.Future (or compatible)
 		"""
-		loop = loop or global_event_loop()
+		loop = asyncio._wrap_loop(loop)
 		result = loop.create_future()
 
 		def aux_get_done(aux_get_future):
@@ -1419,7 +1419,7 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 	@return: a Future resulting in a Mapping compatible with FetchlistDict
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = loop or global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 	result = loop.create_future()
 	cpv_list = (portdb.cp_list(cp, mytree=repo_config.location)
 		if cpv_list is None else cpv_list)

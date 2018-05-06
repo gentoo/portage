@@ -23,7 +23,7 @@ def reader(input_file, loop=None):
 	@return: bytes
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = loop or asyncio.get_event_loop()
+	loop = asyncio._wrap_loop(loop)
 	future = loop.create_future()
 	_Reader(future, input_file, loop)
 	return future
@@ -61,7 +61,7 @@ class SubprocessExecTestCase(TestCase):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
 		try:
-			test(asyncio.get_event_loop())
+			test(asyncio._wrap_loop())
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
 

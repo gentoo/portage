@@ -28,7 +28,7 @@ class ChildWatcherTestCase(TestCase):
 
 			args_tuple = ('hello', 'world')
 
-			loop = asyncio.get_event_loop()
+			loop = asyncio._wrap_loop()
 			future = loop.create_future()
 
 			def callback(pid, returncode, *args):

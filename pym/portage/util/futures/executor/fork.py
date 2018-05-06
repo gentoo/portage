@@ -13,7 +13,7 @@ import sys
 import traceback
 
 from portage.util._async.AsyncFunction import AsyncFunction
-from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures import asyncio
 
 
 class ForkExecutor(object):
@@ -25,7 +25,7 @@ class ForkExecutor(object):
 	"""
 	def __init__(self, max_workers=None, loop=None):
 		self._max_workers = max_workers or multiprocessing.cpu_count()
-		self._loop = loop or global_event_loop()
+		self._loop = asyncio._wrap_loop(loop)
 		self._submit_queue = collections.deque()
 		self._running_tasks = {}
 		self._shutdown = False

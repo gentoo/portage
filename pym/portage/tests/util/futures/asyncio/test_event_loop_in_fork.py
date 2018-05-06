@@ -11,14 +11,14 @@ from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
 def fork_main(parent_conn, child_conn):
 	parent_conn.close()
-	loop = asyncio.get_event_loop()
+	loop = asyncio._wrap_loop()
 	# This fails with python's default event loop policy,
 	# see https://bugs.python.org/issue22087.
-	loop.run_until_complete(asyncio.sleep(0.1))
+	loop.run_until_complete(asyncio.sleep(0.1, loop=loop))
 
 
 def async_main(fork_exitcode, loop=None):
-	loop = loop or asyncio.get_event_loop()
+	loop = asyncio._wrap_loop(loop)
 
 	# Since python2.7 does not support Process.sentinel, use Pipe to
 	# monitor for process exit.
@@ -48,7 +48,7 @@ class EventLoopInForkTestCase(TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 		try:
-			loop = asyncio.get_event_loop()
+			loop = asyncio._wrap_loop()
 			fork_exitcode = loop.create_future()
 			# Make async_main fork while the loop is running, which would
 			# trigger https://bugs.python.org/issue22087 with asyncio's

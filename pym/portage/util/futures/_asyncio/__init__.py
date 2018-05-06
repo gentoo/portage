@@ -137,7 +137,7 @@ def sleep(delay, result=None, loop=None):
 	@rtype: asyncio.Future (or compatible)
 	@return: an instance of Future
 	"""
-	loop = loop or get_event_loop()
+	loop = _wrap_loop(loop)
 	future = loop.create_future()
 	handle = loop.call_later(delay, future.set_result, result)
 	def cancel_callback(future):
@@ -145,3 +145,20 @@ def sleep(delay, result=None, loop=None):
 			handle.cancel()
 	future.add_done_callback(cancel_callback)
 	return future
+
+
+def _wrap_loop(loop=None):
+	"""
+	In order to deal with asyncio event loop compatibility issues,
+	use this function to wrap the loop parameter for functions
+	that support it. For example, since python3.4 does not have the
+	AbstractEventLoop.create_future() method, this helper function
+	can be used to add a wrapper that implements the create_future
+	method for python3.4.
+
+	@type loop: asyncio.AbstractEventLoop (or compatible)
+	@param loop: event loop
+	@rtype: asyncio.AbstractEventLoop (or compatible)
+	@return: event loop
+	"""
+	return loop or get_event_loop()

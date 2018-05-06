@@ -15,7 +15,10 @@ except ImportError:
 	FIRST_COMPLETED ='FIRST_COMPLETED'
 	FIRST_EXCEPTION = 'FIRST_EXCEPTION'
 
-
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util.futures:asyncio',
+)
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
 )
@@ -40,7 +43,7 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	@return: tuple of (done, pending).
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = loop or _global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 	result_future = loop.create_future()
 	_Waiter(futures, timeout, return_when, result_future, loop)
 	return result_future

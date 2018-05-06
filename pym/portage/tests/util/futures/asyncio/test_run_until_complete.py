@@ -13,7 +13,7 @@ class RunUntilCompleteTestCase(TestCase):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
 		try:
-			loop = asyncio.get_event_loop()
+			loop = asyncio._wrap_loop()
 			f1 = loop.create_future()
 			f2 = loop.create_future()
 			f1.add_done_callback(f2.set_result)

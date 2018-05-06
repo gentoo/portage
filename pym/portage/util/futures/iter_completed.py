@@ -6,7 +6,6 @@ import multiprocessing
 
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 
 
@@ -30,7 +29,7 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@return: iterator of futures that are done
 	@rtype: iterator
 	"""
-	loop = loop or global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 
 	for future_done_set in async_iter_completed(futures,
 		max_jobs=max_jobs, max_load=max_load, loop=loop):
@@ -60,7 +59,7 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		input futures that are done
 	@rtype: iterator
 	"""
-	loop = loop or global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 
 	max_jobs = max_jobs or multiprocessing.cpu_count()
 	max_load = max_load or multiprocessing.cpu_count()
@@ -133,7 +132,7 @@ def iter_gather(futures, max_jobs=None, max_load=None, loop=None):
 		same order that they were yielded from the input iterator
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = loop or global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 	result = loop.create_future()
 	futures_list = []
 

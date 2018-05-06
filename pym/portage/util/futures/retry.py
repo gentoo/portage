@@ -9,7 +9,6 @@ __all__ = (
 import functools
 
 from portage.exception import PortageException
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 
 
@@ -67,7 +66,7 @@ def _retry(loop, try_max, try_timeout, overall_timeout, delay_func,
 	@return: func return value
 	@rtype: asyncio.Future (or compatible)
 	"""
-	loop = loop or global_event_loop()
+	loop = asyncio._wrap_loop(loop)
 	future = loop.create_future()
 	_Retry(future, loop, try_max, try_timeout, overall_timeout, delay_func,
 		reraise, functools.partial(func, *args, **kwargs))
