@@ -105,25 +105,32 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 
 			writer_callback.called = loop.create_future()
 			_set_nonblocking(write_end.fileno())
-
-			# Fill up the pipe, so that no writer callbacks should be
-			# received until the state has changed.
-			while True:
-				try:
-					os.write(write_end.fileno(), 512 * b'0')
-				except EnvironmentError as e:
-					if e.errno != errno.EAGAIN:
-						raise
-					break
-
-			# We've seen at least one spurious writer callback when
-			# this was registered before the pipe was filled, so
-			# register it afterwards.
 			loop.add_writer(write_end.fileno(), writer_callback)
 
-			# Allow the loop to check for IO events, and assert
-			# that our future is still not done.
-			loop.run_until_complete(asyncio.sleep(0, loop=loop))
+			# With pypy we've seen intermittent spurious writer callbacks
+			# here, so retry until the correct state is achieved.
+			tries = 10
+			while tries:
+				tries -= 1
+
+				# Fill up the pipe, so that no writer callbacks should be
+				# received until the state has changed.
+				while True:
+					try:
+						os.write(write_end.fileno(), 512 * b'0')
+					except EnvironmentError as e:
+						if e.errno != errno.EAGAIN:
+							raise
+						break
+
+				# Allow the loop to check for IO events, and assert
+				# that our future is still not done.
+				loop.run_until_complete(asyncio.sleep(0, loop=loop))
+				if writer_callback.called.done():
+					writer_callback.called = loop.create_future()
+				else:
+					break
+
 			self.assertFalse(writer_callback.called.done())
 
 			# Demonstrate that the callback is called afer the
