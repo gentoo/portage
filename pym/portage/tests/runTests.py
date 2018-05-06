@@ -42,6 +42,7 @@ if os.environ.get('NOCOLOR') in ('yes', 'true'):
 	portage.output.nocolor()
 
 import portage.tests as tests
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")
 path = [x for x in path if x]
@@ -58,4 +59,7 @@ if insert_bin_path:
 	os.environ["PATH"] = ":".join(path)
 
 if __name__ == "__main__":
-	sys.exit(tests.main())
+	try:
+		sys.exit(tests.main())
+	finally:
+		global_event_loop().close()

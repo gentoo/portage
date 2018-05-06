@@ -273,4 +273,7 @@ def ebuild_ipc_main(args):
 	return ebuild_ipc.communicate(args)
 
 if __name__ == '__main__':
-	sys.exit(ebuild_ipc_main(sys.argv[1:]))
+	try:
+		sys.exit(ebuild_ipc_main(sys.argv[1:]))
+	finally:
+		global_event_loop().close()

@@ -30,6 +30,8 @@ from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
 from portage.process import find_binary
 from portage.util.compression_probe import _compressors
+from portage.util._eventloop.global_event_loop import global_event_loop
+
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
@@ -390,4 +392,5 @@ if __name__ == "__main__":
 	finally:
 		os.umask(old_umask)
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+		global_event_loop().close()
 	sys.exit(retval)

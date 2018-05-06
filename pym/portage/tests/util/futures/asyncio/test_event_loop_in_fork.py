@@ -5,6 +5,7 @@ import multiprocessing
 import os
 
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
@@ -15,6 +16,7 @@ def fork_main(parent_conn, child_conn):
 	# This fails with python's default event loop policy,
 	# see https://bugs.python.org/issue22087.
 	loop.run_until_complete(asyncio.sleep(0.1, loop=loop))
+	loop.close()
 
 
 def async_main(fork_exitcode, loop=None):
@@ -47,6 +49,7 @@ class EventLoopInForkTestCase(TestCase):
 		initial_policy = asyncio.get_event_loop_policy()
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
+		loop = None
 		try:
 			loop = asyncio._wrap_loop()
 			fork_exitcode = loop.create_future()
@@ -57,3 +60,6 @@ class EventLoopInForkTestCase(TestCase):
 			assert loop.run_until_complete(fork_exitcode) == os.EX_OK
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())

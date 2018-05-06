@@ -6,6 +6,7 @@ import subprocess
 
 from portage.process import find_binary
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
@@ -60,10 +61,14 @@ class SubprocessExecTestCase(TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
+		loop = asyncio._wrap_loop()
 		try:
-			test(asyncio._wrap_loop())
+			test(loop)
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())
 
 	def testEcho(self):
 		if not hasattr(asyncio, 'create_subprocess_exec'):

@@ -183,7 +183,10 @@ class RetryExecutorTestCase(RetryTestCase):
 				return result.result()
 			else:
 				# child process
-				return loop.run_until_complete(coroutine_func())
+				try:
+					return loop.run_until_complete(coroutine_func())
+				finally:
+					loop.close()
 
 		def execute_wrapper():
 			kill_switch = parent_loop.create_future()

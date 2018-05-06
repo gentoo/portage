@@ -5,6 +5,7 @@ import os
 
 from portage.process import find_binary, spawn
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
@@ -18,6 +19,7 @@ class ChildWatcherTestCase(TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
+		loop = None
 		try:
 			try:
 				asyncio.set_child_watcher(None)
@@ -43,3 +45,6 @@ class ChildWatcherTestCase(TestCase):
 					(pids[0], os.EX_OK, args_tuple))
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())

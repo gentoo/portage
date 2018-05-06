@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
@@ -12,6 +13,7 @@ class RunUntilCompleteTestCase(TestCase):
 		if not isinstance(initial_policy, DefaultEventLoopPolicy):
 			asyncio.set_event_loop_policy(DefaultEventLoopPolicy())
 
+		loop = None
 		try:
 			loop = asyncio._wrap_loop()
 			f1 = loop.create_future()
@@ -27,3 +29,6 @@ class RunUntilCompleteTestCase(TestCase):
 			self.assertEqual(f2.done(), True)
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())

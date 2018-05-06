@@ -10,6 +10,7 @@ import sys
 import tempfile
 
 from portage.tests import TestCase
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures.unix_events import (
 	DefaultEventLoopPolicy,
@@ -83,6 +84,9 @@ class ReaderPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 			write_end.close()
 			read_end.close()
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())
 
 
 class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
@@ -142,3 +146,6 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
 			write_end.close()
 			read_end.close()
 			asyncio.set_event_loop_policy(initial_policy)
+			if loop not in (None, global_event_loop()):
+				loop.close()
+				self.assertFalse(global_event_loop().is_closed())

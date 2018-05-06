@@ -9,6 +9,7 @@ import portage
 portage._internal_caller = True
 portage._disable_legacy_globals()
 from portage._emirrordist.main import emirrordist_main
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 if __name__ == "__main__":
 
@@ -18,4 +19,7 @@ if __name__ == "__main__":
 
 	signal.signal(signal.SIGUSR1, debug_signal)
 
-	sys.exit(emirrordist_main(sys.argv[1:]))
+	try:
+		sys.exit(emirrordist_main(sys.argv[1:]))
+	finally:
+		global_event_loop().close()

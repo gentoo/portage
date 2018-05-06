@@ -53,6 +53,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'_emerge.is_valid_package_atom:insert_category_into_atom',
 	'portage.dbapi._expand_new_virt:expand_new_virt',
 	'portage._sets.base:InternalPackageSet',
+	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.xml.metadata:MetaDataXML'
 )
 
@@ -1466,6 +1467,9 @@ def main(argv):
 		sys.exit(1)
 
 if __name__ == '__main__':
-	sys.exit(main(sys.argv))
+	try:
+		sys.exit(main(sys.argv))
+	finally:
+		global_event_loop().close()
 
 #-----------------------------------------------------------------------------
