@@ -207,18 +207,18 @@ class TestCase(unittest.TestCase):
 		result.startTest(self)
 		testMethod = getattr(self, self._testMethodName)
 		try:
-			try:
-				self.setUp()
-			except SystemExit:
-				raise
-			except KeyboardInterrupt:
-				raise
-			except:
-				result.addError(self, sys.exc_info())
-				return
-
 			ok = False
 			try:
+				try:
+					self.setUp()
+				except KeyboardInterrupt:
+					raise
+				except SkipTest:
+					raise
+				except Exception:
+					result.addError(self, sys.exc_info())
+					return
+
 				testMethod()
 				ok = True
 			except SkipTest as e:
