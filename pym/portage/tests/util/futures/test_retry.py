@@ -2,15 +2,23 @@
 # Distributed under the terms of the GNU General Public License v2
 
 try:
+	from concurrent.futures import ThreadPoolExecutor
+except ImportError:
+	ThreadPoolExecutor = None
+
+try:
 	import threading
 except ImportError:
 	import dummy_threading as threading
+
+import sys
 
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures import asyncio
 from portage.util.futures.retry import retry
+from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.monotonic import monotonic
 
 
@@ -155,13 +163,31 @@ class RetryTestCase(TestCase):
 		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))
 
 
-class RetryExecutorTestCase(RetryTestCase):
+class RetryForkExecutorTestCase(RetryTestCase):
 	"""
 	Wrap each coroutine function with AbstractEventLoop.run_in_executor,
 	in order to test the event loop's default executor. The executor
 	may use either a thread or a subprocess, and either case is
 	automatically detected and handled.
 	"""
+	def __init__(self, *pargs, **kwargs):
+		super(RetryForkExecutorTestCase, self).__init__(*pargs, **kwargs)
+		self._executor = None
+
+	def _setUpExecutor(self):
+		self._executor = ForkExecutor()
+
+	def _tearDownExecutor(self):
+		if self._executor is not None:
+			self._executor.shutdown(wait=True)
+			self._executor = None
+
+	def setUp(self):
+		self._setUpExecutor()
+
+	def tearDown(self):
+		self._tearDownExecutor()
+
 	def _wrap_coroutine_func(self, coroutine_func):
 		parent_loop = global_event_loop()
 
@@ -191,7 +217,7 @@ class RetryExecutorTestCase(RetryTestCase):
 		def execute_wrapper():
 			kill_switch = parent_loop.create_future()
 			parent_future = asyncio.ensure_future(
-				parent_loop.run_in_executor(None, wrapper, kill_switch),
+				parent_loop.run_in_executor(self._executor, wrapper, kill_switch),
 				loop=parent_loop)
 			parent_future.add_done_callback(
 				lambda parent_future: None if kill_switch.done()
@@ -199,3 +225,10 @@ class RetryExecutorTestCase(RetryTestCase):
 			return parent_future
 
 		return execute_wrapper
+
+
+class RetryThreadExecutorTestCase(RetryForkExecutorTestCase):
+	def _setUpExecutor(self):
+		if sys.version_info.major < 3:
+			self.skipTest('ThreadPoolExecutor not supported for python2')
+		self._executor = ThreadPoolExecutor(max_workers=1)
