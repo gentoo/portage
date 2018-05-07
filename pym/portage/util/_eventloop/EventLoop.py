@@ -14,6 +14,11 @@ import sys
 import traceback
 
 try:
+	import asyncio as _real_asyncio
+except ImportError:
+	_real_asyncio = None
+
+try:
 	import fcntl
 except ImportError:
 	#  http://bugs.jython.org/issue1074
@@ -937,7 +942,11 @@ class EventLoop(object):
 			if executor is None:
 				executor = ForkExecutor(loop=self)
 				self._default_executor = executor
-		return executor.submit(func, *args)
+		future = executor.submit(func, *args)
+		if _real_asyncio is not None:
+			future = _real_asyncio.wrap_future(future,
+				loop=self._asyncio_wrapper)
+		return future
 
 	def is_running(self):
 		"""Return whether the event loop is currently running."""
