@@ -26,6 +26,7 @@ from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import writemsg, writemsg_stdout
 from portage.util.futures import asyncio
+from portage.util.futures.executor.fork import ForkExecutor
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
 from _emerge.UserQuery import UserQuery
 from portage.sync.syncbase import NewBase
@@ -170,11 +171,16 @@ class RsyncSync(NewBase):
 									level=logging.ERROR, noiselevel=-1)
 								raise # retry
 
+						# The ThreadPoolExecutor that asyncio uses by default
+						# does not support cancellation of tasks, therefore
+						# use ForkExecutor for task cancellation support, in
+						# order to enforce timeouts.
 						loop = global_event_loop()
-						func_coroutine = functools.partial(loop.run_in_executor,
-							None, noisy_refresh_keys)
-						decorated_func = retry_decorator(func_coroutine, loop=loop)
-						loop.run_until_complete(decorated_func())
+						with ForkExecutor(loop=loop) as executor:
+							func_coroutine = functools.partial(loop.run_in_executor,
+								executor, noisy_refresh_keys)
+							decorated_func = retry_decorator(func_coroutine, loop=loop)
+							loop.run_until_complete(decorated_func())
 					out.eend(0)
 				except (GematoException, asyncio.TimeoutError) as e:
 					writemsg_level("!!! Manifest verification impossible due to keyring problem:\n%s\n"
