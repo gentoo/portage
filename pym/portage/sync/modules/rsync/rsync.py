@@ -173,7 +173,7 @@ class RsyncSync(NewBase):
 						loop = global_event_loop()
 						func_coroutine = functools.partial(loop.run_in_executor,
 							None, noisy_refresh_keys)
-						decorated_func = retry_decorator(func_coroutine)
+						decorated_func = retry_decorator(func_coroutine, loop=loop)
 						loop.run_until_complete(decorated_func())
 					out.eend(0)
 				except (GematoException, asyncio.TimeoutError) as e:

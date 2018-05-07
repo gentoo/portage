@@ -49,12 +49,12 @@ def retry(try_max=None, try_timeout=None, overall_timeout=None,
 		overall_timeout, delay_func, reraise)
 
 
-def _retry_wrapper(loop, try_max, try_timeout, overall_timeout, delay_func,
-	reraise, func):
+def _retry_wrapper(_loop, try_max, try_timeout, overall_timeout, delay_func,
+	reraise, func, loop=None):
 	"""
 	Create and return a decorated function.
 	"""
-	return functools.partial(_retry, loop, try_max, try_timeout,
+	return functools.partial(_retry, loop or _loop, try_max, try_timeout,
 		overall_timeout, delay_func, reraise, func)
 
 

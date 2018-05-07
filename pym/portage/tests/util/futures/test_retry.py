@@ -85,7 +85,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(SucceedLater(1))
 		decorator = retry(try_max=9999,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		result = loop.run_until_complete(decorated_func())
 		self.assertEqual(result, 'success')
 
@@ -94,7 +94,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(SucceedNever())
 		decorator = retry(try_max=4, try_timeout=None,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
@@ -104,7 +104,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(SucceedNever())
 		decorator = retry(reraise=True, try_max=4, try_timeout=None,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception(), SucceedNeverException))
@@ -114,7 +114,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(HangForever())
 		decorator = retry(try_max=2, try_timeout=0.1,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))
@@ -124,7 +124,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(HangForever())
 		decorator = retry(reraise=True, try_max=2, try_timeout=0.1,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception(), asyncio.TimeoutError))
@@ -134,7 +134,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(SucceedNever())
 		decorator = retry(try_timeout=0.1,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		future = decorated_func()
 		loop.call_later(0.3, future.cancel)
 		done, pending = loop.run_until_complete(asyncio.wait([future], loop=loop))
@@ -146,7 +146,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(SucceedNever())
 		decorator = retry(try_timeout=0.1, overall_timeout=0.3,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception().__cause__, SucceedNeverException))
@@ -157,7 +157,7 @@ class RetryTestCase(TestCase):
 		func_coroutine = self._wrap_coroutine_func(HangForever())
 		decorator = retry(try_timeout=0.1, overall_timeout=0.3,
 			delay_func=RandomExponentialBackoff(multiplier=0.1, base=2))
-		decorated_func = decorator(func_coroutine)
+		decorated_func = decorator(func_coroutine, loop=loop)
 		done, pending = loop.run_until_complete(asyncio.wait([decorated_func()], loop=loop))
 		self.assertEqual(len(done), 1)
 		self.assertTrue(isinstance(done.pop().exception().__cause__, asyncio.TimeoutError))
