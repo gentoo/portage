@@ -681,4 +681,25 @@ class _PortageEventLoopPolicy(events.AbstractEventLoopPolicy):
 		return _global_event_loop()._asyncio_child_watcher
 
 
-DefaultEventLoopPolicy = _PortageEventLoopPolicy
+class _AsyncioEventLoopPolicy(_PortageEventLoopPolicy):
+	"""
+	A subclass of _PortageEventLoopPolicy which raises
+	NotImplementedError if it is set as the real asyncio event loop
+	policy, since this class is intended to *wrap* the real asyncio
+	event loop policy.
+	"""
+	def _check_recursion(self):
+		if _real_asyncio.get_event_loop_policy() is self:
+			raise NotImplementedError('this class is only a wrapper')
+
+	def get_event_loop(self):
+		self._check_recursion()
+		return super(_AsyncioEventLoopPolicy, self).get_event_loop()
+
+	def get_child_watcher(self):
+		self._check_recursion()
+		return super(_AsyncioEventLoopPolicy, self).get_child_watcher()
+
+
+DefaultEventLoopPolicy = (_AsyncioEventLoopPolicy if _asyncio_enabled
+	else _PortageEventLoopPolicy)

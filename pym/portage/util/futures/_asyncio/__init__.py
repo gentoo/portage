@@ -32,7 +32,7 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util.futures.unix_events:DefaultEventLoopPolicy',
+	'portage.util.futures.unix_events:_PortageEventLoopPolicy',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
@@ -67,7 +67,7 @@ def get_event_loop_policy():
 	global _lock, _policy
 	with _lock:
 		if _policy is None:
-			_policy = DefaultEventLoopPolicy()
+			_policy = _PortageEventLoopPolicy()
 		return _policy
 
 
@@ -81,7 +81,7 @@ def set_event_loop_policy(policy):
 	"""
 	global _lock, _policy
 	with _lock:
-		_policy = policy or DefaultEventLoopPolicy()
+		_policy = policy or _PortageEventLoopPolicy()
 
 
 def get_event_loop():
