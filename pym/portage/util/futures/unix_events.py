@@ -681,42 +681,4 @@ class _PortageEventLoopPolicy(events.AbstractEventLoopPolicy):
 		return _global_event_loop()._asyncio_child_watcher
 
 
-class _AsyncioEventLoopPolicy(_PortageEventLoopPolicy):
-	"""
-	Implementation of asyncio.AbstractEventLoopPolicy based on asyncio's
-	event loop. This supports running event loops in forks,
-	which is not supported by the default asyncio event loop policy,
-	see https://bugs.python.org/issue22087 and also
-	https://bugs.python.org/issue29703 which affects pypy3-5.10.1.
-	"""
-	_MAIN_PID = os.getpid()
-
-	def __init__(self):
-		super(_AsyncioEventLoopPolicy, self).__init__()
-		self._default_policy = _real_asyncio.DefaultEventLoopPolicy()
-
-	def get_event_loop(self):
-		"""
-		Get the event loop for the current context.
-
-		Returns an event loop object implementing the AbstractEventLoop
-		interface.
-
-		@rtype: asyncio.AbstractEventLoop (or compatible)
-		@return: the current event loop policy
-		"""
-		if os.getpid() == self._MAIN_PID:
-			return self._default_policy.get_event_loop()
-		else:
-			return super(_AsyncioEventLoopPolicy, self).get_event_loop()
-
-	def get_child_watcher(self):
-		"""Get the watcher for child processes."""
-		if os.getpid() == self._MAIN_PID:
-			return self._default_policy.get_child_watcher()
-		else:
-			return super(_AsyncioEventLoopPolicy, self).get_child_watcher()
-
-
-DefaultEventLoopPolicy = (_AsyncioEventLoopPolicy if _asyncio_enabled
-	else _PortageEventLoopPolicy)
+DefaultEventLoopPolicy = _PortageEventLoopPolicy
