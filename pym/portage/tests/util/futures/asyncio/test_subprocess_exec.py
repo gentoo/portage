@@ -4,6 +4,11 @@
 import os
 import subprocess
 
+try:
+	from asyncio import create_subprocess_exec
+except ImportError:
+	create_subprocess_exec = None
+
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -71,7 +76,7 @@ class SubprocessExecTestCase(TestCase):
 				self.assertFalse(global_event_loop().is_closed())
 
 	def testEcho(self):
-		if not hasattr(asyncio, 'create_subprocess_exec'):
+		if create_subprocess_exec is None:
 			self.skipTest('create_subprocess_exec not implemented for python2')
 
 		args_tuple = (b'hello', b'world')
@@ -91,7 +96,7 @@ class SubprocessExecTestCase(TestCase):
 			try:
 				with open(os.devnull, 'rb', 0) as devnull:
 					proc = loop.run_until_complete(
-						asyncio.create_subprocess_exec(
+						create_subprocess_exec(
 						echo_binary, *args_tuple,
 						stdin=devnull, stdout=stdout_pw, stderr=stdout_pw))
 
@@ -114,7 +119,7 @@ class SubprocessExecTestCase(TestCase):
 		self._run_test(test)
 
 	def testCat(self):
-		if not hasattr(asyncio, 'create_subprocess_exec'):
+		if create_subprocess_exec is None:
 			self.skipTest('create_subprocess_exec not implemented for python2')
 
 		stdin_data = b'hello world'
@@ -138,7 +143,7 @@ class SubprocessExecTestCase(TestCase):
 			output = None
 			try:
 				proc = loop.run_until_complete(
-					asyncio.create_subprocess_exec(
+					create_subprocess_exec(
 					cat_binary,
 					stdin=stdin_pr, stdout=stdout_pw, stderr=stdout_pw))
 
@@ -173,7 +178,7 @@ class SubprocessExecTestCase(TestCase):
 		requires an AbstractEventLoop.connect_read_pipe implementation
 		(and a ReadTransport implementation for it to return).
 		"""
-		if not hasattr(asyncio, 'create_subprocess_exec'):
+		if create_subprocess_exec is None:
 			self.skipTest('create_subprocess_exec not implemented for python2')
 
 		args_tuple = (b'hello', b'world')
@@ -184,7 +189,7 @@ class SubprocessExecTestCase(TestCase):
 		def test(loop):
 			with open(os.devnull, 'rb', 0) as devnull:
 				proc = loop.run_until_complete(
-					asyncio.create_subprocess_exec(
+					create_subprocess_exec(
 					echo_binary, *args_tuple,
 					stdin=devnull,
 					stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
@@ -202,7 +207,7 @@ class SubprocessExecTestCase(TestCase):
 		requires an AbstractEventLoop.connect_write_pipe implementation
 		(and a WriteTransport implementation for it to return).
 		"""
-		if not hasattr(asyncio, 'create_subprocess_exec'):
+		if create_subprocess_exec is None:
 			self.skipTest('create_subprocess_exec not implemented for python2')
 
 		stdin_data = b'hello world'
@@ -212,7 +217,7 @@ class SubprocessExecTestCase(TestCase):
 
 		def test(loop):
 			proc = loop.run_until_complete(
-				asyncio.create_subprocess_exec(
+				create_subprocess_exec(
 				cat_binary,
 				stdin=subprocess.PIPE,
 				stdout=subprocess.PIPE, stderr=subprocess.STDOUT))
