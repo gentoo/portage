@@ -1,6 +1,8 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import signal
+
 try:
 	import asyncio as _real_asyncio
 	from asyncio.events import AbstractEventLoop as _AbstractEventLoop
@@ -31,7 +33,6 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		self.call_at = loop.call_at
 		self.is_running = loop.is_running
 		self.is_closed = loop.is_closed
-		self.close = loop.close
 		self.create_future = (loop.create_future
 			if hasattr(loop, 'create_future') else self._create_future)
 		self.create_task = loop.create_task
@@ -75,3 +76,10 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		@return: the internal event loop's AbstractEventLoop interface
 		"""
 		return self
+
+	def close(self):
+		# Suppress spurious error messages like the following for bug 655656:
+		#   Exception ignored when trying to write to the signal wakeup fd:
+		#   BlockingIOError: [Errno 11] Resource temporarily unavailable
+		self._loop.remove_signal_handler(signal.SIGCHLD)
+		self._loop.close()
