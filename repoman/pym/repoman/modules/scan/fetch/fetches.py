@@ -124,7 +124,7 @@ class FetchChecks(ScanBase):
 				# while file size over 60 KiB causes an error.
 				elif mystat.st_size > 61440:
 					self.qatracker.add_error(
-						"file.size.fatal", "(%d KiB) %s/files/%s" % (
+						"file.size-fatal", "(%d KiB) %s/files/%s" % (
 							mystat.st_size // 1024, xpkg, y))
 				elif mystat.st_size > 20480:
 					self.qatracker.add_error(
