@@ -60,13 +60,26 @@ class EbuildFetcher(CompositeTask):
 			self._async_wait()
 			return
 
+		# First get the SRC_URI metadata (it's not cached in self.pkg.metadata
+		# because some packages have an extremely large SRC_URI value).
+		self._start_task(
+			AsyncTaskFuture(
+				future=self.pkg.root_config.trees["porttree"].dbapi.\
+				async_aux_get(self.pkg.cpv, ["SRC_URI"], myrepo=self.pkg.repo,
+				loop=self.scheduler)),
+			self._start_with_metadata)
+
+	def _start_with_metadata(self, aux_get_task):
+		self._assert_current(aux_get_task)
+		self._fetcher_proc.src_uri, = aux_get_task.future.result()
 		self._start_task(self._fetcher_proc, self._default_final_exit)
 
 
 class _EbuildFetcherProcess(ForkProcess):
 
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
-		"pkg", "prefetch", "_digests", "_manifest", "_settings", "_uri_map")
+		"pkg", "prefetch", "src_uri", "_digests", "_manifest",
+		"_settings", "_uri_map")
 
 	def async_already_fetched(self, settings):
 		result = self.scheduler.create_future()
@@ -172,6 +185,7 @@ class _EbuildFetcherProcess(ForkProcess):
 
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
+		settings.configdict["pkg"]["SRC_URI"] = self.src_uri
 		portage.doebuild_environment(ebuild_path, 'fetch',
 			settings=settings, db=portdb)
 
