@@ -17,6 +17,7 @@ class InheritDeprecated(LineCheck):
 		"clutter": "gnome2",
 		"confutils": False,
 		"distutils": "distutils-r1",
+		"epatch": "(eapply since EAPI 6)",
 		"games": False,
 		"gems": "ruby-fakegem",
 		"gpe": False,
@@ -25,9 +26,11 @@ class InheritDeprecated(LineCheck):
 		"gst-plugins-good": "gstreamer",
 		"gst-plugins-ugly": "gstreamer",
 		"gst-plugins10": "gstreamer",
+		"ltprune": False,
 		"mono": "mono-env",
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
+		"versionator": "eapi7-ver (built-in since EAPI 7)",
 		"x-modular": "xorg-2",
 	}
 
