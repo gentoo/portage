@@ -880,6 +880,7 @@ __eapi6_src_install() {
 
 ___best_version_and_has_version_common() {
 	local atom root root_arg
+	local -a cmd=()
 	case $1 in
 		--host-root|-r|-d|-b)
 			root_arg=$1
@@ -903,7 +904,7 @@ ___best_version_and_has_version_common() {
 				# Since portageq requires the root argument be consistent
 				# with EPREFIX, ensure consistency here (bug 655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
-				local -x EPREFIX=${PORTAGE_OVERRIDE_EPREFIX}
+				cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 			else
 				root=/
 			fi ;;
@@ -927,10 +928,11 @@ ___best_version_and_has_version_common() {
 	esac
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}"
+		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
 	else
-		"${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}"
+		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}")
 	fi
+	"${cmd[@]}"
 	local retval=$?
 	case "${retval}" in
 		0|1)
