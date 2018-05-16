@@ -38,6 +38,7 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(here)), ".repoman_not_installed")
 
 import portage
 portage._internal_caller = True
+from portage.util._eventloop.global_event_loop import global_event_loop
 from repoman.main import repoman_main
 
 try:
@@ -48,3 +49,5 @@ except IOError as e:
 		sys.exit(1)
 	else:
 		raise
+finally:
+	global_event_loop().close()

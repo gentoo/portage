@@ -45,6 +45,7 @@ portage._internal_caller = True
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 if os.environ.get('NOCOLOR') in ('yes', 'true'):
 	portage.output.nocolor()
@@ -66,4 +67,7 @@ if insert_bin_path:
 	os.environ["PATH"] = ":".join(path)
 
 if __name__ == "__main__":
-	sys.exit(tests.main())
+	try:
+		sys.exit(tests.main())
+	finally:
+		global_event_loop().close()
