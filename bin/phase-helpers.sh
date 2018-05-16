@@ -891,7 +891,7 @@ ___best_version_and_has_version_common() {
 
 	case ${root_arg} in
 		"") if ___eapi_has_prefix_variables; then
-				root=${ROOT%/}/${EPREFIX}
+				root=${ROOT%/}/${EPREFIX#/}
 			else
 				root=${ROOT}
 			fi ;;
@@ -910,7 +910,7 @@ ___best_version_and_has_version_common() {
 			fi
 			if ___eapi_has_prefix_variables; then
 				case ${root_arg} in
-					-r) root=${ROOT%/}/${EPREFIX} ;;
+					-r) root=${ROOT%/}/${EPREFIX#/} ;;
 					-d) root=${ESYSROOT} ;;
 					-b) root=${BROOT:-/} ;;
 				esac
