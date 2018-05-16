@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.37
+==================================
+* repos.conf: Use openpgp-keys-* as key provider for gemato
+* Bug Fixes:
+    - Bug 654390 use asyncio's default event loop
+    - Bug 655414 fix has/best_version for cross-prefix portageq
+    - Bug 655860 fix ROOT overrides for has/best_version
+
+
 portage-2.3.36
 ==================================
 * Bug Fixes:
