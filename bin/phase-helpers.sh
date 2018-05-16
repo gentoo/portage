@@ -900,7 +900,10 @@ ___best_version_and_has_version_common() {
 				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
 			fi
 			if ___eapi_has_prefix_variables; then
+				# Since portageq requires the root argument be consistent
+				# with EPREFIX, ensure consistency here (bug 655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
+				local -x EPREFIX=${PORTAGE_OVERRIDE_EPREFIX}
 			else
 				root=/
 			fi ;;
