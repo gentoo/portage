@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.38
+==================================
+* Bug Fixes:
+    - Bug 655656 signal wakeup fd BlockingIOError messages
+
+
 portage-2.3.37
 ==================================
 * repos.conf: Use openpgp-keys-* as key provider for gemato
