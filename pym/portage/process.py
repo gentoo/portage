@@ -472,6 +472,16 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
 	signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
+	# Unregister SIGCHLD handler and wakeup_fd for the parent
+	# process's event loop (bug 655656).
+	signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+	try:
+		wakeup_fd = signal.set_wakeup_fd(-1)
+		if wakeup_fd > 0:
+			os.close(wakeup_fd)
+	except (ValueError, OSError):
+		pass
+
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
