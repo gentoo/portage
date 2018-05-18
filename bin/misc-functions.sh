@@ -439,14 +439,12 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
-			[ -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [ -f /sys/fs/selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
 			__vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
 
-				addwrite /selinux/context
 				addwrite /sys/fs/selinux/context
 
 				/usr/sbin/setfiles -F "${file_contexts_path}" -r "${D}" "${D}"
