@@ -30,6 +30,8 @@ from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
 from portage.process import find_binary
 from portage.util.compression_probe import _compressors
+from portage.util._eventloop.global_event_loop import global_event_loop
+
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
@@ -142,8 +144,15 @@ def quickpkg_atom(options, infos, arg, eout):
 			try:
 				compression = _compressors[binpkg_compression]
 			except KeyError as e:
-				eout.eerror("Invalid or unsupported compression method: %s" % e.args[0])
-				return 1
+				if binpkg_compression:
+					eout.eerror("Invalid or unsupported compression method: %s" % e.args[0])
+					return 1
+				# Empty BINPKG_COMPRESS disables compression.
+				binpkg_compression = 'none'
+				compression = {
+					'compress': 'cat',
+					'package': 'sys-apps/coreutils',
+				}
 			try:
 				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
 			except IndexError as e:
@@ -383,4 +392,5 @@ if __name__ == "__main__":
 	finally:
 		os.umask(old_umask)
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+		global_event_loop().close()
 	sys.exit(retval)

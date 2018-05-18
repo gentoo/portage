@@ -1,17 +1,24 @@
-# Copyright 2005-2017 Gentoo Foundation
+# Copyright 2005-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import io
 import logging
 import subprocess
 
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
-from portage.output import create_color_func
+from portage.output import create_color_func, EOutput
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.sync.syncbase import NewBase
+
+try:
+	from gemato.exceptions import GematoException
+	import gemato.openpgp
+except ImportError:
+	gemato = None
 
 
 class GitSync(NewBase):
@@ -37,6 +44,8 @@ class GitSync(NewBase):
 		'''Do the initial clone of the repository'''
 		if kwargs:
 			self._kwargs(kwargs)
+		if not self.has_bin:
+			return (1, False)
 		try:
 			if not os.path.exists(self.repo.location):
 				os.makedirs(self.repo.location)
@@ -71,6 +80,7 @@ class GitSync(NewBase):
 		else:
 			# default
 			git_cmd_opts += " --depth 1"
+
 		if self.repo.module_specific_options.get('sync-git-clone-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-clone-extra-opts']
 		git_cmd = "%s clone%s %s ." % (self.bin_command, git_cmd_opts,
@@ -85,6 +95,8 @@ class GitSync(NewBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
+		if not self.verify_head():
+			return (1, False)
 		return (os.EX_OK, True)
 
 
@@ -94,7 +106,8 @@ class GitSync(NewBase):
 		that he/she wants updated. We'll let the user manage branches with
 		git directly.
 		'''
-
+		if not self.has_bin:
+			return (1, False)
 		git_cmd_opts = ""
 		if self.repo.module_specific_options.get('sync-git-env'):
 			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-env'])
@@ -125,16 +138,92 @@ class GitSync(NewBase):
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
+		if not self.verify_head():
+			return (1, False)
 
 		current_rev = subprocess.check_output(rev_cmd,
 			cwd=portage._unicode_encode(self.repo.location))
 
 		return (os.EX_OK, current_rev != previous_rev)
 
+	def verify_head(self):
+		if (self.repo.module_specific_options.get(
+				'sync-git-verify-commit-signature', 'false') != 'true'):
+			return True
+
+		if self.repo.sync_openpgp_key_path is not None:
+			if gemato is None:
+				writemsg_level("!!! Verifying against specified key requires gemato-11.0+ installed\n",
+					level=logging.ERROR, noiselevel=-1)
+				return False
+			openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+		else:
+			openpgp_env = None
+
+		try:
+			out = EOutput()
+			env = None
+			if openpgp_env is not None:
+				try:
+					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
+					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
+						openpgp_env.import_key(f)
+					out.ebegin('Refreshing keys from keyserver')
+					openpgp_env.refresh_keys()
+					out.eend(0)
+				except GematoException as e:
+					writemsg_level("!!! Verification impossible due to keyring problem:\n%s\n"
+							% (e,),
+							level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
+				env = os.environ.copy()
+				env['GNUPGHOME'] = openpgp_env.home
+
+			rev_cmd = [self.bin_command, "log", "--pretty=format:%G?", "-1"]
+			try:
+				status = (portage._unicode_decode(
+					subprocess.check_output(rev_cmd,
+						cwd=portage._unicode_encode(self.repo.location),
+						env=env))
+					.strip())
+			except subprocess.CalledProcessError:
+				return False
+
+			if status == 'G':  # good signature is good
+				out.einfo('Trusted signature found on top commit')
+				return True
+			elif status == 'U':  # untrusted
+				out.ewarn('Top commit signature is valid but not trusted')
+				return True
+			else:
+				if status == 'B':
+					expl = 'bad signature'
+				elif status == 'X':
+					expl = 'expired signature'
+				elif status == 'Y':
+					expl = 'expired key'
+				elif status == 'R':
+					expl = 'revoked key'
+				elif status == 'E':
+					expl = 'unable to verify signature (missing key?)'
+				elif status == 'N':
+					expl = 'no signature'
+				else:
+					expl = 'unknown issue'
+				out.eerror('No valid signature found: %s' % (expl,))
+				return False
+		finally:
+			if openpgp_env is not None:
+				openpgp_env.close()
+
 	def retrieve_head(self, **kwargs):
 		'''Get information about the head commit'''
 		if kwargs:
 			self._kwargs(kwargs)
+		if self.bin_command is None:
+			# return quietly so that we don't pollute emerge --info output
+			return (1, False)
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
 		try:
 			ret = (os.EX_OK,

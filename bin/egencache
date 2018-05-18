@@ -1116,4 +1116,7 @@ def egencache_main(args):
 if __name__ == "__main__":
 	portage._disable_legacy_globals()
 	portage.util.noiselimit = -1
-	sys.exit(egencache_main(sys.argv[1:]))
+	try:
+		sys.exit(egencache_main(sys.argv[1:]))
+	finally:
+		global_event_loop().close()

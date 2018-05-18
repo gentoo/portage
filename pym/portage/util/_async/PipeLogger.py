@@ -1,4 +1,4 @@
-# Copyright 2008-2013 Gentoo Foundation
+# Copyright 2008-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -21,7 +21,7 @@ class PipeLogger(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_fd", "log_file_path", "stdout_fd") + \
-		("_log_file", "_log_file_real", "_reg_id")
+		("_log_file", "_log_file_real")
 
 	def _start(self):
 
@@ -57,8 +57,7 @@ class PipeLogger(AbstractPollTask):
 				fcntl.fcntl(fd, fcntl.F_SETFD,
 					fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._reg_id = self.scheduler.io_add_watch(fd,
-			self._registered_events, self._output_handler)
+		self.scheduler.add_reader(fd, self._output_handler, fd)
 		self._registered = True
 
 	def _cancel(self):
@@ -66,21 +65,14 @@ class PipeLogger(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
 
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		self.returncode = os.EX_OK
-		return self.returncode
-
-	def _output_handler(self, fd, event):
+	def _output_handler(self, fd):
 
 		background = self.background
 		stdout_fd = self.stdout_fd
 		log_file = self._log_file 
 
 		while True:
-			buf = self._read_buf(fd, event)
+			buf = self._read_buf(fd)
 
 			if buf is None:
 				# not a POLLIN event, EAGAIN, etc...
@@ -89,7 +81,8 @@ class PipeLogger(AbstractPollTask):
 			if not buf:
 				# EOF
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 				break
 
 			else:
@@ -130,20 +123,13 @@ class PipeLogger(AbstractPollTask):
 					log_file.write(buf)
 					log_file.flush()
 
-		self._unregister_if_appropriate(event)
-
-		return True
-
 	def _unregister(self):
-
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
-
 		if self.input_fd is not None:
 			if isinstance(self.input_fd, int):
+				self.scheduler.remove_reader(self.input_fd)
 				os.close(self.input_fd)
 			else:
+				self.scheduler.remove_reader(self.input_fd.fileno())
 				self.input_fd.close()
 			self.input_fd = None
 

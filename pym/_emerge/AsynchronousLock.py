@@ -1,8 +1,7 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import errno
 import logging
 import sys
 
@@ -37,7 +36,7 @@ class AsynchronousLock(AsynchronousTask):
 	signals to the main thread).
 	"""
 
-	__slots__ = ('path', 'scheduler',) + \
+	__slots__ = ('path',) + \
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
 		'_force_thread', '_unlock_future')
 
@@ -70,7 +69,8 @@ class AsynchronousLock(AsynchronousTask):
 
 	def _imp_exit(self, imp):
 		# call exit listeners
-		self.wait()
+		self.returncode = imp.returncode
+		self._async_wait()
 
 	def _cancel(self):
 		if isinstance(self._imp, AsynchronousTask):
@@ -80,26 +80,6 @@ class AsynchronousLock(AsynchronousTask):
 		if isinstance(self._imp, AsynchronousTask):
 			self._imp.poll()
 		return self.returncode
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self.returncode = self._imp.wait()
-		return self.returncode
-
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, since waiting
-		for the child process to respond can trigger event loop recursion
-		which is incompatible with asyncio.
-		"""
-		if self._imp is None:
-			raise AssertionError('not locked')
-		if isinstance(self._imp, (_LockProcess, _LockThread)):
-			self._imp.unlock()
-		else:
-			unlockfile(self._imp)
-		self._imp = None
 
 	def async_unlock(self):
 		"""
@@ -150,25 +130,16 @@ class _LockThread(AbstractPollTask):
 	def _run_lock(self):
 		self._lock_obj = lockfile(self.path, wantnewlockfile=True)
 		# Thread-safe callback to EventLoop
-		self.scheduler.idle_add(self._run_lock_cb)
+		self.scheduler.call_soon_threadsafe(self._run_lock_cb)
 
 	def _run_lock_cb(self):
 		self._unregister()
 		self.returncode = os.EX_OK
-		self.wait()
-		return False
+		self._async_wait()
 
 	def _cancel(self):
 		# There's currently no way to force thread termination.
 		pass
-
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, for compatibility
-		with _LockProcess.
-		"""
-		self._unlock()
-		self._unlock_future.set_result(None)
 
 	def _unlock(self):
 		if self._lock_obj is None:
@@ -209,8 +180,7 @@ class _LockProcess(AbstractPollTask):
 	"""
 
 	__slots__ = ('path',) + \
-		('_acquired', '_kill_test', '_proc', '_files',
-		 '_reg_id','_unlock_future')
+		('_acquired', '_kill_test', '_proc', '_files', '_unlock_future')
 
 	def _start(self):
 		in_pr, in_pw = os.pipe()
@@ -232,8 +202,7 @@ class _LockProcess(AbstractPollTask):
 				fcntl.fcntl(in_pr, fcntl.F_SETFD,
 					fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._reg_id = self.scheduler.io_add_watch(in_pr,
-			self.scheduler.IO_IN, self._output_handler)
+		self.scheduler.add_reader(in_pr, self._output_handler)
 		self._registered = True
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
@@ -273,7 +242,7 @@ class _LockProcess(AbstractPollTask):
 						level=logging.ERROR, noiselevel=-1)
 				self._unregister()
 				self.returncode = proc.returncode
-				self.wait()
+				self._async_wait()
 				return
 
 			if not self.cancelled and \
@@ -296,28 +265,18 @@ class _LockProcess(AbstractPollTask):
 			self._proc.poll()
 		return self.returncode
 
-	def _output_handler(self, f, event):
-		buf = None
-		if event & self.scheduler.IO_IN:
-			try:
-				buf = os.read(self._files['pipe_in'], self._bufsize)
-			except OSError as e:
-				if e.errno not in (errno.EAGAIN,):
-					raise
+	def _output_handler(self):
+		buf = self._read_buf(self._files['pipe_in'])
 		if buf:
 			self._acquired = True
 			self._unregister()
 			self.returncode = os.EX_OK
-			self.wait()
+			self._async_wait()
 
 		return True
 
 	def _unregister(self):
 		self._registered = False
-
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
 
 		if self._files is not None:
 			try:
@@ -325,17 +284,8 @@ class _LockProcess(AbstractPollTask):
 			except KeyError:
 				pass
 			else:
+				self.scheduler.remove_reader(pipe_in)
 				os.close(pipe_in)
-
-	def unlock(self):
-		"""
-		This method is deprecated in favor of async_unlock, since waiting
-		for the child process to respond can trigger event loop recursion
-		which is incompatible with asyncio.
-		"""
-		self._unlock()
-		self._proc.wait()
-		self._proc = None
 
 	def _unlock(self):
 		if self._proc is None:

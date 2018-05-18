@@ -20,7 +20,14 @@ class SlotObject(object):
 					raise AssertionError(
 						"class '%s' duplicates '%s' value in __slots__ of base class '%s'" %
 						(self.__class__.__name__, myattr, c.__name__))
-				setattr(self, myattr, myvalue)
+				try:
+					setattr(self, myattr, myvalue)
+				except AttributeError:
+					# Allow a property to override a __slots__ value, but raise an
+					# error if the intended value is something other than None.
+					if not (myvalue is None and
+						isinstance(getattr(type(self), myattr, None), property)):
+						raise
 
 		if kwargs:
 			raise TypeError(

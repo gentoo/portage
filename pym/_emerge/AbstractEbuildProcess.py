@@ -1,7 +1,8 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import functools
 import io
 import platform
 import stat
@@ -17,13 +18,15 @@ from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import shutil, os
+from portage.util.futures import asyncio
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
-		('_build_dir', '_ipc_daemon', '_exit_command', '_exit_timeout_id')
+		('_build_dir', '_build_dir_unlock', '_ipc_daemon',
+		'_exit_command', '_exit_timeout_id', '_start_future')
 
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
@@ -34,7 +37,7 @@ class AbstractEbuildProcess(SpawnProcess):
 	# doesn't hurt to be generous here since the scheduler
 	# continues to process events during this period, and it can
 	# return long before the timeout expires.
-	_exit_timeout = 10000 # 10 seconds
+	_exit_timeout = 10 # seconds
 
 	# The EbuildIpcDaemon support is well tested, but this variable
 	# is left so we can temporarily disable it if any issues arise.
@@ -61,7 +64,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
 			self._eerror(textwrap.wrap(msg, 72))
-			self._set_returncode((self.pid, 1 << 8))
+			self.returncode = 1
 			self._async_wait()
 			return
 
@@ -128,15 +131,19 @@ class AbstractEbuildProcess(SpawnProcess):
 			# since we're not displaying to a terminal anyway.
 			self.settings['NOCOLOR'] = 'true'
 
+		start_ipc_daemon = False
 		if self._enable_ipc_daemon:
 			self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
 			if self.phase not in self._phases_without_builddir:
+				start_ipc_daemon = True
 				if 'PORTAGE_BUILDDIR_LOCKED' not in self.settings:
 					self._build_dir = EbuildBuildDir(
 						scheduler=self.scheduler, settings=self.settings)
-					self._build_dir.lock()
-				self.settings['PORTAGE_IPC_DAEMON'] = "1"
-				self._start_ipc_daemon()
+					self._start_future = self._build_dir.async_lock()
+					self._start_future.add_done_callback(
+						functools.partial(self._start_post_builddir_lock,
+						start_ipc_daemon=start_ipc_daemon))
+					return
 			else:
 				self.settings.pop('PORTAGE_IPC_DAEMON', None)
 		else:
@@ -156,6 +163,19 @@ class AbstractEbuildProcess(SpawnProcess):
 						raise
 			else:
 				self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
+
+		self._start_post_builddir_lock(start_ipc_daemon=start_ipc_daemon)
+
+	def _start_post_builddir_lock(self, lock_future=None, start_ipc_daemon=False):
+		if lock_future is not None:
+			if lock_future is not self._start_future:
+				raise AssertionError('lock_future is not self._start_future')
+			self._start_future = None
+			lock_future.result()
+
+		if start_ipc_daemon:
+			self.settings['PORTAGE_IPC_DAEMON'] = "1"
+			self._start_ipc_daemon()
 
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
@@ -227,7 +247,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if self._registered:
 			# Let the process exit naturally, if possible.
 			self._exit_timeout_id = \
-				self.scheduler.timeout_add(self._exit_timeout,
+				self.scheduler.call_later(self._exit_timeout,
 				self._exit_command_timeout_cb)
 
 	def _exit_command_timeout_cb(self):
@@ -238,17 +258,14 @@ class AbstractEbuildProcess(SpawnProcess):
 			# being killed by a signal.
 			self.cancel()
 			self._exit_timeout_id = \
-				self.scheduler.timeout_add(self._cancel_timeout,
+				self.scheduler.call_later(self._cancel_timeout,
 					self._cancel_timeout_cb)
 		else:
 			self._exit_timeout_id = None
 
-		return False # only run once
-
 	def _cancel_timeout_cb(self):
 		self._exit_timeout_id = None
-		self.wait()
-		return False # only run once
+		self._async_waitpid()
 
 	def _orphan_process_warn(self):
 		phase = self.phase
@@ -330,16 +347,15 @@ class AbstractEbuildProcess(SpawnProcess):
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 			self.scheduler.output(msg, log_path=log_path)
 
-	def _log_poll_exception(self, event):
-		self._elog("eerror",
-			["%s received strange poll event: %s\n" % \
-			(self.__class__.__name__, event,)])
-
-	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		SpawnProcess._async_waitpid_cb(self, *args, **kwargs)
 
 		if self._exit_timeout_id is not None:
-			self.scheduler.source_remove(self._exit_timeout_id)
+			self._exit_timeout_id.cancel()
 			self._exit_timeout_id = None
 
 		if self._ipc_daemon is not None:
@@ -354,9 +370,7 @@ class AbstractEbuildProcess(SpawnProcess):
 					self.returncode = 1
 					if not self.cancelled:
 						self._unexpected_exit()
-			if self._build_dir is not None:
-				self._build_dir.unlock()
-				self._build_dir = None
+
 		elif not self.cancelled:
 			exit_file = self.settings.get('PORTAGE_EBUILD_EXIT_FILE')
 			if exit_file and not os.path.exists(exit_file):
@@ -367,3 +381,38 @@ class AbstractEbuildProcess(SpawnProcess):
 					self.returncode = 1
 					if not self.cancelled:
 						self._unexpected_exit()
+
+	def _async_wait(self):
+		"""
+		Override _async_wait to asynchronously unlock self._build_dir
+		when necessary.
+		"""
+		if self._build_dir is None:
+			SpawnProcess._async_wait(self)
+		elif self._build_dir_unlock is None:
+			if self.returncode is None:
+				raise asyncio.InvalidStateError('Result is not ready.')
+			self._async_unlock_builddir(returncode=self.returncode)
+
+	def _async_unlock_builddir(self, returncode=None):
+		"""
+		Release the lock asynchronously, and if a returncode parameter
+		is given then set self.returncode and notify exit listeners.
+		"""
+		if self._build_dir_unlock is not None:
+			raise AssertionError('unlock already in progress')
+		if returncode is not None:
+			# The returncode will be set after unlock is complete.
+			self.returncode = None
+		self._build_dir_unlock = self._build_dir.async_unlock()
+		# Unlock only once.
+		self._build_dir = None
+		self._build_dir_unlock.add_done_callback(
+			functools.partial(self._unlock_builddir_exit, returncode=returncode))
+
+	def _unlock_builddir_exit(self, unlock_future, returncode=None):
+		# Normally, async_unlock should not raise an exception here.
+		unlock_future.result()
+		if returncode is not None:
+			self.returncode = returncode
+			SpawnProcess._async_wait(self)

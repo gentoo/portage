@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import absolute_import, unicode_literals
@@ -272,6 +272,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				errors='strict')
 			try: # For safety copy then move it over.
 				_copyfile(src_bytes, dest_tmp_bytes)
+				_apply_stat(sstat, dest_tmp_bytes)
 				if xattr_enabled:
 					try:
 						_copyxattr(src_bytes, dest_tmp_bytes,
@@ -286,7 +287,6 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 						for line in msg:
 							writemsg("!!! %s\n" % (line,), noiselevel=-1)
 						raise
-				_apply_stat(sstat, dest_tmp_bytes)
 				_rename(dest_tmp_bytes, dest_bytes)
 				_os.unlink(src_bytes)
 			except SystemExit as e:

@@ -151,10 +151,10 @@ class fakedbapi(dbapi):
 		if mycp is None or \
 			(myslot is None and metadata is not None and metadata.get('SLOT')):
 			if metadata is None:
-				mycpv = _pkg_str(mycpv)
+				mycpv = _pkg_str(mycpv, db=self)
 			else:
 				mycpv = _pkg_str(mycpv, metadata=metadata,
-					settings=self.settings)
+					settings=self.settings, db=self)
 
 			mycp = mycpv.cp
 			try:

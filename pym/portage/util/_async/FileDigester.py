@@ -60,8 +60,11 @@ class FileDigester(ForkProcess):
 	def _digest_pipe_reader_exit(self, pipe_reader):
 		self._parse_digests(pipe_reader.getvalue())
 		self._digest_pipe_reader = None
-		self._unregister()
-		self.wait()
+		if self.pid is None:
+			self._unregister()
+			self._async_wait()
+		else:
+			self._async_waitpid()
 
 	def _unregister(self):
 		ForkProcess._unregister(self)

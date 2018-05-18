@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Gentoo Foundation
+# Copyright 2011-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -58,6 +58,8 @@ src_install() {
 	echo "blah blah blah" > "${T}"/latin-1-$(printf "\\xa9")-regular-file || die
 	doins "${T}"/latin-1-$(printf "\\xa9")-regular-file
 	dosym latin-1-$(printf "\\xa9")-regular-file ${latin_1_dir}/latin-1-$(printf "\\xa9")-symlink || die
+
+	call_has_and_best_version
 }
 
 pkg_config() {
@@ -69,8 +71,29 @@ pkg_info() {
 }
 
 pkg_preinst() {
-	einfo "called pkg_preinst for $CATEGORY/$PF"
+	if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+		# The BROOT variable is unset during pkg_* phases for EAPI 7,
+		# therefore best/has_version -b is expected to fail if we attempt
+		# to call it for EAPI 7 here.
+		call_has_and_best_version
+	fi
+}
 
+call_has_and_best_version() {
+	local root_arg
+	if ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+		root_arg="-b"
+	else
+		root_arg="--host-root"
+	fi
+	einfo "called ${EBUILD_PHASE_FUNC} for $CATEGORY/$PF"
+	einfo "EPREFIX=${EPREFIX}"
+	einfo "PORTAGE_OVERRIDE_EPREFIX=${PORTAGE_OVERRIDE_EPREFIX}"
+	einfo "ROOT=${ROOT}"
+	einfo "EROOT=${EROOT}"
+	einfo "SYSROOT=${SYSROOT}"
+	einfo "ESYSROOT=${ESYSROOT}"
+	einfo "BROOT=${BROOT}"
 	# Test that has_version and best_version work correctly with
 	# prefix (involves internal ROOT -> EROOT calculation in order
 	# to support ROOT override via the environment with EAPIs 3
@@ -82,11 +105,11 @@ pkg_preinst() {
 		einfo "has_version does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 	fi
 	if [[ ${EPREFIX} != ${PORTAGE_OVERRIDE_EPREFIX} ]] ; then
-		if has_version --host-root $CATEGORY/$PN:$SLOT ; then
-			einfo "has_version --host-root detects an installed instance of $CATEGORY/$PN:$SLOT"
-			einfo "best_version --host-root reports that the installed instance is $(best_version $CATEGORY/$PN:$SLOT)"
+		if has_version ${root_arg} $CATEGORY/$PN:$SLOT ; then
+			einfo "has_version ${root_arg} detects an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "best_version ${root_arg} reports that the installed instance is $(best_version ${root_arg} $CATEGORY/$PN:$SLOT)"
 		else
-			einfo "has_version --host-root does not detect an installed instance of $CATEGORY/$PN:$SLOT"
+			einfo "has_version ${root_arg} does not detect an installed instance of $CATEGORY/$PN:$SLOT"
 		fi
 	fi
 }
@@ -110,14 +133,16 @@ pkg_preinst() {
 				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/C-1": {
-				"EAPI" : "6",
+				"EAPI" : "7",
 				"KEYWORDS": "~x86",
 				"RDEPEND": "dev-libs/D[flag]",
+				"MISC_CONTENT": install_something,
 			},
 			"dev-libs/D-1": {
-				"EAPI" : "6",
+				"EAPI" : "7",
 				"KEYWORDS": "~x86",
 				"IUSE" : "flag",
+				"MISC_CONTENT": install_something,
 			},
 			"virtual/foo-0": {
 				"EAPI" : "5",
@@ -320,6 +345,16 @@ pkg_preinst() {
 			portageq_cmd + ("match", eroot, "dev-libs/D[flag]"),
 
 			# Test cross-prefix usage, including chpathtool for binpkgs.
+			# EAPI 7
+			({"EPREFIX" : cross_prefix},) + \
+				emerge_cmd + ("dev-libs/C",),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/C"),
+			({"EPREFIX" : cross_prefix},) + \
+				portageq_cmd + ("has_version", cross_prefix, "dev-libs/D"),
+			({"ROOT": cross_root},) + emerge_cmd + ("dev-libs/D",),
+			portageq_cmd + ("has_version", cross_eroot, "dev-libs/D"),
+			# EAPI 5
 			({"EPREFIX" : cross_prefix},) + \
 				emerge_cmd + ("--usepkgonly", "dev-libs/A"),
 			({"EPREFIX" : cross_prefix},) + \

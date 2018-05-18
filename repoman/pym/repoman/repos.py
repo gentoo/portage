@@ -28,7 +28,7 @@ class RepoSettings(object):
 	def __init__(
 		self, config_root, portdir, portdir_overlay,
 		repoman_settings=None, vcs_settings=None, options=None,
-		qawarnings=None):
+		qadata=None):
 		self.config_root = config_root
 		self.repoman_settings = repoman_settings
 		self.vcs_settings = vcs_settings
@@ -41,6 +41,22 @@ class RepoSettings(object):
 			self.repositories.get_repo_for_location(self.repodir)
 		except KeyError:
 			self._add_repo(config_root, portdir_overlay)
+
+		# Determine the master config loading list
+		self.masters_list = []
+		# get out repo masters value
+		masters = self.repositories.get_repo_for_location(self.repodir).masters
+		for repo in masters:
+			self.masters_list.append(os.path.join(repo.location, 'metadata', 'repoman'))
+		self.masters_list.append(os.path.join(self.repodir, 'metadata', 'repoman'))
+
+		logging.debug("RepoSettings: init(); load qadata")
+		# load the repo specific configuration
+		self.qadata = qadata
+		if not self.qadata.load_repo_config(self.masters_list, options, repoman_settings.valid_versions):
+			logging.error("Aborting...")
+			sys.exit(1)
+		logging.debug("RepoSettings: qadata loaded: %s", qadata.no_exec)
 
 		self.root = self.repoman_settings['EROOT']
 		self.trees = {
@@ -59,9 +75,6 @@ class RepoSettings(object):
 			# all paths are canonical
 			if repo.location not in self.repo_config.eclass_db.porttrees:
 				del self.repositories[repo.name]
-
-		if self.repo_config.allow_provide_virtual:
-			qawarnings.add("virtual.oldstyle")
 
 		if self.repo_config.sign_commit and options.mode in ("commit", "fix", "manifest"):
 			if vcs_settings.vcs:

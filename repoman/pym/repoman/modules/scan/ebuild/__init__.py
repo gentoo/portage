@@ -37,6 +37,7 @@ module_spec = {
 				'xpkg': (None, None),
 				'y_ebuild': (None, None),
 			},
+			'module_runsIn': ['pkgs', 'ebuilds'],
 		},
 		'multicheck-module': {
 			'name': "multicheck",
@@ -46,13 +47,15 @@ module_spec = {
 			'functions': ['check'],
 			'func_kwargs': {
 			},
-			'mod_kwargs': ['qatracker', 'options'
+			'mod_kwargs': ['qatracker', 'options', 'repo_settings', 'linechecks',
 			],
 			'func_kwargs': {
 				'ebuild': (None, None),
 				'pkg': (None, None),
 			},
+			'module_runsIn': ['ebuilds'],
 		},
-	}
+	},
+	'version': 1,
 }
 

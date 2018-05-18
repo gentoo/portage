@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -6,7 +6,7 @@ from portage import os
 
 class CompositeTask(AsynchronousTask):
 
-	__slots__ = ("scheduler",) + ("_current_task",)
+	__slots__ = ("_current_task",)
 
 	_TASK_QUEUED = -1
 
@@ -18,6 +18,7 @@ class CompositeTask(AsynchronousTask):
 			if self._current_task is self._TASK_QUEUED:
 				self.returncode = 1
 				self._current_task = None
+				self._async_wait()
 			else:
 				self._current_task.cancel()
 
@@ -42,47 +43,6 @@ class CompositeTask(AsynchronousTask):
 				# don't poll the same task more than once
 				break
 			task.poll()
-			prev = task
-
-		return self.returncode
-
-	def _wait(self):
-
-		prev = None
-		while True:
-			task = self._current_task
-			if task is None:
-				# don't wait for the same task more than once
-				break
-			if task is self._TASK_QUEUED:
-				if self.cancelled:
-					self.returncode = 1
-					self._current_task = None
-					break
-				else:
-					while not self._task_queued_wait():
-						self.scheduler.iteration()
-					if self.returncode is not None:
-						break
-					elif self.cancelled:
-						self.returncode = 1
-						self._current_task = None
-						break
-					else:
-						# try this again with new _current_task value
-						continue
-			if task is prev:
-				if self.returncode is not None:
-					# This is expected if we're being
-					# called from the task's exit listener
-					# after it's been cancelled.
-					break
-				# Before the task.wait() method returned, an exit
-				# listener should have set self._current_task to either
-				# a different task or None. Something is wrong.
-				raise AssertionError("self._current_task has not " + \
-					"changed since calling wait", self, task)
-			task.wait()
 			prev = task
 
 		return self.returncode

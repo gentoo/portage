@@ -17,7 +17,7 @@ if ! ___eapi_has_prefix_variables; then
 	ED=${D}
 fi
 
-dir="${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+dir="${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
 if [ ! -d "${dir}" ] ; then
 	install -d "${dir}"
 fi

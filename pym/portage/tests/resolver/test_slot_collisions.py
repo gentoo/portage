@@ -136,15 +136,19 @@ class SlotCollisionTestCase(TestCase):
 				slot_collision_solutions = [{"sci-libs/Q-1": {"foo": True}, "sci-libs/P-1": {"foo": True}}]
 				),
 
-			#Conflict with REQUIRED_USE
-			ResolverPlaygroundTestCase(
-				["=app-misc/C-1", "=app-misc/B-1"],
-				all_permutations = True,
-				slot_collision_solutions = [],
-				mergelist = ["app-misc/A-1", "app-misc/C-1", "app-misc/B-1"],
-				ignore_mergelist_order = True,
-				success = False),
 			)
+			# NOTE: For this test case, ResolverPlaygroundTestCase attributes
+			# vary randomly between runs, so it's expected to fail randomly.
+			#Conflict with REQUIRED_USE
+			#ResolverPlaygroundTestCase(
+			#	["=app-misc/C-1", "=app-misc/B-1"],
+			#	all_permutations = True,
+			#	slot_collision_solutions = None,
+			#	use_changes={"app-misc/A-1": {"foo": True}},
+			#	mergelist = ["app-misc/A-1", "app-misc/C-1", "app-misc/B-1"],
+			#	ignore_mergelist_order = True,
+			#	success = False),
+			#)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
 		try:

@@ -1,4 +1,4 @@
-# Copyright 1998-2016 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -29,6 +29,7 @@ from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	ParseError, PermissionDenied, PortageException
 from portage.localization import _
+from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage import _movefile
 from portage import os
 from portage import _encodings
@@ -85,9 +86,9 @@ class bindbapi(fakedbapi):
 		self.move_ent = mybintree.move_ent
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
+			["BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
 			"DEPEND", "EAPI", "HDEPEND", "IUSE", "KEYWORDS",
-			"LICENSE", "MD5", "PDEPEND", "PROPERTIES", "PROVIDE",
+			"LICENSE", "MD5", "PDEPEND", "PROPERTIES",
 			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
 			"SIZE", "SLOT", "USE", "_mtime_", "EPREFIX"
 			])
@@ -312,16 +313,17 @@ class binarytree(object):
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["BASE_URI", "BUILD_ID", "BUILD_TIME", "CHOST",
+				["BASE_URI", "BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST",
 				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
 				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
-				"PKGINDEX_URI", "PROPERTIES", "PROVIDE", "PROVIDES",
+				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
 				"RDEPEND", "repository", "REQUIRES", "RESTRICT",
 				"SIZE", "SLOT", "USE", "EPREFIX"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
-				("DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
-				"PDEPEND", "PROPERTIES", "PROVIDE", "RESTRICT")
+				("BDEPEND", "DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
+				"PDEPEND", "PROPERTIES", "RESTRICT")
+			self._pkgindex_header = None
 			self._pkgindex_header_keys = set([
 				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
 				"ACCEPT_PROPERTIES", "ACCEPT_RESTRICT", "CBUILD",
@@ -331,6 +333,7 @@ class binarytree(object):
 				"USE_EXPAND_UNPREFIXED",
 				"EPREFIX"])
 			self._pkgindex_default_pkg_data = {
+				"BDEPEND" : "",
 				"BUILD_ID"           : "",
 				"BUILD_TIME"         : "",
 				"DEFINED_PHASES"     : "",
@@ -343,7 +346,6 @@ class binarytree(object):
 				"PATH"    : "",
 				"PDEPEND" : "",
 				"PROPERTIES" : "",
-				"PROVIDE" : "",
 				"PROVIDES": "",
 				"RDEPEND" : "",
 				"REQUIRES": "",
@@ -459,7 +461,7 @@ class binarytree(object):
 				if v is not None:
 					v = _unicode_decode(v)
 					metadata[k] = " ".join(v.split())
-			mynewcpv = _pkg_str(mynewcpv, metadata=metadata)
+			mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
 			new_path = self.getname(mynewcpv)
 			self._pkg_paths[
 				self.dbapi._instance_key(mynewcpv)] = new_path[len(self.pkgdir)+1:]
@@ -590,7 +592,7 @@ class binarytree(object):
 			basename_index = {}
 			for d in pkgindex.packages:
 				cpv = _pkg_str(d["CPV"], metadata=d,
-					settings=self.settings)
+					settings=self.settings, db=self.dbapi)
 				d["CPV"] = cpv
 				metadata[_instance_key(cpv)] = d
 				path = d.get("PATH")
@@ -756,8 +758,8 @@ class binarytree(object):
 					pkg_metadata.pop("CATEGORY")
 					pkg_metadata.pop("PF")
 					mycpv = _pkg_str(mycpv,
-						metadata=self.dbapi._aux_cache_slot_dict(
-						pkg_metadata))
+						metadata=self.dbapi._aux_cache_slot_dict(pkg_metadata),
+						db=self.dbapi)
 					pkg_paths[_instance_key(mycpv)] = mypath
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
@@ -805,6 +807,10 @@ class binarytree(object):
 				del pkgindex.packages[:]
 				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
+
+			self._pkgindex_header = {}
+			self._merge_pkgindex_header(pkgindex.header,
+				self._pkgindex_header)
 
 		return pkgindex if update_pkgindex else None
 
@@ -1029,7 +1035,7 @@ class binarytree(object):
 				remote_base_uri = pkgindex.header.get("URI", base_url)
 				for d in pkgindex.packages:
 					cpv = _pkg_str(d["CPV"], metadata=d,
-						settings=self.settings)
+						settings=self.settings, db=self.dbapi)
 					# Local package instances override remote instances
 					# with the same instance_key.
 					if self.dbapi.cpv_exists(cpv):
@@ -1042,6 +1048,8 @@ class binarytree(object):
 					self.dbapi.cpv_inject(cpv)
 
 				self._remote_has_index = True
+				self._merge_pkgindex_header(pkgindex.header,
+					self._pkgindex_header)
 
 	def inject(self, cpv, filename=None):
 		"""Add a freshly built package to the database.  This updates
@@ -1098,7 +1106,8 @@ class binarytree(object):
 				if self._remotepkgs is not None:
 					fetched = self._remotepkgs.pop(instance_key, None)
 
-		cpv = _pkg_str(cpv, metadata=metadata, settings=self.settings)
+		cpv = _pkg_str(cpv, metadata=metadata, settings=self.settings,
+			db=self.dbapi)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
@@ -1129,7 +1138,7 @@ class binarytree(object):
 				build_id = self._parse_build_id(basename)
 				metadata["BUILD_ID"] = _unicode(build_id)
 				cpv = _pkg_str(cpv, metadata=metadata,
-					settings=self.settings)
+					settings=self.settings, db=self.dbapi)
 				binpkg = portage.xpak.tbz2(full_path)
 				binary_data = binpkg.get_data()
 				binary_data[b"BUILD_ID"] = _unicode_encode(
@@ -1292,7 +1301,69 @@ class binarytree(object):
 			inherited_keys=self._pkgindex_inherited_keys,
 			translated_keys=self._pkgindex_translated_keys)
 
+	@staticmethod
+	def _merge_pkgindex_header(src, dest):
+		"""
+		Merge Packages header settings from src to dest, in order to
+		propagate implicit IUSE and USE_EXPAND settings for use with
+		binary and installed packages. Values are appended, so the
+		result is a union of elements from src and dest.
+
+		Pull in ARCH if it's not defined, since it's used for validation
+		by emerge's profile_check function, and also for KEYWORDS logic
+		in the _getmaskingstatus function.
+
+		@param src: source mapping (read only)
+		@type src: Mapping
+		@param dest: destination mapping
+		@type dest: MutableMapping
+		"""
+		for k, v in iter_iuse_vars(src):
+			v_before = dest.get(k)
+			if v_before is not None:
+				v = v_before + ' ' + v
+			dest[k] = v
+
+		if 'ARCH' not in dest and 'ARCH' in src:
+			dest['ARCH'] = src['ARCH']
+
+	def _propagate_config(self, config):
+		"""
+		Propagate implicit IUSE and USE_EXPAND settings from the binary
+		package database to a config instance. If settings are not
+		available to propagate, then this will do nothing and return
+		False.
+
+		@param config: config instance
+		@type config: portage.config
+		@rtype: bool
+		@return: True if settings successfully propagated, False if settings
+			were not available to propagate.
+		"""
+		if self._pkgindex_header is None:
+			return False
+
+		self._merge_pkgindex_header(self._pkgindex_header,
+			config.configdict['defaults'])
+		config.regenerate()
+		config._init_iuse()
+		return True
+
 	def _update_pkgindex_header(self, header):
+		"""
+		Add useful settings to the Packages file header, for use by
+		binhost clients.
+
+		This will return silently if the current profile is invalid or
+		does not have an IUSE_IMPLICIT variable, since it's useful to
+		maintain a cache of implicit IUSE settings for use with binary
+		packages.
+		"""
+		if not (self.settings.profile_path and
+			"IUSE_IMPLICIT" in self.settings):
+			header.setdefault("VERSION", _unicode(self._pkgindex_version))
+			return
+
 		portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
 		profiles_base = os.path.join(portdir, "profiles") + os.path.sep
 		if self.settings.profile_path:
@@ -1307,7 +1378,9 @@ class binarytree(object):
 			header["URI"] = base_uri
 		else:
 			header.pop("URI", None)
-		for k in self._pkgindex_header_keys:
+		for k in list(self._pkgindex_header_keys) + \
+			self.settings.get("USE_EXPAND_IMPLICIT", "").split() + \
+			self.settings.get("USE_EXPAND_UNPREFIXED", "").split():
 			v = self.settings.get(k, None)
 			if v:
 				header[k] = v

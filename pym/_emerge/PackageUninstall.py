@@ -1,11 +1,13 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import logging
 import portage
 from portage import os
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.exception import UnsupportedAPIException
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.emergelog import emergelog
 from _emerge.CompositeTask import CompositeTask
@@ -53,8 +55,13 @@ class PackageUninstall(CompositeTask):
 
 		self._builddir_lock = EbuildBuildDir(
 			scheduler=self.scheduler, settings=self.settings)
-		self._builddir_lock.lock()
+		self._start_task(
+			AsyncTaskFuture(future=self._builddir_lock.async_lock()),
+			self._start_unmerge)
 
+	def _start_unmerge(self, lock_task):
+		self._assert_current(lock_task)
+		lock_task.future.result()
 		portage.prepare_build_dirs(
 			settings=self.settings, cleanup=True)
 
@@ -65,15 +72,14 @@ class PackageUninstall(CompositeTask):
 			writemsg_level=self._writemsg_level)
 
 		if retval != os.EX_OK:
-			self._builddir_lock.unlock()
-			self.returncode = retval
-			self._async_wait()
+			self._async_unlock_builddir(returncode=retval)
 			return
 
 		self._writemsg_level(">>> Unmerging %s...\n" % (self.pkg.cpv,),
 			noiselevel=-1)
 		self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
 
+		cat, pf = portage.catsplit(self.pkg.cpv)
 		unmerge_task = MergeProcess(
 			mycat=cat, mypkg=pf, settings=self.settings,
 			treetype="vartree", vartree=self.pkg.root_config.trees["vartree"],
@@ -90,8 +96,27 @@ class PackageUninstall(CompositeTask):
 		else:
 			self._emergelog(" >>> unmerge success: %s" % (self.pkg.cpv,))
 			self.world_atom(self.pkg)
-		self._builddir_lock.unlock()
-		self.wait()
+		self._async_unlock_builddir(returncode=self.returncode)
+
+	def _async_unlock_builddir(self, returncode=None):
+		"""
+		Release the lock asynchronously, and if a returncode parameter
+		is given then set self.returncode and notify exit listeners.
+		"""
+		if returncode is not None:
+			# The returncode will be set after unlock is complete.
+			self.returncode = None
+		self._start_task(
+			AsyncTaskFuture(future=self._builddir_lock.async_unlock()),
+			functools.partial(self._unlock_builddir_exit, returncode=returncode))
+
+	def _unlock_builddir_exit(self, unlock_task, returncode=None):
+		self._assert_current(unlock_task)
+		# Normally, async_unlock should not raise an exception here.
+		unlock_task.future.result()
+		if returncode is not None:
+			self.returncode = returncode
+			self._async_wait()
 
 	def _emergelog(self, msg):
 		emergelog("notitles" not in self.settings.features, msg)

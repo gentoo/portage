@@ -1,15 +1,22 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
 
+import collections
 import errno
+import functools
 import logging
 import os
 import select
 import signal
 import sys
-import time
+import traceback
+
+try:
+	import asyncio as _real_asyncio
+except ImportError:
+	_real_asyncio = None
 
 try:
 	import fcntl
@@ -24,11 +31,13 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util.futures.futures:_EventLoopFuture',
+	'portage.util.futures:asyncio',
+	'portage.util.futures.executor.fork:ForkExecutor',
+	'portage.util.futures.unix_events:_PortageEventLoop,_PortageChildWatcher',
 )
 
-from portage import OrderedDict
 from portage.util import writemsg_level
+from portage.util.monotonic import monotonic
 from ..SlotObject import SlotObject
 from .PollConstants import PollConstants
 from .PollSelectAdapter import PollSelectAdapter
@@ -51,7 +60,7 @@ class EventLoop(object):
 		__slots__ = ("callback", "data", "pid", "source_id")
 
 	class _idle_callback_class(SlotObject):
-		__slots__ = ("args", "callback", "calling", "source_id")
+		__slots__ = ("_args", "_callback", "_cancelled")
 
 	class _io_handler_class(SlotObject):
 		__slots__ = ("args", "callback", "f", "source_id")
@@ -92,6 +101,22 @@ class EventLoop(object):
 			self._callback(*self._args)
 			return False
 
+	class _selector_callback(object):
+		"""
+		Wraps an callback, and always returns True, for callbacks that
+		are supposed to run repeatedly.
+		"""
+		__slots__ = ("_args", "_callbacks")
+
+		def __init__(self, callbacks):
+			self._callbacks = callbacks
+
+		def __call__(self, fd, event):
+			for callback, mask in self._callbacks:
+				if event & mask:
+					callback()
+			return True
+
 	def __init__(self, main=True):
 		"""
 		@param main: If True then this is a singleton instance for use
@@ -101,11 +126,16 @@ class EventLoop(object):
 		@type main: bool
 		"""
 		self._use_signal = main and fcntl is not None
+		self._debug = bool(os.environ.get('PYTHONASYNCIODEBUG'))
 		self._thread_rlock = threading.RLock()
 		self._thread_condition = threading.Condition(self._thread_rlock)
 		self._poll_event_queue = []
 		self._poll_event_handlers = {}
 		self._poll_event_handler_ids = {}
+		# Number of current calls to self.iteration(). A number greater
+		# than 1 indicates recursion, which is not supported by asyncio's
+		# default event loop.
+		self._iteration_depth = 0
 		# Increment id for each new handler.
 		self._event_handler_id = 0
 		# New call_soon callbacks must have an opportunity to
@@ -116,12 +146,14 @@ class EventLoop(object):
 		# If this attribute has changed since the last time that the
 		# call_soon callbacks have been called, then it's not safe to
 		# wait on self._thread_condition without a timeout.
-		self._call_soon_id = 0
-		# Use OrderedDict in order to emulate the FIFO queue behavior
-		# of the AbstractEventLoop.call_soon method.
-		self._idle_callbacks = OrderedDict()
+		self._call_soon_id = None
+		# Use deque, with thread-safe append, in order to emulate the FIFO
+		# queue behavior of the AbstractEventLoop.call_soon method.
+		self._idle_callbacks = collections.deque()
+		self._idle_callbacks_remaining = 0
 		self._timeout_handlers = {}
 		self._timeout_interval = None
+		self._default_executor = None
 
 		self._poll_obj = None
 		try:
@@ -165,20 +197,25 @@ class EventLoop(object):
 			self.IO_OUT = PollConstants.POLLOUT
 			self.IO_PRI = PollConstants.POLLPRI
 
+		# These trigger both reader and writer callbacks.
+		EVENT_SHARED = self.IO_HUP | self.IO_ERR | self.IO_NVAL
+
+		self._EVENT_READ = self.IO_IN | EVENT_SHARED
+		self._EVENT_WRITE = self.IO_OUT | EVENT_SHARED
+
 		self._child_handlers = {}
 		self._sigchld_read = None
 		self._sigchld_write = None
 		self._sigchld_src_id = None
 		self._pid = os.getpid()
+		self._asyncio_wrapper = _PortageEventLoop(loop=self)
+		self._asyncio_child_watcher = _PortageChildWatcher(self)
 
 	def create_future(self):
 		"""
-		Create a Future object attached to the loop. This returns
-		an instance of _EventLoopFuture, because EventLoop is currently
-		missing some of the asyncio.AbstractEventLoop methods that
-		asyncio.Future requires.
+		Create a Future object attached to the loop.
 		"""
-		return _EventLoopFuture(loop=self)
+		return asyncio.Future(loop=self._asyncio_wrapper)
 
 	def _new_source_id(self):
 		"""
@@ -243,7 +280,13 @@ class EventLoop(object):
 		@rtype: bool
 		@return: True if events were dispatched.
 		"""
+		self._iteration_depth += 1
+		try:
+			return self._iteration(*args)
+		finally:
+			self._iteration_depth -= 1
 
+	def _iteration(self, *args):
 		may_block = True
 
 		if args:
@@ -264,7 +307,10 @@ class EventLoop(object):
 					events_handled += 1
 				timeouts_checked = True
 
-				call_soon = prev_call_soon_id != self._call_soon_id
+				call_soon = prev_call_soon_id is not self._call_soon_id
+				if self._call_soon_id is not None and self._call_soon_id._cancelled:
+					# Allow garbage collection of cancelled callback.
+					self._call_soon_id = None
 
 				if (not call_soon and not event_handlers
 					and not events_handled and may_block):
@@ -407,8 +453,8 @@ class EventLoop(object):
 					self._sigchld_read, self.IO_IN, self._sigchld_io_cb)
 				signal.signal(signal.SIGCHLD, self._sigchld_sig_cb)
 
-		# poll now, in case the SIGCHLD has already arrived
-		self._poll_child_processes()
+		# poll soon, in case the SIGCHLD has already arrived
+		self.call_soon(self._poll_child_processes)
 		return source_id
 
 	def _sigchld_sig_cb(self, signum, frame):
@@ -467,37 +513,58 @@ class EventLoop(object):
 
 		@type callback: callable
 		@param callback: a function to call
-		@rtype: int
-		@return: an integer ID
+		@return: a handle which can be used to cancel the callback
+			via the source_remove method
+		@rtype: object
 		"""
 		with self._thread_condition:
-			source_id = self._call_soon_id = self._new_source_id()
-			self._idle_callbacks[source_id] = self._idle_callback_class(
-				args=args, callback=callback, source_id=source_id)
+			source_id = self._idle_add(callback, *args)
 			self._thread_condition.notify()
 		return source_id
+
+	def _idle_add(self, callback, *args):
+		"""Like idle_add(), but without thread safety."""
+		# Hold self._thread_condition when assigning self._call_soon_id,
+		# since it might be modified via a thread-safe method.
+		with self._thread_condition:
+			handle = self._call_soon_id = self._idle_callback_class(
+				_args=args, _callback=callback)
+		# This deque append is thread-safe, but it does *not* notify the
+		# loop's thread, so the caller must notify if appropriate.
+		self._idle_callbacks.append(handle)
+		return handle
 
 	def _run_idle_callbacks(self):
 		# assumes caller has acquired self._thread_rlock
 		if not self._idle_callbacks:
 			return False
 		state_change = 0
-		# Iterate of our local list, since self._idle_callbacks can be
-		# modified during the exection of these callbacks.
-		for x in list(self._idle_callbacks.values()):
-			if x.source_id not in self._idle_callbacks:
+		reschedule = []
+		# Use remaining count to avoid calling any newly scheduled callbacks,
+		# since self._idle_callbacks can be modified during the exection of
+		# these callbacks. The remaining count can be reset by recursive
+		# calls to this method. Recursion must remain supported until all
+		# consumers of AsynchronousLock.unlock() have been migrated to the
+		# async_unlock() method, see bug 614108.
+		self._idle_callbacks_remaining = len(self._idle_callbacks)
+
+		while self._idle_callbacks_remaining:
+			self._idle_callbacks_remaining -= 1
+			try:
+				x = self._idle_callbacks.popleft() # thread-safe
+			except IndexError:
+				break
+			if x._cancelled:
 				# it got cancelled while executing another callback
 				continue
-			if x.calling:
-				# don't call it recursively
-				continue
-			x.calling = True
-			try:
-				if not x.callback(*x.args):
-					state_change += 1
-					self.source_remove(x.source_id)
-			finally:
-				x.calling = False
+			if x._callback(*x._args):
+				# Reschedule, but not until after it's called, since
+				# we don't want it to call itself in a recursive call
+				# to this method.
+				self._idle_callbacks.append(x)
+			else:
+				x._cancelled = True
+				state_change += 1
 
 		return bool(state_change)
 
@@ -515,7 +582,7 @@ class EventLoop(object):
 			self._timeout_handlers[source_id] = \
 				self._timeout_handler_class(
 					interval=interval, function=function, args=args,
-					source_id=source_id, timestamp=time.time())
+					source_id=source_id, timestamp=self.time())
 			if self._timeout_interval is None or \
 				self._timeout_interval > interval:
 				self._timeout_interval = interval
@@ -538,7 +605,7 @@ class EventLoop(object):
 				return bool(calls)
 
 			ready_timeouts = []
-			current_time = time.time()
+			current_time = self.time()
 			for x in self._timeout_handlers.values():
 				elapsed_seconds = current_time - x.timestamp
 				# elapsed_seconds < 0 means the system clock has been adjusted
@@ -558,13 +625,109 @@ class EventLoop(object):
 				calls += 1
 				x.calling = True
 				try:
-					x.timestamp = time.time()
+					x.timestamp = self.time()
 					if not x.function(*x.args):
 						self.source_remove(x.source_id)
 				finally:
 					x.calling = False
 
 		return bool(calls)
+
+	def add_reader(self, fd, callback, *args):
+		"""
+		Start watching the file descriptor for read availability and then
+		call the callback with specified arguments.
+
+		Use functools.partial to pass keywords to the callback.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		callbacks = [(functools.partial(callback, *args), self._EVENT_READ)]
+		selector_mask = self._EVENT_READ
+		if handler is not None:
+			if not isinstance(handler.callback, self._selector_callback):
+				raise AssertionError("add_reader called with fd "
+					"registered directly via io_add_watch")
+			for item in handler.callback._callbacks:
+				callback, mask = item
+				if mask != self._EVENT_READ:
+					selector_mask |= mask
+					callbacks.append(item)
+			self.source_remove(handler.source_id)
+		self.io_add_watch(fd, selector_mask, self._selector_callback(callbacks))
+
+	def remove_reader(self, fd):
+		"""
+		Stop watching the file descriptor for read availability.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		if handler is not None:
+			if not isinstance(handler.callback, self._selector_callback):
+				raise AssertionError("remove_reader called with fd "
+					"registered directly via io_add_watch")
+			callbacks = []
+			selector_mask = 0
+			removed = False
+			for item in handler.callback._callbacks:
+				callback, mask = item
+				if mask == self._EVENT_READ:
+					removed = True
+				else:
+					selector_mask |= mask
+					callbacks.append(item)
+			self.source_remove(handler.source_id)
+			if callbacks:
+				self.io_add_watch(fd, selector_mask,
+					self._selector_callback(callbacks))
+			return removed
+		return False
+
+	def add_writer(self, fd, callback, *args):
+		"""
+		Start watching the file descriptor for write availability and then
+		call the callback with specified arguments.
+
+		Use functools.partial to pass keywords to the callback.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		callbacks = [(functools.partial(callback, *args), self._EVENT_WRITE)]
+		selector_mask = self._EVENT_WRITE
+		if handler is not None:
+			if not isinstance(handler.callback, self._selector_callback):
+				raise AssertionError("add_reader called with fd "
+					"registered directly via io_add_watch")
+			for item in handler.callback._callbacks:
+				callback, mask = item
+				if mask != self._EVENT_WRITE:
+					selector_mask |= mask
+					callbacks.append(item)
+			self.source_remove(handler.source_id)
+		self.io_add_watch(fd, selector_mask, self._selector_callback(callbacks))
+
+	def remove_writer(self, fd):
+		"""
+		Stop watching the file descriptor for write availability.
+		"""
+		handler = self._poll_event_handlers.get(fd)
+		if handler is not None:
+			if not isinstance(handler.callback, self._selector_callback):
+				raise AssertionError("remove_reader called with fd "
+					"registered directly via io_add_watch")
+			callbacks = []
+			selector_mask = 0
+			removed = False
+			for item in handler.callback._callbacks:
+				callback, mask = item
+				if mask == self._EVENT_WRITE:
+					removed = True
+				else:
+					selector_mask |= mask
+					callbacks.append(item)
+			self.source_remove(handler.source_id)
+			if callbacks:
+				self.io_add_watch(fd, selector_mask,
+					self._selector_callback(callbacks))
+			return removed
+		return False
 
 	def io_add_watch(self, f, condition, callback, *args):
 		"""
@@ -597,6 +760,12 @@ class EventLoop(object):
 		is found and removed, and False if the reg_id is invalid or has
 		already been removed.
 		"""
+		if isinstance(reg_id, self._idle_callback_class):
+			if not reg_id._cancelled:
+				reg_id._cancelled = True
+				return True
+			return False
+
 		x = self._child_handlers.pop(reg_id, None)
 		if x is not None:
 			if not self._child_handlers and self._use_signal:
@@ -606,9 +775,6 @@ class EventLoop(object):
 			return True
 
 		with self._thread_rlock:
-			idle_callback = self._idle_callbacks.pop(reg_id, None)
-			if idle_callback is not None:
-				return True
 			timeout_handler = self._timeout_handlers.pop(reg_id, None)
 			if timeout_handler is not None:
 				if timeout_handler.interval == self._timeout_interval:
@@ -653,7 +819,15 @@ class EventLoop(object):
 		@return: the Future's result
 		@raise: the Future's exception
 		"""
-		while not future.done():
+		future = asyncio.ensure_future(future, loop=self._asyncio_wrapper)
+
+		# Since done callbacks are executed via call_soon, it's desirable
+		# to continue iterating until those callbacks have executed, which
+		# is easily achieved by registering a done callback and waiting for
+		# it to execute.
+		waiter = self.create_future()
+		future.add_done_callback(waiter.set_result)
+		while not waiter.done():
 			self.iteration()
 
 		return future.result()
@@ -678,11 +852,206 @@ class EventLoop(object):
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
+		return self._handle(self._idle_add(
+			self._call_soon_callback(callback, args)), self)
+
+	def call_soon_threadsafe(self, callback, *args):
+		"""Like call_soon(), but thread safe."""
+		# idle_add provides thread safety
 		return self._handle(self.idle_add(
 			self._call_soon_callback(callback, args)), self)
 
-	# The call_soon method inherits thread safety from the idle_add method.
-	call_soon_threadsafe = call_soon
+	def time(self):
+		"""Return the time according to the event loop's clock.
+
+		This is a float expressed in seconds since an epoch, but the
+		epoch, precision, accuracy and drift are unspecified and may
+		differ per event loop.
+		"""
+		return monotonic()
+
+	def call_later(self, delay, callback, *args):
+		"""
+		Arrange for the callback to be called after the given delay seconds
+		(either an int or float).
+
+		An instance of asyncio.Handle is returned, which can be used to cancel
+		the callback.
+
+		callback will be called exactly once per call to call_later(). If two
+		callbacks are scheduled for exactly the same time, it is undefined
+		which will be called first.
+
+		The optional positional args will be passed to the callback when
+		it is called. If you want the callback to be called with some named
+		arguments, use a closure or functools.partial().
+
+		Use functools.partial to pass keywords to the callback.
+
+		@type delay: int or float
+		@param delay: delay seconds
+		@type callback: callable
+		@param callback: a function to call
+		@return: a handle which can be used to cancel the callback
+		@rtype: asyncio.Handle (or compatible)
+		"""
+		return self._handle(self.timeout_add(
+			delay * 1000, self._call_soon_callback(callback, args)), self)
+
+	def call_at(self, when, callback, *args):
+		"""
+		Arrange for the callback to be called at the given absolute
+		timestamp when (an int or float), using the same time reference as
+		AbstractEventLoop.time().
+
+		This method's behavior is the same as call_later().
+
+		An instance of asyncio.Handle is returned, which can be used to
+		cancel the callback.
+
+		Use functools.partial to pass keywords to the callback.
+
+		@type when: int or float
+		@param when: absolute timestamp when to call callback
+		@type callback: callable
+		@param callback: a function to call
+		@return: a handle which can be used to cancel the callback
+		@rtype: asyncio.Handle (or compatible)
+		"""
+		delta = when - self.time()
+		return self.call_later(delta if delta > 0 else 0, callback, *args)
+
+	def run_in_executor(self, executor, func, *args):
+		"""
+		Arrange for a func to be called in the specified executor.
+
+		The executor argument should be an Executor instance. The default
+		executor is used if executor is None.
+
+		Use functools.partial to pass keywords to the *func*.
+
+		@param executor: executor
+		@type executor: concurrent.futures.Executor or None
+		@param func: a function to call
+		@type func: callable
+		@return: a Future
+		@rtype: asyncio.Future (or compatible)
+		"""
+		if executor is None:
+			executor = self._default_executor
+			if executor is None:
+				executor = ForkExecutor(loop=self)
+				self._default_executor = executor
+		future = executor.submit(func, *args)
+		if _real_asyncio is not None:
+			future = _real_asyncio.wrap_future(future,
+				loop=self._asyncio_wrapper)
+		return future
+
+	def is_running(self):
+		"""Return whether the event loop is currently running."""
+		return self._iteration_depth > 0
+
+	def is_closed(self):
+		"""Returns True if the event loop was closed."""
+		return self._poll_obj is None
+
+	def close(self):
+		"""Close the event loop.
+
+		This clears the queues and shuts down the executor,
+		and waits for it to finish.
+		"""
+		executor = self._default_executor
+		if executor is not None:
+			self._default_executor = None
+			executor.shutdown(wait=True)
+
+		if self._poll_obj is not None:
+			close = getattr(self._poll_obj, 'close')
+			if close is not None:
+				close()
+			self._poll_obj = None
+
+	def default_exception_handler(self, context):
+		"""
+		Default exception handler.
+
+		This is called when an exception occurs and no exception
+		handler is set, and can be called by a custom exception
+		handler that wants to defer to the default behavior.
+
+		The context parameter has the same meaning as in
+		`call_exception_handler()`.
+
+		@param context: exception context
+		@type context: dict
+		"""
+		message = context.get('message')
+		if not message:
+			message = 'Unhandled exception in event loop'
+
+		exception = context.get('exception')
+		if exception is not None:
+			exc_info = (type(exception), exception, exception.__traceback__)
+		else:
+			exc_info = False
+
+		log_lines = [message]
+		for key in sorted(context):
+			if key in {'message', 'exception'}:
+				continue
+			value = context[key]
+			if key == 'source_traceback':
+				tb = ''.join(traceback.format_list(value))
+				value = 'Object created at (most recent call last):\n'
+				value += tb.rstrip()
+			elif key == 'handle_traceback':
+				tb = ''.join(traceback.format_list(value))
+				value = 'Handle created at (most recent call last):\n'
+				value += tb.rstrip()
+			else:
+				value = repr(value)
+			log_lines.append('{}: {}'.format(key, value))
+
+		logging.error('\n'.join(log_lines), exc_info=exc_info)
+		os.kill(os.getpid(), signal.SIGTERM)
+
+	def call_exception_handler(self, context):
+		"""
+		Call the current event loop's exception handler.
+
+		The context argument is a dict containing the following keys:
+
+		- 'message': Error message;
+		- 'exception' (optional): Exception object;
+		- 'future' (optional): Future instance;
+		- 'handle' (optional): Handle instance;
+		- 'protocol' (optional): Protocol instance;
+		- 'transport' (optional): Transport instance;
+		- 'socket' (optional): Socket instance;
+		- 'asyncgen' (optional): Asynchronous generator that caused
+								the exception.
+
+		New keys may be introduced in the future.
+
+		@param context: exception context
+		@type context: dict
+		"""
+		self.default_exception_handler(context)
+
+	def get_debug(self):
+		"""
+		Get the debug mode (bool) of the event loop.
+
+		The default value is True if the environment variable
+		PYTHONASYNCIODEBUG is set to a non-empty string, False otherwise.
+		"""
+		return self._debug
+
+	def set_debug(self, enabled):
+		"""Set the debug mode of the event loop."""
+		self._debug = enabled
 
 
 _can_poll_device = None
@@ -745,10 +1114,11 @@ class _epoll_adapter(object):
 	that is associated with an epoll instance will close automatically when
 	it is garbage collected, so it's not necessary to close it explicitly.
 	"""
-	__slots__ = ('_epoll_obj',)
+	__slots__ = ('_epoll_obj', 'close')
 
 	def __init__(self, epoll_obj):
 		self._epoll_obj = epoll_obj
+		self.close = epoll_obj.close
 
 	def register(self, fd, *args):
 		self._epoll_obj.register(fd, *args)

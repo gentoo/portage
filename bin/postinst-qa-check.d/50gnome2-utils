@@ -39,6 +39,9 @@ gnome2_icon_cache_check() {
 	# parallel-install makes it impossible to blame a specific package
 	has parallel-install ${FEATURES} && return
 
+	# avoid false-positives on first install (bug 649464)
+	[[ ${PN} == gtk-update-icon-cache ]] && return
+
 	# The eqatag call is prohibitively expensive if the cache is
 	# missing and there are a large number of files.
 	if [[ -z ${missing} && ${all_files[@]} ]]; then

@@ -107,8 +107,13 @@ def _parse_install_options(
 	parser.add_argument('-g', '--group', default=-1, type=_parse_group)
 	parser.add_argument('-o', '--owner', default=-1, type=_parse_user)
 	parser.add_argument('-m', '--mode', default=0o755, type=_parse_mode)
+	parser.add_argument('-p', '--preserve-timestamps', action='store_true')
 	split_options = shlex.split(options)
 	namespace, remaining = parser.parse_known_args(split_options)
+	if namespace.preserve_timestamps and sys.version_info < (3, 3):
+		# -p is not supported in this case, since timestamps cannot
+		# be preserved with full precision
+		remaining.append('-p')
 	# Because parsing '--mode' option is partially supported. If unknown
 	# arg for --mode is passed, namespace.mode is set to None.
 	if remaining or namespace.mode is None:
@@ -137,6 +142,24 @@ def _set_attributes(options, path):
 		os.lchown(path, options.owner, options.group)
 	if options.mode is not None:
 		os.chmod(path, options.mode)
+
+
+def _set_timestamps(source_stat, dest):
+	"""Apply timestamps from source_stat to dest.
+
+	Args:
+		source_stat: stat result for the source file.
+		dest: path to the dest file.
+	"""
+	os.utime(dest, (source_stat.st_atime, source_stat.st_mtime))
+
+
+if sys.version_info >= (3, 3):
+	def _set_timestamps_ns(source_stat, dest):
+		os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
+
+	_set_timestamps_ns.__doc__ = _set_timestamps.__doc__
+	_set_timestamps = _set_timestamps_ns
 
 
 class _InsInProcessInstallRunner(object):
@@ -168,7 +191,9 @@ class _InsInProcessInstallRunner(object):
 			True on success, otherwise False.
 		"""
 		dest = os.path.join(dest_dir, os.path.basename(source))
-		if not self._is_install_allowed(source, dest):
+		# Raise an exception if stat(source) fails, intentionally.
+		sstat = os.stat(source)
+		if not self._is_install_allowed(source, sstat, dest):
 			return False
 
 		# To emulate the `install` command, remove the dest file in
@@ -187,6 +212,8 @@ class _InsInProcessInstallRunner(object):
 				movefile._copyxattr(
 					source, dest,
 					exclude=self._xattr_exclude)
+			if self._parsed_options.preserve_timestamps:
+				_set_timestamps(sstat, dest)
 		except Exception:
 			logging.exception(
 				'Failed to copy file: '
@@ -195,22 +222,23 @@ class _InsInProcessInstallRunner(object):
 			return False
 		return True
 
-	def _is_install_allowed(self, source, dest):
+	def _is_install_allowed(self, source, source_stat, dest):
 		"""Returns if installing source into dest should work.
 
 		This is to keep compatibility with the `install` command.
 
 		Args:
 			source: path to the source file.
+			source_stat: stat result for the source file, using stat()
+				rather than lstat(), in order to match the `install`
+				command
 			dest: path to the dest file.
 
 		Returns:
 			True if it should succeed.
 		"""
 		# To match `install` command, use stat() for source, while
-		# lstat() for dest. Raise an exception if stat(source) fails,
-		# intentionally.
-		source_stat = os.stat(source)
+		# lstat() for dest.
 		try:
 			dest_lstat = os.lstat(dest)
 		except OSError as e:

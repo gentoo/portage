@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -32,6 +32,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
 	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild.prepare_build_dirs:_prepare_fake_distdir',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
 	'portage.package.ebuild._spawn_nofetch:spawn_nofetch',
@@ -57,10 +58,10 @@ from portage.data import portage_gid, portage_uid, secpass, \
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dep import Atom, check_required_use, \
 	human_readable_required_use, paren_enclose, use_reduce
-from portage.eapi import eapi_exports_KV, eapi_exports_merge_type, \
-	eapi_exports_replace_vars, eapi_exports_REPOSITORY, \
-	eapi_has_required_use, eapi_has_src_prepare_and_src_configure, \
-	eapi_has_pkg_pretend, _get_eapi_attrs
+from portage.eapi import (eapi_exports_KV, eapi_exports_merge_type,
+	eapi_exports_replace_vars, eapi_exports_REPOSITORY,
+	eapi_has_required_use, eapi_has_src_prepare_and_src_configure,
+	eapi_has_pkg_pretend, _get_eapi_attrs)
 from portage.elog import elog_process, _preload_elog_modules
 from portage.elog.messages import eerror, eqawarn
 from portage.exception import (DigestException, FileNotFound,
@@ -135,7 +136,7 @@ _phase_func_map = {
 }
 
 _vdb_use_conditional_keys = Package._dep_keys + \
-	('LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',)
+	('LICENSE', 'PROPERTIES', 'RESTRICT',)
 
 def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	"""
@@ -149,7 +150,8 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		phase in _networked_phases
+		phase in _networked_phases or \
+		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
@@ -451,8 +453,10 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		if hasattr(mydbapi, "getFetchMap") and \
 			("A" not in mysettings.configdict["pkg"] or \
 			"AA" not in mysettings.configdict["pkg"]):
-			src_uri, = mydbapi.aux_get(mysettings.mycpv,
-				["SRC_URI"], mytree=mytree)
+			src_uri = mysettings.configdict["pkg"].get("SRC_URI")
+			if src_uri is None:
+				src_uri, = mydbapi.aux_get(mysettings.mycpv,
+					["SRC_URI"], mytree=mytree)
 			metadata = {
 				"EAPI"    : eapi,
 				"SRC_URI" : src_uri,
@@ -533,7 +537,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		try:
 			compression = _compressors[binpkg_compression]
 		except KeyError as e:
-			writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+			if binpkg_compression:
+				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+			else:
+				# Empty BINPKG_COMPRESS disables compression.
+				mysettings['PORTAGE_COMPRESSION_COMMAND'] = 'cat'
 		else:
 			try:
 				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
@@ -814,13 +822,15 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					scheduler=(portage._internal_caller and
 						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
-				builddir_lock.lock()
+				builddir_lock.scheduler.run_until_complete(
+					builddir_lock.async_lock())
 			try:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
 			finally:
 				if builddir_lock is not None:
-					builddir_lock.unlock()
+					builddir_lock.scheduler.run_until_complete(
+						builddir_lock.async_unlock())
 
 		# get possible slot information from the deps file
 		if mydo == "depend":
@@ -939,12 +949,14 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 							scheduler=(portage._internal_caller and
 								global_event_loop() or EventLoop(main=False)),
 							settings=mysettings)
-						builddir_lock.lock()
+						builddir_lock.scheduler.run_until_complete(
+							builddir_lock.async_lock())
 					try:
 						_spawn_phase("clean", mysettings)
 					finally:
 						if builddir_lock is not None:
-							builddir_lock.unlock()
+							builddir_lock.scheduler.run_until_complete(
+								builddir_lock.async_unlock())
 							builddir_lock = None
 				else:
 					writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
@@ -962,7 +974,8 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					scheduler=(portage._internal_caller and
 						global_event_loop() or EventLoop(main=False)),
 					settings=mysettings)
-				builddir_lock.lock()
+				builddir_lock.scheduler.run_until_complete(
+					builddir_lock.async_lock())
 			mystatus = prepare_build_dirs(myroot, mysettings, cleanup)
 			if mystatus:
 				return mystatus
@@ -1244,17 +1257,13 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	finally:
 
 		if builddir_lock is not None:
-			builddir_lock.unlock()
+			builddir_lock.scheduler.run_until_complete(
+				builddir_lock.async_unlock())
 		if tmpdir:
 			mysettings["PORTAGE_TMPDIR"] = tmpdir_orig
 			shutil.rmtree(tmpdir)
 
 		mysettings.pop("REPLACING_VERSIONS", None)
-
-		# Make sure that DISTDIR is restored to it's normal value before we return!
-		if "PORTAGE_ACTUAL_DISTDIR" in mysettings:
-			mysettings["DISTDIR"] = mysettings["PORTAGE_ACTUAL_DISTDIR"]
-			del mysettings["PORTAGE_ACTUAL_DISTDIR"]
 
 		if logfile and not returnpid:
 			try:
@@ -1353,37 +1362,6 @@ def _prepare_env_file(settings):
 	env_extractor.wait()
 	return env_extractor.returncode
 
-def _prepare_fake_distdir(settings, alist):
-	orig_distdir = settings["DISTDIR"]
-	settings["PORTAGE_ACTUAL_DISTDIR"] = orig_distdir
-	edpath = settings["DISTDIR"] = \
-		os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
-	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
-
-	# Remove any unexpected files or directories.
-	for x in os.listdir(edpath):
-		symlink_path = os.path.join(edpath, x)
-		st = os.lstat(symlink_path)
-		if x in alist and stat.S_ISLNK(st.st_mode):
-			continue
-		if stat.S_ISDIR(st.st_mode):
-			shutil.rmtree(symlink_path)
-		else:
-			os.unlink(symlink_path)
-
-	# Check for existing symlinks and recreate if necessary.
-	for x in alist:
-		symlink_path = os.path.join(edpath, x)
-		target = os.path.join(orig_distdir, x)
-		try:
-			link_target = os.readlink(symlink_path)
-		except OSError:
-			os.symlink(target, symlink_path)
-		else:
-			if link_target != target:
-				os.unlink(symlink_path)
-				os.symlink(target, symlink_path)
-
 def _spawn_actionmap(settings):
 	features = settings.features
 	restrict = settings["PORTAGE_RESTRICT"].split()
@@ -1391,11 +1369,6 @@ def _spawn_actionmap(settings):
 		("usersandbox" not in features) and \
 		"userpriv" not in restrict and \
 		"nouserpriv" not in restrict)
-	if nosandbox and ("userpriv" not in features or \
-		"userpriv" in restrict or \
-		"nouserpriv" in restrict):
-		nosandbox = ("sandbox" not in features and \
-			"usersandbox" not in features)
 
 	if not (portage.process.sandbox_capable or \
 		portage.process.macossandbox_capable):
@@ -2046,13 +2019,10 @@ def _post_src_install_write_metadata(settings):
 		if v is not None:
 			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
-	# The following variables are irrelevant for virtual packages.
-	if settings.get('CATEGORY') != 'virtual':
-
-		for k in ('CHOST',):
-			v = settings.get(k)
-			if v is not None:
-				write_atomic(os.path.join(build_info_dir, k), v + '\n')
+	for k in ('CHOST',):
+		v = settings.get(k)
+		if v is not None:
+			write_atomic(os.path.join(build_info_dir, k), v + '\n')
 
 	with io.open(_unicode_encode(os.path.join(build_info_dir,
 		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),

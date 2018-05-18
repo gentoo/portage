@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -13,4 +13,8 @@ if [[ $# -lt 1 ]] || [[ $1 == -r && $# -lt 2 ]] ; then
 	exit 1
 fi
 
-INSDESTTREE='/usr/include/' exec doins "$@"
+export _E_INSDESTTREE_='/usr/include/'
+if ___eapi_has_DESTTREE_INSDESTTREE; then
+	export INSDESTTREE=${_E_INSDESTTREE_}
+fi
+exec doins "$@"

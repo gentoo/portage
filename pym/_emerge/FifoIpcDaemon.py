@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -15,8 +15,7 @@ from portage.cache.mappings import slot_dict_class
 
 class FifoIpcDaemon(AbstractPollTask):
 
-	__slots__ = ("input_fifo", "output_fifo",) + \
-		("_files", "_reg_id",)
+	__slots__ = ("input_fifo", "output_fifo", "_files")
 
 	_file_names = ("pipe_in",)
 	_files_dict = slot_dict_class(_file_names, prefix="")
@@ -40,9 +39,9 @@ class FifoIpcDaemon(AbstractPollTask):
 					fcntl.fcntl(self._files.pipe_in,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._reg_id = self.scheduler.io_add_watch(
+		self.scheduler.add_reader(
 			self._files.pipe_in,
-			self._registered_events, self._input_handler)
+			self._input_handler)
 
 		self._registered = True
 
@@ -51,7 +50,7 @@ class FifoIpcDaemon(AbstractPollTask):
 		Re-open the input stream, in order to suppress
 		POLLHUP events (bug #339976).
 		"""
-		self.scheduler.source_remove(self._reg_id)
+		self.scheduler.remove_reader(self._files.pipe_in)
 		os.close(self._files.pipe_in)
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
@@ -67,9 +66,9 @@ class FifoIpcDaemon(AbstractPollTask):
 					fcntl.fcntl(self._files.pipe_in,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._reg_id = self.scheduler.io_add_watch(
+		self.scheduler.add_reader(
 			self._files.pipe_in,
-			self._registered_events, self._input_handler)
+			self._input_handler)
 
 	def isAlive(self):
 		return self._registered
@@ -79,17 +78,9 @@ class FifoIpcDaemon(AbstractPollTask):
 			self.returncode = 1
 		self._unregister()
 		# notify exit listeners
-		self.wait()
+		self._async_wait()
 
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		if self.returncode is None:
-			self.returncode = os.EX_OK
-		return self.returncode
-
-	def _input_handler(self, fd, event):
+	def _input_handler(self):
 		raise NotImplementedError(self)
 
 	def _unregister(self):
@@ -99,11 +90,8 @@ class FifoIpcDaemon(AbstractPollTask):
 
 		self._registered = False
 
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
-
 		if self._files is not None:
 			for f in self._files.values():
+				self.scheduler.remove_reader(f)
 				os.close(f)
 			self._files = None

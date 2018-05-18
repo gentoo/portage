@@ -94,6 +94,29 @@ fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
 macossandbox_capable = (os.path.isfile(MACOSSANDBOX_BINARY) and
                    os.access(MACOSSANDBOX_BINARY, os.X_OK))
 
+def sanitize_fds():
+	"""
+	Set the inheritable flag to False for all open file descriptors,
+	except for those corresponding to stdin, stdout, and stderr. This
+	ensures that any unintentionally inherited file descriptors will
+	not be inherited by child processes.
+	"""
+	if _set_inheritable is not None:
+
+		whitelist = frozenset([
+			sys.__stdin__.fileno(),
+			sys.__stdout__.fileno(),
+			sys.__stderr__.fileno(),
+		])
+
+		for fd in get_open_fds():
+			if fd not in whitelist:
+				try:
+					_set_inheritable(fd, False)
+				except OSError:
+					pass
+
+
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
 	Spawns a bash shell running a specific commands
@@ -212,7 +235,8 @@ def cleanup():
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
-          path_lookup=True, pre_exec=None, close_fds=True, unshare_net=False,
+          path_lookup=True, pre_exec=None,
+          close_fds=(sys.version_info < (3, 4)), unshare_net=False,
           unshare_ipc=False, cgroup=None):
 	"""
 	Spawns a given command.
@@ -244,7 +268,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
 	@param close_fds: If True, then close all file descriptors except those
-		referenced by fd_pipes (default is True).
+		referenced by fd_pipes (default is True for python3.3 and earlier, and False for
+		python3.4 and later due to non-inheritable file descriptor behavior from PEP 446).
 	@type close_fds: Boolean
 	@param unshare_net: If True, networking will be unshared from the spawned process
 	@type unshare_net: Boolean
@@ -461,6 +486,16 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	# killing subprocesses as reported in bug #353239.
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
 	signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+	# Unregister SIGCHLD handler and wakeup_fd for the parent
+	# process's event loop (bug 655656).
+	signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+	try:
+		wakeup_fd = signal.set_wakeup_fd(-1)
+		if wakeup_fd > 0:
+			os.close(wakeup_fd)
+	except (ValueError, OSError):
+		pass
 
 	# Quiet killing of subprocesses by SIGPIPE (see bug #309001).
 	signal.signal(signal.SIGPIPE, signal.SIG_DFL)

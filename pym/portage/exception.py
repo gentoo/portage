@@ -44,6 +44,9 @@ class PortageException(Exception):
 
 class PortageKeyError(KeyError, PortageException):
 	__doc__ = KeyError.__doc__
+	def __init__(self, value):
+		KeyError.__init__(self, value)
+		PortageException.__init__(self, value)
 
 class CorruptionError(PortageException):
 	"""Corruption indication"""

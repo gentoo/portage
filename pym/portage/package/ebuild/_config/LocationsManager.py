@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -16,7 +16,7 @@ from portage import os, eapi_is_supported, _encodings, _unicode_encode
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
-from portage.exception import DirectoryNotFound, ParseError
+from portage.exception import DirectoryNotFound, InvalidLocation, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
 	normalize_path, read_corresponding_eapi_file, shlex_split, writemsg
@@ -40,12 +40,13 @@ _allow_parent_colon = frozenset(
 class LocationsManager(object):
 
 	def __init__(self, config_root=None, eprefix=None, config_profile_path=None, local_config=True, \
-		target_root=None):
+		target_root=None, sysroot=None):
 		self.user_profile_dir = None
 		self._local_repo_conf_path = None
 		self.eprefix = eprefix
 		self.config_root = config_root
 		self.target_root = target_root
+		self.sysroot = sysroot
 		self._user_config = local_config
 
 		if self.eprefix is None:
@@ -64,6 +65,17 @@ class LocationsManager(object):
 		self._check_var_directory("PORTAGE_CONFIGROOT", self.config_root)
 		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
 		self.config_profile_path = config_profile_path
+
+		if self.sysroot is None:
+			self.sysroot = "/"
+		else:
+			self.sysroot = normalize_path(os.path.abspath(self.sysroot or os.sep)).rstrip(os.sep) + os.sep
+
+		self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
+
+		# TODO: Set this via the constructor using
+		# PORTAGE_OVERRIDE_EPREFIX.
+		self.broot = portage.const.EPREFIX
 
 	def load_profiles(self, repositories, known_repository_paths):
 		known_repository_paths = set(os.path.realpath(x)
@@ -297,6 +309,13 @@ class LocationsManager(object):
 
 		self.target_root = normalize_path(os.path.abspath(
 			self.target_root)).rstrip(os.path.sep) + os.path.sep
+
+		if self.sysroot != "/" and self.sysroot != self.target_root:
+			writemsg(_("!!! Error: SYSROOT (currently %s) must "
+				"equal / or ROOT (currently %s).\n") %
+				(self.sysroot, self.target_root),
+				noiselevel=-1)
+			raise InvalidLocation(self.sysroot)
 
 		ensure_dirs(self.target_root)
 		self._check_var_directory("ROOT", self.target_root)

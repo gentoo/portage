@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -55,7 +55,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
 					del self._threads[f]
 					if not self._threads:
 						# Thread-safe callback to EventLoop
-						self.scheduler.idle_add(self._eof)
+						self.scheduler.call_soon_threadsafe(self._eof)
 					break
 		f.close()
 
@@ -63,22 +63,14 @@ class PipeReaderBlockingIO(AbstractPollTask):
 		self._registered = False
 		if self.returncode is None:
 			self.returncode = os.EX_OK
-		self.wait()
-		return False
+		self._async_wait()
 
 	def _cancel(self):
 		self._terminate.set()
 		self._registered = False
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
-		self.wait()
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		self.returncode = os.EX_OK
-		return self.returncode
+		self._async_wait()
 
 	def getvalue(self):
 		"""Retrieve the entire contents"""

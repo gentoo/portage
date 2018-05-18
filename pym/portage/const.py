@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -107,6 +107,7 @@ INCREMENTALS             = (
 	"ACCEPT_KEYWORDS",
 	"CONFIG_PROTECT",
 	"CONFIG_PROTECT_MASK",
+	"ENV_UNSET",
 	"FEATURES",
 	"IUSE_IMPLICIT",
 	"PRELINK_PATH",
@@ -202,6 +203,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"split-elog",
 	"split-log",
 	"strict",
+	"strict-keepdir",
 	"stricter",
 	"suidctl",
 	"test",
@@ -220,12 +222,12 @@ SUPPORTED_FEATURES       = frozenset([
 	"xattr",
 ])
 
-EAPI                     = 6
+EAPI                     = 7
 
 HASHING_BLOCKSIZE        = 32768
 
-MANIFEST2_HASH_DEFAULTS = frozenset(["SHA256", "SHA512", "WHIRLPOOL"])
-MANIFEST2_HASH_DEFAULT  = "SHA512"
+MANIFEST2_HASH_DEFAULTS = frozenset(["BLAKE2B", "SHA512"])
+MANIFEST2_HASH_DEFAULT  = "BLAKE2B"
 
 MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 

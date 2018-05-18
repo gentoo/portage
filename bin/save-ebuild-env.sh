@@ -1,5 +1,5 @@
 #!@PORTAGE_PREFIX_BASH@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # @FUNCTION: __save_ebuild_env
@@ -13,9 +13,9 @@
 __save_ebuild_env() {
 	(
 	if has --exclude-init-phases $* ; then
-		unset S _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
+		unset S _E_DESTTREE _E_INSDESTTREE _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
-			PORTAGE_DOCOMPRESS_SKIP
+			PORTAGE_DOCOMPRESS_SKIP PORTAGE_DOSTRIP PORTAGE_DOSTRIP_SKIP
 		if [[ -n $PYTHONPATH &&
 			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
 			if [[ $PYTHONPATH == *:* ]] ; then
@@ -60,7 +60,7 @@ __save_ebuild_env() {
 		unpack __strip_duplicate_slashes econf einstall \
 		__dyn_setup __dyn_unpack __dyn_clean \
 		into insinto exeinto docinto \
-		insopts diropts exeopts libopts docompress \
+		insopts diropts exeopts libopts docompress dostrip \
 		__abort_handler __abort_prepare __abort_configure __abort_compile \
 		__abort_test __abort_install __dyn_prepare __dyn_configure \
 		__dyn_compile __dyn_test __dyn_install \

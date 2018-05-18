@@ -1,9 +1,14 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-export DESTTREE=/usr
-export INSDESTTREE=""
+if ___eapi_has_DESTTREE_INSDESTTREE; then
+	export DESTTREE=/usr
+	export INSDESTTREE=""
+else
+	export _E_DESTTREE_=/usr
+	export _E_INSDESTTREE_=""
+fi
 export _E_EXEDESTTREE_=""
 export _E_DOCDESTTREE_=""
 export INSOPTIONS="-m0644"
@@ -15,17 +20,20 @@ export MOPREFIX=${PN}
 export PORTAGE_DOCOMPRESS_SIZE_LIMIT="128"
 declare -a PORTAGE_DOCOMPRESS=( /usr/share/{doc,info,man} )
 declare -a PORTAGE_DOCOMPRESS_SKIP=( /usr/share/doc/${PF}/html )
+declare -a PORTAGE_DOSTRIP=( / )
+has strip ${RESTRICT} && PORTAGE_DOSTRIP=()
+declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
 	if [ "$1" == "/" ]; then
-		export DESTTREE=""
+		export _E_DESTTREE_=""
 	else
-		export DESTTREE=$1
+		export _E_DESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${DESTTREE}" ]; then
-			install -d "${ED}${DESTTREE}"
+		if [ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_DESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -33,24 +41,32 @@ into() {
 			fi
 		fi
 	fi
+
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export DESTTREE=${_E_DESTTREE_}
+	fi
 }
 
 insinto() {
 	if [ "$1" == "/" ]; then
-		export INSDESTTREE=""
+		export _E_INSDESTTREE_=""
 	else
-		export INSDESTTREE=$1
+		export _E_INSDESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${INSDESTTREE}" ]; then
-			install -d "${ED}${INSDESTTREE}"
+		if [ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
 				return $ret
 			fi
 		fi
+	fi
+
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export INSDESTTREE=${_E_INSDESTTREE_}
 	fi
 }
 
@@ -62,8 +78,8 @@ exeinto() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}${_E_EXEDESTTREE_}" ]; then
-			install -d "${ED}${_E_EXEDESTTREE_}"
+		if [ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]; then
+			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -81,8 +97,8 @@ docinto() {
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}" ]; then
-			install -d "${ED}usr/share/doc/${PF}/${_E_DOCDESTTREE_}"
+		if [ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]; then
+			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
 				__helpers_die "${FUNCNAME[0]} failed"
@@ -111,6 +127,10 @@ exeopts() {
 }
 
 libopts() {
+	if ! ___eapi_has_dolib_libopts; then
+		die "'${FUNCNAME}' has been banned for EAPI '$EAPI'"
+	fi
+
 	export LIBOPTIONS="$@"
 
 	# `install` should never be called with '-s' ...
@@ -139,6 +159,32 @@ docompress() {
 				[[ ${f} = "${g}" ]] && continue 2
 			done
 			PORTAGE_DOCOMPRESS[${#PORTAGE_DOCOMPRESS[@]}]=${f}
+		done
+	fi
+}
+
+dostrip() {
+	___eapi_has_dostrip || die "'${FUNCNAME}' not supported in this EAPI"
+
+	local f g
+	if [[ $1 = "-x" ]]; then
+		shift
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP_SKIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP_SKIP+=( "${f}" )
+		done
+	else
+		for f; do
+			f=$(__strip_duplicate_slashes "${f}"); f=${f%/}
+			[[ ${f:0:1} = / ]] || f="/${f}"
+			for g in "${PORTAGE_DOSTRIP[@]}"; do
+				[[ ${f} = "${g}" ]] && continue 2
+			done
+			PORTAGE_DOSTRIP+=( "${f}" )
 		done
 	fi
 }
@@ -594,7 +640,7 @@ econf() {
 		fi
 
 		local conf_args=()
-		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir; then
+		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir || ___eapi_econf_passes_--with-sysroot; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
@@ -616,6 +662,12 @@ econf() {
 
 				if [[ ${conf_help} == *--htmldir* ]]; then
 					conf_args+=( --htmldir="${EPREFIX}"/usr/share/doc/${PF}/html )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--with-sysroot; then
+				if [[ ${conf_help} == *--with-sysroot* ]]; then
+					conf_args+=( --with-sysroot="${ESYSROOT:-/}" )
 				fi
 			fi
 		fi
@@ -690,30 +742,30 @@ einstall() {
 	fi
 	unset LIBDIR_VAR
 	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
-		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
+		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
 		unset EI_DESTLIBDIR
 	fi
 
-	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
 		if [ "${PORTAGE_DEBUG}" == "1" ]; then
-			${MAKE:-make} -n prefix="${ED}usr" \
-				datadir="${ED}usr/share" \
-				infodir="${ED}usr/share/info" \
-				localstatedir="${ED}var/lib" \
-				mandir="${ED}usr/share/man" \
-				sysconfdir="${ED}etc" \
+			${MAKE:-make} -n prefix="${ED%/}/usr" \
+				datadir="${ED%/}/usr/share" \
+				infodir="${ED%/}/usr/share/info" \
+				localstatedir="${ED%/}/var/lib" \
+				mandir="${ED%/}/usr/share/man" \
+				sysconfdir="${ED%/}/etc" \
 				${LOCAL_EXTRA_EINSTALL} \
 				${MAKEOPTS} -j1 \
 				"$@" ${EXTRA_EMAKE} install
 		fi
-		if ! ${MAKE:-make} prefix="${ED}usr" \
-			datadir="${ED}usr/share" \
-			infodir="${ED}usr/share/info" \
-			localstatedir="${ED}var/lib" \
-			mandir="${ED}usr/share/man" \
-			sysconfdir="${ED}etc" \
+		if ! ${MAKE:-make} prefix="${ED%/}/usr" \
+			datadir="${ED%/}/usr/share" \
+			infodir="${ED%/}/usr/share/info" \
+			localstatedir="${ED%/}/var/lib" \
+			mandir="${ED%/}/usr/share/man" \
+			sysconfdir="${ED%/}/etc" \
 			${LOCAL_EXTRA_EINSTALL} \
 			${MAKEOPTS} -j1 \
 			"$@" ${EXTRA_EMAKE} install
@@ -810,7 +862,7 @@ __eapi4_src_install() {
 
 __eapi6_src_prepare() {
 	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
-		[[ -n ${PATCHES[@]} ]] && eapply "${PATCHES[@]}"
+		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
 	fi
@@ -826,122 +878,97 @@ __eapi6_src_install() {
 	einstalldocs
 }
 
-# @FUNCTION: has_version
-# @USAGE: [--host-root] <DEPEND ATOM>
-# @DESCRIPTION:
-# Return true if given package is installed. Otherwise return false.
-# Callers may override the ROOT variable in order to match packages from an
-# alternative ROOT.
-has_version() {
-
-	local atom eroot host_root=false root=${ROOT}
-	if [[ $1 == --host-root ]] ; then
-		host_root=true
-		shift
-	fi
+___best_version_and_has_version_common() {
+	local atom root root_arg
+	local -a cmd=()
+	case $1 in
+		--host-root|-r|-d|-b)
+			root_arg=$1
+			shift ;;
+	esac
 	atom=$1
 	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
+	[ $# -gt 0 ] && die "${FUNCNAME[1]}: unused argument(s): $*"
 
-	if ${host_root} ; then
-		if ! ___eapi_best_version_and_has_version_support_--host-root; then
-			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-		fi
-		root=/
-	fi
+	case ${root_arg} in
+		"") if ___eapi_has_prefix_variables; then
+				root=${ROOT%/}/${EPREFIX#/}
+			else
+				root=${ROOT}
+			fi ;;
+		--host-root)
+			if ! ___eapi_best_version_and_has_version_support_--host-root; then
+				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
+			fi
+			if ___eapi_has_prefix_variables; then
+				# Since portageq requires the root argument be consistent
+				# with EPREFIX, ensure consistency here (bug 655414).
+				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
+				cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+			else
+				root=/
+			fi ;;
+		-r|-d|-b)
+			if ! ___eapi_best_version_and_has_version_support_-b_-d_-r; then
+				die "${FUNCNAME[1]}: option ${root_arg} is not supported with EAPI ${EAPI}"
+			fi
+			if ___eapi_has_prefix_variables; then
+				case ${root_arg} in
+					-r) root=${ROOT%/}/${EPREFIX#/} ;;
+					-d) root=${ESYSROOT} ;;
+					-b) root=${BROOT:-/} ;;
+				esac
+			else
+				case ${root_arg} in
+					-r) root=${ROOT} ;;
+					-d) root=${SYSROOT} ;;
+					-b) root=/ ;;
+				esac
+			fi ;;
+	esac
 
-	if ___eapi_has_prefix_variables; then
-		# [[ ${root} == / ]] would be ambiguous here,
-		# since both prefixes can share root=/ while
-		# having different EPREFIX offsets.
-		if ${host_root} ; then
-			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
-		else
-			eroot=${root%/}${EPREFIX}/
-		fi
-	else
-		eroot=${root}
-	fi
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc has_version "${eroot}" "${atom}"
+		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
 	else
-		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" has_version "${eroot}" "${atom}"
+		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-helpers/portageq "${FUNCNAME[1]}" "${root}" "${atom}")
 	fi
+	"${cmd[@]}"
 	local retval=$?
 	case "${retval}" in
 		0|1)
 			return ${retval}
 			;;
 		2)
-			die "${FUNCNAME[0]}: invalid atom: ${atom}"
+			die "${FUNCNAME[1]}: invalid atom: ${atom}"
 			;;
 		*)
 			if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-				die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
+				die "${FUNCNAME[1]}: unexpected ebuild-ipc exit code: ${retval}"
 			else
-				die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
+				die "${FUNCNAME[1]}: unexpected portageq exit code: ${retval}"
 			fi
 			;;
 	esac
 }
 
+# @FUNCTION: has_version
+# @USAGE: [--host-root|-r|-d|-b] <DEPEND ATOM>
+# @DESCRIPTION:
+# Return true if given package is installed. Otherwise return false.
+# Callers may override the ROOT variable in order to match packages from an
+# alternative ROOT.
+has_version() {
+	___best_version_and_has_version_common "$@"
+}
+
 # @FUNCTION: best_version
-# @USAGE: [--host-root] <DEPEND ATOM>
+# @USAGE: [--host-root|-r|-d|-b] <DEPEND ATOM>
 # @DESCRIPTION:
 # Returns highest installed matching category/package-version (without .ebuild).
 # Callers may override the ROOT variable in order to match packages from an
 # alternative ROOT.
 best_version() {
-
-	local atom eroot host_root=false root=${ROOT}
-	if [[ $1 == --host-root ]] ; then
-		host_root=true
-		shift
-	fi
-	atom=$1
-	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-	if ${host_root} ; then
-		if ! ___eapi_best_version_and_has_version_support_--host-root; then
-			die "${FUNCNAME[0]}: option --host-root is not supported with EAPI ${EAPI}"
-		fi
-		root=/
-	fi
-
-	if ___eapi_has_prefix_variables; then
-		# [[ ${root} == / ]] would be ambiguous here,
-		# since both prefixes can share root=/ while
-		# having different EPREFIX offsets.
-		if ${host_root} ; then
-			eroot=${root%/}${PORTAGE_OVERRIDE_EPREFIX}/
-		else
-			eroot=${root%/}${EPREFIX}/
-		fi
-	else
-		eroot=${root}
-	fi
-	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
-		"$PORTAGE_BIN_PATH"/ebuild-ipc best_version "${eroot}" "${atom}"
-	else
-		"${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" best_version "${eroot}" "${atom}"
-	fi
-	local retval=$?
-	case "${retval}" in
-		0|1)
-			return ${retval}
-			;;
-		2)
-			die "${FUNCNAME[0]}: invalid atom: ${atom}"
-			;;
-		*)
-			if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-				die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-			else
-				die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-			fi
-			;;
-	esac
+	___best_version_and_has_version_common "$@"
 }
 
 if ___eapi_has_get_libdir; then
@@ -965,7 +992,7 @@ if ___eapi_has_einstalldocs; then
 					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
 			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
-				[[ ${DOCS[@]} ]] && docinto / && dodoc -r "${DOCS[@]}"
+				[[ ${#DOCS[@]} -gt 0 ]] && docinto / && dodoc -r "${DOCS[@]}"
 			else
 				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
 			fi
@@ -973,7 +1000,7 @@ if ___eapi_has_einstalldocs; then
 
 		(
 			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
-				[[ ${HTML_DOCS[@]} ]] && \
+				[[ ${#HTML_DOCS[@]} -gt 0 ]] && \
 					docinto html && dodoc -r "${HTML_DOCS[@]}"
 			else
 				[[ ${HTML_DOCS} ]] && \
@@ -1040,7 +1067,7 @@ if ___eapi_has_eapply; then
 			done
 		fi
 
-		if [[ -z ${files[@]} ]]; then
+		if [[ ${#files[@]} -eq 0 ]]; then
 			die "eapply: no files specified"
 		fi
 
@@ -1062,7 +1089,7 @@ if ___eapi_has_eapply; then
 
 				local files=()
 				_eapply_get_files "${f}"
-				[[ -z ${files[@]} ]] && die "No *.{patch,diff} files in directory ${f}"
+				[[ ${#files[@]} -eq 0 ]] && die "No *.{patch,diff} files in directory ${f}"
 
 				einfo "Applying patches from ${f} ..."
 				local f2

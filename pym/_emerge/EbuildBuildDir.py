@@ -1,6 +1,8 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+
 from _emerge.AsynchronousLock import AsynchronousLock
 
 import portage
@@ -16,53 +18,6 @@ class EbuildBuildDir(SlotObject):
 	def __init__(self, **kwargs):
 		SlotObject.__init__(self, **kwargs)
 		self.locked = False
-
-	def lock(self):
-		"""
-		This raises an AlreadyLocked exception if lock() is called
-		while a lock is already held. In order to avoid this, call
-		unlock() or check whether the "locked" attribute is True
-		or False before calling lock().
-		"""
-		if self._lock_obj is not None:
-			raise self.AlreadyLocked((self._lock_obj,))
-
-		dir_path = self.settings.get('PORTAGE_BUILDDIR')
-		if not dir_path:
-			raise AssertionError('PORTAGE_BUILDDIR is unset')
-		catdir = os.path.dirname(dir_path)
-		self._catdir = catdir
-
-		try:
-			portage.util.ensure_dirs(os.path.dirname(catdir),
-				gid=portage.portage_gid,
-				mode=0o70, mask=0)
-		except PortageException:
-			if not os.path.isdir(os.path.dirname(catdir)):
-				raise
-		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
-		catdir_lock.start()
-		catdir_lock.wait()
-		self._assert_lock(catdir_lock)
-
-		try:
-			try:
-				portage.util.ensure_dirs(catdir,
-					gid=portage.portage_gid,
-					mode=0o70, mask=0)
-			except PortageException:
-				if not os.path.isdir(catdir):
-					raise
-			builddir_lock = AsynchronousLock(path=dir_path,
-				scheduler=self.scheduler)
-			builddir_lock.start()
-			builddir_lock.wait()
-			self._assert_lock(builddir_lock)
-			self._lock_obj = builddir_lock
-			self.settings['PORTAGE_BUILDDIR_LOCKED'] = '1'
-		finally:
-			self.locked = self._lock_obj is not None
-			catdir_lock.unlock()
 
 	def _assert_lock(self, async_lock):
 		if async_lock.returncode != os.EX_OK:
@@ -84,23 +39,122 @@ class EbuildBuildDir(SlotObject):
 			except OSError:
 				pass
 
-	def unlock(self):
-		if self._lock_obj is None:
-			return
+	def async_lock(self):
+		"""
+		Acquire the lock asynchronously. Notification is available
+		via the add_done_callback method of the returned Future instance.
 
-		self._lock_obj.unlock()
-		self._lock_obj = None
-		self.locked = False
-		self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
-		catdir_lock = AsynchronousLock(path=self._catdir, scheduler=self.scheduler)
-		catdir_lock.start()
-		if catdir_lock.wait() == os.EX_OK:
+		This raises an AlreadyLocked exception if async_lock() is called
+		while a lock is already held. In order to avoid this, call
+		async_unlock() or check whether the "locked" attribute is True
+		or False before calling async_lock().
+
+		@returns: Future, result is None
+		"""
+		if self._lock_obj is not None:
+			raise self.AlreadyLocked((self._lock_obj,))
+
+		dir_path = self.settings.get('PORTAGE_BUILDDIR')
+		if not dir_path:
+			raise AssertionError('PORTAGE_BUILDDIR is unset')
+		catdir = os.path.dirname(dir_path)
+		self._catdir = catdir
+		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
+		builddir_lock = AsynchronousLock(path=dir_path, scheduler=self.scheduler)
+		result = self.scheduler.create_future()
+
+		def catdir_locked(catdir_lock):
 			try:
-				os.rmdir(self._catdir)
-			except OSError:
-				pass
-			finally:
-				catdir_lock.unlock()
+				self._assert_lock(catdir_lock)
+			except AssertionError as e:
+				result.set_exception(e)
+				return
+
+			try:
+				portage.util.ensure_dirs(catdir,
+					gid=portage.portage_gid,
+					mode=0o70, mask=0)
+			except PortageException as e:
+				if not os.path.isdir(catdir):
+					result.set_exception(e)
+					return
+
+			builddir_lock.addExitListener(builddir_locked)
+			builddir_lock.start()
+
+		def builddir_locked(builddir_lock):
+			try:
+				self._assert_lock(builddir_lock)
+			except AssertionError as e:
+				catdir_lock.async_unlock.add_done_callback(
+					functools.partial(catdir_unlocked, exception=e))
+				return
+
+			self._lock_obj = builddir_lock
+			self.locked = True
+			self.settings['PORTAGE_BUILDDIR_LOCKED'] = '1'
+			catdir_lock.async_unlock().add_done_callback(catdir_unlocked)
+
+		def catdir_unlocked(future, exception=None):
+			if not (exception is None and future.exception() is None):
+				result.set_exception(exception or future.exception())
+			else:
+				result.set_result(None)
+
+		try:
+			portage.util.ensure_dirs(os.path.dirname(catdir),
+				gid=portage.portage_gid,
+				mode=0o70, mask=0)
+		except PortageException:
+			if not os.path.isdir(os.path.dirname(catdir)):
+				raise
+
+		catdir_lock.addExitListener(catdir_locked)
+		catdir_lock.start()
+		return result
+
+	def async_unlock(self):
+		"""
+		Release the lock asynchronously. Release notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is None
+		"""
+		result = self.scheduler.create_future()
+
+		def builddir_unlocked(future):
+			if future.exception() is not None:
+				result.set_exception(future.exception())
+			else:
+				self._lock_obj = None
+				self.locked = False
+				self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
+				catdir_lock = AsynchronousLock(
+					path=self._catdir, scheduler=self.scheduler)
+				catdir_lock.addExitListener(catdir_locked)
+				catdir_lock.start()
+
+		def catdir_locked(catdir_lock):
+			if catdir_lock.wait() != os.EX_OK:
+				result.set_result(None)
+			else:
+				try:
+					os.rmdir(self._catdir)
+				except OSError:
+					pass
+				catdir_lock.async_unlock().add_done_callback(catdir_unlocked)
+
+		def catdir_unlocked(future):
+			if future.exception() is None:
+				result.set_result(None)
+			else:
+				result.set_exception(future.exception())
+
+		if self._lock_obj is None:
+			self.scheduler.call_soon(result.set_result, None)
+		else:
+			self._lock_obj.async_unlock().add_done_callback(builddir_unlocked)
+		return result
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass

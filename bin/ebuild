@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -b
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -55,8 +55,11 @@ from portage.exception import PermissionDenied, PortageKeyError, \
 	PortagePackageException, UnsupportedAPIException
 from portage.localization import _
 import portage.util
+from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
+
+portage.process.sanitize_fds()
 
 description = "See the ebuild(1) man page for more info"
 usage = "Usage: ebuild <ebuild file> <command> [command] ..."
@@ -350,7 +353,7 @@ for arg in pargs:
 	except KeyboardInterrupt:
 		print("Interrupted.")
 		a = 1
-	except KeyError:
+	except PortageKeyError:
 		# aux_get error
 		a = 1
 	except UnsupportedAPIException as e:
@@ -369,4 +372,7 @@ for arg in pargs:
 		print("Could not run the required binary?")
 		a = 127
 	if a:
+		global_event_loop().close()
 		sys.exit(a)
+
+global_event_loop().close()

@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -12,35 +12,14 @@ import errno
 class SubProcess(AbstractPollTask):
 
 	__slots__ = ("pid",) + \
-		("_dummy_pipe_fd", "_files", "_reg_id", "_waitpid_id")
+		("_dummy_pipe_fd", "_files", "_waitpid_id")
 
 	# This is how much time we allow for waitpid to succeed after
 	# we've sent a kill signal to our subprocess.
-	_cancel_timeout = 1000 # 1 second
+	_cancel_timeout = 1 # seconds
 
 	def _poll(self):
-		if self.returncode is not None:
-			return self.returncode
-		if self.pid is None:
-			return self.returncode
-		if self._registered:
-			return self.returncode
-
-		try:
-			# With waitpid and WNOHANG, only check the
-			# first element of the tuple since the second
-			# element may vary (bug #337465).
-			retval = os.waitpid(self.pid, os.WNOHANG)
-		except OSError as e:
-			if e.errno != errno.ECHILD:
-				raise
-			del e
-			retval = (self.pid, 1)
-
-		if retval[0] == 0:
-			return None
-		self._set_returncode(retval)
-		self.wait()
+		# Simply rely on _async_waitpid_cb to set the returncode.
 		return self.returncode
 
 	def _cancel(self):
@@ -61,46 +40,6 @@ class SubProcess(AbstractPollTask):
 		return self.pid is not None and \
 			self.returncode is None
 
-	def _wait(self):
-
-		if self.returncode is not None:
-			return self.returncode
-
-		if self._registered:
-			if self.cancelled:
-				self._wait_loop(timeout=self._cancel_timeout)
-				if self._registered:
-					try:
-						os.kill(self.pid, signal.SIGKILL)
-					except OSError as e:
-						if e.errno == errno.EPERM:
-							# Reported with hardened kernel (bug #358211).
-							writemsg_level(
-								"!!! kill: (%i) - Operation not permitted\n" %
-								(self.pid,), level=logging.ERROR,
-								noiselevel=-1)
-						elif e.errno != errno.ESRCH:
-							raise
-						del e
-					self._wait_loop(timeout=self._cancel_timeout)
-					if self._registered:
-						self._orphan_process_warn()
-			else:
-				self._wait_loop()
-
-			if self.returncode is not None:
-				return self.returncode
-
-		if not isinstance(self.pid, int):
-			# Get debug info for bug #403697.
-			raise AssertionError(
-				"%s: pid is non-integer: %s" %
-				(self.__class__.__name__, repr(self.pid)))
-
-		self._waitpid_loop()
-
-		return self.returncode
-
 	def _async_waitpid(self):
 		"""
 		Wait for exit status of self.pid asynchronously, and then
@@ -108,29 +47,18 @@ class SubProcess(AbstractPollTask):
 		prefered over _waitpid_loop, since the synchronous nature
 		of _waitpid_loop can cause event loop recursion.
 		"""
-		if self._waitpid_id is None:
-			self._waitpid_id = self.scheduler.child_watch_add(
-				self.pid, self._async_waitpid_cb)
+		if self.returncode is not None:
+			self._async_wait()
+		elif self._waitpid_id is None:
+			self._waitpid_id = self.pid
+			self.scheduler._asyncio_child_watcher.\
+				add_child_handler(self.pid, self._async_waitpid_cb)
 
-	def _async_waitpid_cb(self, pid, condition, user_data=None):
+	def _async_waitpid_cb(self, pid, returncode):
 		if pid != self.pid:
 			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
-		self._set_returncode((pid, condition))
-		self.wait()
-
-	def _waitpid_loop(self):
-		source_id = self.scheduler.child_watch_add(
-			self.pid, self._waitpid_cb)
-		try:
-			while self.returncode is None:
-				self.scheduler.iteration()
-		finally:
-			self.scheduler.source_remove(source_id)
-
-	def _waitpid_cb(self, pid, condition, user_data=None):
-		if pid != self.pid:
-			raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
-		self._set_returncode((pid, condition))
+		self.returncode = returncode
+		self._async_wait()
 
 	def _orphan_process_warn(self):
 		pass
@@ -142,12 +70,9 @@ class SubProcess(AbstractPollTask):
 
 		self._registered = False
 
-		if self._reg_id is not None:
-			self.scheduler.source_remove(self._reg_id)
-			self._reg_id = None
-
 		if self._waitpid_id is not None:
-			self.scheduler.source_remove(self._waitpid_id)
+			self.scheduler._asyncio_child_watcher.\
+				remove_child_handler(self._waitpid_id)
 			self._waitpid_id = None
 
 		if self._files is not None:
@@ -157,21 +82,3 @@ class SubProcess(AbstractPollTask):
 				else:
 					f.close()
 			self._files = None
-
-	def _set_returncode(self, wait_retval):
-		"""
-		Set the returncode in a manner compatible with
-		subprocess.Popen.returncode: A negative value -N indicates
-		that the child was terminated by signal N (Unix only).
-		"""
-		self._unregister()
-
-		pid, status = wait_retval
-
-		if os.WIFSIGNALED(status):
-			retval = - os.WTERMSIG(status)
-		else:
-			retval = os.WEXITSTATUS(status)
-
-		self.returncode = retval
-

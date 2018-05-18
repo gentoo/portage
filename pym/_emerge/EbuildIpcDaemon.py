@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -32,24 +32,12 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 
 	__slots__ = ('commands',)
 
-	def _input_handler(self, fd, event):
+	def _input_handler(self):
 		# Read the whole pickle in a single atomic read() call.
-		data = None
-		if event & self.scheduler.IO_IN:
-			# For maximum portability, use os.read() here since
-			# array.fromfile() and file.read() are both known to
-			# erroneously return an empty string from this
-			# non-blocking fifo stream on FreeBSD (bug #337465).
-			try:
-				data = os.read(fd, self._bufsize)
-			except OSError as e:
-				if e.errno != errno.EAGAIN:
-					raise
-				# Assume that another event will be generated
-				# if there's any relevant data.
-
-		if data:
-
+		data = self._read_buf(self._files.pipe_in)
+		if data is None:
+			pass # EAGAIN
+		elif data:
 			try:
 				obj = pickle.loads(data)
 			except SystemExit:
@@ -85,7 +73,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 				if reply_hook is not None:
 					reply_hook()
 
-		elif event & self.scheduler.IO_HUP:
+		else: # EIO/POLLHUP
 			# This can be triggered due to a race condition which happens when
 			# the previous _reopen_input() call occurs before the writer has
 			# closed the pipe (see bug #401919). It's not safe to re-open
@@ -106,8 +94,6 @@ class EbuildIpcDaemon(FifoIpcDaemon):
 					self._reopen_input()
 				finally:
 					unlockfile(lock_obj)
-
-		return True
 
 	def _send_reply(self, reply):
 		# File streams are in unbuffered mode since we do atomic

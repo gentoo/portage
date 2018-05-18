@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -30,12 +30,28 @@ ___eapi_has_prefix_variables() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2)$ || " ${FEATURES} " == *" force-prefix "* ]]
 }
 
+___eapi_has_BROOT() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
+___eapi_has_SYSROOT() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_HDEPEND() {
 	[[ ${1-${EAPI-0}} =~ ^(5-hdepend)$ ]]
 }
 
+___eapi_has_BDEPEND() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_RDEPEND_DEPEND_fallback() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
+}
+
+___eapi_has_PORTDIR_ECLASSDIR() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 # HELPERS PRESENCE
@@ -52,12 +68,24 @@ ___eapi_has_einstall() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_has_dohtml() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 ___eapi_has_dohtml_deprecated() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+	[[ ${1-${EAPI-0}} == 6 ]]
+}
+
+___eapi_has_dolib_libopts() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
 }
 
 ___eapi_has_docompress() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
+}
+
+___eapi_has_dostrip() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
 }
 
 ___eapi_has_nonfatal() {
@@ -92,6 +120,10 @@ ___eapi_has_in_iuse() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_has_version_functions() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
+}
+
 ___eapi_has_master_repositories() {
 	[[ ${1-${EAPI-0}} =~ ^(5-progress)$ ]]
 }
@@ -123,7 +155,11 @@ ___eapi_has_package_manager_build_group() {
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
+	[[ ${1-${EAPI-0}} =~ ^(5|5-progress|6)$ ]]
+}
+
+___eapi_best_version_and_has_version_support_-b_-d_-r() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_unpack_supports_xz() {
@@ -144,6 +180,10 @@ ___eapi_econf_passes_--disable-silent-rules() {
 
 ___eapi_econf_passes_--docdir_and_--htmldir() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
+}
+
+___eapi_econf_passes_--with-sysroot() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
 ___eapi_use_enable_and_use_with_support_empty_third_argument() {
@@ -178,6 +218,14 @@ ___eapi_die_can_respect_nonfatal() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress)$ ]]
 }
 
+___eapi_domo_respects_into() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
+___eapi_has_DESTTREE_INSDESTTREE() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-hdepend|5-progress|6)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {
@@ -193,5 +241,9 @@ ___eapi_bash_3_2() {
 }
 
 ___eapi_bash_4_2() {
-	[[ ${1-${EAPI-0}} =~ ^(6)$ ]]
+	! ___eapi_bash_3_2 "$@"
+}
+
+___eapi_has_ENV_UNSET() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }

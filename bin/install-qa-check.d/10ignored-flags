@@ -32,7 +32,7 @@ ignored_flag_check() {
 			# similar to how prepstrip uses it.
 			f=$(file "${x}") || continue
 			[[ -z ${f} ]] && continue
-			if [[ ${f} == *"SB executable"* ||
+			if [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
 				${f} == *"SB shared object"* ]] ; then
 				echo "${x}" >> "${T}"/scanelf-ignored-CFLAGS.log
 			fi

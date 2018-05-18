@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -17,10 +17,9 @@ class PipeReader(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_files",) + \
-		("_read_data", "_reg_ids", "_use_array")
+		("_read_data", "_use_array")
 
 	def _start(self):
-		self._reg_ids = set()
 		self._read_data = []
 
 		if self._use_array:
@@ -43,21 +42,13 @@ class PipeReader(AbstractPollTask):
 					fcntl.fcntl(fd, fcntl.F_SETFD,
 						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-			self._reg_ids.add(self.scheduler.io_add_watch(fd,
-				self._registered_events, output_handler))
+			self.scheduler.add_reader(fd, output_handler, fd)
 		self._registered = True
 
 	def _cancel(self):
 		self._unregister()
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
-
-	def _wait(self):
-		if self.returncode is not None:
-			return self.returncode
-		self._wait_loop()
-		self.returncode = os.EX_OK
-		return self.returncode
 
 	def getvalue(self):
 		"""Retrieve the entire contents"""
@@ -67,41 +58,37 @@ class PipeReader(AbstractPollTask):
 		"""Free the memory buffer."""
 		self._read_data = None
 
-	def _output_handler(self, fd, event):
+	def _output_handler(self, fd):
 
 		while True:
-			data = self._read_buf(fd, event)
+			data = self._read_buf(fd)
 			if data is None:
 				break
 			if data:
 				self._read_data.append(data)
 			else:
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 				break
 
-		self._unregister_if_appropriate(event)
-
-		return True
-
-	def _array_output_handler(self, fd, event):
+	def _array_output_handler(self, fd):
 
 		for f in self.input_files.values():
 			if f.fileno() == fd:
 				break
 
 		while True:
-			data = self._read_array(f, event)
+			data = self._read_array(f)
 			if data is None:
 				break
 			if data:
 				self._read_data.append(data)
 			else:
 				self._unregister()
-				self.wait()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
 				break
-
-		self._unregister_if_appropriate(event)
 
 		return True
 
@@ -112,16 +99,13 @@ class PipeReader(AbstractPollTask):
 
 		self._registered = False
 
-		if self._reg_ids is not None:
-			for reg_id in self._reg_ids:
-				self.scheduler.source_remove(reg_id)
-			self._reg_ids = None
-
 		if self.input_files is not None:
 			for f in self.input_files.values():
 				if isinstance(f, int):
+					self.scheduler.remove_reader(f)
 					os.close(f)
 				else:
+					self.scheduler.remove_reader(f.fileno())
 					f.close()
 			self.input_files = None
 

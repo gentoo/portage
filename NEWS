@@ -1,5 +1,22 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.32
+----------------
+* EAPI 7 support.
+
+portage-2.3.29
+----------------
+* Portage API consumers can use asyncio with portage's internal event
+  loop, see portage.util.futures.unix_events.DefaultEventLoopPolicy.
+
+portage-2.3.25
+----------------
+* Experimental support for EAPI 7_pre1.
+
+portage-2.3.20
+----------------
+* Support RESTRICT=network-sandbox in ebuilds.
+
 portage-2.3.17
 ----------------
 * The doins ebuild helper has been rewritten in python for performance, and

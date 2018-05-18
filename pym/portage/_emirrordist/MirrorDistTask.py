@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Gentoo Foundation
+# Copyright 2013-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -46,7 +46,7 @@ class MirrorDistTask(CompositeTask):
 
 		self._assert_current(fetch)
 		if self._was_cancelled():
-			self.wait()
+			self._async_wait()
 			return
 
 		if self._config.options.delete:
@@ -63,7 +63,7 @@ class MirrorDistTask(CompositeTask):
 
 		self._assert_current(deletion)
 		if self._was_cancelled():
-			self.wait()
+			self._async_wait()
 			return
 
 		self._post_deletion()
@@ -80,7 +80,7 @@ class MirrorDistTask(CompositeTask):
 
 		self.returncode = os.EX_OK
 		self._current_task = None
-		self.wait()
+		self._async_wait()
 
 	def _update_recycle_db(self):
 
@@ -231,8 +231,19 @@ class MirrorDistTask(CompositeTask):
 		if self._fetch_iterator is not None:
 			self._fetch_iterator.terminate()
 		self.cancel()
-		self.wait()
+		if self.returncode is None:
+			# In this case, the exit callback for self._current_task will
+			# trigger notification of exit listeners. Don't call _async_wait()
+			# yet, since that could trigger event loop recursion if the
+			# current (cancelled) task's exit callback does not set the
+			# returncode first.
+			pass
+		else:
+			self._async_wait()
 
-	def _wait(self):
-		CompositeTask._wait(self)
+	def _async_wait(self):
+		"""
+		Override _async_wait to call self._cleanup().
+		"""
 		self._cleanup()
+		super(MirrorDistTask, self)._async_wait()

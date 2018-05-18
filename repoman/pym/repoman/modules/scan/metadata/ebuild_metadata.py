@@ -9,7 +9,6 @@ if sys.hexversion >= 0x3000000:
 	basestring = str
 
 from repoman.modules.scan.scanbase import ScanBase
-from repoman.qa_data import missingvars
 
 from portage.dep import use_reduce
 
@@ -20,6 +19,7 @@ class EbuildMetadata(ScanBase):
 
 	def __init__(self, **kwargs):
 		self.qatracker = kwargs.get('qatracker')
+		self.repo_settings = kwargs.get('repo_settings')
 
 	def invalidchar(self, **kwargs):
 		ebuild = kwargs.get('ebuild').get()
@@ -37,22 +37,16 @@ class EbuildMetadata(ScanBase):
 
 	def missing(self, **kwargs):
 		ebuild = kwargs.get('ebuild').get()
-		for pos, missing_var in enumerate(missingvars):
+		for pos, missing_var in enumerate(self.repo_settings.qadata.missingvars):
 			if not ebuild.metadata.get(missing_var):
 				if kwargs.get('catdir') == "virtual" and \
 					missing_var in ("HOMEPAGE", "LICENSE"):
 					continue
 				if ebuild.live_ebuild and missing_var == "KEYWORDS":
 					continue
-				myqakey = missingvars[pos] + ".missing"
+				myqakey = self.repo_settings.qadata.missingvars[pos] + ".missing"
 				self.qatracker.add_error(myqakey, '%s/%s.ebuild'
 					% (kwargs.get('xpkg'), kwargs.get('y_ebuild')))
-		return False
-
-	def old_virtual(self, **kwargs):
-		ebuild = kwargs.get('ebuild').get()
-		if ebuild.metadata.get("PROVIDE"):
-			self.qatracker.add_error("virtual.oldstyle", ebuild.relative_path)
 		return False
 
 	def virtual(self, **kwargs):
@@ -80,5 +74,5 @@ class EbuildMetadata(ScanBase):
 
 	@property
 	def runInEbuilds(self):
-		return (True, [self.invalidchar, self.missing, self.old_virtual,
+		return (True, [self.invalidchar, self.missing,
 			self.virtual, self.homepage_urischeme])

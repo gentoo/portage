@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 '''
@@ -6,12 +6,14 @@ Base class for performing sync operations.
 This class contains common initialization code and functions.
 '''
 
-
+from __future__ import unicode_literals
 import logging
 import os
 
 import portage
 from portage.util import writemsg_level
+from portage.util.backoff import RandomExponentialBackoff
+from portage.util.futures.retry import retry
 from . import _SUBMODULE_PATH_MAP
 
 class SyncBase(object):
@@ -105,6 +107,87 @@ class SyncBase(object):
 	def retrieve_head(self, **kwargs):
 		'''Get information about the head commit'''
 		raise NotImplementedError
+
+	def _key_refresh_retry_decorator(self):
+		'''
+		Return a retry decorator, or None if retry is disabled.
+
+		If retry fails, the function reraises the exception raised
+		by the decorated function. If retry times out and no exception
+		is available to reraise, the function raises TimeoutError.
+		'''
+		errors = []
+
+		if self.repo.sync_openpgp_key_refresh_retry_count is None:
+			return None
+		try:
+			retry_count = int(self.repo.sync_openpgp_key_refresh_retry_count)
+		except Exception as e:
+			errors.append('sync-openpgp-key-refresh-retry-count: {}'.format(e))
+		else:
+			if retry_count <= 0:
+				return None
+
+		if self.repo.sync_openpgp_key_refresh_retry_overall_timeout is None:
+			retry_overall_timeout = None
+		else:
+			try:
+				retry_overall_timeout = float(self.repo.sync_openpgp_key_refresh_retry_overall_timeout)
+			except Exception as e:
+				errors.append('sync-openpgp-key-refresh-retry-overall-timeout: {}'.format(e))
+			else:
+				if retry_overall_timeout < 0:
+					errors.append('sync-openpgp-key-refresh-retry-overall-timeout: '
+						'value must be greater than or equal to zero: {}'.format(retry_overall_timeout))
+				elif retry_overall_timeout == 0:
+					retry_overall_timeout = None
+
+		if self.repo.sync_openpgp_key_refresh_retry_delay_mult is None:
+			retry_delay_mult = None
+		else:
+			try:
+				retry_delay_mult = float(self.repo.sync_openpgp_key_refresh_retry_delay_mult)
+			except Exception as e:
+				errors.append('sync-openpgp-key-refresh-retry-delay-mult: {}'.format(e))
+			else:
+				if retry_delay_mult <= 0:
+					errors.append('sync-openpgp-key-refresh-retry-mult: '
+						'value must be greater than zero: {}'.format(retry_delay_mult))
+
+		if self.repo.sync_openpgp_key_refresh_retry_delay_exp_base is None:
+			retry_delay_exp_base = None
+		else:
+			try:
+				retry_delay_exp_base = float(self.repo.sync_openpgp_key_refresh_retry_delay_exp_base)
+			except Exception as e:
+				errors.append('sync-openpgp-key-refresh-retry-delay-exp: {}'.format(e))
+			else:
+				if retry_delay_exp_base <= 0:
+					errors.append('sync-openpgp-key-refresh-retry-delay-exp: '
+						'value must be greater than zero: {}'.format(retry_delay_mult))
+
+		if errors:
+			lines = []
+			lines.append('')
+			lines.append('!!! Retry disabled for openpgp key refresh:')
+			lines.append('')
+			for msg in errors:
+				lines.append('    {}'.format(msg))
+			lines.append('')
+
+			for line in lines:
+				writemsg_level("{}\n".format(line),
+					level=logging.ERROR, noiselevel=-1)
+
+			return None
+
+		return retry(
+			reraise=True,
+			try_max=retry_count,
+			overall_timeout=(retry_overall_timeout if retry_overall_timeout > 0 else None),
+			delay_func=RandomExponentialBackoff(
+				multiplier=(1 if retry_delay_mult is None else retry_delay_mult),
+				base=(2 if retry_delay_exp_base is None else retry_delay_exp_base)))
 
 
 class NewBase(SyncBase):

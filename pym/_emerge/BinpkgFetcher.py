@@ -1,7 +1,10 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+
 from _emerge.AsynchronousLock import AsynchronousLock
+from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
 try:
 	from urllib.parse import urlparse as urllib_parse_urlparse
@@ -11,35 +14,75 @@ import stat
 import sys
 import portage
 from portage import os
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
 if sys.hexversion >= 0x3000000:
 	long = int
 
-class BinpkgFetcher(SpawnProcess):
 
-	__slots__ = ("pkg", "pretend",
-		"locked", "pkg_path", "_lock_obj")
+class BinpkgFetcher(CompositeTask):
+
+	__slots__ = ("pkg", "pretend", "logfile", "pkg_path")
 
 	def __init__(self, **kwargs):
-		SpawnProcess.__init__(self, **kwargs)
+		CompositeTask.__init__(self, **kwargs)
 		pkg = self.pkg
 		self.pkg_path = pkg.root_config.trees["bintree"].getname(
 			pkg.cpv) + ".partial"
 
 	def _start(self):
+		fetcher = _BinpkgFetcherProcess(background=self.background,
+			logfile=self.logfile, pkg=self.pkg, pkg_path=self.pkg_path,
+			pretend=self.pretend, scheduler=self.scheduler)
 
+		if not self.pretend:
+			portage.util.ensure_dirs(os.path.dirname(self.pkg_path))
+			if "distlocks" in self.pkg.root_config.settings.features:
+				self._start_task(
+					AsyncTaskFuture(future=fetcher.async_lock()),
+					functools.partial(self._start_locked, fetcher))
+				return
+
+		self._start_task(fetcher, self._fetcher_exit)
+
+	def _start_locked(self, fetcher, lock_task):
+		self._assert_current(lock_task)
+		lock_task.future.result()
+		self._start_task(fetcher, self._fetcher_exit)
+
+	def _fetcher_exit(self, fetcher):
+		self._assert_current(fetcher)
+		if not self.pretend and fetcher.returncode == os.EX_OK:
+			fetcher.sync_timestamp()
+		if fetcher.locked:
+			self._start_task(
+				AsyncTaskFuture(future=fetcher.async_unlock()),
+				functools.partial(self._fetcher_exit_unlocked, fetcher))
+		else:
+			self._fetcher_exit_unlocked(fetcher)
+
+	def _fetcher_exit_unlocked(self, fetcher, unlock_task=None):
+		if unlock_task is not None:
+			self._assert_current(unlock_task)
+			unlock_task.future.result()
+
+		self._current_task = None
+		self.returncode = fetcher.returncode
+		self._async_wait()
+
+
+class _BinpkgFetcherProcess(SpawnProcess):
+
+	__slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
+
+	def _start(self):
 		pkg = self.pkg
 		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
 		settings = bintree.settings
-		use_locks = "distlocks" in settings.features
 		pkg_path = self.pkg_path
 
-		if not pretend:
-			portage.util.ensure_dirs(os.path.dirname(pkg_path))
-			if use_locks:
-				self.lock()
 		exists = os.path.exists(pkg_path)
 		resume = exists and os.path.basename(pkg_path) in bintree.invalids
 		if not (pretend or resume):
@@ -65,7 +108,7 @@ class BinpkgFetcher(SpawnProcess):
 
 		if pretend:
 			portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -123,9 +166,7 @@ class BinpkgFetcher(SpawnProcess):
 			_create_pty_or_pipe(copy_term_size=stdout_pipe)
 		return (master_fd, slave_fd)
 
-	def _set_returncode(self, wait_retval):
-		SpawnProcess._set_returncode(self, wait_retval)
-		if not self.pretend and self.returncode == os.EX_OK:
+	def sync_timestamp(self):
 			# If possible, update the mtime to match the remote package if
 			# the fetcher didn't already do it automatically.
 			bintree = self.pkg.root_config.trees["bintree"]
@@ -151,10 +192,7 @@ class BinpkgFetcher(SpawnProcess):
 								except OSError:
 									pass
 
-		if self.locked:
-			self.unlock()
-
-	def lock(self):
+	def async_lock(self):
 		"""
 		This raises an AlreadyLocked exception if lock() is called
 		while a lock is already held. In order to avoid this, call
@@ -164,25 +202,31 @@ class BinpkgFetcher(SpawnProcess):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		async_lock = AsynchronousLock(path=self.pkg_path,
+		result = self.scheduler.create_future()
+
+		def acquired_lock(async_lock):
+			if async_lock.wait() == os.EX_OK:
+				self.locked = True
+				result.set_result(None)
+			else:
+				result.set_exception(AssertionError(
+					"AsynchronousLock failed with returncode %s"
+					% (async_lock.returncode,)))
+
+		self._lock_obj = AsynchronousLock(path=self.pkg_path,
 			scheduler=self.scheduler)
-		async_lock.start()
-
-		if async_lock.wait() != os.EX_OK:
-			# TODO: Use CompositeTask for better handling, like in EbuildPhase.
-			raise AssertionError("AsynchronousLock failed with returncode %s" \
-				% (async_lock.returncode,))
-
-		self._lock_obj = async_lock
-		self.locked = True
+		self._lock_obj.addExitListener(acquired_lock)
+		self._lock_obj.start()
+		return result
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
 
-	def unlock(self):
+	def async_unlock(self):
 		if self._lock_obj is None:
-			return
-		self._lock_obj.unlock()
+			raise AssertionError('already unlocked')
+		result = self._lock_obj.async_unlock()
 		self._lock_obj = None
 		self.locked = False
+		return result
 

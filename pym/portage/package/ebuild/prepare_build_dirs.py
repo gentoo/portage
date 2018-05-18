@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -409,3 +409,32 @@ def _prepare_fake_filesdir(settings):
 		if link_target != real_filesdir:
 			os.unlink(symlink_path)
 			os.symlink(real_filesdir, symlink_path)
+
+def _prepare_fake_distdir(settings, alist):
+	orig_distdir = settings["DISTDIR"]
+	edpath = os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
+
+	# Remove any unexpected files or directories.
+	for x in os.listdir(edpath):
+		symlink_path = os.path.join(edpath, x)
+		st = os.lstat(symlink_path)
+		if x in alist and stat.S_ISLNK(st.st_mode):
+			continue
+		if stat.S_ISDIR(st.st_mode):
+			shutil.rmtree(symlink_path)
+		else:
+			os.unlink(symlink_path)
+
+	# Check for existing symlinks and recreate if necessary.
+	for x in alist:
+		symlink_path = os.path.join(edpath, x)
+		target = os.path.join(orig_distdir, x)
+		try:
+			link_target = os.readlink(symlink_path)
+		except OSError:
+			os.symlink(target, symlink_path)
+		else:
+			if link_target != target:
+				os.unlink(symlink_path)
+				os.symlink(target, symlink_path)

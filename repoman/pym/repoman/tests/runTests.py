@@ -3,19 +3,21 @@
 # Copyright 2006-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, sys
+import os
+import sys
 import os.path as osp
 import grp
 import platform
 import pwd
 import signal
 
+
 def debug_signal(signum, frame):
 	import pdb
 	pdb.set_trace()
 
 if platform.python_implementation() == 'Jython':
-	debug_signum = signal.SIGUSR2 # bug #424259
+	debug_signum = signal.SIGUSR2  # bug #424259
 else:
 	debug_signum = signal.SIGUSR1
 
@@ -33,7 +35,7 @@ repoman_pym = osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__))))
 sys.path.insert(0, repoman_pym)
 
 # Add in the parent portage python modules
-portage_pym = osp.dirname(osp.dirname(repoman_pym))+'/pym'
+portage_pym = osp.dirname(osp.dirname(repoman_pym)) + '/pym'
 sys.path.insert(0, portage_pym)
 
 # import our centrally initialized portage instance
@@ -43,6 +45,7 @@ portage._internal_caller = True
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 if os.environ.get('NOCOLOR') in ('yes', 'true'):
 	portage.output.nocolor()
@@ -64,4 +67,7 @@ if insert_bin_path:
 	os.environ["PATH"] = ":".join(path)
 
 if __name__ == "__main__":
-	sys.exit(tests.main())
+	try:
+		sys.exit(tests.main())
+	finally:
+		global_event_loop().close()

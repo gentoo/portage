@@ -12,6 +12,7 @@ try:
 except ImportError:
 	import pickle
 
+from portage import abssymlink
 from portage import os
 from portage import _encodings
 from portage import _os_merge
@@ -227,7 +228,7 @@ class PreservedLibsRegistry(object):
 			# removed by _remove_preserved_libs, it calls pruneNonExisting
 			# which eliminates the irrelevant symlink from the registry here.
 			for f, target in symlinks.items():
-				if os.path.join(os.path.dirname(f), target) in hardlinks:
+				if abssymlink(f, target=target) in hardlinks:
 					paths.append(f)
 
 			if len(paths) > 0:

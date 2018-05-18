@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -15,7 +15,6 @@ from portage import _unicode_encode
 from portage.dep import extract_unpack_dependencies
 from portage.eapi import eapi_has_automatic_unpack_dependencies
 
-import errno
 import fcntl
 import io
 
@@ -49,14 +48,14 @@ class EbuildMetadataPhase(SubProcess):
 		if not parsed_eapi:
 			# An empty EAPI setting is invalid.
 			self._eapi_invalid(None)
-			self._set_returncode((self.pid, 1 << 8))
+			self.returncode = 1
 			self._async_wait()
 			return
 
 		self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
 		if not self.eapi_supported:
 			self.metadata = {"EAPI": parsed_eapi}
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -109,8 +108,7 @@ class EbuildMetadataPhase(SubProcess):
 
 		self._raw_metadata = []
 		files.ebuild = master_fd
-		self._reg_id = self.scheduler.io_add_watch(files.ebuild,
-			self._registered_events, self._output_handler)
+		self.scheduler.add_reader(files.ebuild, self._output_handler)
 		self._registered = True
 
 		retval = portage.doebuild(ebuild_path, "depend",
@@ -124,36 +122,37 @@ class EbuildMetadataPhase(SubProcess):
 
 		if isinstance(retval, int):
 			# doebuild failed before spawning
-			self._unregister()
-			self._set_returncode((self.pid, retval << 8))
+			self.returncode = retval
 			self._async_wait()
 			return
 
 		self.pid = retval[0]
 
-	def _output_handler(self, fd, event):
-
-		if event & self.scheduler.IO_IN:
-			while True:
-				try:
-					self._raw_metadata.append(
-						os.read(self._files.ebuild, self._bufsize))
-				except OSError as e:
-					if e.errno not in (errno.EAGAIN,):
-						raise
-					break
-				else:
-					if not self._raw_metadata[-1]:
-						self._unregister()
-						self.wait()
+	def _output_handler(self):
+		while True:
+			buf = self._read_buf(self._files.ebuild)
+			if buf is None:
+				break # EAGAIN
+			elif buf:
+				self._raw_metadata.append(buf)
+			else: # EIO/POLLHUP
+						if self.pid is None:
+							self._unregister()
+							self._async_wait()
+						else:
+							self._async_waitpid()
 						break
 
-		self._unregister_if_appropriate(event)
+	def _unregister(self):
+		self.scheduler.remove_reader(self._files.ebuild)
+		SubProcess._unregister(self)
 
-		return True
-
-	def _set_returncode(self, wait_retval):
-		SubProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		SubProcess._async_waitpid_cb(self, *args, **kwargs)
 		# self._raw_metadata is None when _start returns
 		# early due to an unsupported EAPI
 		if self.returncode == os.EX_OK and \

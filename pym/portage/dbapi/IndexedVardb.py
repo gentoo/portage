@@ -52,7 +52,7 @@ class IndexedVardb(object):
 		self._cp_map = cp_map = {}
 		for cpv in self._vardb._aux_cache["packages"]:
 			try:
-				cpv = _pkg_str(cpv)
+				cpv = _pkg_str(cpv, db=self._vardb)
 			except InvalidData:
 				continue
 

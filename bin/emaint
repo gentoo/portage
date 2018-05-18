@@ -31,6 +31,7 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 import portage
 portage._internal_caller = True
 from portage.emaint.main import emaint_main
+from portage.util._eventloop.global_event_loop import global_event_loop
 
 try:
 	emaint_main(sys.argv[1:])
@@ -40,3 +41,5 @@ except IOError as e:
 		sys.exit(1)
 	else:
 		raise
+finally:
+	global_event_loop().close()

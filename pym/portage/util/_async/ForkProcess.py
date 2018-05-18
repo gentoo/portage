@@ -37,6 +37,16 @@ class ForkProcess(SpawnProcess):
 				signal.signal(signal.SIGINT, signal.SIG_DFL)
 				signal.signal(signal.SIGTERM, signal.SIG_DFL)
 
+				# Unregister SIGCHLD handler and wakeup_fd for the parent
+				# process's event loop (bug 655656).
+				signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+				try:
+					wakeup_fd = signal.set_wakeup_fd(-1)
+					if wakeup_fd > 0:
+						os.close(wakeup_fd)
+				except (ValueError, OSError):
+					pass
+
 				portage.locks._close_fds()
 				# We don't exec, so use close_fds=False
 				# (see _setup_pipes docstring).

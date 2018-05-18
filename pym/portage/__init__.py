@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -419,55 +419,10 @@ def _shell_quote(s):
 
 bsd_chflags = None
 
-if platform.system() in ('FreeBSD',) and rootuid == 0:
-
+if platform.system() in ('FreeBSD',):
 	class bsd_chflags(object):
-
-		@classmethod
-		def chflags(cls, path, flags, opts=""):
-			cmd = ['chflags']
-			if opts:
-				cmd.append(opts)
-			cmd.append('%o' % (flags,))
-			cmd.append(path)
-
-			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
-				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see https://bugs.python.org/issue8513).
-				fullname = process.find_binary(cmd[0])
-				if fullname is None:
-					raise exception.CommandNotFound(cmd[0])
-				cmd[0] = fullname
-
-			encoding = _encodings['fs']
-			cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
-				for x in cmd]
-			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-				stderr=subprocess.STDOUT)
-			output = proc.communicate()[0]
-			status = proc.wait()
-			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-				return
-			# Try to generate an ENOENT error if appropriate.
-			if 'h' in opts:
-				_os_merge.lstat(path)
-			else:
-				_os_merge.stat(path)
-			# Make sure the binary exists.
-			if not portage.process.find_binary('chflags'):
-				raise portage.exception.CommandNotFound('chflags')
-			# Now we're not sure exactly why it failed or what
-			# the real errno was, so just report EPERM.
-			output = _unicode_decode(output, encoding=encoding)
-			e = OSError(errno.EPERM, output)
-			e.errno = errno.EPERM
-			e.filename = path
-			e.message = output
-			raise e
-
-		@classmethod
-		def lchflags(cls, path, flags):
-			return cls.chflags(path, flags, opts='-h')
+		chflags = os.chflags
+		lchflags = os.lchflags
 
 def load_mod(name):
 	modname = ".".join(name.split(".")[:-1])
@@ -507,8 +462,8 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend", "6_pre1"])
-_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2"])
+_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend", "7_pre1", "7"])
+_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2", "6_pre1"])
 _supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI + 1)] + list(_testing_eapis) + list(_deprecated_eapis))
 
 def _eapi_is_deprecated(eapi):
@@ -553,7 +508,7 @@ auxdbkeys = (
   'DEPEND',    'RDEPEND',   'SLOT',      'SRC_URI',
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
-	'PDEPEND',   'PROVIDE', 'EAPI',
+	'PDEPEND',   'BDEPEND', 'EAPI',
 	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
@@ -570,7 +525,7 @@ class _trees_dict(dict):
 		self._target_eroot = None
 
 def create_trees(config_root=None, target_root=None, trees=None, env=None,
-	eprefix=None):
+	sysroot=None, eprefix=None):
 
 	if trees is None:
 		trees = _trees_dict()
@@ -582,7 +537,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 	if env is None:
 		env = os.environ
 	settings = config(config_root=config_root, target_root=target_root,
-		env=env, eprefix=eprefix)
+		env=env, sysroot=sysroot, eprefix=eprefix)
 	settings.lock()
 
 	depcachedir = settings.get('PORTAGE_DEPCACHEDIR')
@@ -606,7 +561,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		if depcachedir is not None:
 			clean_env['PORTAGE_DEPCACHEDIR'] = depcachedir
 		settings = config(config_root=None, target_root="/",
-			env=clean_env, eprefix=None)
+			env=clean_env, sysroot="/", eprefix=None)
 		settings.lock()
 		trees._running_eroot = settings['EROOT']
 		myroots.append((settings['EROOT'], settings))

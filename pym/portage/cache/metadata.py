@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2018 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -29,7 +29,7 @@ class database(flat_hash.database):
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
-		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES',
+		'PDEPEND',   'BDEPEND',   'EAPI', 'PROPERTIES',
 		'DEFINED_PHASES', 'HDEPEND')
 
 	autocommits = True

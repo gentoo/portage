@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -49,7 +49,7 @@ class QueryCommand(IpcCommand):
 		db = self.get_db()
 		eapi = self.settings.get('EAPI')
 
-		root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
+		root = normalize_path(root or os.sep).rstrip(os.sep) + os.sep
 		if root not in db:
 			return ('', '%s: Invalid ROOT: %s\n' % (cmd, root), 3)
 

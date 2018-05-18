@@ -24,7 +24,9 @@ module_spec = {
 				'checkdir': (None, None),
 				'xpkg': (None, None),
 			},
+			'module_runsIn': ['pkgs'],
 		},
-	}
+	},
+	'version': 1,
 }
 

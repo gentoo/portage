@@ -1,9 +1,10 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
 
 from portage import os
+from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 
 class AsynchronousTask(SlotObject):
@@ -12,13 +13,12 @@ class AsynchronousTask(SlotObject):
 	to public methods can be wrapped for implementing
 	hooks such as exit listener notification.
 
-	Sublasses should call self.wait() to notify exit listeners after
+	Sublasses should call self._async_wait() to notify exit listeners after
 	the task is complete and self.returncode has been set.
 	"""
 
-	__slots__ = ("background", "cancelled", "returncode") + \
-		("_exit_listeners", "_exit_listener_stack", "_start_listeners",
-		"_waiting")
+	__slots__ = ("background", "cancelled", "returncode", "scheduler") + \
+		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
 
 	_cancelled_returncode = - signal.SIGINT
 
@@ -29,9 +29,29 @@ class AsynchronousTask(SlotObject):
 		self._start_hook()
 		self._start()
 
+	def async_wait(self):
+		"""
+		Wait for returncode asynchronously. Notification is available
+		via the add_done_callback method of the returned Future instance.
+
+		@returns: Future, result is self.returncode
+		"""
+		waiter = self.scheduler.create_future()
+		exit_listener = lambda self: waiter.set_result(self.returncode)
+		self.addExitListener(exit_listener)
+		waiter.add_done_callback(lambda waiter:
+			self.removeExitListener(exit_listener) if waiter.cancelled() else None)
+		if self.returncode is not None:
+			# If the returncode is not None, it means the exit event has already
+			# happened, so use _async_wait() to guarantee that the exit_listener
+			# is called. This does not do any harm because a given exit listener
+			# is never called more than once.
+			self._async_wait()
+		return waiter
+
 	def _start(self):
 		self.returncode = os.EX_OK
-		self.wait()
+		self._async_wait()
 
 	def isAlive(self):
 		return self.returncode is None
@@ -47,17 +67,21 @@ class AsynchronousTask(SlotObject):
 		return self.returncode
 
 	def wait(self):
-		if self.returncode is None:
-			if not self._waiting:
-				self._waiting = True
-				try:
-					self._wait()
-				finally:
-					self._waiting = False
-		self._wait_hook()
-		return self.returncode
+		"""
+		Wait for the returncode attribute to become ready, and return
+		it. If the returncode is not ready and the event loop is already
+		running, then the async_wait() method should be used instead of
+		wait(), because wait() will raise asyncio.InvalidStateError in
+		this case.
 
-	def _wait(self):
+		@rtype: int
+		@returns: the value of self.returncode
+		"""
+		if self.returncode is None:
+			if self.scheduler.is_running():
+				raise asyncio.InvalidStateError('Result is not ready.')
+			self.scheduler.run_until_complete(self.async_wait())
+		self._wait_hook()
 		return self.returncode
 
 	def _async_wait(self):
@@ -68,11 +92,7 @@ class AsynchronousTask(SlotObject):
 		loop recursion (or stack overflow) that synchronous calling of
 		exit listeners can cause. This method is thread-safe.
 		"""
-		self.scheduler.idle_add(self._async_wait_cb)
-
-	def _async_wait_cb(self):
-		self.wait()
-		return False
+		self.scheduler.call_soon(self.wait)
 
 	def cancel(self):
 		"""

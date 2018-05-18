@@ -1,4 +1,4 @@
-# Copyright 1999-2011 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -8,7 +8,6 @@ import portage
 from portage import os
 from portage.eapi import eapi_has_src_prepare_and_src_configure, \
 	eapi_exports_replace_vars
-from portage.package.ebuild.doebuild import _prepare_fake_distdir
 
 class EbuildExecuter(CompositeTask):
 
@@ -24,9 +23,6 @@ class EbuildExecuter(CompositeTask):
 		settings = self.settings
 		cleanup = 0
 		portage.prepare_build_dirs(pkg.root, settings, cleanup)
-
-		alist = settings.configdict["pkg"].get("A", "").split()
-		_prepare_fake_distdir(settings, alist)
 
 		if eapi_exports_replace_vars(settings['EAPI']):
 			vardb = pkg.root_config.trees['vartree'].dbapi

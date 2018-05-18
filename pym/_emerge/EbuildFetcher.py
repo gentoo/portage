@@ -1,4 +1,4 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -13,16 +13,22 @@ from portage import _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import _check_distfile, fetch
+from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
+from _emerge.CompositeTask import CompositeTask
 
-class EbuildFetcher(ForkProcess):
+
+class EbuildFetcher(CompositeTask):
 
 	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
-		"pkg", "prefetch") + \
-		("_digests", "_manifest", "_settings", "_uri_map")
+		"logfile", "pkg", "prefetch", "_fetcher_proc")
 
-	def already_fetched(self, settings):
+	def __init__(self, **kwargs):
+		CompositeTask.__init__(self, **kwargs)
+		self._fetcher_proc = _EbuildFetcherProcess(**kwargs)
+
+	def async_already_fetched(self, settings):
 		"""
 		Returns True if all files already exist locally and have correct
 		digests, otherwise return False. When returning True, appropriate
@@ -32,11 +38,72 @@ class EbuildFetcher(ForkProcess):
 		such messages. This will raise InvalidDependString if SRC_URI is
 		invalid.
 		"""
+		return self._fetcher_proc.async_already_fetched(settings)
 
-		uri_map = self._get_uri_map()
-		if not uri_map:
-			return True
+	def _start(self):
+		self._start_task(
+			AsyncTaskFuture(future=self._fetcher_proc._async_uri_map()),
+			self._start_fetch)
 
+	def _start_fetch(self, uri_map_task):
+		self._assert_current(uri_map_task)
+		try:
+			uri_map = uri_map_task.future.result()
+		except portage.exception.InvalidDependString as e:
+			msg_lines = []
+			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
+				(self.pkg.cpv, e)
+			msg_lines.append(msg)
+			self._fetcher_proc._eerror(msg_lines)
+			self._current_task = None
+			self.returncode = 1
+			self._async_wait()
+			return
+
+		# First get the SRC_URI metadata (it's not cached in self.pkg.metadata
+		# because some packages have an extremely large SRC_URI value).
+		self._start_task(
+			AsyncTaskFuture(
+				future=self.pkg.root_config.trees["porttree"].dbapi.\
+				async_aux_get(self.pkg.cpv, ["SRC_URI"], myrepo=self.pkg.repo,
+				loop=self.scheduler)),
+			self._start_with_metadata)
+
+	def _start_with_metadata(self, aux_get_task):
+		self._assert_current(aux_get_task)
+		self._fetcher_proc.src_uri, = aux_get_task.future.result()
+		self._start_task(self._fetcher_proc, self._default_final_exit)
+
+
+class _EbuildFetcherProcess(ForkProcess):
+
+	__slots__ = ("config_pool", "ebuild_path", "fetchonly", "fetchall",
+		"pkg", "prefetch", "src_uri", "_digests", "_manifest",
+		"_settings", "_uri_map")
+
+	def async_already_fetched(self, settings):
+		result = self.scheduler.create_future()
+
+		def uri_map_done(uri_map_future):
+			if uri_map_future.exception() is not None or result.cancelled():
+				if not result.cancelled():
+					result.set_exception(uri_map_future.exception())
+				return
+
+			uri_map = uri_map_future.result()
+			if uri_map:
+				result.set_result(
+					self._check_already_fetched(settings, uri_map))
+			else:
+				result.set_result(True)
+
+		uri_map_future = self._async_uri_map()
+		result.add_done_callback(lambda result:
+			uri_map_future.cancel() if result.cancelled() else None)
+		uri_map_future.add_done_callback(uri_map_done)
+		return result
+
+	def _check_already_fetched(self, settings, uri_map):
 		digests = self._get_digests()
 		distdir = settings["DISTDIR"]
 		allow_missing = self._get_manifest().allow_missing
@@ -107,34 +174,25 @@ class EbuildFetcher(ForkProcess):
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
 		ebuild_path = self._get_ebuild_path()
-
-		try:
-			uri_map = self._get_uri_map()
-		except portage.exception.InvalidDependString as e:
-			msg_lines = []
-			msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % \
-				(self.pkg.cpv, e)
-			msg_lines.append(msg)
-			self._eerror(msg_lines)
-			self._set_returncode((self.pid, 1 << 8))
-			self._async_wait()
-			return
+		# This is initialized by an earlier _async_uri_map call.
+		uri_map = self._uri_map
 
 		if not uri_map:
 			# Nothing to fetch.
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
 		settings = self.config_pool.allocate()
 		settings.setcpv(self.pkg)
+		settings.configdict["pkg"]["SRC_URI"] = self.src_uri
 		portage.doebuild_environment(ebuild_path, 'fetch',
 			settings=settings, db=portdb)
 
 		if self.prefetch and \
 			self._prefetch_size_ok(uri_map, settings, ebuild_path):
 			self.config_pool.deallocate(settings)
-			self._set_returncode((self.pid, os.EX_OK << 8))
+			self.returncode = os.EX_OK
 			self._async_wait()
 			return
 
@@ -194,21 +252,34 @@ class EbuildFetcher(ForkProcess):
 			self._digests = self._get_manifest().getTypeDigests("DIST")
 		return self._digests
 
-	def _get_uri_map(self):
+	def _async_uri_map(self):
 		"""
-		This can raise InvalidDependString from portdbapi.getFetchMap().
+		This calls the portdbapi.async_fetch_map method and returns the
+		resulting Future (may contain InvalidDependString exception).
 		"""
 		if self._uri_map is not None:
-			return self._uri_map
+			result = self.scheduler.create_future()
+			result.set_result(self._uri_map)
+			return result
+
 		pkgdir = os.path.dirname(self._get_ebuild_path())
 		mytree = os.path.dirname(os.path.dirname(pkgdir))
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled
 		portdb = self.pkg.root_config.trees["porttree"].dbapi
-		self._uri_map = portdb.getFetchMap(self.pkg.cpv,
-			useflags=use, mytree=mytree)
-		return self._uri_map
+
+		def cache_result(result):
+			try:
+				self._uri_map = result.result()
+			except Exception:
+				# The caller handles this when it retrieves the result.
+				pass
+
+		result = portdb.async_fetch_map(self.pkg.cpv,
+			useflags=use, mytree=mytree, loop=self.scheduler)
+		result.add_done_callback(cache_result)
+		return result
 
 	def _prefetch_size_ok(self, uri_map, settings, ebuild_path):
 		distdir = settings["DISTDIR"]
@@ -270,8 +341,12 @@ class EbuildFetcher(ForkProcess):
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile)
 
-	def _set_returncode(self, wait_retval):
-		ForkProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
 		# Collect elog messages that might have been
 		# created by the pkg_nofetch phase.
 		# Skip elog messages for prefetch, in order to avoid duplicates.

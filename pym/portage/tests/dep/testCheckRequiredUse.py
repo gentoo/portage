@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -54,7 +54,8 @@ class TestCheckRequiredUse(TestCase):
 
 			("^^ ( a? ( !b ) !c? ( d ) )", [], ["a", "b", "c", "d"], False),
 			("^^ ( a? ( !b ) !c? ( d ) )", ["a"], ["a", "b", "c", "d"], True),
-			("^^ ( a? ( !b ) !c? ( d ) )", ["c"], ["a", "b", "c", "d"], True),
+			# note: this one is EAPI-dependent, it used to be True for EAPI <7
+			("^^ ( a? ( !b ) !c? ( d ) )", ["c"], ["a", "b", "c", "d"], False),
 			("^^ ( a? ( !b ) !c? ( d ) )", ["a", "c"], ["a", "b", "c", "d"], True),
 			("^^ ( a? ( !b ) !c? ( d ) )", ["a", "b", "c"], ["a", "b", "c", "d"], False),
 			("^^ ( a? ( !b ) !c? ( d ) )", ["a", "b", "d"], ["a", "b", "c", "d"], True),

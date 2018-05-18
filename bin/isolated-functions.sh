@@ -1,8 +1,12 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
+
+if ___eapi_has_version_functions; then
+	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
@@ -82,7 +86,7 @@ __dump_trace() {
 		lineno=${BASH_LINENO[${n} - 1]}
 		# Display function arguments
 		args=
-		if [[ -n "${BASH_ARGV[@]}" ]]; then
+		if [[ ${#BASH_ARGV[@]} -gt 0 ]]; then
 			for (( j = 1 ; j <= ${BASH_ARGC[${n} - 1]} ; ++j )); do
 				newarg=${BASH_ARGV[$(( p - j - 1 ))]}
 				args="${args:+${args} }'${newarg}'"
@@ -247,7 +251,7 @@ __quiet_mode() {
 }
 
 __vecho() {
-	__quiet_mode || echo "$@"
+	__quiet_mode || echo "$@" >&2
 }
 
 # Internal logging function, don't use this in ebuilds
@@ -273,9 +277,9 @@ __elog_base() {
 
 eqawarn() {
 	__elog_base QA "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		__vecho " $WARN*$NORMAL $REPLY" >&2
+		__vecho " $WARN*$NORMAL $REPLY"
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -283,9 +287,9 @@ eqawarn() {
 
 elog() {
 	__elog_base LOG "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $GOOD*$NORMAL $REPLY"
+		echo " $GOOD*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -293,9 +297,9 @@ elog() {
 
 einfo() {
 	__elog_base INFO "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $GOOD*$NORMAL $REPLY"
+		echo " $GOOD*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -303,15 +307,15 @@ einfo() {
 
 einfon() {
 	__elog_base INFO "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -ne " ${GOOD}*${NORMAL} $*"
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
+	echo -ne " ${GOOD}*${NORMAL} $*" >&2
 	LAST_E_CMD="einfon"
 	return 0
 }
 
 ewarn() {
 	__elog_base WARN "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
@@ -321,7 +325,7 @@ ewarn() {
 
 eerror() {
 	__elog_base ERROR "$*"
-	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
+	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
 		echo " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
@@ -339,7 +343,7 @@ ebegin() {
 		msg="${msg} ..."
 	fi
 	einfon "${msg}"
-	[[ ${RC_ENDCOL} == "yes" ]] && echo
+	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
 	return 0
@@ -359,10 +363,10 @@ __eend() {
 	fi
 
 	if [[ ${RC_ENDCOL} == "yes" ]] ; then
-		echo -e "${ENDCOL} ${msg}"
+		echo -e "${ENDCOL} ${msg}" >&2
 	else
 		[[ ${LAST_E_CMD} == ebegin ]] || LAST_E_LEN=0
-		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}"
+		printf "%$(( COLS - LAST_E_LEN - 7 ))s%b\n" '' "${msg}" >&2
 	fi
 
 	return ${retval}
@@ -556,13 +560,13 @@ __eqatag() {
 
 	(
 		echo "- tag: ${tag}"
-		if [[ ${data[@]} ]]; then
+		if [[ ${#data[@]} -gt 0 ]]; then
 			echo "  data:"
 			for i in "${data[@]}"; do
 				echo "    ${i%%=*}: \"$(__eqaquote "${i#*=}")\""
 			done
 		fi
-		if [[ ${filenames[@]} ]]; then
+		if [[ ${#filenames[@]} -gt 0 ]]; then
 			echo "  files:"
 			for i in "${filenames[@]}"; do
 				echo "    - \"$(__eqaquote "${i}")\""

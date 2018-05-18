@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -7,12 +7,12 @@
 # of ebuild.sh will work for pkg_postinst, pkg_prerm, and pkg_postrm
 # when portage is upgrading itself.
 
-PORTAGE_READONLY_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
+PORTAGE_READONLY_METADATA="BDEPEND DEFINED_PHASES DEPEND DESCRIPTION
 	EAPI HDEPEND HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
-	PDEPEND PROVIDE RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
+	PDEPEND RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
-	EBUILD_SH_ARGS ECLASSDIR EMERGE_FROM FILESDIR MERGE_TYPE \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR MERGE_TYPE \
 	PM_EBUILD_HOOK_DIR \
 	PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST PORTAGE_BASHRC  \
 	PORTAGE_BINPKG_FILE PORTAGE_BINPKG_TAR_OPTS PORTAGE_BINPKG_TMPFILE \
@@ -30,7 +30,6 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_SIGPIPE_STATUS \
 	PORTAGE_TMPDIR PORTAGE_UPDATE_ENV PORTAGE_USERNAME \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTAGE_XATTR_EXCLUDE \
-	PORTDIR \
 	REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
 	__PORTAGE_HELPER __PORTAGE_TEST_HARDLINK_LOCKS ED EROOT"
 
@@ -101,10 +100,22 @@ __filter_readonly_variables() {
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
+	if ___eapi_has_BROOT; then
+		filtered_vars+=" BROOT"
+	fi
+	if ___eapi_has_SYSROOT; then
+		filtered_vars+=" SYSROOT"
+	fi
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
 	if ___eapi_has_prefix_variables; then
 		filtered_vars+=" ED EPREFIX EROOT"
+		if ___eapi_has_SYSROOT; then
+			filtered_vars+=" ESYSROOT"
+		fi
+	fi
+	if ___eapi_has_PORTDIR_ECLASSDIR; then
+		filtered_vars+=" PORTDIR ECLASSDIR"
 	fi
 
 	if has --filter-sandbox $* ; then
@@ -541,9 +552,9 @@ __dyn_install() {
 		# fnmatch patterns to regular expressions
 		for x in QA_DT_NEEDED QA_FLAGS_IGNORED QA_PRESTRIPPED QA_SONAME ; do
 			if [[ $(declare -p $x 2>/dev/null) = declare\ -a* ]] ; then
-				eval "$x=(\"\${$x[@]}\" ${QA_PREBUILT//\*/.*})"
+				eval "${x}=(\"\${${x}[@]}\" ${QA_PREBUILT//\*/.*})"
 			else
-				eval "$x+=\" ${QA_PREBUILT//\*/.*}\""
+				eval "${x}+=\" ${QA_PREBUILT//\*/.*}\""
 			fi
 		done
 
@@ -584,8 +595,13 @@ __dyn_install() {
 	# Reset exeinto(), docinto(), insinto(), and into() state variables
 	# in case the user is running the install phase multiple times
 	# consecutively via the ebuild command.
-	export DESTTREE=/usr
-	export INSDESTTREE=""
+	if ___eapi_has_DESTTREE_INSDESTTREE; then
+		export DESTTREE=/usr
+		export INSDESTTREE=""
+	else
+		export _E_DESTTREE_=/usr
+		export _E_INSDESTTREE_=""
+	fi
 	export _E_EXEDESTTREE_=""
 	export _E_DOCDESTTREE_=""
 
@@ -653,25 +669,23 @@ __dyn_install() {
 	cd "${PORTAGE_BUILDDIR}"/build-info
 	set -f
 	local f x
+
 	IFS=$' \t\n\r'
 	for f in CATEGORY DEFINED_PHASES FEATURES INHERITED IUSE \
-		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION ; do
+		PF PKGUSE SLOT KEYWORDS HOMEPAGE DESCRIPTION \
+		ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
+		CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+		LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
+		QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE \
+		PKG_INSTALL_MASK; do
+
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
 	done
-	if [[ $CATEGORY != virtual ]] ; then
-		for f in ASFLAGS CBUILD CC CFLAGS CHOST CTARGET CXX \
-			CXXFLAGS EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-			LDFLAGS LIBCFLAGS LIBCXXFLAGS QA_CONFIGURE_OPTIONS \
-			QA_DESKTOP_FILE QA_PREBUILT PROVIDES_EXCLUDE REQUIRES_EXCLUDE ; do
-			x=$(echo -n ${!f})
-			[[ -n $x ]] && echo "$x" > $f
-		done
-		# whitespace preserved
-		for f in QA_AM_MAINTAINER_MODE ; do
-			[[ -n ${!f} ]] && echo "${!f}" > $f
-		done
-	fi
+	# whitespace preserved
+	for f in QA_AM_MAINTAINER_MODE ; do
+		[[ -n ${!f} ]] && echo "${!f}" > $f
+	done
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
 

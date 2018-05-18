@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -7,7 +7,6 @@ import signal
 import sys
 import traceback
 
-import errno
 import fcntl
 import portage
 from portage import os, _unicode_decode
@@ -24,7 +23,7 @@ class MergeProcess(ForkProcess):
 	__slots__ = ('mycat', 'mypkg', 'settings', 'treetype',
 		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'postinst_failure', 'prev_mtimes', 'unmerge',
-		'_elog_reader_fd', '_elog_reg_id',
+		'_elog_reader_fd',
 		'_buf', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
@@ -79,14 +78,8 @@ class MergeProcess(ForkProcess):
 			self.vartree.dbapi.unlock()
 			self._locked_vdb = False
 
-	def _elog_output_handler(self, fd, event):
-		output = None
-		if event & self.scheduler.IO_IN:
-			try:
-				output = os.read(fd, self._bufsize)
-			except OSError as e:
-				if e.errno not in (errno.EAGAIN, errno.EINTR):
-					raise
+	def _elog_output_handler(self):
+		output = self._read_buf(self._elog_reader_fd)
 		if output:
 			lines = _unicode_decode(output).split('\n')
 			if len(lines) == 1:
@@ -101,14 +94,11 @@ class MergeProcess(ForkProcess):
 					reporter = getattr(portage.elog.messages, funcname)
 					reporter(msg, phase=phase, key=key, out=out)
 
-		if event & self.scheduler.IO_HUP:
-			self.scheduler.source_remove(self._elog_reg_id)
-			self._elog_reg_id = None
+		elif output is not None: # EIO/POLLHUP
+			self.scheduler.remove_reader(self._elog_reader_fd)
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 			return False
-
-		return True
 
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
@@ -142,8 +132,7 @@ class MergeProcess(ForkProcess):
 			treetype=self.treetype, vartree=self.vartree,
 			blockers=blockers, pipe=elog_writer_fd)
 		fd_pipes[elog_writer_fd] = elog_writer_fd
-		self._elog_reg_id = self.scheduler.io_add_watch(elog_reader_fd,
-			self._registered_events, self._elog_output_handler)
+		self.scheduler.add_reader(elog_reader_fd, self._elog_output_handler)
 
 		# If a concurrent emerge process tries to install a package
 		# in the same SLOT as this one at the same time, there is an
@@ -188,6 +177,16 @@ class MergeProcess(ForkProcess):
 			# killing subprocesses as reported in bug #353239.
 			signal.signal(signal.SIGINT, signal.SIG_DFL)
 			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+			# Unregister SIGCHLD handler and wakeup_fd for the parent
+			# process's event loop (bug 655656).
+			signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+			try:
+				wakeup_fd = signal.set_wakeup_fd(-1)
+				if wakeup_fd > 0:
+					os.close(wakeup_fd)
+			except (ValueError, OSError):
+				pass
 
 			portage.locks._close_fds()
 			# We don't exec, so use close_fds=False
@@ -251,8 +250,12 @@ class MergeProcess(ForkProcess):
 				# in order to avoid a race condition.
 				os._exit(1)
 
-	def _set_returncode(self, wait_retval):
-		ForkProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		"""
+		Override _async_waitpid_cb to perform cleanup that is
+		not necessarily idempotent.
+		"""
+		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
 		if self.returncode == portage.const.RETURNCODE_POSTINST_FAILURE:
 			self.postinst_failure = True
 			self.returncode = os.EX_OK
@@ -271,10 +274,8 @@ class MergeProcess(ForkProcess):
 				pass
 
 		self._unlock_vdb()
-		if self._elog_reg_id is not None:
-			self.scheduler.source_remove(self._elog_reg_id)
-			self._elog_reg_id = None
 		if self._elog_reader_fd is not None:
+			self.scheduler.remove_reader(self._elog_reader_fd)
 			os.close(self._elog_reader_fd)
 			self._elog_reader_fd = None
 		if self._elog_keys is not None:

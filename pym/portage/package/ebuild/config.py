@@ -1,4 +1,4 @@
-# Copyright 2010-2016 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -38,8 +38,8 @@ from portage.const import CACHE_PATH, \
 from portage.dbapi import dbapi
 from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
-from portage.eapi import eapi_exports_AA, eapi_exports_merge_type, \
-	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs
+from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
+	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, IsADirectory, \
 		PortageException
@@ -155,9 +155,9 @@ class config(object):
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
 		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
-	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
+	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
-		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
+		'PROPERTIES', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
 
 	_module_aliases = {
@@ -175,7 +175,7 @@ class config(object):
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
-		eprefix=None, local_config=True, env=None,
+		sysroot=None, eprefix=None, local_config=True, env=None,
 		_unmatched_removal=False, repositories=None):
 		"""
 		@param clone: If provided, init will use deepcopy to copy by value the instance.
@@ -193,6 +193,9 @@ class config(object):
 		@param target_root: the target root, which typically corresponds to the
 			value of the $ROOT env variable (default is /)
 		@type target_root: String
+		@param sysroot: the sysroot to build against, which typically corresponds
+			 to the value of the $SYSROOT env variable (default is /)
+		@type sysroot: String
 		@param eprefix: set the EPREFIX variable (default is portage.const.EPREFIX)
 		@type eprefix: String
 		@param local_config: Enables loading of local config (/etc/portage); used most by repoman to
@@ -335,11 +338,15 @@ class config(object):
 
 			locations_manager = LocationsManager(config_root=config_root,
 				config_profile_path=config_profile_path, eprefix=eprefix,
-				local_config=local_config, target_root=target_root)
+				local_config=local_config, target_root=target_root,
+				sysroot=sysroot)
 			self._locations_manager = locations_manager
 
 			eprefix = locations_manager.eprefix
 			config_root = locations_manager.config_root
+			sysroot = locations_manager.sysroot
+			esysroot = locations_manager.esysroot
+			broot = locations_manager.broot
 			abs_user_config = locations_manager.abs_user_config
 			make_conf_paths = [
 				os.path.join(config_root, 'etc', 'make.conf'),
@@ -499,8 +506,11 @@ class config(object):
 			#Loading Repositories
 			self["PORTAGE_CONFIGROOT"] = config_root
 			self["ROOT"] = target_root
+			self["SYSROOT"] = sysroot
 			self["EPREFIX"] = eprefix
 			self["EROOT"] = eroot
+			self["ESYSROOT"] = esysroot
+			self["BROOT"] = broot
 			known_repos = []
 			portdir = ""
 			portdir_overlay = ""
@@ -664,10 +674,16 @@ class config(object):
 			self.backup_changes("PORTAGE_CONFIGROOT")
 			self["ROOT"] = target_root
 			self.backup_changes("ROOT")
+			self["SYSROOT"] = sysroot
+			self.backup_changes("SYSROOT")
 			self["EPREFIX"] = eprefix
 			self.backup_changes("EPREFIX")
 			self["EROOT"] = eroot
 			self.backup_changes("EROOT")
+			self["ESYSROOT"] = esysroot
+			self.backup_changes("ESYSROOT")
+			self["BROOT"] = broot
+			self.backup_changes("BROOT")
 
 			# The prefix of the running portage instance is used in the
 			# ebuild environment to implement the --host-root option for
@@ -800,10 +816,19 @@ class config(object):
 			archlist = sorted(stack_lists(archlist, incremental=1))
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = " ".join(archlist)
 
-			pkgprovidedlines = [grabfile(
-				os.path.join(x.location, "package.provided"),
-				recursive=x.portage1_directories)
-				for x in profiles_complex]
+			pkgprovidedlines = []
+			for x in profiles_complex:
+				provpath = os.path.join(x.location, "package.provided")
+				if os.path.exists(provpath):
+					if _get_eapi_attrs(x.eapi).allows_package_provided:
+						pkgprovidedlines.append(grabfile(provpath,
+							recursive=x.portage1_directories))
+					else:
+						# TODO: bail out?
+						writemsg((_("!!! package.provided not allowed in EAPI %s: ")
+								%x.eapi)+x.location+"\n",
+							noiselevel=-1)
+
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 			has_invalid_data = False
 			for x in range(len(pkgprovidedlines)-1, -1, -1):
@@ -940,8 +965,7 @@ class config(object):
 			if bsd_chflags:
 				self.features.add('chflags')
 
-			self._iuse_effective = self._calc_iuse_effective()
-			self._iuse_implicit_match = _iuse_implicit_match_cache(self)
+			self._init_iuse()
 
 			self._validate_commands()
 
@@ -957,6 +981,10 @@ class config(object):
 
 		if mycpv:
 			self.setcpv(mycpv)
+
+	def _init_iuse(self):
+		self._iuse_effective = self._calc_iuse_effective()
+		self._iuse_implicit_match = _iuse_implicit_match_cache(self)
 
 	@property
 	def mygcfg(self):
@@ -1313,13 +1341,13 @@ class config(object):
 		"""
 
 		def __init__(self, settings, unfiltered_use,
-			use, usemask, iuse_implicit,
+			use, usemask, iuse_effective,
 			use_expand_split, use_expand_dict):
 			self._settings = settings
 			self._unfiltered_use = unfiltered_use
 			self._use = use
 			self._usemask = usemask
-			self._iuse_implicit = iuse_implicit
+			self._iuse_effective = iuse_effective
 			self._use_expand_split = use_expand_split
 			self._use_expand_dict = use_expand_dict
 
@@ -1337,7 +1365,7 @@ class config(object):
 			if has_wildcard:
 				var_split = [ x for x in var_split if x != "*" ]
 			has_iuse = set()
-			for x in self._iuse_implicit:
+			for x in self._iuse_effective:
 				if x[:prefix_len] == prefix:
 					has_iuse.add(x[prefix_len:])
 			if has_wildcard:
@@ -1365,47 +1393,7 @@ class config(object):
 					filtered_var_split.append(x)
 			var_split = filtered_var_split
 
-			if var_split:
-				value = ' '.join(var_split)
-			else:
-				# Don't export empty USE_EXPAND vars unless the user config
-				# exports them as empty.  This is required for vars such as
-				# LINGUAS, where unset and empty have different meanings.
-				# The special '*' token is understood by ebuild.sh, which
-				# will unset the variable so that things like LINGUAS work
-				# properly (see bug #459350).
-				if has_wildcard:
-					value = '*'
-				else:
-					if has_iuse:
-						already_set = False
-						# Skip the first 'env' configdict, in order to
-						# avoid infinite recursion here, since that dict's
-						# __getitem__ calls the current __getitem__.
-						for d in self._settings.lookuplist[1:]:
-							if key in d:
-								already_set = True
-								break
-
-						if not already_set:
-							for x in self._unfiltered_use:
-								if x[:prefix_len] == prefix:
-									already_set = True
-									break
-
-						if already_set:
-							value = ''
-						else:
-							value = '*'
-					else:
-						# It's not in IUSE, so just allow the variable content
-						# to pass through if it is defined somewhere.  This
-						# allows packages that support LINGUAS but don't
-						# declare it in IUSE to use the variable outside of the
-						# USE_EXPAND context.
-						value = None
-
-			return value
+			return ' '.join(var_split)
 
 	def _setcpv_recursion_gate(f):
 		"""
@@ -1781,7 +1769,7 @@ class config(object):
 			self, unfiltered_use, use, self.usemask,
 			portage_iuse, use_expand_split, self._use_expand_dict)
 
-		use_expand_iuses = {}
+		use_expand_iuses = dict((k, set()) for k in use_expand_split)
 		for x in portage_iuse:
 			x_split = x.split('_')
 			if len(x_split) == 1:
@@ -1789,18 +1777,9 @@ class config(object):
 			for i in range(len(x_split) - 1):
 				k = '_'.join(x_split[:i+1])
 				if k in use_expand_split:
-					v = use_expand_iuses.get(k)
-					if v is None:
-						v = set()
-						use_expand_iuses[k] = v
-					v.add(x)
+					use_expand_iuses[k].add(x)
 					break
 
-		# If it's not in IUSE, variable content is allowed
-		# to pass through if it is defined somewhere.  This
-		# allows packages that support LINGUAS but don't
-		# declare it in IUSE to use the variable outside of the
-		# USE_EXPAND context.
 		for k, use_expand_iuse in use_expand_iuses.items():
 			if k + '_*' in use:
 				use.update( x for x in use_expand_iuse if x not in usemask )
@@ -1941,8 +1920,7 @@ class config(object):
 	def _getMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -1956,8 +1934,7 @@ class config(object):
 	def _getRawMaskAtom(self, cpv, metadata):
 		"""
 		Take a package and return a matching package.mask atom, or None if no
-		such atom exists or it has been cancelled by package.unmask. PROVIDE
-		is not checked, so atoms will not be found for old-style virtuals.
+		such atom exists or it has been cancelled by package.unmask.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -1973,8 +1950,7 @@ class config(object):
 		"""
 		Take a package and return a matching profile atom, or None if no
 		such atom exists. Note that a profile atom may or may not have a "*"
-		prefix. PROVIDE is not checked, so atoms will not be found for
-		old-style virtuals.
+		prefix.
 
 		@param cpv: The package name
 		@type cpv: String
@@ -2212,35 +2188,9 @@ class config(object):
 			self._accept_chost_re.match(pkg_chost) is not None
 
 	def setinst(self, mycpv, mydbapi):
-		"""This updates the preferences for old-style virtuals,
-		affecting the behavior of dep_expand() and dep_check()
-		calls. It can change dbapi.match() behavior since that
-		calls dep_expand(). However, dbapi instances have
-		internal match caches that are not invalidated when
-		preferences are updated here. This can potentially
-		lead to some inconsistency (relevant to bug #1343)."""
-		self.modifying()
-
-		# Grab the virtuals this package provides and add them into the tree virtuals.
-		if not hasattr(mydbapi, "aux_get"):
-			provides = mydbapi["PROVIDE"]
-		else:
-			provides = mydbapi.aux_get(mycpv, ["PROVIDE"])[0]
-		if not provides:
-			return
-		if isinstance(mydbapi, portdbapi):
-			self.setcpv(mycpv, mydb=mydbapi)
-			myuse = self["PORTAGE_USE"]
-		elif not hasattr(mydbapi, "aux_get"):
-			myuse = mydbapi["USE"]
-		else:
-			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = use_reduce(provides, uselist=myuse.split(), flat=True)
-
-		# Ensure that we don't trigger the _treeVirtuals
-		# assertion in VirtualsManager._compile_virtuals().
-		self.getvirtuals()
-		self._virtuals_manager.add_depgraph_virtuals(mycpv, virts)
+		"""This used to update the preferences for old-style virtuals.
+		It is no-op now."""
+		pass
 
 	def reload(self):
 		"""Reload things like /etc/profile.env that can change during runtime."""
@@ -2813,6 +2763,14 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
+		src_phase = _phase_func_map.get(phase, '').startswith('src_')
+
+		if not (src_phase and eapi_attrs.sysroot):
+			mydict.pop("ESYSROOT", None)
+
+		if not (src_phase and eapi_attrs.broot):
+			mydict.pop("BROOT", None)
+
 		# Prefix variables are supported beginning with EAPI 3, or when
 		# force-prefix is in FEATURES, since older EAPIs would otherwise be
 		# useless with prefix configurations. This brings compatibility with
@@ -2824,6 +2782,7 @@ class config(object):
 			mydict.pop("ED", None)
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
+			mydict.pop("ESYSROOT", None)
 
 		if phase not in ("pretend", "setup", "preinst", "postinst") or \
 			not eapi_exports_replace_vars(eapi):
@@ -2853,6 +2812,31 @@ class config(object):
 						break
 				else:
 					raise AssertionError("C locale did not pass the test!")
+
+		if not eapi_attrs.exports_PORTDIR:
+			mydict.pop("PORTDIR", None)
+		if not eapi_attrs.exports_ECLASSDIR:
+			mydict.pop("ECLASSDIR", None)
+
+		if not eapi_attrs.path_variables_end_with_trailing_slash:
+			for v in ("D", "ED", "ROOT", "EROOT", "ESYSROOT", "BROOT"):
+				if v in mydict:
+					mydict[v] = mydict[v].rstrip(os.path.sep)
+
+		# Since SYSROOT=/ interacts badly with autotools.eclass (bug 654600),
+		# and no EAPI expects SYSROOT to have a trailing slash, always strip
+		# the trailing slash from SYSROOT.
+		if 'SYSROOT' in mydict:
+			mydict['SYSROOT'] = mydict['SYSROOT'].rstrip(os.sep)
+
+		try:
+			builddir = mydict["PORTAGE_BUILDDIR"]
+			distdir = mydict["DISTDIR"]
+		except KeyError:
+			pass
+		else:
+			mydict["PORTAGE_ACTUAL_DISTDIR"] = distdir
+			mydict["DISTDIR"] = os.path.join(builddir, "distdir")
 
 		return mydict
 

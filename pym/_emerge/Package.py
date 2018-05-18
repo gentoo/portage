@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -42,15 +42,16 @@ class Package(Task):
 		"_validated_atoms", "_visible")
 
 	metadata_keys = [
+		"BDEPEND",
 		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
 		"DEPEND", "EAPI", "HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
-		"LICENSE", "MD5", "PDEPEND", "PROVIDE", "PROVIDES",
+		"LICENSE", "MD5", "PDEPEND", "PROVIDES",
 		"RDEPEND", "repository", "REQUIRED_USE",
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
 		"SLOT", "USE", "_mtime_", "EPREFIX"]
 
-	_dep_keys = ('DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
-	_buildtime_keys = ('DEPEND', 'HDEPEND')
+	_dep_keys = ('BDEPEND', 'DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('BDEPEND', 'DEPEND', 'HDEPEND')
 	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo
@@ -66,8 +67,19 @@ class Package(Task):
 		if not self.built:
 			self._metadata['CHOST'] = self.root_config.settings.get('CHOST', '')
 		eapi_attrs = _get_eapi_attrs(self.eapi)
+
+		try:
+			db = self.cpv._db
+		except AttributeError:
+			if self.built:
+				# For independence from the source ebuild repository and
+				# profile implicit IUSE state, require the _db attribute
+				# for built packages.
+				raise
+			db = self.root_config.trees['porttree'].dbapi
+
 		self.cpv = _pkg_str(self.cpv, metadata=self._metadata,
-			settings=self.root_config.settings)
+			settings=self.root_config.settings, db=db)
 		if hasattr(self.cpv, 'slot_invalid'):
 			self._invalid_metadata('SLOT.invalid',
 				"SLOT: invalid value: '%s'" % self._metadata["SLOT"])
@@ -81,17 +93,10 @@ class Package(Task):
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self._metadata['repository'] = self.cpv.repo
 
-		if eapi_attrs.iuse_effective:
-			implicit_match = self.root_config.settings._iuse_effective_match
-			if self.built:
-				implicit_match = functools.partial(
-					self._built_iuse_effective_match,
-					implicit_match, frozenset(self._metadata['USE'].split()))
-		else:
-			implicit_match = self.root_config.settings._iuse_implicit_match
+		implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
-		self.iuse = self._iuse(self, self._metadata["IUSE"].split(), implicit_match,
-			usealiases, self.eapi)
+		self.iuse = self._iuse(self, self._metadata["IUSE"].split(),
+			implicit_match, usealiases, self.eapi)
 
 		if (self.iuse.enabled or self.iuse.disabled) and \
 			not eapi_attrs.iuse_defaults:
@@ -113,33 +118,6 @@ class Package(Task):
 			root_config=self.root_config,
 			type_name=self.type_name)
 		self._hash_value = hash(self._hash_key)
-
-	@staticmethod
-	def _built_iuse_effective_match(prof_effective_match, built_use, flag):
-		"""
-		For built packages, it is desirable for the built USE setting to be
-		independent of the profile's current IUSE_IMPLICIT state, since the
-		profile's IUSE_IMPLICT setting may have diverged. Therefore, any
-		member of the built USE setting is considered to be a valid member of
-		IUSE_EFFECTIVE. Note that the binary package may be remote, so it's
-		only possible to rely on metadata that is available in the remote
-		Packages file, and the IUSE_IMPLICIT header in the Packages file is
-		vulnerable to mutation (see bug 640318).
-
-		This function is only used for EAPIs that support IUSE_EFFECTIVE,
-		since built USE settings for earlier EAPIs may contain a large
-		number of irrelevant flags.
-
-		@param prof_effective_match: function to match IUSE_EFFECTIVE
-			values for the current profile
-		@type prof_effective_match: callable
-		@param built_use: built USE setting
-		@type built_use: frozenset
-		@return: True if flag is a valid USE value which may
-			be specified in USE dependencies, False otherwise.
-		@rtype: bool
-		"""
-		return flag in built_use or prof_effective_match(flag)
 
 	@property
 	def eapi(self):
@@ -165,17 +143,7 @@ class Package(Task):
 
 	@property
 	def provided_cps(self):
-
-		if self._provided_cps is None:
-			provided_cps = [self.cp]
-			for atom in self._metadata["PROVIDE"].split():
-				try:
-					provided_cps.append(Atom(atom).cp)
-				except InvalidAtom:
-					pass
-			self._provided_cps = tuple(provided_cps)
-
-		return self._provided_cps
+		return (self.cp,)
 
 	@property
 	def restrict(self):
@@ -323,15 +291,6 @@ class Package(Task):
 
 		self._validated_atoms = tuple(set(atom for atom in
 			validated_atoms if isinstance(atom, Atom)))
-
-		k = 'PROVIDE'
-		v = self._metadata.get(k)
-		if v:
-			try:
-				use_reduce(v, eapi=dep_eapi, matchall=True,
-					is_valid_flag=dep_valid_flag, token_class=Atom)
-			except InvalidDependString as e:
-				self._invalid_metadata("PROVIDE.syntax", "%s: %s" % (k, e))
 
 		for k in self._use_conditional_misc_keys:
 			v = self._metadata.get(k)
@@ -873,7 +832,7 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 	_wrapped_keys = frozenset(
 		["COUNTER", "INHERITED", "USE", "_mtime_"])
 	_use_conditional_keys = frozenset(
-		['LICENSE', 'PROPERTIES', 'PROVIDE', 'RESTRICT',])
+		['LICENSE', 'PROPERTIES', 'RESTRICT',])
 
 	def __init__(self, pkg, metadata):
 		_PackageMetadataWrapperBase.__init__(self)

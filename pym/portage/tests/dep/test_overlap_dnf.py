@@ -12,7 +12,7 @@ class OverlapDNFTestCase(TestCase):
 		test_cases = (
 			(
 				'|| ( cat/A cat/B ) cat/E || ( cat/C cat/D )',
-				['cat/E', ['||', 'cat/A', 'cat/B'], ['||', 'cat/C', 'cat/D']],
+				[['||', 'cat/A', 'cat/B'], 'cat/E', ['||', 'cat/C', 'cat/D']],
 			),
 			(
 				'|| ( cat/A cat/B ) cat/D || ( cat/B cat/C )',

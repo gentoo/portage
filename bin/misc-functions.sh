@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -91,7 +91,7 @@ prepcompress() {
 	# Canonicalize path names and check for their existence.
 	real_d=$(canonicalize "${ED}")
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS[i]}")
+		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS[i]#/}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -102,7 +102,7 @@ prepcompress() {
 		fi
 	done
 	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${ED}${PORTAGE_DOCOMPRESS_SKIP[i]}")
+		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS_SKIP[i]#/}")
 		f=${real_f#"${real_d}"}
 		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
 		then
@@ -151,7 +151,7 @@ prepcompress() {
 
 	# Split the include list into directories and files
 	for f in "${include[@]}"; do
-		if [[ -d ${ED}${f} ]]; then
+		if [[ -d ${ED%/}/${f#/} ]]; then
 			incl_d[${#incl_d[@]}]=${f}
 		else
 			incl_f[${#incl_f[@]}]=${f}
@@ -161,7 +161,7 @@ prepcompress() {
 	# Queue up for compression.
 	# ecompress{,dir} doesn't like to be called with empty argument lists.
 	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --limit ${PORTAGE_DOCOMPRESS_SIZE_LIMIT:-0} --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED}}"
+	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED%/}}"
 	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
 	return 0
 }
@@ -230,6 +230,12 @@ install_qa_check() {
 	ecompressdir --dequeue
 	ecompress --dequeue
 
+	if ___eapi_has_dostrip; then
+		"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+		"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+		"${PORTAGE_BIN_PATH}"/estrip --dequeue
+	fi
+
 	# PREFIX LOCAL:
 	# anything outside the prefix should be caught by the Prefix QA
 	# check, so if there's nothing in ED, we skip searching for QA
@@ -294,7 +300,7 @@ install_qa_check_elf() {
 
 install_qa_check_misc() {
 	# Portage regenerates this on the installed system.
-	rm -f "${ED}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
+	rm -f "${ED%/}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 }
 
 install_qa_check_macho() {
@@ -995,33 +1001,26 @@ postinst_aix() {
 }
 
 preinst_mask() {
-	if [ -z "${D}" ]; then
-		 eerror "${FUNCNAME}: D is unset"
-		 return 1
-	fi
-
-	if ! ___eapi_has_prefix_variables; then
-		local ED=${D}
-	fi
-
-	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
-	# in there in case any tools were built with -pg in CFLAGS.
-	cd "${T}"
-
-	# remove man pages, info pages, docs if requested
-	local f
+	# Remove man pages, info pages, docs if requested. This is
+	# implemented in bash in order to respect INSTALL_MASK settings
+	# from bashrc.
+	local f x
 	for f in man info doc; do
 		if has no${f} $FEATURES; then
 			INSTALL_MASK="${INSTALL_MASK} ${EPREFIX}/usr/share/${f}"
 		fi
 	done
 
-	install_mask "${ED}" "${INSTALL_MASK}"
+	# Store modified variables in build-info.
+	cd "${PORTAGE_BUILDDIR}"/build-info || die
+	set -f
 
-	# remove share dir if unnessesary
-	if has nodoc $FEATURES || has noman $FEATURES || has noinfo $FEATURES; then
-		rmdir "${ED}usr/share" &> /dev/null
-	fi
+	IFS=$' \t\n\r'
+	for f in INSTALL_MASK; do
+		x=$(echo -n ${!f})
+		[[ -n ${x} ]] && echo "${x}" > "${f}"
+	done
+	set +f
 }
 
 preinst_sfperms() {
@@ -1040,11 +1039,11 @@ preinst_sfperms() {
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
-				ebegin ">>> SetUID and SetGID: [chmod o-r] /${i#${ED}}"
+				ebegin ">>> SetUID and SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			else
-				ebegin ">>> SetUID: [chmod go-r] /${i#${ED}}"
+				ebegin ">>> SetUID: [chmod go-r] ${i#${ED%/}}"
 				chmod go-r "$i"
 				eend $?
 			fi
@@ -1056,7 +1055,7 @@ preinst_sfperms() {
 				# by the SetUID check above.
 				true
 			else
-				ebegin ">>> SetGID: [chmod o-r] /${i#${ED}}"
+				ebegin ">>> SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			fi
@@ -1085,7 +1084,7 @@ preinst_suid_scan() {
 		__vecho ">>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				install_path=/${i#${ED}}
+				install_path=${i#${ED%/}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					__vecho "- ${install_path} is an approved suid file"
 				else
@@ -1095,7 +1094,7 @@ preinst_suid_scan() {
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
 						__vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						echo "## ${ls_ret%${ED}*}${install_path}" >> "${sfconf}"
+						echo "## ${ls_ret%${ED%/}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
 						# delwrite ${sconf}
@@ -1117,17 +1116,15 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /selinux/context -o -f /sys/fs/selinux/context ] && \
-			[ -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [ -f /sys/fs/selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
 			__vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
 
-				addwrite /selinux/context
 				addwrite /sys/fs/selinux/context
 
-				/usr/sbin/setfiles -F "${file_contexts_path}" -r "${D}" "${D}"
+				/usr/sbin/setfiles -F -r "${D}" "${file_contexts_path}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
@@ -1138,30 +1135,14 @@ preinst_selinux_labels() {
 }
 
 __dyn_package() {
-	local PROOT
 
 	if ! ___eapi_has_prefix_variables; then
-		local EPREFIX= ED=${D}
+		local EPREFIX=
 	fi
 
 	# Make sure $PWD is not ${D} so that we don't leave gmon.out files
 	# in there in case any tools were built with -pg in CFLAGS.
-
 	cd "${T}" || die
-
-	if [[ -n ${PKG_INSTALL_MASK} ]] ; then
-		PROOT=${T}/packaging/
-		# make a temporary copy of ${D} so that any modifications we do that
-		# are binpkg specific, do not influence the actual installed image.
-		rm -rf "${PROOT}" || die "failed removing stale package tree"
-		cp -pPR $(cp --help | grep -qs -e-l && echo -l) \
-			"${D}" "${PROOT}" \
-			|| die "failed creating packaging tree"
-
-		install_mask "${PROOT%/}${EPREFIX}/" "${PKG_INSTALL_MASK}"
-	else
-		PROOT=${D}
-	fi
 
 	local tar_options=""
 	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
@@ -1174,8 +1155,8 @@ __dyn_package() {
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 	[ -z "${PORTAGE_COMPRESSION_COMMAND}" ] && \
         die "PORTAGE_COMPRESSION_COMMAND is unset"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${PROOT}" . | \
-		$PORTAGE_COMPRESSION_COMMAND -c > "$PORTAGE_BINPKG_TMPFILE"
+	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
+		$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
 	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
@@ -1196,8 +1177,6 @@ __dyn_package() {
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 	__vecho ">>> Done."
 
-	# cleanup our temp tree
-	[[ -n ${PKG_INSTALL_MASK} ]] && rm -rf "${PROOT}"
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.packaged"

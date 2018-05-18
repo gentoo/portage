@@ -267,13 +267,22 @@ check_file_signature() {
 	local signature="$1"
 	local file="$2"
 	local r=1
+	local gnupg_status line
 
 	if [[ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]] ; then
 
 		__vecho "Checking signature ..."
 
 		if type -P gpg > /dev/null; then
-			gpg --homedir "${PORTAGE_GPG_DIR}" --verify "$signature" "$file" && r=0
+			if gnupg_status=$(gpg --homedir "${PORTAGE_GPG_DIR}" --batch \
+				--status-fd 1 --verify "${signature}" "${file}"); then
+				while read -r line; do
+					if [[ ${line} == "[GNUPG:] GOODSIG"* ]]; then
+						r=0
+						break
+					fi
+				done <<< "${gnupg_status}"
+			fi
 		else
 			eecho "cannot check signature: gpg binary not found"
 			exit 1

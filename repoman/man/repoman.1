@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Jun 2017" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "Mar 2018" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the portage tree
@@ -99,6 +99,10 @@ can be enabled by default for a particular repository by setting
 \fB\-\-experimental\-inherit=<y|n>\fR
 Enable experimental inherit.missing checks which may misbehave when the
 internal eclass database becomes outdated.
+.TP
+\fB\-\-experimental\-repository\-modules=<y|n>\fR
+Enable experimental repository modules:
+\fLhttps://wiki.gentoo.org/wiki/Project:Portage/Repoman-Module-specs\fR
 .TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
@@ -250,9 +254,6 @@ and is not masked in the global package.mask.
 .B PDEPEND.suspect
 PDEPEND contains a package that usually only belongs in DEPEND
 .TP
-.B PROVIDE.syntax
-Syntax error in PROVIDE (usually an extra/missing space/parenthesis)
-.TP
 .B RDEPEND.implicit
 RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND
 assignment (prior to EAPI 4)
@@ -288,12 +289,20 @@ ebuilds)
 User-visible ebuilds with unsatisfied dependencies (matched against *visible*
 ebuilds) in developing arch
 .TP
+.B dependency.badinexp
+User-visible ebuilds with unsatisfied dependencies (matched against *visible*
+ebuilds) in experimental arch
+.TP
 .B dependency.badmasked
 Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds)
 .TP
 .B dependency.badmaskedindev
 Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
 developing arch
+.TP
+.B dependency.badmaskedinexp
+Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in
+experimental arch
 .TP
 .B dependency.badtilde
 Uses the ~ dep operator with a non-zero revision part, which is useless (the
@@ -423,11 +432,7 @@ character set.
 Assigning a readonly variable
 .TP
 .B variable.usedwithhelpers
-Ebuild uses D, ROOT, ED, EROOT or EPREFIX with helpers
-.TP
-.B virtual.oldstyle
-The ebuild PROVIDEs an old-style virtual (see GLEP 37). This is an error
-unless "allow\-provide\-virtuals = true" is set in metadata/layout.conf.
+Ebuild uses D, ROOT, BROOT, ED, EROOT or EPREFIX with helpers
 .TP
 .B virtual.suspect
 Ebuild contains a package that usually should be pulled via virtual/,
@@ -436,6 +441,12 @@ not directly.
 .B wxwidgets.eclassnotused
 Ebuild DEPENDs on x11-libs/wxGTK without inheriting wxwidgets.eclass. Refer to
 bug #305469 for more information.
+.SH "BEHAVIOR"
+When invoked from a level higher than a package directory, \fBrepoman\fR
+will recurse through a directory tree and execute the given command
+on a per\-package basis, e.g. \fBrepoman manifest\fR at the root of
+the repository will generate manifests for every package within the
+repository.
 .SH "REPORTING BUGS"
 Please report bugs via https://bugs.gentoo.org/
 .SH AUTHORS

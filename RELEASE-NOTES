@@ -1,6 +1,201 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.38
+==================================
+* Bug Fixes:
+    - Bug 655656 signal wakeup fd BlockingIOError messages
+
+
+portage-2.3.37
+==================================
+* repos.conf: Use openpgp-keys-* as key provider for gemato
+* Bug Fixes:
+    - Bug 654390 use asyncio's default event loop
+    - Bug 655414 fix has/best_version for cross-prefix portageq
+    - Bug 655860 fix ROOT overrides for has/best_version
+
+
+portage-2.3.36
+==================================
+* Bug Fixes:
+    - Bug 654782 autounmask fails on non satisfiable REQUIRED_USE
+    - Bug 654812 category directory left after successful merge
+    - Bug 654838 ecompress spurious imageusr directory in EAPI 7
+
+
+portage-2.3.35
+==================================
+* Bug Fixes:
+    - Bug 317337 fix normalization of empty SYSROOT setting
+
+
+portage-2.3.34
+==================================
+* Bug Fixes:
+    - Bug 654600 SYSROOT=/ setting breaks eautoconf for firefox
+    - Bug 654664 silence emerge --sync --quiet signature info
+
+
+portage-2.3.33
+==================================
+* Bug Fixes:
+    - Bug 317337 fix best/has_version -b for cross-prefix
+    - Bug 654456 allow empty BINPKG_COMPRESS to disable compression
+
+
+portage-2.3.32
+==================================
+* Bug Fixes:
+    - Bug 317337 cross BDEPEND, BROOT, SYSROOT, etc
+    - Bug 403697 waitpid TypeError: an integer is required
+    - Bug 614104 AbstractPollTask._unregister_if.. event loop recursion
+    - Bug 614108 _LockProcess.unlock event loop recursion
+    - Bug 614110 BinpkgFetcher.lock event loop recursion
+    - Bug 614112 EbuildBuildDir.lock event loop recursion
+    - Bug 649276 surface key refresh exceptions early
+    - Bug 653638 emerge --config exit status is 0 after pkg_config calls die
+    - Bug 653810 EbuildFetcher._get_uri_map() event loop recursion
+    - Bug 653844 EbuildBuild._start() event loop recursion
+    - Bug 653848 EbuildMerge._merge_exit event loop recursion
+    - Bug 653856 use run_until_complete for asyncio compat
+    - Bug 653946 ManifestScheduler._iter_tasks() event loop recursion
+    - Bug 654038 FetchIterator.__iter__ event loop recursion
+    - Bug 654224 Larry's tail looks wrong
+    - Bug 654276 AbstractChildWatcher.add_child_handler asyncio compat
+    - Bug 654382 AbstractEventLoop add_reader/writer asyncio compat
+    - Bug 654472 Please implement EAPI 7
+
+
+portage-2.3.31
+==================================
+* Bug Fixes:
+    - Bug 653508 AssertionError: idle callback recursion
+    - Bug 640318 emerge --usepkgonly: propagate implicit IUSE and USE_EXPAND
+
+
+portage-2.3.30
+==================================
+* Bug Fixes:
+    - Bug 653372 emerge --search AttributeError: '_pkg_str' object has
+      no attribute '_db'
+
+
+portage-2.3.29
+==================================
+* Bug Fixes:
+    - Bug 649588 asyncio.AbstractEventLoop implementation based on
+      internal event loop
+    - Bug 652938 binary packages built against older subslot trigger
+      downgrade of installed package
+    - Bug 653230 app-portage/porthole PORTDIR KeyError
+    - Bug 650696 default to sync-rsync-verify-jobs = 1
+    - Bug 653352 Stripping of files broken with >=sys-apps/file-5.33
+
+
+portage-2.3.28
+==================================
+* Bug Fixes:
+    - Bug 649276 gpg key refresh needs exponential backoff with jitter
+
+
+portage-2.3.27
+==================================
+* Bug Fixes:
+    - Bug 651952 INSTALL_MASK: honor install time config for binary packages
+
+
+portage-2.3.26
+==================================
+* Bug Fixes:
+    - Bug 651826 STRIP_MASK not working, regression
+
+
+portage-2.3.25
+==================================
+* Bug Fixes:
+    - Bug 582140 Portage does not reduce values of USE_EXPAND variables
+      to IUSE_EFFECTIVE in some cases
+    - Bug 608564 add emerge --ignore-world option to disregard @world
+      when solving dependencies
+    - Bug 622462 emerge --autounmask tries to wrongly unmask a hardmasked
+      package instead of telling user to change USE conflicting flags
+    - Bug 631358 add emerge --changed-slot option
+    - Bug 647654 filter-bash-environment.py input is not buffered, it reads
+      1 byte at a time
+    - Bug 647940 "emerge --search" fails to find a package when provided
+      with an exact match, $CAT/$PKG
+    - Bug 648062 portageq repositories_configuration <eroot> does not
+      override PORTAGE_CONFIGROOT
+    - Bug 648432 File merging is ultra-slow on FreeBSD
+    - Bug 648790 add parallel aux_get method for things like repoman to use
+    - Bug 649418 security.capability extended attribute not preserved
+      between different filesystems
+    - Bug 649464 dev-util/gtk-update-icon-cache-3.22.19 - QA Notice: new
+      icons were found installed but GTK+ icon cache has not been updated
+    - Bug 649524 prepstrip: Preservation of extended attributes using
+      getfattr+setfattr does not preserve extended attributes outside of
+      user namespace
+    - Bug 649528 prepstrip: Preservation of extended attributes using
+      xattr-helper.py broken
+    - Bug 650754 emerge --info is broken without git installed if PORTDIR
+      is a git checkout and sync-type = git
+    - Bug 651214 {PKG_,}INSTALL_MASK support for exclusions
+
+
+portage-2.3.24
+==================================
+* Bug Fixes:
+    - Bug 645002 dep_zapdeps: sort by new_slot_count for DNF only
+    - Bug 645780 emerge: disable --changed-deps-report by default
+    - Bug 646458 emerge: enable --dynamic-deps=y by default once again
+
+
+portage-2.3.23
+==================================
+* Bug Fixes:
+    - Bug 646314 fix "gpg: Can't check signature: No public key"
+
+
+portage-2.3.22
+==================================
+* Bug Fixes:
+    - Bug 646184 prevent gemato call with USE="-rsync-verify"
+
+
+portage-2.3.21
+==================================
+* Bug Fixes:
+    - Bug 612972 fix global scope DISTDIR setting to be consistent
+    - Bug 645416 dep_zapdeps: fix virtual/rust handling
+    - Bug 645780 add --changed-deps-report option
+* Rync tree verification with gemato and gentoo-keys
+
+
+portage-2.3.20
+==================================
+* Bug Fixes:
+    - Bug 642672 fix preserve-libs for symlinks to other dirs
+    - Bug 642632 doins: implement install -p option
+    - Bug 643974 prefer || dep choices that install a new package in order
+      to allow upgrade of another package
+    - Bug 645002 fix perl-cleaner || dep handling for catalyst stage1
+    - Bug 645190 fix dev-manager || dep handling for catalyst stage1
+* The emerge --dynamic-deps option is now disabled by default. Any problems
+  that this may case can be avoided by adding either --dynamic-deps=y or
+  --changed-deps=y to the emerge options. Refer to `man emerge` for details
+  about these options.
+* Repository metadata/layout.conf default "manifest-hashes = BLAKE2B SHA512"
+  setting, consistent with gentoo repository.
+
+
+portage-2.3.19
+==================================
+* Bug Fixes:
+    - Bug 640934 doins: fix PYTHONPATH setting
+    - Bug 641088 file_copy: handle EOPNOTSUPP for NFS
+
+
 portage-2.3.18
 ==================================
 * Bug Fixes:

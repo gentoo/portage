@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.8
+==================================
+* The --experimental-repository-modules=<y|n> option enables a new
+  plugin modules system:
+  https://wiki.gentoo.org/wiki/Project:Portage/Repoman-Module-specs
+
+
+repoman-2.3.7
+==================================
+* Bug Fixes:
+    - Bug 552720 allow https for metadata.dtd URI
+
+
 repoman-2.3.6
 ==================================
 * Bug Fixes:

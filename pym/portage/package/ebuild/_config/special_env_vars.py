@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -14,7 +14,8 @@ import re
 # to enter the config instance from the external environment or
 # configuration files.
 env_blacklist = frozenset((
-	"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "DOCS", "EAPI",
+	"A", "AA", "BDEPEND", "BROOT", "CATEGORY", "DEPEND", "DESCRIPTION",
+	"DOCS", "EAPI",
 	"EBUILD_FORCE_TEST", "EBUILD_PHASE",
 	"EBUILD_PHASE_FUNC", "EBUILD_SKIP_MANIFEST",
 	"ED", "EMERGE_FROM", "EPREFIX", "EROOT",
@@ -26,7 +27,7 @@ env_blacklist = frozenset((
 	"PORTAGE_BUILT_USE", "PORTAGE_CONFIGROOT",
 	"PORTAGE_INTERNAL_CALLER", "PORTAGE_IUSE",
 	"PORTAGE_NONFATAL", "PORTAGE_PIPE_FD", "PORTAGE_REPO_NAME",
-	"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "REPOSITORY",
+	"PORTAGE_USE", "PROPERTIES", "RDEPEND", "REPOSITORY",
 	"REQUIRED_USE", "RESTRICT", "ROOT", "SLOT", "SRC_URI", "_"
 ))
 
@@ -41,11 +42,11 @@ environ_whitelist = []
 # environment in order to prevent sandbox from sourcing /etc/profile
 # in it's bashrc (causing major leakage).
 environ_whitelist += [
-	"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "COLUMNS", "D",
+	"ACCEPT_LICENSE", "BASH_ENV", "BROOT", "BUILD_PREFIX", "COLUMNS", "D",
 	"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
 	"EBUILD_FORCE_TEST",
 	"EBUILD_PHASE", "EBUILD_PHASE_FUNC", "ECLASSDIR", "ECLASS_DEPTH", "ED",
-	"EMERGE_FROM", "EPREFIX", "EROOT",
+	"EMERGE_FROM", "EPREFIX", "EROOT", "ESYSROOT",
 	"FEATURES", "FILESDIR", "HOME", "MERGE_TYPE", "NOCOLOR", "PATH",
 	"PKGDIR",
 	"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
@@ -76,7 +77,7 @@ environ_whitelist += [
 	"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE", "PORTAGE_XATTR_EXCLUDE",
 	"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PYTHONDONTWRITEBYTECODE",
 	"REPLACING_VERSIONS", "REPLACED_BY_VERSION",
-	"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
+	"ROOT", "ROOTPATH", "SYSROOT", "T", "TMP", "TMPDIR",
 	"USE_EXPAND", "USE_ORDER", "WORKDIR",
 	"XARGS", "__PORTAGE_TEST_HARDLINK_LOCKS",
 	"DEFAULT_PATH", "EXTRA_PATH",

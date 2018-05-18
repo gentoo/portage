@@ -1,4 +1,4 @@
-# Copyright 2011-2015 Gentoo Foundation
+# Copyright 2011-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -194,13 +194,13 @@ class SimpleRepomanTestCase(TestCase):
 			("", repoman_cmd + ("full", "-d")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
-			("", repoman_cmd + ("commit", "-m", "bump to version 2")),
+			("", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 2")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "3.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "3.ebuild")),
-			("dev-libs", repoman_cmd + ("commit", "-m", "bump to version 3")),
+			("dev-libs", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 3")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "4.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "4.ebuild")),
-			("dev-libs/A", repoman_cmd + ("commit", "-m", "bump to version 4")),
+			("dev-libs/A", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 4")),
 		)
 
 		env = {

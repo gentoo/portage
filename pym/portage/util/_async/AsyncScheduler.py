@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -14,15 +14,26 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		if max_jobs is None:
 			max_jobs = 1
 		self._max_jobs = max_jobs
-		self._max_load = max_load
+		self._max_load = None if max_load is True else max_load
 		self._error_count = 0
 		self._running_tasks = set()
 		self._remaining_tasks = True
 		self._loadavg_check_id = None
 
+	@property
+	def scheduler(self):
+		"""
+		Provides compatibility with the AsynchronousTask.scheduler attribute.
+		"""
+		return self._event_loop
+
 	def _poll(self):
 		if not (self._is_work_scheduled() or self._keep_scheduling()):
-			self.wait()
+			if self._error_count > 0:
+				self.returncode = 1
+			else:
+				self.returncode = os.EX_OK
+			self._async_wait()
 		return self.returncode
 
 	def _cancel(self):
@@ -54,6 +65,11 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 				task.addExitListener(self._task_exit)
 				task.start()
 
+		if self._loadavg_check_id is not None:
+			self._loadavg_check_id.cancel()
+			self._loadavg_check_id = self._event_loop.call_later(
+				self._loadavg_latency, self._schedule)
+
 		# Triggers cleanup and exit listeners if there's nothing left to do.
 		self.poll()
 
@@ -69,32 +85,19 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 			(self._max_jobs is True or self._max_jobs > 1):
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
-			self._loadavg_check_id = self._event_loop.timeout_add(
+			self._loadavg_check_id = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
 		self._schedule()
 
 	def _cleanup(self):
 		super(AsyncScheduler, self)._cleanup()
 		if self._loadavg_check_id is not None:
-			self._event_loop.source_remove(self._loadavg_check_id)
+			self._loadavg_check_id.cancel()
 			self._loadavg_check_id = None
 
-	def _wait(self):
-		# Loop while there are jobs to be scheduled.
-		while self._keep_scheduling():
-			self._event_loop.iteration()
-
-		# Clean shutdown of previously scheduled jobs. In the
-		# case of termination, this allows for basic cleanup
-		# such as flushing of buffered output to logs.
-		while self._is_work_scheduled():
-			self._event_loop.iteration()
-
+	def _async_wait(self):
+		"""
+		Override _async_wait to call self._cleanup().
+		"""
 		self._cleanup()
-
-		if self._error_count > 0:
-			self.returncode = 1
-		else:
-			self.returncode = os.EX_OK 
-
-		return self.returncode
+		super(AsyncScheduler, self)._async_wait()

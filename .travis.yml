@@ -8,6 +8,8 @@ python:
 
 # command to install dependencies
 install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -y libxml2-utils
     - pip install lxml
     # python3.6+ has sha3 built-in, for older versions install pysha3
     # (except for pypy where pysha3 is broken)
@@ -16,6 +18,8 @@ install:
     - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] ]] || pip install pyblake2"
     # always install pygost for Streebog
     - pip install pygost
+    # pyyaml is needed for building
+    - pip install pyyaml
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg

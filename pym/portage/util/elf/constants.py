@@ -1,8 +1,8 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
 # These constants are available from elfutils:
-# https://git.fedorahosted.org/cgit/elfutils.git/tree/libelf/elf.h
+# https://sourceware.org/git/?p=elfutils.git;a=blob;f=libelf/elf.h;hb=HEAD
 
 EI_CLASS           = 4
 ELFCLASS32         = 1
@@ -33,6 +33,7 @@ EM_SH              = 42
 EM_SPARCV9         = 43
 EM_IA_64           = 50
 EM_X86_64          = 62
+EM_ALTERA_NIOS2    = 113
 EM_AARCH64         = 183
 EM_ALPHA           = 0x9026
 

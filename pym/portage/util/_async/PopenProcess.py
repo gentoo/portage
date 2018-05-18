@@ -1,4 +1,4 @@
-# Copyright 2012-2017 Gentoo Foundation
+# Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -13,8 +13,7 @@ class PopenProcess(SubProcess):
 		self._registered = True
 
 		if self.pipe_reader is None:
-			self._reg_id = self.scheduler.child_watch_add(
-				self.pid, self._child_watch_cb)
+			self._async_waitpid()
 		else:
 			try:
 				self.pipe_reader.scheduler = self.scheduler
@@ -24,16 +23,10 @@ class PopenProcess(SubProcess):
 			self.pipe_reader.start()
 
 	def _pipe_reader_exit(self, pipe_reader):
-		self._reg_id = self.scheduler.child_watch_add(
-			self.pid, self._child_watch_cb)
+		self._async_waitpid()
 
-	def _child_watch_cb(self, pid, condition, user_data=None):
-		self._reg_id = None
-		self._waitpid_cb(pid, condition)
-		self.wait()
-
-	def _set_returncode(self, wait_retval):
-		SubProcess._set_returncode(self, wait_retval)
+	def _async_waitpid_cb(self, *args, **kwargs):
+		SubProcess._async_waitpid_cb(self, *args, **kwargs)
 		if self.proc.returncode is None:
 			# Suppress warning messages like this:
 			# ResourceWarning: subprocess 1234 is still running

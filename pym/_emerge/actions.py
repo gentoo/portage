@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -79,6 +79,7 @@ from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
+from _emerge.main import profile_check
 from _emerge.MetadataRegen import MetadataRegen
 from _emerge.Package import Package
 from _emerge.ProgressHandler import ProgressHandler
@@ -617,6 +618,7 @@ def action_config(settings, trees, myopts, myfiles):
 		portage.doebuild(ebuildpath, "clean", settings=mysettings,
 			debug=debug, mydbapi=vardb, tree="vartree")
 	print()
+	return retval
 
 def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, myfiles, spinner, scheduler=None):
@@ -817,8 +819,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(pkg,
-						pkg._metadata["PROVIDE"], _unicode(e))
+					show_invalid_depstring_notice(pkg, _unicode(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -871,8 +872,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg,
-					pkg._metadata["PROVIDE"], _unicode(e))
+				show_invalid_depstring_notice(pkg, _unicode(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -889,8 +889,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if excluded_set.findAtomForPackage(pkg):
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg,
-					pkg._metadata["PROVIDE"], _unicode(e))
+				show_invalid_depstring_notice(pkg, _unicode(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
@@ -1326,6 +1325,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		priority_map = {
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
+			"BDEPEND": buildtime,
 			"HDEPEND": buildtime,
 			"DEPEND": buildtime,
 		}
@@ -1818,8 +1818,8 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars = list(settings)
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
-		          'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
-		          'PORTAGE_BUNZIP2_COMMAND',
+		          'DISTDIR', 'ENV_UNSET', 'PKGDIR', 'PORTAGE_TMPDIR',
+		          'PORTAGE_BINHOST', 'PORTAGE_BUNZIP2_COMMAND',
 		          'PORTAGE_BZIP2_COMMAND',
 		          'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'FEATURES',
@@ -2212,9 +2212,21 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	return rval
 
 def adjust_configs(myopts, trees):
-	for myroot in trees:
+	for myroot, mytrees in trees.items():
 		mysettings =  trees[myroot]["vartree"].settings
 		mysettings.unlock()
+
+		# For --usepkgonly mode, propagate settings from the binary package
+		# database, so that it's possible to operate without dependence on
+		# a local ebuild repository and profile.
+		if ('--usepkgonly' in myopts and
+			mytrees['bintree']._propagate_config(mysettings)):
+			# Also propagate changes to the portdbapi doebuild_settings
+			# attribute which is used by Package instances for USE
+			# calculations (in support of --binpkg-respect-use).
+			mytrees['porttree'].dbapi.doebuild_settings = \
+				portage.config(clone=mysettings)
+
 		adjust_config(myopts, mysettings)
 		mysettings.lock()
 
@@ -2419,15 +2431,16 @@ class _emerge_config(SlotObject):
 	def __len__(self):
 		return 3
 
-def load_emerge_config(emerge_config=None, **kargs):
+def load_emerge_config(emerge_config=None, env=None, **kargs):
 
 	if emerge_config is None:
 		emerge_config = _emerge_config(**kargs)
 
-	kwargs = {}
+	env = os.environ if env is None else env
+	kwargs = {'env': env}
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"),
-			("eprefix", "EPREFIX")):
-		v = os.environ.get(envvar, None)
+			("sysroot", "SYSROOT"), ("eprefix", "EPREFIX")):
+		v = env.get(envvar)
 		if v and v.strip():
 			kwargs[k] = v
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
@@ -2907,7 +2920,27 @@ def run_action(emerge_config):
 			"--usepkg", "--usepkgonly"):
 			emerge_config.opts.pop(opt, None)
 
+	# Populate the bintree with current --getbinpkg setting.
+	# This needs to happen before:
+	# * expand_set_arguments, in case any sets use the bintree
+	# * adjust_configs and profile_check, in order to propagate settings
+	#   implicit IUSE and USE_EXPAND settings from the binhost(s)
+	if (emerge_config.action in ('search', None) and
+		'--usepkg' in emerge_config.opts):
+		for mytrees in emerge_config.trees.values():
+			try:
+				mytrees['bintree'].populate(
+					getbinpkgs='--getbinpkg' in emerge_config.opts)
+			except ParseError as e:
+				writemsg('\n\n!!!%s.\nSee make.conf(5) for more info.\n'
+						 % (e,), noiselevel=-1)
+				return 1
+
 	adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	if profile_check(emerge_config.trees, emerge_config.action) != os.EX_OK:
+		return 1
+
 	apply_priorities(emerge_config.target_config.settings)
 
 	if ("--autounmask-continue" in emerge_config.opts and
@@ -2957,19 +2990,6 @@ def run_action(emerge_config):
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
-
-		if emerge_config.action in ('search', None) and \
-			"--usepkg" in emerge_config.opts:
-			# Populate the bintree with current --getbinpkg setting.
-			# This needs to happen before expand_set_arguments(), in case
-			# any sets use the bintree.
-			try:
-				mytrees["bintree"].populate(
-					getbinpkgs="--getbinpkg" in emerge_config.opts)
-			except ParseError as e:
-				writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
-						 % e, noiselevel=-1)
-				return 1
 
 	del mytrees, mydb
 
@@ -3222,7 +3242,7 @@ def run_action(emerge_config):
 	# HELP action
 	elif "config" == emerge_config.action:
 		validate_ebuild_environment(emerge_config.trees)
-		action_config(emerge_config.target_config.settings,
+		return action_config(emerge_config.target_config.settings,
 			emerge_config.trees, emerge_config.opts, emerge_config.args)
 
 	# SEARCH action

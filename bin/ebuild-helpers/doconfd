@@ -1,11 +1,16 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2010 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
 if [[ $# -lt 1 ]] ; then
-	source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 	__helpers_die "${0##*/}: at least one argument needed"
 	exit 1
 fi
 
-INSDESTTREE='/etc/conf.d/' exec doins "$@"
+export _E_INSDESTTREE_='/etc/conf.d/'
+if ___eapi_has_DESTTREE_INSDESTTREE; then
+	export INSDESTTREE=${_E_INSDESTTREE_}
+fi
+exec doins "$@"

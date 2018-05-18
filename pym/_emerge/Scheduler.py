@@ -71,11 +71,11 @@ FAILURE = 1
 
 class Scheduler(PollScheduler):
 
-	# max time between loadavg checks (milliseconds)
-	_loadavg_latency = 30000
+	# max time between loadavg checks (seconds)
+	_loadavg_latency = 30
 
-	# max time between display status updates (milliseconds)
-	_max_display_latency = 3000
+	# max time between display status updates (seconds)
+	_max_display_latency = 3
 
 	_opts_ignore_blockers = \
 		frozenset(["--buildpkgonly",
@@ -239,6 +239,8 @@ class Scheduler(PollScheduler):
 		self._jobs = 0
 		self._running_tasks = {}
 		self._completed_tasks = set()
+		self._main_exit = None
+		self._main_loadavg_handle = None
 
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
@@ -352,7 +354,8 @@ class Scheduler(PollScheduler):
 		"""
 		self._set_graph_config(graph_config)
 		self._blocker_db = {}
-		dynamic_deps = self.myopts.get("--dynamic-deps", "y") != "n"
+		depgraph_params = create_depgraph_params(self.myopts, None)
+		dynamic_deps = "dynamic_deps" in depgraph_params
 		ignore_built_slot_operator_deps = self.myopts.get(
 			"--ignore-built-slot-operator-deps", "n") == "y"
 		for root in self.trees:
@@ -447,6 +450,7 @@ class Scheduler(PollScheduler):
 			self._pkg_cache = {}
 			self._digraph = None
 			self._mergelist = []
+			self._world_atoms = None
 			self._deep_system_deps.clear()
 			return
 
@@ -454,6 +458,18 @@ class Scheduler(PollScheduler):
 		self._pkg_cache = graph_config.pkg_cache
 		self._digraph = graph_config.graph
 		self._mergelist = graph_config.mergelist
+
+		# Generate world atoms while the event loop is not running,
+		# since otherwise portdbapi match calls in the create_world_atom
+		# function could trigger event loop recursion.
+		self._world_atoms = {}
+		for pkg in self._mergelist:
+			if getattr(pkg, 'operation', None) != 'merge':
+				continue
+			atom = create_world_atom(pkg, self._args_set,
+				pkg.root_config, before_install=True)
+			if atom is not None:
+				self._world_atoms[pkg] = atom
 
 		if "--nodeps" in self.myopts or \
 			(self._max_jobs is not True and self._max_jobs < 2):
@@ -798,7 +814,7 @@ class Scheduler(PollScheduler):
 			settings["PORTAGE_BUILDDIR"] = build_dir_path
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
-			build_dir.lock()
+			sched_iface.run_until_complete(build_dir.async_lock())
 			current_task = None
 
 			try:
@@ -910,7 +926,7 @@ class Scheduler(PollScheduler):
 						clean_phase.start()
 						clean_phase.wait()
 
-				build_dir.unlock()
+				sched_iface.run_until_complete(build_dir.async_unlock())
 
 		if failures:
 			return FAILURE
@@ -1359,34 +1375,18 @@ class Scheduler(PollScheduler):
 		blocker_db.discardBlocker(pkg)
 
 	def _main_loop(self):
-		loadavg_check_id = None
+		self._main_exit = self._event_loop.create_future()
+
 		if self._max_load is not None and \
 			self._loadavg_latency is not None and \
 			(self._max_jobs is True or self._max_jobs > 1):
 			# We have to schedule periodically, in case the load
 			# average has changed since the last call.
-			loadavg_check_id = self._event_loop.timeout_add(
+			self._main_loadavg_handle = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
 
-		try:
-			# Populate initial event sources. Unless we're scheduling
-			# based on load average, we only need to do this once
-			# here, since it can be called during the loop from within
-			# event handlers.
-			self._schedule()
-
-			# Loop while there are jobs to be scheduled.
-			while self._keep_scheduling():
-				self._event_loop.iteration()
-
-			# Clean shutdown of previously scheduled jobs. In the
-			# case of termination, this allows for basic cleanup
-			# such as flushing of buffered output to logs.
-			while self._is_work_scheduled():
-				self._event_loop.iteration()
-		finally:
-			if loadavg_check_id is not None:
-				self._event_loop.source_remove(loadavg_check_id)
+		self._schedule()
+		self._event_loop.run_until_complete(self._main_exit)
 
 	def _merge(self):
 
@@ -1398,10 +1398,15 @@ class Scheduler(PollScheduler):
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
 		portage.elog.add_listener(self._elog_listener)
-		display_timeout_id = None
+
+		def display_callback():
+			self._status_display.display()
+			display_callback.handle = self._event_loop.call_later(
+				self._max_display_latency, display_callback)
+		display_callback.handle = None
+
 		if self._status_display._isatty and not self._status_display.quiet:
-			display_timeout_id = self._event_loop.timeout_add(
-				self._max_display_latency, self._status_display.display)
+			display_callback()
 		rval = os.EX_OK
 
 		try:
@@ -1410,8 +1415,8 @@ class Scheduler(PollScheduler):
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
 			portage.elog.remove_listener(self._elog_listener)
-			if display_timeout_id is not None:
-				self._event_loop.source_remove(display_timeout_id)
+			if display_callback.handle is not None:
+				display_callback.handle.cancel()
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
@@ -1427,6 +1432,10 @@ class Scheduler(PollScheduler):
 		self._digraph = None
 		self._task_queues.fetch.clear()
 		self._prefetchers.clear()
+		self._main_exit = None
+		if self._main_loadavg_handle is not None:
+			self._main_loadavg_handle.cancel()
+			self._main_loadavg_handle = None
 
 	def _choose_pkg(self):
 		"""
@@ -1592,6 +1601,14 @@ class Scheduler(PollScheduler):
 				not self._task_queues.merge)):
 				break
 
+		if not (self._is_work_scheduled() or
+			self._keep_scheduling() or self._main_exit.done()):
+			self._main_exit.set_result(None)
+		elif self._main_loadavg_handle is not None:
+			self._main_loadavg_handle.cancel()
+			self._main_loadavg_handle = self._event_loop.call_later(
+				self._loadavg_latency, self._schedule)
+
 	def _sigcont_handler(self, signum, frame):
 		self._sigcont_time = time.time()
 
@@ -1613,12 +1630,11 @@ class Scheduler(PollScheduler):
 					elapsed_seconds < self._sigcont_delay:
 
 					if self._job_delay_timeout_id is not None:
-						self._event_loop.source_remove(
-							self._job_delay_timeout_id)
+						self._job_delay_timeout_id.cancel()
 
-					self._job_delay_timeout_id = self._event_loop.timeout_add(
-						1000 * (self._sigcont_delay - elapsed_seconds),
-						self._schedule_once)
+					self._job_delay_timeout_id = self._event_loop.call_later(
+						self._sigcont_delay - elapsed_seconds,
+						self._schedule)
 					return True
 
 				# Only set this to None after the delay has expired,
@@ -1639,17 +1655,12 @@ class Scheduler(PollScheduler):
 			if elapsed_seconds > 0 and elapsed_seconds < delay:
 
 				if self._job_delay_timeout_id is not None:
-					self._event_loop.source_remove(
-						self._job_delay_timeout_id)
+					self._job_delay_timeout_id.cancel()
 
-				self._job_delay_timeout_id = self._event_loop.timeout_add(
-					1000 * (delay - elapsed_seconds), self._schedule_once)
+				self._job_delay_timeout_id = self._event_loop.call_later(
+					delay - elapsed_seconds, self._schedule)
 				return True
 
-		return False
-
-	def _schedule_once(self):
-		self._schedule()
 		return False
 
 	def _schedule_tasks_imp(self):
@@ -1938,11 +1949,7 @@ class Scheduler(PollScheduler):
 		atom = None
 
 		if pkg.operation != "uninstall":
-			# Do this before acquiring the lock, since it queries the
-			# portdbapi which can call the global event loop, triggering
-			# a concurrent call to this method or something else that
-			# needs an exclusive (non-reentrant) lock on the world file.
-			atom = create_world_atom(pkg, args_set, root_config)
+			atom = self._world_atoms.get(pkg)
 
 		try:
 

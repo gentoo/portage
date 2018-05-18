@@ -404,7 +404,7 @@ class FetchTask(CompositeTask):
 				(self.distfile, uri))
 			self._success()
 			self.returncode = os.EX_OK
-			self.wait()
+			self._async_wait()
 			return
 
 		if self.config.options.temp_dir:
