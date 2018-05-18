@@ -447,7 +447,7 @@ preinst_selinux_labels() {
 
 				addwrite /sys/fs/selinux/context
 
-				/usr/sbin/setfiles -F "${file_contexts_path}" -r "${D}" "${D}"
+				/usr/sbin/setfiles -F -r "${D}" "${file_contexts_path}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
