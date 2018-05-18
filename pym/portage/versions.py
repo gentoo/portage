@@ -51,8 +51,8 @@ _pkg = {
 }
 
 _v = r'(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)'
-# PREFIX_LOCAL hack: -r(\d+) -> -r(\d+|0\d+\.\d+) (see below)
-_rev = r'(\d+|0\d+\.\d+)'
+# PREFIX_LOCAL hack: -r(\d+) -> -r(\d+|\d+\.\d+) (see below)
+_rev = r'(\d+|\d+\.\d+)'
 # END_PREFIX_LOCAL
 _vr = _v + '(-r(' + _rev + '))?'
 
@@ -254,16 +254,22 @@ def vercmp(ver1, ver2, silent=1):
 
 	# PREFIX_LOCAL
 	# The suffix part is equal too, so finally check the revision
-	# Prefix hack: a revision starting with 0 is an 'inter-revision',
-	# which means that it is possible to create revisions on revisions.
-	# An example is -r01.1 which is the first revision of -r1.  Note
-	# that a period (.) is used to separate the real revision and the
-	# secondary revision number.  This trick is in use to allow revision
-	# bumps in ebuilds synced from the main tree for Prefix changes,
-	# while still staying in the main tree versioning scheme.
+	# Prefix hack: historically a revision starting with 0 was an
+	# 'inter-revision', which means that it is possible to create
+	# revisions on revisions.  An example is -r01.1 which is the
+	# first revision of -r1.  Note that a period (.) is used to
+	# separate the real revision and the secondary revision number.
+	# In the current state, the leading 0 is no longer used, and
+	# versions just can have a dot, which means the version is an
+	# inter-revision.
+	# This trick is in use to allow revision bumps in ebuilds synced
+	# from the main tree for Prefix changes, while still staying in
+	# the main tree versioning scheme.  As such it can be used in
+	# any other overlay where ebuilds from the another tree are
+	# shadowed.
 	if match1.group(9):
-		if match1.group(9)[0] == '0' and '.' in match1.group(9):
-			t = match1.group(9)[1:].split(".")
+		if '.' in match1.group(9):
+			t = match1.group(9).split(".")
 			r1 = int(t[0])
 			r3 = int(t[1])
 		else:
@@ -273,8 +279,8 @@ def vercmp(ver1, ver2, silent=1):
 		r1 = 0
 		r3 = 0
 	if match2.group(9):
-		if match2.group(9)[0] == '0' and '.' in match2.group(9):
-			t = match2.group(9)[1:].split(".")
+		if '.' in match2.group(9):
+			t = match2.group(9).split(".")
 			r2 = int(t[0])
 			r4 = int(t[1])
 		else:
