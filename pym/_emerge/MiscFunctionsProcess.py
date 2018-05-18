@@ -13,7 +13,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 	Spawns misc-functions.sh with an existing ebuild environment.
 	"""
 
-	__slots__ = ('commands',)
+	__slots__ = ('commands', 'ld_preload_sandbox')
 
 	def _start(self):
 		settings = self.settings
@@ -29,6 +29,10 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 		AbstractEbuildProcess._start(self)
 
 	def _spawn(self, args, **kwargs):
+		# If self.ld_preload_sandbox is None, default to free=False,
+		# in alignment with the spawn(free=False) default.
+		kwargs.setdefault('free', False if self.ld_preload_sandbox is None
+			else not self.ld_preload_sandbox)
 
 		if self._dummy_pipe_fd is not None:
 			self.settings["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)

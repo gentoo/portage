@@ -1722,13 +1722,27 @@ _post_phase_cmds = {
 		"install_symlink_html_docs",
 		"install_hooks"],
 
-	"preinst" : [
-		"preinst_sfperms",
-		"preinst_selinux_labels",
-		"preinst_suid_scan",
-		"preinst_qa_check",
-		],
-
+	"preinst" : (
+		(
+			# Since SELinux does not allow LD_PRELOAD across domain transitions,
+			# disable the LD_PRELOAD sandbox for preinst_selinux_labels.
+			{
+				"ld_preload_sandbox": False,
+				"selinux_only": True,
+			},
+			[
+				"preinst_selinux_labels",
+			],
+		),
+		(
+			{},
+			[
+				"preinst_sfperms",
+				"preinst_suid_scan",
+				"preinst_qa_check",
+			],
+		),
+	),
 	"postinst" : [
 		"postinst_qa_check"],
 }
