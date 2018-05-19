@@ -1602,8 +1602,10 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				user = "root"
 			elif portage_build_uid == portage_uid:
 				user = portage.data._portage_username
+			# PREFIX LOCAL: accept numeric uid
 			else:
 				user = portage_uid
+			# END PREFIX LOCAL
 		if user is not None:
 			mysettings["PORTAGE_BUILD_USER"] = user
 
@@ -1616,8 +1618,10 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 				group = "root"
 			elif portage_build_gid == portage_gid:
 				group = portage.data._portage_grpname
+			# PREFIX LOCAL: accept numeric gid
 			else:
 				group = portage_gid
+			# END PREFIX LOCAL
 		if group is not None:
 			mysettings["PORTAGE_BUILD_GROUP"] = group
 
@@ -1674,11 +1678,13 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 			rules_literal = ""
 			rules_regex = ""
 
-			# FIXME: Allow for quoting inside the variable to allow paths with
-			# spaces in them?
+			# FIXME: Allow for quoting inside the variable
+			# to allow paths with spaces in them?
 			for path in paths.split(" "):
-				# do a second round of token replacements to be able to
-				# reference settings like EPREFIX or PORTAGE_BUILDDIR.
+				# do a second round of token
+				# replacements to be able to reference
+				# settings like EPREFIX or
+				# PORTAGE_BUILDDIR.
 				for token in path.split("@@")[1:-1:2]:
 					if token not in mysettings:
 						continue
@@ -1686,16 +1692,19 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 					path = path.replace("@@%s@@" % token, mysettings[token])
 
 				if "@@" in path:
-					# unreplaced tokens left - silently ignore path - needed
-					# for PORTAGE_ACTUAL_DISTDIR which isn't always set
+					# unreplaced tokens left -
+					# silently ignore path - needed
+					# for PORTAGE_ACTUAL_DISTDIR
+					# which isn't always set
 					pass
 				elif path[-1] == os.sep:
-					# path ends in slash - make it a regex and allow access
+					# path ends in slash - make it a
+					# regex and allow access
 					# recursively.
-					path = path.replace("+", "\+")
-					path = path.replace("*", "\*")
-					path = path.replace("[", "\[")
-					path = path.replace("[", "\[")
+					path = path.replace(r'+', r'\+')
+					path = path.replace(r'*', r'\*')
+					path = path.replace(r'[', r'\[')
+					path = path.replace(r']', r'\]')
 					rules_regex += "    #\"^%s\"\n" % path
 				else:
 					rules_literal += "    #\"%s\"\n" % path
