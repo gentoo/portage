@@ -1,6 +1,7 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import os
 import signal
 
 try:
@@ -10,6 +11,8 @@ except ImportError:
 	# Allow ImportModulesTestCase to succeed.
 	_real_asyncio = None
 	_AbstractEventLoop = object
+
+import portage
 
 
 class AsyncioEventLoop(_AbstractEventLoop):
@@ -26,13 +29,15 @@ class AsyncioEventLoop(_AbstractEventLoop):
 	def __init__(self, loop=None):
 		loop = loop or _real_asyncio.get_event_loop()
 		self._loop = loop
-		self.run_until_complete = loop.run_until_complete
+		self.run_until_complete = (self._run_until_complete
+			if portage._internal_caller else loop.run_until_complete)
 		self.call_soon = loop.call_soon
 		self.call_soon_threadsafe = loop.call_soon_threadsafe
 		self.call_later = loop.call_later
 		self.call_at = loop.call_at
 		self.is_running = loop.is_running
 		self.is_closed = loop.is_closed
+		self.close = loop.close
 		self.create_future = (loop.create_future
 			if hasattr(loop, 'create_future') else self._create_future)
 		self.create_task = loop.create_task
@@ -46,6 +51,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		self.call_exception_handler = loop.call_exception_handler
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
+		self._wakeup_fd = -1
 
 	def _create_future(self):
 		"""
@@ -77,9 +83,26 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		"""
 		return self
 
-	def close(self):
-		# Suppress spurious error messages like the following for bug 655656:
-		#   Exception ignored when trying to write to the signal wakeup fd:
-		#   BlockingIOError: [Errno 11] Resource temporarily unavailable
-		self._loop.remove_signal_handler(signal.SIGCHLD)
-		self._loop.close()
+	def _run_until_complete(self, future):
+		"""
+		An implementation of AbstractEventLoop.run_until_complete that supresses
+		spurious error messages like the following reported in bug 655656:
+
+		    Exception ignored when trying to write to the signal wakeup fd:
+		    BlockingIOError: [Errno 11] Resource temporarily unavailable
+
+		In order to avoid potential interference with API consumers, this
+		implementation is only used when portage._internal_caller is True.
+		"""
+		if self._wakeup_fd != -1:
+			signal.set_wakeup_fd(self._wakeup_fd)
+			self._wakeup_fd = -1
+			# Account for any signals that may have arrived between
+			# set_wakeup_fd calls.
+			os.kill(os.getpid(), signal.SIGCHLD)
+		try:
+			return self._loop.run_until_complete(future)
+		finally:
+			self._wakeup_fd = signal.set_wakeup_fd(-1)
+			if self._wakeup_fd != -1:
+				signal.set_wakeup_fd(-1)
