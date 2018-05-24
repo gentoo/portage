@@ -16,11 +16,11 @@ class LazyImportPortageBaselineTestCase(TestCase):
 	_module_re = re.compile(r'^(portage|repoman|_emerge)\.')
 
 	_baseline_imports = frozenset([
-		'portage.const', 'portage.const_autotool',
-		'portage.localization',
+		'portage.const', 'portage.localization',
 		'portage.proxy', 'portage.proxy.lazyimport',
 		'portage.proxy.objectproxy',
 		'portage._selinux',
+		'portage.const_autotool',
 	])
 
 	_baseline_import_cmd = [portage._python_interpreter, '-c', '''

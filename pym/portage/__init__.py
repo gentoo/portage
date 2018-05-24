@@ -420,6 +420,7 @@ def _shell_quote(s):
 bsd_chflags = None
 
 if platform.system() in ('FreeBSD',):
+	# TODO: remove this class?
 	class bsd_chflags(object):
 		chflags = os.chflags
 		lchflags = os.lchflags
@@ -536,6 +537,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 
 	if env is None:
 		env = os.environ
+
 	settings = config(config_root=config_root, target_root=target_root,
 		env=env, sysroot=sysroot, eprefix=eprefix)
 	settings.lock()
