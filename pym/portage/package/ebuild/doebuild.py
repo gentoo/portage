@@ -1048,9 +1048,11 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles:
 
-			src_uri, = mydbapi.aux_get(mysettings.mycpv,
-				["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
-				os.path.dirname(myebuild))))
+			src_uri = mysettings.configdict["pkg"].get("SRC_URI")
+			if src_uri is None:
+				src_uri, = mydbapi.aux_get(mysettings.mycpv,
+					["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
+					os.path.dirname(myebuild))))
 			metadata = {
 				"EAPI"    : mysettings["EAPI"],
 				"SRC_URI" : src_uri,
@@ -1410,9 +1412,14 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	all_keys = set(Package.metadata_keys)
 	all_keys.add("SRC_URI")
 	all_keys = tuple(all_keys)
-	metadata = dict(zip(all_keys,
-		mydbapi.aux_get(mysettings.mycpv, all_keys,
-		myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
+	metadata = mysettings.configdict['pkg']
+	if all(k in metadata for k in ("PORTAGE_REPO_NAME", "SRC_URI")):
+		metadata = dict(((k, metadata[k]) for k in all_keys if k in metadata),
+			repository=metadata["PORTAGE_REPO_NAME"])
+	else:
+		metadata = dict(zip(all_keys,
+			mydbapi.aux_get(mysettings.mycpv, all_keys,
+			myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
