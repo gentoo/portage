@@ -3,7 +3,9 @@
 
 from __future__ import unicode_literals
 
+import collections
 import fnmatch
+import functools
 from itertools import chain
 import os
 import re
@@ -33,7 +35,8 @@ class SonameDepsProcessor(object):
 		"""
 		self._provides_exclude = self._exclude_pattern(provides_exclude)
 		self._requires_exclude = self._exclude_pattern(requires_exclude)
-		self._requires_map = {}
+		self._requires_map = collections.defaultdict(
+			functools.partial(collections.defaultdict, set))
 		self._provides_map = {}
 		self._provides_unfiltered = {}
 		self._basename_map = {}
@@ -84,8 +87,7 @@ class SonameDepsProcessor(object):
 			for x in entry.needed:
 				if (self._requires_exclude is None or
 					self._requires_exclude.match(x) is None):
-					self._requires_map.setdefault(
-						multilib_cat, {}).setdefault(x, set()).add(runpaths)
+					self._requires_map[multilib_cat][x].add(runpaths)
 
 		if entry.soname:
 			self._provides_unfiltered.setdefault(
@@ -105,7 +107,6 @@ class SonameDepsProcessor(object):
 		provides_unfiltered = self._provides_unfiltered
 
 		for multilib_cat in set(chain(requires_map, provides_map)):
-			requires_map.setdefault(multilib_cat, set())
 			provides_map.setdefault(multilib_cat, set())
 			provides_unfiltered.setdefault(multilib_cat, set())
 			for soname, consumers in list(requires_map[multilib_cat].items()):
