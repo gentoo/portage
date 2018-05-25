@@ -233,6 +233,7 @@ class ResolverPlayground(object):
 			metadata["repository"] = repo
 			metadata["CATEGORY"] = cat
 			metadata["PF"] = pf
+			metadata["EPREFIX"] = self.eprefix
 
 			repo_dir = self.pkgdir
 			category_dir = os.path.join(repo_dir, cat)
