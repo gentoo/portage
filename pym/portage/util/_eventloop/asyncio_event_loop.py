@@ -104,5 +104,3 @@ class AsyncioEventLoop(_AbstractEventLoop):
 			return self._loop.run_until_complete(future)
 		finally:
 			self._wakeup_fd = signal.set_wakeup_fd(-1)
-			if self._wakeup_fd != -1:
-				signal.set_wakeup_fd(-1)
