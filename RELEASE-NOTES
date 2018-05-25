@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.39
+==================================
+* Bug Fixes:
+    - Bug 646190 exclude soname deps for internal libs without DT_SONAME
+    - Bug 655656 signal wakeup fd BlockingIOError messages
+    - Bug 655996 SELinux enhancements for musl and cleanups
+    - Bug 656394 emerge -pf RuntimeError event loop is already running
+
+
 portage-2.3.38
 ==================================
 * Bug Fixes:
