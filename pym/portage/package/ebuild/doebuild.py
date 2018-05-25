@@ -1051,9 +1051,11 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		if need_distfiles:
 
-			src_uri, = mydbapi.aux_get(mysettings.mycpv,
-				["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
-				os.path.dirname(myebuild))))
+			src_uri = mysettings.configdict["pkg"].get("SRC_URI")
+			if src_uri is None:
+				src_uri, = mydbapi.aux_get(mysettings.mycpv,
+					["SRC_URI"], mytree=os.path.dirname(os.path.dirname(
+					os.path.dirname(myebuild))))
 			metadata = {
 				"EAPI"    : mysettings["EAPI"],
 				"SRC_URI" : src_uri,
@@ -1414,9 +1416,14 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 	all_keys = set(Package.metadata_keys)
 	all_keys.add("SRC_URI")
 	all_keys = tuple(all_keys)
-	metadata = dict(zip(all_keys,
-		mydbapi.aux_get(mysettings.mycpv, all_keys,
-		myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
+	metadata = mysettings.configdict['pkg']
+	if all(k in metadata for k in ("PORTAGE_REPO_NAME", "SRC_URI")):
+		metadata = dict(((k, metadata[k]) for k in all_keys if k in metadata),
+			repository=metadata["PORTAGE_REPO_NAME"])
+	else:
+		metadata = dict(zip(all_keys,
+			mydbapi.aux_get(mysettings.mycpv, all_keys,
+			myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
 	class FakeTree(object):
 		def __init__(self, mydb):
@@ -1806,14 +1813,28 @@ _post_phase_cmds = {
 		"install_symlink_html_docs",
 		"install_hooks"],
 
-	"preinst" : [
-		"preinst_aix",
-		"preinst_sfperms",
-		"preinst_selinux_labels",
-		"preinst_suid_scan",
-		"preinst_qa_check",
-		],
-
+	"preinst" : (
+		(
+			# Since SELinux does not allow LD_PRELOAD across domain transitions,
+			# disable the LD_PRELOAD sandbox for preinst_selinux_labels.
+			{
+				"ld_preload_sandbox": False,
+				"selinux_only": True,
+			},
+			[
+				"preinst_selinux_labels",
+			],
+		),
+		(
+			{},
+			[
+				"preinst_aix",
+				"preinst_sfperms",
+				"preinst_suid_scan",
+				"preinst_qa_check",
+			],
+		),
+	),
 	"postinst" : [
 		"postinst_aix",
 		"postinst_qa_check"],

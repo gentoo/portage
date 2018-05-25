@@ -13,6 +13,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.EbuildProcess import EbuildProcess
 from _emerge.CompositeTask import CompositeTask
 from _emerge.PackagePhase import PackagePhase
+from _emerge.TaskSequence import TaskSequence
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 		_prepare_fake_distdir, _prepare_fake_filesdir)
 from portage.util import writemsg
@@ -275,7 +276,7 @@ class EbuildPhase(CompositeTask):
 				# when FEATURES=compress-build-logs is enabled.
 				fd, logfile = tempfile.mkstemp()
 				os.close(fd)
-			post_phase = MiscFunctionsProcess(background=self.background,
+			post_phase = _PostPhaseCommands(background=self.background,
 				commands=post_phase_cmds, fd_pipes=self.fd_pipes,
 				logfile=logfile, phase=self.phase, scheduler=self.scheduler,
 				settings=settings)
@@ -405,3 +406,30 @@ class EbuildPhase(CompositeTask):
 				log_path = self.settings.get("PORTAGE_LOG_FILE")
 			self.scheduler.output(msg, log_path=log_path,
 				background=background)
+
+
+class _PostPhaseCommands(CompositeTask):
+
+	__slots__ = ("commands", "fd_pipes", "logfile", "phase", "settings")
+
+	def _start(self):
+		if isinstance(self.commands, list):
+			cmds = [({}, self.commands)]
+		else:
+			cmds = list(self.commands)
+
+		if 'selinux' not in self.settings.features:
+			cmds = [(kwargs, commands) for kwargs, commands in
+				cmds if not kwargs.get('selinux_only')]
+
+		tasks = TaskSequence()
+		for kwargs, commands in cmds:
+			# Select args intended for MiscFunctionsProcess.
+			kwargs = dict((k, v) for k, v in kwargs.items()
+				if k in ('ld_preload_sandbox',))
+			tasks.add(MiscFunctionsProcess(background=self.background,
+				commands=commands, fd_pipes=self.fd_pipes,
+				logfile=self.logfile, phase=self.phase,
+				scheduler=self.scheduler, settings=self.settings, **kwargs))
+
+		self._start_task(tasks, self._default_final_exit)
