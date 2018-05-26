@@ -146,8 +146,8 @@ scan() {
 		find_opts+=( "$name_opt" )
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
-		if [ ! -w "${path}" ] ; then
-			[ -e "${path}" ] || continue
+		if [[ ! -w ${path} ]] ; then
+			[[ -e ${path} ]] || continue
 			die "Need write access to ${path}"
 		fi
 
