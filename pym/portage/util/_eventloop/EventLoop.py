@@ -968,7 +968,7 @@ class EventLoop(object):
 			executor.shutdown(wait=True)
 
 		if self._poll_obj is not None:
-			close = getattr(self._poll_obj, 'close')
+			close = getattr(self._poll_obj, 'close', None)
 			if close is not None:
 				close()
 			self._poll_obj = None
