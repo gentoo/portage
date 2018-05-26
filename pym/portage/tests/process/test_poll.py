@@ -78,6 +78,7 @@ class PipeReaderTestCase(TestCase):
 		producer.start()
 		os.close(slave_fd)
 		producer.wait()
+		consumer.wait()
 
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
