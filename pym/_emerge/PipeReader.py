@@ -22,11 +22,6 @@ class PipeReader(AbstractPollTask):
 	def _start(self):
 		self._read_data = []
 
-		if self._use_array:
-			output_handler = self._array_output_handler
-		else:
-			output_handler = self._output_handler
-
 		for f in self.input_files.values():
 			fd = f if isinstance(f, int) else f.fileno()
 			fcntl.fcntl(fd, fcntl.F_SETFL,
@@ -42,7 +37,11 @@ class PipeReader(AbstractPollTask):
 					fcntl.fcntl(fd, fcntl.F_SETFD,
 						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-			self.scheduler.add_reader(fd, output_handler, fd)
+			if self._use_array:
+				self.scheduler.add_reader(fd, self._array_output_handler, f)
+			else:
+				self.scheduler.add_reader(fd, self._output_handler, fd)
+
 		self._registered = True
 
 	def _cancel(self):
@@ -72,11 +71,7 @@ class PipeReader(AbstractPollTask):
 				self._async_wait()
 				break
 
-	def _array_output_handler(self, fd):
-
-		for f in self.input_files.values():
-			if f.fileno() == fd:
-				break
+	def _array_output_handler(self, f):
 
 		while True:
 			data = self._read_array(f)
