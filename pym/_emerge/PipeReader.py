@@ -28,7 +28,7 @@ class PipeReader(AbstractPollTask):
 			output_handler = self._output_handler
 
 		for f in self.input_files.values():
-			fd = isinstance(f, int) and f or f.fileno()
+			fd = f if isinstance(f, int) else f.fileno()
 			fcntl.fcntl(fd, fcntl.F_SETFL,
 				fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
