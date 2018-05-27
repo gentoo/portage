@@ -25,15 +25,9 @@ class AbstractPollTask(AsynchronousTask):
 		because it has bugs in all known versions of Python (including
 		Python 2.7 and Python 3.2). See PipeReaderArrayTestCase.
 
-		| POLLIN | RETURN
-		| BIT    | VALUE
-		| ---------------------------------------------------
-		| 1      | Read self._bufsize into an instance of
-		|        | array.array('B') and return it, handling
-		|        | EOFError and IOError. An empty array
-		|        | indicates EOF.
-		| ---------------------------------------------------
-		| 0      | None
+		A benchmark that copies bytes from /dev/zero to /dev/null shows
+		that arrays give a 15% performance improvement for Python 2.7.14.
+		However, arrays significantly *decrease* performance for Python 3.
 		"""
 		buf = array.array('B')
 		try:
