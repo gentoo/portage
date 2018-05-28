@@ -19,6 +19,7 @@ from portage.localization import _
 from portage.output import colorize
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, normalize_path, writemsg
+from portage.util.install_mask import _raise_exc
 from portage.const import EPREFIX
 
 def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
@@ -50,7 +51,9 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 					clean_dir, noiselevel=-1)
 				return 1
 			else:
-				raise
+				# Wrap with PermissionDenied if appropriate, so that callers
+				# display a short error message without a traceback.
+				_raise_exc(oe)
 
 	def makedirs(dir_path):
 		try:
