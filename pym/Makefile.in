@@ -22,6 +22,7 @@ install:
 	$(INSTALL) -d -m 755 -o "$(portageuser)" -g "$(portagegroup)" $(DESTDIR)$(PORTAGE_PYM)
 	( cd "$(srcdir)" && find * -type d ) | while read f ; do \
 		files=( ) ; \
+		shopt -s nullglob ; \
 		for t in "$(srcdir)/$${f}"/* ; do \
 			[[ -d $${t} ]] && continue ; \
 			[[ $${t} == */Makefile* ]] && continue ; \
@@ -30,6 +31,7 @@ install:
 		$(INSTALL) -d -m 755 \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			"$(DESTDIR)$(PORTAGE_PYM)/$${f}" && \
+		[[ $${files[0]} ]] || continue ; \
 		$(INSTALL_subst) \
 			-o "$(portageuser)" -g "$(portagegroup)" \
 			-t "$(DESTDIR)$(PORTAGE_PYM)/$${f}" \
