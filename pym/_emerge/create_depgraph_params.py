@@ -48,7 +48,7 @@ def create_depgraph_params(myopts, myaction):
 	myparams["ignore_soname_deps"] = myopts.get(
 		"--ignore-soname-deps", "y")
 
-	dynamic_deps = myopts.get("--dynamic-deps", "y") != "n"
+	dynamic_deps = myopts.get("--dynamic-deps", "y") != "n" and "--nodeps" not in myopts
 	if dynamic_deps:
 		myparams["dynamic_deps"] = True
 
