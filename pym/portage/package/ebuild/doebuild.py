@@ -1079,14 +1079,13 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if not fetch(fetchme, mysettings, listonly=listonly,
 				fetchonly=fetchonly, allow_missing_digests=False,
 				digests=dist_digests):
-				spawn_nofetch(mydbapi, myebuild, settings=mysettings,
-					fd_pipes=fd_pipes)
-				if listonly:
-					# The convention for listonly mode is to report
-					# success in any case, even though fetch() may
-					# return unsuccessfully in order to trigger the
-					# nofetch phase.
-					return 0
+				# Since listonly mode is called by emerge --pretend in an
+				# asynchronous context, spawn_nofetch would trigger event loop
+				# recursion here, therefore delegate execution of pkg_nofetch
+				# to the caller (bug 657360).
+				if not listonly:
+					spawn_nofetch(mydbapi, myebuild, settings=mysettings,
+						fd_pipes=fd_pipes)
 				return 1
 
 		if need_distfiles:

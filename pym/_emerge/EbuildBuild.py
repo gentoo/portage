@@ -142,8 +142,20 @@ class EbuildBuild(CompositeTask):
 					pkg=pkg, pretend=opts.pretend,
 					settings=settings)
 				retval = fetcher.execute()
-				self.returncode = retval
-				self.wait()
+				if retval == os.EX_OK:
+					self._current_task = None
+					self.returncode = os.EX_OK
+					self._async_wait()
+				else:
+					# For pretend mode, the convention it to execute
+					# pkg_nofetch and return a successful exitcode.
+					self._start_task(SpawnNofetchWithoutBuilddir(
+						background=self.background,
+						portdb=self.pkg.root_config.trees[self._tree].dbapi,
+						ebuild_path=self._ebuild_path,
+						scheduler=self.scheduler,
+						settings=self.settings),
+						self._default_final_exit)
 				return
 			else:
 				fetcher = EbuildFetcher(
