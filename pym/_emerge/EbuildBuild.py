@@ -54,6 +54,10 @@ class EbuildBuild(CompositeTask):
 
 	def _start_with_metadata(self, aux_get_task):
 		self._assert_current(aux_get_task)
+		if aux_get_task.cancelled:
+			self._default_final_exit(aux_get_task)
+			return
+
 		pkg = self.pkg
 		settings = self.settings
 		root_config = pkg.root_config
@@ -178,6 +182,10 @@ class EbuildBuild(CompositeTask):
 
 	def _start_pre_clean(self, lock_task):
 		self._assert_current(lock_task)
+		if lock_task.cancelled:
+			self._default_final_exit(lock_task)
+			return
+
 		lock_task.future.result()
 		# Cleaning needs to happen before fetch, since the build dir
 		# is used for log handling.
@@ -235,6 +243,10 @@ class EbuildBuild(CompositeTask):
 
 	def _start_fetch(self, fetcher, already_fetched_task):
 		self._assert_current(already_fetched_task)
+		if already_fetched_task.cancelled:
+			self._default_final_exit(already_fetched_task)
+			return
+
 		try:
 			already_fetched = already_fetched_task.future.result()
 		except portage.exception.InvalidDependString as e:
@@ -342,6 +354,10 @@ class EbuildBuild(CompositeTask):
 
 	def _unlock_builddir_exit(self, unlock_task, returncode=None):
 		self._assert_current(unlock_task)
+		if unlock_task.cancelled:
+			self._default_final_exit(unlock_task)
+			return
+
 		# Normally, async_unlock should not raise an exception here.
 		unlock_task.future.result()
 		if returncode is not None:

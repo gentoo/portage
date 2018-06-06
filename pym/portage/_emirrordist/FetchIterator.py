@@ -135,11 +135,21 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 		if not gather_result.cancelled():
 			list(future.exception() for future in gather_result.result()
 				if not future.cancelled())
+		else:
+			result.cancel()
 
 		if result.cancelled():
 			return
 
 		aux_get_result, fetch_map_result = gather_result.result()
+		if aux_get_result.cancelled() or fetch_map_result.cancelled():
+			# Cancel result after consuming any exceptions which
+			# are now irrelevant due to cancellation.
+			aux_get_result.cancelled() or aux_get_result.exception()
+			fetch_map_result.cancelled() or fetch_map_result.exception()
+			result.cancel()
+			return
+
 		try:
 			restrict, = aux_get_result.result()
 		except (PortageKeyError, PortageException) as e:

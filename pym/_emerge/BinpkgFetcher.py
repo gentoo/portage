@@ -48,6 +48,10 @@ class BinpkgFetcher(CompositeTask):
 
 	def _start_locked(self, fetcher, lock_task):
 		self._assert_current(lock_task)
+		if lock_task.cancelled:
+			self._default_final_exit(lock_task)
+			return
+
 		lock_task.future.result()
 		self._start_task(fetcher, self._fetcher_exit)
 
@@ -65,6 +69,10 @@ class BinpkgFetcher(CompositeTask):
 	def _fetcher_exit_unlocked(self, fetcher, unlock_task=None):
 		if unlock_task is not None:
 			self._assert_current(unlock_task)
+			if unlock_task.cancelled:
+				self._default_final_exit(unlock_task)
+				return
+
 			unlock_task.future.result()
 
 		self._current_task = None
