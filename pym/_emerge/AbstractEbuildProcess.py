@@ -412,7 +412,11 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _unlock_builddir_exit(self, unlock_future, returncode=None):
 		# Normally, async_unlock should not raise an exception here.
-		unlock_future.result()
+		unlock_future.cancelled() or unlock_future.result()
 		if returncode is not None:
-			self.returncode = returncode
+			if unlock_future.cancelled():
+				self.cancelled = True
+				self._was_cancelled()
+			else:
+				self.returncode = returncode
 			SpawnProcess._async_wait(self)

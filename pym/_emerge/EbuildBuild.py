@@ -354,12 +354,12 @@ class EbuildBuild(CompositeTask):
 
 	def _unlock_builddir_exit(self, unlock_task, returncode=None):
 		self._assert_current(unlock_task)
-		if unlock_task.cancelled:
+		if unlock_task.cancelled and returncode is not None:
 			self._default_final_exit(unlock_task)
 			return
 
 		# Normally, async_unlock should not raise an exception here.
-		unlock_task.future.result()
+		unlock_task.future.cancelled() or unlock_task.future.result()
 		if returncode is not None:
 			self.returncode = returncode
 			self._async_wait()
