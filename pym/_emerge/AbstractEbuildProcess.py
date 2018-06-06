@@ -171,6 +171,13 @@ class AbstractEbuildProcess(SpawnProcess):
 			if lock_future is not self._start_future:
 				raise AssertionError('lock_future is not self._start_future')
 			self._start_future = None
+			if lock_future.cancelled():
+				self._build_dir = None
+				self.cancelled = True
+				self._was_cancelled()
+				self._async_wait()
+				return
+
 			lock_future.result()
 
 		if start_ipc_daemon:
