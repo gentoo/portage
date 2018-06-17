@@ -945,8 +945,23 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg.append("the following required packages not being installed:")
 			msg.append("")
 			for atom, parent in unresolvable:
+				# For readability, we want to display the atom with USE
+				# conditionals evaluated whenever possible. However,
+				# there is a very special case where the atom does not
+				# match because the unevaluated form contains one or
+				# more flags for which the target package has missing
+				# IUSE, but due to conditionals those flags are only
+				# visible in the unevaluated form of the atom. In this
+				# case, we must display the unevaluated atom, so that
+				# the user can see the conditional USE deps that would
+				# otherwise be invisible. Use Atom(_unicode(atom)) to
+				# test for a package where this case would matter. This
+				# is not necessarily the same as atom.without_use,
+				# since Atom(_unicode(atom)) may still contain some
+				# USE dependencies that remain after evaluation of
+				# conditionals.
 				if atom.package and atom != atom.unevaluated_atom and \
-					vardb.match(_unicode(atom)):
+					vardb.match(Atom(_unicode(atom))):
 					msg.append("  %s (%s) pulled in by:" %
 						(atom.unevaluated_atom, atom))
 				else:

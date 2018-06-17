@@ -122,6 +122,10 @@ class Binpkg(CompositeTask):
 	def _start_fetcher(self, lock_task=None):
 		if lock_task is not None:
 			self._assert_current(lock_task)
+			if lock_task.cancelled:
+				self._default_final_exit(lock_task)
+				return
+
 			lock_task.future.result()
 			# Initialize PORTAGE_LOG_FILE (clean_log won't work without it).
 			portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
@@ -411,8 +415,12 @@ class Binpkg(CompositeTask):
 
 	def _unlock_builddir_exit(self, unlock_task, returncode=None):
 		self._assert_current(unlock_task)
+		if unlock_task.cancelled and returncode is not None:
+			self._default_final_exit(unlock_task)
+			return
+
 		# Normally, async_unlock should not raise an exception here.
-		unlock_task.future.result()
+		unlock_task.future.cancelled() or unlock_task.future.result()
 		if returncode is not None:
 			self.returncode = returncode
 			self._async_wait()

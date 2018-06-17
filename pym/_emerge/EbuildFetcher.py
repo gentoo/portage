@@ -47,6 +47,10 @@ class EbuildFetcher(CompositeTask):
 
 	def _start_fetch(self, uri_map_task):
 		self._assert_current(uri_map_task)
+		if uri_map_task.cancelled:
+			self._default_final_exit(uri_map_task)
+			return
+
 		try:
 			uri_map = uri_map_task.future.result()
 		except portage.exception.InvalidDependString as e:
@@ -71,6 +75,10 @@ class EbuildFetcher(CompositeTask):
 
 	def _start_with_metadata(self, aux_get_task):
 		self._assert_current(aux_get_task)
+		if aux_get_task.cancelled:
+			self._default_final_exit(aux_get_task)
+			return
+
 		self._fetcher_proc.src_uri, = aux_get_task.future.result()
 		self._start_task(self._fetcher_proc, self._default_final_exit)
 
@@ -85,6 +93,10 @@ class _EbuildFetcherProcess(ForkProcess):
 		result = self.scheduler.create_future()
 
 		def uri_map_done(uri_map_future):
+			if uri_map_future.cancelled():
+				result.cancel()
+				return
+
 			if uri_map_future.exception() is not None or result.cancelled():
 				if not result.cancelled():
 					result.set_exception(uri_map_future.exception())

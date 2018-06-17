@@ -211,6 +211,10 @@ class EbuildPhase(CompositeTask):
 	def _ebuild_exit_unlocked(self, ebuild_process, unlock_task=None):
 		if unlock_task is not None:
 			self._assert_current(unlock_task)
+			if unlock_task.cancelled:
+				self._default_final_exit(unlock_task)
+				return
+
 			# Normally, async_unlock should not raise an exception here.
 			unlock_task.future.result()
 

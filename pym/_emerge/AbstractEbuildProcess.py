@@ -171,6 +171,13 @@ class AbstractEbuildProcess(SpawnProcess):
 			if lock_future is not self._start_future:
 				raise AssertionError('lock_future is not self._start_future')
 			self._start_future = None
+			if lock_future.cancelled():
+				self._build_dir = None
+				self.cancelled = True
+				self._was_cancelled()
+				self._async_wait()
+				return
+
 			lock_future.result()
 
 		if start_ipc_daemon:
@@ -412,7 +419,11 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _unlock_builddir_exit(self, unlock_future, returncode=None):
 		# Normally, async_unlock should not raise an exception here.
-		unlock_future.result()
+		unlock_future.cancelled() or unlock_future.result()
 		if returncode is not None:
-			self.returncode = returncode
+			if unlock_future.cancelled():
+				self.cancelled = True
+				self._was_cancelled()
+			else:
+				self.returncode = returncode
 			SpawnProcess._async_wait(self)

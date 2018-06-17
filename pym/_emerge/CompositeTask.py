@@ -69,6 +69,7 @@ class CompositeTask(AsynchronousTask):
 		self._assert_current(task)
 		if task.returncode != os.EX_OK:
 			self.returncode = task.returncode
+			self.cancelled = task.cancelled
 			self._current_task = None
 		return task.returncode
 
