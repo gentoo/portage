@@ -202,6 +202,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"splitdebug",
 	"split-elog",
 	"split-log",
+	"stacked-prefix",
 	"strict",
 	"strict-keepdir",
 	"stricter",

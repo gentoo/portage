@@ -927,6 +927,20 @@ ___best_version_and_has_version_common() {
 			fi ;;
 	esac
 
+	if ___eapi_has_prefix_variables         &&
+	   has "${root_arg}" '--host-root' '-b' &&
+	   has stacked-prefix ${FEATURES}       &&
+	   [[ -z ${ROOT%/} ]]                   &&
+	   [[ ${CBUILD} == ${CHOST} ]]          &&
+	   [[ ${EPREFIX} != ${BROOT-${PORTAGE_OVERRIDE_EPREFIX}} ]] &&
+	:; then
+		# When we merge into another EPREFIX, but not into some ROOT,
+		# and CHOST is equal to CBUILD, build tools found in EPREFIX
+		# perfectly work for the current build environment.
+		# In a "stacked prefix" we explicitly utilize this situation.
+		"${FUNCNAME[1]}" "${atom}" && return 0
+	fi
+
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
 	else
