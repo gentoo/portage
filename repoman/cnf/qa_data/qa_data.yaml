@@ -82,6 +82,7 @@ qahelp:
         missing: "Ebuilds that have a missing or empty KEYWORDS variable"
         stable: "Ebuilds that have been added directly with stable KEYWORDS"
         stupid: "Ebuilds that use KEYWORDS=-* instead of package.mask"
+        unsorted: "Ebuilds that contain KEYWORDS which are not sorted alphabetically."
     LICENSE:
         deprecated: "This ebuild is listing a deprecated license."
         invalid: "This ebuild is listing a license that doesnt exist in portages license/ dir."

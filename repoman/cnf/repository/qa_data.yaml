@@ -66,6 +66,7 @@ qawarnings:
     - KEYWORDS.dropped
     - KEYWORDS.stupid
     - KEYWORDS.missing
+    - KEYWORDS.unsorted
     - LICENSE.deprecated
     - LICENSE.virtual
     - metadata.warning
