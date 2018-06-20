@@ -55,6 +55,8 @@ class KeywordChecks(ScanBase):
 
 		self._checkForMaskLikeKeywords(xpkg, y_ebuild, ebuild.keywords)
 
+		self._checkForUnsortedKeywords(ebuild, xpkg, y_ebuild)
+
 		self.slot_keywords[pkg.slot].update(ebuild.archs)
 		return False
 
@@ -132,6 +134,25 @@ class KeywordChecks(ScanBase):
 			if not haskeyword:
 				self.qatracker.add_error("KEYWORDS.stupid",
 					"%s/%s.ebuild" % (xpkg, y_ebuild))
+
+	def _checkForUnsortedKeywords(self, ebuild, xpkg, y_ebuild):
+		'''Ebuilds that contain KEYWORDS
+		which are not sorted alphabetically.'''
+		def sort_keywords(kw):
+			# Split keywords containing hyphens. The part after
+			# the hyphen should be treated as the primary key.
+			# This is consistent with ekeyword.
+			parts = list(reversed(kw.lstrip("~-").split("-", 1)))
+			# Hack to make sure that keywords
+			# without hyphens are sorted first
+			if len(parts) == 1:
+				parts.insert(0, "")
+			return parts
+		sorted_keywords = sorted(ebuild.keywords, key=sort_keywords)
+		if sorted_keywords != ebuild.keywords:
+			self.qatracker.add_error("KEYWORDS.unsorted",
+				"%s/%s.ebuild contains unsorted keywords" %
+				(xpkg, y_ebuild))
 
 	@property
 	def runInPkgs(self):
