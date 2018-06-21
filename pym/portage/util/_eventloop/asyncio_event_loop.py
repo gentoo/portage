@@ -2,7 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+import pdb
 import signal
+import sys
 
 try:
 	import asyncio as _real_asyncio
@@ -52,6 +54,35 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
 		self._wakeup_fd = -1
+
+		if portage._internal_caller:
+			loop.set_exception_handler(self._internal_caller_exception_handler)
+
+	@staticmethod
+	def _internal_caller_exception_handler(loop, context):
+		"""
+		An exception handler which drops to a pdb shell if std* streams
+		refer to a tty, and otherwise kills the process with SIGTERM.
+
+		In order to avoid potential interference with API consumers, this
+		implementation is only used when portage._internal_caller is True.
+		"""
+		loop.default_exception_handler(context)
+		if 'exception' in context:
+			# If we have a tty then start the debugger, since in might
+			# aid in diagnosis of the problem. If there's no tty, then
+			# exit immediately.
+			if all(s.isatty() for s in (sys.stdout, sys.stderr, sys.stdin)):
+				pdb.set_trace()
+			else:
+				# Normally emerge will wait for all coroutines to complete
+				# after SIGTERM has been received. However, an unhandled
+				# exception will prevent the interrupted coroutine from
+				# completing, therefore use the default SIGTERM handler
+				# in order to ensure that emerge exits immediately (though
+				# uncleanly).
+				signal.signal(signal.SIGTERM, signal.SIG_DFL)
+				os.kill(os.getpid(), signal.SIGTERM)
 
 	def _create_future(self):
 		"""
