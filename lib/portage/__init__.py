@@ -688,12 +688,23 @@ def create_trees(
 
         if depcachedir is not None:
             clean_env["PORTAGE_DEPCACHEDIR"] = depcachedir
-        settings = config(
+        mysettings = config(
             config_root=None, target_root="/", env=clean_env, sysroot="/", eprefix=None
         )
-        settings.lock()
-        trees._running_eroot = settings["EROOT"]
-        myroots.append((settings["EROOT"], settings))
+        mysettings.lock()
+        trees._running_eroot = mysettings["EROOT"]
+        myroots.append((mysettings["EROOT"], mysettings))
+
+        if settings["SYSROOT"] != "/" and settings["SYSROOT"] != settings["ROOT"]:
+            mysettings = config(
+                config_root=settings["SYSROOT"],
+                target_root=settings["SYSROOT"],
+                env=clean_env,
+                sysroot=settings["SYSROOT"],
+                eprefix="",
+            )
+            mysettings.lock()
+            myroots.append((mysettings["EROOT"], mysettings))
 
     for myroot, mysettings in myroots:
         trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))

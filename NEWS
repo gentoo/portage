@@ -10,6 +10,10 @@ Features:
 
 * cleanups: Drop long-obsolete Jython compatibility code.
 
+* Add support for a distinct SYSROOT location that is not equal to / or ROOT.
+  This is only expected to be used for cross-bootstrapping a new system from
+  scratch using a crossdev environment under /usr/${CHOST}.
+
 Bug fixes:
 * sync: Clobber repositories using sync-type=git to match rsync behavior. This
   helps with issues where git-synced repositories can become confused

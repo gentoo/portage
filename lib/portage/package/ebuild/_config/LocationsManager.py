@@ -389,13 +389,13 @@ class LocationsManager:
             + os.path.sep
         )
 
-        if self.sysroot != "/" and self.sysroot != self.target_root:
+        if self.sysroot != "/" and self.target_root == "/":
             writemsg(
                 _(
                     "!!! Error: SYSROOT (currently %s) must "
-                    "equal / or ROOT (currently %s).\n"
+                    "be set to / when ROOT is /.\n"
                 )
-                % (self.sysroot, self.target_root),
+                % self.sysroot,
                 noiselevel=-1,
             )
             raise InvalidLocation(self.sysroot)
