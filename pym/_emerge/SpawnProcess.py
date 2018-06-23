@@ -176,6 +176,9 @@ class SpawnProcess(SubProcess):
 		if self.cgroup is not None:
 			self._cgroup_cleanup()
 			self.cgroup = None
+		if self._pipe_logger is not None:
+			self._pipe_logger.cancel()
+			self._pipe_logger = None
 
 	def _cancel(self):
 		SubProcess._cancel(self)
