@@ -41,10 +41,13 @@ class InstallMask(object):
 				pattern = pattern[1:]
 			# absolute path pattern
 			if pattern.startswith('/'):
+				# handle trailing slash for explicit directory match
+				if path.endswith('/'):
+					pattern = pattern.rstrip('/') + '/'
 				# match either exact path or one of parent dirs
 				# the latter is done via matching pattern/*
 				if (fnmatch.fnmatch(path, pattern[1:])
-						or fnmatch.fnmatch(path, pattern[1:] + '/*')):
+						or fnmatch.fnmatch(path, pattern[1:].rstrip('/') + '/*')):
 					ret = is_inclusive
 			# filename
 			else:
@@ -118,7 +121,7 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
 		except IndexError:
 			break
 
-		if install_mask.match(dir_path[base_dir_len:]):
+		if install_mask.match(dir_path[base_dir_len:] + '/'):
 			try:
 				os.rmdir(dir_path)
 			except OSError:
