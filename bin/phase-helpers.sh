@@ -927,6 +927,7 @@ ___best_version_and_has_version_common() {
 			fi ;;
 	esac
 
+	# PREFIX LOCAL: stacked-prefix feature
 	if ___eapi_has_prefix_variables         &&
 	   has "${root_arg}" '--host-root' '-b' &&
 	   has stacked-prefix ${FEATURES}       &&
@@ -940,6 +941,7 @@ ___best_version_and_has_version_common() {
 		# In a "stacked prefix" we explicitly utilize this situation.
 		"${FUNCNAME[1]}" "${atom}" && return 0
 	fi
+	# END PREFIX LOCAL
 
 	if [[ -n $PORTAGE_IPC_DAEMON ]] ; then
 		cmd+=("${PORTAGE_BIN_PATH}"/ebuild-ipc "${FUNCNAME[1]}" "${root}" "${atom}")
