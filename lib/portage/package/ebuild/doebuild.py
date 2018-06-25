@@ -2066,8 +2066,8 @@ def spawn(
         ):
             # Since Python 3.4, getpwuid and getgrgid
             # require int type (no proxies).
-            portage_build_uid = int(portage_uid)
-            portage_build_gid = int(portage_gid)
+            portage_build_uid = int(portage.data._build_uid)
+            portage_build_gid = int(portage.data._build_gid)
 
     if "PORTAGE_BUILD_USER" not in mysettings:
         user = None
@@ -2076,8 +2076,8 @@ def spawn(
         except KeyError:
             if portage_build_uid == 0:
                 user = "root"
-            elif portage_build_uid == portage_uid:
-                user = portage.data._portage_username
+            elif portage_build_uid == portage.data._build_uid:
+                user = portage.data._build_user
         if user is not None:
             mysettings["PORTAGE_BUILD_USER"] = user
 
@@ -2088,8 +2088,8 @@ def spawn(
         except KeyError:
             if portage_build_gid == 0:
                 group = "root"
-            elif portage_build_gid == portage_gid:
-                group = portage.data._portage_grpname
+            elif portage_build_gid == portage.data._build_gid:
+                group = portage.data._build_group
         if group is not None:
             mysettings["PORTAGE_BUILD_GROUP"] = group
 
