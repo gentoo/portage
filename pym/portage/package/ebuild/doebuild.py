@@ -2131,7 +2131,7 @@ def _postinst_bsdflags(mysettings):
 def _post_src_install_uid_fix(mysettings, out):
 	"""
 	Files in $D with user and group bits that match the "portage"
-	user and group are automatically mapped to PORTAGE_INST_UID and
+	user or group are automatically mapped to PORTAGE_INST_UID and
 	PORTAGE_INST_GID if necessary. The chown system call may clear
 	S_ISUID and S_ISGID bits, so those bits are restored if
 	necessary.
@@ -2277,11 +2277,8 @@ def _post_src_install_uid_fix(mysettings, out):
 					mystat.st_ino not in counted_inodes:
 					counted_inodes.add(mystat.st_ino)
 					size += mystat.st_size
-
-				# Only remap the UID/GID if both match the portage user,
-				# in order to avoid interference with ebuilds that install
-				# files with portage group permissions (see bug 600804).
-				if (mystat.st_uid, mystat.st_gid) != (portage_uid, portage_gid):
+				if mystat.st_uid != portage_uid and \
+					mystat.st_gid != portage_gid:
 					continue
 				myuid = -1
 				mygid = -1
