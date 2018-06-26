@@ -1320,7 +1320,9 @@ class binarytree(object):
 		for k, v in iter_iuse_vars(src):
 			v_before = dest.get(k)
 			if v_before is not None:
-				v = v_before + ' ' + v
+				merged_values = set(v_before.split())
+				merged_values.update(v.split())
+				v = ' '.join(sorted(merged_values))
 			dest[k] = v
 
 		if 'ARCH' not in dest and 'ARCH' in src:
