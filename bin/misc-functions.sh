@@ -237,7 +237,7 @@ install_qa_check() {
 	if type -P scanelf > /dev/null ; then
 		# Save NEEDED information after removing self-contained providers
 		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D}" | { while IFS= read -r l; do
+		scanelf -qyRF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
