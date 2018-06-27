@@ -1,6 +1,23 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.41
+==================================
+* Bug Fixes:
+    - Bug 600804 revert portage uid/gid mapping behavior for PMS
+    - Bug 656542 ebuild command PermissionError from prepare_build_dirs
+    - Bug 656750 PollSelectAdapter has no attribute close
+    - Bug 656942 event loop recursion for emerge --nodeps --keep-going
+    - Bug 657360 event loop recursion for emerge --pretend --fetch
+    - Bug 657420 'str' has no attribute 'soname' for emerge --depclean
+    - Bug 657422 "[Errno 7] Argument list too long" with --usepkgonly
+    - Bug 657436 CancelledError triggered by Ctrl-C/SIGINT/TERM
+    - Bug 658322 support trailing slash in INSTALL_MASK patterns
+    - Bug 658684 fix emerge hang after unhandled exception with no tty
+    - Bug 658806 compress-build-logs EOFError
+    - Bug 659228 fix QA_FLAGS_IGNORED for EAPI 7
+
+
 portage-2.3.40
 ==================================
 * Bug Fixes:
