@@ -66,7 +66,7 @@ elf_check() {
 	[[ -n ${!qa_var} ]] && QA_TEXTRELS=${!qa_var}
 	[[ -n ${QA_STRICT_TEXTRELS} ]] && QA_TEXTRELS=""
 	export QA_TEXTRELS="${QA_TEXTRELS} lib*/modules/*.ko"
-	f=$(scanelf -qyRF '%t %p' "${ED}" | grep -v 'usr/lib/debug/')
+	f=$(scanelf -qyRF '%t %p' "${ED%/}/" | grep -v 'usr/lib/debug/')
 	if [[ -n ${f} ]] ; then
 		scanelf -qyRAF '%T %p' "${PORTAGE_BUILDDIR}"/ &> "${T}"/scanelf-textrel.log
 		__vecho -ne '\n'
@@ -109,7 +109,7 @@ elf_check() {
 				[[ -n ${QA_STRICT_WX_LOAD} ]] && QA_WX_LOAD=""
 				export QA_EXECSTACK="${QA_EXECSTACK} lib*/modules/*.ko"
 				export QA_WX_LOAD="${QA_WX_LOAD} lib*/modules/*.ko"
-				f=$(scanelf -qyRAF '%e %p' "${ED}" | grep -v 'usr/lib/debug/')
+				f=$(scanelf -qyRAF '%e %p' "${ED%/}/" | grep -v 'usr/lib/debug/')
 				;;
 		esac
 		;;
