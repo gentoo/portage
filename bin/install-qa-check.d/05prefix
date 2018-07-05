@@ -36,6 +36,19 @@ install_qa_check_prefix() {
 	local WHITELIST=" /usr/bin/env "
 	# shebang can be an absolutised path, bug #342929
 	local eprefix=$(canonicalize ${EPREFIX})
+	# Without the stacked-prefix feature, tests using BPREFIX
+	# are redundant to EPREFIX, but run only if we will fail.
+	# Otherways, BPREFIX really is BROOT (the EAPI 7 one).
+	local BPREFIX=${EPREFIX}
+	local bprefix=${eprefix}
+	if has stacked-prefix ${FEATURES} &&
+	   [[ -z ${ROOT%/} ]]             &&
+	   [[ ${CBUILD} == ${CHOST} ]]    &&
+	   [[ ${EPREFIX} != ${BROOT-${PORTAGE_OVERRIDE_EPREFIX}} ]] &&
+	:; then
+		BPREFIX=${BROOT-${PORTAGE_OVERRIDE_EPREFIX}}
+		bprefix=$(canonicalize ${BPREFIX})
+	fi
 	# this is hell expensive, but how else?
 	find "${ED%/}/" -executable \! -type d -print0 \
 			| xargs -0 grep -H -n -m1 "^#!" \
@@ -63,7 +76,8 @@ install_qa_check_prefix() {
 			[[ $(canonicalize "/${rf#${D%/}/}") != ${eprefix}/* ]] && continue
 		fi
 		# does the shebang start with ${EPREFIX}, and does it exist?
-		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
+		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] \
+		|| [[ ${line[0]} == ${BPREFIX}/* || ${line[0]} == ${bprefix}/* ]] ; then
 			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
 				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
 				# if it's in PATH that's wrong in any case
@@ -79,16 +93,25 @@ install_qa_check_prefix() {
 		# unprefixed shebang, is the script directly in $PATH or an init
 		# script?
 		if [[ ":${PATH}:${EPREFIX}/etc/init.d:" == *":${fp}:"* ]] ; then
+			local foundprefix="none"
 			if [[ -e ${EROOT%/}${line[0]} || -e ${ED%/}${line[0]} ]] ; then
-				# is it unprefixed, but we can just fix it because a
-				# prefixed variant exists
+				# is it unprefixed, but we can just fix it because an
+				# eprefixed variant exists
 				eqawarn "eprefixing shebang of ${fn#${D%/}/}"
+				foundprefix=${EPREFIX}
+			elif [[ -e ${BPREFIX}${line[0]} ]] ; then
+				# is it unprefixed, but we can just fix it because a
+				# bprefixed variant exists
+				eqawarn "bprefixing shebang of ${fn#${D%/}/}"
+				foundprefix=${BPREFIX}
+			fi
+			if [[ ${foundprefix} != "none" ]] ; then
 				# statement is made idempotent on purpose, because
 				# symlinks may point to the same target, and hence the
 				# same real file may be sedded multiple times since we
 				# read the shebangs in one go upfront for performance
 				# reasons
-				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
+				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${foundprefix}"${line[0]}':' "${rf}"
 				continue
 			else
 				# this is definitely wrong: script in $PATH and invalid shebang
