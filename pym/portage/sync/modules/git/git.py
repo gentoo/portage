@@ -109,6 +109,7 @@ class GitSync(NewBase):
 		if not self.has_bin:
 			return (1, False)
 		git_cmd_opts = ""
+		quiet = self.settings.get("PORTAGE_QUIET") == "1"
 		if self.repo.module_specific_options.get('sync-git-env'):
 			shlexed_env = shlex_split(self.repo.module_specific_options['sync-git-env'])
 			env = dict((k, v) for k, _, v in (assignment.partition('=') for assignment in shlexed_env) if k)
@@ -123,7 +124,21 @@ class GitSync(NewBase):
 			git_cmd_opts += " --quiet"
 		if self.repo.module_specific_options.get('sync-git-pull-extra-opts'):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-pull-extra-opts']
-		git_cmd = "%s pull%s" % (self.bin_command, git_cmd_opts)
+
+		try:
+			remote_branch = portage._unicode_decode(
+				subprocess.check_output([self.bin_command, 'rev-parse',
+				'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+				cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
+		except subprocess.CalledProcessError as e:
+			msg = "!!! git rev-parse error in %s" % self.repo.location
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+			return (e.returncode, False)
+
+		git_cmd = "%s fetch %s%s" % (self.bin_command,
+			remote_branch.partition('/')[0], git_cmd_opts)
+
 		writemsg_level(git_cmd + "\n")
 
 		rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
@@ -133,20 +148,34 @@ class GitSync(NewBase):
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
 				portage._shell_quote(self.repo.location), git_cmd),
 			**self.spawn_kwargs)
+
 		if exitcode != os.EX_OK:
-			msg = "!!! git pull error in %s" % self.repo.location
+			msg = "!!! git fetch error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
-		if not self.verify_head():
+
+		if not self.verify_head(revision='refs/remotes/%s^..' % remote_branch):
 			return (1, False)
+
+		merge_cmd = [self.bin_command, 'merge', 'refs/remotes/%s' % remote_branch]
+		if quiet:
+			merge_cmd.append('--quiet')
+		exitcode = subprocess.call(merge_cmd,
+			cwd=portage._unicode_encode(self.repo.location))
+
+		if exitcode != os.EX_OK:
+			msg = "!!! git merge error in %s" % self.repo.location
+			self.logger(self.xterm_titles, msg)
+			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+			return (exitcode, False)
 
 		current_rev = subprocess.check_output(rev_cmd,
 			cwd=portage._unicode_encode(self.repo.location))
 
 		return (os.EX_OK, current_rev != previous_rev)
 
-	def verify_head(self):
+	def verify_head(self, revision='-1'):
 		if (self.repo.module_specific_options.get(
 				'sync-git-verify-commit-signature', 'false') != 'true'):
 			return True
@@ -180,7 +209,7 @@ class GitSync(NewBase):
 				env = os.environ.copy()
 				env['GNUPGHOME'] = openpgp_env.home
 
-			rev_cmd = [self.bin_command, "log", "--pretty=format:%G?", "-1"]
+			rev_cmd = [self.bin_command, "log", "--pretty=format:%G?", revision]
 			try:
 				status = (portage._unicode_decode(
 					subprocess.check_output(rev_cmd,
