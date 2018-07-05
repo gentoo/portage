@@ -973,6 +973,14 @@ files). Defaults to true.
 .br
 Valid values: true, false.
 .TP
+.B sync\-allow\-hardlinks = yes|no
+Allow sync plugins to use hardlinks in order to ensure that a repository
+remains in a valid state if something goes wrong during the sync operation.
+For example, if signature verification fails during a sync operation,
+the previous state of the repository will be preserved. This option may
+conflict with configurations that restrict the use of hardlinks, such as
+overlay filesystems.
+.TP
 .B sync\-cvs\-repo
 Specifies CVS repository.
 .TP

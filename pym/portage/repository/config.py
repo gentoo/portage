@@ -86,6 +86,7 @@ class RepoConfig(object):
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
 		'update_changelog', '_eapis_banned', '_eapis_deprecated',
 		'_masters_orig', 'module_specific_options', 'manifest_required_hashes',
+		'sync_allow_hardlinks',
 		'sync_openpgp_key_path',
 		'sync_openpgp_key_refresh_retry_count',
 		'sync_openpgp_key_refresh_retry_delay_max',
@@ -187,6 +188,9 @@ class RepoConfig(object):
 
 		self.strict_misc_digests = repo_opts.get(
 			'strict-misc-digests', 'true').lower() == 'true'
+
+		self.sync_allow_hardlinks = repo_opts.get(
+			'sync-allow-hardlinks', 'true').lower() in ('true', 'yes')
 
 		self.sync_openpgp_key_path = repo_opts.get(
 			'sync-openpgp-key-path', None)
@@ -534,6 +538,7 @@ class RepoConfigLoader(object):
 							'clone_depth', 'eclass_overrides',
 							'force', 'masters', 'priority', 'strict_misc_digests',
 							'sync_depth', 'sync_hooks_only_on_change',
+							'sync_allow_hardlinks',
 							'sync_openpgp_key_path',
 							'sync_openpgp_key_refresh_retry_count',
 							'sync_openpgp_key_refresh_retry_delay_max',
@@ -960,7 +965,7 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		bool_keys = ("strict_misc_digests",)
+		bool_keys = ("strict_misc_digests", "sync_allow_hardlinks")
 		str_or_int_keys = ("auto_sync", "clone_depth", "format", "location",
 			"main_repo", "priority", "sync_depth", "sync_openpgp_key_path",
 			"sync_openpgp_key_refresh_retry_count",
