@@ -102,17 +102,20 @@ class SyncLocalTestCase(TestCase):
 			os.unlink(os.path.join(metadata_dir, 'timestamp.chk'))
 
 		sync_cmds = (
+			(homedir, cmds["emerge"] + ("--sync",)),
+			(homedir, lambda: self.assertTrue(os.path.exists(
+				os.path.join(repo.location, "dev-libs", "A")
+				), "dev-libs/A expected, but missing")),
+			(homedir, cmds["emaint"] + ("sync", "-A")),
+		)
+
+		sync_cmds_auto_sync = (
 			(homedir, lambda: repos_set_conf("rsync", auto_sync="no")),
 			(homedir, cmds["emerge"] + ("--sync",)),
 			(homedir, lambda: self.assertFalse(os.path.exists(
 				os.path.join(repo.location, "dev-libs", "A")
 				), "dev-libs/A found, expected missing")),
 			(homedir, lambda: repos_set_conf("rsync", auto_sync="yes")),
-			(homedir, cmds["emerge"] + ("--sync",)),
-			(homedir, lambda: self.assertTrue(os.path.exists(
-				os.path.join(repo.location, "dev-libs", "A")
-				), "dev-libs/A expected, but missing")),
-			(homedir, cmds["emaint"] + ("sync", "-A")),
 		)
 
 		rename_repo = (
@@ -236,7 +239,7 @@ class SyncLocalTestCase(TestCase):
 				# triggered by python -Wd will be visible.
 				stdout = subprocess.PIPE
 
-			for cwd, cmd in rename_repo + sync_cmds + \
+			for cwd, cmd in rename_repo + sync_cmds_auto_sync + sync_cmds + \
 				rsync_opts_repos + rsync_opts_repos_default + \
 				rsync_opts_repos_default_ovr + rsync_opts_repos_default_cancel + \
 				delete_sync_repo + git_repo_create + sync_type_git + \
