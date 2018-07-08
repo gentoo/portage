@@ -155,7 +155,7 @@ class GitSync(NewBase):
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (exitcode, False)
 
-		if not self.verify_head(revision='refs/remotes/%s^..' % remote_branch):
+		if not self.verify_head(revision='refs/remotes/%s' % remote_branch):
 			return (1, False)
 
 		merge_cmd = [self.bin_command, 'merge', 'refs/remotes/%s' % remote_branch]
@@ -209,7 +209,7 @@ class GitSync(NewBase):
 				env = os.environ.copy()
 				env['GNUPGHOME'] = openpgp_env.home
 
-			rev_cmd = [self.bin_command, "log", "--pretty=format:%G?", revision]
+			rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
 			try:
 				status = (portage._unicode_decode(
 					subprocess.check_output(rev_cmd,
