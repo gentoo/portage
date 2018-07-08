@@ -7,13 +7,16 @@ This class contains common initialization code and functions.
 '''
 
 from __future__ import unicode_literals
+import functools
 import logging
 import os
 
 import portage
 from portage.util import writemsg_level
+from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures.retry import retry
+from portage.util.futures.executor.fork import ForkExecutor
 from . import _SUBMODULE_PATH_MAP
 
 class SyncBase(object):
@@ -188,6 +191,44 @@ class SyncBase(object):
 			delay_func=RandomExponentialBackoff(
 				multiplier=(1 if retry_delay_mult is None else retry_delay_mult),
 				base=(2 if retry_delay_exp_base is None else retry_delay_exp_base)))
+
+	def _refresh_keys(self, openpgp_env):
+		"""
+		Refresh keys stored in openpgp_env. Raises gemato.exceptions.GematoException
+		or asyncio.TimeoutError on failure.
+
+		@param openpgp_env: openpgp environment
+		@type openpgp_env: gemato.openpgp.OpenPGPEnvironment
+		"""
+		out = portage.output.EOutput(quiet=('--quiet' in self.options['emerge_config'].opts))
+		out.ebegin('Refreshing keys from keyserver')
+		retry_decorator = self._key_refresh_retry_decorator()
+		if retry_decorator is None:
+			openpgp_env.refresh_keys()
+		else:
+			def noisy_refresh_keys():
+				"""
+				Since retry does not help for some types of
+				errors, display errors as soon as they occur.
+				"""
+				try:
+					openpgp_env.refresh_keys()
+				except Exception as e:
+					writemsg_level("%s\n" % (e,),
+						level=logging.ERROR, noiselevel=-1)
+					raise # retry
+
+			# The ThreadPoolExecutor that asyncio uses by default
+			# does not support cancellation of tasks, therefore
+			# use ForkExecutor for task cancellation support, in
+			# order to enforce timeouts.
+			loop = global_event_loop()
+			with ForkExecutor(loop=loop) as executor:
+				func_coroutine = functools.partial(loop.run_in_executor,
+					executor, noisy_refresh_keys)
+				decorated_func = retry_decorator(func_coroutine, loop=loop)
+				loop.run_until_complete(decorated_func())
+		out.eend(0)
 
 
 class NewBase(SyncBase):
