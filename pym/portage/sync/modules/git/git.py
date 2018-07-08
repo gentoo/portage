@@ -8,6 +8,7 @@ import subprocess
 import portage
 from portage import os
 from portage.util import writemsg_level, shlex_split
+from portage.util.futures import asyncio
 from portage.output import create_color_func, EOutput
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -197,10 +198,8 @@ class GitSync(NewBase):
 					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
 					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
 						openpgp_env.import_key(f)
-					out.ebegin('Refreshing keys from keyserver')
-					openpgp_env.refresh_keys()
-					out.eend(0)
-				except GematoException as e:
+					self._refresh_keys(openpgp_env)
+				except (GematoException, asyncio.TimeoutError) as e:
 					writemsg_level("!!! Verification impossible due to keyring problem:\n%s\n"
 							% (e,),
 							level=logging.ERROR, noiselevel=-1)
