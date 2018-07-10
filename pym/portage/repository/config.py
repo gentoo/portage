@@ -179,10 +179,6 @@ class RepoConfig(object):
 		self.clone_depth = repo_opts.get('clone-depth')
 		self.sync_depth = repo_opts.get('sync-depth')
 
-		if self.sync_depth is not None:
-			warnings.warn(_("repos.conf: sync-depth is deprecated,"
-				" use clone-depth instead"))
-
 		self.sync_hooks_only_on_change = repo_opts.get(
 			'sync-hooks-only-on-change', 'false').lower() == 'true'
 

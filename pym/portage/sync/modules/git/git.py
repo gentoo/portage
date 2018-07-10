@@ -137,6 +137,24 @@ class GitSync(NewBase):
 			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
 			return (e.returncode, False)
 
+		shallow = self.repo.sync_depth is not None and self.repo.sync_depth != 0
+		if shallow:
+			git_cmd_opts += " --depth %d" % self.repo.sync_depth
+
+			# For shallow fetch, unreachable objects may need to be pruned
+			# manually, in order to prevent automatic git gc calls from
+			# eventually failing (see bug 599008).
+			gc_cmd = ['git', '-c', 'gc.autodetach=false', 'gc', '--auto']
+			if quiet:
+				gc_cmd.append('--quiet')
+			exitcode = subprocess.call(gc_cmd,
+				cwd=portage._unicode_encode(self.repo.location))
+			if exitcode != os.EX_OK:
+				msg = "!!! git gc error in %s" % self.repo.location
+				self.logger(self.xterm_titles, msg)
+				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+				return (exitcode, False)
+
 		git_cmd = "%s fetch %s%s" % (self.bin_command,
 			remote_branch.partition('/')[0], git_cmd_opts)
 
@@ -159,7 +177,13 @@ class GitSync(NewBase):
 		if not self.verify_head(revision='refs/remotes/%s' % remote_branch):
 			return (1, False)
 
-		merge_cmd = [self.bin_command, 'merge', 'refs/remotes/%s' % remote_branch]
+		if shallow:
+			# Since the default merge strategy typically fails when
+			# the depth is not unlimited, `git reset --merge`.
+			merge_cmd = [self.bin_command, 'reset', '--merge']
+		else:
+			merge_cmd = [self.bin_command, 'merge']
+		merge_cmd.append('refs/remotes/%s' % remote_branch)
 		if quiet:
 			merge_cmd.append('--quiet')
 		exitcode = subprocess.call(merge_cmd,

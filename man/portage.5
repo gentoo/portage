@@ -985,7 +985,8 @@ overlay filesystems.
 Specifies CVS repository.
 .TP
 .B sync\-depth
-This is a deprecated alias for the \fBclone\-depth\fR option.
+Specifies sync depth to use for DVCS repositories. If set to 0, the
+depth is unlimited. Defaults to 0.
 .TP
 .B sync\-git\-clone\-env
 Set environment variables for git when cloning repository (git clone).
