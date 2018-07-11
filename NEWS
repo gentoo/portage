@@ -1,5 +1,15 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.42
+----------------
+* Sync with rsync quarantines data prior to verification, using the
+  rsync --link-dest option (can be disabled by setting
+  "sync-allow-hardlinks = no" in repos.conf).
+* Sync with git quarantines data prior to verification, see
+  https://wiki.gentoo.org/wiki/Portage_Security#git-mirror_repo.
+* Sync with shallow git pull is supported, by "setting sync-depth = 1"
+  in repos.conf.
+
 portage-2.3.32
 ----------------
 * EAPI 7 support.

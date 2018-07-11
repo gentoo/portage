@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.42
+==================================
+* Bug Fixes:
+    - Bug 552814 support shallow git pull by setting sync-depth = 1
+      in repos.conf
+    - Bug 659564 AttributeError unevaluated_atom with emerge
+      --ignore-soname-deps=n
+    - Bug 660372 GitSync: abort checkout for signature problem
+    - Bug 660410 rsync: quarantine data prior to verification
+    - Bug 660426 Add python2 compatible coroutine support
+    - Bug 660732 GitSync: add key refresh retry
+
+
 portage-2.3.41
 ==================================
 * Bug Fixes:
