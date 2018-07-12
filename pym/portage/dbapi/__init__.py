@@ -216,6 +216,22 @@ class dbapi(object):
 
 			yield cpv
 
+	def _repoman_iuse_implicit_cnstr(self, pkg, metadata):
+		"""
+		In repoman's version of _iuse_implicit_cnstr, account for modifications
+		of the self.settings reference between calls, and treat all flags as
+		valid for the empty profile because it does not have any implicit IUSE
+		settings. See bug 660982.
+		"""
+		eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
+		if eapi_attrs.iuse_effective:
+			iuse_implicit_match = lambda flag: (True if not self.settings.profile_path
+				else self.settings._iuse_effective_match(flag))
+		else:
+			iuse_implicit_match = lambda flag: (True if not self.settings.profile_path
+				else self.settings._iuse_implicit_match(flag))
+		return iuse_implicit_match
+
 	def _iuse_implicit_cnstr(self, pkg, metadata):
 		"""
 		Construct a callable that checks if a given USE flag should
