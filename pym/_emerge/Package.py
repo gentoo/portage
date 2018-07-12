@@ -93,7 +93,10 @@ class Package(Task):
 		# sync metadata with validated repo (may be UNKNOWN_REPO)
 		self._metadata['repository'] = self.cpv.repo
 
-		implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
+		if self.root_config.settings.local_config:
+			implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
+		else:
+			implicit_match = db._repoman_iuse_implicit_cnstr(self.cpv, self._metadata)
 		usealiases = self.root_config.settings._use_manager.getUseAliases(self)
 		self.iuse = self._iuse(self, self._metadata["IUSE"].split(),
 			implicit_match, usealiases, self.eapi)
