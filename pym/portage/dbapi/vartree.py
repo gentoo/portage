@@ -2753,9 +2753,13 @@ class dblink(object):
 		real_root = self.settings['ROOT']
 
 		dirs = sorted(dirs)
-		dirs.reverse()
+		revisit = {}
 
-		for obj, inode_key in dirs:
+		while True:
+			try:
+				obj, inode_key = dirs.pop()
+			except IndexError:
+				break
 			# Treat any directory named "info" as a candidate here,
 			# since it might have been in INFOPATH previously even
 			# though it may not be there now.
@@ -2818,6 +2822,7 @@ class dblink(object):
 					raise
 				if e.errno != errno.ENOENT:
 					show_unmerge("---", unmerge_desc["!empty"], "dir", obj)
+					revisit[obj] = inode_key
 
 				# Since we didn't remove this directory, record the directory
 				# itself for use in syncfs calls, if we have removed another
@@ -2838,6 +2843,7 @@ class dblink(object):
 				# no need to protect symlinks that point to it.
 				unmerge_syms = protected_symlinks.pop(inode_key, None)
 				if unmerge_syms is not None:
+					parents = []
 					for relative_path in unmerge_syms:
 						obj = os.path.join(real_root,
 							relative_path.lstrip(os.sep))
@@ -2849,6 +2855,21 @@ class dblink(object):
 								raise
 							del e
 							show_unmerge("!!!", "", "sym", obj)
+						else:
+							parents.append(os.path.dirname(obj))
+
+					if parents:
+						# Revisit parents recursively (bug 640058).
+						recursive_parents = []
+						for parent in set(parents):
+							while parent in revisit:
+								recursive_parents.append(parent)
+								parent = os.path.dirname(parent)
+								if parent == '/':
+									break
+
+						for parent in sorted(set(recursive_parents)):
+							dirs.append((parent, revisit.pop(parent)))
 
 	def isowner(self, filename, destroot=None):
 		"""
