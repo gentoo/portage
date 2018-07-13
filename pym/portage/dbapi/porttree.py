@@ -459,6 +459,9 @@ class portdbapi(dbapi):
 			mytree = self.treemap.get(myrepo)
 			if mytree is None:
 				return (None, 0)
+		elif mytree is not None:
+			# myrepo enables cached results when available
+			myrepo = self.repositories.location_map.get(mytree)
 
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
@@ -494,6 +497,14 @@ class portdbapi(dbapi):
 
 		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
 			mysplit[1] + ".ebuild"
+
+		# There is no need to access the filesystem when the package
+		# comes from this db and the package repo attribute corresponds
+		# to the desired repo, since the file was previously found by
+		# the cp_list method.
+		if (myrepo is not None and myrepo == getattr(mycpv, 'repo', None)
+			and self is getattr(mycpv, '_db', None)):
+			return (mytree + _os.sep + relative_path, mytree)
 
 		for x in mytrees:
 			filename = x + _os.sep + relative_path
@@ -950,18 +961,23 @@ class portdbapi(dbapi):
 				return cachelist[:]
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
-		d={}
+		# Process repos in ascending order by repo.priority, so that
+		# stable sort by version produces results ordered by
+		# (pkg.version, repo.priority).
 		if mytree is not None:
 			if isinstance(mytree, basestring):
-				mytrees = [mytree]
+				repos = [self.repositories.get_repo_for_location(mytree)]
 			else:
 				# assume it's iterable
-				mytrees = mytree
+				repos = [self.repositories.get_repo_for_location(location)
+					for location in mytree]
 		elif self._better_cache is None:
-			mytrees = self.porttrees
+			repos = list(self.repositories)
 		else:
-			mytrees = [repo.location for repo in self._better_cache[mycp]]
-		for oroot in mytrees:
+			repos = reversed(self._better_cache[mycp])
+		mylist = []
+		for repo in repos:
+			oroot = repo.location
 			try:
 				file_list = os.listdir(os.path.join(oroot, mycp))
 			except OSError:
@@ -986,16 +1002,17 @@ class portdbapi(dbapi):
 						writemsg(_("\nInvalid ebuild version: %s\n") % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
-					d[_pkg_str(mysplit[0]+"/"+pf, db=self)] = None
-		if invalid_category and d:
+					mylist.append(_pkg_str(mysplit[0]+"/"+pf, db=self, repo=repo.name))
+		if invalid_category and mylist:
 			writemsg(_("\n!!! '%s' has a category that is not listed in " \
 				"%setc/portage/categories\n") % \
 				(mycp, self.settings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
-		else:
-			mylist = list(d)
-		# Always sort in ascending order here since it's handy
-		# and the result can be easily cached and reused.
+		# Always sort in ascending order here since it's handy and
+		# the result can be easily cached and reused. Since mylist
+		# is initially in ascending order by repo.priority, stable
+		# sort by version produces results in ascending order by
+		# (pkg.version, repo.priority).
 		self._cpv_sort_ascending(mylist)
 		if self.frozen and mytree is None:
 			cachelist = mylist[:]

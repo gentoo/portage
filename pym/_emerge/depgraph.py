@@ -5613,10 +5613,6 @@ class depgraph(object):
 		if cp_list:
 			atom_set = InternalPackageSet(initial_atoms=(atom,),
 				allow_repo=True)
-			if atom.repo is None and hasattr(db, "getRepositories"):
-				repo_list = db.getRepositories(catpkg=atom_exp.cp)
-			else:
-				repo_list = [atom.repo]
 
 			# descending order
 			cp_list.reverse()
@@ -5624,13 +5620,11 @@ class depgraph(object):
 				# Call match_from_list on one cpv at a time, in order
 				# to avoid unnecessary match_from_list comparisons on
 				# versions that are never yielded from this method.
-				if not match_from_list(atom_exp, [cpv]):
-					continue
-				for repo in repo_list:
-
+				if match_from_list(atom_exp, [cpv]):
 					try:
 						pkg = self._pkg(cpv, pkg_type, root_config,
-							installed=installed, onlydeps=onlydeps, myrepo=repo)
+							installed=installed, onlydeps=onlydeps,
+							myrepo=getattr(cpv, 'repo', None))
 					except portage.exception.PackageNotFound:
 						pass
 					else:
