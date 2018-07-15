@@ -274,6 +274,7 @@ class config(object):
 			self.mycpv = clone.mycpv
 			self._setcpv_args_hash = clone._setcpv_args_hash
 			self._soname_provided = clone._soname_provided
+			self._profile_bashrc = clone._profile_bashrc
 
 			# immutable attributes (internal policy ensures lack of mutation)
 			self._locations_manager = clone._locations_manager
@@ -724,6 +725,10 @@ class config(object):
 			self.configdict["conf"]["ACCEPT_LICENSE"] = \
 				self._license_manager.extract_global_changes( \
 					self.configdict["conf"].get("ACCEPT_LICENSE", ""))
+
+			# profile.bashrc
+			self._profile_bashrc = tuple(os.path.isfile(os.path.join(profile.location, 'profile.bashrc'))
+				for profile in profiles_complex)
 
 			if local_config:
 				#package.properties
@@ -1596,11 +1601,9 @@ class config(object):
 
 		bashrc_files = []
 
-		for profile in self._locations_manager.profiles_complex:
-			profile_bashrc = os.path.join(profile.location,
-				'profile.bashrc')
-			if os.path.exists(profile_bashrc):
-				bashrc_files.append(profile_bashrc)
+		for profile, profile_bashrc in zip(self._locations_manager.profiles_complex, self._profile_bashrc):
+			if profile_bashrc:
+				bashrc_files.append(os.path.join(profile.location, 'profile.bashrc'))
 			if profile in self._pbashrcdict:
 				cpdict = self._pbashrcdict[profile].get(cp)
 				if cpdict:
