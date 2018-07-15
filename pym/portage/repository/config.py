@@ -524,7 +524,8 @@ class RepoConfigLoader(object):
 					(base_priority == 0 and ov is portdir):
 					repo_opts = default_repo_opts.copy()
 					repo_opts['location'] = ov
-					repo = RepoConfig(None, repo_opts, local_config=local_config)
+					name = prepos['DEFAULT'].main_repo if ov is portdir else None
+					repo = RepoConfig(name, repo_opts, local_config=local_config)
 					# repos_conf_opts contains options from repos.conf
 					repos_conf_opts = repos_conf.get(repo.name)
 					if repos_conf_opts is not None:
