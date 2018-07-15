@@ -2,6 +2,7 @@
 
 
 import copy
+import os
 from pprint import pformat
 
 from _emerge.Package import Package
@@ -12,6 +13,8 @@ from repoman.modules.scan.scanbase import ScanBase
 from repoman.modules.scan.depend._depend_checks import _depend_checks
 from repoman.modules.scan.depend._gen_arches import _gen_arches
 from portage.dep import Atom
+from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util import getconfig
 
 
 def sort_key(item):
@@ -102,6 +105,11 @@ class ProfileDependsChecks(ScanBase):
 					local_config=False,
 					_unmatched_removal=self.options.unmatched_removal,
 					env=self.env, repositories=self.repo_settings.repoman_settings.repositories)
+
+				if not prof.abs_path:
+					self._populate_implicit_iuse(dep_settings,
+						self.repo_settings.repo_config.eclass_db.porttrees)
+
 				dep_settings.categories = self.repo_settings.repoman_settings.categories
 				if self.options.without_mask:
 					dep_settings._mask_manager_obj = \
@@ -257,3 +265,31 @@ class ProfileDependsChecks(ScanBase):
 	def runInEbuilds(self):
 		'''Ebuild level scans'''
 		return (True, [self.check])
+
+	@staticmethod
+	def _populate_implicit_iuse(config, repo_locations):
+		"""
+		Populate implicit IUSE for the empty profile, see bug 660982.
+
+		@param config: config instance for the empty profile
+		@type config: portage.config
+		@param repo_locations: locations of repositories containing relevant
+			implicit IUSE settings
+		@type repo_locations: list
+		"""
+		dest = config.configdict['defaults']
+		for location in repo_locations:
+			for parent_dir, dirs, files in os.walk(os.path.join(location, 'profiles')):
+				src = getconfig(os.path.join(parent_dir, 'make.defaults'))
+				if not src:
+					continue
+				for k, v in iter_iuse_vars(src):
+					v_before = dest.get(k)
+					if v_before is not None:
+						merged_values = set(v_before.split())
+						merged_values.update(v.split())
+						v = ' '.join(sorted(merged_values))
+					dest[k] = v
+
+		config.regenerate()
+		config._init_iuse()
