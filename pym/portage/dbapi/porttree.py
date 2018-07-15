@@ -1108,20 +1108,10 @@ class portdbapi(dbapi):
 			else:
 				iterfunc = iter
 
-			if mydep.repo is not None:
-				repos = [mydep.repo]
-			else:
-				# We iterate over self.porttrees, since it's common to
-				# tweak this attribute in order to adjust match behavior.
-				repos = []
-				for tree in reversed(self.porttrees):
-					repos.append(self.repositories.get_name_for_location(tree))
-
 			for cpv in iterfunc(mylist):
-				for repo in repos:
 					try:
 						metadata = dict(zip(aux_keys,
-							self.aux_get(cpv, aux_keys, myrepo=repo)))
+							self.aux_get(cpv, aux_keys, myrepo=cpv.repo)))
 					except KeyError:
 						# ebuild not in this repo, or masked by corruption
 						continue
@@ -1145,11 +1135,8 @@ class portdbapi(dbapi):
 						continue
 
 					myval.append(pkg_str)
-					# only yield a given cpv once
-					break
-
-				if myval and single_match:
-					break
+					if single_match:
+						break
 
 			if single_match:
 				if myval:
