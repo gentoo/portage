@@ -322,6 +322,26 @@ class portdbapi(dbapi):
 		self._better_cache = None
 		self._broken_ebuilds = set()
 
+	def _set_porttrees(self, porttrees):
+		"""
+		Consumers, such as repoman and emirrordist, may modify the porttrees
+		attribute in order to modify the effective set of repositories for
+		all portdbapi operations.
+
+		@param porttrees: list of repo locations, in ascending order by
+			repo priority
+		@type porttrees: list
+		"""
+		self._porttrees_repos = portage.OrderedDict((repo.name, repo)
+			for repo in (self.repositories.get_repo_for_location(location)
+			for location in porttrees))
+		self._porttrees = tuple(porttrees)
+
+	def _get_porttrees(self):
+		return self._porttrees
+
+	porttrees = property(_get_porttrees, _set_porttrees)
+
 	@property
 	def _event_loop(self):
 		if portage._internal_caller:
@@ -972,9 +992,10 @@ class portdbapi(dbapi):
 				repos = [self.repositories.get_repo_for_location(location)
 					for location in mytree]
 		elif self._better_cache is None:
-			repos = list(self.repositories)
+			repos = self._porttrees_repos.values()
 		else:
-			repos = reversed(self._better_cache[mycp])
+			repos = [repo for repo in reversed(self._better_cache[mycp])
+				if repo.name in self._porttrees_repos]
 		mylist = []
 		for repo in repos:
 			oroot = repo.location
