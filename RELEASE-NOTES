@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.43
+==================================
+* Bug Fixes:
+    - Bug 640058 failure to unmerge gentoo-sources include-prefixes
+      directory
+    - Bug 649806 eliminate redundant stat calls on profile.bashrc files
+    - Bug 650814 eliminate unnecessary access syscalls on ebuilds
+    - Bug 660982 repoman incorrectly reports IUSE.missing
+    - Bug 661276 fix make.conf PORTDIR override when path does not exist
+
+
 portage-2.3.42
 ==================================
 * Bug Fixes:
