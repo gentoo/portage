@@ -143,6 +143,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"distlocks",
 	"downgrade-backup",
 	"ebuild-locks",
+	"ebuildshell",
 	"fail-clean",
 	"fakeroot",
 	"fixlafiles",

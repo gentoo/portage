@@ -12,7 +12,8 @@ func_end_re = re.compile(br'^\}$')
 
 var_assign_re = re.compile(br'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$')
 close_quote_re = re.compile(br'(\\"|"|\')\s*$')
-readonly_re = re.compile(br'^declare\s+-(\S*)r(\S*)\s+')
+readonly_re = re.compile(br'^declare\s+-(\S*)r(\S*)\s+([^=\s]+)')
+trace_re = re.compile(br'^declare\s+-\S*t\S*\s+')
 # declare without assignment
 var_declare_re = re.compile(br'^declare(\s+-\S+)?\s+([^=\s]+)\s*$')
 
@@ -27,7 +28,7 @@ def have_end_quote(quote, line):
 	return close_quote_match is not None and \
 		close_quote_match.group(1) == quote
 
-def filter_declare_readonly_opt(line):
+def filter_declare_readonly_opt(line, options):
 	readonly_match = readonly_re.match(line)
 	if readonly_match is not None:
 		declare_opts = b''
@@ -35,14 +36,19 @@ def filter_declare_readonly_opt(line):
 			group = readonly_match.group(i)
 			if group is not None:
 				declare_opts += group
+		var = readonly_match.group(3)
+		if '--report-readonly-variables' in options:
+			getattr(sys.stderr, 'buffer', sys.stderr).write(var + b'\n')
+		if '--preserve-readonly-attribute' in options:
+			declare_opts += b'r'
 		if declare_opts:
 			line = b'declare -' + declare_opts + \
-				b' ' + line[readonly_match.end():]
+				b' ' + var + line[readonly_match.end():]
 		else:
-			line = b'declare ' + line[readonly_match.end():]
+			line = b'declare ' + var + line[readonly_match.end():]
 	return line
 
-def filter_bash_environment(pattern, file_in, file_out):
+def filter_bash_environment(pattern, file_in, file_out, options):
 	# Filter out any instances of the \1 character from variable values
 	# since this character multiplies each time that the environment
 	# is saved (strange bash behavior). This can eventually result in
@@ -66,6 +72,8 @@ def filter_bash_environment(pattern, file_in, file_out):
 				quote = var_assign_match.group(3)
 				filter_this = pattern.match(var_assign_match.group(2)) \
 					is not None
+				if not filter_this and '--filter-traced-variables' in options:
+					filter_this = trace_re.match(line) is not None
 				# Exclude the start quote when searching for the end quote,
 				# to ensure that the start quote is not misidentified as the
 				# end quote (happens if there is a newline immediately after
@@ -75,7 +83,7 @@ def filter_bash_environment(pattern, file_in, file_out):
 					multi_line_quote = quote
 					multi_line_quote_filter = filter_this
 				if not filter_this:
-					line = filter_declare_readonly_opt(line)
+					line = filter_declare_readonly_opt(line, options)
 					file_out.write(line.replace(b"\1", b""))
 				continue
 			else:
@@ -84,8 +92,10 @@ def filter_bash_environment(pattern, file_in, file_out):
 					# declare without assignment
 					filter_this = pattern.match(declare_match.group(2)) \
 						is not None
+					if not filter_this and '--filter-traced-variables' in options:
+						filter_this = trace_re.match(line) is not None
 					if not filter_this:
-						line = filter_declare_readonly_opt(line)
+						line = filter_declare_readonly_opt(line, options)
 						file_out.write(line)
 					continue
 
@@ -122,13 +132,28 @@ if __name__ == "__main__":
 		"while leaving bash function definitions and here-documents " + \
 		"intact. The PATTERN is a space separated list of variable names" + \
 		" and it supports python regular expression syntax."
-	usage = "usage: %s PATTERN" % os.path.basename(sys.argv[0])
-	args = sys.argv[1:]
-
-	if '-h' in args or '--help' in args:
-		sys.stdout.write(usage + "\n")
-		sys.stdout.flush()
-		sys.exit(os.EX_OK)
+	usage = "usage: %s [-h|<options>] PATTERN" % os.path.basename(sys.argv[0])
+	args = []
+	known_options = {
+		'--report-readonly-variables':
+			"Write names of readonly variables to stderr.",
+		'--preserve-readonly-attribute':
+			"Preserve the '-r' flag in 'declare -r'.",
+		'--filter-traced-variables':
+			"Filter out variables declared with '-t' attribute."
+	}
+	options = {}
+	for arg in sys.argv[1:]:
+		if arg in known_options.keys():
+			options[arg] = True
+			continue
+		if '-h' == arg or '--help' == arg:
+			sys.stdout.write(usage + "\n\nKnown <options>:\n\n")
+			for option, descr in known_options.items():
+				sys.stdout.write("  " + option + "\t" + descr + "\n")
+			sys.stdout.flush()
+			sys.exit(os.EX_OK)
+		args.append(arg)
 
 	if len(args) != 1:
 		sys.stderr.write(usage + "\n")
@@ -151,5 +176,5 @@ if __name__ == "__main__":
 
 	var_pattern = b'^(' + b'|'.join(var_pattern) + b')$'
 	filter_bash_environment(
-		re.compile(var_pattern), file_in, file_out)
+		re.compile(var_pattern), file_in, file_out, options)
 	file_out.flush()
