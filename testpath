@@ -8,9 +8,9 @@
 # ...
 if [[ "$SHELL" =~ "zsh" ]]; then
 	export PATH="$(dirname $0)/bin:${PATH}"
-	export PYTHONPATH=PYTHONPATH="$(dirname $0)/pym:${PYTHONPATH:+:}${PYTHONPATH}"
+	export PYTHONPATH=PYTHONPATH="$(dirname $0)/lib:${PYTHONPATH:+:}${PYTHONPATH}"
 else
 	export PATH="$(dirname ${BASH_SOURCE[0]})/bin:${PATH}"
-	export PYTHONPATH=PYTHONPATH="$(dirname $BASH_SOURCE[0])/pym:${PYTHONPATH:+:}${PYTHONPATH}"
+	export PYTHONPATH=PYTHONPATH="$(dirname $BASH_SOURCE[0])/lib:${PYTHONPATH:+:}${PYTHONPATH}"
 fi
 export PYTHONWARNINGS=d,i::ImportWarning

@@ -33,7 +33,7 @@ class trace_handler(object):
 		for x in python_system_paths:
 			self.ignore_prefixes.append(x + os.sep)
 
-		self.trim_filename = prefix_trimmer(os.path.join(portage.const.PORTAGE_BASE_PATH, "pym") + os.sep).trim
+		self.trim_filename = prefix_trimmer(os.path.join(portage.const.PORTAGE_BASE_PATH, "lib") + os.sep).trim
 		self.show_local_lines = False
 		self.max_repr_length = 200
 

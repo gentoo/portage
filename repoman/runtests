@@ -89,7 +89,7 @@ Run against specific versions of python.
 $ %(prog)s --python-versions '2.7 3.3'
 
 Run just one unittest.
-$ %(prog)s pym/portage/tests/xpak/test_decodeint.py
+$ %(prog)s lib/portage/tests/xpak/test_decodeint.py
 """
 	parser = argparse.ArgumentParser(
 		description=__doc__,
@@ -123,7 +123,7 @@ def main(argv):
 				pyversions.extend(ver.split())
 
 	here = os.path.dirname(__file__)
-	run_path = os.path.join(here, 'pym/repoman/tests/runTests.py')
+	run_path = os.path.join(here, 'lib/repoman/tests/runTests.py')
 	tempdir = None
 	try:
 		# Set up a single tempdir for all the tests to use.
