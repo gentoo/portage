@@ -2519,7 +2519,7 @@ def _prepare_self_update(settings):
 	shutil.copytree(orig_bin_path, portage._bin_path, symlinks=True)
 
 	orig_pym_path = portage._pym_path
-	portage._pym_path = os.path.join(base_path_tmp, "pym")
+	portage._pym_path = os.path.join(base_path_tmp, "lib")
 	os.mkdir(portage._pym_path)
 	for pmod in PORTAGE_PYM_PACKAGES:
 		shutil.copytree(os.path.join(orig_pym_path, pmod),

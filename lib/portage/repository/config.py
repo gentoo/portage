@@ -863,7 +863,7 @@ class RepoConfigLoader(object):
 
 			if repo._masters_orig is None and self.mainRepo() and \
 				repo.name != self.mainRepo().name and not portage._sync_mode:
-				# TODO: Delete masters code in pym/portage/tests/resolver/ResolverPlayground.py when deleting this warning.
+				# TODO: Delete masters code in lib/portage/tests/resolver/ResolverPlayground.py when deleting this warning.
 				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
 					(repo.name, os.path.join(repo.location, "metadata", "layout.conf")) +
 					"!!! %s\n" % _("Set 'masters = %s' in this file for future compatibility") %

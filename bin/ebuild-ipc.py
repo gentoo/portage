@@ -26,7 +26,7 @@ else:
 signal.signal(debug_signum, debug_signal)
 
 if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), ".portage_not_installed")):
-	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "pym")]
+	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib")]
 	sys.path.insert(0, pym_paths[0])
 else:
 	import distutils.sysconfig
