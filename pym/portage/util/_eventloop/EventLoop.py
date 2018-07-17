@@ -832,7 +832,7 @@ class EventLoop(object):
 
 		return future.result()
 
-	def call_soon(self, callback, *args):
+	def call_soon(self, callback, *args, context=None):
 		"""
 		Arrange for a callback to be called as soon as possible. The callback
 		is called after call_soon() returns, when control returns to the event
@@ -844,18 +844,25 @@ class EventLoop(object):
 		Any positional arguments after the callback will be passed to the
 		callback when it is called.
 
+		The context argument currently does nothing, but exists for minimal
+		interoperability with Future instances that require it for PEP 567.
+
 		An object compatible with asyncio.Handle is returned, which can
 		be used to cancel the callback.
 
 		@type callback: callable
 		@param callback: a function to call
+		@type context: contextvars.Context
+		@param context: An optional keyword-only context argument allows
+			specifying a custom contextvars.Context for the callback to run
+			in. The current context is used when no context is provided.
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
 		return self._handle(self._idle_add(
 			self._call_soon_callback(callback, args)), self)
 
-	def call_soon_threadsafe(self, callback, *args):
+	def call_soon_threadsafe(self, callback, *args, context=None):
 		"""Like call_soon(), but thread safe."""
 		# idle_add provides thread safety
 		return self._handle(self.idle_add(
@@ -870,7 +877,7 @@ class EventLoop(object):
 		"""
 		return monotonic()
 
-	def call_later(self, delay, callback, *args):
+	def call_later(self, delay, callback, *args, context=None):
 		"""
 		Arrange for the callback to be called after the given delay seconds
 		(either an int or float).
@@ -886,19 +893,26 @@ class EventLoop(object):
 		it is called. If you want the callback to be called with some named
 		arguments, use a closure or functools.partial().
 
+		The context argument currently does nothing, but exists for minimal
+		interoperability with Future instances that require it for PEP 567.
+
 		Use functools.partial to pass keywords to the callback.
 
 		@type delay: int or float
 		@param delay: delay seconds
 		@type callback: callable
 		@param callback: a function to call
+		@type context: contextvars.Context
+		@param context: An optional keyword-only context argument allows
+			specifying a custom contextvars.Context for the callback to run
+			in. The current context is used when no context is provided.
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
 		return self._handle(self.timeout_add(
 			delay * 1000, self._call_soon_callback(callback, args)), self)
 
-	def call_at(self, when, callback, *args):
+	def call_at(self, when, callback, *args, context=None):
 		"""
 		Arrange for the callback to be called at the given absolute
 		timestamp when (an int or float), using the same time reference as
@@ -915,6 +929,10 @@ class EventLoop(object):
 		@param when: absolute timestamp when to call callback
 		@type callback: callable
 		@param callback: a function to call
+		@type context: contextvars.Context
+		@param context: An optional keyword-only context argument allows
+			specifying a custom contextvars.Context for the callback to run
+			in. The current context is used when no context is provided.
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
