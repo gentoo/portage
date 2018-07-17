@@ -832,7 +832,7 @@ class EventLoop(object):
 
 		return future.result()
 
-	def call_soon(self, callback, *args, context=None):
+	def call_soon(self, callback, *args, **kwargs):
 		"""
 		Arrange for a callback to be called as soon as possible. The callback
 		is called after call_soon() returns, when control returns to the event
@@ -862,7 +862,7 @@ class EventLoop(object):
 		return self._handle(self._idle_add(
 			self._call_soon_callback(callback, args)), self)
 
-	def call_soon_threadsafe(self, callback, *args, context=None):
+	def call_soon_threadsafe(self, callback, *args, **kwargs):
 		"""Like call_soon(), but thread safe."""
 		# idle_add provides thread safety
 		return self._handle(self.idle_add(
@@ -877,7 +877,7 @@ class EventLoop(object):
 		"""
 		return monotonic()
 
-	def call_later(self, delay, callback, *args, context=None):
+	def call_later(self, delay, callback, *args, **kwargs):
 		"""
 		Arrange for the callback to be called after the given delay seconds
 		(either an int or float).
@@ -912,7 +912,7 @@ class EventLoop(object):
 		return self._handle(self.timeout_add(
 			delay * 1000, self._call_soon_callback(callback, args)), self)
 
-	def call_at(self, when, callback, *args, context=None):
+	def call_at(self, when, callback, *args, **kwargs):
 		"""
 		Arrange for the callback to be called at the given absolute
 		timestamp when (an int or float), using the same time reference as
