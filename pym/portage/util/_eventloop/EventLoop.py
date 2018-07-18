@@ -859,11 +859,23 @@ class EventLoop(object):
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
+		try:
+			unexpected = next(key for key in kwargs if key != 'context')
+		except StopIteration:
+			pass
+		else:
+			raise TypeError("call_soon() got an unexpected keyword argument '%s'" % unexpected)
 		return self._handle(self._idle_add(
 			self._call_soon_callback(callback, args)), self)
 
 	def call_soon_threadsafe(self, callback, *args, **kwargs):
 		"""Like call_soon(), but thread safe."""
+		try:
+			unexpected = next(key for key in kwargs if key != 'context')
+		except StopIteration:
+			pass
+		else:
+			raise TypeError("call_soon_threadsafe() got an unexpected keyword argument '%s'" % unexpected)
 		# idle_add provides thread safety
 		return self._handle(self.idle_add(
 			self._call_soon_callback(callback, args)), self)
@@ -909,6 +921,12 @@ class EventLoop(object):
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
+		try:
+			unexpected = next(key for key in kwargs if key != 'context')
+		except StopIteration:
+			pass
+		else:
+			raise TypeError("call_later() got an unexpected keyword argument '%s'" % unexpected)
 		return self._handle(self.timeout_add(
 			delay * 1000, self._call_soon_callback(callback, args)), self)
 
@@ -936,6 +954,12 @@ class EventLoop(object):
 		@return: a handle which can be used to cancel the callback
 		@rtype: asyncio.Handle (or compatible)
 		"""
+		try:
+			unexpected = next(key for key in kwargs if key != 'context')
+		except StopIteration:
+			pass
+		else:
+			raise TypeError("call_at() got an unexpected keyword argument '%s'" % unexpected)
 		delta = when - self.time()
 		return self.call_later(delta if delta > 0 else 0, callback, *args)
 
