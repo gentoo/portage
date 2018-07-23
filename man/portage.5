@@ -1127,6 +1127,11 @@ when 0. Defaults to disabled.
 .B sync\-rsync\-verify\-metamanifest = yes|no
 Require the repository to contain a signed MetaManifest and verify
 it using \fBapp\-portage/gemato\fR. Defaults to no.
+.TP
+.B sync\-webrsync\-verify\-signature = true|false
+Require the detached tarball signature to contain a good OpenPGP
+signature. This uses the OpenPGP key(ring) specified by the
+sync\-openpgp\-key\-path setting. Defaults to false.
 
 .RE
 

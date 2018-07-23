@@ -45,7 +45,9 @@ module_spec = {
 					'exists and is a valid repository',
 			},
 			'validate_config': CheckSyncConfig,
-			'module_specific_options': (),
+			'module_specific_options': (
+				'sync-webrsync-verify-signature',
+			),
 		},
 	}
 }

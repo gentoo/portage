@@ -1,16 +1,24 @@
 
 '''WebRsync module for portage'''
 
+import io
 import logging
 
 import portage
 from portage import os
 from portage.util import writemsg_level
+from portage.util.futures import asyncio
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.sync.syncbase import SyncBase
+
+try:
+	from gemato.exceptions import GematoException
+	import gemato.openpgp
+except ImportError:
+	gemato = None
 
 
 class WebRsync(SyncBase):
@@ -39,15 +47,63 @@ class WebRsync(SyncBase):
 		for var in ['uid', 'gid', 'groups']:
 			self.spawn_kwargs.pop(var, None)
 
-		exitcode = portage.process.spawn_bash("%s" % \
-			(self.bin_command),
-			**self.spawn_kwargs)
-		if exitcode != os.EX_OK:
-			msg = "!!! emerge-webrsync error in %s" % self.repo.location
-			self.logger(self.xterm_titles, msg)
-			writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
-			return (exitcode, False)
-		return (exitcode, True)
+		verbose = '--verbose' in self.options['emerge_config'].opts
+		quiet = '--quiet' in self.options['emerge_config'].opts
+		openpgp_env = None
+		try:
+			if self.repo.module_specific_options.get(
+				'sync-webrsync-verify-signature', 'false').lower() in ('true', 'yes'):
+
+				if not self.repo.sync_openpgp_key_path:
+					writemsg_level("!!! sync-openpgp-key-path is not set\n",
+						level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
+				if not os.path.isfile(self.repo.sync_openpgp_key_path):
+					writemsg_level("!!! sync-openpgp-key-path file not found: %s\n" %
+						self.repo.sync_openpgp_key_path, level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
+				if gemato is None:
+					writemsg_level("!!! Verifying against specified key requires gemato-11.0+ installed\n",
+						level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
+				openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+
+				out = portage.output.EOutput(quiet=quiet)
+				try:
+					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
+					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:
+						openpgp_env.import_key(f)
+					self._refresh_keys(openpgp_env)
+					self.spawn_kwargs["env"]["PORTAGE_GPG_DIR"] = openpgp_env.home
+				except (GematoException, asyncio.TimeoutError) as e:
+					writemsg_level("!!! Verification impossible due to keyring problem:\n%s\n"
+							% (e,),
+							level=logging.ERROR, noiselevel=-1)
+					return (1, False)
+
+			webrsync_cmd = [self.bin_command]
+			if verbose:
+				webrsync_cmd.append('-v')
+			elif quiet:
+				webrsync_cmd.append('-q')
+
+			if self.repo.module_specific_options.get(
+				'sync-webrsync-keep-snapshots', 'false').lower() in ('true', 'yes'):
+				webrsync_cmd.append('-k')
+
+			exitcode = portage.process.spawn(webrsync_cmd, **self.spawn_kwargs)
+			if exitcode != os.EX_OK:
+				msg = "!!! emerge-webrsync error in %s" % self.repo.location
+				self.logger(self.xterm_titles, msg)
+				writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+				return (exitcode, False)
+			return (exitcode, True)
+		finally:
+			if openpgp_env is not None:
+				openpgp_env.close()
 
 
 class PyWebRsync(SyncBase):
