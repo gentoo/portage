@@ -227,7 +227,7 @@ class GitSync(NewBase):
 					writemsg_level("!!! Verification impossible due to keyring problem:\n%s\n"
 							% (e,),
 							level=logging.ERROR, noiselevel=-1)
-					return (1, False)
+					False
 
 				env = os.environ.copy()
 				env['GNUPGHOME'] = openpgp_env.home
