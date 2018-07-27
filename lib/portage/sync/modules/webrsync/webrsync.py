@@ -34,6 +34,16 @@ class WebRsync(SyncBase):
 	def __init__(self):
 		SyncBase.__init__(self, 'emerge-webrsync', '>=sys-apps/portage-2.3')
 
+	@property
+	def has_bin(self):
+		if (self._bin_command != 'emerge-delta-webrsync' and
+			self.repo.module_specific_options.get(
+			'sync-webrsync-delta', 'false').lower() in ('true', 'yes')):
+			self._bin_command = 'emerge-delta-webrsync'
+			self.bin_command = portage.process.find_binary(self._bin_command)
+			self.bin_pkg = '>=app-portage/emerge-delta-webrsync-3.7.5'
+
+		return super(WebRsync, self).has_bin
 
 	def sync(self, **kwargs):
 		'''Sync the repository'''
