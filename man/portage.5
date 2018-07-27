@@ -1128,6 +1128,9 @@ when 0. Defaults to disabled.
 Require the repository to contain a signed MetaManifest and verify
 it using \fBapp\-portage/gemato\fR. Defaults to no.
 .TP
+.B sync\-webrsync\-keep\-snapshots = true|false
+Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to false.
+.TP
 .B sync\-webrsync\-verify\-signature = true|false
 Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the

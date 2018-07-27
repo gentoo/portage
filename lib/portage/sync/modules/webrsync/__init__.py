@@ -46,6 +46,7 @@ module_spec = {
 			},
 			'validate_config': CheckSyncConfig,
 			'module_specific_options': (
+				'sync-webrsync-keep-snapshots',
 				'sync-webrsync-verify-signature',
 			),
 		},
