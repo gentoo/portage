@@ -6,6 +6,7 @@ from portage.util.futures.compat_coroutine import (
 	coroutine,
 	coroutine_return,
 )
+from portage.util.futures._sync_decorator import _sync_decorator, _sync_methods
 from portage.tests import TestCase
 
 
@@ -161,3 +162,16 @@ class CompatCoroutineTestCase(TestCase):
 		loop.run_until_complete(asyncio.wait([writer, reader]))
 
 		self.assertEqual(reader.result(), values)
+
+		# Test decoration of coroutine methods and functions for
+		# synchronous usage, allowing coroutines to smoothly
+		# blend with synchronous code.
+		sync_cubby = _sync_methods(cubby, loop=loop)
+		sync_reader = _sync_decorator(reader_coroutine, loop=loop)
+		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None), loop=loop)
+		self.assertEqual(sync_reader(cubby, None), values)
+		self.assertTrue(writer.done())
+
+		for i in range(3):
+			sync_cubby.write(i)
+			self.assertEqual(sync_cubby.read(), i)
