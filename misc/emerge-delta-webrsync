@@ -342,7 +342,7 @@ sync_local() {
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
 		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
-		if ! tarsync $(__vecho -v) -s 1 ${chown_opts} \
+		if ! tarsync $(__vecho -v 2>&1) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
