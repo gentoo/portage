@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.44
+==================================
+* Bug Fixes:
+    - Bug 630292 parallel pngfix
+    - Bug 661834 rsync: fix _commit_download to drop privileges
+    - Bug 661838 webrsync: support sync-openpgp-key-path
+    - Bug 661906 git: fix key refresh failure to trigger abort
+
+
 portage-2.3.43
 ==================================
 * Bug Fixes:
