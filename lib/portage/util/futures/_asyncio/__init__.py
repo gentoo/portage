@@ -20,6 +20,9 @@ __all__ = (
 	'wait',
 )
 
+import subprocess
+import sys
+
 try:
 	import asyncio as _real_asyncio
 except ImportError:
@@ -45,6 +48,7 @@ from portage.util.futures.futures import (
 	InvalidStateError,
 	TimeoutError,
 )
+from portage.util.futures._asyncio.process import _Process
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,
 	FIRST_COMPLETED,
@@ -105,6 +109,49 @@ def set_child_watcher(watcher):
     return get_event_loop_policy().set_child_watcher(watcher)
 
 
+# Python 3.4 and later implement PEP 446, which makes newly
+# created file descriptors non-inheritable by default.
+_close_fds_default = sys.version_info < (3, 4)
+
+
+def create_subprocess_exec(*args, **kwargs):
+	"""
+	Create a subprocess.
+
+	@param args: program and arguments
+	@type args: str
+	@param stdin: stdin file descriptor
+	@type stdin: file or int
+	@param stdout: stdout file descriptor
+	@type stdout: file or int
+	@param stderr: stderr file descriptor
+	@type stderr: file or int
+	@param close_fds: close file descriptors
+	@type close_fds: bool
+	@param loop: asyncio.AbstractEventLoop (or compatible)
+	@type loop: event loop
+	@type kwargs: varies
+	@param kwargs: subprocess.Popen parameters
+	@rtype: asyncio.Future (or compatible)
+	@return: subset of asyncio.subprocess.Process interface
+	"""
+	loop = _wrap_loop(kwargs.pop('loop', None))
+	kwargs.setdefault('close_fds', _close_fds_default)
+	if _asyncio_enabled and isinstance(loop, _AsyncioEventLoop):
+		# Use the real asyncio loop and create_subprocess_exec.
+		return _real_asyncio.create_subprocess_exec(*args, loop=loop._loop, **kwargs)
+
+	result = loop.create_future()
+
+	result.set_result(_Process(subprocess.Popen(
+		args,
+		stdin=kwargs.pop('stdin', None),
+		stdout=kwargs.pop('stdout', None),
+		stderr=kwargs.pop('stderr', None), **kwargs), loop))
+
+	return result
+
+
 class Task(Future):
 	"""
 	Schedule the execution of a coroutine: wrap it in a future. A task
@@ -127,6 +174,12 @@ def ensure_future(coro_or_future, loop=None):
 	@rtype: asyncio.Future (or compatible)
 	@return: an instance of Future
 	"""
+	loop = _wrap_loop(loop)
+	if _asyncio_enabled and isinstance(loop, _AsyncioEventLoop):
+		# Use the real asyncio loop and ensure_future.
+		return _real_asyncio.ensure_future(
+			coro_or_future, loop=loop._loop)
+
 	if isinstance(coro_or_future, Future):
 		return coro_or_future
 	raise NotImplementedError

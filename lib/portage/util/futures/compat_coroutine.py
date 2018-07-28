@@ -1,8 +1,12 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage.util.futures import asyncio
 import functools
+
+import portage
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.util.futures:asyncio',
+)
 
 
 def coroutine(generator_func):
