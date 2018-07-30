@@ -327,6 +327,7 @@ class SyncManager(object):
 		# override the defaults when sync_umask is set
 		if repo.sync_umask is not None:
 			spawn_kwargs["umask"] = int(repo.sync_umask, 8)
+		spawn_kwargs.setdefault("umask", 0o022)
 		self.spawn_kwargs = spawn_kwargs
 
 		if self.usersync_uid is not None:

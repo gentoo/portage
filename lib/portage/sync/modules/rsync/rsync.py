@@ -59,55 +59,6 @@ class RsyncSync(NewBase):
 	def __init__(self):
 		NewBase.__init__(self, "rsync", RSYNC_PACKAGE_ATOM)
 
-	def _select_download_dir(self):
-		'''
-		Select and return the download directory. It's desirable to be able
-		to create shared hardlinks between the download directory to the
-		normal repository, and this is facilitated by making the download
-		directory be a subdirectory of the normal repository location
-		(ensuring that no mountpoints are crossed). Shared hardlinks are
-		created by using the rsync --link-dest option.
-
-		Since the download is initially unverified, it is safest to save
-		it in a quarantine directory. The quarantine directory is also
-		useful for making the repository update more atomic, so that it
-		less likely that normal repository location will be observed in
-		a partially synced state.
-
-		This method returns a quarantine directory if sync-allow-hardlinks
-		is enabled in repos.conf, and otherwise it returne the normal
-		repository location.
-		'''
-		if self.repo.sync_allow_hardlinks:
-			return os.path.join(self.repo.location, '.tmp-unverified-download-quarantine')
-		else:
-			return self.repo.location
-
-	def _commit_download(self, download_dir):
-		'''
-		Commit changes from download_dir if it does not refer to the
-		normal repository location.
-		'''
-		exitcode = 0
-		if self.repo.location != download_dir:
-			rsynccommand = [self.bin_command] + self.rsync_opts + self.extra_rsync_opts
-			rsynccommand.append('--exclude=/%s' % os.path.basename(download_dir))
-			rsynccommand.append('%s/' % download_dir.rstrip('/'))
-			rsynccommand.append('%s/' % self.repo.location)
-			exitcode = portage.process.spawn(rsynccommand, **self.spawn_kwargs)
-
-		return exitcode
-
-	def _remove_download(self, download_dir):
-		"""
-		Remove download_dir if it does not refer to the normal repository
-		location.
-		"""
-		exitcode = 0
-		if self.repo.location != download_dir:
-			exitcode = subprocess.call(['rm', '-rf', download_dir])
-		return exitcode
-
 	def update(self):
 		'''Internal update function which performs the transfer'''
 		opts = self.options.get('emerge_config').opts
@@ -143,8 +94,8 @@ class RsyncSync(NewBase):
 			self.extra_rsync_opts.extend(portage.util.shlex_split(
 				self.repo.module_specific_options['sync-rsync-extra-opts']))
 
-		download_dir = self._select_download_dir()
 		exitcode = 0
+		verify_failure = False
 
 		# Process GLEP74 verification options.
 		# Default verification to 'no'; it's enabled for ::gentoo
@@ -240,10 +191,14 @@ class RsyncSync(NewBase):
 				self.proto = "file"
 				dosyncuri = syncuri[7:]
 				unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
-					dosyncuri, timestamp, opts, download_dir)
+					dosyncuri, timestamp, opts)
 				self._process_exitcode(exitcode, dosyncuri, out, 1)
-				if exitcode == 0 and not unchanged:
-					self._commit_download(download_dir)
+				if exitcode == 0:
+					if unchanged:
+						self.repo_storage.abort_update()
+					else:
+						self.repo_storage.commit_update()
+						self.repo_storage.garbage_collection()
 				return (exitcode, updatecache_flg)
 
 			retries=0
@@ -375,7 +330,7 @@ class RsyncSync(NewBase):
 					dosyncuri = dosyncuri[6:].replace('/', ':/', 1)
 
 				unchanged, is_synced, exitcode, updatecache_flg = self._do_rsync(
-					dosyncuri, timestamp, opts, download_dir)
+					dosyncuri, timestamp, opts)
 				if not unchanged:
 					local_state_unchanged = False
 				if is_synced:
@@ -390,6 +345,7 @@ class RsyncSync(NewBase):
 					# exit loop
 					exitcode = EXCEEDED_MAX_RETRIES
 					break
+
 			self._process_exitcode(exitcode, dosyncuri, out, maxretries)
 
 			if local_state_unchanged:
@@ -397,6 +353,8 @@ class RsyncSync(NewBase):
 				# in this case, so refer gemato to the normal repository
 				# location.
 				download_dir = self.repo.location
+			else:
+				download_dir = self.download_dir
 
 			# if synced successfully, verify now
 			if exitcode == 0 and self.verify_metamanifest:
@@ -448,14 +406,18 @@ class RsyncSync(NewBase):
 								% (e,),
 								level=logging.ERROR, noiselevel=-1)
 						exitcode = 1
+						verify_failure = True
 
 			if exitcode == 0 and not local_state_unchanged:
-				exitcode = self._commit_download(download_dir)
+				self.repo_storage.commit_update()
+				self.repo_storage.garbage_collection()
 
 			return (exitcode, updatecache_flg)
 		finally:
-			if exitcode == 0:
-				self._remove_download(download_dir)
+			# Don't delete the update if verification failed, in case
+			# the cause needs to be investigated.
+			if not verify_failure:
+				self.repo_storage.abort_update()
 			if openpgp_env is not None:
 				openpgp_env.close()
 
@@ -594,7 +556,7 @@ class RsyncSync(NewBase):
 		return rsync_opts
 
 
-	def _do_rsync(self, syncuri, timestamp, opts, download_dir):
+	def _do_rsync(self, syncuri, timestamp, opts):
 		updatecache_flg = False
 		is_synced = False
 		if timestamp != 0 and "--quiet" not in opts:
@@ -720,11 +682,6 @@ class RsyncSync(NewBase):
 				# actual sync
 				command = rsynccommand[:]
 
-				if self.repo.location != download_dir:
-					# Use shared hardlinks for files that are identical
-					# in the previous snapshot of the repository.
-					command.append('--link-dest=%s' % self.repo.location)
-
 				submodule_paths = self._get_submodule_paths()
 				if submodule_paths:
 					# The only way to select multiple directories to
@@ -738,7 +695,7 @@ class RsyncSync(NewBase):
 				else:
 					command.append(syncuri + "/")
 
-				command.append(download_dir)
+				command.append(self.download_dir)
 
 				exitcode = None
 				try:
