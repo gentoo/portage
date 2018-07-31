@@ -93,7 +93,9 @@ class SyncBase(object):
 		@rtype: str
 		@return: name of the selected repo storage constructor
 		'''
-		if self.repo.sync_allow_hardlinks:
+		if self.repo.sync_rcu:
+			mod_name = 'portage.repository.storage.hardlink_rcu.HardlinkRcuRepoStorage'
+		elif self.repo.sync_allow_hardlinks:
 			mod_name = 'portage.repository.storage.hardlink_quarantine.HardlinkQuarantineRepoStorage'
 		else:
 			mod_name = 'portage.repository.storage.inplace.InplaceRepoStorage'

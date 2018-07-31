@@ -84,7 +84,7 @@ class RepoConfig(object):
 		'profile_formats', 'sign_commit', 'sign_manifest', 'strict_misc_digests',
 		'sync_depth', 'sync_hooks_only_on_change',
 		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
-		'update_changelog', '_eapis_banned', '_eapis_deprecated',
+		'update_changelog', 'user_location', '_eapis_banned', '_eapis_deprecated',
 		'_masters_orig', 'module_specific_options', 'manifest_required_hashes',
 		'sync_allow_hardlinks',
 		'sync_openpgp_key_path',
@@ -93,6 +93,10 @@ class RepoConfig(object):
 		'sync_openpgp_key_refresh_retry_delay_exp_base',
 		'sync_openpgp_key_refresh_retry_delay_mult',
 		'sync_openpgp_key_refresh_retry_overall_timeout',
+		'sync_rcu',
+		'sync_rcu_store_dir',
+		'sync_rcu_spare_snapshots',
+		'sync_rcu_ttl_days',
 		)
 
 	def __init__(self, name, repo_opts, local_config=True):
@@ -198,6 +202,22 @@ class RepoConfig(object):
 			'sync_openpgp_key_refresh_retry_overall_timeout'):
 			setattr(self, k, repo_opts.get(k.replace('_', '-'), None))
 
+		self.sync_rcu = repo_opts.get(
+			'sync-rcu', 'false').lower() in ('true', 'yes')
+
+		self.sync_rcu_store_dir = repo_opts.get('sync-rcu-store-dir')
+
+		for k in ('sync-rcu-spare-snapshots', 'sync-rcu-ttl-days'):
+			v = repo_opts.get(k, '').strip() or None
+			if v:
+				try:
+					v = int(v)
+				except (OverflowError, ValueError):
+					writemsg(_("!!! Invalid %s setting for repo"
+						" %s: %s\n") % (k, name, v), noiselevel=-1)
+					v = None
+			setattr(self, k.replace('-', '_'), v)
+
 		self.module_specific_options = {}
 
 		# Not implemented.
@@ -206,9 +226,14 @@ class RepoConfig(object):
 			format = format.strip()
 		self.format = format
 
+		self.user_location = None
 		location = repo_opts.get('location')
 		if location is not None and location.strip():
 			if os.path.isdir(location) or portage._sync_mode:
+				# The user_location is required for sync-rcu support,
+				# since it manages a symlink which resides at that
+				# location (and realpath is irreversible).
+				self.user_location = location
 				location = os.path.realpath(location)
 		else:
 			location = None
@@ -542,6 +567,10 @@ class RepoConfigLoader(object):
 							'sync_openpgp_key_refresh_retry_delay_exp_base',
 							'sync_openpgp_key_refresh_retry_delay_mult',
 							'sync_openpgp_key_refresh_retry_overall_timeout',
+							'sync_rcu',
+							'sync_rcu_store_dir',
+							'sync_rcu_spare_snapshots',
+							'sync_rcu_ttl_days',
 							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
 							'module_specific_options'):
 							v = getattr(repos_conf_opts, k, None)
@@ -962,7 +991,7 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		bool_keys = ("strict_misc_digests", "sync_allow_hardlinks")
+		bool_keys = ("strict_misc_digests", "sync_allow_hardlinks", "sync_rcu")
 		str_or_int_keys = ("auto_sync", "clone_depth", "format", "location",
 			"main_repo", "priority", "sync_depth", "sync_openpgp_key_path",
 			"sync_openpgp_key_refresh_retry_count",
@@ -970,6 +999,9 @@ class RepoConfigLoader(object):
 			"sync_openpgp_key_refresh_retry_delay_exp_base",
 			"sync_openpgp_key_refresh_retry_delay_mult",
 			"sync_openpgp_key_refresh_retry_overall_timeout",
+			"sync_rcu_store_dir",
+			"sync_rcu_spare_snapshots",
+			"sync_rcu_ttl_days",
 			"sync_type", "sync_umask", "sync_uri", 'sync_user')
 		str_tuple_keys = ("aliases", "eclass_overrides", "force")
 		repo_config_tuple_keys = ("masters",)

@@ -1,6 +1,7 @@
 # Copyright 2014-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import datetime
 import subprocess
 import sys
 import textwrap
@@ -42,6 +43,8 @@ class SyncLocalTestCase(TestCase):
 			location = %(EPREFIX)s/var/repositories/test_repo
 			sync-type = %(sync-type)s
 			sync-uri = file://%(EPREFIX)s/var/repositories/test_repo_sync
+			sync-rcu = %(sync-rcu)s
+			sync-rcu-store-dir = %(EPREFIX)s/var/repositories/test_repo_rcu_storedir
 			auto-sync = %(auto-sync)s
 			%(repo_extra_keys)s
 		""")
@@ -88,9 +91,10 @@ class SyncLocalTestCase(TestCase):
 		committer_email = "gentoo-dev@gentoo.org"
 
 		def repos_set_conf(sync_type, dflt_keys=None, xtra_keys=None,
-			auto_sync="yes"):
+			auto_sync="yes", sync_rcu=False):
 			env["PORTAGE_REPOSITORIES"] = repos_conf % {\
 				"EPREFIX": eprefix, "sync-type": sync_type,
+				"sync-rcu": "yes" if sync_rcu else "no",
 				"auto-sync": auto_sync,
 				"default_keys": "" if dflt_keys is None else dflt_keys,
 				"repo_extra_keys": "" if xtra_keys is None else xtra_keys}
@@ -99,7 +103,18 @@ class SyncLocalTestCase(TestCase):
 			with open(os.path.join(repo.location + "_sync",
 				"dev-libs", "A", "A-0.ebuild"), "a") as f:
 				f.write("\n")
-			os.unlink(os.path.join(metadata_dir, 'timestamp.chk'))
+			bump_timestamp()
+
+		def bump_timestamp():
+			bump_timestamp.timestamp += datetime.timedelta(seconds=1)
+			with open(os.path.join(repo.location + '_sync', 'metadata', 'timestamp.chk'), 'w') as f:
+				f.write(bump_timestamp.timestamp.strftime('%s\n' % TIMESTAMP_FORMAT,))
+
+		bump_timestamp.timestamp = datetime.datetime.utcnow()
+
+		bump_timestamp_cmds = (
+			(homedir, bump_timestamp),
+		)
 
 		sync_cmds = (
 			(homedir, cmds["emerge"] + ("--sync",)),
@@ -170,6 +185,18 @@ class SyncLocalTestCase(TestCase):
 			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
+		delete_repo_location = (
+			(homedir, lambda: shutil.rmtree(repo.user_location)),
+			(homedir, lambda: os.mkdir(repo.user_location)),
+		)
+
+		revert_rcu_layout = (
+			(homedir, lambda: os.rename(repo.user_location, repo.user_location + '.bak')),
+			(homedir, lambda: os.rename(os.path.realpath(repo.user_location + '.bak'), repo.user_location)),
+			(homedir, lambda: os.unlink(repo.user_location + '.bak')),
+			(homedir, lambda: shutil.rmtree(repo.user_location + '_rcu_storedir')),
+		)
+
 		delete_sync_repo = (
 			(homedir, lambda: shutil.rmtree(
 				repo.location + "_sync")),
@@ -188,6 +215,10 @@ class SyncLocalTestCase(TestCase):
 
 		sync_type_git = (
 			(homedir, lambda: repos_set_conf("git")),
+		)
+
+		sync_rsync_rcu = (
+			(homedir, lambda: repos_set_conf("rsync", sync_rcu=True)),
 		)
 
 		pythonpath =  os.environ.get("PYTHONPATH")
@@ -228,7 +259,7 @@ class SyncLocalTestCase(TestCase):
 
 			timestamp_path = os.path.join(metadata_dir, 'timestamp.chk')
 			with open(timestamp_path, 'w') as f:
-				f.write(time.strftime('%s\n' % TIMESTAMP_FORMAT, time.gmtime()))
+				f.write(bump_timestamp.timestamp.strftime('%s\n' % TIMESTAMP_FORMAT,))
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
@@ -242,6 +273,9 @@ class SyncLocalTestCase(TestCase):
 			for cwd, cmd in rename_repo + sync_cmds_auto_sync + sync_cmds + \
 				rsync_opts_repos + rsync_opts_repos_default + \
 				rsync_opts_repos_default_ovr + rsync_opts_repos_default_cancel + \
+				bump_timestamp_cmds + sync_rsync_rcu + sync_cmds + revert_rcu_layout + \
+				delete_repo_location + sync_cmds + sync_cmds + \
+				bump_timestamp_cmds + sync_cmds + revert_rcu_layout + \
 				delete_sync_repo + git_repo_create + sync_type_git + \
 				rename_repo + sync_cmds:
 

@@ -1025,6 +1025,41 @@ If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
 repository has changed since the previous sync operation.
 .TP
+.B sync\-rcu = yes|no
+Enable read\-copy\-update (RCU) behavior for sync operations. The current
+latest immutable version of a repository will be referenced by a symlink
+found where the repository would normally be located (see the \fBlocation\fR
+setting). Repository consumers should resolve the cannonical path of this
+symlink before attempt to access the repository, and all operations should
+be read\-only, since the repository is considered immutable. Updates occur
+by atomic replacement of the symlink, which causes new consumers to use the
+new immutable version, while any earlier consumers continue to use the
+cannonical path that was resolved earlier. This option requires
+sync\-allow\-hardlinks and sync\-rcu\-store\-dir options to be enabled, and
+currently also requires that sync\-type is set to rsync. This option is
+disabled by default, since the symlink usage would require special handling
+for scenarios involving bind mounts and chroots.
+.TP
+.B sync\-rcu\-store\-dir
+Directory path reserved for sync\-rcu storage. This directory must have a
+unique value for each repository (do not set it in the DEFAULT section).
+This directory must not contain any other files or directories aside from
+those that are created automatically when sync\-rcu is enabled.
+.TP
+.B sync\-rcu\-spare\-snapshots = 1
+Number of spare snapshots for sync\-rcu to retain with expired ttl. This
+protects the previous latest snapshot from being removed immediately after
+a new version becomes available, since it might still be used by running
+processes.
+.TP
+.B sync\-rcu\-ttl\-days = 7
+Number of days for sync\-rcu to retain previous immutable snapshots of
+a repository. After the ttl of a particular snapshot has expired, it
+will be remove automatically (the latest snapshot is exempt, and
+sync\-rcu\-spare\-snapshots configures the number of previous snapshots
+that are exempt). If the ttl is set too low, then a snapshot could
+expire while it is in use by a running process.
+.TP
 .B sync\-type
 Specifies type of synchronization performed by `emerge \-\-sync`.
 .br
