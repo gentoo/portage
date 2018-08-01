@@ -593,4 +593,14 @@ __eqatag() {
 	) >> "${T}"/qa.log
 }
 
+if [[ BASH_VERSINFO -gt 4 || (BASH_VERSINFO -eq 4 && BASH_VERSINFO[1] -ge 4) ]] ; then
+	___is_indexed_array_var() {
+		[[ ${!1@a} == *a* ]]
+	}
+else
+	___is_indexed_array_var() {
+		[[ $(declare -p "$1" 2>/dev/null) == 'declare -a'* ]]
+	}
+fi
+
 true

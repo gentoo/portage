@@ -853,7 +853,7 @@ __eapi4_src_install() {
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do
 			[[ -s "${d}" ]] && dodoc "${d}"
 		done
-	elif [[ $(declare -p DOCS) == "declare -a "* ]] ; then
+	elif ___is_indexed_array_var DOCS ; then
 		dodoc "${DOCS[@]}"
 	else
 		dodoc ${DOCS}
@@ -861,7 +861,7 @@ __eapi4_src_install() {
 }
 
 __eapi6_src_prepare() {
-	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
+	if ___is_indexed_array_var PATCHES ; then
 		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
@@ -996,7 +996,7 @@ if ___eapi_has_einstalldocs; then
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do
 					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
-			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
+			elif ___is_indexed_array_var DOCS ; then
 				[[ ${#DOCS[@]} -gt 0 ]] && docinto / && dodoc -r "${DOCS[@]}"
 			else
 				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
@@ -1004,7 +1004,7 @@ if ___eapi_has_einstalldocs; then
 		)
 
 		(
-			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
+			if ___is_indexed_array_var HTML_DOCS ; then
 				[[ ${#HTML_DOCS[@]} -gt 0 ]] && \
 					docinto html && dodoc -r "${HTML_DOCS[@]}"
 			else
