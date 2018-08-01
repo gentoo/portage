@@ -37,7 +37,7 @@ OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | 
 case $OS_RELEASE_ID in
 	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='rpm' ;;
 	fedora|rhel) OS_FAMILY='rpm' ;;
-	arch|archarm|manjaro|antergos) OS_FAMILY='arch' NEW_EXT='pacnew';;
+	arch|archarm|arch32|manjaro|antergos) OS_FAMILY='arch' NEW_EXT='pacnew';;
 	*) OS_FAMILY='gentoo' ;;
 esac
 
