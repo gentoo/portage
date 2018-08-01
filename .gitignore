@@ -4,6 +4,7 @@ __pycache__/
 *.so
 /build
 /tags
+/.tox/
 setup.cfg
 
 repoman/build
