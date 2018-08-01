@@ -8,30 +8,14 @@ python:
 
 # command to install dependencies
 install:
-    - sudo apt-get update -qq
-    - sudo apt-get install -y libxml2-utils
-    - pip install lxml
-    # python3.6+ has sha3 built-in, for older versions install pysha3
-    # (except for pypy where pysha3 is broken)
-    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] || ${TRAVIS_PYTHON_VERSION} == pypy ]] || pip install pysha3"
-    # python3.6+ has blake2 built-in, for older versions install pyblake2
-    - "[[ ${TRAVIS_PYTHON_VERSION} == 3.[6789] ]] || pip install pyblake2"
-    # always install pygost for Streebog
-    - pip install pygost
-    # pyyaml is needed for building
-    - pip install pyyaml
+    - pip install tox
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
     - ./setup.py test
     - ./setup.py install --root=/tmp/install-root
-    # prevent repoman tests from trying to fetch metadata.xsd
-    - mkdir -p /tmp/install-root/usr/lib/portage/cnf
-    - cp repoman/cnf/metadata.xsd /tmp/install-root/usr/lib/portage/cnf/
-    - sudo rsync -a /tmp/install-root/. /
-    - python -b -Wd -m portage.tests.runTests
-    # repoman test block
-    - repoman/setup.py test
-    - repoman/setup.py install --root=/tmp/install-root
-    - sudo rsync -a /tmp/install-root/. /
-    - python -b -Wd -m repoman.tests.runTests
+    - if [[ ${TRAVIS_PYTHON_VERSION} == ?.? ]]; then
+        tox -e py${TRAVIS_PYTHON_VERSION/./};
+      else
+        tox -e ${TRAVIS_PYTHON_VERSION};
+      fi
