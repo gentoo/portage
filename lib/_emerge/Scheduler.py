@@ -1436,6 +1436,9 @@ class Scheduler(PollScheduler):
 		if self._main_loadavg_handle is not None:
 			self._main_loadavg_handle.cancel()
 			self._main_loadavg_handle = None
+		if self._job_delay_timeout_id is not None:
+			self._job_delay_timeout_id.cancel()
+			self._job_delay_timeout_id = None
 
 	def _choose_pkg(self):
 		"""
