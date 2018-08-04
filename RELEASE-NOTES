@@ -1,6 +1,56 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.44
+==================================
+* Bug Fixes:
+    - Bug 630292 parallel pngfix
+    - Bug 661834 rsync: fix _commit_download to drop privileges
+    - Bug 661838 webrsync: support sync-openpgp-key-path
+    - Bug 661906 git: fix key refresh failure to trigger abort
+
+
+portage-2.3.43
+==================================
+* Bug Fixes:
+    - Bug 640058 failure to unmerge gentoo-sources include-prefixes
+      directory
+    - Bug 649806 eliminate redundant stat calls on profile.bashrc files
+    - Bug 650814 eliminate unnecessary access syscalls on ebuilds
+    - Bug 660982 repoman incorrectly reports IUSE.missing
+    - Bug 661276 fix make.conf PORTDIR override when path does not exist
+
+
+portage-2.3.42
+==================================
+* Bug Fixes:
+    - Bug 552814 support shallow git pull by setting sync-depth = 1
+      in repos.conf
+    - Bug 659564 AttributeError unevaluated_atom with emerge
+      --ignore-soname-deps=n
+    - Bug 660372 GitSync: abort checkout for signature problem
+    - Bug 660410 rsync: quarantine data prior to verification
+    - Bug 660426 Add python2 compatible coroutine support
+    - Bug 660732 GitSync: add key refresh retry
+
+
+portage-2.3.41
+==================================
+* Bug Fixes:
+    - Bug 600804 revert portage uid/gid mapping behavior for PMS
+    - Bug 656542 ebuild command PermissionError from prepare_build_dirs
+    - Bug 656750 PollSelectAdapter has no attribute close
+    - Bug 656942 event loop recursion for emerge --nodeps --keep-going
+    - Bug 657360 event loop recursion for emerge --pretend --fetch
+    - Bug 657420 'str' has no attribute 'soname' for emerge --depclean
+    - Bug 657422 "[Errno 7] Argument list too long" with --usepkgonly
+    - Bug 657436 CancelledError triggered by Ctrl-C/SIGINT/TERM
+    - Bug 658322 support trailing slash in INSTALL_MASK patterns
+    - Bug 658684 fix emerge hang after unhandled exception with no tty
+    - Bug 658806 compress-build-logs EOFError
+    - Bug 659228 fix QA_FLAGS_IGNORED for EAPI 7
+
+
 portage-2.3.40
 ==================================
 * Bug Fixes:

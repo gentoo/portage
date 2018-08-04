@@ -10,7 +10,14 @@
 #  - all output should prob be converted to e* funcs
 #  - add support for ROOT
 
+# repos.conf configuration for use with emerge --sync and emaint sync
+# using keyring from app-crypt/openpgp-keys-gentoo-release:
+# [gentoo]
+# sync-type = webrsync
+# sync-webrsync-verify-signature = true
+# sync-openpgp-key-path = /usr/share/openpgp-keys/gentoo-release.asc
 #
+# Alternative (legacy) PORTAGE_GPG_DIR configuration:
 # gpg key import
 # KEY_ID=0x96D8BF6D
 # gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
@@ -73,7 +80,14 @@ do_verbose=0
 do_debug=0
 keep=false
 
-if has webrsync-gpg ${FEATURES} ; then
+if has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature | \
+	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
+	if [[ ! -d ${PORTAGE_GPG_DIR} ]]; then
+		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
+		exit 1
+	fi
+	WEBSYNC_VERIFY_SIGNATURE=1
+elif has webrsync-gpg ${FEATURES}; then
 	WEBSYNC_VERIFY_SIGNATURE=1
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
@@ -196,6 +210,13 @@ check_file_signature() {
 						break
 					fi
 				done <<< "${gnupg_status}"
+			fi
+			if [[ ${r} -ne 0 ]]; then
+				# Exit early since it's typically inappropriate to
+				# try other mirrors in this case (it may indicate
+				# a keyring problem).
+				eecho "signature verification failed"
+				exit 1
 			fi
 		else
 			eecho "cannot check signature: gpg binary not found"

@@ -24,11 +24,9 @@ except KeyboardInterrupt:
 import os
 import types
 
-# for an explanation on this logic, see pym/_emerge/__init__.py
-# this differs from master, we need to revisit this when we can install
-# using distutils, like master
-if os.environ.__contains__("PORTAGE_PYTHONPATH"):
-	pym_paths = [ os.environ["PORTAGE_PYTHONPATH"] ]
+if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), ".portage_not_installed")):
+	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib")]
+	sys.path.insert(0, pym_paths[0])
 else:
 	pym_paths = [ os.path.join(os.path.dirname(
 		os.path.dirname(os.path.realpath(__file__))), "pym") ]

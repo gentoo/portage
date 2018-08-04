@@ -89,7 +89,7 @@ Run against specific versions of python.
 $ %(prog)s --python-versions '2.7 3.3'
 
 Run just one unittest.
-$ %(prog)s pym/portage/tests/xpak/test_decodeint.py
+$ %(prog)s lib/portage/tests/xpak/test_decodeint.py
 """
 	parser = argparse.ArgumentParser(
 		description=__doc__,
@@ -133,7 +133,7 @@ def main(argv):
 		statuses = []
 		for ver in pyversions:
 			prog = get_python_executable(ver)
-			cmd = [prog, '-b', '-Wd', 'pym/portage/tests/runTests.py'] + args
+			cmd = [prog, '-b', '-Wd', 'lib/portage/tests/runTests.py'] + args
 			if os.access(prog, os.X_OK):
 				print('%sTesting with Python %s...%s' %
 					(colors.GOOD, ver, colors.NORMAL))

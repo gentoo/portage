@@ -26,6 +26,7 @@ qahelp:
         badinexp: "User-visible ebuilds with unsatisfied dependencies (matched against *visible* ebuilds) in experimental arch"
         badmaskedinexp: "Masked ebuilds with unsatisfied dependencies (matched against *all* ebuilds) in experimental arch"
         badtilde: "Uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)"
+        equalsversion: "Suspicious =-dependency with a specific version and no rev. Please either use ~ if any revision is acceptable, or append -r0 to silence the warning."
         missingslot: "RDEPEND matches more than one SLOT but does not specify a slot and/or use the := or :* slot operator"
         perlcore: "This ebuild directly depends on a package in perl-core; it should use the corresponding virtual instead."
         syntax: "Syntax error in dependency string (usually an extra/missing space/parenthesis)"
@@ -82,6 +83,7 @@ qahelp:
         missing: "Ebuilds that have a missing or empty KEYWORDS variable"
         stable: "Ebuilds that have been added directly with stable KEYWORDS"
         stupid: "Ebuilds that use KEYWORDS=-* instead of package.mask"
+        unsorted: "Ebuilds that contain KEYWORDS which are not sorted alphabetically."
     LICENSE:
         deprecated: "This ebuild is listing a deprecated license."
         invalid: "This ebuild is listing a license that doesnt exist in portages license/ dir."

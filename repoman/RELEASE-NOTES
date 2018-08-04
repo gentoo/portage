@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.10
+==================================
+* Bug Fixes:
+    - Bug 649482 warn about = deps without revision
+    - Bug 660982 populate implicit IUSE for empty profile
+
+
 repoman-2.3.8
 ==================================
 * The --experimental-repository-modules=<y|n> option enables a new

@@ -612,9 +612,9 @@ class test(Command):
 
 
 def find_packages():
-	for dirpath, _dirnames, filenames in os.walk('pym'):
+	for dirpath, _dirnames, filenames in os.walk('lib'):
 		if '__init__.py' in filenames:
-			yield os.path.relpath(dirpath, 'pym')
+			yield os.path.relpath(dirpath, 'lib')
 
 
 def find_scripts():
@@ -662,12 +662,12 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.40',
+	version = '2.3.44',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 
-	package_dir = {'': 'pym'},
+	package_dir = {'': 'lib'},
 	packages = list(find_packages()),
 	# something to cheat build & install commands
 	scripts = list(find_scripts()),

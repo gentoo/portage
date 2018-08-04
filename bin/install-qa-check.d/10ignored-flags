@@ -26,7 +26,7 @@ ignored_flag_check() {
 	[[ "${FFLAGS}" == *-frecord-gcc-switches* ]] && \
 	[[ "${FCFLAGS}" == *-frecord-gcc-switches* ]] ; then
 		rm -f "${T}"/scanelf-ignored-CFLAGS.log
-		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED}") ; do
+		for x in $(scanelf -qyRF '#k%p' -k '!.GCC.command.line' "${ED%/}/") ; do
 			# Separate out file types that are known to support
 			# .GCC.command.line sections, using the `file` command
 			# similar to how prepstrip uses it.
@@ -66,8 +66,8 @@ ignored_flag_check() {
 	# Check for files built without respecting LDFLAGS
 	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
 		! has binchecks ${RESTRICT} ; then
-		f=$(LC_ALL=C comm -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED}" | LC_ALL=C sort) \
-			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED}" | LC_ALL=C sort))
+		f=$(LC_ALL=C comm -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
+			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
 			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then

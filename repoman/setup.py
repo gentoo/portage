@@ -147,11 +147,6 @@ class x_clean(clean):
 			print('removing %s symlink' % repr(conf_dir))
 			os.unlink(conf_dir)
 
-		pym_dir = os.path.join(top_dir, 'pym')
-		if os.path.islink(pym_dir):
-			print('removing %s sylink' % repr(pym_dir))
-			os.unlink(pym_dir)
-
 		pni_file = os.path.join(top_dir, '.repoman_not_installed')
 		if os.path.exists(pni_file):
 			print('removing %s' % repr(pni_file))
@@ -397,17 +392,6 @@ class build_tests(x_build_scripts_custom):
 		print('Symlinking %s -> %s' % (conf_dir, conf_src))
 		os.symlink(conf_src, conf_dir)
 
-		# symlink 'pym' directory
-		pym_dir = os.path.join(self.top_dir, 'pym')
-		if os.path.exists(pym_dir):
-			if not os.path.islink(pym_dir):
-				raise SystemError('%s exists and is not a symlink (collision)'
-					% repr(pym_dir))
-			os.unlink(pym_dir)
-		pym_src = 'lib'
-		print('Symlinking %s -> %s' % (pym_dir, pym_src))
-		os.symlink(pym_src, pym_dir)
-
 		# create $build_lib/../.repoman_not_installed
 		# to enable proper paths in tests
 		with open(os.path.join(self.top_dir, '.repoman_not_installed'), 'w'):
@@ -435,9 +419,9 @@ class test(Command):
 
 
 def find_packages():
-	for dirpath, _dirnames, filenames in os.walk('pym'):
+	for dirpath, _dirnames, filenames in os.walk('lib'):
 		if '__init__.py' in filenames:
-			yield os.path.relpath(dirpath, 'pym')
+			yield os.path.relpath(dirpath, 'lib')
 
 
 def find_scripts():
@@ -466,12 +450,12 @@ def get_manpages():
 
 setup(
 	name = 'repoman',
-	version = '2.3.9',
+	version = '2.3.10',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 
-	package_dir = {'': 'pym'},
+	package_dir = {'': 'lib'},
 	packages = list(find_packages()),
 	# something to cheat build & install commands
 	scripts = list(find_scripts()),

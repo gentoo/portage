@@ -4,7 +4,15 @@
 # Author: Brian Harring <ferringb@gentoo.org>, karltk@gentoo.org originally.
 # Rewritten from the old, Perl-based emerge-webrsync script
 
+# repos.conf configuration for use with emerge --sync and emaint sync
+# using keyring from app-crypt/openpgp-keys-gentoo-release:
+# [gentoo]
+# sync-type = webrsync
+# sync-webrsync-delta = true
+# sync-webrsync-verify-signature = true
+# sync-openpgp-key-path = /usr/share/openpgp-keys/gentoo-release.asc
 #
+# Alternative (legacy) PORTAGE_GPG_DIR configuration:
 # gpg key import
 # KEY_ID=0x96D8BF6D
 # gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
@@ -106,7 +114,14 @@ if [[ ! -d $STATE_DIR ]]; then
 	exit -2
 fi
 
-if has webrsync-gpg ${FEATURES} ; then
+if has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature | \
+	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
+	if [[ ! -d ${PORTAGE_GPG_DIR} ]]; then
+		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
+		exit 1
+	fi
+	WEBSYNC_VERIFY_SIGNATURE=1
+elif has webrsync-gpg ${FEATURES}; then
 	WEBSYNC_VERIFY_SIGNATURE=1
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
@@ -283,6 +298,13 @@ check_file_signature() {
 					fi
 				done <<< "${gnupg_status}"
 			fi
+			if [[ ${r} -ne 0 ]]; then
+				# Exit early since it's typically inappropriate to
+				# try other mirrors in this case (it may indicate
+				# a keyring problem).
+				eecho "signature verification failed"
+				exit 1
+			fi
 		else
 			eecho "cannot check signature: gpg binary not found"
 			exit 1
@@ -320,7 +342,7 @@ sync_local() {
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
 		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
-		if ! tarsync $(__vecho -v) -s 1 ${chown_opts} \
+		if ! tarsync $(__vecho -v 2>&1) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
