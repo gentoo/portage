@@ -128,7 +128,7 @@ elf_check() {
 		eqawarn
 		eqawarn " Please include the following list of files in your report:"
 		eqawarn " Note: Bugs should be filed for the respective maintainers"
-		eqawarn " of the package in question and not hardened@g.o."
+		eqawarn " of the package in question and not hardened@gentoo.org."
 		eqawarn "${f}"
 		__vecho -ne '\n'
 		die_msg="${die_msg} execstacks"
