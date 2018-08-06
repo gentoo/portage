@@ -4007,7 +4007,7 @@ class depgraph(object):
 				pkgdir = os.path.dirname(ebuild_path)
 				tree_root = os.path.dirname(os.path.dirname(pkgdir))
 				cp = pkgdir[len(tree_root)+1:]
-				error_msg = ("\n\n!!! '%s' is not in a valid portage tree "
+				error_msg = ("\n\n!!! '%s' is not in a valid ebuild repository "
 					"hierarchy or does not exist\n") % x
 				if not portage.isvalidatom(cp):
 					writemsg(error_msg, noiselevel=-1)

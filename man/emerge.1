@@ -22,7 +22,7 @@ emerge \- Command\-line interface to the Portage system
 \fBemerge\fR is the definitive command\-line interface to the Portage
 system.  It is primarily used for installing packages, and \fBemerge\fR
 can automatically handle any dependencies that the desired package has.
-\fBemerge\fR can also update the \fBportage tree\fR, making new and
+\fBemerge\fR can also update the \fBebuild repository\fR, making new and
 updated packages available.  \fBemerge\fR gracefully handles updating
 installed packages to newer releases as well.  It handles both source
 and binary packages, and it can be used to create binary packages for
@@ -198,7 +198,7 @@ the emerge output of the next \-\-depclean run carefully! Use
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all ebuilds in the
-portage tree.  The cache is used to speed up searches and the building of
+repository.  The cache is used to speed up searches and the building of
 dependency trees.  This command is not recommended for rsync users as rsync
 updates the cache using server\-side caches.  If you do not know the
 differences between a 'rsync user' and some other user, then you are a 'rsync
@@ -227,7 +227,7 @@ explicitly discarded by running `emaint \-\-fix cleanresume` (see
 \fBemaint\fR(1)).
 .TP
 .BR \-\-search ", " \-s
-Searches for matches of the supplied string in the portage tree.
+Searches for matches of the supplied string in the ebuild repository.
 By default emerge uses a case-insensitive simple search, but you can
 enable a regular expression search by prefixing the search string with %.
 For example, \fBemerge \-\-search "%^kde"\fR searches for any package whose
@@ -264,7 +264,7 @@ more information about sync operations.
 
 \fBNOTE:\fR
 The \fBemerge\-webrsync\fR program will download the entire
-portage tree as a tarball, which is much faster than emerge
+ebuild repository as a tarball, which is much faster than emerge
 \-\-sync for first time syncs.
 
 .TP
@@ -1230,7 +1230,7 @@ You should almost always precede any package install or update attempt with a
 \fB\-\-pretend\fR install or update.  This lets you see how much will be
 done, and shows you any blocking packages that you will have to rectify.
 This goes doubly so for the \fBsystem\fR and \fBworld\fR sets, which can
-update a large number of packages if the portage tree has been particularly
+update a large number of packages if the ebuild repository has been particularly
 active.
 .LP
 You also want to typically use \fB\-\-update\fR, which ignores packages that

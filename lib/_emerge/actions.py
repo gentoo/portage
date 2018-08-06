@@ -985,7 +985,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg.append("")
 			msg.extend(textwrap.wrap(
 				"Also, note that it may be necessary to manually uninstall " + \
-				"packages that no longer exist in the portage tree, since " + \
+				"packages that no longer exist in the repository, since " + \
 				"it may not be possible to satisfy their dependencies.", 65
 			))
 			if action == "prune":

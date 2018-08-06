@@ -67,7 +67,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 		#    unknown value, so just record an unslotted atom.
 		#
 		# 2) SLOT comes from an installed package and there is no
-		#    matching SLOT in the portage tree.
+		#    matching SLOT in the ebuild repository.
 		#
 		# Make sure that the slot atom is available in either the
 		# portdb or the vardb, since otherwise the user certainly

@@ -1124,7 +1124,7 @@ class config(object):
 		archlist = self.archlist()
 		if not archlist:
 			writemsg(_("--- 'profiles/arch.list' is empty or "
-				"not available. Empty portage tree?\n"), noiselevel=1)
+				"not available. Empty ebuild repository?\n"), noiselevel=1)
 		else:
 			for group in groups:
 				if group not in archlist and \

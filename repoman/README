@@ -3,7 +3,7 @@ About Portage
 
 Portage is a package management system based on ports collections. The
 Package Manager Specification Project (PMS) standardises and documents
-the behaviour of Portage so that the Portage tree can be used by other
+the behaviour of Portage so that ebuild repositories can be used by other
 package managers.
 
 

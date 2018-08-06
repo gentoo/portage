@@ -393,7 +393,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
 	By default, this will scan all repos and check for new items that have
 	appeared since the last scan.
 
-	@param portdb: a portage tree database
+	@param portdb: an ebuild database
 	@type portdb: pordbapi
 	@param vardb: an installed package database
 	@type vardb: vardbapi

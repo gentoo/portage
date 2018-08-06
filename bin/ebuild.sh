@@ -279,7 +279,7 @@ inherit() {
 		then
 			# This is disabled in the *rm phases because they frequently give
 			# false alarms due to INHERITED in /var/db/pkg being outdated
-			# in comparison the the eclasses from the portage tree. It's
+			# in comparison to the eclasses from the ebuild repository. It's
 			# disabled for nofetch, since that can be called by repoman and
 			# that triggers bug #407449 due to repoman not exporting
 			# non-essential variables such as INHERITED.

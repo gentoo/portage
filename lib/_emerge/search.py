@@ -104,7 +104,7 @@ class search(object):
 		for db in self._dbs:
 			if db is not self._portdb:
 				# We don't want findname to return anything
-				# unless it's an ebuild in a portage tree.
+				# unless it's an ebuild in a repository.
 				# Otherwise, it's already built and we don't
 				# care about it.
 				continue

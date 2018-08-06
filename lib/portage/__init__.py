@@ -133,7 +133,7 @@ except ImportError as e:
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
 	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the\n")
-	sys.stderr.write("!!! portage tree under '/usr/portage/sys-apps/portage/files/' (default).\n")
+	sys.stderr.write("!!! ebuild repository under '/usr/portage/sys-apps/portage/files/' (default).\n")
 	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
 	sys.stderr.write("    "+str(e)+"\n\n")

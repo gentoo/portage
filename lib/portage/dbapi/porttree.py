@@ -239,7 +239,7 @@ class portdbapi(dbapi):
 		# This is used as sanity check for aux_get(). If there is no
 		# root eclass dir, we assume that PORTDIR is invalid or
 		# missing. This check allows aux_get() to detect a missing
-		# portage tree and return early by raising a KeyError.
+		# repository and return early by raising a KeyError.
 		self._have_root_eclass_dir = os.path.isdir(
 			os.path.join(self.settings.repositories.mainRepoLocation(), "eclass"))
 

@@ -13,7 +13,7 @@
 # very extensive set of USE variables described in our USE variable HOWTO at
 # https://wiki.gentoo.org/wiki/Handbook:X86/Working/USE
 #
-# The available list of use flags with descriptions is in your portage tree.
+# The available list of use flags with descriptions is in the ebuild repository.
 # Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
 #
 # 'ufed' is an ncurses/dialog interface available in portage to make handling
@@ -102,7 +102,7 @@
 #     the application being installed.
 #PORTAGE_TMPDIR=/var/tmp
 #
-# PORTDIR is the location of the portage tree. This is the repository
+# PORTDIR is the location of the ebuild repository. This is the repository
 #     for all profile information as well as all ebuilds. If you change
 #     this, you must update your /etc/portage/make.profile symlink accordingly.
 #     ***Warning***
@@ -193,7 +193,7 @@
 # Synchronizing Portage
 # =====================
 #
-# Each of these settings affects how Gentoo synchronizes your Portage tree.
+# Each of these settings affects how Gentoo synchronizes the ebuild repository.
 # Synchronization is handled by rsync and these settings allow some control
 # over how it is done.
 #
@@ -220,7 +220,7 @@
 #SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 #
 # PORTAGE_RSYNC_RETRIES sets the number of times portage will attempt to retrieve
-#     a current portage tree before it exits with an error. This allows
+#     a current ebuild repository before it exits with an error. This allows
 #     for a more successful retrieval without user intervention most times.
 #     If set to a negative number, then retry until all possible addresses are
 #     exhausted.
