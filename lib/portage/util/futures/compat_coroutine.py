@@ -8,6 +8,17 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:asyncio',
 )
 
+# A marker for iscoroutinefunction.
+_is_coroutine = object()
+
+
+def _iscoroutinefunction(func):
+	"""
+	Return True if func is a decorated coroutine function
+	created with the coroutine decorator for this module.
+	"""
+	return getattr(func, '_is_coroutine', None) is _is_coroutine
+
 
 def coroutine(generator_func):
 	"""
@@ -34,6 +45,7 @@ def coroutine(generator_func):
 	@functools.wraps(generator_func)
 	def wrapped(*args, **kwargs):
 		return _generator_future(generator_func, *args, **kwargs)
+	wrapped._is_coroutine = _is_coroutine
 	return wrapped
 
 
