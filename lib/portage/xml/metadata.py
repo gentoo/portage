@@ -1,13 +1,13 @@
-# Copyright 2010-2017 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
 
 	Example usage:
 		>>> from portage.xml.metadata import MetaDataXML
-		>>> pkg_md = MetaDataXML('/usr/portage/app-misc/gourmet/metadata.xml')
+		>>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
 		>>> pkg_md
-		<MetaDataXML '/usr/portage/app-misc/gourmet/metadata.xml'>
+		<MetaDataXML '/var/db/repos/gentoo/app-misc/gourmet/metadata.xml'>
 		>>> pkg_md.herds()
 		['no-herd']
 		>>> for maint in pkg_md.maintainers():

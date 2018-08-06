@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Oct 2017" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Apr 2019" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -530,7 +530,8 @@ being submitted for inclusion, it must have ~arch set for architectures
 where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
 unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
 line, or in \fBmake.conf\fR(5)) For an authoritative list please review
-/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
+/var/db/repos/gentoo/profiles/arch.list. Please keep this list in
+alphabetical order.
 .TP
 .B SLOT
 This sets the SLOT for packages that may need to have multiple versions
@@ -553,8 +554,8 @@ usage.
 .B LICENSE
 This should be a space delimited list of licenses that the package falls
 under.  This \fB_must_\fR be set to a matching license in
-/usr/portage/licenses/. If the license does not exist in portage yet, you
-must add it first.
+/var/db/repos/gentoo/licenses/. If the license does not exist in the repository
+yet, you must add it first.
 .TP
 .B IUSE
 This should be a list of any and all USE flags that are leveraged within

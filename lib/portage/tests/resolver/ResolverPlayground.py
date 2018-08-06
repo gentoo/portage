@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import permutations
@@ -399,7 +399,7 @@ class ResolverPlayground(object):
 					f.write("masters =\n")
 
 			if repo == "test_repo":
-				#Create a minimal profile in /usr/portage
+				#Create a minimal profile in /var/db/repos/gentoo
 				sub_profile_dir = os.path.join(profile_dir, "default", "linux", "x86", "test_profile")
 				os.makedirs(sub_profile_dir)
 

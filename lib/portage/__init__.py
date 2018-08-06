@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -132,8 +132,8 @@ except ImportError as e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
-	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the\n")
-	sys.stderr.write("!!! ebuild repository under '/usr/portage/sys-apps/portage/files/' (default).\n")
+	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the ebuild\n")
+	sys.stderr.write("!!! repository under '/var/db/repos/gentoo/sys-apps/portage/files/' (default).\n")
 	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
 	sys.stderr.write("    "+str(e)+"\n\n")

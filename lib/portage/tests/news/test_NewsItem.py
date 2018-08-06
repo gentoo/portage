@@ -1,5 +1,5 @@
 # test_NewsItem.py -- Portage Unit Testing Functionality
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
@@ -43,7 +43,7 @@ against YourSQL:
 The revdep-rebuild tool is provided by app-portage/gentoolkit.
 """
 	def setUp(self):
-		self.profile = "/usr/portage/profiles/default-linux/x86/2007.0/"
+		self.profile = "/var/db/repos/gentoo/profiles/default-linux/x86/2007.0/"
 		self.keywords = "x86"
 		# Use fake/test dbapi to avoid slow tests
 		self.vardb = testdbapi()
