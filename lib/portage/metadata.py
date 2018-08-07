@@ -50,8 +50,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 			src_db = portdb._create_pregen_cache(path)
 
 		if src_db is not None:
-			porttrees_data.append(TreeData(portdb.auxdb[path],
-				portdb.repositories.get_repo_for_location(path).eclass_db, path, src_db))
+			eclass_db = portdb.repositories.get_repo_for_location(path).eclass_db
+			# Update eclass data which may be stale after sync.
+			eclass_db.update_eclasses()
+			porttrees_data.append(TreeData(portdb.auxdb[path], eclass_db, path, src_db))
 
 	porttrees = [tree_data.path for tree_data in porttrees_data]
 
