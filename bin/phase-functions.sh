@@ -100,11 +100,12 @@ __filter_readonly_variables() {
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
+	# Filter SYSROOT unconditionally. It is propagated in every EAPI
+	# because it was used unofficially before EAPI 7. See bug #661006.
+	filtered_vars+=" SYSROOT"
+
 	if ___eapi_has_BROOT; then
 		filtered_vars+=" BROOT"
-	fi
-	if ___eapi_has_SYSROOT; then
-		filtered_vars+=" SYSROOT"
 	fi
 	# Don't filter/interfere with prefix variables unless they are
 	# supported by the current EAPI.
