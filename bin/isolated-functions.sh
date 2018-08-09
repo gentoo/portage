@@ -448,7 +448,11 @@ fi
 if [[ -z ${XARGS} ]] ; then
 	case ${USERLAND} in
 	BSD)
-		export XARGS="xargs"
+		if type -P gxargs > /dev/null; then
+			export XARGS="gxargs -r"
+		else
+			export XARGS="xargs"
+		fi
 		;;
 	*)
 		export XARGS="xargs -r"
