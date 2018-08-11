@@ -1457,6 +1457,7 @@ class config(object):
 		cp = cpv_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
+		pkginternaluse_list = []
 		feature_use = []
 		iuse = ""
 		pkg_configdict = self.configdict["pkg"]
@@ -1513,13 +1514,12 @@ class config(object):
 				cpv_slot = self.mycpv
 			else:
 				cpv_slot = pkg
-			pkginternaluse = []
 			for x in iuse.split():
 				if x.startswith("+"):
-					pkginternaluse.append(x[1:])
+					pkginternaluse_list.append(x[1:])
 				elif x.startswith("-"):
-					pkginternaluse.append(x)
-			pkginternaluse = " ".join(pkginternaluse)
+					pkginternaluse_list.append(x)
+			pkginternaluse = " ".join(pkginternaluse_list)
 
 		eapi_attrs = _get_eapi_attrs(eapi)
 
@@ -1596,6 +1596,9 @@ class config(object):
 			# regenerate() call in order to ensure that self.features
 			# is accurate.
 			has_changed = True
+			# Prevent stale features USE from corrupting the evaluation
+			# of USE conditional RESTRICT.
+			self.configdict["features"]["USE"] = ""
 
 		self._penv = []
 		cpdict = self._penvdict.get(cp)
@@ -1675,24 +1678,33 @@ class config(object):
 					restrict = use_reduce(raw_restrict,
 						uselist=built_use, flat=True)
 				else:
-					# Use matchnone=True to ignore USE conditional parts
-					# of RESTRICT, since we want to know whether to mask
-					# the "test" flag _before_ we know the USE values
-					# that would be needed to evaluate the USE
-					# conditionals (see bug #273272).
 					restrict = use_reduce(raw_restrict,
-						matchnone=True, flat=True)
+						uselist=frozenset(x for x in self['USE'].split()
+						if x in explicit_iuse or iuse_implicit_match(x)),
+						flat=True)
 			except PortageException:
 				pass
 			else:
 				restrict_test = "test" in restrict
 
-		if not restrict_test and ("test" in explicit_iuse or iuse_implicit_match("test")):
-			if "test" in self.features:
-				feature_use.append("test")
+		pkginternaluse_before = pkginternaluse
+		if "test" in self.features:
+			# This is independent of IUSE and RESTRICT, so that the same
+			# value can be shared between packages with different settings,
+			# which is important when evaluating USE conditional RESTRICT
+			# above.
+			feature_use.append("test")
+
+			if restrict_test:
+				# Handle it like IUSE="-test", since features USE is
+				# independent of RESTRICT.
+				pkginternaluse_list.append("-test")
+				pkginternaluse = " ".join(pkginternaluse_list)
+				self.configdict["pkginternal"]["USE"] = pkginternaluse
 
 		feature_use = " ".join(feature_use)
-		if feature_use != self.configdict["features"].get("USE", ""):
+		if (feature_use != self.configdict["features"].get("USE", "") or
+			pkginternaluse is not pkginternaluse_before):
 			self.configdict["features"]["USE"] = feature_use
 			# TODO: can we avoid that?
 			self.reset(keeping_pkg=1)
