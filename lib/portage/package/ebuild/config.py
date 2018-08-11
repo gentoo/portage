@@ -1663,7 +1663,31 @@ class config(object):
 		else:
 			iuse_implicit_match = self._iuse_implicit_match
 
-		if "test" in explicit_iuse or iuse_implicit_match("test"):
+		if pkg is None:
+			raw_restrict = pkg_configdict.get("RESTRICT")
+		else:
+			raw_restrict = pkg._raw_metadata["RESTRICT"]
+
+		restrict_test = False
+		if raw_restrict:
+			try:
+				if built_use is not None:
+					restrict = use_reduce(raw_restrict,
+						uselist=built_use, flat=True)
+				else:
+					# Use matchnone=True to ignore USE conditional parts
+					# of RESTRICT, since we want to know whether to mask
+					# the "test" flag _before_ we know the USE values
+					# that would be needed to evaluate the USE
+					# conditionals (see bug #273272).
+					restrict = use_reduce(raw_restrict,
+						matchnone=True, flat=True)
+			except PortageException:
+				pass
+			else:
+				restrict_test = "test" in restrict
+
+		if not restrict_test and ("test" in explicit_iuse or iuse_implicit_match("test")):
 			if "test" in self.features:
 				feature_use.append("test")
 
@@ -1720,30 +1744,6 @@ class config(object):
 		# PORTAGE_IUSE is not always needed so it's lazily evaluated.
 		self.configdict["env"].addLazySingleton(
 			"PORTAGE_IUSE", _lazy_iuse_regex, portage_iuse)
-
-		if pkg is None:
-			raw_restrict = pkg_configdict.get("RESTRICT")
-		else:
-			raw_restrict = pkg._raw_metadata["RESTRICT"]
-
-		restrict_test = False
-		if raw_restrict:
-			try:
-				if built_use is not None:
-					restrict = use_reduce(raw_restrict,
-						uselist=built_use, flat=True)
-				else:
-					# Use matchnone=True to ignore USE conditional parts
-					# of RESTRICT, since we want to know whether to mask
-					# the "test" flag _before_ we know the USE values
-					# that would be needed to evaluate the USE
-					# conditionals (see bug #273272).
-					restrict = use_reduce(raw_restrict,
-						matchnone=True, flat=True)
-			except PortageException:
-				pass
-			else:
-				restrict_test = "test" in restrict
 
 		ebuild_force_test = not restrict_test and \
 			self.get("EBUILD_FORCE_TEST") == "1"
