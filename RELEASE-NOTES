@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.46
+==================================
+* Bug Fixes:
+    - Bug 630292 use gxargs for USERLAND=BSD
+    - Bug 661006 SYSROOT InvalidLocation exception for binary package
+    - Bug 663278 map RESTRICT=test to USE=-test
+
+
 portage-2.3.45
 ==================================
 * Bug Fixes:
