@@ -6,7 +6,10 @@ import json
 import os
 import stat
 
-import yaml
+try:
+	import yaml
+except ImportError:
+	yaml = None
 
 try:
 	FileNotFoundError
@@ -73,6 +76,9 @@ def _yaml_load(filename):
 	Load filename as YAML and return a dict. Raise ConfigError if
 	it fails to load.
 	"""
+	if yaml is None:
+		raise ImportError('Please install pyyaml in order to read yaml files')
+
 	with open(filename, 'rt') as f:
 		try:
 			return yaml.safe_load(f)
