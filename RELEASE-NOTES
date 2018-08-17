@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.47
+==================================
+* Bug Fixes:
+    - Bug 636674 add make.conf.example for arm
+    - Bug 663848 fix bugs in FEATURES=test to USE=test mapping
+    - Bug 663904 map empty ROOT environment variable to /
+
+
 portage-2.3.46
 ==================================
 * Bug Fixes:
