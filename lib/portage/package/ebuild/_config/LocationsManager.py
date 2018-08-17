@@ -60,7 +60,7 @@ class LocationsManager(object):
 			self.config_root = portage.const.EPREFIX + os.sep
 
 		self.config_root = normalize_path(os.path.abspath(
-			self.config_root)).rstrip(os.path.sep) + os.path.sep
+			self.config_root or os.sep)).rstrip(os.sep) + os.sep
 
 		self._check_var_directory("PORTAGE_CONFIGROOT", self.config_root)
 		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
@@ -304,8 +304,7 @@ class LocationsManager(object):
 			self.target_root = root_overwrite
 			if not self.target_root.strip():
 				self.target_root = None
-		if self.target_root is None:
-			self.target_root = "/"
+		self.target_root = self.target_root or os.sep
 
 		self.target_root = normalize_path(os.path.abspath(
 			self.target_root)).rstrip(os.path.sep) + os.path.sep
