@@ -259,6 +259,7 @@ class config(object):
 			self.packages = clone.packages
 			self.repositories = clone.repositories
 			self.unpack_dependencies = clone.unpack_dependencies
+			self._default_features_use = clone._default_features_use
 			self._iuse_effective = clone._iuse_effective
 			self._iuse_implicit_match = clone._iuse_implicit_match
 			self._non_user_variables = clone._non_user_variables
@@ -961,6 +962,14 @@ class config(object):
 
 			# initialize self.features
 			self.regenerate()
+			feature_use = []
+			if "test" in self.features:
+				feature_use.append("test")
+			self.configdict["features"]["USE"] = self._default_features_use = " ".join(feature_use)
+			if feature_use:
+				# Regenerate USE so that the initial "test" flag state is
+				# correct for evaluation of !test? conditionals in RESTRICT.
+				self.regenerate()
 
 			if unprivileged:
 				self.features.add('unprivileged')
@@ -1296,7 +1305,7 @@ class config(object):
 			del self._penv[:]
 			self.configdict["pkg"].clear()
 			self.configdict["pkginternal"].clear()
-			self.configdict["features"].clear()
+			self.configdict["features"]["USE"] = self._default_features_use
 			self.configdict["repo"].clear()
 			self.configdict["defaults"]["USE"] = \
 				" ".join(self.make_defaults_use)
@@ -1598,7 +1607,7 @@ class config(object):
 			has_changed = True
 			# Prevent stale features USE from corrupting the evaluation
 			# of USE conditional RESTRICT.
-			self.configdict["features"]["USE"] = ""
+			self.configdict["features"]["USE"] = self._default_features_use
 
 		self._penv = []
 		cpdict = self._penvdict.get(cp)
