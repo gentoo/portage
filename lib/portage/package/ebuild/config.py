@@ -1666,7 +1666,21 @@ class config(object):
 			has_changed = True
 
 		if has_changed:
+			# This can modify self.features due to package.env settings.
 			self.reset(keeping_pkg=1)
+
+		if "test" in self.features:
+			# This is independent of IUSE and RESTRICT, so that the same
+			# value can be shared between packages with different settings,
+			# which is important when evaluating USE conditional RESTRICT.
+			feature_use.append("test")
+
+		feature_use = " ".join(feature_use)
+		if feature_use != self.configdict["features"]["USE"]:
+			# Regenerate USE for evaluation of conditional RESTRICT.
+			self.configdict["features"]["USE"] = feature_use
+			self.reset(keeping_pkg=1)
+			has_changed = True
 
 		if explicit_iuse is None:
 			explicit_iuse = frozenset(x.lstrip("+-") for x in iuse.split())
@@ -1696,25 +1710,12 @@ class config(object):
 			else:
 				restrict_test = "test" in restrict
 
-		pkginternaluse_before = pkginternaluse
-		if "test" in self.features:
-			# This is independent of IUSE and RESTRICT, so that the same
-			# value can be shared between packages with different settings,
-			# which is important when evaluating USE conditional RESTRICT
-			# above.
-			feature_use.append("test")
-
-			if restrict_test:
-				# Handle it like IUSE="-test", since features USE is
-				# independent of RESTRICT.
-				pkginternaluse_list.append("-test")
-				pkginternaluse = " ".join(pkginternaluse_list)
-				self.configdict["pkginternal"]["USE"] = pkginternaluse
-
-		feature_use = " ".join(feature_use)
-		if (feature_use != self.configdict["features"].get("USE", "") or
-			pkginternaluse is not pkginternaluse_before):
-			self.configdict["features"]["USE"] = feature_use
+		if restrict_test and "test" in self.features:
+			# Handle it like IUSE="-test", since features USE is
+			# independent of RESTRICT.
+			pkginternaluse_list.append("-test")
+			pkginternaluse = " ".join(pkginternaluse_list)
+			self.configdict["pkginternal"]["USE"] = pkginternaluse
 			# TODO: can we avoid that?
 			self.reset(keeping_pkg=1)
 			has_changed = True
