@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.48
+==================================
+* Bug Fixes:
+    - Bug 664104 fix package.env conditional RESTRICT interaction
+
+
 portage-2.3.47
 ==================================
 * Bug Fixes:
