@@ -916,7 +916,12 @@ ___best_version_and_has_version_common() {
 				case ${root_arg} in
 					-r) root=${ROOT%/}/${EPREFIX#/} ;;
 					-d) root=${ESYSROOT} ;;
-					-b) root=${BROOT:-/} ;;
+					-b)
+						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} which is equivalent
+						# to BROOT, except BROOT is only defined in src_* phases.
+						root=/${PORTAGE_OVERRIDE_EPREFIX#/}
+						cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
+						;;
 				esac
 			else
 				case ${root_arg} in
