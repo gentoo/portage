@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.49
+==================================
+* Bug Fixes:
+    - Bug 665038 enable has/best_version -b in any phase for prefix
+
+
 portage-2.3.48
 ==================================
 * Bug Fixes:
