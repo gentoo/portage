@@ -102,6 +102,8 @@ class _GeneratorTask(object):
 				self._generator.throw(previous.exception())
 				future = next(self._generator)
 
+		except asyncio.CancelledError:
+			self._result.cancel()
 		except _CoroutineReturnValue as e:
 			if not self._result.cancelled():
 				self._result.set_result(e.result)

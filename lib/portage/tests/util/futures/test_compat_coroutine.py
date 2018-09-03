@@ -71,6 +71,10 @@ class CompatCoroutineTestCase(TestCase):
 			loop.run_until_complete, future)
 
 	def test_cancelled_future(self):
+		"""
+		When a coroutine raises CancelledError, the coroutine's
+		future is cancelled.
+		"""
 
 		@coroutine
 		def cancelled_future_coroutine(loop=None):
@@ -81,8 +85,8 @@ class CompatCoroutineTestCase(TestCase):
 				yield future
 
 		loop = asyncio.get_event_loop()
-		self.assertRaises(asyncio.CancelledError,
-			loop.run_until_complete, cancelled_future_coroutine(loop=loop))
+		future = loop.run_until_complete(asyncio.wait([cancelled_future_coroutine()]))[0].pop()
+		self.assertTrue(future.cancelled())
 
 	def test_yield_expression_result(self):
 		@coroutine
