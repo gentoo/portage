@@ -35,6 +35,16 @@ class SimpleRepomanTestCase(TestCase):
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
 			),
+			(
+				'2018',
+				'# Copyright 1999-2008 Gentoo Authors; Distributed under the GPL v2',
+				'# Copyright 1999-2018 Gentoo Authors; Distributed under the GPL v2',
+			),
+			(
+				'2018',
+				'# Copyright 2017 Gentoo Authors; Distributed under the GPL v2',
+				'# Copyright 2017-2018 Gentoo Authors; Distributed under the GPL v2',
+			),
 		)
 
 		for year, before, after in test_cases:
