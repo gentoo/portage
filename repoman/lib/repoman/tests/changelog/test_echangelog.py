@@ -30,7 +30,7 @@ class RepomanEchangelogTestCase(TestCase):
 		os.makedirs(self.pkgdir)
 
 		self.header_pkg = '# ChangeLog for %s/%s\n' % (self.cat, self.pkg)
-		self.header_copyright = '# Copyright 1999-%s Gentoo Foundation; Distributed under the GPL v2\n' % \
+		self.header_copyright = '# Copyright 1999-%s Gentoo Authors; Distributed under the GPL v2\n' % \
 			time.strftime('%Y', time.gmtime())
 		self.header_cvs = '# $Header: $\n'
 
