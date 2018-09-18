@@ -9,7 +9,8 @@ repoman_version: 2.3.3
 # configuration file for the LineCheck plugins run via the multicheck
 # scan module
 errors:
-    COPYRIGHT_ERROR: 'Invalid Gentoo Copyright on line: %d'
+    COPYRIGHT_ERROR: 'Invalid Copyright on line: %d'
+    COPYRIGHT_DATE_ERROR: 'No copyright for last modification date before line %d'
     LICENSE_ERROR: 'Invalid Gentoo/GPL License on line: %d'
     ID_HEADER_ERROR: 'Stale CVS header on line: %d'
     NO_BLANK_LINE_ERROR: 'Non-blank line after header on line: %d'
