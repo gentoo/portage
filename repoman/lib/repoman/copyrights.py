@@ -31,7 +31,7 @@ class _copyright_repl(object):
 			return matchobj.group(0)
 		else:
 			return matchobj.group(1) + matchobj.group(2) + \
-				b'-' + self.year + matchobj.group(3)
+				b'-' + self.year + b' Gentoo Authors'
 
 
 def update_copyright_year(year, line):
@@ -51,7 +51,7 @@ def update_copyright_year(year, line):
 	year = _unicode_encode(year)
 	line = _unicode_encode(line)
 
-	line = _copyright_re1.sub(br'\1-' + year + br'\2', line)
+	line = _copyright_re1.sub(br'\1-' + year + b' Gentoo Authors', line)
 	line = _copyright_re2.sub(_copyright_repl(year), line)
 	if not is_bytes:
 		line = _unicode_decode(line)
