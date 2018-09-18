@@ -15,9 +15,9 @@ from portage import util
 
 
 _copyright_re1 = \
-	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo Foundation)\b')
+	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo (Foundation|Authors))\b')
 _copyright_re2 = \
-	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo Foundation)\b')
+	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b')
 
 
 class _copyright_repl(object):
