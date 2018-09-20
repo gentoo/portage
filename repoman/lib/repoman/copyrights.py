@@ -67,6 +67,15 @@ def update_copyright(fn_path, year, pretend=False):
 	Files are read and written in binary mode, so that this function
 	will work correctly with files encoded in any character set, as
 	long as the copyright statements consist of plain ASCII.
+
+	@param fn_path: file path
+	@type str
+	@param year: current year
+	@type str
+	@param pretend: pretend mode
+	@type bool
+	@rtype: bool
+	@return: True if copyright update was needed, False otherwise
 	"""
 
 	try:
@@ -120,3 +129,4 @@ def update_copyright(fn_path, year, pretend=False):
 		else:
 			util.apply_stat_permissions(fn_path, fn_stat)
 	fn_hdl.close()
+	return difflines > 3

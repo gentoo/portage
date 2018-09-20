@@ -151,10 +151,17 @@ the whole commit message to abort.
 
 		# Update copyright for new and changed files
 		year = time.strftime('%Y', time.gmtime())
+		updated_copyright = []
 		for fn in chain(mynew, mychanged):
 			if fn.endswith('.diff') or fn.endswith('.patch'):
 				continue
-			update_copyright(fn, year, pretend=self.options.pretend)
+			if update_copyright(fn, year, pretend=self.options.pretend):
+				updated_copyright.append(fn)
+
+		if updated_copyright and not (
+			self.options.pretend or self.repo_settings.repo_config.thin_manifest):
+			for cp in sorted(self._vcs_files_to_cps(iter(updated_copyright))):
+				self._manifest_gen(cp)
 
 		myupdates, broken_changelog_manifests = self.changelogs(
 					myupdates, mymanifests, myremoved, mychanged, myautoadd,
@@ -230,6 +237,37 @@ the whole commit message to abort.
 			"\"If everyone were like you, I'd be out of business!\"\n")
 		return
 
+	def _vcs_files_to_cps(self, vcs_file_iter):
+		"""
+		Iterate over the given modified file paths returned from the vcs,
+		and return a frozenset containing category/pn strings for each
+		modified package.
+
+		@param vcs_file_iter: file paths from vcs module
+		@type iter
+		@rtype: frozenset
+		@return: category/pn strings for each package.
+		"""
+		return vcs_files_to_cps(
+			vcs_file_iter,
+			self.repo_settings.repodir,
+			self.scanner.repolevel,
+			self.scanner.reposplit,
+			self.scanner.categories)
+
+	def _manifest_gen(self, cp):
+		"""
+		Generate manifest for a cp.
+
+		@param cp: category/pn string
+		@type str
+		@rtype: bool
+		@return: True if successful, False otherwise
+		"""
+		self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, cp)
+		return not digestgen(
+			mysettings=self.repoman_settings,
+			myportdb=self.repo_settings.portdb)
 
 	def _suggest(self):
 		print()
