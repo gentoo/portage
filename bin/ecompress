@@ -139,8 +139,8 @@ fix_symlinks() {
 }
 
 export PORTAGE_COMPRESS PORTAGE_COMPRESS_FLAGS
-find "${ED}" -name '*.ecompress' -delete \
-	-exec "${PORTAGE_BIN_PATH}"/ecompress-file {} +
+find "${ED}" -name '*.ecompress' -delete -print0 |
+	___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
 ret=${?}
 
 fix_symlinks
