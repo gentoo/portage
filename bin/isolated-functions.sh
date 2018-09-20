@@ -460,6 +460,28 @@ if [[ -z ${XARGS} ]] ; then
 	esac
 fi
 
+___makeopts_jobs() {
+	# Copied from eutils.eclass:makeopts_jobs()
+	local jobs=$(echo " ${MAKEOPTS} " | \
+		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p')
+	echo ${jobs:-1}
+}
+
+# Run ${XARGS} in parallel for detected number of CPUs, if supported.
+# Passes all arguments to xargs, and returns its exit code
+___parallel_xargs() {
+	local chunksize=1 jobs xargs=( ${XARGS} )
+
+	if "${xargs[@]}" --help | grep -q -- --max-procs=; then
+		jobs=$(___makeopts_jobs)
+		if [[ ${jobs} -gt 1 ]]; then
+			xargs+=("--max-procs=${jobs}" -L "${chunksize}")
+		fi
+	fi
+
+	"${xargs[@]}" "${@}"
+}
+
 hasq() {
 	has $EBUILD_PHASE prerm postrm || eqawarn \
 		"QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
