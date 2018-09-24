@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.50
+==================================
+* Bug Fixes:
+    - Bug 662070 sync-rcu support for rsync
+    - Bug 666940 portdbapi: add async_xmatch method
+
+
 portage-2.3.49
 ==================================
 * Bug Fixes:
