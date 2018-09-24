@@ -1165,18 +1165,6 @@ class portdbapi(dbapi):
 				else:
 					myval = ""
 
-		elif level == "bestmatch-list":
-			#dep match -- find best match but restrict search to sublist
-			warnings.warn("The 'bestmatch-list' mode of "
-				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
-				DeprecationWarning, stacklevel=2)
-			myval = best(list(self._iter_match(mydep, mylist)))
-		elif level == "match-list":
-			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-			warnings.warn("The 'match-list' mode of "
-				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
-				DeprecationWarning, stacklevel=2)
-			myval = list(self._iter_match(mydep, mylist))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
