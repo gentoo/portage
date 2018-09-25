@@ -14,7 +14,6 @@ compress_file() {
 	set +f
 	mask_ext_re="^(${mask_ext_re:1})\$"
 	local filtered_args=()
-	local had_precompressed=
 	for x in "$@" ; do
 		[[ ${x##*.} =~ $mask_ext_re ]] && continue
 		[[ -s ${x} ]] || continue
@@ -23,28 +22,19 @@ compress_file() {
 		case ${x} in
 			*.gz|*.Z)
 				gunzip -f "${x}" || __helpers_die "gunzip failed"
-				x=${x%.*}
-				had_precompressed=1;;
+				x=${x%.*};;
 			*.bz2)
 				bunzip2 -f "${x}" || __helpers_die "bunzip2 failed"
-				x=${x%.bz2}
-				had_precompressed=1;;
+				x=${x%.bz2};;
 			*.lzma|*.xz)
 				unxz -f "${x}" || __helpers_die "unxz failed"
-				x=${x%.*}
-				had_precompressed=1;;
+				x=${x%.*};;
 		esac
 
 		filtered_args+=( "$x" )
 	done
 	[[ ${#filtered_args[@]} -eq 0 ]] && return 0
 	set -- "${filtered_args[@]}"
-
-	if [[ ${had_precompressed} ]]; then
-		eqawarn "One or more compressed files were found in docompress-ed directories."
-		eqawarn "Please fix the ebuild not to install compressed files (manpages,"
-		eqawarn "documentation) when automatic compression is used."
-	fi
 
 	# If a compressed version of the file already exists, simply
 	# delete it so that the compressor doesn't whine (bzip2 will
