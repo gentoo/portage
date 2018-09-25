@@ -48,9 +48,41 @@ while [[ $# -gt 0 ]] ; do
 			[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
 				find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
 
+			declare -A collisions
 			while IFS= read -d '' -r path; do
+				# detect the horrible posibility of the ebuild installing
+				# colliding compressed and/or uncompressed variants
+				# and fail hard (bug #667072)
+				#
+				# note: to save time, we need to do this only if there's
+				# at least one compressed file
+				case ${path} in
+					*.Z|*.gz|*.bz2|*.lzma|*.xz)
+						vpath=${path%.*}
+						for comp in '' .Z .gz .bz2 .lzma .xz; do
+							if [[ ${vpath}${comp} != ${path} && \
+									-e ${vpath}${comp} ]]; then
+								collisions[${path}]=1
+								collisions[${vpath}]=1
+								# ignore compressed variants in that case
+								continue 2
+							fi
+						done
+						;;
+				esac
+
 				>> "${path}.ecompress" || die
 			done < <(find "${find_args[@]}" -print0 || die)
+
+			if [[ ${#collisions[@]} -gt 0 ]]; then
+				eqawarn "Colliding files found by ecompress:"
+				eqawarn
+				for x in "${!collisions[@]}"; do
+					eqawarn "  ${x}"
+				done
+				eqawarn
+				eqawarn "Please remove the extraneous compressed variants."
+			fi
 		fi
 
 		exit 0
