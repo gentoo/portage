@@ -13,7 +13,7 @@ compress_file() {
 	done
 	set +f
 	mask_ext_re="^(${mask_ext_re:1})\$"
-	local filtered_args=()
+	local -A filtered_args
 	local had_precompressed=
 	for x in "$@" ; do
 		[[ ${x##*.} =~ $mask_ext_re ]] && continue
@@ -35,10 +35,10 @@ compress_file() {
 				had_precompressed=1;;
 		esac
 
-		filtered_args+=( "$x" )
+		filtered_args[${x}]=
 	done
 	[[ ${#filtered_args[@]} -eq 0 ]] && return 0
-	set -- "${filtered_args[@]}"
+	set -- "${!filtered_args[@]}"
 
 	if [[ ${had_precompressed} ]]; then
 		eqawarn "One or more compressed files were found in docompress-ed directories."
