@@ -60,6 +60,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
 		# Use  rsync --link-dest to hardlink a files into self._update_location,
 		# since cp -l is not portable.
 		yield self._check_call(['rsync', '-a', '--link-dest', self._user_location,
+			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
 			'--exclude', '/{}'.format(os.path.basename(update_location)),
 			self._user_location + '/', update_location + '/'])
 
@@ -78,6 +79,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
 		update_location = self.current_update
 		self._update_location = None
 		yield self._check_call(['rsync', '-a', '--delete',
+			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
 			'--exclude', '/{}'.format(os.path.basename(update_location)),
 			update_location + '/', self._user_location + '/'])
 
