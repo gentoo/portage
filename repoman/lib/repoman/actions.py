@@ -441,9 +441,6 @@ the whole commit message to abort.
 					bug = urlunsplit(('https',) + purl[1:])
 			commit_footer += "\n%s: %s" % (tag, bug)
 
-		if dco_sob:
-			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
-
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
 			commit_footer += "\nPackage-Manager: Portage-%s, Repoman-%s" % (
@@ -468,6 +465,10 @@ the whole commit message to abort.
 			else:
 				commit_footer += ", unsigned Manifest commit"
 			commit_footer += ")"
+
+		if dco_sob:
+			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
+
 		return commit_footer
 
 
