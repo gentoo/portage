@@ -32,7 +32,8 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-OS_RELEASE_ID=$(cat /etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | sed -e 's/"//g')
+OS_RELEASE_ID=$(source /etc/os-release >/dev/null 2>&1; echo "${ID}")
+
 
 case $OS_RELEASE_ID in
 	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='rpm' ;;
