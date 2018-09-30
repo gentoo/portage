@@ -60,6 +60,27 @@ gentoo_path_check() {
 
 	${shopt_save}
 
+	if [[ ${#bad_paths[@]} -gt 0 && ${QA_INSTALL_PATHS} &&
+		${QA_STRICT_INSTALL_PATHS-unset} == unset ]]; then
+		local filtered_paths=()
+		local grep_args=()
+		local qa_install_paths
+		if [[ $(declare -p QA_INSTALL_PATHS) == "declare -a "* ]]; then
+			qa_install_paths=( "${QA_INSTALL_PATHS[@]}" )
+		else
+			set -f
+			qa_install_paths=( ${QA_INSTALL_PATHS} )
+			set +f
+		fi
+		for x in "${qa_install_paths[@]}"; do
+			grep_args+=( -e "^/${x#/}\$" )
+		done
+		while read -r -d ''; do
+			[[ ${REPLY} ]] && filtered_paths+=( "${REPLY}" )
+		done < <(printf -- '%s\0' "${bad_paths[@]}" | grep -zv "${grep_args[@]}")
+		bad_paths=( "${filtered_paths[@]}" )
+	fi
+
 	# report
 	# ------
 	if [[ -n ${bad_paths[@]} ]]; then

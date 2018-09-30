@@ -791,6 +791,13 @@ characters.
 This variable is intended to be used on files of binary packages which ignore
 CFLAGS, CXXFLAGS, FFLAGS, FCFLAGS, and LDFLAGS variables.
 .TP
+.B QA_INSTALL_PATHS
+This should contain a list of file paths (may be an array), relative to the
+image directory, of files that are exempt from QA notices regarding ebuilds
+that install files to unusual locations.
+The paths may contain regular expressions with escape\-quoted special
+characters.
+.TP
 .B QA_MULTILIB_PATHS
 This should contain a list of file paths, relative to the image directory, of
 files that should be ignored for the multilib\-strict checks.
