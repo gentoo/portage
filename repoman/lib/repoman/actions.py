@@ -419,7 +419,7 @@ the whole commit message to abort.
 			portage_version = "Unknown"
 
 		# Common part of commit footer
-		commit_footer = "\n"
+		commit_footer = ""
 		for tag, bug in chain(
 				(('Bug', x) for x in self.options.bug),
 				(('Closes', x) for x in self.options.closes)):
@@ -439,14 +439,14 @@ the whole commit message to abort.
 				elif (purl.scheme == 'http' and
 						purl.netloc in self.https_bugtrackers):
 					bug = urlunsplit(('https',) + purl[1:])
-			commit_footer += "%s: %s\n" % (tag, bug)
+			commit_footer += "\n%s: %s" % (tag, bug)
 
 		if dco_sob:
-			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
 
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer += "Package-Manager: Portage-%s, Repoman-%s" % (
+			commit_footer += "\nPackage-Manager: Portage-%s, Repoman-%s" % (
 							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
@@ -458,7 +458,7 @@ the whole commit message to abort.
 				unameout += platform.processor()
 			else:
 				unameout += platform.machine()
-			commit_footer += "(Portage version: %s/%s/%s" % \
+			commit_footer += "\n(Portage version: %s/%s/%s" % \
 				(portage_version, self.vcs_settings.vcs, unameout)
 			if report_options:
 				commit_footer += ", RepoMan options: " + " ".join(report_options)
