@@ -34,7 +34,6 @@ get_config() {
 
 OS_RELEASE_ID=$(source /etc/os-release >/dev/null 2>&1; echo "${ID}")
 
-
 case $OS_RELEASE_ID in
 	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='rpm' ;;
 	fedora|rhel) OS_FAMILY='rpm' ;;
