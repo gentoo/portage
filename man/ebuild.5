@@ -392,13 +392,17 @@ Contains the revision number or 'r0' if no revision number exists.
 xfree\-4.2.1\-r2.ebuild \-\-> $PR=='r2'
 .TP
 .B PVR
-Contains the version number with the revision.
+Contains the version number with the revision (if non-zero).
 
+xfree\-4.2.1.ebuild \-\-> $PVR=='4.2.1'
+.nf
 xfree\-4.2.1\-r2.ebuild \-\-> $PVR=='4.2.1\-r2'
 .TP
 .B PF
 Contains the full package name \fBPN\fR\-\fBPVR\fR
 
+xfree\-4.2.1.ebuild \-\-> $PF=='xfree\-4.2.1'
+.nf
 xfree\-4.2.1\-r2.ebuild \-\-> $PF=='xfree\-4.2.1\-r2'
 .TP
 .B CATEGORY
