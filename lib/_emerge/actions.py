@@ -2890,13 +2890,6 @@ def run_action(emerge_config):
 	if "--usepkgonly" in emerge_config.opts:
 		emerge_config.opts["--usepkg"] = True
 
-	if "--buildpkgonly" in emerge_config.opts:
-		# --buildpkgonly will not merge anything, so
-		# it cancels all binary package options.
-		for opt in ("--getbinpkg", "--getbinpkgonly",
-			"--usepkg", "--usepkgonly"):
-			emerge_config.opts.pop(opt, None)
-
 	# Populate the bintree with current --getbinpkg setting.
 	# This needs to happen before:
 	# * expand_set_arguments, in case any sets use the bintree
