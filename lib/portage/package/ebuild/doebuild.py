@@ -212,6 +212,7 @@ def _doebuild_path(settings, eapi=None):
 	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+	rootpath_set = frozenset(rootpath)
 	overrides = [x for x in settings.get(
 		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
@@ -243,7 +244,10 @@ def _doebuild_path(settings, eapi=None):
 
 	for prefix in prefixes:
 		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
-			path.append(os.path.join(prefix, x))
+			# Respect order defined in ROOTPATH
+			x_abs = os.path.join(prefix, x)
+			if x_abs not in rootpath_set:
+				path.append(x_abs)
 
 	path.extend(rootpath)
 	settings["PATH"] = ":".join(path)
