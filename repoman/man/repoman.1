@@ -45,6 +45,18 @@ due to the automatic GitHub mirroring.
 
 Other platforms using the \fBCloses\fR tag include GitLab and Bitbucket.
 .TP
+\fB\-\-copyright\fR
+Update the copright header to include the \fICOPYRIGHT_OWNER\fR value if
+defined in \fBmake.conf\fR(5) or the default "Gentoo Authors".  This is not
+normally required for submissions from unpaid (volunteer) individuals.  It may
+however be a requirement of paid employee submissions from their complany
+sponsored Gentoo work.  This should only be used if there are significant
+changes (>=30%) being made to an existing or copied ebuild or vice-versa.
+ie: a Gentoo developer makes significant changes to an ebuild submitted with a
+different \fICOPYRIGHT_OWNER\fR than "Gentoo Authors".  Please see:
+.br
+https://www.gentoo.org/glep/glep-0076.html for further details.
+.TP
 \fB\-\-digest=<y|n>\fR
 Automatically update Manifest digests for modified files. This
 option triggers a behavior that is very similar to that enabled
@@ -170,7 +182,11 @@ option if you would like to replace existing distfiles digests.
 Check Manifests for missing or incorrect digests
 .TP
 .B commit
-Scan directory tree for QA issues; if OK, commit via VCS
+Scan directory tree for QA issues; if OK, commit via VCS.  This will also
+automatically update the copyright date range or generate a new copyright header
+line if it is not already defined in the ebuild.  The new copyright header line
+is generated using the \fICOPYRIGHT_OWNER\fR value if defined in
+\fBmake.conf\fR(5) or the default "Gentoo Authors" and the current year.
 .TP
 .B ci
 Synonym for commit
