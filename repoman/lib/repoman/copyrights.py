@@ -3,7 +3,6 @@
 
 import difflib
 import io
-import re
 from tempfile import mkstemp
 
 from portage import _encodings
@@ -13,32 +12,15 @@ from portage import os
 from portage import shutil
 from portage import util
 
-
-_copyright_re1 = \
-	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo (Foundation|Authors))\b')
-_copyright_re2 = \
-	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b')
-
-
-class _copyright_repl(object):
-	__slots__ = ('year',)
-
-	def __init__(self, year):
-		self.year = year
-
-	def __call__(self, matchobj):
-		if matchobj.group(2) == self.year:
-			return matchobj.group(0)
-		else:
-			return matchobj.group(1) + matchobj.group(2) + \
-				b'-' + self.year + b' Gentoo Authors'
-
-
 def update_copyright_year(year, line):
 	"""
-	These two regexes are taken from echangelog
-	update_copyright(), except that we don't hardcode
-	1999 here (in order to be more generic).
+	Updates the copyright year range for any copyright owner
+
+	@param year: current year
+	@type str
+	@param line: copyright line
+	@type str
+	@return: str
 	"""
 	is_bytes = isinstance(line, bytes)
 	if is_bytes:
@@ -51,14 +33,57 @@ def update_copyright_year(year, line):
 	year = _unicode_encode(year)
 	line = _unicode_encode(line)
 
-	line = _copyright_re1.sub(br'\1-' + year + b' Gentoo Authors', line)
-	line = _copyright_re2.sub(_copyright_repl(year), line)
+	# used for backward compatibility in UpdateChangelog
+	line = line.replace(b'Gentoo Foundation', b'Gentoo Authors')
+
+	parts = line.split(b' ', 3)
+	if parts[2] != year:
+		# Update the years range
+		parts[2] = b'-'.join([parts[2].split(b'-')[0], year])
+	# re-assemble the line
+	line = b' '.join(parts)
 	if not is_bytes:
 		line = _unicode_decode(line)
 	return line
 
 
-def update_copyright(fn_path, year, pretend=False):
+def add_owner(owner, line):
+	"""
+	Updates the copyright for any copyright owner
+
+	@param year: new owner
+	@type str
+	@param line: copyright line
+	@type str
+	@return: str
+	"""
+	is_bytes = isinstance(line, bytes)
+	if is_bytes:
+		if not line.startswith(b'# Copyright '):
+			return line
+	else:
+		if not line.startswith('# Copyright '):
+			return line
+
+	# ensure is unicode and strip the newline
+	line = _unicode_encode(line).rstrip(b'\n')
+
+	parts = line.split(b' ', 3)
+	if parts[3].endswith(b' and others'):
+		owners = parts[3].split(b' and others')
+		owners[0].rstrip(b',')
+		parts[3] = b', '.join([owners[0], owner]) + b' and others'
+	else:
+		parts[3] = b', '.join([parts[3].rstrip(b','), owner])
+	line = b' '.join(parts) + b'\n'
+	if not is_bytes:
+		line = _unicode_decode(line)
+	return line
+
+
+def update_copyright(fn_path, year, pretend=False,
+			owner=None, update_owner=False,
+			add_copyright=False):
 	"""
 	Check file for a Copyright statement, and update its year.  The
 	patterns used for replacing copyrights are taken from echangelog.
@@ -85,8 +110,11 @@ def update_copyright(fn_path, year, pretend=False):
 	except EnvironmentError:
 		return
 
+	owner = _unicode_encode(owner) or b'Gentoo Authors'
+
 	orig_header = []
 	new_header = []
+	has_copyright = False
 
 	for line in fn_hdl:
 		line_strip = line.strip()
@@ -94,9 +122,16 @@ def update_copyright(fn_path, year, pretend=False):
 		if not line_strip or line_strip[:1] != b'#':
 			new_header.append(line)
 			break
-
+		has_copyright = max(has_copyright, line.startswith(b'# Copyright '))
+		# update date range
 		line = update_copyright_year(year, line)
+		# now check for and add COPYRIGHT_OWNER
+		if update_owner and owner not in line:
+			line = add_owner(owner, line)
 		new_header.append(line)
+	if not has_copyright and add_copyright:
+		new_copyright = b' '.join([b'# Copyright', _unicode_encode(year), owner]) + b'\n'
+		new_header.insert(0, new_copyright)
 
 	difflines = 0
 	for diffline in difflib.unified_diff(
