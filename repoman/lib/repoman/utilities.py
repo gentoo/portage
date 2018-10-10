@@ -44,7 +44,7 @@ from portage.localization import _
 from portage.process import find_binary
 from portage.output import green
 
-from repoman.copyrights import update_copyright, update_copyright_year
+from repoman.copyrights import update_copyright_year
 
 
 normalize_path = util.normalize_path

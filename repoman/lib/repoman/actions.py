@@ -155,7 +155,10 @@ the whole commit message to abort.
 		for fn in chain(mynew, mychanged):
 			if fn.endswith('.diff') or fn.endswith('.patch'):
 				continue
-			if update_copyright(fn, year, pretend=self.options.pretend):
+			if update_copyright(fn, year, pretend=self.options.pretend,
+					owner=self.repoman_settings.get('COPYRIGHT_OWNER', None),
+					update_owner=self.options.copyright,
+					add_copyright=True):
 				updated_copyright.append(fn)
 
 		if updated_copyright and not (

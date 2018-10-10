@@ -200,6 +200,13 @@ All files and/or directories that are defined here will have "config file
 protection" disabled for them. See the \fBCONFIGURATION FILES\fR section
 of \fBemerge\fR(1) for more information.
 .TP
+\fBCOPYRIGHT_OWNER\fR = \fI[Copyright owner text]\fR
+This value may be used by \fBrepoman\fR(1) during the commit process to update
+(--copyright option) or create a new copyright header line (if missing) as
+defined in:
+.br
+https://www.gentoo.org/glep/glep-0076.html
+.TP
 .B CTARGET
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.

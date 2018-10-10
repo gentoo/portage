@@ -71,6 +71,13 @@ def parse_args(argv, repoman_default_opts):
 			'takes either GitHub PR number or full PR URL'))
 
 	parser.add_argument(
+		'--copyright', dest='copyright', default=False,
+		action='store_true',
+		help=(
+			'This option will update the copyright header to include the make.conf'
+			' COPYRIGHT_OWNER value if defined or the default "Gentoo Authors"'))
+
+	parser.add_argument(
 		'-m', '--commitmsg', dest='commitmsg',
 		help='specify a commit message on the command line')
 

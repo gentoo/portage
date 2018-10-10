@@ -33,7 +33,7 @@ class SimpleRepomanTestCase(TestCase):
 			(
 				'1999',
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
-				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999 Gentoo Authors; Distributed under the GPL v2',
 			),
 			(
 				'2018',
