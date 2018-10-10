@@ -934,10 +934,10 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 							x_st = os.stat(os.path.join(
 								mysettings["DISTDIR"], x))
 						except OSError:
-							# file not fetched yet
+							# file deleted
 							x_st = None
 
-						if x_st is None or x_st.st_mtime > workdir_st.st_mtime:
+						if x_st is not None and x_st.st_mtime > workdir_st.st_mtime:
 							writemsg_stdout(_(">>> Timestamp of "
 								"%s has changed; recreating WORKDIR...\n") % x)
 							newstuff = True
