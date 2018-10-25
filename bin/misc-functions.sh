@@ -174,7 +174,7 @@ postinst_qa_check() {
 		local EPREFIX= EROOT=${ROOT}
 	fi
 
-	cd "${EROOT}" || die "cd failed"
+	cd "${EROOT:-/}" || die "cd failed"
 
 	# Collect the paths for QA checks, highest prio first.
 	paths=(
