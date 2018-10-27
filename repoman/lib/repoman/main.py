@@ -133,10 +133,6 @@ def repoman_main(argv):
 		'full': options.mode != 'full',
 	}
 
-	# early out for manifest generation
-	if options.mode == "manifest":
-		sys.exit(result['fail'])
-
 	for x in qadata.qacats:
 		if x not in vcs_settings.qatracker.fails:
 			continue
@@ -182,6 +178,11 @@ def repoman_main(argv):
 
 	style_file.flush()
 	del console_writer, f, style_file
+
+	# early out for manifest generation
+	if options.mode == "manifest":
+		return 1 if result['fail'] else 0
+
 	qa_output = qa_output.getvalue()
 	qa_output = qa_output.splitlines(True)
 

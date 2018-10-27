@@ -30,7 +30,8 @@ class Manifest(object):
 		'''Perform a manifest generation for the pkg
 
 		@param checkdir: the current package directory
-		@returns: dictionary
+		@rtype: bool
+		@return: True if successful, False otherwise
 		'''
 		self.generated_manifest = False
 		failed = False
@@ -51,7 +52,7 @@ class Manifest(object):
 
 		if not self.generated_manifest:
 			writemsg_level(
-				"Unable to generate manifest.",
+				"!!! Unable to generate manifest for '%s'.\n" % (checkdir,),
 				level=logging.ERROR, noiselevel=-1)
 			failed = True
 
@@ -75,11 +76,7 @@ class Manifest(object):
 						if distfile in self.auto_assumed:
 							portage.writemsg_stdout(
 								"   %s::%s\n" % (pf, distfile))
-			# continue, skip remaining main loop code
-			return True
-		elif failed:
-			sys.exit(1)
-		return False
+		return not failed
 
 	def _discard_dist_digests(self, checkdir, fetchlist_dict):
 		'''Discard DIST digests for files that exist in DISTDIR
