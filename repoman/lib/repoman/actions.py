@@ -265,9 +265,9 @@ the whole commit message to abort.
 		@return: True if successful, False otherwise
 		"""
 		self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, cp)
-		return not digestgen(
+		return bool(digestgen(
 			mysettings=self.repoman_settings,
-			myportdb=self.repo_settings.portdb)
+			myportdb=self.repo_settings.portdb))
 
 	def _suggest(self):
 		print()
