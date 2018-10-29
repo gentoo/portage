@@ -113,7 +113,7 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 fi
 
 # look up the tools we might be using
-for t in STRIP:strip OBJCOPY:objcopy READELF:readelf ; do
+for t in STRIP:strip OBJCOPY:objcopy READELF:readelf RANLIB:ranlib ; do
 	v=${t%:*} # STRIP
 	t=${t#*:} # strip
 	eval ${v}=\"${!v:-${CHOST}-${t}}\"
@@ -423,7 +423,8 @@ do
 			# linked in (only for finally linked ELFs), so we have to
 			# retain the debug info in the archive itself.
 			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
-				${STRIP} -g "${x}"
+				${STRIP} -g "${x}" &&
+				${RANLIB} "${x}"
 			fi
 		fi
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
