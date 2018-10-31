@@ -43,30 +43,6 @@ install_symlink_html_docs() {
 	fi
 }
 
-__prepall() {
-	if has chflags $FEATURES ; then
-		# Save all the file flags for restoration at the end of prepall.
-		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
-		# Remove all the file flags so that prepall can do anything necessary.
-		chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
-		chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
-	fi
-
-	[[ -d ${ED%/}/usr/share/info ]] && prepinfo
-
-	# Apply compression.
-	"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
-	"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
-	"${PORTAGE_BIN_PATH}"/ecompress --dequeue
-
-	___eapi_has_dostrip || prepallstrip
-
-	if has chflags $FEATURES ; then
-		# Restore all the file flags that were saved at the beginning of prepall.
-		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
-	fi
-}
-
 install_qa_check() {
 	local d f i qa_var x paths qa_checks=() checks_run=()
 	if ! ___eapi_has_prefix_variables; then
@@ -123,13 +99,33 @@ install_qa_check() {
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 
-	export STRIP_MASK
-	__prepall
+	if has chflags $FEATURES ; then
+		# Save all the file flags for restoration afterwards.
+		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
+		# Remove all the file flags so that we can do anything necessary.
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
+		chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
+	fi
 
+	[[ -d ${ED%/}/usr/share/info ]] && prepinfo
+
+	# Apply compression.
+	"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
+	"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
+	"${PORTAGE_BIN_PATH}"/ecompress --dequeue
+
+	export STRIP_MASK
 	if ___eapi_has_dostrip; then
 		"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
 		"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/estrip --dequeue
+	else
+		prepallstrip
+	fi
+
+	if has chflags $FEATURES ; then
+		# Restore all the file flags that were saved earlier on.
+		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
 	fi
 
 	# Create NEEDED.ELF.2 regardless of RESTRICT=binchecks, since this info is
