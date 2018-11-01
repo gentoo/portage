@@ -122,6 +122,7 @@ EBUILD_PHASES            = (
 )
 SUPPORTED_FEATURES       = frozenset([
 	"assume-digests",
+	"binpkg-docompress",
 	"binpkg-logs",
 	"binpkg-multi-instance",
 	"buildpkg",

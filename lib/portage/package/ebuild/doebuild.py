@@ -656,6 +656,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	"compile":["configure"],
 	"test":   ["compile"],
 	"install":["test"],
+	"instprep":["install"],
 	"rpm":    ["install"],
 	"package":["install"],
 	"merge"  :["install"],
@@ -674,7 +675,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	                "config", "info", "setup", "depend", "pretend",
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
-	                "install", "rpm", "qmerge", "merge",
+	                "install", "instprep", "rpm", "qmerge", "merge",
 	                "package", "unmerge", "manifest", "nofetch"]
 
 	if mydo not in validcommands:
@@ -1402,6 +1403,7 @@ def _spawn_actionmap(settings):
 "compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"instprep": {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
 "rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 "package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 		}

@@ -3719,6 +3719,7 @@ class dblink(object):
 
 		This function does the following:
 
+		calls doebuild(mydo=instprep)
 		calls get_ro_checker to retrieve a function for checking whether Portage
 		will write to a read-only filesystem, then runs it against the directory list
 		calls self._preserve_libs if FEATURES=preserve-libs
@@ -3765,6 +3766,17 @@ class dblink(object):
 
 		if not os.path.isdir(srcroot):
 			showMessage(_("!!! Directory Not Found: D='%s'\n") % srcroot,
+				level=logging.ERROR, noiselevel=-1)
+			return 1
+
+		# run instprep internal phase
+		doebuild_environment(myebuild, "instprep",
+			settings=self.settings, db=mydbapi)
+		phase = EbuildPhase(background=False, phase="instprep",
+			scheduler=self._scheduler, settings=self.settings)
+		phase.start()
+		if phase.wait() != os.EX_OK:
+			showMessage(_("!!! instprep failed\n"),
 				level=logging.ERROR, noiselevel=-1)
 			return 1
 

@@ -50,7 +50,7 @@ RESUMECOMMAND_SSH=${FETCHCOMMAND_SSH}
 FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${host##*:} ; host=\\\${host%:*} ; [[ \\\${host} = \\\${port} ]] && port= ; eval \\\"declare -a ssh_opts=(\\\${3})\\\" ; exec sftp \\\${port:+-P \\\${port}} \\\"\\\${ssh_opts[@]}\\\" \\\"\\\${host}:/\\\${x#*/}\\\" \\\"\\\$1\\\"\" sftp \"\${DISTDIR}/\${FILE}\" \"\${URI}\" \"\${PORTAGE_SSH_OPTS}\""
 
 # Default user options
-FEATURES="assume-digests binpkg-logs
+FEATURES="assume-digests binpkg-docompress binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles merge-sync multilib-strict news
           parallel-fetch preserve-libs protect-owned

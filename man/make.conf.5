@@ -275,6 +275,12 @@ existing digest, the digest will be regenerated regardless of whether or
 not \fIassume\-digests\fR is enabled. The \fBebuild\fR(1) \fBdigest\fR command
 has a \fB\-\-force\fR option that can be used to force regeneration of digests.
 .TP
+.B binpkg\-docompress
+Perform \fBdocompress\fR (controllable file compression) before creating binary
+package.  When this option is enabled (the default), documentation files are
+already compressed inside binary packages.  When it is disabled, binary packages
+contain uncompressed documentation and Portage compresses it before installing.
+.TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORT_LOGDIR\fR is set.
