@@ -882,6 +882,7 @@ docstrings['master_repos'] = """<eroot> <repo_id>+
 master_repos.__doc__ = docstrings['master_repos']
 
 
+@uses_configroot
 @uses_eroot
 def get_repo_path(argv):
 
