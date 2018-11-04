@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+
+repoman-2.3.12
+==================================
+* Bug Fixes:
+    - Bug 588752 fix exit code for manifest mode
+
+
 repoman-2.3.11
 ==================================
 * Bug Fixes:
