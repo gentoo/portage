@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2016" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2018" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -281,6 +281,14 @@ package.  When this option is enabled (the default), documentation files are
 already compressed inside binary packages.  When it is disabled, binary packages
 contain uncompressed documentation and Portage compresses it before installing.
 .TP
+.B binpkg\-dostrip
+Perform file stripping before creating binary package.  When this option is
+enabled (the default), executables are already stripped inside binary packages.
+When it is disabled, binary packages contain unstripped executables and Portage
+strips (or splits) them before installing.
+
+\fBbinpkg\-dostrip\fR must be enabled for \fBinstallsources\fR to work.
+.TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORT_LOGDIR\fR is set.
@@ -445,8 +453,9 @@ Enable portage support for the icecream package.
 .TP
 .B installsources
 Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
-\fBsplitdebug\fR). This feature works only if debugedit is installed and CFLAGS
-is set to include debug information (such as with the \-ggdb flag).
+\fBsplitdebug\fR). This feature works only if debugedit is installed, CFLAGS
+is set to include debug information (such as with the \-ggdb flag)
+and \fBbinpkg-dostrip\fR is enabled.
 .TP
 .B ipc\-sandbox
 Isolate the ebuild phase functions from host IPC namespace. Supported

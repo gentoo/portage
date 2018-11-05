@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -117,13 +117,18 @@ install_qa_check() {
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
 	fi
 
-	export STRIP_MASK
-	if ___eapi_has_dostrip; then
-		"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
-		"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
-		"${PORTAGE_BIN_PATH}"/estrip --dequeue
-	else
-		prepallstrip
+	# If binpkg-dostrip is enabled, apply stripping before creating
+	# the binary package.
+	# Note: disabling it won't help with packages calling prepstrip directly.
+	if has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
+		fi
 	fi
 
 	if has chflags $FEATURES ; then
@@ -184,6 +189,19 @@ __dyn_instprep() {
 		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
+	fi
+
+	# If binpkg-dostrip is disabled, apply stripping before creating
+	# the binary package.
+	if ! has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
+		fi
 	fi
 
 	if has chflags ${FEATURES}; then

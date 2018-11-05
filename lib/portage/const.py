@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -123,6 +123,7 @@ EBUILD_PHASES            = (
 SUPPORTED_FEATURES       = frozenset([
 	"assume-digests",
 	"binpkg-docompress",
+	"binpkg-dostrip",
 	"binpkg-logs",
 	"binpkg-multi-instance",
 	"buildpkg",
