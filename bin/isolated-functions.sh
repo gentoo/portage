@@ -11,8 +11,6 @@ fi
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
-alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
 assert() {
 	local x pipestatus=${PIPESTATUS[*]}

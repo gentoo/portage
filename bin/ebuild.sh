@@ -421,13 +421,9 @@ __source_all_bashrcs() {
 
 	if [[ $EBUILD_PHASE != depend ]] ; then
 		# source the existing profile.bashrcs.
-		save_IFS
-		IFS=$'\n'
-		local bashenv_files=($PORTAGE_BASHRC_FILES)
-		restore_IFS
-		for x in "${bashenv_files[@]}" ; do
+		while read -r x; do
 			__try_source "${x}"
-		done
+		done <<<"${PORTAGE_BASHRC_FILES}"
 	fi
 
 	# The user's bashrc is the ONLY non-portage bit of code
