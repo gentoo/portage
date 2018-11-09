@@ -543,7 +543,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	if can_fetch and \
 		not fetch_to_ro and \
-		not os.access(mysettings["DISTDIR"], os.W_OK):
+		_spawn_fetch(mysettings, ['test', '-w', mysettings["DISTDIR"]]) != os.EX_OK:
 		writemsg(_("!!! No write access to '%s'\n") % mysettings["DISTDIR"],
 			noiselevel=-1)
 		can_fetch = False
