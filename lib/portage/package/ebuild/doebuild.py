@@ -510,8 +510,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 						mysettings["PATH"] = p + ":" + mysettings["PATH"]
 						break
 				else:
-					writemsg(("Warning: %s requested but no masquerade dir"
-						+ "can be found in /usr/lib*/%s/bin\n") % (m, m))
+					writemsg(("Warning: %s requested but no masquerade dir "
+						"can be found in /usr/lib*/%s/bin\n") % (m, m))
 					mysettings.features.remove(feature)
 
 		if 'MAKEOPTS' not in mysettings:
