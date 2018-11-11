@@ -174,6 +174,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"notitles",
 	"parallel-fetch",
 	"parallel-install",
+	"pid-sandbox",
 	"prelink-checksums",
 	"preserve-libs",
 	"protect-owned",
