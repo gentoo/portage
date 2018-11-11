@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -152,6 +152,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
 		phase in _networked_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
+	kwargs['pidns'] = 'pid-sandbox' in settings.features
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
@@ -1482,7 +1483,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	sesandbox=False, fakeroot=False, networked=True, ipc=True,
-	mountns=False, **keywords):
+	mountns=False, pidns=False, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1518,6 +1519,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	@type ipc: Boolean
 	@param mountns: Run this command inside mount namespace
 	@type mountns: Boolean
+	@param pidns: Run this command in isolated PID namespace
+	@type pidns: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -1551,6 +1554,7 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
 		keywords['unshare_mount'] = mountns
+		keywords['unshare_pid'] = pidns
 
 		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch" and \
 			("network-sandbox-proxy" in features or "distcc" in features):

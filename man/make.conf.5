@@ -558,6 +558,13 @@ Use finer\-grained locks when installing packages, allowing for greater
 parallelization. For additional parallelization, disable
 \fIebuild\-locks\fR.
 .TP
+.B pid\-sandbox
+Isolate the process space for the ebuild processes. This makes it
+possible to cleanly kill all processes spawned by the ebuild.
+Supported only on Linux. Requires PID and mount namespace support
+in kernel. /proc is remounted inside the mount namespace to account
+for new PID namespace.
+.TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
 before computing checksums for merge and unmerge. This feature is
