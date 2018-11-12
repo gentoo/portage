@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -10,6 +10,7 @@ import platform
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import traceback
 import os as _os
@@ -222,7 +223,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, logfile=None,
           path_lookup=True, pre_exec=None,
           close_fds=(sys.version_info < (3, 4)), unshare_net=False,
-          unshare_ipc=False, cgroup=None):
+          unshare_ipc=False, unshare_mount=False, cgroup=None):
 	"""
 	Spawns a given command.
 	
@@ -260,6 +261,9 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@type unshare_net: Boolean
 	@param unshare_ipc: If True, IPC will be unshared from the spawned process
 	@type unshare_ipc: Boolean
+	@param unshare_mount: If True, mount namespace will be unshared and mounts will
+		be private to the namespace
+	@type unshare_mount: Boolean
 	@param cgroup: CGroup path to bind the process to
 	@type cgroup: String
 
@@ -328,7 +332,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# This caches the libc library lookup in the current
 	# process, so that it's only done once rather than
 	# for each child process.
-	if unshare_net or unshare_ipc:
+	if unshare_net or unshare_ipc or unshare_mount:
 		find_library("c")
 
 	# Force instantiation of portage.data.userpriv_groups before the
@@ -344,7 +348,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, pre_exec, close_fds,
-					unshare_net, unshare_ipc, cgroup)
+					unshare_net, unshare_ipc, unshare_mount, cgroup)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -414,7 +418,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	return 0
 
 def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
-	pre_exec, close_fds, unshare_net, unshare_ipc, cgroup):
+	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, cgroup):
 
 	"""
 	Execute a given binary with options
@@ -443,6 +447,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@type unshare_net: Boolean
 	@param unshare_ipc: If True, IPC will be unshared from the spawned process
 	@type unshare_ipc: Boolean
+	@param unshare_mount: If True, mount namespace will be unshared and mounts will
+		be private to the namespace
+	@type unshare_mount: Boolean
 	@param cgroup: CGroup path to bind the process to
 	@type cgroup: String
 	@rtype: None
@@ -499,11 +506,13 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 			f.write('%d\n' % os.getpid())
 
 	# Unshare (while still uid==0)
-	if unshare_net or unshare_ipc:
+	if unshare_net or unshare_ipc or unshare_mount:
 		filename = find_library("c")
 		if filename is not None:
 			libc = LoadLibrary(filename)
 			if libc is not None:
+				# from /usr/include/bits/sched.h
+				CLONE_NEWNS = 0x00020000
 				CLONE_NEWIPC = 0x08000000
 				CLONE_NEWNET = 0x40000000
 
@@ -512,6 +521,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 					flags |= CLONE_NEWNET
 				if unshare_ipc:
 					flags |= CLONE_NEWIPC
+				if unshare_mount:
+					# NEWNS = mount namespace
+					flags |= CLONE_NEWNS
 
 				try:
 					if libc.unshare(flags) != 0:
@@ -519,6 +531,16 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 							errno.errorcode.get(ctypes.get_errno(), '?')),
 							noiselevel=-1)
 					else:
+						if unshare_mount:
+							# mark the whole filesystem as slave to avoid
+							# mounts escaping the namespace
+							s = subprocess.Popen(['mount',
+								'--make-rslave', '/'])
+							mount_ret = s.wait()
+							if mount_ret != 0:
+								# TODO: should it be fatal maybe?
+								writemsg("Unable to mark mounts slave: %d\n" % (mount_ret,),
+									noiselevel=-1)
 						if unshare_net:
 							# 'up' the loopback
 							IFF_UP = 0x1

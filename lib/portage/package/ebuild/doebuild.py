@@ -148,6 +148,7 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
+	kwargs['mountns'] = 'mount-sandbox' in settings.features
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
 		phase in _networked_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
@@ -1480,7 +1481,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
-	sesandbox=False, fakeroot=False, networked=True, ipc=True, **keywords):
+	sesandbox=False, fakeroot=False, networked=True, ipc=True,
+	mountns=False, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1514,6 +1516,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	@type networked: Boolean
 	@param ipc: Run this command with host IPC access enabled
 	@type ipc: Boolean
+	@param mountns: Run this command inside mount namespace
+	@type mountns: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -1546,6 +1550,7 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	if uid == 0 and platform.system() == 'Linux':
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
+		keywords['unshare_mount'] = mountns
 
 		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch" and \
 			("network-sandbox-proxy" in features or "distcc" in features):
