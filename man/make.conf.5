@@ -494,6 +494,11 @@ ${repository_location}/metadata/md5\-cache/ directory will be used directly
 Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
 except do not fetch anything when \fImirror\fR is in \fBRESTRICT\fR.
 .TP
+.B mount\-sandbox
+Isolate the ebuild phase functions from host mount namespace. This makes
+it possible for ebuild to alter mountpoints without affecting the host
+system. Supported only on Linux. Requires mount namespace support in kernel.
+.TP
 .B multilib\-strict
 Many Makefiles assume that their libraries should go to /usr/lib, or
 $(prefix)/lib. This assumption can cause a serious mess if /usr/lib

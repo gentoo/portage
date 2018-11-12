@@ -160,6 +160,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"merge-sync",
 	"metadata-transfer",
 	"mirror",
+	"mount-sandbox",
 	"multilib-strict",
 	"network-sandbox",
 	"network-sandbox-proxy",
