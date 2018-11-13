@@ -544,13 +544,14 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 					else:
 						if unshare_pid:
 							# pid namespace requires us to become init
-							# TODO: do init-ty stuff
-							# therefore, fork() ASAP
 							fork_ret = os.fork()
 							if fork_ret != 0:
-								pid, status = os.waitpid(fork_ret, 0)
-								assert pid == fork_ret
-								os._exit(status)
+								os.execv(portage._python_interpreter, [
+									portage._python_interpreter,
+									os.path.join(portage._bin_path,
+										'pid-ns-init'),
+									'%s' % fork_ret,
+									])
 						if unshare_mount:
 							# mark the whole filesystem as slave to avoid
 							# mounts escaping the namespace
