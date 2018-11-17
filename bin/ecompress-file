@@ -29,6 +29,9 @@ compress_file() {
 			*.lzma|*.xz)
 				unxz -f "${x}" || __helpers_die "unxz failed"
 				x=${x%.*};;
+			*.lz)
+				lzip -df "${x}" || __helpers_die "lzip -d failed"
+				x=${x%.lz};;
 		esac
 
 		filtered_args+=( "$x" )
