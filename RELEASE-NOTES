@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.52
+==================================
+* Bug Fixes:
+    - Bug 603594 Run RANLIB after stripping static archives to fix LTO
+    - Bug 659582 Support FEATURES=pid-sandbox
+    - Bug 668206 doebuild: skip timestamp check for deleted distfiles
+    - Bug 668638 *-qa-check.d: fix entering EROOT in EAPI 7
+    - Bug 670082 portageq get_repo_path: fix <eroot> parameter
+
+
 portage-2.3.51
 ==================================
 * Bug Fixes:
