@@ -106,13 +106,11 @@ class _GeneratorTask(object):
 			if previous is None:
 				future = next(self._generator)
 			elif previous.cancelled():
-				self._generator.throw(asyncio.CancelledError())
-				future = next(self._generator)
+				future = self._generator.throw(asyncio.CancelledError())
 			elif previous.exception() is None:
 				future = self._generator.send(previous.result())
 			else:
-				self._generator.throw(previous.exception())
-				future = next(self._generator)
+				future = self._generator.throw(previous.exception())
 
 		except asyncio.CancelledError:
 			self._result.cancel()
