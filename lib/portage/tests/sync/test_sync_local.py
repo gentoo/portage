@@ -42,6 +42,7 @@ class SyncLocalTestCase(TestCase):
 			[test_repo]
 			location = %(EPREFIX)s/var/repositories/test_repo
 			sync-type = %(sync-type)s
+			sync-depth = %(sync-depth)s
 			sync-uri = file://%(EPREFIX)s/var/repositories/test_repo_sync
 			sync-rcu = %(sync-rcu)s
 			sync-rcu-store-dir = %(EPREFIX)s/var/repositories/test_repo_rcu_storedir
@@ -91,9 +92,10 @@ class SyncLocalTestCase(TestCase):
 		committer_email = "gentoo-dev@gentoo.org"
 
 		def repos_set_conf(sync_type, dflt_keys=None, xtra_keys=None,
-			auto_sync="yes", sync_rcu=False):
+			auto_sync="yes", sync_rcu=False, sync_depth=None):
 			env["PORTAGE_REPOSITORIES"] = repos_conf % {\
 				"EPREFIX": eprefix, "sync-type": sync_type,
+				"sync-depth": 0 if sync_depth is None else sync_depth,
 				"sync-rcu": "yes" if sync_rcu else "no",
 				"auto-sync": auto_sync,
 				"default_keys": "" if dflt_keys is None else dflt_keys,
@@ -197,6 +199,17 @@ class SyncLocalTestCase(TestCase):
 			(homedir, lambda: shutil.rmtree(repo.user_location + '_rcu_storedir')),
 		)
 
+		upstream_git_commit = (
+			(
+				repo.location + "_sync",
+				git_cmd + ('commit', '--allow-empty', '-m', 'test empty commit'),
+			),
+			(
+				repo.location + "_sync",
+				git_cmd + ('commit', '--allow-empty', '-m', 'test empty commit 2'),
+			),
+		)
+
 		delete_sync_repo = (
 			(homedir, lambda: shutil.rmtree(
 				repo.location + "_sync")),
@@ -215,6 +228,10 @@ class SyncLocalTestCase(TestCase):
 
 		sync_type_git = (
 			(homedir, lambda: repos_set_conf("git")),
+		)
+
+		sync_type_git_shallow = (
+			(homedir, lambda: repos_set_conf("git", sync_depth=1)),
 		)
 
 		sync_rsync_rcu = (
@@ -277,7 +294,8 @@ class SyncLocalTestCase(TestCase):
 				delete_repo_location + sync_cmds + sync_cmds + \
 				bump_timestamp_cmds + sync_cmds + revert_rcu_layout + \
 				delete_sync_repo + git_repo_create + sync_type_git + \
-				rename_repo + sync_cmds:
+				rename_repo + sync_cmds + upstream_git_commit + sync_cmds + \
+				sync_type_git_shallow + upstream_git_commit + sync_cmds:
 
 				if hasattr(cmd, '__call__'):
 					cmd()

@@ -147,8 +147,9 @@ class GitSync(NewBase):
 			gc_cmd = ['git', '-c', 'gc.autodetach=false', 'gc', '--auto']
 			if quiet:
 				gc_cmd.append('--quiet')
-			exitcode = subprocess.call(gc_cmd,
-				cwd=portage._unicode_encode(self.repo.location))
+			exitcode = portage.process.spawn(gc_cmd,
+				cwd=portage._unicode_encode(self.repo.location),
+				**self.spawn_kwargs)
 			if exitcode != os.EX_OK:
 				msg = "!!! git gc error in %s" % self.repo.location
 				self.logger(self.xterm_titles, msg)
@@ -186,8 +187,9 @@ class GitSync(NewBase):
 		merge_cmd.append('refs/remotes/%s' % remote_branch)
 		if quiet:
 			merge_cmd.append('--quiet')
-		exitcode = subprocess.call(merge_cmd,
-			cwd=portage._unicode_encode(self.repo.location))
+		exitcode = portage.process.spawn(merge_cmd,
+			cwd=portage._unicode_encode(self.repo.location),
+			**self.spawn_kwargs)
 
 		if exitcode != os.EX_OK:
 			msg = "!!! git merge error in %s" % self.repo.location
