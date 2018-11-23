@@ -220,7 +220,7 @@ def cleanup():
 	pass
 
 def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
-          uid=None, gid=None, groups=None, umask=None, logfile=None,
+          uid=None, gid=None, groups=None, umask=None, cwd=None, logfile=None,
           path_lookup=True, pre_exec=None,
           close_fds=(sys.version_info < (3, 4)), unshare_net=False,
           unshare_ipc=False, unshare_mount=False, unshare_pid=False,
@@ -248,6 +248,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	@type groups: List
 	@param umask: An integer representing the umask for the process (see man chmod for umask details)
 	@type umask: Integer
+	@param cwd: Current working directory
+	@type cwd: String
 	@param logfile: name of a file to use for logging purposes
 	@type logfile: String
 	@param path_lookup: If the binary is not fully specified then look for it in PATH
@@ -350,7 +352,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		if pid == 0:
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
-					env, gid, groups, uid, umask, pre_exec, close_fds,
+					env, gid, groups, uid, umask, cwd, pre_exec, close_fds,
 					unshare_net, unshare_ipc, unshare_mount, unshare_pid,
 					cgroup)
 			except SystemExit:
@@ -421,7 +423,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# Everything succeeded
 	return 0
 
-def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
+def _exec(binary, mycommand, opt_name, fd_pipes,
+	env, gid, groups, uid, umask, cwd,
 	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, unshare_pid,
 	cgroup):
 
@@ -446,6 +449,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 	@type uid: Integer
 	@param umask: an int representing a unix umask (see man chmod for umask details)
 	@type umask: Integer
+	@param cwd: Current working directory
+	@type cwd: String
 	@param pre_exec: A function to be called with no arguments just prior to the exec call.
 	@type pre_exec: callable
 	@param unshare_net: If True, networking will be unshared from the spawned process
@@ -609,6 +614,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes, env, gid, groups, uid, umask,
 		os.setuid(int(uid))
 	if umask:
 		os.umask(umask)
+	if cwd is not None:
+		os.chdir(cwd)
 	if pre_exec:
 		pre_exec()
 
