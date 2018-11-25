@@ -6,6 +6,13 @@ python:
     - 3.6
     - pypy
 
+# See https://github.com/travis-ci/travis-ci/issues/9815
+matrix:
+  include:
+    - python: 3.7
+      dist: xenial
+      sudo: required
+
 # command to install dependencies
 install:
     - pip install tox
