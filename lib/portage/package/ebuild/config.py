@@ -424,7 +424,6 @@ class config:
             eprefix = locations_manager.eprefix
             config_root = locations_manager.config_root
             sysroot = locations_manager.sysroot
-            esysroot = locations_manager.esysroot
             broot = locations_manager.broot
             abs_user_config = locations_manager.abs_user_config
             make_conf_paths = [
@@ -467,6 +466,7 @@ class config:
             locations_manager.set_root_override(make_conf.get("ROOT"))
             target_root = locations_manager.target_root
             eroot = locations_manager.eroot
+            esysroot = locations_manager.esysroot
             self.global_config_path = locations_manager.global_config_path
 
             # The expand_map is used for variable substitution

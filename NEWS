@@ -26,6 +26,11 @@ Bug fixes:
   fatal for now. The number of failures in bug #870412 is too large for the time
   being.
 
+* Fix definition of ESYSROOT to use SYSROOT's prefix. For a given location, we
+  were basing ESYSROOT on the prefix of that location instead of the prefix used
+  by the SYSROOT location. For example, if BROOT=/foo, ROOT=/bar, EPREFIX=/baz,
+  EROOT=/bar/baz, and SYSROOT=/ then ESYSROOT should be /foo, not /baz.
+
 portage-3.0.39 (2022-11-20)
 --------------
 
