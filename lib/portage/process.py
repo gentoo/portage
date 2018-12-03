@@ -219,7 +219,7 @@ spawned_pids = _dummy_list()
 def cleanup():
 	pass
 
-def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
+def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, cwd=None, logfile=None,
           path_lookup=True, pre_exec=None,
           close_fds=(sys.version_info < (3, 4)), unshare_net=False,
@@ -230,8 +230,10 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	
 	@param mycommand: the command to execute
 	@type mycommand: String or List (Popen style list)
-	@param env: A dict of Key=Value pairs for env variables
-	@type env: Dictionary
+	@param env: If env is not None, it must be a mapping that defines the environment
+		variables for the new process; these are used instead of the default behavior
+		of inheriting the current process's environment.
+	@type env: None or Mapping
 	@param opt_name: an optional name for the spawn'd process (defaults to the binary name)
 	@type opt_name: String
 	@param fd_pipes: A dict of mapping for pipes, { '0': stdin, '1': stdout } for example
@@ -280,6 +282,8 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	# mycommand is either a str or a list
 	if isinstance(mycommand, basestring):
 		mycommand = mycommand.split()
+
+	env = os.environ if env is None else env
 
 	if sys.hexversion < 0x3000000:
 		# Avoid a potential UnicodeEncodeError from os.execve().
