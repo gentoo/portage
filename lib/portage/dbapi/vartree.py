@@ -2189,7 +2189,7 @@ class dblink(object):
 							"removal phases to execute successfully. "
 							"The ebuild will be "
 							"sourced and the eclasses "
-							"from the current portage tree will be used "
+							"from the current ebuild repository will be used "
 							"when necessary. Removal of "
 							"the ebuild file will cause the "
 							"pkg_prerm() and pkg_postrm() removal "

@@ -182,7 +182,7 @@ class MergesHandler(object):
 					% pkg_atom)
 			if not portdb.cpv_exists(pkg_name):
 				pkg_invalid_entries.add(
-					"'%s' does not exist in the portage tree." % pkg_name)
+					"'%s' does not exist in the ebuild repository." % pkg_name)
 			pkg_atoms.add(pkg_atom)
 
 

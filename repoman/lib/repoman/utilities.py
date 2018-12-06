@@ -256,7 +256,7 @@ def FindPortdir(settings):
 	pwd = _unicode_decode(os.environ.get('PWD', ''), encoding=_encodings['fs'])
 	if pwd and pwd != location and os.path.realpath(pwd) == location:
 		# getcwd() returns the canonical path but that makes it hard for repoman to
-		# orient itself if the user has symlinks in their portage tree structure.
+		# orient itself if the user has symlinks in their repository structure.
 		# We use os.environ["PWD"], if available, to get the non-canonical path of
 		# the current working directory (from the shell).
 		location = pwd

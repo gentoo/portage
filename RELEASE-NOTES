@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.45
+==================================
+* Bug Fixes:
+    - Bug 373209 FEATURES=test/USE=test mapping via USE_ORDER
+    - Bug 629398 QA Notice for executables writable by non-root user
+    - Bug 634980 zstd --long=31 binary package decompression support
+    - Bug 662388 asyncio.create_subprocess_exec support for python2
+    - Bug 662668 emerge --keep-going AttributeError
+    - Bug 663022 FileNotFoundError with FEATURES=metadata-transfer
+
+
 portage-2.3.44
 ==================================
 * Bug Fixes:

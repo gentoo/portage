@@ -22,7 +22,7 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	This simply returns if ROOT != "/" (when len(trees) != 1). If ROOT != "/"
 	then the user should instead use emaint --fix movebin and/or moveinst.
 
-	@param trees: A dictionary containing portage trees.
+	@param trees: A dictionary containing package databases.
 	@type trees: dict
 	@param prev_mtimes: A dictionary containing mtimes of files located in
 		$PORTDIR/profiles/updates/.

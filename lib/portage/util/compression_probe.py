@@ -45,7 +45,7 @@ _compressors = {
 	},
 	"zstd": {
 		"compress": "zstd ${BINPKG_COMPRESS_FLAGS}",
-		"decompress": "zstd -d",
+		"decompress": "zstd -d --long=31",
 		"package": "app-arch/zstd",
 	},
 }

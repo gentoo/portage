@@ -352,7 +352,7 @@ class RsyncSync(NewBase):
 				if (retries==0):
 					if "--ask" in opts:
 						uq = UserQuery(opts)
-						if uq.query("Do you want to sync your Portage tree " + \
+						if uq.query("Do you want to sync your ebuild repository " + \
 							"with the mirror at\n" + blue(dosyncuri) + bold("?"),
 							enter_invalid) == "No":
 							print()

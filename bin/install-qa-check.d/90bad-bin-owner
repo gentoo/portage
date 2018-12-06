@@ -1,0 +1,48 @@
+# Copyright 1999-2018 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+bad_bin_owner_check() {
+	# Warn about globally-installed executables (in /bin, /usr/bin, /sbin,
+	# /usr/sbin, or /opt/bin) that are owned by a nonzero UID.
+
+	# This check doesn't work on non-root prefix installations at
+	# the moment, because every executable therein is owned by a
+	# nonzero UID.
+	[[ "${EUID}" -ne "0" || "${PORTAGE_INST_UID}" -ne "0" ]] && return
+
+	local d f found=()
+
+	for d in "${ED%/}/opt/bin" "${ED%/}/bin"  "${ED%/}/usr/bin" \
+							   "${ED%/}/sbin" "${ED%/}/usr/sbin"; do
+		[[ -d "${d}" ]] || continue
+
+		# Read the results of the "find" command into the "found" bash array.
+		#
+		# Use -L to catch symlinks whose targets are owned by a non-root user,
+		# even though it won't catch ABSOLUTE symlinks until the package
+		# is RE-installed (the first time around, the target won't exist).
+		#
+		# We do want to list non-superuser setuid executables, because
+		# they can be exploited. The owner can simply wipe the setuid
+		# bit, and then alter the contents of the file. The superuser
+		# will then have a time bomb in his $PATH.
+		while read -r -d '' f; do
+			found+=( "${f}" )
+		done < <(find -L "${d}"   \
+					-maxdepth 1   \
+					-type f       \
+					! -uid 0      \
+					-print0)
+	done
+
+	if [[ ${found[@]} ]]; then
+		eqawarn "system executables owned by nonzero uid:"
+		for f in "${found[@]}"; do
+			# Strip off the leading destdir before outputting the path.
+			eqawarn "  ${f#${D%/}}"
+		done
+	fi
+}
+
+bad_bin_owner_check
+:
