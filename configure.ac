@@ -133,7 +133,7 @@ AC_CONFIG_FILES([
 				 Makefile
 				 man/Makefile
 				 bin/Makefile
-				 pym/Makefile
+				 lib/Makefile
 				 cnf/Makefile
 ])
 

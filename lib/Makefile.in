@@ -12,7 +12,7 @@ top_builddir=@top_builddir@
 portageuser = @portageuser@
 portagegroup = @portagegroup@
 
-PORTAGE_PYM = @PORTAGE_BASE@/pym
+PORTAGE_PYM = @PORTAGE_BASE@/lib
 INSTALL = @INSTALL@
 INSTALL_subst = ${top_builddir}/subst-install
 

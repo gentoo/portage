@@ -1,6 +1,6 @@
 SHELL = @PORTAGE_BASH@
 
-SUBDIRS = man bin pym cnf
+SUBDIRS = man bin lib cnf
 
 AUTOMAKE_OPTIONS = dist-bzip2 no-dist-gzip
 
