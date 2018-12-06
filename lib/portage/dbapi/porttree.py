@@ -37,6 +37,7 @@ from portage import _unicode_encode
 from portage import OrderedDict
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
@@ -1055,8 +1056,20 @@ class portdbapi(dbapi):
 		self._better_cache = None
 		self.frozen = 0
 
-	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):
-		"caching match function; very trick stuff"
+	def xmatch(self, level, origdep, mydep=DeprecationWarning,
+		mykey=DeprecationWarning, mylist=DeprecationWarning):
+		"""
+		Caching match function.
+
+		@param level: xmatch level (bestmatch-visible, match-all-cpv-only
+			match-allmatch-visible, minimum-all, minimum-all-ignore-profile,
+			or minimum-visible)
+		@type level: str
+		@param origdep: dependency to match (may omit category)
+		@type origdep: portage.dep.Atom or str
+		@return: match result(s)
+		@rtype: _pkg_str or list of _pkg_str (depends on level)
+		"""
 		if level == "list-visible":
 			level = "match-visible"
 			warnings.warn("The 'list-visible' mode of "
@@ -1064,21 +1077,46 @@ class portdbapi(dbapi):
 				"has been renamed to match-visible",
 				DeprecationWarning, stacklevel=2)
 
-		if mydep is None:
-			#this stuff only runs on first call of xmatch()
-			#create mydep, mykey from origdep
-			mydep = dep_expand(origdep, mydb=self, settings=self.settings)
-			mykey = mydep.cp
+		if mydep is not DeprecationWarning:
+			warnings.warn("The 'mydep' parameter of "
+				"portage.dbapi.porttree.portdbapi.xmatch"
+				" is deprecated and ignored",
+				DeprecationWarning, stacklevel=2)
+
+		loop = self._event_loop
+		return loop.run_until_complete(
+			self.async_xmatch(level, origdep, loop=loop))
+
+	@coroutine
+	def async_xmatch(self, level, origdep, loop=None):
+		"""
+		Asynchronous form of xmatch.
+
+		@param level: xmatch level (bestmatch-visible, match-all-cpv-only
+			match-allmatch-visible, minimum-all, minimum-all-ignore-profile,
+			or minimum-visible)
+		@type level: str
+		@param origdep: dependency to match (may omit category)
+		@type origdep: portage.dep.Atom or str
+		@param loop: event loop (defaults to global event loop)
+		@type loop: EventLoop
+		@return: match result(s)
+		@rtype: asyncio.Future (or compatible), which results in a _pkg_str
+			or list of _pkg_str (depends on level)
+		"""
+		mydep = dep_expand(origdep, mydb=self, settings=self.settings)
+		mykey = mydep.cp
 
 		#if no updates are being made to the tree, we can consult our xcache...
 		cache_key = None
 		if self.frozen:
 			cache_key = (mydep, mydep.unevaluated_atom)
 			try:
-				return self.xcache[level][cache_key][:]
+				coroutine_return(self.xcache[level][cache_key][:])
 			except KeyError:
 				pass
 
+		loop = asyncio._wrap_loop(loop)
 		myval = None
 		mytree = None
 		if mydep.repo is not None:
@@ -1131,8 +1169,8 @@ class portdbapi(dbapi):
 
 			for cpv in iterfunc(mylist):
 					try:
-						metadata = dict(zip(aux_keys,
-							self.aux_get(cpv, aux_keys, myrepo=cpv.repo)))
+						metadata = dict(zip(aux_keys, (yield self.async_aux_get(cpv,
+							aux_keys, myrepo=cpv.repo, loop=loop))))
 					except KeyError:
 						# ebuild not in this repo, or masked by corruption
 						continue
@@ -1165,18 +1203,6 @@ class portdbapi(dbapi):
 				else:
 					myval = ""
 
-		elif level == "bestmatch-list":
-			#dep match -- find best match but restrict search to sublist
-			warnings.warn("The 'bestmatch-list' mode of "
-				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
-				DeprecationWarning, stacklevel=2)
-			myval = best(list(self._iter_match(mydep, mylist)))
-		elif level == "match-list":
-			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-			warnings.warn("The 'match-list' mode of "
-				"portage.dbapi.porttree.portdbapi.xmatch is deprecated",
-				DeprecationWarning, stacklevel=2)
-			myval = list(self._iter_match(mydep, mylist))
 		else:
 			raise AssertionError(
 				"Invalid level argument: '%s'" % level)
@@ -1188,7 +1214,7 @@ class portdbapi(dbapi):
 				if not isinstance(myval, _pkg_str):
 					myval = myval[:]
 
-		return myval
+		coroutine_return(myval)
 
 	def match(self, mydep, use_cache=1):
 		return self.xmatch("match-visible", mydep)

@@ -104,6 +104,12 @@ if not opts.ignore_default_opts:
 debug = opts.debug
 force = opts.force
 
+if debug:
+	# Ensure that all config instances have this setting,
+	# including the one that's used by portdbapi for aux_get.
+	os.environ['PORTAGE_DEBUG'] = '1'
+	portage._reset_legacy_globals()
+
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
 	import portage.debug

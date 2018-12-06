@@ -17,33 +17,46 @@ class EbuildHeader(LineCheck):
 
 	repoman_check_name = 'ebuild.badheader'
 
-	gentoo_copyright = r'^# Copyright ((1999|2\d\d\d)-)?%s Gentoo Foundation$'
+	copyright_re = re.compile(r'^# Copyright ((1999|2\d\d\d)-)?(?P<year>2\d\d\d) \w')
 	gentoo_license = (
 		'# Distributed under the terms'
 		' of the GNU General Public License v2')
 	id_header_re = re.compile(r'.*\$(Id|Header)(:.*)?\$.*')
-	blank_line_re = re.compile(r'^$')
 	ignore_comment = False
 
 	def new(self, pkg):
 		if pkg.mtime is None:
-			self.modification_year = r'2\d\d\d'
+			self.modification_year = None
 		else:
-			self.modification_year = str(time.gmtime(pkg.mtime)[0])
-		self.gentoo_copyright_re = re.compile(
-			self.gentoo_copyright % self.modification_year)
+			self.modification_year = time.gmtime(pkg.mtime)[0]
+		self.last_copyright_line = -1
+		self.last_copyright_year = -1
 
 	def check(self, num, line):
-		if num > 2:
+		if num > self.last_copyright_line + 2:
 			return
-		elif num == 0:
-			if not self.gentoo_copyright_re.match(line):
+		elif num == self.last_copyright_line + 1:
+			# copyright can extend for a few initial lines
+			copy_match = self.copyright_re.match(line)
+			if copy_match is not None:
+				self.last_copyright_line = num
+				self.last_copyright_year = max(self.last_copyright_year,
+						int(copy_match.group('year')))
+			# no copyright lines found?
+			elif self.last_copyright_line == -1:
 				return self.errors['COPYRIGHT_ERROR']
-		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
-			return self.errors['LICENSE_ERROR']
-		elif num == 2 and self.id_header_re.match(line):
-			return self.errors['ID_HEADER_ERROR']
-		elif num == 2 and not self.blank_line_re.match(line):
-			return self.errors['NO_BLANK_LINE_ERROR']
+			else:
+				# verify that the newest copyright line found
+				# matches the year of last modification
+				if (self.modification_year is not None
+						and self.last_copyright_year != self.modification_year):
+					return self.errors['COPYRIGHT_DATE_ERROR']
 
-
+				# copyright is immediately followed by license
+				if line.rstrip('\n') != self.gentoo_license:
+					return self.errors['LICENSE_ERROR']
+		elif num == self.last_copyright_line + 2:
+			if self.id_header_re.match(line):
+				return self.errors['ID_HEADER_ERROR']
+			elif line.rstrip('\n') != '':
+				return self.errors['NO_BLANK_LINE_ERROR']

@@ -42,7 +42,7 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from repoman.main import repoman_main
 
 try:
-	repoman_main(sys.argv[1:])
+	sys.exit(repoman_main(sys.argv[1:]))
 except IOError as e:
 	if e.errno == errno.EACCES:
 		print("\nRepoman: Need user access")

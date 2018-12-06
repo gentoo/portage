@@ -836,6 +836,7 @@ docstrings['envvar'] = """<variable>+
 envvar.__doc__ = docstrings['envvar']
 
 
+@uses_configroot
 @uses_eroot
 def get_repos(argv):
 	if len(argv) < 1:
@@ -849,6 +850,7 @@ docstrings['get_repos'] = """<eroot>
 get_repos.__doc__ = docstrings['get_repos']
 
 
+@uses_configroot
 @uses_eroot
 def master_repositories(argv):
 	if len(argv) < 2:
@@ -872,6 +874,7 @@ docstrings['master_repositories'] = """<eroot> <repo_id>+
 master_repositories.__doc__ = docstrings['master_repositories']
 
 
+@uses_configroot
 @uses_eroot
 def master_repos(argv):
 	return master_repositories(argv)
@@ -882,6 +885,7 @@ docstrings['master_repos'] = """<eroot> <repo_id>+
 master_repos.__doc__ = docstrings['master_repos']
 
 
+@uses_configroot
 @uses_eroot
 def get_repo_path(argv):
 

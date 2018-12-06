@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -149,9 +149,11 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
+	kwargs['mountns'] = 'mount-sandbox' in settings.features
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
 		phase in _networked_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
+	kwargs['pidns'] = 'pid-sandbox' in settings.features
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
@@ -213,6 +215,7 @@ def _doebuild_path(settings, eapi=None):
 	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
+	rootpath_set = frozenset(rootpath)
 	overrides = [x for x in settings.get(
 		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
@@ -655,6 +658,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	"compile":["configure"],
 	"test":   ["compile"],
 	"install":["test"],
+	"instprep":["install"],
 	"rpm":    ["install"],
 	"package":["install"],
 	"merge"  :["install"],
@@ -673,7 +677,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 	                "config", "info", "setup", "depend", "pretend",
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
-	                "install", "rpm", "qmerge", "merge",
+	                "install", "instprep", "rpm", "qmerge", "merge",
 	                "package", "unmerge", "manifest", "nofetch"]
 
 	if mydo not in validcommands:
@@ -933,10 +937,10 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 							x_st = os.stat(os.path.join(
 								mysettings["DISTDIR"], x))
 						except OSError:
-							# file not fetched yet
+							# file deleted
 							x_st = None
 
-						if x_st is None or x_st.st_mtime > workdir_st.st_mtime:
+						if x_st is not None and x_st.st_mtime > workdir_st.st_mtime:
 							writemsg_stdout(_(">>> Timestamp of "
 								"%s has changed; recreating WORKDIR...\n") % x)
 							newstuff = True
@@ -1402,6 +1406,7 @@ def _spawn_actionmap(settings):
 "compile":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "test":     {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":nosandbox, "sesandbox":sesandbox, "fakeroot":0}},
 "install":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
+"instprep": {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":sesandbox, "fakeroot":fakeroot}},
 "rpm":      {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 "package":  {"cmd":misc_sh,   "args":{"droppriv":0,        "free":0,         "sesandbox":0,         "fakeroot":fakeroot}},
 		}
@@ -1478,7 +1483,8 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
 def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
-	sesandbox=False, fakeroot=False, networked=True, ipc=True, **keywords):
+	sesandbox=False, fakeroot=False, networked=True, ipc=True,
+	mountns=False, pidns=False, **keywords):
 	"""
 	Spawn a subprocess with extra portage-specific options.
 	Optiosn include:
@@ -1512,6 +1518,10 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	@type networked: Boolean
 	@param ipc: Run this command with host IPC access enabled
 	@type ipc: Boolean
+	@param mountns: Run this command inside mount namespace
+	@type mountns: Boolean
+	@param pidns: Run this command in isolated PID namespace
+	@type pidns: Boolean
 	@param keywords: Extra options encoded as a dict, to be passed to spawn
 	@type keywords: Dictionary
 	@rtype: Integer
@@ -1544,6 +1554,8 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 	if uid == 0 and platform.system() == 'Linux':
 		keywords['unshare_net'] = not networked
 		keywords['unshare_ipc'] = not ipc
+		keywords['unshare_mount'] = mountns
+		keywords['unshare_pid'] = pidns
 
 		if not networked and mysettings.get("EBUILD_PHASE") != "nofetch" and \
 			("network-sandbox-proxy" in features or "distcc" in features):

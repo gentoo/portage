@@ -10,13 +10,6 @@ source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 #
 # API functions for doing parallel processing
 #
-makeopts_jobs() {
-	# Copied from eutils.eclass:makeopts_jobs()
-	local jobs=$(echo " ${MAKEOPTS} " | \
-		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p')
-	echo ${jobs:-1}
-}
-
 __multijob_init() {
 	# Setup a pipe for children to write their pids to when they finish.
 	# We have to allocate two fd's because POSIX has undefined behavior
@@ -34,7 +27,7 @@ __multijob_init() {
 	rm -f "${pipe}"
 
 	# See how many children we can fork based on the user's settings.
-	mj_max_jobs=$(makeopts_jobs "$@")
+	mj_max_jobs=$(___makeopts_jobs "$@")
 	mj_num_jobs=0
 }
 

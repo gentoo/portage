@@ -8,6 +8,21 @@ if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
 fi
 
+got_owner=
+for arg; do
+	[[ ${arg} == -* ]] && continue
+	if [[ ! ${got_owner} ]]; then
+		got_owner=1
+		continue
+	fi
+	if [[ ${arg} != /* ]]; then
+		eqawarn "Relative path passed to '${0##*/}': ${arg}"
+		eqawarn "This is unsupported. Please use 'chown' when you need to work on files"
+		eqawarn "outside the installation image (\${ED})."
+	fi
+done
+
+
 # we can't prefix all arguments because
 # chown takes random options
 slash="/"

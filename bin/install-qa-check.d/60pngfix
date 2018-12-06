@@ -1,16 +1,7 @@
 # Check for issues with PNG files
 
-source "${PORTAGE_BIN_PATH}/helper-functions.sh" || exit 1
-
 pngfix_check() {
-	local chunksize=1 jobs pngfix=$(type -P pngfix) xargs=(${XARGS})
-
-	if "${xargs[@]}" --help | grep -q -- --max-procs=; then
-		jobs=$(makeopts_jobs)
-		if [[ ${jobs} -gt 1 ]]; then
-			xargs+=("--max-procs=${jobs}" -L "${chunksize}")
-		fi
-	fi
+	local pngfix=$(type -P pngfix)
 
 	if [[ -n ${pngfix} ]] ; then
 		local pngout=()
@@ -35,7 +26,7 @@ pngfix_check() {
 				fi
 				eqawarn "   ${pngout[@]:7}: ${error}"
 			fi
-		done < <(find "${ED}" -type f -name '*.png' -print0 | "${xargs[@]}" -0 "${pngfix}")
+		done < <(find "${ED}" -type f -name '*.png' -print0 | ___parallel_xargs -0 "${pngfix}")
 	fi
 }
 

@@ -11,8 +11,6 @@ fi
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
-alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
-alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
 assert() {
 	local x pipestatus=${PIPESTATUS[*]}
@@ -454,13 +452,39 @@ esac
 if [[ -z ${XARGS} ]] ; then
 	case ${USERLAND} in
 	BSD)
-		export XARGS="xargs"
+		if type -P gxargs > /dev/null; then
+			export XARGS="gxargs -r"
+		else
+			export XARGS="xargs"
+		fi
 		;;
 	*)
 		export XARGS="xargs -r"
 		;;
 	esac
 fi
+
+___makeopts_jobs() {
+	# Copied from eutils.eclass:makeopts_jobs()
+	local jobs=$(echo " ${MAKEOPTS} " | \
+		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p')
+	echo ${jobs:-1}
+}
+
+# Run ${XARGS} in parallel for detected number of CPUs, if supported.
+# Passes all arguments to xargs, and returns its exit code
+___parallel_xargs() {
+	local chunksize=1 jobs xargs=( ${XARGS} )
+
+	if "${xargs[@]}" --help | grep -q -- --max-procs=; then
+		jobs=$(___makeopts_jobs)
+		if [[ ${jobs} -gt 1 ]]; then
+			xargs+=("--max-procs=${jobs}" -L "${chunksize}")
+		fi
+	fi
+
+	"${xargs[@]}" "${@}"
+}
 
 hasq() {
 	has $EBUILD_PHASE prerm postrm || eqawarn \

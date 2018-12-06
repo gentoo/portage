@@ -74,25 +74,61 @@ def _find_invalid_path_char(path, pos=0, endpos=None):
 class RepoConfig(object):
 	"""Stores config of one repository"""
 
-	__slots__ = ('aliases', 'allow_missing_manifest', 'allow_provide_virtual',
-		'auto_sync', 'cache_formats', 'clone_depth',
-		'create_manifest', 'disable_manifest',
-		'eapi', 'eclass_db', 'eclass_locations', 'eclass_overrides',
-		'find_invalid_path_char', 'force', 'format', 'local_config', 'location',
-		'main_repo', 'manifest_hashes', 'masters', 'missing_repo_name',
-		'name', 'portage1_profiles', 'portage1_profiles_compat', 'priority',
-		'profile_formats', 'sign_commit', 'sign_manifest', 'strict_misc_digests',
-		'sync_depth', 'sync_hooks_only_on_change',
-		'sync_type', 'sync_umask', 'sync_uri', 'sync_user', 'thin_manifest',
-		'update_changelog', '_eapis_banned', '_eapis_deprecated',
-		'_masters_orig', 'module_specific_options', 'manifest_required_hashes',
+	__slots__ = (
+		'aliases',
+		'allow_missing_manifest',
+		'allow_provide_virtual',
+		'auto_sync',
+		'cache_formats',
+		'clone_depth',
+		'create_manifest',
+		'disable_manifest',
+		'eapi',
+		'eclass_db',
+		'eclass_locations',
+		'eclass_overrides',
+		'find_invalid_path_char',
+		'force',
+		'format',
+		'local_config',
+		'location',
+		'main_repo',
+		'manifest_hashes',
+		'manifest_required_hashes',
+		'masters',
+		'missing_repo_name',
+		'module_specific_options',
+		'name',
+		'portage1_profiles',
+		'portage1_profiles_compat',
+		'priority',
+		'profile_formats',
+		'sign_commit',
+		'sign_manifest',
+		'strict_misc_digests',
 		'sync_allow_hardlinks',
+		'sync_depth',
+		'sync_hooks_only_on_change',
 		'sync_openpgp_key_path',
 		'sync_openpgp_key_refresh_retry_count',
-		'sync_openpgp_key_refresh_retry_delay_max',
 		'sync_openpgp_key_refresh_retry_delay_exp_base',
+		'sync_openpgp_key_refresh_retry_delay_max',
 		'sync_openpgp_key_refresh_retry_delay_mult',
 		'sync_openpgp_key_refresh_retry_overall_timeout',
+		'sync_rcu',
+		'sync_rcu_spare_snapshots',
+		'sync_rcu_store_dir',
+		'sync_rcu_ttl_days',
+		'sync_type',
+		'sync_umask',
+		'sync_uri',
+		'sync_user',
+		'thin_manifest',
+		'update_changelog',
+		'user_location',
+		'_eapis_banned',
+		'_eapis_deprecated',
+		'_masters_orig',
 		)
 
 	def __init__(self, name, repo_opts, local_config=True):
@@ -192,11 +228,27 @@ class RepoConfig(object):
 			'sync-openpgp-key-path', None)
 
 		for k in ('sync_openpgp_key_refresh_retry_count',
-			'sync_openpgp_key_refresh_retry_delay_max',
 			'sync_openpgp_key_refresh_retry_delay_exp_base',
+			'sync_openpgp_key_refresh_retry_delay_max',
 			'sync_openpgp_key_refresh_retry_delay_mult',
 			'sync_openpgp_key_refresh_retry_overall_timeout'):
 			setattr(self, k, repo_opts.get(k.replace('_', '-'), None))
+
+		self.sync_rcu = repo_opts.get(
+			'sync-rcu', 'false').lower() in ('true', 'yes')
+
+		self.sync_rcu_store_dir = repo_opts.get('sync-rcu-store-dir')
+
+		for k in ('sync-rcu-spare-snapshots', 'sync-rcu-ttl-days'):
+			v = repo_opts.get(k, '').strip() or None
+			if v:
+				try:
+					v = int(v)
+				except (OverflowError, ValueError):
+					writemsg(_("!!! Invalid %s setting for repo"
+						" %s: %s\n") % (k, name, v), noiselevel=-1)
+					v = None
+			setattr(self, k.replace('-', '_'), v)
 
 		self.module_specific_options = {}
 
@@ -206,9 +258,14 @@ class RepoConfig(object):
 			format = format.strip()
 		self.format = format
 
+		self.user_location = None
 		location = repo_opts.get('location')
 		if location is not None and location.strip():
 			if os.path.isdir(location) or portage._sync_mode:
+				# The user_location is required for sync-rcu support,
+				# since it manages a symlink which resides at that
+				# location (and realpath is irreversible).
+				self.user_location = location
 				location = os.path.realpath(location)
 		else:
 			location = None
@@ -531,19 +588,34 @@ class RepoConfigLoader(object):
 					if repos_conf_opts is not None:
 						# Selectively copy only the attributes which
 						# repos.conf is allowed to override.
-						for k in ('aliases', 'auto_sync',
-							'clone_depth', 'eclass_overrides',
-							'force', 'masters', 'priority', 'strict_misc_digests',
-							'sync_depth', 'sync_hooks_only_on_change',
+						for k in (
+							'aliases',
+							'auto_sync',
+							'clone_depth',
+							'eclass_overrides',
+							'force',
+							'masters',
+							'module_specific_options',
+							'priority',
+							'strict_misc_digests',
 							'sync_allow_hardlinks',
+							'sync_depth',
+							'sync_hooks_only_on_change',
 							'sync_openpgp_key_path',
 							'sync_openpgp_key_refresh_retry_count',
-							'sync_openpgp_key_refresh_retry_delay_max',
 							'sync_openpgp_key_refresh_retry_delay_exp_base',
+							'sync_openpgp_key_refresh_retry_delay_max',
 							'sync_openpgp_key_refresh_retry_delay_mult',
 							'sync_openpgp_key_refresh_retry_overall_timeout',
-							'sync_type', 'sync_umask', 'sync_uri', 'sync_user',
-							'module_specific_options'):
+							'sync_rcu',
+							'sync_rcu_spare_snapshots',
+							'sync_rcu_store_dir',
+							'sync_rcu_ttl_days',
+							'sync_type',
+							'sync_umask',
+							'sync_uri',
+							'sync_user',
+							):
 							v = getattr(repos_conf_opts, k, None)
 							if v is not None:
 								setattr(repo, k, v)
@@ -962,16 +1034,38 @@ class RepoConfigLoader(object):
 		return repo_name in self.prepos
 
 	def config_string(self):
-		bool_keys = ("strict_misc_digests", "sync_allow_hardlinks")
-		str_or_int_keys = ("auto_sync", "clone_depth", "format", "location",
-			"main_repo", "priority", "sync_depth", "sync_openpgp_key_path",
+		bool_keys = (
+			"strict_misc_digests",
+			"sync_allow_hardlinks",
+			"sync_rcu",
+		)
+		str_or_int_keys = (
+			"auto_sync",
+			"clone_depth",
+			"format",
+			"location",
+			"main_repo",
+			"priority",
+			"sync_depth",
+			"sync_openpgp_key_path",
 			"sync_openpgp_key_refresh_retry_count",
-			"sync_openpgp_key_refresh_retry_delay_max",
 			"sync_openpgp_key_refresh_retry_delay_exp_base",
+			"sync_openpgp_key_refresh_retry_delay_max",
 			"sync_openpgp_key_refresh_retry_delay_mult",
 			"sync_openpgp_key_refresh_retry_overall_timeout",
-			"sync_type", "sync_umask", "sync_uri", 'sync_user')
-		str_tuple_keys = ("aliases", "eclass_overrides", "force")
+			"sync_rcu_spare_snapshots",
+			"sync_rcu_store_dir",
+			"sync_rcu_ttl_days",
+			"sync_type",
+			"sync_umask",
+			"sync_uri",
+			"sync_user",
+		)
+		str_tuple_keys = (
+			"aliases",
+			"eclass_overrides",
+			"force",
+		)
 		repo_config_tuple_keys = ("masters",)
 		keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""

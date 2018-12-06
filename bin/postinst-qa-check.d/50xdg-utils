@@ -90,7 +90,7 @@ xdg_mimeinfo_database_check() {
 }
 
 xdg_utils_postinst_check() {
-	cd "${EROOT}" || die
+	cd "${EROOT:-/}" || die
 	xdg_desktop_database_check
 	xdg_mimeinfo_database_check
 }

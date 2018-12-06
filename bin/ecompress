@@ -1,0 +1,198 @@
+#!/bin/bash
+# Copyright 1999-2018 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+if [[ -z $1 ]] ; then
+	__helpers_die "${0##*/}: at least one argument needed"
+	exit 1
+fi
+
+if ! ___eapi_has_prefix_variables; then
+	ED=${D} EPREFIX=
+fi
+
+while [[ $# -gt 0 ]] ; do
+	case $1 in
+	--ignore)
+		shift
+
+		skip_dirs=()
+		for skip; do
+			if [[ -d ${ED%/}/${skip#/} ]]; then
+				skip_dirs+=( "${ED%/}/${skip#/}" )
+			else
+				rm -f "${ED%/}/${skip#/}.ecompress" || die
+			fi
+		done
+
+		if [[ ${#skip_dirs[@]} -gt 0 ]]; then
+			find "${skip_dirs[@]}" -name '*.ecompress' -delete || die
+		fi
+
+		exit 0
+		;;
+	--queue)
+		shift
+
+		find_args=()
+		for path; do
+			if [[ -e ${ED%/}/${path#/} ]]; then
+				find_args+=( "${ED%/}/${path#/}" )
+			fi
+		done
+
+		if [[ ${#find_args[@]} -gt 0 ]]; then
+			find_args+=( -type f )
+			[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
+				find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
+
+			declare -A collisions
+			while IFS= read -d '' -r path; do
+				# detect the horrible posibility of the ebuild installing
+				# colliding compressed and/or uncompressed variants
+				# and fail hard (bug #667072)
+				#
+				# note: to save time, we need to do this only if there's
+				# at least one compressed file
+				case ${path} in
+					*.Z|*.gz|*.bz2|*.lzma|*.xz)
+						vpath=${path%.*}
+						for comp in '' .Z .gz .bz2 .lzma .xz; do
+							if [[ ${vpath}${comp} != ${path} && \
+									-e ${vpath}${comp} ]]; then
+								collisions[${path}]=1
+								collisions[${vpath}]=1
+								# ignore compressed variants in that case
+								continue 2
+							fi
+						done
+						echo "${path}" >> "${T}"/.ecompress_had_precompressed
+						;;
+				esac
+
+				>> "${path}.ecompress" || die
+			done < <(find "${find_args[@]}" -print0 || die)
+
+			if [[ ${#collisions[@]} -gt 0 ]]; then
+				eqawarn "Colliding files found by ecompress:"
+				eqawarn
+				for x in "${!collisions[@]}"; do
+					eqawarn "  ${x}"
+				done
+				eqawarn
+				eqawarn "Please remove the extraneous compressed variants."
+			fi
+		fi
+
+		exit 0
+		;;
+	--dequeue)
+		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		break
+		;;
+	*)
+		die "${0##*/}: unknown arguments '$*'"
+		exit 1
+		;;
+	esac
+	shift
+done
+
+# setup compression stuff
+PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
+if [[ -z ${PORTAGE_COMPRESS} ]]; then
+	find "${ED}" -name '*.ecompress' -delete
+	exit 0
+fi
+
+if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
+	case ${PORTAGE_COMPRESS} in
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
+	esac
+fi
+
+guess_suffix() {
+	set -e
+	tmpdir="${T}"/.ecompress$$.${RANDOM}
+	mkdir "${tmpdir}"
+	cd "${tmpdir}"
+	# we have to fill the file enough so that there is something
+	# to compress as some programs will refuse to do compression
+	# if it cannot actually compress the file
+	echo {0..1000} > compressme
+	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
+	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
+	# having our glob match the uncompressed file here.
+	suffix=$(echo compressme.*)
+	[[ -z $suffix || "$suffix" == "compressme.*" ]] && \
+		suffix=$(echo compressme*)
+	suffix=${suffix#compressme}
+	cd /
+	rm -rf "${tmpdir}"
+	echo "${suffix}"
+}
+
+# figure out the new suffix
+export PORTAGE_COMPRESS_SUFFIX=$(guess_suffix) || die
+
+fix_symlinks() {
+	# Repeat until nothing changes, in order to handle multiple
+	# levels of indirection (see bug #470916).
+	local -i indirection=0
+	while true ; do
+	local something_changed=
+	while read -r -d $'\0' brokenlink ; do
+		[[ -e ${brokenlink} ]] && continue
+		olddest=$(readlink "${brokenlink}")
+		newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
+		if [[ "${newdest}" == /* ]] ; then
+			[[ -f "${D%/}${newdest}" ]] || continue
+		else
+			[[ -f "${brokenlink%/*}/${newdest}" ]] || continue
+		fi
+		something_changed=${brokenlink}
+		rm -f "${brokenlink}" &&
+		ln -snf "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
+		((ret|=$?))
+	done < <(find "${ED}" -type l -print0 || die)
+
+	[[ -n ${something_changed} ]] || break
+	(( indirection++ ))
+	if (( indirection >= 100 )) ; then
+		# Protect against possibility of a bug triggering an endless loop.
+		eerror "ecompress: too many levels of indirection for" \
+			"'${something_changed#${ED%/}}'"
+		break
+	fi
+	done
+
+	return ${ret}
+}
+
+export PORTAGE_COMPRESS PORTAGE_COMPRESS_FLAGS
+find "${ED}" -name '*.ecompress' -delete -print0 |
+	___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
+ret=${?}
+
+if [[ -f ${T}/.ecompress_had_precompressed ]]; then
+	eqawarn "One or more compressed files were found in docompress-ed directories."
+	eqawarn "Please fix the ebuild not to install compressed files (manpages,"
+	eqawarn "documentation) when automatic compression is used:"
+	eqawarn
+	n=0
+	while read -r f; do
+		eqawarn "  ${f#${D%/}}"
+		if [[ $(( n++ )) -eq 10 ]]; then
+			eqawarn "  ..."
+			break
+		fi
+	done <"${T}"/.ecompress_had_precompressed
+fi
+
+fix_symlinks
+: $(( ret |= ${?} ))
+[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+
+exit ${ret}

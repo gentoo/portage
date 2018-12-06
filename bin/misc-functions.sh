@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
@@ -45,125 +45,6 @@ install_symlink_html_docs() {
 			dosym "${mydocdir}" "${mysympath}"
 		fi
 	fi
-}
-
-# replacement for "readlink -f" or "realpath"
-READLINK_F_WORKS=""
-canonicalize() {
-	if [[ -z ${READLINK_F_WORKS} ]] ; then
-		if [[ $(readlink -f -- /../ 2>/dev/null) == "/" ]] ; then
-			READLINK_F_WORKS=true
-		else
-			READLINK_F_WORKS=false
-		fi
-	fi
-	if ${READLINK_F_WORKS} ; then
-		readlink -f -- "$@"
-		return
-	fi
-
-	local f=$1 b n=10 wd=$(pwd)
-	while (( n-- > 0 )); do
-		while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
-			f=${f%/}
-		done
-		b=${f##*/}
-		cd "${f%"${b}"}" 2>/dev/null || break
-		if [[ ! -L ${b} ]]; then
-			f=$(pwd -P)
-			echo "${f%/}/${b}"
-			cd "${wd}"
-			return 0
-		fi
-		f=$(readlink "${b}")
-	done
-	cd "${wd}"
-	return 1
-}
-
-prepcompress() {
-	local -a include exclude incl_d incl_f
-	local f g i real_f real_d
-	if ! ___eapi_has_prefix_variables; then
-		local ED=${D}
-	fi
-
-	# Canonicalize path names and check for their existence.
-	real_d=$(canonicalize "${ED}")
-	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS[@]}; i++ )); do
-		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS[i]#/}")
-		f=${real_f#"${real_d}"}
-		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
-		then
-			include[${#include[@]}]=${f:-/}
-		elif [[ ${i} -ge 3 ]]; then
-			ewarn "prepcompress:" \
-				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS[i]}'"
-		fi
-	done
-	for (( i = 0; i < ${#PORTAGE_DOCOMPRESS_SKIP[@]}; i++ )); do
-		real_f=$(canonicalize "${ED%/}/${PORTAGE_DOCOMPRESS_SKIP[i]#/}")
-		f=${real_f#"${real_d}"}
-		if [[ ${real_f} != "${f}" ]] && [[ -d ${real_f} || -f ${real_f} ]]
-		then
-			exclude[${#exclude[@]}]=${f:-/}
-		elif [[ ${i} -ge 1 ]]; then
-			ewarn "prepcompress:" \
-				"ignoring nonexistent path '${PORTAGE_DOCOMPRESS_SKIP[i]}'"
-		fi
-	done
-
-	# Remove redundant entries from lists.
-	# For the include list, remove any entries that are:
-	# a) contained in a directory in the include or exclude lists, or
-	# b) identical with an entry in the exclude list.
-	for (( i = ${#include[@]} - 1; i >= 0; i-- )); do
-		f=${include[i]}
-		for g in "${include[@]}"; do
-			if [[ ${f} == "${g%/}"/* ]]; then
-				unset include[i]
-				continue 2
-			fi
-		done
-		for g in "${exclude[@]}"; do
-			if [[ ${f} = "${g}" || ${f} == "${g%/}"/* ]]; then
-				unset include[i]
-				continue 2
-			fi
-		done
-	done
-	# For the exclude list, remove any entries that are:
-	# a) contained in a directory in the exclude list, or
-	# b) _not_ contained in a directory in the include list.
-	for (( i = ${#exclude[@]} - 1; i >= 0; i-- )); do
-		f=${exclude[i]}
-		for g in "${exclude[@]}"; do
-			if [[ ${f} == "${g%/}"/* ]]; then
-				unset exclude[i]
-				continue 2
-			fi
-		done
-		for g in "${include[@]}"; do
-			[[ ${f} == "${g%/}"/* ]] && continue 2
-		done
-		unset exclude[i]
-	done
-
-	# Split the include list into directories and files
-	for f in "${include[@]}"; do
-		if [[ -d ${ED%/}/${f#/} ]]; then
-			incl_d[${#incl_d[@]}]=${f}
-		else
-			incl_f[${#incl_f[@]}]=${f}
-		fi
-	done
-
-	# Queue up for compression.
-	# ecompress{,dir} doesn't like to be called with empty argument lists.
-	[[ ${#incl_d[@]} -gt 0 ]] && ecompressdir --limit ${PORTAGE_DOCOMPRESS_SIZE_LIMIT:-0} --queue "${incl_d[@]}"
-	[[ ${#incl_f[@]} -gt 0 ]] && ecompress --queue "${incl_f[@]/#/${ED%/}}"
-	[[ ${#exclude[@]} -gt 0 ]] && ecompressdir --ignore "${exclude[@]}"
-	return 0
 }
 
 install_qa_check() {
@@ -224,16 +105,41 @@ install_qa_check() {
 		)
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 
-	export STRIP_MASK
-	prepall
-	___eapi_has_docompress && prepcompress
-	ecompressdir --dequeue
-	ecompress --dequeue
+	if has chflags $FEATURES ; then
+		# Save all the file flags for restoration afterwards.
+		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
+		# Remove all the file flags so that we can do anything necessary.
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
+		chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
+	fi
 
-	if ___eapi_has_dostrip; then
-		"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
-		"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
-		"${PORTAGE_BIN_PATH}"/estrip --dequeue
+	[[ -d ${ED%/}/usr/share/info ]] && prepinfo
+
+	# If binpkg-docompress is enabled, apply compression before creating
+	# the binary package.
+	if has binpkg-docompress ${FEATURES}; then
+		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
+		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
+		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
+	fi
+
+	# If binpkg-dostrip is enabled, apply stripping before creating
+	# the binary package.
+	# Note: disabling it won't help with packages calling prepstrip directly.
+	if has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
+		fi
+	fi
+
+	if has chflags $FEATURES ; then
+		# Restore all the file flags that were saved earlier on.
+		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
 	fi
 
 	# PREFIX LOCAL:
@@ -686,6 +592,51 @@ install_qa_check_xcoff() {
 	fi
 }
 
+__dyn_instprep() {
+	if [[ -e ${PORTAGE_BUILDDIR}/.instprepped ]] ; then
+		__vecho ">>> It appears that '$PF' is already instprepped; skipping."
+		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.instprepped' to force instprep."
+		return 0
+	fi
+
+	if has chflags ${FEATURES}; then
+		# Save all the file flags for restoration afterwards.
+		mtree -c -p "${ED}" -k flags > "${T}/bsdflags.mtree"
+		# Remove all the file flags so that we can do anything necessary.
+		chflags -R noschg,nouchg,nosappnd,nouappnd "${ED}"
+		chflags -R nosunlnk,nouunlnk "${ED}" 2>/dev/null
+	fi
+
+	# If binpkg-docompress is disabled, we need to apply compression
+	# before installing.
+	if ! has binpkg-docompress ${FEATURES}; then
+		"${PORTAGE_BIN_PATH}"/ecompress --queue "${PORTAGE_DOCOMPRESS[@]}"
+		"${PORTAGE_BIN_PATH}"/ecompress --ignore "${PORTAGE_DOCOMPRESS_SKIP[@]}"
+		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
+	fi
+
+	# If binpkg-dostrip is disabled, apply stripping before creating
+	# the binary package.
+	if ! has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
+		fi
+	fi
+
+	if has chflags ${FEATURES}; then
+		# Restore all the file flags that were saved earlier on.
+		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
+	fi
+
+	>> "${PORTAGE_BUILDDIR}/.instprepped" || \
+		die "Failed to create ${PORTAGE_BUILDDIR}/.instprepped"
+}
+
 preinst_qa_check() {
 	postinst_qa_check preinst
 }
@@ -696,7 +647,7 @@ postinst_qa_check() {
 		local EPREFIX= EROOT=${ROOT}
 	fi
 
-	cd "${EROOT}" || die "cd failed"
+	cd "${EROOT:-/}" || die "cd failed"
 
 	# Collect the paths for QA checks, highest prio first.
 	paths=(

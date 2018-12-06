@@ -130,6 +130,11 @@ the \fIsrc_install()\fR function.  When completed, the
 will contain all the files that should either be merged to the local
 filesystem or included in a binary package.
 .TP
+.BR instprep
+Performs the additional post-install/pre-merge preparations inside
+the temporary \fIinstall directory\fR.  This is intended to be called
+\fBafter\fR building binary package but before executing \fBpreinst\fR.
+.TP
 .BR postinst
 Runs package-specific actions that need to be done after the package
 is installed into the live filesystem.  Usually helpful messages are

@@ -15,9 +15,9 @@ from portage import util
 
 
 _copyright_re1 = \
-	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo Foundation)\b')
+	re.compile(br'^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo (Foundation|Authors))\b')
 _copyright_re2 = \
-	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo Foundation)\b')
+	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b')
 
 
 class _copyright_repl(object):
@@ -31,7 +31,7 @@ class _copyright_repl(object):
 			return matchobj.group(0)
 		else:
 			return matchobj.group(1) + matchobj.group(2) + \
-				b'-' + self.year + matchobj.group(3)
+				b'-' + self.year + b' Gentoo Authors'
 
 
 def update_copyright_year(year, line):
@@ -51,7 +51,7 @@ def update_copyright_year(year, line):
 	year = _unicode_encode(year)
 	line = _unicode_encode(line)
 
-	line = _copyright_re1.sub(br'\1-' + year + br'\2', line)
+	line = _copyright_re1.sub(br'\1-' + year + b' Gentoo Authors', line)
 	line = _copyright_re2.sub(_copyright_repl(year), line)
 	if not is_bytes:
 		line = _unicode_decode(line)
@@ -67,6 +67,15 @@ def update_copyright(fn_path, year, pretend=False):
 	Files are read and written in binary mode, so that this function
 	will work correctly with files encoded in any character set, as
 	long as the copyright statements consist of plain ASCII.
+
+	@param fn_path: file path
+	@type str
+	@param year: current year
+	@type str
+	@param pretend: pretend mode
+	@type bool
+	@rtype: bool
+	@return: True if copyright update was needed, False otherwise
 	"""
 
 	try:
@@ -120,3 +129,4 @@ def update_copyright(fn_path, year, pretend=False):
 		else:
 			util.apply_stat_permissions(fn_path, fn_stat)
 	fn_hdl.close()
+	return difflines > 3

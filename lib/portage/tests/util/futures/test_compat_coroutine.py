@@ -6,6 +6,7 @@ from portage.util.futures.compat_coroutine import (
 	coroutine,
 	coroutine_return,
 )
+from portage.util.futures._sync_decorator import _sync_decorator, _sync_methods
 from portage.tests import TestCase
 
 
@@ -71,6 +72,10 @@ class CompatCoroutineTestCase(TestCase):
 			loop.run_until_complete, future)
 
 	def test_cancelled_future(self):
+		"""
+		When a coroutine raises CancelledError, the coroutine's
+		future is cancelled.
+		"""
 
 		@coroutine
 		def cancelled_future_coroutine(loop=None):
@@ -81,8 +86,8 @@ class CompatCoroutineTestCase(TestCase):
 				yield future
 
 		loop = asyncio.get_event_loop()
-		self.assertRaises(asyncio.CancelledError,
-			loop.run_until_complete, cancelled_future_coroutine(loop=loop))
+		future = loop.run_until_complete(asyncio.wait([cancelled_future_coroutine()]))[0].pop()
+		self.assertTrue(future.cancelled())
 
 	def test_yield_expression_result(self):
 		@coroutine
@@ -157,3 +162,16 @@ class CompatCoroutineTestCase(TestCase):
 		loop.run_until_complete(asyncio.wait([writer, reader]))
 
 		self.assertEqual(reader.result(), values)
+
+		# Test decoration of coroutine methods and functions for
+		# synchronous usage, allowing coroutines to smoothly
+		# blend with synchronous code.
+		sync_cubby = _sync_methods(cubby, loop=loop)
+		sync_reader = _sync_decorator(reader_coroutine, loop=loop)
+		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None), loop=loop)
+		self.assertEqual(sync_reader(cubby, None), values)
+		self.assertTrue(writer.done())
+
+		for i in range(3):
+			sync_cubby.write(i)
+			self.assertEqual(sync_cubby.read(), i)

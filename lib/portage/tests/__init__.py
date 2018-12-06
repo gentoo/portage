@@ -9,18 +9,7 @@ import sys
 import time
 import unittest
 
-try:
-	from unittest.runner import _TextTestResult # new in python-2.7
-except ImportError:
-	from unittest import _TextTestResult
-
-try:
-	# They added the skip framework to python-2.7.
-	# Drop this once we drop python-2.6 support.
-	unittest_skip_shims = False
-	import unittest.SkipTest as SkipTest # new in python-2.7
-except ImportError:
-	unittest_skip_shims = True
+from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
 from portage import os
@@ -148,7 +137,7 @@ def getTests(path, base_path):
 
 class TextTestResult(_TextTestResult):
 	"""
-	We need a subclass of unittest._TextTestResult to handle tests with TODO
+	We need a subclass of unittest.runner.TextTestResult to handle tests with TODO
 
 	This just adds an addTodo method that can be used to add tests
 	that are marked TODO; these can be displayed later
@@ -213,7 +202,7 @@ class TestCase(unittest.TestCase):
 					self.setUp()
 				except KeyboardInterrupt:
 					raise
-				except SkipTest:
+				except unittest.SkipTest:
 					raise
 				except Exception:
 					result.addError(self, sys.exc_info())
@@ -221,7 +210,7 @@ class TestCase(unittest.TestCase):
 
 				testMethod()
 				ok = True
-			except SkipTest as e:
+			except unittest.SkipTest as e:
 				result.addPortageSkip(self, "%s: SKIP: %s" %
 					(testMethod, str(e)))
 			except self.failureException:
@@ -291,23 +280,6 @@ class TestCase(unittest.TestCase):
 		"""Make sure |path| does not exist"""
 		if os.path.exists(path):
 			raise self.failureException('path exists when it should not: %s' % path)
-
-if unittest_skip_shims:
-	# Shim code for <python-2.7.
-	class SkipTest(Exception):
-		"""unittest.SkipTest shim for <python-2.7"""
-
-	def skipTest(self, reason):
-		raise SkipTest(reason)
-	setattr(TestCase, 'skipTest', skipTest)
-
-	def assertIn(self, member, container, msg=None):
-		self.assertTrue(member in container, msg=msg)
-	setattr(TestCase, 'assertIn', assertIn)
-
-	def assertNotIn(self, member, container, msg=None):
-		self.assertFalse(member in container, msg=msg)
-	setattr(TestCase, 'assertNotIn', assertNotIn)
 
 class TextTestRunner(unittest.TextTestRunner):
 	"""

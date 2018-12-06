@@ -2,38 +2,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-# Do not compress man pages which are smaller than this (in bytes). #169260
-SIZE_LIMIT='128'
-
-source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
-
-if ! ___eapi_has_prefix_variables; then
-	ED=${D}
-fi
-
-if [[ -z $1 ]] ; then
-	mandir="${ED%/}/usr/share/man"
-else
-	mandir="${ED%/}/${1#/}/man"
-fi
-
-if [[ ! -d ${mandir} ]] ; then
-	eqawarn "QA Notice: prepman called with non-existent dir '${mandir#${ED%/}}'"
-	exit 0
-fi
-
-# replaced by controllable compression in EAPI 4
-___eapi_has_docompress && exit 0
-
-shopt -s nullglob
-
-really_is_mandir=0
-
-# use some heuristics to test if this is a real mandir
-for subdir in "${mandir}"/man* "${mandir}"/*/man* ; do
-	[[ -d ${subdir} ]] && really_is_mandir=1 && break
-done
-
-[[ ${really_is_mandir} == 1 ]] && exec ecompressdir --limit ${SIZE_LIMIT} --queue "${mandir#${ED%/}}"
+# Note: this really does nothing these days. It's going to be banned
+# when the last consumers are gone.
 
 exit 0

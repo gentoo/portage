@@ -113,7 +113,7 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 fi
 
 # look up the tools we might be using
-for t in STRIP:strip OBJCOPY:objcopy READELF:readelf ; do
+for t in STRIP:strip OBJCOPY:objcopy READELF:readelf RANLIB:ranlib ; do
 	v=${t%:*} # STRIP
 	t=${t#*:} # strip
 	eval ${v}=\"${!v:-${CHOST}-${t}}\"
@@ -308,7 +308,7 @@ process_elf() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! ${RESTRICT_binchecks} && ! ${RESTRICT_strip} ; then
+if ! ${RESTRICT_binchecks} ; then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
@@ -363,10 +363,9 @@ done < <(
 )
 else
 while IFS= read -d '' -r x ; do
-	rm -f "${x}" || die
 	inode_link=$(get_inode_number "${x%.estrip}") || die "stat failed unexpectedly"
 	echo "${x%.estrip}" >> "${inode_link}" || die "echo failed unexpectedly"
-done < <(find "${ED}" -name '*.estrip' -print0)
+done < <(find "${ED}" -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
@@ -424,7 +423,8 @@ do
 			# linked in (only for finally linked ELFs), so we have to
 			# retain the debug info in the archive itself.
 			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
-				${STRIP} -g "${x}"
+				${STRIP} -g "${x}" &&
+				${RANLIB} "${x}"
 			fi
 		fi
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||

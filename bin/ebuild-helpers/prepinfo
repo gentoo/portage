@@ -34,5 +34,4 @@ find "${ED%/}/${infodir#/}" -type d -print0 | while read -r -d $'\0' x ; do
 	rm -f "${x}"/dir{,.info}{,.gz,.bz2}
 done
 
-___eapi_has_docompress && exit 0
-exec ecompressdir --queue "${infodir}"
+exit 0

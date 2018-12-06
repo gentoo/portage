@@ -1,0 +1,61 @@
+#!/bin/bash
+# Copyright 1999-2018 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
+
+compress_file() {
+	mask_ext_re=""
+	set -f
+	local x
+	for x in $PORTAGE_COMPRESS_EXCLUDE_SUFFIXES ; do
+		mask_ext_re+="|$x"
+	done
+	set +f
+	mask_ext_re="^(${mask_ext_re:1})\$"
+	local filtered_args=()
+	for x in "$@" ; do
+		[[ ${x##*.} =~ $mask_ext_re ]] && continue
+		[[ -s ${x} ]] || continue
+
+		# handle precompressed files
+		case ${x} in
+			*.gz|*.Z)
+				gunzip -f "${x}" || __helpers_die "gunzip failed"
+				x=${x%.*};;
+			*.bz2)
+				bunzip2 -f "${x}" || __helpers_die "bunzip2 failed"
+				x=${x%.bz2};;
+			*.lzma|*.xz)
+				unxz -f "${x}" || __helpers_die "unxz failed"
+				x=${x%.*};;
+			*.lz)
+				lzip -df "${x}" || __helpers_die "lzip -d failed"
+				x=${x%.lz};;
+		esac
+
+		filtered_args+=( "$x" )
+	done
+	[[ ${#filtered_args[@]} -eq 0 ]] && return 0
+	set -- "${filtered_args[@]}"
+
+	# If a compressed version of the file already exists, simply
+	# delete it so that the compressor doesn't whine (bzip2 will
+	# complain and skip, gzip will prompt for input)
+	[[ -n ${PORTAGE_COMPRESS_SUFFIX} ]] && echo -n "${@/%/${PORTAGE_COMPRESS_SUFFIX}$'\001'}" | \
+		tr '\001' '\000' | ${XARGS} -0 rm -f
+
+	# forcibly break all hard links as some compressors whine about it
+	while IFS= read -d '' -r x ; do
+		cp -p "${x}" "${x}.ecompress.break" || die
+		mv -f "${x}.ecompress.break" "${x}" || die
+	done < <(find "${@}" -type f -links +1 -print0)
+
+	# Finally, let's actually do some real work
+	"${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} "$@"
+	ret=$?
+	[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+	return ${ret}
+}
+
+compress_file "${@%.ecompress}"

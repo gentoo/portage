@@ -290,7 +290,8 @@ class Scanner(object):
 				self.vcs_settings.status.check(checkdir, checkdir_relative, xpkg)
 
 			if self.generate_manifest:
-				manifest.Manifest(**self.kwargs).update_manifest(checkdir)
+				if not manifest.Manifest(**self.kwargs).update_manifest(checkdir):
+					self.qatracker.add_error("manifest.bad", os.path.join(xpkg, 'Manifest'))
 				if self.options.mode == 'manifest':
 					continue
 			checkdirlist = os.listdir(checkdir)

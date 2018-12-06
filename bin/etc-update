@@ -32,13 +32,13 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
-OS_RELEASE_ID=$(cat "@PORTAGE_EPREFIX@"/etc/os-release 2>/dev/null | grep '^ID=' | cut -d'=' -f2 | sed -e 's/"//g')
+OS_RELEASE_POSSIBLE_IDS=$(source "@PORTAGE_EPREFIX@"/etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
 
-case $OS_RELEASE_ID in
-	suse|opensuse|opensuse-leap|opensuse-tumbleweed) OS_FAMILY='rpm' ;;
-	fedora|rhel) OS_FAMILY='rpm' ;;
-	arch|archarm|arch32|manjaro|antergos) OS_FAMILY='arch' NEW_EXT='pacnew';;
-	*) OS_FAMILY='gentoo' ;;
+case ${OS_RELEASE_POSSIBLE_IDS} in
+	*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
+	*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
+	*:arch:*|*:antergos:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
+	*) OS_FAMILY='gentoo';;
 esac
 
 if [[ $OS_FAMILY == 'gentoo' ]]; then

@@ -23,17 +23,27 @@ class SimpleRepomanTestCase(TestCase):
 			(
 				'2011',
 				'# Copyright 1999-2008 Gentoo Foundation; Distributed under the GPL v2',
-				'# Copyright 1999-2011 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999-2011 Gentoo Authors; Distributed under the GPL v2',
 			),
 			(
 				'2011',
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
-				'# Copyright 1999-2011 Gentoo Foundation; Distributed under the GPL v2',
+				'# Copyright 1999-2011 Gentoo Authors; Distributed under the GPL v2',
 			),
 			(
 				'1999',
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
 				'# Copyright 1999 Gentoo Foundation; Distributed under the GPL v2',
+			),
+			(
+				'2018',
+				'# Copyright 1999-2008 Gentoo Authors; Distributed under the GPL v2',
+				'# Copyright 1999-2018 Gentoo Authors; Distributed under the GPL v2',
+			),
+			(
+				'2018',
+				'# Copyright 2017 Gentoo Authors; Distributed under the GPL v2',
+				'# Copyright 2017-2018 Gentoo Authors; Distributed under the GPL v2',
 			),
 		)
 

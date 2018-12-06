@@ -12,9 +12,11 @@ import logging
 import os
 
 import portage
+from portage.repository.storage.interface import RepoStorageException
 from portage.util import writemsg_level
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.backoff import RandomExponentialBackoff
+from portage.util.futures._sync_decorator import _sync_methods
 from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
 from . import _SUBMODULE_PATH_MAP
@@ -40,6 +42,8 @@ class SyncBase(object):
 		self.repo = None
 		self.xterm_titles = None
 		self.spawn_kwargs = None
+		self._repo_storage = None
+		self._download_dir = None
 		self.bin_command = None
 		self._bin_command = bin_command
 		self.bin_pkg = bin_pkg
@@ -49,7 +53,8 @@ class SyncBase(object):
 
 	@property
 	def has_bin(self):
-		'''Checks for existance of the external binary.
+		'''Checks for existance of the external binary, and also
+		checks for storage driver configuration problems.
 
 		MUST only be called after _kwargs() has set the logger
 		'''
@@ -61,8 +66,15 @@ class SyncBase(object):
 				writemsg_level("!!! %s\n" % l,
 					level=logging.ERROR, noiselevel=-1)
 			return False
-		return True
 
+		try:
+			self.repo_storage
+		except RepoStorageException as e:
+			writemsg_level("!!! %s\n" % (e,),
+				level=logging.ERROR, noiselevel=-1)
+			return False
+
+		return True
 
 	def _kwargs(self, kwargs):
 		'''Sets internal variables from kwargs'''
@@ -73,6 +85,45 @@ class SyncBase(object):
 		self.xterm_titles = self.options.get('xterm_titles', False)
 		self.spawn_kwargs = self.options.get('spawn_kwargs', None)
 
+	def _select_storage_module(self):
+		'''
+		Select an appropriate implementation of RepoStorageInterface, based
+		on repos.conf settings.
+
+		@rtype: str
+		@return: name of the selected repo storage constructor
+		'''
+		if self.repo.sync_rcu:
+			mod_name = 'portage.repository.storage.hardlink_rcu.HardlinkRcuRepoStorage'
+		elif self.repo.sync_allow_hardlinks:
+			mod_name = 'portage.repository.storage.hardlink_quarantine.HardlinkQuarantineRepoStorage'
+		else:
+			mod_name = 'portage.repository.storage.inplace.InplaceRepoStorage'
+		return mod_name
+
+	@property
+	def repo_storage(self):
+		"""
+		Get the repo storage driver instance. Raise RepoStorageException
+		if there is a configuration problem
+		"""
+		if self._repo_storage is None:
+			storage_cls = portage.load_mod(self._select_storage_module())
+			self._repo_storage = _sync_methods(storage_cls(self.repo, self.spawn_kwargs))
+		return self._repo_storage
+
+	@property
+	def download_dir(self):
+		"""
+		Get the path of the download directory, where the repository
+		update is staged. The directory is initialized lazily, since
+		the repository might already be at the latest revision, and
+		there may be some cost associated with the directory
+		initialization.
+		"""
+		if self._download_dir is None:
+			self._download_dir = self.repo_storage.init_update()
+		return self._download_dir
 
 	def exists(self, **kwargs):
 		'''Tests whether the repo actually exists'''

@@ -36,6 +36,7 @@ except ImportError:
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:_PortageEventLoopPolicy',
+	'portage.util.futures:compat_coroutine@_compat_coroutine',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
@@ -150,6 +151,19 @@ def create_subprocess_exec(*args, **kwargs):
 		stderr=kwargs.pop('stderr', None), **kwargs), loop))
 
 	return result
+
+
+def iscoroutinefunction(func):
+	"""
+	Return True if func is a decorated coroutine function,
+	supporting both asyncio.coroutine and compat_coroutine since
+	their behavior is identical for all practical purposes.
+	"""
+	if _compat_coroutine._iscoroutinefunction(func):
+		return True
+	elif _real_asyncio is not None and _real_asyncio.iscoroutinefunction(func):
+		return True
+	return False
 
 
 class Task(Future):

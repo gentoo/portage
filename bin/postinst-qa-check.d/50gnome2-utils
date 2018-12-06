@@ -54,7 +54,7 @@ gnome2_icon_cache_check() {
 }
 
 gnome2_utils_postinst_check() {
-	cd "${EROOT}" || die
+	cd "${EROOT:-/}" || die
 	gnome2_icon_cache_check
 }
 

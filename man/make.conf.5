@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2016" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2018" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -278,6 +278,20 @@ existing digest, the digest will be regenerated regardless of whether or
 not \fIassume\-digests\fR is enabled. The \fBebuild\fR(1) \fBdigest\fR command
 has a \fB\-\-force\fR option that can be used to force regeneration of digests.
 .TP
+.B binpkg\-docompress
+Perform \fBdocompress\fR (controllable file compression) before creating binary
+package.  When this option is enabled (the default), documentation files are
+already compressed inside binary packages.  When it is disabled, binary packages
+contain uncompressed documentation and Portage compresses it before installing.
+.TP
+.B binpkg\-dostrip
+Perform file stripping before creating binary package.  When this option is
+enabled (the default), executables are already stripped inside binary packages.
+When it is disabled, binary packages contain unstripped executables and Portage
+strips (or splits) them before installing.
+
+\fBbinpkg\-dostrip\fR must be enabled for \fBinstallsources\fR to work.
+.TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORT_LOGDIR\fR is set.
@@ -442,8 +456,9 @@ Enable portage support for the icecream package.
 .TP
 .B installsources
 Install source code into /usr/src/debug/${CATEGORY}/${PF} (also see
-\fBsplitdebug\fR). This feature works only if debugedit is installed and CFLAGS
-is set to include debug information (such as with the \-ggdb flag).
+\fBsplitdebug\fR). This feature works only if debugedit is installed, CFLAGS
+is set to include debug information (such as with the \-ggdb flag)
+and \fBbinpkg-dostrip\fR is enabled.
 .TP
 .B ipc\-sandbox
 Isolate the ebuild phase functions from host IPC namespace. Supported
@@ -481,6 +496,11 @@ ${repository_location}/metadata/md5\-cache/ directory will be used directly
 .B mirror
 Fetch everything in \fBSRC_URI\fR regardless of \fBUSE\fR settings,
 except do not fetch anything when \fImirror\fR is in \fBRESTRICT\fR.
+.TP
+.B mount\-sandbox
+Isolate the ebuild phase functions from host mount namespace. This makes
+it possible for ebuild to alter mountpoints without affecting the host
+system. Supported only on Linux. Requires mount namespace support in kernel.
 .TP
 .B multilib\-strict
 Many Makefiles assume that their libraries should go to /usr/lib, or
@@ -540,6 +560,13 @@ terminal to view parallel-fetch progress.
 Use finer\-grained locks when installing packages, allowing for greater
 parallelization. For additional parallelization, disable
 \fIebuild\-locks\fR.
+.TP
+.B pid\-sandbox
+Isolate the process space for the ebuild processes. This makes it
+possible to cleanly kill all processes spawned by the ebuild.
+Supported only on Linux. Requires PID and mount namespace support
+in kernel. /proc is remounted inside the mount namespace to account
+for new PID namespace.
 .TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files

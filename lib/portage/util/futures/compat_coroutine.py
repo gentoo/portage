@@ -8,6 +8,17 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:asyncio',
 )
 
+# A marker for iscoroutinefunction.
+_is_coroutine = object()
+
+
+def _iscoroutinefunction(func):
+	"""
+	Return True if func is a decorated coroutine function
+	created with the coroutine decorator for this module.
+	"""
+	return getattr(func, '_is_coroutine', None) is _is_coroutine
+
 
 def coroutine(generator_func):
 	"""
@@ -34,6 +45,7 @@ def coroutine(generator_func):
 	@functools.wraps(generator_func)
 	def wrapped(*args, **kwargs):
 		return _generator_future(generator_func, *args, **kwargs)
+	wrapped._is_coroutine = _is_coroutine
 	return wrapped
 
 
@@ -94,14 +106,14 @@ class _GeneratorTask(object):
 			if previous is None:
 				future = next(self._generator)
 			elif previous.cancelled():
-				self._generator.throw(asyncio.CancelledError())
-				future = next(self._generator)
+				future = self._generator.throw(asyncio.CancelledError())
 			elif previous.exception() is None:
 				future = self._generator.send(previous.result())
 			else:
-				self._generator.throw(previous.exception())
-				future = next(self._generator)
+				future = self._generator.throw(previous.exception())
 
+		except asyncio.CancelledError:
+			self._result.cancel()
 		except _CoroutineReturnValue as e:
 			if not self._result.cancelled():
 				self._result.set_result(e.result)

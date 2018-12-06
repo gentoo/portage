@@ -1,6 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+
+repoman-2.3.12
+==================================
+* Bug Fixes:
+    - Bug 588752 fix exit code for manifest mode
+
+
+repoman-2.3.11
+==================================
+* Bug Fixes:
+    - Bug 666330 support new 'Gentoo Authors' copyright policy and
+      automatically apply the new policy when updating copyright headers.
+      Earlier versions of repoman will report an ebuild.badheader warning
+      for the new copyright headers. Users of earlier versions of repoman
+      should be advised to simply ignore the ebuild.badheader warning, or
+      else upgrade to the latest version of repoman.
+
+
 repoman-2.3.10
 ==================================
 * Bug Fixes:

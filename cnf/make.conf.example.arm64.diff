@@ -1,0 +1,37 @@
+--- make.conf.example
++++ make.conf.example
+@@ -39,9 +39,24 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu specifies the name of the target processor, optionally suffixed by one
++# or more feature modifiers. -march and -mtune are automatically deduced,
++# unless set as well.
++# -march specifies the name of the target architecture, optionally suffixed
++# by one or more feature modifiers.
++# -mtune specifies the name of the target processor for which to tune
++# performance of the code.
++# Set -march and -mtune if you want to build binaries that run with the given
++# architecture instructions and is tuned for a more specific CPU without
++# using its added instructions.
++# Set only -mcpu if you want to build binaries that are most optimal for the
++# given CPU, but might not run on others.
++#
++# Please refer to the GCC manual "AArch64 Options" section for a list of
++# possible architecture, CPU and feature values.
+ #
+ #CFLAGS="-O2 -pipe"
++#CLFAGS="-O2 -pipe -mcpu=native"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+@@ -76,7 +91,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~arm64"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are

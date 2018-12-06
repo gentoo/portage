@@ -82,6 +82,6 @@ for bin in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
 	if bin.startswith('do') or \
 	   bin.startswith('new') or \
 	   bin.startswith('prep') or \
-	   bin in ('ecompress', 'ecompressdir', 'fowners', 'fperms'):
+	   bin in ('fowners', 'fperms'):
 		globals()[bin] = create_portage_wrapper(
 			os.path.join(bindir, 'ebuild-helpers', bin))

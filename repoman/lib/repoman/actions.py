@@ -151,10 +151,17 @@ the whole commit message to abort.
 
 		# Update copyright for new and changed files
 		year = time.strftime('%Y', time.gmtime())
+		updated_copyright = []
 		for fn in chain(mynew, mychanged):
 			if fn.endswith('.diff') or fn.endswith('.patch'):
 				continue
-			update_copyright(fn, year, pretend=self.options.pretend)
+			if update_copyright(fn, year, pretend=self.options.pretend):
+				updated_copyright.append(fn)
+
+		if updated_copyright and not (
+			self.options.pretend or self.repo_settings.repo_config.thin_manifest):
+			for cp in sorted(self._vcs_files_to_cps(iter(updated_copyright))):
+				self._manifest_gen(cp)
 
 		myupdates, broken_changelog_manifests = self.changelogs(
 					myupdates, mymanifests, myremoved, mychanged, myautoadd,
@@ -230,6 +237,37 @@ the whole commit message to abort.
 			"\"If everyone were like you, I'd be out of business!\"\n")
 		return
 
+	def _vcs_files_to_cps(self, vcs_file_iter):
+		"""
+		Iterate over the given modified file paths returned from the vcs,
+		and return a frozenset containing category/pn strings for each
+		modified package.
+
+		@param vcs_file_iter: file paths from vcs module
+		@type iter
+		@rtype: frozenset
+		@return: category/pn strings for each package.
+		"""
+		return vcs_files_to_cps(
+			vcs_file_iter,
+			self.repo_settings.repodir,
+			self.scanner.repolevel,
+			self.scanner.reposplit,
+			self.scanner.categories)
+
+	def _manifest_gen(self, cp):
+		"""
+		Generate manifest for a cp.
+
+		@param cp: category/pn string
+		@type str
+		@rtype: bool
+		@return: True if successful, False otherwise
+		"""
+		self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, cp)
+		return bool(digestgen(
+			mysettings=self.repoman_settings,
+			myportdb=self.repo_settings.portdb))
 
 	def _suggest(self):
 		print()
@@ -381,7 +419,7 @@ the whole commit message to abort.
 			portage_version = "Unknown"
 
 		# Common part of commit footer
-		commit_footer = "\n"
+		commit_footer = ""
 		for tag, bug in chain(
 				(('Bug', x) for x in self.options.bug),
 				(('Closes', x) for x in self.options.closes)):
@@ -401,14 +439,11 @@ the whole commit message to abort.
 				elif (purl.scheme == 'http' and
 						purl.netloc in self.https_bugtrackers):
 					bug = urlunsplit(('https',) + purl[1:])
-			commit_footer += "%s: %s\n" % (tag, bug)
-
-		if dco_sob:
-			commit_footer += "Signed-off-by: %s\n" % (dco_sob, )
+			commit_footer += "\n%s: %s" % (tag, bug)
 
 		# Use new footer only for git (see bug #438364).
 		if self.vcs_settings.vcs in ["git"]:
-			commit_footer += "Package-Manager: Portage-%s, Repoman-%s" % (
+			commit_footer += "\nPackage-Manager: Portage-%s, Repoman-%s" % (
 							portage.VERSION, VERSION)
 			if report_options:
 				commit_footer += "\nRepoMan-Options: " + " ".join(report_options)
@@ -420,7 +455,7 @@ the whole commit message to abort.
 				unameout += platform.processor()
 			else:
 				unameout += platform.machine()
-			commit_footer += "(Portage version: %s/%s/%s" % \
+			commit_footer += "\n(Portage version: %s/%s/%s" % \
 				(portage_version, self.vcs_settings.vcs, unameout)
 			if report_options:
 				commit_footer += ", RepoMan options: " + " ".join(report_options)
@@ -430,6 +465,10 @@ the whole commit message to abort.
 			else:
 				commit_footer += ", unsigned Manifest commit"
 			commit_footer += ")"
+
+		if dco_sob:
+			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
+
 		return commit_footer
 
 
