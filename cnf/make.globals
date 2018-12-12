@@ -52,10 +52,11 @@ FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${ho
 # Default user options
 FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
-          fixlafiles merge-sync multilib-strict news
-          parallel-fetch preserve-libs protect-owned
-          sandbox sfperms strict unknown-features-warn unmerge-logs
-          unmerge-orphans userfetch userpriv usersandbox usersync"
+          fixlafiles ipc-sandbox merge-sync multilib-strict
+          network-sandbox news parallel-fetch pid-sandbox
+          preserve-libs protect-owned sandbox sfperms strict
+          unknown-features-warn unmerge-logs unmerge-orphans userfetch
+          userpriv usersandbox usersync"
 
 # Ignore file collisions in /lib/modules since files inside this directory
 # are never unmerged, and therefore collisions must be ignored in order for
