@@ -51,6 +51,7 @@ FETCHCOMMAND_SFTP="bash -c \"x=\\\${2#sftp://} ; host=\\\${x%%/*} ; port=\\\${ho
 
 # Default user options
 FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
+          ccache-permission-adjust
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles merge-sync multilib-strict news
           parallel-fetch preserve-libs protect-owned
