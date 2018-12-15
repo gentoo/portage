@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-next
+--------------
+* Renamed PORT_LOGDIR and PORT_LOGDIR_CLEAN variables to
+  PORTAGE_LOGDIR and PORTAGE_LOGDIR_CLEAN to match other existing
+  similar variables
+
 portage-2.3.42
 ----------------
 * Sync with rsync quarantines data prior to verification, using the
