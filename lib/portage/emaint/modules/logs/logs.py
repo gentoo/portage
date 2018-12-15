@@ -6,17 +6,17 @@ from portage import os
 from portage.util import shlex_split, varexpand
 
 ## default clean command from make.globals
-## PORT_LOGDIR_CLEAN = 'find "${PORT_LOGDIR}" -type f ! -name "summary.log*" -mtime +7 -delete'
+## PORTAGE_LOGDIR_CLEAN = 'find "${PORTAGE_LOGDIR}" -type f ! -name "summary.log*" -mtime +7 -delete'
 
 ERROR_MESSAGES = {
-	78	: "PORT_LOGDIR variable not set or PORT_LOGDIR not a directory.",
-	127	: "PORT_LOGDIR_CLEAN command not found."
+	78	: "PORTAGE_LOGDIR variable not set or PORTAGE_LOGDIR not a directory.",
+	127	: "PORTAGE_LOGDIR_CLEAN command not found."
 }
 
 
 class CleanLogs(object):
 
-	short_desc = "Clean PORT_LOGDIR logs"
+	short_desc = "Clean PORTAGE_LOGDIR logs"
 
 	@staticmethod
 	def name():
@@ -39,8 +39,8 @@ class CleanLogs(object):
 
 		@param **kwargs: optional dictionary of values used in this function are:
 			settings: portage settings instance: defaults to portage.settings
-				"PORT_LOGDIR": directory to clean
-				"PORT_LOGDIR_CLEAN": command for cleaning the logs.
+				"PORTAGE_LOGDIR": directory to clean
+				"PORTAGE_LOGDIR_CLEAN": command for cleaning the logs.
 			options: dict:
 				'NUM': int: number of days
 				'pretend': boolean
@@ -57,7 +57,7 @@ class CleanLogs(object):
 			num_of_days = options.get('NUM', None)
 			pretend = options.get('pretend', False)
 
-		clean_cmd = settings.get("PORT_LOGDIR_CLEAN")
+		clean_cmd = settings.get("PORTAGE_LOGDIR_CLEAN")
 		if clean_cmd:
 			clean_cmd = shlex_split(clean_cmd)
 			if '-mtime' in clean_cmd and num_of_days is not None:
@@ -83,11 +83,11 @@ class CleanLogs(object):
 
 	@staticmethod
 	def _clean_logs(clean_cmd, settings):
-		logdir = settings.get("PORT_LOGDIR")
+		logdir = settings.get("PORTAGE_LOGDIR")
 		if logdir is None or not os.path.isdir(logdir):
 			return 78
 
-		variables = {"PORT_LOGDIR" : logdir}
+		variables = {"PORTAGE_LOGDIR" : logdir}
 		cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
 
 		try:
@@ -104,7 +104,7 @@ class CleanLogs(object):
 			if rval in ERROR_MESSAGES:
 				msg.append(ERROR_MESSAGES[rval])
 			else:
-				msg.append("PORT_LOGDIR_CLEAN command returned %s" % rval)
+				msg.append("PORTAGE_LOGDIR_CLEAN command returned %s" % rval)
 			msg.append("See the make.conf(5) man page for "
-				"PORT_LOGDIR_CLEAN usage instructions.")
+				"PORTAGE_LOGDIR_CLEAN usage instructions.")
 		return msg

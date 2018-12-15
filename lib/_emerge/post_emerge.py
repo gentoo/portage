@@ -24,7 +24,7 @@ def clean_logs(settings):
 	if "clean-logs" not in settings.features:
 		return
 
-	logdir = settings.get("PORT_LOGDIR")
+	logdir = settings.get("PORTAGE_LOGDIR")
 	if logdir is None or not os.path.isdir(logdir):
 		return
 

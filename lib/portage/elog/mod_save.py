@@ -16,8 +16,8 @@ from portage.util import apply_permissions, ensure_dirs, normalize_path
 
 def process(mysettings, key, logentries, fulltext):
 
-	if mysettings.get("PORT_LOGDIR"):
-		logdir = normalize_path(mysettings["PORT_LOGDIR"])
+	if mysettings.get("PORTAGE_LOGDIR"):
+		logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
 	else:
 		logdir = os.path.join(os.sep, mysettings["EPREFIX"].lstrip(os.sep),
 			"var", "log", "portage")

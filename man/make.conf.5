@@ -291,7 +291,7 @@ strips (or splits) them before installing.
 .TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
-\fBPORT_LOGDIR\fR is set.
+\fBPORTAGE_LOGDIR\fR is set.
 .TP
 .B binpkg\-multi\-instance
 Enable support for multiple binary package instances per ebuild.
@@ -356,8 +356,8 @@ emerge to safely kill all subprocesses when ebuild phase exits.
 .TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
-PORT_LOGDIR_CLEAN variable. The default PORT_LOGDIR_CLEAN setting will
-remove all files from PORT_LOGDIR that were last modified at least 7
+PORTAGE_LOGDIR_CLEAN variable. The default PORTAGE_LOGDIR_CLEAN setting will
+remove all files from PORTAGE_LOGDIR that were last modified at least 7
 days ago.
 .TP
 .B collision\-protect
@@ -422,7 +422,7 @@ concurrently. Also see \fIparallel\-install\fR.
 .B fail\-clean
 Clean up temporary files after a build failure. This is particularly useful
 if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you
-probably also want to enable \fBPORT_LOGDIR\fR in order to save the build log.
+probably also want to enable \fBPORTAGE_LOGDIR\fR in order to save the build log.
 Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
 \fIfail\-clean\fR feature to be automatically disabled.
 .TP
@@ -632,12 +632,12 @@ incompatibility.
 .TP
 .B split\-elog
 Store logs created by \fBPORTAGE_ELOG_SYSTEM="save"\fR in category
-subdirectories of \fBPORT_LOGDIR/elog\fR, instead of using
-\fBPORT_LOGDIR/elog\fR directly.
+subdirectories of \fBPORTAGE_LOGDIR/elog\fR, instead of using
+\fBPORTAGE_LOGDIR/elog\fR directly.
 .TP
 .B split\-log
-Store build logs in category subdirectories of \fBPORT_LOGDIR/build\fR,
-instead of using \fBPORT_LOGDIR\fR directly.
+Store build logs in category subdirectories of \fBPORTAGE_LOGDIR/build\fR,
+instead of using \fBPORTAGE_LOGDIR\fR directly.
 .TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is
@@ -691,7 +691,7 @@ Also see the related \fIdowngrade\-backup\fR feature.
 .TP
 .B unmerge\-logs
 Keep logs from successful unmerge phases. This is relevant only when
-\fBPORT_LOGDIR\fR is set.
+\fBPORTAGE_LOGDIR\fR is set.
 .TP
 .B unmerge\-orphans
 If a file is not claimed by another package in the same slot and it is not

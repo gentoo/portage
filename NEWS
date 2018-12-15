@@ -389,7 +389,7 @@ portage-2.1 (ongoing via pre releases)
 * Make --emptytree only apply to ${ROOT} rather than always including /.
 * Allow packages to be upgraded that are only depended on via a
   "|| ( =cat/pkg-1* =cat/pkg-2* )" construct.
-* Ebuild output is no longer cut off early when using PORT_LOGDIR.
+* Ebuild output is no longer cut off early when using PORTAGE_LOGDIR.
 * Distfiles indirection- $DISTFILES access goes through a tmp dir to fail
   access to files not listed in SRC_URI.
 * Emerge now uses --resume to restart itself after portage upgrade.

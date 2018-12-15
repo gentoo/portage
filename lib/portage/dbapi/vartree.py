@@ -2225,7 +2225,7 @@ class dblink(object):
 			# Restore this since it gets lost somewhere above and it
 			# needs to be set for _display_merge() to be able to log.
 			# Note that the log isn't necessarily supposed to exist
-			# since if PORT_LOGDIR is unset then it's a temp file
+			# since if PORTAGE_LOGDIR is unset then it's a temp file
 			# so it gets cleaned above.
 			self.settings["PORTAGE_LOG_FILE"] = log_path
 		else:
