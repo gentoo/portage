@@ -1,12 +1,14 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['ExtractKernelVersion']
 
 import io
+import logging
 
 from portage import os, _encodings, _unicode_encode
-from portage.util import getconfig, grabfile
+from portage.env.loaders import KeyValuePairFileLoader
+from portage.util import grabfile, shlex_split, writemsg_level
 
 def ExtractKernelVersion(base_dir):
 	"""
@@ -71,8 +73,15 @@ def ExtractKernelVersion(base_dir):
 		version += "".join(" ".join(grabfile(base_dir + "/" + lv)).split())
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
-	kernelconfig = getconfig(base_dir+"/.config")
+	loader = KeyValuePairFileLoader(os.path.join(base_dir, ".config"), None)
+	kernelconfig, loader_errors = loader.load()
+	if loader_errors:
+		for file_path, file_errors in loader_errors.items():
+			for error_str in file_errors:
+				writemsg_level("%s: %s\n" % (file_path, error_str),
+					level=logging.ERROR, noiselevel=-1)
+
 	if kernelconfig and "CONFIG_LOCALVERSION" in kernelconfig:
-		version += "".join(kernelconfig["CONFIG_LOCALVERSION"].split())
+		version += "".join(shlex_split(kernelconfig["CONFIG_LOCALVERSION"]))
 
 	return (version, None)
