@@ -10,6 +10,7 @@ from portage import os
 from portage import shutil
 from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
 	USER_CONFIG_PATH)
+from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
@@ -76,6 +77,39 @@ class ResolverPlayground(object):
 		self.debug = debug
 		if eprefix is None:
 			self.eprefix = normalize_path(tempfile.mkdtemp())
+
+			# EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
+			eubin = os.path.join(self.eprefix, "usr", "bin")
+			ensure_dirs(eubin)
+			essential_binaries = (
+				"awk",
+				"basename",
+				"bzip2",
+				"cat",
+				"chmod",
+				"chown",
+				"cp",
+				"egrep",
+				"env",
+				"find",
+				"grep",
+				"head",
+				"install",
+				"ln",
+				"mkdir",
+				"mktemp",
+				"mv",
+				"rm",
+				"sed",
+				"sort",
+				"tar",
+				"tr",
+				"uname",
+				"uniq",
+				"xargs",
+			)
+			for x in essential_binaries:
+				os.symlink(find_binary(x), os.path.join(eubin, x))
 		else:
 			self.eprefix = normalize_path(eprefix)
 

@@ -246,7 +246,7 @@ matched as regular expressions.
 .BR \-\-sync
 Updates repositories, for which auto\-sync, sync\-type and sync\-uri attributes are
 set in repos.conf. A list of repos or aliases can be specified, in which case
-they  will be updated regardless of their auto\-sync attribute. See
+they will be updated regardless of their auto\-sync attribute.  See
 \fBportage\fR(5) for more information.
 The \fBPORTAGE_SYNC_STALE\fR variable configures
 warnings that are shown when emerge \-\-sync has not
@@ -577,14 +577,14 @@ first to make sure the result is what you expect.
 .TP
 .BR "\-\-exclude " ATOMS
 A space separated list of package names or slot atoms.
-Emerge won't  install any ebuild or binary package that
+Emerge won't install any ebuild or binary package that
 matches any of the given package atoms.
 .TP
 .BR "\-\-fail\-clean [ y | n ]"
 Clean up temporary files after a build failure. This is
 particularly useful if you have \fBPORTAGE_TMPDIR\fR on
 tmpfs. If this option is enabled, you probably also want
-to enable \fBPORT_LOGDIR\fR (see \fBmake.conf\fR(5)) in
+to enable \fBPORTAGE_LOGDIR\fR (see \fBmake.conf\fR(5)) in
 order to save the build log.
 .TP
 .BR \-\-fetchonly ", " \-f
@@ -988,7 +988,7 @@ readable dependency tree.
 .TP
 .BR \-\-update ", " \-u
 Updates packages to the best version available, which may
-not always be the  highest version number due to masking
+not always be the highest version number due to masking
 for testing and development. Package atoms specified on
 the command line are greedy, meaning that unspecific
 atoms may match multiple versions of slotted packages.

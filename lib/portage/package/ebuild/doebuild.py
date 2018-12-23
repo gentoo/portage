@@ -212,7 +212,6 @@ def _doebuild_path(settings, eapi=None):
 	if portage_bin_path[0] != portage.const.PORTAGE_BIN_PATH:
 		# Add a fallback path for restarting failed builds (bug 547086)
 		portage_bin_path.append(portage.const.PORTAGE_BIN_PATH)
-	eprefix = portage.const.EPREFIX
 	prerootpath = [x for x in settings.get("PREROOTPATH", "").split(":") if x]
 	rootpath = [x for x in settings.get("ROOTPATH", "").split(":") if x]
 	rootpath_set = frozenset(rootpath)
@@ -220,14 +219,12 @@ def _doebuild_path(settings, eapi=None):
 		"__PORTAGE_TEST_PATH_OVERRIDE", "").split(":") if x]
 
 	prefixes = []
-	if eprefix:
-		prefixes.append(eprefix)
-	prefixes.append("/")
+	# settings["EPREFIX"] should take priority over portage.const.EPREFIX
+	if portage.const.EPREFIX != settings["EPREFIX"] and settings["ROOT"] == os.sep:
+		prefixes.append(settings["EPREFIX"])
+	prefixes.append(portage.const.EPREFIX)
 
 	path = overrides
-	# PREFIX LOCAL: use DEFAULT_PATH and EXTRA_PATH from make.globals
-	defaultpath = [x for x in settings.get("DEFAULT_PATH", "").split(":") if x]
-	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
 
 	if "xattr" in settings.features:
 		for x in portage_bin_path:
@@ -247,8 +244,19 @@ def _doebuild_path(settings, eapi=None):
 	for x in portage_bin_path:
 		path.append(os.path.join(x, "ebuild-helpers"))
 	path.extend(prerootpath)
-	path.extend(defaultpath)
+
+	for prefix in prefixes:
+		prefix = prefix if prefix else "/"
+		for x in ("usr/local/sbin", "usr/local/bin", "usr/sbin", "usr/bin", "sbin", "bin"):
+			# Respect order defined in ROOTPATH
+			x_abs = os.path.join(prefix, x)
+			if x_abs not in rootpath_set:
+				path.append(x_abs)
+
 	path.extend(rootpath)
+
+	# PREFIX LOCAL: append EXTRA_PATH from make.globals
+	extrapath = [x for x in settings.get("EXTRA_PATH", "").split(":") if x]
 	path.extend(extrapath)
 	# END PREFIX LOCAL
 
@@ -510,8 +518,8 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 						mysettings["PATH"] = p + ":" + mysettings["PATH"]
 						break
 				else:
-					writemsg(("Warning: %s requested but no masquerade dir"
-						+ "can be found in /usr/lib*/%s/bin\n") % (m, m))
+					writemsg(("Warning: %s requested but no masquerade dir "
+						"can be found in /usr/lib*/%s/bin\n") % (m, m))
 					mysettings.features.remove(feature)
 
 		if 'MAKEOPTS' not in mysettings:

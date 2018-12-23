@@ -19,7 +19,6 @@ find . -type f -exec \
         -e "s|@PORTAGE_MV@|$(type -P mv)|" \
         -e "s|@PORTAGE_BASH@|$(type -P bash)|" \
         -e "s|@PREFIX_PORTAGE_PYTHON@|$(type -P python)|" \
-        -e "s|@DEFAULT_PATH@|${EPREFIX}/usr/bin:${EPREFIX}/bin|" \
         -e "s|@EXTRA_PATH@|${EPREFIX}/usr/sbin:${EPREFIX}/sbin|" \
         -e "s|@portagegroup@|$(id -gn)|" \
         -e "s|@portageuser@|$(id -un)|" \

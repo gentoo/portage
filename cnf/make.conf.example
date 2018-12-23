@@ -130,13 +130,13 @@
 #     storage. See the PORTDIR documentation for more information.
 #PKGDIR=@PORTAGE_EPREFIX@/usr/portage/packages
 #
-# PORT_LOGDIR is the location where portage will store all the logs it
+# PORTAGE_LOGDIR is the location where portage will store all the logs it
 #     creates from each individual merge. They are stored as
 #     ${CATEGORY}:${PF}:YYYYMMDD-HHMMSS.log in the directory specified.
 #     If the directory does not exist, it will be created automatically and
 #     group permissions will be applied to it.  If the directory already
 #     exists, portage will not modify its permissions.
-#PORT_LOGDIR=""
+#PORTAGE_LOGDIR=""
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not
@@ -310,16 +310,16 @@
 # PORTAGE_ELOG_SYSTEM: selects the module(s) to process the log messages. Modules
 #                      included in portage are (empty means logging is disabled):
 #                          echo (display messages again when emerge exits)
-#                          save (saves one log per package in $PORT_LOGDIR/elog,
-#                                /var/log/portage/elog if $PORT_LOGDIR is unset)
+#                          save (saves one log per package in $PORTAGE_LOGDIR/elog,
+#                                /var/log/portage/elog if $PORTAGE_LOGDIR is unset)
 #                          custom (passes all messages to $PORTAGE_ELOG_COMMAND)
 #                          syslog (sends all messages to syslog)
 #                          mail (send all messages to the mailserver defined
 #                                in $PORTAGE_ELOG_MAILURI)
 #                          save_summary (like "save" but merges all messages
-#                                        in $PORT_LOGDIR/elog/summary.log,
+#                                        in $PORTAGE_LOGDIR/elog/summary.log,
 #                                        /var/log/portage/elog/summary.log if
-#                                        $PORT_LOGDIR is unset)
+#                                        $PORTAGE_LOGDIR is unset)
 #                          mail_summary (like "mail" but sends all messages in
 #                                        a single mail when emerge exits)
 #                      To use elog you should enable at least one module

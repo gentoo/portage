@@ -155,6 +155,9 @@ class config(object):
 	_constant_keys = frozenset(['PORTAGE_BIN_PATH', 'PORTAGE_GID',
 		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
+	_deprecated_keys = {'PORTAGE_LOGDIR': 'PORT_LOGDIR',
+		'PORTAGE_LOGDIR_CLEAN': 'PORT_LOGDIR_CLEAN'}
+
 	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'RDEPEND', 'SLOT',
@@ -2658,6 +2661,14 @@ class config(object):
 				return d[mykey]
 			except KeyError:
 				pass
+
+		deprecated_key = self._deprecated_keys.get(mykey)
+		if deprecated_key is not None:
+			value = self._getitem(deprecated_key)
+			#warnings.warn(_("Key %s has been renamed to %s. Please ",
+			#	"update your configuration") % (deprecated_key, mykey),
+			#	UserWarning)
+			return value
 
 		raise KeyError(mykey)
 

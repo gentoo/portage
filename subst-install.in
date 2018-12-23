@@ -20,7 +20,6 @@ portageuser=${portageuser//\\/\\\\\\\\}
 # speed here, so let configure fill in this list and be done with it
 at='@'
 sedexp=(
-	-e "s,${at}DEFAULT_PATH${at},@DEFAULT_PATH@,g"
 	-e "s,${at}EXTRA_PATH${at},@EXTRA_PATH@,g"
 	-e "s,${at}PORTAGE_BASE${at},@PORTAGE_BASE@,g"
 	-e "s,${at}PORTAGE_BASH${at},@PORTAGE_BASH@,g"

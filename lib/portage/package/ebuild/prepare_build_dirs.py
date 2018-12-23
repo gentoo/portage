@@ -278,36 +278,36 @@ def _prepare_workdir(mysettings):
 	except FileNotFound:
 		pass # ebuild.sh will create it
 
-	if mysettings.get("PORT_LOGDIR", "") == "":
-		while "PORT_LOGDIR" in mysettings:
-			del mysettings["PORT_LOGDIR"]
-	if "PORT_LOGDIR" in mysettings:
+	if mysettings.get("PORTAGE_LOGDIR", "") == "":
+		while "PORTAGE_LOGDIR" in mysettings:
+			del mysettings["PORTAGE_LOGDIR"]
+	if "PORTAGE_LOGDIR" in mysettings:
 		try:
-			modified = ensure_dirs(mysettings["PORT_LOGDIR"])
+			modified = ensure_dirs(mysettings["PORTAGE_LOGDIR"])
 			if modified:
 				# Only initialize group/mode if the directory doesn't
 				# exist, so that we don't override permissions if they
 				# were previously set by the administrator.
 				# NOTE: These permissions should be compatible with our
 				# default logrotate config as discussed in bug 374287.
-				apply_secpass_permissions(mysettings["PORT_LOGDIR"],
+				apply_secpass_permissions(mysettings["PORTAGE_LOGDIR"],
 					uid=portage_uid, gid=portage_gid, mode=0o2770)
 		except PortageException as e:
 			writemsg("!!! %s\n" % str(e), noiselevel=-1)
-			writemsg(_("!!! Permission issues with PORT_LOGDIR='%s'\n") % \
-				mysettings["PORT_LOGDIR"], noiselevel=-1)
+			writemsg(_("!!! Permission issues with PORTAGE_LOGDIR='%s'\n") % \
+				mysettings["PORTAGE_LOGDIR"], noiselevel=-1)
 			writemsg(_("!!! Disabling logging.\n"), noiselevel=-1)
-			while "PORT_LOGDIR" in mysettings:
-				del mysettings["PORT_LOGDIR"]
+			while "PORTAGE_LOGDIR" in mysettings:
+				del mysettings["PORTAGE_LOGDIR"]
 
 	compress_log_ext = ''
 	if 'compress-build-logs' in mysettings.features:
 		compress_log_ext = '.gz'
 
 	logdir_subdir_ok = False
-	if "PORT_LOGDIR" in mysettings and \
-		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
-		logdir = normalize_path(mysettings["PORT_LOGDIR"])
+	if "PORTAGE_LOGDIR" in mysettings and \
+		os.access(mysettings["PORTAGE_LOGDIR"], os.W_OK):
+		logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
 			open(_unicode_encode(logid_path), 'w').close()

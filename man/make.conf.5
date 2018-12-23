@@ -294,7 +294,7 @@ strips (or splits) them before installing.
 .TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
-\fBPORT_LOGDIR\fR is set.
+\fBPORTAGE_LOGDIR\fR is set.
 .TP
 .B binpkg\-multi\-instance
 Enable support for multiple binary package instances per ebuild.
@@ -359,8 +359,8 @@ emerge to safely kill all subprocesses when ebuild phase exits.
 .TP
 .B clean\-logs
 Enable automatic execution of the command specified by the
-PORT_LOGDIR_CLEAN variable. The default PORT_LOGDIR_CLEAN setting will
-remove all files from PORT_LOGDIR that were last modified at least 7
+PORTAGE_LOGDIR_CLEAN variable. The default PORTAGE_LOGDIR_CLEAN setting will
+remove all files from PORTAGE_LOGDIR that were last modified at least 7
 days ago.
 .TP
 .B collision\-protect
@@ -425,7 +425,7 @@ concurrently. Also see \fIparallel\-install\fR.
 .B fail\-clean
 Clean up temporary files after a build failure. This is particularly useful
 if you have \fBPORTAGE_TMPDIR\fR on tmpfs. If this feature is enabled, you
-probably also want to enable \fBPORT_LOGDIR\fR in order to save the build log.
+probably also want to enable \fBPORTAGE_LOGDIR\fR in order to save the build log.
 Both the \fBebuild\fR(1) command and the \fInoclean\fR feature cause the
 \fIfail\-clean\fR feature to be automatically disabled.
 .TP
@@ -638,12 +638,12 @@ incompatibility.
 .TP
 .B split\-elog
 Store logs created by \fBPORTAGE_ELOG_SYSTEM="save"\fR in category
-subdirectories of \fBPORT_LOGDIR/elog\fR, instead of using
-\fBPORT_LOGDIR/elog\fR directly.
+subdirectories of \fBPORTAGE_LOGDIR/elog\fR, instead of using
+\fBPORTAGE_LOGDIR/elog\fR directly.
 .TP
 .B split\-log
-Store build logs in category subdirectories of \fBPORT_LOGDIR/build\fR,
-instead of using \fBPORT_LOGDIR\fR directly.
+Store build logs in category subdirectories of \fBPORTAGE_LOGDIR/build\fR,
+instead of using \fBPORTAGE_LOGDIR\fR directly.
 .TP
 .B splitdebug
 Prior to stripping ELF etdyn and etexec files, the debugging info is
@@ -697,7 +697,7 @@ Also see the related \fIdowngrade\-backup\fR feature.
 .TP
 .B unmerge\-logs
 Keep logs from successful unmerge phases. This is relevant only when
-\fBPORT_LOGDIR\fR is set.
+\fBPORTAGE_LOGDIR\fR is set.
 .TP
 .B unmerge\-orphans
 If a file is not claimed by another package in the same slot and it is not
@@ -839,19 +839,10 @@ See the \fBPORTDIR\fR documentation for more information.
 Defaults to /usr/portage/packages.
 .TP
 .B PORT_LOGDIR
-This variable defines the directory in which per\-ebuild logs are kept.
-Logs are created only when this is set. They are stored as
-${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
-directory does not exist, it will be created automatically and group
-permissions will be applied to it.  If the directory already exists, portage
-will not modify it's permissions.
+See \fIPORTAGE_LOGDIR\fR below. Deprecated.
 .TP
 .B PORT_LOGDIR_CLEAN
-This variable should contain a command for portage to call in order
-to clean PORT_LOGDIR. The command string should contain a
-\\${PORT_LOGDIR} place\-holder that will be substituted
-with the value of that variable. This variable will have no effect
-unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
+See \fIPORTAGE_LOGDIR_CLEAN\fR below. Deprecated.
 .TP
 \fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
 This is a list of hosts from which portage will grab prebuilt\-binary packages.
@@ -984,6 +975,21 @@ string should contain a \\${PID} place-holder that will be substituted
 with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
 \fBionice\fR(1). This variable is unset by default.
+.TP
+.B PORTAGE_LOGDIR
+This variable defines the directory in which per\-ebuild logs are kept.
+Logs are created only when this is set. They are stored as
+${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
+directory does not exist, it will be created automatically and group
+permissions will be applied to it.  If the directory already exists, portage
+will not modify it's permissions.
+.TP
+.B PORTAGE_LOGDIR_CLEAN
+This variable should contain a command for portage to call in order
+to clean PORTAGE_LOGDIR. The command string should contain a
+\\${PORTAGE_LOGDIR} place\-holder that will be substituted
+with the value of that variable. This variable will have no effect
+unless \fBclean\-logs\fR is enabled in \fBFEATURES\fR.
 .TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that

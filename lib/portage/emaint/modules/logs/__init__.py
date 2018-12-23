@@ -1,7 +1,7 @@
 # Copyright 2005-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-doc = """Check and clean old logs in the PORT_LOGDIR."""
+doc = """Check and clean old logs in the PORTAGE_LOGDIR."""
 __doc__ = doc
 
 

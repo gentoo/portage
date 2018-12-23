@@ -13,7 +13,7 @@ set -f # in case ${PATH} contains any shell glob characters
 
 for path in ${PATH}; do
 	[[ -x ${path}/${scriptname} ]] || continue
-	[[ ${path} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
+	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 	[[ ${path} == */._portage_reinstall_.* ]] && continue
 	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
