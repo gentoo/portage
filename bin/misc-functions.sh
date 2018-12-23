@@ -47,6 +47,42 @@ install_symlink_html_docs() {
 	fi
 }
 
+# PREFIX LOCAL: we need this on some platforms
+# replacement for "readlink -f" or "realpath"
+READLINK_F_WORKS=""
+canonicalize() {
+	if [[ -z ${READLINK_F_WORKS} ]] ; then
+		if [[ $(readlink -f -- /../ 2>/dev/null) == "/" ]] ; then
+			READLINK_F_WORKS=true
+		else
+			READLINK_F_WORKS=false
+		fi
+	fi
+	if ${READLINK_F_WORKS} ; then
+		readlink -f -- "$@"
+		return
+	fi
+
+	local f=$1 b n=10 wd=$(pwd)
+	while (( n-- > 0 )); do
+		while [[ ${f: -1} = / && ${#f} -gt 1 ]]; do
+			f=${f%/}
+		done
+		b=${f##*/}
+		cd "${f%"${b}"}" 2>/dev/null || break
+		if [[ ! -L ${b} ]]; then
+			f=$(pwd -P)
+			echo "${f%/}/${b}"
+			cd "${wd}"
+			return 0
+		fi
+		f=$(readlink "${b}")
+	done
+	cd "${wd}"
+	return 1
+}
+# END PREFIX LOCAL
+
 install_qa_check() {
 	local d f i qa_var x paths qa_checks=() checks_run=()
 	if ! ___eapi_has_prefix_variables; then
