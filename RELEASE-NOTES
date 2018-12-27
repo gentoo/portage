@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.53
+==================================
+* Bug Fixes:
+    - Bug 585986 prepend EPREFIX PATH, omit host PATH by default
+    - Bug 668538 add PORTAGE_LOGDIR alias for PORT_LOGDIR
+    - Bug 669496 drop privileges for git merge
+    - Bug 671472 compat_corouting save throw return
+    - Bug 671824 EBUILD_PHASES: add instprep
+    - Bug 672440 portage.process.spawn default env to os.environ
+    - Bug 673224 ExtractKernelVersion ParseError
+
+
 portage-2.3.52
 ==================================
 * Bug Fixes:
