@@ -6,6 +6,7 @@
 import atexit
 import errno
 import fcntl
+import multiprocessing
 import platform
 import signal
 import socket
@@ -338,11 +339,29 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 		fd_pipes[1] = pw
 		fd_pipes[2] = pw
 
-	# This caches the libc library lookup in the current
-	# process, so that it's only done once rather than
-	# for each child process.
+	# This caches the libc library lookup and _unshare_validator results
+	# in the current process, so that results are cached for use in
+	# child processes.
+	unshare_flags = 0
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
-		find_library("c")
+		# from /usr/include/bits/sched.h
+		CLONE_NEWNS = 0x00020000
+		CLONE_NEWIPC = 0x08000000
+		CLONE_NEWPID = 0x20000000
+		CLONE_NEWNET = 0x40000000
+
+		if unshare_net:
+			unshare_flags |= CLONE_NEWNET
+		if unshare_ipc:
+			unshare_flags |= CLONE_NEWIPC
+		if unshare_mount:
+			# NEWNS = mount namespace
+			unshare_flags |= CLONE_NEWNS
+		if unshare_pid:
+			# we also need mount namespace for slave /proc
+			unshare_flags |= CLONE_NEWPID | CLONE_NEWNS
+
+		_unshare_validate(unshare_flags)
 
 	# Force instantiation of portage.data.userpriv_groups before the
 	# fork, so that the result is cached in the main process.
@@ -358,7 +377,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, cwd, pre_exec, close_fds,
 					unshare_net, unshare_ipc, unshare_mount, unshare_pid,
-					cgroup)
+					unshare_flags, cgroup)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -430,7 +449,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
 	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, unshare_pid,
-	cgroup):
+	unshare_flags, cgroup):
 
 	"""
 	Execute a given binary with options
@@ -466,6 +485,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	@type unshare_mount: Boolean
 	@param unshare_pid: If True, PID ns will be unshared from the spawned process
 	@type unshare_pid: Boolean
+	@param unshare_flags: Flags for the unshare(2) function
+	@type unshare_flags: Integer
 	@param cgroup: CGroup path to bind the process to
 	@type cgroup: String
 	@rtype: None
@@ -527,28 +548,19 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 		if filename is not None:
 			libc = LoadLibrary(filename)
 			if libc is not None:
-				# from /usr/include/bits/sched.h
-				CLONE_NEWNS = 0x00020000
-				CLONE_NEWIPC = 0x08000000
-				CLONE_NEWPID = 0x20000000
-				CLONE_NEWNET = 0x40000000
-
-				flags = 0
-				if unshare_net:
-					flags |= CLONE_NEWNET
-				if unshare_ipc:
-					flags |= CLONE_NEWIPC
-				if unshare_mount:
-					# NEWNS = mount namespace
-					flags |= CLONE_NEWNS
-				if unshare_pid:
-					# we also need mount namespace for slave /proc
-					flags |= CLONE_NEWPID | CLONE_NEWNS
-
 				try:
-					if libc.unshare(flags) != 0:
+					# Since a failed unshare call could corrupt process
+					# state, first validate that the call can succeed.
+					# The parent process should call _unshare_validate
+					# before it forks, so that all child processes can
+					# reuse _unshare_validate results that have been
+					# cached by the parent process.
+					errno_value = _unshare_validate(unshare_flags)
+					if errno_value == 0 and libc.unshare(unshare_flags) != 0:
+						errno_value = ctypes.get_errno()
+					if errno_value != 0:
 						writemsg("Unable to unshare: %s\n" % (
-							errno.errorcode.get(ctypes.get_errno(), '?')),
+							errno.errorcode.get(errno_value, '?')),
 							noiselevel=-1)
 					else:
 						if unshare_pid:
@@ -625,6 +637,101 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 
 	# And switch to the new process.
 	os.execve(binary, myargs, env)
+
+
+class _unshare_validator(object):
+	"""
+	In order to prevent failed unshare calls from corrupting the state
+	of an essential process, validate the relevant unshare call in a
+	short-lived subprocess. An unshare call is considered valid if it
+	successfully executes in a short-lived subprocess.
+	"""
+
+	def __init__(self):
+		self._results = {}
+
+	def __call__(self, flags):
+		"""
+		Validate unshare with the given flags. Results are cached.
+
+		@rtype: int
+		@returns: errno value, or 0 if no error occurred.
+		"""
+
+		try:
+			return self._results[flags]
+		except KeyError:
+			result = self._results[flags] = self._validate(flags)
+			return result
+
+	@classmethod
+	def _validate(cls, flags):
+		"""
+		Perform validation.
+
+		@param flags: unshare flags
+		@type flags: int
+		@rtype: int
+		@returns: errno value, or 0 if no error occurred.
+		"""
+		filename = find_library("c")
+		if filename is None:
+			return errno.ENOTSUP
+
+		libc = LoadLibrary(filename)
+		if libc is None:
+			return errno.ENOTSUP
+
+		parent_pipe, subproc_pipe = multiprocessing.Pipe(duplex=False)
+
+		proc = multiprocessing.Process(
+			target=cls._run_subproc,
+			args=(subproc_pipe, cls._validate_subproc, (libc.unshare, flags)))
+		proc.start()
+		subproc_pipe.close()
+
+		result = parent_pipe.recv()
+		parent_pipe.close()
+		proc.join()
+
+		return result
+
+	@staticmethod
+	def _run_subproc(subproc_pipe, target, args=(), kwargs={}):
+		"""
+		Call function and send return value to parent process.
+
+		@param subproc_pipe: connection to parent process
+		@type subproc_pipe: multiprocessing.Connection
+		@param target: target is the callable object to be invoked
+		@type target: callable
+		@param args: the argument tuple for the target invocation
+		@type args: tuple
+		@param kwargs: dictionary of keyword arguments for the target invocation
+		@type kwargs: dict
+		"""
+		subproc_pipe.send(target(*args, **kwargs))
+		subproc_pipe.close()
+
+	@staticmethod
+	def _validate_subproc(unshare, flags):
+		"""
+		Perform validation. Calls to this method must be isolated in a
+		subprocess, since the unshare function is called for purposes of
+		validation.
+
+		@param unshare: unshare function
+		@type unshare: callable
+		@param flags: unshare flags
+		@type flags: int
+		@rtype: int
+		@returns: errno value, or 0 if no error occurred.
+		"""
+		return 0 if unshare(flags) == 0 else ctypes.get_errno()
+
+
+_unshare_validate = _unshare_validator()
+
 
 def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 	"""Setup pipes for a forked process.
