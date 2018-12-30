@@ -15,7 +15,7 @@ else
 
 	for path in $PATH; do
 		if [[ -x ${path}/${scriptname} ]]; then
-			[[ ${path} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
+			[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 			[[ ${path} == */._portage_reinstall_.* ]] && continue
 			[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
 			exec "${path}/${scriptname}" "$@"

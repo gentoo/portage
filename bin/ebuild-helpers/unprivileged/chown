@@ -11,7 +11,7 @@ IFS=':'
 
 for path in ${PATH}; do
 	[[ -x ${path}/${scriptname} ]] || continue
-	[[ ${path} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
+	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 	[[ ${path} == */._portage_reinstall_.* ]] && continue
 	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
 	IFS=$' \t\n'
