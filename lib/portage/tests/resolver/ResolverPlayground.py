@@ -108,8 +108,21 @@ class ResolverPlayground(object):
 				"uniq",
 				"xargs",
 			)
-			for x in essential_binaries:
-				os.symlink(find_binary(x), os.path.join(eubin, x))
+			# Exclude internal wrappers from PATH lookup.
+			orig_path = os.environ['PATH']
+			included_paths = []
+			for path in orig_path.split(':'):
+				if path and not fnmatch.fnmatch(path, '*/portage/*/ebuild-helpers*'):
+					included_paths.append(path)
+			try:
+				os.environ['PATH'] = ':'.join(included_paths)
+				for x in essential_binaries:
+					path = find_binary(x)
+					if path is None:
+						raise portage.exception.CommandNotFound(x)
+					os.symlink(path, os.path.join(eubin, x))
+			finally:
+				os.environ['PATH'] = orig_path
 		else:
 			self.eprefix = normalize_path(eprefix)
 
