@@ -16,7 +16,6 @@ else
 	for path in $PATH; do
 		if [[ -x ${path}/${scriptname} ]]; then
 			[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
-			[[ ${path} == */._portage_reinstall_.* ]] && continue
 			[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
 			exec "${path}/${scriptname}" "$@"
 			exit 0
