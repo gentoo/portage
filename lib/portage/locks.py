@@ -163,7 +163,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 			if not preexisting:
 				try:
-					if os.stat(lockfilename).st_gid != portage_gid:
+					if portage.data.secpass >= 1 and os.stat(lockfilename).st_gid != portage_gid:
 						os.chown(lockfilename, -1, portage_gid)
 				except OSError as e:
 					if e.errno in (errno.ENOENT, errno.ESTALE):
@@ -463,7 +463,7 @@ def hardlink_lockfile(lockfilename, max_wait=DeprecationWarning,
 				if not preexisting:
 					# Don't chown the file if it is preexisting, since we
 					# want to preserve existing permissions in that case.
-					if myfd_st.st_gid != portage_gid:
+					if portage.data.secpass >= 1 and myfd_st.st_gid != portage_gid:
 						os.fchown(myfd, -1, portage_gid)
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
