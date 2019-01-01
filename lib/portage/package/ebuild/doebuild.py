@@ -1305,7 +1305,7 @@ def _check_temp_dir(settings):
 			msg = _("The 'portage' subdirectory of the directory "
 			"referenced by the PORTAGE_TMPDIR variable appears to be "
 			"a symlink. In order to avoid sandbox violations (see bug "
-			"#378379), you must adjust PORTAGE_TMPDIR instead of using "
+			"#378403), you must adjust PORTAGE_TMPDIR instead of using "
 			"the symlink located at '%s'. A suitable PORTAGE_TMPDIR "
 			"setting would be '%s'.") % \
 			(os.path.join(tmpdir, "portage"), checkdir)
