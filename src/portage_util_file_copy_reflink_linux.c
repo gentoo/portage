@@ -271,8 +271,15 @@ _reflink_linux_file_copy(PyObject *self, PyObject *args)
 
                 if (copyfunc_ret < 0) {
                     error = errno;
-                    if ((errno == EXDEV || errno == ENOSYS || errno == EOPNOTSUPP) &&
-                        copyfunc == cfr_wrapper) {
+                    if ((
+                               errno == EXDEV
+                            || errno == ENOSYS
+                            || errno == EOPNOTSUPP
+#ifdef EUCLEAN
+                            || errno == EUCLEAN
+#endif
+                        )
+                        && copyfunc == cfr_wrapper) {
                         /* Use sendfile instead of copy_file_range for
                          * cross-device copies, or when the copy_file_range
                          * syscall is not available (less than Linux 4.5).
