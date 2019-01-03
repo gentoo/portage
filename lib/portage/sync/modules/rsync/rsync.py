@@ -583,11 +583,17 @@ class RsyncSync(NewBase):
 		# Temporary file for remote server timestamp comparison.
 		# NOTE: If FEATURES=usersync is enabled then the tempfile
 		# needs to be in a directory that's readable by the usersync
-		# user. We assume that PORTAGE_TMPDIR will satisfy this
+		# user. We assume that ${PORTAGE_TMPDIR}/portage will satisfy this
 		# requirement, since that's not necessarily true for the
 		# default directory used by the tempfile module.
 		if self.usersync_uid is not None:
-			tmpdir = self.settings['PORTAGE_TMPDIR']
+			tmpdir = os.path.join(self.settings['PORTAGE_TMPDIR'], 'portage')
+			ensure_dirs_kwargs = {}
+			if portage.secpass >= 1:
+				ensure_dirs_kwargs['gid'] = portage.portage_gid
+				ensure_dirs_kwargs['mode'] = 0o70
+				ensure_dirs_kwargs['mask'] = 0
+			portage.util.ensure_dirs(tmpdir, **ensure_dirs_kwargs)
 		else:
 			# use default dir from tempfile module
 			tmpdir = None
@@ -598,6 +604,7 @@ class RsyncSync(NewBase):
 			portage.util.apply_permissions(tmpservertimestampfile,
 				uid=self.usersync_uid)
 		command = rsynccommand[:]
+		command.append('--inplace')
 		command.append(syncuri.rstrip("/") + \
 			"/metadata/timestamp.chk")
 		command.append(tmpservertimestampfile)
