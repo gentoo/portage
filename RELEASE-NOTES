@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.54
+==================================
+* Bug Fixes:
+    - Bug 671808 rsync: fix usersync timestamp file permission issue
+    - Bug 673738 fix PORTAGE_TMPDIR=/ edge case
+    - Bug 673900 validate unshare calls
+
+
 portage-2.3.53
 ==================================
 * Bug Fixes:
