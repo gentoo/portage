@@ -37,7 +37,7 @@ OS_RELEASE_POSSIBLE_IDS=$(source /etc/os-release >/dev/null 2>&1; echo ":${ID}:$
 case ${OS_RELEASE_POSSIBLE_IDS} in
 	*:suse:*|*:opensuse:*|*:opensuse-tumbleweed:*) OS_FAMILY='rpm';;
 	*:fedora:*|*:rhel:*) OS_FAMILY='rpm';;
-	*:arch:*|*:antergos:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
+	*:arch:*) OS_FAMILY='arch' NEW_EXT='pacnew';;
 	*) OS_FAMILY='gentoo';;
 esac
 
