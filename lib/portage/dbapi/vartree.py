@@ -35,6 +35,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.install_mask:install_mask_dir,InstallMask',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
+	'portage.util.monotonic:monotonic',
 	'portage.util.path:first_existing,iter_parents',
 	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._xattr:xattr',
@@ -3453,13 +3454,21 @@ class dblink(object):
 			symlink_collisions = []
 			destroot = self.settings['ROOT']
 			totfiles = len(file_list) + len(symlink_list)
+			previous = monotonic()
+			progress_shown = False
+			report_interval = 1.7  # seconds
+			falign = len("%d" % totfiles)
 			showMessage(_(" %s checking %d files for package collisions\n") % \
 				(colorize("GOOD", "*"), totfiles))
 			for i, (f, f_type) in enumerate(chain(
 				((f, "reg") for f in file_list),
 				((f, "sym") for f in symlink_list))):
-				if i % 1000 == 0 and i != 0:
-					showMessage(_("%d files remaining ...\n") % (totfiles - i))
+				current = monotonic()
+				if current - previous > report_interval:
+					showMessage(_("%3d%% done,  %*d files remaining ...\n") %
+							(i * 100 / totfiles, falign, totfiles - i))
+					previous = current
+					progress_shown = True
 
 				dest_path = normalize_path(
 					os.path.join(destroot, f.lstrip(os.path.sep)))
@@ -3548,6 +3557,8 @@ class dblink(object):
 							break
 					if stopmerge:
 						collisions.append(f)
+			if progress_shown:
+				showMessage(_("100% done\n"))
 			return collisions, dirs_ro, symlink_collisions, plib_collisions
 
 	def _lstat_inode_map(self, path_iter):
