@@ -28,8 +28,7 @@ IFS=':'
 set -f
 path=
 for x in ${PATH}; do
-	[[ ${x} == ${PORTAGE_OVERRIDE_EPREFIX}/usr/lib*/portage/* ]] && continue
-	[[ ${x} == */._portage_reinstall_.* ]] && continue
+	[[ ${x} == */portage/*/ebuild-helpers* ]] && continue
 	path+=":${x}"
 done
 PATH=${path#:}

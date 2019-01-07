@@ -161,8 +161,8 @@ addwrite()   { __sb_append_var WRITE   "$@" ; }
 adddeny()    { __sb_append_var DENY    "$@" ; }
 addpredict() { __sb_append_var PREDICT "$@" ; }
 
-addwrite "${PORTAGE_TMPDIR}"
-addread "/:${PORTAGE_TMPDIR}"
+addwrite "${PORTAGE_TMPDIR}/portage"
+addread "/:${PORTAGE_TMPDIR}/portage"
 [[ -n ${PORTAGE_GPG_DIR} ]] && addpredict "${PORTAGE_GPG_DIR}"
 
 # Avoid sandbox violations in temporary directories.

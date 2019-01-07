@@ -1,10 +1,11 @@
 News (mainly features/major bug fixes)
 
-portage-next
+portage-2.3.53
 --------------
 * Renamed PORT_LOGDIR and PORT_LOGDIR_CLEAN variables to
   PORTAGE_LOGDIR and PORTAGE_LOGDIR_CLEAN to match other existing
   similar variables
+* Enable FEATURES={ipc,network,pid}-sandbox by default
 
 portage-2.3.42
 ----------------
