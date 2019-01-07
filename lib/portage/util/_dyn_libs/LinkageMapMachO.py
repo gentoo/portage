@@ -1,4 +1,4 @@
-# Copyright 1998-2017 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -490,7 +490,7 @@ class LinkageMapMachO(object):
 		"""
 		Determine whether an object is a "master" symlink, which means
 		that its basename is the same as the beginning part of the
-		soname and it lacks the soname's version component.
+		install_name and it lacks the install_name's version component.
 
 		Examples:
 
@@ -569,12 +569,13 @@ class LinkageMapMachO(object):
 
 	def getSoname(self, obj):
 		"""
-		Return the soname associated with an object.
+		Return the install_name associated with an object.  To match
+		soname behaviour, the leading path is stripped.
 
 		@param obj: absolute path to an object
 		@type obj: string (example: '/usr/bin/bar')
 		@rtype: string
-		@return: soname as a string
+		@return: install_name basename as a string
 
 		"""
 		if not self._libs:
@@ -583,10 +584,11 @@ class LinkageMapMachO(object):
 			obj_key = obj
 			if obj_key not in self._obj_properties:
 				raise KeyError("%s not in object list" % obj_key)
-			return self._obj_properties[obj_key].install_name
+			return os.path.basename(self._obj_properties[obj_key].install_name)
 		if obj not in self._obj_key_cache:
 			raise KeyError("%s not in object list" % obj)
-		return self._obj_properties[self._obj_key_cache[obj]].install_name
+		return os.path.basename(
+				self._obj_properties[self._obj_key_cache[obj]].install_name)
 
 	def findProviders(self, obj):
 		"""
