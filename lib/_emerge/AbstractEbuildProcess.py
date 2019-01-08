@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -22,6 +22,10 @@ from portage.util.futures import asyncio
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
+portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.package.ebuild.doebuild:_global_pid_phases',
+)
+
 class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
@@ -30,7 +34,6 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
-	_phases_without_cgroup = ('preinst', 'postinst', 'prerm', 'postrm', 'config')
 
 	# Number of milliseconds to allow natural exit of the ebuild
 	# process after it has called the exit command via IPC. It
@@ -71,7 +74,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		# Check if the cgroup hierarchy is in place. If it's not, mount it.
 		if (os.geteuid() == 0 and platform.system() == 'Linux'
 				and 'cgroup' in self.settings.features
-				and self.phase not in self._phases_without_cgroup):
+				and self.phase not in _global_pid_phases):
 			cgroup_root = '/sys/fs/cgroup'
 			cgroup_portage = os.path.join(cgroup_root, 'portage')
 
