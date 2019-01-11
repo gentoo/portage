@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Authors
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -111,6 +111,9 @@ _ipc_phases = frozenset([
 	"preinst", "postinst", "prerm", "postrm",
 ])
 
+# phases which execute in the global PID namespace
+_global_pid_phases = frozenset(['preinst', 'postinst', 'prerm', 'postrm', 'config'])
+
 # phases in which networking access is allowed
 _networked_phases = frozenset([
 	# for VCS fetching
@@ -154,7 +157,8 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
 		phase in _networked_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
-	kwargs['pidns'] = 'pid-sandbox' in settings.features
+	kwargs['pidns'] = ('pid-sandbox' in settings.features and
+		phase not in _global_pid_phases)
 
 	if phase == 'depend':
 		kwargs['droppriv'] = 'userpriv' in settings.features
