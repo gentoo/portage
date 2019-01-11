@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.55
+==================================
+* Bug Fixes:
+    - Bug 673794 pid-sandbox: whitelist selected pkg_* phases
+
+
 portage-2.3.54
 ==================================
 * Bug Fixes:
