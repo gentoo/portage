@@ -578,6 +578,7 @@ class LinkageMapMachO(object):
 		@return: install_name basename as a string
 
 		"""
+		os = _os_merge
 		if not self._libs:
 			self.rebuild()
 		if isinstance(obj, self._ObjectKey):
