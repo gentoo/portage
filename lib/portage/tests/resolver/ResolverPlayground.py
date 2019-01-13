@@ -99,6 +99,7 @@ class ResolverPlayground(object):
 				"mkdir",
 				"mktemp",
 				"mv",
+				"readlink",
 				"rm",
 				"sed",
 				"sort",
