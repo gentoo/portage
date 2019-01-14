@@ -1,13 +1,18 @@
 # SOCKSv5 proxy manager for network-sandbox
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import os
 import signal
+import socket
 
+import portage.data
 from portage import _python_interpreter
 from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.process import atexit_register, spawn
+from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures import asyncio
 
 
 class ProxyManager(object):
@@ -36,9 +41,16 @@ class ProxyManager(object):
 		self.socket_path = os.path.join(settings['PORTAGE_TMPDIR'],
 				'.portage.%d.net.sock' % os.getpid())
 		server_bin = os.path.join(settings['PORTAGE_BIN_PATH'], 'socks5-server.py')
+		spawn_kwargs = {}
+		# The portage_uid check solves EPERM failures in Travis CI.
+		if portage.data.secpass > 1 and os.geteuid() != portage_uid:
+			spawn_kwargs.update(
+				uid=portage_uid,
+				gid=portage_gid,
+				groups=userpriv_groups,
+				umask=0o077)
 		self._pids = spawn([_python_interpreter, server_bin, self.socket_path],
-				returnpid=True, uid=portage_uid, gid=portage_gid,
-				groups=userpriv_groups, umask=0o077)
+				returnpid=True, **spawn_kwargs)
 
 	def stop(self):
 		"""
@@ -58,6 +70,36 @@ class ProxyManager(object):
 		@return: True if the server is running, False otherwise
 		"""
 		return self.socket_path is not None
+
+
+	@coroutine
+	def ready(self):
+		"""
+		Wait for the proxy socket to become ready. This method is a coroutine.
+		"""
+
+		while True:
+			try:
+				wait_retval = os.waitpid(self._pids[0], os.WNOHANG)
+			except OSError as e:
+				if e.errno == errno.EINTR:
+					continue
+				raise
+
+			if wait_retval is not None and wait_retval != (0, 0):
+				raise OSError(3, 'No such process')
+
+			try:
+				s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+				s.connect(self.socket_path)
+			except EnvironmentError as e:
+				if e.errno != errno.ENOENT:
+					raise
+				yield asyncio.sleep(0.2)
+			else:
+				break
+			finally:
+				s.close()
 
 
 proxy = ProxyManager()
