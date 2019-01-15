@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.56
+==================================
+* Bug Fixes:
+    - Bug 675284 restore canonicalize func
+    - Bug 675312 pid-sandbox: execute pid-ns-init as pid 1
+
+
 portage-2.3.55
 ==================================
 * Bug Fixes:
