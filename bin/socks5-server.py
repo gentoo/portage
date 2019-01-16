@@ -17,6 +17,12 @@ else:
 	# getattr() necessary because async is a keyword in Python >=3.7.
 	asyncio_ensure_future = getattr(asyncio, 'async')
 
+try:
+	current_task = asyncio.current_task
+except AttributeError:
+	# Deprecated since Python 3.7
+	current_task = asyncio.Task.current_task
+
 
 class Socks5Server(object):
 	"""
@@ -154,7 +160,7 @@ class Socks5Server(object):
 			# otherwise, start two loops:
 			# remote -> local...
 			t = asyncio_ensure_future(self.handle_proxied_conn(
-					proxied_reader, writer, asyncio.Task.current_task()))
+					proxied_reader, writer, current_task()))
 
 			# and local -> remote...
 			try:
