@@ -476,7 +476,7 @@ __try_source() {
 		# If $- contains x, then tracing has already been enabled
 		# elsewhere for some reason. We preserve it's state so as
 		# not to interfere.
-		if [[ ${qa} ]]; then
+		if ! ${qa} ; then
 			source "${1}"
 		else
 			__qa_source "${1}"
