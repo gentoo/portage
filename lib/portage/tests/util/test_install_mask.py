@@ -119,6 +119,42 @@ class InstallMaskTestCase(TestCase):
 					),
 				)
 			),
+			(
+				'/usr/share/locale '
+				'-/usr/share/locale/en* '
+				'-/usr/share/locale/kf5_all_languages '
+				'-/usr/share/locale/locale.alias',
+				(
+					(
+						'usr/share/locale/en',
+						False,
+					),
+					(
+						'usr/share/locale/en_GB',
+						False,
+					),
+					(
+						'usr/share/locale/en/kf5_all_languages',
+						False,
+					),
+					(
+						'usr/share/locale/locale.alias',
+						False,
+					),
+					(
+						'usr/share/locale/es',
+						True,
+					),
+					(
+						'usr/share/locale/fr',
+						True,
+					),
+					(
+						'usr/share/locale',
+						True,
+					),
+				)
+			),
 		)
 
 		for install_mask_str, paths in cases:
