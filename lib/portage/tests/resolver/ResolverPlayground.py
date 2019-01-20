@@ -86,6 +86,7 @@ class ResolverPlayground(object):
 				"basename",
 				"bzip2",
 				"cat",
+				"chgrp",
 				"chmod",
 				"chown",
 				"cp",
