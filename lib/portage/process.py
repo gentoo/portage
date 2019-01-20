@@ -571,6 +571,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 									portage._python_interpreter,
 									os.path.join(portage._bin_path,
 										'pid-ns-init'),
+									_unicode_encode(','.join(str(fd) for fd in fd_pipes)),
 									binary] + myargs
 							else:
 								# Execute a supervisor process which will forward

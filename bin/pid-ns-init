@@ -2,10 +2,28 @@
 # Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
 import functools
 import os
+import platform
 import signal
+import subprocess
 import sys
+
+
+if sys.version_info.major < 3 or platform.python_implementation() != 'CPython':
+	def signal_disposition_preexec():
+		for signum in (
+			signal.SIGHUP,
+			signal.SIGINT,
+			signal.SIGPIPE,
+			signal.SIGQUIT,
+			signal.SIGTERM,
+			):
+			signal.signal(signum, signal.SIG_DFL)
+else:
+	# CPython >= 3 subprocess.Popen handles this internally.
+	signal_disposition_preexec = None
 
 
 KILL_SIGNALS = (
@@ -14,13 +32,14 @@ KILL_SIGNALS = (
 	signal.SIGHUP,
 )
 
+
 def forward_kill_signal(main_child_pid, signum, frame):
 	os.kill(main_child_pid, signum)
 
 
 def main(argv):
 	if len(argv) < 2:
-		return 'Usage: {} <main-child-pid> or <binary> <argv0> [arg]..'.format(argv[0])
+		return 'Usage: {} <main-child-pid> or <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
 
 	if len(argv) == 2:
 		# The child process is init (pid 1) in a child pid namespace, and
@@ -28,14 +47,17 @@ def main(argv):
 		# (forwarding signals to init and forwarding exit status to the parent
 		# process).
 		main_child_pid = int(argv[1])
+		proc = None
 	else:
 		# The current process is init (pid 1) in a child pid namespace.
-		binary = argv[1]
-		args = argv[2:]
+		pass_fds, binary, args = tuple(int(fd) for fd in argv[1].split(',')), argv[2], argv[3:]
 
-		main_child_pid = os.fork()
-		if main_child_pid == 0:
-			os.execv(binary, args)
+		popen_kwargs = {}
+		if sys.version_info.major > 2:
+			popen_kwargs['pass_fds'] = pass_fds
+		proc = subprocess.Popen(args, executable=binary,
+			preexec_fn=signal_disposition_preexec, **popen_kwargs)
+		main_child_pid = proc.pid
 
 	sig_handler = functools.partial(forward_kill_signal, main_child_pid)
 	for signum in KILL_SIGNALS:
@@ -50,6 +72,11 @@ def main(argv):
 				continue
 			raise
 		if pid == main_child_pid:
+			if proc is not None:
+				# Suppress warning messages like this:
+				# ResourceWarning: subprocess 1234 is still running
+				proc.returncode = 0
+
 			if os.WIFEXITED(status):
 				return os.WEXITSTATUS(status)
 			elif os.WIFSIGNALED(status):
