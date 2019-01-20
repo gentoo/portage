@@ -1339,9 +1339,17 @@ class portagetree(object):
 				" constructor is unused",
 				DeprecationWarning, stacklevel=2)
 
-		self.portroot = settings["PORTDIR"]
 		self.__virtual = virtual
 		self.dbapi = portdbapi(mysettings=settings)
+
+	@property
+	def portroot(self):
+		"""Deprecated. Use the portdbapi getRepositoryPath method instead."""
+		warnings.warn("The portroot attribute of "
+			"portage.dbapi.porttree.portagetree is deprecated. Use the "
+			"portdbapi getRepositoryPath method instead.",
+			DeprecationWarning, stacklevel=3)
+		return self.settings['PORTDIR']
 
 	@property
 	def root(self):
@@ -1383,7 +1391,11 @@ class portagetree(object):
 		return self.dbapi.cp_all()
 
 	def getname(self, pkgname):
-		"returns file location for this particular package (DEPRECATED)"
+		"""Deprecated. Use the portdbapi findname method instead."""
+		warnings.warn("The getname method of "
+			"portage.dbapi.porttree.portagetree is deprecated. "
+			"Use the portdbapi findname method instead.",
+			DeprecationWarning, stacklevel=2)
 		if not pkgname:
 			return ""
 		mysplit = pkgname.split("/")
