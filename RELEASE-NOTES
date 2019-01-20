@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.57
+==================================
+* Bug Fixes:
+    - Bug 675756 emerge: compare new SLOT USE to installed SLOT
+    - Bug 675826 INSTALL_MASK scalability: minimize fnmatch calls
+    - Bug 675828 pid-sandbox: fix child process signal disposition
+
+
 portage-2.3.56
 ==================================
 * Bug Fixes:
