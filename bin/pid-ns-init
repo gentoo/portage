@@ -11,21 +11,6 @@ import subprocess
 import sys
 
 
-if sys.version_info.major < 3 or platform.python_implementation() != 'CPython':
-	def signal_disposition_preexec():
-		for signum in (
-			signal.SIGHUP,
-			signal.SIGINT,
-			signal.SIGPIPE,
-			signal.SIGQUIT,
-			signal.SIGTERM,
-			):
-			signal.signal(signum, signal.SIG_DFL)
-else:
-	# CPython >= 3 subprocess.Popen handles this internally.
-	signal_disposition_preexec = None
-
-
 KILL_SIGNALS = (
 	signal.SIGINT,
 	signal.SIGTERM,
@@ -41,9 +26,31 @@ def forward_kill_signal(pid, signum, frame):
 	os.kill(pid, signum)
 
 
+def preexec_fn(uid, gid, groups, umask):
+	if gid is not None:
+		os.setgid(gid)
+	if groups is not None:
+		os.setgroups(groups)
+	if uid is not None:
+		os.setuid(uid)
+	if umask is not None:
+		os.umask(umask)
+
+	# CPython >= 3 subprocess.Popen handles this internally.
+	if sys.version_info.major < 3 or platform.python_implementation() != 'CPython':
+		for signum in (
+			signal.SIGHUP,
+			signal.SIGINT,
+			signal.SIGPIPE,
+			signal.SIGQUIT,
+			signal.SIGTERM,
+			):
+			signal.signal(signum, signal.SIG_DFL)
+
+
 def main(argv):
 	if len(argv) < 2:
-		return 'Usage: {} <main-child-pid> or <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
+		return 'Usage: {} <main-child-pid> or <uid> <gid> <groups> <umask> <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
 
 	if len(argv) == 2:
 		# The child process is init (pid 1) in a child pid namespace, and
@@ -55,16 +62,20 @@ def main(argv):
 		proc = None
 	else:
 		# The current process is init (pid 1) in a child pid namespace.
-		pass_fds, binary, args = tuple(int(fd) for fd in argv[1].split(',')), argv[2], argv[3:]
+		uid, gid, groups, umask, pass_fds, binary, args = argv[1], argv[2], argv[3], argv[4], tuple(int(fd) for fd in argv[5].split(',')), argv[6], argv[7:]
+		uid = int(uid) if uid else None
+		gid = int(gid) if gid else None
+		groups = tuple(int(group) for group in groups.split(',')) if groups else None
+		umask = int(umask) if umask else None
 
 		popen_kwargs = {}
+		popen_kwargs['preexec_fn'] = functools.partial(preexec_fn, uid, gid, groups, umask)
 		if sys.version_info.major > 2:
 			popen_kwargs['pass_fds'] = pass_fds
 		# Isolate parent process from process group SIGSTOP (bug 675870)
 		setsid = True
 		os.setsid()
-		proc = subprocess.Popen(args, executable=binary,
-			preexec_fn=signal_disposition_preexec, **popen_kwargs)
+		proc = subprocess.Popen(args, executable=binary, **popen_kwargs)
 		main_child_pid = proc.pid
 
 	# If setsid has been called, use kill(0, signum) to
