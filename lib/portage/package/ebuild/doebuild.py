@@ -111,7 +111,8 @@ _ipc_phases = frozenset([
 ])
 
 # phases which execute in the global PID namespace
-_global_pid_phases = frozenset(['preinst', 'postinst', 'prerm', 'postrm', 'config'])
+_global_pid_phases = frozenset([
+	'config', 'depend', 'preinst', 'prerm', 'postinst', 'postrm'])
 
 # phases in which networking access is allowed
 _networked_phases = frozenset([
