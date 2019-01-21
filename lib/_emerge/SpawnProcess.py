@@ -32,7 +32,7 @@ class SpawnProcess(SubProcess):
 	_spawn_kwarg_names = ("env", "opt_name", "fd_pipes",
 		"uid", "gid", "groups", "umask", "logfile",
 		"path_lookup", "pre_exec", "close_fds", "cgroup",
-		"unshare_ipc", "unshare_net")
+		"unshare_ipc", "unshare_mount", "unshare_pid", "unshare_net")
 
 	__slots__ = ("args",) + \
 		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
