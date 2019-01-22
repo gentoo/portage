@@ -240,23 +240,22 @@ inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
+
+		# Since ECLASS_DEPTH > 1, the following variables are locals from the
+		# previous inherit call in the call stack.
+		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
+			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
+			eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
+			eqawarn "after inherit(s)."
+		fi
 	fi
 
-	if [[ -n $ECLASS && -n ${!__export_funcs_var} ]] ; then
-		eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
-		eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
-		eqawarn "after inherit(s)."
-	fi
-
+	local -x ECLASS
+	local __export_funcs_var
 	local repo_location
 	local location
 	local potential_location
 	local x
-
-	# These variables must be restored before returning.
-	local PECLASS=$ECLASS
-	local prev_export_funcs_var=$__export_funcs_var
-
 	local B_IUSE
 	local B_REQUIRED_USE
 	local B_DEPEND
@@ -268,7 +267,7 @@ inherit() {
 		location=""
 		potential_location=""
 
-		export ECLASS="$1"
+		ECLASS="$1"
 		__export_funcs_var=__export_functions_$ECLASS_DEPTH
 		unset $__export_funcs_var
 
@@ -378,12 +377,6 @@ inherit() {
 		shift
 	done
 	((--ECLASS_DEPTH)) # Returns 1 when ECLASS_DEPTH reaches 0.
-	if (( ECLASS_DEPTH > 0 )) ; then
-		export ECLASS=$PECLASS
-		__export_funcs_var=$prev_export_funcs_var
-	else
-		unset ECLASS __export_funcs_var
-	fi
 	return 0
 }
 
