@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.58
+==================================
+* Bug Fixes:
+    - Bug 675868 run pid-sandbox pid-ns-init as root
+    - Bug 675870 setsid for pid-sandbox process group signals
+    - Bug 676014 use local ECLASS variable during ebuild inherit
+
+
 portage-2.3.57
 ==================================
 * Bug Fixes:
