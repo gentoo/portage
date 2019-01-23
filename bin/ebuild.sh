@@ -243,10 +243,9 @@ inherit() {
 	fi
 
 	if [[ -n $ECLASS && -n ${!__export_funcs_var} ]] ; then
-		echo "QA Notice: EXPORT_FUNCTIONS is called before inherit in" \
-			"$ECLASS.eclass. For compatibility with <=portage-2.1.6.7," \
-			"only call EXPORT_FUNCTIONS after inherit(s)." \
-			| fmt -w 75 | while read -r ; do eqawarn "$REPLY" ; done
+		eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
+		eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
+		eqawarn "after inherit(s)."
 	fi
 
 	local repo_location
