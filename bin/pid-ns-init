@@ -3,12 +3,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import fcntl
 import functools
 import os
 import platform
 import signal
 import subprocess
 import sys
+import termios
 
 
 KILL_SIGNALS = (
@@ -75,6 +77,17 @@ def main(argv):
 		# Isolate parent process from process group SIGSTOP (bug 675870)
 		setsid = True
 		os.setsid()
+		if sys.stdout.isatty():
+			try:
+				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
+			except OSError as e:
+				if e.errno == errno.EPERM:
+					# This means that stdout refers to the controlling terminal
+					# of the parent process, and in this case we do not want to
+					# steel it.
+					pass
+				else:
+					raise
 		proc = subprocess.Popen(args, executable=binary, **popen_kwargs)
 		main_child_pid = proc.pid
 
