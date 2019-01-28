@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.59
+==================================
+* Bug Fixes:
+    - Bug 675868 pid-sandbox: pid-ns-init TIOCSCTTY after setsid
+
+
 portage-2.3.58
 ==================================
 * Bug Fixes:
