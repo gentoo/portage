@@ -80,7 +80,7 @@ def main(argv):
 		if sys.stdout.isatty():
 			try:
 				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
-			except OSError as e:
+			except EnvironmentError as e:
 				if e.errno == errno.EPERM:
 					# This means that stdout refers to the controlling terminal
 					# of the parent process, and in this case we do not want to
@@ -101,7 +101,7 @@ def main(argv):
 	while True:
 		try:
 			pid, status = os.wait()
-		except OSError as e:
+		except EnvironmentError as e:
 			if e.errno == errno.EINTR:
 				continue
 			raise
