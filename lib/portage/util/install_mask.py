@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['install_mask_dir', 'InstallMask']
@@ -12,7 +12,7 @@ import sys
 
 from portage import os, _unicode_decode
 from portage.exception import (
-	OperationNotPermitted, PermissionDenied, FileNotFound)
+	OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem, FileNotFound)
 from portage.util import normalize_path
 
 if sys.hexversion >= 0x3000000:
@@ -130,6 +130,7 @@ _exc_map = {
 	errno.ENOENT: FileNotFound,
 	errno.EPERM: OperationNotPermitted,
 	errno.EACCES: PermissionDenied,
+	errno.EROFS: ReadOnlyFileSystem,
 }
 
 
