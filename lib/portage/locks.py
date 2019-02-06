@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2014 Gentoo Foundation
+# Copyright 2004-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -20,6 +20,7 @@ from portage.exception import (DirectoryNotFound, FileNotFound,
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied,
 	ReadOnlyFileSystem)
 from portage.util import writemsg
+from portage.util.install_mask import _raise_exc
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
@@ -148,18 +149,17 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		preexisting = os.path.exists(lockfilename)
 		old_mask = os.umask(000)
 		try:
-			try:
-				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
-			except OSError as e:
-				func_call = "open('%s')" % lockfilename
-				if e.errno == OperationNotPermitted.errno:
-					raise OperationNotPermitted(func_call)
-				elif e.errno == PermissionDenied.errno:
-					raise PermissionDenied(func_call)
-				elif e.errno == ReadOnlyFileSystem.errno:
-					raise ReadOnlyFileSystem(func_call)
+			while True:
+				try:
+					myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
+				except OSError as e:
+					if e.errno in (errno.ENOENT, errno.ESTALE) and os.path.isdir(os.path.dirname(lockfilename)):
+						# Retry required for NFS (see bug 636798).
+						continue
+					else:
+						_raise_exc(e)
 				else:
-					raise
+					break
 
 			if not preexisting:
 				try:
@@ -273,7 +273,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 		
 	if isinstance(lockfilename, basestring) and \
-		myfd != HARDLINK_FD and _fstat_nlink(myfd) == 0:
+		myfd != HARDLINK_FD and _lockfile_was_removed(myfd, lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		writemsg(_("lockfile recurse\n"), 1)
@@ -297,6 +297,58 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
 	return (lockfilename, myfd, unlinkfile, locking_method)
+
+
+def _lockfile_was_removed(lock_fd, lock_path):
+	"""
+	Check if lock_fd still refers to a file located at lock_path, since
+	the file may have been removed by a concurrent process that held the
+	lock earlier. This implementation includes support for NFS, where
+	stat is not reliable for removed files due to the default file
+	attribute cache behavior ('ac' mount option).
+
+	@param lock_fd: an open file descriptor for a lock file
+	@type lock_fd: int
+	@param lock_path: path of lock file
+	@type lock_path: str
+	@rtype: bool
+	@return: True if lock_path exists and corresponds to lock_fd, False otherwise
+	"""
+	try:
+		fstat_st = os.fstat(lock_fd)
+	except OSError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			_raise_exc(e)
+		return True
+
+	# Since stat is not reliable for removed files on NFS with the default
+	# file attribute cache behavior ('ac' mount option), create a temporary
+	# hardlink in order to prove that the file path exists on the NFS server.
+	hardlink_path = hardlock_name(lock_path)
+	try:
+		os.unlink(hardlink_path)
+	except OSError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			_raise_exc(e)
+	try:
+		try:
+			os.link(lock_path, hardlink_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				_raise_exc(e)
+			return True
+
+		hardlink_stat = os.stat(hardlink_path)
+		if hardlink_stat.st_ino != fstat_st.st_ino or hardlink_stat.st_dev != fstat_st.st_dev:
+			return True
+	finally:
+		try:
+			os.unlink(hardlink_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				_raise_exc(e)
+	return False
+
 
 def _fstat_nlink(fd):
 	"""
