@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.60
+==================================
+* Bug Fixes:
+    - Bug 636798 handle lock file removal on NFS
+
+
 portage-2.3.59
 ==================================
 * Bug Fixes:
