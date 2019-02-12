@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Nov 2018" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Feb 2019" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -64,7 +64,7 @@ file (see \fBportage\fR(5)). In addition to license and group names, the
 for further information:
 \fIhttps://www.gentoo.org/glep/glep-0023.html\fR.
 .br
-Defaults to the value of * -@EULA.
+Defaults to the value defined in the profile.
 .br
 .I Examples:
 .nf
@@ -72,7 +72,7 @@ Defaults to the value of * -@EULA.
 ACCEPT_LICENSE="-* @FREE"
 # As before, but exclude the "Artistic" license
 ACCEPT_LICENSE="-* @FREE -Artistic"
-# Accept any license except those in the EULA license group (default)
+# Accept any license except those in the EULA license group
 ACCEPT_LICENSE="* -@EULA"
 .fi
 .TP

@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Authors
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # System-wide defaults for the Portage system
 
@@ -23,7 +23,6 @@ FCFLAGS=""
 # Approved by the mirror-admin team.
 GENTOO_MIRRORS="http://distfiles.gentoo.org"
 
-ACCEPT_LICENSE="* -@EULA"
 ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
