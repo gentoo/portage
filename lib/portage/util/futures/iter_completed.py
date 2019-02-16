@@ -61,8 +61,8 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	"""
 	loop = asyncio._wrap_loop(loop)
 
-	max_jobs = max_jobs or portage.util.cpuinfo.get_cpu_count()
-	max_load = max_load or portage.util.cpuinfo.get_cpu_count()
+	max_jobs = max_jobs or get_cpu_count()
+	max_load = max_load or get_cpu_count()
 
 	future_map = {}
 	def task_generator():
