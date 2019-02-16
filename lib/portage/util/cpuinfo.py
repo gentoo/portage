@@ -31,7 +31,7 @@ def get_cpu_count():
 
 	@return: Number of CPUs or None if unable to obtain.
 	"""
-        try:
+	try:
 		import os
 		# This was introduced in Python 3.3 only, but exists in Linux
 		# all the way back to the 2.5.8 kernel.
