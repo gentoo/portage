@@ -1471,11 +1471,11 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 	@param cpv_list: list of ebuild cpv values for a Manifest
 	@type cpv_list: list
 	@param max_jobs: max number of futures to process concurrently (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_jobs: int
 	@param max_load: max load allowed when scheduling a new future,
 		otherwise schedule no more than 1 future at a time (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_load: int or float
 	@param loop: event loop
 	@type loop: EventLoop
