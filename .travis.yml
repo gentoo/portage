@@ -17,6 +17,11 @@ matrix:
 install:
     - pip install tox
 
+# Cache pip to shave a few seconds
+cache:
+  pip: true
+
+
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
     - ./setup.py test
