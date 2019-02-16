@@ -21,13 +21,24 @@ install:
 cache:
   pip: true
 
+before_install:
+  - export -f travis_fold
 
 script:
     - printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
-    - ./setup.py test
-    - ./setup.py install --root=/tmp/install-root
-    - if [[ ${TRAVIS_PYTHON_VERSION} == ?.? ]]; then
+    - |
+      echo "travis_fold:start:setup.py_test"
+      ./setup.py test
+      echo "travis_fold:end:setup.py_test"
+    - |
+      echo "travis_fold:start:setup.py_install"
+      ./setup.py install --root=/tmp/install-root
+      echo "travis_fold:end:setup.py_install"
+    - |
+      echo "travis_fold:start:tox"
+      if [[ ${TRAVIS_PYTHON_VERSION} == ?.? ]]; then
         tox -e py${TRAVIS_PYTHON_VERSION/./};
       else
         tox -e ${TRAVIS_PYTHON_VERSION};
       fi
+      echo "travis_fold:end:tox"
