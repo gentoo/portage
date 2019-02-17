@@ -340,6 +340,33 @@ def _lockfile_was_removed(lock_fd, lock_path):
 
 		hardlink_stat = os.stat(hardlink_path)
 		if hardlink_stat.st_ino != fstat_st.st_ino or hardlink_stat.st_dev != fstat_st.st_dev:
+			# Create another hardlink in order to detect whether or not
+			# hardlink inode numbers are expected to match. For example,
+			# inode numbers are not expected to match for sshfs.
+			inode_test = hardlink_path + '-inode-test'
+			try:
+				os.unlink(inode_test)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					_raise_exc(e)
+			try:
+				os.link(hardlink_path, inode_test)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					_raise_exc(e)
+				return True
+			else:
+				if not os.path.samefile(hardlink_path, inode_test):
+					# This implies that inode numbers are not expected
+					# to match for this file system, so use a simple
+					# stat call to detect if lock_path has been removed.
+					return not os.path.exists(lock_path)
+			finally:
+				try:
+					os.unlink(inode_test)
+				except OSError as e:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
+						_raise_exc(e)
 			return True
 	finally:
 		try:
