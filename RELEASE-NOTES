@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.61
+==================================
+* Bug Fixes:
+    - Bug 677776 gnome2_icon_cache_update -> xdg_icon_cache_update
+    - Bug 677800 Don't define a default for ACCEPT_LICENSE
+    - Bug 678218 locks: handle sshfs hardlink inode numbers
+    - FL-6227 cpuinfo: use better available CPU calculation
+
+
 portage-2.3.60
 ==================================
 * Bug Fixes:
