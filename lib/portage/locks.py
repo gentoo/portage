@@ -107,7 +107,34 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	If wantnewlockfile is True then this creates a lockfile in the parent
 	directory as the file: '.' + basename + '.portage_lockfile'.
 	"""
+	lock = None
+	while lock is None:
+		lock = _lockfile_iteration(mypath, wantnewlockfile=wantnewlockfile,
+			unlinkfile=unlinkfile, waiting_msg=waiting_msg, flags=flags)
+		if lock is None:
+			writemsg(_("lockfile removed by previous lock holder, retrying\n"), 1)
+	return lock
 
+
+def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
+	waiting_msg=None, flags=0):
+	"""
+	Acquire a lock on mypath, without retry. Return None if the lockfile
+	was removed by previous lock holder (caller must retry).
+
+	@param mypath: lock file path
+	@type mypath: str
+	@param wantnewlockfile: use a separate new lock file
+	@type wantnewlockfile: bool
+	@param unlinkfile: remove lock file prior to unlock
+	@type unlinkfile: bool
+	@param waiting_msg: message to show before blocking
+	@type waiting_msg: str
+	@param flags: lock flags (only supports os.O_NONBLOCK)
+	@type flags: int
+	@rtype: bool
+	@return: unlockfile tuple on success, None if retry is needed
+	"""
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
 
@@ -274,12 +301,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		
 	if isinstance(lockfilename, basestring) and \
 		myfd != HARDLINK_FD and unlinkfile and _lockfile_was_removed(myfd, lockfilename):
-		# The file was deleted on us... Keep trying to make one...
+		# Removed by previous lock holder... Caller will retry...
 		os.close(myfd)
-		writemsg(_("lockfile recurse\n"), 1)
-		lockfilename, myfd, unlinkfile, locking_method = lockfile(
-			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
-			waiting_msg=waiting_msg, flags=flags)
+		return None
 
 	if myfd != HARDLINK_FD:
 
