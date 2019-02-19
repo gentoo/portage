@@ -273,7 +273,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 		
 	if isinstance(lockfilename, basestring) and \
-		myfd != HARDLINK_FD and _lockfile_was_removed(myfd, lockfilename):
+		myfd != HARDLINK_FD and unlinkfile and _lockfile_was_removed(myfd, lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		writemsg(_("lockfile recurse\n"), 1)
