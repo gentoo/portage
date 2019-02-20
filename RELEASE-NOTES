@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.62
+==================================
+* Bug Fixes:
+    - Bug 678278 unprivileged sync emergelog lock permission denied
+
+
 portage-2.3.61
 ==================================
 * Bug Fixes:
