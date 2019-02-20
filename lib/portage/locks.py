@@ -299,11 +299,18 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 			raise
 
 		
-	if isinstance(lockfilename, basestring) and \
-		myfd != HARDLINK_FD and unlinkfile and _lockfile_was_removed(myfd, lockfilename):
-		# Removed by previous lock holder... Caller will retry...
-		os.close(myfd)
-		return None
+	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
+		try:
+			removed = _lockfile_was_removed(myfd, lockfilename)
+		except Exception:
+			# Do not leak the file descriptor here.
+			os.close(myfd)
+			raise
+		else:
+			if removed:
+				# Removed by previous lock holder... Caller will retry...
+				os.close(myfd)
+				return None
 
 	if myfd != HARDLINK_FD:
 
