@@ -109,6 +109,7 @@ class RepoConfig(object):
 		'sync_allow_hardlinks',
 		'sync_depth',
 		'sync_hooks_only_on_change',
+		'sync_openpgp_keyserver',
 		'sync_openpgp_key_path',
 		'sync_openpgp_key_refresh_retry_count',
 		'sync_openpgp_key_refresh_retry_delay_exp_base',
@@ -223,6 +224,9 @@ class RepoConfig(object):
 
 		self.sync_allow_hardlinks = repo_opts.get(
 			'sync-allow-hardlinks', 'true').lower() in ('true', 'yes')
+
+		self.sync_openpgp_keyserver = repo_opts.get(
+			'sync-openpgp-keyserver', '').strip().lower() or None
 
 		self.sync_openpgp_key_path = repo_opts.get(
 			'sync-openpgp-key-path', None)
@@ -601,6 +605,7 @@ class RepoConfigLoader(object):
 							'sync_allow_hardlinks',
 							'sync_depth',
 							'sync_hooks_only_on_change',
+							'sync_openpgp_keyserver',
 							'sync_openpgp_key_path',
 							'sync_openpgp_key_refresh_retry_count',
 							'sync_openpgp_key_refresh_retry_delay_exp_base',
@@ -1047,6 +1052,7 @@ class RepoConfigLoader(object):
 			"main_repo",
 			"priority",
 			"sync_depth",
+			"sync_openpgp_keyserver",
 			"sync_openpgp_key_path",
 			"sync_openpgp_key_refresh_retry_count",
 			"sync_openpgp_key_refresh_retry_delay_exp_base",

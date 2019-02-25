@@ -1144,6 +1144,11 @@ Multiplier for the exponential delay.
 .B sync\-openpgp\-key\-refresh\-retry\-overall\-timeout = 1200
 Combined time limit for all refresh attempts, in units of seconds.
 .TP
+.B sync\-openpgp\-keyserver = \fIname\fR
+Pass \fIname\fR as the `gpg \-\-keyserver` argument. Refer to the
+\fBgpg\fR(1) man page for information about the `gpg \-\-keyserver`
+\fIname\fR format.
+.TP
 .B sync-rsync-vcs-ignore = true|false
 Ignore vcs directories that may be present in the repository. It is the
 user's responsibility to set sync-rsync-extra-opts to protect vcs

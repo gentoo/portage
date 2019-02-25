@@ -252,10 +252,10 @@ class SyncBase(object):
 		@type openpgp_env: gemato.openpgp.OpenPGPEnvironment
 		"""
 		out = portage.output.EOutput(quiet=('--quiet' in self.options['emerge_config'].opts))
-		out.ebegin('Refreshing keys from keyserver')
+		out.ebegin('Refreshing keys from keyserver {s}'.format(s=self.repo.sync_openpgp_keyserver))
 		retry_decorator = self._key_refresh_retry_decorator()
 		if retry_decorator is None:
-			openpgp_env.refresh_keys()
+			openpgp_env.refresh_keys(keyserver=self.repo.sync_openpgp_keyserver)
 		else:
 			def noisy_refresh_keys():
 				"""
@@ -263,7 +263,7 @@ class SyncBase(object):
 				errors, display errors as soon as they occur.
 				"""
 				try:
-					openpgp_env.refresh_keys()
+					openpgp_env.refresh_keys(keyserver=self.repo.sync_openpgp_keyserver)
 				except Exception as e:
 					writemsg_level("%s\n" % (e,),
 						level=logging.ERROR, noiselevel=-1)
