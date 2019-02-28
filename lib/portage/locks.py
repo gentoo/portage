@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2014 Gentoo Foundation
+# Copyright 2004-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -20,6 +20,7 @@ from portage.exception import (DirectoryNotFound, FileNotFound,
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied,
 	ReadOnlyFileSystem)
 from portage.util import writemsg
+from portage.util.install_mask import _raise_exc
 from portage.localization import _
 
 if sys.hexversion >= 0x3000000:
@@ -106,7 +107,34 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	If wantnewlockfile is True then this creates a lockfile in the parent
 	directory as the file: '.' + basename + '.portage_lockfile'.
 	"""
+	lock = None
+	while lock is None:
+		lock = _lockfile_iteration(mypath, wantnewlockfile=wantnewlockfile,
+			unlinkfile=unlinkfile, waiting_msg=waiting_msg, flags=flags)
+		if lock is None:
+			writemsg(_("lockfile removed by previous lock holder, retrying\n"), 1)
+	return lock
 
+
+def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
+	waiting_msg=None, flags=0):
+	"""
+	Acquire a lock on mypath, without retry. Return None if the lockfile
+	was removed by previous lock holder (caller must retry).
+
+	@param mypath: lock file path
+	@type mypath: str
+	@param wantnewlockfile: use a separate new lock file
+	@type wantnewlockfile: bool
+	@param unlinkfile: remove lock file prior to unlock
+	@type unlinkfile: bool
+	@param waiting_msg: message to show before blocking
+	@type waiting_msg: str
+	@param flags: lock flags (only supports os.O_NONBLOCK)
+	@type flags: int
+	@rtype: bool
+	@return: unlockfile tuple on success, None if retry is needed
+	"""
 	if not mypath:
 		raise InvalidData(_("Empty path given"))
 
@@ -148,18 +176,17 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		preexisting = os.path.exists(lockfilename)
 		old_mask = os.umask(000)
 		try:
-			try:
-				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
-			except OSError as e:
-				func_call = "open('%s')" % lockfilename
-				if e.errno == OperationNotPermitted.errno:
-					raise OperationNotPermitted(func_call)
-				elif e.errno == PermissionDenied.errno:
-					raise PermissionDenied(func_call)
-				elif e.errno == ReadOnlyFileSystem.errno:
-					raise ReadOnlyFileSystem(func_call)
+			while True:
+				try:
+					myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
+				except OSError as e:
+					if e.errno in (errno.ENOENT, errno.ESTALE) and os.path.isdir(os.path.dirname(lockfilename)):
+						# Retry required for NFS (see bug 636798).
+						continue
+					else:
+						_raise_exc(e)
 				else:
-					raise
+					break
 
 			if not preexisting:
 				try:
@@ -272,14 +299,18 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			raise
 
 		
-	if isinstance(lockfilename, basestring) and \
-		myfd != HARDLINK_FD and _fstat_nlink(myfd) == 0:
-		# The file was deleted on us... Keep trying to make one...
-		os.close(myfd)
-		writemsg(_("lockfile recurse\n"), 1)
-		lockfilename, myfd, unlinkfile, locking_method = lockfile(
-			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
-			waiting_msg=waiting_msg, flags=flags)
+	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
+		try:
+			removed = _lockfile_was_removed(myfd, lockfilename)
+		except Exception:
+			# Do not leak the file descriptor here.
+			os.close(myfd)
+			raise
+		else:
+			if removed:
+				# Removed by previous lock holder... Caller will retry...
+				os.close(myfd)
+				return None
 
 	if myfd != HARDLINK_FD:
 
@@ -297,6 +328,85 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 
 	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
 	return (lockfilename, myfd, unlinkfile, locking_method)
+
+
+def _lockfile_was_removed(lock_fd, lock_path):
+	"""
+	Check if lock_fd still refers to a file located at lock_path, since
+	the file may have been removed by a concurrent process that held the
+	lock earlier. This implementation includes support for NFS, where
+	stat is not reliable for removed files due to the default file
+	attribute cache behavior ('ac' mount option).
+
+	@param lock_fd: an open file descriptor for a lock file
+	@type lock_fd: int
+	@param lock_path: path of lock file
+	@type lock_path: str
+	@rtype: bool
+	@return: True if lock_path exists and corresponds to lock_fd, False otherwise
+	"""
+	try:
+		fstat_st = os.fstat(lock_fd)
+	except OSError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			_raise_exc(e)
+		return True
+
+	# Since stat is not reliable for removed files on NFS with the default
+	# file attribute cache behavior ('ac' mount option), create a temporary
+	# hardlink in order to prove that the file path exists on the NFS server.
+	hardlink_path = hardlock_name(lock_path)
+	try:
+		os.unlink(hardlink_path)
+	except OSError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			_raise_exc(e)
+	try:
+		try:
+			os.link(lock_path, hardlink_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				_raise_exc(e)
+			return True
+
+		hardlink_stat = os.stat(hardlink_path)
+		if hardlink_stat.st_ino != fstat_st.st_ino or hardlink_stat.st_dev != fstat_st.st_dev:
+			# Create another hardlink in order to detect whether or not
+			# hardlink inode numbers are expected to match. For example,
+			# inode numbers are not expected to match for sshfs.
+			inode_test = hardlink_path + '-inode-test'
+			try:
+				os.unlink(inode_test)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					_raise_exc(e)
+			try:
+				os.link(hardlink_path, inode_test)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					_raise_exc(e)
+				return True
+			else:
+				if not os.path.samefile(hardlink_path, inode_test):
+					# This implies that inode numbers are not expected
+					# to match for this file system, so use a simple
+					# stat call to detect if lock_path has been removed.
+					return not os.path.exists(lock_path)
+			finally:
+				try:
+					os.unlink(inode_test)
+				except OSError as e:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
+						_raise_exc(e)
+			return True
+	finally:
+		try:
+			os.unlink(hardlink_path)
+		except OSError as e:
+			if e.errno not in (errno.ENOENT, errno.ESTALE):
+				_raise_exc(e)
+	return False
+
 
 def _fstat_nlink(fd):
 	"""

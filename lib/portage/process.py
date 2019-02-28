@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2018 Gentoo Authors
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -482,7 +482,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	@param gid: Group ID to run the process under
 	@type gid: Integer
 	@param groups: Groups the Process should be in.
-	@type groups: Integer
+	@type groups: List
 	@param uid: User ID to run the process under
 	@type uid: Integer
 	@param umask: an int representing a unix umask (see man chmod for umask details)
@@ -579,15 +579,37 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 							noiselevel=-1)
 					else:
 						if unshare_pid:
-							# pid namespace requires us to become init
-							fork_ret = os.fork()
-							if fork_ret != 0:
-								os.execv(portage._python_interpreter, [
+							main_child_pid = os.fork()
+							if main_child_pid == 0:
+								# pid namespace requires us to become init
+								binary, myargs = portage._python_interpreter, [
 									portage._python_interpreter,
 									os.path.join(portage._bin_path,
 										'pid-ns-init'),
-									'%s' % fork_ret,
-									])
+									_unicode_encode('' if uid is None else str(uid)),
+									_unicode_encode('' if gid is None else str(gid)),
+									_unicode_encode('' if groups is None else ','.join(str(group) for group in groups)),
+									_unicode_encode('' if umask is None else str(umask)),
+									_unicode_encode(','.join(str(fd) for fd in fd_pipes)),
+									binary] + myargs
+								uid = None
+								gid = None
+								groups = None
+								umask = None
+							else:
+								# Execute a supervisor process which will forward
+								# signals to init and forward exit status to the
+								# parent process. The supervisor process runs in
+								# the global pid namespace, so skip /proc remount
+								# and other setup that's intended only for the
+								# init process.
+								binary, myargs = portage._python_interpreter, [
+									portage._python_interpreter,
+									os.path.join(portage._bin_path,
+									'pid-ns-init'), str(main_child_pid)]
+
+								os.execve(binary, myargs, env)
+
 						if unshare_mount:
 							# mark the whole filesystem as slave to avoid
 							# mounts escaping the namespace

@@ -2,11 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import multiprocessing
 
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.futures import asyncio
+from portage.util.cpuinfo import get_cpu_count
 
 
 def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
@@ -18,11 +18,11 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@param futures: iterator of asyncio.Future (or compatible)
 	@type futures: iterator
 	@param max_jobs: max number of futures to process concurrently (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_jobs: int
 	@param max_load: max load allowed when scheduling a new future,
 		otherwise schedule no more than 1 future at a time (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_load: int or float
 	@param loop: event loop
 	@type loop: EventLoop
@@ -47,11 +47,11 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	@param futures: iterator of asyncio.Future (or compatible)
 	@type futures: iterator
 	@param max_jobs: max number of futures to process concurrently (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_jobs: int
 	@param max_load: max load allowed when scheduling a new future,
 		otherwise schedule no more than 1 future at a time (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_load: int or float
 	@param loop: event loop
 	@type loop: EventLoop
@@ -61,8 +61,8 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 	"""
 	loop = asyncio._wrap_loop(loop)
 
-	max_jobs = max_jobs or multiprocessing.cpu_count()
-	max_load = max_load or multiprocessing.cpu_count()
+	max_jobs = max_jobs or get_cpu_count()
+	max_load = max_load or get_cpu_count()
 
 	future_map = {}
 	def task_generator():
@@ -120,11 +120,11 @@ def iter_gather(futures, max_jobs=None, max_load=None, loop=None):
 	@param futures: iterator of asyncio.Future (or compatible)
 	@type futures: iterator
 	@param max_jobs: max number of futures to process concurrently (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_jobs: int
 	@param max_load: max load allowed when scheduling a new future,
 		otherwise schedule no more than 1 future at a time (default
-		is multiprocessing.cpu_count())
+		is portage.util.cpuinfo.get_cpu_count())
 	@type max_load: int or float
 	@param loop: event loop
 	@type loop: EventLoop

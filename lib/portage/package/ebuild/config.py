@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -2284,7 +2284,7 @@ class config(object):
 			for curdb in mydbs:
 				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
 			mysplit = prune_incremental(mysplit)
-			accept_license_str = ' '.join(mysplit)
+			accept_license_str = ' '.join(mysplit) or '* -@EULA'
 			self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
 			self._license_manager.set_accept_license_str(accept_license_str)
 		else:

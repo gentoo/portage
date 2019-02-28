@@ -1,23 +1,120 @@
 #!/usr/bin/env python
-# Copyright 2018 Gentoo Authors
+# Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import errno
+import fcntl
+import functools
 import os
+import platform
+import signal
+import subprocess
 import sys
+import termios
+
+
+KILL_SIGNALS = (
+	signal.SIGINT,
+	signal.SIGTERM,
+	signal.SIGHUP,
+)
+
+
+def forward_kill_signal(pid, signum, frame):
+	if pid == 0:
+		# Avoid a signal feedback loop, since signals sent to the
+		# process group are also sent to the current process.
+		signal.signal(signum, signal.SIG_DFL)
+	os.kill(pid, signum)
+
+
+def preexec_fn(uid, gid, groups, umask):
+	if gid is not None:
+		os.setgid(gid)
+	if groups is not None:
+		os.setgroups(groups)
+	if uid is not None:
+		os.setuid(uid)
+	if umask is not None:
+		os.umask(umask)
+
+	# CPython >= 3 subprocess.Popen handles this internally.
+	if sys.version_info.major < 3 or platform.python_implementation() != 'CPython':
+		for signum in (
+			signal.SIGHUP,
+			signal.SIGINT,
+			signal.SIGPIPE,
+			signal.SIGQUIT,
+			signal.SIGTERM,
+			):
+			signal.signal(signum, signal.SIG_DFL)
 
 
 def main(argv):
 	if len(argv) < 2:
-		return 'Usage: {} <main-child-pid>'.format(argv[0])
-	main_child_pid = int(argv[1])
+		return 'Usage: {} <main-child-pid> or <uid> <gid> <groups> <umask> <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
+
+	if len(argv) == 2:
+		# The child process is init (pid 1) in a child pid namespace, and
+		# the current process supervises from within the global pid namespace
+		# (forwarding signals to init and forwarding exit status to the parent
+		# process).
+		main_child_pid = int(argv[1])
+		setsid = False
+		proc = None
+	else:
+		# The current process is init (pid 1) in a child pid namespace.
+		uid, gid, groups, umask, pass_fds, binary, args = argv[1], argv[2], argv[3], argv[4], tuple(int(fd) for fd in argv[5].split(',')), argv[6], argv[7:]
+		uid = int(uid) if uid else None
+		gid = int(gid) if gid else None
+		groups = tuple(int(group) for group in groups.split(',')) if groups else None
+		umask = int(umask) if umask else None
+
+		popen_kwargs = {}
+		popen_kwargs['preexec_fn'] = functools.partial(preexec_fn, uid, gid, groups, umask)
+		if sys.version_info.major > 2:
+			popen_kwargs['pass_fds'] = pass_fds
+		# Isolate parent process from process group SIGSTOP (bug 675870)
+		setsid = True
+		os.setsid()
+		if sys.stdout.isatty():
+			try:
+				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
+			except EnvironmentError as e:
+				if e.errno == errno.EPERM:
+					# This means that stdout refers to the controlling terminal
+					# of the parent process, and in this case we do not want to
+					# steel it.
+					pass
+				else:
+					raise
+		proc = subprocess.Popen(args, executable=binary, **popen_kwargs)
+		main_child_pid = proc.pid
+
+	# If setsid has been called, use kill(0, signum) to
+	# forward signals to the entire process group.
+	sig_handler = functools.partial(forward_kill_signal, 0 if setsid else main_child_pid)
+	for signum in KILL_SIGNALS:
+		signal.signal(signum, sig_handler)
 
 	# wait for child processes
 	while True:
-		pid, status = os.wait()
+		try:
+			pid, status = os.wait()
+		except EnvironmentError as e:
+			if e.errno == errno.EINTR:
+				continue
+			raise
 		if pid == main_child_pid:
+			if proc is not None:
+				# Suppress warning messages like this:
+				# ResourceWarning: subprocess 1234 is still running
+				proc.returncode = 0
+
 			if os.WIFEXITED(status):
 				return os.WEXITSTATUS(status)
 			elif os.WIFSIGNALED(status):
+				signal.signal(os.WTERMSIG(status), signal.SIG_DFL)
 				os.kill(os.getpid(), os.WTERMSIG(status))
 			# go to the unreachable place
 			break

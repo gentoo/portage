@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -673,9 +673,14 @@ class Display(object):
 			pkg_info.previous_pkg = self.vardb.match_pkgs(
 				Atom('=' + pkg.cpv))[0]
 		else:
-			slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
-			if slot_matches:
-				pkg_info.previous_pkg = slot_matches[0]
+			cp_slot_matches = self.vardb.match_pkgs(pkg.slot_atom)
+			if cp_slot_matches:
+				pkg_info.previous_pkg = cp_slot_matches[0]
+			else:
+				cp_matches = self.vardb.match_pkgs(Atom(pkg.cp))
+				if cp_matches:
+					# Use highest installed other-slot package instance.
+					pkg_info.previous_pkg = cp_matches[-1]
 
 		return pkg_info
 

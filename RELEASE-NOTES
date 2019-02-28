@@ -1,6 +1,56 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.62
+==================================
+* Bug Fixes:
+    - Bug 678278 unprivileged sync emergelog lock permission denied
+
+
+portage-2.3.61
+==================================
+* Bug Fixes:
+    - Bug 677776 gnome2_icon_cache_update -> xdg_icon_cache_update
+    - Bug 677800 Don't define a default for ACCEPT_LICENSE
+    - Bug 678218 locks: handle sshfs hardlink inode numbers
+    - FL-6227 cpuinfo: use better available CPU calculation
+
+
+portage-2.3.60
+==================================
+* Bug Fixes:
+    - Bug 636798 handle lock file removal on NFS
+
+
+portage-2.3.59
+==================================
+* Bug Fixes:
+    - Bug 675868 pid-sandbox: pid-ns-init TIOCSCTTY after setsid
+
+
+portage-2.3.58
+==================================
+* Bug Fixes:
+    - Bug 675868 run pid-sandbox pid-ns-init as root
+    - Bug 675870 setsid for pid-sandbox process group signals
+    - Bug 676014 use local ECLASS variable during ebuild inherit
+
+
+portage-2.3.57
+==================================
+* Bug Fixes:
+    - Bug 675756 emerge: compare new SLOT USE to installed SLOT
+    - Bug 675826 INSTALL_MASK scalability: minimize fnmatch calls
+    - Bug 675828 pid-sandbox: fix child process signal disposition
+
+
+portage-2.3.56
+==================================
+* Bug Fixes:
+    - Bug 675284 restore canonicalize func
+    - Bug 675312 pid-sandbox: execute pid-ns-init as pid 1
+
+
 portage-2.3.55
 ==================================
 * Bug Fixes:

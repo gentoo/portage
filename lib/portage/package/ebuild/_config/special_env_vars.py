@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -208,7 +208,6 @@ global_only_vars = frozenset([
 ])
 
 default_globals = {
-	'ACCEPT_LICENSE':           '* -@EULA',
 	'ACCEPT_PROPERTIES':        '*',
 	'PORTAGE_BZIP2_COMMAND':    'bzip2',
 }

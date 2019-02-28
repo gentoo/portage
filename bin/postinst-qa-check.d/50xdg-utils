@@ -46,6 +46,59 @@ xdg_desktop_database_check() {
 	fi
 }
 
+xdg_icon_cache_check() {
+	type -P gtk-update-icon-cache &>/dev/null || return
+
+	local d f all_files=() missing
+	for d in usr/share/icons/*/; do
+		# xdg_icon_cache_update updates only themes with an index
+		[[ -f ${d}/index.theme ]] || continue
+
+		local files=() find_args=(
+			# gtk-update-icon-cache supports only specific file
+			# suffixes; match that to avoid false positives
+			'(' -name '*.png' -o -name '*.svg'
+				-o -name '*.xpm' -o -name '*.icon' ')'
+		)
+		# if the cache does not exist at all, we complain for any file
+		# otherwise, we look for files newer than the cache
+		[[ -f ${d}/icon-theme.cache ]] &&
+			find_args+=( -newercm "${d}"/icon-theme.cache ) || missing=1
+
+		# (use -mindepth 2 to easily skip the cache files)
+		while read -r -d $'\0' f; do
+			files+=( "${f}" )
+		done < <(find "${d}" -mindepth 2 -type f "${find_args[@]}" -print0)
+
+		# if any files were found, update the db to avoid repeating
+		# the warning for subsequent packages
+		if [[ ${files[@]} ]]; then
+			all_files+=("${files[@]}")
+			addwrite "${d}"
+			gtk-update-icon-cache -qf "${d}"
+		fi
+	done
+
+	# preinst initializes the baseline state for the posinst check
+	[[ ${PORTAGE_QA_PHASE} == preinst ]] && return
+
+	# parallel-install makes it impossible to blame a specific package
+	has parallel-install ${FEATURES} && return
+
+	# avoid false-positives on first install (bug 649464)
+	[[ ${PN} == gtk-update-icon-cache ]] && return
+
+	# The eqatag call is prohibitively expensive if the cache is
+	# missing and there are a large number of files.
+	if [[ -z ${missing} && ${all_files[@]} ]]; then
+		eqawarn "QA Notice: new icons were found installed but icon cache"
+		eqawarn "has not been updated:"
+		eqatag -v xdg-utils.icon-cache "${all_files[@]/#//}"
+		eqawarn "Please make sure to call xdg_icon_cache_update()"
+		eqawarn "in pkg_postinst() and pkg_postrm() phases of appropriate pkgs."
+	fi
+}
+
 xdg_mimeinfo_database_check() {
 	type -P update-mime-database &>/dev/null || return
 
@@ -92,6 +145,7 @@ xdg_mimeinfo_database_check() {
 xdg_utils_postinst_check() {
 	cd "${EROOT:-/}" || die
 	xdg_desktop_database_check
+	xdg_icon_cache_check
 	xdg_mimeinfo_database_check
 }
 
