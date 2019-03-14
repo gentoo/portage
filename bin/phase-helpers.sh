@@ -237,9 +237,9 @@ use() {
 	# Make sure we have this USE flag in IUSE, but exempt binary
 	# packages for API consumers like Entropy which do not require
 	# a full profile with IUSE_IMPLICIT and stuff (see bug #456830).
-	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE &&
-		-n $PORTAGE_INTERNAL_CALLER ]] ; then
-		if [[ ! $u =~ $PORTAGE_IUSE ]] ; then
+	elif declare -f ___in_portage_iuse >/dev/null &&
+		[[ -n ${EBUILD_PHASE} && -n ${PORTAGE_INTERNAL_CALLER} ]] ; then
+		if ! ___in_portage_iuse "${u}"; then
 			if [[ ${EMERGE_FROM} != binary &&
 				! ${EAPI} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]] ; then
 				# This is only strict starting with EAPI 5, since implicit IUSE
