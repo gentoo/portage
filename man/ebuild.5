@@ -1086,20 +1086,28 @@ has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .B hasv\fR \fI<item>\fR \fI<item list>
 Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.
 .TP
-.B has_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
-Check to see if \fIcategory/package\-version\fR is installed on the system.
-The parameter accepts all values that are acceptable in the \fBDEPEND\fR
-variable.  The function returns 0 if \fIcategory/package\-version\fR is
-installed, 1 otherwise. Beginning with \fBEAPI 5\fR, the
-\-\-host\-root option may be used in order to cause the query
-to apply to the host root instead of ${ROOT}.
+.B has_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
+Check to see if \fIcategory/package\-version\fR is installed.  The
+parameter accepts all values that are acceptable in the \fBDEPEND\fR
+variable.  The function returns 0 if \fIcategory/package\-version\fR
+is installed, 1 otherwise. The package is searched for in \fBROOT\fR
+by default.
+
+In \fBEAPI 5\fR and \fBEAPI 6\fR, the package is searched for in the
+build host if the \fI\-\-host\-root\fR option is given.
+
+In \fBEAPI 7\fR and later, the confusing \fI\-\-host\-root\fR option
+has been replaced with \fI\-b\fR, which corresponds to a dependency
+satisfied by \fBBDEPEND\fR in the build host.  Similarly, the
+\fI\-d\fR option corresponds to \fBDEPEND\fR in \fBSYSROOT\fR and the
+\fI\-r\fR option corresponds to \fBRDEPEND\fR in \fBROOT\fR.
 .TP
-.B best_version\fR \fI[\-\-host\-root]\fR \fI<package name>
-This function will look up \fIpackage name\fR in the database of currently
-installed programs and echo the "best version" of the package that is
-currently installed. Beginning with \fBEAPI 5\fR, the
-\-\-host\-root option may be used in order to cause the query
-to apply to the host root instead of ${ROOT}.
+.B best_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<package name>
+This function will look up \fIpackage name\fR in the database of
+currently installed packages and echo the "best version" of the
+package that is found or nothing if no version is installed.  The
+package is searched for in \fBROOT\fR by default.  It accepts the same
+options as \fBhas_version\fR.
 
 Example:
 .nf
