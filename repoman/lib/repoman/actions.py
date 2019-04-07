@@ -388,7 +388,7 @@ the whole commit message to abort.
 			print()
 			print("(Didn't find any changed files...)")
 			print()
-			sys.exit(1)
+			sys.exit(127)
 		return (changes.new, changes.changed, changes.removed,
 				changes.no_expansion, changes.expansion)
 
