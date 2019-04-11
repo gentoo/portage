@@ -38,7 +38,15 @@ class ProxyManager(object):
 		except ImportError:
 			raise NotImplementedError('SOCKSv5 proxy requires asyncio module')
 
-		self.socket_path = os.path.join(settings['PORTAGE_TMPDIR'],
+		tmpdir = os.path.join(settings['PORTAGE_TMPDIR'], 'portage')
+		ensure_dirs_kwargs = {}
+		if portage.secpass >= 1:
+			ensure_dirs_kwargs['gid'] = portage_gid
+			ensure_dirs_kwargs['mode'] = 0o70
+			ensure_dirs_kwargs['mask'] = 0
+		portage.util.ensure_dirs(tmpdir, **ensure_dirs_kwargs)
+
+		self.socket_path = os.path.join(tmpdir,
 				'.portage.%d.net.sock' % os.getpid())
 		server_bin = os.path.join(settings['PORTAGE_BIN_PATH'], 'socks5-server.py')
 		spawn_kwargs = {}
