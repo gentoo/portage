@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -6,13 +6,12 @@ import pty
 import shutil
 import socket
 import sys
-import subprocess
 import tempfile
 
 from portage import os
 from portage.tests import TestCase
-from portage.util._async.PopenProcess import PopenProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures import asyncio
 from _emerge.PipeReader import PipeReader
 
 class PipeReaderTestCase(TestCase):
@@ -68,17 +67,16 @@ class PipeReaderTestCase(TestCase):
 			input_files={"producer" : master_file},
 			_use_array=self._use_array,
 			scheduler=scheduler)
+		consumer.start()
 
-		producer = PopenProcess(
-			pipe_reader=consumer,
-			proc=subprocess.Popen(["bash", "-c", self._echo_cmd % test_string],
-				stdout=slave_fd),
-			scheduler=scheduler)
+		producer = scheduler.run_until_complete(asyncio.create_subprocess_exec(
+			"bash", "-c", self._echo_cmd % test_string,
+			stdout=slave_fd,
+			loop=scheduler))
 
-		producer.start()
 		os.close(slave_fd)
-		producer.wait()
-		consumer.wait()
+		scheduler.run_until_complete(producer.wait())
+		scheduler.run_until_complete(consumer.async_wait())
 
 		self.assertEqual(producer.returncode, os.EX_OK)
 		self.assertEqual(consumer.returncode, os.EX_OK)
