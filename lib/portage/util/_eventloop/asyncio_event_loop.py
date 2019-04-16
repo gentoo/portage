@@ -73,6 +73,11 @@ class AsyncioEventLoop(_AbstractEventLoop):
 			# aid in diagnosis of the problem. If there's no tty, then
 			# exit immediately.
 			if all(s.isatty() for s in (sys.stdout, sys.stderr, sys.stdin)):
+				# Restore default SIGINT handler, since emerge's Scheduler
+				# has a SIGINT handler which delays exit until after
+				# cleanup, and cleanup cannot occur here since the event
+				# loop is suspended (see bug 672540).
+				signal.signal(signal.SIGINT, signal.SIG_DFL)
 				pdb.set_trace()
 			else:
 				# Normally emerge will wait for all coroutines to complete
