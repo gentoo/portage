@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.63
+==================================
+* Bug Fixes:
+    - Bug 672540 enable SIGINT in emerge exception handler
+    - Bug 674932 document BDEPEND in ebuild(5) man page
+    - Bug 680810 optimize bash IUSE checks by not using regexp
+    - Bug 680908 repos.conf: add sync-openpgp-keyserver option
+    - Bug 683040 fix distcc/network-sandbox-proxy socket permission
+
+
 portage-2.3.62
 ==================================
 * Bug Fixes:
