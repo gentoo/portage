@@ -107,10 +107,7 @@
 #     this, you must update your /etc/portage/make.profile symlink accordingly.
 #     ***Warning***
 #     Data stored inside PORTDIR is in peril of being overwritten or deleted by
-#     the emerge --sync command. The default value of PORTAGE_RSYNC_OPTS
-#     will protect the default locations of DISTDIR and PKGDIR, but users are
-#     warned that any other locations inside PORTDIR are not necessarily safe
-#     for data storage.
+#     the emerge --sync command.
 #PORTDIR=/var/db/repos/gentoo
 #
 # DISTDIR is where all of the source code tarballs will be placed for
