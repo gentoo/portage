@@ -1895,7 +1895,7 @@ def action_info(settings, trees, myopts, myfiles):
 	if mypkgs:
 		# Get our global settings (we only print stuff if it varies from
 		# the current config)
-		mydesiredvars = [ 'CHOST', 'CFLAGS', 'CXXFLAGS', 'LDFLAGS' ]
+		mydesiredvars = ['CHOST', 'CFLAGS', 'CXXFLAGS', 'FEATURES', 'LDFLAGS']
 		auxkeys = mydesiredvars + list(vardb._aux_cache_keys)
 		auxkeys.append('DEFINED_PHASES')
 		pkgsettings = portage.config(clone=settings)
