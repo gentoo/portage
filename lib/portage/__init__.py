@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -112,11 +112,7 @@ try:
 		'time',
 	)
 
-	try:
-		from collections import OrderedDict
-	except ImportError:
-		proxy.lazyimport.lazyimport(globals(),
-			'portage.cache.mappings:OrderedDict')
+	from collections import OrderedDict
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \

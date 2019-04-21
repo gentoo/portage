@@ -1,4 +1,4 @@
-# Copyright: 2005-2009 Gentoo Foundation
+# Copyright: 2005-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -183,34 +183,6 @@ class UserDict(MutableMapping):
 
 	def clear(self):
 		self.data.clear()
-
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-
-class OrderedDict(UserDict):
-
-	__slots__ = ('_order',)
-
-	def __init__(self, *args, **kwargs):
-		self._order = []
-		UserDict.__init__(self, *args, **kwargs)
-
-	def __iter__(self):
-		return iter(self._order)
-
-	def __setitem__(self, key, item):
-		new_key = key not in self
-		UserDict.__setitem__(self, key, item)
-		if new_key:
-			self._order.append(key)
-
-	def __delitem__(self, key):
-		UserDict.__delitem__(self, key)
-		self._order.remove(key)
-
-	def clear(self):
-		UserDict.clear(self)
-		del self._order[:]
 
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
