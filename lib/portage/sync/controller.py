@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Gentoo Foundation
+# Copyright 2014-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -9,6 +9,8 @@ import logging
 import grp
 import pwd
 import warnings
+
+from collections import OrderedDict
 
 import portage
 from portage import os
@@ -22,7 +24,6 @@ warn = create_color_func("WARN")
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
 from portage.util._async.AsyncFunction import AsyncFunction
-from portage import OrderedDict
 from portage import _unicode_decode
 from portage import util
 from _emerge.CompositeTask import CompositeTask

@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -34,7 +34,6 @@ from portage import eclass_cache, \
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
-from portage import OrderedDict
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine, coroutine_return
@@ -48,6 +47,8 @@ import warnings
 import errno
 import collections
 import functools
+
+from collections import OrderedDict
 
 try:
 	from urllib.parse import urlparse

@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -12,11 +12,11 @@ import stat
 import sys
 import textwrap
 import warnings
-from collections import deque
+from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os, OrderedDict
+from portage import os
 from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi

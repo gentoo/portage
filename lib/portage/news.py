@@ -1,5 +1,5 @@
 # portage: news management code
-# Copyright 2006-2017 Gentoo Foundation
+# Copyright 2006-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
@@ -9,13 +9,14 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayInstalledRestriction",
 	"count_unread_news", "display_news_notifications"]
 
+from collections import OrderedDict
+
 import fnmatch
 import io
 import logging
 import os as _os
 import re
 import portage
-from portage import OrderedDict
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode

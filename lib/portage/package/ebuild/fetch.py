@@ -1,4 +1,4 @@
-# Copyright 2010-2017 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -14,6 +14,8 @@ import stat
 import sys
 import tempfile
 
+from collections import OrderedDict
+
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -27,7 +29,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 )
 
-from portage import OrderedDict, os, selinux, shutil, _encodings, \
+from portage import os, selinux, shutil, _encodings, \
 	_shell_quote, _unicode_encode
 from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
 	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
