@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -733,8 +733,11 @@ class RepoConfigLoader(object):
 			location_map.clear()
 			treemap.clear()
 
-		default_portdir = os.path.join(os.sep,
-			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
+		repo_locations = frozenset(repo.location for repo in prepos.values())
+		for repo_location in ('var/db/repos/gentoo', 'usr/portage'):
+			default_portdir = os.path.join(os.sep, settings['EPREFIX'].lstrip(os.sep), repo_location)
+			if default_portdir in repo_locations:
+				break
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
