@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.65
+==================================
+* Bug Fixes:
+    - Bug 478544 fix duplicate repo warning triggered by PORTDIR
+    - Bug 553224 emerge --info per-package FEATURES
+    - Bug 684232 don't set permissions on /dev/null emerge.log symlink
+
+
 portage-2.3.64
 ==================================
 * Bug Fixes:
