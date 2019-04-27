@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Gentoo Foundation
+# Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -24,30 +24,30 @@ class SlotAbiEmergeTestCase(TestCase):
 				"SLOT": "1"
 			},
 			"dev-libs/glib-2.30.2" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.30"
 			},
 			"dev-libs/glib-2.32.3" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.32"
 			},
 			"dev-libs/dbus-glib-0.98" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/glib:2=",
 				"RDEPEND": "dev-libs/glib:2="
 			},
 		}
 		installed = {
 			"dev-libs/glib-1.2.10" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "1"
 			},
 			"dev-libs/glib-2.30.2" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.30"
 			},
 			"dev-libs/dbus-glib-0.98" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/glib:2/2.30=",
 				"RDEPEND": "dev-libs/glib:2/2.30="
 			},

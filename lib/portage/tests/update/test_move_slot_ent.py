@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
@@ -17,7 +17,7 @@ class MoveSlotEntTestCase(TestCase):
 		ebuilds = {
 
 			"dev-libs/A-2::dont_apply_updates" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.30",
 			},
 
@@ -26,7 +26,7 @@ class MoveSlotEntTestCase(TestCase):
 			},
 
 			"dev-libs/C-2.1::dont_apply_updates" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.1",
 			},
 
@@ -35,7 +35,7 @@ class MoveSlotEntTestCase(TestCase):
 		installed = {
 
 			"dev-libs/A-1::test_repo" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.30",
 			},
 
@@ -44,7 +44,7 @@ class MoveSlotEntTestCase(TestCase):
 			},
 
 			"dev-libs/C-1::test_repo" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/1",
 			},
 
@@ -53,12 +53,12 @@ class MoveSlotEntTestCase(TestCase):
 		binpkgs = {
 
 			"dev-libs/A-1::test_repo" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.30",
 			},
 
 			"dev-libs/A-2::dont_apply_updates" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.30",
 			},
 
@@ -71,12 +71,12 @@ class MoveSlotEntTestCase(TestCase):
 			},
 
 			"dev-libs/C-1::test_repo" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/1",
 			},
 
 			"dev-libs/C-2.1::dont_apply_updates" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/2.1",
 			},
 

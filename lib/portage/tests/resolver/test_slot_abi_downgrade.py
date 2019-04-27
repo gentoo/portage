@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -13,37 +13,37 @@ class SlotAbiDowngradeTestCase(TestCase):
 	def testSubSlot(self):
 		ebuilds = {
 			"dev-libs/icu-4.8" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/48"
 			},
 			"dev-libs/libxml2-2.7.8" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/icu:=",
 				"RDEPEND": "dev-libs/icu:="
 			},
 		}
 		binpkgs = {
 			"dev-libs/icu-49" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/49"
 			},
 			"dev-libs/icu-4.8" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/48"
 			},
 			"dev-libs/libxml2-2.7.8" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/icu:0/49=",
 				"RDEPEND": "dev-libs/icu:0/49="
 			},
 		}
 		installed = {
 			"dev-libs/icu-49" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "0/49"
 			},
 			"dev-libs/libxml2-2.7.8" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/icu:0/49=",
 				"RDEPEND": "dev-libs/icu:0/49="
 			},
@@ -118,11 +118,11 @@ class SlotAbiDowngradeTestCase(TestCase):
 				"SLOT": "1"
 			},
 			"dev-libs/glib-2.30.2" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.30"
 			},
 			"dev-libs/dbus-glib-0.98" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/glib:2=",
 				"RDEPEND": "dev-libs/glib:2="
 			},
@@ -132,30 +132,30 @@ class SlotAbiDowngradeTestCase(TestCase):
 				"SLOT": "1"
 			},
 			"dev-libs/glib-2.30.2" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.30"
 			},
 			"dev-libs/glib-2.32.3" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.32"
 			},
 			"dev-libs/dbus-glib-0.98" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/glib:2/2.32=",
 				"RDEPEND": "dev-libs/glib:2/2.32="
 			},
 		}
 		installed = {
 			"dev-libs/glib-1.2.10" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "1"
 			},
 			"dev-libs/glib-2.32.3" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"SLOT": "2/2.32"
 			},
 			"dev-libs/dbus-glib-0.98" : {
-				"EAPI": "4-slot-abi",
+				"EAPI": "5",
 				"DEPEND":  "dev-libs/glib:2/2.32=",
 				"RDEPEND": "dev-libs/glib:2/2.32="
 			},

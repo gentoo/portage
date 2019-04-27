@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -9,9 +9,8 @@ class TargetRootTestCase(TestCase):
 	def testTargetRoot(self):
 		ebuilds = {
 			"dev-lang/python-3.2": {
-				"EAPI": "5-hdepend",
-				"IUSE": "targetroot",
-				"HDEPEND": "targetroot? ( ~dev-lang/python-3.2 )",
+				"EAPI": "7",
+				"BDEPEND": "~dev-lang/python-3.2",
 			},
 			"dev-libs/A-1": {
 				"EAPI": "4",
@@ -22,22 +21,29 @@ class TargetRootTestCase(TestCase):
 			"dev-libs/C-1": {},
 		}
 
+		installed = {
+			"dev-lang/python-3.2": {
+				"EAPI": "7",
+				"BDEPEND": "~dev-lang/python-3.2",
+			},
+		}
+
 		test_cases = (
 			ResolverPlaygroundTestCase(
 				["dev-lang/python"],
 				options = {},
 				success = True,
-				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
+				mergelist = ["dev-lang/python-3.2{targetroot}"]),
 			ResolverPlaygroundTestCase(
 				["dev-lang/python"],
 				options = {"--root-deps": True},
 				success = True,
-				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
+				mergelist = ["dev-lang/python-3.2{targetroot}"]),
 			ResolverPlaygroundTestCase(
 				["dev-lang/python"],
 				options = {"--root-deps": "rdeps"},
 				success = True,
-				mergelist = ["dev-lang/python-3.2", "dev-lang/python-3.2{targetroot}"]),
+				mergelist = ["dev-lang/python-3.2{targetroot}"]),
 			ResolverPlaygroundTestCase(
 				["dev-libs/A"],
 				options = {},
@@ -58,7 +64,7 @@ class TargetRootTestCase(TestCase):
 				mergelist = [("dev-libs/C-1{targetroot}"), "dev-libs/A-1{targetroot}"]),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, targetroot=True,
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, targetroot=True,
 			debug=False)
 		try:
 			for test_case in test_cases:
@@ -75,7 +81,7 @@ class TargetRootTestCase(TestCase):
 				mergelist = ["dev-lang/python-3.2"]),
 		)
 
-		playground = ResolverPlayground(ebuilds=ebuilds, targetroot=False,
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, targetroot=False,
 			debug=False)
 		try:
 			for test_case in test_cases:

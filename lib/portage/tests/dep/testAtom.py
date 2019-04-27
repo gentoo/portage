@@ -1,4 +1,4 @@
-# Copyright 2006-2012 Gentoo Foundation
+# Copyright 2006-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -154,13 +154,13 @@ class TestAtom(TestCase):
 
 	def testSlotAbiAtom(self):
 		tests = (
-			("virtual/ffmpeg:0/53", "4-slot-abi", {"slot": "0", "sub_slot": "53", "slot_operator": None}),
-			("virtual/ffmpeg:0/53=", "4-slot-abi", {"slot": "0", "sub_slot": "53", "slot_operator": "="}),
-			("virtual/ffmpeg:=", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": "="}),
-			("virtual/ffmpeg:0=", "4-slot-abi", {"slot": "0", "sub_slot": None, "slot_operator": "="}),
-			("virtual/ffmpeg:*", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": "*"}),
-			("virtual/ffmpeg:0", "4-slot-abi", {"slot": "0", "sub_slot": None, "slot_operator": None}),
-			("virtual/ffmpeg", "4-slot-abi", {"slot": None, "sub_slot": None, "slot_operator": None}),
+			("virtual/ffmpeg:0/53", "5", {"slot": "0", "sub_slot": "53", "slot_operator": None}),
+			("virtual/ffmpeg:0/53=", "5", {"slot": "0", "sub_slot": "53", "slot_operator": "="}),
+			("virtual/ffmpeg:=", "5", {"slot": None, "sub_slot": None, "slot_operator": "="}),
+			("virtual/ffmpeg:0=", "5", {"slot": "0", "sub_slot": None, "slot_operator": "="}),
+			("virtual/ffmpeg:*", "5", {"slot": None, "sub_slot": None, "slot_operator": "*"}),
+			("virtual/ffmpeg:0", "5", {"slot": "0", "sub_slot": None, "slot_operator": None}),
+			("virtual/ffmpeg", "5", {"slot": None, "sub_slot": None, "slot_operator": None}),
 		)
 
 		for atom, eapi, parts in tests:
