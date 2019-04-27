@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -108,7 +108,7 @@ class BinpkgVerifier(CompositeTask):
 	def _digest_exception(self, name, value, expected):
 
 		head, tail = os.path.split(self._pkg_path)
-		temp_filename = _checksum_failure_temp_file(head, tail)
+		temp_filename = _checksum_failure_temp_file(self.pkg.root_config.settings, head, tail)
 
 		self.scheduler.output((
 			"\n!!! Digest verification failed:\n"

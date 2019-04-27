@@ -30,7 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os, selinux, shutil, _encodings, \
-	_shell_quote, _unicode_encode
+	_movefile, _shell_quote, _unicode_encode
 from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
 	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
@@ -45,6 +45,8 @@ from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, \
 	varexpand, writemsg, writemsg_level, writemsg_stdout
 from portage.process import spawn
+
+_download_suffix = '.__download__'
 
 _userpriv_spawn_kwargs = (
 	("uid",    portage_uid),
@@ -139,7 +141,7 @@ def _userpriv_test_write_file(settings, file_path):
 	_userpriv_test_write_file_cache[file_path] = rval
 	return rval
 
-def _checksum_failure_temp_file(distdir, basename):
+def _checksum_failure_temp_file(settings, distdir, basename):
 	"""
 	First try to find a duplicate temp file with the same checksum and return
 	that filename if available. Otherwise, use mkstemp to create a new unique
@@ -149,9 +151,13 @@ def _checksum_failure_temp_file(distdir, basename):
 	"""
 
 	filename = os.path.join(distdir, basename)
+	if basename.endswith(_download_suffix):
+		normal_basename = basename[:-len(_download_suffix)]
+	else:
+		normal_basename = basename
 	size = os.stat(filename).st_size
 	checksum = None
-	tempfile_re = re.compile(re.escape(basename) + r'\._checksum_failure_\..*')
+	tempfile_re = re.compile(re.escape(normal_basename) + r'\._checksum_failure_\..*')
 	for temp_filename in os.listdir(distdir):
 		if not tempfile_re.match(temp_filename):
 			continue
@@ -173,9 +179,9 @@ def _checksum_failure_temp_file(distdir, basename):
 			return temp_filename
 
 	fd, temp_filename = \
-		tempfile.mkstemp("", basename + "._checksum_failure_.", distdir)
+		tempfile.mkstemp("", normal_basename + "._checksum_failure_.", distdir)
 	os.close(fd)
-	os.rename(filename, temp_filename)
+	_movefile(filename, temp_filename, mysettings=settings)
 	return temp_filename
 
 def _check_digests(filename, digests, show_errors=1):
@@ -602,6 +608,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				pruned_digests["size"] = size
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
+		download_path = myfile_path + _download_suffix
 		has_space = True
 		has_space_superuser = True
 		file_lock = None
@@ -679,12 +686,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							del e
 					continue
 
-				if distdir_writable and mystat is None:
-					# Remove broken symlinks if necessary.
+				# Remove broken symlinks or symlinks to files which
+				# _check_distfile did not match above.
+				if distdir_writable and mystat is None or os.path.islink(myfile_path):
 					try:
 						os.unlink(myfile_path)
-					except OSError:
-						pass
+					except OSError as e:
+						if e.errno not in (errno.ENOENT, errno.ESTALE):
+							raise
+					mystat = None
 
 				if mystat is not None:
 					if stat.S_ISDIR(mystat.st_mode):
@@ -695,10 +705,30 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 
+					if distdir_writable:
+						# Since _check_distfile did not match above, the file
+						# is either corrupt or its identity has changed since
+						# the last time it was fetched, so rename it.
+						temp_filename = _checksum_failure_temp_file(
+							mysettings, mysettings["DISTDIR"], myfile)
+						writemsg_stdout(_("Refetching... "
+							"File renamed to '%s'\n\n") % \
+							temp_filename, noiselevel=-1)
+
+				# Stat the temporary download file for comparison with
+				# fetch_resume_size.
+				try:
+					mystat = os.stat(download_path)
+				except OSError as e:
+					if e.errno not in (errno.ENOENT, errno.ESTALE):
+						raise
+					mystat = None
+
+				if mystat is not None:
 					if mystat.st_size == 0:
 						if distdir_writable:
 							try:
-								os.unlink(myfile_path)
+								os.unlink(download_path)
 							except OSError:
 								pass
 					elif distdir_writable and size is not None:
@@ -717,14 +747,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								"ME_MIN_SIZE)\n") % mystat.st_size)
 							temp_filename = \
 								_checksum_failure_temp_file(
-								mysettings["DISTDIR"], myfile)
+									mysettings, mysettings["DISTDIR"],
+									os.path.basename(download_path))
 							writemsg_stdout(_("Refetching... "
 								"File renamed to '%s'\n\n") % \
 								temp_filename, noiselevel=-1)
 						elif mystat.st_size >= size:
 							temp_filename = \
 								_checksum_failure_temp_file(
-								mysettings["DISTDIR"], myfile)
+									mysettings, mysettings["DISTDIR"],
+									os.path.basename(download_path))
 							writemsg_stdout(_("Refetching... "
 								"File renamed to '%s'\n\n") % \
 								temp_filename, noiselevel=-1)
@@ -766,7 +798,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					for mydir in fsmirrors:
 						mirror_file = os.path.join(mydir, myfile)
 						try:
-							shutil.copyfile(mirror_file, myfile_path)
+							shutil.copyfile(mirror_file, download_path)
 							writemsg(_("Local mirror has file: %s\n") % myfile)
 							break
 						except (IOError, OSError) as e:
@@ -775,7 +807,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							del e
 
 				try:
-					mystat = os.stat(myfile_path)
+					mystat = os.stat(download_path)
 				except OSError as e:
 					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						raise
@@ -784,13 +816,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					# Skip permission adjustment for symlinks, since we don't
 					# want to modify anything outside of the primary DISTDIR,
 					# and symlinks typically point to PORTAGE_RO_DISTDIRS.
-					if not os.path.islink(myfile_path):
+					if not os.path.islink(download_path):
 						try:
-							apply_secpass_permissions(myfile_path,
+							apply_secpass_permissions(download_path,
 								gid=portage_gid, mode=0o664, mask=0o2,
 								stat_cached=mystat)
 						except PortageException as e:
-							if not os.access(myfile_path, os.R_OK):
+							if not os.access(download_path, os.R_OK):
 								writemsg(_("!!! Failed to adjust permissions:"
 									" %s\n") % (e,), noiselevel=-1)
 
@@ -799,7 +831,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					if mystat.st_size == 0:
 						if distdir_writable:
 							try:
-								os.unlink(myfile_path)
+								os.unlink(download_path)
 							except EnvironmentError:
 								pass
 					elif myfile not in mydigests:
@@ -824,7 +856,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							digests = _filter_unaccelarated_hashes(mydigests[myfile])
 							if hash_filter is not None:
 								digests = _apply_hash_filter(digests, hash_filter)
-							verified_ok, reason = verify_all(myfile_path, digests)
+							verified_ok, reason = verify_all(download_path, digests)
 							if not verified_ok:
 								writemsg(_("!!! Previously fetched"
 									" file: '%s'\n") % myfile, noiselevel=-1)
@@ -838,11 +870,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								if distdir_writable:
 									temp_filename = \
 										_checksum_failure_temp_file(
-										mysettings["DISTDIR"], myfile)
+											mysettings, mysettings["DISTDIR"],
+											os.path.basename(download_path))
 									writemsg_stdout(_("Refetching... "
 										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
 							else:
+								_movefile(download_path, myfile_path, mysettings=mysettings)
 								eout = EOutput()
 								eout.quiet = \
 									mysettings.get("PORTAGE_QUIET", None) == "1"
@@ -928,7 +962,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				if not can_fetch:
 					if fetched != 2:
 						try:
-							mysize = os.stat(myfile_path).st_size
+							mysize = os.stat(download_path).st_size
 						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
@@ -952,7 +986,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					#we either need to resume or start the download
 					if fetched == 1:
 						try:
-							mystat = os.stat(myfile_path)
+							mystat = os.stat(download_path)
 						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
@@ -964,7 +998,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 									"%d (smaller than " "PORTAGE_FETCH_RESU"
 									"ME_MIN_SIZE)\n") % mystat.st_size)
 								try:
-									os.unlink(myfile_path)
+									os.unlink(download_path)
 								except OSError as e:
 									if e.errno not in \
 										(errno.ENOENT, errno.ESTALE):
@@ -984,7 +1018,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						_hide_url_passwd(loc))
 					variables = {
 						"URI":     loc,
-						"FILE":    myfile
+						"FILE":    os.path.basename(download_path)
 					}
 
 					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
@@ -1001,12 +1035,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 					finally:
 						try:
-							apply_secpass_permissions(myfile_path,
+							apply_secpass_permissions(download_path,
 								gid=portage_gid, mode=0o664, mask=0o2)
 						except FileNotFound:
 							pass
 						except PortageException as e:
-							if not os.access(myfile_path, os.R_OK):
+							if not os.access(download_path, os.R_OK):
 								writemsg(_("!!! Failed to adjust permissions:"
 									" %s\n") % str(e), noiselevel=-1)
 							del e
@@ -1015,8 +1049,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					# trust the return value from the fetcher.  Remove the
 					# empty file and try to download again.
 					try:
-						if os.stat(myfile_path).st_size == 0:
-							os.unlink(myfile_path)
+						if os.stat(download_path).st_size == 0:
+							os.unlink(download_path)
 							fetched = 0
 							continue
 					except EnvironmentError:
@@ -1024,7 +1058,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 					if mydigests is not None and myfile in mydigests:
 						try:
-							mystat = os.stat(myfile_path)
+							mystat = os.stat(download_path)
 						except OSError as e:
 							if e.errno not in (errno.ENOENT, errno.ESTALE):
 								raise
@@ -1065,13 +1099,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
 									with io.open(
-										_unicode_encode(myfile_path,
+										_unicode_encode(download_path,
 										encoding=_encodings['fs'], errors='strict'),
 										mode='r', encoding=_encodings['content'], errors='replace'
 										) as f:
 										if html404.search(f.read()):
 											try:
-												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+												os.unlink(download_path)
 												writemsg(_(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n"))
 												fetched = 0
 												continue
@@ -1087,7 +1121,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								digests = _filter_unaccelarated_hashes(mydigests[myfile])
 								if hash_filter is not None:
 									digests = _apply_hash_filter(digests, hash_filter)
-								verified_ok, reason = verify_all(myfile_path, digests)
+								verified_ok, reason = verify_all(download_path, digests)
 								if not verified_ok:
 									writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
 										noiselevel=-1)
@@ -1099,7 +1133,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										return 0
 									temp_filename = \
 										_checksum_failure_temp_file(
-										mysettings["DISTDIR"], myfile)
+											mysettings, mysettings["DISTDIR"],
+											os.path.basename(download_path))
 									writemsg_stdout(_("Refetching... "
 										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
@@ -1119,6 +1154,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										checksum_failure_max_tries:
 										break
 								else:
+									_movefile(download_path, myfile_path, mysettings=mysettings)
 									eout = EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									if digests:
@@ -1127,8 +1163,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										eout.eend(0)
 									fetched=2
 									break
-					else:
+					else: # no digests available
 						if not myret:
+							_movefile(download_path, myfile_path, mysettings=mysettings)
 							fetched=2
 							break
 						elif mydigests!=None:
