@@ -365,6 +365,14 @@ class _use_changes(tuple):
 		return obj
 
 
+_select_atoms_deps = collections.namedtuple('_select_atoms_deps', (
+	'normal_deps',
+	'virt_deps',
+	'ignored_deps',
+	'unsatisfied_deps',
+))
+
+
 class _dynamic_depgraph_config(object):
 
 	"""
@@ -3479,8 +3487,13 @@ class depgraph(object):
 				dep.child.root, dep.child.slot_atom, installed=False)) and \
 			not slot_operator_rebuild
 
-	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
-		dep_string, allow_unsatisfied):
+	def _select_atoms_deps(self, pkg, dep_root, dep_priority, selected_atoms):
+		"""
+		Create Dependency instances from a _select_atoms result, and create a
+		list of unsatisfied dependencies which is useful for deciding when
+		to retry a _select_atoms call with autounmask enabled.
+		"""
+
 		if isinstance(pkg.depth, int):
 			depth = pkg.depth + 1
 		else:
@@ -3489,38 +3502,13 @@ class depgraph(object):
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		recurse_satisfied = deep is True or depth <= deep
 		debug = "--debug" in self._frozen_config.myopts
-		strict = pkg.type_name != "installed"
-
-		if debug:
-			writemsg_level("\nParent:    %s\n" % (pkg,),
-				noiselevel=-1, level=logging.DEBUG)
-			dep_repr = portage.dep.paren_enclose(dep_string,
-				unevaluated_atom=True, opconvert=True)
-			writemsg_level("Depstring: %s\n" % (dep_repr,),
-				noiselevel=-1, level=logging.DEBUG)
-			writemsg_level("Priority:  %s\n" % (dep_priority,),
-				noiselevel=-1, level=logging.DEBUG)
-
-		try:
-			selected_atoms = self._select_atoms(dep_root,
-				dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
-				strict=strict, priority=dep_priority)
-		except portage.exception.InvalidDependString:
-			if pkg.installed:
-				self._dynamic_config._masked_installed.add(pkg)
-				return 1
-
-			# should have been masked before it was selected
-			raise
-
-		if debug:
-			writemsg_level("Candidates: %s\n" % \
-				([str(x) for x in selected_atoms[pkg]],),
-				noiselevel=-1, level=logging.DEBUG)
-
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
 		traversed_virt_pkgs = set()
+		normal_deps = []
+		virt_deps = []
+		ignored_deps = []
+		unsatisfied_deps = []
 
 		reinstall_atoms = self._frozen_config.reinstall_atoms
 		for atom, child in self._minimize_children(
@@ -3586,7 +3574,7 @@ class depgraph(object):
 					# mode may select a different child later.
 					ignored = True
 					dep.child = None
-					self._dynamic_config._ignored_deps.append(dep)
+					ignored_deps.append(dep)
 
 			if not ignored:
 				if dep_priority.ignored and \
@@ -3594,11 +3582,11 @@ class depgraph(object):
 					if is_virt and dep.child is not None:
 						traversed_virt_pkgs.add(dep.child)
 					dep.child = None
-					self._dynamic_config._ignored_deps.append(dep)
+					ignored_deps.append(dep)
 				else:
-					if not self._add_dep(dep,
-						allow_unsatisfied=allow_unsatisfied):
-						return 0
+					if dep.child is None and not dep.blocker:
+						unsatisfied_deps.append(dep)
+					normal_deps.append(dep)
 					if is_virt and dep.child is not None:
 						traversed_virt_pkgs.add(dep.child)
 
@@ -3637,8 +3625,7 @@ class depgraph(object):
 						# none visible, so use highest
 						virt_dep.priority.satisfied = inst_pkgs[0]
 
-				if not self._add_pkg(virt_pkg, virt_dep):
-					return 0
+				virt_deps.append(virt_dep)
 
 			for atom, child in self._minimize_children(
 				pkg, self._priority(runtime=True), root_config, atoms):
@@ -3686,7 +3673,7 @@ class depgraph(object):
 					if myarg is None:
 						ignored = True
 						dep.child = None
-						self._dynamic_config._ignored_deps.append(dep)
+						ignored_deps.append(dep)
 
 				if not ignored:
 					if dep_priority.ignored and \
@@ -3694,13 +3681,81 @@ class depgraph(object):
 						if is_virt and dep.child is not None:
 							traversed_virt_pkgs.add(dep.child)
 						dep.child = None
-						self._dynamic_config._ignored_deps.append(dep)
+						ignored_deps.append(dep)
 					else:
-						if not self._add_dep(dep,
-							allow_unsatisfied=allow_unsatisfied):
-							return 0
+						if dep.child is None and not dep.blocker:
+							unsatisfied_deps.append(dep)
+						normal_deps.append(dep)
 						if is_virt and dep.child is not None:
 							traversed_virt_pkgs.add(dep.child)
+
+		return _select_atoms_deps(normal_deps, virt_deps, ignored_deps, unsatisfied_deps)
+
+	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
+		dep_string, allow_unsatisfied):
+
+		debug = "--debug" in self._frozen_config.myopts
+		strict = pkg.type_name != "installed"
+
+		if debug:
+			writemsg_level("\nParent:    %s\n" % (pkg,),
+				noiselevel=-1, level=logging.DEBUG)
+			dep_repr = portage.dep.paren_enclose(dep_string,
+				unevaluated_atom=True, opconvert=True)
+			writemsg_level("Depstring: %s\n" % (dep_repr,),
+				noiselevel=-1, level=logging.DEBUG)
+			writemsg_level("Priority:  %s\n" % (dep_priority,),
+				noiselevel=-1, level=logging.DEBUG)
+
+		autounmask_states = [False]
+		if self._dynamic_config._autounmask:
+			autounmask_states.append(True)
+
+		choices = []
+		for autounmask in autounmask_states:
+			if autounmask:
+				# Clear the package selection cache so that autounmask
+				# can make new selections.
+				self._dynamic_config._filtered_trees[dep_root]["porttree"].dbapi._clear_cache()
+			try:
+				selected_atoms = self._select_atoms(dep_root,
+					dep_string, myuse=self._pkg_use_enabled(pkg), parent=pkg,
+					strict=strict, priority=dep_priority, autounmask=autounmask)
+			except portage.exception.InvalidDependString:
+				if pkg.installed:
+					self._dynamic_config._masked_installed.add(pkg)
+					return 1
+
+				# should have been masked before it was selected
+				raise
+
+			if debug:
+				writemsg_level("Candidates (autounmask=%s): %s\n" % \
+					(autounmask, [str(x) for x in selected_atoms[pkg]],),
+					noiselevel=-1, level=logging.DEBUG)
+
+			choice = self._select_atoms_deps(pkg, dep_root, dep_priority, selected_atoms)
+			choices.append(choice)
+			if not choice.unsatisfied_deps:
+				break
+		else:
+			# If all choices have unsatisfied deps, fall back to default
+			# autounmask=False behavior.
+			choice = choices[0]
+
+			if autounmask:
+				# An autounmask choice has been rejected, so clear its
+				# package selections from the cache.
+				self._dynamic_config._filtered_trees[dep_root]["porttree"].dbapi._clear_cache()
+
+		for dep in choice.normal_deps:
+			if not self._add_dep(dep,
+				allow_unsatisfied=allow_unsatisfied):
+				return 0
+		for virt_dep in choice.virt_deps:
+			if not self._add_pkg(virt_dep.child, virt_dep):
+				return 0
+		self._dynamic_config._ignored_deps.extend(choice.ignored_deps)
 
 		if debug:
 			writemsg_level("\nExiting... %s\n" % (pkg,),
@@ -4699,7 +4754,8 @@ class depgraph(object):
 		return self._select_atoms_highest_available(*pargs, **kwargs)
 
 	def _select_atoms_highest_available(self, root, depstring,
-		myuse=None, parent=None, strict=True, trees=None, priority=None):
+		myuse=None, parent=None, strict=True, trees=None, priority=None,
+		autounmask=False):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
 
@@ -4727,8 +4783,9 @@ class depgraph(object):
 		if True:
 			# Temporarily disable autounmask so that || preferences
 			# account for masking and USE settings.
-			_autounmask_backup = self._dynamic_config._autounmask
-			self._dynamic_config._autounmask = False
+			if not autounmask:
+				_autounmask_backup = self._dynamic_config._autounmask
+				self._dynamic_config._autounmask = False
 			# backup state for restoration, in case of recursive
 			# calls to this method
 			backup_parent = self._select_atoms_parent
@@ -4756,7 +4813,8 @@ class depgraph(object):
 					myroot=root, trees=trees)
 			finally:
 				# restore state
-				self._dynamic_config._autounmask = _autounmask_backup
+				if not autounmask:
+					self._dynamic_config._autounmask = _autounmask_backup
 				self._select_atoms_parent = backup_parent
 				mytrees.pop("pkg_use_enabled", None)
 				mytrees.pop("parent", None)
