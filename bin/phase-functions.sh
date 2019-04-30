@@ -592,7 +592,7 @@ __dyn_install() {
 	fi
 
 	__vecho
-	__vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -613,7 +613,7 @@ __dyn_install() {
 	__ebuild_phase src_install
 	>> "$PORTAGE_BUILDDIR/.installed" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.installed"
-	__vecho ">>> Completed installing ${PF} into ${D}"
+	__vecho ">>> Completed installing ${CATEGORY}/${PF} into ${D}"
 	__vecho
 	__ebuild_phase post_src_install
 
