@@ -592,7 +592,7 @@ __dyn_install() {
 	fi
 
 	__vecho
-	__vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
