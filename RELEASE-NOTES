@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.66
+==================================
+* Bug Fixes:
+    - Bug 175612 download distfiles to temp file and rename atomically
+    - Bug 651678 enable FEATURES=strict-keepdir behavior for new EAPIs
+
+
 portage-2.3.65
 ==================================
 * Bug Fixes:
