@@ -186,7 +186,6 @@ def _get_useflag_re(eapi):
 
 def cpvequal(cpv1, cpv2):
 	"""
-	
 	@param cpv1: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
 	@type cpv1: String
 	@param cpv2: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
@@ -201,7 +200,6 @@ def cpvequal(cpv1, cpv2):
 	>>> from portage.dep import cpvequal
 	>>> cpvequal("sys-apps/portage-2.1","sys-apps/portage-2.1")
 	>>> True
-
 	"""
 
 	try:
@@ -384,15 +382,15 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
 	"""
 	Convert a list to a string with sublists enclosed with parens.
 
-	Example usage:
-		>>> test = ['foobar','foo',['bar','baz']]
-		>>> paren_enclose(test)
-		'foobar foo ( bar baz )'
-
 	@param mylist: The list
 	@type mylist: List
 	@rtype: String
 	@return: The paren enclosed string
+
+	Example usage:
+		>>> test = ['foobar','foo',['bar','baz']]
+		>>> paren_enclose(test)
+		'foobar foo ( bar baz )'
 	"""
 	mystrparts = []
 	for x in mylist:
@@ -736,16 +734,16 @@ def dep_opconvert(deplist):
 	dep is a '||' or '&&' operator, combine it with the
 	list of deps that follows..
 
+	@param deplist: A list of deps to format
+	@type deplist: List
+	@rtype: List
+	@return:
+		The new list with the new ordering
+
 	Example usage:
 		>>> test = ["blah", "||", ["foo", "bar", "baz"]]
 		>>> dep_opconvert(test)
 		['blah', ['||', 'foo', 'bar', 'baz']]
-
-	@param deplist: A list of deps to format
-	@type mydep: List
-	@rtype: List
-	@return:
-		The new list with the new ordering
 	"""
 	if portage._internal_caller:
 		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
@@ -769,14 +767,14 @@ def flatten(mylist):
 	Recursively traverse nested lists and return a single list containing
 	all non-list elements that are found.
 
-	Example usage:
-		>>> flatten([1, [2, 3, [4]]])
-		[1, 2, 3, 4]
-
 	@param mylist: A list containing nested lists and non-list elements.
 	@type mylist: List
 	@rtype: List
 	@return: A single list containing only non-list elements.
+
+	Example usage:
+		>>> flatten([1, [2, 3, [4]]])
+		[1, 2, 3, 4]
 	"""
 	if portage._internal_caller:
 		warnings.warn(_("%s is deprecated and will be removed without replacement.") % \
@@ -1731,16 +1729,16 @@ def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.
 
-	Example usage:
-		>>> from portage.dep import *
-		>>> get_operator(">=test-1.0")
-		'>='
-
 	@param mydep: The dep string to check
 	@type mydep: String
 	@rtype: String
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
+
+	Example usage:
+		>>> from portage.dep import *
+		>>> get_operator(">=test-1.0")
+		'>='
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
@@ -1751,14 +1749,14 @@ def dep_getcpv(mydep):
 	"""
 	Return the category-package-version with any operators/slot specifications stripped off
 
-	Example usage:
-		>>> dep_getcpv('>=media-libs/test-3.0')
-		'media-libs/test-3.0'
-
 	@param mydep: The depstring
 	@type mydep: String
 	@rtype: String
 	@return: The depstring with the operator removed
+
+	Example usage:
+		>>> dep_getcpv('>=media-libs/test-3.0')
+		'media-libs/test-3.0'
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
@@ -1769,14 +1767,14 @@ def dep_getslot(mydep):
 	"""
 	Retrieve the slot on a depend.
 
-	Example usage:
-		>>> dep_getslot('app-misc/test:3')
-		'3'
-
 	@param mydep: The depstring to retrieve the slot of
 	@type mydep: String
 	@rtype: String
 	@return: The slot
+
+	Example usage:
+		>>> dep_getslot('app-misc/test:3')
+		'3'
 	"""
 	slot = getattr(mydep, "slot", False)
 	if slot is not False:
@@ -1798,14 +1796,14 @@ def dep_getrepo(mydep):
 	"""
 	Retrieve the repo on a depend.
 
-	Example usage:
-		>>> dep_getrepo('app-misc/test::repository')
-		'repository'
-
 	@param mydep: The depstring to retrieve the repository of
 	@type mydep: String
 	@rtype: String
 	@return: The repository name
+
+	Example usage:
+		>>> dep_getrepo('app-misc/test::repository')
+		'repository'
 	"""
 	repo = getattr(mydep, "repo", False)
 	if repo is not False:
@@ -1845,15 +1843,15 @@ def remove_slot(mydep):
 def dep_getusedeps( depend ):
 	"""
 	Pull a listing of USE Dependencies out of a dep atom.
-	
-	Example usage:
-		>>> dep_getusedeps('app-misc/test:3[foo,-bar]')
-		('foo', '-bar')
-	
+
 	@param depend: The depstring to process
 	@type depend: String
 	@rtype: List
 	@return: List of use flags ( or [] if no flags exist )
+
+	Example usage:
+		>>> dep_getusedeps('app-misc/test:3[foo,-bar]')
+		('foo', '-bar')
 	"""
 	use_list = []
 	open_bracket = depend.find('[')
@@ -1899,18 +1897,18 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
 	"""
 	Check to see if a depend atom is valid
 
-	Example usage:
-		>>> isvalidatom('media-libs/test-3.0')
-		False
-		>>> isvalidatom('>=media-libs/test-3.0')
-		True
-
 	@param atom: The depend atom to check against
 	@type atom: String or Atom
 	@rtype: Boolean
 	@return: One of the following:
 		1) False if the atom is invalid
 		2) True if the atom is valid
+
+	Example usage:
+		>>> isvalidatom('media-libs/test-3.0')
+		False
+		>>> isvalidatom('>=media-libs/test-3.0')
+		True
 	"""
 
 	if eapi is not None and isinstance(atom, Atom) and atom.eapi != eapi:
@@ -1932,18 +1930,18 @@ def isjustname(mypkg):
 	"""
 	Checks to see if the atom is only the package name (no version parts).
 
-	Example usage:
-		>>> isjustname('=media-libs/test-3.0')
-		False
-		>>> isjustname('media-libs/test')
-		True
-
 	@param mypkg: The package atom to check
 	@param mypkg: String or Atom
 	@rtype: Integer
 	@return: One of the following:
 		1) False if the package string is not just the package name
 		2) True if it is
+
+	Example usage:
+		>>> isjustname('=media-libs/test-3.0')
+		False
+		>>> isjustname('media-libs/test')
+		True
 	"""
 	try:
 		if not isinstance(mypkg, Atom):
@@ -1962,18 +1960,18 @@ def isspecific(mypkg):
 	Checks to see if a package is in =category/package-version or
 	package-version format.
 
-	Example usage:
-		>>> isspecific('media-libs/test')
-		False
-		>>> isspecific('=media-libs/test-3.0')
-		True
-
 	@param mypkg: The package depstring to check against
 	@type mypkg: String
 	@rtype: Boolean
 	@return: One of the following:
 		1) False if the package string is not specific
 		2) True if it is
+
+	Example usage:
+		>>> isspecific('media-libs/test')
+		False
+		>>> isspecific('=media-libs/test-3.0')
+		True
 	"""
 	try:
 		if not isinstance(mypkg, Atom):
@@ -1989,14 +1987,14 @@ def dep_getkey(mydep):
 	"""
 	Return the category/package-name of a depstring.
 
-	Example usage:
-		>>> dep_getkey('=media-libs/test-3.0')
-		'media-libs/test'
-
 	@param mydep: The depstring to retrieve the category/package-name of
 	@type mydep: String
 	@rtype: String
 	@return: The package category/package-name
+
+	Example usage:
+		>>> dep_getkey('=media-libs/test-3.0')
+		'media-libs/test'
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep, allow_wildcard=True, allow_repo=True)
@@ -2010,7 +2008,7 @@ def match_to_list(mypkg, mylist):
 	@param mypkg: The package atom to match
 	@type mypkg: String
 	@param mylist: The list of package atoms to compare against
-	@param mylist: List
+	@type mylist: List
 	@rtype: List
 	@return: A unique list of package atoms that match the given package atom
 	"""
@@ -2107,7 +2105,7 @@ def match_from_list(mydep, candidate_list):
 	@param mydep: The package atom to match
 	@type mydep: String
 	@param candidate_list: The list of package atoms to compare against
-	@param candidate_list: List
+	@type candidate_list: List
 	@rtype: List
 	@return: A list of package atoms that match the given package atom
 	"""
@@ -2524,15 +2522,15 @@ class _RequiredUseBranch(object):
 def check_required_use(required_use, use, iuse_match, eapi=None):
 	"""
 	Checks if the use flags listed in 'use' satisfy all
-	constraints specified in 'constraints'.
+	constraints specified in 'required_use'.
 
 	@param required_use: REQUIRED_USE string
 	@type required_use: String
 	@param use: Enabled use flags
-	@param use: List
+	@type use: List
 	@param iuse_match: Callable that takes a single flag argument and returns
 		True if the flag is matched, false otherwise,
-	@param iuse_match: Callable
+	@type iuse_match: Callable
 	@rtype: Bool
 	@return: Indicates if REQUIRED_USE constraints are satisfied
 	"""
@@ -2711,17 +2709,17 @@ def extract_affecting_use(mystr, atom, eapi=None):
 	Take a dep string and an atom and return the use flags
 	that decide if the given atom is in effect.
 
-	Example usage:
-		>>> extract_affecting_use('sasl? ( dev-libs/cyrus-sasl ) \
-			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
-		{'cxx', 'minimal', 'sasl'}
-
 	@param mystr: The dependency string
 	@type mystr: String
 	@param atom: The atom to get into effect
 	@type atom: String
 	@rtype: Set of strings
 	@return: Set of use flags affecting given atom
+
+	Example usage:
+		>>> extract_affecting_use('sasl? ( dev-libs/cyrus-sasl ) \
+			!minimal? ( cxx? ( dev-libs/cyrus-sasl ) )', 'dev-libs/cyrus-sasl')
+		{'cxx', 'minimal', 'sasl'}
 	"""
 	useflag_re = _get_useflag_re(eapi)
 	mysplit = mystr.split()
