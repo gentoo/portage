@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -27,7 +27,6 @@ class BinhostHandler(object):
 		eroot = portage.settings['EROOT']
 		self._bintree = portage.db[eroot]["bintree"]
 		self._bintree.populate()
-		self._pkgindex_file = self._bintree._pkgindex_file
 		self._pkgindex = self._bintree._load_pkgindex()
 
 	def _need_update(self, cpv, data):
@@ -118,9 +117,7 @@ class BinhostHandler(object):
 				missing.append(cpv)
 
 		if missing or stale:
-			from portage import locks
-			pkgindex_lock = locks.lockfile(
-				self._pkgindex_file, wantnewlockfile=1)
+			bintree.dbapi.lock()
 			try:
 				# Repopulate with lock held. If _populate_local returns
 				# data then use that, since _load_pkgindex would return
@@ -174,7 +171,7 @@ class BinhostHandler(object):
 				bintree._pkgindex_write(self._pkgindex)
 
 			finally:
-				locks.unlockfile(pkgindex_lock)
+				bintree.dbapi.unlock()
 
 		if onProgress:
 			if maxval == 0:
