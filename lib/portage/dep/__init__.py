@@ -186,20 +186,20 @@ def _get_useflag_re(eapi):
 
 def cpvequal(cpv1, cpv2):
 	"""
+	Example Usage:
+		>>> from portage.dep import cpvequal
+		>>> cpvequal("sys-apps/portage-2.1","sys-apps/portage-2.1")
+		>>> True
+
 	@param cpv1: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
 	@type cpv1: String
 	@param cpv2: CategoryPackageVersion (no operators) Example: "sys-apps/portage-2.1"
 	@type cpv2: String
 	@rtype: Boolean
 	@return:
-	1.  True if cpv1 = cpv2
-	2.  False Otherwise
-	3.  Throws PortageException if cpv1 or cpv2 is not a CPV
-
-	Example Usage:
-	>>> from portage.dep import cpvequal
-	>>> cpvequal("sys-apps/portage-2.1","sys-apps/portage-2.1")
-	>>> True
+		1.  True if cpv1 = cpv2
+		2.  False Otherwise
+		3.  Throws PortageException if cpv1 or cpv2 is not a CPV
 	"""
 
 	try:
@@ -411,8 +411,8 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
 
-	@param deparray: depstring
-	@type deparray: String
+	@param depstr: depstring
+	@type depstr: String
 	@param uselist: List of use enabled flags
 	@type uselist: List
 	@param masklist: List of masked flags (always treated as disabled)
@@ -734,16 +734,16 @@ def dep_opconvert(deplist):
 	dep is a '||' or '&&' operator, combine it with the
 	list of deps that follows..
 
+	Example usage:
+		>>> test = ["blah", "||", ["foo", "bar", "baz"]]
+		>>> dep_opconvert(test)
+		['blah', ['||', 'foo', 'bar', 'baz']]
+
 	@param deplist: A list of deps to format
 	@type deplist: List
 	@rtype: List
 	@return:
 		The new list with the new ordering
-
-	Example usage:
-		>>> test = ["blah", "||", ["foo", "bar", "baz"]]
-		>>> dep_opconvert(test)
-		['blah', ['||', 'foo', 'bar', 'baz']]
 	"""
 	if portage._internal_caller:
 		warnings.warn(_("%s is deprecated. Use %s with the opconvert parameter set to True instead.") % \
@@ -1434,7 +1434,7 @@ class Atom(_unicode):
 		"""
 		Returns True if slot_operator == "=" and sub_slot is not None.
 		NOTE: foo/bar:2= is unbuilt and returns False, whereas foo/bar:2/2=
-			is built and returns True.
+		is built and returns True.
 		"""
 		return self.slot_operator == "=" and self.sub_slot is not None
 
@@ -1729,16 +1729,16 @@ def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.
 
+	Example usage:
+		>>> from portage.dep import *
+		>>> get_operator(">=test-1.0")
+		'>='
+
 	@param mydep: The dep string to check
 	@type mydep: String
 	@rtype: String
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
-
-	Example usage:
-		>>> from portage.dep import *
-		>>> get_operator(">=test-1.0")
-		'>='
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
@@ -1749,14 +1749,14 @@ def dep_getcpv(mydep):
 	"""
 	Return the category-package-version with any operators/slot specifications stripped off
 
+	Example usage:
+		>>> dep_getcpv('>=media-libs/test-3.0')
+		'media-libs/test-3.0'
+
 	@param mydep: The depstring
 	@type mydep: String
 	@rtype: String
 	@return: The depstring with the operator removed
-
-	Example usage:
-		>>> dep_getcpv('>=media-libs/test-3.0')
-		'media-libs/test-3.0'
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
@@ -1767,14 +1767,14 @@ def dep_getslot(mydep):
 	"""
 	Retrieve the slot on a depend.
 
+	Example usage:
+		>>> dep_getslot('app-misc/test:3')
+		'3'
+
 	@param mydep: The depstring to retrieve the slot of
 	@type mydep: String
 	@rtype: String
 	@return: The slot
-
-	Example usage:
-		>>> dep_getslot('app-misc/test:3')
-		'3'
 	"""
 	slot = getattr(mydep, "slot", False)
 	if slot is not False:
@@ -1823,13 +1823,17 @@ def dep_getrepo(mydep):
 		else:
 			return mydep[colon+2:bracket]
 	return None
+
 def remove_slot(mydep):
 	"""
 	Removes dep components from the right side of an atom:
-		* slot
-		* use
-		* repo
+		- slot
+		- use
+		- repo
 	And repo_name from the left side.
+
+	@type mydep: String
+	@rtype: String
 	"""
 	colon = mydep.find(_slot_separator)
 	if colon != -1:
@@ -1897,18 +1901,18 @@ def isvalidatom(atom, allow_blockers=False, allow_wildcard=False,
 	"""
 	Check to see if a depend atom is valid
 
+	Example usage:
+		>>> isvalidatom('media-libs/test-3.0')
+		False
+		>>> isvalidatom('>=media-libs/test-3.0')
+		True
+
 	@param atom: The depend atom to check against
 	@type atom: String or Atom
 	@rtype: Boolean
 	@return: One of the following:
 		1) False if the atom is invalid
 		2) True if the atom is valid
-
-	Example usage:
-		>>> isvalidatom('media-libs/test-3.0')
-		False
-		>>> isvalidatom('>=media-libs/test-3.0')
-		True
 	"""
 
 	if eapi is not None and isinstance(atom, Atom) and atom.eapi != eapi:
@@ -1930,18 +1934,18 @@ def isjustname(mypkg):
 	"""
 	Checks to see if the atom is only the package name (no version parts).
 
+	Example usage:
+		>>> isjustname('=media-libs/test-3.0')
+		False
+		>>> isjustname('media-libs/test')
+		True
+
 	@param mypkg: The package atom to check
 	@param mypkg: String or Atom
 	@rtype: Integer
 	@return: One of the following:
 		1) False if the package string is not just the package name
 		2) True if it is
-
-	Example usage:
-		>>> isjustname('=media-libs/test-3.0')
-		False
-		>>> isjustname('media-libs/test')
-		True
 	"""
 	try:
 		if not isinstance(mypkg, Atom):
@@ -1960,18 +1964,18 @@ def isspecific(mypkg):
 	Checks to see if a package is in =category/package-version or
 	package-version format.
 
+	Example usage:
+		>>> isspecific('media-libs/test')
+		False
+		>>> isspecific('=media-libs/test-3.0')
+		True
+
 	@param mypkg: The package depstring to check against
 	@type mypkg: String
 	@rtype: Boolean
 	@return: One of the following:
 		1) False if the package string is not specific
 		2) True if it is
-
-	Example usage:
-		>>> isspecific('media-libs/test')
-		False
-		>>> isspecific('=media-libs/test-3.0')
-		True
 	"""
 	try:
 		if not isinstance(mypkg, Atom):
@@ -1987,14 +1991,14 @@ def dep_getkey(mydep):
 	"""
 	Return the category/package-name of a depstring.
 
+	Example usage:
+		>>> dep_getkey('=media-libs/test-3.0')
+		'media-libs/test'
+
 	@param mydep: The depstring to retrieve the category/package-name of
 	@type mydep: String
 	@rtype: String
 	@return: The package category/package-name
-
-	Example usage:
-		>>> dep_getkey('=media-libs/test-3.0')
-		'media-libs/test'
 	"""
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep, allow_wildcard=True, allow_repo=True)
