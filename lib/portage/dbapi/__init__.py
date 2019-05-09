@@ -314,12 +314,12 @@ class dbapi(object):
 				# Check masked and forced flags for repoman.
 				usemask = self.settings._getUseMask(pkg,
 					stable=self.settings._parent_stable)
-				if any(x in usemask for x in atom.use.enabled):
+				if any(x in usemask and iuse.get_real_flag(x) is not None for x in atom.use.enabled):
 					return False
 
 				useforce = self.settings._getUseForce(pkg,
 					stable=self.settings._parent_stable)
-				if any(x in useforce and x not in usemask
+				if any(x in useforce and x not in usemask and iuse.get_real_flag(x) is not None
 					for x in atom.use.disabled):
 					return False
 
