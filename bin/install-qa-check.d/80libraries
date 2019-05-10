@@ -1,7 +1,15 @@
 # Check for issues with installed libraries
 
 scanelf_lib_check() {
-	local f x i j
+	local t v
+	for t in NM:nm ; do
+		v=${t%:*} # NM
+		t=${t#*:} # nm
+		eval ${v}=\"${!v:-${CHOST}-${t}}\"
+		type -P -- ${!v} >/dev/null || eval ${v}=${t}
+	done
+
+	local f x i j library libraries
 
 	# Check for shared libraries lacking SONAMEs
 	local qa_var="QA_SONAME_${ARCH/-/_}"
@@ -40,7 +48,16 @@ scanelf_lib_check() {
 	# Check for shared libraries lacking NEEDED entries
 	qa_var="QA_DT_NEEDED_${ARCH/-/_}"
 	eval "[[ -n \${!qa_var} ]] && QA_DT_NEEDED=(\"\${${qa_var}[@]}\")"
-	f=$(scanelf -ByF '%n %p' "${ED%/}"/{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED%/}/:/:")
+	f=
+	libraries=$(scanelf -ByF '%n %p' "${ED%/}"/{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]::")
+	if [[ -n ${libraries} ]] ; then
+		while IFS= read -r library ; do
+			# Only shared libraries containing undefined non-weak symbols actually need NEEDED entries.
+			if [[ -n $(${NM} -D "${library}" | grep -E "^ +U ") ]] ; then
+				f+="/${library#${ED%/}/}"$'\n'
+			fi
+		done <<< "${libraries}"
+	fi
 	if [[ -n ${f} ]] ; then
 		echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
 		if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
