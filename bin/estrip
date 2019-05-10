@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
@@ -305,6 +305,23 @@ process_elf() {
 	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 }
 
+# Usage: process_ar <ar archive>
+process_ar() {
+	local x=$1
+
+	__vecho "   ${x:${#ED}}"
+
+	if ${strip_this} ; then
+		# If we have split debug enabled, then do not strip this.
+		# There is no concept of splitdebug for objects not yet
+		# linked in (only for finally linked ELFs), so we have to
+		# retain the debug info in the archive itself.
+		if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
+			${STRIP} -g "${x}" && ${RANLIB} "${x}"
+		fi
+	fi
+}
+
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
@@ -416,17 +433,7 @@ do
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		__vecho "   ${x:${#ED}}"
-		if ${strip_this} ; then
-			# If we have split debug enabled, then do not strip this.
-			# There is no concept of splitdebug for objects not yet
-			# linked in (only for finally linked ELFs), so we have to
-			# retain the debug info in the archive itself.
-			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
-				${STRIP} -g "${x}" &&
-				${RANLIB} "${x}"
-			fi
-		fi
+		process_ar "${x}"
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
 		${f} == *"SB shared object"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}
