@@ -34,7 +34,6 @@ from portage import eclass_cache, \
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
-from portage.util._eventloop.EventLoop import EventLoop
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.iter_completed import iter_gather
@@ -346,14 +345,7 @@ class portdbapi(dbapi):
 
 	@property
 	def _event_loop(self):
-		if portage._internal_caller:
-			# For internal portage usage, asyncio._wrap_loop() is safe.
-			return asyncio._wrap_loop()
-		else:
-			# For external API consumers, use a local EventLoop, since
-			# we don't want to assume that it's safe to override the
-			# global SIGCHLD handler.
-			return EventLoop(main=False)
+		return asyncio._safe_loop()
 
 	def _create_pregen_cache(self, tree):
 		conf = self.repositories.get_repo_for_location(tree)

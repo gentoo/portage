@@ -37,6 +37,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:_PortageEventLoopPolicy',
 	'portage.util.futures:compat_coroutine@_compat_coroutine',
+	'portage.util._eventloop.EventLoop:EventLoop@_EventLoop',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
@@ -250,3 +251,20 @@ if _asyncio_enabled:
 		loop = loop or _global_event_loop()
 		return (loop if hasattr(loop, '_asyncio_wrapper')
 			else _AsyncioEventLoop(loop=loop))
+
+
+def _safe_loop():
+	"""
+	Return an event loop that's safe to use within the current context.
+	For portage internal callers, this returns a globally shared event
+	loop instance. For external API consumers, this constructs a
+	temporary event loop instance that's safe to use in a non-main
+	thread (it does not override the global SIGCHLD handler).
+
+	@rtype: asyncio.AbstractEventLoop (or compatible)
+	@return: event loop instance
+	"""
+	if portage._internal_caller:
+		return _wrap_loop()
+	else:
+		return _EventLoop(main=False)
