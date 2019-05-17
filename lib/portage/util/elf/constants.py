@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Gentoo Foundation
+# Copyright 2015-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # These constants are available from elfutils:
@@ -35,6 +35,7 @@ EM_IA_64           = 50
 EM_X86_64          = 62
 EM_ALTERA_NIOS2    = 113
 EM_AARCH64         = 183
+EM_RISCV           = 243
 EM_ALPHA           = 0x9026
 
 E_ENTRY            = 24
@@ -44,3 +45,10 @@ E_MIPS_ABI_O32     = 0x00001000
 E_MIPS_ABI_O64     = 0x00002000
 E_MIPS_ABI_EABI32  = 0x00003000
 E_MIPS_ABI_EABI64  = 0x00004000
+
+EF_RISCV_RVC              = 0x0001
+EF_RISCV_FLOAT_ABI        = 0x0006
+EF_RISCV_FLOAT_ABI_SOFT   = 0x0000
+EF_RISCV_FLOAT_ABI_SINGLE = 0x0002
+EF_RISCV_FLOAT_ABI_DOUBLE = 0x0004
+EF_RISCV_FLOAT_ABI_QUAD   = 0x0006
