@@ -265,6 +265,6 @@ def _safe_loop():
 	@return: event loop instance
 	"""
 	if portage._internal_caller:
-		return _wrap_loop()
+		return _global_event_loop()
 	else:
 		return _EventLoop(main=False)
