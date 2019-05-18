@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, unicode_literals
@@ -58,6 +58,7 @@ from portage.exception import CommandNotFound, \
 	InvalidData, InvalidLocation, InvalidPackageName, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
+from portage.util.futures import asyncio
 
 from portage import abssymlink, _movefile, bsd_chflags
 
@@ -1406,8 +1407,7 @@ class vardbapi(dbapi):
 
 			# Do work via the global event loop, so that it can be used
 			# for indication of progress during the search (bug #461412).
-			event_loop = (portage._internal_caller and
-				global_event_loop() or EventLoop(main=False))
+			event_loop = asyncio._safe_loop()
 			root = self._vardb._eroot
 
 			def search_pkg(cpv, search_future):
@@ -1998,8 +1998,7 @@ class dblink(object):
 		if self._scheduler is None:
 			# We create a scheduler instance and use it to
 			# log unmerge output separately from merge output.
-			self._scheduler = SchedulerInterface(portage._internal_caller and
-				global_event_loop() or EventLoop(main=False))
+			self._scheduler = SchedulerInterface(asyncio._safe_loop())
 		if self.settings.get("PORTAGE_BACKGROUND") == "subprocess":
 			if self.settings.get("PORTAGE_BACKGROUND_UNMERGE") == "1":
 				self.settings["PORTAGE_BACKGROUND"] = "1"
@@ -5141,9 +5140,7 @@ class dblink(object):
 			paths = tuple(paths)
 
 			proc = SyncfsProcess(paths=paths,
-				scheduler=(self._scheduler or
-					portage._internal_caller and global_event_loop() or
-					EventLoop(main=False)))
+				scheduler=(self._scheduler or asyncio._safe_loop()))
 			proc.start()
 			returncode = proc.wait()
 
@@ -5168,8 +5165,7 @@ class dblink(object):
 			self.lockdb()
 		self.vartree.dbapi._bump_mtime(self.mycpv)
 		if self._scheduler is None:
-			self._scheduler = SchedulerInterface(portage._internal_caller and
-				global_event_loop() or EventLoop(main=False))
+			self._scheduler = SchedulerInterface(asyncio._safe_loop())
 		try:
 			retval = self.treewalk(mergeroot, myroot, inforoot, myebuild,
 				cleanup=cleanup, mydbapi=mydbapi, prev_mtimes=prev_mtimes,
@@ -5375,8 +5371,7 @@ def merge(mycat, mypkg, pkgloc, infloc,
 	merge_task = MergeProcess(
 		mycat=mycat, mypkg=mypkg, settings=settings,
 		treetype=mytree, vartree=vartree,
-		scheduler=(scheduler or portage._internal_caller and
-			global_event_loop() or EventLoop(main=False)),
+		scheduler=(scheduler or asyncio._safe_loop()),
 		background=background, blockers=blockers, pkgloc=pkgloc,
 		infloc=infloc, myebuild=myebuild, mydbapi=mydbapi,
 		prev_mtimes=prev_mtimes, logfile=settings.get('PORTAGE_LOG_FILE'),

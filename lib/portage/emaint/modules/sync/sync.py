@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Gentoo Foundation
+# Copyright 2014-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -14,6 +14,7 @@ from portage._global_updates import _global_updates
 from portage.sync.controller import SyncManager
 from portage.util import writemsg_level
 from portage.util.digraph import digraph
+from portage.util.futures import asyncio
 from portage.util._async.AsyncScheduler import AsyncScheduler
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util._eventloop.EventLoop import EventLoop
@@ -232,8 +233,7 @@ class SyncRepos(object):
 		sync_scheduler = SyncScheduler(emerge_config=self.emerge_config,
 			selected_repos=selected_repos, sync_manager=sync_manager,
 			max_jobs=max_jobs,
-			event_loop=global_event_loop() if portage._internal_caller else
-				EventLoop(main=False))
+			event_loop=asyncio._safe_loop())
 
 		sync_scheduler.start()
 		sync_scheduler.wait()

@@ -82,6 +82,7 @@ from portage.util import ( apply_recursive_permissions,
 from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile
 from portage.util.compression_probe import _compressors
+from portage.util.futures import asyncio
 from portage.util.path import first_existing
 from portage.util.socks5 import get_socks5_proxy
 from portage.versions import _pkgsplit
@@ -198,8 +199,7 @@ def _spawn_phase(phase, settings, actionmap=None, returnpid=False,
 	# The logfile argument is unused here, since EbuildPhase uses
 	# the PORTAGE_LOG_FILE variable if set.
 	ebuild_phase = EbuildPhase(actionmap=actionmap, background=False,
-		phase=phase, scheduler=SchedulerInterface(portage._internal_caller and
-			global_event_loop() or EventLoop(main=False)),
+		phase=phase, scheduler=SchedulerInterface(asyncio._safe_loop()),
 		settings=settings, **kwargs)
 
 	ebuild_phase.start()
@@ -830,8 +830,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=(portage._internal_caller and
-						global_event_loop() or EventLoop(main=False)),
+					scheduler=asyncio._safe_loop(),
 					settings=mysettings)
 				builddir_lock.scheduler.run_until_complete(
 					builddir_lock.async_lock())
@@ -957,8 +956,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					if builddir_lock is None and \
 						'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 						builddir_lock = EbuildBuildDir(
-							scheduler=(portage._internal_caller and
-								global_event_loop() or EventLoop(main=False)),
+							scheduler=asyncio._safe_loop(),
 							settings=mysettings)
 						builddir_lock.scheduler.run_until_complete(
 							builddir_lock.async_lock())
@@ -982,8 +980,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if not returnpid and \
 				'PORTAGE_BUILDDIR_LOCKED' not in mysettings:
 				builddir_lock = EbuildBuildDir(
-					scheduler=(portage._internal_caller and
-						global_event_loop() or EventLoop(main=False)),
+					scheduler=asyncio._safe_loop(),
 					settings=mysettings)
 				builddir_lock.scheduler.run_until_complete(
 					builddir_lock.async_lock())
@@ -1331,8 +1328,7 @@ def _prepare_env_file(settings):
 	"""
 
 	env_extractor = BinpkgEnvExtractor(background=False,
-		scheduler=(portage._internal_caller and
-			global_event_loop() or EventLoop(main=False)),
+		scheduler=asyncio._safe_loop(),
 		settings=settings)
 
 	if env_extractor.dest_env_exists():
@@ -1658,8 +1654,7 @@ def spawn(mystring, mysettings, debug=False, free=False, droppriv=False,
 
 		proc = EbuildSpawnProcess(
 			background=False, args=mystring,
-			scheduler=SchedulerInterface(portage._internal_caller and
-				global_event_loop() or EventLoop(main=False)),
+			scheduler=SchedulerInterface(asyncio._safe_loop()),
 			spawn_func=spawn_func,
 			settings=mysettings, **keywords)
 

@@ -47,6 +47,7 @@ from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
+from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -605,8 +606,7 @@ class depgraph(object):
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
-		self._event_loop = (portage._internal_caller and
-			global_event_loop() or EventLoop(main=False))
+		self._event_loop = asyncio._safe_loop()
 
 		self._select_atoms_parent = None
 
