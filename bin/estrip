@@ -133,7 +133,7 @@ case $(${STRIP} --version 2>/dev/null) in
 *GNU*) # sys-devel/binutils
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
-	SAFE_STRIP_FLAGS="--strip-unneeded"
+	SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
 	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
 	SPLIT_STRIP_FLAGS=
 	;;
