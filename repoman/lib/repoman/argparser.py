@@ -1,5 +1,5 @@
 # repoman: Argument parser
-# Copyright 2007-2017 Gentoo Foundation
+# Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to parse CLI arguments."""
@@ -196,23 +196,32 @@ def parse_args(argv, repoman_default_opts):
 		'--mode', dest='mode', choices=mode_keys,
 		help='specify which mode repoman will run in (default=full)')
 
-	opts, args = parser.parse_known_args(argv[1:])
+	# Modes help is included earlier, in the parser description.
+	parser.add_argument(
+		'mode_positional', nargs='?', metavar='mode', choices=mode_keys,
+		help=argparse.SUPPRESS)
+
+	opts = parser.parse_args(argv[1:])
 
 	if not opts.ignore_default_opts:
 		default_opts = util.shlex_split(repoman_default_opts)
 		if default_opts:
-			opts, args = parser.parse_known_args(default_opts + sys.argv[1:])
+			opts = parser.parse_args(default_opts + sys.argv[1:])
+
+	args = []
+	if opts.mode is not None:
+		args.append(opts.mode)
+	if opts.mode_positional is not None:
+		args.append(opts.mode_positional)
+
+	if len(set(args)) > 1:
+		parser.error("multiple modes specified: %s" % " ".join(args))
+
+	opts.mode = args[0] if args else None
 
 	if opts.mode == 'help':
-		parser.print_help(short=False)
-
-	for arg in args:
-		if arg in modes:
-			if not opts.mode:
-				opts.mode = arg
-				break
-		else:
-			parser.error("invalid mode: %s" % arg)
+		parser.print_help()
+		parser.exit()
 
 	if not opts.mode:
 		opts.mode = 'full'
