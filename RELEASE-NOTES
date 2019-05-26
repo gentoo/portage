@@ -1,6 +1,20 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.67
+==================================
+* Bug Fixes:
+    - Bug 516016 install-qa-check.d/80libraries: Fix false positive
+    - Bug 662468 Add bash ___is_indexed_array_var function
+    - Bug 685482 repoman: Check IUSE in _match_use for USE defaults
+    - Bug 685532 estrip: Fix inconsistent behavior with EAPI >= 7
+    - Bug 685854 get_vm_info: Set C locale for subprocesses
+    - Bug 686194 Recognize riscv ABIs
+    - Bug 686282 estrip: Strip __gentoo_check_ldflags__ symbol
+    - Bug 686356 install-qa-check.d/10ignored-flags: Fix false positive
+    - Bug 686406 Fix ACCEPT_LICENSE=-* to behave as intended
+
+
 portage-2.3.66
 ==================================
 * Bug Fixes:
