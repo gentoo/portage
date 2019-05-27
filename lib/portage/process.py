@@ -617,7 +617,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 								os._exit(1)
 							# mount new /proc for our namespace
 							s = subprocess.Popen(['mount',
-								'-t', 'proc', 'proc', '/proc'])
+								'-n', '-t', 'proc', 'proc', '/proc'])
 							mount_ret = s.wait()
 							if mount_ret != 0:
 								writemsg("Unable to mount new /proc: %d\n" % (mount_ret,),
