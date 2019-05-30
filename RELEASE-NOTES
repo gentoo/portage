@@ -1,6 +1,52 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.67
+==================================
+* Bug Fixes:
+    - Bug 516016 install-qa-check.d/80libraries: Fix false positive
+    - Bug 662468 Add bash ___is_indexed_array_var function
+    - Bug 685482 repoman: Check IUSE in _match_use for USE defaults
+    - Bug 685532 estrip: Fix inconsistent behavior with EAPI >= 7
+    - Bug 685854 get_vm_info: Set C locale for subprocesses
+    - Bug 686194 Recognize riscv ABIs
+    - Bug 686282 estrip: Strip __gentoo_check_ldflags__ symbol
+    - Bug 686356 install-qa-check.d/10ignored-flags: Fix false positive
+    - Bug 686406 Fix ACCEPT_LICENSE=-* to behave as intended
+
+
+portage-2.3.66
+==================================
+* Bug Fixes:
+    - Bug 175612 download distfiles to temp file and rename atomically
+    - Bug 651678 enable FEATURES=strict-keepdir behavior for new EAPIs
+
+
+portage-2.3.65
+==================================
+* Bug Fixes:
+    - Bug 478544 fix duplicate repo warning triggered by PORTDIR
+    - Bug 553224 emerge --info per-package FEATURES
+    - Bug 684232 don't set permissions on /dev/null emerge.log symlink
+
+
+portage-2.3.64
+==================================
+* Bug Fixes:
+    - Bug 378603 New (council approved) default locations for the Gentoo
+      repository, distfiles, and binary packages
+
+
+portage-2.3.63
+==================================
+* Bug Fixes:
+    - Bug 672540 enable SIGINT in emerge exception handler
+    - Bug 674932 document BDEPEND in ebuild(5) man page
+    - Bug 680810 optimize bash IUSE checks by not using regexp
+    - Bug 680908 repos.conf: add sync-openpgp-keyserver option
+    - Bug 683040 fix distcc/network-sandbox-proxy socket permission
+
+
 portage-2.3.62
 ==================================
 * Bug Fixes:

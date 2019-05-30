@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -11,10 +11,13 @@ def get_vm_info():
 
 	vm_info = {}
 
+	env = os.environ.copy()
+	env["LC_ALL"] = "C"
+
 	if platform.system() == 'Linux':
 		try:
 			proc = subprocess.Popen(["free"],
-				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
 		except OSError:
 			pass
 		else:
@@ -49,7 +52,7 @@ def get_vm_info():
 
 		try:
 			proc = subprocess.Popen(["sysctl", "-a"],
-				stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
 		except OSError:
 			pass
 		else:

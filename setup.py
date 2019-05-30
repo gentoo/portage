@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -662,7 +662,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.62',
+	version = '2.3.67',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

@@ -17,7 +17,9 @@ find_empty_dirs() {
 	local warn_dirs=()
 	local d striparg=
 
-	[[ ${FEATURES} == *strict-keepdir* ]] && striparg=-delete
+	if ___eapi_has_strict_keepdir || [[ ${FEATURES} == *strict-keepdir* ]]; then
+		striparg=-delete
+	fi
 
 	while IFS= read -r -d $'\0' d; do
 		[[ ${d} == ${ED%/}/var/* ]] && warn_dirs+=( "${d}" )

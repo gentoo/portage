@@ -1,13 +1,13 @@
-# Copyright 2010-2017 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
 
 	Example usage:
 		>>> from portage.xml.metadata import MetaDataXML
-		>>> pkg_md = MetaDataXML('/usr/portage/app-misc/gourmet/metadata.xml')
+		>>> pkg_md = MetaDataXML('/var/db/repos/gentoo/app-misc/gourmet/metadata.xml')
 		>>> pkg_md
-		<MetaDataXML '/usr/portage/app-misc/gourmet/metadata.xml'>
+		<MetaDataXML '/var/db/repos/gentoo/app-misc/gourmet/metadata.xml'>
 		>>> pkg_md.herds()
 		['no-herd']
 		>>> for maint in pkg_md.maintainers():
@@ -172,16 +172,16 @@ class _Upstream(object):
 
 	def upstream_bugtrackers(self):
 		"""Retrieve upstream bugtracker location from xml node."""
-		return [e.text for e in self.node.findall('bugs-to')]
+		return [e.text for e in self.node.findall('bugs-to') if e.text]
 
 	def upstream_changelogs(self):
 		"""Retrieve upstream changelog location from xml node."""
-		return [e.text for e in self.node.findall('changelog')]
+		return [e.text for e in self.node.findall('changelog') if e.text]
 
 	def upstream_documentation(self):
 		"""Retrieve upstream documentation location from xml node."""
 		result = []
-		for elem in self.node.findall('doc'):
+		for elem in (e for e in self.node.findall('doc') if e.text):
 			lang = elem.get('lang')
 			result.append((elem.text, lang))
 		return result
@@ -192,7 +192,7 @@ class _Upstream(object):
 
 	def upstream_remoteids(self):
 		"""Retrieve upstream remote ID from xml node."""
-		return [(e.text, e.get('type')) for e in self.node.findall('remote-id')]
+		return [(e.text, e.get('type')) for e in self.node.findall('remote-id') if e.text]
 
 
 class MetaDataXML(object):
@@ -311,7 +311,7 @@ class MetaDataXML(object):
 				self._descriptions = tuple()
 			else:
 				self._descriptions = tuple(e.text \
-					for e in self._xml_tree.findall("longdescription"))
+					for e in self._xml_tree.findall("longdescription") if e.text)
 
 		return self._descriptions
 

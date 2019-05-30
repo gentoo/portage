@@ -57,7 +57,9 @@ def prune_incremental(split):
 			break
 		elif x == '-*':
 			if i == 0:
-				split = []
+				# Preserve the last -*, since otherwise an empty value
+				# would trigger fallback to a default value.
+				split = ['-*']
 			else:
 				split = split[-i:]
 			break

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2019" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Apr 2019" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -220,12 +220,8 @@ like to selectively prune obsolete files from this directory, see
 
 Use the \fBPORTAGE_RO_DISTDIRS\fR variable to specify one or
 more read-only directories containing distfiles.
-
-Note
-that locations under /usr/portage are not necessarily safe for data storage.
-See the \fBPORTDIR\fR documentation for more information.
 .br
-Defaults to /usr/portage/distfiles.
+Defaults to /var/cache/distfiles.
 .TP
 .B DOC_SYMLINKS_DIR
 If this variable contains a directory then symlinks to html documentation will
@@ -659,6 +655,7 @@ dangerous (like missing or incorrect digests for ebuilds).
 .B strict-keepdir
 Have portage strictly require keepdir calls in ebuilds.  Empty
 directories installed without explicit keepdir will be removed.
+This feature is automatically enabled for \fBEAPI 8\fR and later.
 .TP
 .B stricter
 Have portage react strongly to conditions that may conflict with system
@@ -832,11 +829,9 @@ By default, a given package is stored in a subdirectory corresponding
 to it's category. However, for backward compatibility with the layout
 used by older versions of portage, if the \fI${PKGDIR}/All\fR directory
 exists then all packages will be stored inside of it and symlinks to
-the packages will be created in the category subdirectories. Note
-that locations under /usr/portage are not necessarily safe for data storage.
-See the \fBPORTDIR\fR documentation for more information.
+the packages will be created in the category subdirectories.
 .br
-Defaults to /usr/portage/packages.
+Defaults to /var/cache/binpkgs.
 .TP
 .B PORT_LOGDIR
 See \fIPORTAGE_LOGDIR\fR below. Deprecated.
@@ -1072,7 +1067,7 @@ Defines the location of main repository. This variable is deprecated in favor of
 settings in \fBrepos.conf\fR. If you change this, you must update
 your /etc/portage/make.profile symlink accordingly.
 .br
-Defaults to /usr/portage.
+Defaults to /var/db/repos/gentoo.
 .br
 \fB***Warning***\fR
 .br
@@ -1157,7 +1152,7 @@ rsync://private\-mirror.com/portage\-module
 .br
 rsync://rsync\-user@private\-mirror.com:873/gentoo\-portage
 .br
-ssh://ssh\-user@192.168.0.1:22/usr/portage
+ssh://ssh\-user@192.168.0.1:22/var/db/repos/gentoo
 .br
 ssh://ssh\-user@192.168.0.1:22/\\${HOME}/portage\-storage
 .TP
@@ -1175,7 +1170,7 @@ Defaults to "/lib/modules/*".
 \fBUSE\fR = \fI[space delimited list of USE items]\fR
 This variable contains options that control the build behavior of several
 packages.  More information in \fBebuild\fR(5).  Possible USE values
-can be found in \fI/usr/portage/profiles/use.desc\fR.
+can be found in \fI/var/db/repos/gentoo/profiles/use.desc\fR.
 .TP
 \fBUSE_ORDER\fR = \fI"env:pkg:conf:defaults:pkginternal:features:repo:env.d"\fR
 Determines the precedence of layers in the incremental stacking of the USE
@@ -1212,7 +1207,7 @@ for FEATURES=\fBtest\fR.
 .TP
 .B repo
 USE from make.defaults and package.use in the repo's profiles/ top dir
-(e.g. /usr/portage/profiles/package.use) (see \fBportage\fR(5))
+(e.g. /var/db/repos/gentoo/profiles/package.use) (see \fBportage\fR(5))
 .TP
 .B env.d
 USE from the environment variables, such as LINGUAS, defined by files in
@@ -1242,10 +1237,10 @@ Contains the default variables for the build\-process, you should edit
 .B /etc/portage/color.map
 Contains variables customizing colors.
 .TP
-.B /usr/portage/profiles/use.desc
+.B /var/db/repos/gentoo/profiles/use.desc
 Contains a list of all global USE flags.
 .TP
-.B /usr/portage/profiles/use.local.desc
+.B /var/db/repos/gentoo/profiles/use.local.desc
 Contains a list of all local USE variables.
 .SH "SEE ALSO"
 .BR emerge (1),

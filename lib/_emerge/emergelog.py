@@ -37,7 +37,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 		xtermTitle(short_msg)
 	try:
 		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
-		existing_log = os.path.isfile(file_path)
+		existing_log = os.path.exists(file_path)
 		mylogfile = io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
 			mode='a', encoding=_encodings['content'],

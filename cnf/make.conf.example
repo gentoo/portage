@@ -14,7 +14,7 @@
 # https://wiki.gentoo.org/wiki/Handbook:X86/Working/USE
 #
 # The available list of use flags with descriptions is in the ebuild repository.
-# Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
+# Use 'less' to view them:  --> less /var/db/repos/gentoo/profiles/use.desc <--
 #
 # 'ufed' is an ncurses/dialog interface available in portage to make handling
 # useflags for you. 'emerge app-portage/ufed'
@@ -107,28 +107,21 @@
 #     this, you must update your /etc/portage/make.profile symlink accordingly.
 #     ***Warning***
 #     Data stored inside PORTDIR is in peril of being overwritten or deleted by
-#     the emerge --sync command. The default value of PORTAGE_RSYNC_OPTS
-#     will protect the default locations of DISTDIR and PKGDIR, but users are
-#     warned that any other locations inside PORTDIR are not necessarily safe
-#     for data storage.
-#PORTDIR=@PORTAGE_EPREFIX@/usr/portage
+#     the emerge --sync command.
+#PORTDIR=@PORTAGE_EPREFIX@/var/db/repos/gentoo
 #
 # DISTDIR is where all of the source code tarballs will be placed for
 #     emerges. After packages are built, it is safe to remove any and
 #     all files from this directory since they will be automatically
 #     fetched on demand for a given build. If you would like to
 #     selectively prune obsolete files from this directory, see
-#     eclean from the gentoolkit package. Note that locations under
-#     /usr/portage are not necessarily safe for data storage. See the
-#     PORTDIR documentation for more information.
-#DISTDIR=@PORTAGE_EPREFIX@/usr/portage/distfiles
+#     eclean from the gentoolkit package.
+#DISTDIR=@PORTAGE_EPREFIX@/var/cache/distfiles
 #
 # PKGDIR is the location of binary packages that you can have created
 #     with '--buildpkg' or '-b' while emerging a package. This can get
-#     up to several hundred megs, or even a few gigs. Note that
-#     locations under /usr/portage are not necessarily safe for data
-#     storage. See the PORTDIR documentation for more information.
-#PKGDIR=@PORTAGE_EPREFIX@/usr/portage/packages
+#     up to several hundred megs, or even a few gigs.
+#PKGDIR=@PORTAGE_EPREFIX@/var/cache/binpkgs
 #
 # PORTAGE_LOGDIR is the location where portage will store all the logs it
 #     creates from each individual merge. They are stored as

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
@@ -133,7 +133,7 @@ case $(${STRIP} --version 2>/dev/null) in
 *GNU*) # sys-devel/binutils
 	# We'll leave out -R .note for now until we can check out the relevance
 	# of the section when it has the ALLOC flag set on it ...
-	SAFE_STRIP_FLAGS="--strip-unneeded"
+	SAFE_STRIP_FLAGS="--strip-unneeded -N __gentoo_check_ldflags__"
 	DEF_STRIP_FLAGS="-R .comment -R .GCC.command.line -R .note.gnu.gold-version"
 	SPLIT_STRIP_FLAGS=
 	;;
@@ -239,17 +239,18 @@ save_elf_debug() {
 		local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
 		mkdir -p "${buildid_dir}"
-		[ -L "${buildid_file}".debug ] || ln -s "../../${x:${#D}}.debug" "${buildid_file}.debug"
-		[ -L "${buildid_file}" ] || ln -s "/${x:${#D}}" "${buildid_file}"
+		[ -L "${buildid_file}".debug ] || ln -s "../../${x:$((${#d_noslash} + 1))}.debug" "${buildid_file}.debug"
+		[ -L "${buildid_file}" ] || ln -s "/${x:$((${#d_noslash} + 1))}" "${buildid_file}"
 	fi
 }
 
 # Usage: process_elf <elf>
 process_elf() {
 	local x=$1 inode_link=$2 strip_flags=${*:3}
+	local ed_noslash=${ED%/}
 	local already_stripped lockfile xt_data
 
-	__vecho "   ${x:${#ED}}"
+	__vecho "   ${x:${#ed_noslash}}"
 
 	# If two processes try to debugedit or strip the same hardlink at the
 	# same time, it may corrupt files or cause loss of splitdebug info.
@@ -303,6 +304,24 @@ process_elf() {
 	fi
 
 	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
+}
+
+# Usage: process_ar <ar archive>
+process_ar() {
+	local x=$1
+	local ed_noslash=${ED%/}
+
+	__vecho "   ${x:${#ed_noslash}}"
+
+	if ${strip_this} ; then
+		# If we have split debug enabled, then do not strip this.
+		# There is no concept of splitdebug for objects not yet
+		# linked in (only for finally linked ELFs), so we have to
+		# retain the debug info in the archive itself.
+		if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
+			${STRIP} -g "${x}" && ${RANLIB} "${x}"
+		fi
+	fi
 }
 
 # The existance of the section .symtab tells us that a binary is stripped.
@@ -416,17 +435,7 @@ do
 
 	buildid=
 	if [[ ${f} == *"current ar archive"* ]] ; then
-		__vecho "   ${x:${#ED}}"
-		if ${strip_this} ; then
-			# If we have split debug enabled, then do not strip this.
-			# There is no concept of splitdebug for objects not yet
-			# linked in (only for finally linked ELFs), so we have to
-			# retain the debug info in the archive itself.
-			if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
-				${STRIP} -g "${x}" &&
-				${RANLIB} "${x}"
-			fi
-		fi
+		process_ar "${x}"
 	elif [[ ${f} == *"SB executable"* || ${f} == *"SB pie executable"* ||
 		${f} == *"SB shared object"* ]] ; then
 		process_elf "${x}" "${inode_link}" ${PORTAGE_STRIP_FLAGS}

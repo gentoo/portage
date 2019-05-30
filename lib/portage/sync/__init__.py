@@ -1,9 +1,10 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 
-from portage import OrderedDict
+from collections import OrderedDict
+
 from portage.module import Modules
 from portage.sync.controller import SyncManager
 from portage.sync.config_checks import check_type

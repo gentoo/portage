@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -7,7 +7,6 @@ import subprocess
 import portage
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
-from portage.util._eventloop.global_event_loop import _asyncio_enabled
 
 
 class WakeupFdSigchldTestCase(TestCase):
@@ -19,11 +18,8 @@ class WakeupFdSigchldTestCase(TestCase):
 		Exception ignored when trying to write to the signal wakeup fd:
 		BlockingIOError: [Errno 11] Resource temporarily unavailable
 		"""
-		if not _asyncio_enabled:
-			self.skipTest('asyncio not enabled')
 
 		script = """
-import asyncio as _real_asyncio
 import os
 import signal
 import sys
@@ -39,7 +35,7 @@ from portage.util.futures import asyncio
 loop = asyncio._wrap_loop()
 
 # Cause the loop to register a child watcher.
-proc = loop.run_until_complete(_real_asyncio.create_subprocess_exec('sleep', '0'))
+proc = loop.run_until_complete(asyncio.create_subprocess_exec('sleep', '0', loop=loop))
 loop.run_until_complete(proc.wait())
 
 for i in range(8192):
@@ -47,7 +43,7 @@ for i in range(8192):
 
 # Verify that the child watcher still works correctly
 # (this will hang if it doesn't).
-proc = loop.run_until_complete(_real_asyncio.create_subprocess_exec('sleep', '0'))
+proc = loop.run_until_complete(asyncio.create_subprocess_exec('sleep', '0', loop=loop))
 loop.run_until_complete(proc.wait())
 loop.close()
 sys.stdout.write('success')

@@ -1,4 +1,4 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Compute a multilib category, as discussed here:
@@ -14,6 +14,7 @@
 #	m68k_{32,64}
 #	mips_{eabi32,eabi64,n32,n64,o32,o64}
 #	ppc_{32,64}
+#	riscv_{lp64,lp64d}
 #	s390_{32,64}
 #	sh_{32,64}
 #	sparc_{32,64}
@@ -34,10 +35,21 @@
 from __future__ import unicode_literals
 
 from portage.util.elf.constants import (
-	EF_MIPS_ABI, EF_MIPS_ABI2, ELFCLASS32, ELFCLASS64,
+	EF_MIPS_ABI,
+	EF_MIPS_ABI2,
+	EF_RISCV_FLOAT_ABI_DOUBLE,
+	EF_RISCV_RVC,
+	ELFCLASS32,
+	ELFCLASS64,
 	EM_386, EM_68K, EM_AARCH64, EM_ALPHA, EM_ARM, EM_ALTERA_NIOS2,
 	EM_IA_64, EM_MIPS,
-	EM_PARISC, EM_PPC, EM_PPC64, EM_S390, EM_SH, EM_SPARC,
+	EM_PARISC,
+	EM_PPC,
+	EM_PPC64,
+	EM_RISCV,
+	EM_S390,
+	EM_SH,
+	EM_SPARC,
 	EM_SPARC32PLUS, EM_SPARCV9, EM_X86_64, E_MIPS_ABI_EABI32,
 	E_MIPS_ABI_EABI64, E_MIPS_ABI_O32, E_MIPS_ABI_O64)
 
@@ -53,6 +65,7 @@ _machine_prefix_map = {
 	EM_PARISC:          "hppa",
 	EM_PPC:             "ppc",
 	EM_PPC64:           "ppc",
+	EM_RISCV:           "riscv",
 	EM_S390:            "s390",
 	EM_SH:              "sh",
 	EM_SPARC:           "sparc",
@@ -82,6 +95,33 @@ def _compute_suffix_mips(elf_header):
 
 	return name
 
+
+def _compute_suffix_riscv(elf_header):
+	"""
+	Compute riscv multilib suffix. In order to avoid possible
+	misidentification, only the following ABIs are recognized:
+
+		* lp64
+		* lp64d
+	"""
+
+	name = None
+
+	if elf_header.ei_class == ELFCLASS64:
+		if elf_header.e_flags == EF_RISCV_RVC:
+			name = "lp64"
+		elif elf_header.e_flags == EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE:
+			name = "lp64d"
+
+	return name
+
+
+_specialized_funcs = {
+	"mips": _compute_suffix_mips,
+	"riscv": _compute_suffix_riscv,
+}
+
+
 def compute_multilib_category(elf_header):
 	"""
 	Compute a multilib category from an ELF header.
@@ -96,10 +136,11 @@ def compute_multilib_category(elf_header):
 	if elf_header.e_machine is not None:
 
 		prefix = _machine_prefix_map.get(elf_header.e_machine)
+		specialized_func = _specialized_funcs.get(prefix)
 		suffix = None
 
-		if prefix == "mips":
-			suffix = _compute_suffix_mips(elf_header)
+		if specialized_func is not None:
+			suffix = specialized_func(elf_header)
 		elif elf_header.ei_class == ELFCLASS64:
 			suffix = "64"
 		elif elf_header.ei_class == ELFCLASS32:

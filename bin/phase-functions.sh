@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -358,7 +358,7 @@ __abort_install() {
 
 __has_phase_defined_up_to() {
 	local phase
-	for phase in unpack prepare configure compile install; do
+	for phase in unpack prepare configure compile test install; do
 		has ${phase} ${DEFINED_PHASES} && return 0
 		[[ ${phase} == $1 ]] && return 1
 	done
@@ -495,10 +495,14 @@ __dyn_test() {
 	trap "__abort_test" SIGINT SIGQUIT
 	__start_distcc
 
-	if [ -d "${S}" ]; then
+	if [[ -d ${S} ]]; then
 		cd "${S}"
-	else
+	elif ___eapi_has_S_WORKDIR_fallback; then
 		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! __has_phase_defined_up_to test; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
 	if has test ${RESTRICT} ; then
@@ -588,7 +592,7 @@ __dyn_install() {
 	fi
 
 	__vecho
-	__vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -609,7 +613,7 @@ __dyn_install() {
 	__ebuild_phase src_install
 	>> "$PORTAGE_BUILDDIR/.installed" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.installed"
-	__vecho ">>> Completed installing ${PF} into ${D}"
+	__vecho ">>> Completed installing ${CATEGORY}/${PF} into ${D}"
 	__vecho
 	__ebuild_phase post_src_install
 

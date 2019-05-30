@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.13
+==================================
+* Bug Fixes:
+    - Bug 686074 report error for unknown arguments
+
 
 repoman-2.3.12
 ==================================

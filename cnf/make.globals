@@ -27,8 +27,8 @@ ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
 
 # Miscellaneous paths
-DISTDIR="@PORTAGE_EPREFIX@/usr/portage/distfiles"
-PKGDIR="@PORTAGE_EPREFIX@/usr/portage/packages"
+DISTDIR="@PORTAGE_EPREFIX@/var/cache/distfiles"
+PKGDIR="@PORTAGE_EPREFIX@/var/cache/binpkgs"
 RPMDIR="@PORTAGE_EPREFIX@/usr/portage/rpm"
 
 # Temporary build directory

@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Oct 2017" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Apr 2019" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -314,49 +314,6 @@ the user does not specify any of the previous choices.
 Note that if any of the packages listed are already merged, the package manager
 will use that to consider the dependency satisfied.
 
-.SS "Cross-compilation"
-Portage supports cross-compilation into a subdirectory specified by \fBROOT\fR.
-.TP
-.B Host
-\fIHost\fR in this context means the platform hosting the build process, i.e.
-what autotools calls CBUILD.
-Its packages are contained in the root of the filesystem ("\fI/\fR").
-
-If \fBROOT\fR is "\fI/\fR", all dependency types will be installed there.
-Otherwise, for EAPIs that support \fBHDEPEND\fR (experimental
-\fBEAPI 5-hdepend\fR), only \fBHDEPEND\fR is installed into "\fI/\fR".
-For EAPIs that do not support \fBHDEPEND\fR, the behaviour is controlled by the
-\fI\-\-root-deps\fR flag to \fBemerge\fR(1), defaulting to install only
-\fBDEPEND\fR into the \fIhost\fR.
-.TP
-.B Target
-\fITarget\fR refers to the platform that the package will later run on, i.e.
-what autotools calls CHOST.
-The directory housing this system is specified by \fBROOT\fR.
-If it is different from "\fI/\fR", i.e. \fIhost\fR and \fItarget\fR are not the
-same, this variable contains the path to the directory housing the \fItarget\fR
-system.
-
-For EAPIs that support \fBHDEPEND\fR (experimental \fBEAPI 5-hdepend\fR),
-\fBDEPEND\fR, \fBRDEPEND\fR, and \fBPDEPEND\fR
-list the \fItarget\fR dependencies, i.e. those to be installed into \fBROOT\fR.
-For EAPIs that do not support \fBHDEPEND\fR, the \fBemerge\fR(1) flag
-\fI\-\-root-deps\fR controls what the package manager installs there.
-Without it, \fBemerge\fR defaults to install only runtime dependencies (i.e.
-\fBRDEPEND\fR and \fBPDEPEND\fR) into \fBROOT\fR.
-.PP
-See section \fBVARIABLES\fR for more information about the \fBDEPEND\fR,
-\fBRDEPEND\fR and \fBHDEPEND\fR variables.
-.TP
-.B The targetroot USE flag
-For EAPIs that support the "\fItargetroot\fR" USE flag, that flag is
-automatically enabled by the package manager if \fIhost\fR and \fItarget\fR
-system are not the same, i.e. if the \fBROOT\fR is not "\fI/\fR".
-This is necessary where the package to be built needs an executable copy of
-itself during the build process.
-A known example is dev-lang/python, which needs to run a Python interpreter
-during compilation.
-
 .SH "VARIABLES"
 .TP
 .B Usage Notes
@@ -573,7 +530,8 @@ being submitted for inclusion, it must have ~arch set for architectures
 where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
 unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
 line, or in \fBmake.conf\fR(5)) For an authoritative list please review
-/usr/portage/profiles/arch.list.  Please keep this list in alphabetical order.
+/var/db/repos/gentoo/profiles/arch.list. Please keep this list in
+alphabetical order.
 .TP
 .B SLOT
 This sets the SLOT for packages that may need to have multiple versions
@@ -596,8 +554,8 @@ usage.
 .B LICENSE
 This should be a space delimited list of licenses that the package falls
 under.  This \fB_must_\fR be set to a matching license in
-/usr/portage/licenses/. If the license does not exist in portage yet, you
-must add it first.
+/var/db/repos/gentoo/licenses/. If the license does not exist in the repository
+yet, you must add it first.
 .TP
 .B IUSE
 This should be a list of any and all USE flags that are leveraged within
@@ -616,10 +574,9 @@ This should contain a list of all packages that are required for the program
 to compile (aka \fIbuildtime\fR dependencies).  These are usually libraries and
 headers.
 
-Starting from experimental \fBEAPI 5-hdepend\fR, tools should go into the
-\fBHDEPEND\fR variable instead, as \fBDEPEND\fR will only be installed into the
-\fItarget\fR system and hence cannot be executed in a cross\-compile setting.
-(See section \fBCross\-compilation\fR for more information.)
+Starting from \fBEAPI 7\fR, tools should go into the \fBBDEPEND\fR
+variable instead, as \fBDEPEND\fR will only be installed into the
+system being built and hence cannot be executed when cross-compiling.
 
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP
@@ -633,14 +590,16 @@ implicitly set.
 
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP
-.B HDEPEND
-This should contain a list of all packages that are required to be executable
-during compilation of this program (aka \fIhost\fR buildtime dependencies).
-These are usually tools, like interpreters or (cross\-)compilers.
+.B BDEPEND
+This should contain a list of all packages that are required to be
+executable during compilation of this program (aka \fInative build\fR
+dependencies).  These are usually tools, like interpreters or
+(cross\-)compilers.  They will be installed into the system performing
+the build.
 
-This variable is new in experimental \fBEAPI 5-hdepend\fR and will be installed
-into the \fIhost\fR system.
-(See section \fBCross-compilation\fR for more information.)
+This variable was formally introduced in \fBEAPI 7\fR but was
+previously known as \fBHDEPEND\fR in the experimental
+\fBEAPI 5-hdepend\fR.
 
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP
@@ -1092,20 +1051,28 @@ has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .B hasv\fR \fI<item>\fR \fI<item list>
 Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.
 .TP
-.B has_version\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
-Check to see if \fIcategory/package\-version\fR is installed on the system.
-The parameter accepts all values that are acceptable in the \fBDEPEND\fR
-variable.  The function returns 0 if \fIcategory/package\-version\fR is
-installed, 1 otherwise. Beginning with \fBEAPI 5\fR, the
-\-\-host\-root option may be used in order to cause the query
-to apply to the host root instead of ${ROOT}.
+.B has_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
+Check to see if \fIcategory/package\-version\fR is installed.  The
+parameter accepts all values that are acceptable in the \fBDEPEND\fR
+variable.  The function returns 0 if \fIcategory/package\-version\fR
+is installed, 1 otherwise. The package is searched for in \fBROOT\fR
+by default.
+
+In \fBEAPI 5\fR and \fBEAPI 6\fR, the package is searched for in the
+build host if the \fI\-\-host\-root\fR option is given.
+
+In \fBEAPI 7\fR and later, the confusing \fI\-\-host\-root\fR option
+has been replaced with \fI\-b\fR, which corresponds to a dependency
+satisfied by \fBBDEPEND\fR in the build host.  Similarly, the
+\fI\-d\fR option corresponds to \fBDEPEND\fR in \fBSYSROOT\fR and the
+\fI\-r\fR option corresponds to \fBRDEPEND\fR in \fBROOT\fR.
 .TP
-.B best_version\fR \fI[\-\-host\-root]\fR \fI<package name>
-This function will look up \fIpackage name\fR in the database of currently
-installed programs and echo the "best version" of the package that is
-currently installed. Beginning with \fBEAPI 5\fR, the
-\-\-host\-root option may be used in order to cause the query
-to apply to the host root instead of ${ROOT}.
+.B best_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<package name>
+This function will look up \fIpackage name\fR in the database of
+currently installed packages and echo the "best version" of the
+package that is found or nothing if no version is installed.  The
+package is searched for in \fBROOT\fR by default.  It accepts the same
+options as \fBhas_version\fR.
 
 Example:
 .nf

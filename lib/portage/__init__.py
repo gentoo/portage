@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -112,11 +112,7 @@ try:
 		'time',
 	)
 
-	try:
-		from collections import OrderedDict
-	except ImportError:
-		proxy.lazyimport.lazyimport(globals(),
-			'portage.cache.mappings:OrderedDict')
+	from collections import OrderedDict
 
 	import portage.const
 	from portage.const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
@@ -133,8 +129,8 @@ except ImportError as e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
-	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the\n")
-	sys.stderr.write("!!! ebuild repository under '/usr/portage/sys-apps/portage/files/' (default).\n")
+	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the ebuild\n")
+	sys.stderr.write("!!! repository under '/var/db/repos/gentoo/sys-apps/portage/files/' (default).\n")
 	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
 	sys.stderr.write("    "+str(e)+"\n\n")
@@ -463,8 +459,21 @@ def abssymlink(symlink, target=None):
 
 _doebuild_manifest_exempt_depend = 0
 
-_testing_eapis = frozenset(["4-python", "4-slot-abi", "5-progress", "5-hdepend", "7_pre1", "7"])
-_deprecated_eapis = frozenset(["4_pre1", "3_pre2", "3_pre1", "5_pre1", "5_pre2", "6_pre1"])
+_testing_eapis = frozenset([
+	"4-python",
+	"5-progress",
+])
+_deprecated_eapis = frozenset([
+	"4_pre1",
+	"4-slot-abi",
+	"3_pre2",
+	"3_pre1",
+	"5_pre1",
+	"5_pre2",
+	"5-hdepend",
+	"6_pre1",
+	"7_pre1",
+])
 _supported_eapis = frozenset([str(x) for x in range(portage.const.EAPI + 1)] + list(_testing_eapis) + list(_deprecated_eapis))
 
 def _eapi_is_deprecated(eapi):

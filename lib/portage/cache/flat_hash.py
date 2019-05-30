@@ -1,4 +1,4 @@
-# Copyright 2005-2016 Gentoo Foundation
+# Copyright 2005-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -144,7 +144,7 @@ class database(fs_template.FsBased):
 					# Only recurse 1 deep, in order to avoid iteration over
 					# entries from another nested cache instance. This can
 					# happen if the user nests an overlay inside
-					# /usr/portage/local as in bug #302764.
+					# /var/db/repos/gentoo/local as in bug #302764.
 					if depth < 1:
 						dirs.append((depth+1, p))
 					continue

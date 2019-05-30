@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.64
+--------------
+* New (council approved) default locations for the Gentoo repository,
+  distfiles, and binary packages (does not apply to installed systems
+  using the old defaults):
+  /usr/portage -> /var/db/repos/gentoo
+  /usr/portage/distfiles -> /var/cache/distfiles
+  /usr/portage/packages -> /var/cache/binpkgs
+
 portage-2.3.53
 --------------
 * Renamed PORT_LOGDIR and PORT_LOGDIR_CLEAN variables to

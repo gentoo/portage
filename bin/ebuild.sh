@@ -763,8 +763,8 @@ else
 
 	# If ${EBUILD_FORCE_TEST} == 1 and USE came from ${T}/environment
 	# then it might not have USE=test like it's supposed to here.
-	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 &&
-		test =~ ${PORTAGE_IUSE} ]] && ! has test ${USE} ; then
+	if [[ ${EBUILD_PHASE} == test && ${EBUILD_FORCE_TEST} == 1 ]] &&
+		___in_portage_iuse test && ! has test ${USE} ; then
 		export USE="${USE} test"
 	fi
 	declare -r USE

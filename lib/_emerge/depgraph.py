@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -12,11 +12,11 @@ import stat
 import sys
 import textwrap
 import warnings
-from collections import deque
+from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os, OrderedDict
+from portage import os
 from portage import _unicode_decode, _unicode_encode, _encodings
 from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
 from portage.dbapi import dbapi
@@ -47,6 +47,7 @@ from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 from portage.util import ensure_dirs
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
+from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -605,8 +606,7 @@ class depgraph(object):
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
-		self._event_loop = (portage._internal_caller and
-			global_event_loop() or EventLoop(main=False))
+		self._event_loop = asyncio._safe_loop()
 
 		self._select_atoms_parent = None
 

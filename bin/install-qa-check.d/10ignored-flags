@@ -66,7 +66,7 @@ ignored_flag_check() {
 	# Check for files built without respecting LDFLAGS
 	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
 		! has binchecks ${RESTRICT} ; then
-		f=$(LC_ALL=C comm -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
+		f=$(LC_ALL=C comm -2 -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
 			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log

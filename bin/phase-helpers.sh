@@ -237,9 +237,9 @@ use() {
 	# Make sure we have this USE flag in IUSE, but exempt binary
 	# packages for API consumers like Entropy which do not require
 	# a full profile with IUSE_IMPLICIT and stuff (see bug #456830).
-	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE &&
-		-n $PORTAGE_INTERNAL_CALLER ]] ; then
-		if [[ ! $u =~ $PORTAGE_IUSE ]] ; then
+	elif declare -f ___in_portage_iuse >/dev/null &&
+		[[ -n ${EBUILD_PHASE} && -n ${PORTAGE_INTERNAL_CALLER} ]] ; then
+		if ! ___in_portage_iuse "${u}"; then
 			if [[ ${EMERGE_FROM} != binary &&
 				! ${EAPI} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]] ; then
 				# This is only strict starting with EAPI 5, since implicit IUSE
@@ -853,7 +853,7 @@ __eapi4_src_install() {
 				THANKS BUGS FAQ CREDITS CHANGELOG ; do
 			[[ -s "${d}" ]] && dodoc "${d}"
 		done
-	elif [[ $(declare -p DOCS) == "declare -a "* ]] ; then
+	elif ___is_indexed_array_var DOCS ; then
 		dodoc "${DOCS[@]}"
 	else
 		dodoc ${DOCS}
@@ -861,7 +861,7 @@ __eapi4_src_install() {
 }
 
 __eapi6_src_prepare() {
-	if [[ $(declare -p PATCHES 2>/dev/null) == "declare -a"* ]]; then
+	if ___is_indexed_array_var PATCHES ; then
 		[[ ${#PATCHES[@]} -gt 0 ]] && eapply "${PATCHES[@]}"
 	elif [[ -n ${PATCHES} ]]; then
 		eapply ${PATCHES}
@@ -1012,7 +1012,7 @@ if ___eapi_has_einstalldocs; then
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do
 					[[ -f ${d} && -s ${d} ]] && docinto / && dodoc "${d}"
 				done
-			elif [[ $(declare -p DOCS) == "declare -a"* ]] ; then
+			elif ___is_indexed_array_var DOCS ; then
 				[[ ${#DOCS[@]} -gt 0 ]] && docinto / && dodoc -r "${DOCS[@]}"
 			else
 				[[ ${DOCS} ]] && docinto / && dodoc -r ${DOCS}
@@ -1020,7 +1020,7 @@ if ___eapi_has_einstalldocs; then
 		)
 
 		(
-			if [[ $(declare -p HTML_DOCS 2>/dev/null) == "declare -a"* ]] ; then
+			if ___is_indexed_array_var HTML_DOCS ; then
 				[[ ${#HTML_DOCS[@]} -gt 0 ]] && \
 					docinto html && dodoc -r "${HTML_DOCS[@]}"
 			else

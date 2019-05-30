@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -109,6 +109,7 @@ class RepoConfig(object):
 		'sync_allow_hardlinks',
 		'sync_depth',
 		'sync_hooks_only_on_change',
+		'sync_openpgp_keyserver',
 		'sync_openpgp_key_path',
 		'sync_openpgp_key_refresh_retry_count',
 		'sync_openpgp_key_refresh_retry_delay_exp_base',
@@ -223,6 +224,9 @@ class RepoConfig(object):
 
 		self.sync_allow_hardlinks = repo_opts.get(
 			'sync-allow-hardlinks', 'true').lower() in ('true', 'yes')
+
+		self.sync_openpgp_keyserver = repo_opts.get(
+			'sync-openpgp-keyserver', '').strip().lower() or None
 
 		self.sync_openpgp_key_path = repo_opts.get(
 			'sync-openpgp-key-path', None)
@@ -601,6 +605,7 @@ class RepoConfigLoader(object):
 							'sync_allow_hardlinks',
 							'sync_depth',
 							'sync_hooks_only_on_change',
+							'sync_openpgp_keyserver',
 							'sync_openpgp_key_path',
 							'sync_openpgp_key_refresh_retry_count',
 							'sync_openpgp_key_refresh_retry_delay_exp_base',
@@ -728,8 +733,11 @@ class RepoConfigLoader(object):
 			location_map.clear()
 			treemap.clear()
 
-		default_portdir = os.path.join(os.sep,
-			settings['EPREFIX'].lstrip(os.sep), 'usr', 'portage')
+		repo_locations = frozenset(repo.location for repo in prepos.values())
+		for repo_location in ('var/db/repos/gentoo', 'usr/portage'):
+			default_portdir = os.path.join(os.sep, settings['EPREFIX'].lstrip(os.sep), repo_location)
+			if default_portdir in repo_locations:
+				break
 
 		# If PORTDIR_OVERLAY contains a repo with the same repo_name as
 		# PORTDIR, then PORTDIR is overridden.
@@ -1047,6 +1055,7 @@ class RepoConfigLoader(object):
 			"main_repo",
 			"priority",
 			"sync_depth",
+			"sync_openpgp_keyserver",
 			"sync_openpgp_key_path",
 			"sync_openpgp_key_refresh_retry_count",
 			"sync_openpgp_key_refresh_retry_delay_exp_base",

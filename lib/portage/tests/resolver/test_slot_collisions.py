@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -46,8 +46,8 @@ class SlotCollisionTestCase(TestCase):
 			"app-misc/E-1": { "RDEPEND": "dev-libs/E[foo?]", "IUSE": "foo", "EAPI": "2" },
 			"app-misc/F-1": { "RDEPEND": "=dev-libs/E-1", "IUSE": "foo", "EAPI": "2" },
 
-			"dev-lang/perl-5.12": {"SLOT": "0/5.12", "EAPI": "4-slot-abi"},
-			"dev-lang/perl-5.16": {"SLOT": "0/5.16", "EAPI": "4-slot-abi"},
+			"dev-lang/perl-5.12": {"SLOT": "0/5.12", "EAPI": "5"},
+			"dev-lang/perl-5.16": {"SLOT": "0/5.16", "EAPI": "5"},
 			}
 		installed = {
 			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" }, 
