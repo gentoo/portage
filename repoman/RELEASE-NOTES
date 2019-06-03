@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.14
+==================================
+* Bug Fixes:
+    - Bug 666330 Update for new copyright policy
+
+
 repoman-2.3.13
 ==================================
 * Bug Fixes:
