@@ -7,8 +7,6 @@ __all__ = ["EPREFIX", "SYSCONFDIR", "PORTAGE_BASE",
 		"portageuser", "portagegroup", "rootuser", "rootuid", "rootgid",
 		"PORTAGE_BASH", "PORTAGE_MV"]
 
-from os import path
-
 EPREFIX      = "@PORTAGE_EPREFIX@"
 SYSCONFDIR   = "@sysconfdir@"
 PORTAGE_BASE = "@PORTAGE_BASE@"
