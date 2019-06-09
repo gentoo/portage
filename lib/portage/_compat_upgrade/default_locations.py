@@ -9,6 +9,7 @@ from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_DISTDIR = 'usr/portage/distfiles'
 COMPAT_PKGDIR = 'usr/portage/packages'
+COMPAT_RPMDIR = 'usr/portage/rpm'
 COMPAT_MAIN_REPO = 'usr/portage'
 
 
@@ -46,13 +47,19 @@ def main():
 	except OSError:
 		do_pkgdir = False
 
+	compat_rpmdir = os.path.join(portage.const.EPREFIX or '/', COMPAT_RPMDIR)
+	try:
+		do_rpmdir = os.path.samefile(config['RPMDIR'], compat_rpmdir)
+	except OSError:
+		do_rpmdir = False
+
 	compat_main_repo = os.path.join(portage.const.EPREFIX or '/', COMPAT_MAIN_REPO)
 	try:
 		do_main_repo = os.path.samefile(config.repositories.mainRepoLocation(), compat_main_repo)
 	except OSError:
 		do_main_repo = False
 
-	if do_distdir or do_pkgdir:
+	if do_distdir or do_pkgdir or do_rpmdir:
 		config_path = os.path.join(os.environ['ED'], GLOBAL_CONFIG_PATH.lstrip(os.sep), 'make.globals')
 		with open(config_path) as f:
 			content = f.read()
@@ -64,6 +71,10 @@ def main():
 				compat_setting = 'PKGDIR="{}"'.format(compat_pkgdir)
 				out.einfo('Setting make.globals default {} for backward compatibility'.format(compat_setting))
 				content = re.sub('^PKGDIR=.*$', compat_setting, content, flags=re.MULTILINE)
+			if do_rpmdir:
+				compat_setting = 'RPMDIR="{}"'.format(compat_rpmdir)
+				out.einfo('Setting make.globals default {} for backward compatibility'.format(compat_setting))
+				content = re.sub('^RPMDIR=.*$', compat_setting, content, flags=re.MULTILINE)
 		with open(config_path, 'wt') as f:
 			f.write(content)
 

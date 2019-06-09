@@ -29,7 +29,7 @@ ACCEPT_RESTRICT="*"
 # Miscellaneous paths
 DISTDIR="/var/cache/distfiles"
 PKGDIR="/var/cache/binpkgs"
-RPMDIR="/usr/portage/rpm"
+RPMDIR="/var/cache/rpm"
 
 # Temporary build directory
 PORTAGE_TMPDIR="/var/tmp"
