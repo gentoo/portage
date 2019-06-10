@@ -51,6 +51,7 @@ from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
 	writemsg, writemsg_level, _eapi_cache
+from portage.util.install_mask import _raise_exc
 from portage.util.path import first_existing
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.versions import catpkgsplit, catsplit, cpv_getkey, _pkg_str
@@ -596,10 +597,8 @@ class config(object):
 					verify_eapi=True, eapi=x.eapi, eapi_default=None,
 					allow_build_id=x.allow_build_id)
 					for x in profiles_complex]
-			except IOError as e:
-				if e.errno == IsADirectory.errno:
-					raise IsADirectory(os.path.join(self.profile_path,
-									 "packages"))
+			except EnvironmentError as e:
+				_raise_exc(e)
 
 			self.packages = tuple(stack_lists(packages_list, incremental=1))
 
