@@ -17,7 +17,8 @@ class EbuildHeader(LineCheck):
 
 	repoman_check_name = 'ebuild.badheader'
 
-	gentoo_copyright = r'^# Copyright ((1999|2\d\d\d)-)?%s Gentoo Authors$'
+	gentoo_copyright = (
+		r'^# Copyright ((1999|2\d\d\d)-)?(?P<year2>%s) (?P<author>.*)$')
 	gentoo_license = (
 		'# Distributed under the terms'
 		' of the GNU General Public License v2')
@@ -37,7 +38,12 @@ class EbuildHeader(LineCheck):
 		if num > 2:
 			return
 		elif num == 0:
-			if not self.gentoo_copyright_re.match(line):
+			match = self.gentoo_copyright_re.match(line)
+			if match is None:
+				return self.errors['COPYRIGHT_ERROR']
+			if not (match.group('author') == 'Gentoo Authors' or
+					(int(match.group('year2')) < 2019 and
+						match.group('author') == 'Gentoo Foundation')):
 				return self.errors['COPYRIGHT_ERROR']
 		elif num == 1 and line.rstrip('\n') != self.gentoo_license:
 			return self.errors['LICENSE_ERROR']
