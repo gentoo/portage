@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Apr 2019" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Jun 2019" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -992,6 +992,7 @@ not always be the highest version number due to masking
 for testing and development. Package atoms specified on
 the command line are greedy, meaning that unspecific
 atoms may match multiple versions of slotted packages.
+This option also implies the \fB\-\-selective\fR option.
 .TP
 .BR "\-\-use\-ebuild\-visibility [ y | n ]"
 Use unbuilt ebuild metadata for visibility
