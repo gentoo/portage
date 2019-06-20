@@ -14,6 +14,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce,_match_slot',
 	'portage.package.ebuild.doebuild:doebuild',
+	'portage.package.ebuild.fetch:_download_suffix',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
 	'portage.versions:best,catsplit,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp,_pkg_str',
@@ -844,6 +845,17 @@ class portdbapi(dbapi):
 				mystat = os.stat(file_path)
 			except OSError:
 				pass
+			else:
+				if mystat.st_size != fetch_size:
+					# Use file with _download_suffix instead.
+					mystat = None
+
+			if mystat is None:
+				try:
+					mystat = os.stat(file_path + _download_suffix)
+				except OSError:
+					pass
+
 			if mystat is None:
 				existing_size = 0
 				ro_distdirs = self.settings.get("PORTAGE_RO_DISTDIRS")
