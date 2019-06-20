@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.15
+==================================
+* Bug Fixes:
+    - Bug 688278 Accept 'Gentoo Foundation' copyright for old ebuilds
+
+
 repoman-2.3.14
 ==================================
 * Bug Fixes:
