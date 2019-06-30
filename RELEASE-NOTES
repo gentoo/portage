@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.68
+==================================
+* Bug Fixes:
+    - Bug 687814 config: don't swallow IOError for "packages" files
+    - Bug 688124 fix emerge fetch download size calculation for resume
+    - Bug 688648 fix emerge --sync keyserver None message
+
+
 portage-2.3.67
 ==================================
 * Bug Fixes:
