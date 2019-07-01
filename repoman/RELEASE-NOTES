@@ -1,6 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.16
+==================================
+* Bug Fixes:
+    - Bug 687420 Allow empty LICENSE in acct-* packages for GLEP 81
+
+
+repoman-2.3.15
+==================================
+* Bug Fixes:
+    - Bug 688278 Accept 'Gentoo Foundation' copyright for old ebuilds
+
+
+repoman-2.3.14
+==================================
+* Bug Fixes:
+    - Bug 666330 Update for new copyright policy
+
+
 repoman-2.3.13
 ==================================
 * Bug Fixes:

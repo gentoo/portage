@@ -12,7 +12,12 @@ import sys
 
 from portage import os, _unicode_decode
 from portage.exception import (
-	OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem, FileNotFound)
+	FileNotFound,
+	IsADirectory,
+	OperationNotPermitted,
+	PermissionDenied,
+	ReadOnlyFileSystem,
+)
 from portage.util import normalize_path
 
 if sys.hexversion >= 0x3000000:
@@ -127,6 +132,7 @@ class InstallMask(object):
 
 
 _exc_map = {
+	errno.EISDIR: IsADirectory,
 	errno.ENOENT: FileNotFound,
 	errno.EPERM: OperationNotPermitted,
 	errno.EACCES: PermissionDenied,

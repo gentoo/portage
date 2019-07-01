@@ -39,8 +39,8 @@ class EbuildMetadata(ScanBase):
 		ebuild = kwargs.get('ebuild').get()
 		for pos, missing_var in enumerate(self.repo_settings.qadata.missingvars):
 			if not ebuild.metadata.get(missing_var):
-				if kwargs.get('catdir') == "virtual" and \
-					missing_var in ("HOMEPAGE", "LICENSE"):
+				if (kwargs.get('catdir') in ("acct-group", "acct-user", "virtual")
+						and missing_var in ("HOMEPAGE", "LICENSE")):
 					continue
 				if ebuild.live_ebuild and missing_var == "KEYWORDS":
 					continue

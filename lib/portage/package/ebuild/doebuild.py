@@ -2353,7 +2353,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			f.close()
 
 	metadata = {}
-	for k in ("QA_PREBUILT", "QA_NO_SYMLINK"):
+	for k in ("QA_PREBUILT", "QA_SONAME_NO_SYMLINK"):
 		try:
 			with io.open(_unicode_encode(os.path.join(
 				mysettings["PORTAGE_BUILDDIR"],
@@ -2374,14 +2374,14 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			fnmatch.translate(x.lstrip(os.sep))
 			for x in portage.util.shlex_split(qa_prebuilt)))
 
-	qa_no_symlink = metadata.get("QA_NO_SYMLINK", "").split()
-	if qa_no_symlink:
-		if len(qa_no_symlink) > 1:
-			qa_no_symlink = "|".join("(%s)" % x for x in qa_no_symlink)
-			qa_no_symlink = "^(%s)$" % qa_no_symlink
+	qa_soname_no_symlink = metadata.get("QA_SONAME_NO_SYMLINK", "").split()
+	if qa_soname_no_symlink:
+		if len(qa_soname_no_symlink) > 1:
+			qa_soname_no_symlink = "|".join("(%s)" % x for x in qa_soname_no_symlink)
+			qa_soname_no_symlink = "^(%s)$" % qa_soname_no_symlink
 		else:
-			qa_no_symlink = "^%s$" % qa_no_symlink[0]
-		qa_no_symlink = re.compile(qa_no_symlink)
+			qa_soname_no_symlink = "^%s$" % qa_soname_no_symlink[0]
+		qa_soname_no_symlink = re.compile(qa_soname_no_symlink)
 
 	libpaths = set(portage.util.getlibpaths(
 		mysettings["ROOT"], env=mysettings))
@@ -2490,7 +2490,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 			continue
 		if not is_libdir(os.path.dirname(obj)):
 			continue
-		if qa_no_symlink and qa_no_symlink.match(obj.strip(os.sep)) is not None:
+		if qa_soname_no_symlink and qa_soname_no_symlink.match(obj.strip(os.sep)) is not None:
 			continue
 
 		obj_file_path = os.path.join(image_dir, obj.lstrip(os.sep))

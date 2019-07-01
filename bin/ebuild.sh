@@ -8,6 +8,7 @@ unalias -a
 
 # Make sure this isn't exported to scripts we execute.
 unset BASH_COMPAT
+export -n -f ___in_portage_iuse
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 
