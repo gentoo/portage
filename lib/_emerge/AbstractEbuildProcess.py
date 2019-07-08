@@ -73,10 +73,11 @@ class AbstractEbuildProcess(SpawnProcess):
 
 		# Check if the cgroup hierarchy is in place. If it's not, mount it.
 		if (os.geteuid() == 0 and platform.system() == 'Linux'
-				and 'cgroup' in self.settings.features
+				and ('cgroup' in self.settings.features or 'cgroup-freezer' in self.settings.features)
 				and self.phase not in _global_pid_phases):
 			cgroup_root = '/sys/fs/cgroup'
 			cgroup_portage = os.path.join(cgroup_root, 'portage')
+			cgroup_portage_freezer = os.path.join(cgroup_root + '/freezer', 'portage')
 
 			try:
 				# cgroup tmpfs
@@ -87,6 +88,28 @@ class AbstractEbuildProcess(SpawnProcess):
 					subprocess.check_call(['mount', '-t', 'tmpfs',
 						'-o', 'rw,nosuid,nodev,noexec,mode=0755',
 						'tmpfs', cgroup_root])
+
+				if 'cgroup-freezer' in self.settings.features:
+					if not os.path.ismount(cgroup_root + '/freezer'):
+						if not os.path.isdir(cgroup_root + '/freezer'):
+							os.mkdir(cgroup_root + '/freezer', 0o755)
+						subprocess.check_call(['mount', '-t', 'cgroup',
+							'-o', 'rw,nosuid,nodev,noexec,relatime,freezer',
+							'freezer', cgroup_root + '/freezer'])
+					if not os.path.isdir(cgroup_portage_freezer):
+						os.mkdir(cgroup_portage_freezer, 0o755)
+					with open(os.path.join(
+						cgroup_root + '/freezer', 'release_agent'), 'w') as f:
+						f.write(os.path.join(self.settings['PORTAGE_BIN_PATH'],
+							'cgroup-freezer-release-agent'))
+					with open(os.path.join(
+						cgroup_portage_freezer, 'notify_on_release'), 'w') as f:
+						f.write('1')
+					cgroup_freezer_path = tempfile.mkdtemp(dir=cgroup_portage_freezer,
+							prefix='%s:%s.' % (self.settings["CATEGORY"],
+							self.settings["PF"]))
+					# TODO: The cgroup logic below has some extra steps to update the release agent if portage is updating portage
+					#		I'm not 100% sure what this code does and if it's needed. Do I need similar code here too?
 
 				# portage subsystem
 				if not os.path.ismount(cgroup_portage):
@@ -125,9 +148,11 @@ class AbstractEbuildProcess(SpawnProcess):
 					prefix='%s:%s.' % (self.settings["CATEGORY"],
 					self.settings["PF"]))
 			except (subprocess.CalledProcessError, OSError):
+				raise subprocess.CalledProcessError
 				pass
 			else:
 				self.cgroup = cgroup_path
+				self.cgroup_freezer = cgroup_freezer_path
 
 		if self.background:
 			# Automatically prevent color codes from showing up in logs,

@@ -1,0 +1,6 @@
+#!/bin/sh
+# notify_on_release triggers for /sys/fs/freezer/portage too
+# We never want to call `rmdir` on this directory so if the
+# length of $1 is 8 (the same length as `/portage`)
+# skip the call to rmdir
+[ "${#1}" -gt 8 ] && exec rmdir "/sys/fs/cgroup/freezer/${1}"
