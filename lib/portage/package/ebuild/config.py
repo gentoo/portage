@@ -1205,6 +1205,10 @@ class config(object):
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
+		if "webrsync-gpg" in self.features:
+			writemsg(_("!!! FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page.\n"),
+				noiselevel=-1)
+
 		if os.getuid() == 0 and not hasattr(os, "setgroups"):
 			warning_shown = False
 

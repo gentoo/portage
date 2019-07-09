@@ -50,7 +50,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
-	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
+	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
 	USERLAND http_proxy ftp_proxy)"
 export http_proxy ftp_proxy
 
@@ -74,9 +74,21 @@ do_verbose=0
 do_debug=0
 keep=false
 
-if has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature | \
+has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+
+if [[ ${webrsync_gpg} -eq 1 ]]; then
+	wecho "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
+fi
+
+if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
+	has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature |
 	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
-	if [[ ! -d ${PORTAGE_GPG_DIR} ]]; then
+	# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
+	# calls for backward compatibility (this triggers a deprecation warning
+	# above). Since direct emerge-webrsync calls do not use gemato for secure
+	# key refresh, this behavior will not be supported in a future release.
+	if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) &&
+		-z ${PORTAGE_TEMP_GPG_DIR} ]]; then
 		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
 		exit 1
 	fi
@@ -86,6 +98,7 @@ elif has webrsync-gpg ${FEATURES}; then
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
 fi
+[[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	eecho "please set PORTAGE_GPG_DIR in make.conf"
 	exit 1
