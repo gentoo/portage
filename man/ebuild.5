@@ -411,6 +411,9 @@ should be prefixed with ${D}.
 Beginning with \fBEAPI 3\fR, the offset prefix often needs
 to be taken into account here, for which the variable
 ${ED} is provided (see below).
+Note that with \fBEAPI 7\fR, any trailing slash
+contained in this path will be automatically removed for ease of concatenating
+paths within ebuilds.
 Do not modify this variable.
 .TP
 .B ED\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"
@@ -418,7 +421,9 @@ Beginning with \fBEAPI 3\fR, contains the path
 "${D%/}${EPREFIX}/" for convenience purposes.
 For EAPI values prior to \fBEAPI 3\fR which do
 not support ED, helpers use \fBD\fR where
-they would otherwise use ED.
+they would otherwise use ED. Note that with \fBEAPI 7\fR, any trailing slash
+contained in this path will be automatically removed for ease of concatenating
+paths within ebuilds.
 Do not modify this variable.
 .TP
 .B MERGE_TYPE
@@ -477,6 +482,18 @@ excluded during generation of \fBREQUIRES\fR metadata (see
 possible to create patterns containing quoted whitespace.
 .TP
 .B ROOT\fR = \fI"/"
+Please note an important recent change regarding the ROOT variable -- in \fBEAPI 7\fR ebuilds,
+this variable will default to "" rather than the traditional "/" within ebuilds
+when pointing to the root filesystem, and when set to a non-root path
+this variable will never contain a trailing slash. This has the added
+convenience of eliminating the need to
+specify "${ROOT%/}" when concatenating paths, making the use of ROOT
+more elegant. This applies to the variables EROOT, D and ED as well. Please
+make note that this will
+mean that ebuilds must use different logic in conditionals to determine if
+they are installing to the root filesystem -- use [[ "$ROOT" == "" ]] instead of
+[[ "$ROOT" == "/" ]].
+
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
 the tree prefixed by ${ROOT}.  Often the offset prefix needs to be taken
@@ -486,7 +503,10 @@ below).  Do not modify this variable.
 .B EROOT\fR = \fI"${ROOT%/}${EPREFIX}/"
 Beginning with \fBEAPI 3\fR, contains
 "${ROOT%/}${EPREFIX}/" for convenience
-purposes. Do not modify this variable.
+purposes. Do not modify this variable. Also see the important note regarding
+ROOT with \fBEAPI 7\fR, above. As with ROOT, EROOT will be defined as ""
+when set to the root filesystem and never have a trailing slash within an
+ebuild.
 .TP
 .B BROOT\fR = \fI"${EPREFIX}"
 Beginning with \fBEAPI 7\fR, the absolute path to the root directory
