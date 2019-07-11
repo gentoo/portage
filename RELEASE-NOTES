@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.69
+==================================
+* Bug Fixes:
+    - Bug 642604 handle empty EPREFIX, ROOT, SYSROOT, etc settings
+    - Bug 680810 ebuild.sh: suppress export error messages for eix-update
+    - Bug 689072 default repo.conf sync-openpgp-keyserver to
+      hkps://keys.gentoo.org in order to prevent key poisoning
+    - Bug 689506 default repos.conf sync-webrsync-verify-signature
+
+
 portage-2.3.68
 ==================================
 * Bug Fixes:
