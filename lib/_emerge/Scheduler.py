@@ -7,6 +7,7 @@ from collections import deque
 import gc
 import gzip
 import logging
+import platform
 import signal
 import sys
 import textwrap
@@ -273,6 +274,9 @@ class Scheduler(PollScheduler):
 		self._choose_pkg_return_early = False
 
 		features = self.settings.features
+
+		self._cgroup_freezer = (os.geteuid() == 0 and platform.system() == 'Linux' and 'cgroup-freezer' in features)
+
 		if "parallel-fetch" in features and \
 			not ("--pretend" in self.myopts or \
 			"--fetch-all-uri" in self.myopts or \
@@ -1015,6 +1019,10 @@ class Scheduler(PollScheduler):
 				signal.signal(signal.SIGCONT, self._sigcont_handler)
 			signal.siginterrupt(signal.SIGCONT, False)
 
+			earlier_sigtstp_handler = None
+			if self._cgroup_freezer:
+				earlier_sigtstp_handler = signal.signal(signal.SIGTSTP, self._freeze_or_thaw_process)
+
 			try:
 				rval = self._merge()
 			finally:
@@ -1031,6 +1039,10 @@ class Scheduler(PollScheduler):
 					signal.signal(signal.SIGCONT, earlier_sigcont_handler)
 				else:
 					signal.signal(signal.SIGCONT, signal.SIG_DFL)
+				if earlier_sigtstp_handler is not None:
+					signal.signal(signal.SIGTSTP, earlier_sigtstp_handler)
+				else:
+					signal.signal(signal.SIGTSTP, signal.SIG_DFL)
 
 			self._termination_check()
 			if received_signal:
@@ -1611,6 +1623,42 @@ class Scheduler(PollScheduler):
 			self._main_loadavg_handle.cancel()
 			self._main_loadavg_handle = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
+
+	# TODO: Can we do better than reading from procfs? Is there some python function
+	#		I can use or maybe the existing scheduling code can expose the pids of jobs somehow?
+	def _freeze_or_thaw_process(self, signum, frame):
+		signal.signal(signal.SIGCONT, signal.SIG_IGN)
+		signal.signal(signal.SIGTSTP, signal.SIG_IGN)
+
+		freezer_state = 'FROZEN'
+		if (signum == signal.SIGCONT):
+			freezer_state = 'THAWED'
+			self._sigcont_handler(signum, frame)
+
+		children = open('/proc/self/task/' + str(os.getpid()) + '/children').read().split(' ')
+		children.pop() # last element is EOL
+		for child_process in children:
+			try:
+				with open('/proc/' + child_process + '/cgroup') as f:
+					line = f.readline().split(':')
+					while len(line) > 1:
+						if line[1] == 'freezer' and line[2].startswith('/portage'):
+							freezer = '/sys/fs/cgroup/freezer' + line[2] + ':' + line[3].replace('\n','')
+							freezer = os.path.join(freezer, 'freezer.state')
+							with open(freezer, 'a') as f:
+								f.write('%s\n' % freezer_state)
+							break
+						line = f.readline().split(':')
+			except FileNotFoundError:
+				continue
+		if signum == signal.SIGTSTP:
+			signal.signal(signal.SIGCONT, self._freeze_or_thaw_process)
+			# Set our signal handler back to default behaviour and trigger a SIGTSTP to suspend our emerge process
+			# Once we receive a SIGCONT event our signal handlers will be set back to this function and our child processes will be thawed
+			signal.signal(signal.SIGTSTP, signal.SIG_DFL)
+			os.kill(os.getpid(), signal.SIGTSTP)
+		signal.signal(signal.SIGCONT, self._freeze_or_thaw_process)
+		signal.signal(signal.SIGTSTP, self._freeze_or_thaw_process)
 
 	def _sigcont_handler(self, signum, frame):
 		self._sigcont_time = time.time()
