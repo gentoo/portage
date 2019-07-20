@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -31,6 +31,7 @@ from portage import os, shutil
 from portage import _encodings, _unicode_decode
 from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
 from portage.process import find_binary, spawn
+from portage.util import writemsg, writemsg_stdout
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -294,7 +295,7 @@ class dispatch:
                     diff_pager(conf['current'], newconf)
 
                 print()
-                print('>> (%i of %i) -- %s' % (count, len(confs), conf ['current']))
+                writemsg_stdout('>> (%i of %i) -- %s\n' % (count, len(confs), conf['current']), noiselevel=-1)
                 print('>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ', end=' ')
 
                 # In some cases getch() will return some spurious characters
@@ -369,7 +370,7 @@ class dispatch:
             print(" One or more updates are frozen and have been automatically zapped:")
             print()
             for frozen in auto_zapped:
-                print("  * '%s'" % frozen)
+                writemsg_stdout("  * '%s'\n" % frozen, noiselevel=-1)
             print()
 
     def replace (self, newconf, curconf):
@@ -384,8 +385,8 @@ class dispatch:
         try:
             os.rename(newconf, curconf)
         except (IOError, os.error) as why:
-            print('dispatch-conf: Error renaming %s to %s: %s; fatal' % \
-                  (newconf, curconf, str(why)), file=sys.stderr)
+            writemsg('dispatch-conf: Error renaming %s to %s: %s; fatal\n' % \
+                  (newconf, curconf, str(why)), noiselevel=-1)
 
 
     def post_process(self, curconf):
