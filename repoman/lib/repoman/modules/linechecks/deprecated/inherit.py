@@ -30,6 +30,7 @@ class InheritDeprecated(LineCheck):
 		"mono": "mono-env",
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
+		"user": "GLEP 81",
 		"versionator": "eapi7-ver (built-in since EAPI 7)",
 		"x-modular": "xorg-2",
 	}
