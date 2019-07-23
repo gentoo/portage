@@ -65,7 +65,8 @@ class BinhostHandler(object):
 
 	def check(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
-		missing = []
+		bintree = self._bintree
+		_instance_key = bintree.dbapi._instance_key
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
 		maxval = len(cpv_all)
@@ -73,17 +74,22 @@ class BinhostHandler(object):
 			onProgress(maxval, 0)
 		pkgindex = self._pkgindex
 		missing = []
+		stale = []
 		metadata = {}
 		for d in pkgindex.packages:
-			metadata[d["CPV"]] = d
+			cpv = _pkg_str(d["CPV"], metadata=d,
+				settings=bintree.settings)
+			d["CPV"] = cpv
+			metadata[_instance_key(cpv)] = d
+			if not bintree.dbapi.cpv_exists(cpv):
+				stale.append(cpv)
 		for i, cpv in enumerate(cpv_all):
-			d = metadata.get(cpv)
+			d = metadata.get(_instance_key(cpv))
 			if not d or self._need_update(cpv, d):
 				missing.append(cpv)
 			if onProgress:
 				onProgress(maxval, i+1)
 		errors = ["'%s' is not in Packages" % cpv for cpv in missing]
-		stale = set(metadata).difference(cpv_all)
 		for cpv in stale:
 			errors.append("'%s' is not in the repository" % cpv)
 		if errors:
@@ -96,7 +102,6 @@ class BinhostHandler(object):
 		_instance_key = bintree.dbapi._instance_key
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
-		missing = []
 		maxval = 0
 		if onProgress:
 			onProgress(maxval, 0)
