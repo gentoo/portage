@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2018 Gentoo Authors
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -240,13 +240,11 @@ LIVE_ECLASSES = frozenset([
 	"bzr",
 	"cvs",
 	"darcs",
-	"git",
 	"git-2",
 	"git-r3",
 	"golang-vcs",
 	"mercurial",
 	"subversion",
-	"tla",
 ])
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
