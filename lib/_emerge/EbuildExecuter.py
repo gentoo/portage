@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.EbuildPhase import EbuildPhase
@@ -49,7 +49,7 @@ class EbuildExecuter(CompositeTask):
 			phase="unpack", scheduler=self.scheduler,
 			settings=self.settings)
 
-		if self._live_eclasses.intersection(self.pkg.inherited):
+		if "live" in self.settings.get("PROPERTIES", "").split():
 			# Serialize $DISTDIR access for live ebuilds since
 			# otherwise they can interfere with eachother.
 

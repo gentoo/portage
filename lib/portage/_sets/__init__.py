@@ -1,4 +1,4 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -121,8 +121,14 @@ class SetConfig(object):
 		parser.remove_section("live-rebuild")
 		parser.add_section("live-rebuild")
 		parser.set("live-rebuild", "class", "portage.sets.dbapi.VariableSet")
-		parser.set("live-rebuild", "variable", "INHERITED")
-		parser.set("live-rebuild", "includes", " ".join(sorted(portage.const.LIVE_ECLASSES)))
+		parser.set("live-rebuild", "variable", "PROPERTIES")
+		parser.set("live-rebuild", "includes", "live")
+
+		parser.remove_section("deprecated-live-rebuild")
+		parser.add_section("deprecated-live-rebuild")
+		parser.set("deprecated-live-rebuild", "class", "portage.sets.dbapi.VariableSet")
+		parser.set("deprecated-live-rebuild", "variable", "INHERITED")
+		parser.set("deprecated-live-rebuild", "includes", " ".join(sorted(portage.const.LIVE_ECLASSES)))
 
 		parser.remove_section("module-rebuild")
 		parser.add_section("module-rebuild")
