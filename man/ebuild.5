@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Apr 2019" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Jul 2019" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -708,13 +708,17 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
-.B PROPERTIES\fR = \fI[interactive]
+.B PROPERTIES\fR = \fI[interactive,live]
 A space delimited list of properties, with conditional syntax support.
 .PD 0
 .RS
 .TP
 .I interactive
 One or more ebuild phases will produce a prompt that requires user interaction.
+.TP
+.I live
+The package uses live source code that may vary each time that the package
+is installed.
 .RE
 .PD 1
 .TP
