@@ -115,13 +115,6 @@ _ipc_phases = frozenset([
 _global_pid_phases = frozenset([
 	'config', 'depend', 'preinst', 'prerm', 'postinst', 'postrm'])
 
-# phases in which networking access is allowed
-_networked_phases = frozenset([
-	# for VCS fetching
-	"unpack",
-	# + for network-bound IPC
-] + list(_ipc_phases))
-
 _phase_func_map = {
 	"config": "pkg_config",
 	"setup": "pkg_setup",
@@ -156,7 +149,9 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 		phase in _ipc_phases
 	kwargs['mountns'] = 'mount-sandbox' in settings.features
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		phase in _networked_phases or \
+		(phase == 'unpack' and \
+		'live' in settings.configdict['pkg'].get('PROPERTIES', '').split()) or \
+		phase in _ipc_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
 	kwargs['pidns'] = ('pid-sandbox' in settings.features and
 		phase not in _global_pid_phases)
