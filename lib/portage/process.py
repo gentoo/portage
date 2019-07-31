@@ -446,6 +446,42 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	# Everything succeeded
 	return 0
 
+def _configure_loopback_interface():
+	"""
+	Configure the loopback interface.
+	"""
+
+	IFF_UP = 0x1
+	ifreq = struct.pack('16sh', b'lo', IFF_UP)
+	SIOCSIFFLAGS = 0x8914
+
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+	try:
+		fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
+	except IOError as e:
+		writemsg("Unable to enable loopback interface: %s\n" % e.strerror, noiselevel=-1)
+	sock.close()
+
+	# We add some additional addresses to work around odd behavior in glibc's
+	# getaddrinfo() implementation when the AI_ADDRCONFIG flag is set.
+	#
+	# For example:
+	#
+	#   struct addrinfo *res, hints = { .ai_family = AF_INET, .ai_flags = AI_ADDRCONFIG };
+	#   getaddrinfo("localhost", NULL, &hints, &res);
+	#
+	# This returns no results if there are no non-loopback addresses
+	# configured for a given address family.
+	#
+	# Bug: https://bugs.gentoo.org/690758
+	# Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=12377#c13
+
+	try:
+		subprocess.call(['ip', 'address', 'add', '10.0.0.1/8', 'dev', 'lo'])
+		subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'])
+	except OSError as e:
+		writemsg("Error calling 'ip': %s\n" % e.strerror, noiselevel=-1)
+
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
 	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, unshare_pid,
@@ -624,19 +660,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 									noiselevel=-1)
 								os._exit(1)
 						if unshare_net:
-							# 'up' the loopback
-							IFF_UP = 0x1
-							ifreq = struct.pack('16sh', b'lo', IFF_UP)
-							SIOCSIFFLAGS = 0x8914
-
-							sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-							try:
-								fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
-							except IOError as e:
-								writemsg("Unable to enable loopback interface: %s\n" % (
-									errno.errorcode.get(e.errno, '?')),
-									noiselevel=-1)
-							sock.close()
+							_configure_loopback_interface()
 				except AttributeError:
 					# unshare() not supported by libc
 					pass
