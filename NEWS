@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.70
+--------------
+* The @live-rebuild package set now searches for PROPERTIES=live, see
+  bug 233589. The @deprecated-live-rebuild package set provides the
+  old behavior which was based on inherited eclasses.
+
 portage-2.3.64
 --------------
 * New (council approved) default locations for the Gentoo repository,

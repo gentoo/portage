@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.70
+==================================
+* Bug Fixes:
+    - Bug 233589 Support PROPERTIES=live
+    - Bug 690304 dispatch-conf unicode safety
+    - Bug 690446 emaint -c binhost support for binpkg-multi-instance
+    - Bug 690758 network-sandbox support for AI_ADDRCONFIG
+
+
 portage-2.3.69
 ==================================
 * Bug Fixes:
