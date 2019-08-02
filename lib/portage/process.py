@@ -478,8 +478,10 @@ def _configure_loopback_interface():
 
 	try:
 		subprocess.call(['ip', 'address', 'add', '10.0.0.1/8', 'dev', 'lo'])
-		subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'])
-	except OSError as e:
+		with open(os.devnull, 'wb', 0) as devnull:
+			subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'],
+				stdout=devnull, stderr=devnull)
+	except EnvironmentError as e:
 		writemsg("Error calling 'ip': %s\n" % e.strerror, noiselevel=-1)
 
 def _exec(binary, mycommand, opt_name, fd_pipes,
