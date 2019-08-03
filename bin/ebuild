@@ -56,6 +56,7 @@ from portage.exception import PermissionDenied, PortageKeyError, \
 from portage.localization import _
 import portage.util
 from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.actions import apply_priorities
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
@@ -125,6 +126,8 @@ if not opts.color == 'y' and \
 	portage.settings['NOCOLOR'] = 'true'
 	portage.settings.backup_changes('NOCOLOR')
 	portage.settings.lock()
+
+apply_priorities(portage.settings)
 
 ebuild = pargs.pop(0)
 
