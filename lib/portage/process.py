@@ -339,6 +339,9 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 		fd_pipes[1] = pw
 		fd_pipes[2] = pw
 
+	# Cache _has_ipv6() result for use in child processes.
+	_has_ipv6()
+
 	# This caches the libc library lookup and _unshare_validator results
 	# in the current process, so that results are cached for use in
 	# child processes.
@@ -446,6 +449,41 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	# Everything succeeded
 	return 0
 
+__has_ipv6 = None
+
+def _has_ipv6():
+	"""
+	Test that both userland and kernel support IPv6, by attempting
+	to create a socket and listen on any unused port of the IPv6
+	::1 loopback address.
+
+	@rtype: bool
+	@return: True if IPv6 is supported, False otherwise.
+	"""
+	global __has_ipv6
+
+	if __has_ipv6 is None:
+		if socket.has_ipv6:
+			sock = None
+			try:
+				# With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
+				# succeeds, but then the bind call fails with this error:
+				# [Errno 99] Cannot assign requested address.
+				sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+				sock.bind(('::1', 0))
+			except EnvironmentError:
+				__has_ipv6 = False
+			else:
+				__has_ipv6 = True
+			finally:
+				# python2.7 sockets do not support context management protocol
+				if sock is not None:
+					sock.close()
+		else:
+			__has_ipv6 = False
+
+	return __has_ipv6
+
 def _configure_loopback_interface():
 	"""
 	Configure the loopback interface.
@@ -478,9 +516,8 @@ def _configure_loopback_interface():
 
 	try:
 		subprocess.call(['ip', 'address', 'add', '10.0.0.1/8', 'dev', 'lo'])
-		with open(os.devnull, 'wb', 0) as devnull:
-			subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'],
-				stdout=devnull, stderr=devnull)
+		if _has_ipv6():
+			subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'])
 	except EnvironmentError as e:
 		writemsg("Error calling 'ip': %s\n" % e.strerror, noiselevel=-1)
 
