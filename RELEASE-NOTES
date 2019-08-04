@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.71
+==================================
+* Bug Fixes:
+    - Bug 691290 Fix RTNETLINK answers: Operation not supported messages
+      when IPv6 is disabled
+
+
 portage-2.3.70
 ==================================
 * Bug Fixes:
