@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.17
+==================================
+* Bug Fixes:
+    - Bug 233589 Support PROPERTIES="live"
+
+
 repoman-2.3.16
 ==================================
 * Bug Fixes:
