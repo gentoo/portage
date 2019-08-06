@@ -18,6 +18,10 @@ class RestrictChecks(ScanBase):
 		'''
 		self.qatracker = kwargs.get('qatracker')
 		self.repo_settings = kwargs.get('repo_settings')
+		if self.repo_settings.repo_config.restrict_allowed is None:
+			self._restrict_allowed = self.repo_settings.qadata.valid_restrict
+		else:
+			self._restrict_allowed = self.repo_settings.repo_config.restrict_allowed
 
 	def check(self, **kwargs):
 		xpkg = kwargs.get('xpkg')
@@ -35,7 +39,7 @@ class RestrictChecks(ScanBase):
 
 		if myrestrict:
 			myrestrict = set(myrestrict)
-			mybadrestrict = myrestrict.difference(self.repo_settings.qadata.valid_restrict)
+			mybadrestrict = myrestrict.difference(self._restrict_allowed)
 
 			if mybadrestrict:
 				for mybad in mybadrestrict:
