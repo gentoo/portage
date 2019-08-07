@@ -30,6 +30,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,' + \
 		'writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,' + \
 		'grabdict,normalize_path,new_protect_filename',
+	'portage.util._compare_files:compare_files',
 	'portage.util.digraph:digraph',
 	'portage.util.env_update:env_update',
 	'portage.util.install_mask:install_mask_dir,InstallMask',
@@ -87,6 +88,7 @@ import io
 from itertools import chain
 import logging
 import os as _os
+import operator
 import platform
 import pwd
 import re
@@ -3418,6 +3420,8 @@ class dblink(object):
 
 			os = _os_merge
 
+			real_relative_paths = {}
+
 			collision_ignore = []
 			for x in portage.util.shlex_split(
 				self.settings.get("COLLISION_IGNORE", "")):
@@ -3469,8 +3473,13 @@ class dblink(object):
 					previous = current
 					progress_shown = True
 
-				dest_path = normalize_path(
-					os.path.join(destroot, f.lstrip(os.path.sep)))
+				dest_path = normalize_path(os.path.join(destroot, f.lstrip(os.path.sep)))
+
+				# Relative path with symbolic links resolved only in parent directories
+				real_relative_path = os.path.join(os.path.realpath(os.path.dirname(dest_path)),
+					os.path.basename(dest_path))[len(destroot):]
+
+				real_relative_paths.setdefault(real_relative_path, []).append(f.lstrip(os.path.sep))
 
 				parent = os.path.dirname(dest_path)
 				if parent not in dirs:
@@ -3556,9 +3565,24 @@ class dblink(object):
 							break
 					if stopmerge:
 						collisions.append(f)
+
+			internal_collisions = {}
+			for real_relative_path, files in real_relative_paths.items():
+				# Detect internal collisions between non-identical files.
+				if len(files) >= 2:
+					files.sort()
+					for i in range(len(files) - 1):
+						file1 = normalize_path(os.path.join(srcroot, files[i]))
+						file2 = normalize_path(os.path.join(srcroot, files[i+1]))
+						# Compare files, ignoring differences in times.
+						differences = compare_files(file1, file2, skipped_types=("atime", "mtime", "ctime"))
+						if differences:
+							internal_collisions.setdefault(real_relative_path, {})[(files[i], files[i+1])] = differences
+
 			if progress_shown:
 				showMessage(_("100% done\n"))
-			return collisions, dirs_ro, symlink_collisions, plib_collisions
+
+			return collisions, internal_collisions, dirs_ro, symlink_collisions, plib_collisions
 
 	def _lstat_inode_map(self, path_iter):
 		"""
@@ -4081,7 +4105,7 @@ class dblink(object):
 			if blocker.exists():
 				blockers.append(blocker)
 
-		collisions, dirs_ro, symlink_collisions, plib_collisions = \
+		collisions, internal_collisions, dirs_ro, symlink_collisions, plib_collisions = \
 			self._collision_protect(srcroot, destroot,
 			others_in_slot + blockers, filelist, linklist)
 
@@ -4107,6 +4131,29 @@ class dblink(object):
 				"messages for the whole content of the above message.")
 			msg = textwrap.wrap(msg, 70)
 			eerror(msg)
+			return 1
+
+		if internal_collisions:
+			msg = _("Package '%s' has internal collisions between non-identical files "
+				"(located in separate directories in the installation image (${D}) "
+				"corresponding to merged directories in the target "
+				"filesystem (${ROOT})):") % self.settings.mycpv
+			msg = textwrap.wrap(msg, 70)
+			msg.append("")
+			for k, v in sorted(internal_collisions.items(), key=operator.itemgetter(0)):
+				msg.append("\t%s" % os.path.join(destroot, k.lstrip(os.path.sep)))
+				for (file1, file2), differences in sorted(v.items()):
+					msg.append("\t\t%s" % os.path.join(destroot, file1.lstrip(os.path.sep)))
+					msg.append("\t\t%s" % os.path.join(destroot, file2.lstrip(os.path.sep)))
+					msg.append("\t\t\tDifferences: %s" % ", ".join(differences))
+					msg.append("")
+			self._elog("eerror", "preinst", msg)
+
+			msg = _("Package '%s' NOT merged due to internal collisions "
+				"between non-identical files.") % self.settings.mycpv
+			msg += _(" If necessary, refer to your elog messages for the whole "
+				"content of the above message.")
+			eerror(textwrap.wrap(msg, 70))
 			return 1
 
 		if symlink_collisions:
