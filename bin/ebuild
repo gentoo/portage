@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -311,6 +311,11 @@ except PortageKeyError:
 
 root_config = RootConfig(portage.settings,
 	portage.db[portage.settings['EROOT']], None)
+
+cpv = portage.versions._pkg_str(cpv,
+	metadata=metadata,
+	settings=portage.settings,
+	db=portage.db[portage.settings['EROOT']][mytree].dbapi)
 
 pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
 	installed=(pkg_type=="installed"),
