@@ -2820,12 +2820,13 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
-		src_phase = _phase_func_map.get(phase, '').startswith('src_')
+		src_like_phase = (phase == 'setup' or
+				_phase_func_map.get(phase, '').startswith('src_'))
 
-		if not (src_phase and eapi_attrs.sysroot):
+		if not (src_like_phase and eapi_attrs.sysroot):
 			mydict.pop("ESYSROOT", None)
 
-		if not (src_phase and eapi_attrs.broot):
+		if not (src_like_phase and eapi_attrs.broot):
 			mydict.pop("BROOT", None)
 
 		# Prefix variables are supported beginning with EAPI 3, or when
