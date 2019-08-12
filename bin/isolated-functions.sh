@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -38,18 +38,11 @@ __assert_sigpipe_ok() {
 	local x pipestatus=${PIPESTATUS[*]}
 	for x in $pipestatus ; do
 		# Allow SIGPIPE through (128 + 13)
-		if [[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]]
-		then
-			__helpers_die "$@"
-			return 1
-		fi
+		[[ $x -ne 0 && $x -ne ${PORTAGE_SIGPIPE_STATUS:-141} ]] && die "$@"
 	done
 
 	# Require normal success for the last process (tar).
-	if [[ $x -ne 0 ]]; then
-		__helpers_die "$@"
-		return 1
-	fi
+	[[ $x -eq 0 ]] || die "$@"
 }
 
 shopt -s extdebug
