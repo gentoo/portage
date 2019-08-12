@@ -676,6 +676,8 @@ econf() {
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
 			fi
+			# econf dies unconditionally in EAPIs 0 to 3
+			___eapi_helpers_can_die || die "econf failed"
 			__helpers_die "econf failed"
 			return 1
 		fi
