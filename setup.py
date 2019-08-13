@@ -38,7 +38,7 @@ import sys
 x_scripts = {
 	'bin': [
 		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
-		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg',
+		'bin/emirrordist', 'bin/glsa-check', 'bin/portageq', 'bin/quickpkg',
 	],
 	'sbin': [
 		'bin/archive-conf', 'bin/dispatch-conf', 'bin/emaint', 'bin/env-update',

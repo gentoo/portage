@@ -1,0 +1,66 @@
+.TH "GLSA-CHECK" "1" "Aug 2019" "Portage VERSION" "Portage"
+.SH "NAME"
+.LP
+glsa\-check \- Gentoo: Tool to locally monitor and manage GLSAs
+.SH "SYNTAX"
+.LP
+glsa\-check <\fIoption\fP> [\fIglsa\-list\fP]
+
+[\fIglsa\-list\fR] can contain an arbitrary number of GLSA ids, filenames containing GLSAs or the special identifiers 'all' and 'affected'
+.SH "DESCRIPTION"
+.LP
+This tool is used to locally monitor and manage Gentoo Linux Security Advisories.
+Please read:
+.br
+http://www.gentoo.org/security
+.br
+before reporting a bug.
+.LP
+Note: In order for this tool to be effective, you must regularly sync your local portage tree.
+.SH "OPTIONS"
+.LP
+.TP
+.B \-l, \-\-list
+list the a summary for all GLSAs in glsa\-list and whether they affect the system
+.TP
+.B \-d, \-\-dump, \-\-print
+show all information about the GLSAs in glsa\-list
+.TP
+.B \-t, \-\-test
+test if this system is affected by the GLSAs in glsa\-list and output the GLSA IDs
+.TP
+.B \-p, \-\-pretend
+show the necessary steps to apply the GLSAs in glsa\-list
+.TP
+.B \-f, \-\-fix
+try to auto\-apply the GLSAs in in glsa\-list using emerge. This will only upgrade packages to later version, but not remove packages when no upgrade path exists (experimental)
+.TP
+.B \-i, \-\-inject
+inject the given GLSA into the glsa_injected file
+.TP
+.B \-n, \-\-nocolor
+disable colors (option)
+.TP
+.B \-h, \-\-help
+show this help message
+.TP
+.B \-V, \-\-version
+some information about this tool
+.TP
+.B \-v, \-\-verbose
+print more messages (option)
+.TP
+.B \-c, \-\-cve
+show CVE ids in listing mode (option)
+.TP
+.B \-q, \-\-quiet
+be less verbose and do not send empty mail (option)
+.TP
+.B \-m, \-\-mail
+send a mail with the given GLSAs to the administrator
+.SH "FILES"
+.LP
+.TP
+.B /var/lib/portage/glsa_injected
+List of GLSA ids that have been injected and will never show up as 'affected' on this system.
+The file must contain one GLSA id (e.g. '200804\-02') per line.
