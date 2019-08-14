@@ -528,25 +528,20 @@ class Glsa:
 		self.synopsis = getText(myroot.getElementsByTagName("synopsis")[0], format="strip")
 		self.announced = format_date(getText(myroot.getElementsByTagName("announced")[0], format="strip"))
 
-		# Support both formats of revised:
-		# <revised>December 30, 2007: 02</revised>
+		# Support only format defined in GLSA DTD
 		# <revised count="2">2007-12-30</revised>
 		revisedEl = myroot.getElementsByTagName("revised")[0]
 		self.revised = getText(revisedEl, format="strip")
 		count = revisedEl.getAttribute("count")
 		if not count:
-			if self.revised.find(":") >= 0:
-				(self.revised, count) = self.revised.split(":")
-			else:
-				count = 1
-
-		self.revised = format_date(self.revised)
+			raise GlsaFormatException("Count attribute is missing or blank in GLSA: " + myroot.getAttribute("id"))
 
 		try:
 			self.count = int(count)
 		except ValueError:
-			# TODO should this raise a GlsaFormatException?
-			self.count = 1
+			raise GlsaFormatException("Revision attribute in GLSA: " + myroot.getAttribute("id") + " is not an integer")
+
+		self.revised = format_date(self.revised)
 
 		# now the optional and 0-n toplevel, #PCDATA tags and references
 		try:
