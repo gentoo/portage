@@ -241,14 +241,6 @@ inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
-
-		# Since ECLASS_DEPTH > 1, the following variables are locals from the
-		# previous inherit call in the call stack.
-		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
-			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
-			eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
-			eqawarn "after inherit(s)."
-		fi
 	fi
 
 	local -x ECLASS
