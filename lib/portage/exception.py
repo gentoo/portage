@@ -1,4 +1,4 @@
-# Copyright 1998-2015 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -149,6 +149,10 @@ class AmbiguousPackageName(ValueError, PortageException):
 	to the existence of multiple matches in different categories. This inherits
 	from ValueError, for backward compatibility with calling code that already
 	handles ValueError."""
+	def __init__(self, *args, **kwargs):
+		self.args = args
+		super(AmbiguousPackageName, self).__init__(*args, **kwargs)
+
 	def __str__(self):
 		return ValueError.__str__(self)
 
