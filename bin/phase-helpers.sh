@@ -366,7 +366,7 @@ unpack() {
 			fi
 		}
 
-		myfail="failure unpacking ${x}"
+		myfail="unpack: failure unpacking ${x}"
 		case "${suffix_insensitive}" in
 			tar)
 				if ___eapi_unpack_is_case_sensitive && \
