@@ -1,6 +1,24 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.72
+==================================
+* Allow ESYSROOT and BROOT in the pkg_setup phase, following a recent
+  change to PMS.
+* Bug Fixes:
+    - Bug 463952 glsa-check: install in /usr/bin
+    - Bug 646090 preserve-libs: get dep graph from EROOT
+    - Bug 690484 detect internal collisions for /usr merge
+    - Bug 690786 repoman: support metadata/layout.conf restrict-allowed
+    - Bug 691776 unpack: Unconditionally die if an unpacker returns
+      an error
+    - Bug 691638 Show get/setfattr stderr
+    - Bug 692024 econf: Unconditionally die on error in EAPIs 0 to 3
+    - Bug 692262 QA Notice: EXPORT_FUNCTIONS is called before inherit
+      in kernel-2.eclass
+    - Bug 692412 emerge IndexError for ambiguous package atom with pypy
+
+
 portage-2.3.71
 ==================================
 * Bug Fixes:

@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.72
+--------------
+* The glsa-check program is now provided by portage, and it has been
+  removed from gentoolkit. See bug 463952.
+
 portage-2.3.70
 --------------
 * The @live-rebuild package set now searches for PROPERTIES=live, see
