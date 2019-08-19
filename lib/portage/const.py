@@ -176,6 +176,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"parallel-fetch",
 	"parallel-install",
 	"pid-sandbox",
+	"pkgdir-index-trusted",
 	"prelink-checksums",
 	"preserve-libs",
 	"protect-owned",

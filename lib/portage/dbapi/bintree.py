@@ -537,7 +537,8 @@ class binarytree(object):
 
 		self._populating = True
 		try:
-			update_pkgindex = self._populate_local()
+			update_pkgindex = self._populate_local(
+				reindex='pkgdir-index-trusted' not in self.settings.features)
 
 			if update_pkgindex and self.dbapi.writable:
 				# If the Packages file needs to be updated, then _populate_local
@@ -568,7 +569,14 @@ class binarytree(object):
 
 		self.populated = True
 
-	def _populate_local(self):
+	def _populate_local(self, reindex=True):
+		"""
+		Populates the binarytree with local package metadata.
+
+		@param reindex: detect added / modified / removed packages and
+			regenerate the index file if necessary
+		@type reindex: bool
+		"""
 		self.dbapi.clear()
 		_instance_key = self.dbapi._instance_key
 		# In order to minimize disk I/O, we never compute digests here.
@@ -580,9 +588,10 @@ class binarytree(object):
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
 			dir_files = {}
-			for parent, dir_names, file_names in os.walk(self.pkgdir):
-				relative_parent = parent[len(self.pkgdir)+1:]
-				dir_files[relative_parent] = file_names
+			if reindex:
+				for parent, dir_names, file_names in os.walk(self.pkgdir):
+					relative_parent = parent[len(self.pkgdir)+1:]
+					dir_files[relative_parent] = file_names
 
 			pkgindex = self._load_pkgindex()
 			if not self._pkgindex_version_supported(pkgindex):
@@ -597,8 +606,14 @@ class binarytree(object):
 				path = d.get("PATH")
 				if not path:
 					path = cpv + ".tbz2"
-				basename = os.path.basename(path)
-				basename_index.setdefault(basename, []).append(d)
+
+				if reindex:
+					basename = os.path.basename(path)
+					basename_index.setdefault(basename, []).append(d)
+				else:
+					instance_key = _instance_key(cpv)
+					pkg_paths[instance_key] = path
+					self.dbapi.cpv_inject(cpv)
 
 			update_pkgindex = False
 			for mydir, file_names in dir_files.items():
@@ -798,9 +813,10 @@ class binarytree(object):
 						d.pop("PATH", None)
 					metadata[_instance_key(mycpv)] = d
 
-			for instance_key in list(metadata):
-				if instance_key not in pkg_paths:
-					del metadata[instance_key]
+			if reindex:
+				for instance_key in list(metadata):
+					if instance_key not in pkg_paths:
+						del metadata[instance_key]
 
 			if update_pkgindex:
 				del pkgindex.packages[:]

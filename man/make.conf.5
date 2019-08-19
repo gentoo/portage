@@ -561,6 +561,14 @@ Supported only on Linux. Requires PID and mount namespace support
 in kernel. /proc is remounted inside the mount namespace to account
 for new PID namespace.
 .TP
+.B pkgdir\-index\-trusted
+Trust that the \fBPKGDIR\fR index file is valid, meaning that no packages
+have been manually added or removed since the last call to
+\fBemaint \-\-fix binhost\fR. This feature eliminates overhead involved
+with detection of packages that have been manually added or removed,
+which significantly improves performance in some cases, such as when
+\fBPKGDIR\fR resides on a high\-latency network file system.
+.TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
 before computing checksums for merge and unmerge. This feature is
