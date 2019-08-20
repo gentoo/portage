@@ -543,7 +543,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			compression = _compressors[binpkg_compression]
 		except KeyError as e:
 			if binpkg_compression:
-				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+				writemsg("Warning: Invalid or unsupported compression method: %s\n" % e.args[0])
 			else:
 				# Empty BINPKG_COMPRESS disables compression.
 				mysettings['PORTAGE_COMPRESSION_COMMAND'] = 'cat'
@@ -551,11 +551,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			try:
 				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
 			except IndexError as e:
-				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+				writemsg("Warning: Invalid or unsupported compression method: %s\n" % e.args[0])
 			else:
 				if find_binary(compression_binary) is None:
 					missing_package = compression["package"]
-					writemsg("Warning: File compression unsupported %s. Missing package: %s" % (binpkg_compression, missing_package))
+					writemsg("Warning: File compression unsupported %s. Missing package: %s\n" % (binpkg_compression, missing_package))
 				else:
 					cmd = [varexpand(x, mydict=settings) for x in shlex_split(compression["compress"])]
 					# Filter empty elements
