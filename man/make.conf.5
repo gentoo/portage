@@ -399,9 +399,13 @@ Enable portage support for the distcc package with pump mode.
 .TP
 .B distlocks
 Portage uses lockfiles to ensure competing instances don't clobber
-each other's files. This feature is enabled by default but may cause
+each other's files.  It covers saving distfiles to ${DISTDIR} and
+binpkgs to ${PKGDIR}.
+
+This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
-strangely configured Samba server (oplocks off, NFS re\-export). A tool
+strangely configured Samba servers (oplocks off, NFS re\-export).
+
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
 .TP
