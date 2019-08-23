@@ -347,7 +347,7 @@ unpack() {
 				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
 			fi
 		fi
-		[[ ! -s ${srcdir}${x} ]] && die "${x} does not exist"
+		[[ ! -s ${srcdir}${x} ]] && die "unpack: ${x} does not exist"
 
 		__unpack_tar() {
 			if [[ ${y_insensitive} == tar ]] ; then
