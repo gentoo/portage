@@ -3133,10 +3133,6 @@ class dblink(object):
 						os = portage.os
 
 			f = f_abs[root_len:]
-			if not unmerge and self.isowner(f):
-				# We have an indentically named replacement file,
-				# so we don't try to preserve the old copy.
-				continue
 			try:
 				consumers = linkmap.findConsumers(f,
 					exclude_providers=(installed_instance.isowner,))
@@ -3184,15 +3180,26 @@ class dblink(object):
 			hardlinks = set()
 			soname_symlinks = set()
 			soname = linkmap.getSoname(next(iter(preserve_node.alt_paths)))
+			have_replacement_soname_link = False
+			have_replacement_hardlink = False
 			for f in preserve_node.alt_paths:
 				f_abs = os.path.join(root, f.lstrip(os.sep))
 				try:
 					if stat.S_ISREG(os.lstat(f_abs).st_mode):
 						hardlinks.add(f)
+						if not unmerge and self.isowner(f):
+							have_replacement_hardlink = True
+							if os.path.basename(f) == soname:
+								have_replacement_soname_link = True
 					elif os.path.basename(f) == soname:
 						soname_symlinks.add(f)
+						if not unmerge and self.isowner(f):
+							have_replacement_soname_link = True
 				except OSError:
 					pass
+
+			if have_replacement_hardlink and have_replacement_soname_link:
+				continue
 
 			if hardlinks:
 				preserve_paths.update(hardlinks)
