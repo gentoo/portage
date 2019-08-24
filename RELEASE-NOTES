@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.73
+==================================
+* Bug Fixes:
+    - Bug 692698 preserve-libs: ignore dropped non-soname symlink
+
+
 portage-2.3.72
 ==================================
 * Allow ESYSROOT and BROOT in the pkg_setup phase, following a recent
