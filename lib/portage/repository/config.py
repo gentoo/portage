@@ -103,6 +103,7 @@ class RepoConfig(object):
 		'portage1_profiles_compat',
 		'priority',
 		'profile_formats',
+		'properties_allowed',
 		'restrict_allowed',
 		'sign_commit',
 		'sign_manifest',
@@ -340,7 +341,7 @@ class RepoConfig(object):
 			for value in ('allow-missing-manifest',
 				'cache-formats',
 				'create-manifest', 'disable-manifest', 'manifest-hashes',
-				'manifest-required-hashes', 'profile-formats', 'restrict-allowed',
+				'manifest-required-hashes', 'profile-formats', 'properties-allowed', 'restrict-allowed',
 				'sign-commit', 'sign-manifest', 'thin-manifest', 'update-changelog'):
 				setattr(self, value.lower().replace("-", "_"), layout_data[value])
 
@@ -1142,6 +1143,11 @@ def parse_layout_conf(repo_location, repo_name=None):
 
 	data['eapis-banned'] = tuple(layout_data.get('eapis-banned', '').split())
 	data['eapis-deprecated'] = tuple(layout_data.get('eapis-deprecated', '').split())
+
+	properties_allowed = layout_data.get('properties-allowed')
+	if properties_allowed is not None:
+		properties_allowed = tuple(properties_allowed.split())
+	data['properties-allowed'] = properties_allowed
 
 	restrict_allowed = layout_data.get('restrict-allowed')
 	if restrict_allowed is not None:
