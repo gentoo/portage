@@ -110,7 +110,7 @@ class SlotOperatorRuntimePkgMaskTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["=app-misc/meta-pkg-2"],
 				options = {
-					"--backtrack": 5,
+					"--backtrack": 12,
 				},
 				success = True,
 				ambiguous_merge_order = True,

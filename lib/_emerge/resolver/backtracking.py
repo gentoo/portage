@@ -135,11 +135,20 @@ class Backtracker(object):
 				continue
 
 			entry_is_valid = False
+			any_conflict_parents = False
 
 			for ppkg, patom in runtime_pkg_mask[pkg].get("slot conflict", set()):
+				any_conflict_parents = True
 				if ppkg not in runtime_pkg_mask:
 					entry_is_valid = True
 					break
+			else:
+				if not any_conflict_parents:
+					# Even though pkg was involved in a slot conflict
+					# where it was matched by all involved parent atoms,
+					# consider masking it in order to avoid a missed
+					# update as in bug 692746.
+					entry_is_valid = True
 
 			if not entry_is_valid:
 				return False

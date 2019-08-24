@@ -115,7 +115,7 @@ class SlotOperatorCompleteGraphTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["=app-misc/meta-pkg-2", "app-misc/C"],
 				options = {
-					"--backtrack": 5,
+					"--backtrack": 9,
 				},
 				success = True,
 				ambiguous_merge_order = True,

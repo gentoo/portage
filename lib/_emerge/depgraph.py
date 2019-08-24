@@ -1768,6 +1768,11 @@ class depgraph(object):
 		debug = "--debug" in self._frozen_config.myopts
 		existing_node = next(self._dynamic_config._package_tracker.match(
 			root, slot_atom, installed=False))
+		if existing_node not in conflict_pkgs:
+			# Even though all parent atoms match existing_node,
+			# consider masking it in order to avoid a missed update
+			# as in bug 692746.
+			conflict_pkgs.append(existing_node)
 		# In order to avoid a missed update, first mask lower versions
 		# that conflict with higher versions (the backtracker visits
 		# these in reverse order).
