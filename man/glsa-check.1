@@ -1,66 +1,61 @@
-.TH "GLSA-CHECK" "1" "Aug 2019" "Portage VERSION" "Portage"
+.TH "GLSA\-CHECK" "1" "August 2019" "Portage VERSION" "Portage"
+.
 .SH "NAME"
-.LP
-glsa\-check \- Gentoo: Tool to locally monitor and manage GLSAs
-.SH "SYNTAX"
-.LP
-glsa\-check <\fIoption\fP> [\fIglsa\-list\fP]
-
-[\fIglsa\-list\fR] can contain an arbitrary number of GLSA ids, filenames containing GLSAs or the special identifiers 'all' and 'affected'
+\fBglsa\-check\fR \- Tool to locally monitor and manage GLSAs
+.
+.SH "SYNOPSIS"
+\fBglsa\-check\fR [options] [glsa\-id | all | new | affected]
+.
 .SH "DESCRIPTION"
-.LP
-This tool is used to locally monitor and manage Gentoo Linux Security Advisories.
-Please read:
-.br
-http://www.gentoo.org/security
-.br
-before reporting a bug.
-.LP
-Note: In order for this tool to be effective, you must regularly sync your local portage tree.
+\fBglsa\-check\fR is used to locally monitor and manage Gentoo Linux Security Advisories\. In order for \fBglsa\-check\fR to be effective, it is required that a local repository exists containing GLSA metadata\.
+.
 .SH "OPTIONS"
-.LP
-.TP
-.B \-l, \-\-list
-list the a summary for all GLSAs in glsa\-list and whether they affect the system
-.TP
-.B \-d, \-\-dump, \-\-print
-show all information about the GLSAs in glsa\-list
-.TP
-.B \-t, \-\-test
-test if this system is affected by the GLSAs in glsa\-list and output the GLSA IDs
-.TP
-.B \-p, \-\-pretend
-show the necessary steps to apply the GLSAs in glsa\-list
-.TP
-.B \-f, \-\-fix
-try to auto\-apply the GLSAs in in glsa\-list using emerge. This will only upgrade packages to later version, but not remove packages when no upgrade path exists (experimental)
-.TP
-.B \-i, \-\-inject
-inject the given GLSA into the glsa_injected file
-.TP
-.B \-n, \-\-nocolor
-disable colors (option)
-.TP
-.B \-h, \-\-help
-show this help message
-.TP
-.B \-V, \-\-version
-some information about this tool
-.TP
-.B \-v, \-\-verbose
-print more messages (option)
-.TP
-.B \-c, \-\-cve
-show CVE ids in listing mode (option)
-.TP
-.B \-q, \-\-quiet
-be less verbose and do not send empty mail (option)
-.TP
-.B \-m, \-\-mail
-send a mail with the given GLSAs to the administrator
+\fB\-l\fR, \fB\-\-list\fR List a summary for the given GLSA(s) or set and whether they affect the system\.
+.
+.P
+\fB\-d\fR, \fB\-\-dump\fR, \fB\-\-print\fR Show all information about the GLSA(s) or set\.
+.
+.P
+\fB\-t\fR, \fB\-\-test\fR Test if this system is affected by the GLSA(s) or set and output the GLSA ID(s)\.
+.
+.P
+\fB\-p\fR, \fB\-\-pretend\fR Show the necessary steps to remediate the system\.
+.
+.P
+\fB\-f\fR, \fB\-\-fix\fR (experimental) Attempt to remediate the system based on the instructions given in the GLSA(s) or set\. This will only upgrade (when an upgrade path exists) or remove packages\.
+.
+.P
+\fB\-i\fR, \fB\-\-inject\fR Inject the given GLSA(s) into the glsa_injected file\.
+.
+.P
+\fB\-n\fR, \fB\-\-nocolor\fR Removes color from output\.
+.
+.P
+\fB\-h\fR, \fB\-\-help\fR Show this help message\.
+.
+.P
+\fBV\fR, \fB\-\-version\fR Show information about \fBglsa\-check\fR\.
+.
+.P
+\fB\-v\fR, \fB\-\-verbose\fR Print more messages\.
+.
+.P
+\fB\-c\fR, \fB\-\-cve\fR Show CVE IDs in listing mode\.
+.
+.P
+\fB\-q\fR, \fB\-\-quiet\fR Be less verbose and do not send empty mail\.
+.
+.P
+\fB\-m\fR, \fB\-\-mail\fR Send a mail with the given GLSAs to the administrator\.
+.
+.SH "EXAMPLES"
+\fBglsa\-check \-t all\fR Test the system against all GLSAs in the GLSA repository\.
+.
+.P
+\fBglsa\-check \-t 201801\-01\fR Test the system against the specific GLSA 201801\-01\.
+.
 .SH "FILES"
-.LP
-.TP
-.B /var/lib/portage/glsa_injected
-List of GLSA ids that have been injected and will never show up as 'affected' on this system.
-The file must contain one GLSA id (e.g. '200804\-02') per line.
+\fB/var/lib/portage/glsa_injected\fR List of GLSA ids that have been injected and will never show up as \'affected\' on this system\. The file must contain one GLSA ID (e\.g\. \'200804\-02\') per line\.
+.
+.SH "BUGS"
+All bugs should be reported to the Portage team via https://bugs\.gentoo\.org
