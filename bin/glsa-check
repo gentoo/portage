@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2008-2014 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -21,51 +21,50 @@ from portage.output import green, red, nocolor, white
 
 __program__ = "glsa-check"
 __author__ = "Marius Mauch <genone@gentoo.org>"
-__version__ = "1.0"
+__version__ = "1.0.1"
 
 # option parsing
 epilog = "glsa-list can contain an arbitrary number of GLSA ids," \
 		" filenames containing GLSAs or the special identifiers" \
 		" 'all', 'new' and 'affected'"
-parser = argparse.ArgumentParser(usage=__program__ + " <option> [glsa-list]",
+parser = argparse.ArgumentParser(usage=__program__ + " <option> [glsa-id | all | new | affected]",
 	epilog=epilog)
 
 modes = parser.add_argument_group("Modes")
 modes.add_argument("-l", "--list", action="store_const",
 		const="list", dest="mode",
-		help="List all unapplied GLSA")
+		help="List a summary for the given GLSA(s) or set and whether they affect the system")
 modes.add_argument("-d", "--dump", action="store_const",
 		const="dump", dest="mode",
-		help="Show all information about the given GLSA")
+		help="Show all information about the GLSA(s) or set")
 modes.add_argument("--print", action="store_const",
 		const="dump", dest="mode",
 		help="Alias for --dump")
 modes.add_argument("-t", "--test", action="store_const",
 		const="test", dest="mode",
-		help="Test if this system is affected by the given GLSA")
+		help="Test if this system is affected by the GLSA(s) or set and output the GLSA ID(s)")
 modes.add_argument("-p", "--pretend", action="store_const",
 		const="pretend", dest="mode",
-		help="Show the necessary commands to apply this GLSA")
+		help="Show the necessary steps to remediate the system")
 modes.add_argument("-f", "--fix", action="store_const",
 		const="fix", dest="mode",
-		help="Try to auto-apply this GLSA (experimental)")
+		help="(experimental) Attempt to remediate the system based on the instructions given in the GLSA(s) or set. This will only upgrade (when an upgrade path exists) or remove packages")
 modes.add_argument("-i", "--inject", action="store_const",
 		const="inject", dest="mode",
-		help="inject the given GLSA into the glsa_injected file")
+		help="Inject the given GLSA(s) into the glsa_injected file")
 modes.add_argument("-m", "--mail", action="store_const",
 		const="mail", dest="mode",
 		help="Send a mail with the given GLSAs to the administrator")
-
 parser.add_argument("-V", "--version", action="store_true",
-		help="Some information about this tool")
+		help="Show information about glsa-check")
 parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
-		help="Print more information")
+		help="Print more messages")
 parser.add_argument("-n", "--nocolor", action="store_true",
-		help="Disable colors")
+		help="Removes color from output")
 parser.add_argument("-e", "--emergelike", action="store_false", dest="least_change",
 		help="Do not use a least-change algorithm")
 parser.add_argument("-c", "--cve", action="store_true", dest="list_cve",
-		help="Show CAN ids in listing mode")
+		help="Show CVE IDs in listing mode")
 
 options, params = parser.parse_known_args()
 
