@@ -222,10 +222,14 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		if mode == "dump":
 			myglsa.dump()
 		elif mode == "fix":
-			sys.stdout.write("Fixing GLSA "+myid+"\n")
+			if not quiet:
+				sys.stdout.write("Fixing GLSA "+myid+"\n")
 			if not myglsa.isVulnerable():
-				sys.stdout.write(">>> no vulnerable packages installed\n")
+				if not quiet:
+					sys.stdout.write(">>> no vulnerable packages installed\n")
 			else:
+				if quiet:
+					sys.stdout.write("Fixing GLSA "+myid+"\n")
 				mergelist = myglsa.getMergeList(least_change=least_change)
 				if mergelist == []:
 					sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
@@ -247,10 +251,14 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 			if len(mergelist):
 				sys.stdout.write("\n")
 		elif mode == "pretend":
-			sys.stdout.write("Checking GLSA "+myid+"\n")
+			if not quiet:
+				sys.stdout.write("Checking GLSA "+myid+"\n")
 			if not myglsa.isVulnerable():
-				sys.stdout.write(">>> no vulnerable packages installed\n")
+				if not quiet:
+					sys.stdout.write(">>> no vulnerable packages installed\n")
 			else:
+				if quiet:
+					sys.stdout.write("Checking GLSA "+myid+"\n")
 				mergedict = {}
 				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
 					mergedict.setdefault(update, []).append(vuln)
