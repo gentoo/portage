@@ -26,7 +26,7 @@ __version__ = "1.0.1"
 # option parsing
 epilog = "glsa-list can contain an arbitrary number of GLSA ids," \
 		" filenames containing GLSAs or the special identifiers" \
-		" 'all', 'new' and 'affected'"
+		" 'all' and 'affected'"
 parser = argparse.ArgumentParser(usage=__program__ + " <option> [glsa-id | all | new | affected]",
 	epilog=epilog)
 
@@ -64,7 +64,7 @@ parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
 parser.add_argument("-n", "--nocolor", action="store_true",
 		help="Removes color from output")
 parser.add_argument("-e", "--emergelike", action="store_false", dest="least_change",
-		help="Do not use a least-change algorithm")
+		help="Upgrade to latest version (not least-change)")
 parser.add_argument("-c", "--cve", action="store_true", dest="list_cve",
 		help="Show CVE IDs in listing mode")
 
@@ -101,7 +101,7 @@ elif mode in ["fix", "inject"] and os.geteuid() != 0:
 	sys.stderr.write("\nThis tool needs root access to "+options.mode+" this GLSA\n\n")
 	sys.exit(2)
 elif mode == "list" and not params:
-	params.append("new")
+	params.append("affected")
 
 # delay this for speed increase
 from portage.glsa import (Glsa, GlsaTypeException, GlsaFormatException,
@@ -119,14 +119,15 @@ todolist = [e for e in completelist if e not in checklist]
 
 glsalist = []
 if "new" in params:
-	glsalist = todolist
 	params.remove("new")
+	sys.stderr.write("Warning: The 'new' glsa-list target has been removed, using 'affected'.\n")
+	params.append("affected")
 
 if "all" in params:
 	glsalist = completelist
 	params.remove("all")
+
 if "affected" in params:
-	# replaced completelist with todolist on request of wschlich
 	for x in todolist:
 		try:
 			myglsa = Glsa(x, portage.settings, vardb, portdb)
