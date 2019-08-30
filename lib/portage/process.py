@@ -10,7 +10,6 @@ import multiprocessing
 import platform
 import signal
 import socket
-import struct
 import subprocess
 import sys
 import traceback
@@ -489,17 +488,6 @@ def _configure_loopback_interface():
 	Configure the loopback interface.
 	"""
 
-	IFF_UP = 0x1
-	ifreq = struct.pack('16sh', b'lo', IFF_UP)
-	SIOCSIFFLAGS = 0x8914
-
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-	try:
-		fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
-	except IOError as e:
-		writemsg("Unable to enable loopback interface: %s\n" % e.strerror, noiselevel=-1)
-	sock.close()
-
 	# We add some additional addresses to work around odd behavior in glibc's
 	# getaddrinfo() implementation when the AI_ADDRCONFIG flag is set.
 	#
@@ -514,12 +502,18 @@ def _configure_loopback_interface():
 	# Bug: https://bugs.gentoo.org/690758
 	# Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=12377#c13
 
+	# Avoid importing this module on systems that may not support netlink sockets.
+	from portage.util.netlink import RtNetlink
+
 	try:
-		subprocess.call(['ip', 'address', 'add', '10.0.0.1/8', 'dev', 'lo'])
-		if _has_ipv6():
-			subprocess.call(['ip', 'address', 'add', 'fd00::1/8', 'dev', 'lo'])
+		with RtNetlink() as rtnl:
+			ifindex = rtnl.get_link_ifindex(b'lo')
+			rtnl.set_link_up(ifindex)
+			rtnl.add_address(ifindex, socket.AF_INET, '10.0.0.1', 8)
+			if _has_ipv6():
+				rtnl.add_address(ifindex, socket.AF_INET6, 'fd::1', 8)
 	except EnvironmentError as e:
-		writemsg("Error calling 'ip': %s\n" % e.strerror, noiselevel=-1)
+		writemsg("Unable to configure loopback interface: %s\n" % e.strerror, noiselevel=-1)
 
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
