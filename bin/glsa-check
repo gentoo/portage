@@ -263,13 +263,23 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
 					mergedict.setdefault(update, []).append(vuln)
 
+				# first, extract the atoms that cannot be upgraded (where key == "")
+				no_upgrades = []
 				sys.stdout.write(">>> The following updates will be performed for this GLSA:\n")
-				for pkg in mergedict:
-					if pkg != "":
-						sys.stdout.write("     " + pkg + " (vulnerable: " + ", ".join(mergedict[pkg]) + ")\n")
 				if "" in mergedict:
-					sys.stdout.write("\n>>> For the following packages, no upgrade path exists:\n")
-					sys.stdout.write("     " + ", ".join(mergedict[""]))
+					no_upgrades = mergedict[""]
+					del mergedict[""]
+
+				# see if anything is left that can be upgraded
+				if mergedict:
+					sys.stdout.write(">>> Updates that will be performed:\n")
+					for (upd, vuln) in mergedict.items():
+						sys.stdout.write("     " + green(upd) + " (vulnerable: " + red(", ".join(vuln)) + ")\n")
+
+				if no_upgrades:
+					sys.stdout.write(">>> No upgrade path exists for these packages:\n")
+					sys.stdout.write("     " + red(", ".join(no_upgrades)) + "\n")
+			sys.stdout.write("\n")
 		elif mode == "inject":
 			sys.stdout.write("injecting " + myid + "\n")
 			myglsa.inject()
