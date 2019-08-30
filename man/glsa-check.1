@@ -57,6 +57,18 @@
 .P
 \fBglsa\-check \-t 201801\-01\fR Test the system against the specific GLSA 201801\-01\.
 .
+.SH "EXIT VALUES"
+\fB0\fR Success
+.
+.P
+\fB1\fR Syntax or usage error
+.
+.P
+\fB2\fR Missing permissions, solution, etc
+.
+.P
+\fB6\fR System is affected by some GLSAs
+.
 .SH "FILES"
 \fB/var/lib/portage/glsa_injected\fR List of GLSA ids that have been injected and will never show up as \'affected\' on this system\. The file must contain one GLSA ID (e\.g\. \'200804\-02\') per line\.
 .
