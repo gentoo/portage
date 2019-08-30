@@ -305,6 +305,7 @@ if mode == "test":
 			summarylist(outputlist)
 		else:
 			sys.stdout.write("\n".join(outputlist)+"\n")
+			sys.exit(6)
 	else:
 		sys.stderr.write("This system is not affected by any of the listed GLSAs\n")
 	sys.exit(0)
