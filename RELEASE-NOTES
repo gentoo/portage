@@ -1,6 +1,20 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.74
+==================================
+* Bug Fixes:
+    - Bug 587930 glsa-check: add exit code for affected GLSAs
+    - Bug 688902 Add FEATURES=pkgdir-index-trusted
+    - Bug 690758 Use RTNETLINK to configure the loopback interface
+    - Bug 692872 glsa-check: forward port --quiet option from
+      gentoolkit
+    - Bug 693026 rsync: proxychains compatibility
+    - Bug 693088 glsa-check: forward port remaining changes from
+      gentoolkit
+    - Bug 693096 emerge: deprecate --changelog option
+
+
 portage-2.3.73
 ==================================
 * Bug Fixes:
