@@ -2,9 +2,10 @@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import argparse
+import re
 import sys
 import codecs
 from functools import reduce
@@ -204,7 +205,13 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 
 		fd1.write(")")
 		if list_cve:
-			fd1.write(" "+(",".join([r[:13] for r in myglsa.references if r[:4] in ["CAN-", "CVE-"]])))
+			cve_ids = []
+			for r in myglsa.references:
+				m = re.search(r'(CAN|CVE)-[\d-]+', r)
+				if m is not None:
+					cve_ids.append(m.group(0))
+			if cve_ids:
+				fd1.write(" "+(",".join(cve_ids)))
 		fd1.write("\n")
 	return 0
 
