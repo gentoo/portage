@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.75
+==================================
+* Bug Fixes:
+    - Bug 235970 glsa-check: add --reverse option
+    - Bug 692134 glsa-check: fix truncated CVE ids in listmode
+    - Bug 692746 missed virtual/libmysqlclient update
+    - Bug 693242 premature backtracking termination
+
+
 portage-2.3.74
 ==================================
 * Bug Fixes:
