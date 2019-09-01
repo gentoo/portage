@@ -68,6 +68,8 @@ parser.add_argument("-e", "--emergelike", action="store_false", dest="least_chan
 		help="Upgrade to latest version (not least-change)")
 parser.add_argument("-c", "--cve", action="store_true", dest="list_cve",
 		help="Show CVE IDs in listing mode")
+parser.add_argument("-r", "--reverse", action="store_true", dest="reverse",
+		help="List GLSAs in reverse order")
 
 options, params = parser.parse_known_args()
 
@@ -163,8 +165,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 		fd2.write(green("[U]")+" means the system is not affected and\n")
 		fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
-	myglsalist.sort()
-	for myid in myglsalist:
+	for myid in sorted(myglsalist, reverse=options.reverse):
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
 		except (GlsaTypeException, GlsaFormatException) as e:
