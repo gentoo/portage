@@ -9794,8 +9794,8 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		elif mydepgraph.need_restart():
 			backtracked += 1
 			backtracker.feedback(mydepgraph.get_backtrack_infos())
-		else:
-			break
+		elif backtracker:
+			backtracked += 1
 
 	if not (success or mydepgraph.need_config_change()) and backtracked:
 
