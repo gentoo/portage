@@ -66,6 +66,9 @@ class BinhostHandler(object):
 	def check(self, **kwargs):
 		onProgress = kwargs.get('onProgress', None)
 		bintree = self._bintree
+		# Force reindex in case pkgdir-index-trusted is enabled.
+		bintree._populate_local(reindex=True)
+		bintree.populated = True
 		_instance_key = bintree.dbapi._instance_key
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
@@ -99,6 +102,9 @@ class BinhostHandler(object):
 	def fix(self,  **kwargs):
 		onProgress = kwargs.get('onProgress', None)
 		bintree = self._bintree
+		# Force reindex in case pkgdir-index-trusted is enabled.
+		bintree._populate_local(reindex=True)
+		bintree.populated = True
 		_instance_key = bintree.dbapi._instance_key
 		cpv_all = self._bintree.dbapi.cpv_all()
 		cpv_all.sort()
