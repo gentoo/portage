@@ -488,14 +488,9 @@ hasv() {
 }
 
 has() {
-	local needle=$1
-	shift
+	local -r -- IFS=$'\a'
 
-	local x
-	for x in "$@"; do
-		[ "${x}" = "${needle}" ] && return 0
-	done
-	return 1
+	[[ "${IFS}${*:2}${IFS}" == *"${IFS}${1}${IFS}"* ]]
 }
 
 __repo_attr() {
