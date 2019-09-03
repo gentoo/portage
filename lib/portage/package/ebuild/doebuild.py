@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
-import collections
 import grp
 import gzip
 import errno
@@ -255,14 +254,7 @@ def _doebuild_path(settings, eapi=None):
 				path.append(x_abs)
 
 	path.extend(rootpath)
-
-	# Canonicalize paths and avoid duplicates when some directories
-	# (e.g. bin and sbin) are merged.
-	real_path = collections.OrderedDict()
-	for x in path:
-		real_path.setdefault(os.path.realpath(x), None)
-
-	settings["PATH"] = ":".join(real_path)
+	settings["PATH"] = ":".join(path)
 
 def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	debug=False, use_cache=None, db=None):
