@@ -188,10 +188,8 @@ def grab_updates(updpath, prev_mtimes=None):
 	if len(mylist) == 0:
 		return []
 	
-	# update names are mangled to make them sort properly
-	mylist = [myfile[3:]+"-"+myfile[:2] for myfile in mylist]
-	mylist.sort()
-	mylist = [myfile[5:]+"-"+myfile[:4] for myfile in mylist]
+	# sort by (year, quarter)
+	mylist.sort(key=lambda x: (x[3:], x[:2]))
 
 	update_data = []
 	for myfile in mylist:
