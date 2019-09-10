@@ -67,7 +67,8 @@ class OwnerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths, exclude_paths=None):
 		"""
-		All paths must have $EROOT stripped from the left side.
+		All paths must begin with a slash, must include EPREFIX, and
+		must not include ROOT.
 		"""
 		rValue = set()
 		vardb = self._db
@@ -85,7 +86,9 @@ class OwnerSet(PackageSet):
 				pkg = pkg_str(link.mycpv, None)
 				atom = "%s:%s" % (pkg.cp, pkg.slot)
 				rValue.add(atom)
-				if p in exclude_paths:
+				# Returned paths are relative to ROOT and do not have
+				# a leading slash.
+				if '/' + p in exclude_paths:
 					exclude_atoms.add(atom)
 			rValue.difference_update(exclude_atoms)
 
