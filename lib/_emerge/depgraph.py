@@ -2888,6 +2888,19 @@ class depgraph(object):
 							dep.atom.without_use if dep.atom.package
 							else dep.atom, onlydeps=dep.onlydeps)
 					if dep_pkg is None:
+
+						# In order to suppress the sort of aggressive
+						# backtracking that can trigger undesirable downgrades
+						# as in bug 693836, do not backtrack if there's an
+						# available package which was involved in a slot
+						# conflict and satisfied all involved parent atoms.
+						for dep_pkg, reasons in self._dynamic_config._runtime_pkg_mask.items():
+							if (dep.atom.match(dep_pkg) and
+								len(reasons) == 1 and
+								not reasons.get("slot conflict", True)):
+								self._dynamic_config._skip_restart = True
+								return 0
+
 						self._dynamic_config._backtrack_infos["missing dependency"] = dep
 						self._dynamic_config._need_restart = True
 						if debug:
