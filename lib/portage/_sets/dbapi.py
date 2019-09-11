@@ -1,8 +1,9 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
 
+import glob
 import re
 import time
 
@@ -67,11 +68,19 @@ class OwnerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths, exclude_paths=None):
 		"""
-		All paths must begin with a slash, must include EPREFIX, and
-		must not include ROOT.
+		All paths must begin with a slash, and must not include EROOT.
+		Supports globs.
 		"""
 		rValue = set()
 		vardb = self._db
+
+		eroot = vardb.settings['EROOT']
+		expanded_paths = []
+		for p in paths:
+			expanded_paths.extend(expanded_p[len(eroot)-1:] for expanded_p in
+				glob.iglob(os.path.join(eroot, p.lstrip(os.sep))))
+		paths = expanded_paths
+
 		pkg_str = vardb._pkg_str
 		if exclude_paths is None:
 			for link, p in vardb._owners.iter_owners(paths):
