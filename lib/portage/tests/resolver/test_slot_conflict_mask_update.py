@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -12,9 +12,6 @@ class SlotConflictMaskUpdateTestCase(TestCase):
 		When backtracking due to slot conflicts, we masked the version that has been pulled
 		in first. This is not always a good idea. Mask the highest version instead.
 		"""
-
-		
-		self.todo = True
 
 		ebuilds = {
 			"dev-libs/A-1": { "DEPEND": "=dev-libs/C-1 dev-libs/B" },
