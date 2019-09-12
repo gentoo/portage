@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -33,9 +33,6 @@ class CircularChoicesTestCase(TestCase):
 
 class VirtualCircularChoicesTestCase(TestCase):
 	def testDirectVirtualCircularDependency(self):
-
-		# Bug #384107
-		self.todo = True
 
 		ebuilds = {
 			"dev-java/icedtea-6.1.10.3": { "SLOT" : "6", "DEPEND": "virtual/jdk" },
