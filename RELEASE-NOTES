@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.76
+==================================
+* Bug Fixes:
+    - Bug 693836 erroneous firefox downgrade
+    - Bug 693980 x11-module-rebuild: support SYMLINK_LIB=no
+    - Bug 694000 OwnerSet: fix exclude-files support
+
+
 portage-2.3.75
 ==================================
 * Bug Fixes:
