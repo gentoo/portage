@@ -990,7 +990,6 @@ if ___eapi_has_eapply; then
 			local f=${1}
 			local prefix=${2}
 
-			started_applying=1
 			ebegin "${prefix:-Applying }${f##*/}"
 			# -p1 as a sane default
 			# -f to avoid interactivity
