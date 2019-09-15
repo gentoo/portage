@@ -981,9 +981,8 @@ __ebuild_main() {
 	# respect FEATURES="-ccache".
 	has ccache $FEATURES || export CCACHE_DISABLE=1
 
-	local phase_func=$(__ebuild_arg_to_phase "$EBUILD_PHASE")
-	[[ -n $phase_func ]] && __ebuild_phase_funcs "$EAPI" "$phase_func"
-	unset phase_func
+	local ___phase_func=$(__ebuild_arg_to_phase "$EBUILD_PHASE")
+	[[ -n ${___phase_func} ]] && __ebuild_phase_funcs "$EAPI" "${___phase_func}"
 
 	__source_all_bashrcs
 
