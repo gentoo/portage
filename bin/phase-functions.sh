@@ -97,7 +97,7 @@ __filter_readonly_variables() {
 	# Untrusted due to possible application of package renames to binpkgs
 	local binpkg_untrusted_vars="CATEGORY P PF PN PR PV PVR"
 	local misc_garbage_vars="_portage_filter_opts"
-	filtered_vars="$readonly_bash_vars $bash_misc_vars
+	filtered_vars="___.* $readonly_bash_vars $bash_misc_vars
 		$PORTAGE_READONLY_VARS $misc_garbage_vars"
 
 	# Filter SYSROOT unconditionally. It is propagated in every EAPI
