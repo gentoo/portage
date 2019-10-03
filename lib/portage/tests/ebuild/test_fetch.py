@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 
 import functools
+import io
 import tempfile
 
 import portage
@@ -11,12 +12,14 @@ from portage import shutil, os
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
+from portage.util.configparser import ConfigParserError
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
-from portage.package.ebuild.fetch import _download_suffix
+from portage.package.ebuild.fetch import (_download_suffix, FlatLayout,
+		FilenameHashLayout, MirrorLayoutConfig)
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.Package import Package
 
@@ -228,3 +231,92 @@ class EbuildFetchTestCase(TestCase):
 			finally:
 				shutil.rmtree(ro_distdir)
 				playground.cleanup()
+
+	def test_flat_layout(self):
+		self.assertTrue(FlatLayout.verify_args(('flat',)))
+		self.assertFalse(FlatLayout.verify_args(('flat', 'extraneous-arg')))
+		self.assertEqual(FlatLayout().get_path('foo-1.tar.gz'), 'foo-1.tar.gz')
+
+	def test_filename_hash_layout(self):
+		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash',)))
+		self.assertTrue(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', '8')))
+		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'INVALID-HASH', '8')))
+		self.assertTrue(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', '4:8:12')))
+		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', '3')))
+		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', 'junk')))
+		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', '4:8:junk')))
+
+		self.assertEqual(FilenameHashLayout('SHA1', '4').get_path('foo-1.tar.gz'),
+				'1/foo-1.tar.gz')
+		self.assertEqual(FilenameHashLayout('SHA1', '8').get_path('foo-1.tar.gz'),
+				'19/foo-1.tar.gz')
+		self.assertEqual(FilenameHashLayout('SHA1', '8:16').get_path('foo-1.tar.gz'),
+				'19/c3b6/foo-1.tar.gz')
+		self.assertEqual(FilenameHashLayout('SHA1', '8:16:24').get_path('foo-1.tar.gz'),
+				'19/c3b6/37a94b/foo-1.tar.gz')
+
+	def test_mirror_layout_config(self):
+		mlc = MirrorLayoutConfig()
+		self.assertEqual(mlc.serialize(), ())
+		self.assertIsInstance(mlc.get_best_supported_layout(), FlatLayout)
+
+		conf = '''
+[structure]
+0=flat
+'''
+		mlc.read_from_file(io.StringIO(conf))
+		self.assertEqual(mlc.serialize(), (('flat',),))
+		self.assertIsInstance(mlc.get_best_supported_layout(), FlatLayout)
+		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
+				'foo-1.tar.gz')
+
+		conf = '''
+[structure]
+0=filename-hash SHA1 8:16
+1=flat
+'''
+		mlc.read_from_file(io.StringIO(conf))
+		self.assertEqual(mlc.serialize(), (
+			('filename-hash', 'SHA1', '8:16'),
+			('flat',)
+		))
+		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
+		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
+				'19/c3b6/foo-1.tar.gz')
+		serialized = mlc.serialize()
+
+		# test fallback
+		conf = '''
+[structure]
+0=filename-hash INVALID-HASH 8:16
+1=filename-hash SHA1 32
+2=flat
+'''
+		mlc.read_from_file(io.StringIO(conf))
+		self.assertEqual(mlc.serialize(), (
+			('filename-hash', 'INVALID-HASH', '8:16'),
+			('filename-hash', 'SHA1', '32'),
+			('flat',)
+		))
+		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
+		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
+				'19c3b637/foo-1.tar.gz')
+
+		# test deserialization
+		mlc.deserialize(serialized)
+		self.assertEqual(mlc.serialize(), (
+			('filename-hash', 'SHA1', '8:16'),
+			('flat',)
+		))
+		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
+		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
+				'19/c3b6/foo-1.tar.gz')
+
+		# test erraneous input
+		conf = '''
+[#(*DA*&*F
+[structure]
+0=filename-hash SHA1 32
+'''
+		self.assertRaises(ConfigParserError, mlc.read_from_file,
+				io.StringIO(conf))

@@ -6,13 +6,17 @@ from __future__ import print_function
 __all__ = ['fetch']
 
 import errno
+import functools
 import io
+import itertools
+import json
 import logging
 import random
 import re
 import stat
 import sys
 import tempfile
+import time
 
 from collections import OrderedDict
 
@@ -27,12 +31,17 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_doebuild_spawn',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
+	'portage.util:atomic_ofstream',
+	'portage.util.configparser:SafeConfigParser,read_configs,' +
+		'NoOptionError,ConfigParserError',
+	'portage.util._urlopen:urlopen',
 )
 
 from portage import os, selinux, shutil, _encodings, \
 	_movefile, _shell_quote, _unicode_encode
 from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
-	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
+	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter,
+	checksum_str)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
@@ -253,6 +262,146 @@ _size_suffix_map = {
 	'Y' : 80,
 }
 
+
+class FlatLayout(object):
+	def get_path(self, filename):
+		return filename
+
+	@staticmethod
+	def verify_args(args):
+		return len(args) == 1
+
+
+class FilenameHashLayout(object):
+	def __init__(self, algo, cutoffs):
+		self.algo = algo
+		self.cutoffs = [int(x) for x in cutoffs.split(':')]
+
+	def get_path(self, filename):
+		fnhash = checksum_str(filename.encode('utf8'), self.algo)
+		ret = ''
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			ret += fnhash[:c] + '/'
+			fnhash = fnhash[c:]
+		return ret + filename
+
+	@staticmethod
+	def verify_args(args):
+		if len(args) != 3:
+			return False
+		if args[1] not in get_valid_checksum_keys():
+			return False
+		# argsidate cutoffs
+		for c in args[2].split(':'):
+			try:
+				c = int(c)
+			except ValueError:
+				break
+			else:
+				if c % 4 != 0:
+					break
+		else:
+			return True
+		return False
+
+
+class MirrorLayoutConfig(object):
+	"""
+	Class to read layout.conf from a mirror.
+	"""
+
+	def __init__(self):
+		self.structure = ()
+
+	def read_from_file(self, f):
+		cp = SafeConfigParser()
+		read_configs(cp, [f])
+		vals = []
+		for i in itertools.count():
+			try:
+				vals.append(tuple(cp.get('structure', '%d' % i).split()))
+			except NoOptionError:
+				break
+		self.structure = tuple(vals)
+
+	def serialize(self):
+		return self.structure
+
+	def deserialize(self, data):
+		self.structure = data
+
+	@staticmethod
+	def validate_structure(val):
+		if val[0] == 'flat':
+			return FlatLayout.verify_args(val)
+		if val[0] == 'filename-hash':
+			return FilenameHashLayout.verify_args(val)
+		return False
+
+	def get_best_supported_layout(self):
+		for val in self.structure:
+			if self.validate_structure(val):
+				if val[0] == 'flat':
+					return FlatLayout(*val[1:])
+				elif val[0] == 'filename-hash':
+					return FilenameHashLayout(*val[1:])
+		else:
+			# fallback
+			return FlatLayout()
+
+
+def get_mirror_url(mirror_url, filename, cache_path=None):
+	"""
+	Get correct fetch URL for a given file, accounting for mirror
+	layout configuration.
+
+	@param mirror_url: Base URL to the mirror (without '/distfiles')
+	@param filename: Filename to fetch
+	@param cache_path: Path for mirror metadata cache
+	@return: Full URL to fetch
+	"""
+
+	mirror_conf = MirrorLayoutConfig()
+
+	cache = {}
+	if cache_path is not None:
+		try:
+			with open(cache_path, 'r') as f:
+				cache = json.load(f)
+		except (IOError, ValueError):
+			pass
+
+	ts, data = cache.get(mirror_url, (0, None))
+	# refresh at least daily
+	if ts >= time.time() - 86400:
+		mirror_conf.deserialize(data)
+	else:
+		try:
+			f = urlopen(mirror_url + '/distfiles/layout.conf')
+			try:
+				data = io.StringIO(f.read().decode('utf8'))
+			finally:
+				f.close()
+
+			try:
+				mirror_conf.read_from_file(data)
+			except ConfigParserError:
+				pass
+		except IOError:
+			pass
+
+		cache[mirror_url] = (time.time(), mirror_conf.serialize())
+		if cache_path is not None:
+			f = atomic_ofstream(cache_path, 'w')
+			json.dump(cache, f)
+			f.close()
+
+	return (mirror_url + "/distfiles/" +
+			mirror_conf.get_best_supported_layout().get_path(filename))
+
+
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
 	allow_missing_digests=True):
@@ -434,8 +583,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
-			for y in range(0,len(locations)):
-				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+			mirror_cache = os.path.join(mysettings["DISTDIR"],
+					".mirror-cache.json")
+			for l in locations:
+				filedict[myfile].append(functools.partial(
+					get_mirror_url, l, myfile, mirror_cache))
 		if myuri is None:
 			continue
 		if myuri[:9]=="mirror://":
@@ -895,6 +1047,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			tried_locations = set()
 			while uri_list:
 				loc = uri_list.pop()
+				if isinstance(loc, functools.partial):
+					loc = loc()
 				# Eliminate duplicates here in case we've switched to
 				# "primaryuri" mode on the fly due to a checksum failure.
 				if loc in tried_locations:
