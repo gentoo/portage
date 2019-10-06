@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -14,6 +14,7 @@ import sys
 import portage
 from portage import _encodings, _unicode_encode
 from portage import os
+from portage.util import ensure_dirs
 from portage.util._async.FileCopier import FileCopier
 from portage.util._async.FileDigester import FileDigester
 from portage.util._async.PipeLogger import PipeLogger
@@ -61,7 +62,8 @@ class FetchTask(CompositeTask):
 			return
 
 		distfile_path = os.path.join(
-			self.config.options.distfiles, self.distfile)
+			self.config.options.distfiles,
+			self.config.layouts[0].get_path(self.distfile))
 
 		st = None
 		size_ok = False
@@ -332,7 +334,8 @@ class FetchTask(CompositeTask):
 				return
 			else:
 				src = os.path.join(current_mirror.location, self.distfile)
-				dest = os.path.join(self.config.options.distfiles, self.distfile)
+				dest = os.path.join(self.config.options.distfiles,
+						self.config.layouts[0].get_path(self.distfile))
 				if self._hardlink_atomic(src, dest,
 					"%s to %s" % (current_mirror.name, "distfiles")):
 					logging.debug("hardlink '%s' from %s to distfiles" %
@@ -501,7 +504,9 @@ class FetchTask(CompositeTask):
 				except OSError:
 					pass
 			else:
-				dest = os.path.join(self.config.options.distfiles, self.distfile)
+				dest = os.path.join(self.config.options.distfiles,
+						self.config.layouts[0].get_path(self.distfile))
+				ensure_dirs(os.path.dirname(dest))
 				try:
 					os.rename(self._fetch_tmp_file, dest)
 				except OSError:
@@ -514,9 +519,7 @@ class FetchTask(CompositeTask):
 						self._fetch_copier_exit)
 					return
 				else:
-					self._success()
-					self.returncode = os.EX_OK
-					self.wait()
+					self._make_layout_links()
 					return
 
 		self._try_next_mirror()
@@ -535,9 +538,7 @@ class FetchTask(CompositeTask):
 			return
 
 		if copier.returncode == os.EX_OK:
-			self._success()
-			self.returncode = os.EX_OK
-			self.wait()
+			self._make_layout_links()
 		else:
 			# out of space?
 			msg = "%s %s copy failed unexpectedly" % \
@@ -550,6 +551,38 @@ class FetchTask(CompositeTask):
 			self.config.file_failures[self.distfile] = self.cpv
 			self.returncode = 1
 			self.wait()
+
+	def _make_layout_links(self):
+		dist_path = None
+		success = True
+		for layout in self.config.layouts[1:]:
+			if dist_path is None:
+				dist_path = os.path.join(self.config.options.distfiles,
+						self.config.layouts[0].get_path(self.distfile))
+			link_path = os.path.join(self.config.options.distfiles,
+					layout.get_path(self.distfile))
+			ensure_dirs(os.path.dirname(link_path))
+			src_path = dist_path
+			if self.config.options.symlinks:
+				src_path = os.path.relpath(dist_path,
+						os.path.dirname(link_path))
+
+			if not self._hardlink_atomic(src_path, link_path,
+					"%s -> %s" % (link_path, src_path),
+					self.config.options.symlinks):
+				success = False
+				break
+
+		if success:
+			self._success()
+			self.returncode = os.EX_OK
+		else:
+			self.config.log_failure("%s\t%s\t%s" %
+				(self.cpv, self.distfile, msg))
+			self.config.file_failures[self.distfile] = self.cpv
+			self.returncode = 1
+
+		self.wait()
 
 	def _unlink_file(self, file_path, dir_info):
 		try:
@@ -595,7 +628,7 @@ class FetchTask(CompositeTask):
 		else:
 			return st1.st_dev == st2.st_dev
 
-	def _hardlink_atomic(self, src, dest, dir_info):
+	def _hardlink_atomic(self, src, dest, dir_info, symlink=False):
 
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._mirrordist_hardlink_.%s" % \
@@ -603,7 +636,10 @@ class FetchTask(CompositeTask):
 
 		try:
 			try:
-				os.link(src, hardlink_tmp)
+				if symlink:
+					os.symlink(src, hardlink_tmp)
+				else:
+					os.link(src, hardlink_tmp)
 			except OSError as e:
 				if e.errno != errno.EXDEV:
 					msg = "hardlink %s from %s failed: %s" % \

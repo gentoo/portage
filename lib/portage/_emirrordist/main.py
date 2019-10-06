@@ -187,6 +187,12 @@ common_options = (
 		"action"   : "append",
 		"metavar"  : "FILE"
 	},
+	{
+		"longopt"  : "--symlinks",
+		"help"     : "use symlinks rather than hardlinks for linking "
+			"distfiles between layouts",
+		"action"   : "store_true"
+	},
 )
 
 def parse_args(args):

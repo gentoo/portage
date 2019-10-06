@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -10,6 +10,7 @@ import time
 
 import portage
 from portage import os
+from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
 from portage.util._ShelveUnicodeWrapper import ShelveUnicodeWrapper
 
@@ -71,6 +72,11 @@ class Config(object):
 		if options.deletion_db is not None:
 			self.deletion_db = self._open_shelve(
 				options.deletion_db, 'deletion')
+
+		self.layout_conf = MirrorLayoutConfig()
+		self.layout_conf.read_from_file(
+				os.path.join(self.distfiles, 'layout.conf'))
+		self.layouts = self.layout_conf.get_all_layouts()
 
 	def _open_log(self, log_desc, log_path, mode):
 

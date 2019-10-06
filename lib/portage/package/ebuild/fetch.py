@@ -27,13 +27,14 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'glob:glob',
 	'portage.package.ebuild.config:check_config_instance,config',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_doebuild_spawn',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.util:atomic_ofstream',
 	'portage.util.configparser:SafeConfigParser,read_configs,' +
-		'NoOptionError,ConfigParserError',
+		'ConfigParserError',
 	'portage.util._urlopen:urlopen',
 )
 
@@ -267,6 +268,9 @@ class FlatLayout(object):
 	def get_path(self, filename):
 		return filename
 
+	def get_filenames(self, distdir):
+		return iter(os.listdir(distdir))
+
 	@staticmethod
 	def verify_args(args):
 		return len(args) == 1
@@ -286,6 +290,16 @@ class FilenameHashLayout(object):
 			ret += fnhash[:c] + '/'
 			fnhash = fnhash[c:]
 		return ret + filename
+
+	def get_filenames(self, distdir):
+		pattern = ''
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			pattern += c * '[0-9a-f]' + '/'
+		pattern += '*'
+		return (x.rsplit('/', 1)[1]
+				for x in glob(os.path.join(distdir, pattern)))
 
 	@staticmethod
 	def verify_args(args):
@@ -322,7 +336,7 @@ class MirrorLayoutConfig(object):
 		for i in itertools.count():
 			try:
 				vals.append(tuple(cp.get('structure', '%d' % i).split()))
-			except NoOptionError:
+			except ConfigParserError:
 				break
 		self.structure = tuple(vals)
 
@@ -350,6 +364,19 @@ class MirrorLayoutConfig(object):
 		else:
 			# fallback
 			return FlatLayout()
+
+	def get_all_layouts(self):
+		ret = []
+		for val in self.structure:
+			if not self.validate_structure(val):
+				raise ValueError("Unsupported structure: {}".format(val))
+			if val[0] == 'flat':
+				ret.append(FlatLayout(*val[1:]))
+			elif val[0] == 'filename-hash':
+				ret.append(FilenameHashLayout(*val[1:]))
+		if not ret:
+			ret.append(FlatLayout())
+		return ret
 
 
 def get_mirror_url(mirror_url, filename, cache_path=None):
