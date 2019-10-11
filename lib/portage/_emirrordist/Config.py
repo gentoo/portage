@@ -74,8 +74,10 @@ class Config(object):
 				options.deletion_db, 'deletion')
 
 		self.layout_conf = MirrorLayoutConfig()
-		self.layout_conf.read_from_file(
-				os.path.join(self.distfiles, 'layout.conf'))
+		if options.layout_conf is None:
+			options.layout_conf = os.path.join(self.distfiles,
+					'layout.conf')
+		self.layout_conf.read_from_file(options.layout_conf)
 		self.layouts = self.layout_conf.get_all_layouts()
 
 	def _open_log(self, log_desc, log_path, mode):
