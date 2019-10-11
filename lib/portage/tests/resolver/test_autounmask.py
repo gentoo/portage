@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -579,12 +579,14 @@ class AutounmaskTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["dev-libs/B"],
 				success=False,
+				options={"--autounmask": True},
 				mergelist=["dev-libs/A-2", "dev-libs/B-1"],
 				needed_p_mask_changes=set(["dev-libs/A-2"])),
 
 			ResolverPlaygroundTestCase(
 				["dev-libs/C"],
 				success=False,
+				options={"--autounmask": True},
 				mergelist=["dev-libs/A-9999", "dev-libs/C-1"],
 				unstable_keywords=set(["dev-libs/A-9999"]),
 				needed_p_mask_changes=set(["dev-libs/A-9999"])),
