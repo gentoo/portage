@@ -93,6 +93,26 @@ class AutounmaskTestCase(TestCase):
 					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
 					use_changes={ "dev-libs/B-1": {"foo": True} }),
 
+				ResolverPlaygroundTestCase(
+					["dev-libs/A:1"],
+					options={"--autounmask-use": "y"},
+					success=False,
+					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
+					use_changes={ "dev-libs/B-1": {"foo": True} }),
+
+				# Test default --autounmask-use
+				ResolverPlaygroundTestCase(
+					["dev-libs/A:1"],
+					success=False,
+					mergelist=["dev-libs/C-1", "dev-libs/B-1", "dev-libs/A-1"],
+					use_changes={ "dev-libs/B-1": {"foo": True} }),
+
+				# Explicitly disable --autounmask-use
+				ResolverPlaygroundTestCase(
+					["dev-libs/A:1"],
+					success=False,
+					options={"--autounmask-use": "n"}),
+
 				#Make sure we restart if needed.
 				ResolverPlaygroundTestCase(
 					["dev-libs/A:1", "dev-libs/B"],
@@ -408,16 +428,29 @@ class AutounmaskTestCase(TestCase):
 			}
 
 		test_cases = (
+				# --autounmask=n negates default --autounmask-license
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
 					options={"--autounmask": 'n'},
 					success=False),
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
-					options={"--autounmask": True},
+					options={"--autounmask-license": "y"},
 					success=False,
 					mergelist=["dev-libs/A-1"],
 					license_changes={ "dev-libs/A-1": set(["TEST"]) }),
+
+				# Test default --autounmask-license
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					success=False,
+					mergelist=["dev-libs/A-1"],
+					license_changes={ "dev-libs/A-1": set(["TEST"]) }),
+
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options={"--autounmask-license": "n"},
+					success=False),
 
 				#Test license+keyword+use change at once.
 				ResolverPlaygroundTestCase(

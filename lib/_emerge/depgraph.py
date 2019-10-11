@@ -495,7 +495,7 @@ class _dynamic_depgraph_config(object):
 		self._backtrack_infos = {}
 
 		self._buildpkgonly_deps_unsatisfied = False
-		self._autounmask = depgraph._frozen_config.myopts.get('--autounmask') != 'n'
+		self._autounmask = self.myparams['autounmask']
 		self._displayed_autounmask = False
 		self._success_without_autounmask = False
 		self._autounmask_backtrack_disabled = False
@@ -5907,15 +5907,19 @@ class depgraph(object):
 		if self._dynamic_config._autounmask is not True:
 			return
 
-		autounmask_keep_keywords = self._frozen_config.myopts.get("--autounmask-keep-keywords", "n") != "n"
-		autounmask_keep_masks = self._frozen_config.myopts.get("--autounmask-keep-masks", "n") != "n"
+		autounmask_keep_keywords = self._dynamic_config.myparams['autounmask_keep_keywords']
+		autounmask_keep_license = self._dynamic_config.myparams['autounmask_keep_license']
+		autounmask_keep_masks = self._dynamic_config.myparams['autounmask_keep_masks']
+		autounmask_keep_use = self._dynamic_config.myparams['autounmask_keep_use']
 		autounmask_level = self._AutounmaskLevel()
 
-		autounmask_level.allow_use_changes = True
-		yield autounmask_level
+		if not autounmask_keep_use:
+			autounmask_level.allow_use_changes = True
+			yield autounmask_level
 
-		autounmask_level.allow_license_changes = True
-		yield autounmask_level
+		if not autounmask_keep_license:
+			autounmask_level.allow_license_changes = True
+			yield autounmask_level
 
 		if not autounmask_keep_keywords:
 			autounmask_level.allow_unstable_keywords = True
@@ -9835,7 +9839,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 				"\n\nautounmask breakage detected\n\n",
 				noiselevel=-1, level=logging.DEBUG)
 			mydepgraph.display_problems()
-		myopts["--autounmask"] = "n"
+		myparams["autounmask"] = False
 		mydepgraph = depgraph(settings, trees, myopts, myparams, spinner,
 			frozen_config=frozen_config, allow_backtracking=False)
 		success, favorites = mydepgraph.select_files(myfiles)

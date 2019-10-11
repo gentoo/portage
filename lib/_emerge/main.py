@@ -347,9 +347,19 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--autounmask-license": {
+			"help"    : "allow autounmask to change package.license",
+			"choices" : y_or_n
+		},
+
 		"--autounmask-unrestricted-atoms": {
 			"help"    : "write autounmask changes with >= atoms if possible",
 			"choices" : true_y_or_n
+		},
+
+		"--autounmask-use": {
+			"help"    : "allow autounmask to change package.use",
+			"choices" : y_or_n
 		},
 
 		"--autounmask-keep-keywords": {
