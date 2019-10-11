@@ -193,6 +193,12 @@ common_options = (
 			"distfiles between layouts",
 		"action"   : "store_true"
 	},
+	{
+		"longopt"  : "--layout-conf",
+		"help"     : "specifies layout.conf file to use instead of "
+			"the one present in the distfiles directory",
+		"metavar"  : "FILE"
+	},
 )
 
 def parse_args(args):
