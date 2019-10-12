@@ -61,23 +61,24 @@ class FetchTask(CompositeTask):
 			self._async_wait()
 			return
 
-		distfile_path = os.path.join(
-			self.config.options.distfiles,
-			self.config.layouts[0].get_path(self.distfile))
-
 		st = None
-		size_ok = False
-		try:
-			st = os.stat(distfile_path)
-		except OSError as e:
-			if e.errno not in (errno.ENOENT, errno.ESTALE):
-				msg = "%s stat failed in %s: %s" % \
-					(self.distfile, "distfiles", e)
-				self.scheduler.output(msg + '\n', background=True,
-					log_path=self._log_path)
-				logging.error(msg)
-		else:
-			size_ok = st.st_size == self.digests["size"]
+		for layout in self.config.layouts:
+			distfile_path = os.path.join(
+				self.config.options.distfiles,
+				layout.get_path(self.distfile))
+			try:
+				st = os.stat(distfile_path)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					msg = "%s stat failed in %s: %s" % \
+						(self.distfile, "distfiles", e)
+					self.scheduler.output(msg + '\n', background=True,
+						log_path=self._log_path)
+					logging.error(msg)
+			else:
+				break
+
+		size_ok = st is not None and st.st_size == self.digests["size"]
 
 		if not size_ok:
 			if self.config.options.dry_run:
@@ -88,13 +89,20 @@ class FetchTask(CompositeTask):
 				# Do the unlink in order to ensure that the path is clear,
 				# even if stat raised ENOENT, since a broken symlink can
 				# trigger ENOENT.
-				if self._unlink_file(distfile_path, "distfiles"):
-					if st is not None:
-						logging.debug(("delete '%s' with "
-							"wrong size from distfiles") % (self.distfile,))
-				else:
-					self.config.log_failure("%s\t%s\t%s" %
-						(self.cpv, self.distfile, "unlink failed in distfiles"))
+				unlink_success = True
+				for layout in self.config.layouts:
+					unlink_path = os.path.join(
+						self.config.options.distfiles,
+						layout.get_path(self.distfile))
+					if self._unlink_file(unlink_path, "distfiles"):
+						if st is not None:
+							logging.debug(("delete '%s' with "
+								"wrong size from distfiles") % (self.distfile,))
+					else:
+						self.config.log_failure("%s\t%s\t%s" %
+							(self.cpv, self.distfile, "unlink failed in distfiles"))
+						unlink_success = False
+				if not unlink_success:
 					self.returncode = os.EX_OK
 					self._async_wait()
 					return
