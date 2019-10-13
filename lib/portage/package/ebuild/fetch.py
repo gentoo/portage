@@ -35,6 +35,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream',
 	'portage.util.configparser:SafeConfigParser,read_configs,' +
 		'ConfigParserError',
+	'portage.util.install_mask:_raise_exc',
 	'portage.util._urlopen:urlopen',
 )
 
@@ -269,7 +270,9 @@ class FlatLayout(object):
 		return filename
 
 	def get_filenames(self, distdir):
-		return iter(os.listdir(distdir))
+		for dirpath, dirnames, filenames in os.walk(distdir,
+				onerror=_raise_exc):
+			return iter(filenames)
 
 	@staticmethod
 	def verify_args(args):
