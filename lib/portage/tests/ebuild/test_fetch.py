@@ -9,6 +9,7 @@ import tempfile
 
 import portage
 from portage import shutil, os
+from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
@@ -59,15 +60,19 @@ class EbuildFetchTestCase(TestCase):
 
 			playground = ResolverPlayground(ebuilds=ebuilds_subst, distfiles=distfiles)
 			ro_distdir = tempfile.mkdtemp()
+			eubin = os.path.join(playground.eprefix, "usr", "bin")
 			try:
 				fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
 				fetch_bin = portage.process.find_binary(fetchcommand[0])
 				if fetch_bin is None:
 					self.skipTest('FETCHCOMMAND not found: {}'.format(playground.settings['FETCHCOMMAND']))
+				os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
 				resumecommand = portage.util.shlex_split(playground.settings['RESUMECOMMAND'])
 				resume_bin = portage.process.find_binary(resumecommand[0])
 				if resume_bin is None:
 					self.skipTest('RESUMECOMMAND not found: {}'.format(playground.settings['RESUMECOMMAND']))
+				if resume_bin != fetch_bin:
+					os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
 				root_config = playground.trees[playground.eroot]['root_config']
 				portdb = root_config.trees["porttree"].dbapi
 				settings = config(clone=playground.settings)
@@ -228,6 +233,23 @@ class EbuildFetchTestCase(TestCase):
 								self.assertEqual(f.read(), distfiles[k])
 					finally:
 						settings['PORTAGE_FETCH_RESUME_MIN_SIZE'] = orig_resume_min_size
+
+					# Test readonly DISTDIR + skiprocheck, with FETCHCOMMAND set to temporarily chmod DISTDIR
+					orig_fetchcommand = settings['FETCHCOMMAND']
+					orig_distdir_mode = os.stat(settings['DISTDIR']).st_mode
+					for k in settings['AA'].split():
+						os.unlink(os.path.join(settings['DISTDIR'], k))
+					try:
+						os.chmod(settings['DISTDIR'], 0o555)
+						settings['FETCHCOMMAND'] = '"%s" -c "chmod ug+w \\"${DISTDIR}\\"; %s; status=\\$?; chmod a-w \\"${DISTDIR}\\"; exit \\$status"' % (BASH_BINARY, orig_fetchcommand.replace('"', '\\"'))
+						settings.features.add('skiprocheck')
+						settings.features.remove('distlocks')
+						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
+					finally:
+						settings['FETCHCOMMAND'] = orig_fetchcommand
+						os.chmod(settings['DISTDIR'], orig_distdir_mode)
+						settings.features.remove('skiprocheck')
+						settings.features.add('distlocks')
 			finally:
 				shutil.rmtree(ro_distdir)
 				playground.cleanup()

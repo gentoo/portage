@@ -529,11 +529,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if listonly or ("distlocks" not in features):
 		use_locks = 0
 
+	distdir_writable = os.access(mysettings["DISTDIR"], os.W_OK)
 	fetch_to_ro = 0
 	if "skiprocheck" in features:
 		fetch_to_ro = 1
 
-	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
+	if not distdir_writable and fetch_to_ro:
 		if use_locks:
 			writemsg(colorize("BAD",
 				_("!!! For fetching to a read-only filesystem, "
@@ -613,8 +614,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
-			mirror_cache = os.path.join(mysettings["DISTDIR"],
-					".mirror-cache.json")
+			if distdir_writable:
+				mirror_cache = os.path.join(mysettings["DISTDIR"],
+						".mirror-cache.json")
+			else:
+				mirror_cache = None
 			for l in locations:
 				filedict[myfile].append(functools.partial(
 					get_mirror_url, l, myfile, mirror_cache))
@@ -790,7 +794,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				pruned_digests["size"] = size
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
-		download_path = myfile_path + _download_suffix
+		download_path = myfile_path if fetch_to_ro else myfile_path + _download_suffix
 		has_space = True
 		has_space_superuser = True
 		file_lock = None
@@ -1058,7 +1062,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
 							else:
-								_movefile(download_path, myfile_path, mysettings=mysettings)
+								if not fetch_to_ro:
+									_movefile(download_path, myfile_path, mysettings=mysettings)
 								eout = EOutput()
 								eout.quiet = \
 									mysettings.get("PORTAGE_QUIET", None) == "1"
@@ -1177,7 +1182,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							del e
 							fetched = 0
 						else:
-							if mystat.st_size < fetch_resume_size:
+							if distdir_writable and mystat.st_size < fetch_resume_size:
 								writemsg(_(">>> Deleting distfile with size "
 									"%d (smaller than " "PORTAGE_FETCH_RESU"
 									"ME_MIN_SIZE)\n") % mystat.st_size)
@@ -1315,13 +1320,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == _("Insufficient data for checksum verification"):
 										return 0
-									temp_filename = \
-										_checksum_failure_temp_file(
-											mysettings, mysettings["DISTDIR"],
-											os.path.basename(download_path))
-									writemsg_stdout(_("Refetching... "
-										"File renamed to '%s'\n\n") % \
-										temp_filename, noiselevel=-1)
+									if distdir_writable:
+										temp_filename = \
+											_checksum_failure_temp_file(
+												mysettings, mysettings["DISTDIR"],
+												os.path.basename(download_path))
+										writemsg_stdout(_("Refetching... "
+											"File renamed to '%s'\n\n") % \
+											temp_filename, noiselevel=-1)
 									fetched=0
 									checksum_failure_count += 1
 									if checksum_failure_count == \
@@ -1338,7 +1344,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										checksum_failure_max_tries:
 										break
 								else:
-									_movefile(download_path, myfile_path, mysettings=mysettings)
+									if not fetch_to_ro:
+										_movefile(download_path, myfile_path, mysettings=mysettings)
 									eout = EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									if digests:
@@ -1349,7 +1356,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 									break
 					else: # no digests available
 						if not myret:
-							_movefile(download_path, myfile_path, mysettings=mysettings)
+							if not fetch_to_ro:
+								_movefile(download_path, myfile_path, mysettings=mysettings)
 							fetched=2
 							break
 						elif mydigests!=None:
