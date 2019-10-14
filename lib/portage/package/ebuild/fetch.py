@@ -420,7 +420,8 @@ def get_mirror_url(mirror_url, filename, cache_path=None):
 			except ConfigParserError:
 				pass
 		except (IOError, UnicodeDecodeError):
-			pass
+			# Do not cache negative results.
+			cache_path = None
 
 		cache[mirror_url] = (time.time(), mirror_conf.serialize())
 		if cache_path is not None:
