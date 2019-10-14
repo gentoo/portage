@@ -415,11 +415,8 @@ def get_mirror_url(mirror_url, filename, cache_path=None):
 			finally:
 				f.close()
 
-			try:
-				mirror_conf.read_from_file(data)
-			except ConfigParserError:
-				pass
-		except (IOError, UnicodeDecodeError):
+			mirror_conf.read_from_file(data)
+		except (ConfigParserError, IOError, UnicodeDecodeError):
 			# Do not cache negative results.
 			cache_path = None
 
