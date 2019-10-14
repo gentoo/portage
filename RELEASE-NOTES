@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.77
+==================================
+* Bug Fixes:
+    - Bug 220533 Fix FEATURES=skiprocheck read-only DISTDIR support
+    - Bug 646898 Support GLEP 75 mirror structure
+    - Bug 658648 Disable emerge --autounmask by default, except for
+                 package.use and package.license changes
+    - Bug 695870 Improvements to ebuild(5) man page
+
+
 portage-2.3.76
 ==================================
 * Bug Fixes:
