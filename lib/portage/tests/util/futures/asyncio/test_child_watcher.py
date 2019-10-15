@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -7,6 +7,7 @@ from portage.process import find_binary, spawn
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
 
@@ -36,13 +37,17 @@ class ChildWatcherTestCase(TestCase):
 			def callback(pid, returncode, *args):
 				future.set_result((pid, returncode, args))
 
-			with asyncio.get_child_watcher() as watcher:
-				pids = spawn([true_binary], returnpid=True)
-				watcher.add_child_handler(pids[0], callback, *args_tuple)
+			@coroutine
+			def watch_pid():
 
-				self.assertEqual(
-					loop.run_until_complete(future),
-					(pids[0], os.EX_OK, args_tuple))
+				with asyncio.get_child_watcher() as watcher:
+					pids = spawn([true_binary], returnpid=True)
+					watcher.add_child_handler(pids[0], callback, *args_tuple)
+					self.assertEqual(
+						(yield future),
+						(pids[0], os.EX_OK, args_tuple))
+
+			loop.run_until_complete(watch_pid())
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
 			if loop not in (None, global_event_loop()):
