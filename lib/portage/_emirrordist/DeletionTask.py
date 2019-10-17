@@ -102,7 +102,7 @@ class DeletionTask(CompositeTask):
 
 	def _delete_links(self):
 		success = True
-		for layout in self.config.layouts[1:]:
+		for layout in self.config.layouts:
 			distfile_path = os.path.join(
 				self.config.options.distfiles,
 				layout.get_path(self.distfile))
