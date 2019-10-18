@@ -140,8 +140,9 @@ def create_subprocess_exec(*args, **kwargs):
 	loop = _wrap_loop(kwargs.pop('loop', None))
 	kwargs.setdefault('close_fds', _close_fds_default)
 	if _asyncio_enabled and isinstance(loop, _AsyncioEventLoop):
-		# Use the real asyncio loop and create_subprocess_exec.
-		return _real_asyncio.create_subprocess_exec(*args, loop=loop._loop, **kwargs)
+		# Use the real asyncio create_subprocess_exec (loop argument
+		# is deprecated since since Python 3.8).
+		return _real_asyncio.create_subprocess_exec(*args, **kwargs)
 
 	result = loop.create_future()
 
