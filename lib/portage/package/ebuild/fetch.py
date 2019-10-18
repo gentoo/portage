@@ -382,7 +382,7 @@ class MirrorLayoutConfig(object):
 		return ret
 
 
-def get_mirror_url(mirror_url, filename, cache_path=None):
+def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	"""
 	Get correct fetch URL for a given file, accounting for mirror
 	layout configuration.
@@ -408,23 +408,22 @@ def get_mirror_url(mirror_url, filename, cache_path=None):
 	if ts >= time.time() - 86400:
 		mirror_conf.deserialize(data)
 	else:
+		tmpfile = '.layout.conf.%s' % urlparse(mirror_url).hostname
 		try:
-			f = urlopen(mirror_url + '/distfiles/layout.conf')
-			try:
-				data = io.StringIO(f.read().decode('utf8'))
-			finally:
-				f.close()
-
-			mirror_conf.read_from_file(data)
+			if fetch({tmpfile: (mirror_url + '/distfiles/layout.conf',)},
+					mysettings, force=1, try_mirrors=0):
+				tmpfile = os.path.join(mysettings['DISTDIR'], tmpfile)
+				mirror_conf.read_from_file(tmpfile)
+			else:
+				raise IOError()
 		except (ConfigParserError, IOError, UnicodeDecodeError):
-			# Do not cache negative results.
-			cache_path = None
-
-		cache[mirror_url] = (time.time(), mirror_conf.serialize())
-		if cache_path is not None:
-			f = atomic_ofstream(cache_path, 'w')
-			json.dump(cache, f)
-			f.close()
+			pass
+		else:
+			cache[mirror_url] = (time.time(), mirror_conf.serialize())
+			if cache_path is not None:
+				f = atomic_ofstream(cache_path, 'w')
+				json.dump(cache, f)
+				f.close()
 
 	return (mirror_url + "/distfiles/" +
 			mirror_conf.get_best_supported_layout().get_path(filename))
@@ -656,7 +655,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				mirror_cache = None
 			for l in locations:
 				filedict[myfile].append(functools.partial(
-					get_mirror_url, l, myfile, mirror_cache))
+					get_mirror_url, l, myfile, mysettings, mirror_cache))
 		if myuri is None:
 			continue
 		if myuri[:9]=="mirror://":
