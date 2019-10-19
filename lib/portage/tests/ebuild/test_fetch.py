@@ -29,6 +29,13 @@ class EbuildFetchTestCase(TestCase):
 
 	def testEbuildFetch(self):
 
+		user_config = {
+			"make.conf":
+				(
+					'GENTOO_MIRRORS="{scheme}://{host}:{port}"',
+				),
+		}
+
 		distfiles = {
 			'bar': b'bar\n',
 			'foo': b'foo\n',
@@ -37,7 +44,6 @@ class EbuildFetchTestCase(TestCase):
 		ebuilds = {
 			'dev-libs/A-1': {
 				'EAPI': '7',
-				'RESTRICT': 'primaryuri',
 				'SRC_URI': '''{scheme}://{host}:{port}/distfiles/bar.txt -> bar
 					{scheme}://{host}:{port}/distfiles/foo.txt -> foo''',
 			},
@@ -47,7 +53,13 @@ class EbuildFetchTestCase(TestCase):
 		scheme = 'http'
 		host = '127.0.0.1'
 		content = {}
+
+		content['/distfiles/layout.conf'] = b'[structure]\n0=flat\n'
+
 		for k, v in distfiles.items():
+			# mirror path
+			content['/distfiles/{}'.format(k)] = v
+			# upstream path
 			content['/distfiles/{}.txt'.format(k)] = v
 
 		with AsyncHTTPServer(host, content, loop) as server:
@@ -58,7 +70,16 @@ class EbuildFetchTestCase(TestCase):
 					scheme=scheme, host=host, port=server.server_port)
 				ebuilds_subst[cpv] = metadata
 
-			playground = ResolverPlayground(ebuilds=ebuilds_subst, distfiles=distfiles)
+			user_config_subst = user_config.copy()
+			for configname, configdata in user_config.items():
+
+				configdata_sub = []
+				for line in configdata:
+					configdata_sub.append(line.format(
+					scheme=scheme, host=host, port=server.server_port))
+				user_config_subst[configname] = tuple(configdata_sub)
+
+			playground = ResolverPlayground(ebuilds=ebuilds_subst, distfiles=distfiles, user_config=user_config_subst)
 			ro_distdir = tempfile.mkdtemp()
 			eubin = os.path.join(playground.eprefix, "usr", "bin")
 			try:
