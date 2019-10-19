@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Gentoo Foundation
+# Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -11,12 +11,10 @@ try:
 	from urllib.request import urlopen as _urlopen
 	import urllib.parse as urllib_parse
 	import urllib.request as urllib_request
-	from urllib.parse import splituser as urllib_parse_splituser
 except ImportError:
 	from urllib import urlopen as _urlopen
 	import urlparse as urllib_parse
 	import urllib2 as urllib_request
-	from urllib import splituser as urllib_parse_splituser
 
 if sys.hexversion >= 0x3000000:
 	# pylint: disable=W0622
@@ -43,7 +41,7 @@ def urlopen(url, if_modified_since=None):
 	if parse_result.scheme not in ("http", "https"):
 		return _urlopen(url)
 	else:
-		netloc = urllib_parse_splituser(parse_result.netloc)[1]
+		netloc = parse_result.netloc.rpartition('@')[-1]
 		url = urllib_parse.urlunparse((parse_result.scheme, netloc, parse_result.path, parse_result.params, parse_result.query, parse_result.fragment))
 		password_manager = urllib_request.HTTPPasswordMgrWithDefaultRealm()
 		request = urllib_request.Request(url)
