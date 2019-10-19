@@ -9,11 +9,12 @@ import tempfile
 
 import portage
 from portage import shutil, os
-from portage.const import BASH_BINARY
+from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util.configparser import ConfigParserError
+from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -97,6 +98,27 @@ class EbuildFetchTestCase(TestCase):
 				root_config = playground.trees[playground.eroot]['root_config']
 				portdb = root_config.trees["porttree"].dbapi
 				settings = config(clone=playground.settings)
+
+				emirrordist_cmd = (portage._python_interpreter, '-b', '-Wd',
+					os.path.join(self.bindir, 'emirrordist'),
+					'--distfiles', settings['DISTDIR'],
+					'--config-root', settings['EPREFIX'],
+					'--repositories-configuration', settings.repositories.config_string(),
+					'--repo', 'test_repo', '--mirror')
+
+				env = os.environ.copy()
+				env['PYTHONPATH'] = ':'.join(
+					filter(None, [PORTAGE_PYM_PATH] + os.environ.get('PYTHONPATH', '').split(':')))
+
+				for k in distfiles:
+					os.unlink(os.path.join(settings['DISTDIR'], k))
+
+				proc = loop.run_until_complete(asyncio.create_subprocess_exec(*emirrordist_cmd, env=env))
+				self.assertEqual(loop.run_until_complete(proc.wait()), 0)
+
+				for k in distfiles:
+					with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
+						self.assertEqual(f.read(), distfiles[k])
 
 				# Tests only work with one ebuild at a time, so the config
 				# pool only needs a single config instance.
