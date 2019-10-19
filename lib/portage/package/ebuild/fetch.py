@@ -433,7 +433,31 @@ def get_mirror_url(mirror_url, filename, cache_path=None):
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
 	allow_missing_digests=True):
-	"fetch files.  Will use digest file if available."
+	"""
+	Fetch files to DISTDIR and also verify digests if they are available.
+
+	@param myuris: Maps each file name to a tuple of available fetch URIs.
+	@type myuris: dict
+	@param mysettings: Portage config instance.
+	@type mysettings: portage.config
+	@param listonly: Only print URIs and do not actually fetch them.
+	@type listonly: bool
+	@param fetchonly: Do not block for files that are locked by a
+		concurrent fetcher process. This means that the function can
+		return successfully *before* all files have been successfully
+		fetched!
+	@type fetchonly: bool
+	@param use_locks: Enable locks. This parameter is ineffective if
+		FEATURES=distlocks is disabled in the portage config!
+	@type use_locks: bool
+	@param digests: Maps each file name to a dict of digest types and values.
+	@type digests: dict
+	@param allow_missing_digests: Enable fetch even if there are no digests
+		available for verification.
+	@type allow_missing_digests: bool
+	@rtype: int
+	@return: 1 if successful, 0 otherwise.
+	"""
 
 	if not myuris:
 		return 1
