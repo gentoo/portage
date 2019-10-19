@@ -20,7 +20,7 @@ from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
-from portage.package.ebuild.fetch import (_download_suffix, FlatLayout,
+from portage.package.ebuild.fetch import (_download_suffix, fetch, FlatLayout,
 		FilenameHashLayout, MirrorLayoutConfig)
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.Package import Package
@@ -51,6 +51,12 @@ class EbuildFetchTestCase(TestCase):
 		}
 
 		loop = SchedulerInterface(global_event_loop())
+
+		def run_async(func, *args, **kwargs):
+			with ForkExecutor(loop=loop) as executor:
+				return loop.run_until_complete(loop.run_in_executor(executor,
+					functools.partial(func, *args, **kwargs)))
+
 		scheme = 'http'
 		host = '127.0.0.1'
 		content = {}
@@ -99,6 +105,29 @@ class EbuildFetchTestCase(TestCase):
 				portdb = root_config.trees["porttree"].dbapi
 				settings = config(clone=playground.settings)
 
+				# Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
+				foo_uri = {'foo': ('{scheme}://{host}:{port}/distfiles/foo'.format(scheme=scheme, host=host, port=server.server_port),)}
+				foo_path = os.path.join(settings['DISTDIR'], 'foo')
+				foo_stale_content = b'stale content\n'
+				with open(foo_path, 'wb') as f:
+					f.write(b'stale content\n')
+
+				self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False)))
+
+				with open(foo_path, 'rb') as f:
+					self.assertEqual(f.read(), foo_stale_content)
+				with open(foo_path, 'rb') as f:
+					self.assertNotEqual(f.read(), distfiles['foo'])
+
+				# Remove the stale file in order to forcefully update it.
+				os.unlink(foo_path)
+
+				self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False)))
+
+				with open(foo_path, 'rb') as f:
+					self.assertEqual(f.read(), distfiles['foo'])
+
+				# Test emirrordist invocation.
 				emirrordist_cmd = (portage._python_interpreter, '-b', '-Wd',
 					os.path.join(self.bindir, 'emirrordist'),
 					'--distfiles', settings['DISTDIR'],
