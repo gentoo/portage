@@ -25,20 +25,20 @@ class DeletionIterator(object):
 			distfiles_set.update(layout.get_filenames(distdir))
 		for filename in distfiles_set:
 			# require at least one successful stat()
-			first_exception = None
+			exceptions = []
 			for layout in reversed(self._config.layouts):
 				try:
 					st = os.stat(
 							os.path.join(distdir, layout.get_path(filename)))
 				except OSError as e:
-					first_exception = e
+					exceptions.append(e)
 				else:
 					if stat.S_ISREG(st.st_mode):
 						break
 			else:
-				if first_exception is not None:
+				if exceptions:
 					logging.error("stat failed on '%s' in distfiles: %s\n" %
-						(filename, first_exception))
+						(filename, '; '.join(str(x) for x in exceptions)))
 				continue
 
 			if filename in file_owners:
