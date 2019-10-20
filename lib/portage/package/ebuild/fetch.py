@@ -432,7 +432,7 @@ def get_mirror_url(mirror_url, filename, cache_path=None):
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
-	allow_missing_digests=True):
+	allow_missing_digests=True, force=False):
 	"""
 	Fetch files to DISTDIR and also verify digests if they are available.
 
@@ -455,9 +455,22 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	@param allow_missing_digests: Enable fetch even if there are no digests
 		available for verification.
 	@type allow_missing_digests: bool
+	@param force: Force download, even when a file already exists in
+		DISTDIR. This is most useful when there are no digests available,
+		since otherwise download will be automatically forced if the
+		existing file does not match the available digests. Also, this
+		avoids the need to remove the existing file in advance, which
+		makes it possible to atomically replace the file and avoid
+		interference with concurrent processes.
+	@type force: bool
 	@rtype: int
 	@return: 1 if successful, 0 otherwise.
 	"""
+
+	if force and digests:
+		# Since the force parameter can trigger unnecessary fetch when the
+		# digests match, do not allow force=True when digests are provided.
+		raise PortageException(_('fetch: force=True is not allowed when digests are provided'))
 
 	if not myuris:
 		return 1
@@ -878,7 +891,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
 				match, mystat = _check_distfile(
 					myfile_path, pruned_digests, eout, hash_filter=hash_filter)
-				if match:
+				if match and not force:
 					# Skip permission adjustment for symlinks, since we don't
 					# want to modify anything outside of the primary DISTDIR,
 					# and symlinks typically point to PORTAGE_RO_DISTDIRS.
@@ -1042,10 +1055,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								os.unlink(download_path)
 							except EnvironmentError:
 								pass
-					elif myfile not in mydigests:
+					elif not orig_digests:
 						# We don't have a digest, but the file exists.  We must
 						# assume that it is fully downloaded.
-						continue
+						if not force:
+							continue
 					else:
 						if (mydigests[myfile].get("size") is not None
 								and mystat.st_size < mydigests[myfile]["size"]

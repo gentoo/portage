@@ -119,10 +119,44 @@ class EbuildFetchTestCase(TestCase):
 				with open(foo_path, 'rb') as f:
 					self.assertNotEqual(f.read(), distfiles['foo'])
 
-				# Remove the stale file in order to forcefully update it.
-				os.unlink(foo_path)
+				# Use force=True to update the stale file.
+				self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False, force=True)))
 
-				self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False)))
+				with open(foo_path, 'rb') as f:
+					self.assertEqual(f.read(), distfiles['foo'])
+
+				# Test force=True with FEATURES=skiprocheck, using read-only DISTDIR.
+				# FETCHCOMMAND is set to temporarily chmod +w DISTDIR. Note that
+				# FETCHCOMMAND must perform atomic rename itself due to read-only
+				# DISTDIR.
+				with open(foo_path, 'wb') as f:
+					f.write(b'stale content\n')
+				orig_fetchcommand = settings['FETCHCOMMAND']
+				orig_distdir_mode = os.stat(settings['DISTDIR']).st_mode
+				temp_fetchcommand = os.path.join(eubin, 'fetchcommand')
+				with open(temp_fetchcommand, 'w') as f:
+					f.write("""
+					set -e
+					URI=$1
+					DISTDIR=$2
+					FILE=$3
+					trap 'chmod a-w "${DISTDIR}"' EXIT
+					chmod ug+w "${DISTDIR}"
+					%s
+					mv -f "${DISTDIR}/${FILE}.__download__" "${DISTDIR}/${FILE}"
+				""" % orig_fetchcommand.replace('${FILE}', '${FILE}.__download__'))
+				settings['FETCHCOMMAND'] = '"%s" "%s" "${URI}" "${DISTDIR}" "${FILE}"' % (BASH_BINARY, temp_fetchcommand)
+				settings.features.add('skiprocheck')
+				settings.features.remove('distlocks')
+				os.chmod(settings['DISTDIR'], 0o555)
+				try:
+					self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False, force=True)))
+				finally:
+					settings['FETCHCOMMAND'] = orig_fetchcommand
+					os.chmod(settings['DISTDIR'], orig_distdir_mode)
+					settings.features.remove('skiprocheck')
+					settings.features.add('distlocks')
+					os.unlink(temp_fetchcommand)
 
 				with open(foo_path, 'rb') as f:
 					self.assertEqual(f.read(), distfiles['foo'])
