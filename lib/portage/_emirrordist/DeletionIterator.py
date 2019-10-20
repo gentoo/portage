@@ -27,11 +27,16 @@ class DeletionIterator(object):
 			# require at least one successful stat()
 			exceptions = []
 			for layout in reversed(self._config.layouts):
+				path = os.path.join(distdir, layout.get_path(filename))
 				try:
-					st = os.stat(
-							os.path.join(distdir, layout.get_path(filename)))
+					st = os.stat(path)
 				except OSError as e:
-					exceptions.append(e)
+					# is it a dangling symlink?
+					try:
+						if os.path.islink(path):
+							os.unlink(path)
+					except OSError as e:
+						exceptions.append(e)
 				else:
 					if stat.S_ISREG(st.st_mode):
 						break
