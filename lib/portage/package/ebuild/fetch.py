@@ -307,7 +307,7 @@ class FilenameHashLayout(object):
 			c = c // 4
 			pattern += c * '[0-9a-f]' + '/'
 		pattern += '*'
-		for x in glob.iglob(os.path.join(distdir, pattern)):
+		for x in glob.iglob(portage._unicode_encode(os.path.join(distdir, pattern), errors='strict')):
 			try:
 				yield portage._unicode_decode(x, errors='strict').rsplit('/', 1)[1]
 			except UnicodeDecodeError:
