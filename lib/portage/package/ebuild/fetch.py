@@ -7,6 +7,7 @@ __all__ = ['fetch']
 
 import errno
 import functools
+import glob
 import io
 import itertools
 import json
@@ -27,7 +28,6 @@ except ImportError:
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'glob:glob',
 	'portage.package.ebuild.config:check_config_instance,config',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_doebuild_spawn',
@@ -272,7 +272,13 @@ class FlatLayout(object):
 	def get_filenames(self, distdir):
 		for dirpath, dirnames, filenames in os.walk(distdir,
 				onerror=_raise_exc):
-			return iter(filenames)
+			for filename in filenames:
+				try:
+					yield portage._unicode_decode(filename, errors='strict')
+				except UnicodeDecodeError:
+					# Ignore it. Distfiles names must have valid UTF8 encoding.
+					pass
+			return
 
 	@staticmethod
 	def verify_args(args):
@@ -301,8 +307,12 @@ class FilenameHashLayout(object):
 			c = c // 4
 			pattern += c * '[0-9a-f]' + '/'
 		pattern += '*'
-		return (x.rsplit('/', 1)[1]
-				for x in glob(os.path.join(distdir, pattern)))
+		for x in glob.iglob(os.path.join(distdir, pattern)):
+			try:
+				yield portage._unicode_decode(x, errors='strict').rsplit('/', 1)[1]
+			except UnicodeDecodeError:
+				# Ignore it. Distfiles names must have valid UTF8 encoding.
+				pass
 
 	@staticmethod
 	def verify_args(args):

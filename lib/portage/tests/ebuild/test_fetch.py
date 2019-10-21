@@ -448,3 +448,29 @@ class EbuildFetchTestCase(TestCase):
 '''
 		self.assertRaises(ConfigParserError, mlc.read_from_file,
 				io.StringIO(conf))
+
+	def test_filename_hash_layout_get_filenames(self):
+		layouts = (
+			FlatLayout(),
+			FilenameHashLayout('SHA1', '4'),
+			FilenameHashLayout('SHA1', '8'),
+			FilenameHashLayout('SHA1', '8:16'),
+			FilenameHashLayout('SHA1', '8:16:24'),
+		)
+		filename = 'foo-1.tar.gz'
+
+		for layout in layouts:
+			distdir = tempfile.mkdtemp()
+			try:
+				path = os.path.join(distdir, layout.get_path(filename))
+				try:
+					os.makedirs(os.path.dirname(path))
+				except OSError:
+					pass
+
+				with open(path, 'wb') as f:
+					pass
+
+				self.assertEqual([filename], list(layout.get_filenames(distdir)))
+			finally:
+				shutil.rmtree(distdir)
