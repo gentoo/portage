@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.78
+==================================
+* Bug Fixes:
+    - Bug 697566 fetch: Use FETCHCOMMAND to fetch mirror layout.conf
+    - Bug 697890 emirrordist: Fix DeletionTask layout assumptions
+    - Bug 697906 emirrordist: Delete potential symlinks for all layouts
+    - Bug 698046 make.globals: Change FETCHCOMMAND_RSYNC to --copy-links
+
+
 portage-2.3.77
 ==================================
 * Bug Fixes:
