@@ -10,14 +10,9 @@ from _emerge.CompositeTask import CompositeTask
 
 class DeletionTask(CompositeTask):
 
-	__slots__ = ('distfile', 'config')
+	__slots__ = ('distfile', 'distfile_path', 'config')
 
 	def _start(self):
-
-		distfile_path = os.path.join(
-			self.config.options.distfiles,
-			self.config.layouts[0].get_path(self.distfile))
-
 		if self.config.options.recycle_dir is not None:
 			recycle_path = os.path.join(
 				self.config.options.recycle_dir, self.distfile)
@@ -29,7 +24,8 @@ class DeletionTask(CompositeTask):
 					"distfiles to recycle") % self.distfile)
 				try:
 					# note: distfile_path can be a symlink here
-					os.rename(os.path.realpath(distfile_path), recycle_path)
+					os.rename(os.path.realpath(self.distfile_path),
+							recycle_path)
 				except OSError as e:
 					if e.errno != errno.EXDEV:
 						logging.error(("rename %s from distfiles to "
@@ -40,7 +36,7 @@ class DeletionTask(CompositeTask):
 					return
 
 				self._start_task(
-					FileCopier(src_path=distfile_path,
+					FileCopier(src_path=self.distfile_path,
 						dest_path=recycle_path,
 						background=False),
 					self._recycle_copier_exit)
@@ -55,7 +51,7 @@ class DeletionTask(CompositeTask):
 			logging.debug(("delete '%s' from "
 				"distfiles") % self.distfile)
 			try:
-				os.unlink(distfile_path)
+				os.unlink(self.distfile_path)
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					logging.error("%s unlink failed in distfiles: %s" %

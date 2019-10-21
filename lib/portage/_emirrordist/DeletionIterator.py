@@ -72,6 +72,7 @@ class DeletionIterator(object):
 
 					yield DeletionTask(background=True,
 						distfile=filename,
+						distfile_path=path,
 						config=self._config)
 
 				else:
@@ -85,6 +86,7 @@ class DeletionIterator(object):
 
 						yield DeletionTask(background=True,
 							distfile=filename,
+							distfile_path=path,
 							config=self._config)
 
 		if deletion_db is not None:
