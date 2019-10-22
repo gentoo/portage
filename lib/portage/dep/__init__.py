@@ -17,7 +17,6 @@ __all__ = [
 
 import re, sys
 import warnings
-from itertools import chain
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -28,8 +27,8 @@ from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
-from portage.versions import catpkgsplit, catsplit, \
-	vercmp, ververify, _cp, _cpv, _pkg_str, _slot, _unknown_repo, _vr
+from portage.versions import _cp, _cpv, _pkg_str, _slot, _unknown_repo, _vr, \
+	catpkgsplit, vercmp, ververify
 import portage.cache.mappings
 
 if sys.hexversion >= 0x3000000:
@@ -405,7 +404,7 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
-def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], is_src_uri=False, \
+def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), is_src_uri=False, \
 	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
@@ -413,14 +412,14 @@ def use_reduce(depstr, uselist=[], masklist=[], matchall=False, excludeall=[], i
 
 	@param depstr: depstring
 	@type depstr: String
-	@param uselist: List of use enabled flags
-	@type uselist: List
-	@param masklist: List of masked flags (always treated as disabled)
-	@type masklist: List
+	@param uselist: Sequence of use enabled flags
+	@type uselist: Sequence
+	@param masklist: Sequence of masked flags (always treated as disabled)
+	@type masklist: Sequence
 	@param matchall: Treat all conditionals as active. Used by repoman. 
 	@type matchall: Bool
-	@param excludeall: List of flags for which negated conditionals are always treated as inactive.
-	@type excludeall: List
+	@param excludeall: Sequence of flags for which negated conditionals are always treated as inactive.
+	@type excludeall: Sequence
 	@param is_src_uri: Indicates if depstr represents a SRC_URI
 	@type is_src_uri: Bool
 	@param eapi: Indicates the EAPI the dep string has to comply to
@@ -903,7 +902,7 @@ class _use_dep(object):
 		if conditional:
 			self.conditional = self._conditionals_class()
 			for k in "enabled", "disabled", "equal", "not_equal":
-				setattr(self.conditional, k, frozenset(conditional.get(k, [])))
+				setattr(self.conditional, k, frozenset(conditional.get(k, ())))
 
 	def __bool__(self):
 		return bool(self.tokens)
@@ -1012,7 +1011,7 @@ class _use_dep(object):
 		conditional = {}
 		tokens = []
 
-		all_defaults = frozenset(chain(self.missing_enabled, self.missing_disabled))
+		all_defaults = self.missing_enabled | self.missing_disabled
 		
 		def validate_flag(flag):
 			return is_valid_flag(flag) or flag in all_defaults
@@ -1249,35 +1248,36 @@ class Atom(_unicode):
 				m = atom_re.match(s)
 				if m is None:
 					raise InvalidAtom(self)
-				gdict = m.groupdict()
-				if m.group('star') is not None:
+				m_group = m.group
+				if m_group('star') is not None:
 					op = '=*'
 					base = atom_re.groupindex['star']
-					cp = m.group(base + 1)
-					cpv = m.group('star')[1:]
-					extended_version = m.group(base + 4)
+					cp = m_group(base + 1)
+					cpv = m_group('star')[1:]
+					extended_version = m_group(base + 4)
 				else:
 					op = None
-					cpv = cp = m.group('simple')
-					if m.group(atom_re.groupindex['simple'] + 3) is not None:
+					cpv = cp = m_group('simple')
+					if m_group(atom_re.groupindex['simple'] + 3) is not None:
 						raise InvalidAtom(self)
 				if cpv.find("**") != -1:
 					raise InvalidAtom(self)
-				slot = m.group('slot')
-				repo = m.group('repo')
+				slot = m_group('slot')
+				repo = m_group('repo')
 				use_str = None
 				extended_syntax = True
 			else:
 				raise InvalidAtom(self)
 		elif m.group('op') is not None:
+			m_group = m.group
 			base = atom_re.groupindex['op']
-			op = m.group(base + 1)
-			cpv = m.group(base + 2)
-			cp = m.group(base + 3)
-			slot = m.group(atom_re.groups - 2)
-			repo = m.group(atom_re.groups - 1)
-			use_str = m.group(atom_re.groups)
-			version = m.group(base + 4)
+			op = m_group(base + 1)
+			cpv = m_group(base + 2)
+			cp = m_group(base + 3)
+			slot = m_group(atom_re.groups - 2)
+			repo = m_group(atom_re.groups - 1)
+			use_str = m_group(atom_re.groups)
+			version = m_group(base + 4)
 			if version is not None:
 				if allow_build_id:
 					cpv_build_id = cpv
@@ -1296,20 +1296,22 @@ class Atom(_unicode):
 		elif m.group('star') is not None:
 			base = atom_re.groupindex['star']
 			op = '=*'
-			cpv = m.group(base + 1)
-			cp = m.group(base + 2)
-			slot = m.group(atom_re.groups - 2)
-			repo = m.group(atom_re.groups - 1)
-			use_str = m.group(atom_re.groups)
-			if m.group(base + 3) is not None:
+			m_group = m.group
+			cpv = m_group(base + 1)
+			cp = m_group(base + 2)
+			slot = m_group(atom_re.groups - 2)
+			repo = m_group(atom_re.groups - 1)
+			use_str = m_group(atom_re.groups)
+			if m_group(base + 3) is not None:
 				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
-			cpv = cp = m.group(atom_re.groupindex['simple'] + 1)
-			slot = m.group(atom_re.groups - 2)
-			repo = m.group(atom_re.groups - 1)
-			use_str = m.group(atom_re.groups)
-			if m.group(atom_re.groupindex['simple'] + 2) is not None:
+			m_group = m.group
+			cpv = cp = m_group(atom_re.groupindex['simple'] + 1)
+			slot = m_group(atom_re.groups - 2)
+			repo = m_group(atom_re.groups - 1)
+			use_str = m_group(atom_re.groups)
+			if m_group(atom_re.groupindex['simple'] + 2) is not None:
 				raise InvalidAtom(self)
 
 		else:
@@ -1600,7 +1602,7 @@ class Atom(_unicode):
 		@return: True if this atom matches pkg, otherwise False
 		@rtype: bool
 		"""
-		return bool(match_from_list(self, [pkg]))
+		return bool(match_from_list(self, (pkg,)))
 
 _extended_cp_re_cache = {}
 
@@ -2017,12 +2019,14 @@ def match_to_list(mypkg, mylist):
 	@return: A unique list of package atoms that match the given package atom
 	"""
 	matches = set()
-	result = []
-	pkgs = [mypkg]
-	for x in mylist:
-		if x not in matches and match_from_list(x, pkgs):
-			matches.add(x)
-			result.append(x)
+	matches_add = matches.add
+	pkgs = (mypkg,)
+	result = [
+		x
+		for x in mylist
+		if not (x in matches or matches_add(x))
+		and match_from_list(x, pkgs)
+	]
 	return result
 
 def best_match_to_list(mypkg, mylist):
@@ -2127,13 +2131,11 @@ def match_from_list(mydep, candidate_list):
 
 	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
-	slot      = mydep.slot
 	build_id  = mydep.build_id
 
 	if not mycpv_cps:
-		cat, pkg = catsplit(mycpv)
-		ver      = None
-		rev      = None
+		ver = None
+		rev = None
 	else:
 		cat, pkg, ver, rev = mycpv_cps
 		if mydep == mycpv:
@@ -2267,7 +2269,7 @@ def match_from_list(mydep, candidate_list):
 				continue
 			mylist.append(x)
 
-	elif operator in [">", ">=", "<", "<="]:
+	elif operator in (">", ">=", "<", "<="):
 		for x in candidate_list:
 			if hasattr(x, 'cp'):
 				pkg = x
@@ -2352,7 +2354,7 @@ def match_from_list(mydep, candidate_list):
 					if mydep.use.enabled:
 						if any(f in mydep.use.enabled for f in missing_disabled):
 							continue
-						need_enabled = mydep.use.enabled.difference(use.enabled)
+						need_enabled = mydep.use.enabled - use.enabled
 						if need_enabled:
 							if any(f not in missing_enabled for f in need_enabled):
 								continue
@@ -2360,7 +2362,7 @@ def match_from_list(mydep, candidate_list):
 					if mydep.use.disabled:
 						if any(f in mydep.use.disabled for f in missing_enabled):
 							continue
-						need_disabled = mydep.use.disabled.intersection(use.enabled)
+						need_disabled = mydep.use.disabled & use.enabled
 						if need_disabled:
 							if any(f not in missing_disabled for f in need_disabled):
 								continue
