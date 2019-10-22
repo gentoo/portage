@@ -167,7 +167,7 @@ class _frozen_depgraph_config(object):
 		if params.get("ignore_world", False):
 			self._required_set_names = set()
 		else:
-			self._required_set_names = set(["world"])
+			self._required_set_names = {"world"}
 
 		atoms = ' '.join(myopts.get("--exclude", [])).split()
 		self.excluded_pkgs = _wildcard_set(atoms)
@@ -1095,11 +1095,11 @@ class depgraph(object):
 
 		self._show_merge_list()
 
-		if ignored_binaries.get("respect_use"):
+		if "respect_use" in ignored_binaries:
 			self._show_ignored_binaries_respect_use(
 				ignored_binaries["respect_use"])
 
-		if ignored_binaries.get("changed_deps"):
+		if "changed_deps" in ignored_binaries:
 			self._show_ignored_binaries_changed_deps(
 				ignored_binaries["changed_deps"])
 
@@ -1271,9 +1271,10 @@ class depgraph(object):
 			return
 
 		self._show_merge_list()
-		msg = []
-		msg.append("\nWARNING: One or more updates/rebuilds have been " + \
-			"skipped due to a dependency conflict:\n\n")
+		msg = [
+			"\nWARNING: One or more updates/rebuilds have been "
+			"skipped due to a dependency conflict:\n\n"
+		]
 
 		indent = "  "
 		for pkg, parent_atoms in missed_updates:
@@ -1337,33 +1338,37 @@ class depgraph(object):
 		if "--quiet" in self._frozen_config.myopts:
 			return
 
-		msg = []
-		msg.append("It may be possible to solve this problem ")
-		msg.append("by using package.mask to prevent one of ")
-		msg.append("those packages from being selected. ")
-		msg.append("However, it is also possible that conflicting ")
-		msg.append("dependencies exist such that they are impossible to ")
-		msg.append("satisfy simultaneously.  If such a conflict exists in ")
-		msg.append("the dependencies of two different packages, then those ")
-		msg.append("packages can not be installed simultaneously.")
+		msg = [
+			"It may be possible to solve this problem "
+			"by using package.mask to prevent one of "
+			"those packages from being selected. "
+			"However, it is also possible that conflicting "
+			"dependencies exist such that they are impossible to "
+			"satisfy simultaneously.  If such a conflict exists in "
+			"the dependencies of two different packages, then those "
+			"packages can not be installed simultaneously."
+		]
 		backtrack_opt = self._frozen_config.myopts.get('--backtrack')
 		if not self._dynamic_config._allow_backtracking and \
 			(backtrack_opt is None or \
 			(backtrack_opt > 0 and backtrack_opt < 30)):
-			msg.append(" You may want to try a larger value of the ")
-			msg.append("--backtrack option, such as --backtrack=30, ")
-			msg.append("in order to see if that will solve this conflict ")
-			msg.append("automatically.")
+			msg.append(
+				" You may want to try a larger value of the "
+				"--backtrack option, such as --backtrack=30, "
+				"in order to see if that will solve this conflict "
+				"automatically."
+			)
 
 		for line in textwrap.wrap(''.join(msg), 70):
 			writemsg(line + '\n', noiselevel=-1)
 		writemsg('\n', noiselevel=-1)
 
-		msg = []
-		msg.append("For more information, see MASKED PACKAGES ")
-		msg.append("section in the emerge man page or refer ")
-		msg.append("to the Gentoo Handbook.")
-		for line in textwrap.wrap(''.join(msg), 70):
+		msg = (
+			"For more information, see MASKED PACKAGES "
+			"section in the emerge man page or refer "
+			"to the Gentoo Handbook."
+		)
+		for line in textwrap.wrap(msg, 70):
 			writemsg(line + '\n', noiselevel=-1)
 		writemsg('\n', noiselevel=-1)
 
@@ -1404,7 +1409,7 @@ class depgraph(object):
 		indirect_conflict_candidates = set()
 		for pkg in conflict_pkgs:
 			indirect_conflict_candidates.update(self._dynamic_config.digraph.child_nodes(pkg))
-		indirect_conflict_candidates.difference_update(conflict_pkgs)
+		indirect_conflict_candidates -= conflict_pkgs
 
 		indirect_conflict_pkgs = set()
 		while indirect_conflict_candidates:
@@ -1538,9 +1543,9 @@ class depgraph(object):
 
 		# Now select required packages. Collect them in the
 		# 'forced' set.
-		forced = set([non_conflict_node])
-		forced.update(non_matching_forced)
-		unexplored = set([non_conflict_node])
+		forced = {non_conflict_node}
+		forced |= non_matching_forced
+		unexplored = {non_conflict_node}
 		# or_tuples get special handling. We first explore
 		# all packages in the hope of having forced one of
 		# the packages in the tuple. This way we don't have
@@ -1590,7 +1595,7 @@ class depgraph(object):
 				break
 
 		# Remove 'non_conflict_node' and or_tuples from 'forced'.
-		forced = set(pkg for pkg in forced if isinstance(pkg, Package))
+		forced = {pkg for pkg in forced if isinstance(pkg, Package)}
 
 		# Add dependendencies of forced packages.
 		stack = list(forced)
@@ -1604,7 +1609,7 @@ class depgraph(object):
 					forced.add(child)
 					stack.append(child)
 
-		non_forced = set(pkg for pkg in conflict_pkgs if pkg not in forced)
+		non_forced = {pkg for pkg in conflict_pkgs if pkg not in forced}
 
 		if debug:
 			writemsg_level(
@@ -1635,12 +1640,16 @@ class depgraph(object):
 
 		# Process the dependencies of choosen conflict packages
 		# again to  properly account for blockers.
-		broken_packages.update(forced)
+		broken_packages |= forced
 
 		# Filter out broken packages which have been removed during
 		# recursive removal in self._remove_pkg.
-		broken_packages = list(pkg for pkg in broken_packages if pkg in broken_packages \
-			if self._dynamic_config._package_tracker.contains(pkg, installed=False))
+		broken_packages = [
+			pkg
+			for pkg in broken_packages
+			if pkg in broken_packages
+			and self._dynamic_config._package_tracker.contains(pkg, installed=False)
+		]
 
 		self._dynamic_config._dep_stack.extend(broken_packages)
 
@@ -1651,8 +1660,6 @@ class depgraph(object):
 
 		# Record missed updates.
 		for conflict in conflicts:
-			if not any(pkg in non_forced for pkg in conflict):
-				continue
 			for pkg in conflict:
 				if pkg not in non_forced:
 					continue
@@ -1667,7 +1674,6 @@ class depgraph(object):
 								"slot conflict", set())
 							self._dynamic_config._conflict_missed_update[pkg]["slot conflict"].add(
 								(parent, atom))
-
 
 	def _process_slot_conflicts(self):
 		"""
@@ -1794,16 +1800,18 @@ class depgraph(object):
 			"slot conflict", []).append(backtrack_data)
 		self._dynamic_config._need_restart = True
 		if debug:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("backtracking due to slot conflict:")
-			msg.append("   first package:  %s" % existing_node)
-			msg.append("  package to mask: %s" % to_be_masked)
-			msg.append("      slot: %s" % slot_atom)
-			msg.append("   parents: %s" % ", ".join( \
-				"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents))
-			msg.append("")
+			msg = [
+				"",
+				"",
+				"backtracking due to slot conflict:",
+				"   first package:  %s" % existing_node,
+				"  package to mask: %s" % to_be_masked,
+				"      slot: %s" % slot_atom,
+				"   parents: %s" % ", ".join(
+					"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents
+				),
+				""
+			]
 			writemsg_level("".join("%s\n" % l for l in msg),
 				noiselevel=-1, level=logging.DEBUG)
 
@@ -1886,19 +1894,19 @@ class depgraph(object):
 	def _slot_change_backtrack(self, dep, new_child_slot):
 		child = dep.child
 		if "--debug" in self._frozen_config.myopts:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("backtracking due to slot/sub-slot change:")
-			msg.append("   child package:  %s" % child)
-			msg.append("      child slot:  %s/%s" %
-				(child.slot, child.sub_slot))
-			msg.append("       new child:  %s" % new_child_slot)
-			msg.append("  new child slot:  %s/%s" %
-				(new_child_slot.slot, new_child_slot.sub_slot))
-			msg.append("   parent package: %s" % dep.parent)
-			msg.append("   atom: %s" % dep.atom)
-			msg.append("")
+			msg = [
+				"",
+				"",
+				"backtracking due to slot/sub-slot change:",
+				"   child package:  %s" % child,
+				"      child slot:  %s/%s" % (child.slot, child.sub_slot),
+				"       new child:  %s" % new_child_slot,
+				"  new child slot:  %s/%s" %
+					(new_child_slot.slot, new_child_slot.sub_slot),
+				"   parent package: %s" % dep.parent,
+				"   atom: %s" % dep.atom,
+				""
+			]
 			writemsg_level("\n".join(msg),
 				noiselevel=-1, level=logging.DEBUG)
 		backtrack_infos = self._dynamic_config._backtrack_infos
@@ -1930,11 +1938,12 @@ class depgraph(object):
 		else:
 			child = new_child_slot
 		if "--debug" in self._frozen_config.myopts:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("backtracking due to missed slot abi update:")
-			msg.append("   child package:  %s" % child)
+			msg = [
+				"",
+				"",
+				"backtracking due to missed slot abi update:",
+				"   child package:  %s" % child
+			]
 			if new_child_slot is not None:
 				msg.append("   new child slot package:  %s" % new_child_slot)
 			msg.append("   parent package: %s" % dep.parent)
@@ -2259,15 +2268,16 @@ class depgraph(object):
 						selected = (pkg, atom, i)
 
 			if debug:
-				msg = []
-				msg.append("")
-				msg.append("")
-				msg.append("slot_operator_update_probe:")
-				msg.append("   existing child package:  %s" % dep.child)
-				msg.append("   existing parent package: %s" % dep.parent)
-				msg.append("   new child package:  %s" % selected[0])
-				msg.append("   new parent package: %s" % replacement_parent)
-				msg.append("")
+				msg = (
+					"",
+					"",
+					"slot_operator_update_probe:",
+					"   existing child package:  %s" % dep.child,
+					"   existing parent package: %s" % dep.parent,
+					"   new child package:  %s" % selected[0],
+					"   new parent package: %s" % replacement_parent,
+					""
+				)
 				writemsg_level("\n".join(msg),
 					noiselevel=-1, level=logging.DEBUG)
 
@@ -2275,15 +2285,16 @@ class depgraph(object):
 				child=selected[0], atom=selected[1])
 
 		if debug:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("slot_operator_update_probe:")
-			msg.append("   existing child package:  %s" % dep.child)
-			msg.append("   existing parent package: %s" % dep.parent)
-			msg.append("   new child package:  %s" % None)
-			msg.append("   new parent package: %s" % None)
-			msg.append("")
+			msg = (
+				"",
+				"",
+				"slot_operator_update_probe:",
+				"   existing child package:  %s" % dep.child,
+				"   existing parent package: %s" % dep.parent,
+				"   new child package:  %s" % None,
+				"   new parent package: %s" % None,
+				"",
+			)
 			writemsg_level("\n".join(msg),
 				noiselevel=-1, level=logging.DEBUG)
 
@@ -2318,30 +2329,32 @@ class depgraph(object):
 				if pkg is not None:
 
 					if debug:
-						msg = []
-						msg.append("")
-						msg.append("")
-						msg.append("slot_operator_unsatisfied_probe:")
-						msg.append("   existing parent package: %s" % dep.parent)
-						msg.append("   existing parent atom: %s" % dep.atom)
-						msg.append("   new parent package: %s" % replacement_parent)
-						msg.append("   new child package:  %s" % pkg)
-						msg.append("")
+						msg = (
+							"",
+							"",
+							"slot_operator_unsatisfied_probe:",
+							"   existing parent package: %s" % dep.parent,
+							"   existing parent atom: %s" % dep.atom,
+							"   new parent package: %s" % replacement_parent,
+							"   new child package:  %s" % pkg,
+							"",
+						)
 						writemsg_level("\n".join(msg),
 							noiselevel=-1, level=logging.DEBUG)
 
 					return True
 
 		if debug:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("slot_operator_unsatisfied_probe:")
-			msg.append("   existing parent package: %s" % dep.parent)
-			msg.append("   existing parent atom: %s" % dep.atom)
-			msg.append("   new parent package: %s" % None)
-			msg.append("   new child package:  %s" % None)
-			msg.append("")
+			msg = (
+				"",
+				"",
+				"slot_operator_unsatisfied_probe:",
+				"   existing parent package: %s" % dep.parent,
+				"   existing parent atom: %s" % dep.atom,
+				"   new parent package: %s" % None,
+				"   new child package:  %s" % None,
+				""
+			)
 			writemsg_level("\n".join(msg),
 				noiselevel=-1, level=logging.DEBUG)
 
@@ -2352,14 +2365,14 @@ class depgraph(object):
 		parent = dep.parent
 
 		if "--debug" in self._frozen_config.myopts:
-			msg = []
-			msg.append("")
-			msg.append("")
-			msg.append("backtracking due to unsatisfied "
-				"built slot-operator dep:")
-			msg.append("   parent package: %s" % parent)
-			msg.append("   atom: %s" % dep.atom)
-			msg.append("")
+			msg = (
+				"",
+				"",
+				"backtracking due to unsatisfied built slot-operator dep:",
+				"   parent package: %s" % parent,
+				"   atom: %s" % dep.atom,
+				""
+			)
 			writemsg_level("\n".join(msg),
 				noiselevel=-1, level=logging.DEBUG)
 
@@ -2612,18 +2625,21 @@ class depgraph(object):
 			_get_eapi_attrs(pkg.eapi))
 
 		if newuse or (binpkg_respect_use and not changed_use):
-			flags = set(orig_iuse.symmetric_difference(
-				cur_iuse).difference(forced_flags))
-			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
-				cur_iuse.intersection(cur_use)))
-			flags.difference_update(feature_flags)
+			flags = set(orig_iuse)
+			flags ^= cur_iuse
+			flags -= forced_flags
+			flags |= (
+				orig_iuse.intersection(orig_use)
+				^ cur_iuse.intersection(cur_use)
+			)
+			flags -= feature_flags
 			if flags:
 				return flags
-
 		elif changed_use or binpkg_respect_use:
-			flags = set(orig_iuse.intersection(orig_use).symmetric_difference(
-				cur_iuse.intersection(cur_use)))
-			flags.difference_update(feature_flags)
+			flags = set(orig_iuse)
+			flags.intersection_update(orig_use)
+			flags ^= cur_iuse.intersection(cur_use)
+			flags -= feature_flags
 			if flags:
 				return flags
 		return None
@@ -5311,8 +5327,8 @@ class depgraph(object):
 				mreasons.append("Missing IUSE: %s" % " ".join(missing_iuse))
 				missing_iuse_reasons.append((pkg, mreasons))
 			else:
-				need_enable = sorted(atom.use.enabled.difference(use).intersection(pkg.iuse.all))
-				need_disable = sorted(atom.use.disabled.intersection(use).intersection(pkg.iuse.all))
+				need_enable = sorted((atom.use.enabled - use) & pkg.iuse.all)
+				need_disable = sorted((atom.use.disabled & use) & pkg.iuse.all)
 
 				untouchable_flags = \
 					frozenset(chain(pkg.use.mask, pkg.use.force))
@@ -6133,7 +6149,7 @@ class depgraph(object):
 					if new_changes.get(real_flag) == True:
 						return old_use
 					new_changes[real_flag] = False
-		new_use.update(old_use.difference(target_use))
+		new_use |= old_use.difference(target_use)
 
 		def want_restart_for_use_change(pkg, new_use):
 			if pkg not in self._dynamic_config.digraph.nodes:
@@ -6409,9 +6425,9 @@ class depgraph(object):
 							if any(x in atom.use.enabled for x in missing_disabled):
 								use_match = False
 								can_adjust_use = False
-							need_enabled = atom.use.enabled.difference(use)
+							need_enabled = atom.use.enabled - use
 							if need_enabled:
-								need_enabled = need_enabled.difference(missing_enabled)
+								need_enabled -= missing_enabled
 								if need_enabled:
 									use_match = False
 									if can_adjust_use:
@@ -6422,9 +6438,9 @@ class depgraph(object):
 							if any(x in atom.use.disabled for x in missing_enabled):
 								use_match = False
 								can_adjust_use = False
-							need_disabled = atom.use.disabled.intersection(use)
+							need_disabled = atom.use.disabled & use
 							if need_disabled:
-								need_disabled = need_disabled.difference(missing_disabled)
+								need_disabled -= missing_disabled
 								if need_disabled:
 									use_match = False
 									if can_adjust_use:
@@ -6835,7 +6851,7 @@ class depgraph(object):
 						# to use.mask/force changes in the profile.
 						if complete_if_new_use and \
 							(node.iuse.all != inst_pkg.iuse.all or
-							self._pkg_use_enabled(node).intersection(node.iuse.all) !=
+							(self._pkg_use_enabled(node) & node.iuse.all) !=
 							self._pkg_use_enabled(inst_pkg).intersection(inst_pkg.iuse.all)):
 							use_change = True
 							break
@@ -7796,10 +7812,11 @@ class depgraph(object):
 						# do the uninstalls first.
 						good_uninstalls = None
 						if len(nodes) > 1:
-							good_uninstalls = []
-							for node in nodes:
-								if node.operation == "uninstall":
-									good_uninstalls.append(node)
+							good_uninstalls = [
+								node
+								for node in nodes
+								if node.operation == "uninstall"
+							]
 
 							if good_uninstalls:
 								nodes = good_uninstalls
@@ -7918,7 +7935,7 @@ class depgraph(object):
 						mygraph.child_nodes(node,
 							ignore_priority = \
 							DepPrioritySatisfiedRange.ignore_medium_soft))
-					medium_soft.difference_update(soft)
+					medium_soft -= soft
 					for child in medium_soft:
 						if child in selected_nodes:
 							continue
@@ -8070,8 +8087,7 @@ class depgraph(object):
 					# common cases.
 					self._spinner_update()
 					mergeable_parent = False
-					parent_deps = set()
-					parent_deps.add(task)
+					parent_deps = {task}
 					for parent in mygraph.parent_nodes(task):
 						parent_deps.update(mygraph.child_nodes(parent,
 							ignore_priority=priority_range.ignore_medium_soft))
@@ -8237,12 +8253,10 @@ class depgraph(object):
 					# since the user might be interested and also
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
-					for blocker in solved_blockers:
-						retlist.append(blocker)
+					retlist.extend(solved_blockers)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
-		for node in myblocker_uninstalls.root_nodes():
-			unsolvable_blockers.add(node)
+		unsolvable_blockers.update(myblocker_uninstalls.root_nodes())
 
 		# If any Uninstall tasks need to be executed in order
 		# to avoid a conflict, complete the graph with any
@@ -8254,10 +8268,11 @@ class depgraph(object):
 			not unsolvable_blockers:
 			self._dynamic_config.myparams["complete"] = True
 			if '--debug' in self._frozen_config.myopts:
-				msg = []
-				msg.append("enabling 'complete' depgraph mode " + \
-					"due to uninstall task(s):")
-				msg.append("")
+				msg = [
+					"enabling 'complete' depgraph mode "
+					"due to uninstall task(s):",
+					""
+				]
 				for node in retlist:
 					if isinstance(node, Package) and \
 						node.operation == 'uninstall':
@@ -8274,9 +8289,7 @@ class depgraph(object):
 			if isinstance(node, Blocker):
 				node.satisfied = True
 
-		for blocker in unsolvable_blockers:
-			retlist.append(blocker)
-
+		retlist.extend(unsolvable_blockers)
 		retlist = tuple(retlist)
 
 		if unsolvable_blockers and \
@@ -8385,7 +8398,7 @@ class depgraph(object):
 				if not parent_atoms:
 					atom = self._dynamic_config._blocked_world_pkgs.get(pkg)
 					if atom is not None:
-						parent_atoms = set([("@selected", atom)])
+						parent_atoms = {("@selected", atom)}
 				if parent_atoms:
 					conflict_pkgs[pkg] = parent_atoms
 
@@ -8405,8 +8418,7 @@ class depgraph(object):
 				del conflict_pkgs[pkg]
 
 		if conflict_pkgs:
-			msg = []
-			msg.append("\n")
+			msg = ["\n"]
 			indent = "  "
 			for pkg, parent_atoms in conflict_pkgs.items():
 
@@ -8973,8 +8985,7 @@ class depgraph(object):
 				refs = arg_refs.setdefault(arg_atom, [])
 				if parent not in refs:
 					refs.append(parent)
-			msg = []
-			msg.append(bad("\nWARNING: "))
+			msg = [bad("\nWARNING: ")]
 			if len(self._dynamic_config._pprovided_args) > 1:
 				msg.append("Requested packages will not be " + \
 					"merged because they are listed in\n")
@@ -8993,12 +9004,14 @@ class depgraph(object):
 				msg.append("  %s%s\n" % (colorize("INFORM", str(arg)), ref_string))
 			msg.append("\n")
 			if "selected" in problems_sets or "world" in problems_sets:
-				msg.append("This problem can be solved in one of the following ways:\n\n")
-				msg.append("  A) Use emaint to clean offending packages from world (if not installed).\n")
-				msg.append("  B) Uninstall offending packages (cleans them from world).\n")
-				msg.append("  C) Remove offending entries from package.provided.\n\n")
-				msg.append("The best course of action depends on the reason that an offending\n")
-				msg.append("package.provided entry exists.\n\n")
+				msg.append(
+					"This problem can be solved in one of the following ways:\n\n"
+					"  A) Use emaint to clean offending packages from world (if not installed).\n"
+					"  B) Uninstall offending packages (cleans them from world).\n"
+					"  C) Remove offending entries from package.provided.\n\n"
+					"The best course of action depends on the reason that an offending\n"
+					"package.provided entry exists.\n\n"
+				)
 			writemsg("".join(msg), noiselevel=-1)
 
 		masked_packages = []
@@ -9097,10 +9110,10 @@ class depgraph(object):
 			s = SETPREFIX + k
 			if s in world_set:
 				continue
-			all_added.append(SETPREFIX + k)
+			all_added.append(s)
 		all_added.extend(added_favorites)
-		all_added.sort()
 		if all_added:
+			all_added.sort()
 			skip = False
 			if "--ask" in self._frozen_config.myopts:
 				writemsg_stdout("\n", noiselevel=-1)
