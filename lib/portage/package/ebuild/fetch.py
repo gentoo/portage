@@ -588,7 +588,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 #			use_locks = 0
 
 	# local mirrors are always added
-	if "local" in custommirrors:
+	if try_mirrors and "local" in custommirrors:
 		mymirrors += custommirrors["local"]
 
 	if restrict_mirror:
