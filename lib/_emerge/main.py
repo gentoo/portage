@@ -299,7 +299,6 @@ def _find_bad_atoms(atoms, less_strict=False):
 def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
-	myfiles=[]
 
 	actions = frozenset([
 		"clean", "check-news", "config", "depclean", "help",
@@ -810,9 +809,11 @@ def parse_opts(tmpcmdline, silent=False):
 		parser.add_argument(dest=myopt.lstrip("--").replace("-", "_"),
 			*args, **kwargs)
 
+	parser.add_argument('positional_args', nargs='*')
+
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
-	myoptions, myargs = parser.parse_known_args(args=tmpcmdline)
+	myoptions = parser.parse_args(args=tmpcmdline)
 
 	if myoptions.alert in true_y:
 		myoptions.alert = True
@@ -1165,9 +1166,7 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	myfiles += myargs
-
-	return myaction, myopts, myfiles
+	return myaction, myopts, myoptions.positional_args
 
 def profile_check(trees, myaction):
 	if myaction in ("help", "info", "search", "sync", "version"):
