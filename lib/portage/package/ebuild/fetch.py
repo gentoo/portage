@@ -1283,7 +1283,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					# trust the return value from the fetcher.  Remove the
 					# empty file and try to download again.
 					try:
-						if os.stat(download_path).st_size == 0:
+						mystat = os.lstat(download_path)
+						if mystat.st_size == 0 or (stat.S_ISLNK(mystat.st_mode) and not os.path.exists(download_path)):
 							os.unlink(download_path)
 							fetched = 0
 							continue
