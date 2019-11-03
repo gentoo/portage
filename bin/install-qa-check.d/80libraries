@@ -152,6 +152,16 @@ lib_check() {
 	done
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
+	# Make sure people don't store libtool files or static libs in /lib
+	f=$(ls "${ED%/}"/lib*/*.{a,la} 2>/dev/null)
+	if [[ -n ${f} ]] ; then
+		__vecho -ne '\n'
+		eqawarn "QA Notice: Excessive files found in the / partition"
+		eqawarn "${f}"
+		__vecho -ne '\n'
+		die "static archives (*.a) and libtool library files (*.la) belong in /usr/lib*, not /lib*"
+	fi
+
 	# Verify that the libtool files don't contain bogus $D entries.
 	local abort=no gentoo_bug=no always_overflow=no
 	for a in "${ED%/}"/usr/lib*/*.la ; do
