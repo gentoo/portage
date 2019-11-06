@@ -585,6 +585,8 @@ class FetchTask(CompositeTask):
 			self._success()
 			self.returncode = os.EX_OK
 		else:
+			msg = "failed to create distfiles layout {}".format(
+				"symlink" if self.config.options.symlinks else "hardlink")
 			self.config.log_failure("%s\t%s\t%s" %
 				(self.cpv, self.distfile, msg))
 			self.config.file_failures[self.distfile] = self.cpv
