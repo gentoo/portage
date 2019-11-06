@@ -85,7 +85,7 @@ class DeletionTask(CompositeTask):
 
 		else:
 			logging.error(("%s copy from distfiles "
-				"to recycle failed") % (self.distfile,))
+				"to recycle failed: %s") % (self.distfile, copier.future.exception()))
 			success = False
 
 		if success:

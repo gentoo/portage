@@ -372,8 +372,8 @@ class FetchTask(CompositeTask):
 
 		current_mirror = self._current_mirror
 		if copier.returncode != os.EX_OK:
-			msg = "%s %s copy failed unexpectedly" % \
-				(self.distfile, current_mirror.name)
+			msg = "%s %s copy failed unexpectedly: %s" % \
+				(self.distfile, current_mirror.name, copier.future.exception())
 			self.scheduler.output(msg + '\n', background=True,
 				log_path=self._log_path)
 			logging.error(msg)
@@ -549,8 +549,8 @@ class FetchTask(CompositeTask):
 			self._make_layout_links()
 		else:
 			# out of space?
-			msg = "%s %s copy failed unexpectedly" % \
-				(self.distfile, self._fetch_tmp_dir_info)
+			msg = "%s %s copy failed unexpectedly: %s" % \
+				(self.distfile, self._fetch_tmp_dir_info, copier.future.exception())
 			self.scheduler.output(msg + '\n', background=True,
 				log_path=self._log_path)
 			logging.error(msg)
