@@ -28,6 +28,11 @@ class DeletionTask(CompositeTask):
 							recycle_path)
 				except OSError as e:
 					if e.errno != errno.EXDEV:
+						if os.path.islink(self.distfile_path) and not os.path.exists(self.distfile_path):
+							self._delete_links()
+							self._async_wait()
+							return
+
 						logging.error(("rename %s from distfiles to "
 							"recycle failed: %s") % (self.distfile, e))
 				else:
