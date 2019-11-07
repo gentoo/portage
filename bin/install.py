@@ -112,12 +112,6 @@ def parse_args(args):
 		dest="no_target_directory"
 	)
 	parser.add_argument(
-		"--context",
-		"-Z",
-		action="store",
-		dest="context"
-	)
-	parser.add_argument(
 		"--verbose",
 		"-v",
 		action="store_true",
@@ -143,11 +137,21 @@ def parse_args(args):
 	# for known options in order for argparse to correctly
 	# separate option arguments from file arguments in all
 	# cases (it also allows for optparse compatibility).
-	parsed_args = parser.parse_known_args()
+	(opts, args) = parser.parse_known_args(args)
 
-	opts  = parsed_args[0]
-	files = parsed_args[1]
-	files = [f for f in files if f != "--"]	# filter out "--"
+	files = []
+	i = 0
+	while i < len(args):
+		if args[i] == "--":
+			i += 1
+			break
+		if not args[i].startswith("-"):
+			files.append(args[i])
+		i += 1
+
+	while i < len(args):
+		files.append(args[i])
+		i += 1
 
 	return (opts, files)
 
