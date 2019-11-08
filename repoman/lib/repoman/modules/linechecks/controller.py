@@ -1,6 +1,4 @@
 
-from __future__ import unicode_literals
-
 import logging
 import operator
 import os
@@ -138,8 +136,7 @@ class LineCheckController(object):
 						if not ignore or not ignore.match(line):
 							e = lc.check(num, line)
 							if e:
-								# String interpolation on the variable e is unsafe because it can contain % characters.
-								yield lc.repoman_check_name, e.replace('on line: %d', 'on line: %d' % strnum + 1)
+								yield lc.repoman_check_name, e % (num + 1)
 
 		for lc in checks:
 			i = lc.end()
