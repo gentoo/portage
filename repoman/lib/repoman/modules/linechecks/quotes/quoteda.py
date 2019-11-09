@@ -13,4 +13,4 @@ class EbuildQuotedA(LineCheck):
 	def check(self, num, line):
 		match = self.a_quoted.match(line)
 		if match:
-			return "Quoted \"${A}\" on line: %d"
+			return "Quoted \"${A}\""

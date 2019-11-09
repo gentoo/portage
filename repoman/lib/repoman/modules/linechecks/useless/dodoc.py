@@ -13,4 +13,4 @@ class EbuildUselessDodoc(LineCheck):
 	def check(self, num, line):
 		match = self.uselessdodoc_re.match(line)
 		if match:
-			return "Useless dodoc '%s'" % (match.group(2), ) + " on line: %d"
+			return "Useless dodoc '%s'" % match.group(2)

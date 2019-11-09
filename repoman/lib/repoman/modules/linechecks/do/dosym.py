@@ -15,4 +15,4 @@ class EbuildNonRelativeDosym(LineCheck):
 	def check(self, num, line):
 		match = self.regex.match(line)
 		if match:
-			return "dosym '%s'... could use relative path" % (match.group(1), ) + " on line: %d"
+			return "dosym '%s'... could use relative path" % match.group(1)

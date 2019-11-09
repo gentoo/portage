@@ -20,4 +20,4 @@ class WantAutoDefaultValue(LineCheck):
 		m = self._re.match(line)
 		if m is not None:
 			return 'WANT_AUTO' + m.group(1) + \
-				' redundantly set to default value "latest" on line: %d'
+				' redundantly set to default value "latest"'
