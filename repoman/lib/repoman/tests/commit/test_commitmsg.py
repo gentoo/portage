@@ -29,7 +29,7 @@ Expected: /%s/''' % (commitmsg, reason_re))
 Expected: /%s/
 Errors:
 %s''' % (commitmsg, reason_re, expl))
-		self.assertRegexpMatches(expl, reason_re,
+		(self.assertRegex if hasattr(self, 'assertRegex') else self.assertRegexpMatches)(expl, reason_re,
 				'''Commit message verification did not return expected error, for:
 %s
 
