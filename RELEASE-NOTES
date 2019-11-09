@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.79
+==================================
+* Bug Fixes:
+    - Bug 673400 emerge: fix error message for unknown options
+    - Bug 698046 fetch: remove symlink created by FETCHCOMMAND_RSYNC
+    - Bug 698474 fetch: respect try_mirrors parameter for local mirrors
+    - Bug 699392 emirrordist: _recycle_copier_exit UnboundLocalError
+    - Bug 699400 emirrordist: clean up FileCopier exception logging
+    - Bug 699548 install.py: ignore -Z / --context
+
+
 portage-2.3.78
 ==================================
 * Bug Fixes:
