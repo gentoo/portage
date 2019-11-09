@@ -10,7 +10,7 @@ class EbuildNonRelativeDosym(LineCheck):
 	variables = ('D', 'ED', 'ROOT', 'EROOT', 'BROOT')
 	regex = re.compile(
 		r'^\s*dosym\s+(["\']?((\$(%s)\W|\${(%s)(%%/)?})|/(bin|etc|lib|opt|sbin|srv|usr|var))\S*)' %
-		('|'.join(variables), '|'.join(variables)), re.ASCII)
+		('|'.join(variables), '|'.join(variables)), getattr(re, 'ASCII', 0))
 
 	def check(self, num, line):
 		match = self.regex.match(line)
