@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -261,17 +261,13 @@ class Binpkg(CompositeTask):
 		self._writemsg_level(">>> Extracting info\n")
 
 		pkg_xpak = portage.xpak.tbz2(self._pkg_path)
-		check_missing_metadata = ("CATEGORY", "PF")
-		missing_metadata = set()
-		for k in check_missing_metadata:
-			v = pkg_xpak.getfile(_unicode_encode(k,
-				encoding=_encodings['repo.content']))
-			if not v:
-				missing_metadata.add(k)
-
 		pkg_xpak.unpackinfo(infloc)
-		for k in missing_metadata:
-			if k == "CATEGORY":
+		check_missing_metadata = ("CATEGORY", "PF")
+		for k, v in zip(check_missing_metadata,
+			self._bintree.dbapi.aux_get(self.pkg.cpv, check_missing_metadata)):
+			if v:
+				continue
+			elif k == "CATEGORY":
 				v = pkg.category
 			elif k == "PF":
 				v = pkg.pf
