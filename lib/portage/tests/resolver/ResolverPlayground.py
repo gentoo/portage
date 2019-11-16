@@ -1,6 +1,7 @@
 # Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import bz2
 from itertools import permutations
 import fnmatch
 import sys
@@ -331,6 +332,17 @@ class ResolverPlayground(object):
 			for k, v in metadata.items():
 				with open(os.path.join(vdb_pkg_dir, k), "w") as f:
 					f.write("%s\n" % v)
+
+			ebuild_path = os.path.join(vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild")
+			with open(ebuild_path, "w") as f:
+				f.write('EAPI="%s"\n' % metadata.pop('EAPI', '0'))
+				for k, v in metadata.items():
+					f.write('%s="%s"\n' % (k, v))
+
+			env_path = os.path.join(vdb_pkg_dir, 'environment.bz2')
+			with bz2.BZ2File(env_path, mode='w') as f:
+				with open(ebuild_path, 'rb') as inputfile:
+					f.write(inputfile.read())
 
 	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
 
