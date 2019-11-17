@@ -19,15 +19,16 @@ __multijob_init() {
 	# read and write to not block ourselve, but use it for reading only.
 	# The second fd really is opened for write only, as Cygwin supports
 	# just one single read fd per FIFO. #583962
-	local pipe=$(mktemp -t multijob.XXXXXX)
+	local pipe
+	pipe=$(mktemp -t multijob.XXXXXX) || die
 	rm -f "${pipe}"
-	mkfifo -m 600 "${pipe}"
+	mkfifo -m 600 "${pipe}" || die
 	__redirect_alloc_fd mj_read_fd "${pipe}"
 	__redirect_alloc_fd mj_write_fd "${pipe}" '>'
 	rm -f "${pipe}"
 
 	# See how many children we can fork based on the user's settings.
-	mj_max_jobs=$(___makeopts_jobs "$@")
+	mj_max_jobs=$(___makeopts_jobs "$@") || die
 	mj_num_jobs=0
 }
 

@@ -99,6 +99,7 @@ class ResolverPlayground(object):
 				"install",
 				"ln",
 				"mkdir",
+				"mkfifo",
 				"mktemp",
 				"mv",
 				"readlink",

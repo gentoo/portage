@@ -453,8 +453,9 @@ fi
 
 ___makeopts_jobs() {
 	# Copied from eutils.eclass:makeopts_jobs()
-	local jobs=$(echo " ${MAKEOPTS} " | \
-		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p')
+	local jobs
+	jobs=$(echo " ${MAKEOPTS} " | \
+		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p') || die
 	echo ${jobs:-1}
 }
 
