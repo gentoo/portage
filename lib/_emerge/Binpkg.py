@@ -284,14 +284,14 @@ class Binpkg(CompositeTask):
 				f.close()
 
 		# Store the md5sum in the vdb.
-		f = io.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
-			encoding=_encodings['fs'], errors='strict'),
-			mode='w', encoding=_encodings['content'], errors='strict')
-		try:
-			f.write(_unicode_decode(
-				str(portage.checksum.perform_md5(pkg_path)) + "\n"))
-		finally:
-			f.close()
+		if pkg_path is not None:
+			md5sum, = self._bintree.dbapi.aux_get(self.pkg.cpv, ['MD5'])
+			if not md5sum:
+				md5sum = portage.checksum.perform_md5(pkg_path)
+			with io.open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5'),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='w', encoding=_encodings['content'], errors='strict') as f:
+				f.write(_unicode_decode('{}\n'.format(md5sum)))
 
 		env_extractor = BinpkgEnvExtractor(background=self.background,
 			scheduler=self.scheduler, settings=self.settings)
