@@ -10,7 +10,6 @@ import math
 import signal
 import subprocess
 import sys
-import tarfile
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
@@ -23,10 +22,8 @@ from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, use_reduce
 from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
 	InvalidDependString, PackageSetNotFound, PermissionDenied)
-from portage.util import ConfigProtect, ensure_dirs, shlex_split, varexpand, _xattr
+from portage.util import ensure_dirs, shlex_split, varexpand, _xattr
 xattr = _xattr.xattr
-from portage.dbapi.vartree import dblink, tar_contents
-from portage.checksum import perform_md5
 from portage._sets import load_default_config, SETPREFIX
 from portage.process import find_binary
 from portage.util.compression_probe import _compressors
@@ -35,13 +32,11 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 def quickpkg_atom(options, infos, arg, eout):
 	settings = portage.settings
-	root = portage.settings['ROOT']
 	eroot = portage.settings['EROOT']
 	trees = portage.db[eroot]
 	vartree = trees["vartree"]
 	vardb = vartree.dbapi
 	bintree = trees["bintree"]
-	xattrs = 'xattr' in settings.features
 
 	include_config = options.include_config == "y"
 	include_unmodified_config = options.include_unmodified_config == "y"
@@ -104,26 +99,6 @@ def quickpkg_atom(options, infos, arg, eout):
 				eout.ewarn("%s: it might not be legal to redistribute this." % cpv)
 			eout.ebegin("Building package for %s" % cpv)
 			pkgs_for_arg += 1
-			contents = dblnk.getcontents()
-			protect = None
-			if not include_config:
-				confprot = ConfigProtect(eroot,
-					shlex_split(settings.get("CONFIG_PROTECT", "")),
-					shlex_split(settings.get("CONFIG_PROTECT_MASK", "")),
-					case_insensitive=("case-insensitive-fs"
-					in settings.features))
-				def protect(filename):
-					if not confprot.isprotected(filename):
-						return False
-					if include_unmodified_config:
-						file_data = contents[filename]
-						if file_data[0] == "obj":
-							orig_md5 = file_data[2].lower()
-							cur_md5 = perform_md5(filename, calc_prelink=1)
-							if orig_md5 == cur_md5:
-								return False
-					excluded_config_files.append(filename)
-					return True
 			existing_metadata = dict(zip(fix_metadata_keys,
 				vardb.aux_get(cpv, fix_metadata_keys)))
 			category, pf = portage.catsplit(cpv)
@@ -167,10 +142,9 @@ def quickpkg_atom(options, infos, arg, eout):
 			cmd = [x for x in cmd if x != ""]
 			with open(binpkg_tmpfile, "wb") as fobj:
 				proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=fobj)
-				# The tarfile module will write pax headers holding the
-				# xattrs only if PAX_FORMAT is specified here.
-				with tarfile.open(mode="w|",format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT, fileobj=proc.stdin) as tar:
-					tar_contents(contents, root, tar, protect=protect, xattrs=xattrs)
+				excluded_config_files = dblnk.quickpkg(proc.stdin,
+					include_config=include_config,
+					include_unmodified_config=include_unmodified_config)
 				proc.stdin.close()
 				if proc.wait() != os.EX_OK:
 					eout.eend(1)

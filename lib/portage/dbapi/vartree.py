@@ -1883,6 +1883,56 @@ class dblink(object):
 		self.contentscache = pkgfiles
 		return pkgfiles
 
+	def quickpkg(self, output_file, include_config=False, include_unmodified_config=False):
+		"""
+		Create a tar file appropriate for use by quickpkg.
+
+		@param output_file: Write binary tar stream to file.
+		@type output_file: file
+		@param include_config: Include all files protected by CONFIG_PROTECT
+			(as a security precaution, default is False).
+		@type include_config: bool
+		@param include_config: Include files protected by CONFIG_PROTECT that
+			have not been modified since installation (as a security precaution,
+			default is False).
+		@type include_config: bool
+		@rtype: list
+		@return: Paths of protected configuration files which have been omitted.
+		"""
+		settings = self.settings
+		cpv = self.mycpv
+		xattrs = 'xattr' in settings.features
+		contents = self.getcontents()
+		excluded_config_files = []
+		protect = None
+
+		if not include_config:
+			confprot = ConfigProtect(settings['EROOT'],
+				portage.util.shlex_split(settings.get('CONFIG_PROTECT', '')),
+				portage.util.shlex_split(settings.get('CONFIG_PROTECT_MASK', '')),
+				case_insensitive=('case-insensitive-fs' in settings.features))
+
+			def protect(filename):
+				if not confprot.isprotected(filename):
+					return False
+				if include_unmodified_config:
+					file_data = contents[filename]
+					if file_data[0] == 'obj':
+						orig_md5 = file_data[2].lower()
+						cur_md5 = perform_md5(filename, calc_prelink=1)
+						if orig_md5 == cur_md5:
+							return False
+				excluded_config_files.append(filename)
+				return True
+
+		# The tarfile module will write pax headers holding the
+		# xattrs only if PAX_FORMAT is specified here.
+		with tarfile.open(fileobj=output_file, mode='w|',
+			format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT) as tar:
+			tar_contents(contents, settings['ROOT'], tar, protect=protect, xattrs=xattrs)
+
+		return excluded_config_files
+
 	def _prune_plib_registry(self, unmerge=False,
 		needed=None, preserve_paths=None):
 		# remove preserved libraries that don't have any consumers left
