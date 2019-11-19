@@ -202,6 +202,7 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
 			("", repoman_cmd + ("full", "-d")),
+			("", repoman_cmd + ("full", "--include-profiles", "default/linux/x86/test_profile")),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
 			("", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 2")),

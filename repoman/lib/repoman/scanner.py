@@ -164,6 +164,10 @@ class Scanner(object):
 		if self.options.include_arches:
 			self.include_arches = set()
 			self.include_arches.update(*[x.split() for x in self.options.include_arches])
+		self.include_profiles = None
+		if self.options.include_profiles:
+			self.include_profiles = set()
+			self.include_profiles.update(*[x.split() for x in self.options.include_profiles])
 
 		# Disable the "self.modules['Ebuild'].notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
@@ -190,6 +194,7 @@ class Scanner(object):
 			"repo_metadata": self.repo_metadata,
 			"profiles": profiles,
 			"include_arches": self.include_arches,
+			"include_profiles": self.include_profiles,
 			"caches": self.caches,
 			"repoman_incrementals": self.repoman_incrementals,
 			"env": self.env,

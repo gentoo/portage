@@ -412,6 +412,10 @@ the whole commit message to abort.
 			report_options.append(
 				"--include-arches=\"%s\"" %
 				" ".join(sorted(self.scanner.include_arches)))
+		if self.scanner.include_profiles is not None:
+			report_options.append(
+				"--include-profiles=\"%s\"" %
+				" ".join(sorted(self.scanner.include_profiles)))
 
 		if portage_version is None:
 			sys.stderr.write("Failed to insert portage version in message!\n")

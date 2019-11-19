@@ -33,6 +33,7 @@ class ProfileDependsChecks(ScanBase):
 		@param options: cli options
 		@param repo_settings: repository settings instance
 		@param include_arches: set
+		@param include_profiles: set
 		@param caches: dictionary of our caches
 		@param repoman_incrementals: tuple
 		@param env: the environment
@@ -46,6 +47,7 @@ class ProfileDependsChecks(ScanBase):
 		self.options = kwargs.get('options')
 		self.repo_settings = kwargs.get('repo_settings')
 		self.include_arches = kwargs.get('include_arches')
+		self.include_profiles = kwargs.get('include_profiles')
 		self.caches = kwargs.get('caches')
 		self.repoman_incrementals = kwargs.get('repoman_incrementals')
 		self.env = kwargs.get('env')
@@ -81,8 +83,11 @@ class ProfileDependsChecks(ScanBase):
 				if arch not in self.include_arches:
 					continue
 
-			relevant_profiles.extend(
-				(keyword, groups, prof) for prof in self.profiles[arch])
+			for prof in self.profiles[arch]:
+				if self.include_profiles is not None:
+					if prof.sub_path not in self.include_profiles:
+						continue
+				relevant_profiles.append((keyword, groups, prof))
 
 		relevant_profiles.sort(key=sort_key)
 

@@ -19,7 +19,8 @@ module_spec = {
 			'func_desc': {
 			},
 			'mod_kwargs': ['qatracker', 'portdb', 'profiles', 'options',
-				'repo_metadata', 'repo_settings', 'include_arches', 'caches',
+				'repo_metadata', 'repo_settings', 'include_arches',
+				'include_profiles', 'caches',
 				'repoman_incrementals', 'env', 'have', 'dev_keywords'
 			],
 			'func_kwargs': {
