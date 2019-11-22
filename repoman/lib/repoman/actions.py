@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+# Copyright 1999-2019 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
 
@@ -402,7 +404,7 @@ the whole commit message to abort.
 	def get_commit_footer(self):
 		portage_version = getattr(portage, "VERSION", None)
 		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
-		dco_sob = self.repoman_settings.get("DCO_SIGNED_OFF_BY", "")
+		signoff = self.repoman_settings.get("SIGNED_OFF_BY", "")
 		report_options = []
 		if self.options.force:
 			report_options.append("--force")
@@ -470,8 +472,8 @@ the whole commit message to abort.
 				commit_footer += ", unsigned Manifest commit"
 			commit_footer += ")"
 
-		if dco_sob:
-			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
+		if signoff:
+			commit_footer += "\nSigned-off-by: %s" % (signoff, )
 
 		return commit_footer
 
