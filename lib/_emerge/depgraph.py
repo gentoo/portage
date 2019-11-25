@@ -495,6 +495,7 @@ class _dynamic_depgraph_config(object):
 		self._backtrack_infos = {}
 
 		self._buildpkgonly_deps_unsatisfied = False
+		self._quickpkg_direct_deps_unsatisfied = False
 		self._autounmask = self.myparams['autounmask']
 		self._displayed_autounmask = False
 		self._success_without_autounmask = False
@@ -4525,6 +4526,16 @@ class depgraph(object):
 				self._dynamic_config._buildpkgonly_deps_unsatisfied = True
 				self._dynamic_config._skip_restart = True
 				return False, myfavorites
+
+		if (self._frozen_config.myopts.get('--quickpkg-direct', 'n') == 'y' and
+			self._frozen_config.target_root is not self._frozen_config._running_root):
+			running_root = self._frozen_config._running_root.root
+			for node in self._dynamic_config.digraph:
+				if (isinstance(node, Package) and node.operation in ('merge', 'uninstall') and
+					node.root == running_root):
+					self._dynamic_config._quickpkg_direct_deps_unsatisfied = True
+					self._dynamic_config._skip_restart = True
+					return False, myfavorites
 
 		if (not self._dynamic_config._prune_rebuilds and
 			self._ignored_binaries_autounmask_backtrack()):
@@ -9059,6 +9070,14 @@ class depgraph(object):
 			self._show_merge_list()
 			writemsg("\n!!! --buildpkgonly requires all "
 				"dependencies to be merged.\n", noiselevel=-1)
+			writemsg("!!! Cannot merge requested packages. "
+				"Merge deps and try again.\n\n", noiselevel=-1)
+
+		if self._dynamic_config._quickpkg_direct_deps_unsatisfied:
+			self._show_merge_list()
+			writemsg("\n!!! --quickpkg-direct requires all "
+				"dependencies to be merged for root '{}'.\n".format(
+				self._frozen_config._running_root.root), noiselevel=-1)
 			writemsg("!!! Cannot merge requested packages. "
 				"Merge deps and try again.\n\n", noiselevel=-1)
 

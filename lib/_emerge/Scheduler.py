@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -868,10 +868,11 @@ class Scheduler(PollScheduler):
 
 					if fetched:
 						bintree.inject(x.cpv, filename=fetched)
-					tbz2_file = bintree.getname(x.cpv)
+
 					infloc = os.path.join(build_dir_path, "build-info")
 					ensure_dirs(infloc)
-					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
+					self._sched_iface.run_until_complete(
+						bintree.dbapi.unpack_metadata(settings, infloc))
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 					settings.configdict["pkg"]["MERGE_TYPE"] = "binary"

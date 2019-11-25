@@ -33,7 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._compare_files:compare_files',
 	'portage.util.digraph:digraph',
 	'portage.util.env_update:env_update',
-	'portage.util.install_mask:install_mask_dir,InstallMask',
+	'portage.util.install_mask:install_mask_dir,InstallMask,_raise_exc',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
 	'portage.util.monotonic:monotonic',
@@ -71,6 +71,8 @@ from portage import _os_merge
 from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
@@ -80,8 +82,10 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.SpawnProcess import SpawnProcess
 from ._ContentsCaseSensitivityManager import ContentsCaseSensitivityManager
 
+import argparse
 import errno
 import fnmatch
+import functools
 import gc
 import grp
 import io
@@ -128,6 +132,7 @@ class vardbapi(dbapi):
 
 	_aux_cache_keys_re = re.compile(r'^NEEDED\..*$')
 	_aux_multi_line_re = re.compile(r'^(CONTENTS|NEEDED\..*)$')
+	_pkg_str_aux_keys = dbapi._pkg_str_aux_keys + ("BUILD_ID", "BUILD_TIME", "_mtime_")
 
 	def __init__(self, _unused_param=DeprecationWarning,
 		categories=None, settings=None, vartree=None):
@@ -952,6 +957,110 @@ class vardbapi(dbapi):
 				except EnvironmentError:
 					pass
 		self._bump_mtime(cpv)
+
+	@coroutine
+	def unpack_metadata(self, pkg, dest_dir):
+		"""
+		Unpack package metadata to a directory. This method is a coroutine.
+
+		@param pkg: package to unpack
+		@type pkg: _pkg_str or portage.config
+		@param dest_dir: destination directory
+		@type dest_dir: str
+		"""
+		loop = asyncio._wrap_loop()
+		if not isinstance(pkg, portage.config):
+			cpv = pkg
+		else:
+			cpv = pkg.mycpv
+		dbdir = self.getpath(cpv)
+		def async_copy():
+			for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
+				for key in files:
+					shutil.copy(os.path.join(parent, key),
+						os.path.join(dest_dir, key))
+				break
+		yield loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
+
+	@coroutine
+	def unpack_contents(self, pkg, dest_dir,
+		include_config=None, include_unmodified_config=None):
+		"""
+		Unpack package contents to a directory. This method is a coroutine.
+
+		This copies files from the installed system, in the same way
+		as the quickpkg(1) command. Default behavior for handling
+		of protected configuration files is controlled by the
+		QUICKPKG_DEFAULT_OPTS variable. The relevant quickpkg options
+		are --include-config and --include-unmodified-config. When
+		a configuration file is not included because it is protected,
+		an ewarn message is logged.
+
+		@param pkg: package to unpack
+		@type pkg: _pkg_str or portage.config
+		@param dest_dir: destination directory
+		@type dest_dir: str
+		@param include_config: Include all files protected by
+			CONFIG_PROTECT (as a security precaution, default is False
+			unless modified by QUICKPKG_DEFAULT_OPTS).
+		@type include_config: bool
+		@param include_unmodified_config: Include files protected by
+			CONFIG_PROTECT that have not been modified since installation
+			(as a security precaution, default is False unless modified
+			by QUICKPKG_DEFAULT_OPTS).
+		@type include_unmodified_config: bool
+		"""
+		loop = asyncio._wrap_loop()
+		if not isinstance(pkg, portage.config):
+			settings = self.settings
+			cpv = pkg
+		else:
+			settings = pkg
+			cpv = settings.mycpv
+
+		scheduler = SchedulerInterface(loop)
+		parser = argparse.ArgumentParser()
+		parser.add_argument('--include-config',
+			choices=('y', 'n'),
+			default='n')
+		parser.add_argument('--include-unmodified-config',
+			choices=('y', 'n'),
+			default='n')
+
+		# Method parameters may override QUICKPKG_DEFAULT_OPTS.
+		opts_list = portage.util.shlex_split(settings.get('QUICKPKG_DEFAULT_OPTS', ''))
+		if include_config is not None:
+			opts_list.append('--include-config={}'.format(
+				'y' if include_config else 'n'))
+		if include_unmodified_config is not None:
+			opts_list.append('--include-unmodified-config={}'.format(
+				'y' if include_unmodified_config else 'n'))
+
+		opts, args = parser.parse_known_args(opts_list)
+
+		tar_cmd = ('tar', '-x', '--xattrs', '--xattrs-include=*', '-C', dest_dir)
+		pr, pw = os.pipe()
+		proc = (yield asyncio.create_subprocess_exec(*tar_cmd, stdin=pr))
+		os.close(pr)
+		with os.fdopen(pw, 'wb', 0) as pw_file:
+			excluded_config_files = (yield loop.run_in_executor(ForkExecutor(loop=loop),
+				functools.partial(self._dblink(cpv).quickpkg,
+				pw_file,
+				include_config=opts.include_config == 'y',
+				include_unmodified_config=opts.include_unmodified_config == 'y')))
+		yield proc.wait()
+		if proc.returncode != os.EX_OK:
+			raise PortageException('command failed: {}'.format(tar_cmd))
+
+		if excluded_config_files:
+			log_lines = ([_("Config files excluded by QUICKPKG_DEFAULT_OPTS (see quickpkg(1) man page):")] +
+				['\t{}'.format(name) for name in excluded_config_files])
+			out = io.StringIO()
+			for line in log_lines:
+				portage.elog.messages.ewarn(line, phase='install', key=cpv, out=out)
+			scheduler.output(out.getvalue(),
+				background=self.settings.get("PORTAGE_BACKGROUND") == "1",
+				log_path=settings.get("PORTAGE_LOG_FILE"))
 
 	def counter_tick(self, myroot=None, mycpv=None):
 		"""
@@ -1892,10 +2001,10 @@ class dblink(object):
 		@param include_config: Include all files protected by CONFIG_PROTECT
 			(as a security precaution, default is False).
 		@type include_config: bool
-		@param include_config: Include files protected by CONFIG_PROTECT that
-			have not been modified since installation (as a security precaution,
+		@param include_unmodified_config: Include files protected by CONFIG_PROTECT
+			that have not been modified since installation (as a security precaution,
 			default is False).
-		@type include_config: bool
+		@type include_unmodified_config: bool
 		@rtype: list
 		@return: Paths of protected configuration files which have been omitted.
 		"""

@@ -1,4 +1,4 @@
-# Copyright 2011-2018 Gentoo Foundation
+# Copyright 2011-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -254,6 +254,7 @@ call_has_and_best_version() {
 		cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
 
 		test_commands = (
+			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "dev-libs/A"),
 			env_update_cmd,
 			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
 				"PORTAGE_CONFIGROOT", "PORTAGE_TMPDIR", "USERLAND"),

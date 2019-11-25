@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -635,6 +635,11 @@ def parse_opts(tmpcmdline, silent=False):
 		"--pkg-format": {
 			"help"     : "format of result binary package",
 			"action"   : "store",
+		},
+
+		"--quickpkg-direct": {
+			"help": "Enable use of installed packages directly as binary packages",
+			"choices": y_or_n
 		},
 
 		"--quiet": {

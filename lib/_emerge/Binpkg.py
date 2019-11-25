@@ -7,7 +7,6 @@ import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
-from _emerge.BinpkgExtractorAsync import BinpkgExtractorAsync
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
 from _emerge.EbuildMerge import EbuildMerge
@@ -16,6 +15,7 @@ from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util.futures.compat_coroutine import coroutine
 import portage
 from portage import os
 from portage import shutil
@@ -135,11 +135,14 @@ class Binpkg(CompositeTask):
 
 		pkg = self.pkg
 		pkg_count = self.pkg_count
-		fetcher = BinpkgFetcher(background=self.background,
-			logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
-			pretend=self.opts.pretend, scheduler=self.scheduler)
+		fetcher = None
 
 		if self.opts.getbinpkg and self._bintree.isremote(pkg.cpv):
+
+			fetcher = BinpkgFetcher(background=self.background,
+				logfile=self.settings.get("PORTAGE_LOG_FILE"), pkg=self.pkg,
+				pretend=self.opts.pretend, scheduler=self.scheduler)
+
 			msg = " --- (%s of %s) Fetching Binary (%s::%s)" %\
 				(pkg_count.curval, pkg_count.maxval, pkg.cpv,
 					fetcher.pkg_path)
@@ -160,7 +163,7 @@ class Binpkg(CompositeTask):
 
 		# The fetcher only has a returncode when
 		# --getbinpkg is enabled.
-		if fetcher.returncode is not None:
+		if fetcher is not None:
 			self._fetched_pkg = fetcher.pkg_path
 			if self._default_exit(fetcher) != os.EX_OK:
 				self._async_unlock_builddir(returncode=self.returncode)
@@ -209,7 +212,8 @@ class Binpkg(CompositeTask):
 
 		# This gives bashrc users an opportunity to do various things
 		# such as remove binary packages after they're installed.
-		self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
+		if pkg_path is not None:
+			self.settings["PORTAGE_BINPKG_FILE"] = pkg_path
 		self._pkg_path = pkg_path
 
 		logfile = self.settings.get("PORTAGE_LOG_FILE")
@@ -245,6 +249,13 @@ class Binpkg(CompositeTask):
 			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
+		self._start_task(
+			AsyncTaskFuture(future=self._unpack_metadata()),
+			self._unpack_metadata_exit)
+
+	@coroutine
+	def _unpack_metadata(self):
+
 		dir_path = self.settings['PORTAGE_BUILDDIR']
 
 		infloc = self._infloc
@@ -260,8 +271,7 @@ class Binpkg(CompositeTask):
 		portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		self._writemsg_level(">>> Extracting info\n")
 
-		pkg_xpak = portage.xpak.tbz2(self._pkg_path)
-		pkg_xpak.unpackinfo(infloc)
+		yield self._bintree.dbapi.unpack_metadata(self.settings, infloc)
 		check_missing_metadata = ("CATEGORY", "PF")
 		for k, v in zip(check_missing_metadata,
 			self._bintree.dbapi.aux_get(self.pkg.cpv, check_missing_metadata)):
@@ -295,11 +305,14 @@ class Binpkg(CompositeTask):
 
 		env_extractor = BinpkgEnvExtractor(background=self.background,
 			scheduler=self.scheduler, settings=self.settings)
+		env_extractor.start()
+		yield env_extractor.async_wait()
+		if env_extractor.returncode != os.EX_OK:
+			raise portage.exception.PortageException('failed to extract environment for {}'.format(self.pkg.cpv))
 
-		self._start_task(env_extractor, self._env_extractor_exit)
-
-	def _env_extractor_exit(self, env_extractor):
-		if self._default_exit(env_extractor) != os.EX_OK:
+	def _unpack_metadata_exit(self, unpack_metadata):
+		if self._default_exit(unpack_metadata) != os.EX_OK:
+			unpack_metadata.future.result()
 			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
@@ -316,18 +329,16 @@ class Binpkg(CompositeTask):
 			self._async_unlock_builddir(returncode=self.returncode)
 			return
 
-		extractor = BinpkgExtractorAsync(background=self.background,
-			env=self.settings.environ(),
-			features=self.settings.features,
-			image_dir=self._image_dir,
-			pkg=self.pkg, pkg_path=self._pkg_path,
-			logfile=self.settings.get("PORTAGE_LOG_FILE"),
-			scheduler=self.scheduler)
 		self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
-		self._start_task(extractor, self._extractor_exit)
+		self._start_task(
+			AsyncTaskFuture(future=self._bintree.dbapi.unpack_contents(
+				self.settings,
+				self._image_dir)),
+			self._unpack_contents_exit)
 
-	def _extractor_exit(self, extractor):
-		if self._default_exit(extractor) != os.EX_OK:
+	def _unpack_contents_exit(self, unpack_contents):
+		if self._default_exit(unpack_contents) != os.EX_OK:
+			unpack_contents.future.result()
 			self._writemsg_level("!!! Error Extracting '%s'\n" % \
 				self._pkg_path, noiselevel=-1, level=logging.ERROR)
 			self._async_unlock_builddir(returncode=self.returncode)
