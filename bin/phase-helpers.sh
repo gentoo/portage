@@ -993,10 +993,9 @@ if ___eapi_has_eapply; then
 			ebegin "${prefix:-Applying }${f##*/}"
 			# -p1 as a sane default
 			# -f to avoid interactivity
-			# -s to silence progress output
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			${patch_cmd} -p1 -f -s -g0 --no-backup-if-mismatch \
+			${patch_cmd} -p1 -f -g0 --no-backup-if-mismatch \
 				"${patch_options[@]}" < "${f}"
 			failed=${?}
 			if ! eend "${failed}"; then
