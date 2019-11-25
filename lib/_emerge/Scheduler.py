@@ -775,11 +775,7 @@ class Scheduler(PollScheduler):
 		"""
 
 		failures = 0
-
-		# Use a local EventLoop instance here, since we don't
-		# want tasks here to trigger the usual Scheduler callbacks
-		# that handle job scheduling and status display.
-		sched_iface = SchedulerInterface(EventLoop(main=False))
+		sched_iface = self._sched_iface
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):
