@@ -2791,7 +2791,6 @@ class depgraph(object):
 
 	def _add_dep(self, dep, allow_unsatisfied=False):
 		debug = "--debug" in self._frozen_config.myopts
-		buildpkgonly = "--buildpkgonly" in self._frozen_config.myopts
 		nodeps = "--nodeps" in self._frozen_config.myopts
 		if dep.blocker:
 
@@ -2799,8 +2798,7 @@ class depgraph(object):
 			# blocker validation is only able to account for one package per slot.
 			is_slot_conflict_parent = any(dep.parent in conflict.pkgs[1:] for conflict in \
 				self._dynamic_config._package_tracker.slot_conflicts())
-			if not buildpkgonly and \
-				not nodeps and \
+			if not nodeps and \
 				not dep.collapsed_priority.ignored and \
 				not dep.collapsed_priority.optional and \
 				not is_slot_conflict_parent:
@@ -6805,8 +6803,7 @@ class depgraph(object):
 			for depclean and prune removal operations)
 		@type required_sets: dict
 		"""
-		if "--buildpkgonly" in self._frozen_config.myopts or \
-			"recurse" not in self._dynamic_config.myparams:
+		if "recurse" not in self._dynamic_config.myparams:
 			return 1
 
 		complete_if_new_use = self._dynamic_config.myparams.get(
@@ -7061,8 +7058,7 @@ class depgraph(object):
 		# has been called before it, by checking that it is not None.
 		self._dynamic_config._blocked_pkgs = digraph()
 
-		if "--buildpkgonly" in self._frozen_config.myopts or \
-			"--nodeps" in self._frozen_config.myopts:
+		if "--nodeps" in self._frozen_config.myopts:
 			return True
 
 		if True:
@@ -7337,6 +7333,10 @@ class depgraph(object):
 					# None of the above blocker resolutions techniques apply,
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
+
+				if "--buildpkgonly" in self._frozen_config.myopts and not (
+					blocker.priority.buildtime and blocker.atom.blocker.overlap.forbid):
+					depends_on_order.clear()
 
 				# Make sure we don't unmerge any package that have been pulled
 				# into the graph.
@@ -8292,9 +8292,17 @@ class depgraph(object):
 		retlist.extend(unsolvable_blockers)
 		retlist = tuple(retlist)
 
+		buildtime_blockers = []
+		if unsolvable_blockers and "--buildpkgonly" in self._frozen_config.myopts:
+			for blocker in unsolvable_blockers:
+				if blocker.priority.buildtime and blocker.atom.blocker.overlap.forbid:
+					buildtime_blockers.append(blocker)
+
 		if unsolvable_blockers and \
+			not buildtime_blockers and \
 			not self._accept_blocker_conflicts():
-			self._dynamic_config._unsatisfied_blockers_for_display = unsolvable_blockers
+			self._dynamic_config._unsatisfied_blockers_for_display = (tuple(buildtime_blockers)
+				if buildtime_blockers else unsolvable_blockers)
 			self._dynamic_config._serialized_tasks_cache = retlist
 			self._dynamic_config._scheduler_graph = scheduler_graph
 			# Blockers don't trigger the _skip_restart flag, since
