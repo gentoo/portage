@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.80
+==================================
+* Bug Fixes:
+    - Bug 667432 Rename DCO_SIGNED_OFF_BY config variable to SIGNED_OFF_BY.
+    - Bug 674562 eapply: Drop -s option for patch.
+    - Bug 689226 emerge --buildpkgonly: respect buildtime hard blockers
+    - Bug 699986 emerge: add --quickpkg-direct option
+
+
 portage-2.3.79
 ==================================
 * Bug Fixes:
