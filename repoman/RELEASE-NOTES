@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.19
+==================================
+* Bug Fixes:
+    - Bug 667432 Rename DCO_SIGNED_OFF_BY config variable to SIGNED_OFF_BY.
+    - Bug 700456 Add --include-profiles=PROFILES
+
+
 repoman-2.3.18
 ==================================
 * Bug Fixes:
