@@ -995,8 +995,20 @@ if ___eapi_has_eapply; then
 			# -f to avoid interactivity
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			${patch_cmd} -p1 -f -g0 --no-backup-if-mismatch \
-				"${patch_options[@]}" < "${f}"
+			local all_opts=(
+				-p1 -f -g0 --no-backup-if-mismatch
+				"${patch_options[@]}"
+			)
+			# try applying with -F0 first, output a verbose warning
+			# if fuzz factor is necessary
+			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
+					< "${f}" &>/dev/null; then
+				all_opts+=( -s -F0 )
+			else
+				eqawarn "    ${f}: patch failed to apply without a fuzz factor, please rebase"
+			fi
+
+			${patch_cmd} "${all_opts[@]}" < "${f}"
 			failed=${?}
 			if ! eend "${failed}"; then
 				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"
