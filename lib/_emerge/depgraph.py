@@ -8309,9 +8309,7 @@ class depgraph(object):
 				if blocker.priority.buildtime and blocker.atom.blocker.overlap.forbid:
 					buildtime_blockers.append(blocker)
 
-		if unsolvable_blockers and \
-			not buildtime_blockers and \
-			not self._accept_blocker_conflicts():
+		if unsolvable_blockers and (buildtime_blockers or not self._accept_blocker_conflicts()):
 			self._dynamic_config._unsatisfied_blockers_for_display = (tuple(buildtime_blockers)
 				if buildtime_blockers else unsolvable_blockers)
 			self._dynamic_config._serialized_tasks_cache = retlist
