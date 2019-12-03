@@ -334,7 +334,8 @@ the whole commit message to abort.
 		if myunadded:
 			for x in range(len(myunadded) - 1, -1, -1):
 				xs = myunadded[x].split("/")
-				if self.repo_settings.repo_config.find_invalid_path_char(myunadded[x]) != -1:
+				if (any(token.startswith('.') for token in xs) or
+					self.repo_settings.repo_config.find_invalid_path_char(myunadded[x]) != -1):
 					# The Manifest excludes this file,
 					# so it's safe to ignore.
 					del myunadded[x]
