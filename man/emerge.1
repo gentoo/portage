@@ -671,6 +671,13 @@ possible for it to make nonsensical changes which may lead to system
 breakage. Therefore, it is advisable to use \fB\-\-ask\fR together with
 this option.
 .TP
+.BR "\-\-implicit\-system\-deps < y | n >"
+Assume that packages may have implicit dependencies on packages which
+belong to the @system set. This option is enabled by default. One of the
+effects of disabling this option is to allow the \-\-jobs option to
+spawn jobs without accounting for the possiblity of implicit dependencies
+on packages that belong to the @system set.
+.TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can

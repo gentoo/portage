@@ -525,6 +525,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--implicit-system-deps": {
+			"help": "Assume that packages may have implicit dependencies on"
+				"packages which belong to the @system set",
+			"choices": y_or_n
+		},
+
 		"--jobs": {
 
 			"shortopt" : "-j",

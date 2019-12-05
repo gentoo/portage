@@ -32,6 +32,8 @@ def create_depgraph_params(myopts, myaction):
 	#   packages, so that they do not trigger dependency resolution
 	#   failures, or cause packages to be rebuilt or replaced.
 	# ignore_world: ignore the @world package set and its dependencies
+	# implicit_system_deps: Assume that packages may have implicit dependencies
+	#   on packages which belong to the @system set.
 	# with_test_deps: pull in test deps for packages matched by arguments
 	# changed_deps: rebuild installed packages with outdated deps
 	# changed_deps_report: report installed packages with outdated deps
@@ -86,6 +88,8 @@ def create_depgraph_params(myopts, myaction):
 	dynamic_deps = myopts.get("--dynamic-deps", "y") != "n" and "--nodeps" not in myopts
 	if dynamic_deps:
 		myparams["dynamic_deps"] = True
+
+	myparams["implicit_system_deps"] =  myopts.get("--implicit-system-deps", "y") != "n"
 
 	if myaction == "remove":
 		myparams["remove"] = True

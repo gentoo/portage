@@ -499,6 +499,10 @@ class Scheduler(PollScheduler):
 		added to the graph and traversed deeply (the depgraph "complete"
 		parameter will do this, triggered by emerge --complete-graph option).
 		"""
+		params = create_depgraph_params(self.myopts, None)
+		if not params["implicit_system_deps"]:
+			return
+
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
 		deep_system_deps.update(

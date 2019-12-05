@@ -7403,6 +7403,8 @@ class depgraph(object):
 		For optimal leaf node selection, promote deep system runtime deps and
 		order nodes from highest to lowest overall reference count.
 		"""
+		if not self._dynamic_config.myparams["implicit_system_deps"]:
+			return
 
 		node_info = {}
 		for node in mygraph.order:
@@ -8047,10 +8049,9 @@ class depgraph(object):
 						# by a normal replacement operation then abort.
 						skip = False
 						try:
-							for atom in root_config.sets[
-								"system"].iterAtomsForPackage(task):
+							if (self._dynamic_config.myparams["implicit_system_deps"] and
+								any(root_config.sets["system"].iterAtomsForPackage(task))):
 								skip = True
-								break
 						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
