@@ -285,3 +285,42 @@ class VirtualMinimizeChildrenTestCase(TestCase):
 		finally:
 			playground.debug = False
 			playground.cleanup()
+
+
+	def testVirtualWine(self):
+		ebuilds = {
+			'virtual/wine-0-r6': {
+				'RDEPEND': '|| ( app-emulation/wine-staging app-emulation/wine-any ) '
+					'|| ( app-emulation/wine-vanilla app-emulation/wine-staging app-emulation/wine-any )'
+			},
+			'app-emulation/wine-staging-4': {},
+			'app-emulation/wine-any-4': {},
+			'app-emulation/wine-vanilla-4': {},
+		}
+
+		test_cases = (
+			# Test bug 701996, where separate disjunctions where not
+			# converted to DNF, causing both wine-vanilla and
+			# wine-staging to be pulled in.
+			ResolverPlaygroundTestCase(
+				[
+					'virtual/wine',
+				],
+				success=True,
+				mergelist=(
+					'app-emulation/wine-staging-4',
+					'virtual/wine-0-r6',
+				),
+			),
+		)
+
+		playground = ResolverPlayground(debug=False, ebuilds=ebuilds)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()

@@ -3850,10 +3850,11 @@ class depgraph(object):
 		Yields non-disjunctive deps. Raises InvalidDependString when
 		necessary.
 		"""
+		disjunctions = []
 		for x in dep_struct:
 			if isinstance(x, list):
 				if x and x[0] == "||":
-					self._queue_disjunction(pkg, dep_root, dep_priority, [x])
+					disjunctions.append(x)
 				else:
 					for y in self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, x):
@@ -3863,9 +3864,12 @@ class depgraph(object):
 				# or whatever other metadata gets implemented for this
 				# purpose.
 				if x.cp.startswith('virtual/'):
-					self._queue_disjunction(pkg, dep_root, dep_priority, [x])
+					disjunctions.append(x)
 				else:
 					yield x
+
+		if disjunctions:
+			self._queue_disjunction(pkg, dep_root, dep_priority, disjunctions)
 
 	def _queue_disjunction(self, pkg, dep_root, dep_priority, dep_struct):
 		self._dynamic_config._dep_disjunctive_stack.append(
