@@ -403,19 +403,6 @@ __dyn_prepare() {
 	trap - SIGINT SIGQUIT
 }
 
-# @FUNCTION: __start_distcc
-# @DESCRIPTION:
-# Start distcc-pump if necessary.
-__start_distcc() {
-	if has distcc $FEATURES && has distcc-pump $FEATURES ; then
-		if [[ -z $INCLUDE_SERVER_PORT ]] || [[ ! -w $INCLUDE_SERVER_PORT ]] ; then
-			# adding distcc to PATH repeatedly results in fatal distcc recursion :)
-			eval $(pump --startup | grep -v PATH)
-			trap "pump --shutdown >/dev/null" EXIT
-		fi
-	fi
-}
-
 __dyn_configure() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
@@ -435,7 +422,6 @@ __dyn_configure() {
 	fi
 
 	trap __abort_configure SIGINT SIGQUIT
-	__start_distcc
 
 	__ebuild_phase pre_src_configure
 
@@ -469,7 +455,6 @@ __dyn_compile() {
 	fi
 
 	trap __abort_compile SIGINT SIGQUIT
-	__start_distcc
 
 	__ebuild_phase pre_src_compile
 
@@ -493,7 +478,6 @@ __dyn_test() {
 	fi
 
 	trap "__abort_test" SIGINT SIGQUIT
-	__start_distcc
 
 	if [[ -d ${S} ]]; then
 		cd "${S}"
@@ -541,7 +525,6 @@ __dyn_install() {
 		return 0
 	fi
 	trap "__abort_install" SIGINT SIGQUIT
-	__start_distcc
 
 	# Handle setting QA_* based on QA_PREBUILT
 	# Those variables shouldn't be needed before src_install()

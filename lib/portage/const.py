@@ -142,7 +142,6 @@ SUPPORTED_FEATURES       = frozenset([
 	"config-protect-if-modified",
 	"digest",
 	"distcc",
-	"distcc-pump",
 	"distlocks",
 	"downgrade-backup",
 	"ebuild-locks",
