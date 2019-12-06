@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.81
+==================================
+* Bug Fixes:
+    - Bug 681312 add emerge --implicit-system-deps <y|n> option
+    - Bug 701996 fix virtual/wine handling to avoid pulling in multiple
+      wine implementations in some cases
+
+
 portage-2.3.80
 ==================================
 * Bug Fixes:

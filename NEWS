@@ -1,5 +1,16 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.80
+--------------
+* The emerge --quickpkg-direct option enables use of installed packages
+  directly as binary packages. It can be used to create minimal runtime
+  container images (which need not include a package manager), or to
+  enable a live image to act as a binary installer that uses packages
+  installed in the live image as a source of binary packages. This
+  option is especially useful in combination with --usepkgonly and
+  --ignore-soname-deps=n options, allowing implicit system dependencies
+  such as libc to be automatically accounted for.
+
 portage-2.3.77
 --------------
 * The emerge --autounmask option is now disabled by default, except for
