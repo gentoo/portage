@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.20
+==================================
+* Bug Fixes:
+    - Bug 541076 repoman commit: ignore unadded hidden files
+    - Bug 702100 repoman: support profiles/package.deprecated
+
+
 repoman-2.3.19
 ==================================
 * Bug Fixes:
