@@ -935,7 +935,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 
-					if distdir_writable:
+					if distdir_writable and not force:
 						# Since _check_distfile did not match above, the file
 						# is either corrupt or its identity has changed since
 						# the last time it was fetched, so rename it.
