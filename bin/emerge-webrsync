@@ -239,7 +239,7 @@ check_file_signature() {
 get_snapshot_timestamp() {
 	local file="$1"
 
-	do_tar "${file}" --to-stdout -xf - portage/metadata/timestamp.x | cut -f 1 -d " "
+	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' | cut -f 1 -d " "
 }
 
 sync_local() {
@@ -268,9 +268,8 @@ sync_local() {
 			return 1
 		fi
 	else
-		if ! do_tar "${file}" xf -; then
+		if ! do_tar "${file}" -x --strip-components=1 -f -; then
 			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
-			rm -fr portage
 			return 1
 		fi
 
@@ -278,16 +277,13 @@ sync_local() {
 		${keep} || rm -f "${file}"
 
 		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
-		if chown ${ownership} portage > /dev/null 2>&1; then
-			chown -R ${ownership} portage
+		if chown ${ownership} . > /dev/null 2>&1; then
+			chown -R ${ownership} .
 			rsync_opts+=" --owner --group"
 		fi
-		cd portage
 		rsync ${rsync_opts} . "${repo_location%%/}"
-		cd ..
 
 		__vecho "Cleaning up ..."
-		rm -fr portage
 	fi
 
 	if has metadata-transfer ${FEATURES} ; then
