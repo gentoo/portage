@@ -1004,8 +1004,6 @@ if ___eapi_has_eapply; then
 			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
 					< "${f}" &>/dev/null; then
 				all_opts+=( -s -F0 )
-			else
-				eqawarn "    ${f}: patch failed to apply without a fuzz factor, please rebase"
 			fi
 
 			${patch_cmd} "${all_opts[@]}" < "${f}"
