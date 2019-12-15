@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.82
+==================================
+* Bug Fixes:
+    - Bug 310009 emerge: Show package USE in conflict messages
+    - Bug 680456 display relevant FEATURES when unshare fails
+    - Bug 693454 emerge-webrsync: support gentoo-YYYYMMDD snapshots
+    - Bug 702146 emerge: drop FEATURES=distcc-pump support
+    - Bug 702970 emerge-webrsync: enable xz snapshots for tarsync
+
+
 portage-2.3.81
 ==================================
 * Bug Fixes:
