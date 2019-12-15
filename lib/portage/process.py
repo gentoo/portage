@@ -628,8 +628,19 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 					if errno_value == 0 and libc.unshare(unshare_flags) != 0:
 						errno_value = ctypes.get_errno()
 					if errno_value != 0:
-						writemsg("Unable to unshare: %s\n" % (
-							errno.errorcode.get(errno_value, '?')),
+
+						involved_features = []
+						if unshare_ipc:
+							involved_features.append('ipc-sandbox')
+						if unshare_mount:
+							involved_features.append('mount-sandbox')
+						if unshare_net:
+							involved_features.append('network-sandbox')
+						if unshare_pid:
+							involved_features.append('pid-sandbox')
+
+						writemsg("Unable to unshare: %s (for FEATURES=\"%s\")\n" % (
+							errno.errorcode.get(errno_value, '?'), ' '.join(involved_features)),
 							noiselevel=-1)
 					else:
 						if unshare_pid:
