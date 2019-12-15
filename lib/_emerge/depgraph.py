@@ -1285,7 +1285,10 @@ class depgraph(object):
 			msg.append("\n\n")
 
 			msg.append(indent)
-			msg.append(str(pkg))
+			msg.append("%s %s" % (pkg,
+				pkg_use_display(pkg,
+					self._frozen_config.myopts,
+					modified_use=self._pkg_use_enabled(pkg))))
 			msg.append(" conflicts with\n")
 
 			for parent, atom in parent_atoms:
@@ -1302,8 +1305,15 @@ class depgraph(object):
 					atom, marker = format_unmatched_atom(
 						pkg, atom, self._pkg_use_enabled)
 
+					if isinstance(parent, Package):
+						use_display = pkg_use_display(parent,
+							self._frozen_config.myopts,
+							modified_use=self._pkg_use_enabled(parent))
+					else:
+						use_display = ""
+
 					msg.append(2*indent)
-					msg.append("%s required by %s\n" % (atom, parent))
+					msg.append("%s required by %s %s\n" % (atom, parent, use_display))
 					msg.append(2*indent)
 					msg.append(marker)
 					msg.append("\n")
@@ -8472,14 +8482,20 @@ class depgraph(object):
 					else:
 						# Display the specific atom from SetArg or
 						# Package types.
+						if isinstance(parent, Package):
+							use_display = pkg_use_display(parent,
+								self._frozen_config.myopts,
+								modified_use=self._pkg_use_enabled(parent))
+						else:
+							use_display = ""
 						if atom.package and atom != atom.unevaluated_atom:
 							# Show the unevaluated atom, since it can reveal
 							# issues with conditional use-flags missing
 							# from IUSE.
-							msg.append("%s (%s) required by %s" %
-								(atom.unevaluated_atom, atom, parent))
+							msg.append("%s (%s) required by %s %s" %
+								(atom.unevaluated_atom, atom, parent, use_display))
 						else:
-							msg.append("%s required by %s" % (atom, parent))
+							msg.append("%s required by %s %s" % (atom, parent, use_display))
 					msg.append("\n")
 
 				msg.append("\n")

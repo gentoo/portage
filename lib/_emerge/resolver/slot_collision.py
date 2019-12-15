@@ -9,6 +9,7 @@ from portage import _encodings, _unicode_encode
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
+from _emerge.UseFlagDisplay import pkg_use_display
 from portage.dep import check_required_use
 from portage.output import colorize
 from portage._sets.base import InternalPackageSet
@@ -260,7 +261,9 @@ class slot_conflict_handler(object):
 
 			for pkg in pkgs:
 				msg.append(indent)
-				msg.append("%s" % (pkg,))
+				msg.append("%s %s" % (pkg, pkg_use_display(pkg,
+					self.depgraph._frozen_config.myopts,
+					modified_use=self.depgraph._pkg_use_enabled(pkg))))
 				parent_atoms = self.all_parents.get(pkg)
 				if parent_atoms:
 					#Create a list of collision reasons and map them to sets
@@ -569,9 +572,15 @@ class slot_conflict_handler(object):
 								ordered_list.append(parent_atom)
 					for parent_atom in ordered_list:
 						parent, atom = parent_atom
+						if isinstance(parent, Package):
+							use_display = pkg_use_display(parent,
+								self.depgraph._frozen_config.myopts,
+								modified_use=self.depgraph._pkg_use_enabled(parent))
+						else:
+							use_display = ""
 						if atom.soname:
-							msg.append("%s required by %s\n" %
-								(atom, parent))
+							msg.append("%s required by %s %s\n" %
+								(atom, parent, use_display))
 						elif isinstance(parent, PackageArg):
 							# For PackageArg it's
 							# redundant to display the atom attribute.
@@ -602,7 +611,7 @@ class slot_conflict_handler(object):
 							if version_violated or slot_violated:
 								self.is_a_version_conflict = True
 
-							cur_line = "%s required by %s\n" % (atom_str, parent)
+							cur_line = "%s required by %s %s\n" % (atom_str, parent, use_display)
 							marker_line = ""
 							for ii in range(len(cur_line)):
 								if ii in colored_idx:
