@@ -303,15 +303,15 @@ do_snapshot() {
 
 	local r=1
 
-	local base_file="portage-${date}.tar"
+	local compression
 
 	local have_files=0
 	local mirror
 
 	local compressions=""
-	type -P xzcat > /dev/null && compressions="${compressions} xz"
-	type -P bzcat > /dev/null && compressions="${compressions} bz2"
-	type -P  zcat > /dev/null && compressions="${compressions} gz"
+	type -P xzcat > /dev/null && compressions="${compressions} ${repo_name}:xz portage:xz"
+	type -P bzcat > /dev/null && compressions="${compressions} ${repo_name}:bz2 portage:bz2"
+	type -P  zcat > /dev/null && compressions="${compressions} ${repo_name}:gz portage:gz"
 	if [[ -z ${compressions} ]] ; then
 		eecho "unable to locate any decompressors (xzcat or bzcat or zcat)"
 		exit 1
@@ -323,7 +323,9 @@ do_snapshot() {
 		__vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
 		for compression in ${compressions} ; do
-			local file="portage-${date}.tar.${compression}"
+			local name=${compression%%:*}
+			compression=${compression#*:}
+			local file="${name}-${date}.tar.${compression}"
 			local digest="${file}.md5sum"
 			local signature="${file}.gpgsig"
 
