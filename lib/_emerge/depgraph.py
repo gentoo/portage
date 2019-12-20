@@ -3325,10 +3325,6 @@ class depgraph(object):
 			pkg.iuse.is_valid_flag("test") and \
 			self._is_argument(pkg)
 
-		if with_test_deps:
-			use_enabled = set(use_enabled)
-			use_enabled.add("test")
-
 		if not pkg.built and \
 			"--buildpkgonly" in self._frozen_config.myopts and \
 			"deep" not in self._dynamic_config.myparams:
@@ -3430,6 +3426,21 @@ class depgraph(object):
 						noiselevel=-1, level=logging.DEBUG)
 
 				try:
+					if (with_test_deps and 'test' not in use_enabled and
+						pkg.iuse.is_valid_flag('test')):
+						test_deps = portage.dep.use_reduce(dep_string,
+							uselist=use_enabled | {'test'},
+							is_valid_flag=pkg.iuse.is_valid_flag,
+							opconvert=True, token_class=Atom,
+							eapi=pkg.eapi,
+							subset={'test'})
+
+						if test_deps and not self._add_pkg_dep_string(
+							pkg, dep_root, self._priority(runtime_post=True),
+							test_deps,
+							allow_unsatisfied):
+							return 0
+
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=use_enabled,
 						is_valid_flag=pkg.iuse.is_valid_flag,

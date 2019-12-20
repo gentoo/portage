@@ -9,7 +9,7 @@ class UseReduceTestCase(object):
 	def __init__(self, deparray, uselist=[], masklist=[],
 	             matchall=0, excludeall=[], is_src_uri=False,
 	             eapi='0', opconvert=False, flat=False, expected_result=None,
-	             is_valid_flag=None, token_class=None):
+	             is_valid_flag=None, token_class=None, subset=None):
 		self.deparray = deparray
 		self.uselist = uselist
 		self.masklist = masklist
@@ -21,13 +21,15 @@ class UseReduceTestCase(object):
 		self.flat = flat
 		self.is_valid_flag = is_valid_flag
 		self.token_class = token_class
+		self.subset = subset
 		self.expected_result = expected_result
 
 	def run(self):
 		try:
 			return use_reduce(self.deparray, self.uselist, self.masklist,
 				self.matchall, self.excludeall, self.is_src_uri, self.eapi,
-				self.opconvert, self.flat, self.is_valid_flag, self.token_class)
+				self.opconvert, self.flat, self.is_valid_flag, self.token_class,
+				subset=self.subset)
 		except InvalidDependString as e:
 			raise InvalidDependString("%s: %s" % (e, self.deparray))
 
@@ -49,6 +51,72 @@ class UseReduce(TestCase):
 				"a? ( A ) b? ( B ) !c? ( C ) !d? ( D )",
 				uselist=["a", "b", "c", "d"],
 				expected_result=["A", "B"]
+				),
+			UseReduceTestCase(
+				"a? ( A ) b? ( B ) !c? ( C ) !d? ( D )",
+				uselist=["a", "b", "c", "d"],
+				subset=["b"],
+				expected_result=["B"]
+				),
+			UseReduceTestCase(
+				"bar? ( || ( foo bar? ( baz ) ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['||', ['foo', 'baz']]
+				),
+			UseReduceTestCase(
+				"bar? ( foo bar? ( baz ) foo )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['foo', 'baz', 'foo']
+				),
+			UseReduceTestCase(
+				"|| ( ( a b ) ( c d ) )",
+				uselist=[],
+				subset=["bar"],
+				expected_result=[]
+				),
+			UseReduceTestCase(
+				"|| ( ( a b ) ( bar? ( c d ) e f ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['c', 'd']
+				),
+			UseReduceTestCase(
+				"( a b ) ( c d bar? ( e f baz? ( g h ) ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['e', 'f']
+				),
+			UseReduceTestCase(
+				"( a b ) ( c d bar? ( e f baz? ( g h ) ) )",
+				uselist=["bar", "baz"],
+				subset=["bar"],
+				expected_result=['e', 'f', 'g', 'h']
+				),
+			UseReduceTestCase(
+				"( bar? ( a b ) ( bar? ( c d ) ) ) ( e f )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['a', 'b', 'c', 'd']
+				),
+			UseReduceTestCase(
+				"|| ( foo bar? ( baz ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=["baz"]
+				),
+			UseReduceTestCase(
+				"|| ( || ( bar? ( a || ( b c || ( d e ) ) ) ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['a', '||', ['b', 'c', 'd', 'e']]
+				),
+			UseReduceTestCase(
+				"|| ( || ( bar? ( a || ( ( b c ) ( d e ) ) ) ) )",
+				uselist=["bar"],
+				subset=["bar"],
+				expected_result=['a', '||', [['b', 'c'], ['d', 'e']]]
 				),
 			UseReduceTestCase(
 				"a? ( A ) b? ( B ) !c? ( C ) !d? ( D )",

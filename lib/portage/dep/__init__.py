@@ -405,7 +405,8 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
 	return " ".join(mystrparts)
 
 def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), is_src_uri=False, \
-	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False):
+	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False,
+	subset=None):
 	"""
 	Takes a dep string and reduces the use? conditionals out, leaving an array
 	with subarrays. All redundant brackets are removed.
@@ -434,6 +435,8 @@ def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), i
 	@type token_class: Class
 	@param matchnone: Treat all conditionals as inactive. Used by digestgen(). 
 	@type matchnone: Bool
+	@param subset: Select a subset of dependencies conditional on the given flags
+	@type subset: Sequence
 	@rtype: List
 	@return: The use reduced depend array
 	"""
@@ -490,6 +493,45 @@ def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), i
 
 		return (flag in uselist and not is_negated) or \
 			(flag not in uselist and is_negated)
+
+	if subset:
+		def select_subset(dep_struct, disjunction, selected):
+			result = []
+			stack = list(dep_struct)
+			stack.reverse()
+			while stack:
+				token = stack.pop()
+				try:
+					conditional = token.endswith('?')
+				except AttributeError:
+					if disjunction:
+						children = select_subset(token, False, selected)
+						if children:
+							result.append(children)
+					else:
+						result.extend(select_subset(token, False, selected))
+				else:
+					if conditional:
+						children = stack.pop()
+						if is_active(token):
+							if disjunction:
+								children = select_subset(children, False, selected or token[:-1] in subset)
+								if children:
+									result.append(children)
+							else:
+								result.extend(select_subset(children, False, selected or token[:-1] in subset))
+					elif token == '||':
+						children = select_subset(stack.pop(), True, selected)
+						if children:
+							if disjunction:
+								result.extend(children)
+							else:
+								result.append(token)
+								result.append(children)
+					elif selected:
+						result.append(token)
+			return result
+		depstr = paren_enclose(select_subset(paren_reduce(depstr, _deprecation_warn=False), False, False))
 
 	def missing_white_space_check(token, pos):
 		"""
