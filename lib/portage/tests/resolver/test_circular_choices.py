@@ -63,7 +63,7 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
 			'virtual/cmake-0': {
 				'EAPI': '7',
 				'IUSE': '+bootstrap',
-				'BDEPEND': 'bootstrap? ( dev-util/cmake-bootstrap ) !bootstrap? ( dev-util/cmake )'
+				'RDEPEND': 'bootstrap? ( dev-util/cmake-bootstrap ) !bootstrap? ( dev-util/cmake )'
 			},
 		}
 
