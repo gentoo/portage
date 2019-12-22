@@ -51,8 +51,7 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
 		ebuilds = {
 			'dev-libs/jsoncpp-1.9.2': {
 				'EAPI': '7',
-				'IUSE': '+bootstrap',
-				'BDEPEND': 'bootstrap? ( dev-util/cmake-bootstrap ) !bootstrap? ( dev-util/cmake )'
+				'BDEPEND': 'virtual/cmake'
 			},
 			'dev-util/cmake-bootstrap-3.16.2': {
 				'EAPI': '7',
@@ -61,13 +60,18 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
 				'EAPI': '7',
 				'BDEPEND': '>=dev-libs/jsoncpp-0.6.0_rc2:0=',
 			},
+			'virtual/cmake-0': {
+				'EAPI': '7',
+				'IUSE': '+bootstrap',
+				'BDEPEND': 'bootstrap? ( dev-util/cmake-bootstrap ) !bootstrap? ( dev-util/cmake )'
+			},
 		}
 
 		test_cases = (
 			# Solve bug 703440 with a dependency conditional on the bootstrap USE flag.
 			ResolverPlaygroundTestCase(
 				['dev-util/cmake'],
-				mergelist = ['dev-util/cmake-bootstrap-3.16.2', 'dev-libs/jsoncpp-1.9.2', 'dev-util/cmake-3.16.2'],
+				mergelist = ['dev-util/cmake-bootstrap-3.16.2', 'virtual/cmake-0', 'dev-libs/jsoncpp-1.9.2', 'dev-util/cmake-3.16.2'],
 				success = True,
 			),
 		)
