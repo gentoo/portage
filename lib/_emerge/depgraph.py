@@ -3865,20 +3865,20 @@ class depgraph(object):
 					child_pkgs.sort()
 				yield (atom, child_pkgs[-1])
 
-	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
+	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct, _disjunctions_recursive=None):
 		"""
 		Queue disjunctive (virtual and ||) deps in self._dynamic_config._dep_disjunctive_stack.
 		Yields non-disjunctive deps. Raises InvalidDependString when
 		necessary.
 		"""
-		disjunctions = []
+		disjunctions = [] if _disjunctions_recursive is None else _disjunctions_recursive
 		for x in dep_struct:
 			if isinstance(x, list):
 				if x and x[0] == "||":
 					disjunctions.append(x)
 				else:
 					for y in self._queue_disjunctive_deps(
-						pkg, dep_root, dep_priority, x):
+						pkg, dep_root, dep_priority, x, _disjunctions_recursive=disjunctions):
 						yield y
 			else:
 				# Note: Eventually this will check for PROPERTIES=virtual
@@ -3889,7 +3889,7 @@ class depgraph(object):
 				else:
 					yield x
 
-		if disjunctions:
+		if _disjunctions_recursive is None and disjunctions:
 			self._queue_disjunction(pkg, dep_root, dep_priority, disjunctions)
 
 	def _queue_disjunction(self, pkg, dep_root, dep_priority, dep_struct):
