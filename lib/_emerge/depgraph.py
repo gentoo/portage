@@ -480,6 +480,7 @@ class _dynamic_depgraph_config(object):
 		# of flags causing the rejection.
 		self.ignored_binaries = {}
 
+		self._circular_dependency = backtrack_parameters.circular_dependency
 		self._needed_unstable_keywords = backtrack_parameters.needed_unstable_keywords
 		self._needed_p_mask_changes = backtrack_parameters.needed_p_mask_changes
 		self._needed_license_changes = backtrack_parameters.needed_license_changes
@@ -4809,6 +4810,7 @@ class depgraph(object):
 				mytrees.pop("pkg_use_enabled", None)
 				mytrees.pop("parent", None)
 				mytrees.pop("atom_graph", None)
+				mytrees.pop("circular_dependency", None)
 				mytrees.pop("priority", None)
 
 				mytrees["pkg_use_enabled"] = self._pkg_use_enabled
@@ -4816,6 +4818,7 @@ class depgraph(object):
 					self._select_atoms_parent = parent
 					mytrees["parent"] = parent
 					mytrees["atom_graph"] = atom_graph
+					mytrees["circular_dependency"] = self._dynamic_config._circular_dependency
 				if priority is not None:
 					mytrees["priority"] = priority
 
@@ -4829,6 +4832,7 @@ class depgraph(object):
 				mytrees.pop("pkg_use_enabled", None)
 				mytrees.pop("parent", None)
 				mytrees.pop("atom_graph", None)
+				mytrees.pop("circular_dependency", None)
 				mytrees.pop("priority", None)
 				mytrees.update(backup_state)
 			if not mycheck[0]:
@@ -8226,7 +8230,30 @@ class depgraph(object):
 
 			if not selected_nodes:
 				self._dynamic_config._circular_deps_for_display = mygraph
-				self._dynamic_config._skip_restart = True
+
+				unsolved_cycle = False
+				if self._dynamic_config._allow_backtracking:
+
+					backtrack_infos = self._dynamic_config._backtrack_infos
+					backtrack_infos.setdefault("config", {})
+					circular_dependency = backtrack_infos["config"].setdefault("circular_dependency", {})
+
+					cycles = mygraph.get_cycles(ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
+					for cycle in cycles:
+						for index, node in enumerate(cycle):
+							if node in self._dynamic_config._circular_dependency:
+								unsolved_cycle = True
+							if index == 0:
+								circular_child = cycle[-1]
+							else:
+								circular_child = cycle[index-1]
+							circular_dependency.setdefault(node, set()).add(circular_child)
+
+				if unsolved_cycle or not self._dynamic_config._allow_backtracking:
+					self._dynamic_config._skip_restart = True
+				else:
+					self._dynamic_config._need_restart = True
+
 				raise self._unknown_internal_error()
 
 			# At this point, we've succeeded in selecting one or more nodes, so
@@ -9461,6 +9488,17 @@ class depgraph(object):
 		return self._dynamic_config._need_restart and \
 			not self._dynamic_config._skip_restart
 
+	def need_display_problems(self):
+		"""
+		Returns true if this depgraph has problems which need to be
+		displayed to the user.
+		"""
+		if self.need_config_change():
+			return True
+		if self._dynamic_config._circular_deps_for_display:
+			return True
+		return False
+
 	def need_config_change(self):
 		"""
 		Returns true if backtracking should terminate due to a needed
@@ -9889,7 +9927,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, sp
 		elif backtracker:
 			backtracked += 1
 
-	if not (success or mydepgraph.need_config_change()) and backtracked:
+	if backtracked and not success and not mydepgraph.need_display_problems():
 
 		if debug:
 			writemsg_level(

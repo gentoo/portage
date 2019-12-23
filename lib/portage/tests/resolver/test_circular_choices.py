@@ -33,12 +33,37 @@ class CircularJsoncppCmakeBootstrapTestCase(TestCase):
 			#    (dev-libs/jsoncpp-1.9.2:0/0::test_repo, ebuild scheduled for merge) (buildtime_slot_op)
 			ResolverPlaygroundTestCase(
 				['dev-util/cmake'],
+				options = {"--backtrack": 0},
 				circular_dependency_solutions = {},
 				success = False,
+			),
+			# Demonstrate that backtracking adjusts || preferences in order to solve bug 703440.
+			ResolverPlaygroundTestCase(
+				['dev-util/cmake'],
+				mergelist = ['dev-util/cmake-bootstrap-3.16.2', 'dev-libs/jsoncpp-1.9.2', 'dev-util/cmake-3.16.2'],
+				success = True,
 			),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+		test_cases = (
+			# Demonstrate elimination of cmake-bootstrap via --depclean.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {'--depclean': True},
+				success = True,
+				cleanlist = ['dev-util/cmake-bootstrap-3.16.2'],
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=ebuilds, world=['dev-util/cmake'])
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)
