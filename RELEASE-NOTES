@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.83
+==================================
+* Bug Fixes:
+    - Bug 384107 adjust || preference to break dependency cycles,
+      which solves bug 382421 and bug 703440
+    - Bug 703348 emerge --with-test-deps: allow circular deps
+
+
 portage-2.3.82
 ==================================
 * Bug Fixes:
