@@ -7640,21 +7640,6 @@ class depgraph(object):
 				break
 			removed_nodes.clear()
 		self._merge_order_bias(mygraph)
-		def cmp_circular_bias(n1, n2):
-			"""
-			RDEPEND is stronger than PDEPEND and this function
-			measures such a strength bias within a circular
-			dependency relationship.
-			"""
-			n1_n2_medium = n2 in mygraph.child_nodes(n1,
-				ignore_priority=priority_range.ignore_medium_soft)
-			n2_n1_medium = n1 in mygraph.child_nodes(n2,
-				ignore_priority=priority_range.ignore_medium_soft)
-			if n1_n2_medium == n2_n1_medium:
-				return 0
-			elif n1_n2_medium:
-				return 1
-			return -1
 		myblocker_uninstalls = self._dynamic_config._blocker_uninstalls.copy()
 		retlist=[]
 		# Contains uninstall tasks that have been scheduled to
@@ -7815,7 +7800,8 @@ class depgraph(object):
 			self._spinner_update()
 			selected_nodes = None
 			ignore_priority = None
-			if drop_satisfied or (prefer_asap and asap_nodes):
+			cycle_digraph = None
+			if prefer_asap and asap_nodes:
 				priority_range = DepPrioritySatisfiedRange
 			else:
 				priority_range = DepPriorityNormalRange
@@ -7897,11 +7883,12 @@ class depgraph(object):
 							break
 
 			if not selected_nodes:
-				nodes = get_nodes(ignore_priority=priority_range.ignore_medium)
-				if nodes:
-					mergeable_nodes = set(nodes)
+
+				def find_smallest_cycle(mergeable_nodes, priority_ranges):
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
+					else:
+						nodes = mergeable_nodes
 					# When gathering the nodes belonging to a runtime cycle,
 					# we want to minimize the number of nodes gathered, since
 					# this tends to produce a more optimal merge order.
@@ -7912,21 +7899,44 @@ class depgraph(object):
 					# that depend on them. Therefore, we search for the
 					# smallest cycle in order to try and identify and prefer
 					# these smaller independent cycles.
-					ignore_priority = priority_range.ignore_medium_soft
 					smallest_cycle = None
+					ignore_priority = None
 					for node in nodes:
 						if not mygraph.parent_nodes(node):
 							continue
-						selected_nodes = set()
-						if gather_deps(ignore_priority,
-							mergeable_nodes, selected_nodes, node):
-							if smallest_cycle is None or \
-								len(selected_nodes) < len(smallest_cycle):
-								smallest_cycle = selected_nodes
+						for local_priority_range in priority_ranges:
+							selected_nodes = set()
+							if gather_deps(local_priority_range.ignore_medium_soft,
+								mergeable_nodes, selected_nodes, node):
+								if smallest_cycle is None or \
+									len(selected_nodes) < len(smallest_cycle):
+									smallest_cycle = selected_nodes
+									ignore_priority = local_priority_range.ignore_medium_soft
+								break
 
-					selected_nodes = smallest_cycle
+					return smallest_cycle, ignore_priority
 
-					if selected_nodes is not None:
+				priority_ranges = []
+				if priority_range is not DepPriorityNormalRange:
+					priority_ranges.append(DepPriorityNormalRange)
+				priority_ranges.append(priority_range)
+				if drop_satisfied and priority_range is not DepPrioritySatisfiedRange:
+					priority_ranges.append(DepPrioritySatisfiedRange)
+
+				for local_priority_range in priority_ranges:
+					mergeable_nodes = set(get_nodes(ignore_priority=local_priority_range.ignore_medium))
+					if mergeable_nodes:
+						selected_nodes, ignore_priority = find_smallest_cycle(mergeable_nodes, priority_ranges)
+						if selected_nodes:
+							break
+
+				if not selected_nodes:
+					if prefer_asap and asap_nodes:
+						# We failed to find any asap nodes to merge, so ignore
+						# them for the next iteration.
+						prefer_asap = False
+						continue
+				else:
 						cycle_digraph = mygraph.copy()
 						cycle_digraph.difference_update([x for x in
 							cycle_digraph if x not in selected_nodes])
@@ -7953,12 +7963,6 @@ class depgraph(object):
 								writemsg("runtime cycle leaf: %s\n\n" %
 									(selected_nodes[0],), noiselevel=-1)
 
-					if prefer_asap and asap_nodes and not selected_nodes:
-						# We failed to find any asap nodes to merge, so ignore
-						# them for the next iteration.
-						prefer_asap = False
-						continue
-
 			if selected_nodes and ignore_priority is not None:
 				# Try to merge ignored medium_soft deps as soon as possible
 				# if they're not satisfied by installed packages.
@@ -7980,10 +7984,24 @@ class depgraph(object):
 						# Merge PDEPEND asap for bug #180045.
 						asap_nodes.append(child)
 
-			if selected_nodes and len(selected_nodes) > 1:
-				if not isinstance(selected_nodes, list):
-					selected_nodes = list(selected_nodes)
-				selected_nodes.sort(key=cmp_sort_key(cmp_circular_bias))
+			if selected_nodes and len(selected_nodes) > 1 and cycle_digraph is not None:
+				# Sort nodes to account for direct circular relationships. Relevant
+				# priorities here are: runtime < buildtime < buildtime slot operator
+				ignore_priorities = list(filter(None, chain(
+					DepPriorityNormalRange.ignore_priority,
+					DepPrioritySatisfiedRange.ignore_priority,
+				)))
+				selected_nodes = []
+				while cycle_digraph:
+					for ignore_priority in ignore_priorities:
+						leaves = cycle_digraph.leaf_nodes(ignore_priority=ignore_priority)
+						if leaves:
+							cycle_digraph.difference_update(leaves)
+							selected_nodes.extend(leaves)
+							break
+					else:
+						selected_nodes.extend(cycle_digraph)
+						break
 
 			if not selected_nodes and myblocker_uninstalls:
 				# An Uninstall task needs to be executed in order to
