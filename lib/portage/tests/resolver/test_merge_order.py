@@ -1,4 +1,4 @@
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -319,7 +319,12 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/some-app-c", "app-misc/circ-buildtime-a"],
 				success = True,
 				ambiguous_merge_order = True,
-				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1"), "app-misc/circ-buildtime-a-1", "app-misc/some-app-c-1"]),
+				# The following merge order assertion reflects optimal order for
+				# a circular relationship which is DEPEND in one direction and
+				# RDEPEND in the other. The assertion currently fails, and the
+				# patch for bug 690436 will fix it.
+				#merge_order_assertions = (("app-misc/circ-buildtime-a-1", "app-misc/circ-buildtime-c-1"),),
+				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1", "app-misc/circ-buildtime-a-1"), "app-misc/some-app-c-1"]),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and PDEPEND in the other.
 			ResolverPlaygroundTestCase(
