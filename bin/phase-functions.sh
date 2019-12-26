@@ -8,7 +8,7 @@
 # when portage is upgrading itself.
 
 PORTAGE_READONLY_METADATA="BDEPEND DEFINED_PHASES DEPEND DESCRIPTION
-	EAPI HDEPEND HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
+	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
@@ -915,7 +915,7 @@ __ebuild_phase_funcs() {
 			fi
 
 			# defaults starting with EAPI 6
-			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress 5-hdepend; then
+			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress; then
 				[[ ${phase_func} == src_prepare ]] && \
 					default_src_prepare() { __eapi6_src_prepare; }
 				[[ ${phase_func} == src_install ]] && \

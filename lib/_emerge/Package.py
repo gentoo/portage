@@ -44,14 +44,14 @@ class Package(Task):
 	metadata_keys = [
 		"BDEPEND",
 		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
-		"DEPEND", "EAPI", "HDEPEND", "INHERITED", "IUSE", "KEYWORDS",
+		"DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "MD5", "PDEPEND", "PROVIDES",
 		"RDEPEND", "repository", "REQUIRED_USE",
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
 		"SLOT", "USE", "_mtime_"]
 
-	_dep_keys = ('BDEPEND', 'DEPEND', 'HDEPEND', 'PDEPEND', 'RDEPEND')
-	_buildtime_keys = ('BDEPEND', 'DEPEND', 'HDEPEND')
+	_dep_keys = ('BDEPEND', 'DEPEND', 'PDEPEND', 'RDEPEND')
+	_buildtime_keys = ('BDEPEND', 'DEPEND')
 	_runtime_keys = ('PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo

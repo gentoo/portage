@@ -75,7 +75,7 @@ if sys.hexversion >= 0x3000000:
 _feature_flags_cache = {}
 
 def _get_feature_flags(eapi_attrs):
-	cache_key = (eapi_attrs.feature_flag_test, eapi_attrs.feature_flag_targetroot)
+	cache_key = (eapi_attrs.feature_flag_test,)
 	flags = _feature_flags_cache.get(cache_key)
 	if flags is not None:
 		return flags
@@ -83,8 +83,6 @@ def _get_feature_flags(eapi_attrs):
 	flags = []
 	if eapi_attrs.feature_flag_test:
 		flags.append("test")
-	if eapi_attrs.feature_flag_targetroot:
-		flags.append("targetroot")
 
 	flags = frozenset(flags)
 	_feature_flags_cache[cache_key] = flags
@@ -160,7 +158,7 @@ class config(object):
 		'PORTAGE_LOGDIR_CLEAN': 'PORT_LOGDIR_CLEAN',
 		'SIGNED_OFF_BY': 'DCO_SIGNED_OFF_BY'}
 
-	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
+	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
@@ -1803,13 +1801,6 @@ class config(object):
 				# temporarily disable FEATURES=test just for this package.
 				self["FEATURES"] = " ".join(x for x in self.features \
 					if x != "test")
-
-		if eapi_attrs.feature_flag_targetroot and \
-			("targetroot" in explicit_iuse or iuse_implicit_match("targetroot")):
-			if self["ROOT"] != "/":
-				use.add("targetroot")
-			else:
-				use.discard("targetroot")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \

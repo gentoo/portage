@@ -13,4 +13,4 @@ class EbuildPatches(LineCheck):
 
 	def check_eapi(self, eapi):
 		return eapi in ("0", "1", "2", "3", "4", "4-python",
-			"4-slot-abi", "5", "5-hdepend", "5-progress")
+			"4-slot-abi", "5", "5-progress")

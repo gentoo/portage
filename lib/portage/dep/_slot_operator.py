@@ -68,9 +68,6 @@ def evaluate_slot_operator_equal_deps(settings, use, trees):
 	if eapi_attrs.bdepend:
 		_eval_deps(deps["BDEPEND"], [running_vardb])
 		_eval_deps(deps["DEPEND"], [target_vardb])
-	elif eapi_attrs.hdepend:
-		_eval_deps(deps["HDEPEND"], [running_vardb])
-		_eval_deps(deps["DEPEND"], [target_vardb])
 	else:
 		if running_vardb is not target_vardb:
 			vardbs.append(running_vardb)

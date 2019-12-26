@@ -1362,7 +1362,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
 			"BDEPEND": buildtime,
-			"HDEPEND": buildtime,
 			"DEPEND": buildtime,
 		}
 
