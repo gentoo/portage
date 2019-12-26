@@ -469,7 +469,6 @@ _deprecated_eapis = frozenset([
 	"3_pre1",
 	"5_pre1",
 	"5_pre2",
-	"5-hdepend",
 	"6_pre1",
 	"7_pre1",
 ])
@@ -518,7 +517,7 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'BDEPEND', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
+	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
 auxdbkeylen = len(auxdbkeys)

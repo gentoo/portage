@@ -963,12 +963,10 @@ of packages for \fBROOT\fR.
 This option is only meaningful when used together with \fBROOT\fR and it should
 not be enabled under normal circumstances!
 
-Does not affect EAPIs that support \fBBDEPEND\fR or \fBHDEPEND\fR.
-\fBEAPI 7\fR introduces \fBBDEPEND\fR and experimental
-\fBEAPI 5-hdepend\fR features \fBHDEPEND\fR as a means to adjust
-installation into / and \fBROOT\fR.  Use the \fBSYSROOT\fR environment
-variable to control where \fBDEPEND\fR is installed to under
-\fBEAPI 7\fR.
+Does not affect EAPIs that support \fBBDEPEND\fR.  \fBEAPI 7\fR introduces
+\fBBDEPEND\fR as a means to adjust installation into / and \fBROOT\fR.  Use
+the \fBSYSROOT\fR environment variable to control where \fBDEPEND\fR
+is installed to under \fBEAPI 7\fR.
 
 When ebuilds with different EAPIs feature in the same emerge run, the
 appropriate behaviour for each EAPI is applied independently to each
