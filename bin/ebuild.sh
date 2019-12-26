@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -255,6 +255,7 @@ inherit() {
 	local B_RDEPEND
 	local B_PDEPEND
 	local B_BDEPEND
+	local B_IDEPEND
 	local B_PROPERTIES
 	local B_RESTRICT
 	while [ "$1" ]; do
@@ -301,14 +302,14 @@ inherit() {
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_BDEPEND B_PROPERTIES B_RESTRICT
+			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
 			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
 			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
-			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND
+			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ ${PROPERTIES+set} == set ]] && B_PROPERTIES=${PROPERTIES}
@@ -337,6 +338,7 @@ inherit() {
 			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
 			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 			[ "${BDEPEND+set}"      = set ] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
+			[ "${IDEPEND+set}"      = set ] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
 			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 			[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -355,6 +357,9 @@ inherit() {
 
 			[ "${B_BDEPEND+set}"  = set ] && BDEPEND="${B_BDEPEND}"
 			[ "${B_BDEPEND+set}"  = set ] || unset BDEPEND
+
+			[ "${B_IDEPEND+set}"  = set ] && IDEPEND="${B_IDEPEND}"
+			[ "${B_IDEPEND+set}"  = set ] || unset IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ ${PROPERTIES+set} == set ]] &&
@@ -631,7 +636,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# interaction begins.
 		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND PROPERTIES RESTRICT
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
-		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_PROPERTIES
+		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
@@ -748,11 +753,14 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
 	if ! ___eapi_has_BDEPEND; then
 		unset BDEPEND
+	fi
+	if ! ___eapi_has_IDEPEND; then
+		unset IDEPEND
 	fi
 
 	# The extra $(echo) commands remove newlines.

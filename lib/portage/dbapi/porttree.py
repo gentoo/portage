@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -309,7 +309,7 @@ class portdbapi(dbapi):
 					self._pregen_auxdb[x] = cache
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BDEPEND", "DEPEND", "EAPI",
+			["BDEPEND", "DEPEND", "EAPI", "IDEPEND",
 			"INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROPERTIES", "RDEPEND", "repository",
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])

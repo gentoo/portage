@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -8,7 +8,7 @@
 # when portage is upgrading itself.
 
 PORTAGE_READONLY_METADATA="BDEPEND DEFINED_PHASES DEPEND DESCRIPTION
-	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
+	EAPI HOMEPAGE IDEPEND INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
