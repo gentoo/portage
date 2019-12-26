@@ -3426,11 +3426,15 @@ class depgraph(object):
 							eapi=pkg.eapi,
 							subset={'test'})
 
-						if test_deps and not self._add_pkg_dep_string(
-							pkg, dep_root, self._priority(runtime_post=True),
-							test_deps,
-							allow_unsatisfied):
-							return 0
+						if test_deps:
+							test_deps = list(self._queue_disjunctive_deps(pkg,
+								dep_root, self._priority(runtime_post=True),
+								test_deps))
+
+							if test_deps and not self._add_pkg_dep_string(pkg,
+								dep_root, self._priority(runtime_post=True),
+								test_deps, allow_unsatisfied):
+								return 0
 
 					dep_string = portage.dep.use_reduce(dep_string,
 						uselist=use_enabled,
