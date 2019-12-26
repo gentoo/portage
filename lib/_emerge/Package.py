@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from itertools import chain
@@ -32,15 +32,15 @@ class Package(Task):
 	metadata_keys = [
 		"BDEPEND",
 		"BUILD_ID", "BUILD_TIME", "CHOST", "COUNTER", "DEFINED_PHASES",
-		"DEPEND", "EAPI", "INHERITED", "IUSE", "KEYWORDS",
+		"DEPEND", "EAPI", "IDEPEND", "INHERITED", "IUSE", "KEYWORDS",
 		"LICENSE", "MD5", "PDEPEND", "PROVIDES",
 		"RDEPEND", "repository", "REQUIRED_USE",
 		"PROPERTIES", "REQUIRES", "RESTRICT", "SIZE",
 		"SLOT", "USE", "_mtime_"]
 
-	_dep_keys = ('BDEPEND', 'DEPEND', 'PDEPEND', 'RDEPEND')
+	_dep_keys = ('BDEPEND', 'DEPEND', 'IDEPEND', 'PDEPEND', 'RDEPEND')
 	_buildtime_keys = ('BDEPEND', 'DEPEND')
-	_runtime_keys = ('PDEPEND', 'RDEPEND')
+	_runtime_keys = ('IDEPEND', 'PDEPEND', 'RDEPEND')
 	_use_conditional_misc_keys = ('LICENSE', 'PROPERTIES', 'RESTRICT')
 	UNKNOWN_REPO = _unknown_repo
 

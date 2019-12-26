@@ -83,7 +83,7 @@ class bindbapi(fakedbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
-			"DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			"DEPEND", "EAPI", "IDEPEND", "IUSE", "KEYWORDS",
 			"LICENSE", "MD5", "PDEPEND", "PROPERTIES",
 			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
 			"SIZE", "SLOT", "USE", "_mtime_"
@@ -384,13 +384,13 @@ class binarytree:
 			self._pkgindex_aux_keys = \
 				["BASE_URI", "BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST",
 				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI", "FETCHCOMMAND",
-				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"IDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
 				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
 				"RDEPEND", "repository", "REQUIRES", "RESTRICT", "RESUMECOMMAND",
 				"SIZE", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
-				("BDEPEND", "DEPEND", "LICENSE", "RDEPEND",
+				("BDEPEND", "DEPEND", "IDEPEND", "LICENSE", "RDEPEND",
 				"PDEPEND", "PROPERTIES", "RESTRICT")
 			self._pkgindex_header = None
 			self._pkgindex_header_keys = set([
@@ -407,6 +407,7 @@ class binarytree:
 				"DEFINED_PHASES"     : "",
 				"DEPEND"  : "",
 				"EAPI"    : "0",
+				"IDEPEND" : "",
 				"IUSE"    : "",
 				"KEYWORDS": "",
 				"LICENSE" : "",

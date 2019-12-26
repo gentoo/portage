@@ -18,7 +18,7 @@ env_blacklist = frozenset((
 	"EBUILD_PHASE_FUNC", "EBUILD_SKIP_MANIFEST",
 	"ED", "EMERGE_FROM", "EPREFIX", "EROOT",
 	"GREP_OPTIONS", "HOMEPAGE",
-	"INHERITED", "IUSE", "IUSE_EFFECTIVE",
+	"IDEPEND", "INHERITED", "IUSE", "IUSE_EFFECTIVE",
 	"KEYWORDS", "LICENSE", "MERGE_TYPE",
 	"PDEPEND", "PF", "PKGUSE", "PORTAGE_BACKGROUND",
 	"PORTAGE_BACKGROUND_UNMERGE", "PORTAGE_BUILDDIR_LOCKED",
@@ -131,7 +131,7 @@ environ_filter = []
 # since that could cause execve() calls to fail with E2BIG errors. For
 # example, see bug #262647.
 environ_filter += [
-	'DEPEND', 'RDEPEND', 'PDEPEND', 'SRC_URI',
+	'DEPEND', 'RDEPEND', 'PDEPEND', 'SRC_URI', 'BDEPEND', 'IDEPEND',
 ]
 
 # misc variables inherited from the calling environment

@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Apr 2021" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "May 2021" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -694,6 +694,17 @@ the build.
 This variable was formally introduced in \fBEAPI 7\fR but was
 previously known as \fBHDEPEND\fR in the experimental
 \fBEAPI 5-hdepend\fR.
+
+You may use the syntax described above in the \fBDependencies\fR section.
+.TP
+.B IDEPEND
+This should contain a list of all packages that are required to be
+executable during merging of this package (aka \fInative install\-time\fR
+dependencies).  These are usually post\-install tooling, like cache
+generators.  They will be installed into the system performing
+the merge.
+
+This variable was introduced in \fBEAPI 8\fR.
 
 You may use the syntax described above in the \fBDependencies\fR section.
 .TP

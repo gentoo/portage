@@ -172,7 +172,7 @@ class vardbapi(dbapi):
 		self._aux_cache_keys = set(
 			["BDEPEND", "BUILD_TIME", "CHOST", "COUNTER", "DEPEND",
 			"DESCRIPTION", "EAPI", "HOMEPAGE",
-			"BUILD_ID", "IUSE", "KEYWORDS",
+			"BUILD_ID", "IDEPEND", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE", "DEFINED_PHASES",
 			"PROVIDES", "REQUIRES"
