@@ -372,6 +372,7 @@ sync_local() {
 			chown -R ${ownership} "${TMPDIR}"
 			rsync_opts+=" --owner --group"
 		fi
+		chmod 755 .
 		rsync ${rsync_opts} . "${repo_location%%/}"
 		cd "${DISTDIR}"
 
