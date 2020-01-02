@@ -1,4 +1,4 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -10,7 +10,7 @@ from portage import _encodings, _unicode_encode
 class SonameAtom(object):
 
 	__slots__ = ("multilib_category", "soname", "_hash_key",
-		"_hash_value")
+		"_hash_value", "_immutable")
 
 	# Distiguishes package atoms from other atom types
 	package = False
@@ -21,10 +21,14 @@ class SonameAtom(object):
 		object.__setattr__(self, "_hash_key",
 			(multilib_category, soname))
 		object.__setattr__(self, "_hash_value", hash(self._hash_key))
+		object.__setattr__(self, "_immutable", True)
 
 	def __setattr__(self, name, value):
-		raise AttributeError("SonameAtom instances are immutable",
-			self.__class__, name, value)
+		if getattr(self, '_immutable', False):
+			raise AttributeError("SonameAtom instances are immutable",
+				self.__class__, name, value)
+		# This is needed for unpickling.
+		object.__setattr__(self, name, value)
 
 	def __hash__(self):
 		return self._hash_value
