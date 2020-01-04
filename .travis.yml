@@ -6,6 +6,7 @@ python:
     - 3.7
     - 3.8-dev
     - pypy
+    - pypy3
 
 # command to install dependencies
 install:
