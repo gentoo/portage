@@ -30,7 +30,7 @@ class database(flat_hash.database):
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 		'PDEPEND',   'BDEPEND',   'EAPI', 'PROPERTIES',
-		'DEFINED_PHASES', 'HDEPEND')
+		'DEFINED_PHASES')
 
 	autocommits = True
 	serialize_eclasses = False

@@ -194,10 +194,8 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 						os.chown(lockfilename, -1, portage_gid)
 				except OSError as e:
 					if e.errno in (errno.ENOENT, errno.ESTALE):
-						return lockfile(mypath,
-							wantnewlockfile=wantnewlockfile,
-							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
-							flags=flags)
+						os.close(myfd)
+						return None
 					else:
 						writemsg("%s: chown('%s', -1, %d)\n" % \
 							(e, lockfilename, portage_gid), noiselevel=-1)

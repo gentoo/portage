@@ -1,10 +1,11 @@
 #!@PREFIX_PORTAGE_PYTHON@ -b
-# Copyright 2008-2014 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
 import argparse
+import re
 import sys
 import codecs
 from functools import reduce
@@ -21,51 +22,54 @@ from portage.output import green, red, nocolor, white
 
 __program__ = "glsa-check"
 __author__ = "Marius Mauch <genone@gentoo.org>"
-__version__ = "1.0"
+__version__ = "1.0.1"
 
 # option parsing
 epilog = "glsa-list can contain an arbitrary number of GLSA ids," \
 		" filenames containing GLSAs or the special identifiers" \
-		" 'all', 'new' and 'affected'"
-parser = argparse.ArgumentParser(usage=__program__ + " <option> [glsa-list]",
+		" 'all' and 'affected'"
+parser = argparse.ArgumentParser(usage=__program__ + " <option> [glsa-id | all | new | affected]",
 	epilog=epilog)
 
 modes = parser.add_argument_group("Modes")
 modes.add_argument("-l", "--list", action="store_const",
 		const="list", dest="mode",
-		help="List all unapplied GLSA")
+		help="List a summary for the given GLSA(s) or set and whether they affect the system")
 modes.add_argument("-d", "--dump", action="store_const",
 		const="dump", dest="mode",
-		help="Show all information about the given GLSA")
+		help="Show all information about the GLSA(s) or set")
 modes.add_argument("--print", action="store_const",
 		const="dump", dest="mode",
 		help="Alias for --dump")
 modes.add_argument("-t", "--test", action="store_const",
 		const="test", dest="mode",
-		help="Test if this system is affected by the given GLSA")
+		help="Test if this system is affected by the GLSA(s) or set and output the GLSA ID(s)")
 modes.add_argument("-p", "--pretend", action="store_const",
 		const="pretend", dest="mode",
-		help="Show the necessary commands to apply this GLSA")
+		help="Show the necessary steps to remediate the system")
 modes.add_argument("-f", "--fix", action="store_const",
 		const="fix", dest="mode",
-		help="Try to auto-apply this GLSA (experimental)")
+		help="(experimental) Attempt to remediate the system based on the instructions given in the GLSA(s) or set. This will only upgrade (when an upgrade path exists) or remove packages")
 modes.add_argument("-i", "--inject", action="store_const",
 		const="inject", dest="mode",
-		help="inject the given GLSA into the glsa_injected file")
+		help="Inject the given GLSA(s) into the glsa_injected file")
 modes.add_argument("-m", "--mail", action="store_const",
 		const="mail", dest="mode",
 		help="Send a mail with the given GLSAs to the administrator")
-
 parser.add_argument("-V", "--version", action="store_true",
-		help="Some information about this tool")
+		help="Show information about glsa-check")
+parser.add_argument("-q", "--quiet", action="store_true", dest="quiet",
+		help="Be less verbose and do not send empty mail")
 parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
-		help="Print more information")
+		help="Print more messages")
 parser.add_argument("-n", "--nocolor", action="store_true",
-		help="Disable colors")
+		help="Removes color from output")
 parser.add_argument("-e", "--emergelike", action="store_false", dest="least_change",
-		help="Do not use a least-change algorithm")
+		help="Upgrade to latest version (not least-change)")
 parser.add_argument("-c", "--cve", action="store_true", dest="list_cve",
-		help="Show CAN ids in listing mode")
+		help="Show CVE IDs in listing mode")
+parser.add_argument("-r", "--reverse", action="store_true", dest="reverse",
+		help="List GLSAs in reverse order")
 
 options, params = parser.parse_known_args()
 
@@ -81,6 +85,7 @@ if options.version:
 mode = options.mode
 least_change = options.least_change
 list_cve = options.list_cve
+quiet = options.quiet
 verbose = options.verbose
 
 # Sanity checking
@@ -99,7 +104,7 @@ elif mode in ["fix", "inject"] and os.geteuid() != 0:
 	sys.stderr.write("\nThis tool needs root access to "+options.mode+" this GLSA\n\n")
 	sys.exit(2)
 elif mode == "list" and not params:
-	params.append("new")
+	params.append("affected")
 
 # delay this for speed increase
 from portage.glsa import (Glsa, GlsaTypeException, GlsaFormatException,
@@ -117,14 +122,15 @@ todolist = [e for e in completelist if e not in checklist]
 
 glsalist = []
 if "new" in params:
-	glsalist = todolist
 	params.remove("new")
+	sys.stderr.write("Warning: The 'new' glsa-list target has been removed, using 'affected'.\n")
+	params.append("affected")
 
 if "all" in params:
 	glsalist = completelist
 	params.remove("all")
+
 if "affected" in params:
-	# replaced completelist with todolist on request of wschlich
 	for x in todolist:
 		try:
 			myglsa = Glsa(x, portage.settings, vardb, portdb)
@@ -154,12 +160,12 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 		fd2 = fd2.buffer
 	fd1 = codecs.getwriter(encoding)(fd1)
 	fd2 = codecs.getwriter(encoding)(fd2)
-	fd2.write(white("[A]")+" means this GLSA was marked as applied (injected),\n")
-	fd2.write(green("[U]")+" means the system is not affected and\n")
-	fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
+	if not quiet:
+		fd2.write(white("[A]")+" means this GLSA was marked as applied (injected),\n")
+		fd2.write(green("[U]")+" means the system is not affected and\n")
+		fd2.write(red("[N]")+" indicates that the system might be affected.\n\n")
 
-	myglsalist.sort()
-	for myid in myglsalist:
+	for myid in sorted(myglsalist, reverse=options.reverse):
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
 		except (GlsaTypeException, GlsaFormatException) as e:
@@ -200,7 +206,13 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
 
 		fd1.write(")")
 		if list_cve:
-			fd1.write(" "+(",".join([r[:13] for r in myglsa.references if r[:4] in ["CAN-", "CVE-"]])))
+			cve_ids = []
+			for r in myglsa.references:
+				m = re.search(r'(CAN|CVE)-[\d-]+', r)
+				if m is not None:
+					cve_ids.append(m.group(0))
+			if cve_ids:
+				fd1.write(" "+(",".join(cve_ids)))
 		fd1.write("\n")
 	return 0
 
@@ -219,10 +231,14 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		if mode == "dump":
 			myglsa.dump()
 		elif mode == "fix":
-			sys.stdout.write("Fixing GLSA "+myid+"\n")
+			if not quiet:
+				sys.stdout.write("Fixing GLSA "+myid+"\n")
 			if not myglsa.isVulnerable():
-				sys.stdout.write(">>> no vulnerable packages installed\n")
+				if not quiet:
+					sys.stdout.write(">>> no vulnerable packages installed\n")
 			else:
+				if quiet:
+					sys.stdout.write("Fixing GLSA "+myid+"\n")
 				mergelist = myglsa.getMergeList(least_change=least_change)
 				if mergelist == []:
 					sys.stdout.write(">>> cannot fix GLSA, no unaffected packages available\n")
@@ -232,7 +248,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 					# using emerge for the actual merging as it contains the dependency
 					# code and we want to be consistent in behaviour. Also this functionality
 					# will be integrated in emerge later, so it shouldn't hurt much.
-					emergecmd = "emerge --oneshot " + " =" + pkg
+					emergecmd = "emerge --oneshot" + (" --quiet" if quiet else "") + " =" + pkg
 					if verbose:
 						sys.stderr.write(emergecmd+"\n")
 					exitcode = os.system(emergecmd)
@@ -241,24 +257,38 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 						exitcode >>= 8
 					if exitcode:
 						sys.exit(exitcode)
-			if len(mergelist):
-				sys.stdout.write("\n")
+				if len(mergelist):
+					sys.stdout.write("\n")
 		elif mode == "pretend":
-			sys.stdout.write("Checking GLSA "+myid+"\n")
+			if not quiet:
+				sys.stdout.write("Checking GLSA "+myid+"\n")
 			if not myglsa.isVulnerable():
-				sys.stdout.write(">>> no vulnerable packages installed\n")
+				if not quiet:
+					sys.stdout.write(">>> no vulnerable packages installed\n")
 			else:
+				if quiet:
+					sys.stdout.write("Checking GLSA "+myid+"\n")
 				mergedict = {}
 				for (vuln, update) in myglsa.getAffectionTable(least_change=least_change):
 					mergedict.setdefault(update, []).append(vuln)
 
+				# first, extract the atoms that cannot be upgraded (where key == "")
+				no_upgrades = []
 				sys.stdout.write(">>> The following updates will be performed for this GLSA:\n")
-				for pkg in mergedict:
-					if pkg != "":
-						sys.stdout.write("     " + pkg + " (vulnerable: " + ", ".join(mergedict[pkg]) + ")\n")
 				if "" in mergedict:
-					sys.stdout.write("\n>>> For the following packages, no upgrade path exists:\n")
-					sys.stdout.write("     " + ", ".join(mergedict[""]))
+					no_upgrades = mergedict[""]
+					del mergedict[""]
+
+				# see if anything is left that can be upgraded
+				if mergedict:
+					sys.stdout.write(">>> Updates that will be performed:\n")
+					for (upd, vuln) in mergedict.items():
+						sys.stdout.write("     " + green(upd) + " (vulnerable: " + red(", ".join(vuln)) + ")\n")
+
+				if no_upgrades:
+					sys.stdout.write(">>> No upgrade path exists for these packages:\n")
+					sys.stdout.write("     " + red(", ".join(no_upgrades)) + "\n")
+			sys.stdout.write("\n")
 		elif mode == "inject":
 			sys.stdout.write("injecting " + myid + "\n")
 			myglsa.inject()
@@ -283,6 +313,7 @@ if mode == "test":
 			summarylist(outputlist)
 		else:
 			sys.stdout.write("\n".join(outputlist)+"\n")
+			sys.exit(6)
 	else:
 		sys.stderr.write("This system is not affected by any of the listed GLSAs\n")
 	sys.exit(0)
@@ -332,8 +363,9 @@ if mode == "mail":
 		myattachments.append(MIMEText(attachment, _charset="utf8"))
 		myfd.close()
 
-	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, summary, myattachments)
-	portage.mail.send_mail(portage.settings, mymessage)
+	if glsalist or not quiet:
+		mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, summary, myattachments)
+		portage.mail.send_mail(portage.settings, mymessage)
 
 	sys.exit(0)
 

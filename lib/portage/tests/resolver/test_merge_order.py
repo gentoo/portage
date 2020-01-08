@@ -1,4 +1,4 @@
-# Copyright 2011-2013 Gentoo Foundation
+# Copyright 2011-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -80,6 +80,13 @@ class MergeOrderTestCase(TestCase):
 			"app-misc/circ-satisfied-c-1": {
 				"DEPEND": "app-misc/circ-satisfied-a",
 				"RDEPEND": "app-misc/circ-satisfied-a",
+			},
+			"app-misc/circ-direct-a-1": {
+				"RDEPEND": "app-misc/circ-direct-b",
+			},
+			"app-misc/circ-direct-b-1": {
+				"RDEPEND": "app-misc/circ-direct-a",
+				"DEPEND": "app-misc/circ-direct-a",
 			},
 			"app-misc/circ-smallest-a-1": {
 				"RDEPEND": "app-misc/circ-smallest-b",
@@ -220,6 +227,13 @@ class MergeOrderTestCase(TestCase):
 		}
 
 		installed = {
+			"app-misc/circ-direct-a-1": {
+				"RDEPEND": "app-misc/circ-direct-b",
+			},
+			"app-misc/circ-direct-b-1": {
+				"RDEPEND": "app-misc/circ-direct-a",
+				"DEPEND": "app-misc/circ-direct-a",
+			},
 			"app-misc/circ-buildtime-a-0": {},
 			"app-misc/circ-satisfied-a-0": {
 				"RDEPEND": "app-misc/circ-satisfied-b",
@@ -296,6 +310,12 @@ class MergeOrderTestCase(TestCase):
 
 		test_cases = (
 			ResolverPlaygroundTestCase(
+				["app-misc/circ-direct-a", "app-misc/circ-direct-b"],
+				success = True,
+				all_permutations = True,
+				mergelist = ["app-misc/circ-direct-a-1", "app-misc/circ-direct-b-1"],
+			),
+			ResolverPlaygroundTestCase(
 				["app-misc/some-app-a"],
 				success = True,
 				ambiguous_merge_order = True,
@@ -319,7 +339,11 @@ class MergeOrderTestCase(TestCase):
 				["app-misc/some-app-c", "app-misc/circ-buildtime-a"],
 				success = True,
 				ambiguous_merge_order = True,
-				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1"), "app-misc/circ-buildtime-a-1", "app-misc/some-app-c-1"]),
+				# The following merge order assertion reflects optimal order for
+				# a circular relationship which is DEPEND in one direction and
+				# RDEPEND in the other.
+				merge_order_assertions = (("app-misc/circ-buildtime-a-1", "app-misc/circ-buildtime-c-1"),),
+				mergelist = [("app-misc/circ-buildtime-b-1", "app-misc/circ-buildtime-c-1", "app-misc/circ-buildtime-a-1"), "app-misc/some-app-c-1"]),
 			# Test optimal merge order for a circular dep that is
 			# RDEPEND in one direction and PDEPEND in the other.
 			ResolverPlaygroundTestCase(

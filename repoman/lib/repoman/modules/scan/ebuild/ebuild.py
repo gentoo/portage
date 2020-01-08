@@ -12,7 +12,6 @@ from repoman.modules.scan.scanbase import ScanBase
 # import our initialized portage instance
 from repoman._portage import portage
 from portage import os
-from portage.const import LIVE_ECLASSES
 from portage.exception import InvalidPackageName
 
 pv_toolong_re = re.compile(r'[0-9]{19,}')
@@ -110,7 +109,7 @@ class Ebuild(ScanBase):
 		self.metadata = self.pkg._metadata
 		self.eapi = self.metadata["EAPI"]
 		self.inherited = self.pkg.inherited
-		self.live_ebuild = LIVE_ECLASSES.intersection(self.inherited)
+		self.live_ebuild = "live" in self.metadata["PROPERTIES"].split()
 		self.keywords = self.metadata["KEYWORDS"].split()
 		self.archs = set(kw.lstrip("~") for kw in self.keywords if not kw.startswith("-"))
 		return False

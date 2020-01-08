@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Apr 2019" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Jul 2019" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -17,9 +17,10 @@ calculating relationships between packages.  Please note that if the atom has
 not already been emerged, then the latest version available is matched.
 .TP
 .B Atom Bases
-The base atom is just a full category/packagename.
+The base atom is just a full category/packagename. Another name for a full
+category/packagename is a \fI"catpkg"\fR. You will find this shorthand\-name
+used frequently in Gentoo. Here are some base atoms, a.k.a \fI"catpkgs"\fR:
 
-Examples:
 .nf
 .I 	sys\-apps/sed
 .I 	sys\-libs/zlib
@@ -31,7 +32,7 @@ It is nice to be more specific and say that only certain versions of atoms are
 acceptable.  Note that versions must be combined with a prefix (see below).
 Hence you may add a version number as a postfix to the base.
 
-Examples:
+\fBExamples\fR:
 .nf
 	sys\-apps/sed\fI\-4.0.5\fR
 	sys\-libs/zlib\fI\-1.1.4\-r1\fR
@@ -51,7 +52,7 @@ Sometimes you want to be able to depend on general versions rather than
 specifying exact versions all the time.  Hence we provide standard boolean
 operators:
 
-Examples:
+\fBExamples\fR:
 .nf
 	\fI>\fRmedia\-libs/libgd\-1.6
 	\fI>=\fRmedia\-libs/libgd\-1.6
@@ -71,7 +72,7 @@ means match any revision of the base version specified.  So in the
 example below, we would match versions '1.0.2a', '1.0.2a\-r1', '1.0.2a\-r2',
 etc...
 
-Example:
+\fBExample\fR:
 .nf
 	\fI~\fRnet\-libs/libnet\-1.0.2a
 .fi
@@ -79,7 +80,7 @@ Example:
 .I !
 means block packages from being installed at the same time.
 
-Example:
+\fBExample\fR:
 .nf
 	\fI!\fRapp\-text/dos2unix
 .fi
@@ -90,7 +91,7 @@ and explicitly disallow them from being temporarily installed
 simultaneously during a series of upgrades. This syntax is supported
 beginning with \fBEAPI 2\fR.
 
-Example:
+\fBExample\fR:
 .nf
 	\fI!!\fR<sys\-apps/portage\-2.1.4_rc1
 .fi
@@ -103,7 +104,7 @@ that comes before the '*' must be a valid version in the absence of the '*'.
 For example, '2' is a valid version and '2.' is not. Therefore, '2*' is
 allowed and '2.*' is not.
 
-Examples:
+\fBExamples\fR:
 .nf
 	=dev\-libs/glib\-2\fI*\fR
 	\fI!\fR=net\-fs/samba\-2\fI*\fR
@@ -115,7 +116,7 @@ Beginning with \fBEAPI 1\fR, any atom can be constrained to match a specific
 \fBSLOT\fR. This is accomplished by appending a colon followed by a
 \fBSLOT\fR:
 
-Examples:
+\fBExamples\fR:
 .nf
 	x11\-libs/qt:3
 	\fI~\fRx11\-libs/qt-3.3.8:3
@@ -128,7 +129,7 @@ Beginning with \fBEAPI 5\fR, a slot dependency may contain an
 optional sub\-slot part that follows the regular slot and is
 delimited by a \fI/\fR character.
 
-Examples:
+\fBExamples\fR:
 .nf
 	dev\-libs/icu:0/0
 	dev\-libs/icu:0/49
@@ -147,7 +148,7 @@ for runtime dependencies, indicates that the package will not
 break if the matched package is uninstalled and replaced by
 a different matching package in a different slot.
 
-Examples:
+\fBExamples\fR:
 .nf
 	dev\-libs/icu:*
 	dev\-lang/perl:*
@@ -161,7 +162,7 @@ break unless a matching package with slot and sub\-slot equal
 to the slot and sub\-slot of the best installed version at the
 time the package was installed is available.
 
-Examples:
+\fBExamples\fR:
 .nf
 	dev\-libs/icu:=
 	dev\-lang/perl:=
@@ -172,7 +173,7 @@ Examples:
 Indicates that only a specific slot value is acceptable, and
 otherwise behaves identically to the plain equals slot operator.
 
-Examples:
+\fBExamples\fR:
 .nf
 	dev\-libs/icu:0=
 	dev\-lang/perl:0=
@@ -190,7 +191,7 @@ dependencies. The sub\-slot part must not be omitted here
 is considered to have an implicit sub\-slot which is equal to
 the regular slot).
 
-Examples:
+\fBExamples\fR:
 .nf
 	dev\-libs/icu:0/0=
 	dev\-libs/icu:0/49=
@@ -238,7 +239,7 @@ immediately following a flag with either \fI(+)\fR or \fI(\-)\fR. Use
 \fI(+)\fR to behave as if a missing flag is present and enabled, or
 \fI(\-)\fR to behave as if it is present and disabled:
 
-Examples:
+\fBExamples\fR:
 .nf
 	media\-video/ffmpeg[threads(+)]
 	media\-video/ffmpeg[-threads(\-)]
@@ -280,7 +281,7 @@ That way the default is the superior GTK2 library.
 When a package can work with a few different packages but a virtual is not
 appropriate, this syntax can easily be used.
 
-Example:
+\fBExample\fR:
 .nf
 || (
 	app\-games/unreal\-tournament
@@ -295,7 +296,7 @@ use either.  Adding a virtual is inappropriate due to the small scope of it.
 Another good example is when a package can be built with multiple video
 interfaces, but it can only ever have just one.
 
-Example:
+\fBExample\fR:
 .nf
 || (
 	sdl? ( media\-libs/libsdl )
@@ -314,56 +315,85 @@ the user does not specify any of the previous choices.
 Note that if any of the packages listed are already merged, the package manager
 will use that to consider the dependency satisfied.
 
-.SH "VARIABLES"
-.TP
-.B Usage Notes
-\- Variables defined in \fBmake.conf\fR(5) are available for use in
+.SS Variable Usage Notes
+.RS
+.IP \(bu 2
+Variables defined in \fBmake.conf\fR(5) are available for use in
 ebuilds (except Portage\-specific variables, which might be not supported by
 other package managers).
-.br
-\- When assigning values to variables in ebuilds, you \fIcannot have a
+.IP \(bu
+When assigning values to variables in ebuilds, you \fIcannot have a
 space\fR between the variable name and the equal sign.
-.br
-\- Variable values should only contain characters that are members of the
+.IP \(bu
+Variable values should only contain characters that are members of the
 \fBascii\fR(7) character set. This requirement is mandated by \fBGLEP 31\fR.
+.RE
+
+.SS "Variables Used In Ebuilds"
+.TP
+.B ARCH
+This variable contains the official Gentoo\-specific acronym for the current
+architecture of the running system. For an authoritative list please
+review /var/db/repos/gentoo/profiles/arch.list.
 .TP
 .B P
 This variable contains the package name without the ebuild revision.
 This variable must NEVER be modified.
 
-xfree\-4.2.1\-r2.ebuild \-\-> $P=='xfree\-4.2.1'
+\fBExample\fR:
+.nf
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fIx11\-base/xorg\-server\-1.20.5\fR'
+.fi
 .TP
 .B PN
 Contains the name of the script without the version number.
 
-xfree\-4.2.1\-r2.ebuild \-\-> $PN=='xfree'
+\fBExample\fR:
+.nf
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fIx11\-base/xorg\-server\fR'
+.fi
 .TP
 .B PV
 Contains the version number without the revision.
 
-xfree\-4.2.1\-r2.ebuild \-\-> $PV=='4.2.1'
+\fBExample\fR:
+.nf
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fI1.20.5\fR'
+.fi
 .TP
 .B PR
 Contains the revision number or 'r0' if no revision number exists.
 
-xfree\-4.2.1\-r2.ebuild \-\-> $PR=='r2'
+\fBExample\fR:
+.nf
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fIr2\fR'
+.fi
 .TP
 .B PVR
 Contains the version number with the revision (if non-zero).
 
-xfree\-4.2.1.ebuild \-\-> $PVR=='4.2.1'
+\fBExample\fR:
 .nf
-xfree\-4.2.1\-r2.ebuild \-\-> $PVR=='4.2.1\-r2'
+	x11\-base/xorg\-server\-1.20.5 \-\-> '\fI1.20.5\fR'
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fI1.20.5\-r2\fR'
+.fi
 .TP
 .B PF
 Contains the full package name \fBPN\fR\-\fBPVR\fR
 
-xfree\-4.2.1.ebuild \-\-> $PF=='xfree\-4.2.1'
+\fBExamples\fR:
 .nf
-xfree\-4.2.1\-r2.ebuild \-\-> $PF=='xfree\-4.2.1\-r2'
+	x11\-base/xorg\-server\-1.20.5 \-\-> '\fIxorg\-server\-1.20.5\fR'
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fIxorg\-server\-1.20.5\-r2\fR'
+.fi
 .TP
 .B CATEGORY
 Contains the package category name.
+
+\fBExample\fR:
+.nf
+	x11\-base/xorg\-server\-1.20.5\-r2 \-\-> '\fIx11\-base\fR'
+.fi
 .TP
 .B A
 Contains all source files required for the package.  This variable must
@@ -411,6 +441,9 @@ should be prefixed with ${D}.
 Beginning with \fBEAPI 3\fR, the offset prefix often needs
 to be taken into account here, for which the variable
 ${ED} is provided (see below).
+Note that with \fBEAPI 7\fR, any trailing slash
+contained in this path will be automatically removed for ease of concatenating
+paths within ebuilds.
 Do not modify this variable.
 .TP
 .B ED\fR = \fI"${PORTAGE_TMPDIR}/portage/${CATEGORY}/${PF}/image/${EPREFIX}/"
@@ -418,7 +451,9 @@ Beginning with \fBEAPI 3\fR, contains the path
 "${D%/}${EPREFIX}/" for convenience purposes.
 For EAPI values prior to \fBEAPI 3\fR which do
 not support ED, helpers use \fBD\fR where
-they would otherwise use ED.
+they would otherwise use ED. Note that with \fBEAPI 7\fR, any trailing slash
+contained in this path will be automatically removed for ease of concatenating
+paths within ebuilds.
 Do not modify this variable.
 .TP
 .B MERGE_TYPE
@@ -477,6 +512,18 @@ excluded during generation of \fBREQUIRES\fR metadata (see
 possible to create patterns containing quoted whitespace.
 .TP
 .B ROOT\fR = \fI"/"
+Please note an important recent change regarding the ROOT variable -- in \fBEAPI 7\fR ebuilds,
+this variable will default to "" rather than the traditional "/" within ebuilds
+when pointing to the root filesystem, and when set to a non-root path
+this variable will never contain a trailing slash. This has the added
+convenience of eliminating the need to
+specify "${ROOT%/}" when concatenating paths, making the use of ROOT
+more elegant. This applies to the variables EROOT, D and ED as well. Please
+make note that this will
+mean that ebuilds must use different logic in conditionals to determine if
+they are installing to the root filesystem -- use [[ "$ROOT" == "" ]] instead of
+[[ "$ROOT" == "/" ]].
+
 Contains the path that portage should use as the root of the live filesystem.
 When packages wish to make changes to the live filesystem, they should do so in
 the tree prefixed by ${ROOT}.  Often the offset prefix needs to be taken
@@ -486,7 +533,10 @@ below).  Do not modify this variable.
 .B EROOT\fR = \fI"${ROOT%/}${EPREFIX}/"
 Beginning with \fBEAPI 3\fR, contains
 "${ROOT%/}${EPREFIX}/" for convenience
-purposes. Do not modify this variable.
+purposes. Do not modify this variable. Also see the important note regarding
+ROOT with \fBEAPI 7\fR, above. As with ROOT, EROOT will be defined as ""
+when set to the root filesystem and never have a trailing slash within an
+ebuild.
 .TP
 .B BROOT\fR = \fI"${EPREFIX}"
 Beginning with \fBEAPI 7\fR, the absolute path to the root directory
@@ -521,17 +571,61 @@ file name, should be separated by whitespace.
 Should contain a list of URIs for the sources main sites and other further
 package dependent information.
 .TP
-.B KEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa]
-Should contain appropriate list of arches that the ebuild is know to
-work/not work.  By default if you do not know if an ebuild runs under
-a particular arch simply omit that KEYWORD.  If the ebuild will not
-work on that arch include it as \-ppc for example.  If the ebuild is
-being submitted for inclusion, it must have ~arch set for architectures
-where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
-unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
-line, or in \fBmake.conf\fR(5)) For an authoritative list please review
-/var/db/repos/gentoo/profiles/arch.list. Please keep this list in
-alphabetical order.
+.B KEYWORDS\fR = \fI[\-~][x86,ppc,sparc,mips,alpha,arm,hppa,...]
+.P
+
+KEYWORDS works in conjunction with ACCEPT_KEYWORDS (see \fBmake.conf\fR(5))
+to implement a system of creating sets of different types of packages
+which can then be masked or unmasked en masse. In the Gentoo Linux
+project, they are used by the Gentoo arch teams to define what ebuilds
+are included in a particular CPU architecture's set of stable and unstable
+unmasked packages.
+
+Here's how they work. For purposes of explanation, let's assume you have
+a stable x86\-64bit system, typically referred to as "amd64".
+ARCH would be defined as "amd64". If you were using the stable build of
+Gentoo Linux, then ACCEPT_KEYWORDS would be set to "amd64" via profiles.
+Any ebuild that then has
+"amd64" in KEYWORDS will be unmasked by default.
+
+On an "unstable"
+amd64 system, ACCEPT_KEYWORDS will be set to "amd64 ~amd64", with the
+tilde denoting "unstable." Then, if an ebuild has \fIeither\fR
+"amd64" or "~amd64" in KEYWORDS, it will be keyword unmasked by default on
+that system. Similarly, if an ebuild is known to not be compatible
+with a particular architecture, the "\-" prefix ( i.e. "\-amd64") setting
+can be specified to mask it only on that arch.
+.P
+If you are developing ebuilds for Gentoo Linux, there are certain
+policies regarding KEYWORDS that you are expected to follow in order
+to align with Gentoo's arch team workflow. The most important
+policies are listed below:
+.RS
+.IP \(bu 2
+If you do not know if an ebuild runs under a particular arch, then do not
+specify it in KEYWORDS.
+It will then be masked by default on that architecture.
+.IP \(bu
+If the ebuild is known not to work on an arch, disable that arch in KEYWORDS.
+This would be done by specifying "\-ppc", for example. This will ensure that
+it is explicitly keyword\-masked for that architecture.
+.IP \(bu
+When submitting an ebuild to Gentoo Linux, it is the project policy to only
+have "~arch" set in KEYWORDS
+for the architecture for which it has been successfully tested, and no more.
+As the ebuild receives more testing, Gentoo arch teams will gradually expand
+the KEYWORDS settings to "bump" the package to unstable, and possibly stable.
+
+It is possible to customize the behavior of ACCEPT_KEYWORDS and KEYWORDS on
+a per\-package basis using package.accept_keywords and package.keywords files
+in profiles. See \fBportage\fR(5) for more information on using these files.
+.RE
+.P
+Note that while other Gentoo\-based projects
+have KEYWORDS and ACCEPT_KEYWORDS, they likely will not have exactly
+the same policies regarding their use. Therefore, it is necessary that you
+research their specific policies and how they differ from Gentoo.
+.RE
 .TP
 .B SLOT
 This sets the SLOT for packages that may need to have multiple versions
@@ -686,13 +780,17 @@ Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
-.B PROPERTIES\fR = \fI[interactive]
+.B PROPERTIES\fR = \fI[interactive,live]
 A space delimited list of properties, with conditional syntax support.
 .PD 0
 .RS
 .TP
 .I interactive
 One or more ebuild phases will produce a prompt that requires user interaction.
+.TP
+.I live
+The package uses live source code that may vary each time that the package
+is installed.
 .RE
 .PD 1
 .TP

@@ -84,7 +84,7 @@ def main(argv):
 				if e.errno == errno.EPERM:
 					# This means that stdout refers to the controlling terminal
 					# of the parent process, and in this case we do not want to
-					# steel it.
+					# steal it.
 					pass
 				else:
 					raise

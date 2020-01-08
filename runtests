@@ -24,14 +24,14 @@ import tempfile
 # These are the versions we fully support and require to pass tests.
 PYTHON_SUPPORTED_VERSIONS = [
 	'2.7',
-	'3.4',
 	'3.5',
-	'3.6'
+	'3.6',
+	'3.7'
 ]
 # The rest are just "nice to have".
 PYTHON_NICE_VERSIONS = [
 	'pypy',
-	'3.7'
+	'3.8'
 ]
 
 EPREFIX = os.environ.get('PORTAGE_OVERRIDE_EPREFIX', '/')

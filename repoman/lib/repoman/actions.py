@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+# Copyright 1999-2019 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function, unicode_literals
 
@@ -332,7 +334,8 @@ the whole commit message to abort.
 		if myunadded:
 			for x in range(len(myunadded) - 1, -1, -1):
 				xs = myunadded[x].split("/")
-				if self.repo_settings.repo_config.find_invalid_path_char(myunadded[x]) != -1:
+				if (any(token.startswith('.') and token != '.' for token in xs) or
+					self.repo_settings.repo_config.find_invalid_path_char(myunadded[x]) != -1):
 					# The Manifest excludes this file,
 					# so it's safe to ignore.
 					del myunadded[x]
@@ -402,7 +405,7 @@ the whole commit message to abort.
 	def get_commit_footer(self):
 		portage_version = getattr(portage, "VERSION", None)
 		gpg_key = self.repoman_settings.get("PORTAGE_GPG_KEY", "")
-		dco_sob = self.repoman_settings.get("DCO_SIGNED_OFF_BY", "")
+		signoff = self.repoman_settings.get("SIGNED_OFF_BY", "")
 		report_options = []
 		if self.options.force:
 			report_options.append("--force")
@@ -412,6 +415,10 @@ the whole commit message to abort.
 			report_options.append(
 				"--include-arches=\"%s\"" %
 				" ".join(sorted(self.scanner.include_arches)))
+		if self.scanner.include_profiles is not None:
+			report_options.append(
+				"--include-profiles=\"%s\"" %
+				" ".join(sorted(self.scanner.include_profiles)))
 
 		if portage_version is None:
 			sys.stderr.write("Failed to insert portage version in message!\n")
@@ -466,8 +473,8 @@ the whole commit message to abort.
 				commit_footer += ", unsigned Manifest commit"
 			commit_footer += ")"
 
-		if dco_sob:
-			commit_footer += "\nSigned-off-by: %s" % (dco_sob, )
+		if signoff:
+			commit_footer += "\nSigned-off-by: %s" % (signoff, )
 
 		return commit_footer
 

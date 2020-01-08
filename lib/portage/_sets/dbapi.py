@@ -1,8 +1,9 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
 
+import glob
 import re
 import time
 
@@ -67,10 +68,19 @@ class OwnerSet(PackageSet):
 
 	def mapPathsToAtoms(self, paths, exclude_paths=None):
 		"""
-		All paths must have $EROOT stripped from the left side.
+		All paths must begin with a slash, and must not include EROOT.
+		Supports globs.
 		"""
 		rValue = set()
 		vardb = self._db
+
+		eroot = vardb.settings['EROOT']
+		expanded_paths = []
+		for p in paths:
+			expanded_paths.extend(expanded_p[len(eroot)-1:] for expanded_p in
+				glob.iglob(os.path.join(eroot, p.lstrip(os.sep))))
+		paths = expanded_paths
+
 		pkg_str = vardb._pkg_str
 		if exclude_paths is None:
 			for link, p in vardb._owners.iter_owners(paths):
@@ -85,7 +95,9 @@ class OwnerSet(PackageSet):
 				pkg = pkg_str(link.mycpv, None)
 				atom = "%s:%s" % (pkg.cp, pkg.slot)
 				rValue.add(atom)
-				if p in exclude_paths:
+				# Returned paths are relative to ROOT and do not have
+				# a leading slash.
+				if '/' + p in exclude_paths:
 					exclude_atoms.add(atom)
 			rValue.difference_update(exclude_atoms)
 

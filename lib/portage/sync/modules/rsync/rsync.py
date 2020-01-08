@@ -283,6 +283,13 @@ class RsyncSync(NewBase):
 				# With some configurations we need to use the plain hostname
 				# rather than try to resolve the ip addresses (bug #340817).
 				uris.append(syncuri)
+			elif len(uris) == 1:
+				# Use the original hostname if it resolves to a single IP,
+				# since DNS lookup must occur in the rsync process for
+				# compatibility with things like proxychains that allocate
+				# a surrogate IP which is only valid within the current
+				# process.
+				uris = [syncuri]
 
 			# reverse, for use with pop()
 			uris.reverse()

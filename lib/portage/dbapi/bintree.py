@@ -1,4 +1,4 @@
-# Copyright 1998-2018 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -7,6 +7,7 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'_emerge.BinpkgExtractorAsync:BinpkgExtractorAsync',
 	'portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,' + \
 		'verify_all,_apply_hash_filter,_hash_filter',
 	'portage.dbapi.dep_expand:dep_expand',
@@ -18,6 +19,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:atomic_ofstream,ensure_dirs,normalize_path,' + \
 		'writemsg,writemsg_stdout',
 	'portage.util.path:first_existing',
+	'portage.util._async.SchedulerInterface:SchedulerInterface',
 	'portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476',
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
@@ -30,6 +32,9 @@ from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
 	ParseError, PermissionDenied, PortageException
 from portage.localization import _
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures.executor.fork import ForkExecutor
 from portage import _movefile
 from portage import os
 from portage import _encodings
@@ -70,6 +75,8 @@ class UseCachedCopyOfRemoteIndex(Exception):
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
 		["CHOST", "repository", "USE"])
+	_pkg_str_aux_keys = fakedbapi._pkg_str_aux_keys + ("BUILD_ID", "BUILD_TIME", "_mtime_")
+
 	def __init__(self, mybintree=None, **kwargs):
 		# Always enable multi_instance mode for bindbapi indexing. This
 		# does not affect the local PKGDIR file layout, since that is
@@ -87,7 +94,7 @@ class bindbapi(fakedbapi):
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
 			["BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST", "DEFINED_PHASES",
-			"DEPEND", "EAPI", "HDEPEND", "IUSE", "KEYWORDS",
+			"DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "MD5", "PDEPEND", "PROPERTIES",
 			"PROVIDES", "RDEPEND", "repository", "REQUIRES", "RESTRICT",
 			"SIZE", "SLOT", "USE", "_mtime_", "EPREFIX"
@@ -142,7 +149,10 @@ class bindbapi(fakedbapi):
 				return [aux_cache.get(x, "") for x in wants]
 		mysplit = mycpv.split("/")
 		mylist = []
-		if not self.bintree._remotepkgs or \
+		add_pkg = self.bintree._additional_pkgs.get(instance_key)
+		if add_pkg is not None:
+			return add_pkg._db.aux_get(add_pkg, wants)
+		elif not self.bintree._remotepkgs or \
 			not self.bintree.isremote(mycpv):
 			try:
 				tbz2_path = self.bintree._pkg_paths[instance_key]
@@ -218,6 +228,73 @@ class bindbapi(fakedbapi):
 		# inject will clear stale caches via cpv_inject.
 		self.bintree.inject(cpv, filename=tbz2path)
 
+
+	@coroutine
+	def unpack_metadata(self, pkg, dest_dir):
+		"""
+		Unpack package metadata to a directory. This method is a coroutine.
+
+		@param pkg: package to unpack
+		@type pkg: _pkg_str or portage.config
+		@param dest_dir: destination directory
+		@type dest_dir: str
+		"""
+		loop = asyncio._wrap_loop()
+		if isinstance(pkg, _pkg_str):
+			cpv = pkg
+		else:
+			cpv = pkg.mycpv
+		key = self._instance_key(cpv)
+		add_pkg = self.bintree._additional_pkgs.get(key)
+		if add_pkg is not None:
+			yield add_pkg._db.unpack_metadata(pkg, dest_dir)
+		else:
+			tbz2_file = self.bintree.getname(cpv)
+			yield loop.run_in_executor(ForkExecutor(loop=loop),
+				portage.xpak.tbz2(tbz2_file).unpackinfo, dest_dir)
+
+	@coroutine
+	def unpack_contents(self, pkg, dest_dir):
+		"""
+		Unpack package contents to a directory. This method is a coroutine.
+
+		@param pkg: package to unpack
+		@type pkg: _pkg_str or portage.config
+		@param dest_dir: destination directory
+		@type dest_dir: str
+		"""
+		loop = asyncio._wrap_loop()
+		if isinstance(pkg, _pkg_str):
+			settings = self.settings
+			cpv = pkg
+		else:
+			settings = pkg
+			cpv = settings.mycpv
+
+		pkg_path = self.bintree.getname(cpv)
+		if pkg_path is not None:
+
+			extractor = BinpkgExtractorAsync(
+				background=settings.get('PORTAGE_BACKGROUND') == '1',
+				env=settings.environ(),
+				features=settings.features,
+				image_dir=dest_dir,
+				pkg=cpv, pkg_path=pkg_path,
+				logfile=settings.get('PORTAGE_LOG_FILE'),
+				scheduler=SchedulerInterface(loop))
+
+			extractor.start()
+			yield extractor.async_wait()
+			if extractor.returncode != os.EX_OK:
+				raise PortageException("Error Extracting '{}'".format(pkg_path))
+
+		else:
+			instance_key = self._instance_key(cpv)
+			add_pkg = self.bintree._additional_pkgs.get(instance_key)
+			if add_pkg is None:
+				raise portage.exception.PackageNotFound(cpv)
+			yield add_pkg._db.unpack_contents(pkg, dest_dir)
+
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:
 			self.bintree.populate()
@@ -261,6 +338,7 @@ class bindbapi(fakedbapi):
 
 		return filesdict
 
+
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, _unused=DeprecationWarning, pkgdir=None,
@@ -301,6 +379,7 @@ class binarytree(object):
 			self.tree = {}
 			self._remote_has_index = False
 			self._remotepkgs = None # remote metadata indexed by cpv
+			self._additional_pkgs = {}
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
@@ -315,13 +394,13 @@ class binarytree(object):
 			self._pkgindex_aux_keys = \
 				["BASE_URI", "BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST",
 				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
-				"HDEPEND", "IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
+				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
 				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
 				"RDEPEND", "repository", "REQUIRES", "RESTRICT",
 				"SIZE", "SLOT", "USE", "EPREFIX"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
-				("BDEPEND", "DEPEND", "HDEPEND", "LICENSE", "RDEPEND",
+				("BDEPEND", "DEPEND", "LICENSE", "RDEPEND",
 				"PDEPEND", "PROPERTIES", "RESTRICT")
 			self._pkgindex_header = None
 			self._pkgindex_header_keys = set([
@@ -339,7 +418,6 @@ class binarytree(object):
 				"DEFINED_PHASES"     : "",
 				"DEPEND"  : "",
 				"EAPI"    : "0",
-				"HDEPEND" : "",
 				"IUSE"    : "",
 				"KEYWORDS": "",
 				"LICENSE" : "",
@@ -512,7 +590,7 @@ class binarytree(object):
 			except PortageException:
 				pass
 
-	def populate(self, getbinpkgs=False, getbinpkg_refresh=True):
+	def populate(self, getbinpkgs=False, getbinpkg_refresh=True, add_repos=()):
 		"""
 		Populates the binarytree with package metadata.
 
@@ -521,12 +599,14 @@ class binarytree(object):
 		@param getbinpkg_refresh: attempt to refresh the cache
 			of remote package metadata if getbinpkgs is also True
 		@type getbinpkg_refresh: bool
+		@param add_repos: additional binary package repositories
+		@type add_repos: sequence
 		"""
 
 		if self._populating:
 			return
 
-		if not os.path.isdir(self.pkgdir) and not getbinpkgs:
+		if not os.path.isdir(self.pkgdir) and not (getbinpkgs or add_repos):
 			self.populated = True
 			return
 
@@ -538,7 +618,8 @@ class binarytree(object):
 
 		self._populating = True
 		try:
-			update_pkgindex = self._populate_local()
+			update_pkgindex = self._populate_local(
+				reindex='pkgdir-index-trusted' not in self.settings.features)
 
 			if update_pkgindex and self.dbapi.writable:
 				# If the Packages file needs to be updated, then _populate_local
@@ -557,6 +638,9 @@ class binarytree(object):
 					if pkgindex_lock:
 						unlockfile(pkgindex_lock)
 
+			if add_repos:
+				self._populate_additional(add_repos)
+
 			if getbinpkgs:
 				if not self.settings.get("PORTAGE_BINHOST"):
 					writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
@@ -569,7 +653,14 @@ class binarytree(object):
 
 		self.populated = True
 
-	def _populate_local(self):
+	def _populate_local(self, reindex=True):
+		"""
+		Populates the binarytree with local package metadata.
+
+		@param reindex: detect added / modified / removed packages and
+			regenerate the index file if necessary
+		@type reindex: bool
+		"""
 		self.dbapi.clear()
 		_instance_key = self.dbapi._instance_key
 		# In order to minimize disk I/O, we never compute digests here.
@@ -581,9 +672,10 @@ class binarytree(object):
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
 			dir_files = {}
-			for parent, dir_names, file_names in os.walk(self.pkgdir):
-				relative_parent = parent[len(self.pkgdir)+1:]
-				dir_files[relative_parent] = file_names
+			if reindex:
+				for parent, dir_names, file_names in os.walk(self.pkgdir):
+					relative_parent = parent[len(self.pkgdir)+1:]
+					dir_files[relative_parent] = file_names
 
 			pkgindex = self._load_pkgindex()
 			if not self._pkgindex_version_supported(pkgindex):
@@ -598,8 +690,14 @@ class binarytree(object):
 				path = d.get("PATH")
 				if not path:
 					path = cpv + ".tbz2"
-				basename = os.path.basename(path)
-				basename_index.setdefault(basename, []).append(d)
+
+				if reindex:
+					basename = os.path.basename(path)
+					basename_index.setdefault(basename, []).append(d)
+				else:
+					instance_key = _instance_key(cpv)
+					pkg_paths[instance_key] = path
+					self.dbapi.cpv_inject(cpv)
 
 			update_pkgindex = False
 			for mydir, file_names in dir_files.items():
@@ -799,9 +897,10 @@ class binarytree(object):
 						d.pop("PATH", None)
 					metadata[_instance_key(mycpv)] = d
 
-			for instance_key in list(metadata):
-				if instance_key not in pkg_paths:
-					del metadata[instance_key]
+			if reindex:
+				for instance_key in list(metadata):
+					if instance_key not in pkg_paths:
+						del metadata[instance_key]
 
 			if update_pkgindex:
 				del pkgindex.packages[:]
@@ -1050,6 +1149,16 @@ class binarytree(object):
 				self._remote_has_index = True
 				self._merge_pkgindex_header(pkgindex.header,
 					self._pkgindex_header)
+
+	def _populate_additional(self, repos):
+		for repo in repos:
+			aux_keys = list(set(chain(repo._aux_cache_keys, repo._pkg_str_aux_keys)))
+			for cpv in repo.cpv_all():
+				metadata = dict(zip(aux_keys, repo.aux_get(cpv, aux_keys)))
+				pkg = _pkg_str(cpv, metadata=metadata, settings=repo.settings, db=repo)
+				instance_key = self.dbapi._instance_key(pkg)
+				self._additional_pkgs[instance_key] = pkg
+				self.dbapi.cpv_inject(pkg)
 
 	def inject(self, cpv, filename=None):
 		"""Add a freshly built package to the database.  This updates
@@ -1485,6 +1594,8 @@ class binarytree(object):
 				filename = self._pkg_paths.get(instance_key)
 				if filename is not None:
 					filename = os.path.join(self.pkgdir, filename)
+				elif instance_key in self._additional_pkgs:
+					return None
 
 		if filename is None:
 			if self._multi_instance:
@@ -1555,8 +1666,12 @@ class binarytree(object):
 	def isremote(self, pkgname):
 		"""Returns true if the package is kept remotely and it has not been
 		downloaded (or it is only partially downloaded)."""
-		if (self._remotepkgs is None or
-		self.dbapi._instance_key(pkgname) not in self._remotepkgs):
+		if self._remotepkgs is None:
+			return False
+		instance_key = self.dbapi._instance_key(pkgname)
+		if instance_key not in self._remotepkgs:
+			return False
+		elif instance_key in self._additional_pkgs:
 			return False
 		# Presence in self._remotepkgs implies that it's remote. When a
 		# package is downloaded, state is updated by self.inject().

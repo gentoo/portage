@@ -6,13 +6,18 @@ from __future__ import print_function
 __all__ = ['fetch']
 
 import errno
+import functools
+import glob
 import io
+import itertools
+import json
 import logging
 import random
 import re
 import stat
 import sys
 import tempfile
+import time
 
 from collections import OrderedDict
 
@@ -27,12 +32,18 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
 		'_doebuild_spawn',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
+	'portage.util:atomic_ofstream',
+	'portage.util.configparser:SafeConfigParser,read_configs,' +
+		'ConfigParserError',
+	'portage.util.install_mask:_raise_exc',
+	'portage.util._urlopen:urlopen',
 )
 
 from portage import os, selinux, shutil, _encodings, \
 	_movefile, _shell_quote, _unicode_encode
 from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
-	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter)
+	_filter_unaccelarated_hashes, _hash_filter, _apply_hash_filter,
+	checksum_str)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.const import rootgid
@@ -254,10 +265,222 @@ _size_suffix_map = {
 	'Y' : 80,
 }
 
+
+class FlatLayout(object):
+	def get_path(self, filename):
+		return filename
+
+	def get_filenames(self, distdir):
+		for dirpath, dirnames, filenames in os.walk(distdir,
+				onerror=_raise_exc):
+			for filename in filenames:
+				try:
+					yield portage._unicode_decode(filename, errors='strict')
+				except UnicodeDecodeError:
+					# Ignore it. Distfiles names must have valid UTF8 encoding.
+					pass
+			return
+
+	@staticmethod
+	def verify_args(args):
+		return len(args) == 1
+
+
+class FilenameHashLayout(object):
+	def __init__(self, algo, cutoffs):
+		self.algo = algo
+		self.cutoffs = [int(x) for x in cutoffs.split(':')]
+
+	def get_path(self, filename):
+		fnhash = checksum_str(filename.encode('utf8'), self.algo)
+		ret = ''
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			ret += fnhash[:c] + '/'
+			fnhash = fnhash[c:]
+		return ret + filename
+
+	def get_filenames(self, distdir):
+		pattern = ''
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			pattern += c * '[0-9a-f]' + '/'
+		pattern += '*'
+		for x in glob.iglob(portage._unicode_encode(os.path.join(distdir, pattern), errors='strict')):
+			try:
+				yield portage._unicode_decode(x, errors='strict').rsplit('/', 1)[1]
+			except UnicodeDecodeError:
+				# Ignore it. Distfiles names must have valid UTF8 encoding.
+				pass
+
+	@staticmethod
+	def verify_args(args):
+		if len(args) != 3:
+			return False
+		if args[1] not in get_valid_checksum_keys():
+			return False
+		# argsidate cutoffs
+		for c in args[2].split(':'):
+			try:
+				c = int(c)
+			except ValueError:
+				break
+			else:
+				if c % 4 != 0:
+					break
+		else:
+			return True
+		return False
+
+
+class MirrorLayoutConfig(object):
+	"""
+	Class to read layout.conf from a mirror.
+	"""
+
+	def __init__(self):
+		self.structure = ()
+
+	def read_from_file(self, f):
+		cp = SafeConfigParser()
+		read_configs(cp, [f])
+		vals = []
+		for i in itertools.count():
+			try:
+				vals.append(tuple(cp.get('structure', '%d' % i).split()))
+			except ConfigParserError:
+				break
+		self.structure = tuple(vals)
+
+	def serialize(self):
+		return self.structure
+
+	def deserialize(self, data):
+		self.structure = data
+
+	@staticmethod
+	def validate_structure(val):
+		if val[0] == 'flat':
+			return FlatLayout.verify_args(val)
+		if val[0] == 'filename-hash':
+			return FilenameHashLayout.verify_args(val)
+		return False
+
+	def get_best_supported_layout(self):
+		for val in self.structure:
+			if self.validate_structure(val):
+				if val[0] == 'flat':
+					return FlatLayout(*val[1:])
+				elif val[0] == 'filename-hash':
+					return FilenameHashLayout(*val[1:])
+		else:
+			# fallback
+			return FlatLayout()
+
+	def get_all_layouts(self):
+		ret = []
+		for val in self.structure:
+			if not self.validate_structure(val):
+				raise ValueError("Unsupported structure: {}".format(val))
+			if val[0] == 'flat':
+				ret.append(FlatLayout(*val[1:]))
+			elif val[0] == 'filename-hash':
+				ret.append(FilenameHashLayout(*val[1:]))
+		if not ret:
+			ret.append(FlatLayout())
+		return ret
+
+
+def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
+	"""
+	Get correct fetch URL for a given file, accounting for mirror
+	layout configuration.
+
+	@param mirror_url: Base URL to the mirror (without '/distfiles')
+	@param filename: Filename to fetch
+	@param cache_path: Path for mirror metadata cache
+	@return: Full URL to fetch
+	"""
+
+	mirror_conf = MirrorLayoutConfig()
+
+	cache = {}
+	if cache_path is not None:
+		try:
+			with open(cache_path, 'r') as f:
+				cache = json.load(f)
+		except (IOError, ValueError):
+			pass
+
+	ts, data = cache.get(mirror_url, (0, None))
+	# refresh at least daily
+	if ts >= time.time() - 86400:
+		mirror_conf.deserialize(data)
+	else:
+		tmpfile = '.layout.conf.%s' % urlparse(mirror_url).hostname
+		try:
+			if fetch({tmpfile: (mirror_url + '/distfiles/layout.conf',)},
+					mysettings, force=1, try_mirrors=0):
+				tmpfile = os.path.join(mysettings['DISTDIR'], tmpfile)
+				mirror_conf.read_from_file(tmpfile)
+			else:
+				raise IOError()
+		except (ConfigParserError, IOError, UnicodeDecodeError):
+			pass
+		else:
+			cache[mirror_url] = (time.time(), mirror_conf.serialize())
+			if cache_path is not None:
+				f = atomic_ofstream(cache_path, 'w')
+				json.dump(cache, f)
+				f.close()
+
+	return (mirror_url + "/distfiles/" +
+			mirror_conf.get_best_supported_layout().get_path(filename))
+
+
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
-	allow_missing_digests=True):
-	"fetch files.  Will use digest file if available."
+	allow_missing_digests=True, force=False):
+	"""
+	Fetch files to DISTDIR and also verify digests if they are available.
+
+	@param myuris: Maps each file name to a tuple of available fetch URIs.
+	@type myuris: dict
+	@param mysettings: Portage config instance.
+	@type mysettings: portage.config
+	@param listonly: Only print URIs and do not actually fetch them.
+	@type listonly: bool
+	@param fetchonly: Do not block for files that are locked by a
+		concurrent fetcher process. This means that the function can
+		return successfully *before* all files have been successfully
+		fetched!
+	@type fetchonly: bool
+	@param use_locks: Enable locks. This parameter is ineffective if
+		FEATURES=distlocks is disabled in the portage config!
+	@type use_locks: bool
+	@param digests: Maps each file name to a dict of digest types and values.
+	@type digests: dict
+	@param allow_missing_digests: Enable fetch even if there are no digests
+		available for verification.
+	@type allow_missing_digests: bool
+	@param force: Force download, even when a file already exists in
+		DISTDIR. This is most useful when there are no digests available,
+		since otherwise download will be automatically forced if the
+		existing file does not match the available digests. Also, this
+		avoids the need to remove the existing file in advance, which
+		makes it possible to atomically replace the file and avoid
+		interference with concurrent processes.
+	@type force: bool
+	@rtype: int
+	@return: 1 if successful, 0 otherwise.
+	"""
+
+	if force and digests:
+		# Since the force parameter can trigger unnecessary fetch when the
+		# digests match, do not allow force=True when digests are provided.
+		raise PortageException(_('fetch: force=True is not allowed when digests are provided'))
 
 	if not myuris:
 		return 1
@@ -351,11 +574,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if listonly or ("distlocks" not in features):
 		use_locks = 0
 
+	distdir_writable = os.access(mysettings["DISTDIR"], os.W_OK)
 	fetch_to_ro = 0
 	if "skiprocheck" in features:
 		fetch_to_ro = 1
 
-	if not os.access(mysettings["DISTDIR"],os.W_OK) and fetch_to_ro:
+	if not distdir_writable and fetch_to_ro:
 		if use_locks:
 			writemsg(colorize("BAD",
 				_("!!! For fetching to a read-only filesystem, "
@@ -365,7 +589,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 #			use_locks = 0
 
 	# local mirrors are always added
-	if "local" in custommirrors:
+	if try_mirrors and "local" in custommirrors:
 		mymirrors += custommirrors["local"]
 
 	if restrict_mirror:
@@ -435,8 +659,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	for myfile, myuri in file_uri_tuples:
 		if myfile not in filedict:
 			filedict[myfile]=[]
-			for y in range(0,len(locations)):
-				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+			if distdir_writable:
+				mirror_cache = os.path.join(mysettings["DISTDIR"],
+						".mirror-cache.json")
+			else:
+				mirror_cache = None
+			for l in locations:
+				filedict[myfile].append(functools.partial(
+					get_mirror_url, l, myfile, mysettings, mirror_cache))
 		if myuri is None:
 			continue
 		if myuri[:9]=="mirror://":
@@ -609,7 +839,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				pruned_digests["size"] = size
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
-		download_path = myfile_path + _download_suffix
+		download_path = myfile_path if fetch_to_ro else myfile_path + _download_suffix
 		has_space = True
 		has_space_superuser = True
 		file_lock = None
@@ -671,7 +901,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
 				match, mystat = _check_distfile(
 					myfile_path, pruned_digests, eout, hash_filter=hash_filter)
-				if match:
+				if match and not force:
 					# Skip permission adjustment for symlinks, since we don't
 					# want to modify anything outside of the primary DISTDIR,
 					# and symlinks typically point to PORTAGE_RO_DISTDIRS.
@@ -706,7 +936,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							level=logging.ERROR, noiselevel=-1)
 						return 0
 
-					if distdir_writable:
+					if distdir_writable and not force:
 						# Since _check_distfile did not match above, the file
 						# is either corrupt or its identity has changed since
 						# the last time it was fetched, so rename it.
@@ -835,10 +1065,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 								os.unlink(download_path)
 							except EnvironmentError:
 								pass
-					elif myfile not in mydigests:
+					elif not orig_digests:
 						# We don't have a digest, but the file exists.  We must
 						# assume that it is fully downloaded.
-						continue
+						if not force:
+							continue
 					else:
 						if (mydigests[myfile].get("size") is not None
 								and mystat.st_size < mydigests[myfile]["size"]
@@ -877,7 +1108,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										"File renamed to '%s'\n\n") % \
 										temp_filename, noiselevel=-1)
 							else:
-								_movefile(download_path, myfile_path, mysettings=mysettings)
+								if not fetch_to_ro:
+									_movefile(download_path, myfile_path, mysettings=mysettings)
 								eout = EOutput()
 								eout.quiet = \
 									mysettings.get("PORTAGE_QUIET", None) == "1"
@@ -896,6 +1128,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			tried_locations = set()
 			while uri_list:
 				loc = uri_list.pop()
+				if isinstance(loc, functools.partial):
+					loc = loc()
 				# Eliminate duplicates here in case we've switched to
 				# "primaryuri" mode on the fly due to a checksum failure.
 				if loc in tried_locations:
@@ -994,7 +1228,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							del e
 							fetched = 0
 						else:
-							if mystat.st_size < fetch_resume_size:
+							if distdir_writable and mystat.st_size < fetch_resume_size:
 								writemsg(_(">>> Deleting distfile with size "
 									"%d (smaller than " "PORTAGE_FETCH_RESU"
 									"ME_MIN_SIZE)\n") % mystat.st_size)
@@ -1050,7 +1284,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					# trust the return value from the fetcher.  Remove the
 					# empty file and try to download again.
 					try:
-						if os.stat(download_path).st_size == 0:
+						mystat = os.lstat(download_path)
+						if mystat.st_size == 0 or (stat.S_ISLNK(mystat.st_mode) and not os.path.exists(download_path)):
 							os.unlink(download_path)
 							fetched = 0
 							continue
@@ -1132,13 +1367,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										(reason[1], reason[2]), noiselevel=-1)
 									if reason[0] == _("Insufficient data for checksum verification"):
 										return 0
-									temp_filename = \
-										_checksum_failure_temp_file(
-											mysettings, mysettings["DISTDIR"],
-											os.path.basename(download_path))
-									writemsg_stdout(_("Refetching... "
-										"File renamed to '%s'\n\n") % \
-										temp_filename, noiselevel=-1)
+									if distdir_writable:
+										temp_filename = \
+											_checksum_failure_temp_file(
+												mysettings, mysettings["DISTDIR"],
+												os.path.basename(download_path))
+										writemsg_stdout(_("Refetching... "
+											"File renamed to '%s'\n\n") % \
+											temp_filename, noiselevel=-1)
 									fetched=0
 									checksum_failure_count += 1
 									if checksum_failure_count == \
@@ -1155,7 +1391,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 										checksum_failure_max_tries:
 										break
 								else:
-									_movefile(download_path, myfile_path, mysettings=mysettings)
+									if not fetch_to_ro:
+										_movefile(download_path, myfile_path, mysettings=mysettings)
 									eout = EOutput()
 									eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
 									if digests:
@@ -1166,7 +1403,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 									break
 					else: # no digests available
 						if not myret:
-							_movefile(download_path, myfile_path, mysettings=mysettings)
+							if not fetch_to_ro:
+								_movefile(download_path, myfile_path, mysettings=mysettings)
 							fetched=2
 							break
 						elif mydigests!=None:

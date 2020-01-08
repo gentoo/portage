@@ -1,5 +1,36 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.80
+--------------
+* The emerge --quickpkg-direct option enables use of installed packages
+  directly as binary packages. It can be used to create minimal runtime
+  container images (which need not include a package manager), or to
+  enable a live image to act as a binary installer that uses packages
+  installed in the live image as a source of binary packages. This
+  option is especially useful in combination with --usepkgonly and
+  --ignore-soname-deps=n options, allowing implicit system dependencies
+  such as libc to be automatically accounted for.
+
+portage-2.3.77
+--------------
+* The emerge --autounmask option is now disabled by default, except for
+  portions of behavior which are controlled by the --autounmask-use and
+  --autounmask-license options. For backward compatibility, previous
+  behavior of --autounmask=y and --autounmask=n is entirely preserved.
+  Users can get the old behavior simply by adding --autounmask to the
+  make.conf EMERGE_DEFAULT_OPTS variable.
+
+portage-2.3.72
+--------------
+* The glsa-check program is now provided by portage, and it has been
+  removed from gentoolkit. See bug 463952.
+
+portage-2.3.70
+--------------
+* The @live-rebuild package set now searches for PROPERTIES=live, see
+  bug 233589. The @deprecated-live-rebuild package set provides the
+  old behavior which was based on inherited eclasses.
+
 portage-2.3.64
 --------------
 * New (council approved) default locations for the Gentoo repository,

@@ -1,4 +1,4 @@
-# Copyright 1998-2016 Gentoo Foundation
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -222,7 +222,8 @@ class LinkageMapELF(object):
 		root = self._root
 		root_len = len(root) - 1
 		self._clear_cache()
-		self._defpath.update(getlibpaths(self._root, env=self._dbapi.settings))
+		self._defpath.update(getlibpaths(self._dbapi.settings['EROOT'],
+			env=self._dbapi.settings))
 		libs = self._libs
 		obj_properties = self._obj_properties
 

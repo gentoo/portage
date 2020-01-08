@@ -1,0 +1,53 @@
+.TH "GLSA-CHECK" "1" "September 2019" "Portage VERSION" "Portage"
+.SH "NAME"
+\fBglsa\-check\fR \- Tool to locally monitor and manage GLSAs
+.SH "SYNOPSIS"
+\fBglsa\-check\fR [options] [glsa\-id | all | affected]
+.SH "DESCRIPTION"
+\fBglsa\-check\fR is used to locally monitor and manage Gentoo Linux Security Advisories\. In order for \fBglsa\-check\fR to be effective, it is required that a local repository exists containing GLSA metadata\.
+.SH "OPTIONS"
+.TP
+\fB\-l\fR, \fB\-\-list\fR List a summary for the given GLSA(s) or set and whether they affect the system\.
+.TP
+\fB\-d\fR, \fB\-\-dump\fR, \fB\-\-print\fR Show all information about the GLSA(s) or set\.
+.TP
+\fB\-t\fR, \fB\-\-test\fR Test if this system is affected by the GLSA(s) or set and output the GLSA ID(s)\.
+.TP
+\fB\-p\fR, \fB\-\-pretend\fR Show the necessary steps to remediate the system\.
+.TP
+\fB\-f\fR, \fB\-\-fix\fR (experimental) Attempt to remediate the system based on the instructions given in the GLSA(s) or set\. This will only upgrade (when an upgrade path exists) or remove packages\.
+.TP
+\fB\-i\fR, \fB\-\-inject\fR Inject the given GLSA(s) into the glsa_injected file\.
+.TP
+\fB\-n\fR, \fB\-\-nocolor\fR Removes color from output\.
+.TP
+\fB\-h\fR, \fB\-\-help\fR Show this help message\.
+.TP
+\fB\-V\fR, \fB\-\-version\fR Show information about \fBglsa\-check\fR\.
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR Print more messages\.
+.TP
+\fB\-c\fR, \fB\-\-cve\fR Show CVE IDs in listing mode\.
+.TP
+\fB\-q\fR, \fB\-\-quiet\fR Be less verbose and do not send empty mail\.
+.TP
+\fB\-m\fR, \fB\-\-mail\fR Send a mail with the given GLSAs to the administrator\.
+.TP
+\fB\-r\fR, \fB\-\-reverse\fR List GLSAs in reverse order
+.SH "EXAMPLES"
+\fBglsa\-check \-t all\fR Test the system against all GLSAs in the GLSA repository\.
+.TP
+\fBglsa\-check \-t 201801\-01\fR Test the system against the specific GLSA 201801\-01\.
+.SH "EXIT VALUES"
+.TP
+\fB0\fR Success
+.TP
+\fB1\fR Syntax or usage error
+.TP
+\fB2\fR Missing permissions, solution, etc
+.TP
+\fB6\fR System is affected by some GLSAs
+.SH "FILES"
+\fB/var/lib/portage/glsa_injected\fR List of GLSA ids that have been injected and will never show up as \'affected\' on this system\. The file must contain one GLSA ID (e\.g\. \'200804\-02\') per line\.
+.SH "BUGS"
+All bugs should be reported to the Portage team via https://bugs\.gentoo\.org

@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Jun 2019" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2019" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -114,7 +114,7 @@ how many are found. See
 Cleans up the system by examining the installed packages and removing older
 packages.  This is accomplished by looking at each installed package and
 separating the installed versions by \fBslot\fR.  Clean will \fBremove all but
-the most recently installed version in each \fbslot\fR.  Clean should not
+the most recently installed version in each slot\fR.  Clean should not
 remove unslotted packages. Note: Most recently installed means most
 \fBrecent\fR, not highest version.
 .TP
@@ -352,16 +352,19 @@ intended to be set in the \fBmake.conf\fR(5)
 .TP
 .BR "\-\-autounmask [ y | n ]"
 Automatically unmask packages and generate package.use
-settings as necessary to satisfy dependencies. This
-option is enabled by default. If any configuration
+settings as necessary to satisfy dependencies. This option
+is disabled by default, except for portions of behavior
+which are controlled by the \fB\-\-autounmask\-use\fR and
+\fB\-\-autounmask\-license\fR options (\fB\-\-autounmask=n\fR
+disables autounmask behavior entirely). If any configuration
 changes are required, then they will be displayed
 after the merge list and emerge will immediately
 abort. If the displayed configuration changes are
 satisfactory, you should copy and paste them into
 the specified configuration file(s), or enable the
 \fB\-\-autounmask\-write\fR option. The
-\fBEMERGE_DEFAULT_OPTS\fR variable may be used to
-disable this option by default in \fBmake.conf\fR(5).
+\fBEMERGE_DEFAULT_OPTS\fR variable may be used to entirely
+enable or disable this option by default in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-autounmask\-backtrack < y | n >"
 Allow backtracking after autounmask has detected that
@@ -406,6 +409,18 @@ the \-\-autounmask\-keep\-masks is also specified.
 If \-\-autounmask is enabled, no package.unmask or ** keyword changes
 will be created. This leads to unsatisfied dependencies if
 no other solution exists.
+.TP
+.BR "\-\-autounmask\-license < y | n >"
+Allow autounmask package.license changes. This option is enabled by default
+(either \fB\-\-autounmask=n\fR or \fB\-\-autounmask\-license=n\fR disables
+it). The \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
+disable this option by default in \fBmake.conf\fR(5).
+.TP
+.BR "\-\-autounmask\-use < y | n >"
+Allow autounmask package.use changes. This option is enabled by default
+(either \fB\-\-autounmask=n\fR or \fB\-\-autounmask\-use=n\fR disables
+it). The \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
+disable this option by default in \fBmake.conf\fR(5).
 .TP
 .BR "\-\-autounmask\-write [ y | n ]"
 If \-\-autounmask is enabled, changes are written
@@ -492,6 +507,8 @@ information about \fBFEATURES\fR settings).
 .BR \-\-changelog ", " \-l
 Use this in conjunction with the \fB\-\-pretend\fR option.  This will
 show the ChangeLog entries for all the packages that will be upgraded.
+This option is deprecated because ChangeLog files are no longer
+distributed with Gentoo's ebuild repository.
 .TP
 .BR "\-\-color < y | n >"
 Enable or disable color output.  This option will override \fINOCOLOR\fR
@@ -654,6 +671,13 @@ possible for it to make nonsensical changes which may lead to system
 breakage. Therefore, it is advisable to use \fB\-\-ask\fR together with
 this option.
 .TP
+.BR "\-\-implicit\-system\-deps < y | n >"
+Assume that packages may have implicit dependencies on packages which
+belong to the @system set. This option is enabled by default. One of the
+effects of disabling this option is to allow the \-\-jobs option to
+spawn jobs without accounting for the possiblity of implicit dependencies
+on packages that belong to the @system set.
+.TP
 .BR \-j\ [JOBS] ", "  \-\-jobs[=JOBS]
 Specifies the number of packages to build simultaneously. If this option is
 given without an argument, emerge will not limit the number of jobs that can
@@ -812,6 +836,23 @@ B	blocked by another package (unresolved conflict)
 b	blocked by another package (automatically resolved conflict)
 .TE
 .TP
+.BR "\-\-quickpkg\-direct < y | n >"
+Enable use of installed packages directly as binary packages. This is
+similar to using binary packages produced by \fBquickpkg\fR(1), but
+installed packages are used directly as though they are binary packages.
+This option only works in combination with the \fB\-\-root=DIR\fR option,
+and it comes with the caveat that packages are only allowed to be
+installed into the root that is specified by the \fB\-\-root=DIR\fR
+option (the other root which serves as a source of packages is
+assumed to be immutable during the entire operation).
+
+Default behavior for handling of protected configuration files is
+controlled by the \fBQUICKPKG_DEFAULT_OPTS\fR variable. The relevant
+quickpkg options are \fI\-\-include\-config\fR and
+\fI\-\-include\-unmodified\-config\fR (refer to the \fBquickpkg\fR(1)
+man page). When a configuration file is not included because it is
+protected, an ewarn message is logged.
+.TP
 .BR "\-\-quiet [ y | n ]" ", " \-q
 Results may vary, but the general outcome is a reduced or condensed
 output from portage's displays.
@@ -922,12 +963,10 @@ of packages for \fBROOT\fR.
 This option is only meaningful when used together with \fBROOT\fR and it should
 not be enabled under normal circumstances!
 
-Does not affect EAPIs that support \fBBDEPEND\fR or \fBHDEPEND\fR.
-\fBEAPI 7\fR introduces \fBBDEPEND\fR and experimental
-\fBEAPI 5-hdepend\fR features \fBHDEPEND\fR as a means to adjust
-installation into / and \fBROOT\fR.  Use the \fBSYSROOT\fR environment
-variable to control where \fBDEPEND\fR is installed to under
-\fBEAPI 7\fR.
+Does not affect EAPIs that support \fBBDEPEND\fR.  \fBEAPI 7\fR introduces
+\fBBDEPEND\fR as a means to adjust installation into / and \fBROOT\fR.  Use
+the \fBSYSROOT\fR environment variable to control where \fBDEPEND\fR
+is installed to under \fBEAPI 7\fR.
 
 When ebuilds with different EAPIs feature in the same emerge run, the
 appropriate behaviour for each EAPI is applied independently to each

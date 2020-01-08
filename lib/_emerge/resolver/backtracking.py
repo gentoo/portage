@@ -6,12 +6,14 @@ import copy
 class BacktrackParameter(object):
 
 	__slots__ = (
+		"circular_dependency",
 		"needed_unstable_keywords", "runtime_pkg_mask", "needed_use_config_changes", "needed_license_changes",
 		"prune_rebuilds", "rebuild_list", "reinstall_list", "needed_p_mask_changes",
 		"slot_operator_mask_built", "slot_operator_replace_installed"
 	)
 
 	def __init__(self):
+		self.circular_dependency = {}
 		self.needed_unstable_keywords = set()
 		self.needed_p_mask_changes = set()
 		self.runtime_pkg_mask = {}
@@ -31,6 +33,7 @@ class BacktrackParameter(object):
 
 		#Shallow copies are enough here, as we only need to ensure that nobody adds stuff
 		#to our sets and dicts. The existing content is immutable.
+		result.circular_dependency = copy.copy(self.circular_dependency)
 		result.needed_unstable_keywords = copy.copy(self.needed_unstable_keywords)
 		result.needed_p_mask_changes = copy.copy(self.needed_p_mask_changes)
 		result.needed_use_config_changes = copy.copy(self.needed_use_config_changes)
@@ -49,7 +52,8 @@ class BacktrackParameter(object):
 		return result
 
 	def __eq__(self, other):
-		return self.needed_unstable_keywords == other.needed_unstable_keywords and \
+		return self.circular_dependency == other.circular_dependency and \
+			self.needed_unstable_keywords == other.needed_unstable_keywords and \
 			self.needed_p_mask_changes == other.needed_p_mask_changes and \
 			self.runtime_pkg_mask == other.runtime_pkg_mask and \
 			self.needed_use_config_changes == other.needed_use_config_changes and \
@@ -135,11 +139,20 @@ class Backtracker(object):
 				continue
 
 			entry_is_valid = False
+			any_conflict_parents = False
 
 			for ppkg, patom in runtime_pkg_mask[pkg].get("slot conflict", set()):
+				any_conflict_parents = True
 				if ppkg not in runtime_pkg_mask:
 					entry_is_valid = True
 					break
+			else:
+				if not any_conflict_parents:
+					# Even though pkg was involved in a slot conflict
+					# where it was matched by all involved parent atoms,
+					# consider masking it in order to avoid a missed
+					# update as in bug 692746.
+					entry_is_valid = True
 
 			if not entry_is_valid:
 				return False
@@ -186,7 +199,10 @@ class Backtracker(object):
 		para = new_node.parameter
 
 		for change, data in changes.items():
-			if change == "needed_unstable_keywords":
+			if change == "circular_dependency":
+				for pkg, circular_children in data.items():
+					para.circular_dependency.setdefault(pkg, set()).update(circular_children)
+			elif change == "needed_unstable_keywords":
 				para.needed_unstable_keywords.update(data)
 			elif change == "needed_p_mask_changes":
 				para.needed_p_mask_changes.update(data)

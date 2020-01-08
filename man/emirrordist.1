@@ -119,6 +119,16 @@ Directory for individual fetch logs.
 Specifies a file containing a list of files to whitelist, one per line,
 # prefixed lines ignored. Use this option multiple times in order to
 specify multiple whitelists.
+.TP
+\fB\-\-symlinks\fR
+Use symbolic links to link distfiles to the primary layout from other
+specified layouts. If not specified, hard links are used instead.
+.TP
+\fB\-\-layout\-conf\fR=\fIFILE\fR
+Specifies alternate mirror \fIlayout.conf\fR file to use in order
+to select the desired distfile layout. If not specified,
+\fIlayout.conf\fR in \fB\-\-distfiles\fR directory will be used
+if present, otherwise flat layout will be assumed.
 .SH "REPORTING BUGS"
 Please report bugs via https://bugs.gentoo.org/
 .SH "THANKS"

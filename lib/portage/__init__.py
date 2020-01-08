@@ -470,7 +470,6 @@ _deprecated_eapis = frozenset([
 	"3_pre1",
 	"5_pre1",
 	"5_pre2",
-	"5-hdepend",
 	"6_pre1",
 	"7_pre1",
 ])
@@ -519,7 +518,7 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'BDEPEND', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'HDEPEND', 'UNUSED_04',
+	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
 auxdbkeylen = len(auxdbkeys)
@@ -564,7 +563,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		clean_env = {}
 		for k in ('PATH', 'PORTAGE_GRPNAME', 'PORTAGE_REPOSITORIES', 'PORTAGE_USERNAME',
 			'PYTHONPATH', 'SSH_AGENT_PID', 'SSH_AUTH_SOCK', 'TERM',
-			'ftp_proxy', 'http_proxy', 'no_proxy',
+			'ftp_proxy', 'http_proxy', 'https_proxy', 'no_proxy',
 			'__PORTAGE_TEST_HARDLINK_LOCKS'):
 			v = settings.get(k)
 			if v is not None:

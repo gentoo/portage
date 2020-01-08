@@ -1,6 +1,34 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.20
+==================================
+* Bug Fixes:
+    - Bug 541076 repoman commit: ignore unadded hidden files
+    - Bug 702100 repoman: support profiles/package.deprecated
+
+
+repoman-2.3.19
+==================================
+* Bug Fixes:
+    - Bug 667432 Rename DCO_SIGNED_OFF_BY config variable to SIGNED_OFF_BY.
+    - Bug 700456 Add --include-profiles=PROFILES
+
+
+repoman-2.3.18
+==================================
+* Bug Fixes:
+    - Bug 690786 Support metadata/layout.conf restrict-allowed
+    - Bug 699514 Detect dosym absolute paths starting with ${D}, ${ED} etc.
+    - Bug 699508 Fix unsafe string interpolation.
+
+
+repoman-2.3.17
+==================================
+* Bug Fixes:
+    - Bug 233589 Support PROPERTIES="live"
+
+
 repoman-2.3.16
 ==================================
 * Bug Fixes:

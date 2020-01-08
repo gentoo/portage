@@ -24,7 +24,7 @@ class SecuritySetTestCase(TestCase):
   </synopsis>
   <product type="ebuild">%(pkgname)s</product>
   <announced>January 18, 2013</announced>
-  <revised>January 18, 2013: 1</revised>
+  <revised count="1">January 18, 2013</revised>
   <bug>55555</bug>
   <access>remote</access>
   <affected>

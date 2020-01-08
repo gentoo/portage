@@ -248,5 +248,4 @@ in_iuse_supported_eapis:
     - "4-python"
     - "4-slot-abi"
     - "5"
-    - "5-hdepend"
     - "5-progress"

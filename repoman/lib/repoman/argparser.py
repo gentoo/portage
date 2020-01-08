@@ -165,6 +165,13 @@ def parse_args(argv, repoman_default_opts):
 			'filter the selection of profiles for dependency checks'))
 
 	parser.add_argument(
+		'--include-profiles',
+		dest='include_profiles', metavar='PROFILES', action='append',
+		help=(
+			'A space separated list of profiles used to '
+			'define the selection of profiles for dependency checks'))
+
+	parser.add_argument(
 		'-d', '--include-dev', dest='include_dev', action='store_true',
 		default=False,
 		help='include dev profiles in dependency checks')

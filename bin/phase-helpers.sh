@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -347,10 +347,7 @@ unpack() {
 				die "Relative paths to unpack() must be prefixed with './' in EAPI ${EAPI}"
 			fi
 		fi
-		if [[ ! -s ${srcdir}${x} ]]; then
-			__helpers_die "unpack: ${x} does not exist"
-			return 1
-		fi
+		[[ ! -s ${srcdir}${x} ]] && die "unpack: ${x} does not exist"
 
 		__unpack_tar() {
 			if [[ ${y_insensitive} == tar ]] ; then
@@ -361,14 +358,11 @@ unpack() {
 						"supported with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
 				$1 -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail" || return 1
+				__assert_sigpipe_ok "$myfail"
 			else
 				local cwd_dest=${x##*/}
 				cwd_dest=${cwd_dest%.*}
-				if ! $1 -c -- "${srcdir}${x}" > "${cwd_dest}"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				$1 -c -- "${srcdir}${x}" > "${cwd_dest}" || die "$myfail"
 			fi
 		}
 
@@ -381,10 +375,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tar'."
 				fi
-				if ! tar xof "$srcdir$x"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				tar xof "$srcdir$x" || die "$myfail"
 				;;
 			tgz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -393,10 +384,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'tgz'."
 				fi
-				if ! tar xozf "$srcdir$x"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				tar xozf "$srcdir$x" || die "$myfail"
 				;;
 			tbz|tbz2)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -406,7 +394,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'tbz' or 'tbz2'."
 				fi
 				${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- "$srcdir$x" | tar xof -
-				__assert_sigpipe_ok "$myfail" || return 1
+				__assert_sigpipe_ok "$myfail"
 				;;
 			zip|jar)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -418,10 +406,8 @@ unpack() {
 				fi
 				# unzip will interactively prompt under some error conditions,
 				# as reported in bug #336285
-				if ! unzip -qo "${srcdir}${x}"; then
-					__helpers_die "$myfail"
-					return 1
-				fi < <(set +x ; while true ; do echo n || break ; done)
+				( set +x ; while true ; do echo n || break ; done ) | \
+				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|z)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -430,7 +416,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'gz', 'z', or 'Z'."
 				fi
-				__unpack_tar "gzip -d" || return 1
+				__unpack_tar "gzip -d"
 				;;
 			bz2|bz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -439,8 +425,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'bz' or 'bz2'."
 				fi
-				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}" \
-					|| return 1
+				__unpack_tar "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d}"
 				;;
 			7z)
 				local my_output
@@ -457,10 +442,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'rar' or 'RAR'."
 				fi
-				if ! unrar x -idq -o+ "${srcdir}${x}"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				unrar x -idq -o+ "${srcdir}${x}" || die "$myfail"
 				;;
 			lha|lzh)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -470,10 +452,7 @@ unpack() {
 						"with EAPI '${EAPI}'." \
 						"Instead use 'LHA', 'LHa', 'lha', or 'lzh'."
 				fi
-				if ! lha xfq "${srcdir}${x}"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				lha xfq "${srcdir}${x}" || die "$myfail"
 				;;
 			a)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -482,10 +461,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'a'."
 				fi
-				if ! ar x "${srcdir}${x}"; then
-					__helpers_die "$myfail"
-					return 1
-				fi
+				ar x "${srcdir}${x}" || die "$myfail"
 				;;
 			deb)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -508,32 +484,20 @@ unpack() {
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
-						if ! ln -sf "$srcdir$x" "$y"; then
-							__helpers_die "$myfail"
-							return 1
-						fi
+						ln -sf "$srcdir$x" "$y" || die "$myfail"
 						created_symlink=1
 					fi
-					if ! deb2targz "$y"; then
-						__helpers_die "$myfail"
-						return 1
-					fi
+					deb2targz "$y" || die "$myfail"
 					if [ $created_symlink = 1 ] ; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
 						rm -f "$y"
 					fi
-					if ! mv -f "${y%.deb}".tar.gz data.tar.gz; then
-						if ! mv -f "${y%.deb}".tar.xz data.tar.xz; then
-							__helpers_die "$myfail"
-							return 1
-						fi
-					fi
+					mv -f "${y%.deb}".tar.gz data.tar.gz \
+						|| mv -f "${y%.deb}".tar.xz data.tar.xz \
+						|| die "$myfail"
 				else
-					if ! ar x "$srcdir$x"; then
-						__helpers_die "$myfail"
-						return 1
-					fi
+					ar x "$srcdir$x" || die "$myfail"
 				fi
 				;;
 			lzma)
@@ -543,7 +507,7 @@ unpack() {
 						"suffix '${suffix}' which is unofficially supported" \
 						"with EAPI '${EAPI}'. Instead use 'lzma'."
 				fi
-				__unpack_tar "lzma -d" || return 1
+				__unpack_tar "lzma -d"
 				;;
 			xz)
 				if ___eapi_unpack_is_case_sensitive && \
@@ -553,7 +517,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
 				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -d" || return 1
+					__unpack_tar "xz -d"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -566,10 +530,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
 				if ___eapi_unpack_supports_txz; then
-					if ! tar xof "$srcdir$x"; then
-						__helpers_die "$myfail"
-						return 1
-					fi
+					tar xof "$srcdir$x" || die "$myfail"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -715,6 +676,8 @@ econf() {
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
 			fi
+			# econf dies unconditionally in EAPIs 0 to 3
+			___eapi_helpers_can_die || die "econf failed"
 			__helpers_die "econf failed"
 			return 1
 		fi
@@ -1043,15 +1006,23 @@ if ___eapi_has_eapply; then
 			local f=${1}
 			local prefix=${2}
 
-			started_applying=1
 			ebegin "${prefix:-Applying }${f##*/}"
 			# -p1 as a sane default
 			# -f to avoid interactivity
-			# -s to silence progress output
 			# -g0 to guarantee no VCS interaction
 			# --no-backup-if-mismatch not to pollute the sources
-			${patch_cmd} -p1 -f -s -g0 --no-backup-if-mismatch \
-				"${patch_options[@]}" < "${f}"
+			local all_opts=(
+				-p1 -f -g0 --no-backup-if-mismatch
+				"${patch_options[@]}"
+			)
+			# try applying with -F0 first, output a verbose warning
+			# if fuzz factor is necessary
+			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
+					< "${f}" &>/dev/null; then
+				all_opts+=( -s -F0 )
+			fi
+
+			${patch_cmd} "${all_opts[@]}" < "${f}"
 			failed=${?}
 			if ! eend "${failed}"; then
 				__helpers_die "patch -p1 ${patch_options[*]} failed with ${f}"

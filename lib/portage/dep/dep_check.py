@@ -367,6 +367,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	pkg_use_enabled = trees[myroot].get("pkg_use_enabled")
 	want_update_pkg = trees[myroot].get("want_update_pkg")
 	downgrade_probe = trees[myroot].get("downgrade_probe")
+	circular_dependency = trees[myroot].get("circular_dependency")
 	vardb = None
 	if "vartree" in trees[myroot]:
 		vardb = trees[myroot]["vartree"].dbapi
@@ -589,6 +590,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 							if match_from_list(atom, cpv_slot_list):
 								circular_atom = atom
 								break
+						else:
+							for circular_child in circular_dependency.get(parent, []):
+								for atom in atoms:
+									if not atom.blocker and atom.match(circular_child):
+										circular_atom = atom
+										break
+								if circular_atom is not None:
+									break
+
 				if circular_atom is not None:
 					other.append(this_choice)
 				else:

@@ -38,7 +38,7 @@ import sys
 x_scripts = {
 	'bin': [
 		'bin/ebuild', 'bin/egencache', 'bin/emerge', 'bin/emerge-webrsync',
-		'bin/emirrordist', 'bin/portageq', 'bin/quickpkg',
+		'bin/emirrordist', 'bin/glsa-check', 'bin/portageq', 'bin/quickpkg',
 	],
 	'sbin': [
 		'bin/archive-conf', 'bin/dispatch-conf', 'bin/emaint', 'bin/env-update',
@@ -662,7 +662,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '2.3.68',
+	version = '2.3.84',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

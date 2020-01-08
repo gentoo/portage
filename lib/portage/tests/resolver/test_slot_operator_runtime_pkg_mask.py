@@ -1,4 +1,4 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -110,7 +110,7 @@ class SlotOperatorRuntimePkgMaskTestCase(TestCase):
 			ResolverPlaygroundTestCase(
 				["=app-misc/meta-pkg-2"],
 				options = {
-					"--backtrack": 5,
+					"--backtrack": 14,
 				},
 				success = True,
 				ambiguous_merge_order = True,

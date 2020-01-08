@@ -102,7 +102,7 @@ internal eclass database becomes outdated.
 .TP
 \fB\-\-experimental\-repository\-modules=<y|n>\fR
 Enable experimental repository modules:
-\fLhttps://wiki.gentoo.org/wiki/Project:Portage/Repoman-Module-specs\fR
+\fIhttps://wiki.gentoo.org/wiki/Project:Portage/Repoman-Module-specs\fR
 .TP
 \fB\-\-if\-modified=<y|n>\fR
 Only check packages that have uncommitted modifications
@@ -119,6 +119,10 @@ Ignore masked packages (not allowed with commit mode)
 .BR "\-\-include\-arches " ARCHES
 A space separated list of arches used to filter the selection of
 profiles for dependency checks.
+.TP
+.BR "\-\-include\-profiles " PROFILES
+A space separated list of profiles used to
+define the selection of profiles for dependency checks.
 .TP
 \fB\-d\fR, \fB\-\-include\-dev\fR
 Include dev profiles in dependency checks.
@@ -310,6 +314,9 @@ experimental arch
 .B dependency.badtilde
 Uses the ~ dep operator with a non-zero revision part, which is useless (the
 revision is ignored)
+.TP
+.B dependency.deprecated
+Ebuild has a dependency that refers to a deprecated package
 .TP
 .B dependency.syntax
 Syntax error in dependency string (usually an extra/missing space/parenthesis)

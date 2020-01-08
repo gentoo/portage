@@ -228,7 +228,7 @@ if __name__ == '__main__':
 	loop = asyncio.get_event_loop()
 	s = Socks5Server()
 	server = loop.run_until_complete(
-		asyncio.start_unix_server(s.handle_proxy_conn, sys.argv[1], loop=loop))
+		asyncio.start_unix_server(s.handle_proxy_conn, sys.argv[1]))
 
 	ret = 0
 	try:

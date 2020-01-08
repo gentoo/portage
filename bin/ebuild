@@ -1,5 +1,5 @@
 #!@PREFIX_PORTAGE_PYTHON@ -b
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -56,6 +56,7 @@ from portage.exception import PermissionDenied, PortageKeyError, \
 from portage.localization import _
 import portage.util
 from portage.util._eventloop.global_event_loop import global_event_loop
+from _emerge.actions import apply_priorities
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
@@ -125,6 +126,8 @@ if not opts.color == 'y' and \
 	portage.settings['NOCOLOR'] = 'true'
 	portage.settings.backup_changes('NOCOLOR')
 	portage.settings.lock()
+
+apply_priorities(portage.settings)
 
 ebuild = pargs.pop(0)
 
@@ -308,6 +311,11 @@ except PortageKeyError:
 
 root_config = RootConfig(portage.settings,
 	portage.db[portage.settings['EROOT']], None)
+
+cpv = portage.versions._pkg_str(cpv,
+	metadata=metadata,
+	settings=portage.settings,
+	db=portage.db[portage.settings['EROOT']][mytree].dbapi)
 
 pkg = Package(built=(pkg_type != "ebuild"), cpv=cpv,
 	installed=(pkg_type=="installed"),

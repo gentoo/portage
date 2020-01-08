@@ -1,17 +1,10 @@
 language: python
 python:
     - 2.7
-    - 3.4
-    - 3.5
     - 3.6
-    - pypy
-
-# See https://github.com/travis-ci/travis-ci/issues/9815
-matrix:
-  include:
-    - python: 3.7
-      dist: xenial
-      sudo: required
+    - 3.7
+    - 3.8-dev
+    - pypy3
 
 # command to install dependencies
 install:
@@ -35,8 +28,9 @@ script:
               -i '{}' +
     - ./setup.py test
     - ./setup.py install --root=/tmp/install-root
-    - if [[ ${TRAVIS_PYTHON_VERSION} == ?.? ]]; then
-        tox -e py${TRAVIS_PYTHON_VERSION/./};
+    - if [[ ${TRAVIS_PYTHON_VERSION/-dev/} == ?.? ]]; then
+        TOX_PYTHON_VERSION=${TRAVIS_PYTHON_VERSION/-dev/};
+        tox -e py${TOX_PYTHON_VERSION/./};
       else
         tox -e ${TRAVIS_PYTHON_VERSION};
       fi

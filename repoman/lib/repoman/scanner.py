@@ -8,6 +8,7 @@ from itertools import chain
 import portage
 from portage import normalize_path
 from portage import os
+from portage._sets.base import InternalPackageSet
 from portage.output import green
 from portage.util.futures.extendedfutures import ExtendedFuture
 from repoman.metadata import get_metadata_xsd
@@ -93,6 +94,9 @@ class Scanner(object):
 			'profile_list': profile_list,
 			'pmaskdict': global_pmaskdict,
 			'lic_deprecated': liclist_deprecated,
+			'package.deprecated': InternalPackageSet(initial_atoms=portage.util.stack_lists(
+				[portage.util.grabfile_package(os.path.join(path, 'profiles', 'package.deprecated'), recursive=True)
+				for path in self.portdb.porttrees], incremental=True))
 		}
 
 		self.repo_settings.repoman_settings['PORTAGE_ARCHLIST'] = ' '.join(sorted(kwlist))
@@ -164,6 +168,10 @@ class Scanner(object):
 		if self.options.include_arches:
 			self.include_arches = set()
 			self.include_arches.update(*[x.split() for x in self.options.include_arches])
+		self.include_profiles = None
+		if self.options.include_profiles:
+			self.include_profiles = set()
+			self.include_profiles.update(*[x.split() for x in self.options.include_profiles])
 
 		# Disable the "self.modules['Ebuild'].notadded" check when not in commit mode and
 		# running `svn status` in every package dir will be too expensive.
@@ -190,6 +198,7 @@ class Scanner(object):
 			"repo_metadata": self.repo_metadata,
 			"profiles": profiles,
 			"include_arches": self.include_arches,
+			"include_profiles": self.include_profiles,
 			"caches": self.caches,
 			"repoman_incrementals": self.repoman_incrementals,
 			"env": self.env,

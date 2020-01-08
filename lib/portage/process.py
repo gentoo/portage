@@ -10,7 +10,6 @@ import multiprocessing
 import platform
 import signal
 import socket
-import struct
 import subprocess
 import sys
 import traceback
@@ -354,6 +353,9 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 		fd_pipes[1] = pw
 		fd_pipes[2] = pw
 
+	# Cache _has_ipv6() result for use in child processes.
+	_has_ipv6()
+
 	# This caches the libc library lookup and _unshare_validator results
 	# in the current process, so that results are cached for use in
 	# child processes.
@@ -460,6 +462,73 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 
 	# Everything succeeded
 	return 0
+
+__has_ipv6 = None
+
+def _has_ipv6():
+	"""
+	Test that both userland and kernel support IPv6, by attempting
+	to create a socket and listen on any unused port of the IPv6
+	::1 loopback address.
+
+	@rtype: bool
+	@return: True if IPv6 is supported, False otherwise.
+	"""
+	global __has_ipv6
+
+	if __has_ipv6 is None:
+		if socket.has_ipv6:
+			sock = None
+			try:
+				# With ipv6.disable=0 and ipv6.disable_ipv6=1, socket creation
+				# succeeds, but then the bind call fails with this error:
+				# [Errno 99] Cannot assign requested address.
+				sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+				sock.bind(('::1', 0))
+			except EnvironmentError:
+				__has_ipv6 = False
+			else:
+				__has_ipv6 = True
+			finally:
+				# python2.7 sockets do not support context management protocol
+				if sock is not None:
+					sock.close()
+		else:
+			__has_ipv6 = False
+
+	return __has_ipv6
+
+def _configure_loopback_interface():
+	"""
+	Configure the loopback interface.
+	"""
+
+	# We add some additional addresses to work around odd behavior in glibc's
+	# getaddrinfo() implementation when the AI_ADDRCONFIG flag is set.
+	#
+	# For example:
+	#
+	#   struct addrinfo *res, hints = { .ai_family = AF_INET, .ai_flags = AI_ADDRCONFIG };
+	#   getaddrinfo("localhost", NULL, &hints, &res);
+	#
+	# This returns no results if there are no non-loopback addresses
+	# configured for a given address family.
+	#
+	# Bug: https://bugs.gentoo.org/690758
+	# Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=12377#c13
+
+	# Avoid importing this module on systems that may not support netlink sockets.
+	from portage.util.netlink import RtNetlink
+
+	try:
+		with RtNetlink() as rtnl:
+			ifindex = rtnl.get_link_ifindex(b'lo')
+			rtnl.set_link_up(ifindex)
+			rtnl.add_address(ifindex, socket.AF_INET, '10.0.0.1', 8)
+			if _has_ipv6():
+				rtnl.add_address(ifindex, socket.AF_INET6, 'fd::1', 8)
+	except EnvironmentError as e:
+		writemsg("Unable to configure loopback interface: %s\n" % e.strerror, noiselevel=-1)
 
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
@@ -574,8 +643,19 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 					if errno_value == 0 and libc.unshare(unshare_flags) != 0:
 						errno_value = ctypes.get_errno()
 					if errno_value != 0:
-						writemsg("Unable to unshare: %s\n" % (
-							errno.errorcode.get(errno_value, '?')),
+
+						involved_features = []
+						if unshare_ipc:
+							involved_features.append('ipc-sandbox')
+						if unshare_mount:
+							involved_features.append('mount-sandbox')
+						if unshare_net:
+							involved_features.append('network-sandbox')
+						if unshare_pid:
+							involved_features.append('pid-sandbox')
+
+						writemsg("Unable to unshare: %s (for FEATURES=\"%s\")\n" % (
+							errno.errorcode.get(errno_value, '?'), ' '.join(involved_features)),
 							noiselevel=-1)
 					else:
 						if unshare_pid:
@@ -639,19 +719,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 									noiselevel=-1)
 								os._exit(1)
 						if unshare_net:
-							# 'up' the loopback
-							IFF_UP = 0x1
-							ifreq = struct.pack('16sh', b'lo', IFF_UP)
-							SIOCSIFFLAGS = 0x8914
-
-							sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-							try:
-								fcntl.ioctl(sock, SIOCSIFFLAGS, ifreq)
-							except IOError as e:
-								writemsg("Unable to enable loopback interface: %s\n" % (
-									errno.errorcode.get(e.errno, '?')),
-									noiselevel=-1)
-							sock.close()
+							_configure_loopback_interface()
 				except AttributeError:
 					# unshare() not supported by libc
 					pass

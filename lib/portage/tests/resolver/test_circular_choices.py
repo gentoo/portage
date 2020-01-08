@@ -1,9 +1,113 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)
+
+class CircularJsoncppCmakeBootstrapTestCase(TestCase):
+
+	def testCircularJsoncppCmakeBootstrapOrDeps(self):
+
+		ebuilds = {
+			'dev-libs/jsoncpp-1.9.2': {
+				'EAPI': '7',
+				'BDEPEND': '|| ( dev-util/cmake-bootstrap dev-util/cmake )'
+			},
+			'dev-util/cmake-bootstrap-3.16.2': {
+				'EAPI': '7',
+			},
+			'dev-util/cmake-3.16.2': {
+				'EAPI': '7',
+				'BDEPEND': '>=dev-libs/jsoncpp-0.6.0_rc2:0=',
+			},
+		}
+
+		test_cases = (
+			# Demonstrate bug 703440. It ignores cmake-bootstrap in order to eliminate redundant packages.
+			#
+			#  * Error: circular dependencies:
+			#
+			# (dev-libs/jsoncpp-1.9.2:0/0::test_repo, ebuild scheduled for merge) depends on
+			#  (dev-util/cmake-3.16.2:0/0::test_repo, ebuild scheduled for merge) (buildtime)
+			#    (dev-libs/jsoncpp-1.9.2:0/0::test_repo, ebuild scheduled for merge) (buildtime_slot_op)
+			ResolverPlaygroundTestCase(
+				['dev-util/cmake'],
+				options = {"--backtrack": 0},
+				circular_dependency_solutions = {},
+				success = False,
+			),
+			# Demonstrate that backtracking adjusts || preferences in order to solve bug 703440.
+			ResolverPlaygroundTestCase(
+				['dev-util/cmake'],
+				mergelist = ['dev-util/cmake-bootstrap-3.16.2', 'dev-libs/jsoncpp-1.9.2', 'dev-util/cmake-3.16.2'],
+				success = True,
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+		test_cases = (
+			# Demonstrate elimination of cmake-bootstrap via --depclean.
+			ResolverPlaygroundTestCase(
+				[],
+				options = {'--depclean': True},
+				success = True,
+				cleanlist = ['dev-util/cmake-bootstrap-3.16.2'],
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=ebuilds, world=['dev-util/cmake'])
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
+
+	def testVirtualCmakeBootstrapUseConditional(self):
+
+		ebuilds = {
+			'dev-libs/jsoncpp-1.9.2': {
+				'EAPI': '7',
+				'BDEPEND': 'virtual/cmake'
+			},
+			'dev-util/cmake-bootstrap-3.16.2': {
+				'EAPI': '7',
+			},
+			'dev-util/cmake-3.16.2': {
+				'EAPI': '7',
+				'BDEPEND': '>=dev-libs/jsoncpp-0.6.0_rc2:0=',
+			},
+			'virtual/cmake-0': {
+				'EAPI': '7',
+				'IUSE': '+bootstrap',
+				'RDEPEND': 'bootstrap? ( dev-util/cmake-bootstrap ) !bootstrap? ( dev-util/cmake )'
+			},
+		}
+
+		test_cases = (
+			# Solve bug 703440 with a dependency conditional on the bootstrap USE flag.
+			ResolverPlaygroundTestCase(
+				['dev-util/cmake'],
+				mergelist = ['dev-util/cmake-bootstrap-3.16.2', 'virtual/cmake-0', 'dev-libs/jsoncpp-1.9.2', 'dev-util/cmake-3.16.2'],
+				success = True,
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.cleanup()
 
 class CircularChoicesTestCase(TestCase):
 
@@ -33,9 +137,6 @@ class CircularChoicesTestCase(TestCase):
 
 class VirtualCircularChoicesTestCase(TestCase):
 	def testDirectVirtualCircularDependency(self):
-
-		# Bug #384107
-		self.todo = True
 
 		ebuilds = {
 			"dev-java/icedtea-6.1.10.3": { "SLOT" : "6", "DEPEND": "virtual/jdk" },

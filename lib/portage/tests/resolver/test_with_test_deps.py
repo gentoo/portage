@@ -21,7 +21,27 @@ class WithTestDepsTestCase(TestCase):
 			},
 			"app-misc/C-0": {
 				"EAPI": "5",
-			}
+			},
+			"app-misc/D-0": {
+				"EAPI": "5",
+				"IUSE": "test",
+				"DEPEND": "test? ( app-misc/E )"
+			},
+			"app-misc/E-0": {
+				"EAPI": "5",
+				"IUSE": "test",
+				"DEPEND": "test? ( app-misc/D )"
+			},
+			"app-misc/F-0": {
+				"EAPI": "5",
+				"IUSE": "+test",
+				"DEPEND": "test? ( app-misc/G )"
+			},
+			"app-misc/G-0": {
+				"EAPI": "5",
+				"IUSE": "+test",
+				"DEPEND": "test? ( app-misc/F )"
+			},
 		}
 
 		test_cases = (
@@ -32,6 +52,23 @@ class WithTestDepsTestCase(TestCase):
 				success = True,
 				options = { "--onlydeps": True, "--with-test-deps": True },
 				mergelist = ["app-misc/B-0"]),
+
+			# Test that --with-test-deps allows circular dependencies.
+			ResolverPlaygroundTestCase(
+				['app-misc/D'],
+				success = True,
+				options = {'--with-test-deps': True},
+				mergelist = [('app-misc/D-0', 'app-misc/E-0')],
+				ambiguous_merge_order=True),
+
+			# Test that --with-test-deps does not allow circular dependencies
+			# when USE=test is explicitly enabled.
+			ResolverPlaygroundTestCase(
+				['app-misc/F'],
+				success = False,
+				options = {'--with-test-deps': True},
+				circular_dependency_solutions = {'app-misc/G-0': {frozenset({('test', False)})}, 'app-misc/F-0': {frozenset({('test', False)})}},
+			)
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)

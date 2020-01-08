@@ -74,7 +74,7 @@ class LineCheckController(object):
 	def run_checks(self, contents, pkg):
 		'''Run the configured linechecks
 
-		@param contents: the ebjuild contents to check
+		@param contents: the ebuild contents to check
 		@param pkg: the package being checked
 		'''
 		if self._constant_checks is None:
@@ -134,9 +134,13 @@ class LineCheckController(object):
 					if lc.check_eapi(pkg.eapi):
 						ignore = lc.ignore_line
 						if not ignore or not ignore.match(line):
-							e = lc.check(num, line)
-							if e:
-								yield lc.repoman_check_name, e % (num + 1)
+							errors = lc.check(num, line)
+							if errors:
+								if isinstance(errors, (tuple, list)):
+									for error in errors:
+										yield lc.repoman_check_name, "line %d: %s" % (num + 1, error)
+								else:
+									yield lc.repoman_check_name, "line %d: %s" % (num + 1, errors)
 
 		for lc in checks:
 			i = lc.end()

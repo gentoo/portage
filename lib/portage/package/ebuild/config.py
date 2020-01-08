@@ -75,7 +75,7 @@ if sys.hexversion >= 0x3000000:
 _feature_flags_cache = {}
 
 def _get_feature_flags(eapi_attrs):
-	cache_key = (eapi_attrs.feature_flag_test, eapi_attrs.feature_flag_targetroot)
+	cache_key = (eapi_attrs.feature_flag_test,)
 	flags = _feature_flags_cache.get(cache_key)
 	if flags is not None:
 		return flags
@@ -83,8 +83,6 @@ def _get_feature_flags(eapi_attrs):
 	flags = []
 	if eapi_attrs.feature_flag_test:
 		flags.append("test")
-	if eapi_attrs.feature_flag_targetroot:
-		flags.append("targetroot")
 
 	flags = frozenset(flags)
 	_feature_flags_cache[cache_key] = flags
@@ -157,9 +155,10 @@ class config(object):
 		'PORTAGE_PYM_PATH', 'PORTAGE_PYTHONPATH'])
 
 	_deprecated_keys = {'PORTAGE_LOGDIR': 'PORT_LOGDIR',
-		'PORTAGE_LOGDIR_CLEAN': 'PORT_LOGDIR_CLEAN'}
+		'PORTAGE_LOGDIR_CLEAN': 'PORT_LOGDIR_CLEAN',
+		'SIGNED_OFF_BY': 'DCO_SIGNED_OFF_BY'}
 
-	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI', 'HDEPEND',
+	_setcpv_aux_keys = ('BDEPEND', 'DEFINED_PHASES', 'DEPEND', 'EAPI',
 		'INHERITED', 'IUSE', 'REQUIRED_USE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
 		'PROPERTIES', 'RDEPEND', 'SLOT',
 		'repository', 'RESTRICT', 'LICENSE',)
@@ -1211,6 +1210,10 @@ class config(object):
 			writemsg(_("!!! FEATURES=fakeroot is enabled, but the "
 				"fakeroot binary is not installed.\n"), noiselevel=-1)
 
+		if "webrsync-gpg" in self.features:
+			writemsg(_("!!! FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page.\n"),
+				noiselevel=-1)
+
 		if os.getuid() == 0 and not hasattr(os, "setgroups"):
 			warning_shown = False
 
@@ -1804,13 +1807,6 @@ class config(object):
 				# temporarily disable FEATURES=test just for this package.
 				self["FEATURES"] = " ".join(x for x in self.features \
 					if x != "test")
-
-		if eapi_attrs.feature_flag_targetroot and \
-			("targetroot" in explicit_iuse or iuse_implicit_match("targetroot")):
-			if self["ROOT"] != "/":
-				use.add("targetroot")
-			else:
-				use.discard("targetroot")
 
 		# Allow _* flags from USE_EXPAND wildcards to pass through here.
 		use.difference_update([x for x in use \
@@ -2822,12 +2818,13 @@ class config(object):
 		if not eapi_exports_merge_type(eapi):
 			mydict.pop("MERGE_TYPE", None)
 
-		src_phase = _phase_func_map.get(phase, '').startswith('src_')
+		src_like_phase = (phase == 'setup' or
+				_phase_func_map.get(phase, '').startswith('src_'))
 
-		if not (src_phase and eapi_attrs.sysroot):
+		if not (src_like_phase and eapi_attrs.sysroot):
 			mydict.pop("ESYSROOT", None)
 
-		if not (src_phase and eapi_attrs.broot):
+		if not (src_like_phase and eapi_attrs.broot):
 			mydict.pop("BROOT", None)
 
 		# Prefix variables are supported beginning with EAPI 3, or when

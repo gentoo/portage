@@ -14,7 +14,7 @@ class EbuildBlankLine(LineCheck):
 
 	def check(self, num, line):
 		if self.line_is_blank and self.blank_line.match(line):
-			return 'Useless blank line on line: %d'
+			return 'Useless blank line'
 		if self.blank_line.match(line):
 			self.line_is_blank = True
 		else:

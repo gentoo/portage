@@ -88,9 +88,8 @@ class InheritEclass(LineCheck):
 				if eapi_func is None or not eapi_func(self._eapi):
 					self._func_call = True
 					return (
-						'%s.eclass is not inherited, '
-						'but "%s" found at line: %s' %
-						(self._eclass, func_name, '%d'))
+						'%s.eclass not inherited, but "%s" called' %
+						(self._eclass, func_name))
 		elif not self._func_call:
 			self._func_call = self._func_re.search(line)
 

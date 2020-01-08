@@ -315,7 +315,7 @@ class portdbapi(dbapi):
 					self._pregen_auxdb[x] = cache
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BDEPEND", "DEPEND", "EAPI", "HDEPEND",
+			["BDEPEND", "DEPEND", "EAPI",
 			"INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROPERTIES", "RDEPEND", "repository",
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])

@@ -108,6 +108,20 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata, qadata):
 					not atom.cp.startswith("virtual/"):
 					unknown_pkgs.add((mytype, atom.unevaluated_atom))
 
+				if not atom.blocker:
+					all_deprecated = False
+					for pkg_match in portdb.xmatch("match-all", atom):
+						if any(repo_metadata['package.deprecated'].iterAtomsForPackage(pkg_match)):
+							all_deprecated = True
+						else:
+							all_deprecated = False
+							break
+
+					if all_deprecated:
+						qatracker.add_error(
+							'dependency.deprecated',
+							ebuild.relative_path + ": '%s'" % atom)
+
 				if pkg.category != "virtual":
 					if not is_blocker and \
 						atom.cp in qadata.suspect_virtual:

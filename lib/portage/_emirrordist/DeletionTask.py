@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -10,15 +10,10 @@ from _emerge.CompositeTask import CompositeTask
 
 class DeletionTask(CompositeTask):
 
-	__slots__ = ('distfile', 'config')
+	__slots__ = ('distfile', 'distfile_path', 'config')
 
 	def _start(self):
-
-		distfile_path = os.path.join(
-			self.config.options.distfiles, self.distfile)
-
 		if self.config.options.recycle_dir is not None:
-			distfile_path = os.path.join(self.config.options.distfiles, self.distfile)
 			recycle_path = os.path.join(
 				self.config.options.recycle_dir, self.distfile)
 			if self.config.options.dry_run:
@@ -28,18 +23,20 @@ class DeletionTask(CompositeTask):
 				logging.debug(("move '%s' from "
 					"distfiles to recycle") % self.distfile)
 				try:
-					os.rename(distfile_path, recycle_path)
+					# note: distfile_path can be a symlink here
+					os.rename(os.path.realpath(self.distfile_path),
+							recycle_path)
 				except OSError as e:
 					if e.errno != errno.EXDEV:
 						logging.error(("rename %s from distfiles to "
 							"recycle failed: %s") % (self.distfile, e))
 				else:
-					self.returncode = os.EX_OK
+					self._delete_links()
 					self._async_wait()
 					return
 
 				self._start_task(
-					FileCopier(src_path=distfile_path,
+					FileCopier(src_path=self.distfile_path,
 						dest_path=recycle_path,
 						background=False),
 					self._recycle_copier_exit)
@@ -54,7 +51,7 @@ class DeletionTask(CompositeTask):
 			logging.debug(("delete '%s' from "
 				"distfiles") % self.distfile)
 			try:
-				os.unlink(distfile_path)
+				os.unlink(self.distfile_path)
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					logging.error("%s unlink failed in distfiles: %s" %
@@ -62,8 +59,7 @@ class DeletionTask(CompositeTask):
 					success = False
 
 		if success:
-			self._success()
-			self.returncode = os.EX_OK
+			self._delete_links()
 		else:
 			self.returncode = 1
 
@@ -89,17 +85,36 @@ class DeletionTask(CompositeTask):
 
 		else:
 			logging.error(("%s copy from distfiles "
-				"to recycle failed: %s") % (self.distfile, e))
+				"to recycle failed: %s") % (self.distfile, copier.future.exception()))
 			success = False
+
+		if success:
+			self._delete_links()
+		else:
+			self.returncode = 1
+
+		self._current_task = None
+		self.wait()
+
+	def _delete_links(self):
+		success = True
+		for layout in self.config.layouts:
+			distfile_path = os.path.join(
+				self.config.options.distfiles,
+				layout.get_path(self.distfile))
+			try:
+				os.unlink(distfile_path)
+			except OSError as e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					logging.error("%s unlink failed in distfiles: %s" %
+						(self.distfile, e))
+					success = False
 
 		if success:
 			self._success()
 			self.returncode = os.EX_OK
 		else:
 			self.returncode = 1
-
-		self._current_task = None
-		self.wait()
 
 	def _success(self):
 

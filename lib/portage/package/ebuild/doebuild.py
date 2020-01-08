@@ -116,13 +116,6 @@ _ipc_phases = frozenset([
 _global_pid_phases = frozenset([
 	'config', 'depend', 'preinst', 'prerm', 'postinst', 'postrm'])
 
-# phases in which networking access is allowed
-_networked_phases = frozenset([
-	# for VCS fetching
-	"unpack",
-	# + for network-bound IPC
-] + list(_ipc_phases))
-
 _phase_func_map = {
 	"config": "pkg_config",
 	"setup": "pkg_setup",
@@ -157,7 +150,9 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 		phase in _ipc_phases
 	kwargs['mountns'] = 'mount-sandbox' in settings.features
 	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		phase in _networked_phases or \
+		(phase == 'unpack' and \
+		'live' in settings.configdict['pkg'].get('PROPERTIES', '').split()) or \
+		phase in _ipc_phases or \
 		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
 	kwargs['pidns'] = ('pid-sandbox' in settings.features and
 		phase not in _global_pid_phases)
@@ -555,7 +550,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			compression = _compressors[binpkg_compression]
 		except KeyError as e:
 			if binpkg_compression:
-				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+				writemsg("Warning: Invalid or unsupported compression method: %s\n" % e.args[0])
 			else:
 				# Empty BINPKG_COMPRESS disables compression.
 				mysettings['PORTAGE_COMPRESSION_COMMAND'] = 'cat'
@@ -563,11 +558,11 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 			try:
 				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
 			except IndexError as e:
-				writemsg("Warning: Invalid or unsupported compression method: %s" % e.args[0])
+				writemsg("Warning: Invalid or unsupported compression method: %s\n" % e.args[0])
 			else:
 				if find_binary(compression_binary) is None:
 					missing_package = compression["package"]
-					writemsg("Warning: File compression unsupported %s. Missing package: %s" % (binpkg_compression, missing_package))
+					writemsg("Warning: File compression unsupported %s. Missing package: %s\n" % (binpkg_compression, missing_package))
 				else:
 					cmd = [varexpand(x, mydict=settings) for x in shlex_split(compression["compress"])]
 					# Filter empty elements

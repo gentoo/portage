@@ -1,4 +1,4 @@
-# Copyright 2013 Gentoo Foundation
+# Copyright 2013-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -20,17 +20,33 @@ class DeletionIterator(object):
 		deletion_db = self._config.deletion_db
 		deletion_delay = self._config.options.deletion_delay
 		start_time = self._config.start_time
-		distfiles_set = set(os.listdir(self._config.options.distfiles))
+		distfiles_set = set()
+		for layout in self._config.layouts:
+			distfiles_set.update(layout.get_filenames(distdir))
 		for filename in distfiles_set:
-			try:
-				st = os.stat(os.path.join(distdir, filename))
-			except OSError as e:
-				logging.error("stat failed on '%s' in distfiles: %s\n" %
-					(filename, e))
+			# require at least one successful stat()
+			exceptions = []
+			for layout in reversed(self._config.layouts):
+				path = os.path.join(distdir, layout.get_path(filename))
+				try:
+					st = os.stat(path)
+				except OSError as e:
+					# is it a dangling symlink?
+					try:
+						if os.path.islink(path):
+							os.unlink(path)
+					except OSError as e:
+						exceptions.append(e)
+				else:
+					if stat.S_ISREG(st.st_mode):
+						break
+			else:
+				if exceptions:
+					logging.error("stat failed on '%s' in distfiles: %s\n" %
+						(filename, '; '.join(str(x) for x in exceptions)))
 				continue
-			if not stat.S_ISREG(st.st_mode):
-				continue
-			elif filename in file_owners:
+
+			if filename in file_owners:
 				if deletion_db is not None:
 					try:
 						del deletion_db[filename]
@@ -56,6 +72,7 @@ class DeletionIterator(object):
 
 					yield DeletionTask(background=True,
 						distfile=filename,
+						distfile_path=path,
 						config=self._config)
 
 				else:
@@ -69,6 +86,7 @@ class DeletionIterator(object):
 
 						yield DeletionTask(background=True,
 							distfile=filename,
+							distfile_path=path,
 							config=self._config)
 
 		if deletion_db is not None:

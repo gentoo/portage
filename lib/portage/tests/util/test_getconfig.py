@@ -1,4 +1,4 @@
-# Copyright 2010-2017 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -19,7 +19,7 @@ class GetConfigTestCase(TestCase):
 
 	_cases = {
 		'FETCHCOMMAND'             : 'wget -t 3 -T 60 --passive-ftp -O "${DISTDIR}/${FILE}" "${URI}"',
-		'FETCHCOMMAND_RSYNC'       : 'rsync -avP "${URI}" "${DISTDIR}/${FILE}"',
+		'FETCHCOMMAND_RSYNC'       : 'rsync -LtvP "${URI}" "${DISTDIR}/${FILE}"',
 		'FETCHCOMMAND_SFTP'        : 'bash -c "x=\\${2#sftp://} ; host=\\${x%%/*} ; port=\\${host##*:} ; host=\\${host%:*} ; [[ \\${host} = \\${port} ]] && port= ; eval \\"declare -a ssh_opts=(\\${3})\\" ; exec sftp \\${port:+-P \\${port}} \\"\\${ssh_opts[@]}\\" \\"\\${host}:/\\${x#*/}\\" \\"\\$1\\"" sftp "${DISTDIR}/${FILE}" "${URI}" "${PORTAGE_SSH_OPTS}"',
 		'FETCHCOMMAND_SSH'         : 'bash -c "x=\\${2#ssh://} ; host=\\${x%%/*} ; port=\\${host##*:} ; host=\\${host%:*} ; [[ \\${host} = \\${port} ]] && port= ; exec rsync --rsh=\\"ssh \\${port:+-p\\${port}} \\${3}\\" -avP \\"\\${host}:/\\${x#*/}\\" \\"\\$1\\"" rsync "${DISTDIR}/${FILE}" "${URI}" "${PORTAGE_SSH_OPTS}"',
 		'PORTAGE_ELOG_MAILSUBJECT' : '[portage] ebuild log for ${PACKAGE} on ${HOST}'

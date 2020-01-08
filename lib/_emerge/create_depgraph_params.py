@@ -7,6 +7,11 @@ from portage.util import writemsg_level
 def create_depgraph_params(myopts, myaction):
 	#configure emerge engine parameters
 	#
+	# autounmask:               enable autounmask
+	# autounmask_keep_keywords: prevent autounmask changes to package.accept_keywords
+	# autounmask_keep_license:  prevent autounmask changes to package.license
+	# autounmask_keep_masks:    prevent autounmask changes to package.mask
+	# autounmask_keep_use:      prevent autounmask changes to package.use
 	# self:      include _this_ package regardless of if it is merged.
 	# selective: exclude the package if it is merged
 	# recurse:   go into the dependencies
@@ -27,12 +32,44 @@ def create_depgraph_params(myopts, myaction):
 	#   packages, so that they do not trigger dependency resolution
 	#   failures, or cause packages to be rebuilt or replaced.
 	# ignore_world: ignore the @world package set and its dependencies
+	# implicit_system_deps: Assume that packages may have implicit dependencies
+	#   on packages which belong to the @system set.
 	# with_test_deps: pull in test deps for packages matched by arguments
 	# changed_deps: rebuild installed packages with outdated deps
 	# changed_deps_report: report installed packages with outdated deps
 	# changed_slot: rebuild installed packages with outdated SLOT metadata
 	# binpkg_changed_deps: reject binary packages with outdated deps
 	myparams = {"recurse" : True}
+
+	autounmask_keep_keywords = myopts.get("--autounmask-keep-keywords")
+	autounmask_keep_masks = myopts.get("--autounmask-keep-masks")
+
+	autounmask = myopts.get("--autounmask")
+	autounmask_license = myopts.get('--autounmask-license')
+	autounmask_use = myopts.get('--autounmask-use')
+	if autounmask == 'n':
+		autounmask = False
+	else:
+		if autounmask is None:
+			if autounmask_use in (None, 'y'):
+				autounmask = True
+			elif autounmask_license in (None, 'y'):
+				autounmask = True
+
+			# Do not enable package.accept_keywords or package.mask
+			# changes by default.
+			if autounmask_keep_keywords is None:
+				autounmask_keep_keywords = True
+			if autounmask_keep_masks is None:
+				autounmask_keep_masks = True
+		else:
+			autounmask = True
+
+	myparams['autounmask'] = autounmask
+	myparams['autounmask_keep_use'] = True if autounmask_use == 'n' else False
+	myparams['autounmask_keep_license'] = True if autounmask_license == 'n' else False
+	myparams['autounmask_keep_keywords'] = False if autounmask_keep_keywords in (None, 'n') else True
+	myparams['autounmask_keep_masks'] = False if autounmask_keep_masks in (None, 'n') else True
 
 	bdeps = myopts.get("--with-bdeps")
 	if bdeps is not None:
@@ -51,6 +88,8 @@ def create_depgraph_params(myopts, myaction):
 	dynamic_deps = myopts.get("--dynamic-deps", "y") != "n" and "--nodeps" not in myopts
 	if dynamic_deps:
 		myparams["dynamic_deps"] = True
+
+	myparams["implicit_system_deps"] =  myopts.get("--implicit-system-deps", "y") != "n"
 
 	if myaction == "remove":
 		myparams["remove"] = True

@@ -19,7 +19,7 @@ class UndefinedSrcPrepareSrcConfigurePhases(LineCheck):
 		m = self.src_configprepare_re.match(line)
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
-				" phase is not defined in EAPI < 2 on line: %d"
+				" phase is not defined in EAPI < 2"
 
 
 # EAPI-3 checks
@@ -34,7 +34,7 @@ class Eapi3DeprecatedFuncs(LineCheck):
 		m = self.deprecated_commands_re.match(line)
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
-				" has been deprecated in EAPI=3 on line: %d"
+				" has been deprecated in EAPI=3"
 
 
 # EAPI <4 checks
@@ -49,7 +49,7 @@ class UndefinedPkgPretendPhase(LineCheck):
 		m = self.pkg_pretend_re.match(line)
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
-				" phase is not defined in EAPI < 4 on line: %d"
+				" phase is not defined in EAPI < 4"
 
 
 # EAPI-4 checks
@@ -64,7 +64,7 @@ class Eapi4IncompatibleFuncs(LineCheck):
 		m = self.banned_commands_re.match(line)
 		if m is not None:
 			return ("'%s'" % m.group(1)) + \
-				" has been banned in EAPI=4 on line: %d"
+				" has been banned in EAPI=4"
 
 
 class Eapi4GoneVars(LineCheck):
@@ -80,4 +80,4 @@ class Eapi4GoneVars(LineCheck):
 		m = self.undefined_vars_re.match(line)
 		if m is not None:
 			return ("variable '$%s'" % m.group(1)) + \
-				" is gone in EAPI=4 on line: %d"
+				" is gone in EAPI=4"

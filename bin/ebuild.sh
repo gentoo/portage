@@ -8,7 +8,7 @@ unalias -a
 
 # Make sure this isn't exported to scripts we execute.
 unset BASH_COMPAT
-export -n -f ___in_portage_iuse
+declare -F ___in_portage_iuse >/dev/null && export -n -f ___in_portage_iuse
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 
@@ -241,14 +241,6 @@ inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
-
-		# Since ECLASS_DEPTH > 1, the following variables are locals from the
-		# previous inherit call in the call stack.
-		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
-			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
-			eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
-			eqawarn "after inherit(s)."
-		fi
 	fi
 
 	local -x ECLASS
@@ -262,7 +254,6 @@ inherit() {
 	local B_DEPEND
 	local B_RDEPEND
 	local B_PDEPEND
-	local B_HDEPEND
 	local B_BDEPEND
 	while [ "$1" ]; do
 		location=""
@@ -308,16 +299,14 @@ inherit() {
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_HDEPEND B_BDEPEND
+			unset B_BDEPEND
 			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
 			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-			[ "${HDEPEND+set}"    = set ] && B_HDEPEND="${HDEPEND}"
 			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
-			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND HDEPEND
-			unset BDEPEND
+			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND
 			#turn on glob expansion
 			set +f
 		fi
@@ -335,7 +324,6 @@ inherit() {
 			[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
 			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
 			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-			[ "${HDEPEND+set}"      = set ] && E_HDEPEND+="${E_HDEPEND:+ }${HDEPEND}"
 			[ "${BDEPEND+set}"      = set ] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
 
 			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
@@ -352,9 +340,6 @@ inherit() {
 
 			[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
 			[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
-
-			[ "${B_HDEPEND+set}"  = set ] && HDEPEND="${B_HDEPEND}"
-			[ "${B_HDEPEND+set}"  = set ] || unset HDEPEND
 
 			[ "${B_BDEPEND+set}"  = set ] && BDEPEND="${B_BDEPEND}"
 			[ "${B_BDEPEND+set}"  = set ] || unset BDEPEND
@@ -615,9 +600,9 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND HDEPEND BDEPEND
+		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
-		unset E_DEPEND E_RDEPEND E_PDEPEND E_HDEPEND E_BDEPEND
+		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND
 		unset PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
@@ -653,12 +638,11 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		DEPEND+="${DEPEND:+ }${E_DEPEND}"
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
-		HDEPEND+="${HDEPEND:+ }${E_HDEPEND}"
 		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 		
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_HDEPEND E_BDEPEND __INHERITED_QA_CACHE
+		unset E_BDEPEND __INHERITED_QA_CACHE
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case ${EAPI} in
@@ -728,12 +712,9 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES HDEPEND UNUSED_04
+		EAPI PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
-	if ! ___eapi_has_HDEPEND; then
-		unset HDEPEND
-	fi
 	if ! ___eapi_has_BDEPEND; then
 		unset BDEPEND
 	fi

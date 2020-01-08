@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -122,6 +122,23 @@ def action_build(emerge_config, trees=DeprecationWarning,
 	# It's best for config updates in /etc/portage to be processed
 	# before we get here, so warn if they're not (bug #267103).
 	chk_updated_cfg_files(settings['EROOT'], ['/etc/portage'])
+
+	quickpkg_direct = ("--usepkg" in emerge_config.opts and
+		emerge_config.opts.get('--quickpkg-direct', 'n') == 'y' and
+		emerge_config.target_config is not emerge_config.running_config)
+	if '--getbinpkg' in emerge_config.opts or quickpkg_direct:
+		kwargs = {}
+		if quickpkg_direct:
+			kwargs['add_repos'] = (emerge_config.running_config.trees['vartree'].dbapi,)
+
+		try:
+			emerge_config.target_config.trees['bintree'].populate(
+				getbinpkgs='--getbinpkg' in emerge_config.opts,
+				**kwargs)
+		except ParseError as e:
+			writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
+					 % e, noiselevel=-1)
+			return 1
 
 	# validate the state of the resume data
 	# so that we can make assumptions later.
@@ -353,12 +370,17 @@ def action_build(emerge_config, trees=DeprecationWarning,
 			# instances need to load remote metadata if --getbinpkg
 			# is enabled. Use getbinpkg_refresh=False to use cached
 			# metadata, since the cache is already fresh.
-			if "--getbinpkg" in emerge_config.opts:
+			if "--getbinpkg" in emerge_config.opts or quickpkg_direct:
 				for root_trees in emerge_config.trees.values():
+					kwargs = {}
+					if quickpkg_direct:
+						kwargs['add_repos'] = (emerge_config.running_config.trees['vartree'].dbapi,)
+
 					try:
 						root_trees["bintree"].populate(
 							getbinpkgs=True,
-							getbinpkg_refresh=False)
+							getbinpkg_refresh=False,
+							**kwargs)
 					except ParseError as e:
 						writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n"
 								 % e, noiselevel=-1)
@@ -1341,7 +1363,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
 			"BDEPEND": buildtime,
-			"HDEPEND": buildtime,
 			"DEPEND": buildtime,
 		}
 
@@ -2456,7 +2477,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
 	for k, envvar in (("config_root", "PORTAGE_CONFIGROOT"), ("target_root", "ROOT"),
 			("sysroot", "SYSROOT"), ("eprefix", "EPREFIX")):
 		v = env.get(envvar)
-		if v and v.strip():
+		if v is not None:
 			kwargs[k] = v
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
 				**kwargs)
@@ -2936,15 +2957,27 @@ def run_action(emerge_config):
 	if (emerge_config.action in ('search', None) and
 		'--usepkg' in emerge_config.opts):
 		for mytrees in emerge_config.trees.values():
+			kwargs = {}
+			if (mytrees is emerge_config.target_config.trees and
+				emerge_config.target_config is not emerge_config.running_config and
+				emerge_config.opts.get('--quickpkg-direct', 'n') == 'y'):
+				kwargs['add_repos'] = (emerge_config.running_config.trees['vartree'].dbapi,)
+
 			try:
 				mytrees['bintree'].populate(
-					getbinpkgs='--getbinpkg' in emerge_config.opts)
+					getbinpkgs='--getbinpkg' in emerge_config.opts,
+					**kwargs)
 			except ParseError as e:
 				writemsg('\n\n!!!%s.\nSee make.conf(5) for more info.\n'
 						 % (e,), noiselevel=-1)
 				return 1
 
 	adjust_configs(emerge_config.opts, emerge_config.trees)
+
+	if "--changelog" in emerge_config.opts:
+		writemsg_level(
+			" %s The emerge --changelog (or -l) option is deprecated\n" %
+			warn("*"), level=logging.WARNING, noiselevel=-1)
 
 	if profile_check(emerge_config.trees, emerge_config.action) != os.EX_OK:
 		return 1

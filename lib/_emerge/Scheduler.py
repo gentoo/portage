@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -499,6 +499,10 @@ class Scheduler(PollScheduler):
 		added to the graph and traversed deeply (the depgraph "complete"
 		parameter will do this, triggered by emerge --complete-graph option).
 		"""
+		params = create_depgraph_params(self.myopts, None)
+		if not params["implicit_system_deps"]:
+			return
+
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
 		deep_system_deps.update(
@@ -775,11 +779,7 @@ class Scheduler(PollScheduler):
 		"""
 
 		failures = 0
-
-		# Use a local EventLoop instance here, since we don't
-		# want tasks here to trigger the usual Scheduler callbacks
-		# that handle job scheduling and status display.
-		sched_iface = SchedulerInterface(EventLoop(main=False))
+		sched_iface = self._sched_iface
 
 		for x in self._mergelist:
 			if not isinstance(x, Package):
@@ -872,10 +872,11 @@ class Scheduler(PollScheduler):
 
 					if fetched:
 						bintree.inject(x.cpv, filename=fetched)
-					tbz2_file = bintree.getname(x.cpv)
+
 					infloc = os.path.join(build_dir_path, "build-info")
 					ensure_dirs(infloc)
-					portage.xpak.tbz2(tbz2_file).unpackinfo(infloc)
+					self._sched_iface.run_until_complete(
+						bintree.dbapi.unpack_metadata(settings, infloc))
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 					settings.configdict["pkg"]["MERGE_TYPE"] = "binary"

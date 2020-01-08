@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -299,7 +299,6 @@ def _find_bad_atoms(atoms, less_strict=False):
 def parse_opts(tmpcmdline, silent=False):
 	myaction=None
 	myopts = {}
-	myfiles=[]
 
 	actions = frozenset([
 		"clean", "check-news", "config", "depclean", "help",
@@ -347,9 +346,19 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--autounmask-license": {
+			"help"    : "allow autounmask to change package.license",
+			"choices" : y_or_n
+		},
+
 		"--autounmask-unrestricted-atoms": {
 			"help"    : "write autounmask changes with >= atoms if possible",
 			"choices" : true_y_or_n
+		},
+
+		"--autounmask-use": {
+			"help"    : "allow autounmask to change package.use",
+			"choices" : y_or_n
 		},
 
 		"--autounmask-keep-keywords": {
@@ -516,6 +525,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : true_y_or_n
 		},
 
+		"--implicit-system-deps": {
+			"help": "Assume that packages may have implicit dependencies on"
+				"packages which belong to the @system set",
+			"choices": y_or_n
+		},
+
 		"--jobs": {
 
 			"shortopt" : "-j",
@@ -626,6 +641,11 @@ def parse_opts(tmpcmdline, silent=False):
 		"--pkg-format": {
 			"help"     : "format of result binary package",
 			"action"   : "store",
+		},
+
+		"--quickpkg-direct": {
+			"help": "Enable use of installed packages directly as binary packages",
+			"choices": y_or_n
 		},
 
 		"--quiet": {
@@ -800,9 +820,11 @@ def parse_opts(tmpcmdline, silent=False):
 		parser.add_argument(dest=myopt.lstrip("--").replace("-", "_"),
 			*args, **kwargs)
 
+	parser.add_argument('positional_args', nargs='*')
+
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
-	myoptions, myargs = parser.parse_known_args(args=tmpcmdline)
+	myoptions = parser.parse_args(args=tmpcmdline)
 
 	if myoptions.alert in true_y:
 		myoptions.alert = True
@@ -1155,9 +1177,7 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	myfiles += myargs
-
-	return myaction, myopts, myfiles
+	return myaction, myopts, myoptions.positional_args
 
 def profile_check(trees, myaction):
 	if myaction in ("help", "info", "search", "sync", "version"):

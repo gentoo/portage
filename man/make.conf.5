@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jun 2019" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2019" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -12,7 +12,7 @@ simple shell\-like expansion of the form \fIvar="${var}"\fR, the source
 keyword and variable substitution, but not some of the more advanced BASH
 features like arrays and special parameter expansions. For more details, see
 the Simple lexical analysis documentation:
-\fLhttps://docs.python.org/3/library/shlex.html\fR. Note that if you source
+\fIhttps://docs.python.org/3/library/shlex.html\fR. Note that if you source
 files, they need to be in the same shlex syntax for portage to read them.
 If make.conf is a directory, then all the files in that directory will
 be sorted in ascending alphabetical order by file name and summed
@@ -208,8 +208,7 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
 .B DCO_SIGNED_OFF_BY
-This variable may contain a name and email address which will be used by
-\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
+See \fISIGNED_OFF_BY\fR below.  Deprecated.
 .TP
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository. After packages
@@ -397,14 +396,15 @@ will be reused whenever they are available.
 .B distcc
 Enable portage support for the distcc package.
 .TP
-.B distcc\-pump
-Enable portage support for the distcc package with pump mode.
-.TP
 .B distlocks
 Portage uses lockfiles to ensure competing instances don't clobber
-each other's files. This feature is enabled by default but may cause
+each other's files.  It covers saving distfiles to ${DISTDIR} and
+binpkgs to ${PKGDIR}.
+
+This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
-strangely configured Samba server (oplocks off, NFS re\-export). A tool
+strangely configured Samba servers (oplocks off, NFS re\-export).
+
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
 .TP
@@ -564,6 +564,14 @@ Supported only on Linux. Requires PID and mount namespace support
 in kernel. /proc is remounted inside the mount namespace to account
 for new PID namespace.
 .TP
+.B pkgdir\-index\-trusted
+Trust that the \fBPKGDIR\fR index file is valid, meaning that no packages
+have been manually added or removed since the last call to
+\fBemaint \-\-fix binhost\fR. This feature eliminates overhead involved
+with detection of packages that have been manually added or removed,
+which significantly improves performance in some cases, such as when
+\fBPKGDIR\fR resides on a high\-latency network file system.
+.TP
 .B prelink\-checksums
 If \fBprelink\fR(8) is installed then use it to undo any prelinks on files
 before computing checksums for merge and unmerge. This feature is
@@ -722,7 +730,9 @@ Portage would have to waste time validating ownership for each and every sync
 operation.
 .TP
 .B webrsync-gpg
-Enable GPG verification when using \fIemerge\-webrsync\fR.
+Enable GPG verification when using \fIemerge\-webrsync\fR. This feature is
+deprecated and has been replaced by the \fBrepos.conf\fR
+\fIsync\-webrsync\-verify\-signature\fR setting, see \fBportage\fR(5).
 .TP
 .B xattr
 Preserve extended attributes (filesystem-stored metadata) when installing
@@ -1132,6 +1142,14 @@ Defaults to /.
 Defines the location where created RPM packages will be stored.
 .br
 Defaults to /var/cache/rpm.
+.TP
+.B SIGNED_OFF_BY
+This variable may contain a name and email address which will be used by
+\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
+The meaning of a signoff depends on the project.  Typically, it certifies
+that the committer has the rights to submit the work under a free license
+and agrees to a Certificate of Origin.  (For example, see GLEP 76 for the
+Gentoo Linux policy: \fIhttps://www.gentoo.org/glep/glep-0076.html\fR.)
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server

@@ -53,7 +53,7 @@ class SrcCompileEconf(PhaseCheck):
 			m = self.configure_re.match(line)
 			if m is not None:
 				return ("'%s'" % m.group(1)) + \
-					" call should be moved to src_configure from line: %d"
+					" call should be moved to src_configure"
 
 
 class SrcUnpackPatches(PhaseCheck):
@@ -68,4 +68,4 @@ class SrcUnpackPatches(PhaseCheck):
 			m = self.src_prepare_tools_re.search(line)
 			if m is not None:
 				return ("'%s'" % m.group(1)) + \
-					" call should be moved to src_prepare from line: %d"
+					" call should be moved to src_prepare"

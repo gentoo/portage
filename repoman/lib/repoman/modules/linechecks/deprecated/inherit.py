@@ -30,14 +30,12 @@ class InheritDeprecated(LineCheck):
 		"mono": "mono-env",
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
+		"user": "GLEP 81",
 		"versionator": "eapi7-ver (built-in since EAPI 7)",
 		"x-modular": "xorg-2",
 	}
 
 	_inherit_re = re.compile(r'^\s*inherit\s(.*)$')
-
-	def new(self, pkg):
-		self._errors = []
 
 	def check(self, num, line):
 		direct_inherits = None
@@ -50,20 +48,17 @@ class InheritDeprecated(LineCheck):
 		if not direct_inherits:
 			return
 
+		errors = []
 		for eclass in direct_inherits:
 			replacement = self.deprecated_eclasses.get(eclass)
 			if replacement is None:
 				pass
 			elif replacement is False:
-				self._errors.append(
+				errors.append(
 					"please migrate from "
-					"'%s' (no replacement) on line: %d" % (eclass, num + 1))
+					"'%s' (no replacement)" % eclass)
 			else:
-				self._errors.append(
+				errors.append(
 					"please migrate from "
-					"'%s' to '%s' on line: %d" % (eclass, replacement, num + 1))
-
-	def end(self):
-		for error in self._errors:
-			yield error
-		del self._errors
+					"'%s' to '%s'" % (eclass, replacement))
+		return errors

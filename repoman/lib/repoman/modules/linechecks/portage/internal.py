@@ -20,7 +20,7 @@ class PortageInternal(LineCheck):
 		"""Run the check on line and return error if there is one"""
 		m = self.re.match(line)
 		if m is not None:
-			return ("'%s'" % m.group(2)) + " called on line: %d"
+			return "'%s' called" % m.group(2)
 
 
 class PortageInternalVariableAssignment(LineCheck):
@@ -30,8 +30,5 @@ class PortageInternalVariableAssignment(LineCheck):
 
 	def check(self, num, line):
 		match = self.internal_assignment.match(line)
-		e = None
 		if match is not None:
-			e = 'Assignment to variable %s' % match.group(2)
-			e += ' on line: %d'
-		return e
+			return 'Assignment to variable %s' % match.group(2)

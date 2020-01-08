@@ -1,4 +1,4 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Portability shim for xattr support
@@ -63,7 +63,7 @@ class _XattrSystemCommands(_XattrGetAll):
 		cmd = ['getfattr', '--absolute-names', '-n', name, item]
 		if nofollow:
 			cmd += ['-h']
-		proc = cls._call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc = cls._call(cmd, stdout=subprocess.PIPE)
 
 		value = None
 		for _, value in cls._parse_output(proc.stdout):
@@ -94,7 +94,7 @@ class _XattrSystemCommands(_XattrGetAll):
 		if nofollow:
 			cmd += ['-h']
 		cmd += ['-m', ('^%s[.]' % namespace) if namespace else '-']
-		proc = cls._call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		proc = cls._call(cmd, stdout=subprocess.PIPE)
 
 		ret = []
 		if namespace:

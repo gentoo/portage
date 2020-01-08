@@ -48,7 +48,7 @@ eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
 	PORTAGE_NICENESS PORTAGE_REPOSITORIES PORTAGE_RSYNC_EXTRA_OPTS \
-	PORTAGE_RSYNC_OPTS PORTAGE_TMPDIR \
+	PORTAGE_RSYNC_OPTS PORTAGE_TEMP_GPG_DIR PORTAGE_TMPDIR \
 	USERLAND http_proxy ftp_proxy)"
 export http_proxy ftp_proxy
 
@@ -114,9 +114,21 @@ if [[ ! -d $STATE_DIR ]]; then
 	exit -2
 fi
 
-if has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature | \
+has webrsync-gpg ${FEATURES} && webrsync_gpg=1 || webrsync_gpg=0
+
+if [[ ${webrsync_gpg} -eq 1 ]]; then
+	wecho "FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page."
+fi
+
+if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
+	has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature |
 	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
-	if [[ ! -d ${PORTAGE_GPG_DIR} ]]; then
+	# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
+	# calls for backward compatibility (this triggers a deprecation warning
+	# above). Since direct emerge-webrsync calls do not use gemato for secure
+	# key refresh, this behavior will not be supported in a future release.
+	if [[ ! ( -d ${PORTAGE_GPG_DIR} && ${webrsync_gpg} -eq 1 ) &&
+		-z ${PORTAGE_TEMP_GPG_DIR} ]]; then
 		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
 		exit 1
 	fi
@@ -126,6 +138,7 @@ elif has webrsync-gpg ${FEATURES}; then
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
 fi
+[[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	eecho "please set PORTAGE_GPG_DIR in make.conf"
 	exit 1
@@ -319,7 +332,7 @@ check_file_signature() {
 get_snapshot_timestamp() {
 	local file="$1"
 
-	do_tar "${file}" --to-stdout -xf - portage/metadata/timestamp.x | cut -f 1 -d " "
+	do_tar "${file}" --to-stdout -f - --wildcards -x '*/metadata/timestamp.x' | cut -f 1 -d " "
 }
 
 sync_local() {
@@ -348,23 +361,23 @@ sync_local() {
 			return 1
 		fi
 	else
-		if ! do_tar "${file}" xf - -C "${TMPDIR}" ; then
+		if ! do_tar "${file}" -x --strip-components=1 -f - -C "${TMPDIR}" ; then
 			eecho "tar failed to extract the image. tarball is corrupt? (${file})"
-			rm -fr "${TMPDIR}"/portage
+			rm -fr "${TMPDIR}"
 			return 1
 		fi
 
 		local rsync_opts="${PORTAGE_RSYNC_OPTS} ${PORTAGE_RSYNC_EXTRA_OPTS}"
-		if chown ${ownership} "${TMPDIR}"/portage > /dev/null 2>&1; then
-			chown -R ${ownership} "${TMPDIR}"/portage
+		if chown ${ownership} "${TMPDIR}" > /dev/null 2>&1; then
+			chown -R ${ownership} "${TMPDIR}"
 			rsync_opts+=" --owner --group"
 		fi
-		cd "${TMPDIR}"/portage
+		chmod 755 .
 		rsync ${rsync_opts} . "${repo_location%%/}"
 		cd "${DISTDIR}"
 
 		__vecho "Cleaning up ..."
-		rm -fr "${TMPDIR}"/portage
+		rm -fr "${TMPDIR}"
 	fi
 
 	if has metadata-transfer ${FEATURES} ; then
