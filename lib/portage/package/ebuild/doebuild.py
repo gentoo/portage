@@ -369,7 +369,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["RPMDIR"]  = os.path.realpath(mysettings["RPMDIR"])
 
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
-	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
 	mysettings["PORTAGE_BASHRC_FILES"] = "\n".join(mysettings._pbashrc)
 
@@ -407,6 +406,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+	mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
 	mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
 	# Prefix forward compatability
