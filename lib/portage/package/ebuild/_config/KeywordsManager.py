@@ -5,6 +5,8 @@ __all__ = (
 	'KeywordsManager',
 )
 
+import warnings
+
 from _emerge.Package import Package
 from portage import os
 from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
@@ -54,13 +56,20 @@ class KeywordsManager(object):
 		self.pkeywordsdict = ExtendedAtomDict(dict)
 
 		if user_config:
+			user_accept_kwrds_path = os.path.join(abs_user_config, "package.accept_keywords")
+			user_kwrds_path = os.path.join(abs_user_config, "package.keywords")
 			pkgdict = grabdict_package(
-				os.path.join(abs_user_config, "package.keywords"),
+				user_kwrds_path,
 				recursive=1, allow_wildcard=True, allow_repo=True,
 				verify_eapi=False, allow_build_id=True)
 
+			if pkgdict:
+				warnings.warn(_("%s is deprecated, use %s instead") %
+					(user_kwrds_path, user_accept_kwrds_path),
+					UserWarning)
+
 			for k, v in grabdict_package(
-				os.path.join(abs_user_config, "package.accept_keywords"),
+				user_accept_kwrds_path,
 				recursive=1, allow_wildcard=True, allow_repo=True,
 				verify_eapi=False, allow_build_id=True).items():
 				pkgdict.setdefault(k, []).extend(v)
