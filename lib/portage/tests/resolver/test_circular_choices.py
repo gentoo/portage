@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Gentoo Authors
+# Copyright 2011-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -184,17 +184,11 @@ class CircularPypyExeTestCase(TestCase):
 		}
 
 		test_cases = (
-			# Demonstrate bug 705986, where a USE change suggestion is given
-			# even though an || preference adjustment is available.
+			# Demonstrate bug 705986, where a USE change suggestion was given
+			# even though an || preference adjustment would solve the problem
+			# by pulling in pypy-exe-bin instead of pypy-exe.
 			ResolverPlaygroundTestCase(
 				['dev-python/pypy'],
-				circular_dependency_solutions = {'dev-python/pypy-7.3.0': {frozenset({('low-memory', True)})}},
-				success = False,
-			),
-			# Demonstrate explicit pypy-exe-bin argument used as a workaround
-			# for bug 705986.
-			ResolverPlaygroundTestCase(
-				['dev-python/pypy', 'dev-python/pypy-exe-bin'],
 				mergelist=['dev-python/pypy-exe-bin-7.3.0', 'dev-python/pypy-7.3.0'],
 				success = True,
 			),

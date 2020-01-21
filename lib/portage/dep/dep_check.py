@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -570,8 +570,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 				circular_atom = None
 				if not (parent is None or priority is None) and \
 					(parent.onlydeps or
-					(all_in_graph and priority.buildtime and
-					not (priority.satisfied or priority.optional))):
+					(priority.buildtime and not priority.satisfied and not priority.optional)):
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
 						# to be unresolvable. This is only relevant for
