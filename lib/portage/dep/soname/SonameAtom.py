@@ -10,7 +10,7 @@ from portage import _encodings, _unicode_encode
 class SonameAtom(object):
 
 	__slots__ = ("multilib_category", "soname", "_hash_key",
-		"_hash_value", "_immutable")
+		"_hash_value")
 
 	# Distiguishes package atoms from other atom types
 	package = False
@@ -21,14 +21,17 @@ class SonameAtom(object):
 		object.__setattr__(self, "_hash_key",
 			(multilib_category, soname))
 		object.__setattr__(self, "_hash_value", hash(self._hash_key))
-		object.__setattr__(self, "_immutable", True)
 
 	def __setattr__(self, name, value):
-		if getattr(self, '_immutable', False):
-			raise AttributeError("SonameAtom instances are immutable",
-				self.__class__, name, value)
-		# This is needed for unpickling.
-		object.__setattr__(self, name, value)
+		raise AttributeError("SonameAtom instances are immutable",
+			self.__class__, name, value)
+
+	def __getstate__(self):
+		return dict((k, getattr(self, k)) for k in self.__slots__)
+
+	def __setstate__(self, state):
+		for k, v in state.items():
+			object.__setattr__(self, k, v)
 
 	def __hash__(self):
 		return self._hash_value

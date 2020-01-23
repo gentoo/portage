@@ -16,8 +16,6 @@ class TestSonameAtomPickle(TestCase):
 	_ALL_PROVIDES = frozenset([SonameAtom('x86_64', 'libc.so.6')])
 
 	def test_soname_atom_pickle(self):
-		if sys.version_info < (3,):
-			self.skipTest('SonameAtom pickle not implemented for python2 (bug 706186)')
 		loop = asyncio._wrap_loop()
 		with ForkExecutor(loop=loop) as executor:
 			result = loop.run_until_complete(loop.run_in_executor(executor, self._get_all_provides))
