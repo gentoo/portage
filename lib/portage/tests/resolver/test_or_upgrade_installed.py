@@ -158,3 +158,74 @@ class OrUpgradeInstalledTestCase(TestCase):
 		finally:
 			playground.debug = False
 			playground.cleanup()
+
+
+	def test_llvm_slot_operator(self):
+		ebuilds = {
+			'media-libs/mesa-19.2.8': {
+				'EAPI': '7',
+				'RDEPEND': '''|| (
+					sys-devel/llvm:10
+					sys-devel/llvm:9
+					sys-devel/llvm:8
+					sys-devel/llvm:7
+				)
+				sys-devel/llvm:='''
+			},
+			'sys-devel/llvm-10': {
+				'EAPI': '7',
+				'KEYWORDS': '',
+				'SLOT': '10',
+			},
+			'sys-devel/llvm-9': {
+				'EAPI': '7',
+				'SLOT': '9',
+			},
+			'sys-devel/llvm-8': {
+				'EAPI': '7',
+				'SLOT': '8',
+			},
+		}
+
+		installed = {
+			'media-libs/mesa-19.2.8': {
+				'EAPI': '7',
+				'RDEPEND': '''|| (
+					sys-devel/llvm:10
+					sys-devel/llvm:9
+					sys-devel/llvm:8
+					sys-devel/llvm:7
+				)
+				sys-devel/llvm:8/8='''
+			},
+			'sys-devel/llvm-8': {
+				'EAPI': '7',
+				'SLOT': '8',
+			},
+		}
+
+		world = ['media-libs/mesa']
+
+		test_cases = (
+			# Demonstrate bug 706278, where there is a missed slot operator
+			# rebuild that prevents upgrade from llvm-8 to llvm-9.
+			ResolverPlaygroundTestCase(
+				['@world'],
+				options={'--update': True, '--deep': True},
+				success=True,
+				mergelist=[],
+				#mergelist=['sys-devel/llvm-9'],
+			),
+		)
+
+		playground = ResolverPlayground(debug=False,
+			ebuilds=ebuilds, installed=installed, world=world)
+
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
