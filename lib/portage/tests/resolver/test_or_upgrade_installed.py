@@ -213,8 +213,7 @@ class OrUpgradeInstalledTestCase(TestCase):
 				['@world'],
 				options={'--update': True, '--deep': True},
 				success=True,
-				mergelist=[],
-				#mergelist=['sys-devel/llvm-9'],
+				mergelist=['sys-devel/llvm-9', 'media-libs/mesa-19.2.8'],
 			),
 		)
 

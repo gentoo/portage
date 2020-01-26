@@ -296,7 +296,7 @@ def dep_eval(deplist):
 
 class _dep_choice(SlotObject):
 	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',
-		'all_installed_slots', 'new_slot_count')
+		'all_installed_slots', 'new_slot_count', 'want_update', 'all_in_graph')
 
 def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	minimize_slots=False):
@@ -331,9 +331,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	# c) contains masked installed packages
 	# d) is the first item
 
-	preferred_installed = []
 	preferred_in_graph = []
-	preferred_any_slot = []
+	preferred_installed = preferred_in_graph
+	preferred_any_slot = preferred_in_graph
 	preferred_non_installed = []
 	unsat_use_in_graph = []
 	unsat_use_installed = []
@@ -347,8 +347,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	# for correct ordering in cases like || ( foo[a] foo[b] ).
 	choice_bins = (
 		preferred_in_graph,
-		preferred_installed,
-		preferred_any_slot,
 		preferred_non_installed,
 		unsat_use_in_graph,
 		unsat_use_installed,
@@ -365,7 +363,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
 	pkg_use_enabled = trees[myroot].get("pkg_use_enabled")
-	want_update_pkg = trees[myroot].get("want_update_pkg")
+	graph_interface = trees[myroot].get("graph_interface")
 	downgrade_probe = trees[myroot].get("downgrade_probe")
 	circular_dependency = trees[myroot].get("circular_dependency")
 	vardb = None
@@ -506,14 +504,24 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 			if current_higher or (all_match_current and not all_match_previous):
 				cp_map[avail_pkg.cp] = avail_pkg
 
-		new_slot_count = (len(slot_map) if graph_db is None else
-			sum(not graph_db.match_pkgs(slot_atom) for slot_atom in slot_map
-			if not slot_atom.cp.startswith("virtual/")))
+		want_update = False
+		if graph_interface is None or graph_interface.removal_action:
+			new_slot_count = len(slot_map)
+		else:
+			new_slot_count = 0
+			for slot_atom, avail_pkg in slot_map.items():
+				if graph_interface.want_update_pkg(parent, avail_pkg):
+					want_update = True
+				if (not slot_atom.cp.startswith("virtual/")
+					and not graph_db.match_pkgs(slot_atom)):
+					new_slot_count += 1
 
 		this_choice = _dep_choice(atoms=atoms, slot_map=slot_map,
 			cp_map=cp_map, all_available=all_available,
 			all_installed_slots=False,
-			new_slot_count=new_slot_count)
+			new_slot_count=new_slot_count,
+			all_in_graph=False,
+			want_update=want_update)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -567,6 +575,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 						graph_db.match_pkgs(atom)):
 						all_in_graph = False
 						break
+				this_choice.all_in_graph = all_in_graph
+
 				circular_atom = None
 				if not (parent is None or priority is None) and \
 					(parent.onlydeps or
@@ -607,27 +617,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 						elif all_installed:
 							if all_installed_slots:
 								preferred_installed.append(this_choice)
-							elif parent is None or want_update_pkg is None:
-								preferred_any_slot.append(this_choice)
 							else:
-								# When appropriate, prefer a slot that is not
-								# installed yet for bug #478188.
-								want_update = True
-								for slot_atom, avail_pkg in slot_map.items():
-									if avail_pkg in graph:
-										continue
-									# New-style virtuals have zero cost to install.
-									if slot_atom.startswith("virtual/") or \
-										vardb.match(slot_atom):
-										continue
-									if not want_update_pkg(parent, avail_pkg):
-										want_update = False
-										break
-
-								if want_update:
-									preferred_installed.append(this_choice)
-								else:
-									preferred_any_slot.append(this_choice)
+								preferred_any_slot.append(this_choice)
 						else:
 							preferred_non_installed.append(this_choice)
 					else:
@@ -676,10 +667,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		if len(choices) < 2:
 			continue
 
-		sort_keys = []
-		# Prefer choices with all_installed_slots for bug #480736.
-		sort_keys.append(lambda x: not x.all_installed_slots)
-
 		if minimize_slots:
 			# Prefer choices having fewer new slots. When used with DNF form,
 			# this can eliminate unecessary packages that depclean would
@@ -694,15 +681,35 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 			# contribute to outcomes that appear to be random. Meanwhile,
 			# the order specified in the ebuild is without variance, so it
 			# does not have this problem.
-			sort_keys.append(lambda x: x.new_slot_count)
+			choices.sort(key=operator.attrgetter('new_slot_count'))
 
-		choices.sort(key=lambda x: tuple(f(x) for f in sort_keys))
 		for choice_1 in choices[1:]:
 			cps = set(choice_1.cp_map)
 			for choice_2 in choices:
 				if choice_1 is choice_2:
 					# choice_1 will not be promoted, so move on
 					break
+				if (
+					# For removal actions, prefer choices where all packages
+					# have been pulled into the graph.
+					(graph_interface and graph_interface.removal_action and
+					choice_1.all_in_graph and not choice_2.all_in_graph)
+
+					# Prefer choices where all_installed_slots is True, except
+					# in cases where we want to upgrade to a new slot as in
+					# bug 706278. Don't compare new_slot_count here since that
+					# would aggressively override the preference order defined
+					# in the ebuild, breaking the test case for bug 645002.
+					or (choice_1.all_installed_slots and
+					not choice_2.all_installed_slots and
+					not choice_2.want_update)
+				):
+					# promote choice_1 in front of choice_2
+					choices.remove(choice_1)
+					index_2 = choices.index(choice_2)
+					choices.insert(index_2, choice_1)
+					break
+
 				intersecting_cps = cps.intersection(choice_2.cp_map)
 				if not intersecting_cps:
 					continue

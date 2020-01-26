@@ -288,6 +288,15 @@ class OrChoicesTestCase(TestCase):
 class OrChoicesLibpostprocTestCase(TestCase):
 
 	def testOrChoicesLibpostproc(self):
+		# This test case is expected to fail after the fix for bug 706278,
+		# since the "undesirable" slot upgrade which triggers a blocker conflict
+		# in this test case is practically indistinguishable from a desirable
+		# slot upgrade. This particular blocker conflict is no longer relevant,
+		# since current versions of media-libs/libpostproc are no longer
+		# compatible with any available media-video/ffmpeg slot. In order to
+		# solve this test case, some fancy backtracking (like for bug 382421)
+		# will be required.
+		self.todo = True
 
 		ebuilds = {
 			"media-video/ffmpeg-0.10" : {

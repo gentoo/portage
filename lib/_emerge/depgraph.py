@@ -95,6 +95,14 @@ if sys.hexversion >= 0x3000000:
 else:
 	_unicode = unicode
 
+# Exposes a depgraph interface to dep_check.
+_dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface',(
+	# Indicates a removal action, like depclean or prune.
+	'removal_action',
+	# Checks if update is desirable for a given package.
+	'want_update_pkg',
+))
+
 class _scheduler_graph_config(object):
 	def __init__(self, trees, pkg_cache, graph, mergelist):
 		self.trees = trees
@@ -510,6 +518,10 @@ class _dynamic_depgraph_config(object):
 			soname_deps=depgraph._frozen_config.soname_deps_enabled)
 		# Track missed updates caused by solved conflicts.
 		self._conflict_missed_update = collections.defaultdict(dict)
+		dep_check_iface = _dep_check_graph_interface(
+			removal_action="remove" in myparams,
+			want_update_pkg=depgraph._want_update_pkg,
+		)
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -530,7 +542,7 @@ class _dynamic_depgraph_config(object):
 			self._graph_trees[myroot]["vartree"]    = graph_tree
 			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
 			self._graph_trees[myroot]["graph"]      = self.digraph
-			self._graph_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._graph_trees[myroot]["graph_interface"] = dep_check_iface
 			self._graph_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 			def filtered_tree():
 				pass
@@ -558,7 +570,7 @@ class _dynamic_depgraph_config(object):
 			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
-			self._filtered_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._filtered_trees[myroot]["graph_interface"] = dep_check_iface
 			self._filtered_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 
 			dbs = []
