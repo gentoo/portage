@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -246,7 +246,7 @@ class MultirepoTestCase(TestCase):
 			"dev-libs/B-2": { "DEPEND": "dev-libs/A[foo]", "EAPI": 2 },
 			"dev-libs/B-3": { "DEPEND": "dev-libs/A[-foo]", "EAPI": 2 },
 
-			#package.keywords test
+			#package.accept_keywords test
 			"dev-libs/C-1": { "KEYWORDS": "~x86" },
 			"dev-libs/C-1::repo1": { "KEYWORDS": "~x86" },
 
@@ -286,7 +286,7 @@ class MultirepoTestCase(TestCase):
 				(
 					"dev-libs/A::repo1 foo",
 				),
-			"package.keywords":
+			"package.accept_keywords":
 				(
 					"=dev-libs/C-1::test_repo",
 				),
@@ -332,7 +332,7 @@ class MultirepoTestCase(TestCase):
 				success = False,
 				check_repo_names = True),
 
-			#package.keywords test
+			#package.accept_keywords test
 			ResolverPlaygroundTestCase(
 				["dev-libs/C"],
 				success = True,
