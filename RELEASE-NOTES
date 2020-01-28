@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.86
+==================================
+* Bug Fixes:
+    - Bug 706278 Adjust || preference for slot upgrades
+    - Bug 706298 Suppress package.keywords warning for API consumers
+
+
 portage-2.3.85
 ==================================
 * Bug Fixes:
