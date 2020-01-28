@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -8,6 +8,7 @@ __all__ = (
 import warnings
 
 from _emerge.Package import Package
+import portage
 from portage import os
 from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
 from portage.localization import _
@@ -63,7 +64,7 @@ class KeywordsManager(object):
 				recursive=1, allow_wildcard=True, allow_repo=True,
 				verify_eapi=False, allow_build_id=True)
 
-			if pkgdict:
+			if pkgdict and portage._internal_caller:
 				warnings.warn(_("%s is deprecated, use %s instead") %
 					(user_kwrds_path, user_accept_kwrds_path),
 					UserWarning)
