@@ -285,6 +285,129 @@ class OrChoicesTestCase(TestCase):
 			playground.debug = False
 			playground.cleanup()
 
+	def test_python_slot(self):
+		ebuilds = {
+
+			"dev-lang/python-3.8" : {
+				"EAPI": "7",
+				"SLOT": "3.8"
+			},
+
+			"dev-lang/python-3.7" : {
+				"EAPI": "7",
+				"SLOT": "3.7"
+			},
+
+			"dev-lang/python-3.6" : {
+				"EAPI": "7",
+				"SLOT": "3.6"
+			},
+
+			"app-misc/bar-1" : {
+				"EAPI": "7",
+				"IUSE": "python_targets_python3_6 +python_targets_python3_7",
+				"RDEPEND": "python_targets_python3_7? ( dev-lang/python:3.7 ) python_targets_python3_6? ( dev-lang/python:3.6 )"
+			},
+
+			"app-misc/foo-1" : {
+				"EAPI": "7",
+				"RDEPEND": "|| ( dev-lang/python:3.8 dev-lang/python:3.7 dev-lang/python:3.6 )"
+			},
+
+		}
+
+		installed = {
+
+			"dev-lang/python-3.7" : {
+				"EAPI": "7",
+				"SLOT": "3.7"
+			},
+
+			"app-misc/bar-1" : {
+				"EAPI": "7",
+				"IUSE": "python_targets_python3_6 +python_targets_python3_7",
+				"USE": "python_targets_python3_7",
+				"RDEPEND": "dev-lang/python:3.7"
+			},
+
+			"app-misc/foo-1" : {
+				"EAPI": "7",
+				"RDEPEND": "|| ( dev-lang/python:3.8 dev-lang/python:3.7 dev-lang/python:3.6 )"
+			},
+
+		}
+
+		world = ["app-misc/foo", "app-misc/bar"]
+
+		test_cases = (
+
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = ['dev-lang/python-3.8']
+			),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+		installed = {
+
+			"dev-lang/python-3.8" : {
+				"EAPI": "7",
+				"SLOT": "3.8"
+			},
+
+			"dev-lang/python-3.7" : {
+				"EAPI": "7",
+				"SLOT": "3.7"
+			},
+
+			"app-misc/bar-1" : {
+				"EAPI": "7",
+				"IUSE": "python_targets_python3_6 +python_targets_python3_7",
+				"USE": "python_targets_python3_7",
+				"RDEPEND": "dev-lang/python:3.7"
+			},
+
+			"app-misc/foo-1" : {
+				"EAPI": "7",
+				"RDEPEND": "|| ( dev-lang/python:3.8 dev-lang/python:3.7 dev-lang/python:3.6 )"
+			},
+
+		}
+
+		test_cases = (
+			# Demonstrate bug 707108, where a new python slot is erroneosly
+			# removed by emerge --depclean.
+			ResolverPlaygroundTestCase(
+				[],
+				options={"--depclean": True},
+				success=True,
+				cleanlist=['dev-lang/python-3.8'],
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+
 class OrChoicesLibpostprocTestCase(TestCase):
 
 	def testOrChoicesLibpostproc(self):
