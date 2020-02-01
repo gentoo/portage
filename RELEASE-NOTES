@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.87
+==================================
+* Bug Fixes:
+    - Bug 691798 treat GLEP 81 acct-* categories like virtual
+    - Bug 707108 depclean: do not eliminate upgrades
+
+
 portage-2.3.86
 ==================================
 * Bug Fixes:
