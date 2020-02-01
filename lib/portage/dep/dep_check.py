@@ -690,17 +690,12 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 					# choice_1 will not be promoted, so move on
 					break
 				if (
-					# For removal actions, prefer choices where all packages
-					# have been pulled into the graph.
-					(graph_interface and graph_interface.removal_action and
-					choice_1.all_in_graph and not choice_2.all_in_graph)
-
 					# Prefer choices where all_installed_slots is True, except
 					# in cases where we want to upgrade to a new slot as in
 					# bug 706278. Don't compare new_slot_count here since that
 					# would aggressively override the preference order defined
 					# in the ebuild, breaking the test case for bug 645002.
-					or (choice_1.all_installed_slots and
+					(choice_1.all_installed_slots and
 					not choice_2.all_installed_slots and
 					not choice_2.want_update)
 				):
@@ -711,8 +706,6 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 					break
 
 				intersecting_cps = cps.intersection(choice_2.cp_map)
-				if not intersecting_cps:
-					continue
 				has_upgrade = False
 				has_downgrade = False
 				for cp in intersecting_cps:
@@ -724,8 +717,18 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 							has_upgrade = True
 						else:
 							has_downgrade = True
-							break
-				if has_upgrade and not has_downgrade:
+
+				if (
+					# Prefer upgrades.
+					(has_upgrade and not has_downgrade)
+
+					# For removal actions, prefer choices where all packages
+					# have been pulled into the graph, except for choices that
+					# eliminate upgrades.
+					or (graph_interface and graph_interface.removal_action and
+					choice_1.all_in_graph and not choice_2.all_in_graph and
+					not (has_downgrade and not has_upgrade))
+				):
 					# promote choice_1 in front of choice_2
 					choices.remove(choice_1)
 					index_2 = choices.index(choice_2)

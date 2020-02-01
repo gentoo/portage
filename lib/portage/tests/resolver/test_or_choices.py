@@ -387,13 +387,13 @@ class OrChoicesTestCase(TestCase):
 		}
 
 		test_cases = (
-			# Demonstrate bug 707108, where a new python slot is erroneosly
+			# Test for bug 707108, where a new python slot was erroneously
 			# removed by emerge --depclean.
 			ResolverPlaygroundTestCase(
 				[],
 				options={"--depclean": True},
 				success=True,
-				cleanlist=['dev-lang/python-3.8'],
+				cleanlist=[],
 			),
 		)
 
