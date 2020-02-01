@@ -4212,7 +4212,7 @@ class depgraph(object):
 				if len(expanded_atoms) > 1:
 					number_of_virtuals = 0
 					for expanded_atom in expanded_atoms:
-						if expanded_atom.cp.startswith("virtual/"):
+						if expanded_atom.cp.startswith(("acct-group/", "acct-user/", "virtual/")):
 							number_of_virtuals += 1
 						else:
 							candidate = expanded_atom
