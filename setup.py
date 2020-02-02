@@ -30,7 +30,7 @@ import sys
 
 
 # TODO:
-# - smarter rebuilds of docs w/ 'install_docbook' and 'install_epydoc'.
+# - smarter rebuilds of docs w/ 'install_docbook' and 'install_apidoc'.
 
 # Dictionary of scripts.  The structure is
 #   key   = location in filesystem to install the scripts
@@ -135,8 +135,8 @@ class docbook(Command):
 				'-m', 'doc/custom.xsl', f, 'doc/portage.docbook'])
 
 
-class epydoc(Command):
-	""" Build API docs using epydoc. """
+class apidoc(Command):
+	""" Build API docs using apidoc. """
 
 	user_options = [
 	]
@@ -160,14 +160,8 @@ class epydoc(Command):
 			pass
 		process_env['PYTHONPATH'] = pythonpath
 
-		subprocess.check_call(['epydoc', '-o', 'epydoc',
-			'--name', self.distribution.get_name(),
-			'--url', self.distribution.get_url(),
-			'-qq', '--no-frames', '--show-imports',
-			'--exclude', 'portage.tests',
-			'_emerge', 'portage'],
+		subprocess.check_call(['make', '-C', 'doc/api', 'html'],
 			env = process_env)
-		os.remove('epydoc/api-objects.txt')
 
 
 class install_docbook(install_data):
@@ -194,8 +188,8 @@ class install_docbook(install_data):
 		install_data.run(self)
 
 
-class install_epydoc(install_data):
-	""" install_data for epydoc docs """
+class install_apidoc(install_data):
+	""" install_data for apidoc docs """
 
 	user_options = install_data.user_options + [
 		('htmldir=', None, "HTML documentation install directory"),
@@ -210,10 +204,11 @@ class install_epydoc(install_data):
 		install_data.finalize_options(self)
 
 	def run(self):
-		if not os.path.exists('epydoc/index.html'):
-			self.run_command('epydoc')
+		if not os.path.exists('doc/api/build/html/index.html'):
+			self.run_command('apidoc')
 		self.data_files = [
-			(os.path.join(self.htmldir, 'api'), glob.glob('epydoc/*')),
+			(os.path.join(self.htmldir, 'api'), glob.glob('doc/api/build/html/*.html') + glob.glob('doc/api/build/html/*.js')),
+			(os.path.join(self.htmldir, 'api/_static'), glob.glob('doc/api/build/html/_static/*')),
 		]
 		install_data.run(self)
 
@@ -298,8 +293,8 @@ class x_clean(clean):
 		if os.path.isdir('doc/fragment'):
 			remove_tree('doc/fragment')
 
-		if os.path.isdir('epydoc'):
-			remove_tree('epydoc')
+		if os.path.isdir('doc/api/build'):
+			remove_tree('doc/api/build')
 
 	def clean_tests(self):
 		# do not remove incorrect dirs accidentally
@@ -699,11 +694,11 @@ setup(
 		'build_tests': build_tests,
 		'clean': x_clean,
 		'docbook': docbook,
-		'epydoc': epydoc,
+		'apidoc': apidoc,
 		'install': x_install,
 		'install_data': x_install_data,
 		'install_docbook': install_docbook,
-		'install_epydoc': install_epydoc,
+		'install_apidoc': install_apidoc,
 		'install_lib': x_install_lib,
 		'install_scripts': x_install_scripts,
 		'install_scripts_bin': x_install_scripts_bin,
