@@ -41,15 +41,6 @@ def diffstatusoutput(cmd, file1, file2):
 	# raise a UnicodeDecodeError which makes the output inaccessible.
 	args = shlex_split(cmd % (file1, file2))
 
-	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-		not os.path.isabs(args[0]):
-		# Python 3.1 _execvp throws TypeError for non-absolute executable
-		# path passed as bytes (see https://bugs.python.org/issue8513).
-		fullname = portage.process.find_binary(args[0])
-		if fullname is None:
-			raise portage.exception.CommandNotFound(args[0])
-		args[0] = fullname
-
 	args = [portage._unicode_encode(x, errors='strict') for x in args]
 	proc = subprocess.Popen(args,
 		stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

@@ -34,22 +34,14 @@ __all__ = ('MetaDataXML', 'parse_metadata_use')
 
 import sys
 
-if sys.hexversion < 0x2070000 or \
-	(sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000):
-	# Our _MetadataTreeBuilder usage is incompatible with
-	# cElementTree in Python 2.6, 3.0, and 3.1:
-	#  File "/usr/lib/python2.6/xml/etree/ElementTree.py", line 644, in findall
-	#    assert self._root is not None
+try:
+	import xml.etree.cElementTree as etree
+except (SystemExit, KeyboardInterrupt):
+	raise
+except (ImportError, SystemError, RuntimeError, Exception):
+	# broken or missing xml support
+	# https://bugs.python.org/issue14988
 	import xml.etree.ElementTree as etree
-else:
-	try:
-		import xml.etree.cElementTree as etree
-	except (SystemExit, KeyboardInterrupt):
-		raise
-	except (ImportError, SystemError, RuntimeError, Exception):
-		# broken or missing xml support
-		# https://bugs.python.org/issue14988
-		import xml.etree.ElementTree as etree
 
 try:
 	from xml.parsers.expat import ExpatError
