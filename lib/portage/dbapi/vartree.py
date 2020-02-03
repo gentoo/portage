@@ -23,7 +23,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.locks:lockdir,unlockdir,lockfile,unlockfile',
 	'portage.output:bold,colorize',
 	'portage.package.ebuild.doebuild:doebuild_environment,' + \
-		'_merge_unicode_error', '_spawn_phase',
+		'_merge_unicode_error',
 	'portage.package.ebuild.prepare_build_dirs:prepare_build_dirs',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.process:find_binary',
