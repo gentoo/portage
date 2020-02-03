@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright: 2009-2011 Gentoo Foundation
+# Copyright: 2009-2020 Gentoo Authors
 # Author(s): Petteri Räty (betelgeuse@gentoo.org)
 # License: GPL2
 
@@ -14,8 +14,7 @@ from portage import cpv_getkey
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-portage.proxy.lazyimport.lazyimport(globals(),
-	'xattr')
+from portage.util._xattr import xattr
 
 class NoValueException(Exception):
 	pass
