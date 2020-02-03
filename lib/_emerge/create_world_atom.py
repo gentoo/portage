@@ -15,7 +15,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 	"""Create a new atom for the world file if one does not exist.  If the
 	argument atom is precise enough to identify a specific slot then a slot
 	atom will be returned. Atoms that are in the system set may also be stored
-	in world since a user might want to select muliple slots of a slotted
+	in world since a user might want to select multiple slots of a slotted
 	package like gcc for example. Unslotted system packages will not be
 	stored in world."""
 
@@ -112,7 +112,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 		return None
 	if not slotted and not arg_atom.repo:
 		# Don't exclude slotted atoms for system packages from world, since
-		# a user might want to select muliple slots of a slotted package like
+		# a user might want to select multiple slots of a slotted package like
 		# gcc for example.
 		system_atom = sets["system"].findAtomForPackage(pkg)
 		if system_atom:
