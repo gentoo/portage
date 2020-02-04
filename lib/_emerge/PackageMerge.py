@@ -58,5 +58,25 @@ class PackageMerge(CompositeTask):
 
     def _install_exit(self, task):
         self.postinst_failure = getattr(task, "postinst_failure", None)
+
+        pkg = self.merge.pkg
+        pkg_count = self.merge.pkg_count
+
+        if self.postinst_failure:
+            action_desc = "Failed"
+            preposition = "in"
+            counter_str = ""
+        else:
+            action_desc = "Completed"
+            preposition = "to"
+            counter_str = "({} of {}) ".format(
+                colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
+                colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
+            )
+
+        if self._should_show_status():
+            msg = self._make_msg(pkg, action_desc, preposition, counter_str)
+            self.merge.statusMessage(msg)
+
         self._final_exit(task)
         self.wait()

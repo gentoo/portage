@@ -12,6 +12,8 @@ Features:
 
 * install-qa-check.d: 60pkgconfig: add opt-in QA_PKGCONFIG_VERSION check
 
+* emerge: Log completion of package installs.
+
 Bug fixes:
 * gpkg: Handle out-of-space errors (bug #891391).
 
