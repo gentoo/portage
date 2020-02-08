@@ -465,13 +465,13 @@ class OrChoicesTestCase(TestCase):
 
 		test_cases = (
 
-			# Test for bug 649622, where virtual/w3m is installed only
+			# Test for bug 649622, where virtual/w3m was pulled in only
 			# to be removed by the next emerge --depclean.
 			ResolverPlaygroundTestCase(
 				['@world'],
 				options = {'--update': True, '--deep': True},
 				success = True,
-				mergelist = ['virtual/w3m-0']
+				mergelist = []
 			),
 
 		)
@@ -499,7 +499,10 @@ class OrChoicesTestCase(TestCase):
 
 			# Test for bug 649622, where virtual/w3m is removed by
 			# emerge --depclean immediately after it's installed
-			# by a world update.
+			# by a world update. Note that removal of virtual/w3m here
+			# is essentially indistinguishable from removal of
+			# dev-util/cmake-bootstrap in the depclean test case for
+			# bug 703440.
 			ResolverPlaygroundTestCase(
 				[],
 				options={'--depclean': True},

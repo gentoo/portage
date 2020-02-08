@@ -722,11 +722,9 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 					# Prefer upgrades.
 					(has_upgrade and not has_downgrade)
 
-					# For removal actions, prefer choices where all packages
-					# have been pulled into the graph, except for choices that
-					# eliminate upgrades.
-					or (graph_interface and graph_interface.removal_action and
-					choice_1.all_in_graph and not choice_2.all_in_graph and
+					# Prefer choices where all packages have been pulled into
+					# the graph, except for choices that eliminate upgrades.
+					or (choice_1.all_in_graph and not choice_2.all_in_graph and
 					not (has_downgrade and not has_upgrade))
 				):
 					# promote choice_1 in front of choice_2
