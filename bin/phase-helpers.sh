@@ -878,7 +878,7 @@ ___best_version_and_has_version_common() {
 			if ___eapi_has_prefix_variables; then
 				case ${root_arg} in
 					-r) root=${ROOT%/}/${EPREFIX#/} ;;
-					-d) root=${ESYSROOT} ;;
+					-d) root=${ESYSROOT:-/} ;;
 					-b)
 						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} which is equivalent
 						# to BROOT, except BROOT is only defined in src_* phases.
@@ -888,8 +888,8 @@ ___best_version_and_has_version_common() {
 				esac
 			else
 				case ${root_arg} in
-					-r) root=${ROOT} ;;
-					-d) root=${SYSROOT} ;;
+					-r) root=${ROOT:-/} ;;
+					-d) root=${SYSROOT:-/} ;;
 					-b) root=/ ;;
 				esac
 			fi ;;
