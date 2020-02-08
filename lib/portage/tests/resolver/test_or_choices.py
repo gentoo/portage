@@ -1,5 +1,7 @@
-# Copyright 2013-2015 Gentoo Foundation
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import itertools
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
@@ -395,6 +397,116 @@ class OrChoicesTestCase(TestCase):
 				success=True,
 				cleanlist=[],
 			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+	def test_virtual_w3m(self):
+		ebuilds = {
+
+			'app-text/xmlto-0.0.28-r1' : {
+				'EAPI': '7',
+				'RDEPEND': '|| ( virtual/w3m www-client/lynx www-client/elinks )'
+			},
+
+			'www-client/elinks-0.13_pre_pre20180225' : {
+				'EAPI': '7',
+			},
+
+			'www-client/lynx-2.9.0_pre4' : {
+				'EAPI': '7',
+			},
+
+			'virtual/w3m-0' : {
+				'EAPI': '7',
+				'RDEPEND': '|| ( www-client/w3m www-client/w3mmee )'
+			},
+
+			'www-client/w3m-0.5.3_p20190105' : {
+				'EAPI': '7',
+			},
+
+			'www-client/w3mmee-0.3.2_p24-r10' : {
+				'EAPI': '7',
+			},
+
+		}
+
+		installed = {
+
+			'app-text/xmlto-0.0.28-r1' : {
+				'EAPI': '7',
+				'RDEPEND': '|| ( virtual/w3m www-client/lynx www-client/elinks )'
+			},
+
+			'www-client/elinks-0.13_pre_pre20180225' : {
+				'EAPI': '7',
+			},
+
+			'www-client/lynx-2.9.0_pre4' : {
+				'EAPI': '7',
+			},
+
+			'www-client/w3m-0.5.3_p20190105' : {
+				'EAPI': '7',
+			},
+
+		}
+
+		world = ['app-text/xmlto', 'www-client/elinks', 'www-client/lynx']
+
+		test_cases = (
+
+			# Test for bug 649622, where virtual/w3m is installed only
+			# to be removed by the next emerge --depclean.
+			ResolverPlaygroundTestCase(
+				['@world'],
+				options = {'--update': True, '--deep': True},
+				success = True,
+				mergelist = ['virtual/w3m-0']
+			),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+		installed = dict(itertools.chain(installed.items(), {
+
+			'virtual/w3m-0' : {
+				'EAPI': '7',
+				'RDEPEND': '|| ( www-client/w3m www-client/w3mmee )'
+			},
+
+		}.items()))
+
+		test_cases = (
+
+			# Test for bug 649622, where virtual/w3m is removed by
+			# emerge --depclean immediately after it's installed
+			# by a world update.
+			ResolverPlaygroundTestCase(
+				[],
+				options={'--depclean': True},
+				success=True,
+				cleanlist=['virtual/w3m-0', 'www-client/w3m-0.5.3_p20190105'],
+			),
+
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
