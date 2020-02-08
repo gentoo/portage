@@ -1,7 +1,9 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
 import errno
+import itertools
 import logging
 import subprocess
 import sys
@@ -14,6 +16,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
 from portage.dep.soname.multilib_category import compute_multilib_category
+from portage.dep.soname.SonameAtom import SonameAtom
 from portage.exception import CommandNotFound, InvalidData
 from portage.localization import _
 from portage.util import getlibpaths
@@ -328,8 +331,13 @@ class LinkageMapELF(object):
 		# Share identical frozenset instances when available,
 		# in order to conserve memory.
 		frozensets = {}
+		owner_entries = collections.defaultdict(list)
 
-		for owner, location, l in lines:
+		while True:
+			try:
+				owner, location, l = lines.pop()
+			except IndexError:
+				break
 			l = l.rstrip("\n")
 			if not l:
 				continue
@@ -352,18 +360,55 @@ class LinkageMapELF(object):
 			# exists, map e_machine (entry.arch) to an approximate
 			# multilib category. If all else fails, use e_machine, just
 			# as older versions of portage did.
-			arch = entry.multilib_category
-			if arch is None:
-				arch = _approx_multilib_categories.get(
+			if entry.multilib_category is None:
+				entry.multilib_category = _approx_multilib_categories.get(
 					entry.arch, entry.arch)
 
-			obj = entry.filename
-			soname = entry.soname
+			entry.filename = normalize_path(entry.filename)
 			expand = {"ORIGIN": os.path.dirname(entry.filename)}
-			path = frozenset(normalize_path(
+			entry.runpaths = frozenset(normalize_path(
 				varexpand(x, expand, error_leader=lambda: "%s: " % location))
 				for x in entry.runpaths)
-			path = frozensets.setdefault(path, path)
+			entry.runpaths = frozensets.setdefault(entry.runpaths, entry.runpaths)
+			owner_entries[owner].append(entry)
+
+		# In order to account for internal library resolution which a package
+		# may implement (useful at least for handling of bundled libraries),
+		# generate implicit runpath entries for any needed sonames which are
+		# provided by the same owner package.
+		for owner, entries in owner_entries.items():
+			if owner is None:
+				continue
+
+			providers = {}
+			for entry in entries:
+				if entry.soname:
+					providers[SonameAtom(entry.multilib_category, entry.soname)] = entry
+
+			for entry in entries:
+				implicit_runpaths = []
+				for soname in entry.needed:
+					soname_atom = SonameAtom(entry.multilib_category, soname)
+					provider = providers.get(soname_atom)
+					if provider is None:
+						continue
+					provider_dir = os.path.dirname(provider.filename)
+					if provider_dir not in entry.runpaths:
+						implicit_runpaths.append(provider_dir)
+
+				if implicit_runpaths:
+					entry.runpaths = frozenset(
+						itertools.chain(entry.runpaths, implicit_runpaths))
+					entry.runpaths = frozensets.setdefault(
+						entry.runpaths, entry.runpaths)
+
+		for owner, entry in ((owner, entry)
+			for (owner, entries) in owner_entries.items()
+			for entry in entries):
+			arch = entry.multilib_category
+			obj = entry.filename
+			soname = entry.soname
+			path = entry.runpaths
 			needed = frozenset(entry.needed)
 
 			needed = frozensets.setdefault(needed, needed)
