@@ -455,18 +455,47 @@ class OrChoicesTestCase(TestCase):
 				'EAPI': '7',
 			},
 
-			'www-client/w3m-0.5.3_p20190105' : {
-				'EAPI': '7',
-			},
-
 		}
 
 		world = ['app-text/xmlto', 'www-client/elinks', 'www-client/lynx']
 
 		test_cases = (
 
-			# Test for bug 649622, where virtual/w3m was pulled in only
-			# to be removed by the next emerge --depclean.
+			# Test for bug 649622 (without www-client/w3m installed),
+			# where virtual/w3m was pulled in only to be removed by the
+			# next emerge --depclean.
+			ResolverPlaygroundTestCase(
+				['@world'],
+				options = {'--update': True, '--deep': True},
+				success = True,
+				mergelist = []
+			),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+		installed = dict(itertools.chain(installed.items(), {
+
+			'www-client/w3m-0.5.3_p20190105' : {
+				'EAPI': '7',
+			},
+
+		}.items()))
+
+		test_cases = (
+
+			# Test for bug 649622 (with www-client/w3m installed),
+			# where virtual/w3m was pulled in only to be removed by the
+			# next emerge --depclean.
 			ResolverPlaygroundTestCase(
 				['@world'],
 				options = {'--update': True, '--deep': True},
