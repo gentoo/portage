@@ -523,6 +523,35 @@ class OrChoicesTestCase(TestCase):
 			playground.cleanup()
 
 
+		test_cases = (
+
+			# Test for behavior reported in bug 649622 comment #10, where
+			# depclean removed virtual/w3m-0 even though www-client/w3m
+			# was in the world file. Since nothing is removed here, it
+			# means that we have not reproduced the behavior reported in
+			# this comment.
+			ResolverPlaygroundTestCase(
+				[],
+				options={'--depclean': True},
+				success=True,
+				cleanlist=[],
+			),
+
+		)
+
+		world += ['www-client/w3m']
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+
 class OrChoicesLibpostprocTestCase(TestCase):
 
 	def testOrChoicesLibpostproc(self):
