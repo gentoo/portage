@@ -7,6 +7,11 @@ include TEST-NOTES
 include doc/custom.xsl
 recursive-include doc *.docbook
 
+# sphinx sources
+include doc/api/index.rst
+include doc/api/conf.py
+include doc/api/Makefile
+
 # extra conf files used in ebuild
 include cnf/make.conf.example.*
 

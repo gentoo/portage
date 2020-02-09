@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.88
+==================================
+* Bug Fixes:
+    - Bug 649622 prevent unecessary installation of virtual/w3m followed
+      by removal by depclean
+    - Bug 705736 preserve-libs: prevent unecessary preservation of system
+      libraries which a package bundles
+    - Bug 707820 generate API documentation with sphinx-apidoc
+    - Bug 708448 support FEATURES=qa-unresolved-soname-deps so that the
+      QA warning from bug 704320 can be disabled
+    - Bug 708660 phase-helpers.sh: avoid passing an empty root value to
+      portageq when ebuild IPC is disabled
+
 portage-2.3.87
 ==================================
 * Bug Fixes:
