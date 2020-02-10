@@ -4383,7 +4383,7 @@ class depgraph(object):
 		args = self._dynamic_config._initial_arg_list[:]
 
 		for arg in self._expand_set_args(args, add_to_digraph=True):
-			for atom in arg.pset.getAtoms():
+			for atom in sorted(arg.pset.getAtoms()):
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
@@ -6975,7 +6975,7 @@ class depgraph(object):
 
 		self._set_args(args)
 		for arg in self._expand_set_args(args, add_to_digraph=True):
-			for atom in arg.pset.getAtoms():
+			for atom in sorted(arg.pset.getAtoms(), reverse=True):
 				self._dynamic_config._dep_stack.append(
 					Dependency(atom=atom, root=arg.root_config.root,
 						parent=arg, depth=self._UNREACHABLE_DEPTH))
@@ -9366,7 +9366,7 @@ class depgraph(object):
 			# added via _add_pkg() so that they are included in the
 			# digraph (needed at least for --tree display).
 			for arg in self._expand_set_args(args, add_to_digraph=True):
-				for atom in arg.pset.getAtoms():
+				for atom in sorted(arg.pset.getAtoms()):
 					pkg, existing_node = self._select_package(
 						arg.root_config.root, atom)
 					if existing_node is None and \
