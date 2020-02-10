@@ -555,6 +555,9 @@ class ResolverPlayground(object):
 			"PORTAGE_REPOSITORIES": "\n".join("[%s]\n%s" % (repo_name, "\n".join("%s = %s" % (k, v) for k, v in repo_config.items())) for repo_name, repo_config in self._repositories.items())
 		}
 
+		if self.debug:
+			env["PORTAGE_DEBUG"] = "1"
+
 		trees = portage.create_trees(env=env, eprefix=self.eprefix,
 			**create_trees_kwargs)
 
