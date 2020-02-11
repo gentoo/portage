@@ -2788,8 +2788,10 @@ class depgraph(object):
 
 				# Traverse nested sets and add them to the stack
 				# if they're not already in the graph. Also, graph
-				# edges between parent and nested sets.
-				for token in arg.pset.getNonAtoms():
+				# edges between parent and nested sets. Traverse in
+				# sorted order for consistent results, using reverse
+				# sort since we pop these sets from a stack.
+				for token in sorted(arg.pset.getNonAtoms(), reverse=True):
 					if not token.startswith(SETPREFIX):
 						continue
 					s = token[len(SETPREFIX):]
