@@ -6955,9 +6955,18 @@ class depgraph(object):
 				# Removal actions may override sets with temporary
 				# replacements that have had atoms removed in order
 				# to implement --deselect behavior.
-				required_set_names = set(required_sets[root])
 				depgraph_sets.sets.clear()
 				depgraph_sets.sets.update(required_sets[root])
+				if 'world' in depgraph_sets.sets:
+					# For consistent order of traversal for both update
+					# and removal (depclean) actions, sets other that
+					# world are always nested under the world set.
+					world_atoms = list(depgraph_sets.sets['world'])
+					world_atoms.extend(SETPREFIX + s for s in required_sets[root] if s != 'world')
+					depgraph_sets.sets['world'] = InternalPackageSet(initial_atoms=world_atoms)
+					required_set_names = {'world'}
+				else:
+					required_set_names = set(required_sets[root])
 			if "remove" not in self._dynamic_config.myparams and \
 				root == self._frozen_config.target_root and \
 				already_deep:
@@ -6967,7 +6976,7 @@ class depgraph(object):
 				not self._dynamic_config._dep_stack:
 				continue
 			root_config = self._frozen_config.roots[root]
-			for s in required_set_names:
+			for s in sorted(required_set_names):
 				pset = depgraph_sets.sets.get(s)
 				if pset is None:
 					pset = root_config.sets[s]
@@ -6977,10 +6986,10 @@ class depgraph(object):
 
 		self._set_args(args)
 		for arg in self._expand_set_args(args, add_to_digraph=True):
-			for atom in sorted(arg.pset.getAtoms(), reverse=True):
-				self._dynamic_config._dep_stack.append(
-					Dependency(atom=atom, root=arg.root_config.root,
-						parent=arg, depth=self._UNREACHABLE_DEPTH))
+			for atom in sorted(arg.pset.getAtoms()):
+				if not self._add_dep(Dependency(atom=atom, root=arg.root_config.root,
+					parent=arg, depth=self._UNREACHABLE_DEPTH), allow_unsatisfied=True):
+					return 0
 
 		if True:
 			if self._dynamic_config._ignored_deps:

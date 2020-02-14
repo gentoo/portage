@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -22,9 +22,10 @@ from portage.util import ensure_dirs, normalize_path
 from portage.versions import catsplit
 
 import _emerge
-from _emerge.actions import calc_depclean
+from _emerge.actions import _calc_depclean
 from _emerge.Blocker import Blocker
 from _emerge.create_depgraph_params import create_depgraph_params
+from _emerge.DependencyArg import DependencyArg
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
@@ -593,11 +594,16 @@ class ResolverPlayground(object):
 			_emerge.emergelog._disable = True
 
 			if action in ("depclean", "prune"):
-				rval, cleanlist, ordered, req_pkg_count = \
-					calc_depclean(self.settings, self.trees, None,
+				depclean_result = _calc_depclean(self.settings, self.trees, None,
 					options, action, InternalPackageSet(initial_atoms=atoms, allow_wildcard=True), None)
 				result = ResolverPlaygroundDepcleanResult(
-					atoms, rval, cleanlist, ordered, req_pkg_count)
+					atoms,
+					depclean_result.returncode,
+					depclean_result.cleanlist,
+					depclean_result.ordered,
+					depclean_result.req_pkg_count,
+					depclean_result.depgraph,
+				)
 			else:
 				params = create_depgraph_params(options, action)
 				success, depgraph, favorites = backtrack_depgraph(
@@ -780,18 +786,46 @@ class ResolverPlaygroundTestCase(object):
 			return False
 		return True
 
+
+def _mergelist_str(x, depgraph):
+	if isinstance(x, DependencyArg):
+		mergelist_str = x.arg
+	elif isinstance(x, Blocker):
+		mergelist_str = x.atom
+	else:
+		repo_str = ""
+		if x.repo != "test_repo":
+			repo_str = _repo_separator + x.repo
+		build_id_str = ""
+		if (x.type_name == "binary" and
+			x.cpv.build_id is not None):
+			build_id_str = "-%s" % x.cpv.build_id
+		mergelist_str = x.cpv + build_id_str + repo_str
+		if x.built:
+			if x.operation == "merge":
+				desc = x.type_name
+			else:
+				desc = x.operation
+			mergelist_str = "[%s]%s" % (desc, mergelist_str)
+		if x.root != depgraph._frozen_config._running_root.root:
+			mergelist_str += "{targetroot}"
+	return mergelist_str
+
+
 class ResolverPlaygroundResult(object):
 
 	checks = (
 		"success", "mergelist", "use_changes", "license_changes",
 		"unstable_keywords", "slot_collision_solutions",
 		"circular_dependency_solutions", "needed_p_mask_changes",
-		"unsatisfied_deps", "forced_rebuilds", "required_use_unsatisfied"
+		"unsatisfied_deps", "forced_rebuilds", "required_use_unsatisfied",
+		"graph_order",
 		)
 	optional_checks = (
 		"forced_rebuilds",
 		"required_use_unsatisfied",
-		"unsatisfied_deps"
+		"unsatisfied_deps",
+		"graph_order",
 		)
 
 	def __init__(self, atoms, success, mydepgraph, favorites):
@@ -810,30 +844,12 @@ class ResolverPlaygroundResult(object):
 		self.forced_rebuilds = None
 		self.required_use_unsatisfied = None
 
+		self.graph_order = [_mergelist_str(node, self.depgraph) for node in self.depgraph._dynamic_config.digraph]
+
 		if self.depgraph._dynamic_config._serialized_tasks_cache is not None:
 			self.mergelist = []
-			host_root = self.depgraph._frozen_config._running_root.root
 			for x in self.depgraph._dynamic_config._serialized_tasks_cache:
-				if isinstance(x, Blocker):
-					self.mergelist.append(x.atom)
-				else:
-					repo_str = ""
-					if x.repo != "test_repo":
-						repo_str = _repo_separator + x.repo
-					build_id_str = ""
-					if (x.type_name == "binary" and
-						x.cpv.build_id is not None):
-						build_id_str = "-%s" % x.cpv.build_id
-					mergelist_str = x.cpv + build_id_str + repo_str
-					if x.built:
-						if x.operation == "merge":
-							desc = x.type_name
-						else:
-							desc = x.operation
-						mergelist_str = "[%s]%s" % (desc, mergelist_str)
-					if x.root != host_root:
-						mergelist_str += "{targetroot}"
-					self.mergelist.append(mergelist_str)
+				self.mergelist.append(_mergelist_str(x, self.depgraph))
 
 		if self.depgraph._dynamic_config._needed_use_config_changes:
 			self.use_changes = {}
@@ -894,14 +910,17 @@ class ResolverPlaygroundDepcleanResult(object):
 
 	checks = (
 		"success", "cleanlist", "ordered", "req_pkg_count",
+		"graph_order",
 		)
 	optional_checks = (
 		"ordered", "req_pkg_count",
+		"graph_order",
 		)
 
-	def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count):
+	def __init__(self, atoms, rval, cleanlist, ordered, req_pkg_count, depgraph):
 		self.atoms = atoms
 		self.success = rval == 0
 		self.cleanlist = cleanlist
 		self.ordered = ordered
 		self.req_pkg_count = req_pkg_count
+		self.graph_order = [_mergelist_str(node, depgraph) for node in depgraph._dynamic_config.digraph]
