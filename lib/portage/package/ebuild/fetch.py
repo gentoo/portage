@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -46,7 +46,7 @@ from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
 	checksum_str)
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
-from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
+from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
 	PortageException, TryAgain
 from portage.localization import _
@@ -882,7 +882,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 					if not has_space_superuser:
 						has_space = False
-					elif secpass < 2:
+					elif portage.data.secpass < 2:
 						has_space = False
 					elif userfetch:
 						has_space = False
