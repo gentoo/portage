@@ -1,7 +1,7 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.3.88
+portage-2.3.89
 ==================================
 * Bug Fixes:
     - Bug 649622 depclean: ensure consistency with update actions, via
