@@ -4,6 +4,12 @@ Features/major bugfixes are listed in NEWS
 portage-2.3.88
 ==================================
 * Bug Fixes:
+    - Bug 649622 depclean: ensure consistency with update actions, via
+      consistent order of dependency traversal
+
+portage-2.3.88
+==================================
+* Bug Fixes:
     - Bug 649622 prevent unecessary installation of virtual/w3m followed
       by removal by depclean
     - Bug 705736 preserve-libs: prevent unecessary preservation of system
