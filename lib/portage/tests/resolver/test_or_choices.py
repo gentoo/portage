@@ -676,7 +676,7 @@ class OrChoicesTestCase(TestCase):
 				options = {'--update': True, '--deep': True},
 				success = True,
 				mergelist=['virtual/w3m-0'],
-				graph_order=['@world', '@system', '@selected', '@profile', '[nomerge]app-misc/neofetch-6.1.0', '[nomerge]mail-client/neomutt-20191207', '[nomerge]www-client/lynx-2.9.0_pre4', '[nomerge]x11-base/xorg-server-1.20.7', '[nomerge]app-text/xmlto-0.0.28-r1', '[nomerge]www-client/w3m-0.5.3_p20190105', 'virtual/w3m-0'],
+				graph_order=['@world', '@profile', '@selected', '@system', '[nomerge]app-misc/neofetch-6.1.0', '[nomerge]mail-client/neomutt-20191207', '[nomerge]www-client/lynx-2.9.0_pre4', '[nomerge]x11-base/xorg-server-1.20.7', '[nomerge]app-text/xmlto-0.0.28-r1', '[nomerge]www-client/w3m-0.5.3_p20190105', 'virtual/w3m-0'],
 			),
 
 		)
@@ -715,7 +715,7 @@ class OrChoicesTestCase(TestCase):
 				options={'--depclean': True},
 				success=True,
 				cleanlist=[],
-				graph_order=['@world', '@system', '@selected', '@profile', '@____depclean_protected_set____', '[nomerge]app-misc/neofetch-6.1.0', '[nomerge]mail-client/neomutt-20191207', '[nomerge]www-client/lynx-2.9.0_pre4', '[nomerge]x11-base/xorg-server-1.20.7', '[nomerge]app-text/xmlto-0.0.28-r1', '[nomerge]www-client/w3m-0.5.3_p20190105', '[nomerge]virtual/w3m-0'],
+				graph_order=['@world', '@____depclean_protected_set____', '@profile', '@selected', '@system', '[nomerge]app-misc/neofetch-6.1.0', '[nomerge]mail-client/neomutt-20191207', '[nomerge]www-client/lynx-2.9.0_pre4', '[nomerge]x11-base/xorg-server-1.20.7', '[nomerge]app-text/xmlto-0.0.28-r1', '[nomerge]www-client/w3m-0.5.3_p20190105', '[nomerge]virtual/w3m-0'],
 			),
 
 		)
