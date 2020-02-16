@@ -34,8 +34,8 @@ class SpawnProcess(SubProcess):
 		"path_lookup", "pre_exec", "close_fds", "cgroup",
 		"unshare_ipc", "unshare_mount", "unshare_pid", "unshare_net")
 
-	__slots__ = ("args",) + \
-		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
+	__slots__ = ("args", "log_filter_command") + \
+		_spawn_kwarg_names + ("_filter_proc", "_pipe_logger", "_selinux_type",)
 
 	# Max number of attempts to kill the processes listed in cgroup.procs,
 	# given that processes may fork before they can be killed.
@@ -137,6 +137,32 @@ class SpawnProcess(SubProcess):
 						fcntl.fcntl(stdout_fd,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
+		if self.log_filter_command is not None:
+			pr, pw = os.pipe()
+			# stderr goes to /dev/null because the program is expected
+			# to generate an EIO error when master_fd reaches EOF.
+			with open(os.devnull, 'wb', 0) as null_fd:
+				filter_fd_pipes = {0: master_fd, 1: pw, 2: null_fd.fileno()}
+				self._filter_proc = SpawnProcess(
+					args=self.log_filter_command,
+					env=self.env,
+					fd_pipes=filter_fd_pipes,
+					scheduler=self.scheduler)
+				self._filter_proc.addExitListener(self._filter_proc_exit)
+				try:
+					self._filter_proc.start()
+				except portage.exception.CommandNotFound:
+					self._filter_proc.removeExitListener(self._filter_proc_exit)
+					self._filter_proc._unregister()
+					self._filter_proc = None
+					os.close(pw)
+					os.close(pr)
+				else:
+					os.close(pw)
+					os.close(master_fd)
+					# Send self._filter_proc output to PipeLogger
+					master_fd = pr
+
 		self._pipe_logger = PipeLogger(background=self.background,
 			scheduler=self.scheduler, input_fd=master_fd,
 			log_file_path=log_file_path,
@@ -171,11 +197,24 @@ class SpawnProcess(SubProcess):
 		self._pipe_logger = None
 		self._async_waitpid()
 
+	def _filter_proc_exit(self, filter_proc):
+		self._filter_proc = None
+
+	def _async_waitpid(self):
+		if self._filter_proc is not None:
+			# All output should have been collected by now, so kill it.
+			self._filter_proc.cancel()
+		SubProcess._async_waitpid(self)
+
 	def _unregister(self):
 		SubProcess._unregister(self)
 		if self.cgroup is not None:
 			self._cgroup_cleanup()
 			self.cgroup = None
+		if self._filter_proc is not None:
+			self._filter_proc.removeExitListener(self._filter_proc_exit)
+			self._filter_proc.cancel()
+			self._filter_proc = None
 		if self._pipe_logger is not None:
 			self._pipe_logger.cancel()
 			self._pipe_logger = None

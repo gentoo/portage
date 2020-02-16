@@ -979,6 +979,9 @@ with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
 \fBionice\fR(1). This variable is unset by default.
 .TP
+.B PORTAGE_LOG_FILTER_COMMAND
+This variable specifies a command that filters build log content.
+.TP
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
 Logs are created only when this is set. They are stored as

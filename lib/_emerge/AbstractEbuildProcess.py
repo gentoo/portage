@@ -20,7 +20,7 @@ from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import shutil, os
 from portage.util.futures import asyncio
 from portage.util._pty import _create_pty_or_pipe
-from portage.util import apply_secpass_permissions
+from portage.util import apply_secpass_permissions, shlex_split
 
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:_global_pid_phases',
@@ -195,6 +195,12 @@ class AbstractEbuildProcess(SpawnProcess):
 			"interactive" not in self.settings.get("PROPERTIES", "").split():
 			null_fd = os.open('/dev/null', os.O_RDONLY)
 			self.fd_pipes[0] = null_fd
+
+		log_filter_command = self.settings.get('PORTAGE_LOG_FILTER_COMMAND')
+		if log_filter_command is not None:
+			log_filter_command = shlex_split(log_filter_command)
+			if log_filter_command:
+				self.log_filter_command = log_filter_command
 
 		try:
 			SpawnProcess._start(self)
