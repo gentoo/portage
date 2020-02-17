@@ -1,9 +1,12 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
+import functools
 import sys
 
+from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine
 from portage.util.SlotObject import SlotObject
 
 class SequentialTaskQueue(SlotObject):
@@ -41,18 +44,27 @@ class SequentialTaskQueue(SlotObject):
 				cancelled = getattr(task, "cancelled", None)
 				if not cancelled:
 					self.running_tasks.add(task)
-					task.addExitListener(self._task_exit)
-					task.start()
+					future = asyncio.ensure_future(self._task_coroutine(task), loop=task.scheduler)
+					future.add_done_callback(functools.partial(self._task_exit, task))
 		finally:
 			self._scheduling = False
 
-	def _task_exit(self, task):
+	@coroutine
+	def _task_coroutine(self, task):
+		yield task.async_start()
+		yield task.async_wait()
+
+	def _task_exit(self, task, future):
 		"""
 		Since we can always rely on exit listeners being called, the set of
  		running tasks is always pruned automatically and there is never any need
 		to actively prune it.
 		"""
 		self.running_tasks.remove(task)
+		try:
+			future.result()
+		except asyncio.CancelledError:
+			self.clear()
 		if self._task_queue:
 			self.schedule()
 

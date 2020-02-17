@@ -23,7 +23,7 @@ from portage.util._dyn_libs.soname_deps_qa import (
 )
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 		_prepare_fake_distdir, _prepare_fake_filesdir)
-from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util import writemsg
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util.futures.executor.fork import ForkExecutor
@@ -69,6 +69,10 @@ class EbuildPhase(CompositeTask):
 	_locked_phases = ("setup", "preinst", "postinst", "prerm", "postrm")
 
 	def _start(self):
+		self.scheduler.run_until_complete(self._async_start())
+
+	@coroutine
+	def _async_start(self):
 
 		need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
@@ -138,17 +142,14 @@ class EbuildPhase(CompositeTask):
 			env_extractor = BinpkgEnvExtractor(background=self.background,
 				scheduler=self.scheduler, settings=self.settings)
 			if env_extractor.saved_env_exists():
-				self._start_task(env_extractor, self._env_extractor_exit)
-				return
+				self._current_task = env_extractor
+				yield env_extractor.async_start()
+				yield env_extractor.async_wait()
+				if self._default_exit(env_extractor) != os.EX_OK:
+					self._async_wait()
+					coroutine_return()
 			# If the environment.bz2 doesn't exist, then ebuild.sh will
 			# source the ebuild as a fallback.
-
-		self._start_lock()
-
-	def _env_extractor_exit(self, env_extractor):
-		if self._default_exit(env_extractor) != os.EX_OK:
-			self.wait()
-			return
 
 		self._start_lock()
 
