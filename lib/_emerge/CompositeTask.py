@@ -1,8 +1,10 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
 from portage import os
+from portage.util.futures import asyncio
+
 
 class CompositeTask(AsynchronousTask):
 
@@ -97,7 +99,7 @@ class CompositeTask(AsynchronousTask):
 	def _start_task(self, task, exit_handler):
 		"""
 		Register exit handler for the given task, set it
-		as self._current_task, and call task.start().
+		as self._current_task, and call task.async_start().
 
 		Subclasses can use this as a generic way to start
 		a task.
@@ -109,7 +111,16 @@ class CompositeTask(AsynchronousTask):
 			pass
 		task.addExitListener(exit_handler)
 		self._current_task = task
-		task.start()
+		result = asyncio.ensure_future(task.async_start(), loop=self.scheduler)
+		result.add_done_callback(self._current_task_start_cb)
+
+	def _current_task_start_cb(self, future):
+		try:
+			future.result()
+		except asyncio.CancelledError:
+			self.cancelled = True
+			self._was_cancelled()
+			self._async_wait()
 
 	def _task_queued(self, task):
 		task.addStartListener(self._task_queued_start_handler)

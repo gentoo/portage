@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import time
@@ -6,6 +6,7 @@ from portage.tests import TestCase
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.iter_completed import (
 	iter_completed,
 	async_iter_completed,
@@ -43,12 +44,17 @@ class IterCompletedTestCase(TestCase):
 
 		expected_order = sorted(task.seconds for task in tasks)
 
+		@coroutine
+		def task_coroutine(task):
+			task.future = loop.create_future()
+			task.scheduler = loop
+			yield task.async_start()
+			result = yield task.future
+			coroutine_return(result)
+
 		def future_generator():
 			for task in tasks:
-				task.future = loop.create_future()
-				task.scheduler = loop
-				task.start()
-				yield task.future
+				yield task_coroutine(task)
 
 		for seconds, future in zip(expected_order, iter_completed(future_generator(),
 			max_jobs=True, max_load=None, loop=loop)):

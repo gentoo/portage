@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -40,7 +40,7 @@ class PopenPipeBlockingIOTestCase(TestCase):
 		consumer = producer.pipe_reader
 		consumer.input_files = {"producer" : producer.proc.stdout}
 
-		producer.start()
+		global_event_loop().run_until_complete(producer.async_start())
 		producer.wait()
 
 		self.assertEqual(producer.returncode, os.EX_OK)

@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -67,7 +67,7 @@ class PipeReaderTestCase(TestCase):
 			input_files={"producer" : master_file},
 			_use_array=self._use_array,
 			scheduler=scheduler)
-		consumer.start()
+		scheduler.run_until_complete(consumer.async_start())
 
 		producer = scheduler.run_until_complete(asyncio.create_subprocess_exec(
 			"bash", "-c", self._echo_cmd % test_string,

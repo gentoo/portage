@@ -1,4 +1,4 @@
-# Copyright 2013-2016 Gentoo Foundation
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -8,6 +8,7 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._async.TaskScheduler import TaskScheduler
+from portage.util.futures import asyncio
 from _emerge.Package import Package
 from _emerge.PipeReader import PipeReader
 
@@ -54,6 +55,7 @@ class DoebuildFdPipesTestCase(TestCase):
 		self.assertEqual(true_binary is None, False,
 			"true command not found")
 
+		loop = asyncio._wrap_loop()
 		dev_null = open(os.devnull, 'wb')
 		playground = ResolverPlayground(ebuilds=ebuilds)
 		try:
@@ -115,7 +117,7 @@ class DoebuildFdPipesTestCase(TestCase):
 					max_jobs=2)
 
 				try:
-					task_scheduler.start()
+					loop.run_until_complete(task_scheduler.async_start())
 				finally:
 					# PipeReader closes pr
 					os.close(pw)

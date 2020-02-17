@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -15,6 +15,7 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util.configparser import ConfigParserError
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -193,11 +194,13 @@ class EbuildFetchTestCase(TestCase):
 					def deallocate(settings):
 						pass
 
+				@coroutine
 				def async_fetch(pkg, ebuild_path):
 					fetcher = EbuildFetcher(config_pool=config_pool, ebuild_path=ebuild_path,
 						fetchonly=False, fetchall=True, pkg=pkg, scheduler=loop)
-					fetcher.start()
-					return fetcher.async_wait()
+					yield fetcher.async_start()
+					result = yield fetcher.async_wait()
+					coroutine_return(result)
 
 				for cpv in ebuilds:
 					metadata = dict(zip(Package.metadata_keys,

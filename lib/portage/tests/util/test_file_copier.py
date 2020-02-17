@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -28,7 +28,7 @@ class FileCopierTestCase(TestCase):
 				f.write(content)
 			os.chmod(src_path, file_mode)
 			copier = FileCopier(src_path=src_path, dest_path=dest_path, scheduler=loop)
-			copier.start()
+			loop.run_until_complete(copier.async_start())
 			loop.run_until_complete(copier.async_wait())
 			self.assertEqual(copier.returncode, 0)
 			copier.future.result()
@@ -39,7 +39,7 @@ class FileCopierTestCase(TestCase):
 			# failure due to nonexistent src_path
 			src_path = os.path.join(tempdir, 'does-not-exist')
 			copier = FileCopier(src_path=src_path, dest_path=dest_path, scheduler=loop)
-			copier.start()
+			loop.run_until_complete(copier.async_start())
 			loop.run_until_complete(copier.async_wait())
 			self.assertEqual(copier.returncode, 1)
 			self.assertEqual(copier.future.exception().errno, errno.ENOENT)

@@ -1,10 +1,11 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
 
 from portage import os
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.SlotObject import SlotObject
 
 class AsynchronousTask(SlotObject):
@@ -22,12 +23,27 @@ class AsynchronousTask(SlotObject):
 
 	_cancelled_returncode = - signal.SIGINT
 
+	@coroutine
+	def async_start(self):
+		self._start_hook()
+		yield self._async_start()
+
+	@coroutine
+	def _async_start(self):
+		self._start()
+		coroutine_return()
+		yield None
+
 	def start(self):
 		"""
 		Start an asynchronous task and then return as soon as possible.
 		"""
 		self._start_hook()
 		self._start()
+
+	def _start(self):
+		self.returncode = os.EX_OK
+		self._async_wait()
 
 	def async_wait(self):
 		"""
@@ -48,10 +64,6 @@ class AsynchronousTask(SlotObject):
 			# is never called more than once.
 			self._async_wait()
 		return waiter
-
-	def _start(self):
-		self.returncode = os.EX_OK
-		self._async_wait()
 
 	def isAlive(self):
 		return self.returncode is None

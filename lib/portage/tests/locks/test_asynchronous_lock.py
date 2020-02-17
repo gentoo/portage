@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -29,7 +29,7 @@ class AsynchronousLockTestCase(TestCase):
 						scheduler=scheduler, _force_async=force_async,
 						_force_thread=True,
 						_force_dummy=force_dummy)
-					async_lock.start()
+					scheduler.run_until_complete(async_lock.async_start())
 					self.assertEqual(async_lock.wait(), os.EX_OK)
 					self.assertEqual(async_lock.returncode, os.EX_OK)
 					scheduler.run_until_complete(async_lock.async_unlock())
@@ -37,7 +37,7 @@ class AsynchronousLockTestCase(TestCase):
 				async_lock = AsynchronousLock(path=path,
 					scheduler=scheduler, _force_async=force_async,
 					_force_process=True)
-				async_lock.start()
+				scheduler.run_until_complete(async_lock.async_start())
 				self.assertEqual(async_lock.wait(), os.EX_OK)
 				self.assertEqual(async_lock.returncode, os.EX_OK)
 				scheduler.run_until_complete(async_lock.async_unlock())
@@ -63,7 +63,7 @@ class AsynchronousLockTestCase(TestCase):
 		try:
 			path = os.path.join(tempdir, 'lock_me')
 			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
-			lock1.start()
+			scheduler.run_until_complete(lock1.async_start())
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
 
@@ -73,7 +73,7 @@ class AsynchronousLockTestCase(TestCase):
 			# one time concurrently.
 			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
 				_force_async=True, _force_process=True)
-			lock2.start()
+			scheduler.run_until_complete(lock2.async_start())
 			# lock2 should be waiting for lock1 to release
 			self.assertEqual(lock2.poll(), None)
 			self.assertEqual(lock2.returncode, None)
@@ -104,12 +104,12 @@ class AsynchronousLockTestCase(TestCase):
 		try:
 			path = os.path.join(tempdir, 'lock_me')
 			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
-			lock1.start()
+			scheduler.run_until_complete(lock1.async_start())
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
 			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
 				_force_async=True, _force_process=True)
-			lock2.start()
+			scheduler.run_until_complete(lock2.async_start())
 			# lock2 should be waiting for lock1 to release
 			self.assertEqual(lock2.poll(), None)
 			self.assertEqual(lock2.returncode, None)
@@ -142,12 +142,12 @@ class AsynchronousLockTestCase(TestCase):
 		try:
 			path = os.path.join(tempdir, 'lock_me')
 			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
-			lock1.start()
+			scheduler.run_until_complete(lock1.async_start())
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
 			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
 				_force_async=True, _force_process=True)
-			lock2.start()
+			scheduler.run_until_complete(lock2.async_start())
 			# lock2 should be waiting for lock1 to release
 			self.assertEqual(lock2.poll(), None)
 			self.assertEqual(lock2.returncode, None)
