@@ -1,8 +1,9 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
+from portage.util.futures.compat_coroutine import coroutine
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:spawn'
 )
@@ -15,7 +16,8 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 
 	__slots__ = ('commands', 'ld_preload_sandbox')
 
-	def _start(self):
+	@coroutine
+	def _async_start(self):
 		settings = self.settings
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
 		misc_sh_binary = os.path.join(portage_bin_path,
@@ -26,7 +28,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 			self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 			self.logfile = settings.get("PORTAGE_LOG_FILE")
 
-		AbstractEbuildProcess._start(self)
+		yield AbstractEbuildProcess._async_start(self)
 
 	def _spawn(self, args, **kwargs):
 		# If self.ld_preload_sandbox is None, default to free=False,

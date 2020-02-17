@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -19,6 +19,7 @@ from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import shutil, os
 from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
@@ -30,7 +31,7 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	__slots__ = ('phase', 'settings',) + \
 		('_build_dir', '_build_dir_unlock', '_ipc_daemon',
-		'_exit_command', '_exit_timeout_id', '_start_future')
+		'_exit_command', '_exit_timeout_id')
 
 	_phases_without_builddir = ('clean', 'cleanrm', 'depend', 'help',)
 	_phases_interactive_whitelist = ('config',)
@@ -55,6 +56,10 @@ class AbstractEbuildProcess(SpawnProcess):
 			self.phase = phase
 
 	def _start(self):
+		self.scheduler.run_until_complete(self._async_start())
+
+	@coroutine
+	def _async_start(self):
 
 		need_builddir = self.phase not in self._phases_without_builddir
 
@@ -69,7 +74,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			self._eerror(textwrap.wrap(msg, 72))
 			self.returncode = 1
 			self._async_wait()
-			return
+			coroutine_return()
 
 		# Check if the cgroup hierarchy is in place. If it's not, mount it.
 		if (os.geteuid() == 0 and platform.system() == 'Linux'
@@ -142,11 +147,7 @@ class AbstractEbuildProcess(SpawnProcess):
 				if 'PORTAGE_BUILDDIR_LOCKED' not in self.settings:
 					self._build_dir = EbuildBuildDir(
 						scheduler=self.scheduler, settings=self.settings)
-					self._start_future = self._build_dir.async_lock()
-					self._start_future.add_done_callback(
-						functools.partial(self._start_post_builddir_lock,
-						start_ipc_daemon=start_ipc_daemon))
-					return
+					yield self._build_dir.async_lock()
 			else:
 				self.settings.pop('PORTAGE_IPC_DAEMON', None)
 		else:
@@ -166,22 +167,6 @@ class AbstractEbuildProcess(SpawnProcess):
 						raise
 			else:
 				self.settings.pop('PORTAGE_EBUILD_EXIT_FILE', None)
-
-		self._start_post_builddir_lock(start_ipc_daemon=start_ipc_daemon)
-
-	def _start_post_builddir_lock(self, lock_future=None, start_ipc_daemon=False):
-		if lock_future is not None:
-			if lock_future is not self._start_future:
-				raise AssertionError('lock_future is not self._start_future')
-			self._start_future = None
-			if lock_future.cancelled():
-				self._build_dir = None
-				self.cancelled = True
-				self._was_cancelled()
-				self._async_wait()
-				return
-
-			lock_future.result()
 
 		if start_ipc_daemon:
 			self.settings['PORTAGE_IPC_DAEMON'] = "1"
