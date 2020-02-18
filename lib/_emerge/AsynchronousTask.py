@@ -25,8 +25,8 @@ class AsynchronousTask(SlotObject):
 
 	@coroutine
 	def async_start(self):
-		self._start_hook()
 		yield self._async_start()
+		self._start_hook()
 
 	@coroutine
 	def _async_start(self):
@@ -38,8 +38,8 @@ class AsynchronousTask(SlotObject):
 		"""
 		Start an asynchronous task and then return as soon as possible.
 		"""
-		self._start_hook()
 		self._start()
+		self._start_hook()
 
 	def _start(self):
 		self.returncode = os.EX_OK
