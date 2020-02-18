@@ -1,7 +1,11 @@
 # Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
+
 from portage import os
+from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.PollScheduler import PollScheduler
 
@@ -62,8 +66,8 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 			else:
 				self._running_tasks.add(task)
 				task.scheduler = self._sched_iface
-				task.addExitListener(self._task_exit)
-				task.start()
+				future = asyncio.ensure_future(self._task_coroutine(task), loop=self._sched_iface)
+				future.add_done_callback(functools.partial(self._task_coroutine_done, task))
 
 		if self._loadavg_check_id is not None:
 			self._loadavg_check_id.cancel()
@@ -72,6 +76,18 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
 		# Triggers cleanup and exit listeners if there's nothing left to do.
 		self.poll()
+
+	@coroutine
+	def _task_coroutine(self, task):
+		yield task.async_start()
+		yield task.async_wait()
+
+	def _task_coroutine_done(self, task, future):
+		try:
+			future.result()
+		except asyncio.CancelledError:
+			self.cancel()
+		self._task_exit(task)
 
 	def _task_exit(self, task):
 		self._running_tasks.discard(task)
