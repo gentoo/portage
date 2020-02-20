@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -953,7 +953,7 @@ fi
 if ___eapi_has_einstalldocs; then
 	einstalldocs() {
 		(
-			if ! declare -p DOCS &>/dev/null ; then
+			if [[ $(declare -p DOCS 2>/dev/null) != *=* ]]; then
 				local d
 				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do
