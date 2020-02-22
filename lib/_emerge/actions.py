@@ -2082,6 +2082,9 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 		success, msgs = syncer.auto_sync(options=options)
 	if return_messages:
 		print_results(msgs)
+	elif msgs and not success:
+		writemsg_level("".join("%s\n" % (line,) for line in msgs),
+			level=logging.ERROR, noiselevel=-1)
 
 	return os.EX_OK if success else 1
 
