@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -16,6 +16,7 @@ import portage
 from portage import os
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
+from portage.util.futures.compat_coroutine import coroutine
 
 if sys.hexversion >= 0x3000000:
 	long = int
@@ -85,6 +86,10 @@ class _BinpkgFetcherProcess(SpawnProcess):
 	__slots__ = ("pkg", "pretend", "locked", "pkg_path", "_lock_obj")
 
 	def _start(self):
+		self.scheduler.run_until_complete(self._async_start())
+
+	@coroutine
+	def _async_start(self):
 		pkg = self.pkg
 		pretend = self.pretend
 		bintree = pkg.root_config.trees["bintree"]
@@ -158,7 +163,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		self.env = fetch_env
 		if settings.selinux_enabled():
 			self._selinux_type = settings["PORTAGE_FETCH_T"]
-		SpawnProcess._start(self)
+		yield SpawnProcess._async_start(self)
 
 	def _pipe(self, fd_pipes):
 		"""When appropriate, use a pty so that fetcher progress bars,
