@@ -9,6 +9,8 @@ from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.util.futures._asyncio.streams import _reader
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from _emerge.PipeReader import PipeReader
 
 class PopenPipeTestCase(TestCase):
@@ -73,13 +75,50 @@ class PopenPipeTestCase(TestCase):
 
 		return content.decode('ascii', 'replace')
 
+	@coroutine
+	def _testPipeLoggerToPipe(self, test_string, loop=None):
+		"""
+		Test PipeLogger writing to a pipe connected to a PipeReader.
+		This verifies that PipeLogger does not deadlock when writing
+		to a pipe that's drained by a PipeReader running in the same
+		process (requires non-blocking write).
+		"""
+
+		producer = PopenProcess(proc=subprocess.Popen(
+			["bash", "-c", self._echo_cmd % test_string],
+			stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
+			scheduler=loop)
+
+		pr, pw = os.pipe()
+
+		consumer = producer.pipe_reader = PipeLogger(background=True,
+			input_fd=producer.proc.stdout,
+			log_file_path=os.fdopen(pw, 'wb', 0))
+
+		reader = _reader(pr, loop=loop)
+		yield producer.async_start()
+		content = yield reader
+		yield producer.async_wait()
+		yield consumer.async_wait()
+
+		self.assertEqual(producer.returncode, os.EX_OK)
+		self.assertEqual(consumer.returncode, os.EX_OK)
+
+		coroutine_return(content.decode('ascii', 'replace'))
+
 	def testPopenPipe(self):
-		for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
+		loop = global_event_loop()
+
+		for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14, 2**15, 2**16):
 			test_string = x * "a"
 			output = self._testPipeReader(test_string)
 			self.assertEqual(test_string, output,
 				"x = %s, len(output) = %s" % (x, len(output)))
 
 			output = self._testPipeLogger(test_string)
+			self.assertEqual(test_string, output,
+				"x = %s, len(output) = %s" % (x, len(output)))
+
+			output = loop.run_until_complete(self._testPipeLoggerToPipe(test_string, loop=loop))
 			self.assertEqual(test_string, output,
 				"x = %s, len(output) = %s" % (x, len(output)))
