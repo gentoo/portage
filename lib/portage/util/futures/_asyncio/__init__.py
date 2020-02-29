@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -139,7 +139,7 @@ def create_subprocess_exec(*args, **kwargs):
 	"""
 	loop = _wrap_loop(kwargs.pop('loop', None))
 	kwargs.setdefault('close_fds', _close_fds_default)
-	if _asyncio_enabled and isinstance(loop, _AsyncioEventLoop):
+	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio create_subprocess_exec (loop argument
 		# is deprecated since since Python 3.8).
 		return _real_asyncio.create_subprocess_exec(*args, **kwargs)
@@ -191,10 +191,10 @@ def ensure_future(coro_or_future, loop=None):
 	@return: an instance of Future
 	"""
 	loop = _wrap_loop(loop)
-	if _asyncio_enabled and isinstance(loop, _AsyncioEventLoop):
+	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio loop and ensure_future.
 		return _real_asyncio.ensure_future(
-			coro_or_future, loop=loop._loop)
+			coro_or_future, loop=loop._asyncio_wrapper._loop)
 
 	if isinstance(coro_or_future, Future):
 		return coro_or_future
