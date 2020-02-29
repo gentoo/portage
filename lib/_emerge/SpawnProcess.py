@@ -147,7 +147,12 @@ class SpawnProcess(SubProcess):
 			log_file_path=log_file_path,
 			stdout_fd=stdout_fd)
 		self._registered = True
-		yield pipe_logger.async_start()
+		try:
+			yield pipe_logger.async_start()
+		except asyncio.CancelledError:
+			if pipe_logger.poll() is None:
+				pipe_logger.cancel()
+			raise
 
 		self._main_task = asyncio.ensure_future(
 			self._main(pipe_logger), loop=self.scheduler)
