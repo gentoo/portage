@@ -49,10 +49,11 @@ class AsyncFunction(ForkProcess):
 
 		return os.EX_OK
 
-	def _pipe_logger_exit(self, pipe_logger):
+	def _async_waitpid(self):
 		# Ignore this event, since we want to ensure that we exit
 		# only after _async_func_reader_exit has reached EOF.
-		self._pipe_logger = None
+		if self._async_func_reader is None:
+			ForkProcess._async_waitpid(self)
 
 	def _async_func_reader_exit(self, pipe_reader):
 		try:
