@@ -20,6 +20,7 @@ from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.PipeLogger import PipeLogger
+from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
 
 class SpawnProcess(SubProcess):
@@ -36,7 +37,7 @@ class SpawnProcess(SubProcess):
 		"unshare_ipc", "unshare_mount", "unshare_pid", "unshare_net")
 
 	__slots__ = ("args",) + \
-		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
+		_spawn_kwarg_names + ("_main_task", "_selinux_type",)
 
 	# Max number of attempts to kill the processes listed in cgroup.procs,
 	# given that processes may fork before they can be killed.
@@ -141,13 +142,28 @@ class SpawnProcess(SubProcess):
 						fcntl.fcntl(stdout_fd,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._pipe_logger = PipeLogger(background=self.background,
+		pipe_logger = PipeLogger(background=self.background,
 			scheduler=self.scheduler, input_fd=master_fd,
 			log_file_path=log_file_path,
 			stdout_fd=stdout_fd)
-		self._pipe_logger.addExitListener(self._pipe_logger_exit)
 		self._registered = True
-		yield self._pipe_logger.async_start()
+		yield pipe_logger.async_start()
+
+		self._main_task = asyncio.ensure_future(
+			self._main(pipe_logger), loop=self.scheduler)
+		self._main_task.add_done_callback(self._main_exit)
+
+	@coroutine
+	def _main(self, pipe_logger):
+		if pipe_logger.poll() is None:
+			yield pipe_logger.async_wait()
+
+	def _main_exit(self, main_task):
+		try:
+			main_task.result()
+		except asyncio.CancelledError:
+			self.cancel()
+		self._async_waitpid()
 
 	def _can_log(self, slave_fd):
 		return True
@@ -171,21 +187,16 @@ class SpawnProcess(SubProcess):
 
 		return spawn_func(args, **kwargs)
 
-	def _pipe_logger_exit(self, pipe_logger):
-		self._pipe_logger = None
-		self._async_waitpid()
-
 	def _unregister(self):
 		SubProcess._unregister(self)
 		if self.cgroup is not None:
 			self._cgroup_cleanup()
 			self.cgroup = None
-		if self._pipe_logger is not None:
-			self._pipe_logger.cancel()
-			self._pipe_logger = None
 
 	def _cancel(self):
 		SubProcess._cancel(self)
+		if self._main_task is not None:
+			self._main_task.cancel()
 		self._cgroup_cleanup()
 
 	def _cgroup_cleanup(self):
