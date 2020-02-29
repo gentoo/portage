@@ -155,8 +155,13 @@ class SpawnProcess(SubProcess):
 
 	@coroutine
 	def _main(self, pipe_logger):
-		if pipe_logger.poll() is None:
-			yield pipe_logger.async_wait()
+		try:
+			if pipe_logger.poll() is None:
+				yield pipe_logger.async_wait()
+		except asyncio.CancelledError:
+			if pipe_logger.poll() is None:
+				pipe_logger.cancel()
+			raise
 
 	def _main_exit(self, main_task):
 		try:
