@@ -26,6 +26,8 @@ from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util import writemsg
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util._async.BuildLogger import BuildLogger
+from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 
 try:
@@ -130,7 +132,7 @@ class EbuildPhase(CompositeTask):
 			# Force background=True for this header since it's intended
 			# for the log and it doesn't necessarily need to be visible
 			# elsewhere.
-			self._elog('einfo', msg, background=True)
+			yield self._elog('einfo', msg, background=True)
 
 		if self.phase == 'package':
 			if 'PORTAGE_BINPKG_TMPFILE' not in self.settings:
@@ -392,6 +394,7 @@ class EbuildPhase(CompositeTask):
 		self.returncode = 1
 		self.wait()
 
+	@coroutine
 	def _elog(self, elog_funcname, lines, background=None):
 		if background is None:
 			background = self.background
@@ -408,11 +411,30 @@ class EbuildPhase(CompositeTask):
 			portage.output.havecolor = global_havecolor
 		msg = out.getvalue()
 		if msg:
-			log_path = None
-			if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
-				log_path = self.settings.get("PORTAGE_LOG_FILE")
-			self.scheduler.output(msg, log_path=log_path,
-				background=background)
+			build_logger = None
+			try:
+				log_file = None
+				log_path = None
+				if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+					log_path = self.settings.get("PORTAGE_LOG_FILE")
+				if log_path:
+					build_logger = BuildLogger(env=self.settings.environ(),
+						log_path=log_path,
+						log_filter_file=self.settings.get('PORTAGE_LOG_FILTER_FILE'),
+						scheduler=self.scheduler)
+					yield build_logger.async_start()
+					log_file = build_logger.stdin
+
+				yield self.scheduler.async_output(msg, log_file=log_file,
+					background=background)
+
+				if build_logger is not None:
+					build_logger.stdin.close()
+					yield build_logger.async_wait()
+			except asyncio.CancelledError:
+				if build_logger is not None:
+					build_logger.cancel()
+				raise
 
 
 class _PostPhaseCommands(CompositeTask):
@@ -481,4 +503,4 @@ class _PostPhaseCommands(CompositeTask):
 			qa_msg.extend("\t%s: %s" % (filename, " ".join(sorted(soname_deps)))
 				for filename, soname_deps in unresolved)
 			qa_msg.append("")
-			self.elog("eqawarn", qa_msg)
+			yield self.elog("eqawarn", qa_msg)

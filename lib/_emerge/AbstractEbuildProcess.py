@@ -181,6 +181,8 @@ class AbstractEbuildProcess(SpawnProcess):
 			null_fd = os.open('/dev/null', os.O_RDONLY)
 			self.fd_pipes[0] = null_fd
 
+		self.log_filter_file = self.settings.get('PORTAGE_LOG_FILTER_FILE')
+
 		try:
 			yield SpawnProcess._async_start(self)
 		finally:
