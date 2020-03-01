@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -57,6 +57,7 @@ class MergeProcess(ForkProcess):
 			self.fd_pipes = self.fd_pipes.copy()
 		self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
+		self.log_filter_file = self.settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
 		super(MergeProcess, self)._start()
 
 	def _lock_vdb(self):

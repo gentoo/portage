@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -225,6 +225,7 @@ class _EbuildFetcherProcess(ForkProcess):
 			settings["NOCOLOR"] = nocolor
 
 		self._settings = settings
+		self.log_filter_file = settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
 		ForkProcess._start(self)
 
 		# Free settings now since it's no longer needed in
