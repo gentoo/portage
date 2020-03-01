@@ -87,21 +87,32 @@ class _GeneratorTask(object):
 	def __init__(self, generator, result, loop):
 		self._generator = generator
 		self._result = result
+		self._current_task = None
 		self._loop = loop
 		result.add_done_callback(self._cancel_callback)
 		loop.call_soon(self._next)
 
 	def _cancel_callback(self, result):
 		if result.cancelled():
-			self._generator.close()
+			if self._current_task is not None:
+				# The done callback for self._current_task invokes
+				# _next in either case here.
+				self._current_task.done() or self._current_task.cancel()
+			else:
+				self._next(result)
 
 	def _next(self, previous=None):
+		self._current_task = None
 		if self._result.cancelled():
 			if previous is not None:
 				# Consume exceptions, in order to avoid triggering
 				# the event loop's exception handler.
 				previous.cancelled() or previous.exception()
-			return
+
+			# This will throw asyncio.CancelledError in the coroutine if
+			# there's an opportunity (yield) before the generator raises
+			# StopIteration.
+			previous = self._result
 		try:
 			if previous is None:
 				future = next(self._generator)
@@ -124,5 +135,6 @@ class _GeneratorTask(object):
 			if not self._result.cancelled():
 				self._result.set_exception(e)
 		else:
-			future = asyncio.ensure_future(future, loop=self._loop)
-			future.add_done_callback(self._next)
+			self._current_task = asyncio.ensure_future(future, loop=self._loop)
+			self._current_task.add_done_callback(self._next)
+

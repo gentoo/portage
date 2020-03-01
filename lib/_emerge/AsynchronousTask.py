@@ -64,7 +64,7 @@ class AsynchronousTask(SlotObject):
 		@returns: Future, result is self.returncode
 		"""
 		waiter = self.scheduler.create_future()
-		exit_listener = lambda self: waiter.set_result(self.returncode)
+		exit_listener = lambda self: waiter.cancelled() or waiter.set_result(self.returncode)
 		self.addExitListener(exit_listener)
 		waiter.add_done_callback(lambda waiter:
 			self.removeExitListener(exit_listener) if waiter.cancelled() else None)
@@ -180,9 +180,15 @@ class AsynchronousTask(SlotObject):
 	def removeExitListener(self, f):
 		if self._exit_listeners is None:
 			if self._exit_listener_stack is not None:
-				self._exit_listener_stack.remove(f)
+				try:
+					self._exit_listener_stack.remove(f)
+				except ValueError:
+					pass
 			return
-		self._exit_listeners.remove(f)
+		try:
+			self._exit_listeners.remove(f)
+		except ValueError:
+			pass
 
 	def _wait_hook(self):
 		"""
