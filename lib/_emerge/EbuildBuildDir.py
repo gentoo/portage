@@ -6,6 +6,7 @@ from _emerge.AsynchronousLock import AsynchronousLock
 import portage
 from portage import os
 from portage.exception import PortageException
+from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
 from portage.util.SlotObject import SlotObject
 
@@ -69,22 +70,29 @@ class EbuildBuildDir(SlotObject):
 				raise
 
 		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
-		yield catdir_lock.async_start()
-		yield catdir_lock.async_wait()
-
-		self._assert_lock(catdir_lock)
-
-		try:
-			portage.util.ensure_dirs(catdir,
-				gid=portage.portage_gid,
-				mode=0o70, mask=0)
-		except PortageException:
-			if not os.path.isdir(catdir):
-				raise
-
 		builddir_lock = AsynchronousLock(path=dir_path, scheduler=self.scheduler)
-		yield builddir_lock.async_start()
-		yield builddir_lock.async_wait()
+		try:
+			yield catdir_lock.async_start()
+			yield catdir_lock.async_wait()
+
+			self._assert_lock(catdir_lock)
+
+			try:
+				portage.util.ensure_dirs(catdir,
+					gid=portage.portage_gid,
+					mode=0o70, mask=0)
+			except PortageException:
+				if not os.path.isdir(catdir):
+					raise
+
+			yield builddir_lock.async_start()
+			yield builddir_lock.async_wait()
+		except asyncio.CancelledError:
+			if catdir_lock.poll() is None:
+				catdir_lock.cancel()
+			if builddir_lock.poll() is None:
+				builddir_lock.cancel()
+			raise
 
 		try:
 			self._assert_lock(builddir_lock)
@@ -113,8 +121,14 @@ class EbuildBuildDir(SlotObject):
 			self.settings.pop('PORTAGE_BUILDDIR_LOCKED', None)
 			catdir_lock = AsynchronousLock(
 				path=self._catdir, scheduler=self.scheduler)
-			yield catdir_lock.async_start()
-			yield catdir_lock.async_wait()
+			try:
+				yield catdir_lock.async_start()
+				yield catdir_lock.async_wait()
+			except asyncio.CancelledError:
+				if catdir_lock.poll() is None:
+					catdir_lock.cancel()
+				raise
+
 			if catdir_lock.returncode == os.EX_OK:
 				try:
 					os.rmdir(self._catdir)
