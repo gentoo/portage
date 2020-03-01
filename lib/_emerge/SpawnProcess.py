@@ -218,6 +218,8 @@ class SpawnProcess(SubProcess):
 		if self.cgroup is not None:
 			self._cgroup_cleanup()
 			self.cgroup = None
+		if self._main_task is not None:
+			self._main_task.done() or self._main_task.cancel()
 
 	def _cancel(self):
 		SubProcess._cancel(self)
