@@ -69,6 +69,37 @@ _userpriv_spawn_kwargs = (
 def _hide_url_passwd(url):
 	return re.sub(r'//(.+):.+@(.+)', r'//\1:*password*@\2', url)
 
+
+def _want_userfetch(settings):
+	"""
+	Check if it's desirable to drop privileges for userfetch.
+
+	@param settings: portage config
+	@type settings: portage.package.ebuild.config.config
+	@return: True if desirable, False otherwise
+	"""
+	return ('userfetch' in settings.features and
+		portage.data.secpass >= 2 and os.getuid() == 0)
+
+
+def _drop_privs_userfetch(settings):
+	"""
+	Drop privileges for userfetch, and update portage.data.secpass
+	to correspond to the new privilege level.
+	"""
+	spawn_kwargs = dict(_userpriv_spawn_kwargs)
+	try:
+		_ensure_distdir(settings, settings['DISTDIR'])
+	except PortageException:
+		if not os.path.isdir(settings['DISTDIR']):
+			raise
+	os.setgid(int(spawn_kwargs['gid']))
+	os.setgroups(spawn_kwargs['groups'])
+	os.setuid(int(spawn_kwargs['uid']))
+	os.umask(spawn_kwargs['umask'])
+	portage.data.secpass = 1
+
+
 def _spawn_fetch(settings, args, **kwargs):
 	"""
 	Spawn a process with appropriate settings for fetching, including
