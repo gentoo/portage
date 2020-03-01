@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.90
+==================================
+* Bug Fixes:
+    - Bug 601252 DISTDIR NFS root_squash support
+    - Bug 709746 new PORTAGE_LOG_FILTER_FILE variable specifies a
+          command that filters build log output to a log file
+    - Bug 710076 einstalldocs: Fix test for DOCS being unset
+
 portage-2.3.89
 ==================================
 * Bug Fixes:
