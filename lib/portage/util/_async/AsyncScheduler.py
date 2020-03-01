@@ -86,6 +86,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 		try:
 			future.result()
 		except asyncio.CancelledError:
+			task.cancel()
 			self.cancel()
 		self._task_exit(task)
 
