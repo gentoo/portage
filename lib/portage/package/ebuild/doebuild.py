@@ -1884,7 +1884,7 @@ def _check_build_log(mysettings, out=None):
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
 
-	except zlib.error as e:
+	except (EOFError, zlib.error) as e:
 		_eerror(["portage encountered a zlib error: '%s'" % (e,),
 			"while reading the log file: '%s'" % logfile])
 	finally:
