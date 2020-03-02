@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.91
+==================================
+* Bug Fixes:
+    - Bug 705910 remove pdb.set_trace() from exception handler
+    - Bug 711174 FEATURES=compress-build-logs EOFError regression
+    - Bug 711178 emerge --getbinpkg event loop recursion regression
+
 portage-2.3.90
 ==================================
 * Bug Fixes:
