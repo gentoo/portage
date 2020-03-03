@@ -510,7 +510,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		else:
 			new_slot_count = 0
 			for slot_atom, avail_pkg in slot_map.items():
-				if graph_interface.want_update_pkg(parent, avail_pkg):
+				if parent is not None and graph_interface.want_update_pkg(parent, avail_pkg):
 					want_update = True
 				if (not slot_atom.cp.startswith("virtual/")
 					and not graph_db.match_pkgs(slot_atom)):
