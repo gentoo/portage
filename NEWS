@@ -2,7 +2,7 @@ News (mainly features/major bug fixes)
 
 portage-2.3.90
 --------------
-* The new PORTAGE_LOG_FILTER_FILE make.conf(5) variable specifies a
+* The new PORTAGE_LOG_FILTER_FILE_CMD make.conf(5) variable specifies a
   command that filters build log output to a log file. In order to
   filter ANSI escape codes from build logs, ansifilter(1) is a
   convenient setting for this variable.

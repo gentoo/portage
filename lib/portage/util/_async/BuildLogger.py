@@ -14,7 +14,7 @@ class BuildLogger(AsynchronousTask):
 	Write to a log file, with compression support provided by PipeLogger.
 	If the log_filter_file parameter is specified, then it is interpreted
 	as a command to execute which filters log output (see the
-	PORTAGE_LOG_FILTER_FILE variable in make.conf(5)). The stdin property
+	PORTAGE_LOG_FILTER_FILE_CMD variable in make.conf(5)). The stdin property
 	provides access to a writable binary file stream (refers to a pipe)
 	that log content should be written to (usually redirected from
 	subprocess stdout and stderr streams).
