@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.92
+==================================
+* Bug Fixes:
+    - Bug 601252 emerge --pretend --fetchonly event loop recursion
+    - Bug 709334 socks5-server.py async and await coroutine syntax
+    - Bug 709746 Rename PORTAGE_LOG_FILTER_FILE_CMD from
+      PORTAGE_LOG_FILTER_FILE
+    - Bug 711322 emerge hang after src_install
+    - Bug 711362 egencache AttributeError: 'NoneType' object has no
+      attribute 'ebuild'
+    - Bug 711400 AttributeError: 'NoneType' object has no attribute
+      'depth'
+
 portage-2.3.91
 ==================================
 * Bug Fixes:
