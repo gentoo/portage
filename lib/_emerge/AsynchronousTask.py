@@ -19,7 +19,7 @@ class AsynchronousTask(SlotObject):
 	"""
 
 	__slots__ = ("background", "cancelled", "returncode", "scheduler") + \
-		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
+		("_exit_listener_handles", "_exit_listeners", "_start_listeners")
 
 	_cancelled_returncode = - signal.SIGINT
 
@@ -178,17 +178,16 @@ class AsynchronousTask(SlotObject):
 		self._exit_listeners.append(f)
 
 	def removeExitListener(self, f):
-		if self._exit_listeners is None:
-			if self._exit_listener_stack is not None:
-				try:
-					self._exit_listener_stack.remove(f)
-				except ValueError:
-					pass
-			return
-		try:
-			self._exit_listeners.remove(f)
-		except ValueError:
-			pass
+		if self._exit_listeners is not None:
+			try:
+				self._exit_listeners.remove(f)
+			except ValueError:
+				pass
+
+		if self._exit_listener_handles is not None:
+			handle = self._exit_listener_handles.pop(f, None)
+			if handle is not None:
+				handle.cancel()
 
 	def _wait_hook(self):
 		"""
@@ -200,26 +199,16 @@ class AsynchronousTask(SlotObject):
 		if self.returncode is not None and \
 			self._exit_listeners is not None:
 
-			# This prevents recursion, in case one of the
-			# exit handlers triggers this method again by
-			# calling wait(). Use a stack that gives
-			# removeExitListener() an opportunity to consume
-			# listeners from the stack, before they can get
-			# called below. This is necessary because a call
-			# to one exit listener may result in a call to
-			# removeExitListener() for another listener on
-			# the stack. That listener needs to be removed
-			# from the stack since it would be inconsistent
-			# to call it after it has been been passed into
-			# removeExitListener().
-			self._exit_listener_stack = self._exit_listeners
+			listeners = self._exit_listeners
 			self._exit_listeners = None
+			if self._exit_listener_handles is None:
+				self._exit_listener_handles = {}
 
-			# Execute exit listeners in reverse order, so that
-			# the last added listener is executed first. This
-			# allows SequentialTaskQueue to decrement its running
-			# task count as soon as one of its tasks exits, so that
-			# the value is accurate when other listeners execute.
-			while self._exit_listener_stack:
-				self._exit_listener_stack.pop()(self)
+			for listener in listeners:
+				if listener not in self._exit_listener_handles:
+					self._exit_listener_handles[listener] = \
+						self.scheduler.call_soon(self._exit_listener_cb, listener)
 
+	def _exit_listener_cb(self, listener):
+		del self._exit_listener_handles[listener]
+		listener(self)
