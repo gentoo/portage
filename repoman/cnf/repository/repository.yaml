@@ -71,6 +71,5 @@ linechecks_modules:
     uselessdodoc
     whitespace
     blankline
-    addpredict
     noasneeded
 

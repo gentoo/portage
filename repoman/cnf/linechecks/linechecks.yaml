@@ -28,7 +28,6 @@ errors:
     PRESERVE_OLD_LIB: 'Ebuild calls deprecated preserve_old_lib'
     BUILT_WITH_USE: 'built_with_use'
     NO_OFFSET_WITH_HELPERS: 'Helper function is used with D, ROOT, ED, EROOT or EPREFIX'
-    SANDBOX_ADDPREDICT: 'Ebuild calls addpredict'
     USEQ_ERROR: 'Ebuild calls deprecated useq function'
     HASQ_ERROR: 'Ebuild calls deprecated hasq function'
     URI_HTTPS: 'Ebuild uses http:// but should use https://'

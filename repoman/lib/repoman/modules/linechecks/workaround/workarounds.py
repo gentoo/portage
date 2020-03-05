@@ -9,10 +9,3 @@ class NoAsNeeded(LineCheck):
 	repoman_check_name = 'upstream.workaround'
 	re = re.compile(r'.*\$\(no-as-needed\)')
 	error = 'NO_AS_NEEDED'
-
-
-class SandboxAddpredict(LineCheck):
-	"""Check for calls to the addpredict function."""
-	repoman_check_name = 'upstream.workaround'
-	re = re.compile(r'(^|\s)addpredict\b')
-	error = 'SANDBOX_ADDPREDICT'
