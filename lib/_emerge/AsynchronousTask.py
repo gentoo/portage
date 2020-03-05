@@ -167,7 +167,7 @@ class AsynchronousTask(SlotObject):
 			self._start_listeners = None
 
 			for f in start_listeners:
-				f(self)
+				self.scheduler.call_soon(f, self)
 
 	def addExitListener(self, f):
 		"""
