@@ -4,7 +4,6 @@
 from __future__ import division, print_function, unicode_literals
 
 from collections import deque
-import functools
 import gc
 import gzip
 import logging
@@ -1260,13 +1259,11 @@ class Scheduler(PollScheduler):
 				child not in completed_tasks:
 				unsatisfied.add(child)
 
-	def _merge_wait_exit_handler(self, task, future):
-		future.cancelled() or future.result()
+	def _merge_wait_exit_handler(self, task):
 		self._merge_wait_scheduled.remove(task)
-		self._merge_exit(task, future)
+		self._merge_exit(task)
 
-	def _merge_exit(self, merge, future):
-		future.cancelled() or future.result()
+	def _merge_exit(self, merge):
 		self._running_tasks.pop(id(merge), None)
 		self._do_merge_exit(merge)
 		self._deallocate_config(merge.merge.settings)
@@ -1330,8 +1327,7 @@ class Scheduler(PollScheduler):
 			del mtimedb["resume"]
 		mtimedb.commit()
 
-	def _build_exit(self, build, future):
-		future.cancelled() or future.result()
+	def _build_exit(self, build):
 		self._running_tasks.pop(id(build), None)
 		if build.returncode == os.EX_OK and self._terminated_tasks:
 			# We've been interrupted, so we won't
@@ -1350,7 +1346,7 @@ class Scheduler(PollScheduler):
 				merge.addStartListener(self._system_merge_started)
 			else:
 				self._task_queues.merge.add(merge)
-				merge.async_wait().add_done_callback(functools.partial(self._merge_exit, merge))
+				merge.addExitListener(self._merge_exit)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
 			settings = build.settings
@@ -1369,9 +1365,8 @@ class Scheduler(PollScheduler):
 		self._status_display.running = self._jobs
 		self._schedule()
 
-	def _extract_exit(self, build, future):
-		future.cancelled() or future.result()
-		self._build_exit(build, future)
+	def _extract_exit(self, build):
+		self._build_exit(build)
 
 	def _task_complete(self, pkg):
 		self._completed_tasks.add(pkg)
@@ -1588,7 +1583,7 @@ class Scheduler(PollScheduler):
 				task.scheduler = self._sched_iface
 				self._merge_wait_scheduled.append(task)
 				self._task_queues.merge.add(task)
-				task.async_wait().add_done_callback(functools.partial(self._merge_wait_exit_handler, task))
+				task.addExitListener(self._merge_wait_exit_handler)
 				self._status_display.merges = len(self._task_queues.merge)
 				state_change += 1
 
@@ -1708,7 +1703,7 @@ class Scheduler(PollScheduler):
 				merge = PackageMerge(merge=task, scheduler=self._sched_iface)
 				self._running_tasks[id(merge)] = merge
 				self._task_queues.merge.addFront(merge)
-				merge.async_wait().add_done_callback(functools.partial(self._merge_exit, merge))
+				merge.addExitListener(self._merge_exit)
 
 			elif pkg.built:
 				self._jobs += 1
@@ -1717,7 +1712,7 @@ class Scheduler(PollScheduler):
 				self._running_tasks[id(task)] = task
 				task.scheduler = self._sched_iface
 				self._task_queues.jobs.add(task)
-				task.async_wait().add_done_callback(functools.partial(self._extract_exit, task))
+				task.addExitListener(self._extract_exit)
 
 			else:
 				self._jobs += 1
@@ -1726,7 +1721,7 @@ class Scheduler(PollScheduler):
 				self._running_tasks[id(task)] = task
 				task.scheduler = self._sched_iface
 				self._task_queues.jobs.add(task)
-				task.async_wait().add_done_callback(functools.partial(self._build_exit, task))
+				task.addExitListener(self._build_exit)
 
 		return bool(state_change)
 
