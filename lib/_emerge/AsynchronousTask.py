@@ -176,6 +176,8 @@ class AsynchronousTask(SlotObject):
 		if self._exit_listeners is None:
 			self._exit_listeners = []
 		self._exit_listeners.append(f)
+		if self.returncode is not None:
+			self._wait_hook()
 
 	def removeExitListener(self, f):
 		if self._exit_listeners is not None:
