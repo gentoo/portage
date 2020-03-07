@@ -156,6 +156,10 @@ class AsynchronousTask(SlotObject):
 			self._start_listeners = []
 		self._start_listeners.append(f)
 
+		# Ensure that start listeners are always called.
+		if self.returncode is not None:
+			self._start_hook()
+
 	def removeStartListener(self, f):
 		if self._start_listeners is None:
 			return
@@ -198,6 +202,10 @@ class AsynchronousTask(SlotObject):
 		used to trigger exit listeners when the returncode first
 		becomes available.
 		"""
+		# Ensure that start listeners are always called.
+		if self.returncode is not None:
+			self._start_hook()
+
 		if self.returncode is not None and \
 			self._exit_listeners is not None:
 

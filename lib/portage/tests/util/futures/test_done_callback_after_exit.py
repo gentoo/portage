@@ -36,5 +36,9 @@ class DoneCallbackAfterExitTestCase(TestCase):
 
 		for i in range(3):
 			event = loop.create_future()
+			task.addStartListener(lambda task: event.set_result(None))
+			loop.run_until_complete(event)
+
+			event = loop.create_future()
 			task.addExitListener(lambda task: event.set_result(None))
 			loop.run_until_complete(event)
