@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.93
+==================================
+* Bug Fixes:
+    - Bug 711322 schedule exit listeners via call_soon
+    - Bug 711688 BinpkgFetcher sync_timestamp KeyError regression
+
 portage-2.3.92
 ==================================
 * Bug Fixes:
