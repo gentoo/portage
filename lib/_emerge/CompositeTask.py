@@ -12,9 +12,6 @@ class CompositeTask(AsynchronousTask):
 
 	_TASK_QUEUED = -1
 
-	def isAlive(self):
-		return self._current_task is not None
-
 	def _cancel(self):
 		if self._current_task is not None:
 			if self._current_task is self._TASK_QUEUED:

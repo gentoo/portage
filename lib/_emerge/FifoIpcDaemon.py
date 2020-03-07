@@ -70,9 +70,6 @@ class FifoIpcDaemon(AbstractPollTask):
 			self._files.pipe_in,
 			self._input_handler)
 
-	def isAlive(self):
-		return self._registered
-
 	def _cancel(self):
 		if self.returncode is None:
 			self.returncode = 1

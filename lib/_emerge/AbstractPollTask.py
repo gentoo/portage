@@ -16,9 +16,6 @@ class AbstractPollTask(AsynchronousTask):
 
 	_bufsize = 4096
 
-	def isAlive(self):
-		return bool(self._registered)
-
 	def _read_array(self, f):
 		"""
 		NOTE: array.fromfile() is used here only for testing purposes,
