@@ -74,7 +74,10 @@ class SequentialTaskQueue(SlotObject):
 		"""
 		Clear the task queue and asynchronously terminate any running tasks.
 		"""
+		for task in self._task_queue:
+			task.cancel()
 		self._task_queue.clear()
+
 		for task in list(self.running_tasks):
 			task.cancel()
 

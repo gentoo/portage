@@ -20,6 +20,10 @@ class CompositeTask(AsynchronousTask):
 				self._async_wait()
 			else:
 				self._current_task.cancel()
+		elif self.returncode is None:
+			# Assume that the task has not started yet.
+			self._was_cancelled()
+			self._async_wait()
 
 	def _poll(self):
 		"""
