@@ -5,17 +5,36 @@ import subprocess
 import sys
 
 import portage
-from portage import os
+from portage import shutil, os
 from portage import _unicode_decode
 from portage.const import (BASH_BINARY, PORTAGE_BASE_PATH,
 	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.cache.mappings import Mapping
 from portage.process import find_binary
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
+from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util import (ensure_dirs, find_updated_config_files,
 	shlex_split)
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
+
+
+class BinhostContentMap(Mapping):
+	def __init__(self, remote_path, local_path):
+		self._remote_path = remote_path
+		self._local_path = local_path
+
+	def __getitem__(self, request_path):
+		safe_path = os.path.normpath(request_path)
+		if not safe_path.startswith(self._remote_path + '/'):
+			raise KeyError(request_path)
+		local_path = os.path.join(self._local_path, safe_path[len(self._remote_path)+1:])
+		try:
+			with open(local_path, 'rb') as f:
+				return f.read()
+		except EnvironmentError:
+			raise KeyError(request_path)
 
 
 class SimpleEmergeTestCase(TestCase):
@@ -207,10 +226,10 @@ call_has_and_best_version() {
 
 		loop = asyncio._wrap_loop()
 		loop.run_until_complete(asyncio.ensure_future(
-			self._async_test_simple(playground, metadata_xml_files), loop=loop))
+			self._async_test_simple(loop, playground, metadata_xml_files), loop=loop))
 
 	@coroutine
-	def _async_test_simple(self, playground, metadata_xml_files):
+	def _async_test_simple(self, loop, playground, metadata_xml_files):
 
 		debug = playground.debug
 		settings = playground.settings
@@ -264,6 +283,16 @@ call_has_and_best_version() {
 		cross_prefix = os.path.join(eprefix, "cross_prefix")
 		cross_root = os.path.join(eprefix, "cross_root")
 		cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
+
+		binhost_dir = os.path.join(eprefix, "binhost")
+		binhost_address = '127.0.0.1'
+		binhost_remote_path = '/binhost'
+		binhost_server = AsyncHTTPServer(binhost_address,
+			BinhostContentMap(binhost_remote_path, binhost_dir), loop).__enter__()
+		binhost_uri = 'http://{address}:{port}{path}'.format(
+			address=binhost_address,
+			port=binhost_server.server_port,
+			path=binhost_remote_path)
 
 		test_commands = (
 			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "dev-libs/A"),
@@ -390,6 +419,18 @@ call_has_and_best_version() {
 			portageq_cmd + ("has_version", cross_eroot, "dev-libs/B"),
 		)
 
+		# Test binhost support if FETCHCOMMAND is available.
+		fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
+		fetch_bin = portage.process.find_binary(fetchcommand[0])
+		if fetch_bin is not None:
+			test_commands = test_commands + (
+				lambda: os.rename(pkgdir, binhost_dir),
+				({"PORTAGE_BINHOST": binhost_uri},) + \
+					emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
+				lambda: shutil.rmtree(pkgdir),
+				lambda: os.rename(binhost_dir, pkgdir),
+			)
+
 		distdir = playground.distdir
 		pkgdir = playground.pkgdir
 		fake_bin = os.path.join(eprefix, "bin")
@@ -514,4 +555,5 @@ move dev-util/git dev-vcs/git
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))
 		finally:
+			binhost_server.__exit__(None, None, None)
 			playground.cleanup()
