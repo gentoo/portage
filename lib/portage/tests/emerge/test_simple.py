@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Gentoo Authors
+# Copyright 2011-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -14,6 +14,9 @@ from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import (ensure_dirs, find_updated_config_files,
 	shlex_split)
+from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine
+
 
 class SimpleEmergeTestCase(TestCase):
 
@@ -201,6 +204,15 @@ call_has_and_best_version() {
 
 		playground = ResolverPlayground(
 			ebuilds=ebuilds, installed=installed, debug=debug)
+
+		loop = asyncio._wrap_loop()
+		loop.run_until_complete(asyncio.ensure_future(
+			self._async_test_simple(playground, metadata_xml_files), loop=loop))
+
+	@coroutine
+	def _async_test_simple(self, playground, metadata_xml_files):
+
+		debug = playground.debug
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
@@ -487,15 +499,14 @@ move dev-util/git dev-vcs/git
 				else:
 					local_env = env
 
-				proc = subprocess.Popen(args,
-					env=local_env, stdout=stdout)
+				proc = yield asyncio.create_subprocess_exec(*args,
+					env=local_env, stderr=None, stdout=stdout)
 
 				if debug:
-					proc.wait()
+					yield proc.wait()
 				else:
-					output = proc.stdout.readlines()
-					proc.wait()
-					proc.stdout.close()
+					output, _err = yield proc.communicate()
+					yield proc.wait()
 					if proc.returncode != os.EX_OK:
 						for line in output:
 							sys.stderr.write(_unicode_decode(line))
