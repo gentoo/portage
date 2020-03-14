@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -8,6 +8,17 @@ from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 class ResolverDepthTestCase(TestCase):
 
 	def testResolverDepth(self):
+
+		profile = {
+			"package.mask":
+				(
+					# Mask an installed package (for which an update is
+					# available) in order to test for bug 712298, where
+					# --update caused --deep=<depth> to be violated for
+					# such a package.
+					"<dev-libs/B-2",
+				),
+		}
 
 		ebuilds = {
 			"dev-libs/A-1": {"RDEPEND" : "dev-libs/B"},
@@ -65,6 +76,9 @@ class ResolverDepthTestCase(TestCase):
 		world = ["dev-libs/A"]
 
 		test_cases = (
+			# Test for bug 712298, where --update caused --deep=<depth>
+			# to be violated for dependencies that were masked. In this
+			# case, the installed dev-libs/B-1 dependency is masked.
 			ResolverPlaygroundTestCase(
 				["dev-libs/A"],
 				options = {"--update": True, "--deep": 0},
@@ -243,7 +257,7 @@ class ResolverDepthTestCase(TestCase):
 			)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
-			world=world)
+			profile=profile, world=world)
 		try:
 			for test_case in test_cases:
 				playground.run_TestCase(test_case)

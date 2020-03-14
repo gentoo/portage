@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -6371,7 +6371,11 @@ class depgraph(object):
 					cpv = pkg.cpv
 					reinstall_for_flags = None
 
-					if not pkg.installed or \
+					if pkg.installed and parent is not None and not self._want_update_pkg(parent, pkg):
+						# Ensure that --deep=<depth> is respected even when the
+						# installed package is masked and --update is enabled.
+						pass
+					elif not pkg.installed or \
 						(matched_packages and not avoid_update):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
