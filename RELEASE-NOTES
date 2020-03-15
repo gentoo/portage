@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.94
+==================================
+* Bug Fixes:
+    - Bug 692492 secure ebuild ${D} permissions
+    - Bug 710444 omit zstd --long=31 for decompress on 32-bit arch
+    - Bug 712298 respect emerge --deep=<depth> with --update
+
 portage-2.3.93
 ==================================
 * Bug Fixes:
