@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -84,7 +84,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 			except PortageException:
 				if not os.path.isdir(mydir):
 					raise
-		for dir_key in ("PORTAGE_BUILDDIR", "HOME", "PKG_LOGDIR", "T"):
+		for dir_key in ("HOME", "PKG_LOGDIR", "T"):
 			ensure_dirs(mysettings[dir_key], mode=0o755)
 			apply_secpass_permissions(mysettings[dir_key],
 				uid=portage_uid, gid=portage_gid)
@@ -272,11 +272,18 @@ def _prepare_workdir(mysettings):
 		writemsg(_("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n") % \
 		(mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode)))
 	mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode).replace('o', '')
-	try:
-		apply_secpass_permissions(mysettings["WORKDIR"],
-		uid=portage_uid, gid=portage_gid, mode=workdir_mode)
-	except FileNotFound:
-		pass # ebuild.sh will create it
+
+	permissions = {'mode': workdir_mode}
+	if portage.data.secpass >= 2:
+		permissions['uid'] = portage_uid
+	if portage.data.secpass >= 1:
+		permissions['gid'] = portage_gid
+
+	# Apply PORTAGE_WORKDIR_MODE to PORTAGE_BUILDDIR, since the child
+	# directory ${D} and its children may have vulnerable permissions
+	# as reported in bug 692492.
+	ensure_dirs(mysettings["PORTAGE_BUILDDIR"], **permissions)
+	ensure_dirs(mysettings["WORKDIR"], **permissions)
 
 	if mysettings.get("PORTAGE_LOGDIR", "") == "":
 		while "PORTAGE_LOGDIR" in mysettings:
