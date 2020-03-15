@@ -29,8 +29,16 @@ class Changes(ChangesBase):
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 
-	def _scan(self):
-		'''VCS type scan function, looks for all detectable changes'''
+	def _scan(self, _reindex=True):
+		'''
+		VCS type scan function, looks for all detectable changes
+
+		@param _reindex: ensure that the git index reflects the state on
+			disk for files returned by git diff-index (this parameter is
+			used in recursive calls and it's not intended to be used for
+			any other reason)
+		@type _reindex: bool
+		'''
 		with repoman_popen(
 			"git diff-index --name-only "
 			"--relative --diff-filter=M HEAD") as f:
@@ -51,6 +59,9 @@ class Changes(ChangesBase):
 			removed = f.readlines()
 		self.removed = ["./" + elem[:-1] for elem in removed]
 		del removed
+		if _reindex and (self.changed or self.new or self.removed):
+			self.update_index([], self.changed + self.new + self.removed)
+			self._scan(_reindex=False)
 
 	@property
 	def unadded(self):
@@ -91,7 +102,7 @@ class Changes(ChangesBase):
 		# of the working tree.
 		myfiles = mymanifests + myupdates
 		myfiles.sort()
-		update_index_cmd = ["git", "update-index"]
+		update_index_cmd = ["git", "update-index", "--add", "--remove"]
 		update_index_cmd.extend(f.lstrip("./") for f in myfiles)
 		if self.options.pretend:
 			print("(%s)" % (" ".join(update_index_cmd),))
