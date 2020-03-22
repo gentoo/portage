@@ -1765,9 +1765,10 @@ def _post_phase_userpriv_perms(mysettings):
 	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
-		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid, dirmode=0o700, dirmask=0,
-			filemode=0o600, filemask=0)
+		for path in (mysettings["HOME"], mysettings["T"]):
+			apply_recursive_permissions(path,
+				uid=portage_uid, gid=portage_gid, dirmode=0o700, dirmask=0,
+				filemode=0o600, filemask=0)
 
 
 def _check_build_log(mysettings, out=None):
