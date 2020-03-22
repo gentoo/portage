@@ -388,7 +388,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			SpawnProcess._async_wait(self)
 		elif self._build_dir_unlock is None:
 			if self.returncode is None:
-				raise asyncio.InvalidStateError('Result is not ready.')
+				raise asyncio.InvalidStateError('Result is not ready for %s' % (self,))
 			self._async_unlock_builddir(returncode=self.returncode)
 
 	def _async_unlock_builddir(self, returncode=None):
