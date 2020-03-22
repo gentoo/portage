@@ -66,9 +66,11 @@ class DoebuildSpawnTestCase(TestCase):
 			settings['PORTAGE_BUILDDIR'] = os.path.join(
 				settings['PORTAGE_TMPDIR'], cpv)
 			settings['PYTHONDONTWRITEBYTECODE'] = os.environ.get('PYTHONDONTWRITEBYTECODE', '')
+			settings['HOME'] = os.path.join(
+				settings['PORTAGE_BUILDDIR'], 'homedir')
 			settings['T'] = os.path.join(
 				settings['PORTAGE_BUILDDIR'], 'temp')
-			for x in ('PORTAGE_BUILDDIR', 'T'):
+			for x in ('PORTAGE_BUILDDIR', 'HOME', 'T'):
 				os.makedirs(settings[x])
 			# Create a fake environment, to pretend as if the ebuild
 			# has been sourced already.
