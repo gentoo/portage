@@ -67,7 +67,7 @@ _userpriv_spawn_kwargs = (
 )
 
 def _hide_url_passwd(url):
-	return re.sub(r'//(.+):.+@(.+)', r'//\1:*password*@\2', url)
+	return re.sub(r'//([^:\s]+):[^@\s]+@', r'//\1:*password*@', url)
 
 
 def _want_userfetch(settings):
