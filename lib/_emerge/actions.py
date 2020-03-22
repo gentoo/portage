@@ -56,6 +56,7 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.doebuild import _check_temp_dir
+from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, varexpand, \
@@ -1899,6 +1900,9 @@ def action_info(settings, trees, myopts, myfiles):
 				if default is not None and \
 					default == v:
 					continue
+
+				v = _hide_url_passwd(v)
+
 				append('%s="%s"' % (k, v))
 			else:
 				use = set(v.split())
