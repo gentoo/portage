@@ -5,21 +5,14 @@ from __future__ import print_function, unicode_literals
 import errno
 import logging
 import sys
-import tempfile
 import time
-
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
-
 
 # import our initialized portage instance
 from repoman._portage import portage
 
 from portage import os
-from portage import shutil
 from portage.output import green
+from portage.package.ebuild.fetch import fetch
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -64,41 +57,17 @@ def fetch_metadata_xsd(metadata_xsd, repoman_settings):
 			"%s the local copy of metadata.xsd "
 			"needs to be refetched, doing that now" % green("***"))
 		print()
-		parsed_url = urlparse(metadata_xsd_uri)
-		setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
-		fcmd = repoman_settings.get(setting)
-		if not fcmd:
-			fcmd = repoman_settings.get('FETCHCOMMAND')
-			if not fcmd:
-				logging.error("FETCHCOMMAND is unset")
-				return False
 
-		destdir = repoman_settings["DISTDIR"]
-		fd, metadata_xsd_tmp = tempfile.mkstemp(
-			prefix='metadata.xsd.', dir=destdir)
-		os.close(fd)
+		if not fetch([metadata_xsd_uri], repoman_settings, force=1, try_mirrors=0):
+			logging.error(
+				"failed to fetch metadata.xsd from '%s'" % metadata_xsd_uri)
+			return False
 
 		try:
-			if not portage.getbinpkg.file_get(
-				metadata_xsd_uri, destdir, fcmd=fcmd,
-				filename=os.path.basename(metadata_xsd_tmp)):
-				logging.error(
-					"failed to fetch metadata.xsd from '%s'" % metadata_xsd_uri)
-				return False
-
-			try:
-				portage.util.apply_secpass_permissions(
-					metadata_xsd_tmp,
-					gid=portage.data.portage_gid, mode=0o664, mask=0o2)
-			except portage.exception.PortageException:
-				pass
-
-			shutil.move(metadata_xsd_tmp, metadata_xsd)
-		finally:
-			try:
-				os.unlink(metadata_xsd_tmp)
-			except OSError:
-				pass
+			portage.util.apply_secpass_permissions(metadata_xsd,
+				gid=portage.data.portage_gid, mode=0o664, mask=0o2)
+		except portage.exception.PortageException:
+			pass
 
 	return True
 
