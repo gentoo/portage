@@ -109,13 +109,13 @@ class AsynchronousTask(SlotObject):
 
 	def _async_wait(self):
 		"""
-		For cases where _start exits synchronously, this method is a
-		convenient way to trigger an asynchronous call to self.wait()
-		(in order to notify exit listeners), avoiding excessive event
-		loop recursion (or stack overflow) that synchronous calling of
-		exit listeners can cause. This method is thread-safe.
+		Subclasses call this method in order to invoke exit listeners when
+		self.returncode is set. Subclasses may override this method in order
+		to perform cleanup. The default implementation for this method simply
+		calls self.wait(), which will immediately raise an InvalidStateError
+		if the event loop is running and self.returncode is None.
 		"""
-		self.scheduler.call_soon(self.wait)
+		self.wait()
 
 	def cancel(self):
 		"""
