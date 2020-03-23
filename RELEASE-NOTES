@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.95
+==================================
+* Bug Fixes:
+    - Bug 713100 fix FEATURES=userpriv $HOME permissions
+    - Bug 713726 emerge --info: Filter variables for credentials
+    - Bug 713818 eqawarn: output to build log regardless of --quiet
+
 portage-2.3.94
 ==================================
 * Bug Fixes:
