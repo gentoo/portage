@@ -89,9 +89,17 @@ _open_inodes = {}
 
 class _lock_manager(object):
 	__slots__ = ('fd', 'inode_key')
-	def __init__(self, fd, fstat_result):
+	def __init__(self, fd, fstat_result, path):
 		self.fd = fd
 		self.inode_key = (fstat_result.st_dev, fstat_result.st_ino)
+		if self.inode_key in _open_inodes:
+			# This means that the lock is already held by the current
+			# process, so the caller will have to try again. This case
+			# is encountered with the default fcntl.lockf function, and
+			# with the alternative fcntl.flock function TryAgain is
+			# raised earlier.
+			os.close(fd)
+			raise TryAgain(path)
 		_open_fds[fd] = self
 		_open_inodes[self.inode_key] = self
 	def close(self):
@@ -336,7 +344,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 				fcntl.fcntl(myfd, fcntl.F_SETFD,
 					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		_lock_manager(myfd, os.fstat(myfd) if fstat_result is None else fstat_result)
+		_lock_manager(myfd, os.fstat(myfd) if fstat_result is None else fstat_result, mypath)
 
 	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
 	return (lockfilename, myfd, unlinkfile, locking_method)
