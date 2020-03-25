@@ -419,7 +419,7 @@ def _lockfile_was_removed(lock_fd, lock_path):
 				except OSError as e:
 					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						_raise_exc(e)
-			return True
+			return (True, None)
 	finally:
 		try:
 			os.unlink(hardlink_path)
