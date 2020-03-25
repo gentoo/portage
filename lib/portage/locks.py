@@ -296,10 +296,9 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 		else:
 			raise
 
-		
 	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
 		try:
-			removed = _lockfile_was_removed(myfd, lockfilename)
+			(removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
 		except Exception:
 			# Do not leak the file descriptor here.
 			os.close(myfd)
@@ -341,14 +340,15 @@ def _lockfile_was_removed(lock_fd, lock_path):
 	@param lock_path: path of lock file
 	@type lock_path: str
 	@rtype: bool
-	@return: True if lock_path exists and corresponds to lock_fd, False otherwise
+	@return: a tuple of (removed, fstat_result), where removed is True if
+		lock_path does not correspond to lock_fd, and False otherwise
 	"""
 	try:
 		fstat_st = os.fstat(lock_fd)
 	except OSError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
 			_raise_exc(e)
-		return True
+		return (True, None)
 
 	# Since stat is not reliable for removed files on NFS with the default
 	# file attribute cache behavior ('ac' mount option), create a temporary
@@ -365,7 +365,7 @@ def _lockfile_was_removed(lock_fd, lock_path):
 		except OSError as e:
 			if e.errno not in (errno.ENOENT, errno.ESTALE):
 				_raise_exc(e)
-			return True
+			return (True, None)
 
 		hardlink_stat = os.stat(hardlink_path)
 		if hardlink_stat.st_ino != fstat_st.st_ino or hardlink_stat.st_dev != fstat_st.st_dev:
@@ -383,13 +383,13 @@ def _lockfile_was_removed(lock_fd, lock_path):
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					_raise_exc(e)
-				return True
+				return (True, None)
 			else:
 				if not os.path.samefile(hardlink_path, inode_test):
 					# This implies that inode numbers are not expected
 					# to match for this file system, so use a simple
 					# stat call to detect if lock_path has been removed.
-					return not os.path.exists(lock_path)
+					return (not os.path.exists(lock_path), fstat_st)
 			finally:
 				try:
 					os.unlink(inode_test)
@@ -403,7 +403,7 @@ def _lockfile_was_removed(lock_fd, lock_path):
 		except OSError as e:
 			if e.errno not in (errno.ENOENT, errno.ESTALE):
 				_raise_exc(e)
-	return False
+	return (False, fstat_st)
 
 
 def _fstat_nlink(fd):
