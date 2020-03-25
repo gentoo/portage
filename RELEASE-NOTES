@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.96
+==================================
+* Bug Fixes:
+    - Bug 714480 DirectoryNotFound: /var/tmp/portage/category-directory
+
 portage-2.3.95
 ==================================
 * Bug Fixes:
