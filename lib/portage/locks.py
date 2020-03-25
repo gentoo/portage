@@ -84,7 +84,21 @@ def _get_lock_fn():
 	return _lock_fn
 
 
-_open_fds = set()
+_open_fds = {}
+_open_inodes = {}
+
+class _lock_manager(object):
+	__slots__ = ('fd', 'inode_key')
+	def __init__(self, fd, fstat_result):
+		self.fd = fd
+		self.inode_key = (fstat_result.st_dev, fstat_result.st_ino)
+		_open_fds[fd] = self
+		_open_inodes[self.inode_key] = self
+	def close(self):
+		os.close(self.fd)
+		del _open_fds[self.fd]
+		del _open_inodes[self.inode_key]
+
 
 def _close_fds():
 	"""
@@ -93,8 +107,8 @@ def _close_fds():
 	safely after a fork without exec, unlike the _setup_pipes close_fds
 	behavior.
 	"""
-	while _open_fds:
-		os.close(_open_fds.pop())
+	for fd in list(_open_fds.values()):
+		fd.close()
 
 def lockdir(mydir, flags=0):
 	return lockfile(mydir, wantnewlockfile=1, flags=flags)
@@ -296,6 +310,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 		else:
 			raise
 
+	fstat_result = None
 	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
 		try:
 			(removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
@@ -321,7 +336,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 				fcntl.fcntl(myfd, fcntl.F_SETFD,
 					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		_open_fds.add(myfd)
+		_lock_manager(myfd, os.fstat(myfd) if fstat_result is None else fstat_result)
 
 	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
 	return (lockfilename, myfd, unlinkfile, locking_method)
@@ -442,8 +457,7 @@ def unlockfile(mytuple):
 		not os.path.exists(lockfilename):
 		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
-			os.close(myfd)
-			_open_fds.remove(myfd)
+			_open_fds[myfd].close()
 		return False
 
 	try:
@@ -453,8 +467,7 @@ def unlockfile(mytuple):
 		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
 		if isinstance(lockfilename, basestring):
-			os.close(myfd)
-			_open_fds.remove(myfd)
+			_open_fds[myfd].close()
 		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
 	try:
@@ -475,8 +488,7 @@ def unlockfile(mytuple):
 				locking_method(myfd, fcntl.LOCK_UN)
 			else:
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
-				os.close(myfd)
-				_open_fds.remove(myfd)
+				_open_fds[myfd].close()
 				return False
 	except SystemExit:
 		raise
@@ -488,8 +500,7 @@ def unlockfile(mytuple):
 	# fd originally, and the caller might not like having their
 	# open fd closed automatically on them.
 	if isinstance(lockfilename, basestring):
-		os.close(myfd)
-		_open_fds.remove(myfd)
+		_open_fds[myfd].close()
 
 	return True
 
