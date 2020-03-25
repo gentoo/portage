@@ -29,7 +29,7 @@ class Changes(ChangesBase):
 		'''
 		super(Changes, self).__init__(options, repo_settings)
 
-	def _scan(self, _reindex=True):
+	def _scan(self, _reindex=None):
 		'''
 		VCS type scan function, looks for all detectable changes
 
@@ -39,6 +39,11 @@ class Changes(ChangesBase):
 			any other reason)
 		@type _reindex: bool
 		'''
+		# Automatically reindex for commit mode, but not for other modes
+		# were the user might not want changes to be staged in the index.
+		if _reindex is None and self.options.mode == 'commit':
+			_reindex = True
+
 		with repoman_popen(
 			"git diff-index --name-only "
 			"--relative --diff-filter=M HEAD") as f:
