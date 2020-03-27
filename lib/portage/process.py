@@ -348,12 +348,14 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
 		# from /usr/include/bits/sched.h
 		CLONE_NEWNS = 0x00020000
+		CLONE_NEWUTS = 0x04000000
 		CLONE_NEWIPC = 0x08000000
 		CLONE_NEWPID = 0x20000000
 		CLONE_NEWNET = 0x40000000
 
 		if unshare_net:
-			unshare_flags |= CLONE_NEWNET
+			# UTS namespace to override hostname
+			unshare_flags |= CLONE_NEWNET | CLONE_NEWUTS
 		if unshare_ipc:
 			unshare_flags |= CLONE_NEWIPC
 		if unshare_mount:
@@ -704,6 +706,13 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 									noiselevel=-1)
 								os._exit(1)
 						if unshare_net:
+							# use 'localhost' to avoid hostname resolution problems
+							try:
+								socket.sethostname('localhost')
+							except Exception as e:
+								writemsg("Unable to set hostname: %s (for FEATURES=\"network-sandbox\")\n" % (
+									e,),
+									noiselevel=-1)
 							_configure_loopback_interface()
 				except AttributeError:
 					# unshare() not supported by libc
