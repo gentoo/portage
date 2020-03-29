@@ -183,6 +183,12 @@ install_qa_check() {
 			soname=${l%%;*}; l=${l#*;}
 			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
 			needed=${l%%;*}; l=${l#*;}
+
+			# Infer implicit soname from basename (bug 715162).
+			if [[ -z ${soname} && $(file "${D%/}${obj}") == *"SB shared object"* ]]; then
+				soname=${obj##*/}
+			fi
+
 			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 			echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 		done }

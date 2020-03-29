@@ -311,6 +311,22 @@ class LinkageMapELF(object):
 							raise
 						# File removed concurrently.
 						continue
+
+					# Infer implicit soname from basename (bug 715162).
+					if not entry.soname:
+						try:
+							proc = subprocess.Popen([b'file',
+								_unicode_encode(entry.filename,
+									encoding=_encodings['fs'], errors='strict')],
+								stdout=subprocess.PIPE)
+							out, err = proc.communicate()
+							proc.wait()
+						except EnvironmentError:
+							pass
+						else:
+							if b'SB shared object' in out:
+								entry.soname = os.path.basename(entry.filename)
+
 					entry.multilib_category = compute_multilib_category(elf_header)
 					entry.filename = entry.filename[root_len:]
 					owner = plibs.pop(entry.filename, None)
