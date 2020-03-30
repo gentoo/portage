@@ -133,6 +133,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"case-insensitive-fs",
 	"ccache",
 	"cgroup",
+	"cgroup-freezer",
 	"chflags",
 	"clean-logs",
 	"collision-protect",

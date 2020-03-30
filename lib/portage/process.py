@@ -224,7 +224,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
           path_lookup=True, pre_exec=None,
           close_fds=(sys.version_info < (3, 4)), unshare_net=False,
           unshare_ipc=False, unshare_mount=False, unshare_pid=False,
-	  cgroup=None):
+	  cgroup=None, cgroup_freezer=None):
 	"""
 	Spawns a given command.
 	
@@ -381,7 +381,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, cwd, pre_exec, close_fds,
 					unshare_net, unshare_ipc, unshare_mount, unshare_pid,
-					unshare_flags, cgroup)
+					unshare_flags, cgroup, cgroup_freezer)
 			except SystemExit:
 				raise
 			except Exception as e:
@@ -520,7 +520,7 @@ def _configure_loopback_interface():
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
 	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, unshare_pid,
-	unshare_flags, cgroup):
+	unshare_flags, cgroup, cgroup_freezer):
 
 	"""
 	Execute a given binary with options
@@ -560,6 +560,8 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	@type unshare_flags: Integer
 	@param cgroup: CGroup path to bind the process to
 	@type cgroup: String
+	@param cgroup_freezer: CGroup freezer path to bind the process to
+	@type cgroup_freezer: String
 	@rtype: None
 	@return: Never returns (calls os.execve)
 	"""
@@ -606,12 +608,15 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 
 	_setup_pipes(fd_pipes, close_fds=close_fds, inheritable=True)
 
-	# Add to cgroup
-	# it's better to do it from the child since we can guarantee
-	# it is done before we start forking children
-	if cgroup:
-		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
-			f.write('%d\n' % os.getpid())
+	cgroups = [cgroup, cgroup_freezer]
+
+	for cgrp in cgroups:
+		# Add to cgroup
+		# it's better to do it from the child since we can guarantee
+		# it is done before we start forking children
+		if cgrp:
+			with open(os.path.join(cgrp, 'cgroup.procs'), 'a') as f:
+				f.write('%d\n' % os.getpid())
 
 	# Unshare (while still uid==0)
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
