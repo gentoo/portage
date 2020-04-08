@@ -1,11 +1,9 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
 import sys
 
-from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.SlotObject import SlotObject
 
 class SequentialTaskQueue(SlotObject):
@@ -43,22 +41,16 @@ class SequentialTaskQueue(SlotObject):
 				cancelled = getattr(task, "cancelled", None)
 				if not cancelled:
 					self.running_tasks.add(task)
-					future = asyncio.ensure_future(self._task_coroutine(task), loop=task.scheduler)
-					future.add_done_callback(lambda future: future.cancelled() or future.result())
 					# This callback will be invoked as soon as the task
 					# exits (before the future's done callback is called),
 					# and this is required in order for bool(self) to have
 					# an updated value for Scheduler._schedule to base
 					# assumptions upon. Delayed updates to bool(self) is
-					# what caused Scheduler to hang as in bug 709746.
+					# what caused Scheduler to hang as in bug 711322.
 					task.addExitListener(self._task_exit)
+					task.start()
 		finally:
 			self._scheduling = False
-
-	@coroutine
-	def _task_coroutine(self, task):
-		yield task.async_start()
-		yield task.async_wait()
 
 	def _task_exit(self, task):
 		"""
