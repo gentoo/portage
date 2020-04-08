@@ -16,7 +16,6 @@ import portage
 from portage import os
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
-from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
 
 if sys.hexversion >= 0x3000000:
@@ -206,7 +205,6 @@ class _BinpkgFetcherProcess(SpawnProcess):
 								except OSError:
 									pass
 
-	@coroutine
 	def async_lock(self):
 		"""
 		This raises an AlreadyLocked exception if lock() is called
@@ -217,22 +215,22 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		async_lock = self._lock_obj = AsynchronousLock(path=self.pkg_path,
+		result = self.scheduler.create_future()
+
+		def acquired_lock(async_lock):
+			if async_lock.wait() == os.EX_OK:
+				self.locked = True
+				result.set_result(None)
+			else:
+				result.set_exception(AssertionError(
+					"AsynchronousLock failed with returncode %s"
+					% (async_lock.returncode,)))
+
+		self._lock_obj = AsynchronousLock(path=self.pkg_path,
 			scheduler=self.scheduler)
-		try:
-			yield async_lock.async_start()
-			yield async_lock.async_wait()
-		except asyncio.CancelledError:
-			if async_lock.poll() is None:
-				async_lock.cancel()
-			raise
-
-		if async_lock.returncode != os.EX_OK:
-			raise AssertionError(
-				"AsynchronousLock failed with returncode %s"
-				% (async_lock.returncode,))
-
-		self.locked = True
+		self._lock_obj.addExitListener(acquired_lock)
+		self._lock_obj.start()
+		return result
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
