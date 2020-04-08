@@ -420,7 +420,7 @@ class EbuildPhase(CompositeTask):
 				if log_path:
 					build_logger = BuildLogger(env=self.settings.environ(),
 						log_path=log_path,
-						log_filter_file=self.settings.get('PORTAGE_LOG_FILTER_FILE_CMD'),
+						log_filter_file=self.settings.get('PORTAGE_LOG_FILTER_FILE'),
 						scheduler=self.scheduler)
 					yield build_logger.async_start()
 					log_file = build_logger.stdin
