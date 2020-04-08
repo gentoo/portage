@@ -19,7 +19,6 @@ from portage.const import BASH_BINARY
 from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
-from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
@@ -37,7 +36,7 @@ class SpawnProcess(SubProcess):
 		"path_lookup", "pre_exec", "close_fds", "cgroup",
 		"unshare_ipc", "unshare_mount", "unshare_pid", "unshare_net")
 
-	__slots__ = ("args", "log_filter_file") + \
+	__slots__ = ("args",) + \
 		_spawn_kwarg_names + ("_main_task", "_selinux_type",)
 
 	# Max number of attempts to kill the processes listed in cgroup.procs,
@@ -143,45 +142,30 @@ class SpawnProcess(SubProcess):
 						fcntl.fcntl(stdout_fd,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		build_logger = BuildLogger(env=self.env,
-			log_path=log_file_path,
-			log_filter_file=self.log_filter_file,
-			scheduler=self.scheduler)
-
+		pipe_logger = PipeLogger(background=self.background,
+			scheduler=self.scheduler, input_fd=master_fd,
+			log_file_path=log_file_path,
+			stdout_fd=stdout_fd)
 		self._registered = True
-		pipe_logger = None
 		try:
-			yield build_logger.async_start()
-
-			pipe_logger = PipeLogger(background=self.background,
-				scheduler=self.scheduler, input_fd=master_fd,
-				log_file_path=build_logger.stdin,
-				stdout_fd=stdout_fd)
-
 			yield pipe_logger.async_start()
 		except asyncio.CancelledError:
-			if pipe_logger is not None and pipe_logger.poll() is None:
+			if pipe_logger.poll() is None:
 				pipe_logger.cancel()
-			if build_logger.poll() is None:
-				build_logger.cancel()
 			raise
 
 		self._main_task = asyncio.ensure_future(
-			self._main(pipe_logger, build_logger), loop=self.scheduler)
+			self._main(pipe_logger), loop=self.scheduler)
 		self._main_task.add_done_callback(self._main_exit)
 
 	@coroutine
-	def _main(self, pipe_logger, build_logger):
+	def _main(self, pipe_logger):
 		try:
 			if pipe_logger.poll() is None:
 				yield pipe_logger.async_wait()
-			if build_logger.poll() is None:
-				yield build_logger.async_wait()
 		except asyncio.CancelledError:
 			if pipe_logger.poll() is None:
 				pipe_logger.cancel()
-			if build_logger.poll() is None:
-				build_logger.cancel()
 			raise
 
 	def _main_exit(self, main_task):
