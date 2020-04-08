@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -10,7 +10,6 @@ from portage.util.compression_probe import (
 	compression_probe,
 	_compressors,
 )
-from portage.util.futures.compat_coroutine import coroutine
 from portage.process import find_binary
 from portage.util import (
 	shlex_split,
@@ -28,10 +27,6 @@ class BinpkgExtractorAsync(SpawnProcess):
 	_shell_binary = portage.const.BASH_BINARY
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 		tar_options = ""
 		if "xattr" in self.features:
 			process = subprocess.Popen(["tar", "--help"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -110,4 +105,4 @@ class BinpkgExtractorAsync(SpawnProcess):
 			portage._shell_quote(self.image_dir),
 			128 + signal.SIGPIPE)]
 
-		yield SpawnProcess._async_start(self)
+		SpawnProcess._start(self)

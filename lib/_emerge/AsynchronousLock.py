@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -21,7 +21,6 @@ from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.util import writemsg_level
-from portage.util.futures.compat_coroutine import coroutine
 from _emerge.AbstractPollTask import AbstractPollTask
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.SpawnProcess import SpawnProcess
@@ -44,10 +43,6 @@ class AsynchronousLock(AsynchronousTask):
 	_use_process_by_default = True
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 
 		if not self._force_async:
 			try:
@@ -70,7 +65,7 @@ class AsynchronousLock(AsynchronousTask):
 				_force_dummy=self._force_dummy)
 
 		self._imp.addExitListener(self._imp_exit)
-		yield self._imp.async_start()
+		self._imp.start()
 
 	def _imp_exit(self, imp):
 		# call exit listeners
@@ -188,10 +183,6 @@ class _LockProcess(AbstractPollTask):
 		('_acquired', '_kill_test', '_proc', '_files', '_unlock_future')
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 		in_pr, in_pw = os.pipe()
 		out_pr, out_pw = os.pipe()
 		self._files = {}
@@ -220,7 +211,7 @@ class _LockProcess(AbstractPollTask):
 				fd_pipes={0:out_pr, 1:in_pw, 2:sys.__stderr__.fileno()},
 				scheduler=self.scheduler)
 		self._proc.addExitListener(self._proc_exit)
-		yield self._proc.async_start()
+		self._proc.start()
 		os.close(out_pr)
 		os.close(in_pw)
 

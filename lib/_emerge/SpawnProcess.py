@@ -1,4 +1,4 @@
-# Copyright 2008-2020 Gentoo Authors
+# Copyright 2008-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -20,7 +20,6 @@ from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.PipeLogger import PipeLogger
-from portage.util.futures.compat_coroutine import coroutine
 
 class SpawnProcess(SubProcess):
 
@@ -43,10 +42,7 @@ class SpawnProcess(SubProcess):
 	_CGROUP_CLEANUP_RETRY_MAX = 8
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
 
-	@coroutine
-	def _async_start(self):
 		if self.fd_pipes is None:
 			self.fd_pipes = {}
 		else:
@@ -146,8 +142,8 @@ class SpawnProcess(SubProcess):
 			log_file_path=log_file_path,
 			stdout_fd=stdout_fd)
 		self._pipe_logger.addExitListener(self._pipe_logger_exit)
+		self._pipe_logger.start()
 		self._registered = True
-		yield self._pipe_logger.async_start()
 
 	def _can_log(self, slave_fd):
 		return True

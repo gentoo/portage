@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -20,7 +20,6 @@ from portage.package.ebuild.fetch import (
 )
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util._pty import _create_pty_or_pipe
 from _emerge.CompositeTask import CompositeTask
 
@@ -188,10 +187,6 @@ class _EbuildFetcherProcess(ForkProcess):
 		return success
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 
 		root_config = self.pkg.root_config
 		portdb = root_config.trees["porttree"].dbapi
@@ -230,7 +225,7 @@ class _EbuildFetcherProcess(ForkProcess):
 			settings["NOCOLOR"] = nocolor
 
 		self._settings = settings
-		yield ForkProcess._async_start(self)
+		ForkProcess._start(self)
 
 		# Free settings now since it's no longer needed in
 		# this process (the subprocess has a private copy).

@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -283,7 +283,7 @@ class bindbapi(fakedbapi):
 				logfile=settings.get('PORTAGE_LOG_FILE'),
 				scheduler=SchedulerInterface(loop))
 
-			yield extractor.async_start()
+			extractor.start()
 			yield extractor.async_wait()
 			if extractor.returncode != os.EX_OK:
 				raise PortageException("Error Extracting '{}'".format(pkg_path))

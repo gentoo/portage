@@ -182,7 +182,7 @@ class AbstractEbuildProcess(SpawnProcess):
 			self.fd_pipes[0] = null_fd
 
 		try:
-			yield SpawnProcess._async_start(self)
+			SpawnProcess._start(self)
 		finally:
 			if null_fd is not None:
 				os.close(null_fd)

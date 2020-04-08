@@ -1,10 +1,9 @@
-# Copyright 2013-2020 Gentoo Authors
+# Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
 from portage.checksum import perform_multiple_checksums
 from portage.util._async.ForkProcess import ForkProcess
-from portage.util.futures.compat_coroutine import coroutine
 from _emerge.PipeReader import PipeReader
 
 class FileDigester(ForkProcess):
@@ -19,10 +18,6 @@ class FileDigester(ForkProcess):
 		'_digest_pipe_reader', '_digest_pw')
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 		pr, pw = os.pipe()
 		self.fd_pipes = {}
 		self.fd_pipes[pw] = pw
@@ -32,7 +27,7 @@ class FileDigester(ForkProcess):
 			scheduler=self.scheduler)
 		self._digest_pipe_reader.addExitListener(self._digest_pipe_reader_exit)
 		self._digest_pipe_reader.start()
-		yield ForkProcess._async_start(self)
+		ForkProcess._start(self)
 		os.close(pw)
 
 	def _run(self):

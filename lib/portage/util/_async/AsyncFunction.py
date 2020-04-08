@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Gentoo Authors
+# Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import pickle
@@ -6,7 +6,6 @@ import traceback
 
 from portage import os
 from portage.util._async.ForkProcess import ForkProcess
-from portage.util.futures.compat_coroutine import coroutine
 from _emerge.PipeReader import PipeReader
 
 class AsyncFunction(ForkProcess):
@@ -23,10 +22,6 @@ class AsyncFunction(ForkProcess):
 		'_async_func_reader', '_async_func_reader_pw')
 
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 		pr, pw = os.pipe()
 		self.fd_pipes = {}
 		self.fd_pipes[pw] = pw
@@ -36,7 +31,7 @@ class AsyncFunction(ForkProcess):
 			scheduler=self.scheduler)
 		self._async_func_reader.addExitListener(self._async_func_reader_exit)
 		self._async_func_reader.start()
-		yield ForkProcess._async_start(self)
+		ForkProcess._start(self)
 		os.close(pw)
 
 	def _run(self):

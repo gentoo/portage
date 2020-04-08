@@ -16,12 +16,8 @@ from portage.util.futures.iter_completed import (
 class SleepProcess(ForkProcess):
 	__slots__ = ('future', 'seconds')
 	def _start(self):
-		self.scheduler.run_until_complete(self._async_start())
-
-	@coroutine
-	def _async_start(self):
 		self.addExitListener(self._future_done)
-		yield ForkProcess._async_start(self)
+		ForkProcess._start(self)
 
 	def _future_done(self, task):
 		if not self.future.cancelled():
