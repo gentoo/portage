@@ -109,16 +109,18 @@ class DoebuildFdPipesTestCase(TestCase):
 							output_fd: pw,
 						},
 						"prev_mtimes": {}})
-				producer.addStartListener(lambda producer: os.close(pw))
 
-				# PipeReader closes pr
 				consumer = PipeReader(
 					input_files={"producer" : pr})
 
 				task_scheduler = TaskScheduler(iter([producer, consumer]),
 					max_jobs=2)
 
-				loop.run_until_complete(task_scheduler.async_start())
+				try:
+					loop.run_until_complete(task_scheduler.async_start())
+				finally:
+					# PipeReader closes pr
+					os.close(pw)
 
 				task_scheduler.wait()
 				output = portage._unicode_decode(

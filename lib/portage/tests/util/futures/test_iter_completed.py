@@ -76,8 +76,6 @@ class IterCompletedTestCase(TestCase):
 
 		for future_done_set in async_iter_completed(future_generator(),
 			max_jobs=True, max_load=True, loop=loop):
-			while not input_futures:
-				loop.run_until_complete(asyncio.sleep(0, loop=loop))
 			future_done_set.cancel()
 			break
 

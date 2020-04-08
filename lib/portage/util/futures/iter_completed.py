@@ -6,7 +6,6 @@ import functools
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.cpuinfo import get_cpu_count
 
 
@@ -91,42 +90,21 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		if future_done_set.cancelled() and not wait_result.done():
 			wait_result.cancel()
 
-	@coroutine
-	def fetch_wait_result(scheduler, first, loop=None):
-		if first:
-			yield scheduler.async_start()
-
-		# If the current coroutine awakens just after a call to
-		# done_callback but before scheduler has been notified of
-		# corresponding done future(s), then wait here until scheduler
-		# is notified (which will cause future_map to populate).
-		while not future_map and scheduler.poll() is None:
-			yield asyncio.sleep(0, loop=loop)
-
-		if not future_map:
-			if scheduler.poll() is not None:
-				coroutine_return((set(), set()))
-			else:
-				raise AssertionError('expected non-empty future_map')
-
-		wait_result = yield asyncio.wait(list(future_map.values()),
-			return_when=asyncio.FIRST_COMPLETED, loop=loop)
-
-		coroutine_return(wait_result)
-
-	first = True
 	try:
-		while True:
-			wait_result = asyncio.ensure_future(fetch_wait_result(scheduler, first, loop=loop), loop=loop)
-			first = False
+		scheduler.start()
+
+		# scheduler should ensure that future_map is non-empty until
+		# task_generator is exhausted
+		while future_map:
+			wait_result = asyncio.ensure_future(
+				asyncio.wait(list(future_map.values()),
+				return_when=asyncio.FIRST_COMPLETED, loop=loop), loop=loop)
 			future_done_set = loop.create_future()
 			future_done_set.add_done_callback(
 				functools.partial(cancel_callback, wait_result))
 			wait_result.add_done_callback(
 				functools.partial(done_callback, future_done_set))
 			yield future_done_set
-			if not future_map and scheduler.poll() is not None:
-				break
 	finally:
 		# cleanup in case of interruption by SIGINT, etc
 		scheduler.cancel()
