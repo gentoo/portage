@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -41,11 +41,6 @@ class TaskSequence(CompositeTask):
 			return
 
 		self._start_task(task, self._task_exit_handler)
-
-	def _current_task_start_cb(self, future):
-		CompositeTask._current_task_start_cb(self, future)
-		if self.cancelled:
-			self._task_queue.clear()
 
 	def _task_exit_handler(self, task):
 		if self._default_exit(task) != os.EX_OK:

@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
@@ -92,14 +92,14 @@ class DoebuildSpawnTestCase(TestCase):
 				ebuild_phase = EbuildPhase(background=False,
 					phase=phase, scheduler=scheduler,
 					settings=settings)
-				scheduler.run_until_complete(ebuild_phase.async_start())
+				ebuild_phase.start()
 				ebuild_phase.wait()
 				self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 
 			ebuild_phase = MiscFunctionsProcess(background=False,
 				commands=['success_hooks'],
 				scheduler=scheduler, settings=settings)
-			scheduler.run_until_complete(ebuild_phase.async_start())
+			ebuild_phase.start()
 			ebuild_phase.wait()
 			self.assertEqual(ebuild_phase.returncode, os.EX_OK)
 

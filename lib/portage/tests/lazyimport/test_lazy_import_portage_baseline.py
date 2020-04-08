@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import re
@@ -60,14 +60,14 @@ sys.stdout.write(" ".join(k for k in sys.modules
 			args=self._baseline_import_cmd,
 			env=env, fd_pipes={1:slave_fd},
 			scheduler=scheduler)
-		scheduler.run_until_complete(producer.async_start())
+		producer.start()
 		slave_file.close()
 
 		consumer = PipeReader(
 			input_files={"producer" : master_file},
 			scheduler=scheduler)
 
-		scheduler.run_until_complete(consumer.async_start())
+		consumer.start()
 		consumer.wait()
 		self.assertEqual(producer.wait(), os.EX_OK)
 		self.assertEqual(consumer.wait(), os.EX_OK)

@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -34,7 +34,7 @@ class SpawnTestCase(TestCase):
 				},
 				scheduler=global_event_loop(),
 				logfile=logfile)
-			global_event_loop().run_until_complete(proc.async_start())
+			proc.start()
 			os.close(null_fd)
 			self.assertEqual(proc.wait(), os.EX_OK)
 			f = io.open(_unicode_encode(logfile,

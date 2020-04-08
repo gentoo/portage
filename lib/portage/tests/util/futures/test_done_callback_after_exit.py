@@ -31,7 +31,7 @@ class DoneCallbackAfterExitTestCase(TestCase):
 		"""
 		loop = asyncio._wrap_loop()
 		task = AsynchronousTask(scheduler=loop)
-		loop.run_until_complete(task.async_start())
+		task.start()
 		loop.run_until_complete(task.async_wait())
 
 		for i in range(3):
