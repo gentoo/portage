@@ -119,7 +119,7 @@ class CompositeTask(AsynchronousTask):
 		try:
 			future.result()
 		except asyncio.CancelledError:
-			self.cancel()
+			self.cancelled = True
 			self._was_cancelled()
 			self._async_wait()
 
