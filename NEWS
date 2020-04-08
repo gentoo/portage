@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.97
+--------------
+* Support for the PORTAGE_LOG_FILTER_FILE_CMD variable has been
+  temporarily removed due to bug 716636.
+
 portage-2.3.90
 --------------
 * The new PORTAGE_LOG_FILTER_FILE_CMD make.conf(5) variable specifies a

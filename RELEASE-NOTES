@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.97
+==================================
+* Bug Fixes:
+    - Bug 709746 temporarily remove PORTAGE_LOG_FILTER_FILE_CMD support
+    - Bug 715162 infer implicit soname from file basename, for musl
+    - Bug 716636 emerge hangs in releases after 2.3.89-r1
+
 portage-2.3.96
 ==================================
 * Bug Fixes:
