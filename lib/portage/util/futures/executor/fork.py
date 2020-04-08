@@ -13,7 +13,6 @@ import traceback
 
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.cpuinfo import get_cpu_count
 
 
@@ -52,25 +51,11 @@ class ForkExecutor(object):
 		while (not self._shutdown and self._submit_queue and
 			len(self._running_tasks) < self._max_workers):
 			future, proc = self._submit_queue.popleft()
-			proc.scheduler = self._loop
-			self._running_tasks[id(proc)] = proc
 			future.add_done_callback(functools.partial(self._cancel_cb, proc))
-			proc_future = asyncio.ensure_future(self._proc_coroutine(proc), loop=self._loop)
-			proc_future.add_done_callback(functools.partial(self._proc_coroutine_done, future, proc))
-
-	@coroutine
-	def _proc_coroutine(self, proc):
-		yield proc.async_start()
-		yield proc.async_wait()
-
-	def _proc_coroutine_done(self, future, proc, proc_future):
-		try:
-			proc_future.result()
-		except asyncio.CancelledError:
-			future.done() or future.cancel()
-			if proc.poll() is None:
-				proc.cancel()
-		self._proc_exit(future, proc)
+			proc.addExitListener(functools.partial(self._proc_exit, future))
+			proc.scheduler = self._loop
+			proc.start()
+			self._running_tasks[id(proc)] = proc
 
 	def _cancel_cb(self, proc, future):
 		if future.cancelled():

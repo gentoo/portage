@@ -25,19 +25,8 @@ class AsynchronousTask(SlotObject):
 
 	@coroutine
 	def async_start(self):
-		try:
-			if self._was_cancelled():
-				raise asyncio.CancelledError
-			yield self._async_start()
-			if self._was_cancelled():
-				raise asyncio.CancelledError
-		except asyncio.CancelledError:
-			self.cancel()
-			self._was_cancelled()
-			self._async_wait()
-			raise
-		finally:
-			self._start_hook()
+		yield self._async_start()
+		self._start_hook()
 
 	@coroutine
 	def _async_start(self):
