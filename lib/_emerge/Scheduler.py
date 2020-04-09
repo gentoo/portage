@@ -27,6 +27,7 @@ bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.EventLoop import EventLoop
@@ -241,6 +242,7 @@ class Scheduler(PollScheduler):
 		self._completed_tasks = set()
 		self._main_exit = None
 		self._main_loadavg_handle = None
+		self._schedule_merge_wakeup_task = None
 
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
@@ -1440,6 +1442,9 @@ class Scheduler(PollScheduler):
 		if self._job_delay_timeout_id is not None:
 			self._job_delay_timeout_id.cancel()
 			self._job_delay_timeout_id = None
+		if self._schedule_merge_wakeup_task is not None:
+			self._schedule_merge_wakeup_task.cancel()
+			self._schedule_merge_wakeup_task = None
 
 	def _choose_pkg(self):
 		"""
@@ -1613,6 +1618,24 @@ class Scheduler(PollScheduler):
 			self._main_loadavg_handle.cancel()
 			self._main_loadavg_handle = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
+
+		# Failure to schedule *after* self._task_queues.merge becomes
+		# empty will cause the scheduler to hang as in bug 711322.
+		# Do not rely on scheduling which occurs via the _merge_exit
+		# method, since the order of callback invocation may cause
+		# self._task_queues.merge to appear non-empty when it is
+		# about to become empty.
+		if (self._task_queues.merge and (self._schedule_merge_wakeup_task is None
+			or self._schedule_merge_wakeup_task.done())):
+			self._schedule_merge_wakeup_task = asyncio.ensure_future(
+				self._task_queues.merge.wait(), loop=self._event_loop)
+			self._schedule_merge_wakeup_task.add_done_callback(
+				self._schedule_merge_wakeup)
+
+	def _schedule_merge_wakeup(self, future):
+		if not future.cancelled():
+			future.result()
+			self._schedule()
 
 	def _sigcont_handler(self, signum, frame):
 		self._sigcont_time = time.time()
