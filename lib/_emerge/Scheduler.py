@@ -1635,7 +1635,8 @@ class Scheduler(PollScheduler):
 	def _schedule_merge_wakeup(self, future):
 		if not future.cancelled():
 			future.result()
-			self._schedule()
+			if self._main_exit is not None and not self._main_exit.done():
+				self._schedule()
 
 	def _sigcont_handler(self, signum, frame):
 		self._sigcont_time = time.time()
