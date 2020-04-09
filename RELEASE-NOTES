@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.98
+==================================
+* Bug Fixes:
+    - Bug 711322 always wakeup for empty merge queue
+
 portage-2.3.97
 ==================================
 * Bug Fixes:
