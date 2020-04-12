@@ -2068,9 +2068,15 @@ class depgraph(object):
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
 				if isinstance(parent, Package):
 					if parent in built_slot_operator_parents:
-						# This parent may need to be rebuilt, so its
-						# dependencies aren't necessarily relevant.
-						continue
+						# This parent may need to be rebuilt, therefore
+						# discard its soname and built slot operator
+						# dependency components which are not necessarily
+						# relevant.
+						if atom.soname:
+							continue
+						elif atom.package and atom.slot_operator_built:
+							# This discards the slot/subslot component.
+							atom = atom.with_slot("=")
 
 					if replacement_parent is not None and \
 						(replacement_parent.slot_atom == parent.slot_atom

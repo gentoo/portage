@@ -1,4 +1,4 @@
-# Copyright 2020 Gentoo Authors
+# Copyright 2016-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -122,7 +122,6 @@ class SlotOperatorReverseDepsLibGit2TestCase(TestCase):
 		trigger an upgrade to dev-libs/libgit2-1.0.0-r1, ultimately
 		resulting in an undesirable downgrade to dev-libs/libgit2-0.28.4-r1.
 		"""
-		self.todo = True
 
 		ebuilds = {
 
