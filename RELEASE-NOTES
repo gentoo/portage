@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.99
+==================================
+* Bug Fixes:
+    - Bug 717140 dev-libs/libgit2 upgrade/downgrade loop triggered by
+      dev-libs/libgit2-glib dependency on <dev-libs/libgit2-1:0=[ssh]
+
 portage-2.3.98
 ==================================
 * Bug Fixes:
