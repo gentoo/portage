@@ -28,6 +28,13 @@ from portage.exception import CommandNotFound
 from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
+	from portage.util.netlink import RtNetlink
+except ImportError:
+	if platform.system() == "Linux":
+		raise
+	RtNetlink = None
+
+try:
 	import resource
 	max_fd_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 except ImportError:
@@ -504,8 +511,8 @@ def _configure_loopback_interface():
 	# Bug: https://bugs.gentoo.org/690758
 	# Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=12377#c13
 
-	# Avoid importing this module on systems that may not support netlink sockets.
-	from portage.util.netlink import RtNetlink
+	if RtNetlink is None:
+		return
 
 	try:
 		with RtNetlink() as rtnl:
