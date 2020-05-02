@@ -67,7 +67,7 @@ class ResolverPlayground(object):
 """
 
 	def __init__(self, ebuilds={}, binpkgs={}, installed={}, profile={}, repo_configs={}, \
-		user_config={}, sets={}, world=[], world_sets=[], distfiles={},
+		user_config={}, sets={}, world=[], world_sets=[], distfiles={}, eclasses={},
 		eprefix=None, targetroot=False, debug=False):
 		"""
 		ebuilds: cpv -> metadata mapping simulating available ebuilds.
@@ -159,7 +159,7 @@ class ResolverPlayground(object):
 		self._create_ebuilds(ebuilds)
 		self._create_binpkgs(binpkgs)
 		self._create_installed(installed)
-		self._create_profile(ebuilds, installed, profile, repo_configs, user_config, sets)
+		self._create_profile(ebuilds, eclasses, installed, profile, repo_configs, user_config, sets)
 		self._create_world(world, world_sets)
 
 		self.settings, self.trees = self._load_config()
@@ -346,7 +346,7 @@ class ResolverPlayground(object):
 				with open(ebuild_path, 'rb') as inputfile:
 					f.write(inputfile.read())
 
-	def _create_profile(self, ebuilds, installed, profile, repo_configs, user_config, sets):
+	def _create_profile(self, ebuilds, eclasses, installed, profile, repo_configs, user_config, sets):
 
 		user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
 
@@ -404,7 +404,15 @@ class ResolverPlayground(object):
 							f.write("masters =\n")
 
 			#Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
-			os.makedirs(os.path.join(repo_dir, "eclass"))
+			eclass_dir = os.path.join(repo_dir, "eclass")
+			os.makedirs(eclass_dir)
+
+			for eclass_name, eclass_content in eclasses.items():
+				with open(os.path.join(eclass_dir, "{}.eclass".format(eclass_name)), 'wt') as f:
+					if isinstance(eclass_content, basestring):
+						eclass_content = [eclass_content]
+					for line in eclass_content:
+						f.write("{}\n".format(line))
 
 			# Temporarily write empty value of masters until it becomes default.
 			if not repo_config or "layout.conf" not in repo_config:
