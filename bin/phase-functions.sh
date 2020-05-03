@@ -1019,10 +1019,6 @@ __ebuild_main() {
 				[[ ${SANDBOX_WRITE/$DISTCC_DIR} = $SANDBOX_WRITE ]] && \
 				addwrite "$DISTCC_DIR"
 
-			x=LIBDIR_$ABI
-			[ -z "$PKG_CONFIG_PATH" -a -n "$ABI" -a -n "${!x}" ] && \
-				export PKG_CONFIG_PATH=${EPREFIX}/usr/${!x}/pkgconfig
-
 			if has noauto $FEATURES && \
 				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
 				echo
