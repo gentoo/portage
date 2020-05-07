@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2019 Gentoo Authors
+# Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -516,7 +516,7 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
-		(tail, os.uname()[1], os.getpid()))
+		(tail, portage._decode_argv([os.uname()[1]])[0], os.getpid()))
 
 def hardlink_is_mine(link, lock):
 	try:
@@ -672,7 +672,7 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
-	myhost = os.uname()[1]
+	myhost = portage._decode_argv([os.uname()[1]])[0]
 	mydl = os.listdir(path)
 
 	results = []
