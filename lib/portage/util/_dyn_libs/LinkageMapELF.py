@@ -272,7 +272,10 @@ class LinkageMapELF(object):
 					continue
 				plibs.update((x, cpv) for x in items)
 		if plibs:
-			args = [os.path.join(EPREFIX or "/", "usr/bin/scanelf"), "-qF", "%a;%F;%S;%r;%n"]
+			# We don't use scanelf -q, since that would omit libraries like
+			# musl's /usr/lib/libc.so which do not have any DT_NEEDED or
+			# DT_SONAME settings.
+			args = [os.path.join(EPREFIX or "/", "usr/bin/scanelf"), "-BF", "%a;%F;%S;%r;%n"]
 			args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 				for x in plibs)
 			try:

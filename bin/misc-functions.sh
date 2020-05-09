@@ -177,7 +177,11 @@ install_qa_check() {
 	if type -P scanelf > /dev/null ; then
 		# Save NEEDED information after removing self-contained providers
 		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
+		# We don't use scanelf -q, since that would omit libraries like
+		# musl's /usr/lib/libc.so which do not have any DT_NEEDED or
+		# DT_SONAME settings. Since we don't use scanelf -q, we have to
+		# handle the special rpath value "  -  " below.
+		scanelf -yRBF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
