@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Nov 2019" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2020" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -550,9 +550,21 @@ Fetch in the background while compiling. Run
 terminal to view parallel-fetch progress.
 .TP
 .B parallel\-install
-Use finer\-grained locks when installing packages, allowing for greater
-parallelization. For additional parallelization, disable
-\fIebuild\-locks\fR.
+Use finer\-grained locks when installing packages, in order to increase
+IO throughput by allowing files to be merged or unmerged for one package
+while merge or unmerge ebuild phases execute for a different package. For
+additional parallelization, disable \fIebuild\-locks\fR.
+
+\fB***warning***\fR
+.br
+This feature introduces a small risk of file collisions going
+undetected (by collision\-protect or protect\-owned features) for
+packages that are merged at about the same time, but the risk is
+considered to be practically negligible since those file
+collisions would typically be detected and prevented long before such
+an event would have an opportunity to occur. The risk may increase when
+ACCEPT_KEYWORDS is used to accept packages which have not yet been
+deemed 'stable', or when using uncommon USE flag configurations.
 .TP
 .B pid\-sandbox
 Isolate the process space for the ebuild processes. This makes it
