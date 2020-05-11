@@ -1,3 +1,4 @@
+dist: bionic
 language: python
 python:
     - 2.7
@@ -8,6 +9,9 @@ python:
     - pypy3
 
 # command to install dependencies
+before_install:
+    # Use "dist: bionic" to get a zstd with --long support.
+    - sudo apt-get -y install zstd
 install:
     - pip install tox
 

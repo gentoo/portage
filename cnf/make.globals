@@ -34,8 +34,9 @@ RPMDIR="/var/cache/rpm"
 # Temporary build directory
 PORTAGE_TMPDIR="/var/tmp"
 
-# The compression used for binary packages. Defaults to zstd when USE=zstd is enabled.
-BINPKG_COMPRESS="bzip2"
+# The compression used for binary packages. Defaults to zstd except for
+# existing installs where bzip2 is used for backward compatibility.
+BINPKG_COMPRESS="zstd"
 
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""

@@ -112,6 +112,7 @@ class ResolverPlayground(object):
 				"uname",
 				"uniq",
 				"xargs",
+				"zstd",
 			)
 			# Exclude internal wrappers from PATH lookup.
 			orig_path = os.environ['PATH']
