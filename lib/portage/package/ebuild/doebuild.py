@@ -486,14 +486,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 		distcc = "distcc" in mysettings.features
 		icecream = "icecream" in mysettings.features
 
-		# run cc thingies only in src_* phases as otherwise they might
-		# create files with incorrect ownership and trip over
-		# (NB: install has a similar issue but 1) some badly written
-		# packages rebuild stuff there, so ccache is very helpful
-		# and 2) almost always some compilation will happen earlier,
-		# so permissions will be already set correctly)
-		if (ccache or distcc or icecream) and mydo in ('unpack',
-				'prepare', 'configure', 'test', 'install'):
+		if ccache or distcc or icecream:
 			libdir = None
 			default_abi = mysettings.get("DEFAULT_ABI")
 			if default_abi:
