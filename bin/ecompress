@@ -19,16 +19,28 @@ while [[ $# -gt 0 ]] ; do
 		shift
 
 		skip_dirs=()
+		skip_files=()
 		for skip; do
 			if [[ -d ${ED%/}/${skip#/} ]]; then
 				skip_dirs+=( "${ED%/}/${skip#/}" )
 			else
 				rm -f "${ED%/}/${skip#/}.ecompress" || die
+				skip_files+=("${ED%/}/${skip#/}")
 			fi
 		done
 
 		if [[ ${#skip_dirs[@]} -gt 0 ]]; then
-			find "${skip_dirs[@]}" -name '*.ecompress' -delete || die
+			while read -r -d ''; do
+				skip_files+=(${REPLY#.ecompress})
+			done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
+		fi
+
+		if [[ ${#skip_files[@]} -gt 0 && -s ${T}/.ecompress_had_precompressed ]]; then
+			sed_args=()
+			for f in "${skip_files[@]}"; do
+				sed_args+=(-e "s|^${f}\$||")
+			done
+			sed "${sed_args[@]}" -e '/^$/d' -i "${T}/.ecompress_had_precompressed" || die
 		fi
 
 		exit 0
@@ -176,7 +188,7 @@ find "${ED}" -name '*.ecompress' -delete -print0 |
 	___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
 ret=${?}
 
-if [[ -f ${T}/.ecompress_had_precompressed ]]; then
+if [[ -s ${T}/.ecompress_had_precompressed ]]; then
 	eqawarn "One or more compressed files were found in docompress-ed directories."
 	eqawarn "Please fix the ebuild not to install compressed files (manpages,"
 	eqawarn "documentation) when automatic compression is used:"
