@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.100
+==================================
+* Bug Fixes:
+    - Bug 715108 Change default BINPKG_COMPRESS to zstd
+    - Bug 719456 Add dependency on app-arch/zstd
+    - Bug 720866 Do not set PKG_CONFIG_PATH
+    - Bug 721402 Hostname UnicodeEncodeError surrogates not allowed
+    - Bug 721516 Suppress precompressed QA notice for docompress -x
+
 portage-2.3.99
 ==================================
 * Bug Fixes:
