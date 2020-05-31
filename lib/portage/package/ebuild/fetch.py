@@ -26,11 +26,6 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
-try:
-	from urllib.parse import quote as urlquote
-except ImportError:
-	from urllib import quote as urlquote
-
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
@@ -356,7 +351,7 @@ _size_suffix_map = {
 
 class FlatLayout(object):
 	def get_path(self, filename):
-		return urlquote(filename)
+		return filename
 
 	def get_filenames(self, distdir):
 		for dirpath, dirnames, filenames in os.walk(distdir,
@@ -387,7 +382,7 @@ class FilenameHashLayout(object):
 			c = c // 4
 			ret += fnhash[:c] + '/'
 			fnhash = fnhash[c:]
-		return ret + urlquote(filename)
+		return ret + filename
 
 	def get_filenames(self, distdir):
 		pattern = ''
