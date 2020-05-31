@@ -26,6 +26,11 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
+try:
+	from urllib.parse import quote as urlquote
+except ImportError:
+	from urllib import quote as urlquote
+
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
@@ -520,7 +525,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 				f.close()
 
 	return (mirror_url + "/distfiles/" +
-			mirror_conf.get_best_supported_layout().get_path(filename))
+			urlquote(mirror_conf.get_best_supported_layout().get_path(filename)))
 
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
