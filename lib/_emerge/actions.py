@@ -1,8 +1,9 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
 
+import collections
 import errno
 import logging
 import operator
@@ -56,6 +57,7 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.doebuild import _check_temp_dir
+from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, varexpand, \
@@ -742,7 +744,19 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	return rval
 
+
 def calc_depclean(settings, trees, ldpath_mtimes,
+	myopts, action, args_set, spinner):
+	result = _calc_depclean(settings, trees, ldpath_mtimes,
+		myopts, action, args_set, spinner)
+	return result.returncode, result.cleanlist, result.ordered, result.req_pkg_count
+
+
+_depclean_result = collections.namedtuple('_depclean_result',
+	('returncode', 'cleanlist', 'ordered', 'req_pkg_count', 'depgraph'))
+
+
+def _calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
 	allow_missing_deps = bool(args_set)
 
@@ -806,7 +820,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		writemsg_level(_("!!! Aborting due to set configuration "
 			"errors displayed above.\n"),
 			level=logging.ERROR, noiselevel=-1)
-		return 1, [], False, 0
+		return _depclean_result(1, [], False, 0, None)
 
 	if action == "depclean":
 		emergelog(xterm_titles, " >>> depclean")
@@ -921,7 +935,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	resolver.display_problems()
 
 	if not success:
-		return 1, [], False, 0
+		return _depclean_result(1, [], False, 0, resolver)
 
 	def unresolved_deps():
 
@@ -1021,7 +1035,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		return False
 
 	if unresolved_deps():
-		return 1, [], False, 0
+		return _depclean_result(1, [], False, 0, resolver)
 
 	graph = resolver._dynamic_config.digraph.copy()
 	required_pkgs_total = 0
@@ -1322,7 +1336,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 							runtime_slot_op=True),
 						root=pkg.root)):
 						resolver.display_problems()
-						return 1, [], False, 0
+						return _depclean_result(1, [], False, 0, resolver)
 
 			writemsg_level("\nCalculating dependencies  ")
 			success = resolver._complete_graph(
@@ -1330,9 +1344,9 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			writemsg_level("\b\b... done!\n")
 			resolver.display_problems()
 			if not success:
-				return 1, [], False, 0
+				return _depclean_result(1, [], False, 0, resolver)
 			if unresolved_deps():
-				return 1, [], False, 0
+				return _depclean_result(1, [], False, 0, resolver)
 
 			graph = resolver._dynamic_config.digraph.copy()
 			required_pkgs_total = 0
@@ -1341,7 +1355,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					required_pkgs_total += 1
 			cleanlist = create_cleanlist()
 			if not cleanlist:
-				return 0, [], False, required_pkgs_total
+				return _depclean_result(0, [], False, required_pkgs_total, resolver)
 			clean_set = set(cleanlist)
 
 	if clean_set:
@@ -1459,8 +1473,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					graph.remove(node)
 					cleanlist.append(node.cpv)
 
-		return 0, cleanlist, ordered, required_pkgs_total
-	return 0, [], False, required_pkgs_total
+		return _depclean_result(0, cleanlist, ordered, required_pkgs_total, resolver)
+	return _depclean_result(0, [], False, required_pkgs_total, resolver)
 
 def action_deselect(settings, trees, opts, atoms):
 	enter_invalid = '--ask-enter-invalid' in opts
@@ -1887,6 +1901,9 @@ def action_info(settings, trees, myopts, myfiles):
 				if default is not None and \
 					default == v:
 					continue
+
+				v = _hide_url_passwd(v)
+
 				append('%s="%s"' % (k, v))
 			else:
 				use = set(v.split())
@@ -2070,6 +2087,9 @@ def action_sync(emerge_config, trees=DeprecationWarning,
 		success, msgs = syncer.auto_sync(options=options)
 	if return_messages:
 		print_results(msgs)
+	elif msgs and not success:
+		writemsg_level("".join("%s\n" % (line,) for line in msgs),
+			level=logging.ERROR, noiselevel=-1)
 
 	return os.EX_OK if success else 1
 

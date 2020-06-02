@@ -133,7 +133,7 @@ class database(object):
 		d = None
 		if self.cleanse_keys:
 			d=ProtectedDict(values)
-			for k, v in list(d.items()):
+			for k, v in list(item for item in d.items() if item[0] != "_eclasses_"):
 				if not v:
 					del d[k]
 		if "_eclasses_" in values:

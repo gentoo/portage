@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2019 Gentoo Authors
+# Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -84,7 +84,29 @@ def _get_lock_fn():
 	return _lock_fn
 
 
-_open_fds = set()
+_open_fds = {}
+_open_inodes = {}
+
+class _lock_manager(object):
+	__slots__ = ('fd', 'inode_key')
+	def __init__(self, fd, fstat_result, path):
+		self.fd = fd
+		self.inode_key = (fstat_result.st_dev, fstat_result.st_ino)
+		if self.inode_key in _open_inodes:
+			# This means that the lock is already held by the current
+			# process, so the caller will have to try again. This case
+			# is encountered with the default fcntl.lockf function, and
+			# with the alternative fcntl.flock function TryAgain is
+			# raised earlier.
+			os.close(fd)
+			raise TryAgain(path)
+		_open_fds[fd] = self
+		_open_inodes[self.inode_key] = self
+	def close(self):
+		os.close(self.fd)
+		del _open_fds[self.fd]
+		del _open_inodes[self.inode_key]
+
 
 def _close_fds():
 	"""
@@ -93,8 +115,8 @@ def _close_fds():
 	safely after a fork without exec, unlike the _setup_pipes close_fds
 	behavior.
 	"""
-	while _open_fds:
-		os.close(_open_fds.pop())
+	for fd in list(_open_fds.values()):
+		fd.close()
 
 def lockdir(mydir, flags=0):
 	return lockfile(mydir, wantnewlockfile=1, flags=flags)
@@ -296,10 +318,10 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 		else:
 			raise
 
-		
+	fstat_result = None
 	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
 		try:
-			removed = _lockfile_was_removed(myfd, lockfilename)
+			(removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
 		except Exception:
 			# Do not leak the file descriptor here.
 			os.close(myfd)
@@ -322,7 +344,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 				fcntl.fcntl(myfd, fcntl.F_SETFD,
 					fcntl.fcntl(myfd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		_open_fds.add(myfd)
+		_lock_manager(myfd, os.fstat(myfd) if fstat_result is None else fstat_result, mypath)
 
 	writemsg(str((lockfilename, myfd, unlinkfile)) + "\n", 1)
 	return (lockfilename, myfd, unlinkfile, locking_method)
@@ -341,14 +363,15 @@ def _lockfile_was_removed(lock_fd, lock_path):
 	@param lock_path: path of lock file
 	@type lock_path: str
 	@rtype: bool
-	@return: True if lock_path exists and corresponds to lock_fd, False otherwise
+	@return: a tuple of (removed, fstat_result), where removed is True if
+		lock_path does not correspond to lock_fd, and False otherwise
 	"""
 	try:
 		fstat_st = os.fstat(lock_fd)
 	except OSError as e:
 		if e.errno not in (errno.ENOENT, errno.ESTALE):
 			_raise_exc(e)
-		return True
+		return (True, None)
 
 	# Since stat is not reliable for removed files on NFS with the default
 	# file attribute cache behavior ('ac' mount option), create a temporary
@@ -365,7 +388,7 @@ def _lockfile_was_removed(lock_fd, lock_path):
 		except OSError as e:
 			if e.errno not in (errno.ENOENT, errno.ESTALE):
 				_raise_exc(e)
-			return True
+			return (True, None)
 
 		hardlink_stat = os.stat(hardlink_path)
 		if hardlink_stat.st_ino != fstat_st.st_ino or hardlink_stat.st_dev != fstat_st.st_dev:
@@ -383,27 +406,27 @@ def _lockfile_was_removed(lock_fd, lock_path):
 			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					_raise_exc(e)
-				return True
+				return (True, None)
 			else:
 				if not os.path.samefile(hardlink_path, inode_test):
 					# This implies that inode numbers are not expected
 					# to match for this file system, so use a simple
 					# stat call to detect if lock_path has been removed.
-					return not os.path.exists(lock_path)
+					return (not os.path.exists(lock_path), fstat_st)
 			finally:
 				try:
 					os.unlink(inode_test)
 				except OSError as e:
 					if e.errno not in (errno.ENOENT, errno.ESTALE):
 						_raise_exc(e)
-			return True
+			return (True, None)
 	finally:
 		try:
 			os.unlink(hardlink_path)
 		except OSError as e:
 			if e.errno not in (errno.ENOENT, errno.ESTALE):
 				_raise_exc(e)
-	return False
+	return (False, fstat_st)
 
 
 def _fstat_nlink(fd):
@@ -442,8 +465,7 @@ def unlockfile(mytuple):
 		not os.path.exists(lockfilename):
 		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
-			os.close(myfd)
-			_open_fds.remove(myfd)
+			_open_fds[myfd].close()
 		return False
 
 	try:
@@ -453,8 +475,7 @@ def unlockfile(mytuple):
 		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
 		if isinstance(lockfilename, basestring):
-			os.close(myfd)
-			_open_fds.remove(myfd)
+			_open_fds[myfd].close()
 		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
 	try:
@@ -475,8 +496,7 @@ def unlockfile(mytuple):
 				locking_method(myfd, fcntl.LOCK_UN)
 			else:
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
-				os.close(myfd)
-				_open_fds.remove(myfd)
+				_open_fds[myfd].close()
 				return False
 	except SystemExit:
 		raise
@@ -488,8 +508,7 @@ def unlockfile(mytuple):
 	# fd originally, and the caller might not like having their
 	# open fd closed automatically on them.
 	if isinstance(lockfilename, basestring):
-		os.close(myfd)
-		_open_fds.remove(myfd)
+		_open_fds[myfd].close()
 
 	return True
 
@@ -497,7 +516,7 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
-		(tail, os.uname()[1], os.getpid()))
+		(tail, portage._decode_argv([os.uname()[1]])[0], os.getpid()))
 
 def hardlink_is_mine(link, lock):
 	try:
@@ -653,7 +672,7 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 		pass
 
 def hardlock_cleanup(path, remove_all_locks=False):
-	myhost = os.uname()[1]
+	myhost = portage._decode_argv([os.uname()[1]])[0]
 	mydl = os.listdir(path)
 
 	results = []

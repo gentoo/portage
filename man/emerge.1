@@ -319,7 +319,7 @@ finished calculating the graph.
 
 \fB--alert\fR may be 'y' or 'n'. 'true' and 'false' mean the same thing.
 Using \fB--alert\fR without an option is the same as using it with 'y'.
-Try it with 'emerge -aA portage'.
+Try it with 'emerge -aA sys-apps/portage'.
 
 If your terminal emulator is set up to make '\\a' into a window manager
 urgency hint, move your cursor to a different window to get the effect.
@@ -1294,7 +1294,7 @@ permanent, you can put them in /etc/portage/package.use instead.
 If \fBemerge \-\-update @system\fR or \fBemerge \-\-update @world\fR
 fails with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
-can use \fBemerge \-\-update portage\fR to upgrade to the lastest
+can use \fBemerge \-\-update sys-apps/portage\fR to upgrade to the lastest
 version, which should support any necessary new features.
 .SH "MASKED PACKAGES"
 \fINOTE: Please use caution when using development packages.  Problems
@@ -1498,7 +1498,7 @@ Contains a log of all the fetches in the previous emerge invocation.
 .TP
 .B
 /var/log/portage/elog/summary.log
-Contains the emerge summaries. Installs \fI/etc/logrotate/elog-save-summary\fR.
+Contains the emerge summaries. Installs \fI/etc/logrotate.d/elog-save-summary\fR.
 .SH "SEE ALSO"
 .BR "emerge \-\-help",
 .BR quickpkg (1),

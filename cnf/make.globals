@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # System-wide defaults for the Portage system
 
@@ -34,6 +34,10 @@ RPMDIR="@PORTAGE_EPREFIX@/var/cache/rpm"
 # Temporary build directory
 PORTAGE_TMPDIR="@PORTAGE_EPREFIX@/var/tmp"
 
+# The compression used for binary packages. Defaults to zstd except for
+# existing installs where bzip2 is used for backward compatibility.
+BINPKG_COMPRESS="zstd"
+
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
@@ -53,7 +57,8 @@ FEATURES="assume-digests binpkg-docompress binpkg-dostrip binpkg-logs
           config-protect-if-modified distlocks ebuild-locks
           fixlafiles ipc-sandbox merge-sync multilib-strict
           network-sandbox news parallel-fetch pid-sandbox
-          preserve-libs protect-owned sandbox sfperms strict
+          preserve-libs protect-owned qa-unresolved-soname-deps
+          sandbox sfperms strict
           unknown-features-warn unmerge-logs unmerge-orphans userfetch
           userpriv usersandbox usersync"
 

@@ -1,5 +1,22 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.100
+--------------
+* New BINPKG_COMPRESS=zstd default (does not apply to installed systems
+  using the old bzip2 default).
+
+portage-2.3.97
+--------------
+* Support for the PORTAGE_LOG_FILTER_FILE_CMD variable has been
+  temporarily removed due to bug 716636.
+
+portage-2.3.90
+--------------
+* The new PORTAGE_LOG_FILTER_FILE_CMD make.conf(5) variable specifies a
+  command that filters build log output to a log file. In order to
+  filter ANSI escape codes from build logs, ansifilter(1) is a
+  convenient setting for this variable.
+
 portage-2.3.80
 --------------
 * The emerge --quickpkg-direct option enables use of installed packages

@@ -127,6 +127,104 @@
   </para>
  </sect1>
 
+ <sect1 id='qa-unresolved-soname-dependencies'>
+  <title>Unresolved soname dependencies</title>
+  <para>
+   <programlisting>
+    QA Notice: Unresolved soname dependencies
+   </programlisting>
+  </para>
+  <para>
+   This warning comes up when a library or executable has one or more
+   soname dependencies (found in its NEEDED.ELF.2 metadata) that could
+   not be resolved by usual means. If you run <command>ldd</command> on
+   files like these then it will report a "not found" error for each
+   unresolved soname dependency. In order to correct problems with
+   soname dependency resolution, use one or more of the approaches
+   described in the following sections.
+   </para>
+   <para>
+   Content of the NEEDED.ELF.2 metadata file may be useful for
+   debugging purposes. Find the NEEDED.ELF.2 file in the
+   ${D}/../build-info/ directory after the ebuild src_install phase
+   completes, or in the /var/db/pkg/*/*/ directory for an installed
+   package. Each line of the NEEDED.ELF.2 file contains semicolon
+   separated values for a single ELF file. The soname dependencies are
+   found in the DT_NEEDED column:
+   <programlisting>
+   E_MACHINE;path;DT_SONAME;DT_RUNPATH;DT_NEEDED;multilib category
+  </programlisting>
+  </para>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-bu-external-dependencies'>
+   <title>External dependencies</title>
+   <para>
+   For packages that install pre-built binaries, it may be possible to
+   resolve soname dependencies simply by adding dependencies for one
+   or more other packages that are known to provide the needed sonames.
+   </para>
+  </sect2>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-removal-of-unecessary-files'>
+   <title>Removal of unecessary files</title>
+   <para>
+   For packages that install pre-built binaries, it may be possible to
+   resolve soname dependencies simply by removing unnecessary files
+   which have unresolved soname dependencies. For example, some pre-built
+   binary packages include binaries intended for irrelevant architectures
+   or operating systems, and these files can simply be removed because
+   they are unnecessary.
+   </para>
+  </sect2>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-addition-of-dt-runpath-entries'>
+   <title>Addition of DT_RUNPATH entries</title>
+   <para>
+   If the relevant dependencies are installed in a location that is not
+   included in the dynamic linker search path, then it's necessary for
+   files to include a DT_RUNPATH entry which refers to the appropriate
+   directory. The special $ORIGIN value can be used to create a relative
+   path reference in DT_RUNPATH, where $ORIGIN is a placeholder for the
+   directory where the file having the DT_RUNPATH entry is located.
+   </para>
+   <para>
+   For pre-built binaries, it may be necessary to fix up DT_RUNPATH using
+   <command>patchelf --set-rpath</command>. For example, use
+   <command>patchelf --set-rpath '$ORIGIN'</command> if a given binary
+   should link to libraries found in the same directory as the binary
+   itself, or use <command>patchelf --set-rpath '$ORIGIN/libs'</command>
+   if a given binary should link to libraries found in a subdirectory
+   named libs found in the same directory as the binary itself.
+   </para>
+   <para>
+   For binaries built from source, a flag like
+   <option>-Wl,-rpath,/path/of/directory/containing/libs</option> will
+   create binaries with the desired DT_RUNPATH entry.
+   </para>
+  </sect2>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-addition-of-dt-soname-settings'>
+   <title>Addition of DT_SONAME settings</title>
+   <para>
+   If a package installs dynamic libraries which do not set DT_SONAME,
+   then this can lead to unresolved soname dependencies.
+   For dynamic libraries built from source, a flag like
+   <option>-Wl,-soname=foo.so.1</option> will create a DT_SONAME setting.
+   For pre-built dynamic libraries, it may be necessary to fix up
+   DT_SONAME using <command>patchelf --set-soname</command>.
+   </para>
+  </sect2>
+  <sect2 id='qa-unresolved-soname-dependencies-resolved-by-adjustment-to-portage-soname-resolution-logic'>
+   <title>Adjustment to Portage soname resolution logic</title>
+   <para>
+   It may be necessary to adjust Portage soname resolution logic in
+   order to account for special circumstances. For example, Portage
+   soname resolution tolerates missing DT_SONAME for dynamic libraries
+   that a package installs in a directory that its binaries reference
+   via DT_RUNPATH. This behavior is useful for packages that have
+   internal dynamic libraries stored in a private directory. An example
+   is ebtables, as discussed in
+   <ulink url="https://bugs.gentoo.org/646190">bug 646190</ulink>.
+   </para>
+  </sect2>
+ </sect1>
+
  <sect1 id='qa-abs-lib-link'>
   <title>Absolute Symlink In Library Directory</title>
   <para>

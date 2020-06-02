@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -94,6 +94,14 @@ if sys.hexversion >= 0x3000000:
 	_unicode = str
 else:
 	_unicode = unicode
+
+# Exposes a depgraph interface to dep_check.
+_dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface',(
+	# Indicates a removal action, like depclean or prune.
+	'removal_action',
+	# Checks if update is desirable for a given package.
+	'want_update_pkg',
+))
 
 class _scheduler_graph_config(object):
 	def __init__(self, trees, pkg_cache, graph, mergelist):
@@ -510,6 +518,10 @@ class _dynamic_depgraph_config(object):
 			soname_deps=depgraph._frozen_config.soname_deps_enabled)
 		# Track missed updates caused by solved conflicts.
 		self._conflict_missed_update = collections.defaultdict(dict)
+		dep_check_iface = _dep_check_graph_interface(
+			removal_action="remove" in myparams,
+			want_update_pkg=depgraph._want_update_pkg,
+		)
 
 		for myroot in depgraph._frozen_config.trees:
 			self.sets[myroot] = _depgraph_sets()
@@ -530,7 +542,7 @@ class _dynamic_depgraph_config(object):
 			self._graph_trees[myroot]["vartree"]    = graph_tree
 			self._graph_trees[myroot]["graph_db"]   = graph_tree.dbapi
 			self._graph_trees[myroot]["graph"]      = self.digraph
-			self._graph_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._graph_trees[myroot]["graph_interface"] = dep_check_iface
 			self._graph_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 			def filtered_tree():
 				pass
@@ -558,7 +570,7 @@ class _dynamic_depgraph_config(object):
 			self._filtered_trees[myroot]["graph"]    = self.digraph
 			self._filtered_trees[myroot]["vartree"] = \
 				depgraph._frozen_config.trees[myroot]["vartree"]
-			self._filtered_trees[myroot]["want_update_pkg"] = depgraph._want_update_pkg
+			self._filtered_trees[myroot]["graph_interface"] = dep_check_iface
 			self._filtered_trees[myroot]["downgrade_probe"] = depgraph._downgrade_probe
 
 			dbs = []
@@ -2056,9 +2068,15 @@ class depgraph(object):
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
 				if isinstance(parent, Package):
 					if parent in built_slot_operator_parents:
-						# This parent may need to be rebuilt, so its
-						# dependencies aren't necessarily relevant.
-						continue
+						# This parent may need to be rebuilt, therefore
+						# discard its soname and built slot operator
+						# dependency components which are not necessarily
+						# relevant.
+						if atom.soname:
+							continue
+						elif atom.package and atom.slot_operator_built:
+							# This discards the slot/subslot component.
+							atom = atom.with_slot("=")
 
 					if replacement_parent is not None and \
 						(replacement_parent.slot_atom == parent.slot_atom
@@ -2777,7 +2795,7 @@ class depgraph(object):
 				# Traverse nested sets and add them to the stack
 				# if they're not already in the graph. Also, graph
 				# edges between parent and nested sets.
-				for token in arg.pset.getNonAtoms():
+				for token in sorted(arg.pset.getNonAtoms()):
 					if not token.startswith(SETPREFIX):
 						continue
 					s = token[len(SETPREFIX):]
@@ -4200,7 +4218,7 @@ class depgraph(object):
 				if len(expanded_atoms) > 1:
 					number_of_virtuals = 0
 					for expanded_atom in expanded_atoms:
-						if expanded_atom.cp.startswith("virtual/"):
+						if expanded_atom.cp.startswith(("acct-group/", "acct-user/", "virtual/")):
 							number_of_virtuals += 1
 						else:
 							candidate = expanded_atom
@@ -4371,7 +4389,7 @@ class depgraph(object):
 		args = self._dynamic_config._initial_arg_list[:]
 
 		for arg in self._expand_set_args(args, add_to_digraph=True):
-			for atom in arg.pset.getAtoms():
+			for atom in sorted(arg.pset.getAtoms()):
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
@@ -6359,7 +6377,11 @@ class depgraph(object):
 					cpv = pkg.cpv
 					reinstall_for_flags = None
 
-					if not pkg.installed or \
+					if pkg.installed and parent is not None and not self._want_update_pkg(parent, pkg):
+						# Ensure that --deep=<depth> is respected even when the
+						# installed package is masked and --update is enabled.
+						pass
+					elif not pkg.installed or \
 						(matched_packages and not avoid_update):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
@@ -6941,9 +6963,18 @@ class depgraph(object):
 				# Removal actions may override sets with temporary
 				# replacements that have had atoms removed in order
 				# to implement --deselect behavior.
-				required_set_names = set(required_sets[root])
 				depgraph_sets.sets.clear()
 				depgraph_sets.sets.update(required_sets[root])
+				if 'world' in depgraph_sets.sets:
+					# For consistent order of traversal for both update
+					# and removal (depclean) actions, sets other that
+					# world are always nested under the world set.
+					world_atoms = list(depgraph_sets.sets['world'])
+					world_atoms.extend(SETPREFIX + s for s in required_sets[root] if s != 'world')
+					depgraph_sets.sets['world'] = InternalPackageSet(initial_atoms=world_atoms)
+					required_set_names = {'world'}
+				else:
+					required_set_names = set(required_sets[root])
 			if "remove" not in self._dynamic_config.myparams and \
 				root == self._frozen_config.target_root and \
 				already_deep:
@@ -6953,7 +6984,7 @@ class depgraph(object):
 				not self._dynamic_config._dep_stack:
 				continue
 			root_config = self._frozen_config.roots[root]
-			for s in required_set_names:
+			for s in sorted(required_set_names):
 				pset = depgraph_sets.sets.get(s)
 				if pset is None:
 					pset = root_config.sets[s]
@@ -6963,10 +6994,10 @@ class depgraph(object):
 
 		self._set_args(args)
 		for arg in self._expand_set_args(args, add_to_digraph=True):
-			for atom in arg.pset.getAtoms():
-				self._dynamic_config._dep_stack.append(
-					Dependency(atom=atom, root=arg.root_config.root,
-						parent=arg, depth=self._UNREACHABLE_DEPTH))
+			for atom in sorted(arg.pset.getAtoms()):
+				if not self._add_dep(Dependency(atom=atom, root=arg.root_config.root,
+					parent=arg, depth=self._UNREACHABLE_DEPTH), allow_unsatisfied=True):
+					return 0
 
 		if True:
 			if self._dynamic_config._ignored_deps:
@@ -9354,7 +9385,7 @@ class depgraph(object):
 			# added via _add_pkg() so that they are included in the
 			# digraph (needed at least for --tree display).
 			for arg in self._expand_set_args(args, add_to_digraph=True):
-				for atom in arg.pset.getAtoms():
+				for atom in sorted(arg.pset.getAtoms()):
 					pkg, existing_node = self._select_package(
 						arg.root_config.root, atom)
 					if existing_node is None and \

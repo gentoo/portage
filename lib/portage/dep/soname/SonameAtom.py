@@ -1,4 +1,4 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -25,6 +25,13 @@ class SonameAtom(object):
 	def __setattr__(self, name, value):
 		raise AttributeError("SonameAtom instances are immutable",
 			self.__class__, name, value)
+
+	def __getstate__(self):
+		return dict((k, getattr(self, k)) for k in self.__slots__)
+
+	def __setstate__(self, state):
+		for k, v in state.items():
+			object.__setattr__(self, k, v)
 
 	def __hash__(self):
 		return self._hash_value

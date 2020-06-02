@@ -77,7 +77,7 @@ def deprecated_profile_check(settings=None):
 					"can migrate to the above profile.")), noiselevel=-1)
 				writemsg(" %s %s\n\n" % (colorize("WARN", "*"),
 					_("In order to update portage, "
-					"run 'emerge --oneshot portage'.")),
+					"run 'emerge --oneshot sys-apps/portage'.")),
 					noiselevel=-1)
 
 	return True

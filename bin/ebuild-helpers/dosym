@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -20,16 +20,7 @@ fi
 
 destdir=${2%/*}
 [[ ! -d ${ED%/}/${destdir#/} ]] && dodir "${destdir}"
-target="${1}"
-# DEPRECATED HACK: when absolute, prefix with offset for Gentoo Prefix
-# (but only if ${EPREFIX} is not there already)
-# this will eventually be removed, #615594
-if [[ ${target:0:1} == "/" && ${target}/ != "${EPREFIX}"/* ]]; then
-	eqawarn "dosym: prepending EPREFIX to path implicitly. If this is desired,"
-	eqawarn "       please fix the ebuild to use \${EPREFIX} explicitly."
-	target="${EPREFIX}${target}"
-fi
-ln -snf "${target}" "${ED%/}/${2#/}"
+ln -snf "${1}" "${ED%/}/${2#/}"
 
 ret=$?
 [[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"

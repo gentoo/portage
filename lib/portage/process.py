@@ -28,6 +28,13 @@ from portage.exception import CommandNotFound
 from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
 try:
+	from portage.util.netlink import RtNetlink
+except ImportError:
+	if platform.system() == "Linux":
+		raise
+	RtNetlink = None
+
+try:
 	import resource
 	max_fd_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 except ImportError:
@@ -363,12 +370,14 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
 		# from /usr/include/bits/sched.h
 		CLONE_NEWNS = 0x00020000
+		CLONE_NEWUTS = 0x04000000
 		CLONE_NEWIPC = 0x08000000
 		CLONE_NEWPID = 0x20000000
 		CLONE_NEWNET = 0x40000000
 
 		if unshare_net:
-			unshare_flags |= CLONE_NEWNET
+			# UTS namespace to override hostname
+			unshare_flags |= CLONE_NEWNET | CLONE_NEWUTS
 		if unshare_ipc:
 			unshare_flags |= CLONE_NEWIPC
 		if unshare_mount:
@@ -517,8 +526,8 @@ def _configure_loopback_interface():
 	# Bug: https://bugs.gentoo.org/690758
 	# Bug: https://sourceware.org/bugzilla/show_bug.cgi?id=12377#c13
 
-	# Avoid importing this module on systems that may not support netlink sockets.
-	from portage.util.netlink import RtNetlink
+	if RtNetlink is None:
+		return
 
 	try:
 		with RtNetlink() as rtnl:
@@ -719,6 +728,20 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 									noiselevel=-1)
 								os._exit(1)
 						if unshare_net:
+							# use 'localhost' to avoid hostname resolution problems
+							try:
+								# pypy3 does not implement socket.sethostname()
+								new_hostname = b'localhost'
+								if hasattr(socket, 'sethostname'):
+									socket.sethostname(new_hostname)
+								else:
+									if libc.sethostname(new_hostname, len(new_hostname)) != 0:
+										errno_value = ctypes.get_errno()
+										raise OSError(errno_value, os.strerror(errno_value))
+							except Exception as e:
+								writemsg("Unable to set hostname: %s (for FEATURES=\"network-sandbox\")\n" % (
+									e,),
+									noiselevel=-1)
 							_configure_loopback_interface()
 				except AttributeError:
 					# unshare() not supported by libc

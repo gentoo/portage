@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -804,8 +804,11 @@ class portdbapi(dbapi):
 					(mypkg, eapi)))
 				return
 
-			result.set_result(_parse_uri_map(mypkg,
-				{'EAPI':eapi,'SRC_URI':myuris}, use=useflags))
+			try:
+				result.set_result(_parse_uri_map(mypkg,
+					{'EAPI':eapi,'SRC_URI':myuris}, use=useflags))
+			except Exception as e:
+				result.set_exception(e)
 
 		aux_get_future = self.async_aux_get(
 			mypkg, ["EAPI", "SRC_URI"], mytree=mytree, loop=loop)

@@ -1,10 +1,8 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import pdb
 import signal
-import sys
 
 try:
 	import asyncio as _real_asyncio
@@ -69,25 +67,14 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		"""
 		loop.default_exception_handler(context)
 		if 'exception' in context:
-			# If we have a tty then start the debugger, since in might
-			# aid in diagnosis of the problem. If there's no tty, then
-			# exit immediately.
-			if all(s.isatty() for s in (sys.stdout, sys.stderr, sys.stdin)):
-				# Restore default SIGINT handler, since emerge's Scheduler
-				# has a SIGINT handler which delays exit until after
-				# cleanup, and cleanup cannot occur here since the event
-				# loop is suspended (see bug 672540).
-				signal.signal(signal.SIGINT, signal.SIG_DFL)
-				pdb.set_trace()
-			else:
-				# Normally emerge will wait for all coroutines to complete
-				# after SIGTERM has been received. However, an unhandled
-				# exception will prevent the interrupted coroutine from
-				# completing, therefore use the default SIGTERM handler
-				# in order to ensure that emerge exits immediately (though
-				# uncleanly).
-				signal.signal(signal.SIGTERM, signal.SIG_DFL)
-				os.kill(os.getpid(), signal.SIGTERM)
+			# Normally emerge will wait for all coroutines to complete
+			# after SIGTERM has been received. However, an unhandled
+			# exception will prevent the interrupted coroutine from
+			# completing, therefore use the default SIGTERM handler
+			# in order to ensure that emerge exits immediately (though
+			# uncleanly).
+			signal.signal(signal.SIGTERM, signal.SIG_DFL)
+			os.kill(os.getpid(), signal.SIGTERM)
 
 	def _create_future(self):
 		"""

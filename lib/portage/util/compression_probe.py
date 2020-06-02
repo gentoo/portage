@@ -1,6 +1,7 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import ctypes
 import errno
 import re
 import sys
@@ -45,7 +46,12 @@ _compressors = {
 	},
 	"zstd": {
 		"compress": "zstd ${BINPKG_COMPRESS_FLAGS}",
-		"decompress": "zstd -d --long=31",
+		# If the compression windowLog was larger than the default of 27,
+		# then --long=windowLog needs to be passed to the decompressor.
+		# Therefore, pass a larger --long=31 value to the decompressor
+		# if the current architecture can support it, which is true when
+		# sizeof(long) is at least 8 bytes.
+		"decompress": "zstd -d" + (" --long=31" if ctypes.sizeof(ctypes.c_long) >= 8 else ""),
 		"package": "app-arch/zstd",
 	},
 }

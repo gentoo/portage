@@ -1803,14 +1803,6 @@ def find_updated_config_files(target_root, config_protect):
 			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
 			cmd = shlex_split(mycommand)
 
-			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
-				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see https://bugs.python.org/issue8513).
-				fullname = portage.process.find_binary(cmd[0])
-				if fullname is None:
-					raise portage.exception.CommandNotFound(cmd[0])
-				cmd[0] = fullname
-
 			cmd = [_unicode_encode(arg, encoding=encoding, errors='strict')
 				for arg in cmd]
 			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,

@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -270,7 +270,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		__vecho " $WARN*$NORMAL $REPLY"
+		echo " $WARN*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0

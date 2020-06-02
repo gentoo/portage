@@ -50,15 +50,6 @@ def gpgsign(filename, repoman_settings, options):
 		# Encode unicode manually for bug #310789.
 		gpgcmd = portage.util.shlex_split(gpgcmd)
 
-		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-			not os.path.isabs(gpgcmd[0]):
-			# Python 3.1 _execvp throws TypeError for non-absolute executable
-			# path passed as bytes (see https://bugs.python.org/issue8513).
-			fullname = find_binary(gpgcmd[0])
-			if fullname is None:
-				raise portage.exception.CommandNotFound(gpgcmd[0])
-			gpgcmd[0] = fullname
-
 		gpgcmd = [
 			_unicode_encode(arg, encoding=_encodings['fs'], errors='strict')
 			for arg in gpgcmd]

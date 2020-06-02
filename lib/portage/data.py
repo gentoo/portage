@@ -211,16 +211,6 @@ def _get_global(k):
 			# SIGPIPE problems with nss_ldap.
 			cmd = ["id", "-G", _portage_username]
 
-			if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000:
-				# Python 3.1 _execvp throws TypeError for non-absolute executable
-				# path passed as bytes (see https://bugs.python.org/issue8513).
-				fullname = portage.process.find_binary(cmd[0])
-				if fullname is None:
-					globals()[k] = v
-					_initialized_globals.add(k)
-					return v
-				cmd[0] = fullname
-
 			encoding = portage._encodings['content']
 			cmd = [portage._unicode_encode(x,
 				encoding=encoding, errors='strict') for x in cmd]

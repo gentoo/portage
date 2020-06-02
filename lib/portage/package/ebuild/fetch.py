@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -26,6 +26,11 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
+try:
+	from urllib.parse import quote as urlquote
+except ImportError:
+	from urllib import quote as urlquote
+
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance,config',
@@ -47,7 +52,7 @@ from portage.checksum import (get_valid_checksum_keys, perform_md5, verify_all,
 from portage.const import BASH_BINARY, CUSTOM_MIRRORS_FILE, \
 	GLOBAL_CONFIG_PATH
 from portage.const import rootgid
-from portage.data import portage_gid, portage_uid, secpass, userpriv_groups
+from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.exception import FileNotFound, OperationNotPermitted, \
 	PortageException, TryAgain
 from portage.localization import _
@@ -68,7 +73,38 @@ _userpriv_spawn_kwargs = (
 )
 
 def _hide_url_passwd(url):
-	return re.sub(r'//(.+):.+@(.+)', r'//\1:*password*@\2', url)
+	return re.sub(r'//([^:\s]+):[^@\s]+@', r'//\1:*password*@', url)
+
+
+def _want_userfetch(settings):
+	"""
+	Check if it's desirable to drop privileges for userfetch.
+
+	@param settings: portage config
+	@type settings: portage.package.ebuild.config.config
+	@return: True if desirable, False otherwise
+	"""
+	return ('userfetch' in settings.features and
+		portage.data.secpass >= 2 and os.getuid() == 0)
+
+
+def _drop_privs_userfetch(settings):
+	"""
+	Drop privileges for userfetch, and update portage.data.secpass
+	to correspond to the new privilege level.
+	"""
+	spawn_kwargs = dict(_userpriv_spawn_kwargs)
+	try:
+		_ensure_distdir(settings, settings['DISTDIR'])
+	except PortageException:
+		if not os.path.isdir(settings['DISTDIR']):
+			raise
+	os.setgid(int(spawn_kwargs['gid']))
+	os.setgroups(spawn_kwargs['groups'])
+	os.setuid(int(spawn_kwargs['uid']))
+	os.umask(spawn_kwargs['umask'])
+	portage.data.secpass = 1
+
 
 def _spawn_fetch(settings, args, **kwargs):
 	"""
@@ -152,6 +188,59 @@ def _userpriv_test_write_file(settings, file_path):
 	rval = returncode == os.EX_OK
 	_userpriv_test_write_file_cache[file_path] = rval
 	return rval
+
+
+def _ensure_distdir(settings, distdir):
+	"""
+	Ensure that DISTDIR exists with appropriate permissions.
+
+	@param settings: portage config
+	@type settings: portage.package.ebuild.config.config
+	@param distdir: DISTDIR path
+	@type distdir: str
+	@raise PortageException: portage.exception wrapper exception
+	"""
+	global _userpriv_test_write_file_cache
+	dirmode  = 0o070
+	filemode =   0o60
+	modemask =    0o2
+	dir_gid = portage_gid
+	if "FAKED_MODE" in settings:
+		# When inside fakeroot, directories with portage's gid appear
+		# to have root's gid. Therefore, use root's gid instead of
+		# portage's gid to avoid spurrious permissions adjustments
+		# when inside fakeroot.
+		dir_gid = rootgid
+
+	userfetch = portage.data.secpass >= 2 and "userfetch" in settings.features
+	userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features
+	write_test_file = os.path.join(distdir, ".__portage_test_write__")
+
+	try:
+		st = os.stat(distdir)
+	except OSError:
+		st = None
+
+	if st is not None and stat.S_ISDIR(st.st_mode):
+		if not (userfetch or userpriv):
+			return
+		if _userpriv_test_write_file(settings, write_test_file):
+			return
+
+	_userpriv_test_write_file_cache.pop(write_test_file, None)
+	if ensure_dirs(distdir, gid=dir_gid, mode=dirmode, mask=modemask):
+		if st is None:
+			# The directory has just been created
+			# and therefore it must be empty.
+			return
+		writemsg(_("Adjusting permissions recursively: '%s'\n") % distdir,
+			noiselevel=-1)
+		if not apply_recursive_permissions(distdir,
+			gid=dir_gid, dirmode=dirmode, dirmask=modemask,
+			filemode=filemode, filemask=modemask, onerror=_raise_exc):
+			raise OperationNotPermitted(
+				_("Failed to apply recursive permissions for the portage group."))
+
 
 def _checksum_failure_temp_file(settings, distdir, basename):
 	"""
@@ -437,7 +526,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 				f.close()
 
 	return (mirror_url + "/distfiles/" +
-			mirror_conf.get_best_supported_layout().get_path(filename))
+			urlquote(mirror_conf.get_best_supported_layout().get_path(filename)))
 
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
@@ -487,9 +576,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	features = mysettings.features
 	restrict = mysettings.get("PORTAGE_RESTRICT","").split()
-
-	userfetch = secpass >= 2 and "userfetch" in features
-	userpriv = secpass >= 2 and "userpriv" in features
+	userfetch = portage.data.secpass >= 2 and "userfetch" in features
 
 	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
 	restrict_mirror = "mirror" in restrict or "nomirror" in restrict
@@ -729,51 +816,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		can_fetch = False
 
 	if can_fetch and not fetch_to_ro:
-		global _userpriv_test_write_file_cache
-		dirmode  = 0o070
-		filemode =   0o60
-		modemask =    0o2
-		dir_gid = portage_gid
-		if "FAKED_MODE" in mysettings:
-			# When inside fakeroot, directories with portage's gid appear
-			# to have root's gid. Therefore, use root's gid instead of
-			# portage's gid to avoid spurrious permissions adjustments
-			# when inside fakeroot.
-			dir_gid = rootgid
-		distdir_dirs = [""]
 		try:
-			
-			for x in distdir_dirs:
-				mydir = os.path.join(mysettings["DISTDIR"], x)
-				write_test_file = os.path.join(
-					mydir, ".__portage_test_write__")
-
-				try:
-					st = os.stat(mydir)
-				except OSError:
-					st = None
-
-				if st is not None and stat.S_ISDIR(st.st_mode):
-					if not (userfetch or userpriv):
-						continue
-					if _userpriv_test_write_file(mysettings, write_test_file):
-						continue
-
-				_userpriv_test_write_file_cache.pop(write_test_file, None)
-				if ensure_dirs(mydir, gid=dir_gid, mode=dirmode, mask=modemask):
-					if st is None:
-						# The directory has just been created
-						# and therefore it must be empty.
-						continue
-					writemsg(_("Adjusting permissions recursively: '%s'\n") % mydir,
-						noiselevel=-1)
-					def onerror(e):
-						raise # bail out on the first error that occurs during recursion
-					if not apply_recursive_permissions(mydir,
-						gid=dir_gid, dirmode=dirmode, dirmask=modemask,
-						filemode=filemode, filemask=modemask, onerror=onerror):
-						raise OperationNotPermitted(
-							_("Failed to apply recursive permissions for the portage group."))
+			_ensure_distdir(mysettings, mysettings["DISTDIR"])
 		except PortageException as e:
 			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -875,7 +919,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 					if not has_space_superuser:
 						has_space = False
-					elif secpass < 2:
+					elif portage.data.secpass < 2:
 						has_space = False
 					elif userfetch:
 						has_space = False

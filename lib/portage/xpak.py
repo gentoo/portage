@@ -1,4 +1,4 @@
-# Copyright 2001-2014 Gentoo Foundation
+# Copyright 2001-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -33,6 +33,7 @@ from portage import normalize_path
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.util.file_copy import copyfile
 
 def addtolist(mylist, curdir):
 	"""(list, dir) --- Takes an array(list) and appends all files from dir down
@@ -328,7 +329,7 @@ class tbz2(object):
 
 		if break_hardlinks and self.filestat and self.filestat.st_nlink > 1:
 			tmp_fname = "%s.%d" % (self.file, os.getpid())
-			shutil.copyfile(self.file, tmp_fname)
+			copyfile(self.file, tmp_fname)
 			try:
 				portage.util.apply_stat_permissions(self.file, self.filestat)
 			except portage.exception.OperationNotPermitted:

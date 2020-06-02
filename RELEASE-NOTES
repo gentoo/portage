@@ -1,6 +1,128 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.100
+==================================
+* Bug Fixes:
+    - Bug 715108 Change default BINPKG_COMPRESS to zstd
+    - Bug 719456 Add dependency on app-arch/zstd
+    - Bug 720866 Do not set PKG_CONFIG_PATH
+    - Bug 721402 Hostname UnicodeEncodeError surrogates not allowed
+    - Bug 721516 Suppress precompressed QA notice for docompress -x
+
+portage-2.3.99
+==================================
+* Bug Fixes:
+    - Bug 717140 dev-libs/libgit2 upgrade/downgrade loop triggered by
+      dev-libs/libgit2-glib dependency on <dev-libs/libgit2-1:0=[ssh]
+
+portage-2.3.98
+==================================
+* Bug Fixes:
+    - Bug 711322 always wakeup for empty merge queue
+
+portage-2.3.97
+==================================
+* Bug Fixes:
+    - Bug 709746 temporarily remove PORTAGE_LOG_FILTER_FILE_CMD support
+    - Bug 715162 infer implicit soname from file basename, for musl
+    - Bug 716636 emerge hangs in releases after 2.3.89-r1
+
+portage-2.3.96
+==================================
+* Bug Fixes:
+    - Bug 714480 DirectoryNotFound: /var/tmp/portage/category-directory
+
+portage-2.3.95
+==================================
+* Bug Fixes:
+    - Bug 713100 fix FEATURES=userpriv $HOME permissions
+    - Bug 713726 emerge --info: Filter variables for credentials
+    - Bug 713818 eqawarn: output to build log regardless of --quiet
+
+portage-2.3.94
+==================================
+* Bug Fixes:
+    - Bug 692492 secure ebuild ${D} permissions
+    - Bug 710444 omit zstd --long=31 for decompress on 32-bit arch
+    - Bug 712298 respect emerge --deep=<depth> with --update
+
+portage-2.3.93
+==================================
+* Bug Fixes:
+    - Bug 711322 schedule exit listeners via call_soon
+    - Bug 711688 BinpkgFetcher sync_timestamp KeyError regression
+
+portage-2.3.92
+==================================
+* Bug Fixes:
+    - Bug 601252 emerge --pretend --fetchonly event loop recursion
+    - Bug 709334 socks5-server.py async and await coroutine syntax
+    - Bug 709746 Rename PORTAGE_LOG_FILTER_FILE_CMD from
+      PORTAGE_LOG_FILTER_FILE
+    - Bug 711322 emerge hang after src_install
+    - Bug 711362 egencache AttributeError: 'NoneType' object has no
+      attribute 'ebuild'
+    - Bug 711400 AttributeError: 'NoneType' object has no attribute
+      'depth'
+
+portage-2.3.91
+==================================
+* Bug Fixes:
+    - Bug 705910 remove pdb.set_trace() from exception handler
+    - Bug 711174 FEATURES=compress-build-logs EOFError regression
+    - Bug 711178 emerge --getbinpkg event loop recursion regression
+
+portage-2.3.90
+==================================
+* Bug Fixes:
+    - Bug 601252 DISTDIR NFS root_squash support
+    - Bug 709746 new PORTAGE_LOG_FILTER_FILE_CMD variable specifies a
+          command that filters build log output to a log file
+    - Bug 710076 einstalldocs: Fix test for DOCS being unset
+
+portage-2.3.89
+==================================
+* Bug Fixes:
+    - Bug 649622 depclean: ensure consistency with update actions, via
+      consistent order of dependency traversal
+
+portage-2.3.88
+==================================
+* Bug Fixes:
+    - Bug 649622 prevent unecessary installation of virtual/w3m followed
+      by removal by depclean
+    - Bug 705736 preserve-libs: prevent unecessary preservation of system
+      libraries which a package bundles
+    - Bug 707820 generate API documentation with sphinx-apidoc
+    - Bug 708448 support FEATURES=qa-unresolved-soname-deps so that the
+      QA warning from bug 704320 can be disabled
+    - Bug 708660 phase-helpers.sh: avoid passing an empty root value to
+      portageq when ebuild IPC is disabled
+
+portage-2.3.87
+==================================
+* Bug Fixes:
+    - Bug 691798 treat GLEP 81 acct-* categories like virtual
+    - Bug 707108 depclean: do not eliminate upgrades
+
+
+portage-2.3.86
+==================================
+* Bug Fixes:
+    - Bug 706278 Adjust || preference for slot upgrades
+    - Bug 706298 Suppress package.keywords warning for API consumers
+
+
+portage-2.3.85
+==================================
+* Bug Fixes:
+    - Bug 615594 dosym: revert deprecated prefix compat
+    - Bug 704256 emerge-webrsync: chmod 755 temp dir
+    - Bug 704320 Add QA check for unresolved soname dependencies
+    - Bug 704848 doebuild: export SANDBOX_LOG=${T}/sandbox.log
+    - Bug 705986 solve pypy / pypy-exe dependency cycle
+
 portage-2.3.84
 ==================================
 * Bug Fixes:

@@ -144,7 +144,8 @@ class EbuildMetadataPhase(SubProcess):
 						break
 
 	def _unregister(self):
-		self.scheduler.remove_reader(self._files.ebuild)
+		if self._files is not None:
+			self.scheduler.remove_reader(self._files.ebuild)
 		SubProcess._unregister(self)
 
 	def _async_waitpid_cb(self, *args, **kwargs):

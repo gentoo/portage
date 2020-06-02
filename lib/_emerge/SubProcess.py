@@ -1,10 +1,11 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
 
 from portage import os
 from portage.util import writemsg_level
+from portage.util.futures import asyncio
 from _emerge.AbstractPollTask import AbstractPollTask
 import signal
 import errno
@@ -23,7 +24,7 @@ class SubProcess(AbstractPollTask):
 		return self.returncode
 
 	def _cancel(self):
-		if self.isAlive():
+		if self.isAlive() and self.pid is not None:
 			try:
 				os.kill(self.pid, signal.SIGTERM)
 			except OSError as e:
@@ -36,9 +37,13 @@ class SubProcess(AbstractPollTask):
 				elif e.errno != errno.ESRCH:
 					raise
 
-	def isAlive(self):
-		return self.pid is not None and \
-			self.returncode is None
+	def _async_wait(self):
+		if self.returncode is None:
+			raise asyncio.InvalidStateError('Result is not ready for %s' % (self,))
+		else:
+			# This calls _unregister, so don't call it until pid status
+			# is available.
+			super(SubProcess, self)._async_wait()
 
 	def _async_waitpid(self):
 		"""

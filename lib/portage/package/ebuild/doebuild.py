@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.config:check_config_instance',
 	'portage.package.ebuild.digestcheck:digestcheck',
 	'portage.package.ebuild.digestgen:digestgen',
-	'portage.package.ebuild.fetch:fetch',
+	'portage.package.ebuild.fetch:_drop_privs_userfetch,_want_userfetch,fetch',
 	'portage.package.ebuild.prepare_build_dirs:_prepare_fake_distdir',
 	'portage.package.ebuild._ipc.QueryCommand:QueryCommand',
 	'portage.dep._slot_operator:evaluate_slot_operator_equal_deps',
@@ -84,6 +84,7 @@ from portage.util.cpuinfo import get_cpu_count
 from portage.util.lafilefixer import rewrite_lafile
 from portage.util.compression_probe import _compressors
 from portage.util.futures import asyncio
+from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.path import first_existing
 from portage.util.socks5 import get_socks5_proxy
 from portage.versions import _pkgsplit
@@ -376,7 +377,6 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["RPMDIR"]  = os.path.realpath(mysettings["RPMDIR"])
 
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
-	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
 	mysettings["PORTAGE_BASHRC_FILES"] = "\n".join(mysettings._pbashrc)
 
@@ -414,6 +414,7 @@ def doebuild_environment(myebuild, mydo, myroot=None, settings=None,
 	mysettings["WORKDIR"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "work")
 	mysettings["D"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "image") + os.sep
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
+	mysettings["SANDBOX_LOG"] = os.path.join(mysettings["T"], "sandbox.log")
 	mysettings["FILESDIR"] = os.path.join(settings["PORTAGE_BUILDDIR"], "files")
 
 	# Prefix forward compatability
@@ -1089,9 +1090,28 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			dist_digests = None
 			if mf is not None:
 				dist_digests = mf.getTypeDigests("DIST")
-			if not fetch(fetchme, mysettings, listonly=listonly,
-				fetchonly=fetchonly, allow_missing_digests=False,
-				digests=dist_digests):
+
+			def _fetch_subprocess(fetchme, mysettings, listonly, dist_digests):
+				# For userfetch, drop privileges for the entire fetch call, in
+				# order to handle DISTDIR on NFS with root_squash for bug 601252.
+				if _want_userfetch(mysettings):
+					_drop_privs_userfetch(mysettings)
+
+				return fetch(fetchme, mysettings, listonly=listonly,
+					fetchonly=fetchonly, allow_missing_digests=False,
+					digests=dist_digests)
+
+			loop = asyncio._safe_loop()
+			if loop.is_running():
+				# Called by EbuildFetchonly for emerge --pretend --fetchonly.
+				success = fetch(fetchme, mysettings, listonly=listonly,
+					fetchonly=fetchonly, allow_missing_digests=False,
+					digests=dist_digests)
+			else:
+				success = loop.run_until_complete(
+					loop.run_in_executor(ForkExecutor(loop=loop),
+					_fetch_subprocess, fetchme, mysettings, listonly, dist_digests))
+			if not success:
 				# Since listonly mode is called by emerge --pretend in an
 				# asynchronous context, spawn_nofetch would trigger event loop
 				# recursion here, therefore delegate execution of pkg_nofetch
@@ -1835,9 +1855,10 @@ def _post_phase_userpriv_perms(mysettings):
 	if "userpriv" in mysettings.features and secpass >= 2:
 		""" Privileged phases may have left files that need to be made
 		writable to a less privileged user."""
-		apply_recursive_permissions(mysettings["T"],
-			uid=portage_uid, gid=portage_gid, dirmode=0o700, dirmask=0,
-			filemode=0o600, filemask=0)
+		for path in (mysettings["HOME"], mysettings["T"]):
+			apply_recursive_permissions(path,
+				uid=portage_uid, gid=portage_gid, dirmode=0o700, dirmask=0,
+				filemode=0o600, filemask=0)
 
 
 def _check_build_log(mysettings, out=None):
@@ -1962,7 +1983,7 @@ def _check_build_log(mysettings, out=None):
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
 
-	except zlib.error as e:
+	except (EOFError, zlib.error) as e:
 		_eerror(["portage encountered a zlib error: '%s'" % (e,),
 			"while reading the log file: '%s'" % logfile])
 	finally:

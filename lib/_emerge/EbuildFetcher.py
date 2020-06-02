@@ -12,7 +12,12 @@ from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
-from portage.package.ebuild.fetch import _check_distfile, fetch
+from portage.package.ebuild.fetch import (
+	_check_distfile,
+	_drop_privs_userfetch,
+	_want_userfetch,
+	fetch,
+)
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.ForkProcess import ForkProcess
 from portage.util._pty import _create_pty_or_pipe
@@ -233,6 +238,11 @@ class _EbuildFetcherProcess(ForkProcess):
 		# output through a normal pipe due to unavailability of ptys.
 		portage.output.havecolor = self._settings.get('NOCOLOR') \
 			not in ('yes', 'true')
+
+		# For userfetch, drop privileges for the entire fetch call, in
+		# order to handle DISTDIR on NFS with root_squash for bug 601252.
+		if _want_userfetch(self._settings):
+			_drop_privs_userfetch(self._settings)
 
 		rval = 1
 		allow_missing = self._get_manifest().allow_missing or \

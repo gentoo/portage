@@ -18,7 +18,7 @@ class AsynchronousTask(SlotObject):
 	"""
 
 	__slots__ = ("background", "cancelled", "returncode", "scheduler") + \
-		("_exit_listeners", "_exit_listener_stack", "_start_listeners")
+		("_exit_listener_handles", "_exit_listeners", "_start_listeners")
 
 	_cancelled_returncode = - signal.SIGINT
 
@@ -37,7 +37,7 @@ class AsynchronousTask(SlotObject):
 		@returns: Future, result is self.returncode
 		"""
 		waiter = self.scheduler.create_future()
-		exit_listener = lambda self: waiter.set_result(self.returncode)
+		exit_listener = lambda self: waiter.cancelled() or waiter.set_result(self.returncode)
 		self.addExitListener(exit_listener)
 		waiter.add_done_callback(lambda waiter:
 			self.removeExitListener(exit_listener) if waiter.cancelled() else None)
@@ -79,20 +79,20 @@ class AsynchronousTask(SlotObject):
 		"""
 		if self.returncode is None:
 			if self.scheduler.is_running():
-				raise asyncio.InvalidStateError('Result is not ready.')
+				raise asyncio.InvalidStateError('Result is not ready for %s' % (self,))
 			self.scheduler.run_until_complete(self.async_wait())
 		self._wait_hook()
 		return self.returncode
 
 	def _async_wait(self):
 		"""
-		For cases where _start exits synchronously, this method is a
-		convenient way to trigger an asynchronous call to self.wait()
-		(in order to notify exit listeners), avoiding excessive event
-		loop recursion (or stack overflow) that synchronous calling of
-		exit listeners can cause. This method is thread-safe.
+		Subclasses call this method in order to invoke exit listeners when
+		self.returncode is set. Subclasses may override this method in order
+		to perform cleanup. The default implementation for this method simply
+		calls self.wait(), which will immediately raise an InvalidStateError
+		if the event loop is running and self.returncode is None.
 		"""
-		self.scheduler.call_soon(self.wait)
+		self.wait()
 
 	def cancel(self):
 		"""
@@ -133,6 +133,10 @@ class AsynchronousTask(SlotObject):
 			self._start_listeners = []
 		self._start_listeners.append(f)
 
+		# Ensure that start listeners are always called.
+		if self.returncode is not None:
+			self._start_hook()
+
 	def removeStartListener(self, f):
 		if self._start_listeners is None:
 			return
@@ -144,7 +148,7 @@ class AsynchronousTask(SlotObject):
 			self._start_listeners = None
 
 			for f in start_listeners:
-				f(self)
+				self.scheduler.call_soon(f, self)
 
 	def addExitListener(self, f):
 		"""
@@ -153,13 +157,20 @@ class AsynchronousTask(SlotObject):
 		if self._exit_listeners is None:
 			self._exit_listeners = []
 		self._exit_listeners.append(f)
+		if self.returncode is not None:
+			self._wait_hook()
 
 	def removeExitListener(self, f):
-		if self._exit_listeners is None:
-			if self._exit_listener_stack is not None:
-				self._exit_listener_stack.remove(f)
-			return
-		self._exit_listeners.remove(f)
+		if self._exit_listeners is not None:
+			try:
+				self._exit_listeners.remove(f)
+			except ValueError:
+				pass
+
+		if self._exit_listener_handles is not None:
+			handle = self._exit_listener_handles.pop(f, None)
+			if handle is not None:
+				handle.cancel()
 
 	def _wait_hook(self):
 		"""
@@ -168,29 +179,23 @@ class AsynchronousTask(SlotObject):
 		used to trigger exit listeners when the returncode first
 		becomes available.
 		"""
+		# Ensure that start listeners are always called.
+		if self.returncode is not None:
+			self._start_hook()
+
 		if self.returncode is not None and \
 			self._exit_listeners is not None:
 
-			# This prevents recursion, in case one of the
-			# exit handlers triggers this method again by
-			# calling wait(). Use a stack that gives
-			# removeExitListener() an opportunity to consume
-			# listeners from the stack, before they can get
-			# called below. This is necessary because a call
-			# to one exit listener may result in a call to
-			# removeExitListener() for another listener on
-			# the stack. That listener needs to be removed
-			# from the stack since it would be inconsistent
-			# to call it after it has been been passed into
-			# removeExitListener().
-			self._exit_listener_stack = self._exit_listeners
+			listeners = self._exit_listeners
 			self._exit_listeners = None
+			if self._exit_listener_handles is None:
+				self._exit_listener_handles = {}
 
-			# Execute exit listeners in reverse order, so that
-			# the last added listener is executed first. This
-			# allows SequentialTaskQueue to decrement its running
-			# task count as soon as one of its tasks exits, so that
-			# the value is accurate when other listeners execute.
-			while self._exit_listener_stack:
-				self._exit_listener_stack.pop()(self)
+			for listener in listeners:
+				if listener not in self._exit_listener_handles:
+					self._exit_listener_handles[listener] = \
+						self.scheduler.call_soon(self._exit_listener_cb, listener)
 
+	def _exit_listener_cb(self, listener):
+		del self._exit_listener_handles[listener]
+		listener(self)

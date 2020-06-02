@@ -1,4 +1,4 @@
-# Copyright 2011 Gentoo Foundation
+# Copyright 2011-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -7,6 +7,7 @@ import traceback
 import portage
 from portage import os
 from portage import shutil
+from portage.exception import TryAgain
 from portage.tests import TestCase
 
 class LockNonblockTestCase(TestCase):
@@ -60,3 +61,16 @@ class LockNonblockTestCase(TestCase):
 			if prev_state is not None:
 				os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
+	def test_competition_with_same_process(self):
+		"""
+		Test that at attempt to lock the same file multiple times in the
+		same process will behave as intended (bug 714480).
+		"""
+		tempdir = tempfile.mkdtemp()
+		try:
+			path = os.path.join(tempdir, 'lock_me')
+			lock = portage.locks.lockfile(path)
+			self.assertRaises(TryAgain, portage.locks.lockfile, path, flags=os.O_NONBLOCK)
+			portage.locks.unlockfile(lock)
+		finally:
+			shutil.rmtree(tempdir)

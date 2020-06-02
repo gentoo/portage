@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.22
+==================================
+* Bug Fixes:
+    - Bug 712106 only stage changes in index for commit mode
+
+repoman-2.3.21
+==================================
+* Bug Fixes:
+    - Bug 712106 prevent spurious copyright header updates
+
+
 repoman-2.3.20
 ==================================
 * Bug Fixes:

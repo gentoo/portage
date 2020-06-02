@@ -444,15 +444,6 @@ class FetchTask(CompositeTask):
 		args = [portage.util.varexpand(x, mydict=variables)
 			for x in args]
 
-		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-			not os.path.isabs(args[0]):
-			# Python 3.1 _execvp throws TypeError for non-absolute executable
-			# path passed as bytes (see https://bugs.python.org/issue8513).
-			fullname = portage.process.find_binary(args[0])
-			if fullname is None:
-				raise portage.exception.CommandNotFound(args[0])
-			args[0] = fullname
-
 		args = [_unicode_encode(x,
 			encoding=_encodings['fs'], errors='strict') for x in args]
 

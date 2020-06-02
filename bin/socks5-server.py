@@ -29,8 +29,7 @@ class Socks5Server(object):
 	An asynchronous SOCKSv5 server.
 	"""
 
-	@asyncio.coroutine
-	def handle_proxy_conn(self, reader, writer):
+	async def handle_proxy_conn(self, reader, writer):
 		"""
 		Handle incoming client connection. Perform SOCKSv5 request
 		exchange, open a proxied connection and start relaying.
@@ -43,7 +42,7 @@ class Socks5Server(object):
 
 		try:
 			# SOCKS hello
-			data = yield from reader.readexactly(2)
+			data = await reader.readexactly(2)
 			vers, method_no = struct.unpack('!BB', data)
 
 			if vers != 0x05:
@@ -53,7 +52,7 @@ class Socks5Server(object):
 				return
 
 			# ...and auth method list
-			data = yield from reader.readexactly(method_no)
+			data = await reader.readexactly(method_no)
 			for method in data:
 				if method == 0x00:
 					break
@@ -64,13 +63,13 @@ class Socks5Server(object):
 			# auth reply
 			repl = struct.pack('!BB', 0x05, method)
 			writer.write(repl)
-			yield from writer.drain()
+			await writer.drain()
 			if method == 0xFF:
 				writer.close()
 				return
 
 			# request
-			data = yield from reader.readexactly(4)
+			data = await reader.readexactly(4)
 			vers, cmd, rsv, atyp = struct.unpack('!BBBB', data)
 
 			if vers != 0x05 or rsv != 0x00:
@@ -83,31 +82,31 @@ class Socks5Server(object):
 			if cmd != 0x01:  # CONNECT
 				rpl = 0x07  # command not supported
 			elif atyp == 0x01:  # IPv4
-				data = yield from reader.readexactly(4)
+				data = await reader.readexactly(4)
 				addr = socket.inet_ntoa(data)
 			elif atyp == 0x03:  # domain name
-				data = yield from reader.readexactly(1)
+				data = await reader.readexactly(1)
 				addr_len, = struct.unpack('!B', data)
-				addr = yield from reader.readexactly(addr_len)
+				addr = await reader.readexactly(addr_len)
 				try:
 					addr = addr.decode('idna')
 				except UnicodeDecodeError:
 					rpl = 0x04  # host unreachable
 
 			elif atyp == 0x04:  # IPv6
-				data = yield from reader.readexactly(16)
+				data = await reader.readexactly(16)
 				addr = socket.inet_ntop(socket.AF_INET6, data)
 			else:
 				rpl = 0x08  # address type not supported
 
 			# try to connect if we can handle it
 			if rpl == 0x00:
-				data = yield from reader.readexactly(2)
+				data = await reader.readexactly(2)
 				port, = struct.unpack('!H', data)
 
 				try:
 					# open a proxied connection
-					proxied_reader, proxied_writer = yield from asyncio.open_connection(
+					proxied_reader, proxied_writer = await asyncio.open_connection(
 							addr, port)
 				except (socket.gaierror, socket.herror):
 					# DNS failure
@@ -150,7 +149,7 @@ class Socks5Server(object):
 			# reply to the request
 			repl = struct.pack('!BBB', 0x05, rpl, 0x00)
 			writer.write(repl + repl_addr)
-			yield from writer.drain()
+			await writer.drain()
 
 			# close if an error occured
 			if rpl != 0x00:
@@ -166,7 +165,7 @@ class Socks5Server(object):
 			try:
 				try:
 					while True:
-						data = yield from reader.read(4096)
+						data = await reader.read(4096)
 						if data == b'':
 							# client disconnected, stop relaying from
 							# remote host
@@ -174,7 +173,7 @@ class Socks5Server(object):
 							break
 
 						proxied_writer.write(data)
-						yield from proxied_writer.drain()
+						await proxied_writer.drain()
 				except OSError:
 					# read or write failure
 					t.cancel()
@@ -193,8 +192,7 @@ class Socks5Server(object):
 			writer.close()
 			raise
 
-	@asyncio.coroutine
-	def handle_proxied_conn(self, proxied_reader, writer, parent_task):
+	async def handle_proxied_conn(self, proxied_reader, writer, parent_task):
 		"""
 		Handle the proxied connection. Relay incoming data
 		to the client.
@@ -208,12 +206,12 @@ class Socks5Server(object):
 		try:
 			try:
 				while True:
-					data = yield from proxied_reader.read(4096)
+					data = await proxied_reader.read(4096)
 					if data == b'':
 						break
 
 					writer.write(data)
-					yield from writer.drain()
+					await writer.drain()
 			finally:
 				parent_task.cancel()
 		except (OSError, asyncio.CancelledError):

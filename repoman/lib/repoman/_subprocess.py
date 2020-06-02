@@ -20,15 +20,6 @@ def repoman_getstatusoutput(cmd):
 	"""
 	args = portage.util.shlex_split(cmd)
 
-	if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-		not os.path.isabs(args[0]):
-		# Python 3.1 _execvp throws TypeError for non-absolute executable
-		# path passed as bytes (see https://bugs.python.org/issue8513).
-		fullname = find_binary(args[0])
-		if fullname is None:
-			raise portage.exception.CommandNotFound(args[0])
-		args[0] = fullname
-
 	encoding = _encodings['fs']
 	args = [
 		_unicode_encode(x, encoding=encoding, errors='strict') for x in args]
@@ -52,15 +43,6 @@ class repoman_popen(portage.proxy.objectproxy.ObjectProxy):
 
 	def __init__(self, cmd):
 		args = portage.util.shlex_split(cmd)
-
-		if sys.hexversion < 0x3020000 and sys.hexversion >= 0x3000000 and \
-			not os.path.isabs(args[0]):
-			# Python 3.1 _execvp throws TypeError for non-absolute executable
-			# path passed as bytes (see https://bugs.python.org/issue8513).
-			fullname = find_binary(args[0])
-			if fullname is None:
-				raise portage.exception.CommandNotFound(args[0])
-			args[0] = fullname
 
 		encoding = _encodings['fs']
 		args = [

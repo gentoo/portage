@@ -57,19 +57,42 @@ class CompatCoroutineTestCase(TestCase):
 			loop.run_until_complete(catching_coroutine(loop=loop)))
 
 	def test_cancelled_coroutine(self):
+		"""
+		Verify that a coroutine can handle (and reraise) asyncio.CancelledError
+		in order to perform any necessary cleanup. Note that the
+		asyncio.CancelledError will only be thrown in the coroutine if there's
+		an opportunity (yield) before the generator raises StopIteration.
+		"""
+		loop = asyncio.get_event_loop()
+		ready_for_exception = loop.create_future()
+		exception_in_coroutine = loop.create_future()
 
 		@coroutine
 		def cancelled_coroutine(loop=None):
 			loop = asyncio._wrap_loop(loop)
 			while True:
-				yield loop.create_future()
+				task = loop.create_future()
+				try:
+					ready_for_exception.set_result(None)
+					yield task
+				except BaseException as e:
+					# Since python3.8, asyncio.CancelledError inherits
+					# from BaseException.
+					task.done() or task.cancel()
+					exception_in_coroutine.set_exception(e)
+					raise
+				else:
+					exception_in_coroutine.set_result(None)
 
-		loop = asyncio.get_event_loop()
 		future = cancelled_coroutine(loop=loop)
-		loop.call_soon(future.cancel)
+		loop.run_until_complete(ready_for_exception)
+		future.cancel()
 
 		self.assertRaises(asyncio.CancelledError,
 			loop.run_until_complete, future)
+
+		self.assertRaises(asyncio.CancelledError,
+			loop.run_until_complete, exception_in_coroutine)
 
 	def test_cancelled_future(self):
 		"""

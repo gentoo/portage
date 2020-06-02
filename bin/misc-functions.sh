@@ -216,12 +216,22 @@ install_qa_check_elf() {
 	if type -P scanelf > /dev/null ; then
 		# Save NEEDED information after removing self-contained providers
 		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
-		scanelf -qyRF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
+		# We don't use scanelf -q, since that would omit libraries like
+		# musl's /usr/lib/libc.so which do not have any DT_NEEDED or
+		# DT_SONAME settings. Since we don't use scanelf -q, we have to
+		# handle the special rpath value "  -  " below.
+		scanelf -yRBF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
 			arch=${l%%;*}; l=${l#*;}
 			obj="/${l%%;*}"; l=${l#*;}
 			soname=${l%%;*}; l=${l#*;}
 			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
 			needed=${l%%;*}; l=${l#*;}
+
+			# Infer implicit soname from basename (bug 715162).
+			if [[ -z ${soname} && $(file "${D%/}${obj}") == *"SB shared object"* ]]; then
+				soname=${obj##*/}
+			fi
+
 			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 			echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 		done }

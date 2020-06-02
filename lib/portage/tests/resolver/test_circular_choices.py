@@ -1,4 +1,4 @@
-# Copyright 2011-2019 Gentoo Authors
+# Copyright 2011-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -159,4 +159,46 @@ class VirtualCircularChoicesTestCase(TestCase):
 				playground.run_TestCase(test_case)
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
+			playground.cleanup()
+
+
+class CircularPypyExeTestCase(TestCase):
+	def testCircularPypyExe(self):
+
+		ebuilds = {
+			'dev-python/pypy-7.3.0': {
+				'EAPI': '7',
+				'SLOT' : '0/73',
+				'DEPEND': '|| ( dev-python/pypy-exe dev-python/pypy-exe-bin )'
+			},
+			'dev-python/pypy-exe-7.3.0': {
+				'EAPI': '7',
+				'IUSE': 'low-memory',
+				'SLOT' : '7.3.0',
+				'BDEPEND': '!low-memory? ( dev-python/pypy )'
+			},
+			'dev-python/pypy-exe-bin-7.3.0': {
+				'EAPI': '7',
+				'SLOT' : '7.3.0',
+			},
+		}
+
+		test_cases = (
+			# Demonstrate bug 705986, where a USE change suggestion was given
+			# even though an || preference adjustment would solve the problem
+			# by pulling in pypy-exe-bin instead of pypy-exe.
+			ResolverPlaygroundTestCase(
+				['dev-python/pypy'],
+				mergelist=['dev-python/pypy-exe-bin-7.3.0', 'dev-python/pypy-7.3.0'],
+				success = True,
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
 			playground.cleanup()

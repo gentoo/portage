@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, print_function, unicode_literals
@@ -27,6 +27,7 @@ bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
+from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.EventLoop import EventLoop
@@ -241,6 +242,7 @@ class Scheduler(PollScheduler):
 		self._completed_tasks = set()
 		self._main_exit = None
 		self._main_loadavg_handle = None
+		self._schedule_merge_wakeup_task = None
 
 		self._failed_pkgs = []
 		self._failed_pkgs_all = []
@@ -1336,7 +1338,7 @@ class Scheduler(PollScheduler):
 			self._deallocate_config(build.settings)
 		elif build.returncode == os.EX_OK:
 			self.curval += 1
-			merge = PackageMerge(merge=build)
+			merge = PackageMerge(merge=build, scheduler=self._sched_iface)
 			self._running_tasks[id(merge)] = merge
 			if not build.build_opts.buildpkgonly and \
 				build.pkg in self._deep_system_deps:
@@ -1345,8 +1347,8 @@ class Scheduler(PollScheduler):
 				self._merge_wait_queue.append(merge)
 				merge.addStartListener(self._system_merge_started)
 			else:
-				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.add(merge)
+				merge.addExitListener(self._merge_exit)
 				self._status_display.merges = len(self._task_queues.merge)
 		else:
 			settings = build.settings
@@ -1440,6 +1442,9 @@ class Scheduler(PollScheduler):
 		if self._job_delay_timeout_id is not None:
 			self._job_delay_timeout_id.cancel()
 			self._job_delay_timeout_id = None
+		if self._schedule_merge_wakeup_task is not None:
+			self._schedule_merge_wakeup_task.cancel()
+			self._schedule_merge_wakeup_task = None
 
 	def _choose_pkg(self):
 		"""
@@ -1580,9 +1585,10 @@ class Scheduler(PollScheduler):
 			if (self._merge_wait_queue and not self._jobs and
 				not self._task_queues.merge):
 				task = self._merge_wait_queue.popleft()
-				task.addExitListener(self._merge_wait_exit_handler)
+				task.scheduler = self._sched_iface
 				self._merge_wait_scheduled.append(task)
 				self._task_queues.merge.add(task)
+				task.addExitListener(self._merge_wait_exit_handler)
 				self._status_display.merges = len(self._task_queues.merge)
 				state_change += 1
 
@@ -1612,6 +1618,25 @@ class Scheduler(PollScheduler):
 			self._main_loadavg_handle.cancel()
 			self._main_loadavg_handle = self._event_loop.call_later(
 				self._loadavg_latency, self._schedule)
+
+		# Failure to schedule *after* self._task_queues.merge becomes
+		# empty will cause the scheduler to hang as in bug 711322.
+		# Do not rely on scheduling which occurs via the _merge_exit
+		# method, since the order of callback invocation may cause
+		# self._task_queues.merge to appear non-empty when it is
+		# about to become empty.
+		if (self._task_queues.merge and (self._schedule_merge_wakeup_task is None
+			or self._schedule_merge_wakeup_task.done())):
+			self._schedule_merge_wakeup_task = asyncio.ensure_future(
+				self._task_queues.merge.wait(), loop=self._event_loop)
+			self._schedule_merge_wakeup_task.add_done_callback(
+				self._schedule_merge_wakeup)
+
+	def _schedule_merge_wakeup(self, future):
+		if not future.cancelled():
+			future.result()
+			if self._main_exit is not None and not self._main_exit.done():
+				self._schedule()
 
 	def _sigcont_handler(self, signum, frame):
 		self._sigcont_time = time.time()
@@ -1699,26 +1724,28 @@ class Scheduler(PollScheduler):
 			task = self._task(pkg)
 
 			if pkg.installed:
-				merge = PackageMerge(merge=task)
+				merge = PackageMerge(merge=task, scheduler=self._sched_iface)
 				self._running_tasks[id(merge)] = merge
-				merge.addExitListener(self._merge_exit)
 				self._task_queues.merge.addFront(merge)
+				merge.addExitListener(self._merge_exit)
 
 			elif pkg.built:
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
 				self._running_tasks[id(task)] = task
-				task.addExitListener(self._extract_exit)
+				task.scheduler = self._sched_iface
 				self._task_queues.jobs.add(task)
+				task.addExitListener(self._extract_exit)
 
 			else:
 				self._jobs += 1
 				self._previous_job_start_time = time.time()
 				self._status_display.running = self._jobs
 				self._running_tasks[id(task)] = task
-				task.addExitListener(self._build_exit)
+				task.scheduler = self._sched_iface
 				self._task_queues.jobs.add(task)
+				task.addExitListener(self._build_exit)
 
 		return bool(state_change)
 

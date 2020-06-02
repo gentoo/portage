@@ -52,6 +52,11 @@ class NeededEntry(object):
 
 		del fields[cls._MIN_FIELDS:]
 		obj.arch, obj.filename, obj.soname, rpaths, needed = fields
+		# We don't use scanelf -q, since that would omit libraries like
+		# musl's /usr/lib/libc.so which do not have any DT_NEEDED or
+		# DT_SONAME settings. Since we don't use scanelf -q, we have to
+		# handle the special rpath value "  -  " below.
+		rpaths = "" if rpaths == "  -  " else rpaths
 		obj.runpaths = tuple(filter(None, rpaths.split(":")))
 		obj.needed = tuple(filter(None, needed.split(",")))
 

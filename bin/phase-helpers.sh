@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -878,7 +878,7 @@ ___best_version_and_has_version_common() {
 			if ___eapi_has_prefix_variables; then
 				case ${root_arg} in
 					-r) root=${ROOT%/}/${EPREFIX#/} ;;
-					-d) root=${ESYSROOT} ;;
+					-d) root=${ESYSROOT:-/} ;;
 					-b)
 						# Use /${PORTAGE_OVERRIDE_EPREFIX#/} which is equivalent
 						# to BROOT, except BROOT is only defined in src_* phases.
@@ -888,8 +888,8 @@ ___best_version_and_has_version_common() {
 				esac
 			else
 				case ${root_arg} in
-					-r) root=${ROOT} ;;
-					-d) root=${SYSROOT} ;;
+					-r) root=${ROOT:-/} ;;
+					-d) root=${SYSROOT:-/} ;;
 					-b) root=/ ;;
 				esac
 			fi ;;
@@ -969,7 +969,7 @@ fi
 if ___eapi_has_einstalldocs; then
 	einstalldocs() {
 		(
-			if ! declare -p DOCS &>/dev/null ; then
+			if [[ $(declare -p DOCS 2>/dev/null) != *=* ]]; then
 				local d
 				for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
 						THANKS BUGS FAQ CREDITS CHANGELOG ; do

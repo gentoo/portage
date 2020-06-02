@@ -10,12 +10,6 @@ module_spec = {
 	'name': 'do',
 	'description': doc,
 	'provides':{
-		'addpredict-check': {
-			'name': "addpredict",
-			'sourcefile': "workarounds",
-			'class': "SandboxAddpredict",
-			'description': doc,
-		},
 		'noasneeded-check': {
 			'name': "noasneeded",
 			'sourcefile': "workarounds",
