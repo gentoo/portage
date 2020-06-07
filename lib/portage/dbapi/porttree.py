@@ -164,8 +164,13 @@ class _better_cache(object):
 					raise
 				continue
 			for p in pkg_list:
-				if os.path.isdir(cat_dir + "/" + p):
-					self._items[cat + "/" + p].append(repo)
+				try:
+					atom = Atom("%s/%s" % (cat, p))
+				except InvalidAtom:
+					continue
+				if atom != atom.cp:
+					continue
+				self._items[atom.cp].append(repo)
 		self._scanned_cats.add(cat)
 
 
