@@ -17,6 +17,7 @@ class InheritDeprecated(LineCheck):
 		"bash-completion": "bash-completion-r1",
 		"boost-utils": False,
 		"clutter": "gnome2",
+		"cmake-utils": "cmake",
 		"confutils": False,
 		"distutils": "distutils-r1",
 		"epatch": "(eapply since EAPI 6)",
