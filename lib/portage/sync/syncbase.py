@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Gentoo Foundation
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 '''
@@ -252,6 +252,13 @@ class SyncBase(object):
 		@type openpgp_env: gemato.openpgp.OpenPGPEnvironment
 		"""
 		out = portage.output.EOutput(quiet=('--quiet' in self.options['emerge_config'].opts))
+
+		if not self.repo.sync_openpgp_key_refresh:
+			out.ewarn('Key refresh is disabled via a repos.conf sync-openpgp-key-refresh')
+			out.ewarn('setting, and this is a security vulnerability because it prevents')
+			out.ewarn('detection of revoked keys!')
+			return
+
 		out.ebegin('Refreshing keys via WKD')
 		if openpgp_env.refresh_keys_wkd():
 			out.eend(0)

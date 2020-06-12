@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -113,6 +113,7 @@ class RepoConfig(object):
 		'sync_hooks_only_on_change',
 		'sync_openpgp_keyserver',
 		'sync_openpgp_key_path',
+		'sync_openpgp_key_refresh',
 		'sync_openpgp_key_refresh_retry_count',
 		'sync_openpgp_key_refresh_retry_delay_exp_base',
 		'sync_openpgp_key_refresh_retry_delay_max',
@@ -232,6 +233,9 @@ class RepoConfig(object):
 
 		self.sync_openpgp_key_path = repo_opts.get(
 			'sync-openpgp-key-path', None)
+
+		self.sync_openpgp_key_refresh = repo_opts.get(
+			'sync-openpgp-key-refresh', 'true').lower() in ('true', 'yes')
 
 		for k in ('sync_openpgp_key_refresh_retry_count',
 			'sync_openpgp_key_refresh_retry_delay_exp_base',
@@ -497,6 +501,8 @@ class RepoConfig(object):
 			repo_msg.append(indent + "location: " + self.location)
 		if not self.strict_misc_digests:
 			repo_msg.append(indent + "strict-misc-digests: false")
+		if not self.sync_openpgp_key_refresh:
+			repo_msg.append(indent + "sync-openpgp-key-refresh: no")
 		if self.sync_type:
 			repo_msg.append(indent + "sync-type: " + self.sync_type)
 		if self.sync_umask:
@@ -609,6 +615,7 @@ class RepoConfigLoader(object):
 							'sync_hooks_only_on_change',
 							'sync_openpgp_keyserver',
 							'sync_openpgp_key_path',
+							'sync_openpgp_key_refresh',
 							'sync_openpgp_key_refresh_retry_count',
 							'sync_openpgp_key_refresh_retry_delay_exp_base',
 							'sync_openpgp_key_refresh_retry_delay_max',
@@ -1047,6 +1054,7 @@ class RepoConfigLoader(object):
 		bool_keys = (
 			"strict_misc_digests",
 			"sync_allow_hardlinks",
+			"sync_openpgp_key_refresh",
 			"sync_rcu",
 		)
 		str_or_int_keys = (

@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Apr 2019" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jun 2020" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -1124,6 +1124,13 @@ Path to the OpenPGP key(ring) used to verify received repository. Used
 only for protocols supporting cryptographic verification, provided
 that the respective verification option is enabled. If unset, the user's
 keyring is used.
+.TP
+.B sync\-openpgp\-key\-refresh = yes
+Enable OpenPGP key(ring) refresh. This option is enabled by default.
+
+\fBWarning\fR: It is a security vulnerability to disable this option
+because this will prevent detection of revoked keys!
+
 .TP
 .B sync\-openpgp\-key\-refresh\-retry\-count = 40
 Maximum number of times to retry key refresh if it fails. Between each
