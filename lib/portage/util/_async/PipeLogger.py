@@ -131,6 +131,13 @@ class PipeLogger(AbstractPollTask):
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
 				if log_file is not None:
+					if isinstance(log_file, gzip.GzipFile):
+						# Use log_file.write since data written directly
+						# to the file descriptor bypasses compression.
+						log_file.write(buf)
+						log_file.flush()
+						continue
+
 					write_buf = buf
 					while write_buf:
 						try:
