@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -88,7 +88,7 @@ while [[ $# -gt 0 ]] ; do
 			done < <(find "${find_args[@]}" -print0 || die)
 
 			if [[ ${#collisions[@]} -gt 0 ]]; then
-				eqawarn "Colliding files found by ecompress:"
+				eqawarn "QA Notice: Colliding files found by ecompress:"
 				eqawarn
 				for x in "${!collisions[@]}"; do
 					eqawarn "  ${x}"
@@ -189,9 +189,9 @@ find "${ED}" -name '*.ecompress' -delete -print0 |
 ret=${?}
 
 if [[ -s ${T}/.ecompress_had_precompressed ]]; then
-	eqawarn "One or more compressed files were found in docompress-ed directories."
-	eqawarn "Please fix the ebuild not to install compressed files (manpages,"
-	eqawarn "documentation) when automatic compression is used:"
+	eqawarn "QA Notice: One or more compressed files were found in docompress-ed"
+	eqawarn "directories. Please fix the ebuild not to install compressed files"
+	eqawarn "(manpages, documentation) when automatic compression is used:"
 	eqawarn
 	n=0
 	while read -r f; do
