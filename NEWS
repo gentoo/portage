@@ -1,5 +1,12 @@
 News (mainly features/major bug fixes)
 
+portage-2.3.101
+--------------
+* The new PORTAGE_LOG_FILTER_FILE_CMD make.conf(5) variable specifies a
+  command that filters build log output to a log file. In order to
+  filter ANSI escape codes from build logs, ansifilter(1) is a
+  convenient setting for this variable.
+
 portage-2.3.100
 --------------
 * New BINPKG_COMPRESS=zstd default (does not apply to installed systems

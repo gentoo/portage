@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-2.3.101
+==================================
+* Bug Fixes:
+    - Bug 661518 repos.conf: Add bool sync-openpgp-key-refresh option
+    - Bug 709746 New PORTAGE_LOG_FILTER_FILE_CMD variable specifies a
+          command that filters build log output to a log file
+    - Bug 719810 Escape percent-signs in mirror url
+    - Bug 725934 _better_cache._scan_cat: Avoid stat calls
+    - Bug 728046 ecompress: Prefix eqawarn messages with QA Notice
+
 portage-2.3.100
 ==================================
 * Bug Fixes:
