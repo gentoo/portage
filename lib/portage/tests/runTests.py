@@ -1,4 +1,4 @@
-#!/usr/bin/python -bWd
+#!/usr/bin/env -S python -bWd
 # runTests.py -- Portage Unit Test Functionality
 # Copyright 2006-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
