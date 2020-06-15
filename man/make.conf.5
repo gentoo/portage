@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jun 2020" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2020" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -978,11 +978,6 @@ string should contain a \\${PID} place-holder that will be substituted
 with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
 \fBionice\fR(1). This variable is unset by default.
-.TP
-.B PORTAGE_LOG_FILTER_FILE_CMD
-This variable specifies a command that filters build log output to a
-log file. In order to filter ANSI escape codes from build logs,
-\fBansifilter\fR(1) is a convenient setting for this variable.
 .TP
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.

@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -158,7 +158,6 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		self.env = fetch_env
 		if settings.selinux_enabled():
 			self._selinux_type = settings["PORTAGE_FETCH_T"]
-		self.log_filter_file = settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):

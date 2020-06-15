@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2019 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -196,7 +196,6 @@ class AbstractEbuildProcess(SpawnProcess):
 			null_fd = os.open('/dev/null', os.O_RDONLY)
 			self.fd_pipes[0] = null_fd
 
-		self.log_filter_file = self.settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
 		try:
 			SpawnProcess._start(self)
 		finally:

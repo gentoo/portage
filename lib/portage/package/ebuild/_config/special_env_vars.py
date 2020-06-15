@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -175,7 +175,7 @@ environ_filter += [
 	"PORTAGE_RO_DISTDIRS",
 	"PORTAGE_RSYNC_EXTRA_OPTS", "PORTAGE_RSYNC_OPTS",
 	"PORTAGE_RSYNC_RETRIES", "PORTAGE_SSH_OPTS", "PORTAGE_SYNC_STALE",
-	"PORTAGE_USE", "PORTAGE_LOG_FILTER_FILE_CMD",
+	"PORTAGE_USE",
 	"PORTAGE_LOGDIR", "PORTAGE_LOGDIR_CLEAN",
 	"QUICKPKG_DEFAULT_OPTS", "REPOMAN_DEFAULT_OPTS",
 	"RESUMECOMMAND", "RESUMECOMMAND_FTP",
@@ -204,9 +204,7 @@ default_globals = {
 	'PORTAGE_BZIP2_COMMAND':    'bzip2',
 }
 
-validate_commands = ('PORTAGE_BZIP2_COMMAND', 'PORTAGE_BUNZIP2_COMMAND',
-	'PORTAGE_LOG_FILTER_FILE_CMD',
-)
+validate_commands = ('PORTAGE_BZIP2_COMMAND', 'PORTAGE_BUNZIP2_COMMAND',)
 
 # To enhance usability, make some vars case insensitive
 # by forcing them to lower case.

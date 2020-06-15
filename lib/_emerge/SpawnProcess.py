@@ -1,4 +1,4 @@
-# Copyright 2008-2020 Gentoo Authors
+# Copyright 2008-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -19,10 +19,7 @@ from portage.const import BASH_BINARY
 from portage.localization import _
 from portage.output import EOutput
 from portage.util import writemsg_level
-from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
-from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 
 class SpawnProcess(SubProcess):
 
@@ -37,8 +34,8 @@ class SpawnProcess(SubProcess):
 		"path_lookup", "pre_exec", "close_fds", "cgroup",
 		"unshare_ipc", "unshare_mount", "unshare_pid", "unshare_net")
 
-	__slots__ = ("args", "log_filter_file") + \
-		_spawn_kwarg_names + ("_main_task", "_selinux_type",)
+	__slots__ = ("args",) + \
+		_spawn_kwarg_names + ("_pipe_logger", "_selinux_type",)
 
 	# Max number of attempts to kill the processes listed in cgroup.procs,
 	# given that processes may fork before they can be killed.
@@ -140,43 +137,13 @@ class SpawnProcess(SubProcess):
 						fcntl.fcntl(stdout_fd,
 						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		build_logger = BuildLogger(env=self.env,
-			log_path=log_file_path,
-			log_filter_file=self.log_filter_file,
-			scheduler=self.scheduler)
-		build_logger.start()
-
-		pipe_logger = PipeLogger(background=self.background,
+		self._pipe_logger = PipeLogger(background=self.background,
 			scheduler=self.scheduler, input_fd=master_fd,
-			log_file_path=build_logger.stdin,
+			log_file_path=log_file_path,
 			stdout_fd=stdout_fd)
-
-		pipe_logger.start()
-
+		self._pipe_logger.addExitListener(self._pipe_logger_exit)
+		self._pipe_logger.start()
 		self._registered = True
-		self._main_task = asyncio.ensure_future(self._main(build_logger, pipe_logger), loop=self.scheduler)
-		self._main_task.add_done_callback(self._main_exit)
-
-	@coroutine
-	def _main(self, build_logger, pipe_logger):
-		try:
-			if pipe_logger.poll() is None:
-				yield pipe_logger.async_wait()
-			if build_logger.poll() is None:
-				yield build_logger.async_wait()
-		except asyncio.CancelledError:
-			if pipe_logger.poll() is None:
-				pipe_logger.cancel()
-			if build_logger.poll() is None:
-				build_logger.cancel()
-			raise
-
-	def _main_exit(self, main_task):
-		try:
-			main_task.result()
-		except asyncio.CancelledError:
-			self.cancel()
-		self._async_waitpid()
 
 	def _can_log(self, slave_fd):
 		return True
@@ -200,17 +167,20 @@ class SpawnProcess(SubProcess):
 
 		return spawn_func(args, **kwargs)
 
+	def _pipe_logger_exit(self, pipe_logger):
+		self._pipe_logger = None
+		self._async_waitpid()
+
 	def _unregister(self):
 		SubProcess._unregister(self)
 		if self.cgroup is not None:
 			self._cgroup_cleanup()
 			self.cgroup = None
-		if self._main_task is not None:
-			self._main_task.done() or self._main_task.cancel()
+		if self._pipe_logger is not None:
+			self._pipe_logger.cancel()
+			self._pipe_logger = None
 
 	def _cancel(self):
-		if self._main_task is not None:
-			self._main_task.done() or self._main_task.cancel()
 		SubProcess._cancel(self)
 		self._cgroup_cleanup()
 
