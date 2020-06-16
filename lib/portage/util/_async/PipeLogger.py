@@ -8,9 +8,6 @@ import sys
 
 import portage
 from portage import os, _encodings, _unicode_encode
-from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
-from portage.util.futures.unix_events import _set_nonblocking
 from _emerge.AbstractPollTask import AbstractPollTask
 
 class PipeLogger(AbstractPollTask):
@@ -24,15 +21,13 @@ class PipeLogger(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_fd", "log_file_path", "stdout_fd") + \
-		("_io_loop_task", "_log_file", "_log_file_real")
+		("_log_file", "_log_file_real")
 
 	def _start(self):
 
 		log_file_path = self.log_file_path
-		if hasattr(log_file_path, 'write'):
-			self._log_file = log_file_path
-			_set_nonblocking(self._log_file.fileno())
-		elif log_file_path is not None:
+		if log_file_path is not None:
+
 			self._log_file = open(_unicode_encode(log_file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
 			if log_file_path.endswith('.gz'):
@@ -62,8 +57,7 @@ class PipeLogger(AbstractPollTask):
 				fcntl.fcntl(fd, fcntl.F_SETFD,
 					fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
-		self._io_loop_task = asyncio.ensure_future(self._io_loop(fd), loop=self.scheduler)
-		self._io_loop_task.add_done_callback(self._io_loop_done)
+		self.scheduler.add_reader(fd, self._output_handler, fd)
 		self._registered = True
 
 	def _cancel(self):
@@ -71,8 +65,8 @@ class PipeLogger(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
 
-	@coroutine
-	def _io_loop(self, fd):
+	def _output_handler(self, fd):
+
 		background = self.background
 		stdout_fd = self.stdout_fd
 		log_file = self._log_file 
@@ -82,19 +76,14 @@ class PipeLogger(AbstractPollTask):
 
 			if buf is None:
 				# not a POLLIN event, EAGAIN, etc...
-				future = self.scheduler.create_future()
-				self.scheduler.add_reader(fd, future.set_result, None)
-				try:
-					yield future
-				finally:
-					if not self.scheduler.is_closed():
-						self.scheduler.remove_reader(fd)
-						future.done() or future.cancel()
-				continue
+				break
 
 			if not buf:
 				# EOF
-				return
+				self._unregister()
+				self.returncode = self.returncode or os.EX_OK
+				self._async_wait()
+				break
 
 			else:
 				if not background and stdout_fd is not None:
@@ -131,39 +120,8 @@ class PipeLogger(AbstractPollTask):
 								fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
 				if log_file is not None:
-					if isinstance(log_file, gzip.GzipFile):
-						# Use log_file.write since data written directly
-						# to the file descriptor bypasses compression.
-						log_file.write(buf)
-						log_file.flush()
-						continue
-
-					write_buf = buf
-					while write_buf:
-						try:
-							# Use os.write, since the log_file.write method
-							# looses data when an EAGAIN occurs.
-							write_buf = write_buf[os.write(log_file.fileno(), write_buf):]
-						except EnvironmentError as e:
-							if e.errno != errno.EAGAIN:
-								raise
-							future = self.scheduler.create_future()
-							self.scheduler.add_writer(self._log_file.fileno(), future.set_result, None)
-							try:
-								yield future
-							finally:
-								if not self.scheduler.is_closed():
-									self.scheduler.remove_writer(self._log_file.fileno())
-									future.done() or future.cancel()
-
-	def _io_loop_done(self, future):
-		try:
-			future.result()
-		except asyncio.CancelledError:
-			self.cancel()
-			self._was_cancelled()
-		self.returncode = self.returncode or os.EX_OK
-		self._async_wait()
+					log_file.write(buf)
+					log_file.flush()
 
 	def _unregister(self):
 		if self.input_fd is not None:
@@ -175,16 +133,11 @@ class PipeLogger(AbstractPollTask):
 				self.input_fd.close()
 			self.input_fd = None
 
-		if self._io_loop_task is not None:
-			self._io_loop_task.done() or self._io_loop_task.cancel()
-			self._io_loop_task = None
-
 		if self.stdout_fd is not None:
 			os.close(self.stdout_fd)
 			self.stdout_fd = None
 
 		if self._log_file is not None:
-			self.scheduler.remove_writer(self._log_file.fileno())
 			self._log_file.close()
 			self._log_file = None
 
