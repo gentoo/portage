@@ -1,9 +1,12 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+import os
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:asyncio',
+	'portage.util.futures.unix_events:_set_nonblocking',
 )
 from portage.util.futures._asyncio.streams import _reader, _writer
 from portage.util.futures.compat_coroutine import coroutine, coroutine_return
@@ -59,7 +62,11 @@ class _Process(object):
 		if input is not None:
 			if self._proc.stdin is None:
 				raise TypeError('communicate: expected file or int, got {}'.format(type(self._proc.stdin)))
-			writer = asyncio.ensure_future(_writer(self._proc.stdin, input), loop=self._loop)
+			stdin = self._proc.stdin
+			stdin = os.fdopen(stdin, 'wb', 0) if isinstance(stdin, int) else stdin
+			_set_nonblocking(stdin.fileno())
+			writer = asyncio.ensure_future(_writer(stdin, input, loop=self._loop), loop=self._loop)
+			writer.add_done_callback(lambda writer: stdin.close())
 
 		try:
 			yield asyncio.wait(futures + [self.wait()], loop=self._loop)
