@@ -47,7 +47,8 @@ portage.proxy.lazyimport.lazyimport(globals(),
 		'_post_src_install_soname_symlinks,' + \
 		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
 		'_post_src_install_write_metadata,' + \
-		'_preinst_bsdflags'
+		'_preinst_bsdflags',
+	'portage.util.futures.unix_events:_set_nonblocking',
 )
 from portage import os
 from portage import _encodings
@@ -433,6 +434,7 @@ class EbuildPhase(CompositeTask):
 						log_filter_file=self.settings.get('PORTAGE_LOG_FILTER_FILE_CMD'),
 						scheduler=self.scheduler)
 					build_logger.start()
+					_set_nonblocking(build_logger.stdin.fileno())
 					log_file = build_logger.stdin
 
 				yield self.scheduler.async_output(msg, log_file=log_file,
