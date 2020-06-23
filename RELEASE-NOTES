@@ -4,6 +4,12 @@ Features/major bugfixes are listed in NEWS
 portage-2.3.101
 ==================================
 * Bug Fixes:
+    - Bug 716636 Fix emerge hang triggered by unsafe remove_reader and
+      remove_writer calls related to bug 709746
+
+portage-2.3.101
+==================================
+* Bug Fixes:
     - Bug 661518 repos.conf: Add bool sync-openpgp-key-refresh option
     - Bug 709746 New PORTAGE_LOG_FILTER_FILE_CMD variable specifies a
           command that filters build log output to a log file
