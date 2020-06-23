@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-2.3.23
+==================================
+* Bug Fixes:
+    - Bug 637824 Deprecate netsurf.eclass
+
 repoman-2.3.22
 ==================================
 * Bug Fixes:
