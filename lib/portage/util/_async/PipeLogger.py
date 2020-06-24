@@ -162,15 +162,15 @@ class PipeLogger(AbstractPollTask):
 	def _unregister(self):
 		if self.input_fd is not None:
 			if isinstance(self.input_fd, int):
-				self.scheduler.remove_reader(self.input_fd)
 				os.close(self.input_fd)
-			else:
+			elif not self.input_fd.closed:
 				self.scheduler.remove_reader(self.input_fd.fileno())
 				self.input_fd.close()
 			self.input_fd = None
 
 		if self._io_loop_task is not None:
-			self._io_loop_task.done() or self._io_loop_task.cancel()
+			if not self.scheduler.is_closed():
+				self._io_loop_task.done() or self._io_loop_task.cancel()
 			self._io_loop_task = None
 
 		if self.stdout_fd is not None:
@@ -178,8 +178,9 @@ class PipeLogger(AbstractPollTask):
 			self.stdout_fd = None
 
 		if self._log_file is not None:
-			self.scheduler.remove_writer(self._log_file.fileno())
-			self._log_file.close()
+			if not self._log_file.closed:
+				self.scheduler.remove_writer(self._log_file.fileno())
+				self._log_file.close()
 			self._log_file = None
 
 		if self._log_file_real is not None:
