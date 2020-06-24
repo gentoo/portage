@@ -38,9 +38,10 @@ while [[ $# -gt 0 ]] ; do
 		if [[ ${#skip_files[@]} -gt 0 && -s ${T}/.ecompress_had_precompressed ]]; then
 			sed_args=()
 			for f in "${skip_files[@]}"; do
-				sed_args+=(-e "s|^${f}\$||")
+				sed_args+=("s|^${f}\$||;")
 			done
-			sed "${sed_args[@]}" -e '/^$/d' -i "${T}/.ecompress_had_precompressed" || die
+			sed_args+=('/^$/d')
+			sed -f - -i "${T}/.ecompress_had_precompressed" <<< "${sed_args[@]}" || die
 		fi
 
 		exit 0
