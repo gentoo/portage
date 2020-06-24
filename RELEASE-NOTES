@@ -1,7 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-2.3.101
+portage-2.3.103
+==================================
+* Bug Fixes:
+    - Bug 709746 set non-blocking for build_logger stdin in EbuildPhase
+                 _elog method
+    - Bug 727522 ecompress: fix "Argument list too long" for sed
+
+portage-2.3.102
 ==================================
 * Bug Fixes:
     - Bug 716636 Fix emerge hang triggered by unsafe remove_reader and
