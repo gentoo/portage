@@ -172,11 +172,22 @@ class SpawnProcess(SubProcess):
 			raise
 
 	def _main_exit(self, main_task):
+		self._main_task = None
 		try:
 			main_task.result()
 		except asyncio.CancelledError:
 			self.cancel()
 		self._async_waitpid()
+
+	def _async_wait(self):
+		# Allow _main_task to exit normally rather than via cancellation.
+		if self._main_task is None:
+			super(SpawnProcess, self)._async_wait()
+
+	def _async_waitpid(self):
+		# Allow _main_task to exit normally rather than via cancellation.
+		if self._main_task is None:
+			super(SpawnProcess, self)._async_waitpid()
 
 	def _can_log(self, slave_fd):
 		return True
