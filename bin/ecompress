@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]] ; do
 
 		if [[ ${#skip_dirs[@]} -gt 0 ]]; then
 			while read -r -d ''; do
-				skip_files+=(${REPLY#.ecompress})
+				skip_files+=("${REPLY%.ecompress}")
 			done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
 		fi
 
