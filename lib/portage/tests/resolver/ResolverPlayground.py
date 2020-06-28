@@ -91,6 +91,7 @@ class ResolverPlayground(object):
 				"chgrp",
 				"chmod",
 				"chown",
+				"comm",
 				"cp",
 				"egrep",
 				"env",
