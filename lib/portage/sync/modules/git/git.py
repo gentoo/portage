@@ -1,4 +1,4 @@
-# Copyright 2005-2018 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -204,7 +204,7 @@ class GitSync(NewBase):
 
 	def verify_head(self, revision='-1'):
 		if (self.repo.module_specific_options.get(
-				'sync-git-verify-commit-signature', 'false') != 'true'):
+				'sync-git-verify-commit-signature', 'false').lower() not in ('true', 'yes')):
 			return True
 
 		if self.repo.sync_openpgp_key_path is not None:

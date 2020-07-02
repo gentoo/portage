@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Jun 2020" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Jul 2020" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -916,12 +916,10 @@ When 'force = aliases' attribute is not set, \fBegencache\fR(1),
 since operations performed by these tools are inherently
 \fBnot\fR \fIsite\-specific\fR.
 .TP
-.B auto\-sync
+.B auto\-sync = yes|no|true|false
 This setting determines if the repo will be synced during "\fBemerge \-\-sync\fR" or
 "\fBemaint sync \-\-auto\fR" runs.  This allows for repositories to be synced only when
 desired via "\fBemaint sync \-\-repo foo\fR".
-.br
-Valid values: yes, no, true, false.
 .br
 If unset, the repo will be treated as set
 yes, true.
@@ -966,20 +964,18 @@ since operations performed by these tools are inherently
 .B priority
 Specifies priority of given repository.
 .TP
-.B strict\-misc\-digests
+.B strict\-misc\-digests = yes|no|true|false
 This setting determines whether digests are checked for files declared
 in the Manifest with MISC type (includes ChangeLog and metadata.xml
-files). Defaults to true.
-.br
-Valid values: true, false.
+files). Defaults to yes, true.
 .TP
-.B sync\-allow\-hardlinks = yes|no
+.B sync\-allow\-hardlinks = yes|no|true|false
 Allow sync plugins to use hardlinks in order to ensure that a repository
 remains in a valid state if something goes wrong during the sync operation.
 For example, if signature verification fails during a sync operation,
 the previous state of the repository will be preserved. This option may
 conflict with configurations that restrict the use of hardlinks, such as
-overlay filesystems.
+overlay filesystems. Defaults to yes, true.
 .TP
 .B sync\-cvs\-repo
 Specifies CVS repository.
@@ -1016,16 +1012,17 @@ See also example for sync-git-clone-env.
 .B sync\-git\-pull\-extra\-opts
 Extra options to give to git when updating repository (git pull).
 .TP
-.B sync\-git\-verify\-commit\-signature = true|false
+.B sync\-git\-verify\-commit\-signature = yes|no|true|false
 Require the top commit in the repository to contain a good OpenPGP
-signature. Defaults to false.
+signature. Defaults to no, false.
 .TP
-.B sync\-hooks\-only\-on\-change
+.B sync\-hooks\-only\-on\-change = yes|no|true|false
 If set to true, then sync of a given repository will not trigger postsync
 hooks unless hooks would have executed for a master repository or the
-repository has changed since the previous sync operation.
+repository has changed since the previous sync operation. Defaults to
+no, false.
 .TP
-.B sync\-rcu = yes|no
+.B sync\-rcu = yes|no|true|false
 Enable read\-copy\-update (RCU) behavior for sync operations. The current
 latest immutable version of a repository will be referenced by a symlink
 found where the repository would normally be located (see the \fBlocation\fR
@@ -1156,10 +1153,10 @@ Pass \fIname\fR as the `gpg \-\-keyserver` argument. Refer to the
 \fBgpg\fR(1) man page for information about the `gpg \-\-keyserver`
 \fIname\fR format.
 .TP
-.B sync-rsync-vcs-ignore = true|false
+.B sync\-rsync\-vcs\-ignore = yes|no|true|false
 Ignore vcs directories that may be present in the repository. It is the
 user's responsibility to set sync-rsync-extra-opts to protect vcs
-directories if appropriate.
+directories if appropriate. Defaults to no, false.
 .TP
 .B sync\-rsync\-verify\-jobs = 1
 Number of parallel jobs to use when verifying nested Manifests. When
@@ -1171,21 +1168,21 @@ Defaults to 1.
 Warn if repository is older than the specified number of days. Disabled
 when 0. Defaults to disabled.
 .TP
-.B sync\-rsync\-verify\-metamanifest = yes|no
+.B sync\-rsync\-verify\-metamanifest = yes|no|true|false
 Require the repository to contain a signed MetaManifest and verify
-it using \fBapp\-portage/gemato\fR. Defaults to no.
+it using \fBapp\-portage/gemato\fR. Defaults to no, false.
 .TP
-.B sync\-webrsync\-delta = true|false
+.B sync\-webrsync\-delta = yes|no|true|false
 Use \fBapp\-portage/emerge\-delta\-webrsync\fR to minimize bandwidth.
-Defaults to false.
+Defaults to no, false.
 .TP
-.B sync\-webrsync\-keep\-snapshots = true|false
-Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to false.
+.B sync\-webrsync\-keep\-snapshots = yes|no|true|false
+Keep snapshots in \fBDISTDIR\fR (do not delete). Defaults to no, false.
 .TP
-.B sync\-webrsync\-verify\-signature = true|false
+.B sync\-webrsync\-verify\-signature = yes|no|true|false
 Require the detached tarball signature to contain a good OpenPGP
 signature. This uses the OpenPGP key(ring) specified by the
-sync\-openpgp\-key\-path setting. Defaults to false.
+sync\-openpgp\-key\-path setting. Defaults to no, false.
 
 .RE
 

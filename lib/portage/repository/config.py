@@ -220,10 +220,10 @@ class RepoConfig(object):
 		self.sync_depth = repo_opts.get('sync-depth')
 
 		self.sync_hooks_only_on_change = repo_opts.get(
-			'sync-hooks-only-on-change', 'false').lower() == 'true'
+			'sync-hooks-only-on-change', 'false').lower() in ('true', 'yes')
 
 		self.strict_misc_digests = repo_opts.get(
-			'strict-misc-digests', 'true').lower() == 'true'
+			'strict-misc-digests', 'true').lower() in ('true', 'yes')
 
 		self.sync_allow_hardlinks = repo_opts.get(
 			'sync-allow-hardlinks', 'true').lower() in ('true', 'yes')

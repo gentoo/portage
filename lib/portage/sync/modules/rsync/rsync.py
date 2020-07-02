@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -68,7 +68,7 @@ class RsyncSync(NewBase):
 		out = portage.output.EOutput(quiet=quiet)
 		syncuri = self.repo.sync_uri
 		if self.repo.module_specific_options.get(
-			'sync-rsync-vcs-ignore', 'false').lower() == 'true':
+			'sync-rsync-vcs-ignore', 'false').lower() in ('true', 'yes'):
 			vcs_dirs = ()
 		else:
 			vcs_dirs = frozenset(VCS_DIRS)
@@ -102,7 +102,7 @@ class RsyncSync(NewBase):
 		# via default repos.conf though.
 		self.verify_metamanifest = (
 				self.repo.module_specific_options.get(
-					'sync-rsync-verify-metamanifest', 'no') in ('yes', 'true'))
+					'sync-rsync-verify-metamanifest', 'no').lower() in ('yes', 'true'))
 		# Support overriding job count.
 		self.verify_jobs = self.repo.module_specific_options.get(
 				'sync-rsync-verify-jobs', None)
