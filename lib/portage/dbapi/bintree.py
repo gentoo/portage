@@ -101,6 +101,8 @@ class bindbapi(fakedbapi):
 			])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
 		self._aux_cache = {}
+		self._lock = None
+		self._lock_count = 0
 
 	@property
 	def writable(self):
@@ -112,6 +114,34 @@ class bindbapi(fakedbapi):
 			False otherwise
 		"""
 		return os.access(first_existing(self.bintree.pkgdir), os.W_OK)
+
+	def lock(self):
+		"""
+		Acquire a reentrant lock, blocking, for cooperation with concurrent
+		processes.
+		"""
+		if self._lock_count <= 0:
+			if self._lock is not None:
+				raise AssertionError("already locked")
+			# At least the parent needs to exist for the lock file.
+			ensure_dirs(self.bintree.pkgdir)
+			self._lock = lockfile(self.bintree._pkgindex_file, wantnewlockfile=True)
+
+		self._lock_count += 1
+
+	def unlock(self):
+		"""
+		Release a lock, decrementing the recursion level. Each unlock() call
+		must be matched with a prior lock() call, or else an AssertionError
+		will be raised if unlock() is called while not locked.
+		"""
+		if self._lock_count <= 1:
+			if self._lock is None:
+				raise AssertionError("not locked")
+			unlockfile(self._lock)
+			self._lock = None
+
+		self._lock_count -= 1
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
@@ -626,16 +656,13 @@ class binarytree(object):
 				# that changes made by a concurrent process cannot be lost. This
 				# case is avoided when possible, in order to minimize lock
 				# contention.
-				pkgindex_lock = None
+				self.dbapi.lock()
 				try:
-					pkgindex_lock = lockfile(self._pkgindex_file,
-						wantnewlockfile=True)
 					update_pkgindex = self._populate_local()
 					if update_pkgindex:
 						self._pkgindex_write(update_pkgindex)
 				finally:
-					if pkgindex_lock:
-						unlockfile(pkgindex_lock)
+					self.dbapi.unlock()
 
 			if add_repos:
 				self._populate_additional(add_repos)
@@ -1219,10 +1246,8 @@ class binarytree(object):
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
-		pkgindex_lock = None
+		self.dbapi.lock()
 		try:
-			pkgindex_lock = lockfile(self._pkgindex_file,
-				wantnewlockfile=1)
 			if filename is not None:
 				new_filename = self.getname(cpv, allocate_new=True)
 				try:
@@ -1263,8 +1288,7 @@ class binarytree(object):
 			self._pkgindex_write(pkgindex)
 
 		finally:
-			if pkgindex_lock:
-				unlockfile(pkgindex_lock)
+			self.dbapi.unlock()
 
 		# This is used to record BINPKGMD5 in the installed package
 		# database, for a package that has just been built.
