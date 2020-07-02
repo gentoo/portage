@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Gentoo Foundation
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Git plug-in module for portage.
@@ -14,6 +14,7 @@ class CheckGitConfig(CheckSyncConfig):
 	def __init__(self, repo, logger):
 		CheckSyncConfig.__init__(self, repo, logger)
 		self.checks.append('check_depth')
+		self.checks.append('check_verify_commit_signature')
 
 	def check_depth(self):
 		for attr in ('clone_depth', 'sync_depth'):
@@ -32,6 +33,16 @@ class CheckGitConfig(CheckSyncConfig):
 					level=self.logger.ERROR, noiselevel=-1)
 			else:
 				setattr(self.repo, attr, d)
+
+	def check_verify_commit_signature(self):
+		v = self.repo.module_specific_options.get(
+			'sync-git-verify-commit-signature', 'false').lower()
+
+		if v not in ('yes', 'no', 'true', 'false'):
+			writemsg_level("!!! %s\n" %
+				_("sync-git-verify-commit-signature not one of: %s")
+				% ('{yes, no, true, false}'),
+				level=self.logger.ERROR, noiselevel=-1)
 
 
 module_spec = {
