@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Gentoo Authors
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -231,7 +231,7 @@ class SyncManager(object):
 		# Redirect command stderr to stdout, in order to prevent
 		# spurious cron job emails (bug 566132).
 		spawn_kwargs["fd_pipes"] = {
-			0: sys.__stdin__.fileno(),
+			0: portage._get_stdin().fileno(),
 			1: sys.__stdout__.fileno(),
 			2: sys.__stdout__.fileno()
 		}

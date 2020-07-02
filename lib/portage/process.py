@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -107,7 +107,7 @@ def sanitize_fds():
 	if _set_inheritable is not None:
 
 		whitelist = frozenset([
-			sys.__stdin__.fileno(),
+			portage._get_stdin().fileno(),
 			sys.__stdout__.fileno(),
 			sys.__stderr__.fileno(),
 		])
