@@ -492,7 +492,7 @@ setup(
 		'Intended Audience :: System Administrators',
 		'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
 		'Operating System :: POSIX',
-		'Programming Language :: Python',
+		'Programming Language :: Python :: 3',
 		'Topic :: System :: Installation/Setup'
 	]
 )
