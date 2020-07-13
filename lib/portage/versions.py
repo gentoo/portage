@@ -13,6 +13,7 @@ __all__ = [
 import re
 import sys
 import warnings
+from functools import lru_cache
 
 if sys.hexversion < 0x3000000:
 	_unicode = unicode
@@ -116,6 +117,7 @@ def ververify(myver, silent=1):
 			print(_("!!! syntax error in version: %s") % myver)
 		return False
 
+@lru_cache(1024)
 def vercmp(ver1, ver2, silent=1):
 	"""
 	Compare two versions
@@ -313,6 +315,7 @@ def _pkgsplit(mypkg, eapi=None):
 _cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
 
+@lru_cache(10240)
 def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.

@@ -17,6 +17,7 @@ __all__ = [
 
 import re, sys
 import warnings
+from functools import lru_cache
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -404,49 +405,10 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
 			mystrparts.append(x)
 	return " ".join(mystrparts)
 
-def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), is_src_uri=False, \
-	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False,
-	subset=None):
-	"""
-	Takes a dep string and reduces the use? conditionals out, leaving an array
-	with subarrays. All redundant brackets are removed.
-
-	@param depstr: depstring
-	@type depstr: String
-	@param uselist: Sequence of use enabled flags
-	@type uselist: Sequence
-	@param masklist: Sequence of masked flags (always treated as disabled)
-	@type masklist: Sequence
-	@param matchall: Treat all conditionals as active. Used by repoman. 
-	@type matchall: Bool
-	@param excludeall: Sequence of flags for which negated conditionals are always treated as inactive.
-	@type excludeall: Sequence
-	@param is_src_uri: Indicates if depstr represents a SRC_URI
-	@type is_src_uri: Bool
-	@param eapi: Indicates the EAPI the dep string has to comply to
-	@type eapi: String
-	@param opconvert: Put every operator as first element into it's argument list
-	@type opconvert: Bool
-	@param flat: Create a flat list of all tokens
-	@type flat: Bool
-	@param is_valid_flag: Function that decides if a given use flag might be used in use conditionals
-	@type is_valid_flag: Function
-	@param token_class: Convert all non operator tokens into this class
-	@type token_class: Class
-	@param matchnone: Treat all conditionals as inactive. Used by digestgen(). 
-	@type matchnone: Bool
-	@param subset: Select a subset of dependencies conditional on the given flags
-	@type subset: Sequence
-	@rtype: List
-	@return: The use reduced depend array
-	"""
-	if isinstance(depstr, list):
-		if portage._internal_caller:
-			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
-				"Pass the original dep string instead.") % \
-				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
-		depstr = paren_enclose(depstr)
-
+@lru_cache(1024)
+def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
+	is_src_uri,  eapi, opconvert, flat, is_valid_flag, token_class, \
+	matchnone,subset):
 	if opconvert and flat:
 		raise ValueError("portage.dep.use_reduce: 'opconvert' and 'flat' are mutually exclusive")
 
@@ -768,6 +730,65 @@ def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), i
 			_("Missing file name at end of string"))
 
 	return stack[0]
+
+def use_reduce(depstr, uselist=(), masklist=(), matchall=False, excludeall=(), is_src_uri=False, \
+	eapi=None, opconvert=False, flat=False, is_valid_flag=None, token_class=None, matchnone=False,
+	subset=None):
+	"""
+	Takes a dep string and reduces the use? conditionals out, leaving an array
+	with subarrays. All redundant brackets are removed.
+
+	@param depstr: depstring
+	@type depstr: String
+	@param uselist: Sequence of use enabled flags
+	@type uselist: Sequence
+	@param masklist: Sequence of masked flags (always treated as disabled)
+	@type masklist: Sequence
+	@param matchall: Treat all conditionals as active. Used by repoman.
+	@type matchall: Bool
+	@param excludeall: Sequence of flags for which negated conditionals are always treated as inactive.
+	@type excludeall: Sequence
+	@param is_src_uri: Indicates if depstr represents a SRC_URI
+	@type is_src_uri: Bool
+	@param eapi: Indicates the EAPI the dep string has to comply to
+	@type eapi: String
+	@param opconvert: Put every operator as first element into it's argument list
+	@type opconvert: Bool
+	@param flat: Create a flat list of all tokens
+	@type flat: Bool
+	@param is_valid_flag: Function that decides if a given use flag might be used in use conditionals
+	@type is_valid_flag: Function
+	@param token_class: Convert all non operator tokens into this class
+	@type token_class: Class
+	@param matchnone: Treat all conditionals as inactive. Used by digestgen().
+	@type matchnone: Bool
+	@param subset: Select a subset of dependencies conditional on the given flags
+	@type subset: Sequence
+	@rtype: List
+	@return: The use reduced depend array
+	"""
+	if isinstance(depstr, list):
+		if portage._internal_caller:
+			warnings.warn(_("Passing paren_reduced dep arrays to %s is deprecated. " + \
+				"Pass the original dep string instead.") % \
+				('portage.dep.use_reduce',), DeprecationWarning, stacklevel=2)
+		depstr = paren_enclose(depstr)
+
+	if uselist is not None:
+		uselist = frozenset(uselist)
+	if masklist is not None:
+		masklist = frozenset(masklist)
+	if excludeall is not None:
+		excludeall = frozenset(excludeall)
+	if subset is not None:
+		subset = frozenset(subset)
+
+	result = _use_reduce_cached(depstr, uselist, masklist, matchall, \
+		excludeall, is_src_uri, eapi, opconvert, flat, is_valid_flag, \
+		token_class, matchnone, subset)
+
+	# The list returned by this function may be modified, so return a copy.
+	return result[:]
 
 def dep_opconvert(deplist):
 	"""
