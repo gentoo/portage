@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -11,6 +11,7 @@ import os
 import select
 import signal
 import sys
+import time
 import traceback
 
 try:
@@ -37,7 +38,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.util import writemsg_level
-from portage.util.monotonic import monotonic
 from ..SlotObject import SlotObject
 from .PollConstants import PollConstants
 from .PollSelectAdapter import PollSelectAdapter
@@ -887,7 +887,7 @@ class EventLoop(object):
 		epoch, precision, accuracy and drift are unspecified and may
 		differ per event loop.
 		"""
-		return monotonic()
+		return time.monotonic()
 
 	def call_later(self, delay, callback, *args, **kwargs):
 		"""

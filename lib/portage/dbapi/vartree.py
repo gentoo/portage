@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, unicode_literals
@@ -36,7 +36,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.install_mask:install_mask_dir,InstallMask,_raise_exc',
 	'portage.util.listdir:dircache,listdir',
 	'portage.util.movefile:movefile',
-	'portage.util.monotonic:monotonic',
 	'portage.util.path:first_existing,iter_parents',
 	'portage.util.writeable_check:get_ro_checker',
 	'portage.util._xattr:xattr',
@@ -3616,7 +3615,7 @@ class dblink(object):
 			symlink_collisions = []
 			destroot = self.settings['ROOT']
 			totfiles = len(file_list) + len(symlink_list)
-			previous = monotonic()
+			previous = time.monotonic()
 			progress_shown = False
 			report_interval = 1.7  # seconds
 			falign = len("%d" % totfiles)
@@ -3625,7 +3624,7 @@ class dblink(object):
 			for i, (f, f_type) in enumerate(chain(
 				((f, "reg") for f in file_list),
 				((f, "sym") for f in symlink_list))):
-				current = monotonic()
+				current = time.monotonic()
 				if current - previous > report_interval:
 					showMessage(_("%3d%% done,  %*d files remaining ...\n") %
 							(i * 100 / totfiles, falign, totfiles - i))
