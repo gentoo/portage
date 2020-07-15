@@ -64,7 +64,8 @@ def portage_func(func, args, exit_status=0):
 	# just their exit value and the state of $D
 	global env
 	f = open('/dev/null', 'wb')
-	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
+	#fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
+	fd_pipes = {0:0, 1:2, 2:2}
 	def pre_exec():
 		os.chdir(env['S'])
 	spawn([func] + args.split(), env=env,
