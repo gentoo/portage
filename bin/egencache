@@ -75,9 +75,6 @@ else:
 	else:
 		from portage.xml.metadata import parse_metadata_use
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 def parse_args(args):
 	usage = "egencache [options] <action> ... [atom] ..."
@@ -344,7 +341,7 @@ class GenCache(object):
 						max_mtime = ec_hash.mtime
 				if max_mtime == sc.mtime:
 					max_mtime += 1
-				max_mtime = long(max_mtime)
+				max_mtime = int(max_mtime)
 				try:
 					os.utime(ebuild_hash.location, (max_mtime, max_mtime))
 				except OSError as e:
@@ -709,7 +706,7 @@ class GenChangeLogs(object):
 			# This cp has not been added to the repo.
 			return
 
-		lmod = long(lmod)
+		lmod = int(lmod)
 
 		try:
 			cmod = os.stat('ChangeLog')[stat.ST_MTIME]

@@ -1,4 +1,4 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -12,13 +12,6 @@ try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
@@ -82,7 +75,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			# corruption is detected as soon as possible.
 			invalid_items = set()
 			for k, v in self._cache_data["blockers"].items():
-				if not isinstance(k, basestring):
+				if not isinstance(k, str):
 					invalid_items.add(k)
 					continue
 				try:
@@ -97,7 +90,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 					invalid_items.add(k)
 					continue
 				counter, atoms = v
-				if not isinstance(counter, (int, long)):
+				if not isinstance(counter, int):
 					invalid_items.add(k)
 					continue
 				if not isinstance(atoms, (list, tuple)):
@@ -105,7 +98,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 					continue
 				invalid_atom = False
 				for atom in atoms:
-					if not isinstance(atom, basestring):
+					if not isinstance(atom, str):
 						invalid_atom = True
 						break
 					if atom[:1] != "!" or \
@@ -164,8 +157,8 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		@param blocker_data: An object with counter and atoms attributes.
 		@type blocker_data: BlockerData
 		"""
-		self._cache_data["blockers"][_unicode(cpv)] = (blocker_data.counter,
-			tuple(_unicode(x) for x in blocker_data.atoms))
+		self._cache_data["blockers"][str(cpv)] = (blocker_data.counter,
+			tuple(str(x) for x in blocker_data.atoms))
 		self._modified.add(cpv)
 
 	def __iter__(self):

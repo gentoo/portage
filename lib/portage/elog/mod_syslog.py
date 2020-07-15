@@ -7,9 +7,6 @@ import syslog
 from portage.const import EBUILD_PHASES
 from portage import _encodings
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 _pri = {
 	"INFO"   : syslog.LOG_INFO,
@@ -25,7 +22,7 @@ def process(mysettings, key, logentries, fulltext):
 		if not phase in logentries:
 			continue
 		for msgtype, msgcontent in logentries[phase]:
-			if isinstance(msgcontent, basestring):
+			if isinstance(msgcontent, str):
 				msgcontent = [msgcontent]
 			for line in msgcontent:
 				line = "%s: %s: %s" % (key, phase, line)

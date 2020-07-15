@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -135,10 +135,6 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-	long = int
 
 # We use utf_8 encoding everywhere. Previously, we used
 # sys.getfilesystemencoding() for the 'merge' encoding, but that had
@@ -478,7 +474,7 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	if not isinstance(eapi, basestring):
+	if not isinstance(eapi, str):
 		# Only call str() when necessary since with python2 it
 		# can trigger UnicodeEncodeError if EAPI is corrupt.
 		eapi = str(eapi)
@@ -619,10 +615,10 @@ if VERSION == 'HEAD':
 								head_timestamp = None
 								if len(output_lines) > 3:
 									try:
-										head_timestamp = long(output_lines[3])
+										head_timestamp = int(output_lines[3])
 									except ValueError:
 										pass
-								timestamp = long(time.time())
+								timestamp = int(time.time())
 								if head_timestamp is not None and timestamp > head_timestamp:
 									timestamp = timestamp - head_timestamp
 								if not patchlevel:

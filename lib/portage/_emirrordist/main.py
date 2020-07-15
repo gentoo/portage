@@ -1,4 +1,4 @@
-# Copyright 2013-2015 Gentoo Foundation
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -14,9 +14,6 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from .Config import Config
 from .MirrorDistTask import MirrorDistTask
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 seconds_per_day = 24 * 60 * 60
 
@@ -318,7 +315,7 @@ def emirrordist_main(args):
 			parser.error("--scheduled-deletion-log requires --deletion-db")
 
 	if options.deletion_delay is not None:
-		options.deletion_delay = long(options.deletion_delay)
+		options.deletion_delay = int(options.deletion_delay)
 		if options.deletion_db is None:
 			parser.error("--deletion-delay requires --deletion-db")
 
@@ -391,7 +388,7 @@ def emirrordist_main(args):
 
 	if options.recycle_deletion_delay is not None:
 		options.recycle_deletion_delay = \
-			long(options.recycle_deletion_delay)
+			int(options.recycle_deletion_delay)
 
 	if options.fetch_log_dir is not None:
 		options.fetch_log_dir = normalize_path(

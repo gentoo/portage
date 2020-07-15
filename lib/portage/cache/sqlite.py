@@ -1,4 +1,4 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division, unicode_literals
@@ -12,9 +12,6 @@ from portage import _unicode_decode
 from portage.util import writemsg
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class database(fs_template.FsBased):
 
@@ -64,7 +61,7 @@ class database(fs_template.FsBased):
 
 	def _db_escape_string(self, s):
 		"""meta escaping, returns quoted string for use in sql statements"""
-		if not isinstance(s, basestring):
+		if not isinstance(s, str):
 			# Avoid potential UnicodeEncodeError in python-2.x by
 			# only calling str() when it's absolutely necessary.
 			s = str(s)

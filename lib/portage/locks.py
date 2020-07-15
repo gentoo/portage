@@ -23,9 +23,6 @@ from portage.util import writemsg
 from portage.util.install_mask import _raise_exc
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 HARDLINK_FD = -2
 _HARDLINK_POLL_LATENCY = 3 # seconds
@@ -167,7 +164,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 	# deprecated due to ambiguity in whether or not it's safe to close
 	# the file descriptor, making it prone to "Bad file descriptor" errors
 	# or file descriptor leaks.
-	if isinstance(mypath, basestring) and mypath[-1] == '/':
+	if isinstance(mypath, str) and mypath[-1] == '/':
 		mypath = mypath[:-1]
 
 	lockfilename_path = mypath
@@ -192,7 +189,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 	else:
 		lockfilename = mypath
 
-	if isinstance(mypath, basestring):
+	if isinstance(mypath, str):
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise DirectoryNotFound(os.path.dirname(mypath))
 		preexisting = os.path.exists(lockfilename)
@@ -306,7 +303,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 				os.close(myfd)
 			lockfilename_path = _unicode_decode(lockfilename_path,
 				encoding=_encodings['fs'], errors='strict')
-			if not isinstance(lockfilename_path, basestring):
+			if not isinstance(lockfilename_path, str):
 				raise
 			link_success = hardlink_lockfile(lockfilename_path,
 				waiting_msg=waiting_msg, flags=flags)
@@ -319,7 +316,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 			raise
 
 	fstat_result = None
-	if isinstance(lockfilename, basestring) and myfd != HARDLINK_FD and unlinkfile:
+	if isinstance(lockfilename, str) and myfd != HARDLINK_FD and unlinkfile:
 		try:
 			(removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
 		except Exception:
@@ -461,7 +458,7 @@ def unlockfile(mytuple):
 		return True
 	
 	# myfd may be None here due to myfd = mypath in lockfile()
-	if isinstance(lockfilename, basestring) and \
+	if isinstance(lockfilename, str) and \
 		not os.path.exists(lockfilename):
 		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
@@ -474,7 +471,7 @@ def unlockfile(mytuple):
 			unlinkfile = 1
 		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
-		if isinstance(lockfilename, basestring):
+		if isinstance(lockfilename, str):
 			_open_fds[myfd].close()
 		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
@@ -507,7 +504,7 @@ def unlockfile(mytuple):
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
 	# open fd closed automatically on them.
-	if isinstance(lockfilename, basestring):
+	if isinstance(lockfilename, str):
 		_open_fds[myfd].close()
 
 	return True

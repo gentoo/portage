@@ -1,4 +1,4 @@
-# Copyright 2006-2014 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -6,9 +6,6 @@ from portage.tests import TestCase
 from portage.dep import Atom, match_from_list, _repo_separator
 from portage.versions import catpkgsplit, _pkg_str
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class Package(object):
 	"""
@@ -43,7 +40,7 @@ class Package(object):
 			self.all = frozenset(iuse)
 
 		def is_valid_flag(self, flags):
-			if isinstance(flags, basestring):
+			if isinstance(flags, str):
 				flags = [flags]
 			for flag in flags:
 				if not flag in self.all:

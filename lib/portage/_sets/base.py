@@ -1,4 +1,4 @@
-# Copyright 2007-2018 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -6,9 +6,6 @@ from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_l
 from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]
 
@@ -74,7 +71,7 @@ class PackageSet(object):
 		self._nonatoms.clear()
 		for a in atoms:
 			if not isinstance(a, Atom):
-				if isinstance(a, basestring):
+				if isinstance(a, str):
 					a = a.strip()
 				if not a:
 					continue

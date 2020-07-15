@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
@@ -6,9 +6,6 @@ import sys
 from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
@@ -24,7 +21,7 @@ class PortageException(Exception):
 	else:
 		def __init__(self, value):
 			self.value = value[:]
-			if isinstance(self.value, basestring):
+			if isinstance(self.value, str):
 				self.value = _unicode_decode(self.value,
 					encoding=_encodings['content'], errors='replace')
 
@@ -180,7 +177,7 @@ class UnsupportedAPIException(PortagePackageException):
 		self.cpv, self.eapi = cpv, eapi
 	def __str__(self):
 		eapi = self.eapi
-		if not isinstance(eapi, basestring):
+		if not isinstance(eapi, str):
 			eapi = str(eapi)
 		eapi = eapi.lstrip("-")
 		msg = _("Unable to do any operations on '%(cpv)s', since "

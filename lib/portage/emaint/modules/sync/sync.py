@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Gentoo Authors
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -31,11 +31,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 warn = create_color_func("WARN")
-
-if sys.hexversion >= 0x3000000:
-	_basestring = str
-else:
-	_basestring = basestring
 
 
 class SyncRepos(object):
@@ -125,7 +120,7 @@ class SyncRepos(object):
 			return_messages = options.get('return-messages', False)
 		else:
 			return_messages = False
-		if isinstance(repo_names, _basestring):
+		if isinstance(repo_names, str):
 			repo_names = repo_names.split()
 		success, repos, msgs = self._get_repos(auto_sync_only=False,
 			match_repos=repo_names)

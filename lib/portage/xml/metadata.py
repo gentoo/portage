@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -54,10 +54,6 @@ import re
 import xml.etree.ElementTree
 from portage import _encodings, _unicode_encode
 from portage.util import cmp_sort_key, unique_everseen
-
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
@@ -479,12 +475,12 @@ def parse_metadata_use(xml_tree):
 				stack.append(flag)
 				while stack:
 					obj = stack.pop()
-					if isinstance(obj, basestring):
+					if isinstance(obj, str):
 						inner_text.append(obj)
 						continue
-					if isinstance(obj.text, basestring):
+					if isinstance(obj.text, str):
 						inner_text.append(obj.text)
-					if isinstance(obj.tail, basestring):
+					if isinstance(obj.tail, str):
 						stack.append(obj.tail)
 					stack.extend(reversed(obj))
 

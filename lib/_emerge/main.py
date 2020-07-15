@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -22,8 +22,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
-if sys.hexversion >= 0x3000000:
-	long = int
 
 options=[
 "--alphabetical",

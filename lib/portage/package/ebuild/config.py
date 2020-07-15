@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -68,9 +68,6 @@ from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 from portage.package.ebuild._config.unpack_dependencies import load_unpack_dependencies_configuration
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 _feature_flags_cache = {}
 
@@ -1450,7 +1447,7 @@ class config(object):
 		pkg = None
 		built_use = None
 		explicit_iuse = None
-		if not isinstance(mycpv, basestring):
+		if not isinstance(mycpv, str):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg._metadata
@@ -2735,7 +2732,7 @@ class config(object):
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
-		if not isinstance(myvalue, basestring):
+		if not isinstance(myvalue, str):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 
 		# Avoid potential UnicodeDecodeError exceptions later.
@@ -2768,7 +2765,7 @@ class config(object):
 		for x, myvalue in self.iteritems():
 			if x in environ_filter:
 				continue
-			if not isinstance(myvalue, basestring):
+			if not isinstance(myvalue, str):
 				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
 					(x, myvalue), noiselevel=-1)
 				continue

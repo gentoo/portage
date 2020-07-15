@@ -94,11 +94,6 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
-if sys.hexversion >= 0x3000000:
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
 
 def action_build(emerge_config, trees=DeprecationWarning,
 	mtimedb=DeprecationWarning, myopts=DeprecationWarning,
@@ -854,7 +849,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(pkg, _unicode(e))
+					show_invalid_depstring_notice(pkg, str(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -907,7 +902,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg, _unicode(e))
+				show_invalid_depstring_notice(pkg, str(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -924,7 +919,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				if excluded_set.findAtomForPackage(pkg):
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg, _unicode(e))
+				show_invalid_depstring_notice(pkg, str(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
@@ -989,14 +984,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				# visible in the unevaluated form of the atom. In this
 				# case, we must display the unevaluated atom, so that
 				# the user can see the conditional USE deps that would
-				# otherwise be invisible. Use Atom(_unicode(atom)) to
+				# otherwise be invisible. Use Atom(str(atom)) to
 				# test for a package where this case would matter. This
 				# is not necessarily the same as atom.without_use,
-				# since Atom(_unicode(atom)) may still contain some
+				# since Atom(str(atom)) may still contain some
 				# USE dependencies that remain after evaluation of
 				# conditionals.
 				if atom.package and atom != atom.unevaluated_atom and \
-					vardb.match(Atom(_unicode(atom))):
+					vardb.match(Atom(str(atom))):
 					msg.append("  %s (%s) pulled in by:" %
 						(atom.unevaluated_atom, atom))
 				else:
@@ -1068,7 +1063,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				key=operator.attrgetter('package'))
 			parent_strs.append("%s requires %s" %
 				(getattr(parent, "cpv", parent),
-				", ".join(_unicode(atom) for atom in atoms)))
+				", ".join(str(atom) for atom in atoms)))
 		parent_strs.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
@@ -1541,7 +1536,7 @@ def action_deselect(settings, trees, opts, atoms):
 
 				writemsg_stdout(
 					">>> %s %s from \"%s\" favorites file...\n" %
-					(action_desc, colorize("INFORM", _unicode(atom)),
+					(action_desc, colorize("INFORM", str(atom)),
 					filename), noiselevel=-1)
 
 			if '--ask' in opts:

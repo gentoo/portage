@@ -6,8 +6,6 @@ import errno
 import re
 import sys
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
 from portage import _encodings, _unicode_encode
 from portage.exception import FileNotFound, PermissionDenied
@@ -87,7 +85,7 @@ def compression_probe(f):
 	@rtype str or None
 	"""
 
-	open_file = isinstance(f, basestring)
+	open_file = isinstance(f, str)
 	if open_file:
 		try:
 			f = open(_unicode_encode(f,

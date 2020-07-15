@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
@@ -28,10 +28,6 @@ from portage.versions import catpkgsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.Package import Package
-
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
 
 class _RepoDisplay(object):

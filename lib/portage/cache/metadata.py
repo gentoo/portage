@@ -1,4 +1,4 @@
-# Copyright 2005-2018 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -15,10 +15,6 @@ import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-	long = int
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22
@@ -76,7 +72,7 @@ class database(flat_hash.database):
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				d["_eclasses_"] = {}
-		elif isinstance(d["_eclasses_"], basestring):
+		elif isinstance(d["_eclasses_"], str):
 			# We skip this if flat_hash.database._parse_data() was called above
 			# because it calls reconstruct_eclasses() internally.
 			d["_eclasses_"] = reconstruct_eclasses(None, d["_eclasses_"])

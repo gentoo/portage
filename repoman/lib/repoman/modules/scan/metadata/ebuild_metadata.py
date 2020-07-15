@@ -5,9 +5,6 @@
 import re
 import sys
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-
 from repoman.modules.scan.scanbase import ScanBase
 
 from portage.dep import use_reduce
@@ -24,7 +21,7 @@ class EbuildMetadata(ScanBase):
 	def invalidchar(self, **kwargs):
 		ebuild = kwargs.get('ebuild').get()
 		for k, v in ebuild.metadata.items():
-			if not isinstance(v, basestring):
+			if not isinstance(v, str):
 				continue
 			m = NON_ASCII_RE.search(v)
 			if m is not None:

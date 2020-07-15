@@ -1,4 +1,4 @@
-# Copyright 2013-2018 Gentoo Foundation
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -18,9 +18,6 @@ from _emerge.CompositeTask import CompositeTask
 from .FetchIterator import FetchIterator
 from .DeletionIterator import DeletionIterator
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 class MirrorDistTask(CompositeTask):
 
@@ -111,7 +108,7 @@ class MirrorDistTask(CompositeTask):
 				recycle_db[filename] = (st.st_size, start_time)
 			else:
 				r_size, r_time = value
-				if long(r_size) != st.st_size:
+				if int(r_size) != st.st_size:
 					recycle_db[filename] = (st.st_size, start_time)
 				elif r_time + r_deletion_delay < start_time:
 					if self._config.options.dry_run:

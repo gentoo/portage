@@ -14,9 +14,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 # [D]/Name/Version/Date/Flags/Tags
 

@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import unicode_literals
@@ -11,9 +11,6 @@ from portage.tests import TestCase
 from _emerge.DependencyArg import DependencyArg
 from _emerge.UseFlagDisplay import UseFlagDisplay
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 STR_IS_UNICODE = sys.hexversion >= 0x3000000
 
@@ -93,7 +90,7 @@ class StringFormatTestCase(TestCase):
 					# Use unicode_literals for unicode format string so that
 					# __unicode__() is called in Python 2.
 					formatted_str = "%s" % (e,)
-					self.assertEqual(isinstance(formatted_str, basestring), True)
+					self.assertEqual(isinstance(formatted_str, str), True)
 
 					if STR_IS_UNICODE:
 

@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Resolver output display operation.
@@ -33,12 +33,6 @@ from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
 	_PackageCounters, _create_use_string, _calc_changelog, PkgInfo)
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
-	_unicode = str
-else:
-	_unicode = unicode
 
 class Display(object):
 	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
@@ -88,19 +82,19 @@ class Display(object):
 			addl = "%s     " % (colorize(self.blocker_style, "B"),)
 		addl += self.empty_space_in_brackets()
 		self.resolved = dep_expand(
-			_unicode(blocker.atom).lstrip("!"), mydb=self.vardb,
+			str(blocker.atom).lstrip("!"), mydb=self.vardb,
 			settings=self.pkgsettings
 			)
 		if self.conf.columns and self.conf.quiet:
-			addl += " " + colorize(self.blocker_style, _unicode(self.resolved))
+			addl += " " + colorize(self.blocker_style, str(self.resolved))
 		else:
 			addl = "[%s %s] %s%s" % \
 				(colorize(self.blocker_style, "blocks"),
 				addl, self.indent,
-				colorize(self.blocker_style, _unicode(self.resolved))
+				colorize(self.blocker_style, str(self.resolved))
 				)
 		block_parents = self.conf.blocker_parents.parent_nodes(blocker)
-		block_parents = set(_unicode(pnode.cpv) for pnode in block_parents)
+		block_parents = set(str(pnode.cpv) for pnode in block_parents)
 		block_parents = ", ".join(block_parents)
 		if blocker.atom.blocker.overlap.forbid:
 			blocking_desc = "hard blocking"
@@ -109,7 +103,7 @@ class Display(object):
 		if self.resolved != blocker.atom:
 			addl += colorize(self.blocker_style,
 				" (\"%s\" is %s %s)" %
-				(_unicode(blocker.atom).lstrip("!"),
+				(str(blocker.atom).lstrip("!"),
 				blocking_desc, block_parents))
 		else:
 			addl += colorize(self.blocker_style,
@@ -316,7 +310,7 @@ class Display(object):
 				depstr, = db.aux_get(pkg.cpv,
 					["SRC_URI"], myrepo=pkg.repo)
 				show_invalid_depstring_notice(
-					pkg, _unicode(e))
+					pkg, str(e))
 				raise
 			except SignatureException:
 				# missing/invalid binary package SIZE signature
@@ -447,7 +441,7 @@ class Display(object):
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
+			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+darkblue(" "+ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -486,7 +480,7 @@ class Display(object):
 			ver_str = self._append_slot(ver_str, pkg, pkg_info)
 			ver_str = self._append_repository(ver_str, pkg, pkg_info)
 		if self.conf.quiet:
-			myprint = _unicode(pkg_info.attr_display) + " " + self.indent + \
+			myprint = str(pkg_info.attr_display) + " " + self.indent + \
 				self.pkgprint(pkg_info.cp, pkg_info)
 			myprint = myprint+" "+green(ver_str)+" "
 			myprint = myprint+pkg_info.oldbest
@@ -543,7 +537,7 @@ class Display(object):
 		@param show_repos: bool.
 		"""
 		for msg in self.print_msg:
-			if isinstance(msg, basestring):
+			if isinstance(msg, str):
 				writemsg_stdout("%s\n" % (msg,), noiselevel=-1)
 				continue
 			myprint, self.verboseadd, repoadd = msg
