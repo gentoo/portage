@@ -167,7 +167,7 @@ def lazyimport(scope, *args):
 			name = s
 
 			if not name or not isinstance(name, str):
-				raise ValueError(name)
+				raise ValueError('expected type str, got {}: {}'.format(type(name).__name__, repr(name)))
 
 			components = name.split('.')
 			parent_scope = scope
