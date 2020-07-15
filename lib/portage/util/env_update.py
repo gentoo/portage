@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['env_update']
@@ -23,9 +23,6 @@ from portage.util.listdir import listdir
 from portage.dbapi.vartree import vartree
 from portage.package.ebuild.config import config
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 	env=None, writemsg_level=None, vardbapi=None):
@@ -257,7 +254,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 			if e.errno != errno.ENOENT:
 				raise
 
-	current_time = long(time.time())
+	current_time = int(time.time())
 	mtime_changed = False
 
 	lib_dirs = set()

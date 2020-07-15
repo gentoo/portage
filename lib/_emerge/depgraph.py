@@ -88,13 +88,6 @@ from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display, format_unmatched_atom
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
-
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface',(
 	# Indicates a removal action, like depclean or prune.
@@ -311,7 +304,7 @@ class _rebuild_config(object):
 							["BUILD_TIME"])
 					except KeyError:
 						continue
-					if bin_build_time != _unicode(parent.build_time):
+					if bin_build_time != str(parent.build_time):
 						# 2) Remote binary package is valid, and local package
 						#    is not up to date. Force reinstall.
 						reinstall = True
@@ -5761,7 +5754,7 @@ class depgraph(object):
 						other_installed, other_keys in dbs:
 						try:
 							if portage.dep._match_slot(atom,
-								other_db._pkg_str(_unicode(cpv), None)):
+								other_db._pkg_str(str(cpv), None)):
 								slot_available = True
 								break
 						except (KeyError, InvalidData):
@@ -9263,7 +9256,7 @@ class depgraph(object):
 						filename = "world"
 					writemsg_stdout(
 						">>> Recording %s in \"%s\" favorites file...\n" %
-						(colorize("INFORM", _unicode(a)), filename), noiselevel=-1)
+						(colorize("INFORM", str(a)), filename), noiselevel=-1)
 				world_set.update(all_added)
 
 		if world_locked:
@@ -9458,7 +9451,7 @@ class depgraph(object):
 		depgraph_sets = self._dynamic_config.sets[root_config.root]
 		args = []
 		for x in favorites:
-			if not isinstance(x, basestring):
+			if not isinstance(x, str):
 				continue
 			if x in ("system", "world"):
 				x = SETPREFIX + x

@@ -63,9 +63,6 @@ from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-
 # enums
 FAILURE = 1
 
@@ -1141,7 +1138,7 @@ class Scheduler(PollScheduler):
 					if phase not in logentries:
 						continue
 					for msgtype, msgcontent in logentries[phase]:
-						if isinstance(msgcontent, basestring):
+						if isinstance(msgcontent, str):
 							msgcontent = [msgcontent]
 						for line in msgcontent:
 							printer.eerror(line.strip("\n"))

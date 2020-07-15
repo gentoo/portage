@@ -53,10 +53,6 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-	long = int
 
 def close_portdbapi_caches():
 	# The python interpreter does _not_ guarantee that destructors are
@@ -997,7 +993,7 @@ class portdbapi(dbapi):
 		# stable sort by version produces results ordered by
 		# (pkg.version, repo.priority).
 		if mytree is not None:
-			if isinstance(mytree, basestring):
+			if isinstance(mytree, str):
 				repos = [self.repositories.get_repo_for_location(mytree)]
 			else:
 				# assume it's iterable

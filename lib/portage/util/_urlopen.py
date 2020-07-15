@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Gentoo Authors
+# Copyright 2012-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -16,9 +16,6 @@ except ImportError:
 	import urlparse as urllib_parse
 	import urllib2 as urllib_request
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 # to account for the difference between TIMESTAMP of the index' contents
 #  and the file-'mtime'
@@ -63,14 +60,14 @@ def urlopen(url, if_modified_since=None):
 		return hdl
 
 def _timestamp_to_http(timestamp):
-	dt = datetime.fromtimestamp(float(long(timestamp)+TIMESTAMP_TOLERANCE))
+	dt = datetime.fromtimestamp(float(int(timestamp)+TIMESTAMP_TOLERANCE))
 	stamp = mktime(dt.timetuple())
 	return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 def _http_to_timestamp(http_datetime_string):
 	tuple = parsedate(http_datetime_string)
 	timestamp = mktime(tuple)
-	return str(long(timestamp))
+	return str(int(timestamp))
 
 class CompressedResponseProcessor(urllib_request.HTTPBasicAuthHandler):
 	# Handler for compressed responses.

@@ -1,21 +1,21 @@
 #!/usr/bin/python -b
-# Copyright 2009-2015 Gentoo Foundation
+# Copyright 2009-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
 from portage.manifest import guessManifestFileType
-from portage.versions import _unicode, pkgsplit, vercmp
+from portage.versions import pkgsplit, vercmp
 
 
-class ChangeLogTypeSort(_unicode):
+class ChangeLogTypeSort(str):
 	"""
 	Helps to sort file names by file type and other criteria.
 	"""
 	def __new__(cls, status_change, file_name):
-		return _unicode.__new__(cls, status_change + file_name)
+		return str.__new__(cls, status_change + file_name)
 
 	def __init__(self, status_change, file_name):
-		_unicode.__init__(status_change + file_name)
+		str.__init__(status_change + file_name)
 		self.status_change = status_change
 		self.file_name = file_name
 		self.file_type = guessManifestFileType(file_name)

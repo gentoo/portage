@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Gentoo Authors
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['install_mask_dir', 'InstallMask']
@@ -19,11 +19,6 @@ from portage.exception import (
 	ReadOnlyFileSystem,
 )
 from portage.util import normalize_path
-
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 
 def _defaultdict_tree():
@@ -152,7 +147,7 @@ def _raise_exc(e):
 	wrapper_cls = _exc_map.get(e.errno)
 	if wrapper_cls is None:
 		raise
-	wrapper = wrapper_cls(_unicode(e))
+	wrapper = wrapper_cls(str(e))
 	wrapper.__cause__ = e
 	raise wrapper
 

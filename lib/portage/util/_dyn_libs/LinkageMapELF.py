@@ -27,10 +27,6 @@ from portage.util import writemsg_level
 from portage.util._dyn_libs.NeededEntry import NeededEntry
 from portage.util.elf.header import ELFHeader
 
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 # Map ELF e_machine values from NEEDED.ELF.2 to approximate multilib
 # categories. This approximation will produce incorrect results on x32
@@ -333,7 +329,7 @@ class LinkageMapELF(object):
 					entry.multilib_category = compute_multilib_category(elf_header)
 					entry.filename = entry.filename[root_len:]
 					owner = plibs.pop(entry.filename, None)
-					lines.append((owner, "scanelf", _unicode(entry)))
+					lines.append((owner, "scanelf", str(entry)))
 				proc.wait()
 				proc.stdout.close()
 

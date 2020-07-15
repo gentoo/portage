@@ -17,9 +17,6 @@ from portage import os
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
-if sys.hexversion >= 0x3000000:
-	long = int
-
 
 class BinpkgFetcher(CompositeTask):
 
@@ -185,7 +182,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 					self.pkg.cpv)].get("_mtime_")
 				if remote_mtime is not None:
 					try:
-						remote_mtime = long(remote_mtime)
+						remote_mtime = int(remote_mtime)
 					except ValueError:
 						pass
 					else:

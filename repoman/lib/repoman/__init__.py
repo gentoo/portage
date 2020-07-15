@@ -20,9 +20,6 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 VERSION = "HEAD"
 
@@ -62,10 +59,10 @@ if VERSION == 'HEAD':
 								head_timestamp = None
 								if len(output_lines) > 3:
 									try:
-										head_timestamp = long(output_lines[3])
+										head_timestamp = int(output_lines[3])
 									except ValueError:
 										pass
-								timestamp = long(time.time())
+								timestamp = int(time.time())
 								if head_timestamp is not None and timestamp > head_timestamp:
 									timestamp = timestamp - head_timestamp
 								if not patchlevel:

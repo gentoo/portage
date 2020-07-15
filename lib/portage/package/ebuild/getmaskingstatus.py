@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingstatus']
@@ -12,9 +12,6 @@ from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, _pkg_str
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class _UnmaskHint(object):
 
@@ -46,7 +43,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	metadata = None
 	installed = False
-	if not isinstance(mycpv, basestring):
+	if not isinstance(mycpv, str):
 		# emerge passed in a Package instance
 		pkg = mycpv
 		mycpv = pkg.cpv

@@ -3,9 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -58,7 +55,7 @@ def _combine_logentries(logentries):
 			if previous_type != msgtype:
 				previous_type = msgtype
 				rValue.append("%s: %s" % (msgtype, phase))
-			if isinstance(msgcontent, basestring):
+			if isinstance(msgcontent, str):
 				rValue.append(msgcontent.rstrip("\n"))
 			else:
 				for line in msgcontent:
