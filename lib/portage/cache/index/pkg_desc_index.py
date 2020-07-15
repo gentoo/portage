@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -6,15 +6,11 @@ import sys
 
 from portage.versions import _pkg_str
 
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 pkg_desc_index_node = collections.namedtuple("pkg_desc_index_node",
 	["cp", "cpv_list", "desc"])
 
-class pkg_node(_unicode):
+class pkg_node(str):
 	"""
 	A minimal package node class. For performance reasons, inputs
 	are not validated.
@@ -27,7 +23,7 @@ class pkg_node(_unicode):
 		self.__dict__['build_time'] = None
 
 	def __new__(cls, cp, version, repo=None):
-		return _unicode.__new__(cls, cp + "-" + version)
+		return str.__new__(cls, cp + "-" + version)
 
 	def __setattr__(self, name, value):
 		raise AttributeError("pkg_node instances are immutable",

@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -25,9 +25,6 @@ from portage.util import writemsg_level
 from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
@@ -154,7 +151,7 @@ class PreservedLibsRegistry(object):
 		int conversion and a possible ValueError resulting
 		from vardb corruption.
 		"""
-		if not isinstance(counter, basestring):
+		if not isinstance(counter, str):
 			counter = str(counter)
 		return _unicode_decode(counter).strip()
 

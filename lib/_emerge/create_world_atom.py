@@ -6,10 +6,6 @@ import sys
 from portage.dep import Atom, _repo_separator
 from portage.exception import InvalidData
 
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 def create_world_atom(pkg, args_set, root_config, before_install=False):
 	"""Create a new atom for the world file if one does not exist.  If the
@@ -43,7 +39,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 	for cpv in portdb.match(Atom(cp)):
 		for repo in repos:
 			try:
-				available_slots.add(portdb._pkg_str(_unicode(cpv), repo).slot)
+				available_slots.add(portdb._pkg_str(str(cpv), repo).slot)
 			except (KeyError, InvalidData):
 				pass
 
@@ -98,7 +94,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 					for repo in repos:
 						try:
 							matched_slots.add(
-								portdb._pkg_str(_unicode(cpv), repo).slot)
+								portdb._pkg_str(str(cpv), repo).slot)
 						except (KeyError, InvalidData):
 							pass
 

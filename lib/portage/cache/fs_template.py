@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
@@ -14,9 +14,6 @@ lazyimport(globals(),
 )
 del lazyimport
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 
@@ -44,7 +41,7 @@ class FsBased(template.database):
 		try:
 			apply_permissions(path, gid=self._gid, mode=self._perms)
 			if mtime != -1:
-				mtime=long(mtime)
+				mtime=int(mtime)
 				os.utime(path, (mtime, mtime))
 		except (PortageException, EnvironmentError):
 			return False

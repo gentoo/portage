@@ -1,4 +1,4 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Since python ebuilds remove the 'email' module when USE=build
@@ -20,9 +20,6 @@ from portage.localization import _
 import portage
 
 if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-
 	def _force_ascii_if_necessary(s):
 		# Force ascii encoding in order to avoid UnicodeEncodeError
 		# from smtplib.sendmail with python3 (bug #291331).
@@ -68,7 +65,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
 		for x in attachments:
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
-			elif isinstance(x, basestring):
+			elif isinstance(x, str):
 				if sys.hexversion < 0x3000000:
 					x = _unicode_encode(x,
 						encoding=_encodings['content'],

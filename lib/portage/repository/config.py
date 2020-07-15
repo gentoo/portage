@@ -26,9 +26,6 @@ from portage import _encodings
 from portage import manifest
 import portage.sync
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 # Characters prohibited by repoman's file.name check.
 _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+/]')
@@ -669,7 +666,7 @@ class RepoConfigLoader(object):
 
 		recursive_paths = []
 		for p in paths:
-			if isinstance(p, basestring):
+			if isinstance(p, str):
 				recursive_paths.extend(_recursive_file_list(p))
 			else:
 				recursive_paths.append(p)

@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -31,12 +31,6 @@ _manifest_re = re.compile(
 	r'^(' + '|'.join(MANIFEST2_IDENTIFIERS) + r') (\S+)( \d+( \S+ \S+)+)$',
 	re.UNICODE)
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	_unicode = str
-	basestring = str
-else:
-	_unicode = unicode
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -74,7 +68,7 @@ def guessThinManifestFileType(filename):
 	return "DIST"
 
 def parseManifest2(line):
-	if not isinstance(line, basestring):
+	if not isinstance(line, str):
 		line = ' '.join(line)
 	myentry = None
 	match = _manifest_re.match(line)
@@ -319,7 +313,7 @@ class Manifest(object):
 					# thin manifests with no DIST entries, myentries is
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
-						_unicode(myentry) for myentry in myentries))
+						str(myentry) for myentry in myentries))
 					self._apply_max_mtime(preserved_stats, myentries)
 					rval = True
 				else:

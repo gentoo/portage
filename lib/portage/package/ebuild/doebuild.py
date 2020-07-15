@@ -92,10 +92,6 @@ from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -2397,7 +2393,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
 		# Compute the multilib category and write it back to the file.
 		entry.multilib_category = compute_multilib_category(elf_header)
-		needed_file.write(_unicode(entry))
+		needed_file.write(str(entry))
 
 		if entry.multilib_category is None:
 			if not qa_prebuilt or qa_prebuilt.match(
@@ -2448,7 +2444,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	if unrecognized_elf_files:
 		qa_msg = ["QA Notice: Unrecognized ELF file(s):"]
 		qa_msg.append("")
-		qa_msg.extend("\t%s" % _unicode(entry).rstrip()
+		qa_msg.extend("\t%s" % str(entry).rstrip()
 			for entry in unrecognized_elf_files)
 		qa_msg.append("")
 		for line in qa_msg:

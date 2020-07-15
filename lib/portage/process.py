@@ -40,9 +40,6 @@ try:
 except ImportError:
 	max_fd_limit = 256
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 # Support PEP 446 for Python >=3.4
 try:
@@ -287,7 +284,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	"""
 
 	# mycommand is either a str or a list
-	if isinstance(mycommand, basestring):
+	if isinstance(mycommand, str):
 		mycommand = mycommand.split()
 
 	env = os.environ if env is None else env

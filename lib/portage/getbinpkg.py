@@ -62,9 +62,6 @@ else:
 
 _all_errors = tuple(_all_errors)
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 def make_metadata_dict(data):
 
@@ -908,7 +905,7 @@ class PackageIndex(object):
 
 	def write(self, pkgfile):
 		if self.modified:
-			self.header["TIMESTAMP"] = str(long(time.time()))
+			self.header["TIMESTAMP"] = str(int(time.time()))
 			self.header["PACKAGES"] = str(len(self.packages))
 		keys = list(self.header)
 		keys.sort()

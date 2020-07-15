@@ -36,11 +36,6 @@ try:
 except ImportError:
 	gemato = None
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	_unicode = str
-else:
-	_unicode = unicode
 
 SERVER_OUT_OF_DATE = -1
 EXCEEDED_MAX_RETRIES = -2
@@ -243,7 +238,7 @@ class RsyncSync(NewBase):
 			except socket.error as e:
 				writemsg_level(
 					"!!! getaddrinfo failed for '%s': %s\n"
-					% (_unicode_decode(hostname), _unicode(e)),
+					% (_unicode_decode(hostname), str(e)),
 					noiselevel=-1, level=logging.ERROR)
 
 			if addrinfos:

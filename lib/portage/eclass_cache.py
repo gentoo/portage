@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 
@@ -15,10 +15,6 @@ from portage import os
 from portage import checksum
 from portage import _shell_quote
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
-
 
 class hashed_path(object):
 
@@ -28,11 +24,11 @@ class hashed_path(object):
 	def __getattr__(self, attr):
 		if attr == 'mtime':
 			# use stat.ST_MTIME; accessing .st_mtime gets you a float
-			# depending on the python version, and long(float) introduces
+			# depending on the python version, and int(float) introduces
 			# some rounding issues that aren't present for people using
 			# the straight c api.
 			# thus use the defacto python compatibility work around;
-			# access via index, which guarantees you get the raw long.
+			# access via index, which guarantees you get the raw int.
 			try:
 				self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
 			except OSError as e:

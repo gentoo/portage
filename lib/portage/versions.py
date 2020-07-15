@@ -13,11 +13,6 @@ import sys
 import warnings
 from functools import lru_cache
 
-if sys.hexversion < 0x3000000:
-	_unicode = unicode
-else:
-	_unicode = str
-	long = int
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -346,7 +341,7 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	retval = (cat, p_split[0], p_split[1], p_split[2])
 	return retval
 
-class _pkg_str(_unicode):
+class _pkg_str(str):
 	"""
 	This class represents a cpv. It inherits from str (unicode in python2) and
 	has attributes that cache results for use by functions like catpkgsplit and
@@ -365,15 +360,15 @@ class _pkg_str(_unicode):
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
 		file_size=None, mtime=None, db=None):
-		return _unicode.__new__(cls, cpv)
+		return str.__new__(cls, cpv)
 
 	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
 		file_size=None, mtime=None, db=None):
-		if not isinstance(cpv, _unicode):
-			# Avoid TypeError from _unicode.__init__ with PyPy.
+		if not isinstance(cpv, str):
+			# Avoid TypeError from str.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
-		_unicode.__init__(cpv)
+		str.__init__(cpv)
 		if metadata is not None:
 			self.__dict__['_metadata'] = metadata
 			slot = metadata.get('SLOT', slot)
@@ -438,7 +433,7 @@ class _pkg_str(_unicode):
 	def _long(var, default):
 		if var is not None:
 			try:
-				var = long(var)
+				var = int(var)
 			except ValueError:
 				if var:
 					var = -1

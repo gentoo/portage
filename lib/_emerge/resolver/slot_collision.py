@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -16,8 +16,6 @@ from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
 class slot_conflict_handler(object):
 	"""This class keeps track of all slot conflicts and provides
@@ -1125,7 +1123,7 @@ class _solution_candidate_generator(object):
 		def __init__(self, value=None):
 			self.value = value
 		def __eq__(self, other):
-			if isinstance(other, basestring):
+			if isinstance(other, str):
 				return self.value == other
 			else:
 				return self.value == other.value
