@@ -107,13 +107,6 @@ class Manifest2Entry(ManifestEntry):
 	def __ne__(self, other):
 		return not self.__eq__(other)
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['repo.content'], errors='strict')
 
 class Manifest(object):
 	parsers = (parseManifest2,)

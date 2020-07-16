@@ -30,14 +30,6 @@ class UseFlagDisplay(object):
 			s = '(%s)' % s
 		return s
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
 	def _cmp_combined(a, b):
 		"""
 		Sort by name, combining enabled and disabled flags.

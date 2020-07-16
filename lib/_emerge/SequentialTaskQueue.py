@@ -85,8 +85,5 @@ class SequentialTaskQueue(SlotObject):
 	def __bool__(self):
 		return bool(self._task_queue or self.running_tasks)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def __len__(self):
 		return len(self._task_queue) + len(self.running_tasks)

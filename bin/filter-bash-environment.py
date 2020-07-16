@@ -136,14 +136,9 @@ if __name__ == "__main__":
 		sys.stderr.flush()
 		sys.exit(2)
 
-	file_in = sys.stdin
-	file_out = sys.stdout
-	if sys.hexversion >= 0x3000000:
-		file_in = sys.stdin.buffer
-		file_out = sys.stdout.buffer
-		var_pattern = os.fsencode(args[0]).split()
-	else:
-		var_pattern = args[0].split()
+	file_in = sys.stdin.buffer
+	file_out = sys.stdout.buffer
+	var_pattern = os.fsencode(args[0]).split()
 
 	# Filter invalid variable names that are not supported by bash.
 	var_pattern.append(br'\d.*')

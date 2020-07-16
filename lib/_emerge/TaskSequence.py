@@ -54,8 +54,5 @@ class TaskSequence(CompositeTask):
 	def __bool__(self):
 		return bool(self._task_queue)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def __len__(self):
 		return len(self._task_queue)

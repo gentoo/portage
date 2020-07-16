@@ -12,12 +12,11 @@ os.chdir(os.environ["__PORTAGE_HELPER_CWD"])
 
 def main(files):
 
-	if sys.hexversion >= 0x3000000:
-		# We can't trust that the filesystem encoding (locale dependent)
-		# correctly matches the arguments, so use surrogateescape to
-		# pass through the original argv bytes for Python 3.
-		fs_encoding = sys.getfilesystemencoding()
-		files = [x.encode(fs_encoding, 'surrogateescape') for x in files]
+	# We can't trust that the filesystem encoding (locale dependent)
+	# correctly matches the arguments, so use surrogateescape to
+	# pass through the original argv bytes for Python 3.
+	fs_encoding = sys.getfilesystemencoding()
+	files = [x.encode(fs_encoding, 'surrogateescape') for x in files]
 
 	for filename in files:
 		# Emulate 'chmod -fR a+rX,u+w,g-w,o-w' with minimal chmod calls.

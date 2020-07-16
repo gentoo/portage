@@ -54,17 +54,12 @@ class UserQuery(object):
 		print(bold(prompt), end=' ')
 		try:
 			while True:
-				if sys.hexversion >= 0x3000000:
-					try:
-						response = input("[%s] " %
-							"/".join([colours[i](responses[i])
-							for i in range(len(responses))]))
-					except UnicodeDecodeError as e:
-						response = _unicode_decode(e.object).rstrip('\n')
-				else:
-					response=raw_input("["+"/".join([colours[i](responses[i])
-									  for i in range(len(responses))])+"] ")
-					response = _unicode_decode(response)
+				try:
+					response = input("[%s] " %
+						"/".join([colours[i](responses[i])
+						for i in range(len(responses))]))
+				except UnicodeDecodeError as e:
+					response = _unicode_decode(e.object).rstrip('\n')
 				if response or not enter_invalid:
 					for key in responses:
 						# An empty response will match the

@@ -33,22 +33,10 @@ pointer_pattern = (
     + r"|"
     + r"cast to pointer from integer of different size)")
 
-if sys.hexversion < 0x3000000:
-    # Use encoded byte strings in python-2.x, since the python ebuilds are
-    # known to remove the encodings module when USE=build is enabled (thus
-    # disabling unicode decoding/encoding). The portage module has a
-    # workaround for this, but currently we don't import that here since we
-    # don't want to trigger potential sandbox violations due to stale pyc
-    # files for the portage module.
-    unicode_quote_open = '\xE2\x80\x98'
-    unicode_quote_close = '\xE2\x80\x99'
-    def write(msg):
-        sys.stdout.write(msg)
-else:
-    unicode_quote_open = '\u2018'
-    unicode_quote_close = '\u2019'
-    def write(msg):
-        sys.stdout.buffer.write(msg.encode('utf_8', 'backslashreplace'))
+unicode_quote_open = '\u2018'
+unicode_quote_close = '\u2019'
+def write(msg):
+    sys.stdout.buffer.write(msg.encode('utf_8', 'backslashreplace'))
 
 pointer_pattern = re.compile(pointer_pattern)
 
@@ -57,10 +45,7 @@ last_implicit_linenum = -1
 last_implicit_func = ""
 
 while True:
-    if sys.hexversion >= 0x3000000:
-        line = sys.stdin.buffer.readline().decode('utf_8', 'replace')
-    else:
-        line = sys.stdin.readline()
+    line = sys.stdin.buffer.readline().decode('utf_8', 'replace')
     if not line:
         break
     # translate unicode open/close quotes to ascii ones

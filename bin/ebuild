@@ -144,9 +144,6 @@ if not os.path.isabs(ebuild):
 	# the canonical path returned from os.getcwd() may may be unusable in
 	# cases where the directory stucture is built from symlinks.
 	pwd = os.environ.get('PWD', '')
-	if sys.hexversion < 0x3000000:
-		pwd = _unicode_decode(pwd, encoding=_encodings['content'],
-			errors='strict')
 	if pwd and pwd != mycwd and \
 		os.path.realpath(pwd) == mycwd:
 		mycwd = portage.normalize_path(pwd)
@@ -163,16 +160,8 @@ vdb_path = os.path.realpath(os.path.join(portage.settings['EROOT'], VDB_PATH))
 if ebuild_portdir != vdb_path and \
 	ebuild_portdir not in portage.portdb.porttrees:
 	portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
-	if sys.hexversion >= 0x3000000:
-		os.environ["PORTDIR_OVERLAY"] = \
-			portdir_overlay + \
-			" " + _shell_quote(ebuild_portdir)
-	else:
-		os.environ["PORTDIR_OVERLAY"] = \
-			_unicode_encode(portdir_overlay,
-			encoding=_encodings['content'], errors='strict') + \
-			" " + _unicode_encode(_shell_quote(ebuild_portdir),
-			encoding=_encodings['content'], errors='strict')
+	os.environ["PORTDIR_OVERLAY"] = (
+		portdir_overlay + " " + _shell_quote(ebuild_portdir))
 
 	print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
 	portage._reset_legacy_globals()

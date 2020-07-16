@@ -256,9 +256,7 @@ def xtermTitle(mystr, raw=False):
 		# avoid potential UnicodeEncodeError
 		mystr = _unicode_encode(mystr,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		f = sys.stderr
-		if sys.hexversion >= 0x3000000:
-			f = f.buffer
+		f = sys.stderr.buffer
 		f.write(mystr)
 		f.flush()
 

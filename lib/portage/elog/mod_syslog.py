@@ -26,9 +26,5 @@ def process(mysettings, key, logentries, fulltext):
 				msgcontent = [msgcontent]
 			for line in msgcontent:
 				line = "%s: %s: %s" % (key, phase, line)
-				if sys.hexversion < 0x3000000 and not isinstance(line, bytes):
-					# Avoid TypeError from syslog.syslog()
-					line = line.encode(_encodings['content'],
-						'backslashreplace')
 				syslog.syslog(_pri[msgtype], line.rstrip("\n"))
 	syslog.closelog()
