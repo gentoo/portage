@@ -72,7 +72,7 @@ def writemsg(mystr, noiselevel=0, fd=None):
 		else:
 			mystr = _unicode_encode(mystr,
 				encoding=_encodings['stdio'], errors='backslashreplace')
-			if sys.hexversion >= 0x3000000 and fd in (sys.stdout, sys.stderr):
+			if fd in (sys.stdout, sys.stderr):
 				fd = fd.buffer
 		fd.write(mystr)
 		fd.flush()
@@ -107,7 +107,7 @@ def normalize_path(mypath):
 	We dislike this behavior so we create our own normpath func
 	to fix it.
 	"""
-	if sys.hexversion >= 0x3000000 and isinstance(mypath, bytes):
+	if isinstance(mypath, bytes):
 		path_sep = os.path.sep.encode()
 	else:
 		path_sep = os.path.sep
@@ -591,19 +591,15 @@ def writedict(mydict, myfilename, writekey=True):
 			lines.append("%s %s\n" % (k, " ".join(v)))
 	write_atomic(myfilename, "".join(lines))
 
+
 def shlex_split(s):
 	"""
 	This is equivalent to shlex.split, but if the current interpreter is
 	python2, it temporarily encodes unicode strings to bytes since python2's
 	shlex.split() doesn't handle unicode strings.
 	"""
-	convert_to_bytes = sys.hexversion < 0x3000000 and not isinstance(s, bytes)
-	if convert_to_bytes:
-		s = _unicode_encode(s)
-	rval = shlex.split(s)
-	if convert_to_bytes:
-		rval = [_unicode_decode(x) for x in rval]
-	return rval
+	return shlex.split(s)
+
 
 class _getconfig_shlex(shlex.shlex):
 
@@ -668,15 +664,9 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 
 	f = None
 	try:
-		# NOTE: shlex doesn't support unicode objects with Python 2
-		# (produces spurious \0 characters).
-		if sys.hexversion < 0x3000000:
-			f = open(_unicode_encode(mycfg,
-				encoding=_encodings['fs'], errors='strict'), 'rb')
-		else:
-			f = open(_unicode_encode(mycfg,
-				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['content'], errors='replace')
+		f = open(_unicode_encode(mycfg,
+			encoding=_encodings['fs'], errors='strict'), mode='r',
+			encoding=_encodings['content'], errors='replace')
 		content = f.read()
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
@@ -1309,29 +1299,10 @@ class atomic_ofstream(ObjectProxy):
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
 
-	if sys.hexversion >= 0x3000000:
-
-		def __getattribute__(self, attr):
-			if attr in ('close', 'abort', '__del__'):
-				return object.__getattribute__(self, attr)
-			return getattr(object.__getattribute__(self, '_file'), attr)
-
-	else:
-
-		# For TextIOWrapper, automatically coerce write calls to
-		# unicode, in order to avoid TypeError when writing raw
-		# bytes with python2.
-
-		def __getattribute__(self, attr):
-			if attr in ('close', 'abort', 'write', '__del__'):
-				return object.__getattribute__(self, attr)
-			return getattr(object.__getattribute__(self, '_file'), attr)
-
-		def write(self, s):
-			f = object.__getattribute__(self, '_file')
-			if isinstance(f, io.TextIOWrapper):
-				s = _unicode_decode(s)
-			return f.write(s)
+	def __getattribute__(self, attr):
+		if attr in ('close', 'abort', '__del__'):
+			return object.__getattribute__(self, attr)
+		return getattr(object.__getattribute__(self, '_file'), attr)
 
 	def close(self):
 		"""Closes the temporary file, copies permissions (if possible),

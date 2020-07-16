@@ -78,8 +78,6 @@ def encodeint(myint):
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
 	Returns an integer."""
-	if sys.hexversion < 0x3000000:
-		mystring = [ord(x) for x in mystring]
 	myint = 0
 	myint += mystring[3]
 	myint += mystring[2] << 8

@@ -193,19 +193,13 @@ class Socks5ServerTestCase(TestCase):
 					'PORTAGE_BIN_PATH': PORTAGE_BIN_PATH,
 				}
 
-				try:
-					proxy = socks5.get_socks5_proxy(settings)
-				except NotImplementedError:
-					# bug 658172 for python2.7
-					self.skipTest('get_socks5_proxy not implemented for {} {}.{}'.format(
-						platform.python_implementation(), *sys.version_info[:2]))
-				else:
-					loop.run_until_complete(socks5.proxy.ready())
+				proxy = socks5.get_socks5_proxy(settings)
+				loop.run_until_complete(socks5.proxy.ready())
 
-					result = loop.run_until_complete(loop.run_in_executor(None,
-						self._fetch_via_proxy, proxy, host, server.server_port, path))
+				result = loop.run_until_complete(loop.run_in_executor(None,
+					self._fetch_via_proxy, proxy, host, server.server_port, path))
 
-					self.assertEqual(result, content)
+				self.assertEqual(result, content)
 		finally:
 			socks5.proxy.stop()
 			shutil.rmtree(tempdir)

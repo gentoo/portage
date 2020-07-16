@@ -73,13 +73,3 @@ class NeededEntry(object):
 				(self.multilib_category if self.multilib_category
 				is not None else "")
 		]) + "\n"
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
-		__str__.__doc__ = __unicode__.__doc__

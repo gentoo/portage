@@ -229,6 +229,4 @@ class RetryForkExecutorTestCase(RetryTestCase):
 
 class RetryThreadExecutorTestCase(RetryForkExecutorTestCase):
 	def _setUpExecutor(self):
-		if sys.version_info.major < 3:
-			self.skipTest('ThreadPoolExecutor not supported for python2')
 		self._executor = ThreadPoolExecutor(max_workers=1)
