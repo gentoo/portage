@@ -163,12 +163,11 @@ def print_help():
 def parse_args():
 	argv = sys.argv[:]
 
-	if sys.hexversion >= 0x3000000:
-		# We can't trust that the filesystem encoding (locale dependent)
-		# correctly matches the arguments, so use surrogateescape to
-		# pass through the original argv bytes for Python 3.
-		fs_encoding = sys.getfilesystemencoding()
-		argv = [x.encode(fs_encoding, 'surrogateescape') for x in argv]
+	# We can't trust that the filesystem encoding (locale dependent)
+	# correctly matches the arguments, so use surrogateescape to
+	# pass through the original argv bytes for Python 3.
+	fs_encoding = sys.getfilesystemencoding()
+	argv = [x.encode(fs_encoding, 'surrogateescape') for x in argv]
 
 	for x, arg in enumerate(argv):
 		try:

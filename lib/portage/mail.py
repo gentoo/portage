@@ -19,20 +19,15 @@ from portage import _unicode_decode, _unicode_encode
 from portage.localization import _
 import portage
 
-if sys.hexversion >= 0x3000000:
-	def _force_ascii_if_necessary(s):
-		# Force ascii encoding in order to avoid UnicodeEncodeError
-		# from smtplib.sendmail with python3 (bug #291331).
-		s = _unicode_encode(s,
-			encoding='ascii', errors='backslashreplace')
-		s = _unicode_decode(s,
-			encoding='ascii', errors='replace')
-		return s
+def _force_ascii_if_necessary(s):
+	# Force ascii encoding in order to avoid UnicodeEncodeError
+	# from smtplib.sendmail with python3 (bug #291331).
+	s = _unicode_encode(s,
+		encoding='ascii', errors='backslashreplace')
+	s = _unicode_decode(s,
+		encoding='ascii', errors='replace')
+	return s
 
-else:
-
-	def _force_ascii_if_necessary(s):
-		return s
 
 def TextMessage(_text):
 	from email.mime.text import MIMEText
@@ -47,16 +42,6 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	from email.mime.multipart import MIMEMultipart as MultipartMessage
 	from email.utils import formatdate
 
-	if sys.hexversion < 0x3000000:
-		sender = _unicode_encode(sender,
-			encoding=_encodings['content'], errors='strict')
-		recipient = _unicode_encode(recipient,
-			encoding=_encodings['content'], errors='strict')
-		subject = _unicode_encode(subject,
-			encoding=_encodings['content'], errors='backslashreplace')
-		body = _unicode_encode(body,
-			encoding=_encodings['content'], errors='backslashreplace')
-
 	if attachments == None:
 		mymessage = TextMessage(body)
 	else:
@@ -66,10 +51,6 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
 			elif isinstance(x, str):
-				if sys.hexversion < 0x3000000:
-					x = _unicode_encode(x,
-						encoding=_encodings['content'],
-						errors='backslashreplace')
 				mymessage.attach(TextMessage(x))
 			else:
 				raise portage.exception.PortageException(_("Can't handle type of attachment: %s") % type(x))
@@ -128,20 +109,6 @@ def send_mail(mysettings, message):
 		myrecipient = mysettings.get("PORTAGE_ELOG_MAILURI", "")
 
 	myfrom = message.get("From")
-
-	if sys.hexversion < 0x3000000:
-		myrecipient = _unicode_encode(myrecipient,
-			encoding=_encodings['content'], errors='strict')
-		mymailhost = _unicode_encode(mymailhost,
-			encoding=_encodings['content'], errors='strict')
-		mymailport = _unicode_encode(mymailport,
-			encoding=_encodings['content'], errors='strict')
-		myfrom = _unicode_encode(myfrom,
-			encoding=_encodings['content'], errors='strict')
-		mymailuser = _unicode_encode(mymailuser,
-			encoding=_encodings['content'], errors='strict')
-		mymailpasswd = _unicode_encode(mymailpasswd,
-			encoding=_encodings['content'], errors='strict')
 
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):

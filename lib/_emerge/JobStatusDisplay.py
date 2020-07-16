@@ -83,9 +83,7 @@ class JobStatusDisplay(object):
 		# avoid potential UnicodeEncodeError
 		s = _unicode_encode(s,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		out = self.out
-		if sys.hexversion >= 0x3000000:
-			out = out.buffer
+		out = self.out.buffer
 		out.write(s)
 		out.flush()
 

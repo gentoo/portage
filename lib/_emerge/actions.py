@@ -3194,8 +3194,6 @@ def run_action(emerge_config):
 
 	if not "--pretend" in emerge_config.opts:
 		time_fmt = "%b %d, %Y %H:%M:%S"
-		if sys.hexversion < 0x3000000:
-			time_fmt = portage._unicode_encode(time_fmt)
 		time_str = time.strftime(time_fmt, time.localtime(time.time()))
 		# Avoid potential UnicodeDecodeError in Python 2, since strftime
 		# returns bytes in Python 2, and %b may contain non-ascii chars.

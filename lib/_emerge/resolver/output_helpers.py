@@ -76,14 +76,6 @@ class _RepoDisplay(object):
 				" indicates that the source repository could not be determined\n")
 		return "".join(output)
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
 
 class _PackageCounters(object):
 
@@ -677,11 +669,3 @@ class PkgAttrDisplay(SlotObject):
 			output.append(self.mask)
 
 		return "".join(output)
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])

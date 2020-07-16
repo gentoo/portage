@@ -23,8 +23,6 @@ def copyfile(src, dest):
 	dest = _native_string(dest, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
-		if sys.hexversion < 0x3000000:
-			src = _unicode_decode(src, encoding=_encodings['fs'], errors='replace')
 		raise OSError(_("copyfile: Failed getting context of \"%s\".") % src)
 
 	setfscreate(ctx)
@@ -48,8 +46,6 @@ def mkdir(target, refdir):
 	refdir = _native_string(refdir, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.getfilecon(refdir)
 	if rc < 0:
-		if sys.hexversion < 0x3000000:
-			refdir = _unicode_decode(refdir, encoding=_encodings['fs'], errors='replace')
 		raise OSError(
 			_("mkdir: Failed getting context of reference directory \"%s\".") \
 			% refdir)
@@ -65,8 +61,6 @@ def rename(src, dest):
 	dest = _native_string(dest, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
-		if sys.hexversion < 0x3000000:
-			src = _unicode_decode(src, encoding=_encodings['fs'], errors='replace')
 		raise OSError(_("rename: Failed getting context of \"%s\".") % src)
 
 	setfscreate(ctx)
@@ -98,8 +92,6 @@ def setexec(ctx="\n"):
 			portage.writemsg("!!! %s\n" % msg, noiselevel=-1)
 
 	if rc < 0:
-		if sys.hexversion < 0x3000000:
-			ctx = _unicode_decode(ctx, encoding=_encodings['content'], errors='replace')
 		if selinux.security_getenforce() == 1:
 			raise OSError(_("Failed setting exec() context \"%s\".") % ctx)
 		else:
@@ -110,8 +102,6 @@ def setexec(ctx="\n"):
 def setfscreate(ctx="\n"):
 	ctx = _native_string(ctx, encoding=_encodings['content'], errors='strict')
 	if selinux.setfscreatecon(ctx) < 0:
-		if sys.hexversion < 0x3000000:
-			ctx = _unicode_decode(ctx, encoding=_encodings['content'], errors='replace')
 		raise OSError(
 			_("setfscreate: Failed setting fs create context \"%s\".") % ctx)
 
@@ -148,8 +138,6 @@ def symlink(target, link, reflnk):
 	reflnk = _native_string(reflnk, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(reflnk)
 	if rc < 0:
-		if sys.hexversion < 0x3000000:
-			reflnk = _unicode_decode(reflnk, encoding=_encodings['fs'], errors='replace')
 		raise OSError(
 			_("symlink: Failed getting context of reference symlink \"%s\".") \
 			% reflnk)

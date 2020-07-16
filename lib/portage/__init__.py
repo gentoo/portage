@@ -163,43 +163,30 @@ _encodings = {
 	'stdio'                  : 'utf_8',
 }
 
-if sys.hexversion >= 0x3000000:
 
-	def _decode_argv(argv):
-		# With Python 3, the surrogateescape encoding error handler makes it
-		# possible to access the original argv bytes, which can be useful
-		# if their actual encoding does no match the filesystem encoding.
-		fs_encoding = sys.getfilesystemencoding()
-		return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
-			for x in argv]
+def _decode_argv(argv):
+	# With Python 3, the surrogateescape encoding error handler makes it
+	# possible to access the original argv bytes, which can be useful
+	# if their actual encoding does no match the filesystem encoding.
+	fs_encoding = sys.getfilesystemencoding()
+	return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
+		for x in argv]
 
-	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
-		if isinstance(s, str):
-			s = s.encode(encoding, errors)
-		return s
 
-	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-		if isinstance(s, bytes):
-			s = str(s, encoding=encoding, errors=errors)
-		return s
+def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
+	if isinstance(s, str):
+		s = s.encode(encoding, errors)
+	return s
 
-	_native_string = _unicode_decode
-else:
 
-	def _decode_argv(argv):
-		return [_unicode_decode(x) for x in argv]
+def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
+	if isinstance(s, bytes):
+		s = str(s, encoding=encoding, errors=errors)
+	return s
 
-	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
-		if isinstance(s, unicode):
-			s = s.encode(encoding, errors)
-		return s
 
-	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-		if isinstance(s, bytes):
-			s = unicode(s, encoding=encoding, errors=errors)
-		return s
+_native_string = _unicode_decode
 
-	_native_string = _unicode_encode
 
 class _unicode_func_wrapper(object):
 	"""

@@ -41,9 +41,6 @@ class PackageVirtualDbapi(dbapi):
 	def __bool__(self):
 		return bool(self._cpv_map)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def __iter__(self):
 		return iter(self._cpv_map.values())
 

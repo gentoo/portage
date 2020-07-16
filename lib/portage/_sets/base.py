@@ -43,9 +43,6 @@ class PackageSet(object):
 		self._load()
 		return bool(self._atoms or self._nonatoms)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
 			raise ValueError(op)

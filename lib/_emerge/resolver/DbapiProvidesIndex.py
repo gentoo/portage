@@ -73,9 +73,6 @@ class PackageDbapiProvidesIndex(DbapiProvidesIndex):
 	def __bool__(self):
 		return bool(self._db)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def __iter__(self):
 		return iter(self._db)
 

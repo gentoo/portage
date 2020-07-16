@@ -198,10 +198,7 @@ def run_exitfuncs():
 			exc_info = sys.exc_info()
 
 	if exc_info is not None:
-		if sys.hexversion >= 0x3000000:
-			raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
-		else:
-			exec("raise exc_info[0], exc_info[1], exc_info[2]")
+		raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
 atexit.register(run_exitfuncs)
 
@@ -288,15 +285,6 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 		mycommand = mycommand.split()
 
 	env = os.environ if env is None else env
-
-	if sys.hexversion < 0x3000000:
-		# Avoid a potential UnicodeEncodeError from os.execve().
-		env_bytes = {}
-		for k, v in env.items():
-			env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
-				_unicode_encode(v, encoding=_encodings['content'])
-		env = env_bytes
-		del env_bytes
 
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
@@ -964,7 +952,7 @@ def find_binary(binary):
 	@return: full path to binary or None if the binary could not be located.
 	"""
 	paths = os.environ.get("PATH", "")
-	if sys.hexversion >= 0x3000000 and isinstance(binary, bytes):
+	if isinstance(binary, bytes):
 		# return bytes when input is bytes
 		paths = paths.encode(sys.getfilesystemencoding(), 'surrogateescape')
 		paths = paths.split(b':')

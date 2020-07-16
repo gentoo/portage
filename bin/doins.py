@@ -514,10 +514,9 @@ def _parse_args(argv):
 
 	# Encode back to the original byte stream. Please see
 	# http://bugs.python.org/issue8776.
-	if sys.version_info.major >= 3:
-		opts.distdir = os.fsencode(opts.distdir) + b'/'
-		opts.dest = os.fsencode(opts.dest)
-		opts.sources = [os.fsencode(source) for source in opts.sources]
+	opts.distdir = os.fsencode(opts.distdir) + b'/'
+	opts.dest = os.fsencode(opts.dest)
+	opts.sources = [os.fsencode(source) for source in opts.sources]
 
 	return opts
 

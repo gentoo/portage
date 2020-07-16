@@ -530,12 +530,6 @@ class RepoConfig(object):
 			d[k] = getattr(self, k, None)
 		return "%s" % (d,)
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__())
 
 class RepoConfigLoader(object):
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""

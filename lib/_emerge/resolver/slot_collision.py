@@ -1130,14 +1130,6 @@ class _solution_candidate_generator(object):
 		def __str__(self):
 			return "%s" % (self.value,)
 
-		if sys.hexversion < 0x3000000:
-
-			__unicode__ = __str__
-
-			def __str__(self):
-				return _unicode_encode(self.__unicode__(),
-					encoding=_encodings['content'], errors='backslashreplace')
-
 	def __init__(self, all_involved_flags):
 		#A copy of all_involved_flags with all "cond" values
 		#replaced by a _value_helper object.

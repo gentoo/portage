@@ -56,14 +56,6 @@ class SonameAtom(object):
 	def __str__(self):
 		return "%s: %s" % (self.multilib_category, self.soname)
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
 	def match(self, pkg):
 		"""
 		Check if the given package instance matches this atom. Unbuilt

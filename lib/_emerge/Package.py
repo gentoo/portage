@@ -528,14 +528,6 @@ class Package(Task):
 		s += ")"
 		return s
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
 	class _use_class(object):
 
 		__slots__ = ("enabled", "_expand", "_expand_hidden",

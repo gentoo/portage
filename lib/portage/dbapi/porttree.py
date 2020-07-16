@@ -1455,12 +1455,7 @@ class FetchlistDict(Mapping):
 		infinite recursion in some cases."""
 		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
 
-	def keys(self):
-		"""Returns keys for all packages within pkgdir"""
-		return self.portdb.cp_list(self.cp, mytree=self.mytree)
-
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
 
 
 def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,

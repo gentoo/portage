@@ -10,8 +10,6 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.UseFlagDisplay import UseFlagDisplay
 
 
-STR_IS_UNICODE = sys.hexversion >= 0x3000000
-
 class StringFormatTestCase(TestCase):
 	"""
 	Test that string formatting works correctly in the current interpretter,
@@ -39,17 +37,9 @@ class StringFormatTestCase(TestCase):
 			formatted_str = "%s" % (dependency_arg,)
 			self.assertEqual(formatted_str, arg_unicode)
 
-			if STR_IS_UNICODE:
-
-				# Test the __str__ method which returns unicode in python3
-				formatted_str = "%s" % (dependency_arg,)
-				self.assertEqual(formatted_str, arg_unicode)
-
-			else:
-
-				# Test the __str__ method which returns encoded bytes in python2
-				formatted_bytes = b"%s" % (dependency_arg,)
-				self.assertEqual(formatted_bytes, arg_bytes)
+			# Test the __str__ method which returns unicode in python3
+			formatted_str = "%s" % (dependency_arg,)
+			self.assertEqual(formatted_str, arg_unicode)
 
 	def testPortageException(self):
 
@@ -64,17 +54,9 @@ class StringFormatTestCase(TestCase):
 			formatted_str = "%s" % (e,)
 			self.assertEqual(formatted_str, arg_unicode)
 
-			if STR_IS_UNICODE:
-
-				# Test the __str__ method which returns unicode in python3
-				formatted_str = "%s" % (e,)
-				self.assertEqual(formatted_str, arg_unicode)
-
-			else:
-
-				# Test the __str__ method which returns encoded bytes in python2
-				formatted_bytes = b"%s" % (e,)
-				self.assertEqual(formatted_bytes, arg_bytes)
+			# Test the __str__ method which returns unicode in python3
+			formatted_str = "%s" % (e,)
+			self.assertEqual(formatted_str, arg_unicode)
 
 	def testUseFlagDisplay(self):
 
@@ -90,14 +72,6 @@ class StringFormatTestCase(TestCase):
 					formatted_str = "%s" % (e,)
 					self.assertEqual(isinstance(formatted_str, str), True)
 
-					if STR_IS_UNICODE:
-
-						# Test the __str__ method which returns unicode in python3
-						formatted_str = "%s" % (e,)
-						self.assertEqual(isinstance(formatted_str, str), True)
-
-					else:
-
-						# Test the __str__ method which returns encoded bytes in python2
-						formatted_bytes = b"%s" % (e,)
-						self.assertEqual(isinstance(formatted_bytes, bytes), True)
+					# Test the __str__ method which returns unicode in python3
+					formatted_str = "%s" % (e,)
+					self.assertEqual(isinstance(formatted_str, str), True)

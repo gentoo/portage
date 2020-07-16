@@ -960,21 +960,10 @@ class _use_dep(object):
 	def __bool__(self):
 		return bool(self.tokens)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def __str__(self):
 		if not self.tokens:
 			return ""
 		return "[%s]" % (",".join(self.tokens),)
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'], errors='backslashreplace')
 
 	def __repr__(self):
 		return "portage.dep._use_dep(%s)" % repr(self.tokens)
@@ -1715,9 +1704,8 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 		else:
 			return self._normal.__delitem__(cp)
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
+	keys = __iter__
+	items = iteritems
 
 	def __len__(self):
 		return len(self._normal) + len(self._extended)
@@ -2575,8 +2563,6 @@ class _RequiredUseBranch(object):
 
 		return " ".join(tokens)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
 
 def check_required_use(required_use, use, iuse_match, eapi=None):
 	"""
