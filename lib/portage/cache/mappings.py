@@ -25,9 +25,6 @@ class Mapping(object):
 	def __iter__(self):
 		return iter(self.keys())
 
-	def keys(self):
-		return list(self.__iter__())
-
 	def __contains__(self, key):
 		try:
 			value = self[key]
@@ -46,12 +43,6 @@ class Mapping(object):
 		for _, v in self.items():
 			yield v
 
-	def values(self):
-		return [v for _, v in self.iteritems()]
-
-	def items(self):
-		return list(self.iteritems())
-
 	def get(self, key, default=None):
 		try:
 			return self[key]
@@ -64,10 +55,10 @@ class Mapping(object):
 	def __len__(self):
 		return len(list(self))
 
-	if sys.hexversion >= 0x3000000:
-		items = iteritems
-		keys = __iter__
-		values = itervalues
+	# TODO: do we need to keep iter*?
+	items = iteritems
+	keys = __iter__
+	values = itervalues
 
 class MutableMapping(Mapping):
 	"""
@@ -184,8 +175,8 @@ class UserDict(MutableMapping):
 	def clear(self):
 		self.data.clear()
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 class ProtectedDict(MutableMapping):
 	"""
@@ -234,8 +225,8 @@ class ProtectedDict(MutableMapping):
 	def __contains__(self, key):
 		return key in self.new or (key not in self.blacklist and key in self.orig)
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 class LazyLoad(Mapping):
 	"""
@@ -271,8 +262,8 @@ class LazyLoad(Mapping):
 			self.pull = None
 		return key in self.d
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
@@ -328,9 +319,6 @@ def slot_dict_class(keys, prefix="_val_"):
 					l += 1
 				return l
 
-			def keys(self):
-				return list(self)
-
 			def iteritems(self):
 				prefix = self._prefix
 				for k in self.allowed_keys:
@@ -339,15 +327,9 @@ def slot_dict_class(keys, prefix="_val_"):
 					except AttributeError:
 						pass
 
-			def items(self):
-				return list(self.iteritems())
-
 			def itervalues(self):
 				for k, v in self.iteritems():
 					yield v
-
-			def values(self):
-				return list(self.itervalues())
 
 			def __delitem__(self, k):
 				try:
@@ -447,10 +429,9 @@ def slot_dict_class(keys, prefix="_val_"):
 			def __repr__(self):
 				return repr(dict(self.iteritems()))
 
-			if sys.hexversion >= 0x3000000:
-				items = iteritems
-				keys = __iter__
-				values = itervalues
+			items = iteritems
+			keys = __iter__
+			values = itervalues
 
 		v = SlotDict
 		_slot_dict_classes[v.allowed_keys] = v

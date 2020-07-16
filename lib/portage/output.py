@@ -396,8 +396,7 @@ class ConsoleStyleFile(object):
 		if f in (sys.stdout, sys.stderr):
 			s = _unicode_encode(s,
 				encoding=_encodings['stdio'], errors='backslashreplace')
-			if sys.hexversion >= 0x3000000:
-				f = f.buffer
+			f = f.buffer
 		f.write(s)
 
 	def writelines(self, lines):

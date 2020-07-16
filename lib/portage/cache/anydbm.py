@@ -112,5 +112,5 @@ class database(fs_template.FsBased):
 			self.__db.sync()
 			self.__db.close()
 
-	if sys.hexversion >= 0x3000000:
-		items = iteritems
+	# TODO: do we need iteritems()?
+	items = iteritems

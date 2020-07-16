@@ -296,6 +296,5 @@ class SQLDatabase(template.database):
 
 		return [ row[0] for row in self.con.fetchall() ]
 
-	if sys.hexversion >= 0x3000000:
-		items = iteritems
-		keys = __iter__
+	items = iteritems
+	keys = __iter__

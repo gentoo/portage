@@ -171,18 +171,12 @@ class database(object):
 	def has_key(self, cpv):
 		return cpv in self
 
-	def keys(self):
-		return list(self)
-
 	def iterkeys(self):
 		return iter(self)
 
 	def iteritems(self):
 		for x in self:
 			yield (x, self[x])
-
-	def items(self):
-		return list(self.iteritems())
 
 	def sync(self, rate=0):
 		self.sync_rate = rate
@@ -290,9 +284,9 @@ class database(object):
 			if cont:
 				yield cpv
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
+	keys = __iter__
+	items = iteritems
+
 
 _keysorter = operator.itemgetter(0)
 

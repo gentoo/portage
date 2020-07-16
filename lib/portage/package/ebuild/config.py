@@ -2708,9 +2708,6 @@ class config(object):
 			self[k] = x
 			return x
 
-	def keys(self):
-		return list(self)
-
 	def __iter__(self):
 		keys = set()
 		keys.update(self._constant_keys)
@@ -2724,9 +2721,6 @@ class config(object):
 	def iteritems(self):
 		for k in self:
 			yield (k, self._getitem(k))
-
-	def items(self):
-		return list(self.iteritems())
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
@@ -2918,6 +2912,5 @@ class config(object):
 
 		return self._selinux_enabled
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
+	keys = __iter__
+	items = iteritems

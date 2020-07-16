@@ -383,6 +383,3 @@ class digraph(object):
 	__contains__ = contains
 	empty = is_empty
 	copy = clone
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
