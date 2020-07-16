@@ -4,6 +4,7 @@
 
 import tempfile
 
+import portage
 from portage import os
 from portage import shutil
 from portage.const import PORTAGE_BIN_PATH
@@ -36,6 +37,7 @@ def binTestsInit():
 	env['PATH'] = bindir + ':' + os.environ['PATH']
 	env['PORTAGE_BIN_PATH'] = bindir
 	env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
+	env['PORTAGE_PYTHON'] = portage._python_interpreter
 	env['PORTAGE_INST_UID'] = str(os.getuid())
 	env['PORTAGE_INST_GID'] = str(os.getgid())
 	env['DESTTREE'] = '/usr'
