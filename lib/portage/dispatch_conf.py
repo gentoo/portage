@@ -6,7 +6,7 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import errno
 import io

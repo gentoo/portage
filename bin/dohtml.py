@@ -28,7 +28,7 @@
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import os as _os
 import sys

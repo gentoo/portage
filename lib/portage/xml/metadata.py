@@ -28,8 +28,6 @@
 		'Thomas Mills Hinkle'
 """
 
-from __future__ import unicode_literals
-
 __all__ = ('MetaDataXML', 'parse_metadata_use')
 
 import sys

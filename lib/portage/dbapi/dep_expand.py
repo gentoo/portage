@@ -1,8 +1,6 @@
 # Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ["dep_expand"]
 
 import re

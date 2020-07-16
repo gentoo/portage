@@ -1,7 +1,7 @@
 # Copyright 2010-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import sys
 

@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 
-from __future__ import unicode_literals
-
 __all__ = ["cache"]
 
 import stat

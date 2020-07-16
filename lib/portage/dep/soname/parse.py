@@ -1,8 +1,6 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 from portage.exception import InvalidData
 from portage.localization import _
 from portage.dep.soname.SonameAtom import SonameAtom

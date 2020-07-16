@@ -5,8 +5,6 @@
 # asyncio module (Python 3.3 and earlier), this module provides a
 # subset of the asyncio.futures.Futures interface.
 
-from __future__ import unicode_literals
-
 __all__ = (
 	'CancelledError',
 	'Future',

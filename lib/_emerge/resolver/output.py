@@ -4,8 +4,6 @@
 """Resolver output display operation.
 """
 
-from __future__ import unicode_literals
-
 __all__ = (
 	"Display", "format_unmatched_atom",
 	)

@@ -1,8 +1,6 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 ]

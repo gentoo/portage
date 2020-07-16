@@ -2,8 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
-from __future__ import unicode_literals
-
 from portage.cache import fs_template
 from portage.cache import cache_errors
 import errno

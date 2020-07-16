@@ -2,8 +2,6 @@
 # Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
 	'cpv_getkey', 'cpv_getversion', 'cpv_sort_key', 'pkgcmp',  'pkgsplit',
