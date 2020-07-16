@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 # unicode_literals for compat with TextIOWrapper in Python 2
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import argparse
 import platform

@@ -2,8 +2,6 @@
 # Copyright 2003-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = [
 	'Atom', 'best_match_to_list', 'cpvequal',
 	'dep_getcpv', 'dep_getkey', 'dep_getslot',

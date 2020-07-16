@@ -2,8 +2,6 @@
 # Copyright 2003-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _

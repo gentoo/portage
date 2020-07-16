@@ -6,8 +6,6 @@
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
 
-from __future__ import unicode_literals
-
 import collections
 import logging
 import os

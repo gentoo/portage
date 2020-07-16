@@ -1,7 +1,7 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function, unicode_literals
+from __future__ import division, print_function
 
 from collections import deque
 import gc

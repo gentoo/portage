@@ -1,7 +1,7 @@
 # Copyright 2003-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
 
 import io
 import sys

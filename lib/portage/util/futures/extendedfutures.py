@@ -4,8 +4,6 @@
 # This module provides an extended subset of the asyncio.futures.Futures
 # interface.
 
-from __future__ import unicode_literals
-
 __all__ = (
 	'CancelledError',
 	'ExtendedFuture',

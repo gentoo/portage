@@ -1,8 +1,6 @@
 # Copyright 1998-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.versions import cpv_getkey, _pkg_str

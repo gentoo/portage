@@ -1,7 +1,7 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, unicode_literals
+from __future__ import division
 
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \

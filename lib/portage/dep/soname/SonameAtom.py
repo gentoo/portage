@@ -1,8 +1,6 @@
 # Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 import sys
 
 from portage import _encodings, _unicode_encode

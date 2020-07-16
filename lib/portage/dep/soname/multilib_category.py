@@ -32,8 +32,6 @@
 #   for given installation, we are only interested in tracking multilib
 #   ABIs for a single OS.
 
-from __future__ import unicode_literals
-
 from portage.util.elf.constants import (
 	EF_MIPS_ABI,
 	EF_MIPS_ABI2,

@@ -6,8 +6,6 @@ Base class for performing sync operations.
 This class contains common initialization code and functions.
 '''
 
-from __future__ import unicode_literals
-import functools
 import logging
 import os
 

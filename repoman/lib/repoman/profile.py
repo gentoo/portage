@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 from portage import normalize_path
 from portage import os

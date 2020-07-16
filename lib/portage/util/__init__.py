@@ -1,8 +1,6 @@
 # Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'apply_secpass_permissions', 'apply_stat_permissions', 'atomic_ofstream',
 	'cmp_sort_key', 'ConfigProtect', 'dump_traceback', 'ensure_dirs',

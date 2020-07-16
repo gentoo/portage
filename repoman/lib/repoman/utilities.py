@@ -6,7 +6,7 @@
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 __all__ = [
 	"editor_is_executable",
