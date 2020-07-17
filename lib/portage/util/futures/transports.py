@@ -1,10 +1,7 @@
 # Copyright 2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-try:
-	from asyncio.transports import Transport as _Transport
-except ImportError:
-	_Transport = object
+from asyncio.transports import Transport as _Transport
 
 
 class _FlowControlMixin(_Transport):

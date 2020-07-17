@@ -5,10 +5,7 @@ from __future__ import absolute_import
 
 import io
 import sys
-try:
-	from urllib.request import urlopen as urllib_request_urlopen
-except ImportError:
-	from urllib import urlopen as urllib_request_urlopen
+from urllib.request import urlopen as urllib_request_urlopen
 import codecs
 import re
 import operator

@@ -14,10 +14,7 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 from copy import deepcopy
 import errno
 import io
-try:
-	from itertools import chain, filterfalse
-except ImportError:
-	from itertools import chain, ifilterfalse as filterfalse
+from itertools import chain, filterfalse
 import logging
 import re
 import shlex

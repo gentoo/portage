@@ -9,14 +9,10 @@ __all__ = (
 import socket
 import subprocess
 
-try:
-	from asyncio.events import (
-		AbstractEventLoop as _AbstractEventLoop,
-		AbstractEventLoopPolicy as _AbstractEventLoopPolicy,
-	)
-except ImportError:
-	_AbstractEventLoop = object
-	_AbstractEventLoopPolicy = object
+from asyncio.events import (
+	AbstractEventLoop as _AbstractEventLoop,
+	AbstractEventLoopPolicy as _AbstractEventLoopPolicy,
+)
 
 
 class AbstractEventLoopPolicy(_AbstractEventLoopPolicy):

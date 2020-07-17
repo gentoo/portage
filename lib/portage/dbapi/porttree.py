@@ -47,11 +47,7 @@ import collections
 import functools
 
 from collections import OrderedDict
-
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 def close_portdbapi_caches():

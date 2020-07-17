@@ -8,12 +8,7 @@ ___all___ = (
 	'wait',
 )
 
-try:
-	from asyncio import ALL_COMPLETED, FIRST_COMPLETED, FIRST_EXCEPTION
-except ImportError:
-	ALL_COMPLETED = 'ALL_COMPLETED'
-	FIRST_COMPLETED ='FIRST_COMPLETED'
-	FIRST_EXCEPTION = 'FIRST_EXCEPTION'
+from asyncio import ALL_COMPLETED, FIRST_COMPLETED, FIRST_EXCEPTION
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

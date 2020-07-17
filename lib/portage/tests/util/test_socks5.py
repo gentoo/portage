@@ -16,15 +16,8 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import socks5
 from portage.const import PORTAGE_BIN_PATH
 
-try:
-	from http.server import BaseHTTPRequestHandler, HTTPServer
-except ImportError:
-	from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-try:
-	from urllib.request import urlopen
-except ImportError:
-	from urllib import urlopen
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.request import urlopen
 
 
 class _Handler(BaseHTTPRequestHandler):

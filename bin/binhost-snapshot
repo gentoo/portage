@@ -8,10 +8,7 @@ import os
 import sys
 import textwrap
 
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
+from urllib.parse import urlparse
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):

@@ -4,13 +4,9 @@
 import errno
 import json
 import logging
+import pickle
 import stat
 import sys
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
 
 from portage import abssymlink
 from portage import os

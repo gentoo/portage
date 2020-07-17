@@ -92,6 +92,7 @@ from itertools import chain
 import logging
 import os as _os
 import operator
+import pickle
 import platform
 import pwd
 import re
@@ -101,11 +102,6 @@ import tempfile
 import textwrap
 import time
 import warnings
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
 
 
 class vardbapi(dbapi):
