@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -191,16 +191,6 @@ class _LockProcess(AbstractPollTask):
 
 		fcntl.fcntl(in_pr, fcntl.F_SETFL,
 			fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(in_pr, fcntl.F_SETFD,
-					fcntl.fcntl(in_pr, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self.scheduler.add_reader(in_pr, self._output_handler)
 		self._registered = True

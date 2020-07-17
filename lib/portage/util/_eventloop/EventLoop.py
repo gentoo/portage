@@ -168,18 +168,6 @@ class EventLoop(object):
 				# IOError: [Errno 38] Function not implemented
 				pass
 			else:
-
-				# FD_CLOEXEC is enabled by default in Python >=3.4.
-				if sys.hexversion < 0x3040000 and fcntl is not None:
-					try:
-						fcntl.FD_CLOEXEC
-					except AttributeError:
-						pass
-					else:
-						fcntl.fcntl(epoll_obj.fileno(), fcntl.F_SETFD,
-							fcntl.fcntl(epoll_obj.fileno(),
-								fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-
 				self._poll_obj = _epoll_adapter(epoll_obj)
 				self.IO_ERR = select.EPOLLERR
 				self.IO_HUP = select.EPOLLHUP
@@ -431,17 +419,6 @@ class EventLoop(object):
 				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
 					fcntl.fcntl(self._sigchld_read,
 					fcntl.F_GETFL) | os.O_NONBLOCK)
-
-				# FD_CLOEXEC is enabled by default in Python >=3.4.
-				if sys.hexversion < 0x3040000:
-					try:
-						fcntl.FD_CLOEXEC
-					except AttributeError:
-						pass
-					else:
-						fcntl.fcntl(self._sigchld_read, fcntl.F_SETFD,
-							fcntl.fcntl(self._sigchld_read,
-							fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 			# The IO watch is dynamically registered and unregistered as
 			# needed, since we don't want to consider it as a valid source

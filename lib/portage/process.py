@@ -223,7 +223,7 @@ def cleanup():
 def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
           uid=None, gid=None, groups=None, umask=None, cwd=None, logfile=None,
           path_lookup=True, pre_exec=None,
-          close_fds=(sys.version_info < (3, 4)), unshare_net=False,
+          close_fds=False, unshare_net=False,
           unshare_ipc=False, unshare_mount=False, unshare_pid=False,
 	  cgroup=None):
 	"""

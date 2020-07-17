@@ -54,16 +54,6 @@ class PipeLogger(AbstractPollTask):
 		fcntl.fcntl(fd, fcntl.F_SETFL,
 			fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(fd, fcntl.F_SETFD,
-					fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-
 		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd), loop=self.scheduler)
 		self._io_loop_task.add_done_callback(self._io_loop_done)
 		self._registered = True

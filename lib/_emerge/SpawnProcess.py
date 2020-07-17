@@ -1,12 +1,6 @@
 # Copyright 2008-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-try:
-	import fcntl
-except ImportError:
-	# http://bugs.jython.org/issue1074
-	fcntl = None
-
 import errno
 import logging
 import signal
@@ -129,16 +123,6 @@ class SpawnProcess(SubProcess):
 		stdout_fd = None
 		if can_log and not self.background:
 			stdout_fd = os.dup(fd_pipes_orig[1])
-			# FD_CLOEXEC is enabled by default in Python >=3.4.
-			if sys.hexversion < 0x3040000 and fcntl is not None:
-				try:
-					fcntl.FD_CLOEXEC
-				except AttributeError:
-					pass
-				else:
-					fcntl.fcntl(stdout_fd, fcntl.F_SETFD,
-						fcntl.fcntl(stdout_fd,
-						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		build_logger = BuildLogger(env=self.env,
 			log_path=log_file_path,
