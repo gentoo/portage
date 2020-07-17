@@ -32,7 +32,6 @@ import subprocess
 import sys
 
 from portage.util._eventloop.global_event_loop import (
-	_asyncio_enabled,
 	global_event_loop as _global_event_loop,
 )
 from portage.util.futures import (
@@ -701,5 +700,4 @@ class _AsyncioEventLoopPolicy(_PortageEventLoopPolicy):
 		return super(_AsyncioEventLoopPolicy, self).get_child_watcher()
 
 
-DefaultEventLoopPolicy = (_AsyncioEventLoopPolicy if _asyncio_enabled
-	else _PortageEventLoopPolicy)
+DefaultEventLoopPolicy = _AsyncioEventLoopPolicy

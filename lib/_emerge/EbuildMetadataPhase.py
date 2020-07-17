@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -92,16 +92,6 @@ class EbuildMetadataPhase(SubProcess):
 
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(master_fd, fcntl.F_SETFD,
-					fcntl.fcntl(master_fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		fd_pipes[slave_fd] = slave_fd
 		settings["PORTAGE_PIPE_FD"] = str(slave_fd)

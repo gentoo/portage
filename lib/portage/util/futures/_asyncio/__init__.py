@@ -41,7 +41,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
-	_asyncio_enabled,
 	global_event_loop as _global_event_loop,
 )
 from portage.util.futures.futures import (
@@ -111,11 +110,6 @@ def set_child_watcher(watcher):
     return get_event_loop_policy().set_child_watcher(watcher)
 
 
-# Python 3.4 and later implement PEP 446, which makes newly
-# created file descriptors non-inheritable by default.
-_close_fds_default = sys.version_info < (3, 4)
-
-
 def create_subprocess_exec(*args, **kwargs):
 	"""
 	Create a subprocess.
@@ -138,8 +132,10 @@ def create_subprocess_exec(*args, **kwargs):
 	@return: subset of asyncio.subprocess.Process interface
 	"""
 	loop = _wrap_loop(kwargs.pop('loop', None))
-	kwargs.setdefault('close_fds', _close_fds_default)
-	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
+	# Python 3.4 and later implement PEP 446, which makes newly
+	# created file descriptors non-inheritable by default.
+	kwargs.setdefault('close_fds', False)
+	if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio create_subprocess_exec (loop argument
 		# is deprecated since since Python 3.8).
 		return _real_asyncio.create_subprocess_exec(*args, **kwargs)
@@ -191,7 +187,7 @@ def ensure_future(coro_or_future, loop=None):
 	@return: an instance of Future
 	"""
 	loop = _wrap_loop(loop)
-	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
+	if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio loop and ensure_future.
 		return _real_asyncio.ensure_future(
 			coro_or_future, loop=loop._asyncio_wrapper._loop)
@@ -240,18 +236,12 @@ def _wrap_loop(loop=None):
 	@rtype: asyncio.AbstractEventLoop (or compatible)
 	@return: event loop
 	"""
-	return loop or _global_event_loop()
-
-
-if _asyncio_enabled:
 	# The default loop returned by _wrap_loop should be consistent
 	# with global_event_loop, in order to avoid accidental registration
 	# of callbacks with a loop that is not intended to run.
-
-	def _wrap_loop(loop=None):
-		loop = loop or _global_event_loop()
-		return (loop if hasattr(loop, '_asyncio_wrapper')
-			else _AsyncioEventLoop(loop=loop))
+	loop = loop or _global_event_loop()
+	return (loop if hasattr(loop, '_asyncio_wrapper')
+		else _AsyncioEventLoop(loop=loop))
 
 
 def _safe_loop():
