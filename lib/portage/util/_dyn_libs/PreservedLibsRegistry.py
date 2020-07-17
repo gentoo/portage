@@ -34,7 +34,7 @@ class PreservedLibsRegistry(object):
 
 	_json_write_opts = {
 		"ensure_ascii": False,
-		"indent": 4,
+		"indent": "\t",
 		"sort_keys": True,
 	}
 
