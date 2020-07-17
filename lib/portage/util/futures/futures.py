@@ -12,32 +12,12 @@ __all__ = (
 	'TimeoutError',
 )
 
-try:
-	from asyncio import (
-		CancelledError,
-		Future,
-		InvalidStateError,
-		TimeoutError,
-	)
-except ImportError:
-
-	from portage.exception import PortageException
-
-	class Error(PortageException):
-		pass
-
-	class CancelledError(Error):
-		def __init__(self):
-			Error.__init__(self, "cancelled")
-
-	class TimeoutError(Error):
-		def __init__(self):
-			Error.__init__(self, "timed out")
-
-	class InvalidStateError(Error):
-		pass
-
-	Future = None
+from asyncio import (
+	CancelledError,
+	Future,
+	InvalidStateError,
+	TimeoutError,
+)
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -191,7 +171,3 @@ class _EventLoopFuture(object):
 		self._exception = exception
 		self._state = _FINISHED
 		self._schedule_callbacks()
-
-
-if Future is None:
-	Future = _EventLoopFuture

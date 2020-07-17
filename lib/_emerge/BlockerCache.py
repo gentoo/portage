@@ -7,11 +7,7 @@ from portage.util import writemsg
 from portage.data import secpass
 import portage
 from portage import os
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
+import pickle
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not

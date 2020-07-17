@@ -6,20 +6,13 @@ __all__ = (
 	'DefaultEventLoopPolicy',
 )
 
-try:
-	import asyncio as _real_asyncio
-	from asyncio.base_subprocess import BaseSubprocessTransport as _BaseSubprocessTransport
-	from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
-	from asyncio.transports import (
-		ReadTransport as _ReadTransport,
-		WriteTransport as _WriteTransport,
-	)
-except ImportError:
-	_real_asyncio = None
-	_AbstractChildWatcher = object
-	_BaseSubprocessTransport = object
-	_ReadTransport = object
-	_WriteTransport = object
+import asyncio as _real_asyncio
+from asyncio.base_subprocess import BaseSubprocessTransport as _BaseSubprocessTransport
+from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
+from asyncio.transports import (
+	ReadTransport as _ReadTransport,
+	WriteTransport as _WriteTransport,
+)
 
 import errno
 import fcntl

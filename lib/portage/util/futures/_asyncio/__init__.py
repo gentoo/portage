@@ -23,10 +23,7 @@ __all__ = (
 import subprocess
 import sys
 
-try:
-	import asyncio as _real_asyncio
-except ImportError:
-	_real_asyncio = None
+import asyncio as _real_asyncio
 
 try:
 	import threading
@@ -159,7 +156,7 @@ def iscoroutinefunction(func):
 	"""
 	if _compat_coroutine._iscoroutinefunction(func):
 		return True
-	elif _real_asyncio is not None and _real_asyncio.iscoroutinefunction(func):
+	elif _real_asyncio.iscoroutinefunction(func):
 		return True
 	return False
 

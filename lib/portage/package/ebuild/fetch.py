@@ -20,16 +20,8 @@ import tempfile
 import time
 
 from collections import OrderedDict
-
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
-
-try:
-	from urllib.parse import quote as urlquote
-except ImportError:
-	from urllib import quote as urlquote
+from urllib.parse import urlparse
+from urllib.parse import quote as urlquote
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

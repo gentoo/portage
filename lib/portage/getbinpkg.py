@@ -13,6 +13,7 @@ from portage import _unicode_encode
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
+import pickle
 import sys
 import socket
 import time
@@ -22,20 +23,8 @@ import warnings
 
 _all_errors = [NotImplementedError, ValueError, socket.error]
 
-try:
-	from html.parser import HTMLParser as html_parser_HTMLParser
-except ImportError:
-	from HTMLParser import HTMLParser as html_parser_HTMLParser
-
-try:
-	from urllib.parse import unquote as urllib_parse_unquote
-except ImportError:
-	from urllib2 import unquote as urllib_parse_unquote
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
+from html.parser import HTMLParser as html_parser_HTMLParser
+from urllib.parse import unquote as urllib_parse_unquote
 
 try:
 	import ftplib
@@ -45,16 +34,10 @@ else:
 	_all_errors.extend(ftplib.all_errors)
 
 try:
-	try:
-		from http.client import HTTPConnection as http_client_HTTPConnection
-		from http.client import BadStatusLine as http_client_BadStatusLine
-		from http.client import ResponseNotReady as http_client_ResponseNotReady
-		from http.client import error as http_client_error
-	except ImportError:
-		from httplib import HTTPConnection as http_client_HTTPConnection
-		from httplib import BadStatusLine as http_client_BadStatusLine
-		from httplib import ResponseNotReady as http_client_ResponseNotReady
-		from httplib import error as http_client_error
+	from http.client import HTTPConnection as http_client_HTTPConnection
+	from http.client import BadStatusLine as http_client_BadStatusLine
+	from http.client import ResponseNotReady as http_client_ResponseNotReady
+	from http.client import error as http_client_error
 except ImportError as e:
 	sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT HTTP.CLIENT: ") + str(e) + "\n")
 else:
@@ -188,10 +171,7 @@ def create_conn(baseurl, conn=None):
 			# http.client ImportError handler (like during stage1 -> stage2
 			# builds where USE=ssl is disabled for python).
 			try:
-				try:
-					from http.client import HTTPSConnection as http_client_HTTPSConnection
-				except ImportError:
-					from httplib import HTTPSConnection as http_client_HTTPSConnection
+				from http.client import HTTPSConnection as http_client_HTTPSConnection
 			except ImportError:
 				raise NotImplementedError(
 					_("python must have ssl enabled for https support"))

@@ -14,10 +14,7 @@ import sys
 import time
 import traceback
 
-try:
-	import asyncio as _real_asyncio
-except ImportError:
-	_real_asyncio = None
+import asyncio as _real_asyncio
 
 try:
 	import fcntl
@@ -962,9 +959,8 @@ class EventLoop(object):
 				executor = ForkExecutor(loop=self)
 				self._default_executor = executor
 		future = executor.submit(func, *args)
-		if _real_asyncio is not None:
-			future = _real_asyncio.wrap_future(future,
-				loop=self._asyncio_wrapper)
+		future = _real_asyncio.wrap_future(future,
+			loop=self._asyncio_wrapper)
 		return future
 
 	def is_running(self):

@@ -6,15 +6,9 @@ import sys
 from datetime import datetime
 from time import mktime
 from email.utils import formatdate, parsedate
-
-try:
-	from urllib.request import urlopen as _urlopen
-	import urllib.parse as urllib_parse
-	import urllib.request as urllib_request
-except ImportError:
-	from urllib import urlopen as _urlopen
-	import urlparse as urllib_parse
-	import urllib2 as urllib_request
+from urllib.request import urlopen as _urlopen
+import urllib.parse as urllib_parse
+import urllib.request as urllib_request
 
 
 # to account for the difference between TIMESTAMP of the index' contents
