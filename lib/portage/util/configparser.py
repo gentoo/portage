@@ -11,16 +11,9 @@ __all__ = ['ConfigParserError', 'NoOptionError', 'ParsingError',
 import io
 import sys
 
-try:
-	from configparser import (Error as ConfigParserError,
-		NoOptionError, ParsingError, RawConfigParser)
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import (Error as ConfigParserError,
-		NoOptionError, ParsingError, RawConfigParser, SafeConfigParser)
+from configparser import (Error as ConfigParserError,
+	NoOptionError, ParsingError, RawConfigParser)
+from configparser import ConfigParser as SafeConfigParser
 
 from portage import _encodings
 from portage import _unicode_encode
