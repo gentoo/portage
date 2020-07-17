@@ -435,10 +435,7 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			if sys.hexversion >= 0x3030000:
-				mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
-			else:
-				mystat = os.stat(self.getpath(mysplit[0])).st_mtime
+			mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
 		except OSError:
 			mystat = 0
 		if use_cache and mycp in self.cpcache:
@@ -586,10 +583,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			if sys.hexversion >= 0x3030000:
-				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
-			else:
-				curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime
+			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
 		except (IOError, OSError):
 			curmtime=0
 
@@ -4921,10 +4915,7 @@ class dblink(object):
 			mymd5 = None
 			myto = None
 
-			if sys.hexversion >= 0x3030000:
-				mymtime = mystat.st_mtime_ns
-			else:
-				mymtime = mystat[stat.ST_MTIME]
+			mymtime = mystat.st_mtime_ns
 
 			if stat.S_ISREG(mymode):
 				mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
@@ -5067,10 +5058,7 @@ class dblink(object):
 							% (relative_path, myabsto)])
 
 					showMessage("%s %s -> %s\n" % (zing, mydest, myto))
-					if sys.hexversion >= 0x3030000:
-						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
-					else:
-						outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
+					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
 				else:
 					showMessage(_("!!! Failed to move file.\n"),
 						level=logging.ERROR, noiselevel=-1)
@@ -5219,10 +5207,7 @@ class dblink(object):
 						pass
 
 				if mymtime != None:
-					if sys.hexversion >= 0x3030000:
-						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
-					else:
-						outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
+					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
 				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node

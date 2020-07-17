@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Gentoo Authors
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -385,14 +385,9 @@ class FetchTask(CompositeTask):
 			# Apply the timestamp from the source file, but
 			# just rely on umask for permissions.
 			try:
-				if sys.hexversion >= 0x3030000:
-					os.utime(copier.dest_path,
-						ns=(self._current_stat.st_mtime_ns,
-						self._current_stat.st_mtime_ns))
-				else:
-					os.utime(copier.dest_path,
-						(self._current_stat[stat.ST_MTIME],
-						self._current_stat[stat.ST_MTIME]))
+				os.utime(copier.dest_path,
+					ns=(self._current_stat.st_mtime_ns,
+					self._current_stat.st_mtime_ns))
 			except OSError as e:
 				msg = "%s %s utime failed unexpectedly: %s" % \
 					(self.distfile, current_mirror.name, e)

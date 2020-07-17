@@ -34,12 +34,9 @@ class PreservedLibsRegistry(object):
 
 	_json_write_opts = {
 		"ensure_ascii": False,
-		"indent": "\t",
-		"sort_keys": True
+		"indent": 4,
+		"sort_keys": True,
 	}
-	if sys.hexversion < 0x30200F0:
-		# indent only supports int number of spaces
-		_json_write_opts["indent"] = 4
 
 	def __init__(self, root, filename):
 		""" 

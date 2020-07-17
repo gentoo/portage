@@ -110,10 +110,6 @@ def _parse_install_options(
 	parser.add_argument('-p', '--preserve-timestamps', action='store_true')
 	split_options = shlex.split(options)
 	namespace, remaining = parser.parse_known_args(split_options)
-	if namespace.preserve_timestamps and sys.version_info < (3, 3):
-		# -p is not supported in this case, since timestamps cannot
-		# be preserved with full precision
-		remaining.append('-p')
 	# Because parsing '--mode' option is partially supported. If unknown
 	# arg for --mode is passed, namespace.mode is set to None.
 	if remaining or namespace.mode is None:
@@ -151,15 +147,7 @@ def _set_timestamps(source_stat, dest):
 		source_stat: stat result for the source file.
 		dest: path to the dest file.
 	"""
-	os.utime(dest, (source_stat.st_atime, source_stat.st_mtime))
-
-
-if sys.version_info >= (3, 3):
-	def _set_timestamps_ns(source_stat, dest):
-		os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
-
-	_set_timestamps_ns.__doc__ = _set_timestamps.__doc__
-	_set_timestamps = _set_timestamps_ns
+	os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
 
 
 class _InsInProcessInstallRunner(object):

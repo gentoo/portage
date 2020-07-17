@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import absolute_import
@@ -188,18 +188,13 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			except OSError:
 				pass
 
-			if sys.hexversion >= 0x3030000:
-				try:
-					os.utime(dest, ns=(sstat.st_mtime_ns, sstat.st_mtime_ns), follow_symlinks=False)
-				except NotImplementedError:
-					# utimensat() and lutimes() missing in libc.
-					return os.stat(dest, follow_symlinks=False).st_mtime_ns
-				else:
-					return sstat.st_mtime_ns
+			try:
+				os.utime(dest, ns=(sstat.st_mtime_ns, sstat.st_mtime_ns), follow_symlinks=False)
+			except NotImplementedError:
+				# utimensat() and lutimes() missing in libc.
+				return os.stat(dest, follow_symlinks=False).st_mtime_ns
 			else:
-				# utime() in Python <3.3 only works on the target of a symlink, so it's not
-				# possible to preserve mtime on symlinks.
-				return os.lstat(dest)[stat.ST_MTIME]
+				return sstat.st_mtime_ns
 		except SystemExit as e:
 			raise
 		except Exception as e:
@@ -312,49 +307,26 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	# if the nanosecond part of the timestamp is 999999881 ns or greater.
 	try:
 		if hardlinked:
-			if sys.hexversion >= 0x3030000:
-				newmtime = os.stat(dest).st_mtime_ns
-			else:
-				newmtime = os.stat(dest)[stat.ST_MTIME]
+			newmtime = os.stat(dest).st_mtime_ns
 		else:
 			# Note: It is not possible to preserve nanosecond precision
 			# (supported in POSIX.1-2008 via utimensat) with the IEEE 754
 			# double precision float which only has a 53 bit significand.
 			if newmtime is not None:
-				if sys.hexversion >= 0x3030000:
-					os.utime(dest, ns=(newmtime, newmtime))
-				else:
-					os.utime(dest, (newmtime, newmtime))
+				os.utime(dest, ns=(newmtime, newmtime))
 			else:
-				if sys.hexversion >= 0x3030000:
-					newmtime = sstat.st_mtime_ns
-				else:
-					newmtime = sstat[stat.ST_MTIME]
+				newmtime = sstat.st_mtime_ns
 				if renamefailed:
-					if sys.hexversion >= 0x3030000:
-						# If rename succeeded then timestamps are automatically
-						# preserved with complete precision because the source
-						# and destination inodes are the same. Otherwise, manually
-						# update timestamps with nanosecond precision.
-						os.utime(dest, ns=(newmtime, newmtime))
-					else:
-						# If rename succeeded then timestamps are automatically
-						# preserved with complete precision because the source
-						# and destination inodes are the same. Otherwise, round
-						# down to the nearest whole second since python's float
-						# st_mtime cannot be used to preserve the st_mtim.tv_nsec
-						# field with complete precision. Note that we have to use
-						# stat_obj[stat.ST_MTIME] here because the float
-						# stat_obj.st_mtime rounds *up* sometimes.
-						os.utime(dest, (newmtime, newmtime))
+					# If rename succeeded then timestamps are automatically
+					# preserved with complete precision because the source
+					# and destination inodes are the same. Otherwise, manually
+					# update timestamps with nanosecond precision.
+					os.utime(dest, ns=(newmtime, newmtime))
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.
 		try:
-			if sys.hexversion >= 0x3030000:
-				newmtime = os.stat(dest).st_mtime_ns
-			else:
-				newmtime = os.stat(dest)[stat.ST_MTIME]
+			newmtime = os.stat(dest).st_mtime_ns
 		except OSError as e:
 			writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
 			writemsg("!!! %s\n" % dest, noiselevel=-1)
