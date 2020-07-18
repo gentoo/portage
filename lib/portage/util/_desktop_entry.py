@@ -25,7 +25,12 @@ def parse_desktop_entry(path):
 
 	return parser
 
-_trivial_warnings = re.compile(r' looks redundant with value ')
+_trivial_warnings = re.compile(r' looks '
+	# >=desktop-file-utils-0.25
+	r'(?:the same as that of key|'
+
+	# <desktop-file-utils-0.25
+	r'redundant with value) ')
 
 _ignored_errors = (
 		# Ignore error for emacs.desktop:
