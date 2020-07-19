@@ -3,9 +3,6 @@
 
 import io
 import platform
-import signal
-import sys
-import traceback
 
 import fcntl
 import portage
@@ -24,7 +21,7 @@ class MergeProcess(ForkProcess):
 		'vartree', 'blockers', 'pkgloc', 'infloc', 'myebuild',
 		'mydbapi', 'postinst_failure', 'prev_mtimes', 'unmerge',
 		'_elog_reader_fd',
-		'_buf', '_elog_keys', '_locked_vdb')
+		'_buf', '_counter', '_dblink', '_elog_keys', '_locked_vdb')
 
 	def _start(self):
 		# Portage should always call setcpv prior to this
@@ -103,8 +100,8 @@ class MergeProcess(ForkProcess):
 
 	def _spawn(self, args, fd_pipes, **kwargs):
 		"""
-		Fork a subprocess, apply local settings, and call
-		dblink.merge(). TODO: Share code with ForkProcess.
+		Extend the superclass _spawn method to perform some pre-fork and
+		post-fork actions.
 		"""
 
 		elog_reader_fd, elog_writer_fd = os.pipe()
@@ -132,57 +129,31 @@ class MergeProcess(ForkProcess):
 		# FEATURES=parallel-install skips this lock in order to
 		# improve performance, and the risk is practically negligible.
 		self._lock_vdb()
-		counter = None
 		if not self.unmerge:
-			counter = self.vartree.dbapi.counter_tick()
+			self._counter = self.vartree.dbapi.counter_tick()
 
-		parent_pid = os.getpid()
-		pid = None
-		try:
-			pid = os.fork()
+		self._dblink = mylink
+		self._elog_reader_fd = elog_reader_fd
+		pids = super(MergeProcess, self)._spawn(args, fd_pipes, **kwargs)
+		os.close(elog_writer_fd)
+		self._buf = ""
+		self._elog_keys = set()
+		# Discard messages which will be collected by the subprocess,
+		# in order to avoid duplicates (bug #446136).
+		portage.elog.messages.collect_messages(key=mylink.mycpv)
 
-			if pid != 0:
-				if not isinstance(pid, int):
-					raise AssertionError(
-						"fork returned non-integer: %s" % (repr(pid),))
+		# invalidate relevant vardbapi caches
+		if self.vartree.dbapi._categories is not None:
+			self.vartree.dbapi._categories = None
+		self.vartree.dbapi._pkgs_changed = True
+		self.vartree.dbapi._clear_pkg_cache(mylink)
 
-				os.close(elog_writer_fd)
-				self._elog_reader_fd = elog_reader_fd
-				self._buf = ""
-				self._elog_keys = set()
-				# Discard messages which will be collected by the subprocess,
-				# in order to avoid duplicates (bug #446136).
-				portage.elog.messages.collect_messages(key=mylink.mycpv)
+		return pids
 
-				# invalidate relevant vardbapi caches
-				if self.vartree.dbapi._categories is not None:
-					self.vartree.dbapi._categories = None
-				self.vartree.dbapi._pkgs_changed = True
-				self.vartree.dbapi._clear_pkg_cache(mylink)
-
-				return [pid]
-
-			os.close(elog_reader_fd)
-
-			# Use default signal handlers in order to avoid problems
-			# killing subprocesses as reported in bug #353239.
-			signal.signal(signal.SIGINT, signal.SIG_DFL)
-			signal.signal(signal.SIGTERM, signal.SIG_DFL)
-
-			# Unregister SIGCHLD handler and wakeup_fd for the parent
-			# process's event loop (bug 655656).
-			signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-			try:
-				wakeup_fd = signal.set_wakeup_fd(-1)
-				if wakeup_fd > 0:
-					os.close(wakeup_fd)
-			except (ValueError, OSError):
-				pass
-
-			portage.locks._close_fds()
-			# We don't exec, so use close_fds=False
-			# (see _setup_pipes docstring).
-			portage.process._setup_pipes(fd_pipes, close_fds=False)
+	def _run(self):
+			os.close(self._elog_reader_fd)
+			counter = self._counter
+			mylink = self._dblink
 
 			portage.output.havecolor = self.settings.get('NOCOLOR') \
 				not in ('yes', 'true')
@@ -207,8 +178,7 @@ class MergeProcess(ForkProcess):
 			self.settings.backup_changes("PORTAGE_BACKGROUND")
 
 			rval = 1
-			try:
-				if self.unmerge:
+			if self.unmerge:
 					if not mylink.exists():
 						rval = os.EX_OK
 					elif mylink.unmerge(
@@ -219,27 +189,11 @@ class MergeProcess(ForkProcess):
 						finally:
 							mylink.unlockdb()
 						rval = os.EX_OK
-				else:
+			else:
 					rval = mylink.merge(self.pkgloc, self.infloc,
 						myebuild=self.myebuild, mydbapi=self.mydbapi,
 						prev_mtimes=self.prev_mtimes, counter=counter)
-			except SystemExit:
-				raise
-			except:
-				traceback.print_exc()
-				# os._exit() skips stderr flush!
-				sys.stderr.flush()
-			finally:
-				os._exit(rval)
-
-		finally:
-			if pid == 0 or (pid is None and os.getpid() != parent_pid):
-				# Call os._exit() from a finally block in order
-				# to suppress any finally blocks from earlier
-				# in the call stack (see bug #345289). This
-				# finally block has to be setup before the fork
-				# in order to avoid a race condition.
-				os._exit(1)
+			return rval
 
 	def _async_waitpid_cb(self, *args, **kwargs):
 		"""
