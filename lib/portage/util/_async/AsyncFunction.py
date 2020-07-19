@@ -1,4 +1,4 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import pickle
@@ -23,7 +23,7 @@ class AsyncFunction(ForkProcess):
 
 	def _start(self):
 		pr, pw = os.pipe()
-		self.fd_pipes = {}
+		self.fd_pipes = {} if self.fd_pipes is None else self.fd_pipes
 		self.fd_pipes[pw] = pw
 		self._async_func_reader_pw = pw
 		self._async_func_reader = PipeReader(
