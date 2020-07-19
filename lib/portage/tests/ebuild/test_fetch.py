@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -167,7 +167,7 @@ class EbuildFetchTestCase(TestCase):
 					'--repositories-configuration', settings.repositories.config_string(),
 					'--repo', 'test_repo', '--mirror')
 
-				env = os.environ.copy()
+				env = settings.environ()
 				env['PYTHONPATH'] = ':'.join(
 					filter(None, [PORTAGE_PYM_PATH] + os.environ.get('PYTHONPATH', '').split(':')))
 
