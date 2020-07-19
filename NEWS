@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.0
+--------------
+* Dropped support for Python 2.x.
+
 portage-2.3.101
 --------------
 * The new PORTAGE_LOG_FILTER_FILE_CMD make.conf(5) variable specifies a

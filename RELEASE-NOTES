@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.0
+==================================
+* Bug Fixes:
+    - Bug 703698 Improve repos.conf handling of boolean settings
+    - Bug 721516 ecompress complains about compressed files that have
+          been excluded by docompress -x
+    - Bug 729852 Set XTerm titles for konsole
+    - Bug 731114 Drop support for python2.7
+    - Bug 731246 man ebuild(5) has incorrect example of $P and $PN
+    - Bug 732378 Use lru_cache for use_reduce, vercmp, and catpkgsplit
+    - Bug 733154 List of ignored warnings in .desktop files should be
+          updated for compatibility with >=desktop-file-utils-0.25
+
 portage-2.3.103
 ==================================
 * Bug Fixes:
