@@ -199,7 +199,7 @@ class MergeProcess(ForkProcess):
 		"""
 		Extend _proc_join_done to react to RETURNCODE_POSTINST_FAILURE.
 		"""
-		if proc.exitcode == portage.const.RETURNCODE_POSTINST_FAILURE:
+		if not future.cancelled() and proc.exitcode == portage.const.RETURNCODE_POSTINST_FAILURE:
 			self.postinst_failure = True
 			self.returncode = os.EX_OK
 		super(MergeProcess, self)._proc_join_done(proc, future)
