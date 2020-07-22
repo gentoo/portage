@@ -35,7 +35,7 @@ def merge(dict1, dict2):
     return result
 
 
-class LineChecksConfig(object):
+class LineChecksConfig:
 	'''Holds our LineChecks configuration data and operation functions'''
 
 	def __init__(self, repo_settings):

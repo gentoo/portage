@@ -11,7 +11,7 @@ from portage.package.ebuild.digestgen import digestgen
 from portage.util import writemsg_level
 
 
-class Manifest(object):
+class Manifest:
 	'''Creates as well as checks pkg Manifest entries/files'''
 
 	def __init__(self, **kwargs):

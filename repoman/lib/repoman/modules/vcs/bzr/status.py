@@ -7,7 +7,7 @@ from portage import os
 from repoman._subprocess import repoman_popen
 
 
-class Status(object):
+class Status:
 	'''Performs status checks on the svn repository'''
 
 	def __init__(self, qatracker, eadded):

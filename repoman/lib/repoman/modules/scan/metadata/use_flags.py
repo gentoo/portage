@@ -11,7 +11,7 @@ from portage import eapi
 from portage.eapi import eapi_has_iuse_defaults, eapi_has_required_use
 
 
-class USEFlagChecks(object):
+class USEFlagChecks:
 	'''Performs checks on USE flags listed in the ebuilds and metadata.xml'''
 
 	def __init__(self, **kwargs):

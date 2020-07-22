@@ -13,7 +13,7 @@ from portage.output import red, green
 from portage import _unicode_encode, _unicode_decode
 
 
-class Status(object):
+class Status:
 	'''Performs status checks on the svn repository'''
 
 	def __init__(self, qatracker, eadded):

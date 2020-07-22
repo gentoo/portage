@@ -11,7 +11,7 @@ from repoman._portage import portage
 from repoman.config import load_config
 
 
-class QAData(object):
+class QAData:
 
 	def __init__(self):
 		# Create the main exported data variables
