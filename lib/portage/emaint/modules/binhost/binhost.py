@@ -12,7 +12,7 @@ from portage.versions import _pkg_str
 import sys
 
 
-class BinhostHandler(object):
+class BinhostHandler:
 
 	short_desc = "Generate a metadata index for binary packages"
 

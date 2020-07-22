@@ -16,7 +16,7 @@ from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 from portage.util import grabdict_package, stack_lists, writemsg
 from portage.versions import _pkg_str
 
-class KeywordsManager(object):
+class KeywordsManager:
 	"""Manager class to handle keywords processing and validation"""
 
 	def __init__(self, profiles, abs_user_config, user_config=True,

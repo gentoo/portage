@@ -10,7 +10,7 @@ import warnings
 import operator
 
 
-class database(object):
+class database:
 	# this is for metadata/cache transfer.
 	# basically flags the cache needs be updated when transfered cache to cache.
 	# leave this.

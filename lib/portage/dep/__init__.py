@@ -840,12 +840,12 @@ def flatten(mylist):
 			newlist.append(x)
 	return newlist
 
-class _use_dep(object):
+class _use_dep:
 
 	__slots__ = ("_eapi_attrs", "conditional", "missing_enabled", "missing_disabled",
 		"disabled", "enabled", "tokens", "required")
 
-	class _conditionals_class(object):
+	class _conditionals_class:
 		__slots__ = ("enabled", "disabled", "equal", "not_equal")
 
 		def items(self):
@@ -1222,10 +1222,10 @@ class Atom(str):
 	# Distiguishes soname atoms from other atom types
 	soname = False
 
-	class _blocker(object):
+	class _blocker:
 		__slots__ = ("overlap",)
 
-		class _overlap(object):
+		class _overlap:
 			__slots__ = ("forbid",)
 
 			def __init__(self, forbid=False):
@@ -2508,7 +2508,7 @@ def get_required_use_flags(required_use, eapi=None):
 
 	return frozenset(used_flags)
 
-class _RequiredUseLeaf(object):
+class _RequiredUseLeaf:
 
 	__slots__ = ('_satisfied', '_token')
 
@@ -2519,7 +2519,7 @@ class _RequiredUseLeaf(object):
 	def tounicode(self):
 		return self._token
 
-class _RequiredUseBranch(object):
+class _RequiredUseBranch:
 
 	__slots__ = ('_children', '_operator', '_parent', '_satisfied')
 

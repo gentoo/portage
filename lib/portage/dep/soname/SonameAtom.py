@@ -5,7 +5,7 @@ import sys
 
 from portage import _encodings, _unicode_encode
 
-class SonameAtom(object):
+class SonameAtom:
 
 	__slots__ = ("multilib_category", "soname", "_hash_key",
 		"_hash_value")

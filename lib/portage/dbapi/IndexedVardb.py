@@ -6,7 +6,7 @@ from portage.dep import Atom
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
-class IndexedVardb(object):
+class IndexedVardb:
 	"""
 	A vardbapi interface that sacrifices validation in order to
 	improve performance. It takes advantage of vardbdbapi._aux_cache,

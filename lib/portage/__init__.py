@@ -188,7 +188,7 @@ def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
 _native_string = _unicode_decode
 
 
-class _unicode_func_wrapper(object):
+class _unicode_func_wrapper:
 	"""
 	Wraps a function, converts arguments from unicode to bytes,
 	and return values to unicode from bytes. Function calls
@@ -247,7 +247,7 @@ class _unicode_func_wrapper(object):
 
 		return rval
 
-class _unicode_module_wrapper(object):
+class _unicode_module_wrapper:
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
@@ -288,7 +288,7 @@ class _unicode_module_wrapper(object):
 			cache[attr] = result
 		return result
 
-class _eintr_func_wrapper(object):
+class _eintr_func_wrapper:
 	"""
 	Wraps a function and handles EINTR by calling the function as
 	many times as necessary (until it returns without raising EINTR).
@@ -397,7 +397,7 @@ bsd_chflags = None
 
 if platform.system() in ('FreeBSD',):
 	# TODO: remove this class?
-	class bsd_chflags(object):
+	class bsd_chflags:
 		chflags = os.chflags
 		lchflags = os.lchflags
 

@@ -5,7 +5,7 @@ import sys
 
 __all__ = ['ObjectProxy']
 
-class ObjectProxy(object):
+class ObjectProxy:
 
 	"""
 	Object that acts as a proxy to another object, forwarding

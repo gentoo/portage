@@ -16,7 +16,7 @@ from portage.util.futures import asyncio
 from portage.util.cpuinfo import get_cpu_count
 
 
-class ForkExecutor(object):
+class ForkExecutor:
 	"""
 	An implementation of concurrent.futures.Executor that forks a
 	new process for each task, with support for cancellation of tasks.

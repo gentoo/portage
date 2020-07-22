@@ -8,7 +8,7 @@ __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 import sys
 import weakref
 
-class Mapping(object):
+class Mapping:
 	"""
 	In python-3.0, the UserDict.DictMixin class has been replaced by
 	Mapping and MutableMapping from the collections module, but 2to3
@@ -289,7 +289,7 @@ def slot_dict_class(keys, prefix="_val_"):
 	v = _slot_dict_classes.get((keys_set, prefix))
 	if v is None:
 
-		class SlotDict(object):
+		class SlotDict:
 
 			allowed_keys = keys_set
 			_prefix = prefix

@@ -21,7 +21,7 @@ def set_trace(on=True):
 		sys.settrace(None)
 		threading.settrace(None)
 
-class trace_handler(object):
+class trace_handler:
 
 	def __init__(self):
 		python_system_paths = []
@@ -100,7 +100,7 @@ class trace_handler(object):
 				my_locals[k] = "omitted"
 		return my_locals
 
-class prefix_trimmer(object):
+class prefix_trimmer:
 	def __init__(self, prefix):
 		self.prefix = prefix
 		self.cut_index = len(prefix)

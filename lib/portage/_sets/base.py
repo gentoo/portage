@@ -9,7 +9,7 @@ from portage.versions import cpv_getkey
 
 OPERATIONS = ["merge", "unmerge"]
 
-class PackageSet(object):
+class PackageSet:
 	# Set this to operations that are supported by your subclass. While 
 	# technically there is no difference between "merge" and "unmerge" regarding
 	# package sets, the latter doesn't make sense for some sets like "system"

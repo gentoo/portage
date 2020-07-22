@@ -347,7 +347,7 @@ compat_functions_colors = [
 	"brown", "darkyellow", "red", "darkred",
 ]
 
-class create_color_func(object):
+class create_color_func:
 	__slots__ = ("_color_key",)
 	def __init__(self, color_key):
 		self._color_key = color_key
@@ -357,7 +357,7 @@ class create_color_func(object):
 for c in compat_functions_colors:
 	globals()[c] = create_color_func(c)
 
-class ConsoleStyleFile(object):
+class ConsoleStyleFile:
 	"""
 	A file-like object that behaves something like
 	the colorize() function. Style identifiers
@@ -482,7 +482,7 @@ def set_term_size(lines, columns, fd):
 	except CommandNotFound:
 		writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
 
-class EOutput(object):
+class EOutput:
 	"""
 	Performs fancy terminal formatting for status and informational messages.
 
@@ -640,7 +640,7 @@ class EOutput(object):
 			self.__eend("ewend", errno, msg)
 		self.__last_e_cmd = "ewend"
 
-class ProgressBar(object):
+class ProgressBar:
 	"""The interface is copied from the ProgressBar class from the EasyDialogs
 	module (which is Mac only)."""
 	def __init__(self, title=None, maxval=0, label=None, max_desc_length=25):

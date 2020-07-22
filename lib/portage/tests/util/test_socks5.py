@@ -51,7 +51,7 @@ class _Handler(BaseHTTPRequestHandler):
 		pass
 
 
-class AsyncHTTPServer(object):
+class AsyncHTTPServer:
 	def __init__(self, host, content, loop):
 		self._host = host
 		self._content = content

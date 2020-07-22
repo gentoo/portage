@@ -172,7 +172,7 @@ _functions = { "einfo": ("INFO", "GOOD"),
 		"eerror": ("ERROR", "BAD"),
 }
 
-class _make_msgfunction(object):
+class _make_msgfunction:
 	__slots__ = ('_color', '_level')
 	def __init__(self, level, color):
 		self._level = level

@@ -1240,7 +1240,7 @@ class vardbapi(dbapi):
 		self._bump_mtime(pkg.mycpv)
 		pkg._clear_contents_cache()
 
-	class _owners_cache(object):
+	class _owners_cache:
 		"""
 		This class maintains an hash table that serves to index package
 		contents by mapping the basename of file to a list of possible
@@ -1306,7 +1306,7 @@ class vardbapi(dbapi):
 				counter = 0
 			return (str(cpv), counter, mtime)
 
-	class _owners_db(object):
+	class _owners_db:
 
 		def __init__(self, vardb):
 			self._vardb = vardb
@@ -1520,7 +1520,7 @@ class vardbapi(dbapi):
 				for result in search_future.result():
 					yield result
 
-class vartree(object):
+class vartree:
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self, root=None, virtual=DeprecationWarning, categories=None,
 		settings=None):
@@ -1616,7 +1616,7 @@ class vartree(object):
 	def populate(self):
 		self.populated=1
 
-class dblink(object):
+class dblink:
 	"""
 	This class provides an interface to the installed package database
 	At present this is implemented as a text backend in /var/db/pkg.

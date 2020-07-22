@@ -44,7 +44,7 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	return result_future
 
 
-class _Waiter(object):
+class _Waiter:
 	def __init__(self, futures, timeout, return_when, result_future, loop):
 		self._futures = futures
 		self._completed = set()

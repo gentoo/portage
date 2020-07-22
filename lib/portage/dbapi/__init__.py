@@ -24,7 +24,7 @@ from portage.exception import InvalidData
 from portage.localization import _
 from _emerge.Package import Package
 
-class dbapi(object):
+class dbapi:
 	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False

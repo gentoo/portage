@@ -1,7 +1,7 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-class IndexStreamIterator(object):
+class IndexStreamIterator:
 
 	def __init__(self, f, parser):
 

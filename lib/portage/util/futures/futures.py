@@ -28,7 +28,7 @@ _PENDING = 'PENDING'
 _CANCELLED = 'CANCELLED'
 _FINISHED = 'FINISHED'
 
-class _EventLoopFuture(object):
+class _EventLoopFuture:
 	"""
 	This class provides (a subset of) the asyncio.Future interface, for
 	use with the EventLoop class, because EventLoop is currently

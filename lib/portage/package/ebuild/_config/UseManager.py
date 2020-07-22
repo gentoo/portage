@@ -16,7 +16,7 @@ from portage.versions import _pkg_str
 
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
-class UseManager(object):
+class UseManager:
 
 	def __init__(self, repositories, profiles, abs_user_config, is_stable,
 		user_config=True):

@@ -117,7 +117,7 @@ def _lazy_iuse_regex(iuse_implicit):
 	regex = regex.replace("\\.\\*", ".*")
 	return regex
 
-class _iuse_implicit_match_cache(object):
+class _iuse_implicit_match_cache:
 
 	def __init__(self, settings):
 		self._iuse_implicit_re = re.compile("^(%s)$" % \
@@ -135,7 +135,7 @@ class _iuse_implicit_match_cache(object):
 			self._cache[flag] = m
 			return m
 
-class config(object):
+class config:
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
 	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all
@@ -1313,7 +1313,7 @@ class config(object):
 			self.useforce = self._use_manager.getUseForce()
 		self.regenerate()
 
-	class _lazy_vars(object):
+	class _lazy_vars:
 
 		__slots__ = ('built_use', 'settings', 'values')
 
@@ -1346,7 +1346,7 @@ class config(object):
 				restrict = set()
 			return ' '.join(sorted(restrict))
 
-	class _lazy_use_expand(object):
+	class _lazy_use_expand:
 		"""
 		Lazily evaluate USE_EXPAND variables since they are only needed when
 		an ebuild shell is spawned. Variables values are made consistent with

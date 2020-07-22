@@ -41,7 +41,7 @@ def _get_xattr_excluder(pattern):
 
 	return value
 
-class _xattr_excluder(object):
+class _xattr_excluder:
 
 	__slots__ = ('_pattern_split',)
 

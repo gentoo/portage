@@ -690,7 +690,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
 
-	class CacheStats(object):
+	class CacheStats:
 		from time import time
 		def __init__(self, out):
 			self.misses = 0
@@ -799,7 +799,7 @@ def _cmp_cpv(d1, d2):
 	else:
 		return -1
 
-class PackageIndex(object):
+class PackageIndex:
 
 	def __init__(self,
 		allowed_pkg_keys=None,

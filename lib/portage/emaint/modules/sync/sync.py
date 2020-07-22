@@ -33,7 +33,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 warn = create_color_func("WARN")
 
 
-class SyncRepos(object):
+class SyncRepos:
 
 	short_desc = "Check repos.conf settings and/or sync repositories"
 

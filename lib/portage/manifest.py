@@ -80,7 +80,7 @@ def parseManifest2(line):
 			name=match.group(2), hashes=hashes)
 	return myentry
 
-class ManifestEntry(object):
+class ManifestEntry:
 	__slots__ = ("type", "name", "hashes")
 	def __init__(self, **kwargs):
 		for k, v in kwargs.items():
@@ -108,7 +108,7 @@ class Manifest2Entry(ManifestEntry):
 		return not self.__eq__(other)
 
 
-class Manifest(object):
+class Manifest:
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,

@@ -942,7 +942,7 @@ def dump_traceback(msg, noiselevel=1):
 		writemsg(error+"\n", noiselevel=noiselevel)
 	writemsg("====================================\n\n", noiselevel=noiselevel)
 
-class cmp_sort_key(object):
+class cmp_sort_key:
 	"""
 	In python-3.0 the list.sort() method no longer has a "cmp" keyword
 	argument. This class acts as an adapter which converts a cmp function
@@ -966,7 +966,7 @@ class cmp_sort_key(object):
 	def __call__(self, lhs):
 		return self._cmp_key(self._cmp_func, lhs)
 
-	class _cmp_key(object):
+	class _cmp_key:
 		__slots__ = ("_cmp_func", "_obj")
 
 		def __init__(self, cmp_func, obj):
@@ -1525,7 +1525,7 @@ class LazyItemsDict(UserDict):
 			UserDict.__setitem__(result, k_copy, deepcopy(self[k], memo))
 		return result
 
-	class _LazyItem(object):
+	class _LazyItem:
 
 		__slots__ = ('func', 'pargs', 'kwargs', 'singleton')
 
@@ -1560,7 +1560,7 @@ class LazyItemsDict(UserDict):
 			result.singleton = deepcopy(self.singleton, memo)
 			return result
 
-class ConfigProtect(object):
+class ConfigProtect:
 	def __init__(self, myroot, protect_list, mask_list,
 		case_insensitive=False):
 		self.myroot = myroot

@@ -22,7 +22,7 @@ from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
 
 
-class PreservedLibsRegistry(object):
+class PreservedLibsRegistry:
 	""" This class handles the tracking of preserved library objects """
 
 	# JSON read support has been available since portage-2.2.0_alpha89.

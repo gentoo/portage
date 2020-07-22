@@ -3,7 +3,7 @@
 
 import bisect
 
-class MultiIterGroupBy(object):
+class MultiIterGroupBy:
 	"""
 	This class functions similarly to the itertools.groupby function,
 	except that it takes multiple source iterators as input. The source
@@ -78,7 +78,7 @@ class MultiIterGroupBy(object):
 				for k in yield_these:
 					yield key_map.pop(k)
 
-class _IteratorTracker(object):
+class _IteratorTracker:
 
 	__slots__ = ('current', 'iterator')
 

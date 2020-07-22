@@ -7,7 +7,7 @@ from portage import _encodings, _unicode_encode
 from portage.exception import InvalidData
 from portage.localization import _
 
-class NeededEntry(object):
+class NeededEntry:
 	"""
 	Represents one entry (line) from a NEEDED.ELF.2 file. The entry
 	must have 5 or more semicolon-delimited fields in order to be

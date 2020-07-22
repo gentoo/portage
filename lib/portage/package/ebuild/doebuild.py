@@ -1416,7 +1416,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			mydbapi.aux_get(mysettings.mycpv, all_keys,
 			myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
-	class FakeTree(object):
+	class FakeTree:
 		def __init__(self, mydb):
 			self.dbapi = mydb
 

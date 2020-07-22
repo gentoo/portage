@@ -123,7 +123,7 @@ class CompatCoroutineTestCase(TestCase):
 
 	def test_method_coroutine(self):
 
-		class Cubby(object):
+		class Cubby:
 
 			_empty = object()
 

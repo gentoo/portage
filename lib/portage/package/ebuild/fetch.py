@@ -346,7 +346,7 @@ _size_suffix_map = {
 }
 
 
-class FlatLayout(object):
+class FlatLayout:
 	def get_path(self, filename):
 		return filename
 
@@ -366,7 +366,7 @@ class FlatLayout(object):
 		return len(args) == 1
 
 
-class FilenameHashLayout(object):
+class FilenameHashLayout:
 	def __init__(self, algo, cutoffs):
 		self.algo = algo
 		self.cutoffs = [int(x) for x in cutoffs.split(':')]
@@ -415,7 +415,7 @@ class FilenameHashLayout(object):
 		return False
 
 
-class MirrorLayoutConfig(object):
+class MirrorLayoutConfig:
 	"""
 	Class to read layout.conf from a mirror.
 	"""
