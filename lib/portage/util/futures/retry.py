@@ -73,7 +73,7 @@ def _retry(loop, try_max, try_timeout, overall_timeout, delay_func,
 	return future
 
 
-class _Retry(object):
+class _Retry:
 	def __init__(self, future, loop, try_max, try_timeout, overall_timeout,
 		delay_func, reraise, func):
 		self._future = future

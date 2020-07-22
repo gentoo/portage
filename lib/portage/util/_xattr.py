@@ -20,7 +20,7 @@ import subprocess
 from portage.exception import OperationNotSupported
 
 
-class _XattrGetAll(object):
+class _XattrGetAll:
 	"""Implement get_all() using list()/get() if there is no easy bulk method"""
 
 	@classmethod

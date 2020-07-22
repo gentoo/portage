@@ -327,7 +327,7 @@ class bindbapi(fakedbapi):
 		return filesdict
 
 
-class binarytree(object):
+class binarytree:
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self, _unused=DeprecationWarning, pkgdir=None,
 		virtual=DeprecationWarning, settings=None):

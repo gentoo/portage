@@ -16,7 +16,7 @@ from portage import checksum
 from portage import _shell_quote
 
 
-class hashed_path(object):
+class hashed_path:
 
 	def __init__(self, location):
 		self.location = location
@@ -51,7 +51,7 @@ class hashed_path(object):
 	def __repr__(self):
 		return "<portage.eclass_cache.hashed_path('%s')>" % (self.location,)
 
-class cache(object):
+class cache:
 	"""
 	Maintains the cache information about eclasses used in ebuild.
 	"""

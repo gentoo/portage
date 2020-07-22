@@ -15,7 +15,7 @@ from portage.util import (
 )
 
 
-class SonameDepsProcessor(object):
+class SonameDepsProcessor:
 	"""
 	Processes NEEDED.ELF.2 entries for one package, in order to generate
 	REQUIRES and PROVIDES metadata.

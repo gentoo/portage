@@ -274,7 +274,7 @@ def xpand(myid, mydest):
 		mydat.close()
 		startpos = startpos + namelen + 12
 
-class tbz2(object):
+class tbz2:
 	def __init__(self, myfile):
 		self.file = myfile
 		self.filestat = None

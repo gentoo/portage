@@ -32,7 +32,7 @@ from portage.output import colorize
 from portage.exception import (InvalidLocation, OperationNotPermitted,
 	PermissionDenied, ReadOnlyFileSystem)
 
-class NewsManager(object):
+class NewsManager:
 	"""
 	This object manages GLEP 42 style news items.  It will cache news items
 	that have previously shown up and notify users when there are relevant news
@@ -200,7 +200,7 @@ _profileRE = re.compile("Display-If-Profile:(.*)\n")
 _keywordRE = re.compile("Display-If-Keyword:(.*)\n")
 _valid_profile_RE = re.compile(r'^[^*]+(/\*)?$')
 
-class NewsItem(object):
+class NewsItem:
 	"""
 	This class encapsulates a GLEP 42 style news item.
 	It's purpose is to wrap parsing of these news items such that portage can determine
@@ -313,7 +313,7 @@ class NewsItem(object):
 
 		self._parsed = True
 
-class DisplayRestriction(object):
+class DisplayRestriction:
 	"""
 	A base restriction object representing a restriction of display.
 	news items may have 'relevancy restrictions' preventing them from

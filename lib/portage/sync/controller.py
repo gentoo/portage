@@ -29,7 +29,7 @@ from portage import util
 from _emerge.CompositeTask import CompositeTask
 
 
-class TaskHandler(object):
+class TaskHandler:
 	"""Handles the running of the tasks it is given
 	"""
 
@@ -82,7 +82,7 @@ def print_results(results):
 		print("\n")
 
 
-class SyncManager(object):
+class SyncManager:
 	'''Main sync control module'''
 
 	def __init__(self, settings, logger):

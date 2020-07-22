@@ -23,7 +23,7 @@ class SucceedLaterException(Exception):
 	pass
 
 
-class SucceedLater(object):
+class SucceedLater:
 	"""
 	A callable object that succeeds some duration of time has passed.
 	"""
@@ -48,7 +48,7 @@ class SucceedNeverException(Exception):
 	pass
 
 
-class SucceedNever(object):
+class SucceedNever:
 	"""
 	A callable object that never succeeds.
 	"""
@@ -60,7 +60,7 @@ class SucceedNever(object):
 		return result
 
 
-class HangForever(object):
+class HangForever:
 	"""
 	A callable object that sleeps forever.
 	"""

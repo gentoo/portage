@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-class TrackingFile(object):
+class TrackingFile:
 	"""File for keeping track of failed merges."""
 
 
@@ -80,7 +80,7 @@ class TrackingFile(object):
 		return self.load().items().__iter__()
 
 
-class MergesHandler(object):
+class MergesHandler:
 	"""Handle failed package merges."""
 
 	short_desc = "Remove failed merges"

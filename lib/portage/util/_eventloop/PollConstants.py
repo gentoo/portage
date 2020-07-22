@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import select
-class PollConstants(object):
+class PollConstants:
 
 	"""
 	Provides POLL* constants that are equivalent to those from the

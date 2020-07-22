@@ -6,7 +6,7 @@ from __future__ import division
 from .PollConstants import PollConstants
 import select
 
-class PollSelectAdapter(object):
+class PollSelectAdapter:
 
 	"""
 	Use select to emulate a poll object, for

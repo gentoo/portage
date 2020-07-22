@@ -14,7 +14,7 @@ ERROR_MESSAGES = {
 }
 
 
-class CleanLogs(object):
+class CleanLogs:
 
 	short_desc = "Clean PORTAGE_LOGDIR logs"
 

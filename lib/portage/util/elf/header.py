@@ -6,7 +6,7 @@ from portage.util.endian.decode import (decode_uint16_le,
 from portage.util.elf.constants import (E_ENTRY, E_MACHINE, E_TYPE,
 	EI_CLASS, ELFCLASS32, ELFCLASS64, ELFDATA2LSB, ELFDATA2MSB)
 
-class ELFHeader(object):
+class ELFHeader:
 
 	__slots__ = ('e_flags', 'e_machine', 'e_type', 'ei_class',
 		'ei_data')

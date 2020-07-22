@@ -4,7 +4,7 @@
 from portage.tests import TestCase
 from portage.dep import isvalidatom
 
-class IsValidAtomTestCase(object):
+class IsValidAtomTestCase:
 	def __init__(self, atom, expected, allow_wildcard=False,
 		allow_repo=False, allow_build_id=False):
 		self.atom = atom

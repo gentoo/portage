@@ -12,7 +12,7 @@ from portage.util.futures._asyncio.streams import _reader, _writer
 from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 
 
-class _Process(object):
+class _Process:
 	"""
 	Emulate a subset of the asyncio.subprocess.Process interface,
 	for python2.

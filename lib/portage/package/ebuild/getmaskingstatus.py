@@ -13,7 +13,7 @@ from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, _pkg_str
 
 
-class _UnmaskHint(object):
+class _UnmaskHint:
 
 	__slots__ = ('key', 'value')
 
@@ -21,7 +21,7 @@ class _UnmaskHint(object):
 		self.key = key
 		self.value = value
 
-class _MaskReason(object):
+class _MaskReason:
 
 	__slots__ = ('category', 'message', 'unmask_hint')
 

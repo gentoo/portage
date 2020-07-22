@@ -13,7 +13,7 @@ from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
 
-class Config(object):
+class Config:
 	def __init__(self, options, portdb, event_loop):
 		self.options = options
 		self.portdb = portdb
@@ -96,7 +96,7 @@ class Config(object):
 
 		return self._LogFormatter(line_format, log_func)
 
-	class _LogFormatter(object):
+	class _LogFormatter:
 
 		__slots__ = ('_line_format', '_log_func')
 

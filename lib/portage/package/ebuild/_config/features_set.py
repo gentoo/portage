@@ -12,7 +12,7 @@ from portage.localization import _
 from portage.output import colorize
 from portage.util import writemsg_level
 
-class features_set(object):
+class features_set:
 	"""
 	Provides relevant set operations needed for access and modification of
 	config.features. The FEATURES variable is automatically synchronized

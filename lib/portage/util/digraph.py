@@ -9,7 +9,7 @@ import sys
 
 from portage.util import writemsg
 
-class digraph(object):
+class digraph:
 	"""
 	A directed graph object.
 	"""

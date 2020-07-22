@@ -15,7 +15,7 @@ from portage.versions import cpv_getkey, _pkg_str
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
 
 
-class LicenseManager(object):
+class LicenseManager:
 
 	def __init__(self, license_group_locations, abs_user_config, user_config=True):
 

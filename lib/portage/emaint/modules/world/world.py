@@ -5,7 +5,7 @@ import portage
 from portage import os
 
 
-class WorldHandler(object):
+class WorldHandler:
 
 	short_desc = "Fix problems in the world file"
 

@@ -39,7 +39,7 @@ def get_boolean(options, name, default):
 class SetConfigError(Exception):
 	pass
 
-class SetConfig(object):
+class SetConfig:
 	def __init__(self, paths, settings, trees):
 		self._parser = SafeConfigParser(
 			defaults={

@@ -84,7 +84,7 @@ def _get_lock_fn():
 _open_fds = {}
 _open_inodes = {}
 
-class _lock_manager(object):
+class _lock_manager:
 	__slots__ = ('fd', 'inode_key')
 	def __init__(self, fd, fstat_result, path):
 		self.fd = fd

@@ -1,7 +1,7 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-class ContentsCaseSensitivityManager(object):
+class ContentsCaseSensitivityManager:
 	"""
 	Implicitly handles case transformations that are needed for
 	case-insensitive support.

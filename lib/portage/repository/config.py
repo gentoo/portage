@@ -66,7 +66,7 @@ def _find_invalid_path_char(path, pos=0, endpos=None):
 
 	return -1
 
-class RepoConfig(object):
+class RepoConfig:
 	"""Stores config of one repository"""
 
 	__slots__ = (
@@ -531,7 +531,7 @@ class RepoConfig(object):
 		return "%s" % (d,)
 
 
-class RepoConfigLoader(object):
+class RepoConfigLoader:
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 
 	@staticmethod

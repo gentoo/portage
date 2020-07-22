@@ -30,7 +30,7 @@ def _reader(input_file, loop=None):
 	return future
 
 
-class _Reader(object):
+class _Reader:
 	def __init__(self, future, input_file, loop):
 		self._future = future
 		self._pipe_reader = PipeReader(

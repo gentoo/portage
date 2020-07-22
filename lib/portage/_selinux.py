@@ -105,7 +105,7 @@ def setfscreate(ctx="\n"):
 		raise OSError(
 			_("setfscreate: Failed setting fs create context \"%s\".") % ctx)
 
-class spawn_wrapper(object):
+class spawn_wrapper:
 	"""
 	Create a wrapper function for the given spawn function. When the wrapper
 	is called, it will adjust the arguments such that setexec() to be called

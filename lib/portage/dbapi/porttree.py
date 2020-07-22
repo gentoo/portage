@@ -98,7 +98,7 @@ class _dummy_list(list):
 			pass
 
 
-class _better_cache(object):
+class _better_cache:
 
 	"""
 	The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
@@ -1311,7 +1311,7 @@ class portdbapi(dbapi):
 
 		return True
 
-class portagetree(object):
+class portagetree:
 	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,
 		settings=None):
 		"""

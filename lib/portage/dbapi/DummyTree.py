@@ -1,7 +1,7 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-class DummyTree(object):
+class DummyTree:
 	"""
 	Most internal code only accesses the "dbapi" attribute of the
 	binarytree, portagetree, and vartree classes. DummyTree is useful

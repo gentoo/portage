@@ -7,7 +7,7 @@ import stat
 from portage import os
 from .DeletionTask import DeletionTask
 
-class DeletionIterator(object):
+class DeletionIterator:
 
 	def __init__(self, config):
 		self._config = config

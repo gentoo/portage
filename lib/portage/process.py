@@ -737,7 +737,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	os.execve(binary, myargs, env)
 
 
-class _unshare_validator(object):
+class _unshare_validator:
 	"""
 	In order to prevent failed unshare calls from corrupting the state
 	of an essential process, validate the relevant unshare call in a

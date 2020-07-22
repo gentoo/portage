@@ -52,7 +52,7 @@ def _open_file(filename):
 		else:
 			raise
 
-class _generate_hash_function(object):
+class _generate_hash_function:
 
 	__slots__ = ("_hashobject",)
 
@@ -159,7 +159,7 @@ if False:
 		import binascii
 		import pygcrypt.hashcontext
 
-		class GCryptHashWrapper(object):
+		class GCryptHashWrapper:
 			def __init__(self, algo):
 				self._obj = pygcrypt.hashcontext.HashContext(algo=algo,
 						secure=False)
@@ -287,7 +287,7 @@ if "WHIRLPOOL" not in hashfunc_map:
 
 
 # There is only one implementation for size
-class SizeHash(object):
+class SizeHash:
 	def checksum_file(self, filename):
 		size = os.stat(filename).st_size
 		return (size, size)
@@ -361,7 +361,7 @@ def _filter_unaccelarated_hashes(digests):
 
 	return digests
 
-class _hash_filter(object):
+class _hash_filter:
 	"""
 	Implements filtering for PORTAGE_CHECKSUM_FILTER.
 	"""

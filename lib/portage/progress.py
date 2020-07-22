@@ -7,7 +7,7 @@ import signal
 import portage
 
 
-class ProgressHandler(object):
+class ProgressHandler:
 	def __init__(self):
 		self.reset()
 

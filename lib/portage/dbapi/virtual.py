@@ -213,7 +213,7 @@ class fakedbapi(dbapi):
 			raise KeyError(cpv)
 		metadata.update(values)
 
-class testdbapi(object):
+class testdbapi:
 	"""A dbapi instance with completely fake functions to get by hitting disk
 	TODO(antarus): 
 	This class really needs to be rewritten to have better stubs; but these work for now.

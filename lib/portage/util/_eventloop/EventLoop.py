@@ -39,7 +39,7 @@ from ..SlotObject import SlotObject
 from .PollConstants import PollConstants
 from .PollSelectAdapter import PollSelectAdapter
 
-class EventLoop(object):
+class EventLoop:
 	"""
 	An event loop, intended to be compatible with the GLib event loop.
 	Call the iteration method in order to execute one iteration of the
@@ -66,7 +66,7 @@ class EventLoop(object):
 		__slots__ = ("args", "function", "calling", "interval", "source_id",
 			"timestamp")
 
-	class _handle(object):
+	class _handle:
 		"""
 		A callback wrapper object, compatible with asyncio.Handle.
 		"""
@@ -83,7 +83,7 @@ class EventLoop(object):
 			"""
 			self._loop.source_remove(self._callback_id)
 
-	class _call_soon_callback(object):
+	class _call_soon_callback:
 		"""
 		Wraps a call_soon callback, and always returns False, since these
 		callbacks are only supposed to run once.
@@ -98,7 +98,7 @@ class EventLoop(object):
 			self._callback(*self._args)
 			return False
 
-	class _selector_callback(object):
+	class _selector_callback:
 		"""
 		Wraps an callback, and always returns True, for callbacks that
 		are supposed to run repeatedly.
@@ -1121,7 +1121,7 @@ def create_poll_instance():
 		return select.poll()
 	return PollSelectAdapter()
 
-class _epoll_adapter(object):
+class _epoll_adapter:
 	"""
 	Wraps a select.epoll instance in order to make it compatible
 	with select.poll instances. This is necessary since epoll instances

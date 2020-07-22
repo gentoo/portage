@@ -32,7 +32,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	auxdbkeys = portdb._known_keys
 
-	class TreeData(object):
+	class TreeData:
 		__slots__ = ('dest_db', 'eclass_db', 'path', 'src_db', 'valid_nodes')
 		def __init__(self, dest_db, eclass_db, path, src_db):
 			self.dest_db = dest_db
