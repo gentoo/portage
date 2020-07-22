@@ -120,7 +120,7 @@ class Scheduler(PollScheduler):
 		__slots__ = ("build_dir", "build_log", "pkg",
 			"postinst_failure", "returncode")
 
-	class _ConfigPool(object):
+	class _ConfigPool:
 		"""Interface for a task to temporarily allocate a config
 		instance from a pool. This allows a task to be constructed
 		long before the config instance actually becomes needed, like

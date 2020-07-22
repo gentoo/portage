@@ -18,7 +18,7 @@ from portage.versions import _pkg_str
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
 
 
-class FakeVardbGetPath(object):
+class FakeVardbGetPath:
 	"""
 	Implements the vardbapi.getpath() method which is used in error handling
 	code for the Package class and vartree.get_provide().

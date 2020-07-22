@@ -28,7 +28,7 @@ from _emerge.Blocker import Blocker
 from _emerge.Package import Package
 
 
-class _RepoDisplay(object):
+class _RepoDisplay:
 	def __init__(self, roots):
 		self._shown_repos = {}
 		self._unknown_repo = False
@@ -77,7 +77,7 @@ class _RepoDisplay(object):
 		return "".join(output)
 
 
-class _PackageCounters(object):
+class _PackageCounters:
 
 	def __init__(self):
 		self.upgrades   = 0
@@ -155,7 +155,7 @@ class _PackageCounters(object):
 		return "".join(myoutput)
 
 
-class _DisplayConfig(object):
+class _DisplayConfig:
 
 	def __init__(self, depgraph, mylist, favorites, verbosity):
 		frozen_config = depgraph._frozen_config
@@ -585,7 +585,7 @@ def _find_changelog_tags(changelog):
 		_strip_header_comments(changelog[release_end:].splitlines())))
 	return divs
 
-class PkgInfo(object):
+class PkgInfo:
 	"""Simple class to hold instance attributes for current
 	information about the pkg being printed.
 	"""

@@ -99,7 +99,7 @@ def insert_optional_args(args):
 	this feature natively.
 	"""
 
-	class valid_integers(object):
+	class valid_integers:
 		def __contains__(self, s):
 			try:
 				return int(s) >= 0
@@ -108,7 +108,7 @@ def insert_optional_args(args):
 
 	valid_integers = valid_integers()
 
-	class valid_floats(object):
+	class valid_floats:
 		def __contains__(self, s):
 			try:
 				return float(s) >= 0

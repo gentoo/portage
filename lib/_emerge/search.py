@@ -15,7 +15,7 @@ from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
 from _emerge.Package import Package
 
-class search(object):
+class search:
 
 	#
 	# class constants
@@ -356,7 +356,7 @@ class search(object):
 	def output(self):
 		"""Outputs the results of the search."""
 
-		class msg(object):
+		class msg:
 			@staticmethod
 			def append(msg):
 				writemsg_stdout(msg, noiselevel=-1)

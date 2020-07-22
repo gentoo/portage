@@ -21,7 +21,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 	# it's wasteful to update it for every vdb change.
 	_cache_threshold = 5
 
-	class BlockerData(object):
+	class BlockerData:
 
 		__slots__ = ("__weakref__", "atoms", "counter")
 

@@ -5,7 +5,7 @@ import sys
 
 from portage import _encodings, _unicode_encode
 
-class DependencyArg(object):
+class DependencyArg:
 
 	__slots__ = ('arg', 'force_reinstall', 'internal', 'reset_depth', 'root_config')
 

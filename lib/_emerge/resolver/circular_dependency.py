@@ -13,7 +13,7 @@ from portage.util import writemsg_level
 from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.Package import Package
 
-class circular_dependency_handler(object):
+class circular_dependency_handler:
 
 	MAX_AFFECTING_USE = 10
 
