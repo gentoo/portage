@@ -32,7 +32,7 @@ from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
 	_PackageCounters, _create_use_string, _calc_changelog, PkgInfo)
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
-class Display(object):
+class Display:
 	"""Formats and outputs the depgrah supplied it for merge/re-merge, etc.
 
 	__call__()

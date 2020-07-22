@@ -1557,7 +1557,7 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
-class _info_pkgs_ver(object):
+class _info_pkgs_ver:
 	def __init__(self, ver, repo_suffix, provide_suffix):
 		self.ver = ver
 		self.repo_suffix = repo_suffix

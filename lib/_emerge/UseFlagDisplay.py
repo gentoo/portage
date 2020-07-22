@@ -10,7 +10,7 @@ from portage.output import red
 from portage.util import cmp_sort_key
 from portage.output import blue
 
-class UseFlagDisplay(object):
+class UseFlagDisplay:
 
 	__slots__ = ('name', 'enabled', 'forced')
 

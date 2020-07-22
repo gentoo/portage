@@ -5,7 +5,7 @@ import bisect
 import collections
 import sys
 
-class DbapiProvidesIndex(object):
+class DbapiProvidesIndex:
 	"""
 	The DbapiProvidesIndex class is used to wrap existing dbapi
 	interfaces, index packages by the sonames that they provide, and

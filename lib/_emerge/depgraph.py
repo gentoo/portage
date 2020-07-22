@@ -96,7 +96,7 @@ _dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface'
 	'want_update_pkg',
 ))
 
-class _scheduler_graph_config(object):
+class _scheduler_graph_config:
 	def __init__(self, trees, pkg_cache, graph, mergelist):
 		self.trees = trees
 		self.pkg_cache = pkg_cache
@@ -113,7 +113,7 @@ def _wildcard_set(atoms):
 		pkgs.add(x)
 	return pkgs
 
-class _frozen_depgraph_config(object):
+class _frozen_depgraph_config:
 
 	def __init__(self, settings, trees, myopts, params, spinner):
 		self.settings = settings
@@ -187,7 +187,7 @@ class _frozen_depgraph_config(object):
 		self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
 		self.rebuild_if_unbuilt = "--rebuild-if-unbuilt" in myopts
 
-class _depgraph_sets(object):
+class _depgraph_sets:
 	def __init__(self):
 		# contains all sets added to the graph
 		self.sets = {}
@@ -198,7 +198,7 @@ class _depgraph_sets(object):
 		self.atoms = InternalPackageSet(allow_repo=True)
 		self.atom_arg_map = {}
 
-class _rebuild_config(object):
+class _rebuild_config:
 	def __init__(self, frozen_config, backtrack_parameters):
 		self._graph = digraph()
 		self._frozen_config = frozen_config
@@ -367,7 +367,7 @@ class _use_changes(tuple):
 		return obj
 
 
-class _dynamic_depgraph_config(object):
+class _dynamic_depgraph_config:
 
 	"""
 	``dynamic_depgraph_config`` is an object that is used to collect settings and important data structures that are
@@ -591,7 +591,7 @@ class _dynamic_depgraph_config(object):
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
 
-class depgraph(object):
+class depgraph:
 
 	# Represents the depth of a node that is unreachable from explicit
 	# user arguments (or their deep dependencies). Such nodes are pulled
@@ -703,7 +703,7 @@ class depgraph(object):
 					self._dynamic_deps_proc_exit(pkg, fake_vartree))
 				yield proc
 
-	class _dynamic_deps_proc_exit(object):
+	class _dynamic_deps_proc_exit:
 
 		__slots__ = ('_pkg', '_fake_vartree')
 
@@ -5934,7 +5934,7 @@ class depgraph(object):
 
 		return build_time == inst_pkg.build_time
 
-	class _AutounmaskLevel(object):
+	class _AutounmaskLevel:
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
 			"allow_missing_keywords", "allow_unmasks")
 

@@ -528,7 +528,7 @@ class Package(Task):
 		s += ")"
 		return s
 
-	class _use_class(object):
+	class _use_class:
 
 		__slots__ = ("enabled", "_expand", "_expand_hidden",
 			"_force", "_pkg", "_mask")
@@ -653,7 +653,7 @@ class Package(Task):
 
 		return use_str
 
-	class _iuse(object):
+	class _iuse:
 
 		__slots__ = ("__weakref__", "_iuse_implicit_match", "_pkg", "alias_mapping",
 			"all", "all_aliases", "enabled", "disabled", "tokens")

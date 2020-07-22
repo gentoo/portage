@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import time
-class ProgressHandler(object):
+class ProgressHandler:
 	def __init__(self):
 		self.curval = 0
 		self.maxval = 0

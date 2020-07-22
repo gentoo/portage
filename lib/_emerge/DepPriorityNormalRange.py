@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.DepPriority import DepPriority
-class DepPriorityNormalRange(object):
+class DepPriorityNormalRange:
 	"""
 	DepPriority properties              Index      Category
 

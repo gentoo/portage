@@ -7,7 +7,7 @@ import time
 
 from portage.output import darkgreen, green
 
-class stdout_spinner(object):
+class stdout_spinner:
 	scroll_msgs = [
 		"Gentoo Rocks ("+platform.system()+")",
 		"Thank you for using Gentoo. :)",

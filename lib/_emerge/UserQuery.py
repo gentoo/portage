@@ -10,7 +10,7 @@ from portage import _unicode_decode
 from portage.output import bold, create_color_func
 
 
-class UserQuery(object):
+class UserQuery:
 	"""The UserQuery class is used to prompt the user with a set of responses,
 	as well as accepting and handling the responses."""
 

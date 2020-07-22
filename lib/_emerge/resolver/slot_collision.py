@@ -17,7 +17,7 @@ from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
 
 
-class slot_conflict_handler(object):
+class slot_conflict_handler:
 	"""This class keeps track of all slot conflicts and provides
 	an interface to get possible solutions.
 
@@ -1069,7 +1069,7 @@ class slot_conflict_handler(object):
 		else:
 			return None
 
-class _configuration_generator(object):
+class _configuration_generator:
 	def __init__(self, conflict_pkgs):
 		#reorder packages such that installed packages come last
 		self.conflict_pkgs = []
@@ -1118,8 +1118,8 @@ class _configuration_generator(object):
 				solution_ids[other_id] = 0
 			return True
 
-class _solution_candidate_generator(object):
-	class _value_helper(object):
+class _solution_candidate_generator:
+	class _value_helper:
 		def __init__(self, value=None):
 			self.value = value
 		def __eq__(self, other):

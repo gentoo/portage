@@ -14,7 +14,7 @@ from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
 
-class JobStatusDisplay(object):
+class JobStatusDisplay:
 
 	_bound_properties = ("curval", "failed", "running")
 
