@@ -13,7 +13,7 @@ from portage import _unicode_encode
 from portage.process import spawn
 
 
-class ChangesBase(object):
+class ChangesBase:
 	'''Base Class object to scan and hold the resultant data
 	for all changes to process.
 	'''

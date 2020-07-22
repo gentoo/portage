@@ -41,7 +41,7 @@ from repoman import VERSION
 bad = create_color_func("BAD")
 
 
-class Actions(object):
+class Actions:
 	'''Handles post check result output and performs
 	the various vcs activities for committing the results'''
 

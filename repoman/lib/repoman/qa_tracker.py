@@ -3,7 +3,7 @@ import logging
 import sys
 
 
-class QATracker(object):
+class QATracker:
 	'''Track all occurrances of Q/A problems detected'''
 
 	def __init__(self, qacats=None, qawarnings=None):

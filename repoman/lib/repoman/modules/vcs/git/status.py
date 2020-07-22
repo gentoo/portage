@@ -9,7 +9,7 @@ from portage import os
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 
 
-class Status(object):
+class Status:
 	'''Performs status checks on the git repository'''
 
 	def __init__(self, qatracker, eadded):

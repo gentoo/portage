@@ -20,7 +20,7 @@ _copyright_re2 = \
 	re.compile(br'^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b')
 
 
-class _copyright_repl(object):
+class _copyright_repl:
 	__slots__ = ('year',)
 
 	def __init__(self, year):

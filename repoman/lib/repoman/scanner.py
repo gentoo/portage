@@ -24,7 +24,7 @@ from repoman.modules.vcs.vcs import vcs_files_to_cps
 DATA_TYPES = {'dict': dict, 'Future': ExtendedFuture, 'list': list, 'set': set}
 
 
-class Scanner(object):
+class Scanner:
 	'''Primary scan class.  Operates all the small Q/A tests and checks'''
 
 	def __init__(self, repo_settings, myreporoot, config_root, options,

@@ -22,7 +22,7 @@ GPG_KEY_ID_REGEX = r'(0x)?([0-9a-fA-F]{8}){1,5}!?'
 bad = portage.output.create_color_func("BAD")
 
 
-class RepoSettings(object):
+class RepoSettings:
 	'''Holds our repo specific settings'''
 
 	def __init__(
