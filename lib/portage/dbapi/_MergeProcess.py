@@ -195,15 +195,14 @@ class MergeProcess(ForkProcess):
 						prev_mtimes=self.prev_mtimes, counter=counter)
 			return rval
 
-	def _async_waitpid_cb(self, *args, **kwargs):
+	def _proc_join_done(self, proc, future):
 		"""
-		Override _async_waitpid_cb to perform cleanup that is
-		not necessarily idempotent.
+		Extend _proc_join_done to react to RETURNCODE_POSTINST_FAILURE.
 		"""
-		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
-		if self.returncode == portage.const.RETURNCODE_POSTINST_FAILURE:
+		if proc.exitcode == portage.const.RETURNCODE_POSTINST_FAILURE:
 			self.postinst_failure = True
 			self.returncode = os.EX_OK
+		super(MergeProcess, self)._proc_join_done(proc, future)
 
 	def _unregister(self):
 		"""
