@@ -9,7 +9,6 @@ __all__ = [
 ]
 
 import re
-import sys
 import warnings
 from functools import lru_cache
 

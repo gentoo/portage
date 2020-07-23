@@ -7,9 +7,7 @@ import collections
 import errno
 import logging
 import random
-import stat
 import subprocess
-import sys
 
 import portage
 from portage import _encodings, _unicode_encode

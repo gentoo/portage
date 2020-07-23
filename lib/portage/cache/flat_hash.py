@@ -7,7 +7,6 @@ from portage.cache import cache_errors
 import errno
 import io
 import stat
-import sys
 import tempfile
 import os as _os
 from portage import os

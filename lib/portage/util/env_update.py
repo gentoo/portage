@@ -7,7 +7,6 @@ import errno
 import glob
 import io
 import stat
-import sys
 import time
 
 import portage

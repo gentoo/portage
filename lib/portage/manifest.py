@@ -6,7 +6,6 @@ import io
 import logging
 import re
 import stat
-import sys
 import warnings
 
 import portage

@@ -3,7 +3,6 @@
 
 import collections
 from itertools import chain
-import sys
 
 from portage import _encodings, _unicode_encode
 from portage.output import red

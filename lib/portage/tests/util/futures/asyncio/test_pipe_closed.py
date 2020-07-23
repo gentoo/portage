@@ -6,7 +6,6 @@ import os
 import pty
 import shutil
 import socket
-import sys
 import tempfile
 
 from portage.tests import TestCase

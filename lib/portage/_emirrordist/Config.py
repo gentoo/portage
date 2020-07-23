@@ -5,7 +5,6 @@ import copy
 import io
 import logging
 import shelve
-import sys
 import time
 
 import portage

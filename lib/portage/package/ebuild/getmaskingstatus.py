@@ -3,7 +3,6 @@
 
 __all__ = ['getmaskingstatus']
 
-import sys
 
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated

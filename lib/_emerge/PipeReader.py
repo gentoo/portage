@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import sys
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask

@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
-import sys
 
 from portage.versions import _pkg_str
 

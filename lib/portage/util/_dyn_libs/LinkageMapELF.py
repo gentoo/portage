@@ -6,7 +6,6 @@ import errno
 import itertools
 import logging
 import subprocess
-import sys
 
 import portage
 from portage import _encodings

@@ -8,7 +8,6 @@ try:
 except ImportError:
 	import dummy_threading as threading
 
-import sys
 import time
 
 from portage.tests import TestCase

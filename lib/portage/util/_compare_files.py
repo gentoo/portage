@@ -6,7 +6,6 @@ __all__ = ["compare_files"]
 import io
 import os
 import stat
-import sys
 
 from portage import _encodings
 from portage import _unicode_encode

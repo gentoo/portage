@@ -10,7 +10,6 @@ import logging
 import os
 import select
 import signal
-import sys
 import time
 import traceback
 

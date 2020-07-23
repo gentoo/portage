@@ -2,7 +2,10 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, pwd, grp, platform, sys
+import grp
+import os
+import platform
+import pwd
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

@@ -3,7 +3,6 @@
 
 import errno
 import logging
-import sys
 import time
 
 try:

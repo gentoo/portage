@@ -5,7 +5,6 @@
 __all__ = ["cache"]
 
 import stat
-import sys
 import operator
 import warnings
 from portage.util import normalize_path

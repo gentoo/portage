@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import sys
 
 from portage import _encodings, _unicode_encode
 from _emerge.AtomArg import AtomArg

@@ -8,12 +8,8 @@ import errno
 import logging
 import operator
 import platform
-import pwd
-import random
 import re
 import signal
-import socket
-import stat
 import subprocess
 import sys
 import tempfile

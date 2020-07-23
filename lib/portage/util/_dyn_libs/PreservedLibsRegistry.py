@@ -6,7 +6,6 @@ import json
 import logging
 import pickle
 import stat
-import sys
 
 from portage import abssymlink
 from portage import os

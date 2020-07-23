@@ -4,7 +4,6 @@
 import fcntl
 import errno
 import gzip
-import sys
 
 import portage
 from portage import os, _encodings, _unicode_encode

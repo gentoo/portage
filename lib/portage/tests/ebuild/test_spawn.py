@@ -3,7 +3,6 @@
 
 import errno
 import io
-import sys
 import tempfile
 import portage
 from portage import os
