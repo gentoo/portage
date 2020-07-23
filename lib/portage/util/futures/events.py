@@ -184,4 +184,3 @@ class AbstractEventLoop(_AbstractEventLoop):
 
 	def set_debug(self, enabled):
 		raise NotImplementedError
-

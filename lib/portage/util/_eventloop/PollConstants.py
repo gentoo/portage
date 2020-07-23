@@ -15,4 +15,3 @@ class PollConstants:
 		locals()[k] = getattr(select, k, v)
 		v *= 2
 	del k, v
-

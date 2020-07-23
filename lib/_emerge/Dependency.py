@@ -18,4 +18,3 @@ class Dependency(SlotObject):
 			self.collapsed_parent = self.parent
 		if self.collapsed_priority is None:
 			self.collapsed_priority = self.priority
-

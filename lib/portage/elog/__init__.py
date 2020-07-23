@@ -185,4 +185,3 @@ def elog_process(cpv, mysettings, phasefilter=None):
 					noiselevel=-1)
 			except PortageException as e:
 				writemsg("%s\n" % str(e), noiselevel=-1)
-

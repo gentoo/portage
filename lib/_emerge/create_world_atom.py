@@ -121,4 +121,3 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
 				providers[0].cp == arg_atom.cp:
 				return None
 	return new_world_atom
-

@@ -396,4 +396,3 @@ class SyncRepo(CompositeTask):
 		self.returncode = sync_task.returncode
 		self.sync_callback(self.sync_task)
 		self._async_wait()
-

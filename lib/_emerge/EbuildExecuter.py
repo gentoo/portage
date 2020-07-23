@@ -79,4 +79,3 @@ class EbuildExecuter(CompositeTask):
 				settings=self.settings))
 
 		self._start_task(ebuild_phases, self._default_final_exit)
-

@@ -605,4 +605,3 @@ def unmerge(root_config, myopts, unmerge_action,
 		sets["selected"].unlock()
 
 	return os.EX_OK
-

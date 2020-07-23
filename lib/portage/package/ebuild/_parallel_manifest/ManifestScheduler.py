@@ -85,4 +85,3 @@ class ManifestScheduler(AsyncScheduler):
 
 		AsyncScheduler._task_exit(self, task)
 
-

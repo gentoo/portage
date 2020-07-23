@@ -58,4 +58,3 @@ class ProgressBar(ProgressHandler):
 
 	def stop(self):
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
-

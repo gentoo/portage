@@ -717,4 +717,3 @@ def hardlock_cleanup(path, remove_all_locks=False):
 					pass
 
 	return results
-

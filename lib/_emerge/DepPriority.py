@@ -53,4 +53,3 @@ class DepPriority(AbstractDepPriority):
 		if self.runtime_post:
 			return "runtime_post"
 		return "soft"
-

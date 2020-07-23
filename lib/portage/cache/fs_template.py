@@ -86,4 +86,3 @@ def gen_label(base, label):
 	label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
 	tail = os.path.split(label)[1]
 	return "%s-%X" % (tail, abs(label.__hash__()))
-
