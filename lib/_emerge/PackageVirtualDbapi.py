@@ -1,7 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 

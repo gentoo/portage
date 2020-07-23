@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
-import sys
 from portage.util import writemsg
 from portage.data import secpass
 import portage

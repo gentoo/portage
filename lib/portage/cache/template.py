@@ -5,7 +5,6 @@
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
-import sys
 import warnings
 import operator
 

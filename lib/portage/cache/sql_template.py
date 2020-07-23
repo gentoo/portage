@@ -2,7 +2,6 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
-import sys
 from portage.cache import template, cache_errors
 from portage.cache.template import reconstruct_eclasses
 

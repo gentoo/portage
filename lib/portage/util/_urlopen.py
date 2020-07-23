@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
-import sys
 from datetime import datetime
 from time import mktime
 from email.utils import formatdate, parsedate

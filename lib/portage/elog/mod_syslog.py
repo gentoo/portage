@@ -2,7 +2,6 @@
 # Copyright 2006-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 import syslog
 from portage.const import EBUILD_PHASES
 from portage import _encodings

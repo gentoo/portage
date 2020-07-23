@@ -5,7 +5,6 @@ __all__ = ['digraph']
 
 import bisect
 from collections import deque
-import sys
 
 from portage.util import writemsg
 

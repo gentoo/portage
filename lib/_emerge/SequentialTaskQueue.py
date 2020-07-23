@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
-import sys
 
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine

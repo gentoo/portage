@@ -364,16 +364,11 @@ class _EbuildFetcherProcess(ForkProcess):
 		if msg:
 			self.scheduler.output(msg, log_path=self.logfile)
 
-	def _async_waitpid_cb(self, *args, **kwargs):
+	def _proc_join_done(self, proc, future):
 		"""
-		Override _async_waitpid_cb to perform cleanup that is
-		not necessarily idempotent.
+		Extend _proc_join_done to emit an eerror message for fetch failure.
 		"""
-		ForkProcess._async_waitpid_cb(self, *args, **kwargs)
-		# Collect elog messages that might have been
-		# created by the pkg_nofetch phase.
-		# Skip elog messages for prefetch, in order to avoid duplicates.
-		if not self.prefetch and self.returncode != os.EX_OK:
+		if not self.prefetch and not future.cancelled() and proc.exitcode != os.EX_OK:
 			msg_lines = []
 			msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
 			if self.logfile is not None:
@@ -382,3 +377,4 @@ class _EbuildFetcherProcess(ForkProcess):
 			if self.logfile is not None:
 				msg_lines.append(" '%s'" % (self.logfile,))
 			self._eerror(msg_lines)
+		super(_EbuildFetcherProcess, self)._proc_join_done(proc, future)

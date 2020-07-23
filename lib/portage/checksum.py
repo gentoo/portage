@@ -12,7 +12,6 @@ import errno
 import functools
 import hashlib
 import stat
-import sys
 import subprocess
 import tempfile
 

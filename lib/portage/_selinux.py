@@ -5,7 +5,6 @@
 # the whole _selinux module itself will be wrapped.
 import os
 import shutil
-import sys
 import warnings
 
 try:

@@ -4,7 +4,6 @@
 
 import errno
 import io
-import sys
 import time
 import portage
 from portage import os

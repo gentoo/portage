@@ -5,7 +5,6 @@
 import errno
 import re
 import stat
-import sys
 from operator import attrgetter
 from portage import os
 from portage import _encodings

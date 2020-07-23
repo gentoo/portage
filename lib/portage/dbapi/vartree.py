@@ -97,7 +97,6 @@ import platform
 import pwd
 import re
 import stat
-import sys
 import tempfile
 import textwrap
 import time

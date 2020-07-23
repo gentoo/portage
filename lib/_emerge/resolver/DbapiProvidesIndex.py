@@ -3,7 +3,6 @@
 
 import bisect
 import collections
-import sys
 
 class DbapiProvidesIndex:
 	"""

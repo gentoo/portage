@@ -1,7 +1,6 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 
 from portage import _encodings, _unicode_encode
 from portage.exception import InvalidData

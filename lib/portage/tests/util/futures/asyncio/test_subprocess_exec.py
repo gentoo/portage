@@ -3,7 +3,6 @@
 
 import os
 import subprocess
-import sys
 
 from portage.process import find_binary
 from portage.tests import TestCase

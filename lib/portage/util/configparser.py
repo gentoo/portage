@@ -9,7 +9,6 @@ __all__ = ['ConfigParserError', 'NoOptionError', 'ParsingError',
 # - RawConfigParser that provides no interpolation for values.
 
 import io
-import sys
 
 from configparser import (Error as ConfigParserError,
 	NoOptionError, ParsingError, RawConfigParser)

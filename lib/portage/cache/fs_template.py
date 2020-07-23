@@ -3,7 +3,6 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 import os as _os
-import sys
 from portage.cache import template
 from portage import os
 

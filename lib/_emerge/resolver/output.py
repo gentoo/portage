@@ -8,7 +8,6 @@ __all__ = (
 	"Display", "format_unmatched_atom",
 	)
 
-import sys
 
 import portage
 from portage import os

@@ -10,7 +10,6 @@ __all__ = (
 
 import io
 import re
-import sys
 
 from portage import os
 from portage import _encodings, _unicode_encode

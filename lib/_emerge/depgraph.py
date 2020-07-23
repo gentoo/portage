@@ -9,7 +9,6 @@ import functools
 import io
 import logging
 import stat
-import sys
 import textwrap
 import warnings
 from collections import deque, OrderedDict

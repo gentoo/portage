@@ -6,9 +6,7 @@ __all__ = ['install_mask_dir', 'InstallMask']
 import collections
 import errno
 import fnmatch
-import functools
 import operator
-import sys
 
 from portage import os, _unicode_decode
 from portage.exception import (

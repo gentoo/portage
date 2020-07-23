@@ -2,11 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import platform
 import shutil
 import socket
 import struct
-import sys
 import tempfile
 import time
 

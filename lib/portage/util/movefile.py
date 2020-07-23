@@ -9,7 +9,6 @@ import errno
 import fnmatch
 import os as _os
 import stat
-import sys
 import textwrap
 
 import portage

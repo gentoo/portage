@@ -4,7 +4,6 @@
 import ctypes
 import errno
 import re
-import sys
 
 
 from portage import _encodings, _unicode_encode

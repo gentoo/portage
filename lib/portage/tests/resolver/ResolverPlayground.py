@@ -4,7 +4,6 @@
 import bz2
 from itertools import permutations
 import fnmatch
-import sys
 import tempfile
 import portage
 from portage import os

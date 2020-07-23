@@ -5,7 +5,6 @@ __all__ = ['cacheddir', 'listdir']
 
 import errno
 import stat
-import sys
 
 
 from portage import os
