@@ -142,4 +142,3 @@ class PackageVirtualDbapi(dbapi):
 	def aux_update(self, cpv, values):
 		self._cpv_map[cpv]._metadata.update(values)
 		self._clear_cache()
-

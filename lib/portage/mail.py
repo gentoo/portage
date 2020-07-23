@@ -138,4 +138,3 @@ def send_mail(mysettings, message):
 		except socket.error as e:
 			raise portage.exception.PortageException(_("!!! A network error occurred while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
-

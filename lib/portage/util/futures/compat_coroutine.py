@@ -134,4 +134,3 @@ class _GeneratorTask:
 		else:
 			self._current_task = asyncio.ensure_future(future, loop=self._loop)
 			self._current_task.add_done_callback(self._next)
-

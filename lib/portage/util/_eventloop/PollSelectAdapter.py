@@ -73,4 +73,3 @@ class PollSelectAdapter:
 		for fd in select_events[0]:
 			poll_events.append((fd, PollConstants.POLLIN))
 		return poll_events
-

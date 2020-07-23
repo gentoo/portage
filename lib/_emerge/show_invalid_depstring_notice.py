@@ -32,4 +32,3 @@ def show_invalid_depstring_notice(parent_node, error_msg):
 
 	msg2 = "".join("%s\n" % line for line in textwrap.wrap("".join(msg), 72))
 	writemsg_level(msg1 + msg2, level=logging.ERROR, noiselevel=-1)
-

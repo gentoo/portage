@@ -43,4 +43,3 @@ class UnmergeDepPriority(AbstractDepPriority):
 		if myvalue > self.SOFT:
 			return "hard"
 		return "soft"
-

@@ -526,4 +526,3 @@ class search:
 		else:
 			result = ""
 		return result
-

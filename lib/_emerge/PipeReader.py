@@ -92,4 +92,3 @@ class PipeReader(AbstractPollTask):
 					self.scheduler.remove_reader(f.fileno())
 					f.close()
 			self.input_files = None
-

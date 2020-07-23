@@ -487,4 +487,3 @@ def parse_metadata_use(xml_tree):
 				# (flag_restrict can be None)
 				uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
 	return uselist
-

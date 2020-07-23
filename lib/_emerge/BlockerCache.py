@@ -176,4 +176,3 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		@return: An object with counter and atoms attributes.
 		"""
 		return self.BlockerData(*self._cache_data["blockers"][cpv])
-

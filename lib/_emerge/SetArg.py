@@ -11,4 +11,3 @@ class SetArg(DependencyArg):
 		DependencyArg.__init__(self, **kwargs)
 		self.pset = pset
 		self.name = self.arg[len(SETPREFIX):]
-

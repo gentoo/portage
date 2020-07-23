@@ -66,4 +66,3 @@ class DumbWriter(NullWriter):
 
 	def send_literal_data(self, data):
 		self.file.write(data)
-

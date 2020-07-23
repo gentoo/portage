@@ -181,4 +181,3 @@ class InvalidSignature(SignatureException):
 
 class UntrustedSignature(SignatureException):
 	"""Signature was not certified to the desired security level"""
-

@@ -195,4 +195,3 @@ def create_depgraph_params(myopts, myaction):
 			noiselevel=-1, level=logging.DEBUG)
 
 	return myparams
-

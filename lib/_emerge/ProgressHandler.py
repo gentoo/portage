@@ -19,4 +19,3 @@ class ProgressHandler:
 
 	def display(self):
 		raise NotImplementedError(self)
-

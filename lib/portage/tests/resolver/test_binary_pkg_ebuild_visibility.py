@@ -141,4 +141,3 @@ class BinaryPkgEbuildVisibilityTestCase(TestCase):
 					test_case.fail_msg)
 		finally:
 			playground.cleanup()
-

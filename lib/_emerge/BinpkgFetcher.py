@@ -232,4 +232,3 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		self._lock_obj = None
 		self.locked = False
 		return result
-
