@@ -39,7 +39,6 @@ from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import os as _os
-import sys
 import traceback
 import warnings
 import errno

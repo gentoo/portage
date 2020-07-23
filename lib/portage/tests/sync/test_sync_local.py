@@ -5,7 +5,6 @@ import datetime
 import subprocess
 import sys
 import textwrap
-import time
 
 import portage
 from portage import os, shutil, _shell_quote

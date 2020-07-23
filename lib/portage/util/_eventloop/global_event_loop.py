@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import sys
 
 from .EventLoop import EventLoop
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop

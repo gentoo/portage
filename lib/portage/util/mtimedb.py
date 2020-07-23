@@ -12,7 +12,6 @@ except ImportError:
 import errno
 import io
 import json
-import sys
 
 import portage
 from portage import _encodings

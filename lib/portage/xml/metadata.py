@@ -30,7 +30,6 @@
 
 __all__ = ('MetaDataXML', 'parse_metadata_use')
 
-import sys
 
 try:
 	import xml.etree.cElementTree as etree

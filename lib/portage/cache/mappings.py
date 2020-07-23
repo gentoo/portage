@@ -5,7 +5,6 @@
 __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 	"LazyLoad", "slot_dict_class"]
 
-import sys
 import weakref
 
 class Mapping:

@@ -24,7 +24,6 @@ __all__ = [
 
 import array
 import errno
-import sys
 
 import portage
 from portage import os

@@ -7,7 +7,6 @@ from __future__ import print_function
 import io
 import re
 import stat
-import sys
 import time
 
 from portage import os

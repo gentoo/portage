@@ -4,7 +4,6 @@
 from itertools import chain
 import stat
 import subprocess
-import sys
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase

@@ -14,7 +14,6 @@ except ImportError:
 import pickle
 from portage import _unicode_encode
 from portage import os
-import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 

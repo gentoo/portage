@@ -10,7 +10,6 @@ import datetime
 import io
 import re
 import random
-import subprocess
 import tempfile
 
 import portage

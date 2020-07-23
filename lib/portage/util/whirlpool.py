@@ -25,7 +25,6 @@
 ##
 ## This Python implementation is therefore also placed in the public domain.
 
-import sys
 
 
 #block_size = 64

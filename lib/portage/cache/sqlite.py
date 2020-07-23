@@ -4,7 +4,6 @@
 from __future__ import division
 
 import re
-import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
