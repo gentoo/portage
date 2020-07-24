@@ -88,7 +88,7 @@ class AbstractEventLoop(_AbstractEventLoop):
 	def set_default_executor(self, executor):
 		raise NotImplementedError
 
-	def getaddrinfo(self, host, port, family=0, type=0, proto=0, flags=0): # pylint: disabled=redefined-builtin
+	def getaddrinfo(self, host, port, family=0, type=0, proto=0, flags=0): # pylint: disable=redefined-builtin
 		raise NotImplementedError
 
 	def getnameinfo(self, sockaddr, flags=0):

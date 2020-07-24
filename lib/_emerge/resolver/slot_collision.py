@@ -1099,7 +1099,7 @@ class _configuration_generator:
 			solution.append(pkgs[self.solution_ids[idx]])
 		return solution
 	
-	def _next(self, id=None): # pylint: disabled=redefined-builtin
+	def _next(self, id=None): # pylint: disable=redefined-builtin
 		solution_ids = self.solution_ids
 		conflict_pkgs = self.conflict_pkgs
 		
@@ -1160,7 +1160,7 @@ class _solution_candidate_generator:
 
 		return self.all_involved_flags
 	
-	def _next(self, id=None): # pylint: disabled=redefined-builtin
+	def _next(self, id=None): # pylint: disable=redefined-builtin
 		values = self.conditional_values
 		
 		if not values:
