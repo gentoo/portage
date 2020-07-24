@@ -73,17 +73,17 @@ def portage_func(func, args, exit_status=0):
 		fd_pipes=fd_pipes, pre_exec=pre_exec)
 	f.close()
 
-def create_portage_wrapper(bin):
+def create_portage_wrapper(f):
 	def derived_func(*args):
 		newargs = list(args)
-		newargs.insert(0, bin)
+		newargs.insert(0, f)
 		return portage_func(*newargs)
 	return derived_func
 
-for bin in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
-	if bin.startswith('do') or \
-	   bin.startswith('new') or \
-	   bin.startswith('prep') or \
-	   bin in ('fowners', 'fperms'):
-		globals()[bin] = create_portage_wrapper(
-			os.path.join(bindir, 'ebuild-helpers', bin))
+for f in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
+	if (f.startswith('do') or
+		f.startswith('new') or
+		f.startswith('prep') or
+		f in ('fowners', 'fperms')):
+		globals()[f] = create_portage_wrapper(
+			os.path.join(bindir, 'ebuild-helpers', f))

@@ -7476,7 +7476,7 @@ class depgraph:
 
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
-	def altlist(self, reversed=DeprecationWarning):
+	def altlist(self, reversed=DeprecationWarning): # pylint: disable=redefined-builtin
 
 		if reversed is not DeprecationWarning:
 			warnings.warn("The reversed parameter of "

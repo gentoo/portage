@@ -61,8 +61,8 @@ def guessManifestFileType(filename):
 		return "DIST"
 
 def guessThinManifestFileType(filename):
-	type = guessManifestFileType(filename)
-	if type != "DIST":
+	filetype = guessManifestFileType(filename)
+	if filetype != "DIST":
 		return None
 	return "DIST"
 

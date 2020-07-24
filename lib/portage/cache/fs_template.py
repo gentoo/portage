@@ -55,8 +55,8 @@ class FsBased(template.database):
 			path = self.location
 			base='/'
 
-		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
-			base = os.path.join(base,dir)
+		for d in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
+			base = os.path.join(base,d)
 			if ensure_dirs(base):
 				# We only call apply_permissions if ensure_dirs created
 				# a new directory, so as not to interfere with

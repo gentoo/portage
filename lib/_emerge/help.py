@@ -5,7 +5,7 @@ from __future__ import print_function
 
 from portage.output import bold, turquoise, green
 
-def help():
+def emerge_help():
 	print(bold("emerge:")+" command-line interface to the Portage system")
 	print(bold("Usage:"))
 	print("   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuild")+" | "+turquoise("tbz2")+" | "+turquoise("file")+" | "+turquoise("@set")+" | "+turquoise("atom")+" ] [ ... ]")
