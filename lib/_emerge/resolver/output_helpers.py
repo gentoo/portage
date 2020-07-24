@@ -469,7 +469,7 @@ def _prune_tree_display(display_list):
 				del display_list[i]
 
 
-def _calc_changelog(ebuildpath,current,next):
+def _calc_changelog(ebuildpath,current,next): # pylint: disable=redefined-builtin
 	if ebuildpath == None or not os.path.exists(ebuildpath):
 		return []
 	current = '-'.join(catpkgsplit(current)[1:])

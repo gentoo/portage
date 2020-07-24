@@ -12,12 +12,14 @@ __all__ = (
 	'TimeoutError',
 )
 
+# pylint: disable=redefined-builtin
 from asyncio import (
 	CancelledError,
 	Future,
 	InvalidStateError,
-	TimeoutError,
+        TimeoutError,
 )
+# pylint: enable=redefined-builtin
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

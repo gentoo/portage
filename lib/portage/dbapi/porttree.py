@@ -877,7 +877,7 @@ class portdbapi(dbapi):
 				filesdict[myfile] = int(checksums[myfile]["size"])
 		return filesdict
 
-	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None):
+	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None): # pylint: disabled=redefined-builtin
 		"""
 		TODO: account for PORTAGE_RO_DISTDIRS
 		"""

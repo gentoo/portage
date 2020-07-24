@@ -39,7 +39,7 @@ class _Process:
 		return self._proc.returncode
 
 	@coroutine
-	def communicate(self, input=None):
+	def communicate(self, input=None): # pylint: disabled=redefined-builtin
 		"""
 		Read data from stdout and stderr, until end-of-file is reached.
 		Wait for process to terminate.

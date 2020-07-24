@@ -371,11 +371,11 @@ class slot_conflict_handler:
 					selected_for_display = set()
 					unconditional_use_deps = set()
 
-					for (type, sub_type), parents in collision_reasons.items():
-						#From each (type, sub_type) pair select at least one atom.
+					for (ctype, sub_type), parents in collision_reasons.items():
+						#From each (ctype, sub_type) pair select at least one atom.
 						#Try to select as few atoms as possible
 
-						if type == "version":
+						if ctype == "version":
 							#Find the atom with version that is as far away as possible.
 							best_matches = {}
 							for ppkg, atom, other_pkg in parents:
@@ -395,7 +395,7 @@ class slot_conflict_handler:
 							if not verboseconflicts:
 								selected_for_display.update(
 										best_matches.values())
-						elif type in ("soname", "slot"):
+						elif ctype in ("soname", "slot"):
 							# Check for packages that might need to
 							# be rebuilt, but cannot be rebuilt for
 							# some reason.
@@ -423,7 +423,7 @@ class slot_conflict_handler:
 								selected_for_display.add((ppkg, atom))
 								if not verboseconflicts:
 									break
-						elif type == "use":
+						elif ctype == "use":
 							#Prefer atoms with unconditional use deps over, because it's
 							#not possible to change them on the parent, which means there
 							#are fewer possible solutions.
@@ -464,7 +464,7 @@ class slot_conflict_handler:
 								# If the list is long, people can simply
 								# use a pager.
 								selected_for_display.add((ppkg, atom))
-						elif type == "AtomArg":
+						elif ctype == "AtomArg":
 							for ppkg, atom in parents:
 								selected_for_display.add((ppkg, atom))
 
@@ -736,9 +736,9 @@ class slot_conflict_handler:
 		all_involved_flags = []
 
 		#Go through all slot conflicts
-		for id, pkg in enumerate(config):
+		for idx, pkg in enumerate(config):
 			involved_flags = {}
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 
@@ -846,8 +846,8 @@ class slot_conflict_handler:
 
 		if self.debug:
 			writemsg("All involved flags:\n", noiselevel=-1)
-			for id, involved_flags in enumerate(all_involved_flags):
-				writemsg("   %s\n" % (config[id],), noiselevel=-1)
+			for idx, involved_flags in enumerate(all_involved_flags):
+				writemsg("   %s\n" % (config[idx],), noiselevel=-1)
 				for flag, state in involved_flags.items():
 					writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
@@ -1095,11 +1095,11 @@ class _configuration_generator:
 				return None
 		
 		solution = []
-		for id, pkgs in enumerate(self.conflict_pkgs):
-			solution.append(pkgs[self.solution_ids[id]])
+		for idx, pkgs in enumerate(self.conflict_pkgs):
+			solution.append(pkgs[self.solution_ids[idx]])
 		return solution
 	
-	def _next(self, id=None):
+	def _next(self, id=None): # pylint: disabled=redefined-builtin
 		solution_ids = self.solution_ids
 		conflict_pkgs = self.conflict_pkgs
 		
@@ -1160,7 +1160,7 @@ class _solution_candidate_generator:
 
 		return self.all_involved_flags
 	
-	def _next(self, id=None):
+	def _next(self, id=None): # pylint: disabled=redefined-builtin
 		values = self.conditional_values
 		
 		if not values:

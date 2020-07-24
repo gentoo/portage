@@ -40,12 +40,14 @@ from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _Asyn
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
 )
+# pylint: disable=redefined-builtin
 from portage.util.futures.futures import (
 	CancelledError,
 	Future,
 	InvalidStateError,
-	TimeoutError,
+        TimeoutError,
 )
+# pylint: enable=redefined-builtin
 from portage.util.futures._asyncio.process import _Process
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,

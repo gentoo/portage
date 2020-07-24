@@ -409,7 +409,7 @@ class search:
 
 					desc = metadata["DESCRIPTION"]
 					homepage = metadata["HOMEPAGE"]
-					license = metadata["LICENSE"]
+					license = metadata["LICENSE"] # pylint: disabled=redefined-builtin
 
 					if masked:
 						msg.append(green("*") + "  " + \

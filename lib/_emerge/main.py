@@ -16,7 +16,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'textwrap',
 	'_emerge.actions:load_emerge_config,run_action,' + \
 		'validate_ebuild_environment',
-	'_emerge.help:help@emerge_help',
+	'_emerge.help:_help@emerge_help',
 	'_emerge.is_valid_package_atom:insert_category_into_atom'
 )
 from portage import os
