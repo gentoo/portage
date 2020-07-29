@@ -97,8 +97,7 @@ class IndexedVardb:
 
 		if atom == atom.cp:
 			return cp_list[:]
-		else:
-			return portage.match_from_list(atom, cp_list)
+		return portage.match_from_list(atom, cp_list)
 
 	def aux_get(self, cpv, attrs, myrepo=None):
 		pkg_data = self._vardb._aux_cache["packages"].get(cpv)

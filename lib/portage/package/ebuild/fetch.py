@@ -453,11 +453,10 @@ class MirrorLayoutConfig:
 			if self.validate_structure(val):
 				if val[0] == 'flat':
 					return FlatLayout(*val[1:])
-				elif val[0] == 'filename-hash':
+				if val[0] == 'filename-hash':
 					return FilenameHashLayout(*val[1:])
-		else:
-			# fallback
-			return FlatLayout()
+		# fallback
+		return FlatLayout()
 
 	def get_all_layouts(self):
 		ret = []
@@ -1249,8 +1248,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							writemsg(_("!!! File %s is incorrect size, "
 								"but unable to retry.\n") % myfile, noiselevel=-1)
 						return 0
-					else:
-						continue
+					continue
 
 				if fetched != 2 and has_space:
 					#we either need to resume or start the download

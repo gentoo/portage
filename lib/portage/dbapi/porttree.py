@@ -930,8 +930,7 @@ class portdbapi(dbapi):
 			return 0
 		if self.findname(cps[0] + "/" + cps2[1], myrepo=myrepo):
 			return 1
-		else:
-			return 0
+		return 0
 
 	def cp_all(self, categories=None, trees=None, reverse=False, sort=True):
 		"""
@@ -1497,7 +1496,7 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 
 		if result.cancelled():
 			return
-		elif e is None:
+		if e is None:
 			result.set_result(dict((k, list(v.result()))
 				for k, v in zip(cpv_list, gather_result.result())))
 		else:

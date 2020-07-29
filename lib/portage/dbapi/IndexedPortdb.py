@@ -159,8 +159,7 @@ class IndexedPortdb:
 
 		if atom == atom.cp:
 			return cp_list[:]
-		else:
-			return portage.match_from_list(atom, cp_list)
+		return portage.match_from_list(atom, cp_list)
 
 	def aux_get(self, cpv, attrs, myrepo=None):
 		if len(attrs) == 1 and attrs[0] == "DESCRIPTION":

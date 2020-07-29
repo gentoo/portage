@@ -293,10 +293,9 @@ def match(atom, dbapi, match_type="default"):
 	"""
 	if atom[2] == "~":
 		return revisionMatch(atom, dbapi, match_type=match_type)
-	elif match_type == "default" or not hasattr(dbapi, "xmatch"):
+	if match_type == "default" or not hasattr(dbapi, "xmatch"):
 		return dbapi.match(atom)
-	else:
-		return dbapi.xmatch(match_type, atom)
+	return dbapi.xmatch(match_type, atom)
 
 def revisionMatch(revisionAtom, dbapi, match_type="default"):
 	"""

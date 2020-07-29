@@ -53,12 +53,11 @@ def guessManifestFileType(filename):
 		return None
 	if filename.startswith("files" + os.sep):
 		return "AUX"
-	elif filename.endswith(".ebuild"):
+	if filename.endswith(".ebuild"):
 		return "EBUILD"
-	elif filename in ["ChangeLog", "metadata.xml"]:
+	if filename in ["ChangeLog", "metadata.xml"]:
 		return "MISC"
-	else:
-		return "DIST"
+	return "DIST"
 
 def guessThinManifestFileType(filename):
 	filetype = guessManifestFileType(filename)

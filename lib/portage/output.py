@@ -334,12 +334,9 @@ def colorize(color_key, text):
 	if havecolor:
 		if color_key in codes:
 			return codes[color_key] + text + codes["reset"]
-		elif color_key in _styles:
+		if color_key in _styles:
 			return style_to_ansi_code(color_key) + text + codes["reset"]
-		else:
-			return text
-	else:
-		return text
+	return text
 
 compat_functions_colors = [
 	"bold", "white", "teal", "turquoise", "darkteal",
@@ -752,6 +749,7 @@ class TermProgressBar(ProgressBar):
 		bar_space = cols - percentage_str_width - square_brackets_width - 1
 		if self._desc:
 			bar_space -= self._desc_max_length
+
 		if maxval == 0:
 			max_bar_width = bar_space-3
 			_percent = "".ljust(percentage_str_width)
@@ -776,19 +774,19 @@ class TermProgressBar(ProgressBar):
 				"[" + (bar_width * " ") + \
 				"<=>" + ((max_bar_width - bar_width) * " ") + "]")
 			return image
-		else:
-			percentage = 100 * curval // maxval
-			max_bar_width = bar_space - 1
-			_percent = ("%d%% " % percentage).rjust(percentage_str_width)
-			image = "%s%s" % (self._desc, _percent)
 
-			if cols < min_columns:
-				return image
-			offset = curval / maxval
-			bar_width = int(offset * max_bar_width)
-			image = image + "[" + (bar_width * "=") + \
-				">" + ((max_bar_width - bar_width) * " ") + "]"
+		percentage = 100 * curval // maxval
+		max_bar_width = bar_space - 1
+		_percent = ("%d%% " % percentage).rjust(percentage_str_width)
+		image = "%s%s" % (self._desc, _percent)
+
+		if cols < min_columns:
 			return image
+		offset = curval / maxval
+		bar_width = int(offset * max_bar_width)
+		image = image + "[" + (bar_width * "=") + \
+			">" + ((max_bar_width - bar_width) * " ") + "]"
+		return image
 
 _color_map_loaded = False
 

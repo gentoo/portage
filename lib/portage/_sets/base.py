@@ -100,8 +100,7 @@ class PackageSet:
 	def getMetadata(self, key):
 		if hasattr(self, key.lower()):
 			return getattr(self, key.lower())
-		else:
-			return ""
+		return ""
 	
 	def _updateAtomMap(self, atoms=None):
 		"""Update self._atommap for specific atoms or all atoms."""

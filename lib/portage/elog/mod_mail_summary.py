@@ -50,7 +50,7 @@ def finalize():
 def _finalize(mysettings, items):
 	if len(items) == 0:
 		return
-	elif len(items) == 1:
+	if len(items) == 1:
 		count = _("one package")
 	else:
 		count = _("multiple packages")

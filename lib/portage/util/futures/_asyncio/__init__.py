@@ -158,7 +158,7 @@ def iscoroutinefunction(func):
 	"""
 	if _compat_coroutine._iscoroutinefunction(func):
 		return True
-	elif _real_asyncio.iscoroutinefunction(func):
+	if _real_asyncio.iscoroutinefunction(func):
 		return True
 	return False
 
@@ -256,5 +256,4 @@ def _safe_loop():
 	"""
 	if portage._internal_caller:
 		return _global_event_loop()
-	else:
-		return _EventLoop(main=False)
+	return _EventLoop(main=False)

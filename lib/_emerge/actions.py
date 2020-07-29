@@ -1072,10 +1072,9 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 		"""Sort Package instances by cpv."""
 		if pkg1.cpv > pkg2.cpv:
 			return 1
-		elif pkg1.cpv == pkg2.cpv:
+		if pkg1.cpv == pkg2.cpv:
 			return 0
-		else:
-			return -1
+		return -1
 
 	def create_cleanlist():
 
@@ -2984,7 +2983,7 @@ def run_action(emerge_config):
 			emerge_config.target_config.trees['vartree'].dbapi) + '\n',
 			noiselevel=-1)
 		return 0
-	elif emerge_config.action == 'help':
+	if emerge_config.action == 'help':
 		emerge_help()
 		return 0
 
@@ -3018,7 +3017,7 @@ def run_action(emerge_config):
 		writemsg_stdout("".join("%s\n" % s for s in
 			sorted(emerge_config.target_config.sets)))
 		return os.EX_OK
-	elif emerge_config.action == "check-news":
+	if emerge_config.action == "check-news":
 		news_counts = count_unread_news(
 			emerge_config.target_config.trees["porttree"].dbapi,
 			emerge_config.target_config.trees["vartree"].dbapi)
@@ -3241,7 +3240,7 @@ def run_action(emerge_config):
 
 	if "sync" == emerge_config.action:
 		return action_sync(emerge_config)
-	elif "metadata" == emerge_config.action:
+	if "metadata" == emerge_config.action:
 		action_metadata(emerge_config.target_config.settings,
 			emerge_config.target_config.trees['porttree'].dbapi,
 			emerge_config.opts)

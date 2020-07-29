@@ -54,8 +54,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 		# contain essential things like SLOT.
 		if return_location:
 			return (None, None)
-		else:
-			return None
+		return None
 
 	# Sometimes we can't access SLOT or repository due to corruption.
 	pkg = mycpv
@@ -114,13 +113,11 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 								comment = ""
 							if return_location:
 								return (comment, pmask_filename)
-							else:
-								return comment
+							return comment
 						elif comment_valid != -1:
 							# Apparently this comment applies to multiple masks, so
 							# it remains valid until a blank line is encountered.
 							comment_valid += 1
 	if return_location:
 		return (None, None)
-	else:
-		return None
+	return None

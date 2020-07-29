@@ -93,51 +93,50 @@ class PipeLogger(AbstractPollTask):
 				# EOF
 				return
 
-			else:
-				if not background and stdout_fd is not None:
-					failures = 0
-					stdout_buf = buf
-					while stdout_buf:
-						try:
-							stdout_buf = \
-								stdout_buf[os.write(stdout_fd, stdout_buf):]
-						except OSError as e:
-							if e.errno != errno.EAGAIN:
-								raise
-							del e
-							failures += 1
-							if failures > 50:
-								# Avoid a potentially infinite loop. In
-								# most cases, the failure count is zero
-								# and it's unlikely to exceed 1.
-								raise
+			if not background and stdout_fd is not None:
+				failures = 0
+				stdout_buf = buf
+				while stdout_buf:
+					try:
+						stdout_buf = \
+							stdout_buf[os.write(stdout_fd, stdout_buf):]
+					except OSError as e:
+						if e.errno != errno.EAGAIN:
+							raise
+						del e
+						failures += 1
+						if failures > 50:
+							# Avoid a potentially infinite loop. In
+							# most cases, the failure count is zero
+							# and it's unlikely to exceed 1.
+							raise
 
-							# This means that a subprocess has put an inherited
-							# stdio file descriptor (typically stdin) into
-							# O_NONBLOCK mode. This is not acceptable (see bug
-							# #264435), so revert it. We need to use a loop
-							# here since there's a race condition due to
-							# parallel processes being able to change the
-							# flags on the inherited file descriptor.
-							# TODO: When possible, avoid having child processes
-							# inherit stdio file descriptors from portage
-							# (maybe it can't be avoided with
-							# PROPERTIES=interactive).
-							fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
-								fcntl.fcntl(stdout_fd,
-								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+						# This means that a subprocess has put an inherited
+						# stdio file descriptor (typically stdin) into
+						# O_NONBLOCK mode. This is not acceptable (see bug
+						# #264435), so revert it. We need to use a loop
+						# here since there's a race condition due to
+						# parallel processes being able to change the
+						# flags on the inherited file descriptor.
+						# TODO: When possible, avoid having child processes
+						# inherit stdio file descriptors from portage
+						# (maybe it can't be avoided with
+						# PROPERTIES=interactive).
+						fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
+							fcntl.fcntl(stdout_fd,
+							fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
-				if log_file is not None:
-					if self._log_file_nb:
-						# Use the _writer function which uses os.write, since the
-						# log_file.write method looses data when an EAGAIN occurs.
-						yield _writer(log_file, buf, loop=self.scheduler)
-					else:
-						# For gzip.GzipFile instances, the above _writer function
-						# will not work because data written directly to the file
-						# descriptor bypasses compression.
-						log_file.write(buf)
-						log_file.flush()
+			if log_file is not None:
+				if self._log_file_nb:
+					# Use the _writer function which uses os.write, since the
+					# log_file.write method looses data when an EAGAIN occurs.
+					yield _writer(log_file, buf, loop=self.scheduler)
+				else:
+					# For gzip.GzipFile instances, the above _writer function
+					# will not work because data written directly to the file
+					# descriptor bypasses compression.
+					log_file.write(buf)
+					log_file.flush()
 
 	def _io_loop_done(self, future):
 		try:

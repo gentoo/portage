@@ -724,7 +724,8 @@ class Package(Task):
 			"""
 			if flag in self.all:
 				return flag
-			elif flag in self.all_aliases:
+
+			if flag in self.all_aliases:
 				for k, v in self.alias_mapping.items():
 					if flag in v:
 						return k

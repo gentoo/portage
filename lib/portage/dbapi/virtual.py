@@ -123,8 +123,7 @@ class fakedbapi(dbapi):
 	def cpv_all(self):
 		if self._multi_instance:
 			return [x[0] for x in self.cpvdict]
-		else:
-			return list(self.cpvdict)
+		return list(self.cpvdict)
 
 	def cpv_inject(self, mycpv, metadata=None):
 		"""Adds a cpv to the list of available packages. See the

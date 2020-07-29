@@ -97,12 +97,10 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 		if x in top_dict and key in top_dict[x]:
 			if FullCopy:
 				return copy.deepcopy(top_dict[x][key])
-			else:
-				return top_dict[x][key]
+			return top_dict[x][key]
 	if EmptyOnError:
 		return ""
-	else:
-		raise KeyError("Key not found in list; '%s'" % key)
+	raise KeyError("Key not found in list; '%s'" % key)
 
 def _lazy_iuse_regex(iuse_implicit):
 	"""
@@ -2634,10 +2632,10 @@ class config:
 			# portage plans to update itself.
 			if mykey == "PORTAGE_BIN_PATH":
 				return portage._bin_path
-			elif mykey == "PORTAGE_PYM_PATH":
+			if mykey == "PORTAGE_PYM_PATH":
 				return portage._pym_path
 
-			elif mykey == "PORTAGE_PYTHONPATH":
+			if mykey == "PORTAGE_PYTHONPATH":
 				value = [x for x in \
 					self.backupenv.get("PYTHONPATH", "").split(":") if x]
 				need_pym_path = True
@@ -2651,7 +2649,7 @@ class config:
 					value.insert(0, portage._pym_path)
 				return ":".join(value)
 
-			elif mykey == "PORTAGE_GID":
+			if mykey == "PORTAGE_GID":
 				return "%s" % portage_gid
 
 		for d in self.lookuplist:
@@ -2704,9 +2702,8 @@ class config:
 		v = self.get(k)
 		if v is not None:
 			return v
-		else:
-			self[k] = x
-			return x
+		self[k] = x
+		return x
 
 	def __iter__(self):
 		keys = set()

@@ -139,7 +139,7 @@ class bindbapi(fakedbapi):
 		add_pkg = self.bintree._additional_pkgs.get(instance_key)
 		if add_pkg is not None:
 			return add_pkg._db.aux_get(add_pkg, wants)
-		elif not self.bintree._remotepkgs or \
+		if not self.bintree._remotepkgs or \
 			not self.bintree.isremote(mycpv):
 			try:
 				tbz2_path = self.bintree._pkg_paths[instance_key]
@@ -154,7 +154,7 @@ class bindbapi(fakedbapi):
 			def getitem(k):
 				if k == "_mtime_":
 					return str(st[stat.ST_MTIME])
-				elif k == "SIZE":
+				if k == "SIZE":
 					return str(st.st_size)
 				v = metadata_bytes.get(_unicode_encode(k,
 					encoding=_encodings['repo.content'],
@@ -1657,7 +1657,7 @@ class binarytree:
 		instance_key = self.dbapi._instance_key(pkgname)
 		if instance_key not in self._remotepkgs:
 			return False
-		elif instance_key in self._additional_pkgs:
+		if instance_key in self._additional_pkgs:
 			return False
 		# Presence in self._remotepkgs implies that it's remote. When a
 		# package is downloaded, state is updated by self.inject().
@@ -1682,10 +1682,10 @@ class binarytree:
 		if os.path.exists(tbz2_path):
 			if tbz2name[:-5] not in self.invalids:
 				return
-			else:
-				resume = True
-				writemsg(_("Resuming download of this tbz2, but it is possible that it is corrupt.\n"),
-					noiselevel=-1)
+
+			resume = True
+			writemsg(_("Resuming download of this tbz2, but it is possible that it is corrupt.\n"),
+				noiselevel=-1)
 		
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)

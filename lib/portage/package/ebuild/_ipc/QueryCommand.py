@@ -82,10 +82,10 @@ class QueryCommand(IpcCommand):
 			else:
 				returncode = 1
 			return ('', warnings_str, returncode)
-		elif cmd == 'best_version':
+		if cmd == 'best_version':
 			m = best(vardb.match(atom))
 			return ('%s\n' % m, warnings_str, 0)
-		elif cmd in ('master_repositories', 'repository_path', 'available_eclasses', 'eclass_path', 'license_path'):
+		if cmd in ('master_repositories', 'repository_path', 'available_eclasses', 'eclass_path', 'license_path'):
 			repo = _repo_name_re.match(args[0])
 			if repo is None:
 				return ('', '%s: Invalid repository: %s\n' % (cmd, args[0]), 2)
@@ -96,24 +96,23 @@ class QueryCommand(IpcCommand):
 
 			if cmd == 'master_repositories':
 				return ('%s\n' % ' '.join(x.name for x in repo.masters), warnings_str, 0)
-			elif cmd == 'repository_path':
+			if cmd == 'repository_path':
 				return ('%s\n' % repo.location, warnings_str, 0)
-			elif cmd == 'available_eclasses':
+			if cmd == 'available_eclasses':
 				return ('%s\n' % ' '.join(sorted(repo.eclass_db.eclasses)), warnings_str, 0)
-			elif cmd == 'eclass_path':
+			if cmd == 'eclass_path':
 				try:
 					eclass = repo.eclass_db.eclasses[args[1]]
 				except KeyError:
 					return ('', warnings_str, 1)
 				return ('%s\n' % eclass.location, warnings_str, 0)
-			elif cmd == 'license_path':
+			if cmd == 'license_path':
 				paths = reversed([os.path.join(x.location, 'licenses', args[1]) for x in list(repo.masters) + [repo]])
 				for path in paths:
 					if os.path.exists(path):
 						return ('%s\n' % path, warnings_str, 0)
 				return ('', warnings_str, 1)
-		else:
-			return ('', 'Invalid command: %s\n' % cmd, 3)
+		return ('', 'Invalid command: %s\n' % cmd, 3)
 
 	def _elog(self, elog_funcname, lines):
 		"""

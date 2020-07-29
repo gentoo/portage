@@ -433,7 +433,7 @@ class _UnixWritePipeTransport(_FlowControlMixin, _WriteTransport):
 				return
 			if n == len(data):
 				return
-			elif n > 0:
+			if n > 0:
 				data = memoryview(data)[n:]
 			self._loop.add_writer(self._fileno, self._write_ready)
 
@@ -463,7 +463,7 @@ class _UnixWritePipeTransport(_FlowControlMixin, _WriteTransport):
 					self._loop.remove_reader(self._fileno)
 					self._call_connection_lost(None)
 				return
-			elif n > 0:
+			if n > 0:
 				del self._buffer[:n]
 
 	def can_write_eof(self):
@@ -617,10 +617,9 @@ class _PortageChildWatcher(_AbstractChildWatcher):
 	def _compute_returncode(self, status):
 		if os.WIFSIGNALED(status):
 			return -os.WTERMSIG(status)
-		elif os.WIFEXITED(status):
+		if os.WIFEXITED(status):
 			return os.WEXITSTATUS(status)
-		else:
-			return status
+		return status
 
 	def add_child_handler(self, pid, callback, *args):
 		"""

@@ -1576,8 +1576,7 @@ class vartree:
 			use_cache=use_cache))
 		if mymatch is None:
 			return ""
-		else:
-			return mymatch
+		return mymatch
 
 	def dep_match(self, mydep, use_cache=1):
 		"compatibility method -- we want to see all matches, not just visible ones"
@@ -1585,8 +1584,7 @@ class vartree:
 		mymatch = self.dbapi.match(mydep, use_cache=use_cache)
 		if mymatch is None:
 			return []
-		else:
-			return mymatch
+		return mymatch
 
 	def exists_specific(self, cpv):
 		return self.dbapi.cpv_exists(cpv)

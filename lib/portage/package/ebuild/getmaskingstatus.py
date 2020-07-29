@@ -85,7 +85,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	restrict = metadata["RESTRICT"]
 	if not eapi_is_supported(eapi):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
-	elif _eapi_is_deprecated(eapi) and not installed:
+	if _eapi_is_deprecated(eapi) and not installed:
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()

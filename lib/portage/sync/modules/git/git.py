@@ -247,26 +247,25 @@ class GitSync(NewBase):
 			if status == 'G':  # good signature is good
 				out.einfo('Trusted signature found on top commit')
 				return True
-			elif status == 'U':  # untrusted
+			if status == 'U':  # untrusted
 				out.ewarn('Top commit signature is valid but not trusted')
 				return True
+			if status == 'B':
+				expl = 'bad signature'
+			elif status == 'X':
+				expl = 'expired signature'
+			elif status == 'Y':
+				expl = 'expired key'
+			elif status == 'R':
+				expl = 'revoked key'
+			elif status == 'E':
+				expl = 'unable to verify signature (missing key?)'
+			elif status == 'N':
+				expl = 'no signature'
 			else:
-				if status == 'B':
-					expl = 'bad signature'
-				elif status == 'X':
-					expl = 'expired signature'
-				elif status == 'Y':
-					expl = 'expired key'
-				elif status == 'R':
-					expl = 'revoked key'
-				elif status == 'E':
-					expl = 'unable to verify signature (missing key?)'
-				elif status == 'N':
-					expl = 'no signature'
-				else:
-					expl = 'unknown issue'
-				out.eerror('No valid signature found: %s' % (expl,))
-				return False
+				expl = 'unknown issue'
+			out.eerror('No valid signature found: %s' % (expl,))
+			return False
 		finally:
 			if openpgp_env is not None:
 				openpgp_env.close()

@@ -63,7 +63,7 @@ class trace_handler:
 			if len(my_repr) > self.max_repr_length:
 				my_repr = "'omitted'"
 			return "value=%s " % my_repr
-		elif "exception" == event:
+		if "exception" == event:
 			my_repr = repr(arg[1])
 			if len(my_repr) > self.max_repr_length:
 				my_repr = "'omitted'"
@@ -112,9 +112,9 @@ class prefix_trimmer:
 		The previous result is automatically cached."""
 		if s == self.previous:
 			return self.previous_trimmed
+
+		if s.startswith(self.prefix):
+			self.previous_trimmed = s[self.cut_index:]
 		else:
-			if s.startswith(self.prefix):
-				self.previous_trimmed = s[self.cut_index:]
-			else:
-				self.previous_trimmed = s
-			return self.previous_trimmed
+			self.previous_trimmed = s
+		return self.previous_trimmed

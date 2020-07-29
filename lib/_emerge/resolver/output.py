@@ -260,26 +260,24 @@ class Display:
 			if pkg_info.built:
 				if pkg_info.system:
 					return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
-				elif pkg_info.world:
+				if pkg_info.world:
 					return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
-				else:
-					return colorize("PKG_BINARY_MERGE", pkg_str)
-			else:
-				if pkg_info.system:
-					return colorize("PKG_MERGE_SYSTEM", pkg_str)
-				elif pkg_info.world:
-					return colorize("PKG_MERGE_WORLD", pkg_str)
-				else:
-					return colorize("PKG_MERGE", pkg_str)
-		elif pkg_info.operation == "uninstall":
-			return colorize("PKG_UNINSTALL", pkg_str)
-		else:
+				return colorize("PKG_BINARY_MERGE", pkg_str)
+
 			if pkg_info.system:
-				return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
-			elif pkg_info.world:
-				return colorize("PKG_NOMERGE_WORLD", pkg_str)
-			else:
-				return colorize("PKG_NOMERGE", pkg_str)
+				return colorize("PKG_MERGE_SYSTEM", pkg_str)
+			if pkg_info.world:
+				return colorize("PKG_MERGE_WORLD", pkg_str)
+			return colorize("PKG_MERGE", pkg_str)
+
+		if pkg_info.operation == "uninstall":
+			return colorize("PKG_UNINSTALL", pkg_str)
+
+		if pkg_info.system:
+			return colorize("PKG_NOMERGE_SYSTEM", pkg_str)
+		if pkg_info.world:
+			return colorize("PKG_NOMERGE_WORLD", pkg_str)
+		return colorize("PKG_NOMERGE", pkg_str)
 
 
 	def verbose_size(self, pkg, repoadd_set, pkg_info):

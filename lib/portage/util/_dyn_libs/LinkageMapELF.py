@@ -515,24 +515,23 @@ class LinkageMapELF:
 				"""
 				if obj in cache_self.cache:
 					return cache_self.cache[obj]
-				else:
-					obj_key = self._obj_key(obj)
-					# Check that the library exists on the filesystem.
-					if obj_key.file_exists():
-						# Get the arch and soname from LinkageMap._obj_properties if
-						# it exists. Otherwise, None.
-						obj_props = self._obj_properties.get(obj_key)
-						if obj_props is None:
-							arch = None
-							soname = None
-						else:
-							arch = obj_props.arch
-							soname = obj_props.soname
-						return cache_self.cache.setdefault(obj, \
-								(arch, soname, obj_key, True))
+
+				obj_key = self._obj_key(obj)
+				# Check that the library exists on the filesystem.
+				if obj_key.file_exists():
+					# Get the arch and soname from LinkageMap._obj_properties if
+					# it exists. Otherwise, None.
+					obj_props = self._obj_properties.get(obj_key)
+					if obj_props is None:
+						arch = None
+						soname = None
 					else:
-						return cache_self.cache.setdefault(obj, \
-								(None, None, obj_key, False))
+						arch = obj_props.arch
+						soname = obj_props.soname
+					return cache_self.cache.setdefault(obj, \
+							(arch, soname, obj_key, True))
+				return cache_self.cache.setdefault(obj, \
+						(None, None, obj_key, False))
 
 		rValue = {}
 		cache = _LibraryCache()

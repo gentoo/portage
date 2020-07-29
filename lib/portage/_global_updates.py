@@ -149,8 +149,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 				if portdb.match(atoma):
 					world_warnings.add((atoma, atomb))
 				return True
-			else:
-				return False
+			return False
 
 		for update_cmd in myupd:
 			for pos, atom in enumerate(world_list):
