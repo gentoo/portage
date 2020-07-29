@@ -40,12 +40,14 @@ from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _Asyn
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
 )
+# pylint: disable=redefined-builtin
 from portage.util.futures.futures import (
 	CancelledError,
 	Future,
 	InvalidStateError,
 	TimeoutError,
 )
+# pylint: enable=redefined-builtin
 from portage.util.futures._asyncio.process import _Process
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,
@@ -97,14 +99,14 @@ def get_event_loop():
 
 
 def get_child_watcher():
-    """Equivalent to calling get_event_loop_policy().get_child_watcher()."""
-    return get_event_loop_policy().get_child_watcher()
+	"""Equivalent to calling get_event_loop_policy().get_child_watcher()."""
+	return get_event_loop_policy().get_child_watcher()
 
 
 def set_child_watcher(watcher):
-    """Equivalent to calling
-    get_event_loop_policy().set_child_watcher(watcher)."""
-    return get_event_loop_policy().set_child_watcher(watcher)
+	"""Equivalent to calling
+	get_event_loop_policy().set_child_watcher(watcher)."""
+	return get_event_loop_policy().set_child_watcher(watcher)
 
 
 def create_subprocess_exec(*args, **kwargs):

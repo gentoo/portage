@@ -418,9 +418,9 @@ class DateSet(EverythingSet):
 		elif len(formats) > 1:
 			raise SetConfigError(_("no more than one of these options is allowed: 'package', 'filestamp', 'seconds', 'date'"))
 
-		format = formats[0]
+		setformat = formats[0]
 
-		if (format == "package"):
+		if (setformat == "package"):
 			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
@@ -428,13 +428,13 @@ class DateSet(EverythingSet):
 				date = int(date)
 			except (KeyError, ValueError):
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
-		elif (format == "filestamp"):
+		elif (setformat == "filestamp"):
 			filestamp = options.get("filestamp")
 			try:
 				date = int(os.stat(filestamp).st_mtime)
 			except (OSError, ValueError):
 				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
-		elif (format == "seconds"):
+		elif (setformat == "seconds"):
 			try:
 				date = int(options.get("seconds"))
 			except ValueError:

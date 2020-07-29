@@ -198,14 +198,14 @@ def findall(entries, recursive=0, basedir=""):
 	return [mynew, mychanged, mymissing, myunadded, myremoved]
 
 ignore_list = re.compile(r"(^|/)(RCS(|LOG)|SCCS|CVS(|\.adm)|cvslog\..*|tags|TAGS|\.(make\.state|nse_depinfo)|.*~|(\.|)#.*|,.*|_$.*|.*\$|\.del-.*|.*\.(old|BAK|bak|orig|rej|a|olb|o|obj|so|exe|Z|elc|ln)|core)$")
-def apply_cvsignore_filter(list):
+def apply_cvsignore_filter(files):
 	x = 0
-	while x < len(list):
-		if ignore_list.match(list[x].split("/")[-1]):
-			list.pop(x)
+	while x < len(files):
+		if ignore_list.match(files[x].split("/")[-1]):
+			files.pop(x)
 		else:
 			x += 1
-	return list
+	return files
 	
 def getentries(mydir, recursive=0):
 	"""Scans the given directory and returns a datadict of all the entries in

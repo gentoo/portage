@@ -16,22 +16,22 @@ from asyncio.events import (
 
 
 class AbstractEventLoopPolicy(_AbstractEventLoopPolicy):
-    """Abstract policy for accessing the event loop."""
+	"""Abstract policy for accessing the event loop."""
 
-    def get_event_loop(self):
-        raise NotImplementedError
+	def get_event_loop(self):
+		raise NotImplementedError
 
-    def set_event_loop(self, loop):
-        raise NotImplementedError
+	def set_event_loop(self, loop):
+		raise NotImplementedError
 
-    def new_event_loop(self):
-        raise NotImplementedError
+	def new_event_loop(self):
+		raise NotImplementedError
 
-    def get_child_watcher(self):
-        raise NotImplementedError
+	def get_child_watcher(self):
+		raise NotImplementedError
 
-    def set_child_watcher(self, watcher):
-        raise NotImplementedError
+	def set_child_watcher(self, watcher):
+		raise NotImplementedError
 
 
 class AbstractEventLoop(_AbstractEventLoop):
@@ -88,7 +88,7 @@ class AbstractEventLoop(_AbstractEventLoop):
 	def set_default_executor(self, executor):
 		raise NotImplementedError
 
-	def getaddrinfo(self, host, port, family=0, type=0, proto=0, flags=0):
+	def getaddrinfo(self, host, port, family=0, type=0, proto=0, flags=0): # pylint: disable=redefined-builtin
 		raise NotImplementedError
 
 	def getnameinfo(self, sockaddr, flags=0):
