@@ -83,6 +83,6 @@ def contains_disjunction(dep_struct):
 			assert x, 'Normalization error, empty conjunction found in %s' % (dep_struct,)
 			if x[0] == '||':
 				return True
-			elif is_disjunction and contains_disjunction(x):
+			if is_disjunction and contains_disjunction(x):
 				return True
 	return False

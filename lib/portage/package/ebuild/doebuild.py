@@ -838,7 +838,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if returnpid:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
-			elif dbkey and dbkey is not DeprecationWarning:
+			if dbkey and dbkey is not DeprecationWarning:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
@@ -847,7 +847,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
-		elif mydo == "nofetch":
+		if mydo == "nofetch":
 
 			if returnpid:
 				writemsg("!!! doebuild: %s\n" %
@@ -1127,11 +1127,11 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				mf = None
 				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif mydo == "digest":
+			if mydo == "digest":
 				mf = None
 				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif "digest" in mysettings.features:
+			if "digest" in mysettings.features:
 				mf = None
 				_doebuild_manifest_cache = None
 				digestgen(mysettings=mysettings, myportdb=mydbapi)

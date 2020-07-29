@@ -115,8 +115,7 @@ class SyncManager:
 				"has been renamed to sync_async",
 				DeprecationWarning, stacklevel=2)
 			return self.sync_async
-		else:
-			raise AttributeError(name)
+		raise AttributeError(name)
 
 	def get_module_descriptions(self, mod):
 		desc = self.module_controller.get_func_descriptions(mod)

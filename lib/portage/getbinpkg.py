@@ -434,8 +434,7 @@ def file_get_metadata(baseurl, conn=None, chunk_size=3000):
 			if not keepconnection:
 				conn.close()
 			return myid
-		else:
-			xpak_data = data[len(data) - (xpaksize + 8):-8]
+		xpak_data = data[len(data) - (xpaksize + 8):-8]
 		del data
 
 		myid = portage.xpak.xsplit_mem(xpak_data)
@@ -794,10 +793,9 @@ def _cmp_cpv(d1, d2):
 	cpv2 = d2["CPV"]
 	if cpv1 > cpv2:
 		return 1
-	elif cpv1 == cpv2:
+	if cpv1 == cpv2:
 		return 0
-	else:
-		return -1
+	return -1
 
 class PackageIndex:
 

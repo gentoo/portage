@@ -29,10 +29,9 @@ def pathdata(entries, path):
 			return None
 	if mytarget in myentries["dirs"]:
 		return myentries["dirs"][mytarget]
-	elif mytarget in myentries["files"]:
+	if mytarget in myentries["files"]:
 		return myentries["files"][mytarget]
-	else:
-		return None
+	return None
 
 def fileat(entries, path):
 	return pathdata(entries, path)

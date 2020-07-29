@@ -71,7 +71,7 @@ def _match_slot(atom, pkg):
 	if pkg.slot == atom.slot:
 		if not atom.sub_slot:
 			return True
-		elif atom.sub_slot == pkg.sub_slot:
+		if atom.sub_slot == pkg.sub_slot:
 			return True
 	return False
 
@@ -582,7 +582,7 @@ def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
 						if stack[k] and isinstance(stack[k][-1], str):
 							if stack[k][-1] == "||":
 								return k
-							elif stack[k][-1][-1] != "?":
+							if stack[k][-1][-1] != "?":
 								return -1
 						k -= 1
 					return -1
@@ -1701,8 +1701,7 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 	def __delitem__(self, cp):
 		if "*" in cp:
 			return self._extended.__delitem__(cp)
-		else:
-			return self._normal.__delitem__(cp)
+		return self._normal.__delitem__(cp)
 
 	keys = __iter__
 	items = iteritems
@@ -1713,8 +1712,7 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
 	def setdefault(self, cp, default=None):
 		if "*" in cp:
 			return self._extended.setdefault(cp, default)
-		else:
-			return self._normal.setdefault(cp, default)
+		return self._normal.setdefault(cp, default)
 
 	def __getitem__(self, cp):
 
@@ -1831,8 +1829,7 @@ def dep_getslot(mydep):
 		bracket = mydep.find("[", colon)
 		if bracket == -1:
 			return mydep[colon+1:]
-		else:
-			return mydep[colon+1:bracket]
+		return mydep[colon+1:bracket]
 	return None
 
 def dep_getrepo(mydep):
@@ -1863,8 +1860,7 @@ def dep_getrepo(mydep):
 		bracket = mydep.find("[", colon)
 		if bracket == -1:
 			return mydep[colon+2:]
-		else:
-			return mydep[colon+2:bracket]
+		return mydep[colon+2:bracket]
 	return None
 
 def remove_slot(mydep):
@@ -2615,11 +2611,11 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
 
 		if operator == "||":
 			return (True in argument)
-		elif operator == "^^":
+		if operator == "^^":
 			return (argument.count(True) == 1)
-		elif operator == "??":
+		if operator == "??":
 			return (argument.count(True) <= 1)
-		elif operator[-1] == "?":
+		if operator[-1] == "?":
 			return (False not in argument)
 
 	mysplit = required_use.split()

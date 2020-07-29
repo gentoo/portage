@@ -104,10 +104,9 @@ def _get_pv_re(eapi_attrs):
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
 		return True
-	else:
-		if not silent:
-			print(_("!!! syntax error in version: %s") % myver)
-		return False
+	if not silent:
+		print(_("!!! syntax error in version: %s") % myver)
+	return False
 
 @lru_cache(1024)
 def vercmp(ver1, ver2, silent=1):
@@ -202,9 +201,9 @@ def vercmp(ver1, ver2, silent=1):
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
 			return -1
-		elif len(list2) <= i:
+		if len(list2) <= i:
 			return 1
-		elif list1[i] != list2[i]:
+		if list1[i] != list2[i]:
 			a = list1[i]
 			b = list2[i]
 			rval = (a > b) - (a < b)
@@ -472,8 +471,7 @@ def pkgsplit(mypkg, silent=1, eapi=None):
 	cat, pn, ver, rev = catpsplit
 	if cat is _missing_cat and '/' not in mypkg:
 		return (pn, ver, rev)
-	else:
-		return (cat + '/' + pn, ver, rev)
+	return (cat + '/' + pn, ver, rev)
 
 def cpv_getkey(mycpv, eapi=None):
 	"""Calls catpkgsplit on a cpv and returns only the cp."""
@@ -496,8 +494,7 @@ def cpv_getkey(mycpv, eapi=None):
 	mylen = len(myslash)
 	if mylen == 2:
 		return myslash[0] + "/" + mysplit[0]
-	else:
-		return mysplit[0]
+	return mysplit[0]
 
 def cpv_getversion(mycpv, eapi=None):
 	"""Returns the v (including revision) from an cpv."""

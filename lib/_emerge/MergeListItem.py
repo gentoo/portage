@@ -85,7 +85,7 @@ class MergeListItem(CompositeTask):
 			self._start_task(build, self._default_final_exit)
 			return
 
-		elif pkg.type_name == "binary":
+		if pkg.type_name == "binary":
 
 			binpkg = Binpkg(background=self.background,
 				find_blockers=find_blockers,

@@ -968,8 +968,7 @@ class RepoConfigLoader:
 		main_repo = self.prepos['DEFAULT'].main_repo
 		if main_repo is not None and main_repo in self.prepos:
 			return self.prepos[main_repo].location
-		else:
-			return ''
+		return ''
 
 	def mainRepo(self):
 		"""Returns the main repo"""

@@ -112,8 +112,7 @@ def normalize_path(mypath):
 	if mypath.startswith(path_sep):
 		# posixpath.normpath collapses 3 or more leading slashes to just 1.
 		return os.path.normpath(2*path_sep + mypath)
-	else:
-		return os.path.normpath(mypath)
+	return os.path.normpath(mypath)
 
 def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -249,9 +248,9 @@ def append_repo(atom_list, repo_name, remember_source_file=False):
 	if remember_source_file:
 		return [(atom.repo is not None and atom or atom.with_repo(repo_name), source) \
 			for atom, source in atom_list]
-	else:
-		return [atom.repo is not None and atom or atom.with_repo(repo_name) \
-			for atom in atom_list]
+
+	return [atom.repo is not None and atom or atom.with_repo(repo_name) \
+		for atom in atom_list]
 
 def stack_lists(lists, incremental=1, remember_source_file=False,
 	warn_for_unmatched_removal=False, strict_warn_for_unmatched_removal=False, ignore_repo=False):
@@ -328,8 +327,7 @@ def stack_lists(lists, incremental=1, remember_source_file=False,
 
 	if remember_source_file:
 		return list(new_list.items())
-	else:
-		return list(new_list)
+	return list(new_list)
 
 def grabdict(myfilename, juststrings=0, empty=0, recursive=0, incremental=1, newlines=0):
 	"""
@@ -868,9 +866,8 @@ def varexpand(mystring, mydict=None, error_leader=None):
 								msg = error_leader() + msg
 							writemsg(msg + "\n", noiselevel=-1)
 							return ""
-						else:
-							pos += 1
-							break
+						pos += 1
+						break
 					pos += 1
 				myvarname = mystring[myvstart:pos]
 				if braced:
@@ -880,8 +877,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 							msg = error_leader() + msg
 						writemsg(msg + "\n", noiselevel=-1)
 						return ""
-					else:
-						pos += 1
+					pos += 1
 				if len(myvarname) == 0:
 					msg = "$"
 					if braced:
@@ -1037,18 +1033,16 @@ def _do_stat(filename, follow_links=True):
 	try:
 		if follow_links:
 			return os.stat(filename)
-		else:
-			return os.lstat(filename)
+		return os.lstat(filename)
 	except OSError as oe:
 		func_call = "stat('%s')" % filename
 		if oe.errno == errno.EPERM:
 			raise OperationNotPermitted(func_call)
-		elif oe.errno == errno.EACCES:
+		if oe.errno == errno.EACCES:
 			raise PermissionDenied(func_call)
-		elif oe.errno == errno.ENOENT:
+		if oe.errno == errno.ENOENT:
 			raise FileNotFound(filename)
-		else:
-			raise
+		raise
 
 def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
@@ -1480,8 +1474,7 @@ class LazyItemsDict(UserDict):
 				self[item_key] = result
 			return result
 
-		else:
-			return UserDict.__getitem__(self, item_key)
+		return UserDict.__getitem__(self, item_key)
 
 	def __setitem__(self, item_key, value):
 		if item_key in self.lazy_items:

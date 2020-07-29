@@ -1065,8 +1065,7 @@ class slot_conflict_handler:
 
 		if is_valid_solution and required_changes:
 			return required_changes
-		else:
-			return None
+		return None
 
 class _configuration_generator:
 	def __init__(self, conflict_pkgs):
@@ -1109,13 +1108,12 @@ class _configuration_generator:
 		if solution_ids[id] == len(conflict_pkgs[id])-1:
 			if id > 0:
 				return self._next(id=id-1)
-			else:
-				return False
-		else:
-			solution_ids[id] += 1
-			for other_id in range(id+1, len(solution_ids)):
-				solution_ids[other_id] = 0
-			return True
+			return False
+
+		solution_ids[id] += 1
+		for other_id in range(id+1, len(solution_ids)):
+			solution_ids[other_id] = 0
+		return True
 
 class _solution_candidate_generator:
 	class _value_helper:
@@ -1124,8 +1122,7 @@ class _solution_candidate_generator:
 		def __eq__(self, other):
 			if isinstance(other, str):
 				return self.value == other
-			else:
-				return self.value == other.value
+			return self.value == other.value
 		def __str__(self):
 			return "%s" % (self.value,)
 
@@ -1172,12 +1169,11 @@ class _solution_candidate_generator:
 		if values[id].value == "enabled":
 			if id > 0:
 				return self._next(id=id-1)
-			else:
-				return False
-		else:
-			values[id].value = "enabled"
-			for other_id in range(id+1, len(values)):
-				values[other_id].value = "disabled"
-			return True
+			return False
+
+		values[id].value = "enabled"
+		for other_id in range(id+1, len(values)):
+			values[other_id].value = "disabled"
+		return True
 		
 		

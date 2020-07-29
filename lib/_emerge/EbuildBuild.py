@@ -159,18 +159,18 @@ class EbuildBuild(CompositeTask):
 						settings=self.settings),
 						self._default_final_exit)
 				return
-			else:
-				fetcher = EbuildFetcher(
-					config_pool=self.config_pool,
-					ebuild_path=self._ebuild_path,
-					fetchall=self.opts.fetch_all_uri,
-					fetchonly=self.opts.fetchonly,
-					background=False,
-					logfile=None,
-					pkg=self.pkg,
-					scheduler=self.scheduler)
-				self._start_task(fetcher, self._fetchonly_exit)
-				return
+
+			fetcher = EbuildFetcher(
+				config_pool=self.config_pool,
+				ebuild_path=self._ebuild_path,
+				fetchall=self.opts.fetch_all_uri,
+				fetchonly=self.opts.fetchonly,
+				background=False,
+				logfile=None,
+				pkg=self.pkg,
+				scheduler=self.scheduler)
+			self._start_task(fetcher, self._fetchonly_exit)
+			return
 
 		self._build_dir = EbuildBuildDir(
 			scheduler=self.scheduler, settings=settings)

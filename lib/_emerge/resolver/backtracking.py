@@ -119,8 +119,7 @@ class Backtracker:
 			node = self._unexplored_nodes.pop()
 			self._current_node = node
 			return copy.deepcopy(node.parameter)
-		else:
-			return None
+		return None
 
 
 	def __len__(self):

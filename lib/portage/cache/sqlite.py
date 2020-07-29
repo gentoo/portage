@@ -263,10 +263,9 @@ class database(fs_template.FsBased):
 		result = cursor.fetchall()
 		if len(result) == 0:
 			return False
-		elif len(result) == 1:
+		if len(result) == 1:
 			return True
-		else:
-			raise cache_errors.CacheCorruption(cpv, "key is not unique")
+		raise cache_errors.CacheCorruption(cpv, "key is not unique")
 
 	def __iter__(self):
 		"""generator for walking the dir struct"""

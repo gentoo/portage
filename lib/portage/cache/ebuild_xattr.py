@@ -90,8 +90,7 @@ class database(fs_template.FsBased):
 		except IOError as e:
 			if not default is None and errno.ENODATA == e.errno:
 				return default
-			else:
-				raise NoValueException()
+			raise NoValueException()
 
 	def __remove(self,path,key):
 		xattr.remove(path,key,namespace=self.ns)

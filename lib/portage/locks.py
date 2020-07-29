@@ -215,14 +215,13 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 					if e.errno in (errno.ENOENT, errno.ESTALE):
 						os.close(myfd)
 						return None
-					else:
-						writemsg("%s: chown('%s', -1, %d)\n" % \
-							(e, lockfilename, portage_gid), noiselevel=-1)
-						writemsg(_("Cannot chown a lockfile: '%s'\n") % \
-							lockfilename, noiselevel=-1)
-						writemsg(_("Group IDs of current user: %s\n") % \
-							" ".join(str(n) for n in os.getgroups()),
-							noiselevel=-1)
+					writemsg("%s: chown('%s', -1, %d)\n" % \
+						(e, lockfilename, portage_gid), noiselevel=-1)
+					writemsg(_("Cannot chown a lockfile: '%s'\n") % \
+						lockfilename, noiselevel=-1)
+					writemsg(_("Group IDs of current user: %s\n") % \
+						" ".join(str(n) for n in os.getgroups()),
+						noiselevel=-1)
 		finally:
 			os.umask(old_mask)
 

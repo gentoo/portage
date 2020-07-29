@@ -203,12 +203,12 @@ class RetryForkExecutorTestCase(RetryTestCase):
 					lambda kill_switch: event.set())
 				event.wait()
 				return result.result()
-			else:
-				# child process
-				try:
-					return loop.run_until_complete(coroutine_func())
-				finally:
-					loop.close()
+
+			# child process
+			try:
+				return loop.run_until_complete(coroutine_func())
+			finally:
+				loop.close()
 
 		def execute_wrapper():
 			kill_switch = parent_loop.create_future()

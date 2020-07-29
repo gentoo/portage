@@ -32,16 +32,15 @@ class ChangeLogTypeSort(str):
 
 		if first == "EBUILD":
 			return True
-		elif first == "MISC":
+		if first == "MISC":
 			return second in ("EBUILD",)
-		elif first == "AUX":
+		if first == "AUX":
 			return second in ("EBUILD", "MISC")
-		elif first == "DIST":
+		if first == "DIST":
 			return second in ("EBUILD", "MISC", "AUX")
-		elif first is None:
+		if first is None:
 			return False
-		else:
-			raise ValueError("Unknown file type '%s'" % first)
+		raise ValueError("Unknown file type '%s'" % first)
 
 	def __lt__(self, other):
 		"""
@@ -55,7 +54,7 @@ class ChangeLogTypeSort(str):
 		# Sort by file type as defined by _file_type_lt().
 		if self._file_type_lt(self, other):
 			return True
-		elif self._file_type_lt(other, self):
+		if self._file_type_lt(other, self):
 			return False
 
 		# Files have the same type.
@@ -64,6 +63,6 @@ class ChangeLogTypeSort(str):
 			ver = "-".join(pkgsplit(self.file_name[:-7])[1:3])
 			other_ver = "-".join(pkgsplit(other.file_name[:-7])[1:3])
 			return vercmp(ver, other_ver) < 0
-		else:
-			# Sort lexicographically.
-			return self.file_name < other.file_name
+
+		# Sort lexicographically.
+		return self.file_name < other.file_name

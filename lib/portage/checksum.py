@@ -382,7 +382,7 @@ class _hash_filter:
 		for token in self._tokens:
 			if token in matches:
 				return True
-			elif token[:1] == "-":
+			if token[:1] == "-":
 				if token[1:] in matches:
 					return False
 		return False

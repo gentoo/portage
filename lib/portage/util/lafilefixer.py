@@ -181,5 +181,4 @@ def rewrite_lafile(contents):
 
 	if changed:
 		return True, contents
-	else:
-		return False, None
+	return False, None

@@ -15,7 +15,7 @@ def _get_legacy_global(name):
 		constructed.add(name)
 		return getattr(portage, name)
 
-	elif name in ('mtimedb', 'mtimedbfile'):
+	if name in ('mtimedb', 'mtimedbfile'):
 		portage.mtimedbfile = os.path.join(portage.settings['EROOT'],
 			CACHE_PATH, "mtimedb")
 		constructed.add('mtimedbfile')
