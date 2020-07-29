@@ -25,7 +25,7 @@
 ##
 ## This Python implementation is therefore also placed in the public domain.
 
-
+# pylint: disable=mixed-indentation
 
 #block_size = 64
 digest_size = 64

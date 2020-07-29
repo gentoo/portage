@@ -2694,7 +2694,7 @@ class config:
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
 		try:
-			 self._getitem(mykey)
+			self._getitem(mykey)
 		except KeyError:
 			return False
 		else:

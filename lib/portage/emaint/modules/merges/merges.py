@@ -224,9 +224,9 @@ class MergesHandler:
 		if output:
 			results.append(output)
 		if proc.returncode != os.EX_OK:
-			 emerge_status = "Failed to emerge '%s'" % (' '.join(pkg_atoms))
+			emerge_status = "Failed to emerge '%s'" % (' '.join(pkg_atoms))
 		else:
-			 emerge_status = "Successfully emerged '%s'" % (' '.join(pkg_atoms))
+			emerge_status = "Successfully emerged '%s'" % (' '.join(pkg_atoms))
 		results.append(emerge_status)
 		return results
 
