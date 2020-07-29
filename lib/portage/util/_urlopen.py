@@ -58,8 +58,7 @@ def _timestamp_to_http(timestamp):
 	return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 def _http_to_timestamp(http_datetime_string):
-	tuple = parsedate(http_datetime_string)
-	timestamp = mktime(tuple)
+	timestamp = mktime(parsedate(http_datetime_string))
 	return str(int(timestamp))
 
 class CompressedResponseProcessor(urllib_request.HTTPBasicAuthHandler):

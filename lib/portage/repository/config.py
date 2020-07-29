@@ -257,10 +257,10 @@ class RepoConfig:
 		self.module_specific_options = {}
 
 		# Not implemented.
-		format = repo_opts.get('format')
-		if format is not None:
-			format = format.strip()
-		self.format = format
+		repo_format = repo_opts.get('format')
+		if repo_format is not None:
+			repo_format = repo_format.strip()
+		self.format = repo_format
 
 		self.user_location = None
 		location = repo_opts.get('location')

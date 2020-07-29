@@ -27,7 +27,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.locale:check_locale',
 	'portage.emaint.modules.sync.sync:SyncRepos',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
-	'_emerge.help:help@emerge_help',
+	'_emerge.help:emerge_help',
 	'_emerge.post_emerge:display_news_notification,post_emerge',
 	'_emerge.stdout_spinner:stdout_spinner',
 )

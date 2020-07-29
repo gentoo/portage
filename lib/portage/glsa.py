@@ -139,7 +139,7 @@ def getListElements(listnode):
 		if li.nodeType == xml.dom.Node.ELEMENT_NODE]
 	return rValue
 
-def getText(node, format, textfd = None):
+def getText(node, format, textfd = None): # pylint: disable=redefined-builtin
 	"""
 	This is the main parser function. It takes a node and traverses
 	recursive over the subnodes, getting the text of each (and the
@@ -210,7 +210,7 @@ def getText(node, format, textfd = None):
 		rValue = re.sub(r"[\s]{2,}", " ", rValue)
 	return rValue
 
-def getMultiTagsText(rootnode, tagname, format):
+def getMultiTagsText(rootnode, tagname, format): # pylint: disable=redefined-builtin
 	"""
 	Returns a list with the text of all subnodes of type I{tagname}
 	under I{rootnode} (which itself is not parsed) using the given I{format}.

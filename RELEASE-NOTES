@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.1
+==================================
+* Bug Fixes:
+    - Bug 730192 Replace os.fork with multiprocessing.Process, and fix
+      regression in portage-3.0.0 involving eerror messages for fetch
+      failures
+
 portage-3.0.0
 ==================================
 * Bug Fixes:
