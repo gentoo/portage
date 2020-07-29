@@ -1,6 +1,7 @@
 # Copyright 2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import functools
 import subprocess
 
 from _emerge.AsynchronousTask import AsynchronousTask
@@ -23,7 +24,7 @@ class BuildLogger(AsynchronousTask):
 	subprocess stdout and stderr streams).
 	"""
 
-	__slots__ = ('env', 'log_path', 'log_filter_file', '_main_task', '_stdin')
+	__slots__ = ('env', 'log_path', 'log_filter_file', '_main_task', '_main_task_cancel', '_stdin')
 
 	@property
 	def stdin(self):
@@ -76,6 +77,7 @@ class BuildLogger(AsynchronousTask):
 			log_file_path=self.log_path)
 		pipe_logger.start()
 
+		self._main_task_cancel = functools.partial(self._main_cancel, filter_proc, pipe_logger)
 		self._main_task = asyncio.ensure_future(self._main(filter_proc, pipe_logger), loop=self.scheduler)
 		self._main_task.add_done_callback(self._main_exit)
 
@@ -87,19 +89,28 @@ class BuildLogger(AsynchronousTask):
 			if filter_proc is not None and filter_proc.poll() is None:
 				yield filter_proc.async_wait()
 		except asyncio.CancelledError:
-			if pipe_logger.poll() is None:
-				pipe_logger.cancel()
-			if filter_proc is not None and filter_proc.poll() is None:
-				filter_proc.cancel()
+			self._main_cancel(filter_proc, pipe_logger)
 			raise
+
+	def _main_cancel(self, filter_proc, pipe_logger):
+		if pipe_logger.poll() is None:
+			pipe_logger.cancel()
+		if filter_proc is not None and filter_proc.poll() is None:
+			filter_proc.cancel()
 
 	def _cancel(self):
 		if self._main_task is not None:
-			self._main_task.done() or self._main_task.cancel()
+			if not self._main_task.done():
+				if self._main_task_cancel is not None:
+					self._main_task_cancel()
+					self._main_task_cancel = None
+				self._main_task.cancel()
 		if self._stdin is not None and not self._stdin.closed:
 			self._stdin.close()
 
 	def _main_exit(self, main_task):
+		self._main_task = None
+		self._main_task_cancel = None
 		try:
 			main_task.result()
 		except asyncio.CancelledError:
