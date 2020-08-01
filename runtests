@@ -36,7 +36,7 @@ PYTHON_NICE_VERSIONS = [
 EPREFIX = os.environ.get('PORTAGE_OVERRIDE_EPREFIX', '/')
 
 
-class Colors(object):
+class Colors:
 	"""Simple object holding color constants."""
 
 	_COLORS_YES = ('y', 'yes', 'true')

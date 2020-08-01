@@ -27,7 +27,7 @@ else:
 		# magic module seems to be broken
 		magic = None
 
-class IsTextFile(object):
+class IsTextFile:
 
 	def __init__(self):
 		if magic is not None:

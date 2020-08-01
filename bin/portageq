@@ -1020,7 +1020,7 @@ docstrings['list_preserved_libs'] = """<eroot>
 list_preserved_libs.__doc__ = docstrings['list_preserved_libs']
 
 
-class MaintainerEmailMatcher(object):
+class MaintainerEmailMatcher:
 	def __init__(self, maintainer_emails):
 		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails), re.I)
 

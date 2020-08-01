@@ -238,7 +238,7 @@ def parse_args(args):
 
 	return parser, options, args
 
-class GenCache(object):
+class GenCache:
 	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
 		rsync=False):
 		# The caller must set portdb.porttrees in order to constrain
@@ -447,7 +447,7 @@ class GenCache(object):
 		if hasattr(trg_cache, '_prune_empty_dirs'):
 			trg_cache._prune_empty_dirs()
 
-class GenPkgDescIndex(object):
+class GenPkgDescIndex:
 	def __init__(self, portdb, output_file):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
@@ -470,7 +470,7 @@ class GenPkgDescIndex(object):
 
 		f.close()
 
-class GenUseLocalDesc(object):
+class GenUseLocalDesc:
 	def __init__(self, portdb, output=None,
 			preserve_comments=False):
 		self.returncode = os.EX_OK
@@ -665,7 +665,7 @@ class GenUseLocalDesc(object):
 		os.utime(desc_path, (mtime, mtime))
 
 
-class GenChangeLogs(object):
+class GenChangeLogs:
 	def __init__(self, portdb, changelog_output, changelog_reversed,
 		max_jobs=None, max_load=None):
 		self.returncode = os.EX_OK

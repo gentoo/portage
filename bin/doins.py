@@ -150,7 +150,7 @@ def _set_timestamps(source_stat, dest):
 	os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
 
 
-class _InsInProcessInstallRunner(object):
+class _InsInProcessInstallRunner:
 	"""Implements `install` command behavior running in a process."""
 
 	def __init__(self, opts, parsed_options):
@@ -257,7 +257,7 @@ class _InsInProcessInstallRunner(object):
 		return False
 
 
-class _InsSubprocessInstallRunner(object):
+class _InsSubprocessInstallRunner:
 	"""Runs `install` command in a subprocess to install a file."""
 
 	def __init__(self, split_options):
@@ -283,7 +283,7 @@ class _InsSubprocessInstallRunner(object):
 		return subprocess.call(command) == 0
 
 
-class _DirInProcessInstallRunner(object):
+class _DirInProcessInstallRunner:
 	"""Implements `install` command behavior running in a process."""
 
 	def __init__(self, parsed_options):
@@ -309,7 +309,7 @@ class _DirInProcessInstallRunner(object):
 		_set_attributes(self._parsed_options, dest)
 
 
-class _DirSubprocessInstallRunner(object):
+class _DirSubprocessInstallRunner:
 	"""Runs `install` command to create a directory."""
 
 	def __init__(self, split_options):
@@ -331,7 +331,7 @@ class _DirSubprocessInstallRunner(object):
 		subprocess.check_call(command)
 
 
-class _InstallRunner(object):
+class _InstallRunner:
 	"""Handles `install` command operation.
 
 	Runs operations which `install` command should work. If possible,
