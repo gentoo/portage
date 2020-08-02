@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Example /etc/portage/repo.postsync.d script. Make it executable (chmod +x) for
 # Portage to process it.
 #
@@ -40,6 +40,19 @@ if [ -n "${repository_name}" ]; then
 	# usually don't. Generate them to improve performance.
 	if [ "${repository_name}" != "gentoo" ]; then
 		if ! egencache --update --repo="${repository_name}" --jobs=4
+		then
+			echo "!!! egencache failed!"
+			ret=1
+		fi
+	fi
+
+	# Regenerate the metadata/pkg_desc_index file if needed. It's not
+	# needed for https://gitweb.gentoo.org/repo/sync/gentoo.git which
+	# provides a freshly generated copy.
+	if [[ ! -e ${repository_path}/metadata/pkg_desc_index || (
+		-d ${repository_path}/metadata/md5-cache &&
+		-n $(find "${repository_path}/metadata/md5-cache" -type f -newer "${repository_path}/metadata/pkg_desc_index" -print -quit) ) ]]; then
+		if ! egencache --update-pkg-desc-index --repo="${repository_name}"
 		then
 			echo "!!! egencache failed!"
 			ret=1
