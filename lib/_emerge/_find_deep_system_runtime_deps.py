@@ -35,4 +35,3 @@ def _find_deep_system_runtime_deps(graph):
 			node_stack.append(child)
 
 	return deep_system_deps
-

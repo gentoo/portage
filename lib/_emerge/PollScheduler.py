@@ -14,7 +14,7 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 from _emerge.getloadavg import getloadavg
 
-class PollScheduler(object):
+class PollScheduler:
 
 	# max time between loadavg checks (milliseconds)
 	_loadavg_latency = None

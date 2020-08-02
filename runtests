@@ -23,7 +23,6 @@ import tempfile
 
 # These are the versions we fully support and require to pass tests.
 PYTHON_SUPPORTED_VERSIONS = [
-	'2.7',
 	'3.6',
 	'3.7',
 	'3.8'
@@ -37,7 +36,7 @@ PYTHON_NICE_VERSIONS = [
 EPREFIX = os.environ.get('PORTAGE_OVERRIDE_EPREFIX', '/')
 
 
-class Colors(object):
+class Colors:
 	"""Simple object holding color constants."""
 
 	_COLORS_YES = ('y', 'yes', 'true')

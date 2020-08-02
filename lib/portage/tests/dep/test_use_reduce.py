@@ -5,7 +5,7 @@ from portage.tests import TestCase
 from portage.exception import InvalidDependString
 from portage.dep import Atom, use_reduce
 
-class UseReduceTestCase(object):
+class UseReduceTestCase:
 	def __init__(self, deparray, uselist=[], masklist=[],
 	             matchall=0, excludeall=[], is_src_uri=False,
 	             eapi='0', opconvert=False, flat=False, expected_result=None,

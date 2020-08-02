@@ -15,7 +15,7 @@ from .FetchTask import FetchTask
 from _emerge.CompositeTask import CompositeTask
 
 
-class FetchIterator(object):
+class FetchIterator:
 
 	def __init__(self, config):
 		self._config = config

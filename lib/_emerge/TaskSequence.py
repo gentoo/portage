@@ -1,7 +1,6 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 from collections import deque
 
 from portage import os
@@ -53,9 +52,6 @@ class TaskSequence(CompositeTask):
 
 	def __bool__(self):
 		return bool(self._task_queue)
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
 
 	def __len__(self):
 		return len(self._task_queue)

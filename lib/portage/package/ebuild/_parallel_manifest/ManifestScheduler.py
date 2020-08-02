@@ -84,5 +84,3 @@ class ManifestScheduler(AsyncScheduler):
 					noiselevel=-1)
 
 		AsyncScheduler._task_exit(self, task)
-
-

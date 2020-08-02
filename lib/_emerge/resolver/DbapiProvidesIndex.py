@@ -1,11 +1,10 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bisect
 import collections
-import sys
 
-class DbapiProvidesIndex(object):
+class DbapiProvidesIndex:
 	"""
 	The DbapiProvidesIndex class is used to wrap existing dbapi
 	interfaces, index packages by the sonames that they provide, and
@@ -72,9 +71,6 @@ class PackageDbapiProvidesIndex(DbapiProvidesIndex):
 
 	def __bool__(self):
 		return bool(self._db)
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
 
 	def __iter__(self):
 		return iter(self._db)

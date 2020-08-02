@@ -8,12 +8,7 @@ ___all___ = (
 	'wait',
 )
 
-try:
-	from asyncio import ALL_COMPLETED, FIRST_COMPLETED, FIRST_EXCEPTION
-except ImportError:
-	ALL_COMPLETED = 'ALL_COMPLETED'
-	FIRST_COMPLETED ='FIRST_COMPLETED'
-	FIRST_EXCEPTION = 'FIRST_EXCEPTION'
+from asyncio import ALL_COMPLETED, FIRST_COMPLETED, FIRST_EXCEPTION
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -49,7 +44,7 @@ def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	return result_future
 
 
-class _Waiter(object):
+class _Waiter:
 	def __init__(self, futures, timeout, return_when, result_future, loop):
 		self._futures = futures
 		self._completed = set()

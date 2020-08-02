@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -19,28 +19,30 @@ while [[ $# -gt 0 ]] ; do
 		shift
 
 		skip_dirs=()
-		skip_files=()
+		> "${T}/.ecompress_skip_files" || die
 		for skip; do
 			if [[ -d ${ED%/}/${skip#/} ]]; then
 				skip_dirs+=( "${ED%/}/${skip#/}" )
 			else
 				rm -f "${ED%/}/${skip#/}.ecompress" || die
-				skip_files+=("${ED%/}/${skip#/}")
+				printf -- '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
 			fi
 		done
 
 		if [[ ${#skip_dirs[@]} -gt 0 ]]; then
-			while read -r -d ''; do
-				skip_files+=(${REPLY#.ecompress})
+			while read -r -d '' skip; do
+				skip=${skip%.ecompress}
+				printf -- '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
 			done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
 		fi
 
-		if [[ ${#skip_files[@]} -gt 0 && -s ${T}/.ecompress_had_precompressed ]]; then
-			sed_args=()
-			for f in "${skip_files[@]}"; do
-				sed_args+=(-e "s|^${f}\$||")
-			done
-			sed "${sed_args[@]}" -e '/^$/d' -i "${T}/.ecompress_had_precompressed" || die
+		if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
+			# Filter skipped files from ${T}/.ecompress_had_precompressed,
+			# using temporary files since these lists can be extremely large.
+			LC_COLLATE=C sort -u "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
+			LC_COLLATE=C sort -u "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
+			LC_COLLATE=C comm -13 "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
+			rm -f "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
 		fi
 
 		exit 0
@@ -80,7 +82,7 @@ while [[ $# -gt 0 ]] ; do
 								continue 2
 							fi
 						done
-						echo "${path}" >> "${T}"/.ecompress_had_precompressed
+						printf -- '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
 						;;
 				esac
 
@@ -88,7 +90,7 @@ while [[ $# -gt 0 ]] ; do
 			done < <(find "${find_args[@]}" -print0 || die)
 
 			if [[ ${#collisions[@]} -gt 0 ]]; then
-				eqawarn "Colliding files found by ecompress:"
+				eqawarn "QA Notice: Colliding files found by ecompress:"
 				eqawarn
 				for x in "${!collisions[@]}"; do
 					eqawarn "  ${x}"
@@ -189,13 +191,13 @@ find "${ED}" -name '*.ecompress' -delete -print0 |
 ret=${?}
 
 if [[ -s ${T}/.ecompress_had_precompressed ]]; then
-	eqawarn "One or more compressed files were found in docompress-ed directories."
-	eqawarn "Please fix the ebuild not to install compressed files (manpages,"
-	eqawarn "documentation) when automatic compression is used:"
+	eqawarn "QA Notice: One or more compressed files were found in docompress-ed"
+	eqawarn "directories. Please fix the ebuild not to install compressed files"
+	eqawarn "(manpages, documentation) when automatic compression is used:"
 	eqawarn
 	n=0
 	while read -r f; do
-		eqawarn "  ${f#${D%/}}"
+		eqawarn "  ${f}"
 		if [[ $(( n++ )) -eq 10 ]]; then
 			eqawarn "  ..."
 			break

@@ -2,7 +2,10 @@
 # Copyright 1998-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-import os, pwd, grp, platform, sys
+import grp
+import os
+import platform
+import pwd
 from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, EPREFIX
 
 import portage
@@ -198,10 +201,9 @@ def _get_global(k):
 
 		if k == 'portage_gid':
 			return portage_gid
-		elif k == 'portage_uid':
+		if k == 'portage_uid':
 			return portage_uid
-		else:
-			raise AssertionError('unknown name: %s' % k)
+		raise AssertionError('unknown name: %s' % k)
 
 	elif k == 'userpriv_groups':
 		v = [_get_global('portage_gid')]

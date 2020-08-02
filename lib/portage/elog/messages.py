@@ -122,8 +122,7 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 	if out in (sys.stdout, sys.stderr):
 		formatted_msg = _unicode_encode(formatted_msg,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		if sys.hexversion >= 0x3000000:
-			out = out.buffer
+		out = out.buffer
 
 	out.write(formatted_msg)
 
@@ -173,7 +172,7 @@ _functions = { "einfo": ("INFO", "GOOD"),
 		"eerror": ("ERROR", "BAD"),
 }
 
-class _make_msgfunction(object):
+class _make_msgfunction:
 	__slots__ = ('_color', '_level')
 	def __init__(self, level, color):
 		self._level = level

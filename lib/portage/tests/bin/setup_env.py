@@ -4,6 +4,7 @@
 
 import tempfile
 
+import portage
 from portage import os
 from portage import shutil
 from portage.const import PORTAGE_BIN_PATH
@@ -36,6 +37,7 @@ def binTestsInit():
 	env['PATH'] = bindir + ':' + os.environ['PATH']
 	env['PORTAGE_BIN_PATH'] = bindir
 	env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
+	env['PORTAGE_PYTHON'] = portage._python_interpreter
 	env['PORTAGE_INST_UID'] = str(os.getuid())
 	env['PORTAGE_INST_GID'] = str(os.getgid())
 	env['DESTTREE'] = '/usr'
@@ -71,17 +73,17 @@ def portage_func(func, args, exit_status=0):
 		fd_pipes=fd_pipes, pre_exec=pre_exec)
 	f.close()
 
-def create_portage_wrapper(bin):
+def create_portage_wrapper(f):
 	def derived_func(*args):
 		newargs = list(args)
-		newargs.insert(0, bin)
+		newargs.insert(0, f)
 		return portage_func(*newargs)
 	return derived_func
 
-for bin in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
-	if bin.startswith('do') or \
-	   bin.startswith('new') or \
-	   bin.startswith('prep') or \
-	   bin in ('fowners', 'fperms'):
-		globals()[bin] = create_portage_wrapper(
-			os.path.join(bindir, 'ebuild-helpers', bin))
+for f in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
+	if (f.startswith('do') or
+		f.startswith('new') or
+		f.startswith('prep') or
+		f in ('fowners', 'fperms')):
+		globals()[f] = create_portage_wrapper(
+			os.path.join(bindir, 'ebuild-helpers', f))

@@ -450,7 +450,7 @@ def get_manpages():
 
 setup(
 	name = 'repoman',
-	version = '2.3.22',
+	version = '2.3.23',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
@@ -492,7 +492,7 @@ setup(
 		'Intended Audience :: System Administrators',
 		'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
 		'Operating System :: POSIX',
-		'Programming Language :: Python',
+		'Programming Language :: Python :: 3',
 		'Topic :: System :: Installation/Setup'
 	]
 )

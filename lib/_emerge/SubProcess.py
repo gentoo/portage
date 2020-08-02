@@ -48,9 +48,12 @@ class SubProcess(AbstractPollTask):
 	def _async_waitpid(self):
 		"""
 		Wait for exit status of self.pid asynchronously, and then
-		set the returncode and notify exit listeners. This is
-		prefered over _waitpid_loop, since the synchronous nature
-		of _waitpid_loop can cause event loop recursion.
+		set the returncode, and finally notify exit listeners via the
+		_async_wait method. Subclasses may override this method in order
+		to implement an alternative means to retrieve pid exit status,
+		or as a means to delay action until some pending task(s) have
+		completed (such as reading data that the subprocess is supposed
+		to have written to a pipe).
 		"""
 		if self.returncode is not None:
 			self._async_wait()

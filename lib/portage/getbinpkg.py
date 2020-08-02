@@ -2,8 +2,6 @@
 # Copyright 2003-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
@@ -15,6 +13,7 @@ from portage import _unicode_encode
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
+import pickle
 import sys
 import socket
 import time
@@ -25,20 +24,8 @@ import warnings
 
 _all_errors = [NotImplementedError, ValueError, socket.error]
 
-try:
-	from html.parser import HTMLParser as html_parser_HTMLParser
-except ImportError:
-	from HTMLParser import HTMLParser as html_parser_HTMLParser
-
-try:
-	from urllib.parse import unquote as urllib_parse_unquote
-except ImportError:
-	from urllib2 import unquote as urllib_parse_unquote
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
+from html.parser import HTMLParser as html_parser_HTMLParser
+from urllib.parse import unquote as urllib_parse_unquote
 
 try:
 	import ftplib
@@ -48,16 +35,10 @@ else:
 	_all_errors.extend(ftplib.all_errors)
 
 try:
-	try:
-		from http.client import HTTPConnection as http_client_HTTPConnection
-		from http.client import BadStatusLine as http_client_BadStatusLine
-		from http.client import ResponseNotReady as http_client_ResponseNotReady
-		from http.client import error as http_client_error
-	except ImportError:
-		from httplib import HTTPConnection as http_client_HTTPConnection
-		from httplib import BadStatusLine as http_client_BadStatusLine
-		from httplib import ResponseNotReady as http_client_ResponseNotReady
-		from httplib import error as http_client_error
+	from http.client import HTTPConnection as http_client_HTTPConnection
+	from http.client import BadStatusLine as http_client_BadStatusLine
+	from http.client import ResponseNotReady as http_client_ResponseNotReady
+	from http.client import error as http_client_error
 except ImportError as e:
 	sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT HTTP.CLIENT: ") + str(e) + "\n")
 else:
@@ -65,9 +46,6 @@ else:
 
 _all_errors = tuple(_all_errors)
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 def make_metadata_dict(data):
 
@@ -194,10 +172,7 @@ def create_conn(baseurl, conn=None):
 			# http.client ImportError handler (like during stage1 -> stage2
 			# builds where USE=ssl is disabled for python).
 			try:
-				try:
-					from http.client import HTTPSConnection as http_client_HTTPSConnection
-				except ImportError:
-					from httplib import HTTPSConnection as http_client_HTTPSConnection
+				from http.client import HTTPSConnection as http_client_HTTPSConnection
 			except ImportError:
 				raise NotImplementedError(
 					_("python must have ssl enabled for https support"))
@@ -460,8 +435,7 @@ def file_get_metadata(baseurl, conn=None, chunk_size=3000):
 			if not keepconnection:
 				conn.close()
 			return myid
-		else:
-			xpak_data = data[len(data) - (xpaksize + 8):-8]
+		xpak_data = data[len(data) - (xpaksize + 8):-8]
 		del data
 
 		myid = portage.xpak.xsplit_mem(xpak_data)
@@ -716,7 +690,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
 
-	class CacheStats(object):
+	class CacheStats:
 		from time import time
 		def __init__(self, out):
 			self.misses = 0
@@ -820,12 +794,11 @@ def _cmp_cpv(d1, d2):
 	cpv2 = d2["CPV"]
 	if cpv1 > cpv2:
 		return 1
-	elif cpv1 == cpv2:
+	if cpv1 == cpv2:
 		return 0
-	else:
-		return -1
+	return -1
 
-class PackageIndex(object):
+class PackageIndex:
 
 	def __init__(self,
 		allowed_pkg_keys=None,
@@ -911,7 +884,7 @@ class PackageIndex(object):
 
 	def write(self, pkgfile):
 		if self.modified:
-			self.header["TIMESTAMP"] = str(long(time.time()))
+			self.header["TIMESTAMP"] = str(int(time.time()))
 			self.header["PACKAGES"] = str(len(self.packages))
 		keys = list(self.header)
 		keys.sort()

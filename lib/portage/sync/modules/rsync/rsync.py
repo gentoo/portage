@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -10,7 +10,6 @@ import datetime
 import io
 import re
 import random
-import subprocess
 import tempfile
 
 import portage
@@ -36,11 +35,6 @@ try:
 except ImportError:
 	gemato = None
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	_unicode = str
-else:
-	_unicode = unicode
 
 SERVER_OUT_OF_DATE = -1
 EXCEEDED_MAX_RETRIES = -2
@@ -68,7 +62,7 @@ class RsyncSync(NewBase):
 		out = portage.output.EOutput(quiet=quiet)
 		syncuri = self.repo.sync_uri
 		if self.repo.module_specific_options.get(
-			'sync-rsync-vcs-ignore', 'false').lower() == 'true':
+			'sync-rsync-vcs-ignore', 'false').lower() in ('true', 'yes'):
 			vcs_dirs = ()
 		else:
 			vcs_dirs = frozenset(VCS_DIRS)
@@ -102,7 +96,7 @@ class RsyncSync(NewBase):
 		# via default repos.conf though.
 		self.verify_metamanifest = (
 				self.repo.module_specific_options.get(
-					'sync-rsync-verify-metamanifest', 'no') in ('yes', 'true'))
+					'sync-rsync-verify-metamanifest', 'no').lower() in ('yes', 'true'))
 		# Support overriding job count.
 		self.verify_jobs = self.repo.module_specific_options.get(
 				'sync-rsync-verify-jobs', None)
@@ -243,7 +237,7 @@ class RsyncSync(NewBase):
 			except socket.error as e:
 				writemsg_level(
 					"!!! getaddrinfo failed for '%s': %s\n"
-					% (_unicode_decode(hostname), _unicode(e)),
+					% (_unicode_decode(hostname), str(e)),
 					noiselevel=-1, level=logging.ERROR)
 
 			if addrinfos:

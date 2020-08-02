@@ -1,14 +1,11 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 import errno
 import io
 import logging
 import re
 import stat
-import sys
 import warnings
 
 import portage
@@ -33,12 +30,6 @@ _manifest_re = re.compile(
 	r'^(' + '|'.join(MANIFEST2_IDENTIFIERS) + r') (\S+)( \d+( \S+ \S+)+)$',
 	re.UNICODE)
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	_unicode = str
-	basestring = str
-else:
-	_unicode = unicode
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -62,21 +53,20 @@ def guessManifestFileType(filename):
 		return None
 	if filename.startswith("files" + os.sep):
 		return "AUX"
-	elif filename.endswith(".ebuild"):
+	if filename.endswith(".ebuild"):
 		return "EBUILD"
-	elif filename in ["ChangeLog", "metadata.xml"]:
+	if filename in ["ChangeLog", "metadata.xml"]:
 		return "MISC"
-	else:
-		return "DIST"
+	return "DIST"
 
 def guessThinManifestFileType(filename):
-	type = guessManifestFileType(filename)
-	if type != "DIST":
+	filetype = guessManifestFileType(filename)
+	if filetype != "DIST":
 		return None
 	return "DIST"
 
 def parseManifest2(line):
-	if not isinstance(line, basestring):
+	if not isinstance(line, str):
 		line = ' '.join(line)
 	myentry = None
 	match = _manifest_re.match(line)
@@ -88,7 +78,7 @@ def parseManifest2(line):
 			name=match.group(2), hashes=hashes)
 	return myentry
 
-class ManifestEntry(object):
+class ManifestEntry:
 	__slots__ = ("type", "name", "hashes")
 	def __init__(self, **kwargs):
 		for k, v in kwargs.items():
@@ -115,15 +105,8 @@ class Manifest2Entry(ManifestEntry):
 	def __ne__(self, other):
 		return not self.__eq__(other)
 
-	if sys.hexversion < 0x3000000:
 
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['repo.content'], errors='strict')
-
-class Manifest(object):
+class Manifest:
 	parsers = (parseManifest2,)
 	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
@@ -321,7 +304,7 @@ class Manifest(object):
 					# thin manifests with no DIST entries, myentries is
 					# non-empty for all currently known use cases.
 					write_atomic(self.getFullname(), "".join("%s\n" %
-						_unicode(myentry) for myentry in myentries))
+						str(myentry) for myentry in myentries))
 					self._apply_max_mtime(preserved_stats, myentries)
 					rval = True
 				else:

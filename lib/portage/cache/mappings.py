@@ -5,10 +5,9 @@
 __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 	"LazyLoad", "slot_dict_class"]
 
-import sys
 import weakref
 
-class Mapping(object):
+class Mapping:
 	"""
 	In python-3.0, the UserDict.DictMixin class has been replaced by
 	Mapping and MutableMapping from the collections module, but 2to3
@@ -24,9 +23,6 @@ class Mapping(object):
 
 	def __iter__(self):
 		return iter(self.keys())
-
-	def keys(self):
-		return list(self.__iter__())
 
 	def __contains__(self, key):
 		try:
@@ -46,12 +42,6 @@ class Mapping(object):
 		for _, v in self.items():
 			yield v
 
-	def values(self):
-		return [v for _, v in self.iteritems()]
-
-	def items(self):
-		return list(self.iteritems())
-
 	def get(self, key, default=None):
 		try:
 			return self[key]
@@ -64,10 +54,10 @@ class Mapping(object):
 	def __len__(self):
 		return len(list(self))
 
-	if sys.hexversion >= 0x3000000:
-		items = iteritems
-		keys = __iter__
-		values = itervalues
+	# TODO: do we need to keep iter*?
+	items = iteritems
+	keys = __iter__
+	values = itervalues
 
 class MutableMapping(Mapping):
 	"""
@@ -184,8 +174,8 @@ class UserDict(MutableMapping):
 	def clear(self):
 		self.data.clear()
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 class ProtectedDict(MutableMapping):
 	"""
@@ -234,8 +224,8 @@ class ProtectedDict(MutableMapping):
 	def __contains__(self, key):
 		return key in self.new or (key not in self.blacklist and key in self.orig)
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 class LazyLoad(Mapping):
 	"""
@@ -252,7 +242,7 @@ class LazyLoad(Mapping):
 	def __getitem__(self, key):
 		if key in self.d:
 			return self.d[key]
-		elif self.pull != None:
+		if self.pull != None:
 			self.d.update(self.pull())
 			self.pull = None
 		return self.d[key]
@@ -266,13 +256,13 @@ class LazyLoad(Mapping):
 	def __contains__(self, key):
 		if key in self.d:
 			return True
-		elif self.pull != None:
+		if self.pull != None:
 			self.d.update(self.pull())
 			self.pull = None
 		return key in self.d
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
+
 
 _slot_dict_classes = weakref.WeakValueDictionary()
 
@@ -298,7 +288,7 @@ def slot_dict_class(keys, prefix="_val_"):
 	v = _slot_dict_classes.get((keys_set, prefix))
 	if v is None:
 
-		class SlotDict(object):
+		class SlotDict:
 
 			allowed_keys = keys_set
 			_prefix = prefix
@@ -328,9 +318,6 @@ def slot_dict_class(keys, prefix="_val_"):
 					l += 1
 				return l
 
-			def keys(self):
-				return list(self)
-
 			def iteritems(self):
 				prefix = self._prefix
 				for k in self.allowed_keys:
@@ -339,15 +326,9 @@ def slot_dict_class(keys, prefix="_val_"):
 					except AttributeError:
 						pass
 
-			def items(self):
-				return list(self.iteritems())
-
 			def itervalues(self):
 				for k, v in self.iteritems():
 					yield v
-
-			def values(self):
-				return list(self.itervalues())
 
 			def __delitem__(self, k):
 				try:
@@ -447,10 +428,9 @@ def slot_dict_class(keys, prefix="_val_"):
 			def __repr__(self):
 				return repr(dict(self.iteritems()))
 
-			if sys.hexversion >= 0x3000000:
-				items = iteritems
-				keys = __iter__
-				values = itervalues
+			items = iteritems
+			keys = __iter__
+			values = itervalues
 
 		v = SlotDict
 		_slot_dict_classes[v.allowed_keys] = v

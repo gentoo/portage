@@ -6,7 +6,7 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import errno
 import io
@@ -97,7 +97,7 @@ def diff_mixed(func, file1, file2):
 		if tempdir is not None:
 			shutil.rmtree(tempdir)
 
-class diff_mixed_wrapper(object):
+class diff_mixed_wrapper:
 
 	def __init__(self, f, *args):
 		self._func = f

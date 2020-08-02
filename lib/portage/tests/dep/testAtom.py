@@ -257,7 +257,7 @@ class TestAtom(TestCase):
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c", "d", "e", "f"], None),
 		)
 
-		class use_flag_validator(object):
+		class use_flag_validator:
 			def __init__(self, iuse):
 				self.iuse = iuse
 

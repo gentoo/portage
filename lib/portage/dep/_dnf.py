@@ -1,8 +1,6 @@
 # Copyright 2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 import itertools
 
 
@@ -85,6 +83,6 @@ def contains_disjunction(dep_struct):
 			assert x, 'Normalization error, empty conjunction found in %s' % (dep_struct,)
 			if x[0] == '||':
 				return True
-			elif is_disjunction and contains_disjunction(x):
+			if is_disjunction and contains_disjunction(x):
 				return True
 	return False

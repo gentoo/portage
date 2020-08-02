@@ -1,13 +1,13 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 from portage import normalize_path
 from portage import os
 from portage.output import red
 
 
-class ProfileDesc(object):
+class ProfileDesc:
 	__slots__ = ('abs_path', 'arch', 'status', 'sub_path', 'tree_path',)
 
 	def __init__(self, arch, status, sub_path, tree_path):

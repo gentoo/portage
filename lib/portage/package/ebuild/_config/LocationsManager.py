@@ -1,8 +1,6 @@
 # Copyright 2010-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = (
 	'LocationsManager',
 )
@@ -37,7 +35,7 @@ _profile_node = collections.namedtuple('_profile_node',
 _allow_parent_colon = frozenset(
 	["portage-2"])
 
-class LocationsManager(object):
+class LocationsManager:
 
 	def __init__(self, config_root=None, eprefix=None, config_profile_path=None, local_config=True, \
 		target_root=None, sysroot=None):

@@ -3,7 +3,7 @@
 # Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import io
 import logging
@@ -36,8 +36,6 @@ from repoman import utilities
 from repoman.modules.vcs.settings import VCSSettings
 from repoman import VERSION
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
 bad = create_color_func("BAD")
 

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 # unicode_literals for compat with TextIOWrapper in Python 2
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import argparse
 import platform
@@ -75,9 +75,6 @@ else:
 	else:
 		from portage.xml.metadata import parse_metadata_use
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 def parse_args(args):
 	usage = "egencache [options] <action> ... [atom] ..."
@@ -241,7 +238,7 @@ def parse_args(args):
 
 	return parser, options, args
 
-class GenCache(object):
+class GenCache:
 	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
 		rsync=False):
 		# The caller must set portdb.porttrees in order to constrain
@@ -344,7 +341,7 @@ class GenCache(object):
 						max_mtime = ec_hash.mtime
 				if max_mtime == sc.mtime:
 					max_mtime += 1
-				max_mtime = long(max_mtime)
+				max_mtime = int(max_mtime)
 				try:
 					os.utime(ebuild_hash.location, (max_mtime, max_mtime))
 				except OSError as e:
@@ -450,7 +447,7 @@ class GenCache(object):
 		if hasattr(trg_cache, '_prune_empty_dirs'):
 			trg_cache._prune_empty_dirs()
 
-class GenPkgDescIndex(object):
+class GenPkgDescIndex:
 	def __init__(self, portdb, output_file):
 		self.returncode = os.EX_OK
 		self._portdb = portdb
@@ -473,7 +470,7 @@ class GenPkgDescIndex(object):
 
 		f.close()
 
-class GenUseLocalDesc(object):
+class GenUseLocalDesc:
 	def __init__(self, portdb, output=None,
 			preserve_comments=False):
 		self.returncode = os.EX_OK
@@ -668,7 +665,7 @@ class GenUseLocalDesc(object):
 		os.utime(desc_path, (mtime, mtime))
 
 
-class GenChangeLogs(object):
+class GenChangeLogs:
 	def __init__(self, portdb, changelog_output, changelog_reversed,
 		max_jobs=None, max_load=None):
 		self.returncode = os.EX_OK
@@ -709,7 +706,7 @@ class GenChangeLogs(object):
 			# This cp has not been added to the repo.
 			return
 
-		lmod = long(lmod)
+		lmod = int(lmod)
 
 		try:
 			cmod = os.stat('ChangeLog')[stat.ST_MTIME]

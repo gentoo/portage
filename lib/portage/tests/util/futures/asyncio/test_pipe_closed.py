@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -6,7 +6,6 @@ import os
 import pty
 import shutil
 import socket
-import sys
 import tempfile
 
 from portage.tests import TestCase
@@ -18,7 +17,7 @@ from portage.util.futures.unix_events import (
 )
 
 
-class _PipeClosedTestCase(object):
+class _PipeClosedTestCase:
 
 	def test_pipe(self):
 		read_end, write_end = os.pipe()
@@ -32,10 +31,7 @@ class _PipeClosedTestCase(object):
 		self._do_test(read_end, write_end)
 
 	def test_domain_socket(self):
-		if sys.version_info >= (3, 2):
-			read_end, write_end = socket.socketpair()
-		else:
-			self.skipTest('socket detach not supported')
+		read_end, write_end = socket.socketpair()
 		self._do_test(read_end.detach(), write_end.detach())
 
 	def test_named_pipe(self):

@@ -6,7 +6,7 @@
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 __all__ = [
 	"editor_is_executable",
@@ -49,9 +49,6 @@ from repoman.copyrights import update_copyright, update_copyright_year
 
 normalize_path = util.normalize_path
 util.initialize_logger()
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
 
 def have_profile_dir(path, maxdepth=3, filename="profiles.desc"):

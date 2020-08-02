@@ -18,7 +18,7 @@ MODULES_PATH = os.path.dirname(__file__)
 logging.debug("LineChecks module path: %s", MODULES_PATH)
 
 
-class LineCheckController(object):
+class LineCheckController:
 	'''Initializes and runs the LineCheck checks'''
 
 	def __init__(self, repo_settings, linechecks):

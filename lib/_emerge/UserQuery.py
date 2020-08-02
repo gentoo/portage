@@ -1,7 +1,7 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import signal
 import sys
@@ -10,7 +10,7 @@ from portage import _unicode_decode
 from portage.output import bold, create_color_func
 
 
-class UserQuery(object):
+class UserQuery:
 	"""The UserQuery class is used to prompt the user with a set of responses,
 	as well as accepting and handling the responses."""
 
@@ -54,17 +54,12 @@ class UserQuery(object):
 		print(bold(prompt), end=' ')
 		try:
 			while True:
-				if sys.hexversion >= 0x3000000:
-					try:
-						response = input("[%s] " %
-							"/".join([colours[i](responses[i])
-							for i in range(len(responses))]))
-					except UnicodeDecodeError as e:
-						response = _unicode_decode(e.object).rstrip('\n')
-				else:
-					response=raw_input("["+"/".join([colours[i](responses[i])
-									  for i in range(len(responses))])+"] ")
-					response = _unicode_decode(response)
+				try:
+					response = input("[%s] " %
+						"/".join([colours[i](responses[i])
+						for i in range(len(responses))]))
+				except UnicodeDecodeError as e:
+					response = _unicode_decode(e.object).rstrip('\n')
 				if response or not enter_invalid:
 					for key in responses:
 						# An empty response will match the

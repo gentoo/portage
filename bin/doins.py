@@ -110,10 +110,6 @@ def _parse_install_options(
 	parser.add_argument('-p', '--preserve-timestamps', action='store_true')
 	split_options = shlex.split(options)
 	namespace, remaining = parser.parse_known_args(split_options)
-	if namespace.preserve_timestamps and sys.version_info < (3, 3):
-		# -p is not supported in this case, since timestamps cannot
-		# be preserved with full precision
-		remaining.append('-p')
 	# Because parsing '--mode' option is partially supported. If unknown
 	# arg for --mode is passed, namespace.mode is set to None.
 	if remaining or namespace.mode is None:
@@ -151,18 +147,10 @@ def _set_timestamps(source_stat, dest):
 		source_stat: stat result for the source file.
 		dest: path to the dest file.
 	"""
-	os.utime(dest, (source_stat.st_atime, source_stat.st_mtime))
+	os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
 
 
-if sys.version_info >= (3, 3):
-	def _set_timestamps_ns(source_stat, dest):
-		os.utime(dest, ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
-
-	_set_timestamps_ns.__doc__ = _set_timestamps.__doc__
-	_set_timestamps = _set_timestamps_ns
-
-
-class _InsInProcessInstallRunner(object):
+class _InsInProcessInstallRunner:
 	"""Implements `install` command behavior running in a process."""
 
 	def __init__(self, opts, parsed_options):
@@ -269,7 +257,7 @@ class _InsInProcessInstallRunner(object):
 		return False
 
 
-class _InsSubprocessInstallRunner(object):
+class _InsSubprocessInstallRunner:
 	"""Runs `install` command in a subprocess to install a file."""
 
 	def __init__(self, split_options):
@@ -295,7 +283,7 @@ class _InsSubprocessInstallRunner(object):
 		return subprocess.call(command) == 0
 
 
-class _DirInProcessInstallRunner(object):
+class _DirInProcessInstallRunner:
 	"""Implements `install` command behavior running in a process."""
 
 	def __init__(self, parsed_options):
@@ -321,7 +309,7 @@ class _DirInProcessInstallRunner(object):
 		_set_attributes(self._parsed_options, dest)
 
 
-class _DirSubprocessInstallRunner(object):
+class _DirSubprocessInstallRunner:
 	"""Runs `install` command to create a directory."""
 
 	def __init__(self, split_options):
@@ -343,7 +331,7 @@ class _DirSubprocessInstallRunner(object):
 		subprocess.check_call(command)
 
 
-class _InstallRunner(object):
+class _InstallRunner:
 	"""Handles `install` command operation.
 
 	Runs operations which `install` command should work. If possible,
@@ -514,10 +502,9 @@ def _parse_args(argv):
 
 	# Encode back to the original byte stream. Please see
 	# http://bugs.python.org/issue8776.
-	if sys.version_info.major >= 3:
-		opts.distdir = os.fsencode(opts.distdir) + b'/'
-		opts.dest = os.fsencode(opts.dest)
-		opts.sources = [os.fsencode(source) for source in opts.sources]
+	opts.distdir = os.fsencode(opts.distdir) + b'/'
+	opts.dest = os.fsencode(opts.dest)
+	opts.sources = [os.fsencode(source) for source in opts.sources]
 
 	return opts
 

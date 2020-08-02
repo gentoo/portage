@@ -1,9 +1,8 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
-import sys
 
 from portage import _encodings, _unicode_encode
 from _emerge.AtomArg import AtomArg
@@ -16,10 +15,8 @@ from portage._sets.base import InternalPackageSet
 from portage.util import writemsg
 from portage.versions import cpv_getversion, vercmp
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
 
-class slot_conflict_handler(object):
+class slot_conflict_handler:
 	"""This class keeps track of all slot conflicts and provides
 	an interface to get possible solutions.
 
@@ -374,11 +371,11 @@ class slot_conflict_handler(object):
 					selected_for_display = set()
 					unconditional_use_deps = set()
 
-					for (type, sub_type), parents in collision_reasons.items():
-						#From each (type, sub_type) pair select at least one atom.
+					for (ctype, sub_type), parents in collision_reasons.items():
+						#From each (ctype, sub_type) pair select at least one atom.
 						#Try to select as few atoms as possible
 
-						if type == "version":
+						if ctype == "version":
 							#Find the atom with version that is as far away as possible.
 							best_matches = {}
 							for ppkg, atom, other_pkg in parents:
@@ -398,7 +395,7 @@ class slot_conflict_handler(object):
 							if not verboseconflicts:
 								selected_for_display.update(
 										best_matches.values())
-						elif type in ("soname", "slot"):
+						elif ctype in ("soname", "slot"):
 							# Check for packages that might need to
 							# be rebuilt, but cannot be rebuilt for
 							# some reason.
@@ -426,7 +423,7 @@ class slot_conflict_handler(object):
 								selected_for_display.add((ppkg, atom))
 								if not verboseconflicts:
 									break
-						elif type == "use":
+						elif ctype == "use":
 							#Prefer atoms with unconditional use deps over, because it's
 							#not possible to change them on the parent, which means there
 							#are fewer possible solutions.
@@ -467,7 +464,7 @@ class slot_conflict_handler(object):
 								# If the list is long, people can simply
 								# use a pager.
 								selected_for_display.add((ppkg, atom))
-						elif type == "AtomArg":
+						elif ctype == "AtomArg":
 							for ppkg, atom in parents:
 								selected_for_display.add((ppkg, atom))
 
@@ -739,9 +736,9 @@ class slot_conflict_handler(object):
 		all_involved_flags = []
 
 		#Go through all slot conflicts
-		for id, pkg in enumerate(config):
+		for idx, pkg in enumerate(config):
 			involved_flags = {}
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 
@@ -849,8 +846,8 @@ class slot_conflict_handler(object):
 
 		if self.debug:
 			writemsg("All involved flags:\n", noiselevel=-1)
-			for id, involved_flags in enumerate(all_involved_flags):
-				writemsg("   %s\n" % (config[id],), noiselevel=-1)
+			for idx, involved_flags in enumerate(all_involved_flags):
+				writemsg("   %s\n" % (config[idx],), noiselevel=-1)
 				for flag, state in involved_flags.items():
 					writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
@@ -1068,10 +1065,9 @@ class slot_conflict_handler(object):
 
 		if is_valid_solution and required_changes:
 			return required_changes
-		else:
-			return None
+		return None
 
-class _configuration_generator(object):
+class _configuration_generator:
 	def __init__(self, conflict_pkgs):
 		#reorder packages such that installed packages come last
 		self.conflict_pkgs = []
@@ -1098,11 +1094,11 @@ class _configuration_generator(object):
 				return None
 		
 		solution = []
-		for id, pkgs in enumerate(self.conflict_pkgs):
-			solution.append(pkgs[self.solution_ids[id]])
+		for idx, pkgs in enumerate(self.conflict_pkgs):
+			solution.append(pkgs[self.solution_ids[idx]])
 		return solution
 	
-	def _next(self, id=None):
+	def _next(self, id=None): # pylint: disable=redefined-builtin
 		solution_ids = self.solution_ids
 		conflict_pkgs = self.conflict_pkgs
 		
@@ -1112,33 +1108,23 @@ class _configuration_generator(object):
 		if solution_ids[id] == len(conflict_pkgs[id])-1:
 			if id > 0:
 				return self._next(id=id-1)
-			else:
-				return False
-		else:
-			solution_ids[id] += 1
-			for other_id in range(id+1, len(solution_ids)):
-				solution_ids[other_id] = 0
-			return True
+			return False
 
-class _solution_candidate_generator(object):
-	class _value_helper(object):
+		solution_ids[id] += 1
+		for other_id in range(id+1, len(solution_ids)):
+			solution_ids[other_id] = 0
+		return True
+
+class _solution_candidate_generator:
+	class _value_helper:
 		def __init__(self, value=None):
 			self.value = value
 		def __eq__(self, other):
-			if isinstance(other, basestring):
+			if isinstance(other, str):
 				return self.value == other
-			else:
-				return self.value == other.value
+			return self.value == other.value
 		def __str__(self):
 			return "%s" % (self.value,)
-
-		if sys.hexversion < 0x3000000:
-
-			__unicode__ = __str__
-
-			def __str__(self):
-				return _unicode_encode(self.__unicode__(),
-					encoding=_encodings['content'], errors='backslashreplace')
 
 	def __init__(self, all_involved_flags):
 		#A copy of all_involved_flags with all "cond" values
@@ -1171,7 +1157,7 @@ class _solution_candidate_generator(object):
 
 		return self.all_involved_flags
 	
-	def _next(self, id=None):
+	def _next(self, id=None): # pylint: disable=redefined-builtin
 		values = self.conditional_values
 		
 		if not values:
@@ -1183,12 +1169,11 @@ class _solution_candidate_generator(object):
 		if values[id].value == "enabled":
 			if id > 0:
 				return self._next(id=id-1)
-			else:
-				return False
-		else:
-			values[id].value = "enabled"
-			for other_id in range(id+1, len(values)):
-				values[other_id].value = "disabled"
-			return True
+			return False
+
+		values[id].value = "enabled"
+		for other_id in range(id+1, len(values)):
+			values[other_id].value = "disabled"
+		return True
 		
 		

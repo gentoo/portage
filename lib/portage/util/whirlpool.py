@@ -25,9 +25,7 @@
 ##
 ## This Python implementation is therefore also placed in the public domain.
 
-import sys
-if sys.hexversion >= 0x3000000:
-    xrange = range
+# pylint: disable=mixed-indentation
 
 #block_size = 64
 digest_size = 64
@@ -641,8 +639,6 @@ def WhirlpoolInit(ctx):
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
         raise TypeError("Expected %s, got %s" % (bytes, type(source)))
-    if sys.hexversion < 0x3000000:
-        source = [ord(s)&0xff for s in source]
 
     carry = 0
     value = sourceBits
@@ -700,19 +696,19 @@ def WhirlpoolFinalize(ctx):
     bufferPos += 1
     if bufferPos > 32:
         if bufferPos < 64:
-            for i in xrange(64 - bufferPos):
+            for i in range(64 - bufferPos):
                 ctx.buffer[bufferPos+i] = 0
         processBuffer(ctx)
         bufferPos = 0
     if bufferPos < 32:
-        for i in xrange(32 - bufferPos):
+        for i in range(32 - bufferPos):
             ctx.buffer[bufferPos+i] = 0
     bufferPos = 32
-    for i in xrange(32):
+    for i in range(32):
         ctx.buffer[32+i] = ctx.bitLength[i]
     processBuffer(ctx)
     digest = ''
-    for i in xrange(8):
+    for i in range(8):
         digest += chr((ctx.hash[i] >> 56) % 0x100)
         digest += chr((ctx.hash[i] >> 48) % 0x100)
         digest += chr((ctx.hash[i] >> 40) % 0x100)
@@ -743,7 +739,7 @@ def processBuffer(ctx):
     buffr = ctx.buffer
 
     buf_cnt = 0
-    for i in xrange(8):
+    for i in range(8):
         block[i] = ((buffr[buf_cnt+0] & 0xff) << 56) ^ \
                    ((buffr[buf_cnt+1] & 0xff) << 48) ^ \
                    ((buffr[buf_cnt+2] & 0xff) << 40) ^ \
@@ -753,11 +749,11 @@ def processBuffer(ctx):
                    ((buffr[buf_cnt+6] & 0xff) <<  8) ^ \
                    ((buffr[buf_cnt+7] & 0xff) <<  0)
         buf_cnt += 8
-    for i in xrange(8):
+    for i in range(8):
         K[i] = ctx.hash[i]
         state[i] = block[i] ^ K[i]
 
-    for r in xrange(1, R+1):
+    for r in range(1, R+1):
         L[0] = CDo(K, 0, 7, 6, 5, 4, 3, 2, 1) ^ rc[r]
         L[1] = CDo(K, 1, 0, 7, 6, 5, 4, 3, 2)
         L[2] = CDo(K, 2, 1, 0, 7, 6, 5, 4, 3)
@@ -766,7 +762,7 @@ def processBuffer(ctx):
         L[5] = CDo(K, 5, 4, 3, 2, 1, 0, 7, 6)
         L[6] = CDo(K, 6, 5, 4, 3, 2, 1, 0, 7)
         L[7] = CDo(K, 7, 6, 5, 4, 3, 2, 1, 0)
-        for i in xrange(8):
+        for i in range(8):
             K[i] = L[i]
         L[0] = CDo(state, 0, 7, 6, 5, 4, 3, 2, 1) ^ K[0]
         L[1] = CDo(state, 1, 0, 7, 6, 5, 4, 3, 2) ^ K[1]
@@ -776,10 +772,10 @@ def processBuffer(ctx):
         L[5] = CDo(state, 5, 4, 3, 2, 1, 0, 7, 6) ^ K[5]
         L[6] = CDo(state, 6, 5, 4, 3, 2, 1, 0, 7) ^ K[6]
         L[7] = CDo(state, 7, 6, 5, 4, 3, 2, 1, 0) ^ K[7]
-        for i in xrange(8):
+        for i in range(8):
             state[i] = L[i]
     # apply the Miyaguchi-Preneel compression function
-    for i in xrange(8):
+    for i in range(8):
         ctx.hash[i] ^= state[i] ^ block[i]
     return
 

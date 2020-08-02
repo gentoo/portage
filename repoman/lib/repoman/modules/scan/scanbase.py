@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 
 
-class ScanBase(object):
+class ScanBase:
 	'''Skeleton class for performing a scan for one or more items
 	to check in a pkg directory or ebuild.'''
 

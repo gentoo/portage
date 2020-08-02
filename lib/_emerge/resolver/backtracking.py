@@ -3,7 +3,7 @@
 
 import copy
 
-class BacktrackParameter(object):
+class BacktrackParameter:
 
 	__slots__ = (
 		"circular_dependency",
@@ -65,7 +65,7 @@ class BacktrackParameter(object):
 			self.prune_rebuilds == other.prune_rebuilds
 
 
-class _BacktrackNode(object):
+class _BacktrackNode:
 
 	__slots__ = (
 		"parameter", "depth", "mask_steps", "terminal",
@@ -81,7 +81,7 @@ class _BacktrackNode(object):
 		return self.parameter == other.parameter
 
 
-class Backtracker(object):
+class Backtracker:
 
 	__slots__ = (
 		"_max_depth", "_unexplored_nodes", "_current_node", "_nodes", "_root",
@@ -119,8 +119,7 @@ class Backtracker(object):
 			node = self._unexplored_nodes.pop()
 			self._current_node = node
 			return copy.deepcopy(node.parameter)
-		else:
-			return None
+		return None
 
 
 	def __len__(self):

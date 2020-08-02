@@ -56,8 +56,8 @@ A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 A \fIfile\fR must be a file or directory that has been installed by one or
 more packages. If an absolute path is not used, then it must begin with
 either "./" or "../". For directories that are owned by multiple packages, all
-owning packages will be selected. See the portageq(1) owners command if you
-would like to query the owners of one or more files or directories.
+owning packages will be selected. See the \fBportageq\fR(1) owners command if
+you would like to query the owners of one or more files or directories.
 .TP
 .BR set
 A \fIset\fR is a convenient shorthand for a large group of
@@ -1100,7 +1100,7 @@ This also applies to options that enable the \fB\-\-usepkg\fR option
 implicitly, such as \fB\-\-getbinpkg\fR.
 
 This setting can be added to
-\fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later overridden via the
+\fBEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) and later overridden via the
 command line.
 .TP
 .BR "\-\-with\-bdeps\-auto < y | n >"
@@ -1109,7 +1109,7 @@ This option is used to enable or disable the program logic that causes
 actions. This option is enabled by default. Use
 \fB\-\-with\-bdeps\-auto=n\fR to prevent \fB\-\-with\-bdeps\fR from
 being automatically enabled for installation actions. This setting can
-be added to \fBEMERGE_DEFAULT_OPTS\fR (see make.conf(5)) and later
+be added to \fBEMERGE_DEFAULT_OPTS\fR (see \fBmake.conf\fR(5)) and later
 overridden via the command line.
 
 \fBNOTE:\fR The program logic that causes \fB\-\-with\-bdeps\fR to be

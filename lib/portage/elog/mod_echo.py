@@ -9,9 +9,6 @@ from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 _items = []
 def process(mysettings, key, logentries, fulltext):
@@ -61,7 +58,7 @@ def _finalize():
 						"ERROR": printer.eerror,
 						"LOG": printer.einfo,
 						"QA": printer.ewarn}
-				if isinstance(msgcontent, basestring):
+				if isinstance(msgcontent, str):
 					msgcontent = [msgcontent]
 				for line in msgcontent:
 					fmap[msgtype](line.strip("\n"))

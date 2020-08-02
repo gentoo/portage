@@ -358,8 +358,7 @@ class AgeSet(EverythingSet):
 		if ((self._mode == "older" and age <= self._age) \
 			or (self._mode == "newer" and age >= self._age)):
 			return False
-		else:
-			return True
+		return True
 	
 	def singleBuilder(cls, options, settings, trees):
 		mode = options.get("mode", "older")
@@ -394,8 +393,7 @@ class DateSet(EverythingSet):
 		if ((self._mode == "older" and date < self._date) \
 			or (self._mode == "newer" and date > self._date)):
 			return True
-		else:
-			return False
+		return False
 
 	def singleBuilder(cls, options, settings, trees):
 		vardbapi = trees["vartree"].dbapi
@@ -418,9 +416,9 @@ class DateSet(EverythingSet):
 		elif len(formats) > 1:
 			raise SetConfigError(_("no more than one of these options is allowed: 'package', 'filestamp', 'seconds', 'date'"))
 
-		format = formats[0]
+		setformat = formats[0]
 
-		if (format == "package"):
+		if (setformat == "package"):
 			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
@@ -428,13 +426,13 @@ class DateSet(EverythingSet):
 				date = int(date)
 			except (KeyError, ValueError):
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
-		elif (format == "filestamp"):
+		elif (setformat == "filestamp"):
 			filestamp = options.get("filestamp")
 			try:
 				date = int(os.stat(filestamp).st_mtime)
 			except (OSError, ValueError):
 				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
-		elif (format == "seconds"):
+		elif (setformat == "seconds"):
 			try:
 				date = int(options.get("seconds"))
 			except ValueError:
@@ -508,25 +506,24 @@ class ChangedDepsSet(PackageSet):
 				if isinstance(depatom, list):
 					# process the nested list.
 					return [clean_subslots(x, usel) for x in depatom]
-				else:
-					try:
-						# this can be either an atom or some special operator.
-						# in the latter case, we get InvalidAtom and pass it as-is.
-						a = Atom(depatom)
-					except InvalidAtom:
-						return depatom
-					else:
-						# if we're processing portdb, we need to evaluate USE flag
-						# dependency conditionals to make them match vdb. this
-						# requires passing the list of USE flags, so we reuse it
-						# as conditional for the operation as well.
-						if usel is not None:
-							a = a.evaluate_conditionals(usel)
 
-						# replace slot operator := dependencies with plain :=
-						# since we can't properly compare expanded slots
-						# in vardb to abstract slots in portdb.
-						return subslot_repl_re.sub(':=', a)
+				try:
+					# this can be either an atom or some special operator.
+					# in the latter case, we get InvalidAtom and pass it as-is.
+					a = Atom(depatom)
+				except InvalidAtom:
+					return depatom
+				# if we're processing portdb, we need to evaluate USE flag
+				# dependency conditionals to make them match vdb. this
+				# requires passing the list of USE flags, so we reuse it
+				# as conditional for the operation as well.
+				if usel is not None:
+					a = a.evaluate_conditionals(usel)
+
+				# replace slot operator := dependencies with plain :=
+				# since we can't properly compare expanded slots
+				# in vardb to abstract slots in portdb.
+				return subslot_repl_re.sub(':=', a)
 
 			# get all *DEPEND variables from vdb & portdb and compare them.
 			# we need to do some cleaning up & expansion to make matching

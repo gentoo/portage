@@ -14,7 +14,7 @@ from portage.localization import _
 from portage.util import grabdict, stack_dictlist, writemsg
 from portage.versions import cpv_getkey
 
-class VirtualsManager(object):
+class VirtualsManager:
 
 	def __init__(self, *args, **kwargs):
 		if kwargs.get("_copy"):

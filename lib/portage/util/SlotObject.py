@@ -1,7 +1,7 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-class SlotObject(object):
+class SlotObject:
 	__slots__ = ("__weakref__",)
 
 	def __init__(self, **kwargs):

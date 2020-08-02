@@ -1,8 +1,6 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 ]
@@ -41,7 +39,6 @@ from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import os as _os
-import sys
 import traceback
 import warnings
 import errno
@@ -49,16 +46,8 @@ import collections
 import functools
 
 from collections import OrderedDict
+from urllib.parse import urlparse
 
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
-
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-	long = int
 
 def close_portdbapi_caches():
 	# The python interpreter does _not_ guarantee that destructors are
@@ -108,7 +97,7 @@ class _dummy_list(list):
 			pass
 
 
-class _better_cache(object):
+class _better_cache:
 
 	"""
 	The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
@@ -164,8 +153,13 @@ class _better_cache(object):
 					raise
 				continue
 			for p in pkg_list:
-				if os.path.isdir(cat_dir + "/" + p):
-					self._items[cat + "/" + p].append(repo)
+				try:
+					atom = Atom("%s/%s" % (cat, p))
+				except InvalidAtom:
+					continue
+				if atom != atom.cp:
+					continue
+				self._items[atom.cp].append(repo)
 		self._scanned_cats.add(cat)
 
 
@@ -883,7 +877,7 @@ class portdbapi(dbapi):
 				filesdict[myfile] = int(checksums[myfile]["size"])
 		return filesdict
 
-	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None):
+	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False, myrepo=None): # pylint: disable=redefined-builtin
 		"""
 		TODO: account for PORTAGE_RO_DISTDIRS
 		"""
@@ -936,8 +930,7 @@ class portdbapi(dbapi):
 			return 0
 		if self.findname(cps[0] + "/" + cps2[1], myrepo=myrepo):
 			return 1
-		else:
-			return 0
+		return 0
 
 	def cp_all(self, categories=None, trees=None, reverse=False, sort=True):
 		"""
@@ -994,7 +987,7 @@ class portdbapi(dbapi):
 		# stable sort by version produces results ordered by
 		# (pkg.version, repo.priority).
 		if mytree is not None:
-			if isinstance(mytree, basestring):
+			if isinstance(mytree, str):
 				repos = [self.repositories.get_repo_for_location(mytree)]
 			else:
 				# assume it's iterable
@@ -1316,7 +1309,7 @@ class portdbapi(dbapi):
 
 		return True
 
-class portagetree(object):
+class portagetree:
 	def __init__(self, root=DeprecationWarning, virtual=DeprecationWarning,
 		settings=None):
 		"""
@@ -1456,12 +1449,7 @@ class FetchlistDict(Mapping):
 		infinite recursion in some cases."""
 		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
 
-	def keys(self):
-		"""Returns keys for all packages within pkgdir"""
-		return self.portdb.cp_list(self.cp, mytree=self.mytree)
-
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
+	keys = __iter__
 
 
 def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
@@ -1508,7 +1496,7 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 
 		if result.cancelled():
 			return
-		elif e is None:
+		if e is None:
 			result.set_result(dict((k, list(v.result()))
 				for k, v in zip(cpv_list, gather_result.result())))
 		else:

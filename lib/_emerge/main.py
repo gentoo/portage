@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -16,14 +16,12 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'textwrap',
 	'_emerge.actions:load_emerge_config,run_action,' + \
 		'validate_ebuild_environment',
-	'_emerge.help:help@emerge_help',
+	'_emerge.help:emerge_help',
 	'_emerge.is_valid_package_atom:insert_category_into_atom'
 )
 from portage import os
 from portage.sync import _SUBMODULE_PATH_MAP
 
-if sys.hexversion >= 0x3000000:
-	long = int
 
 options=[
 "--alphabetical",
@@ -101,7 +99,7 @@ def insert_optional_args(args):
 	this feature natively.
 	"""
 
-	class valid_integers(object):
+	class valid_integers:
 		def __contains__(self, s):
 			try:
 				return int(s) >= 0
@@ -110,7 +108,7 @@ def insert_optional_args(args):
 
 	valid_integers = valid_integers()
 
-	class valid_floats(object):
+	class valid_floats:
 		def __contains__(self, s):
 			try:
 				return float(s) >= 0
@@ -1241,10 +1239,10 @@ def emerge_main(args=None):
 	if myaction == "help":
 		emerge_help()
 		return os.EX_OK
-	elif myaction == "moo":
+	if myaction == "moo":
 		print(COWSAY_MOO % platform.system())
 		return os.EX_OK
-	elif myaction == "sync":
+	if myaction == "sync":
 		# need to set this to True now in order for the repository config
 		# loading to allow new repos with non-existent directories
 		portage._sync_mode = True

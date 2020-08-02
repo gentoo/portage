@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Gentoo Authors
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -29,7 +29,7 @@ from portage import util
 from _emerge.CompositeTask import CompositeTask
 
 
-class TaskHandler(object):
+class TaskHandler:
 	"""Handles the running of the tasks it is given
 	"""
 
@@ -82,7 +82,7 @@ def print_results(results):
 		print("\n")
 
 
-class SyncManager(object):
+class SyncManager:
 	'''Main sync control module'''
 
 	def __init__(self, settings, logger):
@@ -115,8 +115,7 @@ class SyncManager(object):
 				"has been renamed to sync_async",
 				DeprecationWarning, stacklevel=2)
 			return self.sync_async
-		else:
-			raise AttributeError(name)
+		raise AttributeError(name)
 
 	def get_module_descriptions(self, mod):
 		desc = self.module_controller.get_func_descriptions(mod)
@@ -231,7 +230,7 @@ class SyncManager(object):
 		# Redirect command stderr to stdout, in order to prevent
 		# spurious cron job emails (bug 566132).
 		spawn_kwargs["fd_pipes"] = {
-			0: sys.__stdin__.fileno(),
+			0: portage._get_stdin().fileno(),
 			1: sys.__stdout__.fileno(),
 			2: sys.__stdout__.fileno()
 		}
@@ -396,4 +395,3 @@ class SyncRepo(CompositeTask):
 		self.returncode = sync_task.returncode
 		self.sync_callback(self.sync_task)
 		self._async_wait()
-

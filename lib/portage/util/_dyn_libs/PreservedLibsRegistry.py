@@ -1,16 +1,11 @@
-# Copyright 1998-2014 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import json
 import logging
+import pickle
 import stat
-import sys
-
-try:
-	import cPickle as pickle
-except ImportError:
-	import pickle
 
 from portage import abssymlink
 from portage import os
@@ -25,11 +20,8 @@ from portage.util import writemsg_level
 from portage.versions import cpv_getkey
 from portage.locks import lockfile, unlockfile
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
-class PreservedLibsRegistry(object):
+class PreservedLibsRegistry:
 	""" This class handles the tracking of preserved library objects """
 
 	# JSON read support has been available since portage-2.2.0_alpha89.
@@ -38,11 +30,8 @@ class PreservedLibsRegistry(object):
 	_json_write_opts = {
 		"ensure_ascii": False,
 		"indent": "\t",
-		"sort_keys": True
+		"sort_keys": True,
 	}
-	if sys.hexversion < 0x30200F0:
-		# indent only supports int number of spaces
-		_json_write_opts["indent"] = 4
 
 	def __init__(self, root, filename):
 		""" 
@@ -154,7 +143,7 @@ class PreservedLibsRegistry(object):
 		int conversion and a possible ValueError resulting
 		from vardb corruption.
 		"""
-		if not isinstance(counter, basestring):
+		if not isinstance(counter, str):
 			counter = str(counter)
 		return _unicode_decode(counter).strip()
 

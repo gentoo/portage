@@ -4,13 +4,8 @@
 import os
 import signal
 
-try:
-	import asyncio as _real_asyncio
-	from asyncio.events import AbstractEventLoop as _AbstractEventLoop
-except ImportError:
-	# Allow ImportModulesTestCase to succeed.
-	_real_asyncio = None
-	_AbstractEventLoop = object
+import asyncio as _real_asyncio
+from asyncio.events import AbstractEventLoop as _AbstractEventLoop
 
 import portage
 

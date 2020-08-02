@@ -1,7 +1,7 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function, unicode_literals
+from __future__ import division, print_function
 
 from collections import deque
 import gc
@@ -63,9 +63,6 @@ from _emerge.PackageMerge import PackageMerge
 from _emerge.PollScheduler import PollScheduler
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-
 # enums
 FAILURE = 1
 
@@ -123,7 +120,7 @@ class Scheduler(PollScheduler):
 		__slots__ = ("build_dir", "build_log", "pkg",
 			"postinst_failure", "returncode")
 
-	class _ConfigPool(object):
+	class _ConfigPool:
 		"""Interface for a task to temporarily allocate a config
 		instance from a pool. This allows a task to be constructed
 		long before the config instance actually becomes needed, like
@@ -1141,7 +1138,7 @@ class Scheduler(PollScheduler):
 					if phase not in logentries:
 						continue
 					for msgtype, msgcontent in logentries[phase]:
-						if isinstance(msgcontent, basestring):
+						if isinstance(msgcontent, str):
 							msgcontent = [msgcontent]
 						for line in msgcontent:
 							printer.eerror(line.strip("\n"))

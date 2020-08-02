@@ -39,5 +39,4 @@ class ManifestProcess(ForkProcess):
 		else:
 			if modified:
 				return self.MODIFIED
-			else:
-				return os.EX_OK
+			return os.EX_OK

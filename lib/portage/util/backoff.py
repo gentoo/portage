@@ -10,7 +10,7 @@ import random
 import sys
 
 
-class ExponentialBackoff(object):
+class ExponentialBackoff:
 	"""
 	An object that when called with number of previous tries, calculates
 	an exponential delay for the next try.

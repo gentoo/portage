@@ -1,8 +1,6 @@
 # Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ["dbapi"]
 
 import functools
@@ -26,7 +24,7 @@ from portage.exception import InvalidData
 from portage.localization import _
 from _emerge.Package import Package
 
-class dbapi(object):
+class dbapi:
 	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False

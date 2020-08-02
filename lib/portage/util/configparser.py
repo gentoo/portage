@@ -1,4 +1,4 @@
-# Copyright 2016 Gentoo Foundation
+# Copyright 2016-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['ConfigParserError', 'NoOptionError', 'ParsingError',
@@ -9,26 +9,13 @@ __all__ = ['ConfigParserError', 'NoOptionError', 'ParsingError',
 # - RawConfigParser that provides no interpolation for values.
 
 import io
-import sys
 
-try:
-	from configparser import (Error as ConfigParserError,
-		NoOptionError, ParsingError, RawConfigParser)
-	if sys.hexversion >= 0x3020000:
-		from configparser import ConfigParser as SafeConfigParser
-	else:
-		from configparser import SafeConfigParser
-except ImportError:
-	from ConfigParser import (Error as ConfigParserError,
-		NoOptionError, ParsingError, RawConfigParser, SafeConfigParser)
+from configparser import (Error as ConfigParserError,
+	NoOptionError, ParsingError, RawConfigParser)
+from configparser import ConfigParser as SafeConfigParser
 
 from portage import _encodings
 from portage import _unicode_encode
-
-
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 
 def read_configs(parser, paths):
@@ -50,7 +37,7 @@ def read_configs(parser, paths):
 		source_kwarg = 'filename'
 
 	for p in paths:
-		if isinstance(p, basestring):
+		if isinstance(p, str):
 			f = None
 			try:
 				f = io.open(_unicode_encode(p,

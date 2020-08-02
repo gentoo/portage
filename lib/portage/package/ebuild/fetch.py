@@ -20,16 +20,8 @@ import tempfile
 import time
 
 from collections import OrderedDict
-
-try:
-	from urllib.parse import urlparse
-except ImportError:
-	from urlparse import urlparse
-
-try:
-	from urllib.parse import quote as urlquote
-except ImportError:
-	from urllib import quote as urlquote
+from urllib.parse import urlparse
+from urllib.parse import quote as urlquote
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -355,7 +347,7 @@ _size_suffix_map = {
 }
 
 
-class FlatLayout(object):
+class FlatLayout:
 	def get_path(self, filename):
 		return filename
 
@@ -375,7 +367,7 @@ class FlatLayout(object):
 		return len(args) == 1
 
 
-class FilenameHashLayout(object):
+class FilenameHashLayout:
 	def __init__(self, algo, cutoffs):
 		self.algo = algo
 		self.cutoffs = [int(x) for x in cutoffs.split(':')]
@@ -424,7 +416,7 @@ class FilenameHashLayout(object):
 		return False
 
 
-class MirrorLayoutConfig(object):
+class MirrorLayoutConfig:
 	"""
 	Class to read layout.conf from a mirror.
 	"""
@@ -462,11 +454,10 @@ class MirrorLayoutConfig(object):
 			if self.validate_structure(val):
 				if val[0] == 'flat':
 					return FlatLayout(*val[1:])
-				elif val[0] == 'filename-hash':
+				if val[0] == 'filename-hash':
 					return FilenameHashLayout(*val[1:])
-		else:
-			# fallback
-			return FlatLayout()
+		# fallback
+		return FlatLayout()
 
 	def get_all_layouts(self):
 		ret = []
@@ -1258,8 +1249,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 							writemsg(_("!!! File %s is incorrect size, "
 								"but unable to retry.\n") % myfile, noiselevel=-1)
 						return 0
-					else:
-						continue
+					continue
 
 				if fetched != 2 and has_space:
 					#we either need to resume or start the download

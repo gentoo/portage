@@ -15,7 +15,7 @@ from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures import asyncio
 
 
-class ProxyManager(object):
+class ProxyManager:
 	"""
 	A class to start and control a single running SOCKSv5 server process
 	for Portage.

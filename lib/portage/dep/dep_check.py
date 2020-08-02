@@ -1,8 +1,6 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ['dep_check', 'dep_eval', 'dep_wordreduce', 'dep_zapdeps']
 
 import collections
@@ -285,14 +283,13 @@ def dep_eval(deplist):
 		if len(deplist) == 1:
 			return 1
 		return 0
-	else:
-		for x in deplist:
-			if isinstance(x, list):
-				if dep_eval(x)==0:
-					return 0
-			elif x==0 or x==2:
+	for x in deplist:
+		if isinstance(x, list):
+			if dep_eval(x)==0:
 				return 0
-		return 1
+		elif x==0 or x==2:
+			return 0
+	return 1
 
 class _dep_choice(SlotObject):
 	__slots__ = ('atoms', 'slot_map', 'cp_map', 'all_available',

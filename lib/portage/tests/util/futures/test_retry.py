@@ -1,17 +1,14 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-try:
-	from concurrent.futures import ThreadPoolExecutor
-except ImportError:
-	ThreadPoolExecutor = None
+from concurrent.futures import ThreadPoolExecutor
 
 try:
 	import threading
 except ImportError:
 	import dummy_threading as threading
 
-import sys
+import time
 
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -19,24 +16,23 @@ from portage.util.backoff import RandomExponentialBackoff
 from portage.util.futures import asyncio
 from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
-from portage.util.monotonic import monotonic
 
 
 class SucceedLaterException(Exception):
 	pass
 
 
-class SucceedLater(object):
+class SucceedLater:
 	"""
 	A callable object that succeeds some duration of time has passed.
 	"""
 	def __init__(self, duration):
-		self._succeed_time = monotonic() + duration
+		self._succeed_time = time.monotonic() + duration
 
 	def __call__(self):
 		loop = global_event_loop()
 		result = loop.create_future()
-		remaining = self._succeed_time - monotonic()
+		remaining = self._succeed_time - time.monotonic()
 		if remaining > 0:
 			loop.call_soon_threadsafe(lambda: None if result.done() else
 				result.set_exception(SucceedLaterException(
@@ -51,7 +47,7 @@ class SucceedNeverException(Exception):
 	pass
 
 
-class SucceedNever(object):
+class SucceedNever:
 	"""
 	A callable object that never succeeds.
 	"""
@@ -63,7 +59,7 @@ class SucceedNever(object):
 		return result
 
 
-class HangForever(object):
+class HangForever:
 	"""
 	A callable object that sleeps forever.
 	"""
@@ -207,12 +203,12 @@ class RetryForkExecutorTestCase(RetryTestCase):
 					lambda kill_switch: event.set())
 				event.wait()
 				return result.result()
-			else:
-				# child process
-				try:
-					return loop.run_until_complete(coroutine_func())
-				finally:
-					loop.close()
+
+			# child process
+			try:
+				return loop.run_until_complete(coroutine_func())
+			finally:
+				loop.close()
 
 		def execute_wrapper():
 			kill_switch = parent_loop.create_future()
@@ -229,6 +225,4 @@ class RetryForkExecutorTestCase(RetryTestCase):
 
 class RetryThreadExecutorTestCase(RetryForkExecutorTestCase):
 	def _setUpExecutor(self):
-		if sys.version_info.major < 3:
-			self.skipTest('ThreadPoolExecutor not supported for python2')
 		self._executor = ThreadPoolExecutor(max_workers=1)

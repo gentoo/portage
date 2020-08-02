@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Gentoo Authors
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -7,9 +7,7 @@ import collections
 import errno
 import logging
 import random
-import stat
 import subprocess
-import sys
 
 import portage
 from portage import _encodings, _unicode_encode
@@ -232,12 +230,11 @@ class FetchTask(CompositeTask):
 		if self._fs_mirror_stack:
 			self._fetch_fs(self._fs_mirror_stack.pop())
 			return
-		else:
-			uri = self._next_uri()
-			if uri is not None:
-				self._tried_uris.add(uri)
-				self._fetch_uri(uri)
-				return
+		uri = self._next_uri()
+		if uri is not None:
+			self._tried_uris.add(uri)
+			self._fetch_uri(uri)
+			return
 
 		if self._tried_uris:
 			msg = "all uris failed"
@@ -352,14 +349,14 @@ class FetchTask(CompositeTask):
 					self.returncode = os.EX_OK
 					self.wait()
 					return
-				else:
-					self._start_task(
-						FileCopier(src_path=src, dest_path=dest,
-							background=(self.background and
-								self._log_path is not None),
-							logfile=self._log_path),
-						self._fs_mirror_copier_exit)
-					return
+
+				self._start_task(
+					FileCopier(src_path=src, dest_path=dest,
+						background=(self.background and
+							self._log_path is not None),
+						logfile=self._log_path),
+					self._fs_mirror_copier_exit)
+				return
 
 		self._try_next_mirror()
 
@@ -385,14 +382,9 @@ class FetchTask(CompositeTask):
 			# Apply the timestamp from the source file, but
 			# just rely on umask for permissions.
 			try:
-				if sys.hexversion >= 0x3030000:
-					os.utime(copier.dest_path,
-						ns=(self._current_stat.st_mtime_ns,
-						self._current_stat.st_mtime_ns))
-				else:
-					os.utime(copier.dest_path,
-						(self._current_stat[stat.ST_MTIME],
-						self._current_stat[stat.ST_MTIME]))
+				os.utime(copier.dest_path,
+					ns=(self._current_stat.st_mtime_ns,
+					self._current_stat.st_mtime_ns))
 			except OSError as e:
 				msg = "%s %s utime failed unexpectedly: %s" % \
 					(self.distfile, current_mirror.name, e)
@@ -605,11 +597,10 @@ class FetchTask(CompositeTask):
 	def _select_hash(self):
 		if default_hash_name in self.digests:
 			return default_hash_name
-		else:
-			for hash_name in self.digests:
-				if hash_name != "size" and \
-					hash_name in portage.checksum.get_valid_checksum_keys():
-					return hash_name
+		for hash_name in self.digests:
+			if hash_name != "size" and \
+				hash_name in portage.checksum.get_valid_checksum_keys():
+				return hash_name
 
 		return None
 

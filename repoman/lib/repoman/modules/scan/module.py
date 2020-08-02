@@ -19,7 +19,7 @@ MODULES_PATH = os.path.dirname(__file__)
 logging.debug("module path: %s", MODULES_PATH)
 
 
-class ModuleConfig(object):
+class ModuleConfig:
 	'''Holds the scan modules configuration information and
 	creates the ordered list of modulles to run'''
 

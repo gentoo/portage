@@ -78,7 +78,7 @@ class _CoroutineReturnValue(Exception):
 		self.result = result
 
 
-class _GeneratorTask(object):
+class _GeneratorTask:
 	"""
 	Asynchronously executes the generator to completion, waiting for
 	the result of each Future that it yields, and sending the result
@@ -134,4 +134,3 @@ class _GeneratorTask(object):
 		else:
 			self._current_task = asyncio.ensure_future(future, loop=self._loop)
 			self._current_task.add_done_callback(self._next)
-

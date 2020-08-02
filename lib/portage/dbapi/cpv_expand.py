@@ -1,8 +1,6 @@
 # Copyright 2010-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ["cpv_expand"]
 
 import portage
@@ -102,7 +100,5 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	if mysplit:
 		if mysplit[2]=="r0":
 			return mykey+"-"+mysplit[1]
-		else:
-			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
-	else:
-		return mykey
+		return mykey+"-"+mysplit[1]+"-"+mysplit[2]
+	return mykey

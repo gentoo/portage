@@ -2,8 +2,6 @@
 # Copyright 1998-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 # ===========================================================================
 # autotool supplied constants.
 # ===========================================================================

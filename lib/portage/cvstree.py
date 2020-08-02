@@ -7,16 +7,12 @@ from __future__ import print_function
 import io
 import re
 import stat
-import sys
 import time
 
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 # [D]/Name/Version/Date/Flags/Tags
 
@@ -33,10 +29,9 @@ def pathdata(entries, path):
 			return None
 	if mytarget in myentries["dirs"]:
 		return myentries["dirs"][mytarget]
-	elif mytarget in myentries["files"]:
+	if mytarget in myentries["files"]:
 		return myentries["files"][mytarget]
-	else:
-		return None
+	return None
 
 def fileat(entries, path):
 	return pathdata(entries, path)
@@ -202,14 +197,14 @@ def findall(entries, recursive=0, basedir=""):
 	return [mynew, mychanged, mymissing, myunadded, myremoved]
 
 ignore_list = re.compile(r"(^|/)(RCS(|LOG)|SCCS|CVS(|\.adm)|cvslog\..*|tags|TAGS|\.(make\.state|nse_depinfo)|.*~|(\.|)#.*|,.*|_$.*|.*\$|\.del-.*|.*\.(old|BAK|bak|orig|rej|a|olb|o|obj|so|exe|Z|elc|ln)|core)$")
-def apply_cvsignore_filter(list):
+def apply_cvsignore_filter(files):
 	x = 0
-	while x < len(list):
-		if ignore_list.match(list[x].split("/")[-1]):
-			list.pop(x)
+	while x < len(files):
+		if ignore_list.match(files[x].split("/")[-1]):
+			files.pop(x)
 		else:
 			x += 1
-	return list
+	return files
 	
 def getentries(mydir, recursive=0):
 	"""Scans the given directory and returns a datadict of all the entries in

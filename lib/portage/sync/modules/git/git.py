@@ -1,4 +1,4 @@
-# Copyright 2005-2018 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -204,7 +204,7 @@ class GitSync(NewBase):
 
 	def verify_head(self, revision='-1'):
 		if (self.repo.module_specific_options.get(
-				'sync-git-verify-commit-signature', 'false') != 'true'):
+				'sync-git-verify-commit-signature', 'false').lower() not in ('true', 'yes')):
 			return True
 
 		if self.repo.sync_openpgp_key_path is not None:
@@ -247,26 +247,25 @@ class GitSync(NewBase):
 			if status == 'G':  # good signature is good
 				out.einfo('Trusted signature found on top commit')
 				return True
-			elif status == 'U':  # untrusted
+			if status == 'U':  # untrusted
 				out.ewarn('Top commit signature is valid but not trusted')
 				return True
+			if status == 'B':
+				expl = 'bad signature'
+			elif status == 'X':
+				expl = 'expired signature'
+			elif status == 'Y':
+				expl = 'expired key'
+			elif status == 'R':
+				expl = 'revoked key'
+			elif status == 'E':
+				expl = 'unable to verify signature (missing key?)'
+			elif status == 'N':
+				expl = 'no signature'
 			else:
-				if status == 'B':
-					expl = 'bad signature'
-				elif status == 'X':
-					expl = 'expired signature'
-				elif status == 'Y':
-					expl = 'expired key'
-				elif status == 'R':
-					expl = 'revoked key'
-				elif status == 'E':
-					expl = 'unable to verify signature (missing key?)'
-				elif status == 'N':
-					expl = 'no signature'
-				else:
-					expl = 'unknown issue'
-				out.eerror('No valid signature found: %s' % (expl,))
-				return False
+				expl = 'unknown issue'
+			out.eerror('No valid signature found: %s' % (expl,))
+			return False
 		finally:
 			if openpgp_env is not None:
 				openpgp_env.close()

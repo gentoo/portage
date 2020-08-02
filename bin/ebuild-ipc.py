@@ -100,7 +100,7 @@ class FifoWriter(AbstractPollTask):
 			os.close(self._fd)
 			self._fd = None
 
-class EbuildIpc(object):
+class EbuildIpc:
 
 	# Timeout for each individual communication attempt (we retry
 	# as long as the daemon process appears to be alive).

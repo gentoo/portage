@@ -2,11 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-import platform
 import shutil
 import socket
 import struct
-import sys
 import tempfile
 import time
 
@@ -16,15 +14,8 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util import socks5
 from portage.const import PORTAGE_BIN_PATH
 
-try:
-	from http.server import BaseHTTPRequestHandler, HTTPServer
-except ImportError:
-	from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-
-try:
-	from urllib.request import urlopen
-except ImportError:
-	from urllib import urlopen
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.request import urlopen
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -58,7 +49,7 @@ class _Handler(BaseHTTPRequestHandler):
 		pass
 
 
-class AsyncHTTPServer(object):
+class AsyncHTTPServer:
 	def __init__(self, host, content, loop):
 		self._host = host
 		self._content = content
@@ -193,19 +184,13 @@ class Socks5ServerTestCase(TestCase):
 					'PORTAGE_BIN_PATH': PORTAGE_BIN_PATH,
 				}
 
-				try:
-					proxy = socks5.get_socks5_proxy(settings)
-				except NotImplementedError:
-					# bug 658172 for python2.7
-					self.skipTest('get_socks5_proxy not implemented for {} {}.{}'.format(
-						platform.python_implementation(), *sys.version_info[:2]))
-				else:
-					loop.run_until_complete(socks5.proxy.ready())
+				proxy = socks5.get_socks5_proxy(settings)
+				loop.run_until_complete(socks5.proxy.ready())
 
-					result = loop.run_until_complete(loop.run_in_executor(None,
-						self._fetch_via_proxy, proxy, host, server.server_port, path))
+				result = loop.run_until_complete(loop.run_in_executor(None,
+					self._fetch_via_proxy, proxy, host, server.server_port, path))
 
-					self.assertEqual(result, content)
+				self.assertEqual(result, content)
 		finally:
 			socks5.proxy.stop()
 			shutil.rmtree(tempdir)

@@ -1,8 +1,6 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 import collections
 import fnmatch
 import functools
@@ -17,7 +15,7 @@ from portage.util import (
 )
 
 
-class SonameDepsProcessor(object):
+class SonameDepsProcessor:
 	"""
 	Processes NEEDED.ELF.2 entries for one package, in order to generate
 	REQUIRES and PROVIDES metadata.

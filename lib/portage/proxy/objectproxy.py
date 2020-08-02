@@ -1,11 +1,10 @@
-# Copyright 2008-2012 Gentoo Foundation
+# Copyright 2008-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 
 __all__ = ['ObjectProxy']
 
-class ObjectProxy(object):
+class ObjectProxy:
 
 	"""
 	Object that acts as a proxy to another object, forwarding
@@ -87,12 +86,6 @@ class ObjectProxy(object):
 
 	def __bool__(self):
 		return bool(object.__getattribute__(self, '_get_target')())
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
-		def __unicode__(self):
-			return unicode(object.__getattribute__(self, '_get_target')())
 
 	def __int__(self):
 		return int(object.__getattribute__(self, '_get_target')())

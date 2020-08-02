@@ -38,9 +38,9 @@ class database(fs_template.FsBased):
 		try:
 			return int(self.__get(path,'value_max_len'))
 		except NoValueException as e:
-			max = self.__calc_max(path)
-			self.__set(path,'value_max_len',str(max))
-			return max
+			maxattrlength = self.__calc_max(path)
+			self.__set(path, 'value_max_len', str(maxattrlength))
+			return maxattrlength
 
 	def __calc_max(self,path):
 		""" Find out max attribute length supported by the file system """
@@ -90,8 +90,7 @@ class database(fs_template.FsBased):
 		except IOError as e:
 			if not default is None and errno.ENODATA == e.errno:
 				return default
-			else:
-				raise NoValueException()
+			raise NoValueException()
 
 	def __remove(self,path,key):
 		xattr.remove(path,key,namespace=self.ns)
@@ -102,48 +101,48 @@ class database(fs_template.FsBased):
 	def _getitem(self, cpv):
 		values = {}
 		path = self.__get_path(cpv)
-		all = {}
-		for tuple in xattr.get_all(path,namespace=self.ns):
-			key,value = tuple
-			all[key] = value
+		attrs = {
+			key: value
+			for key, value in xattr.get_all(path, namespace=self.ns)
+		}
 
 		if not '_mtime_' in all:
 			raise KeyError(cpv)
 
 		# We default to '' like other caches
 		for key in self.keys:
-			attr_value = all.get(key,'1:')
+			attr_value = attrs.get(key,'1:')
 			parts,sep,value = attr_value.partition(':')
 			parts = int(parts)
 			if parts > 1:
 				for i in range(1,parts):
-					value += all.get(key+str(i))
+					value += attrs.get(key+str(i))
 			values[key] = value
 
 		return values
 
 	def _setitem(self, cpv, values):
 		path = self.__get_path(cpv)
-		max = self.max_len
+		max_len = self.max_len
 		for key,value in values.items():
 			# mtime comes in as long so need to convert to strings
 			s = str(value)
 			# We need to split long values
 			value_len = len(s)
 			parts = 0
-			if value_len > max:
+			if value_len > max_len:
 				# Find out how many parts we need
-				parts = value_len/max
-				if value_len % max > 0:
+				parts = value_len/max_len
+				if value_len % max_len > 0:
 					parts += 1
 
 				# Only the first entry carries the number of parts
-				self.__set(path,key,'%s:%s'%(parts,s[0:max]))
+				self.__set(path,key,'%s:%s'%(parts,s[0:max_len]))
 
 				# Write out the rest
 				for i in range(1,parts):
-					start = i * max
-					val = s[start:start+max]
+					start = i * max_len
+					val = s[start:start+max_len]
 					self.__set(path,key+str(i),val)
 			else:
 				self.__set(path,key,"%s:%s"%(1,s))

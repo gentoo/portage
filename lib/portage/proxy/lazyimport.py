@@ -1,4 +1,4 @@
-# Copyright 2009-2014 Gentoo Foundation
+# Copyright 2009-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['lazyimport']
@@ -13,9 +13,6 @@ except ImportError:
 
 from portage.proxy.objectproxy import ObjectProxy
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
@@ -169,7 +166,7 @@ def lazyimport(scope, *args):
 		if len(parts) == 1:
 			name = s
 
-			if not name or not isinstance(name, basestring):
+			if not name or not isinstance(name, str):
 				raise ValueError(name)
 
 			components = name.split('.')

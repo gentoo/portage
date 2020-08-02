@@ -1,7 +1,5 @@
-# Copyright 1999-2015 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 import io
 import sys
@@ -16,10 +14,7 @@ from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-
-class JobStatusDisplay(object):
+class JobStatusDisplay:
 
 	_bound_properties = ("curval", "failed", "running")
 
@@ -61,7 +56,7 @@ class JobStatusDisplay(object):
 			object.__setattr__(self, "_term_codes", term_codes)
 		encoding = sys.getdefaultencoding()
 		for k, v in self._term_codes.items():
-			if not isinstance(v, basestring):
+			if not isinstance(v, str):
 				self._term_codes[k] = v.decode(encoding, 'replace')
 
 		if self._isatty:
@@ -88,9 +83,7 @@ class JobStatusDisplay(object):
 		# avoid potential UnicodeEncodeError
 		s = _unicode_encode(s,
 			encoding=_encodings['stdio'], errors='backslashreplace')
-		out = self.out
-		if sys.hexversion >= 0x3000000:
-			out = out.buffer
+		out = self.out.buffer
 		out.write(s)
 		out.flush()
 

@@ -158,4 +158,3 @@ class EbuildBuildDir(SlotObject):
 
 	class AlreadyLocked(portage.exception.PortageException):
 		pass
-

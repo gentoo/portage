@@ -1,7 +1,6 @@
-# Copyright 1999-2012 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 
@@ -40,9 +39,6 @@ class PackageVirtualDbapi(dbapi):
 
 	def __bool__(self):
 		return bool(self._cpv_map)
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
 
 	def __iter__(self):
 		return iter(self._cpv_map.values())
@@ -146,4 +142,3 @@ class PackageVirtualDbapi(dbapi):
 	def aux_update(self, cpv, values):
 		self._cpv_map[cpv]._metadata.update(values)
 		self._clear_cache()
-

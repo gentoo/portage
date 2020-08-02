@@ -29,7 +29,7 @@ class PackageConflict(_PackageConflict):
 		return len(self.pkgs)
 
 
-class PackageTracker(object):
+class PackageTracker:
 	"""
 	**Behavior**
 
@@ -358,7 +358,7 @@ class PackageTracker(object):
 		return self.contains(pkg, installed=True)
 
 
-class PackageTrackerDbapiWrapper(object):
+class PackageTrackerDbapiWrapper:
 	"""
 	A wrpper class that provides parts of the legacy
 	dbapi interface. Remove it once all consumers have

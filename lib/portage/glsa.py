@@ -1,14 +1,11 @@
 # Copyright 2003-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import, unicode_literals
+from __future__ import absolute_import
 
 import io
 import sys
-try:
-	from urllib.request import urlopen as urllib_request_urlopen
-except ImportError:
-	from urllib import urlopen as urllib_request_urlopen
+from urllib.request import urlopen as urllib_request_urlopen
 import codecs
 import re
 import operator
@@ -142,7 +139,7 @@ def getListElements(listnode):
 		if li.nodeType == xml.dom.Node.ELEMENT_NODE]
 	return rValue
 
-def getText(node, format, textfd = None):
+def getText(node, format, textfd = None): # pylint: disable=redefined-builtin
 	"""
 	This is the main parser function. It takes a node and traverses
 	recursive over the subnodes, getting the text of each (and the
@@ -213,7 +210,7 @@ def getText(node, format, textfd = None):
 		rValue = re.sub(r"[\s]{2,}", " ", rValue)
 	return rValue
 
-def getMultiTagsText(rootnode, tagname, format):
+def getMultiTagsText(rootnode, tagname, format): # pylint: disable=redefined-builtin
 	"""
 	Returns a list with the text of all subnodes of type I{tagname}
 	under I{rootnode} (which itself is not parsed) using the given I{format}.
@@ -296,10 +293,9 @@ def match(atom, dbapi, match_type="default"):
 	"""
 	if atom[2] == "~":
 		return revisionMatch(atom, dbapi, match_type=match_type)
-	elif match_type == "default" or not hasattr(dbapi, "xmatch"):
+	if match_type == "default" or not hasattr(dbapi, "xmatch"):
 		return dbapi.match(atom)
-	else:
-		return dbapi.xmatch(match_type, atom)
+	return dbapi.xmatch(match_type, atom)
 
 def revisionMatch(revisionAtom, dbapi, match_type="default"):
 	"""

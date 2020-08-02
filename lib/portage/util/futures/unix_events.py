@@ -6,20 +6,13 @@ __all__ = (
 	'DefaultEventLoopPolicy',
 )
 
-try:
-	import asyncio as _real_asyncio
-	from asyncio.base_subprocess import BaseSubprocessTransport as _BaseSubprocessTransport
-	from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
-	from asyncio.transports import (
-		ReadTransport as _ReadTransport,
-		WriteTransport as _WriteTransport,
-	)
-except ImportError:
-	_real_asyncio = None
-	_AbstractChildWatcher = object
-	_BaseSubprocessTransport = object
-	_ReadTransport = object
-	_WriteTransport = object
+import asyncio as _real_asyncio
+from asyncio.base_subprocess import BaseSubprocessTransport as _BaseSubprocessTransport
+from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
+from asyncio.transports import (
+	ReadTransport as _ReadTransport,
+	WriteTransport as _WriteTransport,
+)
 
 import errno
 import fcntl
@@ -32,7 +25,6 @@ import subprocess
 import sys
 
 from portage.util._eventloop.global_event_loop import (
-	_asyncio_enabled,
 	global_event_loop as _global_event_loop,
 )
 from portage.util.futures import (
@@ -441,7 +433,7 @@ class _UnixWritePipeTransport(_FlowControlMixin, _WriteTransport):
 				return
 			if n == len(data):
 				return
-			elif n > 0:
+			if n > 0:
 				data = memoryview(data)[n:]
 			self._loop.add_writer(self._fileno, self._write_ready)
 
@@ -471,7 +463,7 @@ class _UnixWritePipeTransport(_FlowControlMixin, _WriteTransport):
 					self._loop.remove_reader(self._fileno)
 					self._call_connection_lost(None)
 				return
-			elif n > 0:
+			if n > 0:
 				del self._buffer[:n]
 
 	def can_write_eof(self):
@@ -625,10 +617,9 @@ class _PortageChildWatcher(_AbstractChildWatcher):
 	def _compute_returncode(self, status):
 		if os.WIFSIGNALED(status):
 			return -os.WTERMSIG(status)
-		elif os.WIFEXITED(status):
+		if os.WIFEXITED(status):
 			return os.WEXITSTATUS(status)
-		else:
-			return status
+		return status
 
 	def add_child_handler(self, pid, callback, *args):
 		"""
@@ -701,5 +692,4 @@ class _AsyncioEventLoopPolicy(_PortageEventLoopPolicy):
 		return super(_AsyncioEventLoopPolicy, self).get_child_watcher()
 
 
-DefaultEventLoopPolicy = (_AsyncioEventLoopPolicy if _asyncio_enabled
-	else _PortageEventLoopPolicy)
+DefaultEventLoopPolicy = _AsyncioEventLoopPolicy

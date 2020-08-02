@@ -3,7 +3,7 @@ import logging
 import re
 
 
-class LineCheck(object):
+class LineCheck:
 	"""Run a check on a line of an ebuild."""
 	"""A regular expression to determine whether to ignore the line"""
 	ignore_line = False

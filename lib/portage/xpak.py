@@ -24,7 +24,6 @@ __all__ = [
 
 import array
 import errno
-import sys
 
 import portage
 from portage import os
@@ -78,8 +77,6 @@ def encodeint(myint):
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
 	Returns an integer."""
-	if sys.hexversion < 0x3000000:
-		mystring = [ord(x) for x in mystring]
 	myint = 0
 	myint += mystring[3]
 	myint += mystring[2] << 8
@@ -276,7 +273,7 @@ def xpand(myid, mydest):
 		mydat.close()
 		startpos = startpos + namelen + 12
 
-class tbz2(object):
+class tbz2:
 	def __init__(self, myfile):
 		self.file = myfile
 		self.filestat = None

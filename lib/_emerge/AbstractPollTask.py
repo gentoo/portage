@@ -3,7 +3,6 @@
 
 import array
 import errno
-import logging
 import os
 
 from portage.util import writemsg_level

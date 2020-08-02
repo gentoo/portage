@@ -98,8 +98,8 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 						" can only be used with specific package names")
 				print()
 				return 1, {}
-			else:
-				global_unmerge = 1
+
+			global_unmerge = 1
 
 		localtree = vartree
 		# process all arguments and add all
@@ -605,4 +605,3 @@ def unmerge(root_config, myopts, unmerge_action,
 		sets["selected"].unlock()
 
 	return os.EX_OK
-

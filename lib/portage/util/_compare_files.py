@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["compare_files"]
@@ -6,7 +6,6 @@ __all__ = ["compare_files"]
 import io
 import os
 import stat
-import sys
 
 from portage import _encodings
 from portage import _unicode_encode
@@ -49,20 +48,12 @@ def compare_files(file1, file2, skipped_types=()):
 	if "xattr" not in skipped_types and sorted(xattr.get_all(file1, nofollow=True)) != sorted(xattr.get_all(file2, nofollow=True)):
 		differences.append("xattr")
 
-	if sys.hexversion >= 0x3030000:
-		if "atime" not in skipped_types and file1_stat.st_atime_ns != file2_stat.st_atime_ns:
-			differences.append("atime")
-		if "mtime" not in skipped_types and file1_stat.st_mtime_ns != file2_stat.st_mtime_ns:
-			differences.append("mtime")
-		if "ctime" not in skipped_types and file1_stat.st_ctime_ns != file2_stat.st_ctime_ns:
-			differences.append("ctime")
-	else:
-		if "atime" not in skipped_types and file1_stat.st_atime != file2_stat.st_atime:
-			differences.append("atime")
-		if "mtime" not in skipped_types and file1_stat.st_mtime != file2_stat.st_mtime:
-			differences.append("mtime")
-		if "ctime" not in skipped_types and file1_stat.st_ctime != file2_stat.st_ctime:
-			differences.append("ctime")
+	if "atime" not in skipped_types and file1_stat.st_atime_ns != file2_stat.st_atime_ns:
+		differences.append("atime")
+	if "mtime" not in skipped_types and file1_stat.st_mtime_ns != file2_stat.st_mtime_ns:
+		differences.append("mtime")
+	if "ctime" not in skipped_types and file1_stat.st_ctime_ns != file2_stat.st_ctime_ns:
+		differences.append("ctime")
 
 	if "type" in differences:
 		pass

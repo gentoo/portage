@@ -7,7 +7,7 @@ import signal
 import portage
 
 
-class ProgressHandler(object):
+class ProgressHandler:
 	def __init__(self):
 		self.reset()
 
@@ -58,4 +58,3 @@ class ProgressBar(ProgressHandler):
 
 	def stop(self):
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
-

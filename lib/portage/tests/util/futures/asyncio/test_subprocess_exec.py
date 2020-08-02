@@ -3,7 +3,6 @@
 
 import os
 import subprocess
-import sys
 
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -132,8 +131,6 @@ class SubprocessExecTestCase(TestCase):
 		requires an AbstractEventLoop.connect_read_pipe implementation
 		(and a ReadTransport implementation for it to return).
 		"""
-		if sys.version_info.major < 3:
-			self.skipTest('ReadTransport not implemented for python2')
 
 		args_tuple = (b'hello', b'world')
 		echo_binary = find_binary("echo")
@@ -162,8 +159,6 @@ class SubprocessExecTestCase(TestCase):
 		requires an AbstractEventLoop.connect_write_pipe implementation
 		(and a WriteTransport implementation for it to return).
 		"""
-		if sys.version_info.major < 3:
-			self.skipTest('WriteTransport not implemented for python2')
 
 		stdin_data = b'hello world'
 		cat_binary = find_binary("cat")

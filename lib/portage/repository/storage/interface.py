@@ -11,7 +11,7 @@ class RepoStorageException(PortageException):
 	"""
 
 
-class RepoStorageInterface(object):
+class RepoStorageInterface:
 	"""
 	Abstract repository storage interface.
 

@@ -34,7 +34,7 @@ def check_type(repo, logger, module_names):
 	return True
 
 
-class CheckSyncConfig(object):
+class CheckSyncConfig:
 	'''Base repos.conf settings checks class'''
 
 	def __init__(self, repo=None, logger=None):

@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -204,6 +204,17 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 		except OSError:
 			pass
 		os.symlink('snapshots/{}'.format(new_id), new_symlink)
+
+		# If SyncManager.pre_sync creates an empty directory where
+		# self._latest_symlink is suppose to be (which is normal if
+		# sync-rcu-store-dir has been removed), then we need to remove
+		# the directory or else rename will raise IsADirectoryError
+		# when we try to replace the directory with a symlink.
+		try:
+			os.rmdir(self._latest_symlink)
+		except OSError:
+			pass
+
 		os.rename(new_symlink, self._latest_symlink)
 
 		try:

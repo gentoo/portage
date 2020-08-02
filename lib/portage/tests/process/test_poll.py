@@ -1,11 +1,10 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
 import pty
 import shutil
 import socket
-import sys
 import tempfile
 
 from portage import os
@@ -34,11 +33,8 @@ class PipeReaderTestCase(TestCase):
 
 	def test_domain_socket(self):
 		def make_pipes():
-			if sys.version_info >= (3, 2):
-				read_end, write_end = socket.socketpair()
-				return (read_end.detach(), write_end.detach()), None
-			else:
-				self.skipTest('socket detach not supported')
+			read_end, write_end = socket.socketpair()
+			return (read_end.detach(), write_end.detach()), None
 		self._do_test(make_pipes)
 
 	def test_named_pipe(self):

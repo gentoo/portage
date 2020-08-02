@@ -1,7 +1,7 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-class RootConfig(object):
+class RootConfig:
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
 	__slots__ = ("mtimedb", "root", "setconfig", "sets", "settings", "trees")

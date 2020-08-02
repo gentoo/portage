@@ -1,21 +1,21 @@
 #!/usr/bin/python -b
-# Copyright 2009-2015 Gentoo Foundation
+# Copyright 2009-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
 from portage.manifest import guessManifestFileType
-from portage.versions import _unicode, pkgsplit, vercmp
+from portage.versions import pkgsplit, vercmp
 
 
-class ChangeLogTypeSort(_unicode):
+class ChangeLogTypeSort(str):
 	"""
 	Helps to sort file names by file type and other criteria.
 	"""
 	def __new__(cls, status_change, file_name):
-		return _unicode.__new__(cls, status_change + file_name)
+		return str.__new__(cls, status_change + file_name)
 
 	def __init__(self, status_change, file_name):
-		_unicode.__init__(status_change + file_name)
+		str.__init__(status_change + file_name)
 		self.status_change = status_change
 		self.file_name = file_name
 		self.file_type = guessManifestFileType(file_name)
@@ -32,16 +32,15 @@ class ChangeLogTypeSort(_unicode):
 
 		if first == "EBUILD":
 			return True
-		elif first == "MISC":
+		if first == "MISC":
 			return second in ("EBUILD",)
-		elif first == "AUX":
+		if first == "AUX":
 			return second in ("EBUILD", "MISC")
-		elif first == "DIST":
+		if first == "DIST":
 			return second in ("EBUILD", "MISC", "AUX")
-		elif first is None:
+		if first is None:
 			return False
-		else:
-			raise ValueError("Unknown file type '%s'" % first)
+		raise ValueError("Unknown file type '%s'" % first)
 
 	def __lt__(self, other):
 		"""
@@ -55,7 +54,7 @@ class ChangeLogTypeSort(_unicode):
 		# Sort by file type as defined by _file_type_lt().
 		if self._file_type_lt(self, other):
 			return True
-		elif self._file_type_lt(other, self):
+		if self._file_type_lt(other, self):
 			return False
 
 		# Files have the same type.
@@ -64,6 +63,6 @@ class ChangeLogTypeSort(_unicode):
 			ver = "-".join(pkgsplit(self.file_name[:-7])[1:3])
 			other_ver = "-".join(pkgsplit(other.file_name[:-7])[1:3])
 			return vercmp(ver, other_ver) < 0
-		else:
-			# Sort lexicographically.
-			return self.file_name < other.file_name
+
+		# Sort lexicographically.
+		return self.file_name < other.file_name

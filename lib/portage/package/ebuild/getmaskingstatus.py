@@ -1,11 +1,8 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 __all__ = ['getmaskingstatus']
 
-import sys
 
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
@@ -14,11 +11,8 @@ from portage.localization import _
 from portage.package.ebuild.config import config
 from portage.versions import catpkgsplit, _pkg_str
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
-class _UnmaskHint(object):
+class _UnmaskHint:
 
 	__slots__ = ('key', 'value')
 
@@ -26,7 +20,7 @@ class _UnmaskHint(object):
 		self.key = key
 		self.value = value
 
-class _MaskReason(object):
+class _MaskReason:
 
 	__slots__ = ('category', 'message', 'unmask_hint')
 
@@ -48,7 +42,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 
 	metadata = None
 	installed = False
-	if not isinstance(mycpv, basestring):
+	if not isinstance(mycpv, str):
 		# emerge passed in a Package instance
 		pkg = mycpv
 		mycpv = pkg.cpv
@@ -91,7 +85,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
 	restrict = metadata["RESTRICT"]
 	if not eapi_is_supported(eapi):
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
-	elif _eapi_is_deprecated(eapi) and not installed:
+	if _eapi_is_deprecated(eapi) and not installed:
 		return [_MaskReason("EAPI", "EAPI %s" % eapi)]
 	egroups = settings.configdict["backupenv"].get(
 		"ACCEPT_KEYWORDS", "").split()

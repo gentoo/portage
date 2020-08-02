@@ -40,4 +40,3 @@ class BinpkgPrefetcher(CompositeTask):
 		self._current_task = None
 		self.returncode = os.EX_OK
 		self.wait()
-

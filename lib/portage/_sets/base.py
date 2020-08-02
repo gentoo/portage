@@ -1,18 +1,14 @@
-# Copyright 2007-2018 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
 from portage.dep import Atom, ExtendedAtomDict, best_match_to_list, match_from_list
 from portage.exception import InvalidAtom
 from portage.versions import cpv_getkey
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]
 
-class PackageSet(object):
+class PackageSet:
 	# Set this to operations that are supported by your subclass. While 
 	# technically there is no difference between "merge" and "unmerge" regarding
 	# package sets, the latter doesn't make sense for some sets like "system"
@@ -46,9 +42,6 @@ class PackageSet(object):
 		self._load()
 		return bool(self._atoms or self._nonatoms)
 
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
-
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
 			raise ValueError(op)
@@ -74,7 +67,7 @@ class PackageSet(object):
 		self._nonatoms.clear()
 		for a in atoms:
 			if not isinstance(a, Atom):
-				if isinstance(a, basestring):
+				if isinstance(a, str):
 					a = a.strip()
 				if not a:
 					continue
@@ -107,8 +100,7 @@ class PackageSet(object):
 	def getMetadata(self, key):
 		if hasattr(self, key.lower()):
 			return getattr(self, key.lower())
-		else:
-			return ""
+		return ""
 	
 	def _updateAtomMap(self, atoms=None):
 		"""Update self._atommap for specific atoms or all atoms."""

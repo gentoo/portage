@@ -2,7 +2,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import argparse
 import signal
@@ -1020,7 +1020,7 @@ docstrings['list_preserved_libs'] = """<eroot>
 list_preserved_libs.__doc__ = docstrings['list_preserved_libs']
 
 
-class MaintainerEmailMatcher(object):
+class MaintainerEmailMatcher:
 	def __init__(self, maintainer_emails):
 		self._re = re.compile("^(%s)$" % "|".join(maintainer_emails), re.I)
 

@@ -13,7 +13,7 @@ itself, for distribution.
 .BR "\-\-update [ATOM] ... "
 Update the \fImetadata/md5\-cache/\fR directory (generate metadata as
 necessary).
-If no package atoms are specified then all will be updated. See ebuild(5)
+If no package atoms are specified then all will be updated. See \fBebuild\fR(5)
 for the details on package atom syntax.
 .TP
 .BR "\-\-update\-changelogs"
@@ -151,7 +151,7 @@ exists in the repository. It can also be explicitly enabled via the
 cache\-formats setting in \fImetadata/layout.conf\fR (refer to \fBportage\fR(5)
 for example usage). If the 'pms' cache format is enabled and the 'md5-dict'
 format is not enabled, then it is necessary to enable
-\fBmetadata-transfer\fR in \fBFEATURES\fR (see \fBmake.conf(5)\fR).
+\fBmetadata-transfer\fR in \fBFEATURES\fR (see \fBmake.conf\fR(5)).
 This causes intermediate cache (in a different format that includes
 eclass state) to be generated inside the directory which is configurable
 via the \fB\-\-cache\-dir\fR option.

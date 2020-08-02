@@ -7,7 +7,7 @@ from portage.exception import InvalidData
 from _emerge.Package import Package
 from portage.versions import _pkg_str
 
-class MoveHandler(object):
+class MoveHandler:
 
 	def __init__(self, tree, porttree):
 		self._tree = tree

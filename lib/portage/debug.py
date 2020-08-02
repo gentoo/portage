@@ -21,7 +21,7 @@ def set_trace(on=True):
 		sys.settrace(None)
 		threading.settrace(None)
 
-class trace_handler(object):
+class trace_handler:
 
 	def __init__(self):
 		python_system_paths = []
@@ -63,7 +63,7 @@ class trace_handler(object):
 			if len(my_repr) > self.max_repr_length:
 				my_repr = "'omitted'"
 			return "value=%s " % my_repr
-		elif "exception" == event:
+		if "exception" == event:
 			my_repr = repr(arg[1])
 			if len(my_repr) > self.max_repr_length:
 				my_repr = "'omitted'"
@@ -100,7 +100,7 @@ class trace_handler(object):
 				my_locals[k] = "omitted"
 		return my_locals
 
-class prefix_trimmer(object):
+class prefix_trimmer:
 	def __init__(self, prefix):
 		self.prefix = prefix
 		self.cut_index = len(prefix)
@@ -112,9 +112,9 @@ class prefix_trimmer(object):
 		The previous result is automatically cached."""
 		if s == self.previous:
 			return self.previous_trimmed
+
+		if s.startswith(self.prefix):
+			self.previous_trimmed = s[self.cut_index:]
 		else:
-			if s.startswith(self.prefix):
-				self.previous_trimmed = s[self.cut_index:]
-			else:
-				self.previous_trimmed = s
-			return self.previous_trimmed
+			self.previous_trimmed = s
+		return self.previous_trimmed

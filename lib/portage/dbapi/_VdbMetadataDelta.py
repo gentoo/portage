@@ -10,7 +10,7 @@ from portage import _encodings
 from portage.util import atomic_ofstream
 from portage.versions import cpv_getkey
 
-class VdbMetadataDelta(object):
+class VdbMetadataDelta:
 
 	_format_version  = "1"
 

@@ -24,4 +24,3 @@ class StaticFileSetTestCase(TestCase):
 		s = StaticFileSet(self.testfile)
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())
-

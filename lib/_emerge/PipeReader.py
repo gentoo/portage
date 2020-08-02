@@ -1,8 +1,7 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
-import sys
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -26,16 +25,6 @@ class PipeReader(AbstractPollTask):
 			fd = f if isinstance(f, int) else f.fileno()
 			fcntl.fcntl(fd, fcntl.F_SETFL,
 				fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
-
-			# FD_CLOEXEC is enabled by default in Python >=3.4.
-			if sys.hexversion < 0x3040000:
-				try:
-					fcntl.FD_CLOEXEC
-				except AttributeError:
-					pass
-				else:
-					fcntl.fcntl(fd, fcntl.F_SETFD,
-						fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 			if self._use_array:
 				self.scheduler.add_reader(fd, self._array_output_handler, f)
@@ -103,4 +92,3 @@ class PipeReader(AbstractPollTask):
 					self.scheduler.remove_reader(f.fileno())
 					f.close()
 			self.input_files = None
-

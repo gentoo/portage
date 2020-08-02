@@ -1,13 +1,10 @@
 # Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
-import sys
 
 from portage import _encodings, _unicode_encode
 
-class SonameAtom(object):
+class SonameAtom:
 
 	__slots__ = ("multilib_category", "soname", "_hash_key",
 		"_hash_value")
@@ -57,14 +54,6 @@ class SonameAtom(object):
 
 	def __str__(self):
 		return "%s: %s" % (self.multilib_category, self.soname)
-
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
 
 	def match(self, pkg):
 		"""

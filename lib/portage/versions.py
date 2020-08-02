@@ -2,8 +2,6 @@
 # Copyright 1998-2016 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = [
 	'best', 'catpkgsplit', 'catsplit',
 	'cpv_getkey', 'cpv_getversion', 'cpv_sort_key', 'pkgcmp',  'pkgsplit',
@@ -11,14 +9,9 @@ __all__ = [
 ]
 
 import re
-import sys
 import warnings
+from functools import lru_cache
 
-if sys.hexversion < 0x3000000:
-	_unicode = unicode
-else:
-	_unicode = str
-	long = int
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -113,11 +106,11 @@ def _get_pv_re(eapi_attrs):
 def ververify(myver, silent=1):
 	if ver_regexp.match(myver):
 		return True
-	else:
-		if not silent:
-			print(_("!!! syntax error in version: %s") % myver)
-		return False
+	if not silent:
+		print(_("!!! syntax error in version: %s") % myver)
+	return False
 
+@lru_cache(1024)
 def vercmp(ver1, ver2, silent=1):
 	"""
 	Compare two versions
@@ -210,9 +203,9 @@ def vercmp(ver1, ver2, silent=1):
 	for i in range(0, max(len(list1), len(list2))):
 		if len(list1) <= i:
 			return -1
-		elif len(list2) <= i:
+		if len(list2) <= i:
 			return 1
-		elif list1[i] != list2[i]:
+		if list1[i] != list2[i]:
 			a = list1[i]
 			b = list2[i]
 			rval = (a > b) - (a < b)
@@ -347,6 +340,7 @@ def _pkgsplit(mypkg, eapi=None):
 _cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
 
+@lru_cache(10240)
 def catpkgsplit(mydata, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
@@ -379,7 +373,7 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 	retval = (cat, p_split[0], p_split[1], p_split[2])
 	return retval
 
-class _pkg_str(_unicode):
+class _pkg_str(str):
 	"""
 	This class represents a cpv. It inherits from str (unicode in python2) and
 	has attributes that cache results for use by functions like catpkgsplit and
@@ -398,15 +392,15 @@ class _pkg_str(_unicode):
 	def __new__(cls, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
 		file_size=None, mtime=None, db=None):
-		return _unicode.__new__(cls, cpv)
+		return str.__new__(cls, cpv)
 
 	def __init__(self, cpv, metadata=None, settings=None, eapi=None,
 		repo=None, slot=None, build_time=None, build_id=None,
 		file_size=None, mtime=None, db=None):
-		if not isinstance(cpv, _unicode):
-			# Avoid TypeError from _unicode.__init__ with PyPy.
+		if not isinstance(cpv, str):
+			# Avoid TypeError from str.__init__ with PyPy.
 			cpv = _unicode_decode(cpv)
-		_unicode.__init__(cpv)
+		str.__init__(cpv)
 		if metadata is not None:
 			self.__dict__['_metadata'] = metadata
 			slot = metadata.get('SLOT', slot)
@@ -471,7 +465,7 @@ class _pkg_str(_unicode):
 	def _long(var, default):
 		if var is not None:
 			try:
-				var = long(var)
+				var = int(var)
 			except ValueError:
 				if var:
 					var = -1
@@ -511,8 +505,7 @@ def pkgsplit(mypkg, silent=1, eapi=None):
 	cat, pn, ver, rev = catpsplit
 	if cat is _missing_cat and '/' not in mypkg:
 		return (pn, ver, rev)
-	else:
-		return (cat + '/' + pn, ver, rev)
+	return (cat + '/' + pn, ver, rev)
 
 def cpv_getkey(mycpv, eapi=None):
 	"""Calls catpkgsplit on a cpv and returns only the cp."""
@@ -535,8 +528,7 @@ def cpv_getkey(mycpv, eapi=None):
 	mylen = len(myslash)
 	if mylen == 2:
 		return myslash[0] + "/" + mysplit[0]
-	else:
-		return mysplit[0]
+	return mysplit[0]
 
 def cpv_getversion(mycpv, eapi=None):
 	"""Returns the v (including revision) from an cpv."""

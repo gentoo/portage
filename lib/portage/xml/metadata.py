@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Provides an easy-to-use python interface to Gentoo's metadata.xml file.
@@ -28,11 +28,8 @@
 		'Thomas Mills Hinkle'
 """
 
-from __future__ import unicode_literals
-
 __all__ = ('MetaDataXML', 'parse_metadata_use')
 
-import sys
 
 try:
 	import xml.etree.cElementTree as etree
@@ -55,10 +52,6 @@ import xml.etree.ElementTree
 from portage import _encodings, _unicode_encode
 from portage.util import cmp_sort_key, unique_everseen
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-
 
 class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	"""
@@ -68,7 +61,7 @@ class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
 	def doctype(self, name, pubid, system):
 		pass
 
-class _Maintainer(object):
+class _Maintainer:
 	"""An object for representing one maintainer.
 
 	@type email: str or None
@@ -101,7 +94,7 @@ class _Maintainer(object):
 		return "<%s %r>" % (self.__class__.__name__, self.email)
 
 
-class _Useflag(object):
+class _Useflag:
 	"""An object for representing one USE flag.
 
 	@todo: Is there any way to have a keyword option to leave in
@@ -131,7 +124,7 @@ class _Useflag(object):
 		return "<%s %r>" % (self.__class__.__name__, self.name)
 
 
-class _Upstream(object):
+class _Upstream:
 	"""An object for representing one package's upstream.
 
 	@type maintainers: list
@@ -187,7 +180,7 @@ class _Upstream(object):
 		return [(e.text, e.get('type')) for e in self.node.findall('remote-id') if e.text]
 
 
-class MetaDataXML(object):
+class MetaDataXML:
 	"""Access metadata.xml"""
 
 	def __init__(self, metadata_xml_path, herds):
@@ -479,12 +472,12 @@ def parse_metadata_use(xml_tree):
 				stack.append(flag)
 				while stack:
 					obj = stack.pop()
-					if isinstance(obj, basestring):
+					if isinstance(obj, str):
 						inner_text.append(obj)
 						continue
-					if isinstance(obj.text, basestring):
+					if isinstance(obj.text, str):
 						inner_text.append(obj.text)
-					if isinstance(obj.tail, basestring):
+					if isinstance(obj.tail, str):
 						stack.append(obj.tail)
 					stack.extend(reversed(obj))
 
@@ -494,4 +487,3 @@ def parse_metadata_use(xml_tree):
 				# (flag_restrict can be None)
 				uselist[flag.get("name")][flag_restrict] = " ".join("".join(inner_text).split())
 	return uselist
-

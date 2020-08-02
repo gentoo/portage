@@ -6,8 +6,6 @@
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
 
-from __future__ import unicode_literals
-
 import collections
 import logging
 import os
@@ -37,7 +35,7 @@ def merge(dict1, dict2):
     return result
 
 
-class LineChecksConfig(object):
+class LineChecksConfig:
 	'''Holds our LineChecks configuration data and operation functions'''
 
 	def __init__(self, repo_settings):

@@ -5,10 +5,7 @@ __all__ = ['cacheddir', 'listdir']
 
 import errno
 import stat
-import sys
 
-if sys.hexversion < 0x3000000:
-	from itertools import izip as zip
 
 from portage import os
 from portage.const import VCS_DIRS

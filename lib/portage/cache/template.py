@@ -1,23 +1,15 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction
 from portage.cache.mappings import ProtectedDict
-import sys
 import warnings
 import operator
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	_unicode = str
-	basestring = str
-	long = int
-else:
-	_unicode = unicode
 
-class database(object):
+class database:
 	# this is for metadata/cache transfer.
 	# basically flags the cache needs be updated when transfered cache to cache.
 	# leave this.
@@ -94,10 +86,10 @@ class database(object):
 			d.pop('_mtime_', None)
 		else:
 			try:
-				mtime = long(mtime)
+				mtime = int(mtime)
 			except ValueError:
 				raise cache_errors.CacheCorruption(cpv,
-					'_mtime_ conversion to long failed: %s' % (mtime,))
+					'_mtime_ conversion to int failed: %s' % (mtime,))
 			d['_mtime_'] = mtime
 		return d
 
@@ -178,18 +170,12 @@ class database(object):
 	def has_key(self, cpv):
 		return cpv in self
 
-	def keys(self):
-		return list(self)
-
 	def iterkeys(self):
 		return iter(self)
 
 	def iteritems(self):
 		for x in self:
 			yield (x, self[x])
-
-	def items(self):
-		return list(self.iteritems())
 
 	def sync(self, rate=0):
 		self.sync_rate = rate
@@ -278,7 +264,7 @@ class database(object):
 		for key,match in match_dict.items():
 			# XXX this sucks.
 			try:
-				if isinstance(match, basestring):
+				if isinstance(match, str):
 					restricts[key] = re.compile(match).match
 				else:
 					restricts[key] = re.compile(match[0],match[1]).match
@@ -297,16 +283,16 @@ class database(object):
 			if cont:
 				yield cpv
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
+	keys = __iter__
+	items = iteritems
+
 
 _keysorter = operator.itemgetter(0)
 
 def serialize_eclasses(eclass_dict, chf_type='mtime', paths=True):
 	"""takes a dict, returns a string representing said dict"""
 	"""The "new format", which causes older versions of <portage-2.1.2 to
-	traceback with a ValueError due to failed long() conversion.  This format
+	traceback with a ValueError due to failed int() conversion.  This format
 	isn't currently written, but the the capability to read it is already built
 	in.
 	return "\t".join(["%s\t%s" % (k, str(v)) \
@@ -335,7 +321,7 @@ def _md5_deserializer(md5):
 
 _chf_deserializers = {
 	'md5': _md5_deserializer,
-	'mtime': long,
+	'mtime': int,
 }
 
 

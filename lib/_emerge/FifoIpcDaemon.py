@@ -1,13 +1,6 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-
-try:
-	import fcntl
-except ImportError:
-	#  http://bugs.jython.org/issue1074
-	fcntl = None
 
 from portage import os
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -28,17 +21,6 @@ class FifoIpcDaemon(AbstractPollTask):
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
 
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000 and fcntl is not None:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
-					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-
 		self.scheduler.add_reader(
 			self._files.pipe_in,
 			self._input_handler)
@@ -54,17 +36,6 @@ class FifoIpcDaemon(AbstractPollTask):
 		os.close(self._files.pipe_in)
 		self._files.pipe_in = \
 			os.open(self.input_fifo, os.O_RDONLY|os.O_NONBLOCK)
-
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000 and fcntl is not None:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(self._files.pipe_in, fcntl.F_SETFD,
-					fcntl.fcntl(self._files.pipe_in,
-						fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 		self.scheduler.add_reader(
 			self._files.pipe_in,

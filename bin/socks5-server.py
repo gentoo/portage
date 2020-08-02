@@ -24,7 +24,7 @@ except AttributeError:
 	current_task = asyncio.Task.current_task
 
 
-class Socks5Server(object):
+class Socks5Server:
 	"""
 	An asynchronous SOCKSv5 server.
 	"""

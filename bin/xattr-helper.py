@@ -26,24 +26,14 @@ _UNQUOTE_RE = re.compile(br'\\[0-7]{3}')
 _FS_ENCODING = sys.getfilesystemencoding()
 
 
-if sys.hexversion < 0x3000000:
+def octal_quote_byte(b):
+	return ('\\%03o' % ord(b)).encode('ascii')
 
-	def octal_quote_byte(b):
-		return b'\\%03o' % ord(b)
 
-	def unicode_encode(s):
-		if isinstance(s, unicode):
-			s = s.encode(_FS_ENCODING)
-		return s
-else:
-
-	def octal_quote_byte(b):
-		return ('\\%03o' % ord(b)).encode('ascii')
-
-	def unicode_encode(s):
-		if isinstance(s, str):
-			s = s.encode(_FS_ENCODING, 'surrogateescape')
-		return s
+def unicode_encode(s):
+	if isinstance(s, str):
+		s = s.encode(_FS_ENCODING, 'surrogateescape')
+	return s
 
 
 def quote(s, quote_chars):
@@ -157,20 +147,14 @@ def main(argv):
 
 	options = parser.parse_args(argv)
 
-	if sys.hexversion >= 0x3000000:
-		file_in = sys.stdin.buffer.raw
-	else:
-		file_in = sys.stdin
+	file_in = sys.stdin.buffer.raw
 
 	if options.dump:
 		if options.paths:
 			options.paths = [unicode_encode(x) for x in options.paths]
 		else:
 			options.paths = [x for x in file_in.read().split(b'\0') if x]
-		if sys.hexversion >= 0x3000000:
-			file_out = sys.stdout.buffer
-		else:
-			file_out = sys.stdout
+		file_out = sys.stdout.buffer
 		dump_xattrs(options.paths, file_out)
 
 	elif options.restore:

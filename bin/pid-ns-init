@@ -39,7 +39,7 @@ def preexec_fn(uid, gid, groups, umask):
 		os.umask(umask)
 
 	# CPython >= 3 subprocess.Popen handles this internally.
-	if sys.version_info.major < 3 or platform.python_implementation() != 'CPython':
+	if platform.python_implementation() != 'CPython':
 		for signum in (
 			signal.SIGHUP,
 			signal.SIGINT,
@@ -70,10 +70,10 @@ def main(argv):
 		groups = tuple(int(group) for group in groups.split(',')) if groups else None
 		umask = int(umask) if umask else None
 
-		popen_kwargs = {}
-		popen_kwargs['preexec_fn'] = functools.partial(preexec_fn, uid, gid, groups, umask)
-		if sys.version_info.major > 2:
-			popen_kwargs['pass_fds'] = pass_fds
+		popen_kwargs = {
+			'preexec_fn': functools.partial(preexec_fn, uid, gid, groups, umask),
+			'pass_fds': pass_fds,
+		}
 		# Isolate parent process from process group SIGSTOP (bug 675870)
 		setsid = True
 		os.setsid()

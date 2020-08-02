@@ -1,9 +1,8 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 import os as _os
-import sys
 from portage.cache import template
 from portage import os
 
@@ -14,9 +13,6 @@ lazyimport(globals(),
 )
 del lazyimport
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 
@@ -44,7 +40,7 @@ class FsBased(template.database):
 		try:
 			apply_permissions(path, gid=self._gid, mode=self._perms)
 			if mtime != -1:
-				mtime=long(mtime)
+				mtime=int(mtime)
 				os.utime(path, (mtime, mtime))
 		except (PortageException, EnvironmentError):
 			return False
@@ -59,8 +55,8 @@ class FsBased(template.database):
 			path = self.location
 			base='/'
 
-		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
-			base = os.path.join(base,dir)
+		for d in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
+			base = os.path.join(base,d)
 			if ensure_dirs(base):
 				# We only call apply_permissions if ensure_dirs created
 				# a new directory, so as not to interfere with
@@ -90,4 +86,3 @@ def gen_label(base, label):
 	label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
 	tail = os.path.split(label)[1]
 	return "%s-%X" % (tail, abs(label.__hash__()))
-

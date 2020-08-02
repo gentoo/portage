@@ -13,7 +13,7 @@ from portage.localization import _
 from portage.util import append_repo, grabfile_package, stack_lists, writemsg
 from portage.versions import _pkg_str
 
-class MaskManager(object):
+class MaskManager:
 
 	def __init__(self, repositories, profiles, abs_user_config,
 		user_config=True, strict_umatched_removal=False):

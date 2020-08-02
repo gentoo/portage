@@ -2,7 +2,7 @@
 Repoman VCSSettings modules
 '''
 
-from __future__ import print_function, unicode_literals
+from __future__ import print_function
 
 import logging
 import sys
@@ -13,7 +13,7 @@ from repoman.modules.vcs.vcs import FindVCS
 from repoman.qa_tracker import QATracker
 
 
-class VCSSettings(object):
+class VCSSettings:
 	'''Holds various VCS settings'''
 
 	def __init__(self, options=None, repoman_settings=None, repo_settings=None):

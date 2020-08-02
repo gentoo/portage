@@ -6,7 +6,7 @@ from portage.dep import Atom
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
-class IndexedVardb(object):
+class IndexedVardb:
 	"""
 	A vardbapi interface that sacrifices validation in order to
 	improve performance. It takes advantage of vardbdbapi._aux_cache,
@@ -97,8 +97,7 @@ class IndexedVardb(object):
 
 		if atom == atom.cp:
 			return cp_list[:]
-		else:
-			return portage.match_from_list(atom, cp_list)
+		return portage.match_from_list(atom, cp_list)
 
 	def aux_get(self, cpv, attrs, myrepo=None):
 		pkg_data = self._vardb._aux_cache["packages"].get(cpv)

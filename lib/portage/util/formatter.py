@@ -7,7 +7,7 @@
 import sys
 
 
-class AbstractFormatter(object):
+class AbstractFormatter:
 	"""The standard formatter."""
 
 	def __init__(self, writer):
@@ -35,7 +35,7 @@ class AbstractFormatter(object):
 		self.writer.new_styles(tuple(self.style_stack))
 
 
-class NullWriter(object):
+class NullWriter:
 	"""Minimal writer interface to use in testing & inheritance.
 
 	A writer which only provides the interface definition; no actions are
@@ -66,4 +66,3 @@ class DumbWriter(NullWriter):
 
 	def send_literal_data(self, data):
 		self.file.write(data)
-

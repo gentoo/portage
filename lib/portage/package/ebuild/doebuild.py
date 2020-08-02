@@ -1,8 +1,6 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
 
 import grp
@@ -95,10 +93,6 @@ from _emerge.EbuildSpawnProcess import EbuildSpawnProcess
 from _emerge.Package import Package
 from _emerge.RootConfig import RootConfig
 
-if sys.hexversion >= 0x3000000:
-	_unicode = str
-else:
-	_unicode = unicode
 
 _unsandboxed_phases = frozenset([
 	"clean", "cleanrm", "config",
@@ -851,7 +845,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			if returnpid:
 				return _spawn_phase(mydo, mysettings,
 					fd_pipes=fd_pipes, returnpid=returnpid)
-			elif dbkey and dbkey is not DeprecationWarning:
+			if dbkey and dbkey is not DeprecationWarning:
 				mysettings["dbkey"] = dbkey
 			else:
 				mysettings["dbkey"] = \
@@ -860,7 +854,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 			return _spawn_phase(mydo, mysettings,
 				fd_pipes=fd_pipes, returnpid=returnpid)
 
-		elif mydo == "nofetch":
+		if mydo == "nofetch":
 
 			if returnpid:
 				writemsg("!!! doebuild: %s\n" %
@@ -1140,11 +1134,11 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				mf = None
 				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif mydo == "digest":
+			if mydo == "digest":
 				mf = None
 				_doebuild_manifest_cache = None
 				return not digestgen(mysettings=mysettings, myportdb=mydbapi)
-			elif "digest" in mysettings.features:
+			if "digest" in mysettings.features:
 				mf = None
 				_doebuild_manifest_cache = None
 				digestgen(mysettings=mysettings, myportdb=mydbapi)
@@ -1430,7 +1424,7 @@ def _validate_deps(mysettings, myroot, mydo, mydbapi):
 			mydbapi.aux_get(mysettings.mycpv, all_keys,
 			myrepo=mysettings.get("PORTAGE_REPO_NAME"))))
 
-	class FakeTree(object):
+	class FakeTree:
 		def __init__(self, mydb):
 			self.dbapi = mydb
 
@@ -2489,7 +2483,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
 		# Compute the multilib category and write it back to the file.
 		entry.multilib_category = compute_multilib_category(elf_header)
-		needed_file.write(_unicode(entry))
+		needed_file.write(str(entry))
 
 		if entry.multilib_category is None:
 			if not qa_prebuilt or qa_prebuilt.match(
@@ -2540,7 +2534,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 	if unrecognized_elf_files:
 		qa_msg = ["QA Notice: Unrecognized ELF file(s):"]
 		qa_msg.append("")
-		qa_msg.extend("\t%s" % _unicode(entry).rstrip()
+		qa_msg.extend("\t%s" % str(entry).rstrip()
 			for entry in unrecognized_elf_files)
 		qa_msg.append("")
 		for line in qa_msg:

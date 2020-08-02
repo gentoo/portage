@@ -1,19 +1,15 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function, unicode_literals
+from __future__ import division, print_function
 
 import collections
 import errno
 import logging
 import operator
 import platform
-import pwd
-import random
 import re
 import signal
-import socket
-import stat
 import subprocess
 import sys
 import tempfile
@@ -31,7 +27,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.locale:check_locale',
 	'portage.emaint.modules.sync.sync:SyncRepos',
 	'_emerge.chk_updated_cfg_files:chk_updated_cfg_files',
-	'_emerge.help:help@emerge_help',
+	'_emerge.help:emerge_help',
 	'_emerge.post_emerge:display_news_notification,post_emerge',
 	'_emerge.stdout_spinner:stdout_spinner',
 )
@@ -95,11 +91,6 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
-if sys.hexversion >= 0x3000000:
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
 
 def action_build(emerge_config, trees=DeprecationWarning,
 	mtimedb=DeprecationWarning, myopts=DeprecationWarning,
@@ -855,7 +846,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
-					show_invalid_depstring_notice(pkg, _unicode(e))
+					show_invalid_depstring_notice(pkg, str(e))
 					del e
 					protected_set.add("=" + pkg.cpv)
 					continue
@@ -908,7 +899,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg, _unicode(e))
+				show_invalid_depstring_notice(pkg, str(e))
 				del e
 				protected_set.add("=" + pkg.cpv)
 				continue
@@ -925,7 +916,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				if excluded_set.findAtomForPackage(pkg):
 					required_sets['__excluded__'].add("=" + pkg.cpv)
 			except portage.exception.InvalidDependString as e:
-				show_invalid_depstring_notice(pkg, _unicode(e))
+				show_invalid_depstring_notice(pkg, str(e))
 				del e
 				required_sets['__excluded__'].add("=" + pkg.cpv)
 
@@ -990,14 +981,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				# visible in the unevaluated form of the atom. In this
 				# case, we must display the unevaluated atom, so that
 				# the user can see the conditional USE deps that would
-				# otherwise be invisible. Use Atom(_unicode(atom)) to
+				# otherwise be invisible. Use Atom(str(atom)) to
 				# test for a package where this case would matter. This
 				# is not necessarily the same as atom.without_use,
-				# since Atom(_unicode(atom)) may still contain some
+				# since Atom(str(atom)) may still contain some
 				# USE dependencies that remain after evaluation of
 				# conditionals.
 				if atom.package and atom != atom.unevaluated_atom and \
-					vardb.match(Atom(_unicode(atom))):
+					vardb.match(Atom(str(atom))):
 					msg.append("  %s (%s) pulled in by:" %
 						(atom.unevaluated_atom, atom))
 				else:
@@ -1069,7 +1060,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				key=operator.attrgetter('package'))
 			parent_strs.append("%s requires %s" %
 				(getattr(parent, "cpv", parent),
-				", ".join(_unicode(atom) for atom in atoms)))
+				", ".join(str(atom) for atom in atoms)))
 		parent_strs.sort()
 		msg = []
 		msg.append("  %s pulled in by:\n" % (child_node.cpv,))
@@ -1082,10 +1073,9 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 		"""Sort Package instances by cpv."""
 		if pkg1.cpv > pkg2.cpv:
 			return 1
-		elif pkg1.cpv == pkg2.cpv:
+		if pkg1.cpv == pkg2.cpv:
 			return 0
-		else:
-			return -1
+		return -1
 
 	def create_cleanlist():
 
@@ -1542,7 +1532,7 @@ def action_deselect(settings, trees, opts, atoms):
 
 				writemsg_stdout(
 					">>> %s %s from \"%s\" favorites file...\n" %
-					(action_desc, colorize("INFORM", _unicode(atom)),
+					(action_desc, colorize("INFORM", str(atom)),
 					filename), noiselevel=-1)
 
 			if '--ask' in opts:
@@ -1563,7 +1553,7 @@ def action_deselect(settings, trees, opts, atoms):
 			world_set.unlock()
 	return os.EX_OK
 
-class _info_pkgs_ver(object):
+class _info_pkgs_ver:
 	def __init__(self, ver, repo_suffix, provide_suffix):
 		self.ver = ver
 		self.repo_suffix = repo_suffix
@@ -3031,7 +3021,7 @@ def run_action(emerge_config):
 			emerge_config.target_config.trees['vartree'].dbapi) + '\n',
 			noiselevel=-1)
 		return 0
-	elif emerge_config.action == 'help':
+	if emerge_config.action == 'help':
 		emerge_help()
 		return 0
 
@@ -3065,7 +3055,7 @@ def run_action(emerge_config):
 		writemsg_stdout("".join("%s\n" % s for s in
 			sorted(emerge_config.target_config.sets)))
 		return os.EX_OK
-	elif emerge_config.action == "check-news":
+	if emerge_config.action == "check-news":
 		news_counts = count_unread_news(
 			emerge_config.target_config.trees["porttree"].dbapi,
 			emerge_config.target_config.trees["vartree"].dbapi)
@@ -3237,8 +3227,6 @@ def run_action(emerge_config):
 
 	if not "--pretend" in emerge_config.opts:
 		time_fmt = "%b %d, %Y %H:%M:%S"
-		if sys.hexversion < 0x3000000:
-			time_fmt = portage._unicode_encode(time_fmt)
 		time_str = time.strftime(time_fmt, time.localtime(time.time()))
 		# Avoid potential UnicodeDecodeError in Python 2, since strftime
 		# returns bytes in Python 2, and %b may contain non-ascii chars.
@@ -3290,7 +3278,7 @@ def run_action(emerge_config):
 
 	if "sync" == emerge_config.action:
 		return action_sync(emerge_config)
-	elif "metadata" == emerge_config.action:
+	if "metadata" == emerge_config.action:
 		action_metadata(emerge_config.target_config.settings,
 			emerge_config.target_config.trees['porttree'].dbapi,
 			emerge_config.opts)

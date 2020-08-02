@@ -29,17 +29,16 @@ SETPREFIX = "@"
 def get_boolean(options, name, default):
 	if not name in options:
 		return default
-	elif options[name].lower() in ("1", "yes", "on", "true"):
+	if options[name].lower() in ("1", "yes", "on", "true"):
 		return True
-	elif options[name].lower() in ("0", "no", "off", "false"):
+	if options[name].lower() in ("0", "no", "off", "false"):
 		return False
-	else:
-		raise SetConfigError(_("invalid value '%(value)s' for option '%(option)s'") % {"value": options[name], "option": name})
+	raise SetConfigError(_("invalid value '%(value)s' for option '%(option)s'") % {"value": options[name], "option": name})
 
 class SetConfigError(Exception):
 	pass
 
-class SetConfig(object):
+class SetConfig:
 	def __init__(self, paths, settings, trees):
 		self._parser = SafeConfigParser(
 			defaults={

@@ -1,7 +1,5 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 VERSION = "HEAD"
 
@@ -136,10 +134,6 @@ except ImportError as e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
-	long = int
 
 # We use utf_8 encoding everywhere. Previously, we used
 # sys.getfilesystemencoding() for the 'merge' encoding, but that had
@@ -170,45 +164,32 @@ _encodings = {
 	'stdio'                  : 'utf_8',
 }
 
-if sys.hexversion >= 0x3000000:
 
-	def _decode_argv(argv):
-		# With Python 3, the surrogateescape encoding error handler makes it
-		# possible to access the original argv bytes, which can be useful
-		# if their actual encoding does no match the filesystem encoding.
-		fs_encoding = sys.getfilesystemencoding()
-		return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
-			for x in argv]
+def _decode_argv(argv):
+	# With Python 3, the surrogateescape encoding error handler makes it
+	# possible to access the original argv bytes, which can be useful
+	# if their actual encoding does no match the filesystem encoding.
+	fs_encoding = sys.getfilesystemencoding()
+	return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
+		for x in argv]
 
-	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
-		if isinstance(s, str):
-			s = s.encode(encoding, errors)
-		return s
 
-	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-		if isinstance(s, bytes):
-			s = str(s, encoding=encoding, errors=errors)
-		return s
+def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
+	if isinstance(s, str):
+		s = s.encode(encoding, errors)
+	return s
 
-	_native_string = _unicode_decode
-else:
 
-	def _decode_argv(argv):
-		return [_unicode_decode(x) for x in argv]
+def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
+	if isinstance(s, bytes):
+		s = str(s, encoding=encoding, errors=errors)
+	return s
 
-	def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
-		if isinstance(s, unicode):
-			s = s.encode(encoding, errors)
-		return s
 
-	def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
-		if isinstance(s, bytes):
-			s = unicode(s, encoding=encoding, errors=errors)
-		return s
+_native_string = _unicode_decode
 
-	_native_string = _unicode_encode
 
-class _unicode_func_wrapper(object):
+class _unicode_func_wrapper:
 	"""
 	Wraps a function, converts arguments from unicode to bytes,
 	and return values to unicode from bytes. Function calls
@@ -267,7 +248,7 @@ class _unicode_func_wrapper(object):
 
 		return rval
 
-class _unicode_module_wrapper(object):
+class _unicode_module_wrapper:
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
@@ -308,7 +289,7 @@ class _unicode_module_wrapper(object):
 			cache[attr] = result
 		return result
 
-class _eintr_func_wrapper(object):
+class _eintr_func_wrapper:
 	"""
 	Wraps a function and handles EINTR by calling the function as
 	many times as necessary (until it returns without raising EINTR).
@@ -417,7 +398,7 @@ bsd_chflags = None
 
 if platform.system() in ('FreeBSD',):
 	# TODO: remove this class?
-	class bsd_chflags(object):
+	class bsd_chflags:
 		chflags = os.chflags
 		lchflags = os.lchflags
 
@@ -479,7 +460,7 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	if not isinstance(eapi, basestring):
+	if not isinstance(eapi, str):
 		# Only call str() when necessary since with python2 it
 		# can trigger UnicodeEncodeError if EAPI is corrupt.
 		eapi = str(eapi)
@@ -620,10 +601,10 @@ if VERSION == 'HEAD':
 								head_timestamp = None
 								if len(output_lines) > 3:
 									try:
-										head_timestamp = long(output_lines[3])
+										head_timestamp = int(output_lines[3])
 									except ValueError:
 										pass
-								timestamp = long(time.time())
+								timestamp = int(time.time())
 								if head_timestamp is not None and timestamp > head_timestamp:
 									timestamp = timestamp - head_timestamp
 								if not patchlevel:

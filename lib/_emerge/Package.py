@@ -1,10 +1,6 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import unicode_literals
-
-import functools
-import sys
 from itertools import chain
 import warnings
 
@@ -20,13 +16,6 @@ from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
 from portage.exception import InvalidData, InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
-
-if sys.hexversion >= 0x3000000:
-	basestring = str
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
 
 class Package(Task):
 
@@ -222,7 +211,7 @@ class Package(Task):
 		else:
 			raise TypeError("root_config argument is required")
 
-		elements = [type_name, root, _unicode(cpv), operation]
+		elements = [type_name, root, str(cpv), operation]
 
 		# For installed (and binary) packages we don't care for the repo
 		# when it comes to hashing, because there can only be one cpv.
@@ -515,7 +504,7 @@ class Package(Task):
 			cpv_color = "PKG_NOMERGE"
 
 		build_id_str = ""
-		if isinstance(self.cpv.build_id, long) and self.cpv.build_id > 0:
+		if isinstance(self.cpv.build_id, int) and self.cpv.build_id > 0:
 			build_id_str = "-%s" % self.cpv.build_id
 
 		s = "(%s, %s" \
@@ -537,15 +526,7 @@ class Package(Task):
 		s += ")"
 		return s
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'])
-
-	class _use_class(object):
+	class _use_class:
 
 		__slots__ = ("enabled", "_expand", "_expand_hidden",
 			"_force", "_pkg", "_mask")
@@ -670,7 +651,7 @@ class Package(Task):
 
 		return use_str
 
-	class _iuse(object):
+	class _iuse:
 
 		__slots__ = ("__weakref__", "_iuse_implicit_match", "_pkg", "alias_mapping",
 			"all", "all_aliases", "enabled", "disabled", "tokens")
@@ -714,7 +695,7 @@ class Package(Task):
 			@return: True if all flags are valid USE values which may
 				be specified in USE dependencies, False otherwise.
 			"""
-			if isinstance(flags, basestring):
+			if isinstance(flags, str):
 				flags = [flags]
 
 			for flag in flags:
@@ -727,7 +708,7 @@ class Package(Task):
 			"""
 			@return: A list of flags missing from IUSE.
 			"""
-			if isinstance(flags, basestring):
+			if isinstance(flags, str):
 				flags = [flags]
 			missing_iuse = []
 			for flag in flags:
@@ -743,7 +724,8 @@ class Package(Task):
 			"""
 			if flag in self.all:
 				return flag
-			elif flag in self.all_aliases:
+
+			if flag in self.all_aliases:
 				for k, v in self.alias_mapping.items():
 					if flag in v:
 						return k
@@ -873,14 +855,14 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 			getattr(self, "_set_" + k.lower())(k, v)
 
 	def _set_inherited(self, k, v):
-		if isinstance(v, basestring):
+		if isinstance(v, str):
 			v = frozenset(v.split())
 		self._pkg.inherited = v
 
 	def _set_counter(self, k, v):
-		if isinstance(v, basestring):
+		if isinstance(v, str):
 			try:
-				v = long(v.strip())
+				v = int(v.strip())
 			except ValueError:
 				v = 0
 		self._pkg.counter = v
@@ -898,9 +880,9 @@ class _PackageMetadataWrapper(_PackageMetadataWrapperBase):
 				pass
 
 	def _set__mtime_(self, k, v):
-		if isinstance(v, basestring):
+		if isinstance(v, str):
 			try:
-				v = long(v.strip())
+				v = int(v.strip())
 			except ValueError:
 				v = 0
 		self._pkg.mtime = v

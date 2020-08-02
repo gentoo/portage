@@ -1,20 +1,18 @@
-# Copyright 2013-2019 Gentoo Authors
+# Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
 import io
 import logging
 import shelve
-import sys
 import time
 
 import portage
 from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
-from portage.util._ShelveUnicodeWrapper import ShelveUnicodeWrapper
 
-class Config(object):
+class Config:
 	def __init__(self, options, portdb, event_loop):
 		self.options = options
 		self.portdb = portdb
@@ -97,7 +95,7 @@ class Config(object):
 
 		return self._LogFormatter(line_format, log_func)
 
-	class _LogFormatter(object):
+	class _LogFormatter:
 
 		__slots__ = ('_line_format', '_log_func')
 
@@ -125,9 +123,6 @@ class Config(object):
 					getattr(e, 'message', None) == 'No module named bsddb'):
 					from bsddb3 import dbshelve
 					db = dbshelve.open(db_file, flags=open_flag)
-
-			if sys.hexversion < 0x3000000:
-				db = ShelveUnicodeWrapper(db)
 
 		if self.options.dry_run:
 			logging.warning("dry-run: %s db opened in readonly mode" % db_desc)

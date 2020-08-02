@@ -23,10 +23,7 @@ __all__ = (
 import subprocess
 import sys
 
-try:
-	import asyncio as _real_asyncio
-except ImportError:
-	_real_asyncio = None
+import asyncio as _real_asyncio
 
 try:
 	import threading
@@ -41,15 +38,16 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
-	_asyncio_enabled,
 	global_event_loop as _global_event_loop,
 )
+# pylint: disable=redefined-builtin
 from portage.util.futures.futures import (
 	CancelledError,
 	Future,
 	InvalidStateError,
 	TimeoutError,
 )
+# pylint: enable=redefined-builtin
 from portage.util.futures._asyncio.process import _Process
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,
@@ -101,19 +99,14 @@ def get_event_loop():
 
 
 def get_child_watcher():
-    """Equivalent to calling get_event_loop_policy().get_child_watcher()."""
-    return get_event_loop_policy().get_child_watcher()
+	"""Equivalent to calling get_event_loop_policy().get_child_watcher()."""
+	return get_event_loop_policy().get_child_watcher()
 
 
 def set_child_watcher(watcher):
-    """Equivalent to calling
-    get_event_loop_policy().set_child_watcher(watcher)."""
-    return get_event_loop_policy().set_child_watcher(watcher)
-
-
-# Python 3.4 and later implement PEP 446, which makes newly
-# created file descriptors non-inheritable by default.
-_close_fds_default = sys.version_info < (3, 4)
+	"""Equivalent to calling
+	get_event_loop_policy().set_child_watcher(watcher)."""
+	return get_event_loop_policy().set_child_watcher(watcher)
 
 
 def create_subprocess_exec(*args, **kwargs):
@@ -138,8 +131,10 @@ def create_subprocess_exec(*args, **kwargs):
 	@return: subset of asyncio.subprocess.Process interface
 	"""
 	loop = _wrap_loop(kwargs.pop('loop', None))
-	kwargs.setdefault('close_fds', _close_fds_default)
-	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
+	# Python 3.4 and later implement PEP 446, which makes newly
+	# created file descriptors non-inheritable by default.
+	kwargs.setdefault('close_fds', False)
+	if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio create_subprocess_exec (loop argument
 		# is deprecated since since Python 3.8).
 		return _real_asyncio.create_subprocess_exec(*args, **kwargs)
@@ -163,7 +158,7 @@ def iscoroutinefunction(func):
 	"""
 	if _compat_coroutine._iscoroutinefunction(func):
 		return True
-	elif _real_asyncio is not None and _real_asyncio.iscoroutinefunction(func):
+	if _real_asyncio.iscoroutinefunction(func):
 		return True
 	return False
 
@@ -191,7 +186,7 @@ def ensure_future(coro_or_future, loop=None):
 	@return: an instance of Future
 	"""
 	loop = _wrap_loop(loop)
-	if _asyncio_enabled and isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
+	if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
 		# Use the real asyncio loop and ensure_future.
 		return _real_asyncio.ensure_future(
 			coro_or_future, loop=loop._asyncio_wrapper._loop)
@@ -240,18 +235,12 @@ def _wrap_loop(loop=None):
 	@rtype: asyncio.AbstractEventLoop (or compatible)
 	@return: event loop
 	"""
-	return loop or _global_event_loop()
-
-
-if _asyncio_enabled:
 	# The default loop returned by _wrap_loop should be consistent
 	# with global_event_loop, in order to avoid accidental registration
 	# of callbacks with a loop that is not intended to run.
-
-	def _wrap_loop(loop=None):
-		loop = loop or _global_event_loop()
-		return (loop if hasattr(loop, '_asyncio_wrapper')
-			else _AsyncioEventLoop(loop=loop))
+	loop = loop or _global_event_loop()
+	return (loop if hasattr(loop, '_asyncio_wrapper')
+		else _AsyncioEventLoop(loop=loop))
 
 
 def _safe_loop():
@@ -267,5 +256,4 @@ def _safe_loop():
 	"""
 	if portage._internal_caller:
 		return _global_event_loop()
-	else:
-		return _EventLoop(main=False)
+	return _EventLoop(main=False)

@@ -1,7 +1,5 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 __all__ = [
 	'autouse', 'best_from_dict', 'check_config_instance', 'config',
@@ -68,9 +66,6 @@ from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity, prune_incremental
 from portage.package.ebuild._config.unpack_dependencies import load_unpack_dependencies_configuration
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 _feature_flags_cache = {}
 
@@ -102,12 +97,10 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 		if x in top_dict and key in top_dict[x]:
 			if FullCopy:
 				return copy.deepcopy(top_dict[x][key])
-			else:
-				return top_dict[x][key]
+			return top_dict[x][key]
 	if EmptyOnError:
 		return ""
-	else:
-		raise KeyError("Key not found in list; '%s'" % key)
+	raise KeyError("Key not found in list; '%s'" % key)
 
 def _lazy_iuse_regex(iuse_implicit):
 	"""
@@ -122,7 +115,7 @@ def _lazy_iuse_regex(iuse_implicit):
 	regex = regex.replace("\\.\\*", ".*")
 	return regex
 
-class _iuse_implicit_match_cache(object):
+class _iuse_implicit_match_cache:
 
 	def __init__(self, settings):
 		self._iuse_implicit_re = re.compile("^(%s)$" % \
@@ -140,7 +133,7 @@ class _iuse_implicit_match_cache(object):
 			self._cache[flag] = m
 			return m
 
-class config(object):
+class config:
 	"""
 	This class encompasses the main portage configuration.  Data is pulled from
 	ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all
@@ -1324,7 +1317,7 @@ class config(object):
 			self.useforce = self._use_manager.getUseForce()
 		self.regenerate()
 
-	class _lazy_vars(object):
+	class _lazy_vars:
 
 		__slots__ = ('built_use', 'settings', 'values')
 
@@ -1357,7 +1350,7 @@ class config(object):
 				restrict = set()
 			return ' '.join(sorted(restrict))
 
-	class _lazy_use_expand(object):
+	class _lazy_use_expand:
 		"""
 		Lazily evaluate USE_EXPAND variables since they are only needed when
 		an ebuild shell is spawned. Variables values are made consistent with
@@ -1456,7 +1449,7 @@ class config(object):
 		pkg = None
 		built_use = None
 		explicit_iuse = None
-		if not isinstance(mycpv, basestring):
+		if not isinstance(mycpv, str):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg._metadata
@@ -2645,10 +2638,10 @@ class config(object):
 			# portage plans to update itself.
 			if mykey == "PORTAGE_BIN_PATH":
 				return portage._bin_path
-			elif mykey == "PORTAGE_PYM_PATH":
+			if mykey == "PORTAGE_PYM_PATH":
 				return portage._pym_path
 
-			elif mykey == "PORTAGE_PYTHONPATH":
+			if mykey == "PORTAGE_PYTHONPATH":
 				value = [x for x in \
 					self.backupenv.get("PYTHONPATH", "").split(":") if x]
 				need_pym_path = True
@@ -2662,7 +2655,7 @@ class config(object):
 					value.insert(0, portage._pym_path)
 				return ":".join(value)
 
-			elif mykey == "PORTAGE_GID":
+			if mykey == "PORTAGE_GID":
 				return "%s" % portage_gid
 
 		for d in self.lookuplist:
@@ -2705,7 +2698,7 @@ class config(object):
 	def __contains__(self, mykey):
 		"""Called to implement membership test operators (in and not in)."""
 		try:
-			 self._getitem(mykey)
+			self._getitem(mykey)
 		except KeyError:
 			return False
 		else:
@@ -2715,12 +2708,8 @@ class config(object):
 		v = self.get(k)
 		if v is not None:
 			return v
-		else:
-			self[k] = x
-			return x
-
-	def keys(self):
-		return list(self)
+		self[k] = x
+		return x
 
 	def __iter__(self):
 		keys = set()
@@ -2736,12 +2725,9 @@ class config(object):
 		for k in self:
 			yield (k, self._getitem(k))
 
-	def items(self):
-		return list(self.iteritems())
-
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
-		if not isinstance(myvalue, basestring):
+		if not isinstance(myvalue, str):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 
 		# Avoid potential UnicodeDecodeError exceptions later.
@@ -2774,7 +2760,7 @@ class config(object):
 		for x, myvalue in self.iteritems():
 			if x in environ_filter:
 				continue
-			if not isinstance(myvalue, basestring):
+			if not isinstance(myvalue, str):
 				writemsg(_("!!! Non-string value in config: %s=%s\n") % \
 					(x, myvalue), noiselevel=-1)
 				continue
@@ -2929,6 +2915,5 @@ class config(object):
 
 		return self._selinux_enabled
 
-	if sys.hexversion >= 0x3000000:
-		keys = __iter__
-		items = iteritems
+	keys = __iter__
+	items = iteritems

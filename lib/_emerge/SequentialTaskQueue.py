@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
-import sys
 
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
@@ -84,9 +83,6 @@ class SequentialTaskQueue(SlotObject):
 
 	def __bool__(self):
 		return bool(self._task_queue or self.running_tasks)
-
-	if sys.hexversion < 0x3000000:
-		__nonzero__ = __bool__
 
 	def __len__(self):
 		return len(self._task_queue) + len(self.running_tasks)

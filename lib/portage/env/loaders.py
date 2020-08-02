@@ -69,7 +69,7 @@ def RecursiveFileLoader(filename):
 		yield filename
 
 
-class DataLoader(object):
+class DataLoader:
 
 	def __init__(self, validator):
 		f = validator

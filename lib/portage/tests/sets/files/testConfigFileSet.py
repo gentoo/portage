@@ -29,4 +29,3 @@ class ConfigFileSetTestCase(TestCase):
 		s = ConfigFileSet(self.testfile)
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())
-

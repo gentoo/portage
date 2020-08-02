@@ -1,46 +1,21 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
-import sys
 from portage import _encodings, _unicode_encode, _unicode_decode
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	basestring = str
 
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
-	if sys.hexversion >= 0x3000000:
-		def __init__(self, value):
-			self.value = value[:]
+	def __init__(self, value):
+		self.value = value[:]
 
-		def __str__(self):
-			if isinstance(self.value, str):
-				return self.value
-			else:
-				return repr(self.value)
-	else:
-		def __init__(self, value):
-			self.value = value[:]
-			if isinstance(self.value, basestring):
-				self.value = _unicode_decode(self.value,
-					encoding=_encodings['content'], errors='replace')
+	def __str__(self):
+		if isinstance(self.value, str):
+			return self.value
+		return repr(self.value)
 
-		def __unicode__(self):
-			if isinstance(self.value, unicode):
-				return self.value
-			else:
-				return _unicode_decode(repr(self.value),
-					encoding=_encodings['content'], errors='replace')
-
-		def __str__(self):
-			if isinstance(self.value, unicode):
-				return _unicode_encode(self.value,
-					encoding=_encodings['content'], errors='backslashreplace')
-			else:
-				return repr(self.value)
 
 class PortageKeyError(KeyError, PortageException):
 	__doc__ = KeyError.__doc__
@@ -180,7 +155,7 @@ class UnsupportedAPIException(PortagePackageException):
 		self.cpv, self.eapi = cpv, eapi
 	def __str__(self):
 		eapi = self.eapi
-		if not isinstance(eapi, basestring):
+		if not isinstance(eapi, str):
 			eapi = str(eapi)
 		eapi = eapi.lstrip("-")
 		msg = _("Unable to do any operations on '%(cpv)s', since "
@@ -190,13 +165,6 @@ class UnsupportedAPIException(PortagePackageException):
 		return _unicode_decode(msg,
 			encoding=_encodings['content'], errors='replace')
 
-	if sys.hexversion < 0x3000000:
-
-		__unicode__ = __str__
-
-		def __str__(self):
-			return _unicode_encode(self.__unicode__(),
-				encoding=_encodings['content'], errors='backslashreplace')
 
 class SignatureException(PortageException):
 	"""Signature was not present in the checked file"""
@@ -212,4 +180,3 @@ class InvalidSignature(SignatureException):
 
 class UntrustedSignature(SignatureException):
 	"""Signature was not certified to the desired security level"""
-

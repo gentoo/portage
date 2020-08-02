@@ -6,7 +6,7 @@ from __future__ import division
 from .PollConstants import PollConstants
 import select
 
-class PollSelectAdapter(object):
+class PollSelectAdapter:
 
 	"""
 	Use select to emulate a poll object, for
@@ -73,4 +73,3 @@ class PollSelectAdapter(object):
 		for fd in select_events[0]:
 			poll_events.append((fd, PollConstants.POLLIN))
 		return poll_events
-

@@ -1,4 +1,4 @@
-# Copyright 2010-2012 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['MtimeDB']
@@ -12,7 +12,6 @@ except ImportError:
 import errno
 import io
 import json
-import sys
 
 import portage
 from portage import _encodings
@@ -32,9 +31,6 @@ class MtimeDB(dict):
 		"indent": "\t",
 		"sort_keys": True
 	}
-	if sys.hexversion < 0x30200F0:
-		# indent only supports int number of spaces
-		_json_write_opts["indent"] = 4
 
 	def __init__(self, filename):
 		dict.__init__(self)

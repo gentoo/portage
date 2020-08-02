@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -6,19 +6,13 @@ import functools
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-try:
-	from urllib.parse import urlparse as urllib_parse_urlparse
-except ImportError:
-	from urlparse import urlparse as urllib_parse_urlparse
+from urllib.parse import urlparse as urllib_parse_urlparse
 import stat
 import sys
 import portage
 from portage import os
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
-
-if sys.hexversion >= 0x3000000:
-	long = int
 
 
 class BinpkgFetcher(CompositeTask):
@@ -158,6 +152,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		self.env = fetch_env
 		if settings.selinux_enabled():
 			self._selinux_type = settings["PORTAGE_FETCH_T"]
+		self.log_filter_file = settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
 		SpawnProcess._start(self)
 
 	def _pipe(self, fd_pipes):
@@ -184,7 +179,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 					self.pkg.cpv)].get("_mtime_")
 				if remote_mtime is not None:
 					try:
-						remote_mtime = long(remote_mtime)
+						remote_mtime = int(remote_mtime)
 					except ValueError:
 						pass
 					else:
@@ -237,4 +232,3 @@ class _BinpkgFetcherProcess(SpawnProcess):
 		self._lock_obj = None
 		self.locked = False
 		return result
-

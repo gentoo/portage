@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import division
@@ -10,13 +10,10 @@ import logging
 import os
 import select
 import signal
-import sys
+import time
 import traceback
 
-try:
-	import asyncio as _real_asyncio
-except ImportError:
-	_real_asyncio = None
+import asyncio as _real_asyncio
 
 try:
 	import fcntl
@@ -37,12 +34,11 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage.util import writemsg_level
-from portage.util.monotonic import monotonic
 from ..SlotObject import SlotObject
 from .PollConstants import PollConstants
 from .PollSelectAdapter import PollSelectAdapter
 
-class EventLoop(object):
+class EventLoop:
 	"""
 	An event loop, intended to be compatible with the GLib event loop.
 	Call the iteration method in order to execute one iteration of the
@@ -69,7 +65,7 @@ class EventLoop(object):
 		__slots__ = ("args", "function", "calling", "interval", "source_id",
 			"timestamp")
 
-	class _handle(object):
+	class _handle:
 		"""
 		A callback wrapper object, compatible with asyncio.Handle.
 		"""
@@ -86,7 +82,7 @@ class EventLoop(object):
 			"""
 			self._loop.source_remove(self._callback_id)
 
-	class _call_soon_callback(object):
+	class _call_soon_callback:
 		"""
 		Wraps a call_soon callback, and always returns False, since these
 		callbacks are only supposed to run once.
@@ -101,7 +97,7 @@ class EventLoop(object):
 			self._callback(*self._args)
 			return False
 
-	class _selector_callback(object):
+	class _selector_callback:
 		"""
 		Wraps an callback, and always returns True, for callbacks that
 		are supposed to run repeatedly.
@@ -168,18 +164,6 @@ class EventLoop(object):
 				# IOError: [Errno 38] Function not implemented
 				pass
 			else:
-
-				# FD_CLOEXEC is enabled by default in Python >=3.4.
-				if sys.hexversion < 0x3040000 and fcntl is not None:
-					try:
-						fcntl.FD_CLOEXEC
-					except AttributeError:
-						pass
-					else:
-						fcntl.fcntl(epoll_obj.fileno(), fcntl.F_SETFD,
-							fcntl.fcntl(epoll_obj.fileno(),
-								fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-
 				self._poll_obj = _epoll_adapter(epoll_obj)
 				self.IO_ERR = select.EPOLLERR
 				self.IO_HUP = select.EPOLLHUP
@@ -431,17 +415,6 @@ class EventLoop(object):
 				fcntl.fcntl(self._sigchld_read, fcntl.F_SETFL,
 					fcntl.fcntl(self._sigchld_read,
 					fcntl.F_GETFL) | os.O_NONBLOCK)
-
-				# FD_CLOEXEC is enabled by default in Python >=3.4.
-				if sys.hexversion < 0x3040000:
-					try:
-						fcntl.FD_CLOEXEC
-					except AttributeError:
-						pass
-					else:
-						fcntl.fcntl(self._sigchld_read, fcntl.F_SETFD,
-							fcntl.fcntl(self._sigchld_read,
-							fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
 
 			# The IO watch is dynamically registered and unregistered as
 			# needed, since we don't want to consider it as a valid source
@@ -887,7 +860,7 @@ class EventLoop(object):
 		epoch, precision, accuracy and drift are unspecified and may
 		differ per event loop.
 		"""
-		return monotonic()
+		return time.monotonic()
 
 	def call_later(self, delay, callback, *args, **kwargs):
 		"""
@@ -985,9 +958,8 @@ class EventLoop(object):
 				executor = ForkExecutor(loop=self)
 				self._default_executor = executor
 		future = executor.submit(func, *args)
-		if _real_asyncio is not None:
-			future = _real_asyncio.wrap_future(future,
-				loop=self._asyncio_wrapper)
+		future = _real_asyncio.wrap_future(future,
+			loop=self._asyncio_wrapper)
 		return future
 
 	def is_running(self):
@@ -1148,7 +1120,7 @@ def create_poll_instance():
 		return select.poll()
 	return PollSelectAdapter()
 
-class _epoll_adapter(object):
+class _epoll_adapter:
 	"""
 	Wraps a select.epoll instance in order to make it compatible
 	with select.poll instances. This is necessary since epoll instances

@@ -1,13 +1,16 @@
-# Copyright 2008-2018 Gentoo Foundation
+# Copyright 2008-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
 import errno
 import gzip
-import sys
 
 import portage
 from portage import os, _encodings, _unicode_encode
+from portage.util.futures import asyncio
+from portage.util.futures._asyncio.streams import _writer
+from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures.unix_events import _set_nonblocking
 from _emerge.AbstractPollTask import AbstractPollTask
 
 class PipeLogger(AbstractPollTask):
@@ -21,13 +24,16 @@ class PipeLogger(AbstractPollTask):
 	"""
 
 	__slots__ = ("input_fd", "log_file_path", "stdout_fd") + \
-		("_log_file", "_log_file_real")
+		("_io_loop_task", "_log_file", "_log_file_nb", "_log_file_real")
 
 	def _start(self):
 
 		log_file_path = self.log_file_path
-		if log_file_path is not None:
-
+		if hasattr(log_file_path, 'write'):
+			self._log_file_nb = True
+			self._log_file = log_file_path
+			_set_nonblocking(self._log_file.fileno())
+		elif log_file_path is not None:
 			self._log_file = open(_unicode_encode(log_file_path,
 				encoding=_encodings['fs'], errors='strict'), mode='ab')
 			if log_file_path.endswith('.gz'):
@@ -40,24 +46,15 @@ class PipeLogger(AbstractPollTask):
 				mode=0o660)
 
 		if isinstance(self.input_fd, int):
-			fd = self.input_fd
-		else:
-			fd = self.input_fd.fileno()
+			self.input_fd = os.fdopen(self.input_fd, 'rb', 0)
+
+		fd = self.input_fd.fileno()
 
 		fcntl.fcntl(fd, fcntl.F_SETFL,
 			fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		# FD_CLOEXEC is enabled by default in Python >=3.4.
-		if sys.hexversion < 0x3040000:
-			try:
-				fcntl.FD_CLOEXEC
-			except AttributeError:
-				pass
-			else:
-				fcntl.fcntl(fd, fcntl.F_SETFD,
-					fcntl.fcntl(fd, fcntl.F_GETFD) | fcntl.FD_CLOEXEC)
-
-		self.scheduler.add_reader(fd, self._output_handler, fd)
+		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd), loop=self.scheduler)
+		self._io_loop_task.add_done_callback(self._io_loop_done)
 		self._registered = True
 
 	def _cancel(self):
@@ -65,80 +62,113 @@ class PipeLogger(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
 
-	def _output_handler(self, fd):
-
+	@coroutine
+	def _io_loop(self, input_file):
 		background = self.background
 		stdout_fd = self.stdout_fd
 		log_file = self._log_file 
+		fd = input_file.fileno()
 
 		while True:
 			buf = self._read_buf(fd)
 
 			if buf is None:
 				# not a POLLIN event, EAGAIN, etc...
-				break
+				future = self.scheduler.create_future()
+				self.scheduler.add_reader(fd, future.set_result, None)
+				try:
+					yield future
+				finally:
+					# The loop and input file may have been closed.
+					if not self.scheduler.is_closed():
+						future.done() or future.cancel()
+						# Do not call remove_reader in cases where fd has
+						# been closed and then re-allocated to a concurrent
+						# coroutine as in bug 716636.
+						if not input_file.closed:
+							self.scheduler.remove_reader(fd)
+				continue
 
 			if not buf:
 				# EOF
-				self._unregister()
-				self.returncode = self.returncode or os.EX_OK
-				self._async_wait()
-				break
+				return
 
-			else:
-				if not background and stdout_fd is not None:
-					failures = 0
-					stdout_buf = buf
-					while stdout_buf:
-						try:
-							stdout_buf = \
-								stdout_buf[os.write(stdout_fd, stdout_buf):]
-						except OSError as e:
-							if e.errno != errno.EAGAIN:
-								raise
-							del e
-							failures += 1
-							if failures > 50:
-								# Avoid a potentially infinite loop. In
-								# most cases, the failure count is zero
-								# and it's unlikely to exceed 1.
-								raise
+			if not background and stdout_fd is not None:
+				failures = 0
+				stdout_buf = buf
+				while stdout_buf:
+					try:
+						stdout_buf = \
+							stdout_buf[os.write(stdout_fd, stdout_buf):]
+					except OSError as e:
+						if e.errno != errno.EAGAIN:
+							raise
+						del e
+						failures += 1
+						if failures > 50:
+							# Avoid a potentially infinite loop. In
+							# most cases, the failure count is zero
+							# and it's unlikely to exceed 1.
+							raise
 
-							# This means that a subprocess has put an inherited
-							# stdio file descriptor (typically stdin) into
-							# O_NONBLOCK mode. This is not acceptable (see bug
-							# #264435), so revert it. We need to use a loop
-							# here since there's a race condition due to
-							# parallel processes being able to change the
-							# flags on the inherited file descriptor.
-							# TODO: When possible, avoid having child processes
-							# inherit stdio file descriptors from portage
-							# (maybe it can't be avoided with
-							# PROPERTIES=interactive).
-							fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
-								fcntl.fcntl(stdout_fd,
-								fcntl.F_GETFL) ^ os.O_NONBLOCK)
+						# This means that a subprocess has put an inherited
+						# stdio file descriptor (typically stdin) into
+						# O_NONBLOCK mode. This is not acceptable (see bug
+						# #264435), so revert it. We need to use a loop
+						# here since there's a race condition due to
+						# parallel processes being able to change the
+						# flags on the inherited file descriptor.
+						# TODO: When possible, avoid having child processes
+						# inherit stdio file descriptors from portage
+						# (maybe it can't be avoided with
+						# PROPERTIES=interactive).
+						fcntl.fcntl(stdout_fd, fcntl.F_SETFL,
+							fcntl.fcntl(stdout_fd,
+							fcntl.F_GETFL) ^ os.O_NONBLOCK)
 
-				if log_file is not None:
+			if log_file is not None:
+				if self._log_file_nb:
+					# Use the _writer function which uses os.write, since the
+					# log_file.write method looses data when an EAGAIN occurs.
+					yield _writer(log_file, buf, loop=self.scheduler)
+				else:
+					# For gzip.GzipFile instances, the above _writer function
+					# will not work because data written directly to the file
+					# descriptor bypasses compression.
 					log_file.write(buf)
 					log_file.flush()
+
+	def _io_loop_done(self, future):
+		try:
+			future.result()
+		except asyncio.CancelledError:
+			self.cancel()
+			self._was_cancelled()
+		self.returncode = self.returncode or os.EX_OK
+		self._async_wait()
 
 	def _unregister(self):
 		if self.input_fd is not None:
 			if isinstance(self.input_fd, int):
-				self.scheduler.remove_reader(self.input_fd)
 				os.close(self.input_fd)
-			else:
+			elif not self.input_fd.closed:
 				self.scheduler.remove_reader(self.input_fd.fileno())
 				self.input_fd.close()
 			self.input_fd = None
+
+		if self._io_loop_task is not None:
+			if not self.scheduler.is_closed():
+				self._io_loop_task.done() or self._io_loop_task.cancel()
+			self._io_loop_task = None
 
 		if self.stdout_fd is not None:
 			os.close(self.stdout_fd)
 			self.stdout_fd = None
 
 		if self._log_file is not None:
-			self._log_file.close()
+			if not self._log_file.closed:
+				self.scheduler.remove_writer(self._log_file.fileno())
+				self._log_file.close()
 			self._log_file = None
 
 		if self._log_file_real is not None:

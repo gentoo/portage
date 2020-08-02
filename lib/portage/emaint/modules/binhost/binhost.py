@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -9,13 +9,9 @@ from portage import os
 from portage.util import writemsg
 from portage.versions import _pkg_str
 
-import sys
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
 
-class BinhostHandler(object):
+class BinhostHandler:
 
 	short_desc = "Generate a metadata index for binary packages"
 
@@ -54,9 +50,9 @@ class BinhostHandler(object):
 			return False
 
 		try:
-			if long(mtime) != s[stat.ST_MTIME]:
+			if int(mtime) != s[stat.ST_MTIME]:
 				return True
-			if long(size) != long(s.st_size):
+			if int(size) != int(s.st_size):
 				return True
 		except ValueError:
 			return True

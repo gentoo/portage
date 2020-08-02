@@ -1,11 +1,10 @@
-# Copyright 2014-2015 Gentoo Foundation
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
 import subprocess
 import sys
 import textwrap
-import time
 
 import portage
 from portage import os, shutil, _shell_quote
@@ -72,6 +71,7 @@ class SyncLocalTestCase(TestCase):
 		distdir = os.path.join(eprefix, "distdir")
 		repo = settings.repositories["test_repo"]
 		metadata_dir = os.path.join(repo.location, "metadata")
+		rcu_store_dir = os.path.join(eprefix, 'var/repositories/test_repo_rcu_storedir')
 
 		cmds = {}
 		for cmd in ("emerge", "emaint"):
@@ -192,6 +192,10 @@ class SyncLocalTestCase(TestCase):
 			(homedir, lambda: os.mkdir(repo.user_location)),
 		)
 
+		delete_rcu_store_dir = (
+			(homedir, lambda: shutil.rmtree(rcu_store_dir)),
+		)
+
 		revert_rcu_layout = (
 			(homedir, lambda: os.rename(repo.user_location, repo.user_location + '.bak')),
 			(homedir, lambda: os.rename(os.path.realpath(repo.user_location + '.bak'), repo.user_location)),
@@ -290,7 +294,8 @@ class SyncLocalTestCase(TestCase):
 			for cwd, cmd in rename_repo + sync_cmds_auto_sync + sync_cmds + \
 				rsync_opts_repos + rsync_opts_repos_default + \
 				rsync_opts_repos_default_ovr + rsync_opts_repos_default_cancel + \
-				bump_timestamp_cmds + sync_rsync_rcu + sync_cmds + revert_rcu_layout + \
+				bump_timestamp_cmds + sync_rsync_rcu + sync_cmds + delete_rcu_store_dir + \
+				sync_cmds + revert_rcu_layout + \
 				delete_repo_location + sync_cmds + sync_cmds + \
 				bump_timestamp_cmds + sync_cmds + revert_rcu_layout + \
 				delete_sync_repo + git_repo_create + sync_type_git + \

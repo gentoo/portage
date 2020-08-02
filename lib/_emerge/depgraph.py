@@ -1,7 +1,7 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function, unicode_literals
+from __future__ import division, print_function
 
 import collections
 import errno
@@ -9,7 +9,6 @@ import functools
 import io
 import logging
 import stat
-import sys
 import textwrap
 import warnings
 from collections import deque, OrderedDict
@@ -88,13 +87,6 @@ from _emerge.resolver.slot_collision import slot_conflict_handler
 from _emerge.resolver.circular_dependency import circular_dependency_handler
 from _emerge.resolver.output import Display, format_unmatched_atom
 
-if sys.hexversion >= 0x3000000:
-	basestring = str
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
-
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface',(
 	# Indicates a removal action, like depclean or prune.
@@ -103,7 +95,7 @@ _dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface'
 	'want_update_pkg',
 ))
 
-class _scheduler_graph_config(object):
+class _scheduler_graph_config:
 	def __init__(self, trees, pkg_cache, graph, mergelist):
 		self.trees = trees
 		self.pkg_cache = pkg_cache
@@ -120,7 +112,7 @@ def _wildcard_set(atoms):
 		pkgs.add(x)
 	return pkgs
 
-class _frozen_depgraph_config(object):
+class _frozen_depgraph_config:
 
 	def __init__(self, settings, trees, myopts, params, spinner):
 		self.settings = settings
@@ -194,7 +186,7 @@ class _frozen_depgraph_config(object):
 		self.rebuild_if_new_ver = "--rebuild-if-new-ver" in myopts
 		self.rebuild_if_unbuilt = "--rebuild-if-unbuilt" in myopts
 
-class _depgraph_sets(object):
+class _depgraph_sets:
 	def __init__(self):
 		# contains all sets added to the graph
 		self.sets = {}
@@ -205,7 +197,7 @@ class _depgraph_sets(object):
 		self.atoms = InternalPackageSet(allow_repo=True)
 		self.atom_arg_map = {}
 
-class _rebuild_config(object):
+class _rebuild_config:
 	def __init__(self, frozen_config, backtrack_parameters):
 		self._graph = digraph()
 		self._frozen_config = frozen_config
@@ -270,7 +262,7 @@ class _rebuild_config(object):
 			if self._needs_rebuild(dep_pkg):
 				self.rebuild_list.add(root_slot)
 				return True
-			elif ("--usepkg" in self._frozen_config.myopts and
+			if ("--usepkg" in self._frozen_config.myopts and
 				(dep_root_slot in self.reinstall_list or
 				dep_root_slot in self.rebuild_list or
 				not dep_pkg.installed)):
@@ -304,14 +296,14 @@ class _rebuild_config(object):
 					#    built without dep_pkg. Force rebuild.
 					self.rebuild_list.add(root_slot)
 					return True
-				elif (parent.installed and
+				if (parent.installed and
 					root_slot not in self.reinstall_list):
 					try:
 						bin_build_time, = bindb.aux_get(parent.cpv,
 							["BUILD_TIME"])
 					except KeyError:
 						continue
-					if bin_build_time != _unicode(parent.build_time):
+					if bin_build_time != str(parent.build_time):
 						# 2) Remote binary package is valid, and local package
 						#    is not up to date. Force reinstall.
 						reinstall = True
@@ -374,7 +366,7 @@ class _use_changes(tuple):
 		return obj
 
 
-class _dynamic_depgraph_config(object):
+class _dynamic_depgraph_config:
 
 	"""
 	``dynamic_depgraph_config`` is an object that is used to collect settings and important data structures that are
@@ -598,7 +590,7 @@ class _dynamic_depgraph_config(object):
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
 
-class depgraph(object):
+class depgraph:
 
 	# Represents the depth of a node that is unreachable from explicit
 	# user arguments (or their deep dependencies). Such nodes are pulled
@@ -710,7 +702,7 @@ class depgraph(object):
 					self._dynamic_deps_proc_exit(pkg, fake_vartree))
 				yield proc
 
-	class _dynamic_deps_proc_exit(object):
+	class _dynamic_deps_proc_exit:
 
 		__slots__ = ('_pkg', '_fake_vartree')
 
@@ -2574,14 +2566,14 @@ class depgraph(object):
 			Atom("=%s" % inst_pkg.cpv)):
 			if not pkg.built:
 				return pkg.slot_atom
-			elif not pkg.installed:
+			if not pkg.installed:
 				# avoid using SLOT from a built instance
 				built_pkgs.append(pkg)
 
 		for pkg in self._iter_similar_available(inst_pkg, inst_pkg.slot_atom):
 			if not pkg.built:
 				return pkg.slot_atom
-			elif not pkg.installed:
+			if not pkg.installed:
 				# avoid using SLOT from a built instance
 				built_pkgs.append(pkg)
 
@@ -2907,58 +2899,58 @@ class depgraph(object):
 					self._slot_operator_unsatisfied_probe(dep)):
 					self._slot_operator_unsatisfied_backtrack(dep)
 					return 1
-				else:
-					# This is for backward-compatibility with previous
-					# behavior, so that installed packages with unsatisfied
-					# dependencies trigger an error message but do not
-					# cause the dependency calculation to fail. Only do
-					# this if the parent is already in the runtime package
-					# mask, since otherwise we need to backtrack.
-					if (dep.parent.installed and
-						dep.parent in self._dynamic_config._runtime_pkg_mask and
-						not any(self._iter_match_pkgs_any(
-						dep.parent.root_config, dep.atom))):
-						self._dynamic_config._initially_unsatisfied_deps.append(dep)
-						return 1
 
-					# Do not backtrack if only USE have to be changed in
-					# order to satisfy the dependency. Note that when
-					# want_restart_for_use_change sets the need_restart
-					# flag, it causes _select_pkg_highest_available to
-					# return None, and eventually we come through here
-					# and skip the "missing dependency" backtracking path.
-					dep_pkg, existing_node = \
-						self._select_package(dep.root,
-							dep.atom.without_use if dep.atom.package
-							else dep.atom, onlydeps=dep.onlydeps)
-					if dep_pkg is None:
+				# This is for backward-compatibility with previous
+				# behavior, so that installed packages with unsatisfied
+				# dependencies trigger an error message but do not
+				# cause the dependency calculation to fail. Only do
+				# this if the parent is already in the runtime package
+				# mask, since otherwise we need to backtrack.
+				if (dep.parent.installed and
+					dep.parent in self._dynamic_config._runtime_pkg_mask and
+					not any(self._iter_match_pkgs_any(
+					dep.parent.root_config, dep.atom))):
+					self._dynamic_config._initially_unsatisfied_deps.append(dep)
+					return 1
 
-						# In order to suppress the sort of aggressive
-						# backtracking that can trigger undesirable downgrades
-						# as in bug 693836, do not backtrack if there's an
-						# available package which was involved in a slot
-						# conflict and satisfied all involved parent atoms.
-						for dep_pkg, reasons in self._dynamic_config._runtime_pkg_mask.items():
-							if (dep.atom.match(dep_pkg) and
-								len(reasons) == 1 and
-								not reasons.get("slot conflict", True)):
-								self._dynamic_config._skip_restart = True
-								return 0
+				# Do not backtrack if only USE have to be changed in
+				# order to satisfy the dependency. Note that when
+				# want_restart_for_use_change sets the need_restart
+				# flag, it causes _select_pkg_highest_available to
+				# return None, and eventually we come through here
+				# and skip the "missing dependency" backtracking path.
+				dep_pkg, existing_node = \
+					self._select_package(dep.root,
+						dep.atom.without_use if dep.atom.package
+						else dep.atom, onlydeps=dep.onlydeps)
+				if dep_pkg is None:
 
-						self._dynamic_config._backtrack_infos["missing dependency"] = dep
-						self._dynamic_config._need_restart = True
-						if debug:
-							msg = []
-							msg.append("")
-							msg.append("")
-							msg.append("backtracking due to unsatisfied dep:")
-							msg.append("    parent: %s" % dep.parent)
-							msg.append("  priority: %s" % dep.priority)
-							msg.append("      root: %s" % dep.root)
-							msg.append("      atom: %s" % dep.atom)
-							msg.append("")
-							writemsg_level("".join("%s\n" % l for l in msg),
-								noiselevel=-1, level=logging.DEBUG)
+					# In order to suppress the sort of aggressive
+					# backtracking that can trigger undesirable downgrades
+					# as in bug 693836, do not backtrack if there's an
+					# available package which was involved in a slot
+					# conflict and satisfied all involved parent atoms.
+					for dep_pkg, reasons in self._dynamic_config._runtime_pkg_mask.items():
+						if (dep.atom.match(dep_pkg) and
+							len(reasons) == 1 and
+							not reasons.get("slot conflict", True)):
+							self._dynamic_config._skip_restart = True
+							return 0
+
+					self._dynamic_config._backtrack_infos["missing dependency"] = dep
+					self._dynamic_config._need_restart = True
+					if debug:
+						msg = []
+						msg.append("")
+						msg.append("")
+						msg.append("backtracking due to unsatisfied dep:")
+						msg.append("    parent: %s" % dep.parent)
+						msg.append("  priority: %s" % dep.priority)
+						msg.append("      root: %s" % dep.root)
+						msg.append("      atom: %s" % dep.atom)
+						msg.append("")
+						writemsg_level("".join("%s\n" % l for l in msg),
+							noiselevel=-1, level=logging.DEBUG)
 
 			return 0
 
@@ -3198,7 +3190,7 @@ class depgraph(object):
 		dep_stack = self._dynamic_config._dep_stack
 		if "recurse" not in self._dynamic_config.myparams:
 			return 1
-		elif pkg.installed and not recurse:
+		if pkg.installed and not recurse:
 			dep_stack = self._dynamic_config._ignored_deps
 
 		self._spinner_update()
@@ -5664,9 +5656,8 @@ class depgraph(object):
 		if atom.package:
 			return self._iter_match_pkgs_atom(root_config, pkg_type,
 				atom, onlydeps=onlydeps)
-		else:
-			return self._iter_match_pkgs_soname(root_config, pkg_type,
-				atom, onlydeps=onlydeps)
+		return self._iter_match_pkgs_soname(root_config, pkg_type,
+			atom, onlydeps=onlydeps)
 
 	def _iter_match_pkgs_soname(self, root_config, pkg_type, atom,
 		onlydeps=False):
@@ -5761,7 +5752,7 @@ class depgraph(object):
 						other_installed, other_keys in dbs:
 						try:
 							if portage.dep._match_slot(atom,
-								other_db._pkg_str(_unicode(cpv), None)):
+								other_db._pkg_str(str(cpv), None)):
 								slot_available = True
 								break
 						except (KeyError, InvalidData):
@@ -5881,12 +5872,11 @@ class depgraph(object):
 		deep = self._dynamic_config.myparams.get("deep", 0)
 		if depth is self._UNREACHABLE_DEPTH:
 			return True
-		elif deep is True:
+		if deep is True:
 			return False
-		else:
-			# All non-integer cases are handled above,
-			# so both values must be int type.
-			return depth > deep
+		# All non-integer cases are handled above,
+		# so both values must be int type.
+		return depth > deep
 
 	def _depth_increment(self, depth, n=1):
 		"""
@@ -5941,7 +5931,7 @@ class depgraph(object):
 
 		return build_time == inst_pkg.build_time
 
-	class _AutounmaskLevel(object):
+	class _AutounmaskLevel:
 		__slots__ = ("allow_use_changes", "allow_unstable_keywords", "allow_license_changes", \
 			"allow_missing_keywords", "allow_unmasks")
 
@@ -6169,8 +6159,7 @@ class depgraph(object):
 		if target_use is None:
 			if needed_use_config_change is None:
 				return pkg.use.enabled
-			else:
-				return needed_use_config_change[0]
+			return needed_use_config_change[0]
 
 		if needed_use_config_change is not None:
 			old_use = needed_use_config_change[0]
@@ -7484,7 +7473,7 @@ class depgraph(object):
 
 		mygraph.order.sort(key=cmp_sort_key(cmp_merge_preference))
 
-	def altlist(self, reversed=DeprecationWarning):
+	def altlist(self, reversed=DeprecationWarning): # pylint: disable=redefined-builtin
 
 		if reversed is not DeprecationWarning:
 			warnings.warn("The reversed parameter of "
@@ -9263,7 +9252,7 @@ class depgraph(object):
 						filename = "world"
 					writemsg_stdout(
 						">>> Recording %s in \"%s\" favorites file...\n" %
-						(colorize("INFORM", _unicode(a)), filename), noiselevel=-1)
+						(colorize("INFORM", str(a)), filename), noiselevel=-1)
 				world_set.update(all_added)
 
 		if world_locked:
@@ -9458,7 +9447,7 @@ class depgraph(object):
 		depgraph_sets = self._dynamic_config.sets[root_config.root]
 		args = []
 		for x in favorites:
-			if not isinstance(x, basestring):
+			if not isinstance(x, str):
 				continue
 			if x in ("system", "world"):
 				x = SETPREFIX + x
@@ -9755,7 +9744,7 @@ class _dep_check_composite_db(dbapi):
 			if not avoid_update:
 				if not use_ebuild_visibility and usepkgonly:
 					return False
-				elif not self._depgraph._equiv_ebuild_visible(pkg):
+				if not self._depgraph._equiv_ebuild_visible(pkg):
 					return False
 
 		if pkg.cp.startswith("virtual/"):

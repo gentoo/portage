@@ -17,7 +17,7 @@ from portage.cache.index.pkg_desc_index import \
 from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 from portage.versions import _pkg_str
 
-class IndexedPortdb(object):
+class IndexedPortdb:
 	"""
 	A portdbapi interface that uses a package description index to
 	improve performance. If the description index is missing for a
@@ -90,7 +90,7 @@ class IndexedPortdb(object):
 		if index_missing:
 			self._unindexed_cp_map = {}
 
-			class _NonIndexedStream(object):
+			class _NonIndexedStream:
 				def __iter__(self_):
 					for cp in self._portdb.cp_all(
 						trees = index_missing):
@@ -159,8 +159,7 @@ class IndexedPortdb(object):
 
 		if atom == atom.cp:
 			return cp_list[:]
-		else:
-			return portage.match_from_list(atom, cp_list)
+		return portage.match_from_list(atom, cp_list)
 
 	def aux_get(self, cpv, attrs, myrepo=None):
 		if len(attrs) == 1 and attrs[0] == "DESCRIPTION":

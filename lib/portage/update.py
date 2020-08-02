@@ -1,7 +1,5 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import unicode_literals
 
 import errno
 import io
@@ -27,12 +25,6 @@ from portage.eapi import _get_eapi_attrs
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
-if sys.hexversion >= 0x3000000:
-	# pylint: disable=W0622
-	long = int
-	_unicode = str
-else:
-	_unicode = unicode
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -42,8 +34,8 @@ def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
 		eapi = parent.eapi
 
 	if update_cmd[0] == "move":
-		old_value = _unicode(update_cmd[1])
-		new_value = _unicode(update_cmd[2])
+		old_value = str(update_cmd[1])
+		new_value = str(update_cmd[2])
 
 		# Use isvalidatom() to check if this move is valid for the
 		# EAPI (characters allowed in package names may vary).
@@ -70,7 +62,7 @@ def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
 					match_from_list(new_atom, [parent]):
 					continue
 
-				split_content[i] = _unicode(new_atom)
+				split_content[i] = str(new_atom)
 				modified = True
 
 			if modified:
@@ -197,7 +189,7 @@ def grab_updates(updpath, prev_mtimes=None):
 		mystat = os.stat(file_path)
 		if update_data or \
 			file_path not in prev_mtimes or \
-			long(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
+			int(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
 			f = io.open(_unicode_encode(file_path,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'], errors='replace')

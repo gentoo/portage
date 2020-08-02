@@ -3,7 +3,7 @@ None (non-VCS) module Status class submodule
 '''
 
 
-class Status(object):
+class Status:
 	'''Performs status checks on the svn repository'''
 
 	def __init__(self, qatracker, eadded):

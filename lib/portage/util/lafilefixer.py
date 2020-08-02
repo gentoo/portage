@@ -109,18 +109,18 @@ def rewrite_lafile(contents):
 			#Two cases:
 			#1) /usr/lib64/libfoo.la, turn it into -lfoo and append -L/usr/lib64 to libladir
 			#2) libfoo.la, keep it
-			dir, file = _os.path.split(dep_libs_entry)
+			dirname, basename = _os.path.split(dep_libs_entry)
 
-			if not dir or not file.startswith(b"lib"):
+			if not dirname or not basename.startswith(b"lib"):
 				if dep_libs_entry not in new_dep_libs:
 					new_dep_libs.append(dep_libs_entry)
 			else:
 				#/usr/lib64/libfoo.la -> -lfoo
-				lib = b"-l" + file[3:-3]
+				lib = b"-l" + basename[3:-3]
 				if lib not in new_dep_libs:
 					new_dep_libs.append(lib)
 				#/usr/lib64/libfoo.la -> -L/usr/lib64
-				ladir = b"-L" + dir
+				ladir = b"-L" + dirname
 				if ladir not in libladir:
 					libladir.append(ladir)
 
@@ -181,5 +181,4 @@ def rewrite_lafile(contents):
 
 	if changed:
 		return True, contents
-	else:
-		return False, None
+	return False, None
