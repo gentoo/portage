@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -91,10 +91,10 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
 				success=False),
 
 			# With --autounmask-backtrack=y:
-			#[ebuild  N    ~] dev-libs/A-2 
-			#[ebuild  N     ] dev-libs/C-1 
-			#[ebuild  N     ] dev-libs/D-1 
-			#[ebuild  N     ] dev-libs/B-1 
+			#[ebuild  N    ~] dev-libs/A-2
+			#[ebuild  N     ] dev-libs/C-1
+			#[ebuild  N     ] dev-libs/D-1
+			#[ebuild  N     ] dev-libs/B-1
 			#
 			#The following keyword changes are necessary to proceed:
 			# (see "package.accept_keywords" in the portage(5) man page for more details)
