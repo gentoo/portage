@@ -21,7 +21,6 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
-from portage.localization import _
 from portage.output import colorize, create_color_func, red
 bad = create_color_func("BAD")
 from portage._sets import SETPREFIX
@@ -30,7 +29,6 @@ from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
-from portage.util._eventloop.EventLoop import EventLoop
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.doebuild import (_check_temp_dir,
