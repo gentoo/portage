@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import print_function
@@ -134,10 +134,10 @@ class circular_dependency_handler:
 					raise
 				affecting_use = set()
 
-			# Make sure we don't want to change a flag that is 
+			# Make sure we don't want to change a flag that is
 			#	a) in use.mask or use.force
 			#	b) changed by autounmask
-			
+
 			usemask, useforce = self._get_use_mask_and_force(parent)
 			autounmask_changes = self._get_autounmask_changes(parent)
 			untouchable_flags = frozenset(chain(usemask, useforce, autounmask_changes))
