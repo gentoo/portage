@@ -14,7 +14,7 @@ except ImportError:
 
 import portage
 from portage import _encodings
-from portage import _native_string, _unicode_decode
+from portage import _native_string
 from portage.localization import _
 
 def copyfile(src, dest):
