@@ -588,7 +588,7 @@ class PkgInfo:
 	"""Simple class to hold instance attributes for current
 	information about the pkg being printed.
 	"""
-	
+
 	__slots__ = ("attr_display", "built", "cp",
 		"ebuild_path", "fetch_symbol", "merge",
 		"oldbest", "oldbest_list", "operation", "ordered", "previous_pkg",
