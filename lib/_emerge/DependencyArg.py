@@ -1,9 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-
-from portage import _encodings, _unicode_encode
-
 class DependencyArg:
 
 	__slots__ = ('arg', 'force_reinstall', 'internal', 'reset_depth', 'root_config')
