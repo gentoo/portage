@@ -1686,7 +1686,7 @@ class binarytree:
 			resume = True
 			writemsg(_("Resuming download of this tbz2, but it is possible that it is corrupt.\n"),
 				noiselevel=-1)
-		
+
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
