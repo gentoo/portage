@@ -7,7 +7,6 @@ __all__ = ['database']
 
 import errno
 
-import portage
 from portage.cache import fs_template
 from portage.versions import catsplit
 from portage import cpv_getkey
