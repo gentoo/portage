@@ -66,7 +66,7 @@ class PipeLogger(AbstractPollTask):
 	def _io_loop(self, input_file):
 		background = self.background
 		stdout_fd = self.stdout_fd
-		log_file = self._log_file 
+		log_file = self._log_file
 		fd = input_file.fileno()
 
 		while True:
