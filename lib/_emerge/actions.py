@@ -4,7 +4,6 @@
 from __future__ import division, print_function
 
 import collections
-import errno
 import logging
 import operator
 import platform
@@ -34,24 +33,20 @@ portage.proxy.lazyimport.lazyimport(globals(),
 
 from portage import os
 from portage import shutil
-from portage import eapi_is_supported, _encodings, _unicode_decode
-from portage.cache.cache_errors import CacheError
-from portage.const import GLOBAL_CONFIG_PATH, VCS_DIRS, _DEPCLEAN_LIB_CHECK_DEFAULT
-from portage.const import SUPPORTED_BINPKG_FORMATS, TIMESTAMP_FORMAT
+from portage import _encodings, _unicode_decode
+from portage.const import _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
-from portage.eclass_cache import hashed_path
 from portage.exception import InvalidAtom, InvalidData, ParseError
-from portage.output import blue, colorize, create_color_func, darkgreen, \
-	red, xtermTitle, xtermTitleReset, yellow
+from portage.output import colorize, create_color_func, darkgreen, \
+	red, xtermTitle, xtermTitleReset
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
@@ -69,17 +64,14 @@ from portage.metadata import action_metadata
 from portage.emaint.main import print_results
 
 from _emerge.clear_caches import clear_caches
-from _emerge.countdown import countdown
 from _emerge.create_depgraph_params import create_depgraph_params
 from _emerge.Dependency import Dependency
 from _emerge.depgraph import backtrack_depgraph, depgraph, resume_depgraph
-from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
 from _emerge.emergelog import emergelog
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.main import profile_check
 from _emerge.MetadataRegen import MetadataRegen
 from _emerge.Package import Package
-from _emerge.ProgressHandler import ProgressHandler
 from _emerge.RootConfig import RootConfig
 from _emerge.Scheduler import Scheduler
 from _emerge.search import search
