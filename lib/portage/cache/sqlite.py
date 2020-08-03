@@ -33,7 +33,7 @@ class database(fs_template.FsBased):
 		self._allowed_keys_set = frozenset(self._allowed_keys)
 		self._allowed_keys = sorted(self._allowed_keys_set)
 
-		self.location = os.path.join(self.location, 
+		self.location = os.path.join(self.location,
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
 		if not self.readonly and not os.path.exists(self.location):
@@ -105,7 +105,7 @@ class database(fs_template.FsBased):
 		table_parameters.append("UNIQUE(%s)" % self._db_table["packages"]["package_key"])
 		create_statement.append(",".join(table_parameters))
 		create_statement.append(")")
-		
+
 		self._db_table["packages"]["create"] = " ".join(create_statement)
 
 		cursor = self._db_cursor
