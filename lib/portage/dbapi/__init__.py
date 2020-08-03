@@ -1,4 +1,4 @@
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["dbapi"]
@@ -107,12 +107,12 @@ class dbapi:
 			mycpv - "sys-apps/foo-1.0"
 			mylist - ["SLOT","DEPEND","HOMEPAGE"]
 			myrepo - The repository name.
-		Returns: 
+		Returns:
 			a list of results, in order of keys in mylist, such as:
 			["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		"""
 		raise NotImplementedError
-	
+
 	def aux_update(self, cpv, metadata_updates):
 		"""
 		Args:
