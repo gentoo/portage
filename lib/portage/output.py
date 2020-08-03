@@ -159,7 +159,7 @@ def _parse_color_map(config_root='/', onerror=None):
 	"""
 	global codes, _styles
 	myfile = os.path.join(config_root, COLOR_MAP_FILE)
-	ansi_code_pattern = re.compile("^[0-9;]*m$") 
+	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	quotes = '\'"'
 	def strip_quotes(token):
 		if token[0] in quotes and token[0] == token[-1]:
@@ -174,10 +174,10 @@ def _parse_color_map(config_root='/', onerror=None):
 		for lineno, line in enumerate(lines):
 			commenter_pos = line.find("#")
 			line = line[:commenter_pos].strip()
-			
+
 			if len(line) == 0:
 				continue
-			
+
 			split_line = line.split("=")
 			if len(split_line) != 2:
 				e = ParseError(_("'%s', line %s: expected exactly one occurrence of '=' operator") % \
