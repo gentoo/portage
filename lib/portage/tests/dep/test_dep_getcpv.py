@@ -1,5 +1,5 @@
 # test_dep_getcpv.py -- Portage Unit Testing Functionality
-# Copyright 2006 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -12,7 +12,7 @@ class DepGetCPV(TestCase):
 	def testDepGetCPV(self):
 
 		prefix_ops = [
-			"<", ">", "=", "~", "<=", 
+			"<", ">", "=", "~", "<=",
 			">=", "!=", "!<", "!>", "!~"
 		]
 
