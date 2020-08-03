@@ -9,13 +9,13 @@ from portage.versions import cpv_getkey
 OPERATIONS = ["merge", "unmerge"]
 
 class PackageSet:
-	# Set this to operations that are supported by your subclass. While 
+	# Set this to operations that are supported by your subclass. While
 	# technically there is no difference between "merge" and "unmerge" regarding
 	# package sets, the latter doesn't make sense for some sets like "system"
 	# or "security" and therefore isn't supported by them.
 	_operations = ["merge"]
 	description = "generic package set"
-	
+
 	def __init__(self, allow_wildcard=False, allow_repo=False):
 		self._atoms = set()
 		self._atommap = ExtendedAtomDict(set)
@@ -30,7 +30,7 @@ class PackageSet:
 	def __contains__(self, atom):
 		self._load()
 		return atom in self._atoms or atom in self._nonatoms
-	
+
 	def __iter__(self):
 		self._load()
 		for x in self._atoms:
@@ -96,12 +96,12 @@ class PackageSet:
 			if match_from_list(a, [cpv]):
 				return True
 		return False
-	
+
 	def getMetadata(self, key):
 		if hasattr(self, key.lower()):
 			return getattr(self, key.lower())
 		return ""
-	
+
 	def _updateAtomMap(self, atoms=None):
 		"""Update self._atommap for specific atoms or all atoms."""
 		if not atoms:
@@ -109,7 +109,7 @@ class PackageSet:
 			atoms = self._atoms
 		for a in atoms:
 			self._atommap.setdefault(a.cp, set()).add(a)
-	
+
 	# Not sure if this one should really be in PackageSet
 	def findAtomForPackage(self, pkg, modified_use=None):
 		"""Return the best match for a given package from the arguments, or
@@ -154,7 +154,7 @@ class EditablePackageSet(PackageSet):
 
 	def __init__(self, allow_wildcard=False, allow_repo=False):
 		super(EditablePackageSet, self).__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
-		
+
 	def update(self, atoms):
 		self._load()
 		modified = False
@@ -179,7 +179,7 @@ class EditablePackageSet(PackageSet):
 			self._updateAtomMap(atoms=normal_atoms)
 		if modified:
 			self.write()
-	
+
 	def add(self, atom):
 		self.update([atom])
 
@@ -220,7 +220,7 @@ class InternalPackageSet(EditablePackageSet):
 	def clear(self):
 		self._atoms.clear()
 		self._updateAtomMap()
-	
+
 	def load(self):
 		pass
 
@@ -232,10 +232,10 @@ class DummyPackageSet(PackageSet):
 		super(DummyPackageSet, self).__init__()
 		if atoms:
 			self._setAtoms(atoms)
-	
+
 	def load(self):
 		pass
-	
+
 	def singleBuilder(cls, options, settings, trees):
 		atoms = options.get("packages", "").split()
 		return DummyPackageSet(atoms=atoms)
