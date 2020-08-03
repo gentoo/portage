@@ -151,11 +151,11 @@ def xsplit(infile):
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	mydat = myfile.read()
 	myfile.close()
-	
+
 	splits = xsplit_mem(mydat)
 	if not splits:
 		return False
-	
+
 	myfile = open(_unicode_encode(infile + '.index',
 		encoding=_encodings['fs'], errors='strict'), 'wb')
 	myfile.write(splits[0])
@@ -236,7 +236,7 @@ def searchindex(myindex, myitem):
 				datalen = decodeint(myindex[startpos + 8 + mytestlen:startpos + 12 + mytestlen])
 				return datapos, datalen
 		startpos = startpos + mytestlen + 12
-		
+
 def getitem(myid, myitem):
 	myindex = myid[0]
 	mydata = myid[1]
