@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from io import BytesIO
@@ -8,7 +8,6 @@ from struct import Struct
 import socket
 from socket import (
 	AF_NETLINK, AF_UNSPEC,
-	MSG_PEEK, MSG_TRUNC,
 	NETLINK_ROUTE,
 	SOCK_DGRAM,
 	inet_pton,
