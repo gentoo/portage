@@ -1,7 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import errno
 import functools
 import io
 import platform
@@ -17,7 +16,7 @@ from portage.elog import messages as elog_messages
 from portage.localization import _
 from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
-from portage import shutil, os
+from portage import os
 from portage.util.futures import asyncio
 from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
