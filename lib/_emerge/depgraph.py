@@ -48,8 +48,6 @@ from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
-from portage.util._eventloop.EventLoop import EventLoop
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.versions import _pkg_str, catpkgsplit
 
 from _emerge.AtomArg import AtomArg
