@@ -591,14 +591,14 @@ class slot_conflict_handler:
 							version_violated = False
 							slot_violated = False
 							use = []
-							for (type, sub_type), parents in collision_reasons.items():
+							for (ctype, sub_type), parents in collision_reasons.items():
 								for x in parents:
 									if parent == x[0] and atom == x[1]:
-										if type == "version":
+										if ctype == "version":
 											version_violated = True
-										elif type == "slot":
+										elif ctype == "slot":
 											slot_violated = True
-										elif type == "use":
+										elif ctype == "use":
 											use.append(sub_type)
 										break
 
@@ -934,64 +934,64 @@ class slot_conflict_handler:
 				msg += "}"
 			msg += "]\n"
 			writemsg(msg, noiselevel=-1)
-		
+
 		required_changes = {}
-		for id, pkg in enumerate(config):
+		for idx, pkg in enumerate(config):
 			if not pkg.installed:
-				#We can't change the USE of installed packages.
-				for flag in all_involved_flags[id]:
+				# We can't change the USE of installed packages.
+				for flag in all_involved_flags[idx]:
 					if not pkg.iuse.is_valid_flag(flag):
 						continue
-					state = all_involved_flags[id][flag]
+					state = all_involved_flags[idx][flag]
 					self._force_flag_for_package(required_changes, pkg, flag, state)
 
-			#Go through all (parent, atom) pairs for the current slot conflict.
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			# Go through all (parent, atom) pairs for the current slot conflict.
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 				use = atom.unevaluated_atom.use
 				if not use:
-					#No need to force something for an atom without USE conditionals.
-					#These atoms are already satisfied.
+					# No need to force something for an atom without USE conditionals.
+					# These atoms are already satisfied.
 					continue
-				for flag in all_involved_flags[id]:
-					state = all_involved_flags[id][flag]
+				for flag in all_involved_flags[idx]:
+					state = all_involved_flags[idx][flag]
 					
 					if flag not in use.required or not use.conditional:
 						continue
 					if flag in use.conditional.enabled:
-						#[flag?]
+						# [flag?]
 						if state == "enabled":
-							#no need to change anything, the atom won't
-							#force -flag on pkg
+							# no need to change anything, the atom won't
+							# force -flag on pkg
 							pass
 						elif state == "disabled":
-							#if flag is enabled we get [flag] -> it must be disabled
+							# if flag is enabled we get [flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 					elif flag in use.conditional.disabled:
-						#[!flag?]
+						# [!flag?]
 						if state == "enabled":
-							#if flag is enabled we get [-flag] -> it must be disabled
+							# if flag is enabled we get [-flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 						elif state == "disabled":
-							#no need to change anything, the atom won't
-							#force +flag on pkg
+							# no need to change anything, the atom won't
+							# force +flag on pkg
 							pass
 					elif flag in use.conditional.equal:
-						#[flag=]
+						# [flag=]
 						if state == "enabled":
-							#if flag is disabled we get [-flag] -> it must be enabled
+							# if flag is disabled we get [-flag] -> it must be enabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "enabled")
 						elif state == "disabled":
-							#if flag is enabled we get [flag] -> it must be disabled
+							# if flag is enabled we get [flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 					elif flag in use.conditional.not_equal:
-						#[!flag=]
+						# [!flag=]
 						if state == "enabled":
-							#if flag is enabled we get [-flag] -> it must be disabled
+							# if flag is enabled we get [-flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 						elif state == "disabled":
-							#if flag is disabled we get [flag] -> it must be enabled
+							# if flag is disabled we get [flag] -> it must be enabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "enabled")
 
 		is_valid_solution = True
@@ -999,12 +999,12 @@ class slot_conflict_handler:
 			for state in required_changes[pkg].values():
 				if not state in ("enabled", "disabled"):
 					is_valid_solution = False
-		
+
 		if not is_valid_solution:
 			return None
 
-		#Check if all atoms are satisfied after the changes are applied.
-		for id, pkg in enumerate(config):
+		# Check if all atoms are satisfied after the changes are applied.
+		for idx, pkg in enumerate(config):
 			new_use = _pkg_use_enabled(pkg)
 			if pkg in required_changes:
 				old_use = pkg.use.enabled
@@ -1015,14 +1015,14 @@ class slot_conflict_handler:
 					elif state == "disabled":
 						new_use.discard(flag)
 				if not new_use.symmetric_difference(old_use):
-					#avoid copying the package in findAtomForPackage if possible
+					# avoid copying the package in findAtomForPackage if possible
 					new_use = old_use
 
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 				if not hasattr(ppkg, "use"):
-					#It's a SetArg or something like that.
+					# It's a SetArg or something like that.
 					continue
 				ppkg_new_use = set(_pkg_use_enabled(ppkg))
 				if ppkg in required_changes:
@@ -1035,7 +1035,7 @@ class slot_conflict_handler:
 				new_atom = atom.unevaluated_atom.evaluate_conditionals(ppkg_new_use)
 				i = InternalPackageSet(initial_atoms=(new_atom,))
 				if not i.findAtomForPackage(pkg, new_use):
-					#We managed to create a new problem with our changes.
+					# We managed to create a new problem with our changes.
 					is_valid_solution = False
 					if self.debug:
 						writemsg(("new conflict introduced: %s"
@@ -1046,7 +1046,7 @@ class slot_conflict_handler:
 			if not is_valid_solution:
 				break
 
-		#Make sure the changes don't violate REQUIRED_USE
+		# Make sure the changes don't violate REQUIRED_USE
 		for pkg in required_changes:
 			required_use = pkg._metadata.get("REQUIRED_USE")
 			if not required_use:
