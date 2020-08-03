@@ -1,4 +1,4 @@
-# Copyright: 2005 Gentoo Foundation
+# Copyright: 2005-2020 Gentoo Authors
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
 
@@ -7,19 +7,19 @@ from portage.cache.template import reconstruct_eclasses
 
 class SQLDatabase(template.database):
 	"""template class for RDBM based caches
-	
+
 	This class is designed such that derivatives don't have to change much code, mostly constant strings.
 	_BaseError must be an exception class that all Exceptions thrown from the derived RDBMS are derived
 	from.
 
 	SCHEMA_INSERT_CPV_INTO_PACKAGE should be modified dependant on the RDBMS, as should SCHEMA_PACKAGE_CREATE-
-	basically you need to deal with creation of a unique pkgid.  If the dbapi2 rdbms class has a method of 
+	basically you need to deal with creation of a unique pkgid.  If the dbapi2 rdbms class has a method of
 	recovering that id, then modify _insert_cpv to remove the extra select.
 
 	Creation of a derived class involves supplying _initdb_con, and table_exists.
 	Additionally, the default schemas may have to be modified.
 	"""
-	
+
 	SCHEMA_PACKAGE_NAME	= "package_cache"
 	SCHEMA_PACKAGE_CREATE 	= "CREATE TABLE %s (\
 		pkgid INTEGER PRIMARY KEY, label VARCHAR(255), cpv VARCHAR(255), UNIQUE(label, cpv))" % SCHEMA_PACKAGE_NAME
@@ -116,10 +116,10 @@ class SQLDatabase(template.database):
 
 	def _delitem(self, cpv):
 		"""delete a cpv cache entry
-		derived RDBM classes for this *must* either support cascaded deletes, or 
+		derived RDBM classes for this *must* either support cascaded deletes, or
 		override this method"""
 		try:
-			try:	
+			try:
 				self.con.execute("DELETE FROM %s WHERE label=%s AND cpv=%s" % \
 				(self.SCHEMA_PACKAGE_NAME, self.label, self._sfilter(cpv)))
 				if self.autocommits:
@@ -151,7 +151,7 @@ class SQLDatabase(template.database):
 			except self._BaseError as e:
 				raise cache_errors.CacheCorruption(cpv, e)
 
-			# __getitem__ fills out missing values, 
+			# __getitem__ fills out missing values,
 			# so we store only what's handed to us and is a known key
 			db_values = []
 			for key in self._known_keys:
@@ -183,7 +183,7 @@ class SQLDatabase(template.database):
 		doesn't support auto-increment columns for pkgid.
 		returns the cpvs new pkgid
 		note this doesn't commit the transaction.  The caller is expected to."""
-		
+
 		cpv = self._sfilter(cpv)
 		if self._supports_replace:
 			query_str = self.SCHEMA_INSERT_CPV_INTO_PACKAGE.replace("INSERT","REPLACE",1)
@@ -201,7 +201,7 @@ class SQLDatabase(template.database):
 			raise
 		self.con.execute("SELECT pkgid FROM %s WHERE label=%s AND cpv=%s" % \
 			(self.SCHEMA_PACKAGE_NAME, self.label, cpv))
-			
+
 		if self.con.rowcount != 1:
 			raise cache_error.CacheCorruption(cpv, "Tried to insert the cpv, but found "
 				" %i matches upon the following select!" % len(rows))
@@ -231,7 +231,7 @@ class SQLDatabase(template.database):
 				raise cache_errors.GeneralCacheCorruption(e)
 
 		try:
-			self.con.execute("SELECT cpv FROM %s WHERE label=%s" % 
+			self.con.execute("SELECT cpv FROM %s WHERE label=%s" %
 				(self.SCHEMA_PACKAGE_NAME, self.label))
 		except self._BaseError as e:
 			raise cache_errors.GeneralCacheCorruption(e)
@@ -246,7 +246,7 @@ class SQLDatabase(template.database):
 			self.label))
 		except self._BaseError as e:
 			raise cache_errors.CacheCorruption(self, cpv, e)
-		
+
 		oldcpv = None
 		l = []
 		for x, y, v in self.con.fetchall():
@@ -267,7 +267,7 @@ class SQLDatabase(template.database):
 				d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
 			else:
 				d["_eclasses_"] = {}
-			yield cpv, d			
+			yield cpv, d
 
 	def commit(self):
 		self.db.commit()
