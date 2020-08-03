@@ -166,14 +166,14 @@ class Manifest:
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
 		return os.path.join(self.pkgdir, "Manifest")
-	
+
 	def getDigests(self):
 		""" Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue} """
 		rval = {}
 		for t in MANIFEST2_IDENTIFIERS:
 			rval.update(self.fhashdict[t])
 		return rval
-	
+
 	def getTypeDigests(self, ftype):
 		""" Similar to getDigests(), but restricted to files of the given type. """
 		return self.fhashdict[ftype]
@@ -394,11 +394,11 @@ class Manifest:
 	def sign(self):
 		""" Sign the Manifest """
 		raise NotImplementedError()
-	
+
 	def validateSignature(self):
 		""" Validate signature on Manifest """
 		raise NotImplementedError()
-	
+
 	def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
 		""" Add entry to Manifest optionally using hashdict to avoid recalculation of hashes """
 		if ftype == "AUX" and not fname.startswith("files/"):
@@ -414,22 +414,22 @@ class Manifest:
 			self.fhashdict[ftype][fname].update(hashdict)
 		if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
 			self.updateFileHashes(ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing)
-	
+
 	def removeFile(self, ftype, fname):
 		""" Remove given entry from Manifest """
 		del self.fhashdict[ftype][fname]
-	
+
 	def hasFile(self, ftype, fname):
 		""" Return whether the Manifest contains an entry for the given type,filename pair """
 		return (fname in self.fhashdict[ftype])
-	
+
 	def findFile(self, fname):
 		""" Return entrytype of the given file if present in Manifest or None if not present """
 		for t in MANIFEST2_IDENTIFIERS:
 			if fname in self.fhashdict[t]:
 				return t
 		return None
-	
+
 	def create(self, checkExisting=False, assumeDistHashesSometimes=False,
 		assumeDistHashesAlways=False, requiredDistfiles=[]):
 		""" Recreate this Manifest from scratch.  This will not use any
@@ -586,17 +586,17 @@ class Manifest:
 			absname = os.path.join(self.pkgdir, "files", fname)
 		else:
 			absname = os.path.join(self.pkgdir, fname)
-		return absname	
-	
+		return absname
+
 	def checkAllHashes(self, ignoreMissingFiles=False):
 		for t in MANIFEST2_IDENTIFIERS:
 			self.checkTypeHashes(t, ignoreMissingFiles=ignoreMissingFiles)
-	
+
 	def checkTypeHashes(self, idtype, ignoreMissingFiles=False, hash_filter=None):
 		for f in self.fhashdict[idtype]:
 			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles,
 				hash_filter=hash_filter)
-	
+
 	def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
 		digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
 		if hash_filter is not None:
@@ -623,7 +623,7 @@ class Manifest:
 		if checkDistfiles or onlyDistfiles:
 			for f in self._getCpvDistfiles(cpv):
 				self.checkFileHashes("DIST", f, ignoreMissing=False)
-	
+
 	def _getCpvDistfiles(self, cpv):
 		""" Get a list of all DIST files associated to the given cpv """
 		return self.fetchlist_dict[cpv]
@@ -648,12 +648,12 @@ class Manifest:
 				myhashkeys.remove(k)
 		myhashes = perform_multiple_checksums(self._getAbsname(ftype, fname), myhashkeys)
 		self.fhashdict[ftype][fname].update(myhashes)
-	
+
 	def updateTypeHashes(self, idtype, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files of the given type """
 		for fname in self.fhashdict[idtype]:
 			self.updateFileHashes(idtype, fname, checkExisting)
-	
+
 	def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
 		""" Regenerate all hashes for all files in this Manifest. """
 		for idtype in MANIFEST2_IDENTIFIERS:
