@@ -1,11 +1,9 @@
 # elog/mod_syslog.py - elog dispatch module
-# Copyright 2006-2014 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import syslog
 from portage.const import EBUILD_PHASES
-from portage import _encodings
-
 
 _pri = {
 	"INFO"   : syslog.LOG_INFO,
