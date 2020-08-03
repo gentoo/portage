@@ -29,7 +29,7 @@ class database:
 		self.readonly = readonly
 		self.sync_rate = 0
 		self.updates = 0
-	
+
 	def __getitem__(self, cpv):
 		"""set a cpv to values
 		This shouldn't be overriden in derived classes since it handles the __eclasses__ conversion.
@@ -255,7 +255,7 @@ class database:
 		"""generic function for walking the entire cache db, matching restrictions to
 		filter what cpv's are returned.  Derived classes should override this if they
 		can implement a faster method then pulling each cpv:values, and checking it.
-		
+
 		For example, RDBMS derived classes should push the matching logic down to the
 		actual RDBM."""
 
