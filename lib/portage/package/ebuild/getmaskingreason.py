@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['getmaskingreason']
@@ -10,7 +10,7 @@ from portage.dep import Atom, match_from_list
 from portage.exception import InvalidAtom
 from portage.localization import _
 from portage.repository.config import _gen_valid_repo
-from portage.util import grablines, normalize_path
+from portage.util import grablines
 from portage.versions import catpkgsplit, _pkg_str
 
 def getmaskingreason(mycpv, metadata=None, settings=None,
