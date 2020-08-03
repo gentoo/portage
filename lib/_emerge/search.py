@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import difflib
@@ -333,7 +333,7 @@ class search:
 				match_string = setname
 			else:
 				match_string = setname.split("/")[-1]
-			
+
 			if self.searchre.search(match_string):
 				yield ("set", setname)
 			elif self.searchdesc:
