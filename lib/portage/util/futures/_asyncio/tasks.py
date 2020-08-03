@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 ___all___ = (
@@ -14,10 +14,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:asyncio',
 )
-from portage.util._eventloop.global_event_loop import (
-	global_event_loop as _global_event_loop,
-)
-
 
 def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
 	"""
