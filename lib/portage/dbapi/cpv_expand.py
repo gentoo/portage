@@ -1,12 +1,10 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["cpv_expand"]
 
 import portage
 from portage.exception import AmbiguousPackageName
-from portage.localization import _
-from portage.util import writemsg
 from portage.versions import _pkgsplit
 
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
