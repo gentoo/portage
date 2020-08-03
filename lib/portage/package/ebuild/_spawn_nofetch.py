@@ -1,9 +1,8 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
 
-import portage
 from portage import os
 from portage import shutil
 from portage.const import EBUILD_PHASES
@@ -13,11 +12,8 @@ from portage.package.ebuild.doebuild import doebuild_environment
 from portage.package.ebuild.prepare_build_dirs import prepare_build_dirs
 from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
-from portage.util._eventloop.EventLoop import EventLoop
-from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
-
 
 class SpawnNofetchWithoutBuilddir(CompositeTask):
 	"""
