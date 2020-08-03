@@ -458,7 +458,7 @@ class FetchTask(CompositeTask):
 		if self._was_cancelled():
 			self.wait()
 			return
-		
+
 		if os.path.exists(self._fetch_tmp_file):
 			self._start_task(
 				FileDigester(file_path=self._fetch_tmp_file,
