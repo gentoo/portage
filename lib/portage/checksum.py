@@ -1,5 +1,5 @@
 # checksum.py -- core Portage functionality
-# Copyright 1998-2017 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -75,7 +75,7 @@ class _generate_hash_function:
 	def checksum_file(self, filename):
 		"""
 		Run a checksum against a file.
-	
+
 		@param filename: File to run the checksum against
 		@type filename: String
 		@return: The hash and size of the data
