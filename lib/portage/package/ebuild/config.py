@@ -34,13 +34,11 @@ from portage.const import CACHE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
-from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
 	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs)
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import InvalidDependString, IsADirectory, \
-		PortageException
+from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
