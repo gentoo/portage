@@ -19,7 +19,7 @@ from portage.localization import _
 from portage.util import writemsg, writemsg_level
 from portage.util.digraph import digraph
 from portage.util.SlotObject import SlotObject
-from portage.versions import vercmp, _pkg_str
+from portage.versions import vercmp
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
