@@ -1,4 +1,4 @@
-# Copyright 2007 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -30,7 +30,7 @@ class CommandOutputSet(PackageSet):
 		super(CommandOutputSet, self).__init__()
 		self._command = command
 		self.description = "Package set generated from output of '%s'" % self._command
-	
+
 	def load(self):
 		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
 		stdout, stderr = pipe.communicate()
