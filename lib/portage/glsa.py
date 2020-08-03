@@ -1,4 +1,4 @@
-# Copyright 2003-2017 Gentoo Foundation
+# Copyright 2003-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from __future__ import absolute_import
@@ -34,7 +34,7 @@ SPACE_ESCAPE = "!;_"		# some random string to mark spaces that should be preserv
 def get_applied_glsas(settings):
 	"""
 	Return a list of applied or injected GLSA IDs
-	
+
 	@type	settings: portage.config
 	@param	settings: portage config instance
 	@rtype:		list
