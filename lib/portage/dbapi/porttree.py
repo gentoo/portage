@@ -220,7 +220,7 @@ class portdbapi(dbapi):
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
 		self.depcachedir = os.path.realpath(self.settings.depcachedir)
-		
+
 		if os.environ.get("SANDBOX_ON") == "1":
 			# Make api consumers exempt from sandbox violations
 			# when doing metadata cache updates.
@@ -453,7 +453,7 @@ class portdbapi(dbapi):
 		return self.settings.repositories.ignored_repos
 
 	def findname2(self, mycpv, mytree=None, myrepo=None):
-		""" 
+		"""
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
 		matching file.  As opposed to starting in portdir and then doing overlays
@@ -822,7 +822,7 @@ class portdbapi(dbapi):
 				pkgdir, self.settings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
-			if debug: 
+			if debug:
 				writemsg(_("[empty/missing/bad digest]: %s\n") % (mypkg,))
 			return {}
 		filesdict={}
@@ -935,7 +935,7 @@ class portdbapi(dbapi):
 	def cp_all(self, categories=None, trees=None, reverse=False, sort=True):
 		"""
 		This returns a list of all keys in our tree or trees
-		@param categories: optional list of categories to search or 
+		@param categories: optional list of categories to search or
 			defaults to self.settings.categories
 		@param trees: optional list of trees to search the categories in or
 			defaults to self.porttrees
@@ -1314,7 +1314,7 @@ class portagetree:
 		settings=None):
 		"""
 		Constructor for a PortageTree
-		
+
 		@param root: deprecated, defaults to settings['ROOT']
 		@type root: String/Path
 		@param virtual: UNUSED
