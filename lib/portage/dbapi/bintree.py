@@ -27,7 +27,7 @@ from portage.const import CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
-	ParseError, PermissionDenied, PortageException
+	ParseError, PortageException
 from portage.localization import _
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage.util.futures import asyncio
