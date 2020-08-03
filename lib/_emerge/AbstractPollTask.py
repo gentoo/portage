@@ -1,11 +1,10 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import array
 import errno
 import os
 
-from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from _emerge.AsynchronousTask import AsynchronousTask
 
