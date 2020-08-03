@@ -123,7 +123,7 @@ def sanitize_fds():
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
 	Spawns a bash shell running a specific commands
-	
+
 	@param mycommand: The command for bash to run
 	@type mycommand: String
 	@param debug: Turn bash debugging on (set -x)
@@ -228,7 +228,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	  cgroup=None):
 	"""
 	Spawns a given command.
-	
+
 	@param mycommand: the command to execute
 	@type mycommand: String or List (Popen style list)
 	@param env: If env is not None, it must be a mapping that defines the environment
@@ -277,7 +277,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
-	
+
 	"""
 
 	# mycommand is either a str or a list
@@ -516,7 +516,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 
 	"""
 	Execute a given binary with options
-	
+
 	@param binary: Name of program to execute
 	@type binary: String
 	@param mycommand: Options for program
@@ -945,7 +945,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 def find_binary(binary):
 	"""
 	Given a binary name, find the binary in PATH
-	
+
 	@param binary: Name of the binary to find
 	@type string
 	@rtype: None or string
