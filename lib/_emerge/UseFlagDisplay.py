@@ -4,7 +4,6 @@
 import collections
 from itertools import chain
 
-from portage import _encodings, _unicode_encode
 from portage.output import red
 from portage.util import cmp_sort_key
 from portage.output import blue
