@@ -7,7 +7,7 @@ import sys
 
 import portage
 from portage import os
-from portage.util import normalize_path, writemsg_level, _recursive_file_list
+from portage.util import normalize_path, _recursive_file_list
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
