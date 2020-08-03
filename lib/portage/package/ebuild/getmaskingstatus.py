@@ -3,14 +3,12 @@
 
 __all__ = ['getmaskingstatus']
 
-
 import portage
 from portage import eapi_is_supported, _eapi_is_deprecated
 from portage.exception import InvalidDependString
 from portage.localization import _
 from portage.package.ebuild.config import config
-from portage.versions import catpkgsplit, _pkg_str
-
+from portage.versions import _pkg_str
 
 class _UnmaskHint:
 
