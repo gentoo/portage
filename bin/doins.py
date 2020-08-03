@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
@@ -11,7 +11,6 @@
 This script is designed to be executed by ebuild-helpers/doins.
 """
 
-
 from __future__ import print_function
 
 import argparse
@@ -20,7 +19,6 @@ import grp
 import logging
 import os
 import pwd
-import re
 import shlex
 import shutil
 import stat
