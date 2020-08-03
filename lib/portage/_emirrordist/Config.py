@@ -7,7 +7,6 @@ import logging
 import shelve
 import time
 
-import portage
 from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
