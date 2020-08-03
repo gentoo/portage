@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -13,7 +13,7 @@ class TestExtractAffectingUSE(TestCase):
 			("a? ( A ) !b? ( B ) !c? ( C ) d? ( D )", "B", ("b",)),
 			("a? ( A ) !b? ( B ) !c? ( C ) d? ( D )", "C", ("c",)),
 			("a? ( A ) !b? ( B ) !c? ( C ) d? ( D )", "D", ("d",)),
-			
+
 			("a? ( b? ( AB ) )", "AB", ("a", "b")),
 			("a? ( b? ( c? ( ABC ) ) )", "ABC", ("a", "b", "c")),
 
@@ -46,7 +46,7 @@ class TestExtractAffectingUSE(TestCase):
 			("!? ( A )", "A"),
 			("( A", "A"),
 			("A )", "A"),
-			
+
 			("||( A B )", "A"),
 			("|| (A B )", "A"),
 			("|| ( A B)", "A"),
