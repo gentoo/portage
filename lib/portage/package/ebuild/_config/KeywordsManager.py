@@ -7,13 +7,12 @@ __all__ = (
 
 import warnings
 
-from _emerge.Package import Package
 import portage
 from portage import os
-from portage.dep import ExtendedAtomDict, _repo_separator, _slot_separator
+from portage.dep import ExtendedAtomDict
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
-from portage.util import grabdict_package, stack_lists, writemsg
+from portage.util import grabdict_package, stack_lists
 from portage.versions import _pkg_str
 
 class KeywordsManager:
