@@ -1,4 +1,4 @@
-# Copyright 1998-2013 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.dbapi import dbapi
@@ -214,7 +214,7 @@ class fakedbapi(dbapi):
 
 class testdbapi:
 	"""A dbapi instance with completely fake functions to get by hitting disk
-	TODO(antarus): 
+	TODO(antarus):
 	This class really needs to be rewritten to have better stubs; but these work for now.
 	The dbapi classes themselves need unit tests...and that will be a lot of work.
 	"""
