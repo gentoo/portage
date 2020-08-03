@@ -339,7 +339,7 @@ call_has_and_best_version() {
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 
 			# trigger clean prior to pkg_pretend as in bug #390711
-			ebuild_cmd + (test_ebuild, "unpack"), 
+			ebuild_cmd + (test_ebuild, "unpack"),
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
 
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
