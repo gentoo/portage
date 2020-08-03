@@ -15,7 +15,6 @@ import tempfile
 import portage
 from portage import os
 from portage import _unicode_decode
-from portage.exception import CommandNotFound
 from portage.util import writemsg_level
 from portage.output import create_color_func, yellow, blue, bold
 good = create_color_func("GOOD")
