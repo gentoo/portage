@@ -6,16 +6,12 @@ import os
 import portage
 portage._internal_caller = True
 portage._sync_mode = True
-from portage.localization import _
 from portage.output import bold, red, create_color_func
 from portage._global_updates import _global_updates
 from portage.sync.controller import SyncManager
-from portage.util import writemsg_level
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.AsyncScheduler import AsyncScheduler
-from portage.util._eventloop.global_event_loop import global_event_loop
-from portage.util._eventloop.EventLoop import EventLoop
 
 import _emerge
 from _emerge.emergelog import emergelog
