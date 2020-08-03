@@ -174,7 +174,7 @@ class StaticFileSet(EditablePackageSet):
 						greedy=greedy, dbapi=trees["vartree"].dbapi)
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
-	
+
 class ConfigFileSet(PackageSet):
 	def __init__(self, filename):
 		super(ConfigFileSet, self).__init__()
