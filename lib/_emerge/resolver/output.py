@@ -8,8 +8,6 @@ __all__ = (
 	"Display", "format_unmatched_atom",
 	)
 
-
-import portage
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
