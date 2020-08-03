@@ -1,5 +1,5 @@
 # elog/mod_mail_summary.py - elog dispatch module
-# Copyright 2006-2010 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -58,7 +58,7 @@ def _finalize(mysettings, items):
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
 		myrecipient = "root@localhost"
-	
+
 	myfrom = mysettings.get("PORTAGE_ELOG_MAILFROM", "")
 	myfrom = myfrom.replace("${HOST}", socket.getfqdn())
 	mysubject = mysettings.get("PORTAGE_ELOG_MAILSUBJECT", "")
