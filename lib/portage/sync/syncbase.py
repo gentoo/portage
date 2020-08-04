@@ -252,6 +252,12 @@ class SyncBase:
 		"""
 		out = portage.output.EOutput(quiet=('--quiet' in self.options['emerge_config'].opts))
 
+		# Pass proxy settings in emerge configuration to Gemato ephemeral env
+		running_config_settings = self.options['emerge_config'].running_config.settings
+		for setting in ('http_proxy', 'https_proxy'):
+			if running_config_settings.get(setting, None):
+				openpgp_env.update_env(setting, running_config_settings.get(setting))
+
 		if not self.repo.sync_openpgp_key_refresh:
 			out.ewarn('Key refresh is disabled via a repos.conf sync-openpgp-key-refresh')
 			out.ewarn('setting, and this is a security vulnerability because it prevents')
