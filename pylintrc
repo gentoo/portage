@@ -12,7 +12,15 @@
 # --disable=W".
 #disable=no-absolute-import,bad-continuation,C0103,C0114,C0115,E1101,W0201,no-name-in-module
 disable=all
-enable=redefined-builtin,useless-object-inheritance,trailing-newlines,unused-import,trailing-whitespace
+enable=missing-final-newline,
+       mixed-line-endings,
+       redefined-builtin,
+       trailing-newlines,
+       trailing-whitespace,
+       unexpected-line-ending-format,
+       unnecessary-semicolon,
+       unused-import,
+       useless-object-inheritance
 
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
@@ -51,7 +59,7 @@ unsafe-load-any-extension=no
 
 # Only show warnings with the listed confidence levels. Leave empty to show
 # all. Valid levels: HIGH, INFERENCE, INFERENCE_FAILURE, UNDEFINED.
-confidence=HIGH
+confidence=
 
 [REPORTS]
 
