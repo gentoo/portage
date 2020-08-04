@@ -14,6 +14,7 @@
 disable=all
 enable=
         cyclic-import,
+        import-error,
         import-self,
         misplaced-future,
         missing-final-newline,

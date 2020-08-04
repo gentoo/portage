@@ -606,21 +606,6 @@ class test(Command):
 		])
 
 
-class lint(Command):
-	""" run lint """
-
-	user_options = []
-
-	def initialize_options(self):
-		pass
-
-	def finalize_options(self):
-		pass
-
-	def run(self):
-		subprocess.check_call(['pylint', 'lib'])
-
-
 def find_packages():
 	for dirpath, _dirnames, filenames in os.walk('lib'):
 		if '__init__.py' in filenames:
@@ -721,7 +706,6 @@ setup(
 		'install_scripts_sbin': x_install_scripts_sbin,
 		'sdist': x_sdist,
 		'test': test,
-		'lint': lint,
 	},
 
 	classifiers = [
