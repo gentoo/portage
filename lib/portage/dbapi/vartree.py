@@ -1619,7 +1619,6 @@ class dblink:
 	At present this is implemented as a text backend in /var/db/pkg.
 	"""
 
-	import re
 	_normalize_needed = re.compile(r'//|^[^/]|./$|(^|/)\.\.?(/|$)')
 
 	_contents_re = re.compile(r'^(' + \
