@@ -231,7 +231,7 @@ def _parse_color_map(config_root='/', onerror=None):
 		raise
 
 def nc_len(mystr):
-	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
+	tmp = re.sub(esc_seq + "^m]+m", "", mystr)
 	return len(tmp)
 
 _legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole)')
