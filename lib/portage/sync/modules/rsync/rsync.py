@@ -230,15 +230,16 @@ class RsyncSync(NewBase):
 			addrinfos = None
 			uris = []
 
-			try:
-				addrinfos = getaddrinfo_validate(
-					socket.getaddrinfo(getaddrinfo_host, None,
-					family, socket.SOCK_STREAM))
-			except socket.error as e:
-				writemsg_level(
-					"!!! getaddrinfo failed for '%s': %s\n"
-					% (_unicode_decode(hostname), str(e)),
-					noiselevel=-1, level=logging.ERROR)
+			if 'RSYNC_PROXY' not in self.spawn_kwargs['env']:
+				try:
+					addrinfos = getaddrinfo_validate(
+						socket.getaddrinfo(
+							getaddrinfo_host, None, family, socket.SOCK_STREAM))
+				except socket.error as e:
+					writemsg_level(
+						"!!! getaddrinfo failed for '%s': %s\n"
+						% (_unicode_decode(hostname), str(e)),
+						noiselevel=-1, level=logging.ERROR)
 
 			if addrinfos:
 
