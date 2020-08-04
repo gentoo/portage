@@ -213,7 +213,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 		newprelink.write("# contents of /etc/env.d directory\n")
 
 		for x in sorted(potential_lib_dirs) + ['bin', 'sbin']:
-			newprelink.write('-l /%s\n' % (x,));
+			newprelink.write('-l /%s\n' % (x,))
 		prelink_paths = set()
 		prelink_paths |= set(specials.get('LDPATH', []))
 		prelink_paths |= set(specials.get('PATH', []))
