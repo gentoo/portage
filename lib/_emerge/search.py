@@ -9,7 +9,7 @@ from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.localization import localized_size
-from portage.output import  bold, bold as white, darkgreen, green, red
+from portage.output import bold, darkgreen, green, red
 from portage.util import writemsg_stdout
 from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
@@ -413,7 +413,7 @@ class search:
 
 					if masked:
 						msg.append(green("*") + "  " + \
-							white(match) + " " + red("[ Masked ]") + "\n")
+							bold(match) + " " + red("[ Masked ]") + "\n")
 					else:
 						msg.append(green("*") + "  " + bold(match) + "\n")
 					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
