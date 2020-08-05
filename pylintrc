@@ -19,6 +19,7 @@ enable=
         misplaced-future,
         missing-final-newline,
         mixed-line-endings,
+        multiple-imports,
         redefined-builtin,
         reimported,
         relative-beyond-top-level,
