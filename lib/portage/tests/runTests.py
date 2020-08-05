@@ -1,14 +1,15 @@
 #!/usr/bin/python -bWd
 # runTests.py -- Portage Unit Test Functionality
-# Copyright 2006-2014 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import os, sys
-import os.path as osp
 import grp
+import os
+import os.path as osp
 import platform
 import pwd
 import signal
+import sys
 
 def debug_signal(signum, frame):
 	import pdb
