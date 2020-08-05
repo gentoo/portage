@@ -1,6 +1,7 @@
 #!/usr/bin/python -b
 
-import tabnanny,sys
+import sys
+import tabnanny
 
 for x in sys.argv:
 	tabnanny.check(x)
