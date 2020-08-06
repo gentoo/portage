@@ -31,29 +31,16 @@
 __all__ = ('MetaDataXML', 'parse_metadata_use')
 
 
-try:
-	import xml.etree.cElementTree as etree
-except (SystemExit, KeyboardInterrupt):
-	raise
-except (ImportError, SystemError, RuntimeError, Exception):
-	# broken or missing xml support
-	# https://bugs.python.org/issue14988
-	import xml.etree.ElementTree as etree
-
-try:
-	from xml.parsers.expat import ExpatError
-except (SystemExit, KeyboardInterrupt):
-	raise
-except (ImportError, SystemError, RuntimeError, Exception):
-	ExpatError = SyntaxError
-
 import re
-import xml.etree.ElementTree
+import xml.etree.ElementTree as etree
+
+from xml.parsers.expat import ExpatError
+
 from portage import _encodings, _unicode_encode
 from portage.util import cmp_sort_key, unique_everseen
 
 
-class _MetadataTreeBuilder(xml.etree.ElementTree.TreeBuilder):
+class _MetadataTreeBuilder(etree.TreeBuilder):
 	"""
 	Implements doctype() as required to avoid deprecation warnings with
 	Python >=2.7.
@@ -198,8 +185,8 @@ class MetaDataXML:
 
 		try:
 			self._xml_tree = etree.parse(_unicode_encode(metadata_xml_path,
-				encoding=_encodings['fs'], errors='strict'),
-				parser=etree.XMLParser(target=_MetadataTreeBuilder()))
+				encoding = _encodings['fs'], errors='strict'),
+				parser = etree.XMLParser(target=_MetadataTreeBuilder()))
 		except ImportError:
 			pass
 		except ExpatError as e:
@@ -238,7 +225,7 @@ class MetaDataXML:
 			try:
 				self._herdstree = etree.parse(_unicode_encode(self._herds_path,
 					encoding=_encodings['fs'], errors='strict'),
-					parser=etree.XMLParser(target=_MetadataTreeBuilder()))
+					parser = etree.XMLParser(target=_MetadataTreeBuilder()))
 			except (ImportError, IOError, SyntaxError):
 				return None
 
