@@ -3,14 +3,14 @@
 
 import subprocess
 
+from _emerge.AsynchronousTask import AsynchronousTask
+
 from portage import os
 from portage.util import shlex_split
-from _emerge.AsynchronousTask import AsynchronousTask
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
-
 
 class BuildLogger(AsynchronousTask):
 	"""

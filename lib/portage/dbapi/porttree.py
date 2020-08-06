@@ -42,9 +42,9 @@ import os as _os
 import traceback
 import warnings
 import errno
-import collections
 import functools
 
+import collections
 from collections import OrderedDict
 from urllib.parse import urlparse
 

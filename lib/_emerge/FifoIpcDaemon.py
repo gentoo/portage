@@ -1,9 +1,9 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from _emerge.AbstractPollTask import AbstractPollTask
 
 from portage import os
-from _emerge.AbstractPollTask import AbstractPollTask
 from portage.cache.mappings import slot_dict_class
 
 class FifoIpcDaemon(AbstractPollTask):

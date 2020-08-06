@@ -1,31 +1,32 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-import logging
-import time
-import signal
-import socket
 import datetime
 import io
-import re
+import logging
 import random
+import re
+import signal
+import socket
+import sys
 import tempfile
+import time
+
+from _emerge.UserQuery import UserQuery
 
 import portage
-from portage import os
 from portage import _unicode_decode
-from portage.util import writemsg_level
+from portage import os
+from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
+from portage.sync.getaddrinfo_validate import getaddrinfo_validate
+from portage.sync.syncbase import NewBase
+from portage.util import writemsg, writemsg_level, writemsg_stdout
+from portage.util.futures import asyncio
+
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
-from portage.util import writemsg, writemsg_stdout
-from portage.util.futures import asyncio
-from portage.sync.getaddrinfo_validate import getaddrinfo_validate
-from _emerge.UserQuery import UserQuery
-from portage.sync.syncbase import NewBase
 
 try:
 	from gemato.exceptions import GematoException
