@@ -666,7 +666,7 @@ class Glsa:
 		if not os.access(os.path.join(self.config["EROOT"],
 			PRIVATE_PATH, "glsa_injected"), os.R_OK):
 			return False
-		return (self.nr in get_applied_glsas(self.config))
+		return self.nr in get_applied_glsas(self.config)
 
 	def inject(self):
 		"""

@@ -333,7 +333,7 @@ def action_build(emerge_config, trees=DeprecationWarning,
 
 			return 1
 	else:
-		if ("--resume" in myopts):
+		if "--resume" in myopts:
 			print(darkgreen("emerge: It seems we have nothing to resume..."))
 			return os.EX_OK
 
@@ -450,7 +450,7 @@ def action_build(emerge_config, trees=DeprecationWarning,
 			myopts.pop("--ask", None)
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
-		if ("--resume" in myopts):
+		if "--resume" in myopts:
 			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
 				print(colorize("INFORM", "emerge: It seems we have nothing to resume..."))
@@ -522,7 +522,7 @@ def action_build(emerge_config, trees=DeprecationWarning,
 						level=logging.ERROR, noiselevel=-1)
 					return 1
 
-		if ("--resume" in myopts):
+		if "--resume" in myopts:
 			favorites=mtimedb["resume"]["favorites"]
 
 		else:
@@ -2319,7 +2319,7 @@ def adjust_config(myopts, settings):
 		settings.backup_changes("PORTAGE_VERBOSE")
 
 	# Set so that configs will be merged regardless of remembered status
-	if ("--noconfmem" in myopts):
+	if "--noconfmem" in myopts:
 		settings["NOCONFMEM"]="1"
 		settings.backup_changes("NOCONFMEM")
 
@@ -2424,7 +2424,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 			if profilever is None:
 				try:
 					profilever = "!" + os.readlink(profile)
-				except (OSError):
+				except OSError:
 					pass
 
 	if profilever is None:
@@ -3057,7 +3057,7 @@ def run_action(emerge_config):
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 
-	if ("--quiet" in emerge_config.opts):
+	if "--quiet" in emerge_config.opts:
 		spinner.update = spinner.update_quiet
 		portage.util.noiselimit = -1
 
@@ -3085,7 +3085,7 @@ def run_action(emerge_config):
 		if "python-trace" in emerge_config.target_config.settings.features:
 			portage.debug.set_trace(True)
 
-	if not ("--quiet" in emerge_config.opts):
+	if not "--quiet" in emerge_config.opts:
 		if '--nospinner' in emerge_config.opts or \
 			emerge_config.target_config.settings.get('TERM') == 'dumb' or \
 			not sys.stdout.isatty():

@@ -293,7 +293,7 @@ class RsyncSync(NewBase):
 				effective_maxretries = len(uris) - 1
 
 			local_state_unchanged = True
-			while (1):
+			while 1:
 				if uris:
 					dosyncuri = uris.pop()
 				elif maxretries < 0 or retries > maxretries:
@@ -304,7 +304,7 @@ class RsyncSync(NewBase):
 					uris.extend(uris_orig)
 					dosyncuri = uris.pop()
 
-				if (retries==0):
+				if retries == 0:
 					if "--ask" in opts:
 						uq = UserQuery(opts)
 						if uq.query("Do you want to sync your ebuild repository " + \
@@ -422,7 +422,7 @@ class RsyncSync(NewBase):
 				openpgp_env.close()
 
 	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
-		if (exitcode==0):
+		if exitcode == 0:
 			pass
 		elif exitcode == SERVER_OUT_OF_DATE:
 			exitcode = 1
@@ -430,7 +430,7 @@ class RsyncSync(NewBase):
 			sys.stderr.write(
 				">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
 			exitcode = 1
-		elif (exitcode>0):
+		elif exitcode > 0:
 			msg = []
 			if exitcode==1:
 				msg.append("Rsync has reported that there is a syntax error. Please ensure")

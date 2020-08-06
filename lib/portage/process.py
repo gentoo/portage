@@ -433,11 +433,11 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 					os.waitpid(pid, 0)
 
 			# If it got a signal, return the signal that was sent.
-			if (retval & 0xff):
-				return ((retval & 0xff) << 8)
+			if retval & 0xff:
+				return (retval & 0xff) << 8
 
 			# Otherwise, return its exit code.
-			return (retval >> 8)
+			return retval >> 8
 
 	# Everything succeeded
 	return 0

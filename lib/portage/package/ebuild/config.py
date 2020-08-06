@@ -2344,7 +2344,7 @@ class config:
 						if not x:
 							continue
 
-					if (x[0]=="-"):
+					if x[0] == "-":
 						myflags.discard(x[1:])
 						continue
 

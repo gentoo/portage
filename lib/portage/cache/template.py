@@ -179,7 +179,7 @@ class database:
 
 	def sync(self, rate=0):
 		self.sync_rate = rate
-		if(rate == 0):
+		if rate == 0:
 			self.commit()
 
 	def commit(self):

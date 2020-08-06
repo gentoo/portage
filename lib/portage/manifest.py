@@ -421,7 +421,7 @@ class Manifest:
 
 	def hasFile(self, ftype, fname):
 		""" Return whether the Manifest contains an entry for the given type,filename pair """
-		return (fname in self.fhashdict[ftype])
+		return fname in self.fhashdict[ftype]
 
 	def findFile(self, fname):
 		""" Return entrytype of the given file if present in Manifest or None if not present """

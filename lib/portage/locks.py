@@ -441,7 +441,7 @@ def unlockfile(mytuple):
 	else:
 		raise InvalidData
 
-	if(myfd == HARDLINK_FD):
+	if myfd == HARDLINK_FD:
 		unhardlink_lockfile(lockfilename, unlinkfile=unlinkfile)
 		return True
 

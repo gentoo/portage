@@ -756,7 +756,7 @@ class ResolverPlaygroundTestCase:
 
 					if match and self.merge_order_assertions:
 						for node1, node2 in self.merge_order_assertions:
-							if not (got.index(node1) < got.index(node2)):
+							if not got.index(node1) < got.index(node2):
 								fail_msgs.append("atoms: (" + \
 									", ".join(result.atoms) + "), key: " + \
 									("merge_order_assertions, expected: %s" % \

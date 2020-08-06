@@ -418,7 +418,7 @@ class DateSet(EverythingSet):
 
 		setformat = formats[0]
 
-		if (setformat == "package"):
+		if setformat == "package":
 			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
@@ -426,13 +426,13 @@ class DateSet(EverythingSet):
 				date = int(date)
 			except (KeyError, ValueError):
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
-		elif (setformat == "filestamp"):
+		elif setformat == "filestamp":
 			filestamp = options.get("filestamp")
 			try:
 				date = int(os.stat(filestamp).st_mtime)
 			except (OSError, ValueError):
 				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
-		elif (setformat == "seconds"):
+		elif setformat == "seconds":
 			try:
 				date = int(options.get("seconds"))
 			except ValueError:

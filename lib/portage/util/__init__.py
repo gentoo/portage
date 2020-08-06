@@ -787,7 +787,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 	while pos < length:
 		current = mystring[pos]
 		if current == "'":
-			if (indoub):
+			if indoub:
 				newstring.append("'")
 			else:
 				newstring.append("'") # Quote removal is handled by shlex.
@@ -795,7 +795,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			pos += 1
 			continue
 		elif current == '"':
-			if (insing):
+			if insing:
 				newstring.append('"')
 			else:
 				newstring.append('"') # Quote removal is handled by shlex.

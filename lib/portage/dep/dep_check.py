@@ -736,7 +736,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 				if choice.all_available or allow_masked:
 					return choice.atoms
 
-	assert(False) # This point should not be reachable
+	assert False # This point should not be reachable
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot=None, trees=None):

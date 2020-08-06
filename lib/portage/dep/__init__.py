@@ -1903,7 +1903,7 @@ def dep_getusedeps( depend ):
 	# -1 = failure (think c++ string::npos)
 	comma_separated = False
 	bracket_count = 0
-	while( open_bracket != -1 ):
+	while open_bracket != -1:
 		bracket_count += 1
 		if bracket_count > 1:
 			raise InvalidAtom(_("USE Dependency with more "
@@ -2612,13 +2612,13 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
 			return True
 
 		if operator == "||":
-			return (True in argument)
+			return True in argument
 		if operator == "^^":
-			return (argument.count(True) == 1)
+			return argument.count(True) == 1
 		if operator == "??":
-			return (argument.count(True) <= 1)
+			return argument.count(True) <= 1
 		if operator[-1] == "?":
-			return (False not in argument)
+			return False not in argument
 
 	mysplit = required_use.split()
 	level = 0

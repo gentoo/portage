@@ -43,4 +43,4 @@ def localized_size(num_bytes):
 	except UnicodeDecodeError:
 		# failure to decode locale data
 		formatted_num = str(num_kib)
-	return (_unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB')
+	return _unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB'

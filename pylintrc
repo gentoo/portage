@@ -23,6 +23,7 @@ enable=
         redefined-builtin,
         reimported,
         relative-beyond-top-level,
+        superfluous-parens,
         trailing-comma-tuple,
         trailing-newlines,
         trailing-whitespace,

@@ -138,8 +138,8 @@ class slot_conflict_handler:
 		config_gen = _configuration_generator(conflict_pkgs)
 		first_config = True
 
-		#go through all configurations and collect solutions
-		while(True):
+		# Go through all configurations and collect solutions
+		while True:
 			config = config_gen.get_configuration()
 			if not config:
 				break

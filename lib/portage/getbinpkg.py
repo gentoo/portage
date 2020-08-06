@@ -180,7 +180,7 @@ def create_conn(baseurl, conn=None):
 			conn = http_client_HTTPConnection(host)
 		elif protocol == "ftp":
 			passive = 1
-			if(host[-1] == "*"):
+			if host[-1] == "*":
 				passive = 0
 				host = host[:-1]
 			conn = ftplib.FTP(host)
@@ -287,10 +287,10 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
 			for x in str(response.msg).split("\n"):
 				parts = x.split(": ", 1)
 				if parts[0] == "Location":
-					if (rc == 301):
+					if rc == 301:
 						sys.stderr.write(colorize("BAD",
 							_("Location has moved: ")) + str(parts[1]) + "\n")
-					if (rc == 302):
+					if rc == 302:
 						sys.stderr.write(colorize("BAD",
 							_("Location has temporarily moved: ")) + \
 							str(parts[1]) + "\n")

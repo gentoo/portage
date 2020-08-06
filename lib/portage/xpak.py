@@ -213,7 +213,7 @@ def getindex_mem(myindex):
 	myindexlen = len(myindex)
 	startpos = 0
 	myret = []
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		mytestlen = decodeint(myindex[startpos:startpos + 4])
 		myret = myret + [myindex[startpos + 4:startpos + 4 + mytestlen]]
 		startpos = startpos + mytestlen + 12
@@ -227,7 +227,7 @@ def searchindex(myindex, myitem):
 	mylen = len(myitem)
 	myindexlen = len(myindex)
 	startpos = 0
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		mytestlen = decodeint(myindex[startpos:startpos + 4])
 		if mytestlen == mylen:
 			if myitem == myindex[startpos + 4:startpos + 4 + mytestlen]:
@@ -251,7 +251,7 @@ def xpand(myid, mydest):
 	mydata = myid[1]
 	myindexlen = len(myindex)
 	startpos = 0
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		namelen = decodeint(myindex[startpos:startpos + 4])
 		datapos = decodeint(myindex[startpos + 4 + namelen:startpos + 8 + namelen])
 		datalen = decodeint(myindex[startpos + 8 + namelen:startpos + 12 + namelen])
@@ -439,7 +439,7 @@ class tbz2:
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
 		startpos = 0
-		while ((startpos + 8) < self.indexsize):
+		while (startpos + 8) < self.indexsize:
 			namelen = decodeint(self.index[startpos:startpos + 4])
 			datapos = decodeint(self.index[startpos + 4 + namelen:startpos + 8 + namelen])
 			datalen = decodeint(self.index[startpos + 8 + namelen:startpos + 12 + namelen])
@@ -472,7 +472,7 @@ class tbz2:
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mydata = {}
 		startpos = 0
-		while ((startpos + 8) < self.indexsize):
+		while (startpos + 8) < self.indexsize:
 			namelen = decodeint(self.index[startpos:startpos + 4])
 			datapos = decodeint(self.index[startpos + 4 + namelen:startpos + 8 + namelen])
 			datalen = decodeint(self.index[startpos + 8 + namelen:startpos + 12 + namelen])
