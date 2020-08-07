@@ -28,6 +28,7 @@ enable=
         trailing-newlines,
         trailing-whitespace,
         unexpected-line-ending-format,
+        ungrouped-imports,
         unnecessary-semicolon,
         unused-import,
         useless-import-alias,

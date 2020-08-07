@@ -1,19 +1,20 @@
 # checksum.py -- core Portage functionality
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+# pylint: disable=ungrouped-imports
 
-import portage
-from portage.const import PRELINK_BINARY, HASHING_BLOCKSIZE
-from portage.localization import _
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode, _unicode_encode
 import errno
 import functools
 import hashlib
+import portage
 import stat
 import subprocess
 import tempfile
+
+from portage import _encodings, _unicode_decode, _unicode_encode
+from portage import os
+from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
+from portage.localization import _
 
 
 # Summary of all available hashes and their implementations,
@@ -32,7 +33,7 @@ import tempfile
 # SHA3_512: hashlib (3.6+), pysha3, pycrypto
 
 
-#dict of all available hash functions
+# Dict of all available hash functions
 hashfunc_map = {}
 hashorigin_map = {}
 
