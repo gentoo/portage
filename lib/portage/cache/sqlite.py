@@ -1,9 +1,8 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
 import re
+
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os

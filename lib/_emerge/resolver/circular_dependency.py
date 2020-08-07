@@ -1,17 +1,17 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
+import logging
+
+from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
+from _emerge.Package import Package
 
 from itertools import chain, product
-import logging
 
 from portage.dep import use_reduce, extract_affecting_use, check_required_use, get_required_use_flags
 from portage.exception import InvalidDependString
 from portage.output import colorize
 from portage.util import writemsg_level
-from _emerge.DepPrioritySatisfiedRange import DepPrioritySatisfiedRange
-from _emerge.Package import Package
 
 class circular_dependency_handler:
 

@@ -1,11 +1,9 @@
 #!/usr/bin/python -b
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """System health checks and maintenance utilities.
 """
-
-from __future__ import print_function
 
 import sys
 import errno

@@ -1,7 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function
-
 from portage.output import red
 
 from repoman.errors import err

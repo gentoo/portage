@@ -11,8 +11,6 @@
 This script is designed to be executed by ebuild-helpers/doins.
 """
 
-from __future__ import print_function
-
 import argparse
 import errno
 import grp

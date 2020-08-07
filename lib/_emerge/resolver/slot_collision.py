@@ -1,12 +1,11 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from _emerge.UseFlagDisplay import pkg_use_display
+
 from portage.dep import check_required_use
 from portage.output import colorize
 from portage._sets.base import InternalPackageSet

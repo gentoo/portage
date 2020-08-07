@@ -1,16 +1,16 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function
-
 import logging
+import portage
+
 from itertools import chain
 
-import portage
 from portage import normalize_path
 from portage import os
 from portage._sets.base import InternalPackageSet
 from portage.output import green
 from portage.util.futures.extendedfutures import ExtendedFuture
+
 from repoman.metadata import get_metadata_xsd
 from repoman.modules.commit import repochecks
 from repoman.modules.commit import manifest

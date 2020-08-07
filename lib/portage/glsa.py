@@ -1,28 +1,27 @@
 # Copyright 2003-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import
-
-import io
-import sys
-from urllib.request import urlopen as urllib_request_urlopen
 import codecs
-import re
 import operator
+import portage
+import re
+import sys
 import xml.dom.minidom
-from io import StringIO
+
 from functools import reduce
 
-import portage
+import io
+from io import StringIO
+
+from portage import _encodings, _unicode_decode, _unicode_encode
 from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage.versions import pkgsplit, vercmp
-from portage.util import grabfile
 from portage.const import PRIVATE_PATH
-from portage.localization import _
 from portage.dep import _slot_separator
+from portage.localization import _
+from portage.util import grabfile
+from portage.versions import pkgsplit, vercmp
+
+from urllib.request import urlopen as urllib_request_urlopen
 
 # Note: the space for rgt and rlt is important !!
 # FIXME: use slot deps instead, requires GLSA format versioning

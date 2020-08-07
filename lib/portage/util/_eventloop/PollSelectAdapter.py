@@ -1,10 +1,9 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
+import select
 
 from .PollConstants import PollConstants
-import select
 
 class PollSelectAdapter:
 

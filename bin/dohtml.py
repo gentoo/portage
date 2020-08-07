@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -27,8 +27,6 @@
 # dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
-
-from __future__ import print_function
 
 import os as _os
 import sys

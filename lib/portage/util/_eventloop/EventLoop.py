@@ -1,8 +1,7 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
+import asyncio as _real_asyncio
 import collections
 import errno
 import functools
@@ -12,8 +11,6 @@ import select
 import signal
 import time
 import traceback
-
-import asyncio as _real_asyncio
 
 try:
 	import fcntl

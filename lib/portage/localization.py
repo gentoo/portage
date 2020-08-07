@@ -1,8 +1,6 @@
 # localization.py -- Code to manage/help portage localization.
-# Copyright 2004-2014 Gentoo Foundation
+# Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import division
 
 import locale
 import math

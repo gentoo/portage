@@ -1,8 +1,6 @@
 # elog/mod_echo.py - elog dispatch module
-# Copyright 2007-2017 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import print_function
 
 import sys
 from portage.output import EOutput, colorize

@@ -1,15 +1,15 @@
 #!/usr/bin/python -b
-# Copyright 2009-2015 Gentoo Foundation
+# Copyright 2009-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # unicode_literals for compat with TextIOWrapper in Python 2
-from __future__ import print_function
 
 import argparse
 import platform
 import signal
 import stat
 import sys
+
 # This block ensures that ^C interrupts are handled quietly.
 try:
 

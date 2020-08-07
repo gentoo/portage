@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Ebuild and tree health checks and maintenance utilities.
 """
 
-from __future__ import print_function
-
 import sys
 import errno
+
 # This block ensures that ^C interrupts are handled quietly.
 try:
 	import signal

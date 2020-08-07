@@ -1,7 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function
-
 from portage import normalize_path
 from portage import os
 from portage.output import red

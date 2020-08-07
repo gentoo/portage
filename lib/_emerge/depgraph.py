@@ -1,9 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function
-
-import collections
 import errno
 import functools
 import io
@@ -11,6 +8,7 @@ import logging
 import stat
 import textwrap
 import warnings
+import collections
 from collections import deque, OrderedDict
 from itertools import chain
 

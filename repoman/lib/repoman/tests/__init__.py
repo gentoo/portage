@@ -1,8 +1,6 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2013 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import print_function
 
 import argparse
 import sys

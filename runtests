@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # Note: We don't want to import portage modules directly because we do things
@@ -10,8 +10,6 @@
 Note: Any additional arguments will be passed down directly to the underlying
 unittest runner.  This lets you select specific tests to execute.
 """
-
-from __future__ import print_function
 
 import argparse
 import os

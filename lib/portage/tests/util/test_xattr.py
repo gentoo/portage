@@ -1,9 +1,7 @@
-# Copyright 2010-2015 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Tests for the portage.util._xattr module"""
-
-from __future__ import print_function
 
 from unittest import mock
 
