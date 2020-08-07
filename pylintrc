@@ -33,6 +33,7 @@ enable=
         unused-import,
         useless-import-alias,
         useless-object-inheritance,
+        useless-return,
         wildcard-import
 
 # A comma-separated list of package or module names from where C extensions may

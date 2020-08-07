@@ -634,7 +634,6 @@ class WhirlpoolStruct:
 
 def WhirlpoolInit(ctx):
     ctx = WhirlpoolStruct()
-    return
 
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
@@ -777,7 +776,6 @@ def processBuffer(ctx):
     # apply the Miyaguchi-Preneel compression function
     for i in range(8):
         ctx.hash[i] ^= state[i] ^ block[i]
-    return
 
 #
 # Tests.

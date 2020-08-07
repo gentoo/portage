@@ -492,7 +492,6 @@ class Glsa:
 		finally:
 			f.close()
 
-		return None
 
 	def parse(self, myfile):
 		"""
@@ -583,7 +582,6 @@ class Glsa:
 			self.packages[name].append(tmp)
 		# TODO: services aren't really used yet
 		self.services = self.affected.getElementsByTagName("service")
-		return None
 
 	def dump(self, outstream=sys.stdout, encoding="utf-8"):
 		"""
@@ -684,7 +682,6 @@ class Glsa:
 				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(_unicode_decode(self.nr + "\n"))
 			checkfile.close()
-		return None
 
 	def getMergeList(self, least_change=True):
 		"""

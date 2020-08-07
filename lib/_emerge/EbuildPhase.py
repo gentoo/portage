@@ -396,7 +396,6 @@ class EbuildPhase(CompositeTask):
 			fd_pipes=self.fd_pipes, phase=phase, scheduler=self.scheduler,
 			settings=self.settings)
 		self._start_task(clean_phase, self._fail_clean_exit)
-		return
 
 	def _fail_clean_exit(self, clean_phase):
 		self._final_exit(clean_phase)

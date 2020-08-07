@@ -18,4 +18,3 @@ def process(mysettings, key, logentries, fulltext):
 		retval = portage.process.spawn_bash(mylogcmd)
 		if retval != 0:
 			raise portage.exception.PortageException("!!! PORTAGE_ELOG_COMMAND failed with exitcode %d" % retval)
-	return

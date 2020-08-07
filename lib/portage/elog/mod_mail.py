@@ -41,5 +41,3 @@ def process(mysettings, key, logentries, fulltext):
 		portage.mail.send_mail(mysettings, mymessage)
 	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
-
-	return

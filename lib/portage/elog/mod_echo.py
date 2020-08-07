@@ -61,4 +61,3 @@ def _finalize():
 				for line in msgcontent:
 					fmap[msgtype](line.strip("\n"))
 	_items = []
-	return

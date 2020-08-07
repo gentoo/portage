@@ -243,7 +243,6 @@ class Display:
 				cur_use_map[key], old_iuse_map[key],
 				old_use_map[key], is_new, feature_flags,
 				reinst_flags_map.get(key))
-		return
 
 
 	@staticmethod
@@ -539,7 +538,6 @@ class Display:
 			if show_repos and repoadd:
 				myprint += " " + teal("[%s]" % repoadd)
 			writemsg_stdout("%s\n" % (myprint,), noiselevel=-1)
-		return
 
 
 	def print_blockers(self):
@@ -548,7 +546,6 @@ class Display:
 		"""
 		for pkg in self.blockers:
 			writemsg_stdout("%s\n" % (pkg,), noiselevel=-1)
-		return
 
 
 	def print_verbose(self, show_repos):
@@ -562,7 +559,6 @@ class Display:
 			# that RepoDisplay.__unicode__() is called in python2.
 			writemsg_stdout("%s" % (self.conf.repo_display,),
 				noiselevel=-1)
-		return
 
 
 	def print_changelog(self):
@@ -687,7 +683,6 @@ class Display:
 			if ebuild_path_cl is not None:
 				self.changelogs.extend(_calc_changelog(
 					ebuild_path_cl, pkg_info.previous_pkg, pkg.cpv))
-		return
 
 
 	def check_system_world(self, pkg):

@@ -184,7 +184,6 @@ class SyncManager:
 			writemsg_level(msg + "\n")
 		if self.callback:
 			self.callback(exitcode, updatecache_flg)
-		return
 
 
 	def perform_post_sync_hook(self, reponame, dosyncuri='', repolocation=''):
