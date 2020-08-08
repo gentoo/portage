@@ -4,7 +4,8 @@
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
+from portage.util.futures.executor.fork import ForkExecutor
 
 
 class AuxdbTestCase(TestCase):
@@ -14,13 +15,13 @@ class AuxdbTestCase(TestCase):
 			from portage.cache.anydbm import database
 		except ImportError:
 			self.skipTest('dbm import failed')
-		self._test_mod('portage.cache.anydbm.database')
+		self._test_mod('portage.cache.anydbm.database', multiproc=False)
 
 	def test_flat_hash_md5(self):
 		self._test_mod('portage.cache.flat_hash.md5_database')
 
 	def test_volatile(self):
-		self._test_mod('portage.cache.volatile.database')
+		self._test_mod('portage.cache.volatile.database', multiproc=False)
 
 	def test_sqite(self):
 		try:
@@ -29,7 +30,7 @@ class AuxdbTestCase(TestCase):
 			self.skipTest('sqlite3 import failed')
 		self._test_mod('portage.cache.sqlite.database')
 
-	def _test_mod(self, auxdbmodule):
+	def _test_mod(self, auxdbmodule, multiproc=True):
 		ebuilds = {
 			"cat/A-1": {
 				"EAPI": "7",
@@ -61,8 +62,33 @@ class AuxdbTestCase(TestCase):
 
 		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 
+		def test_func():
+			return asyncio._wrap_loop().run_until_complete(self._test_mod_async(
+				ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb))
+
+		self.assertTrue(test_func())
+
 		loop = asyncio._wrap_loop()
-		loop.run_until_complete(self._test_mod_async(ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb))
+		self.assertTrue(loop.run_until_complete(loop.run_in_executor(ForkExecutor(), test_func)))
+
+		auxdb = portdb.auxdb[portdb.getRepositoryPath('test_repo')]
+		cpv = next(iter(ebuilds))
+
+		def modify_auxdb():
+			metadata = auxdb[cpv]
+			metadata['RESTRICT'] = 'test'
+			try:
+				del metadata['_eclasses_']
+			except KeyError:
+				pass
+			auxdb[cpv] = metadata
+
+		if multiproc:
+			loop.run_until_complete(loop.run_in_executor(ForkExecutor(), modify_auxdb))
+		else:
+			modify_auxdb()
+
+		self.assertEqual(auxdb[cpv]['RESTRICT'], 'test')
 
 	@coroutine
 	def _test_mod_async(self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb):
@@ -73,3 +99,5 @@ class AuxdbTestCase(TestCase):
 			self.assertEqual(depend, eclass_depend)
 			self.assertEqual(eapi, metadata['EAPI'])
 			self.assertEqual(frozenset(inherited.split()), ebuild_inherited)
+
+		coroutine_return(True)

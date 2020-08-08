@@ -4,6 +4,7 @@
 import collections
 import re
 
+import portage
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
@@ -25,7 +26,7 @@ class database(fs_template.FsBased):
 	cache_bytes = 1024 * 1024 * 10
 
 	_connection_info_entry = collections.namedtuple('_connection_info_entry',
-		('connection', 'cursor'))
+		('connection', 'cursor', 'pid'))
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
@@ -71,13 +72,13 @@ class database(fs_template.FsBased):
 
 	@property
 	def _db_cursor(self):
-		if self._db_connection_info is None:
+		if self._db_connection_info is None or self._db_connection_info.pid != portage.getpid():
 			self._db_init_connection()
 		return self._db_connection_info.cursor
 
 	@property
 	def _db_connection(self):
-		if self._db_connection_info is None:
+		if self._db_connection_info is None or self._db_connection_info.pid != portage.getpid():
 			self._db_init_connection()
 		return self._db_connection_info.connection
 
@@ -94,7 +95,7 @@ class database(fs_template.FsBased):
 			connection = self._db_module.connect(
 				database=_unicode_decode(self._dbpath), **connection_kwargs)
 			cursor = connection.cursor()
-			self._db_connection_info = self._connection_info_entry(connection, cursor)
+			self._db_connection_info = self._connection_info_entry(connection, cursor, portage.getpid())
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not self.readonly and not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
