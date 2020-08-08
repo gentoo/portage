@@ -33,12 +33,17 @@ class BinpkgEnvExtractor(CompositeTask):
 		shell_cmd = "${PORTAGE_BUNZIP2_COMMAND:-${PORTAGE_BZIP2_COMMAND} -d} -c -- %s > %s" % \
 			(_shell_quote(saved_env_path),
 			_shell_quote(dest_env_path))
+
+		logfile = None
+		if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
+			logfile = self.settings.get("PORTAGE_LOG_FILE")
+
 		extractor_proc = SpawnProcess(
 			args=[BASH_BINARY, "-c", shell_cmd],
 			background=self.background,
 			env=self.settings.environ(),
 			scheduler=self.scheduler,
-			logfile=self.settings.get('PORTAGE_LOG_FILE'))
+			logfile=logfile)
 
 		self._start_task(extractor_proc, self._extractor_exit)
 
