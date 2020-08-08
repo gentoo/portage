@@ -4013,7 +4013,9 @@ class dblink:
 				# since we need it to have private ${T} etc... for things
 				# like elog.
 				settings_clone = portage.config(clone=self.settings)
-				settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
+				# This reset ensures that there is no unintended leakage
+				# of variables which should not be shared.
+				settings_clone.reset()
 				settings_clone.setcpv(cur_cpv, mydb=self.vartree.dbapi)
 				if self._preserve_libs and "preserve-libs" in \
 					settings_clone["PORTAGE_RESTRICT"].split():
