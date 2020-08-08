@@ -3,6 +3,7 @@
 
 import sys
 
+import portage
 from portage import os
 from portage.tests import TestCase
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -36,3 +37,26 @@ class AsyncFunctionTestCase(TestCase):
 	def testAsyncFunctionStdin(self):
 		loop = asyncio._wrap_loop()
 		loop.run_until_complete(self._testAsyncFunctionStdin(loop))
+
+	def _test_getpid_fork(self):
+		"""
+		Verify that portage.getpid() cache is updated in a forked child process.
+		"""
+		loop = asyncio._wrap_loop()
+		proc = AsyncFunction(scheduler=loop, target=portage.getpid)
+		proc.start()
+		proc.wait()
+		self.assertEqual(proc.pid, proc.result)
+
+	def test_getpid_fork(self):
+		self._test_getpid_fork()
+
+	def test_getpid_double_fork(self):
+		"""
+		Verify that portage.getpid() cache is updated correctly after
+		two forks.
+		"""
+		loop = asyncio._wrap_loop()
+		proc = AsyncFunction(scheduler=loop, target=self._test_getpid_fork)
+		proc.start()
+		self.assertEqual(proc.wait(), 0)

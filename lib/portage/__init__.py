@@ -14,6 +14,7 @@ try:
 	if not hasattr(errno, 'ESTALE'):
 		# ESTALE may not be defined on some systems, such as interix.
 		errno.ESTALE = -1
+	import multiprocessing.util
 	import re
 	import types
 	import platform
@@ -367,6 +368,21 @@ _not_installed = os.path.isfile(os.path.join(PORTAGE_BASE_PATH, ".portage_not_in
 _internal_caller = False
 
 _sync_mode = False
+
+class _ForkWatcher:
+	@staticmethod
+	def hook(_ForkWatcher):
+		_ForkWatcher.current_pid = _os.getpid()
+
+_ForkWatcher.hook(_ForkWatcher)
+
+multiprocessing.util.register_after_fork(_ForkWatcher, _ForkWatcher.hook)
+
+def getpid():
+	"""
+	Cached version of os.getpid(). ForkProcess updates the cache.
+	"""
+	return _ForkWatcher.current_pid
 
 def _get_stdin():
 	"""
