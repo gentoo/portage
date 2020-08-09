@@ -1,6 +1,16 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.2
+==================================
+* Bug Fixes:
+    - Bug 711174 Identified and fixed some FEATURES=compress-build-logs
+      corruption issues
+    - Bug 734990 Fix sync-rcu to recover from removed sync-rcu-store-dir
+    - Bug 735626 Add example postsync hook to call egencache
+      --update-pkg-desc-index
+    - Bug 736334 Add fork safety to sqlite cache module
+
 portage-3.0.1
 ==================================
 * Bug Fixes:
