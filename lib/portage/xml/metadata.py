@@ -34,7 +34,10 @@ __all__ = ('MetaDataXML', 'parse_metadata_use')
 import re
 import xml.etree.ElementTree as etree
 
-from xml.parsers.expat import ExpatError
+try:
+	from xml.parsers.expat import ExpatError
+except Exception:
+	ExpatError = SyntaxError
 
 from portage import _encodings, _unicode_encode
 from portage.util import cmp_sort_key, unique_everseen
