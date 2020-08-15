@@ -171,6 +171,7 @@ def insert_optional_args(args):
 	short_arg_opts = {
 		'D' : valid_integers,
 		'j' : valid_integers,
+		'l' : valid_floats,
 	}
 
 	# Don't make things like "-kn" expand to "-k n"
@@ -542,6 +543,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--load-average": {
+			"shortopt" : "-l",
 
 			"help"   :"Specifies that no new builds should be started " + \
 				"if there are other builds running and the load average " + \
