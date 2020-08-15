@@ -365,7 +365,6 @@ class Scanner:
 			dynamic_data["changelog_modified"] = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, dynamic_data)
-		return
 
 
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
@@ -408,7 +407,6 @@ class Scanner:
 		# Final checks
 		# initialize per pkg plugin final checks here
 		# need to set it up for ==> self.modules_list or some other ordered list
-		xpkg_complete = False
 		for mod in self.moduleconfig.final_loop:
 			if mod:
 				mod_class = self.moduleconfig.controller.get_class(mod)
@@ -423,10 +421,5 @@ class Scanner:
 					logging.debug("\tRunning function: %s", func)
 					_continue = func(**self.set_func_kwargs(mod, dynamic_data))
 					if _continue:
-						xpkg_complete = True
 						# logging.debug("\t>>> Continuing")
 						break
-
-		if xpkg_complete:
-			return
-		return
