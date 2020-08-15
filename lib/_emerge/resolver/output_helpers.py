@@ -8,20 +8,15 @@ in output.py
 __all__ = (
 	)
 
-import io
-import re
-
 from portage import os
-from portage import _encodings, _unicode_encode
 from portage._sets.base import InternalPackageSet
 from portage.exception import PackageSetNotFound
 from portage.localization import localized_size
-from portage.output import (blue, bold, colorize, create_color_func,
+from portage.output import (blue, colorize, create_color_func,
 	green, red, teal, turquoise, yellow)
 bad = create_color_func("BAD")
 from portage.util import writemsg
 from portage.util.SlotObject import SlotObject
-from portage.versions import catpkgsplit
 
 from _emerge.Blocker import Blocker
 from _emerge.Package import Package
@@ -176,7 +171,6 @@ class _DisplayConfig:
 		self.quiet = "--quiet" in frozen_config.myopts
 		self.all_flags = self.verbosity == 3 or self.quiet
 		self.print_use_string = self.verbosity != 1 or "--verbose" in frozen_config.myopts
-		self.changelog = "--changelog" in frozen_config.myopts
 		self.edebug = frozen_config.edebug
 		self.unordered_display = "--unordered-display" in frozen_config.myopts
 
@@ -468,90 +462,6 @@ def _prune_tree_display(display_list):
 			depth >= display_list[i+1][1]:
 				del display_list[i]
 
-
-def _calc_changelog(ebuildpath,current,next): # pylint: disable=redefined-builtin
-	if ebuildpath == None or not os.path.exists(ebuildpath):
-		return []
-	current = '-'.join(catpkgsplit(current)[1:])
-	if current.endswith('-r0'):
-		current = current[:-3]
-	next = '-'.join(catpkgsplit(next)[1:])
-	if next.endswith('-r0'):
-		next = next[:-3]
-
-	changelogdir = os.path.dirname(ebuildpath)
-	changelogs = ['ChangeLog']
-	# ChangeLog-YYYY (see bug #389611)
-	changelogs.extend(sorted((fn for fn in os.listdir(changelogdir)
-		if fn.startswith('ChangeLog-')), reverse=True))
-
-	divisions = []
-	found_current = False
-	for fn in changelogs:
-		changelogpath = os.path.join(changelogdir, fn)
-		try:
-			with io.open(_unicode_encode(changelogpath,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace') as f:
-				changelog = f.read()
-		except EnvironmentError:
-			return []
-		for node in _find_changelog_tags(changelog):
-			if node[0] == current:
-				found_current = True
-				break
-			else:
-				divisions.append(node)
-		if found_current:
-			break
-
-	if not found_current:
-		return []
-
-	#print 'XX from',current,'to',next
-	#for div,text in divisions: print 'XX',div
-	# skip entries for all revisions above the one we are about to emerge
-	later_rev_index = None
-	for i, node in enumerate(divisions):
-		if node[0] == next:
-			if later_rev_index is not None:
-				first_node = divisions[later_rev_index]
-				# Discard the later revision and the first ChangeLog entry
-				# that follows it. We want to display all the entries after
-				# that first entry, as discussed in bug #373009.
-				trimmed_lines = []
-				iterator = iter(first_node[1])
-				for l in iterator:
-					if not l:
-						# end of the first entry that's discarded
-						break
-				first_node = (None, list(iterator))
-				divisions = [first_node] + divisions[later_rev_index+1:]
-			break
-		if node[0] is not None:
-			later_rev_index = i
-
-	output = []
-	prev_blank = False
-	prev_rev = False
-	for rev, lines in divisions:
-		if rev is not None:
-			if not (prev_blank or prev_rev):
-				output.append("\n")
-			output.append(bold('*' + rev) + '\n')
-			prev_rev = True
-			prev_blank = False
-		if lines:
-			prev_rev = False
-			if not prev_blank:
-				output.append("\n")
-			for l in lines:
-				output.append(l + "\n")
-			output.append("\n")
-			prev_blank = True
-	return output
-
 def _strip_header_comments(lines):
 	# strip leading and trailing blank or header/comment lines
 	i = 0
@@ -562,27 +472,6 @@ def _strip_header_comments(lines):
 	while lines and (not lines[-1] or lines[-1][:1] == "#"):
 		lines.pop()
 	return lines
-
-def _find_changelog_tags(changelog):
-	divs = []
-	if not changelog:
-		return divs
-	release = None
-	release_end = 0
-	for match in re.finditer(r'^\*\ ?([-a-zA-Z0-9_.+]*)(?:\ .*)?$',
-		changelog, re.M):
-		divs.append((release, _strip_header_comments(
-			changelog[release_end:match.start()].splitlines())))
-		release_end = match.end()
-		release = match.group(1)
-		if release.endswith('.ebuild'):
-			release = release[:-7]
-		if release.endswith('-r0'):
-			release = release[:-3]
-
-	divs.append((release,
-		_strip_header_comments(changelog[release_end:].splitlines())))
-	return divs
 
 class PkgInfo:
 	"""Simple class to hold instance attributes for current

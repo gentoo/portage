@@ -2936,11 +2936,6 @@ def run_action(emerge_config):
 
 	adjust_configs(emerge_config.opts, emerge_config.trees)
 
-	if "--changelog" in emerge_config.opts:
-		writemsg_level(
-			" %s The emerge --changelog (or -l) option is deprecated\n" %
-			warn("*"), level=logging.WARNING, noiselevel=-1)
-
 	if profile_check(emerge_config.trees, emerge_config.action) != os.EX_OK:
 		return 1
 
