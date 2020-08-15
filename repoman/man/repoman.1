@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Mar 2018" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "Aug 2020" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the ebuild repository
@@ -82,6 +82,13 @@ Be less verbose about extraneous info
 .TP
 \fB-p\fR, \fB--pretend\fR
 Don't commit or fix anything; just show what would be done
+.TP
+\fB\-j\fR, \fB\-\-jobs\fR
+Specifies the number of jobs (processes) to run simultaneously.
+.TP
+\fB\-l\fR, \fB\-\-load-average\fR
+Specifies that no new jobs (processes) should be started if there are others
+jobs running and the load average is at least load (a floating\-point number).
 .TP
 \fB-x\fR, \fB--xmlparse\fR
 Forces the metadata.xml parse check to be carried out
