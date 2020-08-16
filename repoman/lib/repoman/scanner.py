@@ -372,7 +372,6 @@ class Scanner:
 		for y_ebuild in ebuildlist:
 			self.reset_futures(dynamic_data)
 			dynamic_data['y_ebuild'] = y_ebuild
-			y_ebuild_continue = False
 
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
@@ -395,12 +394,8 @@ class Scanner:
 							# Do not try to do any more QA checks on this package since missing
 							# metadata leads to false positives for several checks, and false
 							# positives confuse users.
-							y_ebuild_continue = True
 							# logging.debug("\t>>> Continuing")
 							break
-
-			if y_ebuild_continue:
-				continue
 
 			logging.debug("Finished ebuild plugin loop, continuing...")
 
