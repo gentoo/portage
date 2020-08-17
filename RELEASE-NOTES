@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.3
+==================================
+* Bug Fixes:
+    - Bug 448462 repoman: avoid "RuntimeError: Event loop is closed"
+      after SIGINT with --jobs > 1.
+    - Bug 699256 emerge: Remove deprecated --changelog option
+    - Bug 699256 emerge: Add short -l option for --load-average
+    - Bug 711174 SpawnProcess: fix _cancel to cleanup PipeLogger quickly
+
 portage-3.0.2
 ==================================
 * Bug Fixes:
