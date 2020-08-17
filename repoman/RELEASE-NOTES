@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-3.0.0
+==================================
+* Bug Fixes:
+    - Bug 448462 Add --jobs and --load-average options which allow
+      dependency checks for multiple profiles to run in parallel.
+
 repoman-2.3.23
 ==================================
 * Bug Fixes:
