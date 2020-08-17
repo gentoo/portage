@@ -49,7 +49,7 @@ class ForkExecutor:
 
 	def _schedule(self):
 		while (not self._shutdown and self._submit_queue and
-			len(self._running_tasks) < self._max_workers):
+			(self._max_workers is True or len(self._running_tasks) < self._max_workers)):
 			future, proc = self._submit_queue.popleft()
 			future.add_done_callback(functools.partial(self._cancel_cb, proc))
 			proc.addExitListener(functools.partial(self._proc_exit, future))
