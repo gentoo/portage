@@ -21,7 +21,7 @@ class AsyncFunctionTestCase(TestCase):
 		return ''.join(sys.stdin)
 
 	@coroutine
-	def _testAsyncFunctionStdin(self, loop):
+	def _testAsyncFunctionStdin(self, loop=None):
 		test_string = '1\n2\n3\n'
 		pr, pw = os.pipe()
 		fd_pipes = {0:pr}
@@ -36,7 +36,7 @@ class AsyncFunctionTestCase(TestCase):
 
 	def testAsyncFunctionStdin(self):
 		loop = asyncio._wrap_loop()
-		loop.run_until_complete(self._testAsyncFunctionStdin(loop))
+		loop.run_until_complete(self._testAsyncFunctionStdin(loop=loop))
 
 	def _test_getpid_fork(self):
 		"""

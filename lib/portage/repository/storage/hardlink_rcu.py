@@ -105,7 +105,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 		self._snapshots_dir = os.path.join(self._storage_location, 'snapshots')
 
 	@coroutine
-	def _check_call(self, cmd, privileged=False):
+	def _check_call(self, cmd, privileged=False, loop=None):
 		"""
 		Run cmd and raise RepoStorageException on failure.
 
@@ -118,16 +118,16 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			kwargs = dict(fd_pipes=self._spawn_kwargs.get('fd_pipes'))
 		else:
 			kwargs = self._spawn_kwargs
-		p = SpawnProcess(args=cmd, scheduler=asyncio._wrap_loop(), **kwargs)
+		p = SpawnProcess(args=cmd, scheduler=asyncio._wrap_loop(loop), **kwargs)
 		p.start()
 		if (yield p.async_wait()) != os.EX_OK:
 			raise RepoStorageException('command exited with status {}: {}'.\
 				format(p.returncode, ' '.join(cmd)))
 
 	@coroutine
-	def init_update(self):
+	def init_update(self, loop=None):
 		update_location = os.path.join(self._storage_location, 'update')
-		yield self._check_call(['rm', '-rf', update_location])
+		yield self._check_call(['rm', '-rf', update_location], loop=loop)
 
 		# This assumes normal umask permissions if it doesn't exist yet.
 		portage.util.ensure_dirs(self._storage_location)
@@ -139,18 +139,18 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			# Use  rsync --link-dest to hardlink a files into update_location,
 			# since cp -l is not portable.
 			yield self._check_call(['rsync', '-a', '--link-dest', self._latest_canonical,
-				self._latest_canonical + '/', update_location + '/'])
+				self._latest_canonical + '/', update_location + '/'], loop=loop)
 
 		elif not os.path.islink(self._user_location):
-			yield self._migrate(update_location)
-			update_location = (yield self.init_update())
+			yield self._migrate(update_location, loop=loop)
+			update_location = (yield self.init_update(loop=loop))
 
 		self._update_location = update_location
 
 		coroutine_return(self._update_location)
 
 	@coroutine
-	def _migrate(self, update_location):
+	def _migrate(self, update_location, loop=None):
 		"""
 		When repo.user_location is a normal directory, migrate it to
 		storage so that it can be replaced with a symlink. After migration,
@@ -164,26 +164,26 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 				os.stat(self._user_location))
 			# It's probably on a different device, so copy it.
 			yield self._check_call(['rsync', '-a',
-				self._user_location + '/', update_location + '/'])
+				self._user_location + '/', update_location + '/'], loop=loop)
 
 			# Remove the old copy so that symlink can be created. Run with
 			# maximum privileges, since removal requires write access to
 			# the parent directory.
-			yield self._check_call(['rm', '-rf', user_location], privileged=True)
+			yield self._check_call(['rm', '-rf', user_location], privileged=True, loop=loop)
 
 		self._update_location = update_location
 
 		# Make this copy the latest snapshot
-		yield self.commit_update()
+		yield self.commit_update(loop=loop)
 
 	@property
-	def current_update(self):
+	def current_update(self, loop=None):
 		if self._update_location is None:
 			raise RepoStorageException('current update does not exist')
 		return self._update_location
 
 	@coroutine
-	def commit_update(self):
+	def commit_update(self, loop=None):
 		update_location = self.current_update
 		self._update_location = None
 		try:
@@ -235,14 +235,14 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 		yield None
 
 	@coroutine
-	def abort_update(self):
+	def abort_update(self, loop=None):
 		if self._update_location is not None:
 			update_location = self._update_location
 			self._update_location = None
-			yield self._check_call(['rm', '-rf', update_location])
+			yield self._check_call(['rm', '-rf', update_location], loop=loop)
 
 	@coroutine
-	def garbage_collection(self):
+	def garbage_collection(self, loop=None):
 		snap_ttl = datetime.timedelta(days=self._ttl_days)
 		snapshots = sorted(int(name) for name in os.listdir(self._snapshots_dir))
 		# always preserve the latest snapshot
@@ -259,4 +259,4 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			snap_timestamp = datetime.datetime.utcfromtimestamp(st.st_mtime)
 			if (datetime.datetime.utcnow() - snap_timestamp) < snap_ttl:
 				continue
-			yield self._check_call(['rm', '-rf', snap_path])
+			yield self._check_call(['rm', '-rf', snap_path], loop=loop)

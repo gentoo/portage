@@ -108,7 +108,7 @@ class SyncBase:
 		"""
 		if self._repo_storage is None:
 			storage_cls = portage.load_mod(self._select_storage_module())
-			self._repo_storage = _sync_methods(storage_cls(self.repo, self.spawn_kwargs))
+			self._repo_storage = _sync_methods(storage_cls(self.repo, self.spawn_kwargs), loop=global_event_loop())
 		return self._repo_storage
 
 	@property

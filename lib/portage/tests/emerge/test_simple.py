@@ -225,10 +225,10 @@ call_has_and_best_version() {
 
 		loop = asyncio._wrap_loop()
 		loop.run_until_complete(asyncio.ensure_future(
-			self._async_test_simple(loop, playground, metadata_xml_files), loop=loop))
+			self._async_test_simple(playground, metadata_xml_files, loop=loop), loop=loop))
 
 	@coroutine
-	def _async_test_simple(self, loop, playground, metadata_xml_files):
+	def _async_test_simple(self, playground, metadata_xml_files, loop=None):
 
 		debug = playground.debug
 		settings = playground.settings
@@ -540,7 +540,7 @@ move dev-util/git dev-vcs/git
 					local_env = env
 
 				proc = yield asyncio.create_subprocess_exec(*args,
-					env=local_env, stderr=None, stdout=stdout)
+					env=local_env, stderr=None, stdout=stdout, loop=loop)
 
 				if debug:
 					yield proc.wait()

@@ -53,7 +53,7 @@ class PipeLogger(AbstractPollTask):
 		fcntl.fcntl(fd, fcntl.F_SETFL,
 			fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd), loop=self.scheduler)
+		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd, loop=self.scheduler), loop=self.scheduler)
 		self._io_loop_task.add_done_callback(self._io_loop_done)
 		self._registered = True
 
@@ -63,7 +63,7 @@ class PipeLogger(AbstractPollTask):
 			self.returncode = self._cancelled_returncode
 
 	@coroutine
-	def _io_loop(self, input_file):
+	def _io_loop(self, input_file, loop=None):
 		background = self.background
 		stdout_fd = self.stdout_fd
 		log_file = self._log_file

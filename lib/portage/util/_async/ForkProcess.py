@@ -47,7 +47,7 @@ class ForkProcess(SpawnProcess):
 				os.close(stdin_dup)
 
 		self._proc_join_task = asyncio.ensure_future(
-			self._proc_join(self._proc))
+			self._proc_join(self._proc, loop=self.scheduler), loop=self.scheduler)
 		self._proc_join_task.add_done_callback(
 			functools.partial(self._proc_join_done, self._proc))
 
@@ -68,7 +68,7 @@ class ForkProcess(SpawnProcess):
 			super(ForkProcess, self)._async_waitpid()
 
 	@coroutine
-	def _proc_join(self, proc):
+	def _proc_join(self, proc, loop=None):
 		sentinel_reader = self.scheduler.create_future()
 		self.scheduler.add_reader(proc.sentinel,
 			lambda: sentinel_reader.done() or sentinel_reader.set_result(None))
@@ -93,7 +93,7 @@ class ForkProcess(SpawnProcess):
 			proc.join(0)
 			if proc.exitcode is not None:
 				break
-			yield asyncio.sleep(self._proc_join_interval)
+			yield asyncio.sleep(self._proc_join_interval, loop=loop)
 
 	def _proc_join_done(self, proc, future):
 		future.cancelled() or future.result()

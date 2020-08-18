@@ -250,11 +250,11 @@ class Binpkg(CompositeTask):
 			return
 
 		self._start_task(
-			AsyncTaskFuture(future=self._unpack_metadata()),
+			AsyncTaskFuture(future=self._unpack_metadata(loop=self.scheduler)),
 			self._unpack_metadata_exit)
 
 	@coroutine
-	def _unpack_metadata(self):
+	def _unpack_metadata(self, loop=None):
 
 		dir_path = self.settings['PORTAGE_BUILDDIR']
 
@@ -271,7 +271,7 @@ class Binpkg(CompositeTask):
 		portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
 		self._writemsg_level(">>> Extracting info\n")
 
-		yield self._bintree.dbapi.unpack_metadata(self.settings, infloc)
+		yield self._bintree.dbapi.unpack_metadata(self.settings, infloc, loop=self.scheduler)
 		check_missing_metadata = ("CATEGORY", "PF")
 		for k, v in zip(check_missing_metadata,
 			self._bintree.dbapi.aux_get(self.pkg.cpv, check_missing_metadata)):
@@ -333,7 +333,7 @@ class Binpkg(CompositeTask):
 		self._start_task(
 			AsyncTaskFuture(future=self._bintree.dbapi.unpack_contents(
 				self.settings,
-				self._image_dir)),
+				self._image_dir, loop=self.scheduler)),
 			self._unpack_contents_exit)
 
 	def _unpack_contents_exit(self, unpack_contents):

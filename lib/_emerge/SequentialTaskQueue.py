@@ -69,7 +69,7 @@ class SequentialTaskQueue(SlotObject):
 			task.cancel()
 
 	@coroutine
-	def wait(self):
+	def wait(self, loop=None):
 		"""
 		Wait for the queue to become empty. This method is a coroutine.
 		"""
@@ -77,7 +77,7 @@ class SequentialTaskQueue(SlotObject):
 			task = next(iter(self.running_tasks), None)
 			if task is None:
 				# Wait for self.running_tasks to populate.
-				yield asyncio.sleep(0)
+				yield asyncio.sleep(0, loop=loop)
 			else:
 				yield task.async_wait()
 

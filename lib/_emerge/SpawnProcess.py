@@ -140,11 +140,12 @@ class SpawnProcess(SubProcess):
 
 		self._registered = True
 		self._main_task_cancel = functools.partial(self._main_cancel, build_logger, pipe_logger)
-		self._main_task = asyncio.ensure_future(self._main(build_logger, pipe_logger), loop=self.scheduler)
+		self._main_task = asyncio.ensure_future(
+			self._main(build_logger, pipe_logger, loop=self.scheduler), loop=self.scheduler)
 		self._main_task.add_done_callback(self._main_exit)
 
 	@coroutine
-	def _main(self, build_logger, pipe_logger):
+	def _main(self, build_logger, pipe_logger, loop=None):
 		try:
 			if pipe_logger.poll() is None:
 				yield pipe_logger.async_wait()

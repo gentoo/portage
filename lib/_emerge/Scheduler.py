@@ -871,7 +871,7 @@ class Scheduler(PollScheduler):
 					infloc = os.path.join(build_dir_path, "build-info")
 					ensure_dirs(infloc)
 					self._sched_iface.run_until_complete(
-						bintree.dbapi.unpack_metadata(settings, infloc))
+						bintree.dbapi.unpack_metadata(settings, infloc, loop=self._sched_iface))
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 					settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
@@ -1621,7 +1621,7 @@ class Scheduler(PollScheduler):
 		if (self._task_queues.merge and (self._schedule_merge_wakeup_task is None
 			or self._schedule_merge_wakeup_task.done())):
 			self._schedule_merge_wakeup_task = asyncio.ensure_future(
-				self._task_queues.merge.wait(), loop=self._event_loop)
+				self._task_queues.merge.wait(loop=self._event_loop), loop=self._event_loop)
 			self._schedule_merge_wakeup_task.add_done_callback(
 				self._schedule_merge_wakeup)
 

@@ -146,7 +146,7 @@ class ProfileDependsChecks(ScanBase):
 					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
 
 	@coroutine
-	def _task(self, task):
+	def _task(self, task, loop=None):
 		yield task.future
 		coroutine_return((task, task.future.result()))
 
@@ -222,7 +222,7 @@ class ProfileDependsChecks(ScanBase):
 				yield (task, target())
 			else:
 				task.future = asyncio.ensure_future(loop.run_in_executor(executor, target), loop=loop)
-				yield self._task(task)
+				yield self._task(task, loop=loop)
 
 
 	def _task_subprocess(self, task, pkg, dep_settings):

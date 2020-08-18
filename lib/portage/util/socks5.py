@@ -76,7 +76,7 @@ class ProxyManager:
 
 
 	@coroutine
-	def ready(self):
+	def ready(self, loop=None):
 		"""
 		Wait for the proxy socket to become ready. This method is a coroutine.
 		"""
@@ -98,7 +98,7 @@ class ProxyManager:
 			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
-				yield asyncio.sleep(0.2)
+				yield asyncio.sleep(0.2, loop=loop)
 			else:
 				break
 			finally:

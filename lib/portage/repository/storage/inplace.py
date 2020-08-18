@@ -19,31 +19,31 @@ class InplaceRepoStorage(RepoStorageInterface):
 		self._update_location = None
 
 	@coroutine
-	def init_update(self):
+	def init_update(self, loop=None):
 		self._update_location = self._user_location
 		coroutine_return(self._update_location)
 		yield None
 
 	@property
-	def current_update(self):
+	def current_update(self, loop=None):
 		if self._update_location is None:
 			raise RepoStorageException('current update does not exist')
 		return self._update_location
 
 	@coroutine
-	def commit_update(self):
+	def commit_update(self, loop=None):
 		self.current_update
 		self._update_location = None
 		coroutine_return()
 		yield None
 
 	@coroutine
-	def abort_update(self):
+	def abort_update(self, loop=None):
 		self._update_location = None
 		coroutine_return()
 		yield None
 
 	@coroutine
-	def garbage_collection(self):
+	def garbage_collection(self, loop=None):
 		coroutine_return()
 		yield None

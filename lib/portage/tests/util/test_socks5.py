@@ -185,7 +185,7 @@ class Socks5ServerTestCase(TestCase):
 				}
 
 				proxy = socks5.get_socks5_proxy(settings)
-				loop.run_until_complete(socks5.proxy.ready())
+				loop.run_until_complete(socks5.proxy.ready(loop=loop))
 
 				result = loop.run_until_complete(loop.run_in_executor(None,
 					self._fetch_via_proxy, proxy, host, server.server_port, path))

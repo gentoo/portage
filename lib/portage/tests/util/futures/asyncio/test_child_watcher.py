@@ -38,7 +38,7 @@ class ChildWatcherTestCase(TestCase):
 				future.set_result((pid, returncode, args))
 
 			@coroutine
-			def watch_pid():
+			def watch_pid(loop=None):
 
 				with asyncio.get_child_watcher() as watcher:
 					pids = spawn([true_binary], returnpid=True)
@@ -47,7 +47,7 @@ class ChildWatcherTestCase(TestCase):
 						(yield future),
 						(pids[0], os.EX_OK, args_tuple))
 
-			loop.run_until_complete(watch_pid())
+			loop.run_until_complete(watch_pid(loop=loop))
 		finally:
 			asyncio.set_event_loop_policy(initial_policy)
 			if loop not in (None, global_event_loop()):

@@ -63,8 +63,9 @@ class AuxdbTestCase(TestCase):
 		portdb = playground.trees[playground.eroot]["porttree"].dbapi
 
 		def test_func():
-			return asyncio._wrap_loop().run_until_complete(self._test_mod_async(
-				ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb))
+			loop = asyncio._wrap_loop()
+			return loop.run_until_complete(self._test_mod_async(
+				ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb, loop=loop))
 
 		self.assertTrue(test_func())
 
@@ -91,10 +92,10 @@ class AuxdbTestCase(TestCase):
 		self.assertEqual(auxdb[cpv]['RESTRICT'], 'test')
 
 	@coroutine
-	def _test_mod_async(self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb):
+	def _test_mod_async(self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb, loop=None):
 
 		for cpv, metadata in ebuilds.items():
-			defined_phases, depend, eapi, inherited = yield portdb.async_aux_get(cpv, ['DEFINED_PHASES', 'DEPEND', 'EAPI', 'INHERITED'])
+			defined_phases, depend, eapi, inherited = yield portdb.async_aux_get(cpv, ['DEFINED_PHASES', 'DEPEND', 'EAPI', 'INHERITED'], loop=loop)
 			self.assertEqual(defined_phases, eclass_defined_phases)
 			self.assertEqual(depend, eclass_depend)
 			self.assertEqual(eapi, metadata['EAPI'])

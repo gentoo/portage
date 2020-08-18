@@ -217,7 +217,7 @@ class bindbapi(fakedbapi):
 
 
 	@coroutine
-	def unpack_metadata(self, pkg, dest_dir):
+	def unpack_metadata(self, pkg, dest_dir, loop=None):
 		"""
 		Unpack package metadata to a directory. This method is a coroutine.
 
@@ -226,7 +226,7 @@ class bindbapi(fakedbapi):
 		@param dest_dir: destination directory
 		@type dest_dir: str
 		"""
-		loop = asyncio._wrap_loop()
+		loop = asyncio._wrap_loop(loop)
 		if isinstance(pkg, _pkg_str):
 			cpv = pkg
 		else:
@@ -234,14 +234,14 @@ class bindbapi(fakedbapi):
 		key = self._instance_key(cpv)
 		add_pkg = self.bintree._additional_pkgs.get(key)
 		if add_pkg is not None:
-			yield add_pkg._db.unpack_metadata(pkg, dest_dir)
+			yield add_pkg._db.unpack_metadata(pkg, dest_dir, loop=loop)
 		else:
 			tbz2_file = self.bintree.getname(cpv)
 			yield loop.run_in_executor(ForkExecutor(loop=loop),
 				portage.xpak.tbz2(tbz2_file).unpackinfo, dest_dir)
 
 	@coroutine
-	def unpack_contents(self, pkg, dest_dir):
+	def unpack_contents(self, pkg, dest_dir, loop=None):
 		"""
 		Unpack package contents to a directory. This method is a coroutine.
 
@@ -250,7 +250,7 @@ class bindbapi(fakedbapi):
 		@param dest_dir: destination directory
 		@type dest_dir: str
 		"""
-		loop = asyncio._wrap_loop()
+		loop = asyncio._wrap_loop(loop)
 		if isinstance(pkg, _pkg_str):
 			settings = self.settings
 			cpv = pkg
@@ -280,7 +280,7 @@ class bindbapi(fakedbapi):
 			add_pkg = self.bintree._additional_pkgs.get(instance_key)
 			if add_pkg is None:
 				raise portage.exception.PackageNotFound(cpv)
-			yield add_pkg._db.unpack_contents(pkg, dest_dir)
+			yield add_pkg._db.unpack_contents(pkg, dest_dir, loop=loop)
 
 	def cp_list(self, *pargs, **kwargs):
 		if not self.bintree.populated:

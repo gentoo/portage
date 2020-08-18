@@ -57,7 +57,7 @@ class SchedulerInterface(SlotObject):
 
 	@coroutine
 	def async_output(self, msg, log_file=None, background=None,
-		level=0, noiselevel=-1):
+		level=0, noiselevel=-1, loop=None):
 		"""
 		Output a msg to stdio (if not in background) and to a log file
 		if provided.
@@ -81,7 +81,7 @@ class SchedulerInterface(SlotObject):
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 		if log_file is not None:
-			yield _writer(log_file, _unicode_encode(msg))
+			yield _writer(log_file, _unicode_encode(msg), loop=loop)
 
 	def output(self, msg, log_path=None, background=None,
 		level=0, noiselevel=-1):

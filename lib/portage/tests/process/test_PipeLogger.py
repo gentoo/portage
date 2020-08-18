@@ -37,7 +37,7 @@ class PipeLoggerTestCase(TestCase):
 
 		# Before starting the reader, wait here for a moment, in order
 		# to exercise PipeLogger's handling of EAGAIN during write.
-		yield asyncio.wait([writer], timeout=0.01)
+		yield asyncio.wait([writer], timeout=0.01, loop=loop)
 
 		reader = _reader(pr, loop=loop)
 		yield writer

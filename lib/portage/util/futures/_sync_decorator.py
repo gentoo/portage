@@ -15,9 +15,10 @@ def _sync_decorator(func, loop=None):
 	function that returns a Future) with a wrapper that runs the function
 	synchronously.
 	"""
-	loop = asyncio._wrap_loop(loop)
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
+		nonlocal loop
+		loop = kwargs['loop'] = asyncio._wrap_loop(kwargs.get('loop') or loop)
 		return loop.run_until_complete(func(*args, **kwargs))
 	return wrapper
 
