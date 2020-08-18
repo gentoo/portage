@@ -18,6 +18,7 @@ from portage import _encodings, os, shutil
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
+from portage.util.hooks import perform_hooks
 from portage.util.path import iter_parents
 
 RCS_BRANCH = '1.1.1'
