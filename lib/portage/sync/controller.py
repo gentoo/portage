@@ -7,8 +7,6 @@ import grp
 import pwd
 import warnings
 
-from collections import OrderedDict
-
 import portage
 from portage import os
 from portage.progress import ProgressBar
@@ -20,9 +18,9 @@ bad = create_color_func("BAD")
 warn = create_color_func("WARN")
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
+from portage.util.hooks import get_hooks_from_dir
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage import _unicode_decode
-from portage import util
 from _emerge.CompositeTask import CompositeTask
 
 
@@ -93,17 +91,7 @@ class SyncManager:
 		self.module_names = self.module_controller.module_names
 		self.hooks = {}
 		for _dir in ["repo.postsync.d", "postsync.d"]:
-			postsync_dir = os.path.join(self.settings["PORTAGE_CONFIGROOT"],
-				portage.USER_CONFIG_PATH, _dir)
-			hooks = OrderedDict()
-			for filepath in util._recursive_file_list(postsync_dir):
-				name = filepath.split(postsync_dir)[1].lstrip(os.sep)
-				if os.access(filepath, os.X_OK):
-					hooks[filepath] = name
-				else:
-					writemsg_level(" %s %s hook: '%s' is not executable\n"
-						% (warn("*"), _dir, _unicode_decode(name),),
-						level=logging.WARN, noiselevel=2)
+			hooks = get_hooks_from_dir(_dir, prefix=self.settings["PORTAGE_CONFIGROOT"])
 			self.hooks[_dir] = hooks
 
 	def __getattr__(self, name):
