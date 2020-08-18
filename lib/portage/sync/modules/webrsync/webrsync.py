@@ -75,11 +75,11 @@ class WebRsync(SyncBase):
 					return (1, False)
 
 				if gemato is None:
-					writemsg_level("!!! Verifying against specified key requires gemato-11.0+ installed\n",
+					writemsg_level("!!! Verifying against specified key requires gemato-14.5+ installed\n",
 						level=logging.ERROR, noiselevel=-1)
 					return (1, False)
 
-				openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+				openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
 
 				out = portage.output.EOutput(quiet=quiet)
 				try:
