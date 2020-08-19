@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-3.0.1
+==================================
+* Bug Fixes:
+    - Bug 737698 Update repoman for compatibility with portage-3.0.4.
+
 repoman-3.0.0
 ==================================
 * Bug Fixes:
