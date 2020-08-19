@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.4
+==================================
+* Bug Fixes:
+    - Bug 737698 fix hang for API consumers, involving support for local
+      event loops which may run in threads
+
 portage-3.0.3
 ==================================
 * Bug Fixes:
