@@ -965,10 +965,11 @@ class binarytree:
 						raise UseCachedCopyOfRemoteIndex()
 
 				# Set proxy settings for _urlopen -> urllib_request
-				for setting in ('http_proxy', 'https_proxy'):
+				for proto in ('http', 'https'):
 					proxies = {}
-					if self.settings.get(setting, None):
-						proxies[setting.replace('_proxy', '')] = self.settings.get(setting)
+					value = self.settings.get(proto + '_proxy')
+					if value is not None:
+						proxies[proto] = value
 
 				# Don't use urlopen for https, unless
 				# PEP 476 is supported (bug #469888).

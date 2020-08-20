@@ -79,7 +79,7 @@ class WebRsync(SyncBase):
 						level=logging.ERROR, noiselevel=-1)
 					return (1, False)
 
-				openpgp_env = self._get_openpgp_env()
+				openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
 
 				out = portage.output.EOutput(quiet=quiet)
 				try:
