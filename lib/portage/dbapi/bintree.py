@@ -964,11 +964,18 @@ class binarytree:
 						download_timestamp + ttl > time.time():
 						raise UseCachedCopyOfRemoteIndex()
 
+				# Set proxy settings for _urlopen -> urllib_request
+				proxies = {}
+				for proto in ('http', 'https'):
+					value = self.settings.get(proto + '_proxy')
+					if value is not None:
+						proxies[proto] = value
+
 				# Don't use urlopen for https, unless
 				# PEP 476 is supported (bug #469888).
 				if parsed_url.scheme not in ('https',) or _have_pep_476():
 					try:
-						f = _urlopen(url, if_modified_since=local_timestamp)
+						f = _urlopen(url, if_modified_since=local_timestamp, proxies=proxies)
 						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
 							remote_timestamp = f.headers.get('timestamp')
 					except IOError as err:
