@@ -26,7 +26,7 @@ def have_pep_476():
 	return hasattr(__import__('ssl'), '_create_unverified_context')
 
 
-def urlopen(url, if_modified_since=None):
+def urlopen(url, if_modified_since=None, proxies=None):
 	parse_result = urllib_parse.urlparse(url)
 	if parse_result.scheme not in ("http", "https"):
 		return _urlopen(url)
@@ -40,8 +40,13 @@ def urlopen(url, if_modified_since=None):
 		request.add_header('If-Modified-Since', _timestamp_to_http(if_modified_since))
 	if parse_result.username is not None:
 		password_manager.add_password(None, url, parse_result.username, parse_result.password)
+
 	auth_handler = CompressedResponseProcessor(password_manager)
-	opener = urllib_request.build_opener(auth_handler)
+	if proxies:
+		proxy_handler = urllib_request.ProxyHandler(proxies)
+		opener = urllib_request.build_opener(auth_handler, proxy_handler)
+	else:
+		opener = urllib_request.build_opener(auth_handler)
 	hdl = opener.open(request)
 	if hdl.headers.get('last-modified', ''):
 		try:

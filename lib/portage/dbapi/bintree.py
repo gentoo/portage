@@ -964,11 +964,17 @@ class binarytree:
 						download_timestamp + ttl > time.time():
 						raise UseCachedCopyOfRemoteIndex()
 
+				# Set proxy settings for _urlopen -> urllib_request
+				for setting in ('http_proxy', 'https_proxy'):
+					proxies = {}
+					if self.settings.get(setting, None):
+						proxies[setting.replace('_proxy', '')] = self.settings.get(setting)
+
 				# Don't use urlopen for https, unless
 				# PEP 476 is supported (bug #469888).
 				if parsed_url.scheme not in ('https',) or _have_pep_476():
 					try:
-						f = _urlopen(url, if_modified_since=local_timestamp)
+						f = _urlopen(url, if_modified_since=local_timestamp, proxies=proxies)
 						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
 							remote_timestamp = f.headers.get('timestamp')
 					except IOError as err:
@@ -1686,7 +1692,7 @@ class binarytree:
 			resume = True
 			writemsg(_("Resuming download of this tbz2, but it is possible that it is corrupt.\n"),
 				noiselevel=-1)
-		
+
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
