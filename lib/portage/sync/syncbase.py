@@ -20,6 +20,12 @@ from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
 from . import _SUBMODULE_PATH_MAP
 
+try:
+	import gemato.openpgp
+except ImportError:
+	gemato = None
+
+
 class SyncBase:
 	'''Base Sync class for subclassing'''
 
@@ -252,15 +258,6 @@ class SyncBase:
 		"""
 		out = portage.output.EOutput(quiet=('--quiet' in self.options['emerge_config'].opts))
 
-		# Set global proxy setting to Gemato ephemeral env
-		if 'http_proxy' in os.environ:
-			openpgp_env.proxy = os.environ['http_proxy']
-
-		# Override global proxy setting with one provided in emerge configuration
-		running_config_settings = self.options['emerge_config'].running_config.settings
-		if 'http_proxy' in running_config_settings:
-			openpgp_env.proxy = running_config_settings['http_proxy']
-
 		if not self.repo.sync_openpgp_key_refresh:
 			out.ewarn('Key refresh is disabled via a repos.conf sync-openpgp-key-refresh')
 			out.ewarn('setting, and this is a security vulnerability because it prevents')
@@ -302,6 +299,26 @@ class SyncBase:
 				decorated_func = retry_decorator(func_coroutine, loop=loop)
 				loop.run_until_complete(decorated_func())
 		out.eend(0)
+
+	def _get_openpgp_env(self, system=None):
+		if gemato:
+			proxy = None
+			# Set global proxy setting to Gemato ephemeral env
+			if 'http_proxy' in os.environ:
+				proxy = os.environ['http_proxy']
+
+			# Override global proxy setting with one provided in emerge configuration
+			running_config_settings = \
+				self.options['emerge_config'].running_config.settings
+			if 'http_proxy' in running_config_settings:
+				proxy = running_config_settings['http_proxy']
+
+			if system:
+				openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment(proxy=proxy)
+			else:
+				openpgp_env = gemato.openpgp.OpenPGPEnvironment(proxy=proxy)
+
+			return openpgp_env
 
 
 class NewBase(SyncBase):

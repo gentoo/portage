@@ -134,9 +134,9 @@ class RsyncSync(NewBase):
 			# Use isolated environment if key is specified,
 			# system environment otherwise
 			if self.repo.sync_openpgp_key_path is not None:
-				openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+				openpgp_env = self._get_openpgp_env()
 			else:
-				openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment()
+				openpgp_env = self._get_openpgp_env(system=True)
 
 		try:
 			# Load and update the keyring early. If it fails, then verification

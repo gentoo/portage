@@ -212,7 +212,7 @@ class GitSync(NewBase):
 				writemsg_level("!!! Verifying against specified key requires gemato-11.0+ installed\n",
 					level=logging.ERROR, noiselevel=-1)
 				return False
-			openpgp_env = gemato.openpgp.OpenPGPEnvironment()
+			openpgp_env = self._get_openpgp_env()
 		else:
 			openpgp_env = None
 
