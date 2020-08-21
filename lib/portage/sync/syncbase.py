@@ -306,10 +306,8 @@ class SyncBase:
 			proxy = os.environ.get('http_proxy')
 
 			# Override global proxy setting with one provided in emerge configuration
-			running_config_settings = (
-				self.options['emerge_config'].running_config.settings)
-			if 'http_proxy' in running_config_settings:
-				proxy = running_config_settings['http_proxy']
+			if 'http_proxy' in self.spawn_kwargs['env']:
+				proxy = self.spawn_kwargs['env']['http_proxy']
 
 			if openpgp_key_path:
 				openpgp_env = gemato.openpgp.OpenPGPEnvironment(proxy=proxy)

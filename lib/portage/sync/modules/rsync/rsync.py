@@ -227,10 +227,7 @@ class RsyncSync(NewBase):
 			addrinfos = None
 			uris = []
 
-			rsync_proxy_conf = \
-				self.options['emerge_config'].running_config.settings.get(
-					'RSYNC_PROXY', None)
-			if not rsync_proxy_conf:
+			if 'RSYNC_PROXY' not in self.spawn_kwargs['env']:
 				try:
 					addrinfos = getaddrinfo_validate(
 						socket.getaddrinfo(
