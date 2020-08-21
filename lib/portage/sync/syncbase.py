@@ -302,12 +302,11 @@ class SyncBase:
 
 	def _get_openpgp_env(self, openpgp_key_path=None):
 		if gemato is not None:
-			# Set global proxy setting to Gemato ephemeral env
-			proxy = os.environ.get('http_proxy')
-
 			# Override global proxy setting with one provided in emerge configuration
 			if 'http_proxy' in self.spawn_kwargs['env']:
 				proxy = self.spawn_kwargs['env']['http_proxy']
+			else:
+				proxy = None
 
 			if openpgp_key_path:
 				openpgp_env = gemato.openpgp.OpenPGPEnvironment(proxy=proxy)
