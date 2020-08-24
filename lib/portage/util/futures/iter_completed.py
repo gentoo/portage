@@ -109,7 +109,6 @@ def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):
 		# cleanup in case of interruption by SIGINT, etc
 		if not loop.is_closed():
 			scheduler.cancel()
-			scheduler.wait()
 
 
 def iter_gather(futures, max_jobs=None, max_load=None, loop=None):
