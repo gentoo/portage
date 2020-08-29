@@ -188,7 +188,7 @@ class EventLoop:
 		self._sigchld_read = None
 		self._sigchld_write = None
 		self._sigchld_src_id = None
-		self._pid = os.getpid()
+		self._pid = portage.getpid()
 		self._asyncio_wrapper = _PortageEventLoop(loop=self)
 		self._asyncio_child_watcher = _PortageChildWatcher(self)
 
@@ -431,7 +431,7 @@ class EventLoop:
 		# If this signal handler was not installed by the
 		# current process then the signal doesn't belong to
 		# this EventLoop instance.
-		if os.getpid() == self._pid:
+		if portage.getpid() == self._pid:
 			os.write(self._sigchld_write, b'\0')
 
 	def _sigchld_io_cb(self, fd, events):
@@ -1026,7 +1026,7 @@ class EventLoop:
 			log_lines.append('{}: {}'.format(key, value))
 
 		logging.error('\n'.join(log_lines), exc_info=exc_info)
-		os.kill(os.getpid(), signal.SIGTERM)
+		os.kill(portage.getpid(), signal.SIGTERM)
 
 	def call_exception_handler(self, context):
 		"""

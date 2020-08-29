@@ -325,7 +325,7 @@ class tbz2:
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 
 		if break_hardlinks and self.filestat and self.filestat.st_nlink > 1:
-			tmp_fname = "%s.%d" % (self.file, os.getpid())
+			tmp_fname = "%s.%d" % (self.file, portage.getpid())
 			copyfile(self.file, tmp_fname)
 			try:
 				portage.util.apply_stat_permissions(self.file, self.filestat)

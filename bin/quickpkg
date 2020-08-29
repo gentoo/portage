@@ -111,7 +111,7 @@ def quickpkg_atom(options, infos, arg, eout):
 				vardb.aux_update(cpv, update_metadata)
 			xpdata = xpak.xpak(dblnk.dbdir)
 			binpkg_tmpfile = os.path.join(bintree.pkgdir,
-				cpv + ".tbz2." + str(os.getpid()))
+				cpv + ".tbz2." + str(portage.getpid()))
 			ensure_dirs(os.path.dirname(binpkg_tmpfile))
 			binpkg_compression = settings.get("BINPKG_COMPRESS", "bzip2")
 			try:

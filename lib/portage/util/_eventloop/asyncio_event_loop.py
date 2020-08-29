@@ -69,7 +69,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 			# in order to ensure that emerge exits immediately (though
 			# uncleanly).
 			signal.signal(signal.SIGTERM, signal.SIG_DFL)
-			os.kill(os.getpid(), signal.SIGTERM)
+			os.kill(portage.getpid(), signal.SIGTERM)
 
 	def _create_future(self):
 		"""
@@ -117,7 +117,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 			self._wakeup_fd = -1
 			# Account for any signals that may have arrived between
 			# set_wakeup_fd calls.
-			os.kill(os.getpid(), signal.SIGCHLD)
+			os.kill(portage.getpid(), signal.SIGCHLD)
 		try:
 			return self._loop.run_until_complete(future)
 		finally:

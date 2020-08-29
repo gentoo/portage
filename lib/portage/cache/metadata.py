@@ -6,6 +6,8 @@ import errno
 import re
 import stat
 from operator import attrgetter
+
+import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -122,7 +124,7 @@ class database(flat_hash.database):
 
 		s = cpv.rfind("/")
 		fp = os.path.join(self.location,cpv[:s],
-			".update.%i.%s" % (os.getpid(), cpv[s+1:]))
+			".update.%i.%s" % (portage.getpid(), cpv[s+1:]))
 		try:
 			myf = open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'), 'wb')

@@ -79,11 +79,11 @@ if _fd_dir is not None:
 					raise
 				return range(max_fd_limit)
 
-elif os.path.isdir("/proc/%s/fd" % os.getpid()):
+elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
 	# In order for this function to work in forked subprocesses,
 	# os.getpid() must be called from inside the function.
 	def get_open_fds():
-		return (int(fd) for fd in os.listdir("/proc/%s/fd" % os.getpid())
+		return (int(fd) for fd in os.listdir("/proc/%s/fd" % portage.getpid())
 			if fd.isdigit())
 
 else:
@@ -363,12 +363,13 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	# fork, so that the result is cached in the main process.
 	bool(groups)
 
-	parent_pid = os.getpid()
+	parent_pid = portage.getpid()
 	pid = None
 	try:
 		pid = os.fork()
 
 		if pid == 0:
+			portage._ForkWatcher.hook(portage._ForkWatcher)
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, cwd, pre_exec, close_fds,
@@ -386,7 +387,9 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 				sys.stderr.flush()
 
 	finally:
-		if pid == 0 or (pid is None and os.getpid() != parent_pid):
+		# Don't used portage.getpid() here, due to a race with the above
+		# portage._ForkWatcher cache update.
+		if pid == 0 or (pid is None and _os.getpid() != parent_pid):
 			# Call os._exit() from a finally block in order
 			# to suppress any finally blocks from earlier
 			# in the call stack (see bug #345289). This
@@ -603,7 +606,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	# it is done before we start forking children
 	if cgroup:
 		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
-			f.write('%d\n' % os.getpid())
+			f.write('%d\n' % portage.getpid())
 
 	# Unshare (while still uid==0)
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
@@ -640,6 +643,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 						if unshare_pid:
 							main_child_pid = os.fork()
 							if main_child_pid == 0:
+								# The portage.getpid() cache may need to be updated here,
+								# in case the pre_exec function invokes portage APIs.
+								portage._ForkWatcher.hook(portage._ForkWatcher)
 								# pid namespace requires us to become init
 								binary, myargs = portage._python_interpreter, [
 									portage._python_interpreter,

@@ -42,7 +42,7 @@ class ProxyManager:
 		portage.util.ensure_dirs(tmpdir, **ensure_dirs_kwargs)
 
 		self.socket_path = os.path.join(tmpdir,
-				'.portage.%d.net.sock' % os.getpid())
+				'.portage.%d.net.sock' % portage.getpid())
 		server_bin = os.path.join(settings['PORTAGE_BIN_PATH'], 'socks5-server.py')
 		spawn_kwargs = {}
 		# The portage_uid check solves EPERM failures in Travis CI.

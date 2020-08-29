@@ -102,6 +102,7 @@ def check_locale(silent=False, env=None):
 
 	pid = os.fork()
 	if pid == 0:
+		portage._ForkWatcher.hook(portage._ForkWatcher)
 		try:
 			if env is not None:
 				try:

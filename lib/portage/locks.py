@@ -501,7 +501,7 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
-		(tail, portage._decode_argv([os.uname()[1]])[0], os.getpid()))
+		(tail, portage._decode_argv([os.uname()[1]])[0], portage.getpid()))
 
 def hardlink_is_mine(link, lock):
 	try:

@@ -2623,7 +2623,7 @@ def ionice(settings):
 	if not ionice_cmd:
 		return
 
-	variables = {"PID" : str(os.getpid())}
+	variables = {"PID" : str(portage.getpid())}
 	cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
 
 	try:

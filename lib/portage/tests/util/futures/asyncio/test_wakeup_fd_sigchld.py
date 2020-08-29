@@ -39,7 +39,7 @@ proc = loop.run_until_complete(asyncio.create_subprocess_exec('sleep', '0', loop
 loop.run_until_complete(proc.wait())
 
 for i in range(8192):
-	os.kill(os.getpid(), signal.SIGCHLD)
+	os.kill(portage.getpid(), signal.SIGCHLD)
 
 # Verify that the child watcher still works correctly
 # (this will hang if it doesn't).

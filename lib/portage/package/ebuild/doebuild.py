@@ -1178,7 +1178,7 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 					bintree = portage.db[mysettings['EROOT']]['bintree']
 					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
 						bintree.getname(mysettings.mycpv) + \
-						".%s" % (os.getpid(),)
+						".%s" % (portage.getpid(),)
 					bintree._ensure_dir(os.path.dirname(
 						mysettings["PORTAGE_BINPKG_TMPFILE"]))
 				else:

@@ -209,7 +209,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if hardlink_candidates:
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._portage_merge_.%s" % \
-			(tail, os.getpid()))
+			(tail, portage.getpid()))
 		try:
 			os.unlink(hardlink_tmp)
 		except OSError as e:

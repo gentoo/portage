@@ -415,7 +415,7 @@ class FetchTask(CompositeTask):
 			self._fetch_tmp_dir_info = 'distfiles'
 			distdir = self.config.options.distfiles
 
-		tmp_basename = self.distfile + '._emirrordist_fetch_.%s' % os.getpid()
+		tmp_basename = self.distfile + '._emirrordist_fetch_.%s' % portage.getpid()
 
 		variables = {
 			"DISTDIR": distdir,
@@ -622,7 +622,7 @@ class FetchTask(CompositeTask):
 
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._mirrordist_hardlink_.%s" % \
-			(tail, os.getpid()))
+			(tail, portage.getpid()))
 
 		try:
 			try:

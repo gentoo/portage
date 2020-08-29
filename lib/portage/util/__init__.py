@@ -1266,7 +1266,7 @@ class atomic_ofstream(ObjectProxy):
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
 			object.__setattr__(self, '_real_name', canonical_path)
-			tmp_name = "%s.%i" % (canonical_path, os.getpid())
+			tmp_name = "%s.%i" % (canonical_path, portage.getpid())
 			try:
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
@@ -1281,7 +1281,7 @@ class atomic_ofstream(ObjectProxy):
 				# new error if necessary.
 
 		object.__setattr__(self, '_real_name', filename)
-		tmp_name = "%s.%i" % (filename, os.getpid())
+		tmp_name = "%s.%i" % (filename, portage.getpid())
 		object.__setattr__(self, '_file',
 			open_func(_unicode_encode(tmp_name,
 				encoding=_encodings['fs'], errors='strict'),
