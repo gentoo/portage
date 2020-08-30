@@ -71,8 +71,8 @@ class SlotChangeWithoutRevBumpTestCase(TestCase):
 
 			# Test --changed-slot
 			ResolverPlaygroundTestCase(
-				["app-arch/libarchive"],
-				options = {"--changed-slot": True, "--usepkg": True},
+				["@world"],
+				options = {"--changed-slot": True, "--usepkg": True, "--update": True, "--deep": True},
 				success = True,
 				mergelist = ["app-arch/libarchive-3.1.1", "kde-base/ark-4.10.0"]),
 

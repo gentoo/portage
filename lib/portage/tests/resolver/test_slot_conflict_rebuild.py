@@ -454,10 +454,7 @@ class SlotConflictRebuildTestCase(TestCase):
 		finally:
 			playground.cleanup()
 
-class SlotConflictRebuildGolangTestCase(TestCase):
-
 	def testSlotConflictRebuildGolang(self):
-		self.todo = True
 
 		ebuilds = {
 

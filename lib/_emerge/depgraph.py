@@ -1501,15 +1501,6 @@ class depgraph:
 
 				matched = []
 				for pkg in conflict:
-					if (pkg is highest_pkg and
-						not highest_pkg.installed and
-						inst_pkg is not None and
-						inst_pkg.sub_slot != highest_pkg.sub_slot and
-						not self._downgrade_probe(highest_pkg)):
-						# If an upgrade is desired, force the highest
-						# version into the graph (bug #531656).
-						non_matching_forced.add(highest_pkg)
-
 					if atom.match(pkg.with_use(
 						self._pkg_use_enabled(pkg))) and \
 						not (is_arg_parent and pkg.installed):
