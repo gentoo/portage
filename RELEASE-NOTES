@@ -1,6 +1,14 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.5
+==================================
+* Bug Fixes:
+    - Bug 439688 dephgraph: Allow elimination of highest version after
+      slot conflict, which prevents unecessary rebuilds for dev-lang/go
+      after backtracking for a missed update
+    - Bug 739540 Use cached portage.getpid() function to avoid syscalls
+
 portage-3.0.4
 ==================================
 * Bug Fixes:
