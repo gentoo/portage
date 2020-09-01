@@ -52,7 +52,7 @@ if [ -n "${repository_name}" ]; then
 	if [[ ! -e ${repository_path}/metadata/pkg_desc_index || (
 		-d ${repository_path}/metadata/md5-cache &&
 		-n $(find "${repository_path}/metadata/md5-cache" -type f -newer "${repository_path}/metadata/pkg_desc_index" -print -quit) ) ]]; then
-		if ! egencache --update-pkg-desc-index --repo="${repository_name}"
+		if ! egencache --update-pkg-desc-index --repo="${repository_name}" ${PORTAGE_VERBOSE+--verbose}
 		then
 			echo "!!! egencache failed!"
 			ret=1

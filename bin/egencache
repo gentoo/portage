@@ -35,6 +35,7 @@ else:
 
 signal.signal(debug_signum, debug_signal)
 
+import functools
 import io
 import logging
 import subprocess
@@ -50,8 +51,10 @@ portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
 from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
-from portage.cache.index.pkg_desc_index import pkg_desc_index_line_format
+from portage.cache.index.pkg_desc_index import pkg_desc_index_line_format, pkg_desc_index_line_read
 from portage.const import TIMESTAMP_FORMAT
+from portage.dep import _repo_separator
+from portage.output import colorize, EOutput
 from portage.package.ebuild._parallel_manifest.ManifestScheduler import ManifestScheduler
 from portage.util import cmp_sort_key, writemsg_level
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -131,6 +134,9 @@ def parse_args(args):
 	common.add_argument("--ignore-default-opts",
 		action="store_true",
 		help="do not use the EGENCACHE_DEFAULT_OPTS environment variable")
+	common.add_argument("-v", "--verbose",
+		action="count", default=0,
+		help="increase verbosity")
 	common.add_argument("--write-timestamp",
 		action="store_true",
 		help="write metadata/timestamp.chk as required for rsync repositories")
@@ -448,12 +454,26 @@ class GenCache:
 			trg_cache._prune_empty_dirs()
 
 class GenPkgDescIndex:
-	def __init__(self, portdb, output_file):
+	def __init__(self, repo_config, portdb, output_file, verbose=False):
 		self.returncode = os.EX_OK
+		self._repo_config = repo_config
 		self._portdb = portdb
 		self._output_file = output_file
+		self._verbose = verbose
 
 	def run(self):
+
+		display_updates = self._verbose > 0
+		old = {}
+		new = {}
+		if display_updates:
+			try:
+				with open(self._output_file, 'rt', encoding=_encodings["repo.content"]) as f:
+					for line in f:
+						pkg_desc = pkg_desc_index_line_read(line)
+						old[pkg_desc.cp] = pkg_desc
+			except FileNotFoundError:
+				pass
 
 		portage.util.ensure_dirs(os.path.dirname(self._output_file))
 		f = portage.util.atomic_ofstream(self._output_file,
@@ -466,9 +486,51 @@ class GenPkgDescIndex:
 				continue
 			desc, = portdb.aux_get(pkgs[-1], ["DESCRIPTION"])
 
-			f.write(pkg_desc_index_line_format(cp, pkgs, desc))
+			line = pkg_desc_index_line_format(cp, pkgs, desc)
+			f.write(line)
+			if display_updates:
+				new[cp] = pkg_desc_index_line_read(line)
 
 		f.close()
+
+		if display_updates:
+			out = EOutput()
+			out.einfo("Searching for changes")
+			print("")
+			items = sorted(new.values(), key=lambda pkg_desc: pkg_desc.cp)
+			haspkgs = False
+			for pkg_desc in items:
+				masked = False
+				version = self._portdb.xmatch("bestmatch-visible",
+					Atom("{}{}{}".format(pkg_desc.cp, _repo_separator, self._repo_config.name)))
+				if not version:
+					version = pkg_desc.cpv_list[-1]
+					masked = True
+				old_versions = old.get(pkg_desc.cp)
+				if old_versions is None or version not in old_versions.cpv_list:
+					prefix0 = " "
+					prefix1 = " "
+
+					if old_versions is None:
+						color = functools.partial(colorize, "darkgreen")
+						prefix1 = "N"
+					else:
+						color = functools.partial(colorize, "turquoise")
+						prefix1 = "U"
+
+					if masked:
+						prefix0 = "M"
+
+					print(" [%s%s] %s (%s):  %s" % (
+						colorize("red", prefix0),
+						color(prefix1),
+						colorize("bold", pkg_desc.cp),
+						color(version[len(pkg_desc.cp)+1:]),
+						pkg_desc.desc))
+					haspkgs = True
+
+			if not haspkgs:
+				out.einfo("No updates found")
 
 class GenUseLocalDesc:
 	def __init__(self, portdb, output=None,
@@ -862,7 +924,8 @@ def egencache_main(args):
 	# completely controlled by commandline arguments.
 	env = {}
 
-	if not sys.stdout.isatty():
+	if (not sys.stdout.isatty() or
+		os.environ.get('NOCOLOR', '').lower() in ('yes', 'true')):
 		portage.output.nocolor()
 		env['NOCOLOR'] = 'true'
 
@@ -1052,8 +1115,9 @@ def egencache_main(args):
 			writemsg_level(msg,
 				level=logging.WARNING, noiselevel=-1)
 
-		gen_index = GenPkgDescIndex(portdb, os.path.join(
-			writable_location, "metadata", "pkg_desc_index"))
+		gen_index = GenPkgDescIndex(repo_config, portdb, os.path.join(
+			writable_location, "metadata", "pkg_desc_index"),
+			verbose=options.verbose)
 		gen_index.run()
 		ret.append(gen_index.returncode)
 
