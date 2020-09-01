@@ -28,7 +28,7 @@ class search:
 	#
 	def __init__(self, root_config, spinner, searchdesc,
 		verbose, usepkg, usepkgonly, search_index=True,
-		search_similarity=None, fuzzy=True):
+		search_similarity=None, fuzzy=True, regex_auto=False):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -42,6 +42,7 @@ class search:
 		self.spinner = None
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
+		self.regex_auto = regex_auto
 		self.fuzzy = fuzzy
 		self.search_similarity = (80 if search_similarity is None
 			else search_similarity)
@@ -259,6 +260,15 @@ class search:
 		if '/' in self.searchkey:
 			match_category = 1
 		fuzzy = False
+
+		if self.regex_auto and not regexsearch and re.search(r'[\^\$\*\[\]\{\}\|\?]|\.\+', self.searchkey) is not None:
+			try:
+				re.compile(self.searchkey, re.I)
+			except Exception:
+				pass
+			else:
+				regexsearch = True
+
 		if regexsearch:
 			self.searchre=re.compile(self.searchkey,re.I)
 		else:

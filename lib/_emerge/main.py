@@ -709,6 +709,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--regex-search-auto": {
+			"help"   : "Enable or disable automatic regular expression detection for search actions",
+			"choices": y_or_n,
+			"default": "y",
+		},
+
 		"--root": {
 		 "help"   : "specify the target root filesystem for merging packages",
 		 "action" : "store"

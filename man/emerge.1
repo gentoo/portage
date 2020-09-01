@@ -229,7 +229,9 @@ explicitly discarded by running `emaint \-\-fix cleanresume` (see
 .BR \-\-search ", " \-s
 Searches for matches of the supplied string in the ebuild repository.
 By default emerge uses a case-insensitive simple search, but you can
-enable a regular expression search by prefixing the search string with %.
+enable a regular expression search by prefixing the search string with %
+(the % prefix can often be omitted if the
+\fB\-\-regex\-search\-auto\fR option is enabled).
 For example, \fBemerge \-\-search "%^kde"\fR searches for any package whose
 name starts with "kde"; \fBemerge \-\-search "%gcc$"\fR searches for any
 package that ends with "gcc"; \fBemerge \-\-search "office"\fR searches for
@@ -763,6 +765,14 @@ matching packages due to \fB\-\-rebuild\fR.
 .BR "\-\-rebuild\-ignore " ATOMS
 A space separated list of package names or slot atoms. Emerge will not rebuild
 packages that depend on matching packages due to \fB\-\-rebuild\fR.
+.TP
+.BR "\-\-regex\-search\-auto < y | n >"
+Enable or disable automatic regular expression detection for search actions.
+If this option is enabled (the default), then regular expression search
+is automatically enabled when the search string is a valid regular expression
+which contains any of these commonly used regular expression characters or
+character sequences:
+^ $ * [ ] { } | ? .+
 .TP
 .BR \-\-oneshot ", " \-1
 Emerge as normal, but do not add the packages to the world file

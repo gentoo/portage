@@ -2036,6 +2036,7 @@ def action_search(root_config, myopts, myfiles, spinner):
 			search_index=myopts.get("--search-index", "y") != "n",
 			search_similarity=myopts.get("--search-similarity"),
 			fuzzy=myopts.get("--fuzzy-search") != "n",
+			regex_auto=myopts.get("--regex-search-auto") != "n",
 			)
 		for mysearch in myfiles:
 			try:
