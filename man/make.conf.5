@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jun 2020" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Sep 2020" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -35,6 +35,8 @@ and ACCEPT_KEYWORDS.  Incremental variables are propagated down from
 make.defaults to make.globals to make.conf to the environment
 settings.  Clearing these variables requires a clear\-all as in:
 export USE="\-*"
+.br
+__* variables set in make.conf are local and are not be propagated.
 .br
 In order to create per\-package environment settings, refer to
 \fBpackage.env\fR in \fBportage\fR(5).

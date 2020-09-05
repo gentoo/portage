@@ -370,6 +370,9 @@ class config:
 					_("Found 2 make.conf files, using both '%s' and '%s'") %
 					tuple(make_conf_paths), noiselevel=-1)
 
+			# __* variables set in make.conf are local and are not be propagated.
+			make_conf = {k: v for k, v in make_conf.items() if not k.startswith("__")}
+
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
 			locations_manager.set_root_override(make_conf.get("ROOT"))
@@ -620,6 +623,9 @@ class config:
 				mygcfg.update(getconfig(x,
 					tolerant=tolerant, allow_sourcing=True,
 					expand=expand_map, recursive=True) or {})
+
+			# __* variables set in make.conf are local and are not be propagated.
+			mygcfg = {k: v for k, v in mygcfg.items() if not k.startswith("__")}
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
