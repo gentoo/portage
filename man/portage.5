@@ -229,8 +229,8 @@ will be preferred.
 Any file in this directory, directories of other profiles or top-level
 "profiles" directory that begins with "package." or "use." can be more than
 just a flat file.  If it is a directory, then all the files in that directory
-will be sorted in ascending alphabetical order by file name and summed together
-as if it were a single file. Note that this behavior is only supported since
+will be sorted in lexical order by file name and summed together as if
+it were a single file. Note that this behavior is only supported since
 portage-2.1.6.7, and it is not included in PMS at this time.
 
 .I Example:
@@ -602,8 +602,8 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 Files in this directory including make.conf, repos.conf, and any file
 with a name that begins with "package." can be
 more than just a flat file.  If it is a directory, then all the files in that
-directory will be sorted in ascending alphabetical order by file name and summed
-together as if it were a single file.
+directory will be sorted in lexical order by file name and summed together
+as if it were a single file.
 
 .I Example:
 .nf
@@ -843,15 +843,14 @@ x11\-libs/qt \-mysql
 .TP
 .BR postsync.d/
 This directory is for user supplied postsync hooks to be run once after all
-repositories have been synced.  Each script is called in alphabetic order
+repositories have been synced.  Each script is called in lexical order
 without any arguments.
 .fi
 .TP
 .BR repo.postsync.d/
 This directory is for user supplied postsync hooks to be run once after each
-repository has been synced.  Each script is called in alphabetic order
-with three arguments.
-
+repository has been synced.  Each script is called in lexical order
+with the following three arguments:
 .I args:
         repository name, sync-uri, location
 .fi
