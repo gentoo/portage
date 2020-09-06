@@ -22,8 +22,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:best,catpkgsplit,catsplit,_pkg_str',
 )
 
+from portage.binrepo.config import BinRepoConfigLoader
 from portage.cache.mappings import slot_dict_class
-from portage.const import CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
+from portage.const import BINREPOS_CONF_FILE, CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
 from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
@@ -364,6 +365,7 @@ class binarytree:
 			self.move_slot_ent = self.dbapi.move_slot_ent
 			self.populated = 0
 			self.tree = {}
+			self._binrepos_conf = None
 			self._remote_has_index = False
 			self._remotepkgs = None # remote metadata indexed by cpv
 			self._additional_pkgs = {}
@@ -628,8 +630,10 @@ class binarytree:
 				self._populate_additional(add_repos)
 
 			if getbinpkgs:
-				if not self.settings.get("PORTAGE_BINHOST"):
-					writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
+				config_path = os.path.join(self.settings['PORTAGE_CONFIGROOT'], BINREPOS_CONF_FILE)
+				self._binrepos_conf = BinRepoConfigLoader((config_path,), self.settings)
+				if not self._binrepos_conf:
+					writemsg(_("!!! %s is missing (or PORTAGE_BINHOST is unset), but use is requested.\n") % (config_path,),
 						noiselevel=-1)
 				else:
 					self._populate_remote(getbinpkg_refresh=getbinpkg_refresh)
@@ -903,7 +907,9 @@ class binarytree:
 
 		self._remote_has_index = False
 		self._remotepkgs = {}
-		for base_url in self.settings["PORTAGE_BINHOST"].split():
+		# Order by descending priority.
+		for repo in reversed(list(self._binrepos_conf.values())):
+			base_url = repo.sync_uri
 			parsed_url = urlparse(base_url)
 			host = parsed_url.netloc
 			port = parsed_url.port

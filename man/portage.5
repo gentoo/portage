@@ -47,6 +47,7 @@ virtuals
 .BR /etc/portage/
 .nf
 bashrc
+binrepos.conf
 categories
 color.map
 license_groups
@@ -619,6 +620,43 @@ different from the standard root environment.  The syntax is the same as for
 any other bash script.
 
 Additional package-specific bashrc files can be created in /etc/portage/env.
+.TP
+.BR binrepos.conf
+Specifies remote binary package repository configuration information. This
+is intended to be used as a replacement for the \fBmake.conf\fR(5)
+\fBPORTAGE_BINHOST\fR variable.
+
+.I Format:
+.nf
+\- comments begin with # (no inline comments)
+\- configuration of each repository is specified in a section starting with \
+"[${repository_name}]"
+\- attributes are specified in "${attribute} = ${value}" format
+.fi
+
+.RS
+.I Attributes supported in sections of repositories:
+.RS
+.TP
+.B priority
+Specifies priority of given repository. When a package exists in multiple
+repositories, those with higher priority are preferred.
+.TP
+.B sync\-uri
+Specifies URI of repository used for `emerge \-\-getbinpkg`.
+.RE
+.RE
+
+.I Example:
+.nf
+[example-binhost]
+# repos with higher priorities are preferred when packages with equal
+# versions are found in multiple repos
+priority = 9999
+# packages are fetched from here
+sync-uri = https://example.com/binhost
+
+.fi
 .TP
 .BR categories
 A simple list of valid categories that may be used in repositories and PKGDIR

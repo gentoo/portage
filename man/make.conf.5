@@ -855,7 +855,8 @@ Each entry in the list must specify the full address of a directory
 serving tbz2's for your system (this directory must contain a 'Packages' index
 file). This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1)
-for more information.
+for more information. The \fBPORTAGE_BINHOST\fR variable is deprecated in
+favor of the \fBbinrepos.conf\fR configuration file (see \fBportage\fR(5)).
 .TP
 \fBPORTAGE_BINHOST_HEADER_URI\fR = \
 \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon\-xp/"\fR

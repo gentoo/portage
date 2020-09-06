@@ -28,6 +28,7 @@ import os
 
 # variables used with config_root (these need to be relative)
 USER_CONFIG_PATH         = "etc/portage"
+BINREPOS_CONF_FILE       = USER_CONFIG_PATH + "/binrepos.conf"
 MAKE_CONF_FILE           = USER_CONFIG_PATH + "/make.conf"
 MODULES_FILE_PATH        = USER_CONFIG_PATH + "/modules"
 CUSTOM_PROFILE_PATH      = USER_CONFIG_PATH + "/profile"

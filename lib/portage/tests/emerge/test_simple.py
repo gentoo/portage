@@ -7,7 +7,7 @@ import sys
 import portage
 from portage import shutil, os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.const import (BASH_BINARY, BINREPOS_CONF_FILE, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -419,13 +419,23 @@ call_has_and_best_version() {
 		)
 
 		# Test binhost support if FETCHCOMMAND is available.
+		binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
+		with open(binrepos_conf_file, 'wt') as f:
+			f.write('[test-binhost]\n')
+			f.write('sync-uri = {}\n'.format(binhost_uri))
 		fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
 		fetch_bin = portage.process.find_binary(fetchcommand[0])
 		if fetch_bin is not None:
 			test_commands = test_commands + (
 				lambda: os.rename(pkgdir, binhost_dir),
+				emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
+				lambda: shutil.rmtree(pkgdir),
+				lambda: os.rename(binhost_dir, pkgdir),
+				# Remove binrepos.conf and test PORTAGE_BINHOST.
+				lambda: os.unlink(binrepos_conf_file),
+				lambda: os.rename(pkgdir, binhost_dir),
 				({"PORTAGE_BINHOST": binhost_uri},) + \
-					emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
+					emerge_cmd + ("-fe", "--getbinpkgonly", "dev-libs/A"),
 				lambda: shutil.rmtree(pkgdir),
 				lambda: os.rename(binhost_dir, pkgdir),
 			)
