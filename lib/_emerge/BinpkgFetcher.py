@@ -96,14 +96,17 @@ class _BinpkgFetcherProcess(SpawnProcess):
 
 		# urljoin doesn't work correctly with
 		# unrecognized protocols like sftp
+		fetchcommand = None
+		resumecommand = None
 		if bintree._remote_has_index:
-			instance_key = bintree.dbapi._instance_key(pkg.cpv)
-			rel_uri = bintree._remotepkgs[instance_key].get("PATH")
+			remote_metadata = bintree._remotepkgs[bintree.dbapi._instance_key(pkg.cpv)]
+			rel_uri = remote_metadata.get("PATH")
 			if not rel_uri:
 				rel_uri = pkg.cpv + ".tbz2"
-			remote_base_uri = bintree._remotepkgs[
-				instance_key]["BASE_URI"]
+			remote_base_uri = remote_metadata["BASE_URI"]
 			uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
+			fetchcommand = remote_metadata.get('FETCHCOMMAND')
+			resumecommand = remote_metadata.get('RESUMECOMMAND')
 		else:
 			uri = settings["PORTAGE_BINHOST"].rstrip("/") + \
 				"/" + pkg.pf + ".tbz2"
@@ -114,13 +117,19 @@ class _BinpkgFetcherProcess(SpawnProcess):
 			self._async_wait()
 			return
 
-		protocol = urllib_parse_urlparse(uri)[0]
-		fcmd_prefix = "FETCHCOMMAND"
+		fcmd = None
 		if resume:
-			fcmd_prefix = "RESUMECOMMAND"
-		fcmd = settings.get(fcmd_prefix + "_" + protocol.upper())
-		if not fcmd:
-			fcmd = settings.get(fcmd_prefix)
+			fcmd = resumecommand
+		else:
+			fcmd = fetchcommand
+		if fcmd is None:
+			protocol = urllib_parse_urlparse(uri)[0]
+			fcmd_prefix = "FETCHCOMMAND"
+			if resume:
+				fcmd_prefix = "RESUMECOMMAND"
+			fcmd = settings.get(fcmd_prefix + "_" + protocol.upper())
+			if not fcmd:
+				fcmd = settings.get(fcmd_prefix)
 
 		fcmd_vars = {
 			"DISTDIR" : os.path.dirname(pkg_path),

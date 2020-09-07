@@ -382,10 +382,10 @@ class binarytree:
 			self._pkgindex_keys.update(["CPV", "SIZE"])
 			self._pkgindex_aux_keys = \
 				["BASE_URI", "BDEPEND", "BUILD_ID", "BUILD_TIME", "CHOST",
-				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI",
+				"DEFINED_PHASES", "DEPEND", "DESCRIPTION", "EAPI", "FETCHCOMMAND",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND",
 				"PKGINDEX_URI", "PROPERTIES", "PROVIDES",
-				"RDEPEND", "repository", "REQUIRES", "RESTRICT",
+				"RDEPEND", "repository", "REQUIRES", "RESTRICT", "RESUMECOMMAND",
 				"SIZE", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
 			self._pkgindex_use_evaluated_keys = \
@@ -979,7 +979,7 @@ class binarytree:
 
 				# Don't use urlopen for https, unless
 				# PEP 476 is supported (bug #469888).
-				if parsed_url.scheme not in ('https',) or _have_pep_476():
+				if repo.fetchcommand is None and (parsed_url.scheme not in ('https',) or _have_pep_476()):
 					try:
 						f = _urlopen(url, if_modified_since=local_timestamp, proxies=proxies)
 						if hasattr(f, 'headers') and f.headers.get('timestamp', ''):
@@ -1004,7 +1004,7 @@ class binarytree:
 
 					path = parsed_url.path.rstrip("/") + "/Packages"
 
-					if parsed_url.scheme == 'ssh':
+					if repo.fetchcommand is None and parsed_url.scheme == 'ssh':
 						# Use a pipe so that we can terminate the download
 						# early if we detect that the TIMESTAMP header
 						# matches that of the cached Packages file.
@@ -1023,12 +1023,15 @@ class binarytree:
 							stdout=subprocess.PIPE)
 						f = proc.stdout
 					else:
-						setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
-						fcmd = self.settings.get(setting)
-						if not fcmd:
-							fcmd = self.settings.get('FETCHCOMMAND')
+						if repo.fetchcommand is None:
+							setting = 'FETCHCOMMAND_' + parsed_url.scheme.upper()
+							fcmd = self.settings.get(setting)
 							if not fcmd:
-								raise EnvironmentError("FETCHCOMMAND is unset")
+								fcmd = self.settings.get('FETCHCOMMAND')
+								if not fcmd:
+									raise EnvironmentError("FETCHCOMMAND is unset")
+						else:
+							fcmd = repo.fetchcommand
 
 						fd, tmp_filename = tempfile.mkstemp()
 						tmp_dirname, tmp_basename = os.path.split(tmp_filename)
@@ -1142,6 +1145,19 @@ class binarytree:
 					d["CPV"] = cpv
 					d["BASE_URI"] = remote_base_uri
 					d["PKGINDEX_URI"] = url
+					# FETCHCOMMAND and RESUMECOMMAND may be specified
+					# by binrepos.conf, and otherwise ensure that they
+					# do not propagate from the Packages index since
+					# it may be unsafe to execute remotely specified
+					# commands.
+					if repo.fetchcommand is None:
+						d.pop('FETCHCOMMAND', None)
+					else:
+						d['FETCHCOMMAND'] = repo.fetchcommand
+					if repo.resumecommand is None:
+						d.pop('RESUMECOMMAND', None)
+					else:
+						d['RESUMECOMMAND'] = repo.resumecommand
 					self._remotepkgs[self.dbapi._instance_key(cpv)] = d
 					self.dbapi.cpv_inject(cpv)
 

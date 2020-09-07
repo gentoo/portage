@@ -15,7 +15,9 @@ class BinRepoConfig:
 	__slots__ = (
 		'name',
 		'name_fallback',
+		'fetchcommand',
 		'priority',
+		'resumecommand',
 		'sync_uri',
 	)
 	def __init__(self, opts):
