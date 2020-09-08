@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.6
+==================================
+* Bug Fixes:
+    - Bug 668302 binrepos.conf: support fetchcommand customization
+    - Bug 668334 Add binrepos.conf to replace PORTAGE_BINHOST
+    - Bug 704416 env-update: create systemd user-session environment
+    - Bug 737470 egencache --update-pkg-desc: emulate esync --verbose
+    - Bug 737480 emerge --search: auto-detect regular expressions
+    - Bug 739908 @change-deps: fix erroneous repeated rebuilds
+    - Bug 740588 make.conf: Treat __* variables as local
+    - Bug 740898 PORTAGE_BINHOST urlopen proxy support
+    - Bug 740904 rsync and gemato proxy support
+
 portage-3.0.5
 ==================================
 * Bug Fixes:
