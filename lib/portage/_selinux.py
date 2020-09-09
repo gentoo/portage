@@ -14,7 +14,7 @@ except ImportError:
 
 import portage
 from portage import _encodings
-from portage import _native_string
+from portage import _native_string, _unicode_encode
 from portage.localization import _
 
 def copyfile(src, dest):
@@ -41,7 +41,6 @@ def is_selinux_enabled():
 	return selinux.is_selinux_enabled()
 
 def mkdir(target, refdir):
-	target = _native_string(target, encoding=_encodings['fs'], errors='strict')
 	refdir = _native_string(refdir, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.getfilecon(refdir)
 	if rc < 0:
@@ -51,20 +50,21 @@ def mkdir(target, refdir):
 
 	setfscreate(ctx)
 	try:
-		os.mkdir(target)
+		os.mkdir(_unicode_encode(target, encoding=_encodings['fs'], errors='strict'))
 	finally:
 		setfscreate()
 
 def rename(src, dest):
 	src = _native_string(src, encoding=_encodings['fs'], errors='strict')
-	dest = _native_string(dest, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(src)
 	if rc < 0:
 		raise OSError(_("rename: Failed getting context of \"%s\".") % src)
 
 	setfscreate(ctx)
 	try:
-		os.rename(src, dest)
+		os.rename(
+			_unicode_encode(src, encoding=_encodings['fs'], errors='strict'),
+			_unicode_encode(dest, encoding=_encodings['fs'], errors='strict'))
 	finally:
 		setfscreate()
 
@@ -132,8 +132,6 @@ class spawn_wrapper:
 		return self._spawn_func(*args, **kwargs)
 
 def symlink(target, link, reflnk):
-	target = _native_string(target, encoding=_encodings['fs'], errors='strict')
-	link = _native_string(link, encoding=_encodings['fs'], errors='strict')
 	reflnk = _native_string(reflnk, encoding=_encodings['fs'], errors='strict')
 	(rc, ctx) = selinux.lgetfilecon(reflnk)
 	if rc < 0:
@@ -143,6 +141,8 @@ def symlink(target, link, reflnk):
 
 	setfscreate(ctx)
 	try:
-		os.symlink(target, link)
+		os.symlink(
+			_unicode_encode(target, encoding=_encodings['fs'], errors='strict'),
+			_unicode_encode(link, encoding=_encodings['fs'], errors='strict'))
 	finally:
 		setfscreate()
