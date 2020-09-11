@@ -14,7 +14,7 @@
 #	m68k_{32,64}
 #	mips_{eabi32,eabi64,n32,n64,o32,o64}
 #	ppc_{32,64}
-#	riscv_{lp64,lp64d}
+#	riscv_{ilp32,ilp32d,lp64,lp64d}
 #	s390_{32,64}
 #	sh_{32,64}
 #	sparc_{32,64}
@@ -99,6 +99,8 @@ def _compute_suffix_riscv(elf_header):
 	Compute riscv multilib suffix. In order to avoid possible
 	misidentification, only the following ABIs are recognized:
 
+		* ilp32
+		* ilp32d
 		* lp64
 		* lp64d
 	"""
@@ -111,8 +113,13 @@ def _compute_suffix_riscv(elf_header):
 		elif elf_header.e_flags == EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE:
 			name = "lp64d"
 
-	return name
+	elif elf_header.ei_class == ELFCLASS32:
+		if elf_header.e_flags == EF_RISCV_RVC:
+			name = "ilp32"
+		elif elf_header.e_flags == EF_RISCV_RVC | EF_RISCV_FLOAT_ABI_DOUBLE:
+			name = "ilp32d"
 
+	return name
 
 _specialized_funcs = {
 	"mips": _compute_suffix_mips,
