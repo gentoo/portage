@@ -1,4 +1,4 @@
-.TH "EGENCACHE" "1" "Dec 2015" "Portage VERSION" "Portage"
+.TH "EGENCACHE" "1" "Sep 2020" "Portage VERSION" "Portage"
 .SH "NAME"
 egencache \- generate metadata cache for ebuild repositories
 .SH "SYNOPSIS"
@@ -54,6 +54,13 @@ first, the newest last.
 Location of portage config files.
 .br
 Defaults to /.
+.TP
+.BR "\-\-external\-cache\-only"
+Output to the external cache rather than to the repository itself.
+This is useful for client\-side usage, where it may not be possible to
+output to the repository itself since that would interfere with
+repository verification. This option is supported by the \-\-update and
+\-\-update\-pkg\-desc\-index actions.
 .TP
 .BR "\-\-gpg\-dir"
 Override the PORTAGE_GPG_DIR variable.

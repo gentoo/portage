@@ -46,17 +46,16 @@ if [ -n "${repository_name}" ]; then
 		fi
 	fi
 
-	# Regenerate the metadata/pkg_desc_index file if needed. It's not
+	# Regenerate the metadata/pkg_desc_index file. This is not
 	# needed for https://gitweb.gentoo.org/repo/sync/gentoo.git which
-	# provides a freshly generated copy.
-	if [[ ! -e ${repository_path}/metadata/pkg_desc_index || (
-		-d ${repository_path}/metadata/md5-cache &&
-		-n $(find "${repository_path}/metadata/md5-cache" -type f -newer "${repository_path}/metadata/pkg_desc_index" -print -quit) ) ]]; then
-		if ! egencache --update-pkg-desc-index --repo="${repository_name}" ${PORTAGE_VERBOSE+--verbose}
-		then
-			echo "!!! egencache failed!"
-			ret=1
-		fi
+	# provides a freshly generated copy. The --external-cache-only
+	# option causes the metadata/pkg_desc_index file to be written under
+	# /var/cache/edb/dep instead of the repository itself, so that it
+	# does not interfere with repository verification.
+	if ! egencache --update-pkg-desc-index --external-cache-only --repo="${repository_name}" ${PORTAGE_VERBOSE+--verbose}
+	then
+		echo "!!! egencache failed!"
+		ret=1
 	fi
 fi
 

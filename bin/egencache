@@ -107,6 +107,9 @@ def parse_args(args):
 	common.add_argument("--config-root",
 		help="location of portage config files",
 		dest="portage_configroot")
+	common.add_argument("--external-cache-only",
+		action="store_true",
+		help="Output only to the external cache (not the repository itself)")
 	common.add_argument("--gpg-dir",
 		help="override the PORTAGE_GPG_DIR variable",
 		dest="gpg_dir")
@@ -246,7 +249,7 @@ def parse_args(args):
 
 class GenCache:
 	def __init__(self, portdb, cp_iter=None, max_jobs=None, max_load=None,
-		rsync=False):
+		rsync=False, external_cache_only=False):
 		# The caller must set portdb.porttrees in order to constrain
 		# findname, cp_list, and cpv_list to the desired tree.
 		tree = portdb.porttrees[0]
@@ -263,18 +266,21 @@ class GenCache:
 		else:
 			self._cp_set = None
 			self._cp_missing = set()
-		write_auxdb = "metadata-transfer" in portdb.settings.features
+		write_auxdb = external_cache_only or "metadata-transfer" in portdb.settings.features
 		self._regen = MetadataRegen(portdb, cp_iter=cp_iter,
 			consumer=self._metadata_callback,
 			max_jobs=max_jobs, max_load=max_load,
 			write_auxdb=write_auxdb, main=True)
 		self.returncode = os.EX_OK
 		conf = portdb.repositories.get_repo_for_location(tree)
-		self._trg_caches = tuple(conf.iter_pregenerated_caches(
-			self._auxdbkeys, force=True, readonly=False))
-		if not self._trg_caches:
-			raise Exception("cache formats '%s' aren't supported" %
-				(" ".join(conf.cache_formats),))
+		if external_cache_only:
+			self._trg_caches = ()
+		else:
+			self._trg_caches = tuple(conf.iter_pregenerated_caches(
+				self._auxdbkeys, force=True, readonly=False))
+			if not self._trg_caches:
+				raise Exception("cache formats '%s' aren't supported" %
+					(" ".join(conf.cache_formats),))
 
 		if rsync:
 			for trg_cache in self._trg_caches:
@@ -1092,7 +1098,8 @@ def egencache_main(args):
 		gen_cache = GenCache(portdb, cp_iter=cp_iter,
 			max_jobs=options.jobs,
 			max_load=options.load_average,
-			rsync=options.rsync)
+			rsync=options.rsync,
+			external_cache_only=options.external_cache_only)
 		gen_cache.run()
 		if options.tolerant:
 			ret.append(os.EX_OK)
@@ -1100,20 +1107,21 @@ def egencache_main(args):
 			ret.append(gen_cache.returncode)
 
 	if options.update_pkg_desc_index:
-		if repo_config.writable:
+		if not options.external_cache_only and repo_config.writable:
 			writable_location = repo_config.location
 		else:
 			writable_location = os.path.join(portdb.depcachedir,
 				repo_config.location.lstrip(os.sep))
-			msg = [
-				"WARNING: Repository is not writable: %s" % (
-				repo_config.location,),
-				"         Using cache directory instead: %s" % (
-				writable_location,)
-			]
-			msg = "".join(line + '\n' for line in msg)
-			writemsg_level(msg,
-				level=logging.WARNING, noiselevel=-1)
+			if not options.external_cache_only:
+				msg = [
+					"WARNING: Repository is not writable: %s" % (
+					repo_config.location,),
+					"         Using cache directory instead: %s" % (
+					writable_location,)
+				]
+				msg = "".join(line + '\n' for line in msg)
+				writemsg_level(msg,
+					level=logging.WARNING, noiselevel=-1)
 
 		gen_index = GenPkgDescIndex(repo_config, portdb, os.path.join(
 			writable_location, "metadata", "pkg_desc_index"),
