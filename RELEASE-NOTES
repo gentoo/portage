@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.7
+==================================
+* Bug Fixes:
+    - Bug 737470 egencache: add --external-cache-only option
+    - Bug 741474 get_mirror_url: urlquote only for ftp, http, and https
+    - Bug 742446 support riscv ilp32 and ilp32d ABIs
+
 portage-3.0.6
 ==================================
 * Bug Fixes:
