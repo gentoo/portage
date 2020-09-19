@@ -1797,6 +1797,12 @@ class depgraph:
 				if parent_atom not in parent_atoms)
 			backtrack_data.append((to_be_masked, conflict_atoms))
 
+		# Prefer choices that minimize conflict atoms. This is intended
+		# to take precedence over the earlier package version sort. The
+		# package version sort is still needed or else choices for the
+		# testOverlapSlotConflict method of VirtualMinimizeChildrenTestCase
+		# become non-deterministic.
+		backtrack_data.sort(key=lambda item: len(item[1]))
 		to_be_masked = backtrack_data[-1][0]
 
 		self._dynamic_config._backtrack_infos.setdefault(

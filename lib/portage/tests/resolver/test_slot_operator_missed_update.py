@@ -90,7 +90,7 @@ class BacktrackMissedUpdateTestCase(TestCase):
 			# Bug 743115: missed updates trigger excessive backtracking
 			ResolverPlaygroundTestCase(
 				[">=dev-python/pypy3-7.3.2_rc", "@world"],
-				options={"--update": True, "--deep": True, "--backtrack": 25},
+				options={"--update": True, "--deep": True, "--backtrack": 10},
 				success=True,
 				mergelist=[
 					"dev-python/pypy3-7.3.2_rc2_p37-r1",
