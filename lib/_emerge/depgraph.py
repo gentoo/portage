@@ -1795,15 +1795,32 @@ class depgraph:
 				self._dynamic_config._parent_atoms.get(to_be_masked, set())
 			conflict_atoms = set(parent_atom for parent_atom in all_parents \
 				if parent_atom not in parent_atoms)
-			backtrack_data.append((to_be_masked, conflict_atoms))
+
+			similar_pkgs = []
+			if conflict_atoms:
+				# If the conflict has been triggered by a missed update, then
+				# we can avoid excessive backtracking if we detect similar missed
+				# updates and mask them as part of the same backtracking choice.
+				for similar_pkg in self._iter_similar_available(to_be_masked, slot_atom):
+					if similar_pkg in conflict_pkgs:
+						continue
+					similar_conflict_atoms = []
+					for parent_atom in conflict_atoms:
+						parent, atom = parent_atom
+						if not atom.match(similar_pkg):
+							similar_conflict_atoms.append(parent_atom)
+					if similar_conflict_atoms:
+						similar_pkgs.append((similar_pkg, set(similar_conflict_atoms)))
+			similar_pkgs.append((to_be_masked, conflict_atoms))
+			backtrack_data.append(tuple(similar_pkgs))
 
 		# Prefer choices that minimize conflict atoms. This is intended
 		# to take precedence over the earlier package version sort. The
 		# package version sort is still needed or else choices for the
 		# testOverlapSlotConflict method of VirtualMinimizeChildrenTestCase
 		# become non-deterministic.
-		backtrack_data.sort(key=lambda item: len(item[1]))
-		to_be_masked = backtrack_data[-1][0]
+		backtrack_data.sort(key=lambda similar_pkgs: len(similar_pkgs[-1][1]))
+		to_be_masked = [item[0] for item in backtrack_data[-1]]
 
 		self._dynamic_config._backtrack_infos.setdefault(
 			"slot conflict", []).append(backtrack_data)
@@ -1814,7 +1831,7 @@ class depgraph:
 				"",
 				"backtracking due to slot conflict:",
 				"   first package:  %s" % existing_node,
-				"  package to mask: %s" % to_be_masked,
+				"  package(s) to mask: %s" % str(to_be_masked),
 				"      slot: %s" % slot_atom,
 				"   parents: %s" % ", ".join(
 					"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents

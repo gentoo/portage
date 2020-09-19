@@ -166,13 +166,14 @@ class Backtracker:
 		self._feedback_slot_conflict(conflicts_data[0])
 
 	def _feedback_slot_conflict(self, conflict_data):
-		for pkg, parent_atoms in conflict_data:
+		for similar_pkgs in conflict_data:
 			new_node = copy.deepcopy(self._current_node)
 			new_node.depth += 1
 			new_node.mask_steps += 1
 			new_node.terminal = False
-			new_node.parameter.runtime_pkg_mask.setdefault(
-				pkg, {})["slot conflict"] = parent_atoms
+			for pkg, parent_atoms in similar_pkgs:
+				new_node.parameter.runtime_pkg_mask.setdefault(
+					pkg, {})["slot conflict"] = parent_atoms
 			self._add(new_node)
 
 
