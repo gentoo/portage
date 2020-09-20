@@ -1,6 +1,17 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.8
+==================================
+* Bug Fixes:
+    - Bug 404157 emerge: --keep-going support pkg_pretend failures
+    - Bug 644246 Add mercurial sync support
+    - Bug 710432 emerge: Enable parallel-fetch during pkg_pretend
+    - Bug 743115 emerge: Fix slot conflict backtracking to group similar
+      missed updates into a single backtracking try
+    - Bug 743631 emerge: Fix slot conflict backtracking to prefer
+      choices that satisfy all dependencies
+
 portage-3.0.7
 ==================================
 * Bug Fixes:
