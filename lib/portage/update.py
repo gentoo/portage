@@ -179,7 +179,7 @@ def grab_updates(updpath, prev_mtimes=None):
 	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
 	if len(mylist) == 0:
 		return []
-	
+
 	# sort by (year, quarter)
 	mylist.sort(key=lambda x: (x[3:], x[:2]))
 

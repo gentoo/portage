@@ -1,4 +1,4 @@
-# Copyright 2006-2019 Gentoo Authors
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -252,7 +252,7 @@ class TestAtom(TestCase):
 			("dev-libs/B[!x=]", [], [], ["x"], "dev-libs/B[!x=]"),
 			("dev-libs/B[!x?]", [], [], ["x"], "dev-libs/B[!x?]"),
 		)
-		
+
 		test_cases_xfail = (
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c", "d", "e", "f"], None),
 		)
@@ -327,7 +327,7 @@ class TestAtom(TestCase):
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["a", "b", "c"], "dev-libs/A[a,b,-c,d,-e,-f]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", ["d", "e", "f"], [], "dev-libs/A[a,b,-b,c,-c,-e,-f]"),
 			("dev-libs/A[a,b=,!c=,d?,!e?,-f]", [], ["d", "e", "f"], "dev-libs/A[a,b,-b,c,-c,d,-f]"),
-			
+
 			("dev-libs/A[a(-),b(+)=,!c(-)=,d(+)?,!e(-)?,-f(+)]",
 				["a", "b", "c", "d", "e", "f"], [], "dev-libs/A[a(-),-b(+),c(-),-e(-),-f(+)]"),
 			("dev-libs/A[a(+),b(-)=,!c(+)=,d(-)?,!e(+)?,-f(-)]",

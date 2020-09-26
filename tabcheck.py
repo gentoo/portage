@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-import tabnanny,sys
+import sys
+import tabnanny
 
 for x in sys.argv:
 	print ("Tabchecking " + x)

@@ -1,12 +1,12 @@
 #-*- coding:utf-8 -*-
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
 """
 Function to check whether the current used LC_CTYPE handles case
 transformations of ASCII characters in a way compatible with the POSIX
 locale.
 """
-from __future__ import absolute_import
 
 import locale
 import logging
@@ -102,6 +102,7 @@ def check_locale(silent=False, env=None):
 
 	pid = os.fork()
 	if pid == 0:
+		portage._ForkWatcher.hook(portage._ForkWatcher)
 		try:
 			if env is not None:
 				try:

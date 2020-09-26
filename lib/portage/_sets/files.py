@@ -1,4 +1,4 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -27,7 +27,7 @@ class StaticFileSet(EditablePackageSet):
 	_operations = ["merge", "unmerge"]
 	_repopath_match = re.compile(r'.*\$\{repository:(?P<reponame>.+)\}.*')
 	_repopath_sub = re.compile(r'\$\{repository:(?P<reponame>.+)\}')
-		
+
 	def __init__(self, filename, greedy=False, dbapi=None):
 		super(StaticFileSet, self).__init__(allow_repo=True)
 		self._filename = filename
@@ -96,7 +96,7 @@ class StaticFileSet(EditablePackageSet):
 				atoms = iter(data)
 			self._setAtoms(atoms)
 			self._mtime = mtime
-		
+
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError(_("no filename specified"))
@@ -111,7 +111,7 @@ class StaticFileSet(EditablePackageSet):
 				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 		return StaticFileSet(filename, greedy=greedy, dbapi=trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
-	
+
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
 		directory = options.get("directory",
@@ -174,7 +174,7 @@ class StaticFileSet(EditablePackageSet):
 						greedy=greedy, dbapi=trees["vartree"].dbapi)
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
-	
+
 class ConfigFileSet(PackageSet):
 	def __init__(self, filename):
 		super(ConfigFileSet, self).__init__()
@@ -185,13 +185,13 @@ class ConfigFileSet(PackageSet):
 	def load(self):
 		data, errors = self.loader.load()
 		self._setAtoms(iter(data))
-	
+
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
 			raise SetConfigError(_("no filename specified"))
 		return ConfigFileSet(options["filename"])
 	singleBuilder = classmethod(singleBuilder)
-	
+
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
 		directory = options.get("directory",

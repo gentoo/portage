@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -8,8 +8,8 @@ class OldDepChainDisplayTestCase(TestCase):
 
 	def testOldDepChainDisplay(self):
 		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "foo? ( dev-libs/B[-bar] )", "IUSE": "+foo", "EAPI": "2" }, 
-			"dev-libs/A-2": { "DEPEND": "foo? ( dev-libs/C )", "IUSE": "+foo", "EAPI": "1" }, 
+			"dev-libs/A-1": { "DEPEND": "foo? ( dev-libs/B[-bar] )", "IUSE": "+foo", "EAPI": "2" },
+			"dev-libs/A-2": { "DEPEND": "foo? ( dev-libs/C )", "IUSE": "+foo", "EAPI": "1" },
 			"dev-libs/B-1": { "IUSE": "bar", "DEPEND": "!bar? ( dev-libs/D[-baz] )", "EAPI": "2" },
 			"dev-libs/C-1": { "KEYWORDS": "~x86" },
 			"dev-libs/D-1": { "IUSE": "+baz", "EAPI": "1" },

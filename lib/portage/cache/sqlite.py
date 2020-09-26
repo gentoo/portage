@@ -1,9 +1,10 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
+import collections
 import re
+
+import portage
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
@@ -24,6 +25,9 @@ class database(fs_template.FsBased):
 	# equation: cache_bytes = page_bytes * page_count
 	cache_bytes = 1024 * 1024 * 10
 
+	_connection_info_entry = collections.namedtuple('_connection_info_entry',
+		('connection', 'cursor', 'pid'))
+
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
 		self._import_sqlite()
@@ -33,7 +37,7 @@ class database(fs_template.FsBased):
 		self._allowed_keys_set = frozenset(self._allowed_keys)
 		self._allowed_keys = sorted(self._allowed_keys_set)
 
-		self.location = os.path.join(self.location, 
+		self.location = os.path.join(self.location,
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
 		if not self.readonly and not os.path.exists(self.location):
@@ -45,8 +49,8 @@ class database(fs_template.FsBased):
 		# Set longer timeout for throwing a "database is locked" exception.
 		# Default timeout in sqlite3 module is 5.0 seconds.
 		config.setdefault("timeout", 15)
-		self._db_init_connection(config)
-		self._db_init_structures()
+		self._config = config
+		self._db_connection_info = None
 
 	def _import_sqlite(self):
 		# sqlite3 is optional with >=python-2.5
@@ -66,7 +70,20 @@ class database(fs_template.FsBased):
 			s = str(s)
 		return "'%s'" % s.replace("'", "''")
 
-	def _db_init_connection(self, config):
+	@property
+	def _db_cursor(self):
+		if self._db_connection_info is None or self._db_connection_info.pid != portage.getpid():
+			self._db_init_connection()
+		return self._db_connection_info.cursor
+
+	@property
+	def _db_connection(self):
+		if self._db_connection_info is None or self._db_connection_info.pid != portage.getpid():
+			self._db_init_connection()
+		return self._db_connection_info.connection
+
+	def _db_init_connection(self):
+		config = self._config
 		self._dbpath = self.location + ".sqlite"
 		#if os.path.exists(self._dbpath):
 		#	os.unlink(self._dbpath)
@@ -75,14 +92,16 @@ class database(fs_template.FsBased):
 		try:
 			if not self.readonly:
 				self._ensure_dirs()
-			self._db_connection = self._db_module.connect(
+			connection = self._db_module.connect(
 				database=_unicode_decode(self._dbpath), **connection_kwargs)
-			self._db_cursor = self._db_connection.cursor()
+			cursor = connection.cursor()
+			self._db_connection_info = self._connection_info_entry(connection, cursor, portage.getpid())
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not self.readonly and not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])
+			self._db_init_structures()
 		except self._db_error as e:
 			raise cache_errors.InitializationError(self.__class__, e)
 
@@ -105,7 +124,7 @@ class database(fs_template.FsBased):
 		table_parameters.append("UNIQUE(%s)" % self._db_table["packages"]["package_key"])
 		create_statement.append(",".join(table_parameters))
 		create_statement.append(")")
-		
+
 		self._db_table["packages"]["create"] = " ".join(create_statement)
 
 		cursor = self._db_cursor

@@ -2,14 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
-from itertools import permutations
 import fnmatch
 import tempfile
 import portage
+
+from itertools import permutations
 from portage import os
 from portage import shutil
-from portage.const import (GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
-	USER_CONFIG_PATH)
+from portage.const import (GLOBAL_CONFIG_PATH, USER_CONFIG_PATH)
 from portage.process import find_binary
 from portage.dep import Atom, _repo_separator
 from portage.package.ebuild.config import config
@@ -757,7 +757,7 @@ class ResolverPlaygroundTestCase:
 
 					if match and self.merge_order_assertions:
 						for node1, node2 in self.merge_order_assertions:
-							if not (got.index(node1) < got.index(node2)):
+							if not got.index(node1) < got.index(node2):
 								fail_msgs.append("atoms: (" + \
 									", ".join(result.atoms) + "), key: " + \
 									("merge_order_assertions, expected: %s" % \

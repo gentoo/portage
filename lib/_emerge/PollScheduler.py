@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -6,10 +6,8 @@ try:
 except ImportError:
 	import dummy_threading as threading
 
-import portage
 from portage.util.futures import asyncio
 from portage.util._async.SchedulerInterface import SchedulerInterface
-from portage.util._eventloop.EventLoop import EventLoop
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 from _emerge.getloadavg import getloadavg

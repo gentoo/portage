@@ -1,13 +1,11 @@
-# Copyright 2017 Gentoo Foundation
+# Copyright 2017-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
 import random
 
-from portage import os
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
-
 
 class CallSoonFifoTestCase(TestCase):
 

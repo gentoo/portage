@@ -144,7 +144,7 @@ class LinkageMapELF:
 				_unicode_encode(obj,
 					encoding=_encodings['merge'], errors='strict')
 			except UnicodeEncodeError:
-				# The package appears to have been merged with a 
+				# The package appears to have been merged with a
 				# different value of sys.getfilesystemencoding(),
 				# so fall back to utf_8 if appropriate.
 				try:
@@ -249,7 +249,7 @@ class LinkageMapELF:
 			if can_lock:
 				self._dbapi.unlock()
 
-		# have to call scanelf for preserved libs here as they aren't 
+		# have to call scanelf for preserved libs here as they aren't
 		# registered in NEEDED.ELF.2 files
 		plibs = {}
 		if preserve_paths is not None:

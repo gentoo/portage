@@ -79,11 +79,11 @@ if _fd_dir is not None:
 					raise
 				return range(max_fd_limit)
 
-elif os.path.isdir("/proc/%s/fd" % os.getpid()):
+elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
 	# In order for this function to work in forked subprocesses,
 	# os.getpid() must be called from inside the function.
 	def get_open_fds():
-		return (int(fd) for fd in os.listdir("/proc/%s/fd" % os.getpid())
+		return (int(fd) for fd in os.listdir("/proc/%s/fd" % portage.getpid())
 			if fd.isdigit())
 
 else:
@@ -125,7 +125,7 @@ def sanitize_fds():
 def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 	"""
 	Spawns a bash shell running a specific commands
-	
+
 	@param mycommand: The command for bash to run
 	@type mycommand: String
 	@param debug: Turn bash debugging on (set -x)
@@ -243,7 +243,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	  cgroup=None):
 	"""
 	Spawns a given command.
-	
+
 	@param mycommand: the command to execute
 	@type mycommand: String or List (Popen style list)
 	@param env: If env is not None, it must be a mapping that defines the environment
@@ -292,7 +292,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 
 	logfile requires stdout and stderr to be assigned to this process (ie not pointed
 	   somewhere else.)
-	
+
 	"""
 
 	# mycommand is either a str or a list
@@ -378,12 +378,13 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	# fork, so that the result is cached in the main process.
 	bool(groups)
 
-	parent_pid = os.getpid()
+	parent_pid = portage.getpid()
 	pid = None
 	try:
 		pid = os.fork()
 
 		if pid == 0:
+			portage._ForkWatcher.hook(portage._ForkWatcher)
 			try:
 				_exec(binary, mycommand, opt_name, fd_pipes,
 					env, gid, groups, uid, umask, cwd, pre_exec, close_fds,
@@ -401,7 +402,9 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 				sys.stderr.flush()
 
 	finally:
-		if pid == 0 or (pid is None and os.getpid() != parent_pid):
+		# Don't used portage.getpid() here, due to a race with the above
+		# portage._ForkWatcher cache update.
+		if pid == 0 or (pid is None and _os.getpid() != parent_pid):
 			# Call os._exit() from a finally block in order
 			# to suppress any finally blocks from earlier
 			# in the call stack (see bug #345289). This
@@ -448,11 +451,11 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 					os.waitpid(pid, 0)
 
 			# If it got a signal, return the signal that was sent.
-			if (retval & 0xff):
-				return ((retval & 0xff) << 8)
+			if retval & 0xff:
+				return (retval & 0xff) << 8
 
 			# Otherwise, return its exit code.
-			return (retval >> 8)
+			return retval >> 8
 
 	# Everything succeeded
 	return 0
@@ -531,7 +534,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 
 	"""
 	Execute a given binary with options
-	
+
 	@param binary: Name of program to execute
 	@type binary: String
 	@param mycommand: Options for program
@@ -618,7 +621,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	# it is done before we start forking children
 	if cgroup:
 		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
-			f.write('%d\n' % os.getpid())
+			f.write('%d\n' % portage.getpid())
 
 	# Unshare (while still uid==0)
 	if unshare_net or unshare_ipc or unshare_mount or unshare_pid:
@@ -655,6 +658,9 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 						if unshare_pid:
 							main_child_pid = os.fork()
 							if main_child_pid == 0:
+								# The portage.getpid() cache may need to be updated here,
+								# in case the pre_exec function invokes portage APIs.
+								portage._ForkWatcher.hook(portage._ForkWatcher)
 								# pid namespace requires us to become init
 								binary, myargs = portage._python_interpreter, [
 									portage._python_interpreter,
@@ -960,7 +966,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 def find_binary(binary):
 	"""
 	Given a binary name, find the binary in PATH
-	
+
 	@param binary: Name of the binary to find
 	@type string
 	@rtype: None or string

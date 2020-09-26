@@ -1,4 +1,4 @@
-# Copyright 2010-2011 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -13,14 +13,14 @@ class CircularDependencyTestCase(TestCase):
 	#	is there anything else than priority buildtime and runtime?
 	#	play with use.{mask,force}
 	#	play with REQUIRED_USE
-	
+
 
 	def testCircularDependency(self):
 
 		ebuilds = {
-			"dev-libs/Z-1": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) )", "IUSE": "+foo bar", "EAPI": 1 }, 
-			"dev-libs/Z-2": { "DEPEND": "foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 }, 
-			"dev-libs/Z-3": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) ) foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 }, 
+			"dev-libs/Z-1": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) )", "IUSE": "+foo bar", "EAPI": 1 },
+			"dev-libs/Z-2": { "DEPEND": "foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 },
+			"dev-libs/Z-3": { "DEPEND": "foo? ( !bar? ( dev-libs/Y ) ) foo? ( dev-libs/Y ) !bar? ( dev-libs/Y )", "IUSE": "+foo bar", "EAPI": 1 },
 			"dev-libs/Y-1": { "DEPEND": "dev-libs/Z" },
 			"dev-libs/W-1": { "DEPEND": "dev-libs/Z[foo] dev-libs/Y", "EAPI": 2 },
 			"dev-libs/W-2": { "DEPEND": "dev-libs/Z[foo=] dev-libs/Y", "IUSE": "+foo", "EAPI": 2 },

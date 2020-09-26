@@ -207,19 +207,17 @@ class GitSync(NewBase):
 				'sync-git-verify-commit-signature', 'false').lower() not in ('true', 'yes')):
 			return True
 
-		if self.repo.sync_openpgp_key_path is not None:
-			if gemato is None:
-				writemsg_level("!!! Verifying against specified key requires gemato-11.0+ installed\n",
+		if self.repo.sync_openpgp_key_path is not None and gemato is None:
+			writemsg_level("!!! Verifying against specified key requires gemato-14.5+ installed\n",
 					level=logging.ERROR, noiselevel=-1)
-				return False
-			openpgp_env = gemato.openpgp.OpenPGPEnvironment()
-		else:
-			openpgp_env = None
+			return False
+
+		openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
 
 		try:
 			out = EOutput()
 			env = None
-			if openpgp_env is not None:
+			if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
 				try:
 					out.einfo('Using keys from %s' % (self.repo.sync_openpgp_key_path,))
 					with io.open(self.repo.sync_openpgp_key_path, 'rb') as f:

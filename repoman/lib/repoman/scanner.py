@@ -1,16 +1,16 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function
-
 import logging
+import portage
+
 from itertools import chain
 
-import portage
 from portage import normalize_path
 from portage import os
 from portage._sets.base import InternalPackageSet
 from portage.output import green
 from portage.util.futures.extendedfutures import ExtendedFuture
+
 from repoman.metadata import get_metadata_xsd
 from repoman.modules.commit import repochecks
 from repoman.modules.commit import manifest
@@ -365,7 +365,6 @@ class Scanner:
 			dynamic_data["changelog_modified"] = changelog_path in self.changed.changelogs
 
 			self._scan_ebuilds(ebuildlist, dynamic_data)
-		return
 
 
 	def _scan_ebuilds(self, ebuildlist, dynamic_data):
@@ -373,7 +372,6 @@ class Scanner:
 		for y_ebuild in ebuildlist:
 			self.reset_futures(dynamic_data)
 			dynamic_data['y_ebuild'] = y_ebuild
-			y_ebuild_continue = False
 
 			# initialize per ebuild plugin checks here
 			# need to set it up for ==> self.modules_list or some other ordered list
@@ -396,19 +394,14 @@ class Scanner:
 							# Do not try to do any more QA checks on this package since missing
 							# metadata leads to false positives for several checks, and false
 							# positives confuse users.
-							y_ebuild_continue = True
 							# logging.debug("\t>>> Continuing")
 							break
-
-			if y_ebuild_continue:
-				continue
 
 			logging.debug("Finished ebuild plugin loop, continuing...")
 
 		# Final checks
 		# initialize per pkg plugin final checks here
 		# need to set it up for ==> self.modules_list or some other ordered list
-		xpkg_complete = False
 		for mod in self.moduleconfig.final_loop:
 			if mod:
 				mod_class = self.moduleconfig.controller.get_class(mod)
@@ -423,10 +416,5 @@ class Scanner:
 					logging.debug("\tRunning function: %s", func)
 					_continue = func(**self.set_func_kwargs(mod, dynamic_data))
 					if _continue:
-						xpkg_complete = True
 						# logging.debug("\t>>> Continuing")
 						break
-
-		if xpkg_complete:
-			return
-		return

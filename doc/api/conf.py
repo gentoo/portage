@@ -25,7 +25,7 @@ import portage
 # -- Project information -----------------------------------------------------
 
 project = 'portage'
-copyright = '2020, Gentoo Authors'
+copyright = '2020, Gentoo Authors' # pylint: disable=redefined-builtin
 author = 'Gentoo Authors'
 
 # The full version, including alpha/beta/rc tags

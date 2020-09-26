@@ -229,7 +229,9 @@ explicitly discarded by running `emaint \-\-fix cleanresume` (see
 .BR \-\-search ", " \-s
 Searches for matches of the supplied string in the ebuild repository.
 By default emerge uses a case-insensitive simple search, but you can
-enable a regular expression search by prefixing the search string with %.
+enable a regular expression search by prefixing the search string with %
+(the % prefix can often be omitted if the
+\fB\-\-regex\-search\-auto\fR option is enabled).
 For example, \fBemerge \-\-search "%^kde"\fR searches for any package whose
 name starts with "kde"; \fBemerge \-\-search "%gcc$"\fR searches for any
 package that ends with "gcc"; \fBemerge \-\-search "office"\fR searches for
@@ -504,12 +506,6 @@ NOTE: This option ignores the state of the "test" USE flag, since that flag
 has a special binding to FEATURES="test" (see \fBmake.conf\fR(5) for more
 information about \fBFEATURES\fR settings).
 .TP
-.BR \-\-changelog ", " \-l
-Use this in conjunction with the \fB\-\-pretend\fR option.  This will
-show the ChangeLog entries for all the packages that will be upgraded.
-This option is deprecated because ChangeLog files are no longer
-distributed with Gentoo's ebuild repository.
-.TP
 .BR "\-\-color < y | n >"
 Enable or disable color output.  This option will override \fINOCOLOR\fR
 (see \fBmake.conf\fR(5)) and may also be used to force color output when stdout
@@ -694,7 +690,7 @@ dependencies are recalculated for remaining packages and any with
 unsatisfied dependencies are automatically dropped. Also see
 the related \fB\-\-skipfirst\fR option.
 .TP
-.BR "\-\-load\-average [LOAD]"
+.BR \-l\ [LOAD] ", "  \-\-load\-average[=LOAD]
 Specifies that no new builds should be started if there are other builds
 running and the load average is at least LOAD (a floating-point number).
 With no argument, removes a previous load limit.
@@ -769,6 +765,14 @@ matching packages due to \fB\-\-rebuild\fR.
 .BR "\-\-rebuild\-ignore " ATOMS
 A space separated list of package names or slot atoms. Emerge will not rebuild
 packages that depend on matching packages due to \fB\-\-rebuild\fR.
+.TP
+.BR "\-\-regex\-search\-auto < y | n >"
+Enable or disable automatic regular expression detection for search actions.
+If this option is enabled (the default), then regular expression search
+is automatically enabled when the search string is a valid regular expression
+which contains any of these commonly used regular expression characters or
+character sequences:
+^ $ * [ ] { } | ? .+
 .TP
 .BR \-\-oneshot ", " \-1
 Emerge as normal, but do not add the packages to the world file

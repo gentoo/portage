@@ -1,5 +1,5 @@
 # test_lafilefixer.py -- Portage Unit Testing Functionality
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -53,7 +53,7 @@ class test_lafilefixer(TestCase):
 			b"old_library='libpdf.a'\n" + \
 			b"dependency_libs=' -L/usr/lib64 -la -lb -lc'\n" + \
 			b"inherited_linker_flags=' -pthread'\n"
-		#reorder 
+		#reorder
 		yield b"dlname='libfoo.so.1'\n" + \
 			b"library_names='libfoo.so.1.0.2 libfoo.so.1 libfoo.so'\n" + \
 			b"old_library='libpdf.a'\n" + \

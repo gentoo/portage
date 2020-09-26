@@ -871,7 +871,7 @@ class RepoConfigLoader:
 				continue
 			if repo.masters is None:
 				if self.mainRepo() and repo_name != self.mainRepo().name:
-					repo.masters = self.mainRepo(),
+					repo.masters = (self.mainRepo(),)
 				else:
 					repo.masters = ()
 			else:

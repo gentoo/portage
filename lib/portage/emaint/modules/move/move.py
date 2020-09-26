@@ -1,10 +1,11 @@
-# Copyright 2005-2018 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+from _emerge.Package import Package
 
 import portage
 from portage import os
 from portage.exception import InvalidData
-from _emerge.Package import Package
 from portage.versions import _pkg_str
 
 class MoveHandler:

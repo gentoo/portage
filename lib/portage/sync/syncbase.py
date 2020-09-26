@@ -20,6 +20,12 @@ from portage.util.futures.retry import retry
 from portage.util.futures.executor.fork import ForkExecutor
 from . import _SUBMODULE_PATH_MAP
 
+try:
+	import gemato.openpgp
+except ImportError:
+	gemato = None
+
+
 class SyncBase:
 	'''Base Sync class for subclassing'''
 
@@ -108,7 +114,7 @@ class SyncBase:
 		"""
 		if self._repo_storage is None:
 			storage_cls = portage.load_mod(self._select_storage_module())
-			self._repo_storage = _sync_methods(storage_cls(self.repo, self.spawn_kwargs))
+			self._repo_storage = _sync_methods(storage_cls(self.repo, self.spawn_kwargs), loop=global_event_loop())
 		return self._repo_storage
 
 	@property
@@ -293,6 +299,21 @@ class SyncBase:
 				decorated_func = retry_decorator(func_coroutine, loop=loop)
 				loop.run_until_complete(decorated_func())
 		out.eend(0)
+
+	def _get_openpgp_env(self, openpgp_key_path=None):
+		if gemato is not None:
+			# Override global proxy setting with one provided in emerge configuration
+			if 'http_proxy' in self.spawn_kwargs['env']:
+				proxy = self.spawn_kwargs['env']['http_proxy']
+			else:
+				proxy = None
+
+			if openpgp_key_path:
+				openpgp_env = gemato.openpgp.OpenPGPEnvironment(proxy=proxy)
+			else:
+				openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment(proxy=proxy)
+
+			return openpgp_env
 
 
 class NewBase(SyncBase):

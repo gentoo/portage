@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -110,7 +110,7 @@ class RequiredUSETestCase(TestCase):
 			playground.cleanup()
 
 	def testRequiredUseOrDeps(self):
-		
+
 		ebuilds = {
 			"dev-libs/A-1": { "IUSE": "+x +y", "REQUIRED_USE": "^^ ( x y )", "EAPI": "4" },
 			"dev-libs/B-1": { "IUSE": "+x +y", "REQUIRED_USE": "",           "EAPI": "4" },

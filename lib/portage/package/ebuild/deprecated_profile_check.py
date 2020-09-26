@@ -1,4 +1,4 @@
-# Copyright 2010-2013 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['deprecated_profile_check']
@@ -36,7 +36,7 @@ def deprecated_profile_check(settings=None):
 				return
 
 	with io.open(_unicode_encode(deprecated_profile_file,
-		encoding=_encodings['fs'], errors='strict'), 
+		encoding=_encodings['fs'], errors='strict'),
 		mode='r', encoding=_encodings['content'], errors='replace') as f:
 		dcontent = f.readlines()
 	writemsg(colorize("BAD", _("\n!!! Your current profile is "

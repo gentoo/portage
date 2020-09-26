@@ -1,6 +1,70 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.8
+==================================
+* Bug Fixes:
+    - Bug 404157 emerge: --keep-going support pkg_pretend failures
+    - Bug 644246 Add mercurial sync support
+    - Bug 710432 emerge: Enable parallel-fetch during pkg_pretend
+    - Bug 743115 emerge: Fix slot conflict backtracking to group similar
+      missed updates into a single backtracking try
+    - Bug 743631 emerge: Fix slot conflict backtracking to prefer
+      choices that satisfy all dependencies
+
+portage-3.0.7
+==================================
+* Bug Fixes:
+    - Bug 737470 egencache: add --external-cache-only option
+    - Bug 741474 get_mirror_url: urlquote only for ftp, http, and https
+    - Bug 742446 support riscv ilp32 and ilp32d ABIs
+
+portage-3.0.6
+==================================
+* Bug Fixes:
+    - Bug 668302 binrepos.conf: support fetchcommand customization
+    - Bug 668334 Add binrepos.conf to replace PORTAGE_BINHOST
+    - Bug 704416 env-update: create systemd user-session environment
+    - Bug 737470 egencache --update-pkg-desc: emulate esync --verbose
+    - Bug 737480 emerge --search: auto-detect regular expressions
+    - Bug 739908 @change-deps: fix erroneous repeated rebuilds
+    - Bug 740588 make.conf: Treat __* variables as local
+    - Bug 740898 PORTAGE_BINHOST urlopen proxy support
+    - Bug 740904 rsync and gemato proxy support
+
+portage-3.0.5
+==================================
+* Bug Fixes:
+    - Bug 439688 dephgraph: Allow elimination of highest version after
+      slot conflict, which prevents unecessary rebuilds for dev-lang/go
+      after backtracking for a missed update
+    - Bug 739540 Use cached portage.getpid() function to avoid syscalls
+
+portage-3.0.4
+==================================
+* Bug Fixes:
+    - Bug 737698 fix hang for API consumers, involving support for local
+      event loops which may run in threads
+
+portage-3.0.3
+==================================
+* Bug Fixes:
+    - Bug 448462 repoman: avoid "RuntimeError: Event loop is closed"
+      after SIGINT with --jobs > 1.
+    - Bug 699256 emerge: Remove deprecated --changelog option
+    - Bug 699256 emerge: Add short -l option for --load-average
+    - Bug 711174 SpawnProcess: fix _cancel to cleanup PipeLogger quickly
+
+portage-3.0.2
+==================================
+* Bug Fixes:
+    - Bug 711174 Identified and fixed some FEATURES=compress-build-logs
+      corruption issues
+    - Bug 734990 Fix sync-rcu to recover from removed sync-rcu-store-dir
+    - Bug 735626 Add example postsync hook to call egencache
+      --update-pkg-desc-index
+    - Bug 736334 Add fork safety to sqlite cache module
+
 portage-3.0.1
 ==================================
 * Bug Fixes:

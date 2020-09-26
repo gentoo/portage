@@ -7,8 +7,7 @@ import sys
 import portage
 from portage import shutil, os
 from portage import _unicode_decode
-from portage.const import (BASH_BINARY, PORTAGE_BASE_PATH,
-	PORTAGE_PYM_PATH, USER_CONFIG_PATH)
+from portage.const import (BASH_BINARY, BINREPOS_CONF_FILE, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -226,10 +225,10 @@ call_has_and_best_version() {
 
 		loop = asyncio._wrap_loop()
 		loop.run_until_complete(asyncio.ensure_future(
-			self._async_test_simple(loop, playground, metadata_xml_files), loop=loop))
+			self._async_test_simple(playground, metadata_xml_files, loop=loop), loop=loop))
 
 	@coroutine
-	def _async_test_simple(self, loop, playground, metadata_xml_files):
+	def _async_test_simple(self, playground, metadata_xml_files, loop=None):
 
 		debug = playground.debug
 		settings = playground.settings
@@ -340,7 +339,7 @@ call_has_and_best_version() {
 			emerge_cmd + ("--oneshot", "--usepkg", "dev-libs/B",),
 
 			# trigger clean prior to pkg_pretend as in bug #390711
-			ebuild_cmd + (test_ebuild, "unpack"), 
+			ebuild_cmd + (test_ebuild, "unpack"),
 			emerge_cmd + ("--oneshot", "dev-libs/A",),
 
 			emerge_cmd + ("--noreplace", "dev-libs/A",),
@@ -420,13 +419,23 @@ call_has_and_best_version() {
 		)
 
 		# Test binhost support if FETCHCOMMAND is available.
+		binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
+		with open(binrepos_conf_file, 'wt') as f:
+			f.write('[test-binhost]\n')
+			f.write('sync-uri = {}\n'.format(binhost_uri))
 		fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
 		fetch_bin = portage.process.find_binary(fetchcommand[0])
 		if fetch_bin is not None:
 			test_commands = test_commands + (
 				lambda: os.rename(pkgdir, binhost_dir),
+				emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
+				lambda: shutil.rmtree(pkgdir),
+				lambda: os.rename(binhost_dir, pkgdir),
+				# Remove binrepos.conf and test PORTAGE_BINHOST.
+				lambda: os.unlink(binrepos_conf_file),
+				lambda: os.rename(pkgdir, binhost_dir),
 				({"PORTAGE_BINHOST": binhost_uri},) + \
-					emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
+					emerge_cmd + ("-fe", "--getbinpkgonly", "dev-libs/A"),
 				lambda: shutil.rmtree(pkgdir),
 				lambda: os.rename(binhost_dir, pkgdir),
 			)
@@ -541,7 +550,7 @@ move dev-util/git dev-vcs/git
 					local_env = env
 
 				proc = yield asyncio.create_subprocess_exec(*args,
-					env=local_env, stderr=None, stdout=stdout)
+					env=local_env, stderr=None, stdout=stdout, loop=loop)
 
 				if debug:
 					yield proc.wait()

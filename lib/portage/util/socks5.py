@@ -1,5 +1,5 @@
 # SOCKSv5 proxy manager for network-sandbox
-# Copyright 2015-2019 Gentoo Authors
+# Copyright 2015-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -13,7 +13,6 @@ from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.process import atexit_register, spawn
 from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures import asyncio
-
 
 class ProxyManager:
 	"""
@@ -33,10 +32,6 @@ class ProxyManager:
 		paths)
 		@type settings: portage.config
 		"""
-		try:
-			import asyncio  # NOQA
-		except ImportError:
-			raise NotImplementedError('SOCKSv5 proxy requires asyncio module')
 
 		tmpdir = os.path.join(settings['PORTAGE_TMPDIR'], 'portage')
 		ensure_dirs_kwargs = {}
@@ -47,7 +42,7 @@ class ProxyManager:
 		portage.util.ensure_dirs(tmpdir, **ensure_dirs_kwargs)
 
 		self.socket_path = os.path.join(tmpdir,
-				'.portage.%d.net.sock' % os.getpid())
+				'.portage.%d.net.sock' % portage.getpid())
 		server_bin = os.path.join(settings['PORTAGE_BIN_PATH'], 'socks5-server.py')
 		spawn_kwargs = {}
 		# The portage_uid check solves EPERM failures in Travis CI.
@@ -81,7 +76,7 @@ class ProxyManager:
 
 
 	@coroutine
-	def ready(self):
+	def ready(self, loop=None):
 		"""
 		Wait for the proxy socket to become ready. This method is a coroutine.
 		"""
@@ -103,7 +98,7 @@ class ProxyManager:
 			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
-				yield asyncio.sleep(0.2)
+				yield asyncio.sleep(0.2, loop=loop)
 			else:
 				break
 			finally:

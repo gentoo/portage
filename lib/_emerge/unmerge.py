@@ -1,7 +1,5 @@
-# Copyright 1999-2014 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import print_function
 
 import logging
 import signal
@@ -129,24 +127,24 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 					if not os.path.exists(x):
 						print("\n!!! The path '"+x+"' doesn't exist.\n")
 						return 1, {}
-	
+
 					absx   = os.path.abspath(x)
 					sp_absx = absx.split("/")
 					if sp_absx[-1][-7:] == ".ebuild":
 						del sp_absx[-1]
 						absx = "/".join(sp_absx)
-	
+
 					sp_absx_len = len(sp_absx)
-	
+
 					vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
-	
+
 					sp_vdb     = vdb_path.split("/")
 					sp_vdb_len = len(sp_vdb)
-	
+
 					if not os.path.exists(absx+"/CONTENTS"):
 						print("!!! Not a valid db dir: "+str(absx))
 						return 1, {}
-	
+
 					if sp_absx_len <= sp_vdb_len:
 						# The Path is shorter... so it can't be inside the vdb.
 						print(sp_absx)
@@ -154,7 +152,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 						print("\n!!!",x,"cannot be inside "+ \
 							vdb_path+"; aborting.\n")
 						return 1, {}
-	
+
 					for idx in range(0,sp_vdb_len):
 						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
 							print(sp_absx)
@@ -162,13 +160,13 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 							print("\n!!!", x, "is not inside "+\
 								vdb_path+"; aborting.\n")
 							return 1, {}
-	
+
 					print("="+"/".join(sp_absx[sp_vdb_len:]))
 					candidate_catpkgs.append(
 						"="+"/".join(sp_absx[sp_vdb_len:]))
-	
+
 		newline=""
-		if (not "--quiet" in myopts):
+		if not "--quiet" in myopts:
 			newline="\n"
 		if settings["ROOT"] != "/":
 			writemsg_level(darkgreen(newline+ \
@@ -176,7 +174,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				settings["ROOT"]))
 
 		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
-			not ("--quiet" in myopts):
+			not "--quiet" in myopts:
 			writemsg_level(darkgreen(newline+\
 				">>> These are the packages that would be unmerged:\n"))
 
@@ -200,7 +198,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 					print("    " + green(i))
 				print()
 				sys.exit(1)
-	
+
 			if not mymatch and x[0] not in "<>=~":
 				mymatch = localtree.dep_match(x)
 			if not mymatch:
@@ -289,7 +287,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 		if global_unmerge and not numselected:
 			portage.writemsg_stdout("\n>>> No outdated packages were found on your system.\n")
 			return 1, {}
-	
+
 		if not numselected:
 			portage.writemsg_stdout(
 				"\n>>> No packages selected for removal by " + \
@@ -319,7 +317,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 	del stop, pos
 
 	# we don't want to unmerge packages that are still listed in user-editable package sets
-	# listed in "world" as they would be remerged on the next update of "world" or the 
+	# listed in "world" as they would be remerged on the next update of "world" or the
 	# relevant package sets.
 	unknown_sets = set()
 	for cp in range(len(pkgmap)):
@@ -356,7 +354,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 
 			parents = []
 			for s in installed_sets:
-				# skip sets that the user requested to unmerge, and skip world 
+				# skip sets that the user requested to unmerge, and skip world
 				# user-selected set, since the package will be removed from
 				# that set later on.
 				if s in root_config.setconfig.active or s == "selected":

@@ -1,9 +1,6 @@
 # Copyright 2014-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
-
 import sys
 import logging
 import grp
@@ -44,8 +41,8 @@ class TaskHandler:
 	def run_tasks(self, tasks, func, status=None, verbose=True, options=None):
 		"""Runs the module tasks"""
 		# Ensure we have a task and function
-		assert(tasks)
-		assert(func)
+		assert tasks
+		assert func
 		for task in tasks:
 			inst = task()
 			show_progress = self.show_progress_bar and self.isatty
@@ -187,7 +184,6 @@ class SyncManager:
 			writemsg_level(msg + "\n")
 		if self.callback:
 			self.callback(exitcode, updatecache_flg)
-		return
 
 
 	def perform_post_sync_hook(self, reponame, dosyncuri='', repolocation=''):

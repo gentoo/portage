@@ -19,6 +19,7 @@ class LockNonblockTestCase(TestCase):
 			lock1 = portage.locks.lockfile(path)
 			pid = os.fork()
 			if pid == 0:
+				portage._ForkWatcher.hook(portage._ForkWatcher)
 				portage.locks._close_fds()
 				 # Disable close_fds since we don't exec
 				 # (see _setup_pipes docstring).

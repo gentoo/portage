@@ -3,6 +3,8 @@
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
+
+import portage
 from portage import os
 
 class EbuildBinpkg(CompositeTask):
@@ -17,7 +19,7 @@ class EbuildBinpkg(CompositeTask):
 		root_config = pkg.root_config
 		bintree = root_config.trees["bintree"]
 		binpkg_tmpfile = os.path.join(bintree.pkgdir,
-			pkg.cpv + ".tbz2." + str(os.getpid()))
+			pkg.cpv + ".tbz2." + str(portage.getpid()))
 		bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
 
 		self._binpkg_tmpfile = binpkg_tmpfile

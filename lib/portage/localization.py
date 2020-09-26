@@ -1,8 +1,6 @@
 # localization.py -- Code to manage/help portage localization.
-# Copyright 2004-2014 Gentoo Foundation
+# Copyright 2004-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import division
 
 import locale
 import math
@@ -43,4 +41,4 @@ def localized_size(num_bytes):
 	except UnicodeDecodeError:
 		# failure to decode locale data
 		formatted_num = str(num_kib)
-	return (_unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB')
+	return _unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB'

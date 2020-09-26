@@ -1,5 +1,20 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.6
+--------------
+* emerge --search now detects regular expressions automatically. This
+  behavior is controlled by the --regex-search-auto option.
+* make.conf now treats variable names that begin with two underscores
+  as local variables which are not displayed by emerge --info --verbose.
+* egencache --update-pkg-desc now has a --verbose option which causes
+  it to emulate esync --verbose output.
+* env-update now generates a systemd user-session environment in a file
+  named /etc/environment.d/10-gentoo-env.conf.
+* binrepos.conf is a new configuration file that acts as a substitute
+  for the PORTAGE_BINHOST variable, and allows each repository to have
+  a separate FETCHCOMMAND which can be used to customize authentication.
+  This file is documented in the portage(5) man page.
+
 portage-3.0.0
 --------------
 * Dropped support for Python 2.x.

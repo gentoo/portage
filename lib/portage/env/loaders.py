@@ -1,5 +1,5 @@
 # config.py -- Portage Config
-# Copyright 2007-2013 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -16,7 +16,7 @@ from portage import _unicode_encode
 from portage.localization import _
 
 class LoaderError(Exception):
-	
+
 	def __init__(self, resource, error_msg):
 		"""
 		@param resource: Resource that failed to load (file/sql/etc)
@@ -27,7 +27,7 @@ class LoaderError(Exception):
 
 		self.resource = resource
 		self.error_msg = error_msg
-	
+
 	def __str__(self):
 		return "Failed while loading resource: %s, error was: %s" % (
 			self.resource, self.error_msg)
@@ -38,7 +38,7 @@ def RecursiveFileLoader(filename):
 	If filename is of type file, return a generate that yields filename
 	else if filename is of type directory, return a generator that fields
 	files in that directory.
-	
+
 	Ignore files beginning with . or ending in ~.
 	Prune CVS directories.
 
@@ -117,7 +117,7 @@ class TestTextLoader(DataLoader):
 
 	def setErrors(self, errors):
 		self.errors = errors
-	
+
 	def load(self):
 		return (self.data, self.errors)
 
@@ -139,7 +139,7 @@ class FileLoader(DataLoader):
 		Return the {source: {key: value}} pairs from a file
 		Return the {source: [list of errors] from a load
 
-		@param recursive: If set and self.fname is a directory; 
+		@param recursive: If set and self.fname is a directory;
 			load all files in self.fname
 		@type: Boolean
 		@rtype: tuple
@@ -186,12 +186,12 @@ class FileLoader(DataLoader):
 class ItemFileLoader(FileLoader):
 	"""
 	Class to load data from a file full of items one per line
-	
+
 	>>> item1
 	>>> item2
 	>>> item3
 	>>> item1
-	
+
 	becomes { 'item1':None, 'item2':None, 'item3':None }
 	Note that due to the data store being a dict, duplicates
 	are removed.
@@ -199,7 +199,7 @@ class ItemFileLoader(FileLoader):
 
 	def __init__(self, filename, validator):
 		FileLoader.__init__(self, filename, validator)
-	
+
 	def lineParser(self, line, line_num, data, errors):
 		line = line.strip()
 		if line.startswith('#'): # Skip commented lines
@@ -223,7 +223,7 @@ class ItemFileLoader(FileLoader):
 class KeyListFileLoader(FileLoader):
 	"""
 	Class to load data from a file full of key [list] tuples
-	
+
 	>>>>key foo1 foo2 foo3
 	becomes
 	{'key':['foo1','foo2','foo3']}
@@ -274,7 +274,7 @@ class KeyListFileLoader(FileLoader):
 class KeyValuePairFileLoader(FileLoader):
 	"""
 	Class to load data from a file full of key=value pairs
-	
+
 	>>>>key=value
 	>>>>foo=bar
 	becomes:

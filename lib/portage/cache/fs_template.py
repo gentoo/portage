@@ -15,7 +15,7 @@ del lazyimport
 
 
 class FsBased(template.database):
-	"""template wrapping fs needed options, and providing _ensure_access as a way to 
+	"""template wrapping fs needed options, and providing _ensure_access as a way to
 	attempt to ensure files have the specified owners/perms"""
 
 	def __init__(self, *args, **config):

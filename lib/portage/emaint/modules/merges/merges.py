@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -93,7 +93,7 @@ class MergesHandler:
 	def __init__(self):
 		"""Create MergesHandler object."""
 		eroot = portage.settings['EROOT']
-		tracking_path = os.path.join(eroot, PRIVATE_PATH, 'failed-merges');
+		tracking_path = os.path.join(eroot, PRIVATE_PATH, 'failed-merges')
 		self._tracking_file = TrackingFile(tracking_path)
 		self._vardb_path = os.path.join(eroot, VDB_PATH)
 

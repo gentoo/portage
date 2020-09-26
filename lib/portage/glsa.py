@@ -1,28 +1,27 @@
-# Copyright 2003-2017 Gentoo Foundation
+# Copyright 2003-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import
-
-import io
-import sys
-from urllib.request import urlopen as urllib_request_urlopen
 import codecs
-import re
 import operator
+import portage
+import re
+import sys
 import xml.dom.minidom
-from io import StringIO
+
 from functools import reduce
 
-import portage
+import io
+from io import StringIO
+
+from portage import _encodings, _unicode_decode, _unicode_encode
 from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage.versions import pkgsplit, vercmp
-from portage.util import grabfile
 from portage.const import PRIVATE_PATH
-from portage.localization import _
 from portage.dep import _slot_separator
+from portage.localization import _
+from portage.util import grabfile
+from portage.versions import pkgsplit, vercmp
+
+from urllib.request import urlopen as urllib_request_urlopen
 
 # Note: the space for rgt and rlt is important !!
 # FIXME: use slot deps instead, requires GLSA format versioning
@@ -34,7 +33,7 @@ SPACE_ESCAPE = "!;_"		# some random string to mark spaces that should be preserv
 def get_applied_glsas(settings):
 	"""
 	Return a list of applied or injected GLSA IDs
-	
+
 	@type	settings: portage.config
 	@param	settings: portage config instance
 	@rtype:		list
@@ -493,7 +492,6 @@ class Glsa:
 		finally:
 			f.close()
 
-		return None
 
 	def parse(self, myfile):
 		"""
@@ -584,7 +582,6 @@ class Glsa:
 			self.packages[name].append(tmp)
 		# TODO: services aren't really used yet
 		self.services = self.affected.getElementsByTagName("service")
-		return None
 
 	def dump(self, outstream=sys.stdout, encoding="utf-8"):
 		"""
@@ -666,7 +663,7 @@ class Glsa:
 		if not os.access(os.path.join(self.config["EROOT"],
 			PRIVATE_PATH, "glsa_injected"), os.R_OK):
 			return False
-		return (self.nr in get_applied_glsas(self.config))
+		return self.nr in get_applied_glsas(self.config)
 
 	def inject(self):
 		"""
@@ -685,7 +682,6 @@ class Glsa:
 				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(_unicode_decode(self.nr + "\n"))
 			checkfile.close()
-		return None
 
 	def getMergeList(self, least_change=True):
 		"""

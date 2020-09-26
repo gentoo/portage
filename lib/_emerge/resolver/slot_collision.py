@@ -1,14 +1,11 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
-
-from portage import _encodings, _unicode_encode
 from _emerge.AtomArg import AtomArg
 from _emerge.Package import Package
 from _emerge.PackageArg import PackageArg
 from _emerge.UseFlagDisplay import pkg_use_display
+
 from portage.dep import check_required_use
 from portage.output import colorize
 from portage._sets.base import InternalPackageSet
@@ -92,26 +89,26 @@ class slot_conflict_handler:
 		self.all_conflicts = []
 		for conflict in depgraph._dynamic_config._package_tracker.slot_conflicts():
 			self.all_conflicts.append((conflict.root, conflict.atom, conflict.pkgs))
-		
+
 		#A dict mapping packages to pairs of parent package
 		#and parent atom
 		self.all_parents = depgraph._dynamic_config._parent_atoms
-		
+
 		#set containing all nodes that are part of a slot conflict
 		conflict_nodes = set()
-		
+
 		#a list containing list of packages that form a slot conflict
 		conflict_pkgs = []
-		
+
 		#a list containing sets of (parent, atom) pairs that have pulled packages
 		#into the same slot
 		all_conflict_atoms_by_slotatom = []
-		
+
 		#fill conflict_pkgs, all_conflict_atoms_by_slotatom
 		for root, atom, pkgs in self.all_conflicts:
 			conflict_pkgs.append(list(pkgs))
 			all_conflict_atoms_by_slotatom.append(set())
-			
+
 			for pkg in pkgs:
 				conflict_nodes.add(pkg)
 				for ppkg, atom in self.all_parents.get(pkg):
@@ -122,7 +119,7 @@ class slot_conflict_handler:
 		#If any conflict package was pulled in only by unspecific atoms, then
 		#the user forgot to enable --newuse and/or --update.
 		self.conflict_is_unspecific = False
-		
+
 		#Indicate if the conflict is caused by incompatible version requirements
 		#cat/pkg-2 pulled in, but a parent requires <cat/pkg-2
 		self.is_a_version_conflict = False
@@ -140,8 +137,8 @@ class slot_conflict_handler:
 		config_gen = _configuration_generator(conflict_pkgs)
 		first_config = True
 
-		#go through all configurations and collect solutions
-		while(True):
+		# Go through all configurations and collect solutions
+		while True:
 			config = config_gen.get_configuration()
 			if not config:
 				break
@@ -538,11 +535,11 @@ class slot_conflict_handler:
 								ii = atom_str.find(slot_str)
 								colored_idx.update(range(ii, ii + len(slot_str)))
 								atom_str = atom_str.replace(slot_str, colorize("BAD", slot_str), 1)
-						
+
 						if use and atom.use.tokens:
 							use_part_start = atom_str.find("[")
 							use_part_end = atom_str.find("]")
-							
+
 							new_tokens = []
 							# Compute start index in non-colored atom.
 							ii = str(atom).find("[") +  1
@@ -557,7 +554,7 @@ class slot_conflict_handler:
 							atom_str = atom_str[:use_part_start] \
 								+ "[%s]" % (",".join(new_tokens),) + \
 								atom_str[use_part_end+1:]
-						
+
 						return atom_str, colored_idx
 
 					# Show unconditional use deps first, since those
@@ -591,14 +588,14 @@ class slot_conflict_handler:
 							version_violated = False
 							slot_violated = False
 							use = []
-							for (type, sub_type), parents in collision_reasons.items():
+							for (ctype, sub_type), parents in collision_reasons.items():
 								for x in parents:
 									if parent == x[0] and atom == x[1]:
-										if type == "version":
+										if ctype == "version":
 											version_violated = True
-										elif type == "slot":
+										elif ctype == "slot":
 											slot_violated = True
-										elif type == "use":
+										elif ctype == "use":
 											use.append(sub_type)
 										break
 
@@ -625,7 +622,7 @@ class slot_conflict_handler:
 						msg.append(2*indent)
 						msg.append("(no parents that aren't satisfied by other packages in this slot)\n")
 						self.conflict_is_unspecific = True
-					
+
 					omitted_parents = num_all_specific_atoms - len(selected_for_display)
 					if omitted_parents:
 						any_omitted_parents = True
@@ -802,7 +799,7 @@ class slot_conflict_handler:
 				#for this flag and those kill this configuration.
 				for flag in violated_atom.use.required:
 					state = involved_flags.get(flag, "")
-					
+
 					if flag in violated_atom.use.enabled:
 						if state in ("", "cond", "enabled"):
 							state = "enabled"
@@ -875,8 +872,8 @@ class slot_conflict_handler:
 			if not solutions:
 				writemsg("No viable solutions. Rejecting configuration.\n", noiselevel=-1)
 		return solutions
-		
-	
+
+
 	def _force_flag_for_package(self, required_changes, pkg, flag, state):
 		"""
 		Adds an USE change to required_changes. Sets the target state to
@@ -891,7 +888,7 @@ class slot_conflict_handler:
 				flag_change = "contradiction"
 			elif flag in _pkg_use_enabled(pkg):
 				flag_change = "disabled"
-			
+
 			changes[flag] = flag_change
 			required_changes[pkg] = changes
 		elif state == "enabled":
@@ -901,10 +898,10 @@ class slot_conflict_handler:
 				flag_change = "contradiction"
 			else:
 				flag_change = "enabled"
-			
+
 			changes[flag] = flag_change
 			required_changes[pkg] = changes
-								
+
 	def _check_solution(self, config, all_involved_flags, all_conflict_atoms_by_slotatom):
 		"""
 		Given a configuartion and all involved flags, all possible settings for the involved
@@ -934,64 +931,64 @@ class slot_conflict_handler:
 				msg += "}"
 			msg += "]\n"
 			writemsg(msg, noiselevel=-1)
-		
+
 		required_changes = {}
-		for id, pkg in enumerate(config):
+		for idx, pkg in enumerate(config):
 			if not pkg.installed:
-				#We can't change the USE of installed packages.
-				for flag in all_involved_flags[id]:
+				# We can't change the USE of installed packages.
+				for flag in all_involved_flags[idx]:
 					if not pkg.iuse.is_valid_flag(flag):
 						continue
-					state = all_involved_flags[id][flag]
+					state = all_involved_flags[idx][flag]
 					self._force_flag_for_package(required_changes, pkg, flag, state)
 
-			#Go through all (parent, atom) pairs for the current slot conflict.
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			# Go through all (parent, atom) pairs for the current slot conflict.
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 				use = atom.unevaluated_atom.use
 				if not use:
-					#No need to force something for an atom without USE conditionals.
-					#These atoms are already satisfied.
+					# No need to force something for an atom without USE conditionals.
+					# These atoms are already satisfied.
 					continue
-				for flag in all_involved_flags[id]:
-					state = all_involved_flags[id][flag]
-					
+				for flag in all_involved_flags[idx]:
+					state = all_involved_flags[idx][flag]
+
 					if flag not in use.required or not use.conditional:
 						continue
 					if flag in use.conditional.enabled:
-						#[flag?]
+						# [flag?]
 						if state == "enabled":
-							#no need to change anything, the atom won't
-							#force -flag on pkg
+							# no need to change anything, the atom won't
+							# force -flag on pkg
 							pass
 						elif state == "disabled":
-							#if flag is enabled we get [flag] -> it must be disabled
+							# if flag is enabled we get [flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 					elif flag in use.conditional.disabled:
-						#[!flag?]
+						# [!flag?]
 						if state == "enabled":
-							#if flag is enabled we get [-flag] -> it must be disabled
+							# if flag is enabled we get [-flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 						elif state == "disabled":
-							#no need to change anything, the atom won't
-							#force +flag on pkg
+							# no need to change anything, the atom won't
+							# force +flag on pkg
 							pass
 					elif flag in use.conditional.equal:
-						#[flag=]
+						# [flag=]
 						if state == "enabled":
-							#if flag is disabled we get [-flag] -> it must be enabled
+							# if flag is disabled we get [-flag] -> it must be enabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "enabled")
 						elif state == "disabled":
-							#if flag is enabled we get [flag] -> it must be disabled
+							# if flag is enabled we get [flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 					elif flag in use.conditional.not_equal:
-						#[!flag=]
+						# [!flag=]
 						if state == "enabled":
-							#if flag is enabled we get [-flag] -> it must be disabled
+							# if flag is enabled we get [-flag] -> it must be disabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "disabled")
 						elif state == "disabled":
-							#if flag is disabled we get [flag] -> it must be enabled
+							# if flag is disabled we get [flag] -> it must be enabled
 							self._force_flag_for_package(required_changes, ppkg, flag, "enabled")
 
 		is_valid_solution = True
@@ -999,12 +996,12 @@ class slot_conflict_handler:
 			for state in required_changes[pkg].values():
 				if not state in ("enabled", "disabled"):
 					is_valid_solution = False
-		
+
 		if not is_valid_solution:
 			return None
 
-		#Check if all atoms are satisfied after the changes are applied.
-		for id, pkg in enumerate(config):
+		# Check if all atoms are satisfied after the changes are applied.
+		for idx, pkg in enumerate(config):
 			new_use = _pkg_use_enabled(pkg)
 			if pkg in required_changes:
 				old_use = pkg.use.enabled
@@ -1015,14 +1012,14 @@ class slot_conflict_handler:
 					elif state == "disabled":
 						new_use.discard(flag)
 				if not new_use.symmetric_difference(old_use):
-					#avoid copying the package in findAtomForPackage if possible
+					# avoid copying the package in findAtomForPackage if possible
 					new_use = old_use
 
-			for ppkg, atom in all_conflict_atoms_by_slotatom[id]:
+			for ppkg, atom in all_conflict_atoms_by_slotatom[idx]:
 				if not atom.package:
 					continue
 				if not hasattr(ppkg, "use"):
-					#It's a SetArg or something like that.
+					# It's a SetArg or something like that.
 					continue
 				ppkg_new_use = set(_pkg_use_enabled(ppkg))
 				if ppkg in required_changes:
@@ -1035,7 +1032,7 @@ class slot_conflict_handler:
 				new_atom = atom.unevaluated_atom.evaluate_conditionals(ppkg_new_use)
 				i = InternalPackageSet(initial_atoms=(new_atom,))
 				if not i.findAtomForPackage(pkg, new_use):
-					#We managed to create a new problem with our changes.
+					# We managed to create a new problem with our changes.
 					is_valid_solution = False
 					if self.debug:
 						writemsg(("new conflict introduced: %s"
@@ -1046,7 +1043,7 @@ class slot_conflict_handler:
 			if not is_valid_solution:
 				break
 
-		#Make sure the changes don't violate REQUIRED_USE
+		# Make sure the changes don't violate REQUIRED_USE
 		for pkg in required_changes:
 			required_use = pkg._metadata.get("REQUIRED_USE")
 			if not required_use:
@@ -1080,28 +1077,28 @@ class _configuration_generator:
 				if pkg.installed:
 					new_pkgs.append(pkg)
 			self.conflict_pkgs.append(new_pkgs)
-			
+
 		self.solution_ids = []
 		for pkgs in self.conflict_pkgs:
 			self.solution_ids.append(0)
 		self._is_first_solution = True
-		
+
 	def get_configuration(self):
 		if self._is_first_solution:
 			self._is_first_solution = False
 		else:
 			if not self._next():
 				return None
-		
+
 		solution = []
 		for idx, pkgs in enumerate(self.conflict_pkgs):
 			solution.append(pkgs[self.solution_ids[idx]])
 		return solution
-	
+
 	def _next(self, id=None): # pylint: disable=redefined-builtin
 		solution_ids = self.solution_ids
 		conflict_pkgs = self.conflict_pkgs
-		
+
 		if id is None:
 			id = len(solution_ids)-1
 
@@ -1130,11 +1127,11 @@ class _solution_candidate_generator:
 		#A copy of all_involved_flags with all "cond" values
 		#replaced by a _value_helper object.
 		self.all_involved_flags = []
-		
+
 		#A list tracking references to all used _value_helper
 		#objects.
 		self.conditional_values = []
-		
+
 		for involved_flags in all_involved_flags:
 			new_involved_flags = {}
 			for flag, state in involved_flags.items():
@@ -1145,7 +1142,7 @@ class _solution_candidate_generator:
 					new_involved_flags[flag] = v
 					self.conditional_values.append(v)
 			self.all_involved_flags.append(new_involved_flags)
-			
+
 		self._is_first_solution = True
 
 	def get_candidate(self):
@@ -1156,13 +1153,13 @@ class _solution_candidate_generator:
 				return None
 
 		return self.all_involved_flags
-	
+
 	def _next(self, id=None): # pylint: disable=redefined-builtin
 		values = self.conditional_values
-		
+
 		if not values:
 			return False
-		
+
 		if id is None:
 			id = len(values)-1
 
@@ -1175,5 +1172,3 @@ class _solution_candidate_generator:
 		for other_id in range(id+1, len(values)):
 			values[other_id].value = "disabled"
 		return True
-		
-		

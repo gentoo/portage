@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2018 Gentoo Foundation
+# Copyright 2003-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -9,12 +9,14 @@ __all__ = [
 	'get_operator', 'isjustname', 'isspecific',
 	'isvalidatom', 'match_from_list', 'match_to_list',
 	'paren_enclose', 'paren_normalize', 'paren_reduce',
-	'remove_slot', 'strip_empty', 'use_reduce', 
+	'remove_slot', 'strip_empty', 'use_reduce',
 	'_repo_separator', '_slot_separator',
 ]
 
-import re, sys
+import re
+import sys
 import warnings
+
 from functools import lru_cache
 
 import portage
@@ -93,7 +95,7 @@ def _get_atom_re(eapi_attrs):
 	atom_re = re.compile('^(?P<without_use>(?:' +
 		'(?P<op>' + _op + cpv_re + ')|' +
 		'(?P<star>=' + cpv_re + r'\*)|' +
-		'(?P<simple>' + cp_re + '))' + 
+		'(?P<simple>' + cp_re + '))' +
 		'(' + _slot_separator + _slot_loose + ')?' +
 		_repo + ')(' + _use + ')?$', re.VERBOSE | re.UNICODE)
 
@@ -281,7 +283,7 @@ def paren_reduce(mystr, _deprecation_warn=True):
 							stack[level].extend(l[0])
 						else:
 							stack[level].extend(l)
-					else:	
+					else:
 						stack[level].append(l)
 
 				if l:
@@ -322,13 +324,13 @@ def paren_reduce(mystr, _deprecation_warn=True):
 
 			if token[-1] == "?":
 				need_bracket = True
-			
+
 			stack[level].append(token)
 
 	if level != 0 or need_bracket:
 		raise InvalidDependString(
 			_("malformed syntax: '%s'") % mystr)
-	
+
 	return stack[0]
 
 class paren_normalize(list):
@@ -420,7 +422,7 @@ def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
 		else:
 			flag = conditional[:-1]
 			is_negated = False
-		
+
 		if is_valid_flag:
 			if not is_valid_flag(flag):
 				msg = _("USE flag '%s' referenced in " + \
@@ -669,7 +671,7 @@ def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
 				raise InvalidDependString(
 					_("SRC_URI arrow not allowed in EAPI %s: token %s") % (eapi, pos+1))
 			need_simple_token = True
-			stack[level].append(token)	
+			stack[level].append(token)
 		else:
 			if need_bracket:
 				raise InvalidDependString(
@@ -710,11 +712,11 @@ def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
 	if level != 0:
 		raise InvalidDependString(
 			_("Missing '%s' at end of string") % (")",))
-	
+
 	if need_bracket:
 		raise InvalidDependString(
 			_("Missing '%s' at end of string") % ("(",))
-			
+
 	if need_simple_token:
 		raise InvalidDependString(
 			_("Missing file name at end of string"))
@@ -1054,7 +1056,7 @@ class _use_dep:
 		tokens = []
 
 		all_defaults = self.missing_enabled | self.missing_disabled
-		
+
 		def validate_flag(flag):
 			return is_valid_flag(flag) or flag in all_defaults
 
@@ -1823,7 +1825,7 @@ def dep_getslot(mydep):
 
 	#remove repo_name if present
 	mydep = mydep.split(_repo_separator)[0]
-	
+
 	colon = mydep.find(_slot_separator)
 	if colon != -1:
 		bracket = mydep.find("[", colon)
@@ -1901,7 +1903,7 @@ def dep_getusedeps( depend ):
 	# -1 = failure (think c++ string::npos)
 	comma_separated = False
 	bracket_count = 0
-	while( open_bracket != -1 ):
+	while open_bracket != -1:
 		bracket_count += 1
 		if bracket_count > 1:
 			raise InvalidAtom(_("USE Dependency with more "
@@ -2249,7 +2251,7 @@ def match_from_list(mydep, candidate_list):
 
 	elif operator == "=*": # glob match
 		# XXX: Nasty special casing for leading zeros
-		# Required as =* is a literal prefix match, so can't 
+		# Required as =* is a literal prefix match, so can't
 		# use vercmp
 		myver = mycpv_cps[2].lstrip("0")
 		if not myver or not myver[0].isdigit():
@@ -2495,7 +2497,7 @@ def get_required_use_flags(required_use, eapi=None):
 				stack[level].append(token)
 			else:
 				stack[level].append(True)
-			
+
 			register_token(token)
 
 	if level != 0 or need_bracket:
@@ -2603,20 +2605,20 @@ def check_required_use(required_use, use, iuse_match, eapi=None):
 
 		return (flag in use and not is_negated) or \
 			(flag not in use and is_negated)
-	
+
 	def is_satisfied(operator, argument):
 		if not argument and eapi_attrs.empty_groups_always_true:
 			#|| ( ) -> True
 			return True
 
 		if operator == "||":
-			return (True in argument)
+			return True in argument
 		if operator == "^^":
-			return (argument.count(True) == 1)
+			return argument.count(True) == 1
 		if operator == "??":
-			return (argument.count(True) <= 1)
+			return argument.count(True) <= 1
 		if operator[-1] == "?":
-			return (False not in argument)
+			return False not in argument
 
 	mysplit = required_use.split()
 	level = 0
@@ -2812,7 +2814,7 @@ def extract_affecting_use(mystr, atom, eapi=None):
 							stack[level].extend(l[0])
 						else:
 							stack[level].extend(l)
-					else:	
+					else:
 						stack[level].append(l)
 
 				if l:

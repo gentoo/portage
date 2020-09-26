@@ -1,17 +1,15 @@
 Code Guidelines
 ---------------
+
 A few code guidelines to try to stick to, please comment if none of
 these make sense, they are pretty basic and mostly apply to old code.
-However for people who are looking at current code, they make take up
+However for people who are looking at current code, they may take up
 bad habits that exist in the current codebase.
 
 Python Version
 --------------
 
-Python 2.7 is the minimum supported version as it eases 3.x compatibility.
-All exception handling should use Python 3 'except' syntax, and the print
-function should be used instead of Python 2's print statement (use "from
-__future__ import print_function" everywhere).
+Python 3.6 is the minimum supported version.
 
 Dependencies
 ------------
@@ -30,7 +28,7 @@ width.
 Line-Wrapping
 -------------
 
-Lines should typically not be longer than 80 characters; if they are an
+Lines should typically not be longer than 80 characters; if they are, an
 attempt should be made to wrap them.  Move code to the line below and
 indent once (\t).
 
@@ -47,7 +45,7 @@ errors.append(MalformedMetadata(
               attr='DESCRIPTION.toolong')
 
 The mixing of tabs and spaces means other developers can't read what you
-did. This is why the python peps state spaces over tabs; because with
+did. This is why the Python PEPs state spaces over tabs; because with
 spaces the line wrapping is always clear (but you cannot convert spaces
 as easily as tabwidth).
 
@@ -189,12 +187,18 @@ at 72.  Prefix the message with the component you touched if this makes
 sense.  Postfix the message with the bug it fixes, if it does.
 
 Feel free to use the following notes (if applicable):
+
 Signed-off-by: Wrote (a substantial portion of) the patch
+
 Reviewed-by: Reviewed the patch thoroughly
+
 Tested-by:  Tested the patch thoroughly
+
 Acked-by: Approved the concept but did not read the patch in detail
 (typically used by the maintainer of a specific portion, or a lead)
+
 Suggested-by: Designed the implementation
+
 Requested-by: Reported the bug/made the feature request
 
 Example:

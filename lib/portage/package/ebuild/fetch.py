@@ -1,8 +1,6 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
 __all__ = ['fetch']
 
 import errno
@@ -516,8 +514,12 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 				json.dump(cache, f)
 				f.close()
 
-	return (mirror_url + "/distfiles/" +
-			urlquote(mirror_conf.get_best_supported_layout().get_path(filename)))
+	# For some protocols, urlquote is required for correct behavior,
+	# and it must not be used for other protocols like rsync and sftp.
+	path = mirror_conf.get_best_supported_layout().get_path(filename)
+	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
+		path = urlquote(path)
+	return mirror_url + "/distfiles/" + path
 
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,

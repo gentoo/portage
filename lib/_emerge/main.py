@@ -1,8 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
-
 import argparse
 import locale
 import platform
@@ -28,7 +26,7 @@ options=[
 "--ask-enter-invalid",
 "--buildpkgonly",
 "--changed-use",
-"--changelog",    "--columns",
+"--columns",
 "--debug",
 "--digest",
 "--emptytree",
@@ -60,7 +58,6 @@ shortmapping={
 "e":"--emptytree",
 "f":"--fetchonly", "F":"--fetch-all-uri",
 "h":"--help",
-"l":"--changelog",
 "n":"--noreplace", "N":"--newuse",
 "o":"--onlydeps",  "O":"--nodeps",
 "p":"--pretend",   "P":"--prune",
@@ -174,6 +171,7 @@ def insert_optional_args(args):
 	short_arg_opts = {
 		'D' : valid_integers,
 		'j' : valid_integers,
+		'l' : valid_floats,
 	}
 
 	# Don't make things like "-kn" expand to "-k n"
@@ -545,6 +543,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--load-average": {
+			"shortopt" : "-l",
 
 			"help"   :"Specifies that no new builds should be started " + \
 				"if there are other builds running and the load average " + \
@@ -708,6 +707,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"   : "use only binaries that are newer than this " + \
 			           "timestamp for --rebuilt-binaries",
 			"action" : "store"
+		},
+
+		"--regex-search-auto": {
+			"help"   : "Enable or disable automatic regular expression detection for search actions",
+			"choices": y_or_n,
+			"default": "y",
 		},
 
 		"--root": {

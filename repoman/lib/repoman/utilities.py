@@ -1,12 +1,10 @@
 # -*- coding:utf-8 -*-
 # repoman: Utilities
-# Copyright 2007-2018 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
 scan"""
-
-from __future__ import print_function
 
 __all__ = [
 	"editor_is_executable",

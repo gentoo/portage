@@ -1,7 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function
-
 import re
 import stat
 
@@ -11,6 +9,7 @@ from _emerge.RootConfig import RootConfig
 from repoman.modules.scan.scanbase import ScanBase
 # import our initialized portage instance
 from repoman._portage import portage
+
 from portage import os
 from portage.exception import InvalidPackageName
 

@@ -34,13 +34,11 @@ from portage.const import CACHE_PATH, \
 	PRIVATE_PATH, PROFILE_PATH, USER_CONFIG_PATH, \
 	USER_VIRTUALS_FILE
 from portage.dbapi import dbapi
-from portage.dbapi.porttree import portdbapi
 from portage.dep import Atom, isvalidatom, match_from_list, use_reduce, _repo_separator, _slot_separator
 from portage.eapi import (eapi_exports_AA, eapi_exports_merge_type,
 	eapi_supports_prefix, eapi_exports_replace_vars, _get_eapi_attrs)
 from portage.env.loaders import KeyValuePairFileLoader
-from portage.exception import InvalidDependString, IsADirectory, \
-		PortageException
+from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable, macossandbox_capable
@@ -372,6 +370,9 @@ class config:
 					_("Found 2 make.conf files, using both '%s' and '%s'") %
 					tuple(make_conf_paths), noiselevel=-1)
 
+			# __* variables set in make.conf are local and are not be propagated.
+			make_conf = {k: v for k, v in make_conf.items() if not k.startswith("__")}
+
 			# Allow ROOT setting to come from make.conf if it's not overridden
 			# by the constructor argument (from the calling environment).
 			locations_manager.set_root_override(make_conf.get("ROOT"))
@@ -622,6 +623,9 @@ class config:
 				mygcfg.update(getconfig(x,
 					tolerant=tolerant, allow_sourcing=True,
 					expand=expand_map, recursive=True) or {})
+
+			# __* variables set in make.conf are local and are not be propagated.
+			mygcfg = {k: v for k, v in mygcfg.items() if not k.startswith("__")}
 
 			# Don't allow the user to override certain variables in make.conf
 			profile_only_variables = self.configdict["defaults"].get(
@@ -2352,7 +2356,7 @@ class config:
 						if not x:
 							continue
 
-					if (x[0]=="-"):
+					if x[0] == "-":
 						myflags.discard(x[1:])
 						continue
 

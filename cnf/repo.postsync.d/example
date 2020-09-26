@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Example /etc/portage/repo.postsync.d script. Make it executable (chmod +x) for
 # Portage to process it.
 #
@@ -44,6 +44,18 @@ if [ -n "${repository_name}" ]; then
 			echo "!!! egencache failed!"
 			ret=1
 		fi
+	fi
+
+	# Regenerate the metadata/pkg_desc_index file. This is not
+	# needed for https://gitweb.gentoo.org/repo/sync/gentoo.git which
+	# provides a freshly generated copy. The --external-cache-only
+	# option causes the metadata/pkg_desc_index file to be written under
+	# /var/cache/edb/dep instead of the repository itself, so that it
+	# does not interfere with repository verification.
+	if ! egencache --update-pkg-desc-index --external-cache-only --repo="${repository_name}" ${PORTAGE_VERBOSE+--verbose}
+	then
+		echo "!!! egencache failed!"
+		ret=1
 	fi
 fi
 

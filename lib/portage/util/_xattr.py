@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Portability shim for xattr support
@@ -10,8 +10,6 @@ the signature there is different compared to xattr.
 See the standard xattr module for more documentation:
 	https://pypi.python.org/pypi/pyxattr
 """
-
-from __future__ import print_function
 
 import contextlib
 import os

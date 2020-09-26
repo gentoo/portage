@@ -441,10 +441,10 @@ def unlockfile(mytuple):
 	else:
 		raise InvalidData
 
-	if(myfd == HARDLINK_FD):
+	if myfd == HARDLINK_FD:
 		unhardlink_lockfile(lockfilename, unlinkfile=unlinkfile)
 		return True
-	
+
 	# myfd may be None here due to myfd = mypath in lockfile()
 	if isinstance(lockfilename, str) and \
 		not os.path.exists(lockfilename):
@@ -501,7 +501,7 @@ def unlockfile(mytuple):
 def hardlock_name(path):
 	base, tail = os.path.split(path)
 	return os.path.join(base, ".%s.hardlock-%s-%s" %
-		(tail, portage._decode_argv([os.uname()[1]])[0], os.getpid()))
+		(tail, portage._decode_argv([os.uname()[1]])[0], portage.getpid()))
 
 def hardlink_is_mine(link, lock):
 	try:
@@ -672,7 +672,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				hostpid  = parts[1].split("-")
 				host  = "-".join(hostpid[:-1])
 				pid   = hostpid[-1]
-				
+
 				if filename not in mylist:
 					mylist[filename] = {}
 				if host not in mylist[filename]:
@@ -683,7 +683,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 
 
 	results.append(_("Found %(count)s locks") % {"count": mycount})
-	
+
 	for x in mylist:
 		if myhost in mylist[x] or remove_all_locks:
 			mylockname = hardlock_name(path + "/" + x)

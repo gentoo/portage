@@ -1,8 +1,6 @@
 # portage: news management code
-# Copyright 2006-2019 Gentoo Authors
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import print_function
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",
@@ -16,7 +14,6 @@ import io
 import logging
 import os as _os
 import re
-import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -347,8 +344,8 @@ class DisplayProfileRestriction(DisplayRestriction):
 
 	def checkRestriction(self, **kwargs):
 		if fnmatch.fnmatch(self.format, '2.*') and self.profile.endswith('/*'):
-			return (kwargs['profile'].startswith(self.profile[:-1]))
-		return (kwargs['profile'] == self.profile)
+			return kwargs['profile'].startswith(self.profile[:-1])
+		return kwargs['profile'] == self.profile
 
 class DisplayKeywordRestriction(DisplayRestriction):
 	"""

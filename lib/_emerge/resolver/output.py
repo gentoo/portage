@@ -8,8 +8,6 @@ __all__ = (
 	"Display", "format_unmatched_atom",
 	)
 
-
-import portage
 from portage import os
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
@@ -28,7 +26,7 @@ from portage.versions import best, cpv_getversion
 from _emerge.Blocker import Blocker
 from _emerge.create_world_atom import create_world_atom
 from _emerge.resolver.output_helpers import ( _DisplayConfig, _tree_display,
-	_PackageCounters, _create_use_string, _calc_changelog, PkgInfo)
+	_PackageCounters, _create_use_string, PkgInfo)
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 class Display:
@@ -41,7 +39,6 @@ class Display:
 	"""
 
 	def __init__(self):
-		self.changelogs = []
 		self.print_msg = []
 		self.blockers = []
 		self.counters = _PackageCounters()
@@ -245,7 +242,6 @@ class Display:
 				cur_use_map[key], old_iuse_map[key],
 				old_use_map[key], is_new, feature_flags,
 				reinst_flags_map.get(key))
-		return
 
 
 	@staticmethod
@@ -541,7 +537,6 @@ class Display:
 			if show_repos and repoadd:
 				myprint += " " + teal("[%s]" % repoadd)
 			writemsg_stdout("%s\n" % (myprint,), noiselevel=-1)
-		return
 
 
 	def print_blockers(self):
@@ -550,7 +545,6 @@ class Display:
 		"""
 		for pkg in self.blockers:
 			writemsg_stdout("%s\n" % (pkg,), noiselevel=-1)
-		return
 
 
 	def print_verbose(self, show_repos):
@@ -563,15 +557,6 @@ class Display:
 			# Use unicode_literals to force unicode format string so
 			# that RepoDisplay.__unicode__() is called in python2.
 			writemsg_stdout("%s" % (self.conf.repo_display,),
-				noiselevel=-1)
-		return
-
-
-	def print_changelog(self):
-		"""Prints the changelog text to std_out
-		"""
-		for chunk in self.changelogs:
-			writemsg_stdout(chunk,
 				noiselevel=-1)
 
 
@@ -674,24 +659,6 @@ class Display:
 		return pkg_info
 
 
-	def do_changelog(self, pkg, pkg_info):
-		"""Processes and adds the changelog text to the master text for output
-
-		@param pkg: _emerge.Package.Package instance
-		@param pkg_info: dictionay
-		Modifies self.changelogs
-		"""
-		if pkg_info.previous_pkg is not None:
-			ebuild_path_cl = pkg_info.ebuild_path
-			if ebuild_path_cl is None:
-				# binary package
-				ebuild_path_cl = self.portdb.findname(pkg.cpv, myrepo=pkg.repo)
-			if ebuild_path_cl is not None:
-				self.changelogs.extend(_calc_changelog(
-					ebuild_path_cl, pkg_info.previous_pkg, pkg.cpv))
-		return
-
-
 	def check_system_world(self, pkg):
 		"""Checks for any occurances of the package in the system or world sets
 
@@ -787,8 +754,6 @@ class Display:
 				pkg_info.attr_display.new_slot = True
 				if pkg_info.ordered:
 					self.counters.newslot += 1
-			if self.conf.changelog:
-				self.do_changelog(pkg, pkg_info)
 		else:
 			pkg_info.attr_display.new = True
 			if pkg_info.ordered:
@@ -916,8 +881,6 @@ class Display:
 							noiselevel=-1)
 			spawn_nofetch(self.conf.trees[pkg.root]["porttree"].dbapi,
 				pkg_info.ebuild_path)
-		if self.conf.changelog:
-			self.print_changelog()
 
 		return os.EX_OK
 

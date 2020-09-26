@@ -1,4 +1,4 @@
-# Copyright 2012-2014 Gentoo Foundation
+# Copyright 2012-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -452,4 +452,63 @@ class SlotConflictRebuildTestCase(TestCase):
 				playground.run_TestCase(test_case)
 				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
 		finally:
+			playground.cleanup()
+
+	def testSlotConflictRebuildGolang(self):
+
+		ebuilds = {
+
+			"dev-lang/go-1.14.7" : {
+				"EAPI": "7",
+				"SLOT": "0/1.14.7"
+			},
+
+			"dev-lang/go-1.15" : {
+				"EAPI": "7",
+				"SLOT": "0/1.15"
+			},
+
+			"net-p2p/syncthing-1.3.4-r1" : {
+				"EAPI": "7",
+				"BDEPEND": "=dev-lang/go-1.14* >=dev-lang/go-1.12"
+			},
+
+		}
+
+		installed = {
+
+			"dev-lang/go-1.14.7" : {
+				"EAPI": "7",
+				"SLOT": "0/1.14.7"
+			},
+
+			"net-p2p/syncthing-1.3.4-r1" : {
+				"EAPI": "7",
+				"BDEPEND": "=dev-lang/go-1.14* >=dev-lang/go-1.12"
+			},
+
+		}
+
+		world = ["dev-lang/go", "net-p2p/syncthing"]
+
+		test_cases = (
+
+			# Demonstrate an unwanted dev-lang/go rebuild triggered by a missed
+			# update due to a slot conflict (bug #439688).
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = []),
+
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+		finally:
+			playground.debug = False
 			playground.cleanup()

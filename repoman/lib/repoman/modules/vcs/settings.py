@@ -2,12 +2,11 @@
 Repoman VCSSettings modules
 '''
 
-from __future__ import print_function
-
 import logging
 import sys
 
 from portage.output import red
+
 from repoman.modules.vcs import module_controller, module_names
 from repoman.modules.vcs.vcs import FindVCS
 from repoman.qa_tracker import QATracker

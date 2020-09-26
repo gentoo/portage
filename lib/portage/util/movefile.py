@@ -1,8 +1,6 @@
 # Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import absolute_import
-
 __all__ = ['movefile']
 
 import errno
@@ -211,7 +209,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if hardlink_candidates:
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._portage_merge_.%s" % \
-			(tail, os.getpid()))
+			(tail, portage.getpid()))
 		try:
 			os.unlink(hardlink_tmp)
 		except OSError as e:

@@ -34,7 +34,7 @@ class PreservedLibsRegistry:
 	}
 
 	def __init__(self, root, filename):
-		""" 
+		"""
 			@param root: root used to check existence of paths in pruneNonExisting
 		    @type root: String
 			@param filename: absolute path for saving the preserved libs records
@@ -149,7 +149,7 @@ class PreservedLibsRegistry:
 
 	def register(self, cpv, slot, counter, paths):
 		""" Register new objects in the registry. If there is a record with the
-			same packagename (internally derived from cpv) and slot it is 
+			same packagename (internally derived from cpv) and slot it is
 			overwritten with the new data.
 			@param cpv: package instance that owns the objects
 			@type cpv: CPV (as String)
@@ -181,7 +181,7 @@ class PreservedLibsRegistry:
 			@type slot: String
 		"""
 		self.register(cpv, slot, counter, [])
-	
+
 	def pruneNonExisting(self):
 		""" Remove all records for objects that no longer exist on the filesystem. """
 
@@ -224,13 +224,13 @@ class PreservedLibsRegistry:
 				self._data[cps] = (cpv, counter, paths)
 			else:
 				del self._data[cps]
-	
+
 	def hasEntries(self):
 		""" Check if this registry contains any records. """
 		if self._data is None:
 			self.load()
 		return len(self._data) > 0
-	
+
 	def getPreservedLibs(self):
 		""" Return a mapping of packages->preserved objects.
 			@return mapping of package instances to preserved objects

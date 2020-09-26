@@ -33,7 +33,6 @@ class InheritDeprecated(LineCheck):
 		"gst-plugins10": "gstreamer",
 		"ltprune": False,
 		"mono": "mono-env",
-		"netsurf": False,
 		"python": "python-r1 / python-single-r1 / python-any-r1",
 		"ruby": "ruby-ng",
 		"user": "GLEP 81",

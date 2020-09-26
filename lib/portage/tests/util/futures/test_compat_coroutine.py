@@ -14,12 +14,13 @@ class CompatCoroutineTestCase(TestCase):
 
 	def test_returning_coroutine(self):
 		@coroutine
-		def returning_coroutine():
-			yield asyncio.sleep(0)
+		def returning_coroutine(loop=None):
+			yield asyncio.sleep(0, loop=loop)
 			coroutine_return('success')
 
+		loop = asyncio.get_event_loop()
 		self.assertEqual('success',
-			asyncio.get_event_loop().run_until_complete(returning_coroutine()))
+			asyncio.get_event_loop().run_until_complete(returning_coroutine(loop=loop)))
 
 	def test_raising_coroutine(self):
 
@@ -27,12 +28,13 @@ class CompatCoroutineTestCase(TestCase):
 			pass
 
 		@coroutine
-		def raising_coroutine():
-			yield asyncio.sleep(0)
+		def raising_coroutine(loop=None):
+			yield asyncio.sleep(0, loop=loop)
 			raise TestException('exception')
 
+		loop = asyncio.get_event_loop()
 		self.assertRaises(TestException,
-			asyncio.get_event_loop().run_until_complete, raising_coroutine())
+			loop.run_until_complete, raising_coroutine(loop=loop))
 
 	def test_catching_coroutine(self):
 
@@ -109,17 +111,18 @@ class CompatCoroutineTestCase(TestCase):
 				yield future
 
 		loop = asyncio.get_event_loop()
-		future = loop.run_until_complete(asyncio.wait([cancelled_future_coroutine()]))[0].pop()
+		future = loop.run_until_complete(asyncio.wait([cancelled_future_coroutine(loop=loop)], loop=loop))[0].pop()
 		self.assertTrue(future.cancelled())
 
 	def test_yield_expression_result(self):
 		@coroutine
-		def yield_expression_coroutine():
+		def yield_expression_coroutine(loop=None):
 			for i in range(3):
-				x = yield asyncio.sleep(0, result=i)
+				x = yield asyncio.sleep(0, result=i, loop=loop)
 				self.assertEqual(x, i)
 
-		asyncio.get_event_loop().run_until_complete(yield_expression_coroutine())
+		loop = asyncio.get_event_loop()
+		loop.run_until_complete(yield_expression_coroutine(loop=loop))
 
 	def test_method_coroutine(self):
 
@@ -144,7 +147,7 @@ class CompatCoroutineTestCase(TestCase):
 				return waiter
 
 			@coroutine
-			def read(self):
+			def read(self, loop=None):
 				while self._value is self._empty:
 					yield self._wait()
 
@@ -154,7 +157,7 @@ class CompatCoroutineTestCase(TestCase):
 				coroutine_return(value)
 
 			@coroutine
-			def write(self, value):
+			def write(self, value, loop=None):
 				while self._value is not self._empty:
 					yield self._wait()
 
@@ -162,16 +165,16 @@ class CompatCoroutineTestCase(TestCase):
 				self._notify()
 
 		@coroutine
-		def writer_coroutine(cubby, values, sentinel):
+		def writer_coroutine(cubby, values, sentinel, loop=None):
 			for value in values:
-				yield cubby.write(value)
-			yield cubby.write(sentinel)
+				yield cubby.write(value, loop=loop)
+			yield cubby.write(sentinel, loop=loop)
 
 		@coroutine
-		def reader_coroutine(cubby, sentinel):
+		def reader_coroutine(cubby, sentinel, loop=None):
 			results = []
 			while True:
-				result = yield cubby.read()
+				result = yield cubby.read(loop=loop)
 				if result == sentinel:
 					break
 				results.append(result)
@@ -180,9 +183,9 @@ class CompatCoroutineTestCase(TestCase):
 		loop = asyncio.get_event_loop()
 		cubby = Cubby(loop)
 		values = list(range(3))
-		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None), loop=loop)
-		reader = asyncio.ensure_future(reader_coroutine(cubby, None), loop=loop)
-		loop.run_until_complete(asyncio.wait([writer, reader]))
+		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None, loop=loop), loop=loop)
+		reader = asyncio.ensure_future(reader_coroutine(cubby, None, loop=loop), loop=loop)
+		loop.run_until_complete(asyncio.wait([writer, reader], loop=loop))
 
 		self.assertEqual(reader.result(), values)
 
@@ -191,7 +194,7 @@ class CompatCoroutineTestCase(TestCase):
 		# blend with synchronous code.
 		sync_cubby = _sync_methods(cubby, loop=loop)
 		sync_reader = _sync_decorator(reader_coroutine, loop=loop)
-		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None), loop=loop)
+		writer = asyncio.ensure_future(writer_coroutine(cubby, values, None, loop=loop), loop=loop)
 		self.assertEqual(sync_reader(cubby, None), values)
 		self.assertTrue(writer.done())
 

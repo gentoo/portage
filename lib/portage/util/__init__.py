@@ -788,7 +788,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 	while pos < length:
 		current = mystring[pos]
 		if current == "'":
-			if (indoub):
+			if indoub:
 				newstring.append("'")
 			else:
 				newstring.append("'") # Quote removal is handled by shlex.
@@ -796,7 +796,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 			pos += 1
 			continue
 		elif current == '"':
-			if (insing):
+			if insing:
 				newstring.append('"')
 			else:
 				newstring.append('"') # Quote removal is handled by shlex.
@@ -1267,7 +1267,7 @@ class atomic_ofstream(ObjectProxy):
 		if follow_links:
 			canonical_path = os.path.realpath(filename)
 			object.__setattr__(self, '_real_name', canonical_path)
-			tmp_name = "%s.%i" % (canonical_path, os.getpid())
+			tmp_name = "%s.%i" % (canonical_path, portage.getpid())
 			try:
 				object.__setattr__(self, '_file',
 					open_func(_unicode_encode(tmp_name,
@@ -1282,7 +1282,7 @@ class atomic_ofstream(ObjectProxy):
 				# new error if necessary.
 
 		object.__setattr__(self, '_real_name', filename)
-		tmp_name = "%s.%i" % (filename, os.getpid())
+		tmp_name = "%s.%i" % (filename, portage.getpid())
 		object.__setattr__(self, '_file',
 			open_func(_unicode_encode(tmp_name,
 				encoding=_encodings['fs'], errors='strict'),

@@ -1,9 +1,6 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division, print_function
-
-import collections
 import errno
 import functools
 import io
@@ -11,6 +8,7 @@ import logging
 import stat
 import textwrap
 import warnings
+import collections
 from collections import deque, OrderedDict
 from itertools import chain
 
@@ -48,8 +46,6 @@ from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
-from portage.util._eventloop.EventLoop import EventLoop
-from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.versions import _pkg_str, catpkgsplit
 
 from _emerge.AtomArg import AtomArg
@@ -1505,15 +1501,6 @@ class depgraph:
 
 				matched = []
 				for pkg in conflict:
-					if (pkg is highest_pkg and
-						not highest_pkg.installed and
-						inst_pkg is not None and
-						inst_pkg.sub_slot != highest_pkg.sub_slot and
-						not self._downgrade_probe(highest_pkg)):
-						# If an upgrade is desired, force the highest
-						# version into the graph (bug #531656).
-						non_matching_forced.add(highest_pkg)
-
 					if atom.match(pkg.with_use(
 						self._pkg_use_enabled(pkg))) and \
 						not (is_arg_parent and pkg.installed):
@@ -1808,9 +1795,32 @@ class depgraph:
 				self._dynamic_config._parent_atoms.get(to_be_masked, set())
 			conflict_atoms = set(parent_atom for parent_atom in all_parents \
 				if parent_atom not in parent_atoms)
-			backtrack_data.append((to_be_masked, conflict_atoms))
 
-		to_be_masked = backtrack_data[-1][0]
+			similar_pkgs = []
+			if conflict_atoms:
+				# If the conflict has been triggered by a missed update, then
+				# we can avoid excessive backtracking if we detect similar missed
+				# updates and mask them as part of the same backtracking choice.
+				for similar_pkg in self._iter_similar_available(to_be_masked, slot_atom):
+					if similar_pkg in conflict_pkgs:
+						continue
+					similar_conflict_atoms = []
+					for parent_atom in conflict_atoms:
+						parent, atom = parent_atom
+						if not atom.match(similar_pkg):
+							similar_conflict_atoms.append(parent_atom)
+					if similar_conflict_atoms:
+						similar_pkgs.append((similar_pkg, set(similar_conflict_atoms)))
+			similar_pkgs.append((to_be_masked, conflict_atoms))
+			backtrack_data.append(tuple(similar_pkgs))
+
+		# Prefer choices that minimize conflict atoms. This is intended
+		# to take precedence over the earlier package version sort. The
+		# package version sort is still needed or else choices for the
+		# testOverlapSlotConflict method of VirtualMinimizeChildrenTestCase
+		# become non-deterministic.
+		backtrack_data.sort(key=lambda similar_pkgs: len(similar_pkgs[-1][1]))
+		to_be_masked = [item[0] for item in backtrack_data[-1]]
 
 		self._dynamic_config._backtrack_infos.setdefault(
 			"slot conflict", []).append(backtrack_data)
@@ -1821,7 +1831,7 @@ class depgraph:
 				"",
 				"backtracking due to slot conflict:",
 				"   first package:  %s" % existing_node,
-				"  package to mask: %s" % to_be_masked,
+				"  package(s) to mask: %s" % str(to_be_masked),
 				"      slot: %s" % slot_atom,
 				"   parents: %s" % ", ".join(
 					"(%s, '%s')" % (ppkg, atom) for ppkg, atom in all_parents

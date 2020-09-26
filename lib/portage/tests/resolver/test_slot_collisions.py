@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -9,7 +9,7 @@ class SlotCollisionTestCase(TestCase):
 	def testSlotCollision(self):
 
 		ebuilds = {
-			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo" }, 
+			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo" },
 			"dev-libs/B-1": { "IUSE": "foo" },
 			"dev-libs/C-1": { "DEPEND": "dev-libs/A[foo]", "EAPI": 2 },
 			"dev-libs/D-1": { "DEPEND": "dev-libs/A[foo=] dev-libs/B[foo=]", "IUSE": "foo", "EAPI": 2 },
@@ -50,11 +50,11 @@ class SlotCollisionTestCase(TestCase):
 			"dev-lang/perl-5.16": {"SLOT": "0/5.16", "EAPI": "5"},
 			}
 		installed = {
-			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" }, 
+			"dev-libs/A-1": { "PDEPEND": "foo? ( dev-libs/B )", "IUSE": "foo", "USE": "foo" },
 			"dev-libs/B-1": { "IUSE": "foo", "USE": "foo" },
 			"dev-libs/C-1": { "DEPEND": "dev-libs/A[foo]", "EAPI": 2 },
 			"dev-libs/D-1": { "DEPEND": "dev-libs/A[foo=] dev-libs/B[foo=]", "IUSE": "foo", "USE": "foo", "EAPI": 2 },
-			
+
 			"sci-libs/K-1": { "IUSE": "foo", "USE": "" },
 			"sci-libs/L-1": { "DEPEND": "sci-libs/K[-foo]" },
 

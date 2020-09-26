@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
-from portage import _encodings, _unicode_encode, _unicode_decode
+from portage import _encodings, _unicode_decode
 from portage.localization import _
 
 

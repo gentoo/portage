@@ -88,6 +88,9 @@ class SyncLocalTestCase(TestCase):
 		git_binary = find_binary("git")
 		git_cmd = (git_binary,)
 
+		hg_binary = find_binary("hg")
+		hg_cmd = (hg_binary,)
+
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
 
@@ -242,6 +245,68 @@ class SyncLocalTestCase(TestCase):
 			(homedir, lambda: repos_set_conf("rsync", sync_rcu=True)),
 		)
 
+		delete_git_dir = (
+			(homedir, lambda: shutil.rmtree(
+				os.path.join(repo.location, ".git"))),
+		)
+
+		def hg_init_global_config():
+			with open(os.path.join(homedir, ".hgrc"), "wt") as f:
+				f.write(
+					"[ui]\nusername = {} <{}>\n".format(committer_name, committer_email)
+				)
+
+		hg_repo_create = (
+			(repo.location, hg_init_global_config),
+			(repo.location, hg_cmd + ("init",)),
+			(repo.location, hg_cmd + ("add", ".")),
+			(repo.location, hg_cmd + ("commit", "-A", "-m", "add whole repo")),
+		)
+
+		sync_type_mercurial = ((homedir, lambda: repos_set_conf("mercurial")),)
+
+		def append_newline(path):
+			with open(path, "at") as f:
+				f.write("\n")
+
+		upstream_hg_commit = (
+			(
+				repo.location + "_sync",
+				lambda: append_newline(
+					os.path.join(repo.location + "_sync", "metadata/layout.conf")
+				),
+			),
+			(
+				repo.location + "_sync",
+				hg_cmd + ("commit", "metadata/layout.conf", "-m", "test empty commit"),
+			),
+			(
+				repo.location + "_sync",
+				lambda: append_newline(
+					os.path.join(repo.location + "_sync", "metadata/layout.conf")
+				),
+			),
+			(
+				repo.location + "_sync",
+				hg_cmd
+				+ ("commit", "metadata/layout.conf", "-m", "test empty commit 2"),
+			),
+		)
+
+		if hg_binary is None:
+			mercurial_tests = ()
+		else:
+			mercurial_tests = (
+				delete_sync_repo
+				+ delete_git_dir
+				+ hg_repo_create
+				+ sync_type_mercurial
+				+ rename_repo
+				+ sync_cmds
+				+ upstream_hg_commit
+				+ sync_cmds
+			)
+
 		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
@@ -300,7 +365,7 @@ class SyncLocalTestCase(TestCase):
 				bump_timestamp_cmds + sync_cmds + revert_rcu_layout + \
 				delete_sync_repo + git_repo_create + sync_type_git + \
 				rename_repo + sync_cmds + upstream_git_commit + sync_cmds + \
-				sync_type_git_shallow + upstream_git_commit + sync_cmds:
+				sync_type_git_shallow + upstream_git_commit + sync_cmds + mercurial_tests:
 
 				if hasattr(cmd, '__call__'):
 					cmd()

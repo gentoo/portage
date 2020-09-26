@@ -19,7 +19,7 @@ from portage.localization import _
 from portage.util import writemsg, writemsg_level
 from portage.util.digraph import digraph
 from portage.util.SlotObject import SlotObject
-from portage.versions import vercmp, _pkg_str
+from portage.versions import vercmp
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
@@ -736,7 +736,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 				if choice.all_available or allow_masked:
 					return choice.atoms
 
-	assert(False) # This point should not be reachable
+	assert False # This point should not be reachable
 
 def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	use_cache=1, use_binaries=0, myroot=None, trees=None):

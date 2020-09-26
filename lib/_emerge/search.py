@@ -1,4 +1,4 @@
-# Copyright 1999-2016 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import difflib
@@ -9,7 +9,7 @@ from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.localization import localized_size
-from portage.output import  bold, bold as white, darkgreen, green, red
+from portage.output import bold, darkgreen, green, red
 from portage.util import writemsg_stdout
 from portage.util.iterators.MultiIterGroupBy import MultiIterGroupBy
 
@@ -28,7 +28,7 @@ class search:
 	#
 	def __init__(self, root_config, spinner, searchdesc,
 		verbose, usepkg, usepkgonly, search_index=True,
-		search_similarity=None, fuzzy=True):
+		search_similarity=None, fuzzy=True, regex_auto=False):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
@@ -42,6 +42,7 @@ class search:
 		self.spinner = None
 		self.root_config = root_config
 		self.setconfig = root_config.setconfig
+		self.regex_auto = regex_auto
 		self.fuzzy = fuzzy
 		self.search_similarity = (80 if search_similarity is None
 			else search_similarity)
@@ -259,6 +260,15 @@ class search:
 		if '/' in self.searchkey:
 			match_category = 1
 		fuzzy = False
+
+		if self.regex_auto and not regexsearch and re.search(r'[\^\$\*\[\]\{\}\|\?]|\.\+', self.searchkey) is not None:
+			try:
+				re.compile(self.searchkey, re.I)
+			except Exception:
+				pass
+			else:
+				regexsearch = True
+
 		if regexsearch:
 			self.searchre=re.compile(self.searchkey,re.I)
 		else:
@@ -333,7 +343,7 @@ class search:
 				match_string = setname
 			else:
 				match_string = setname.split("/")[-1]
-			
+
 			if self.searchre.search(match_string):
 				yield ("set", setname)
 			elif self.searchdesc:
@@ -413,7 +423,7 @@ class search:
 
 					if masked:
 						msg.append(green("*") + "  " + \
-							white(match) + " " + red("[ Masked ]") + "\n")
+							bold(match) + " " + red("[ Masked ]") + "\n")
 					else:
 						msg.append(green("*") + "  " + bold(match) + "\n")
 					myversion = self.getVersion(full_package, search.VERSION_RELEASE)

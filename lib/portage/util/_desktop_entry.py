@@ -1,16 +1,13 @@
-# Copyright 2012-2013 Gentoo Foundation
+# Copyright 2012-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import re
 import subprocess
 import sys
 
-import portage
-from portage import _encodings, _unicode_encode, _unicode_decode
+from portage import _unicode_encode, _unicode_decode
 from portage.util import writemsg
-from portage.util.configparser import (ConfigParserError, RawConfigParser,
-	read_configs)
-
+from portage.util.configparser import (RawConfigParser,	read_configs)
 
 def parse_desktop_entry(path):
 	"""

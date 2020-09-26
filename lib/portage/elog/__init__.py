@@ -1,5 +1,5 @@
 # elog/__init__.py - elog core functions
-# Copyright 2006-2014 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -92,7 +92,7 @@ _elog_atexit_handlers = []
 
 def elog_process(cpv, mysettings, phasefilter=None):
 	global _elog_atexit_handlers
-	
+
 	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
 	for s in logsystems:
 		# allow per module overrides of PORTAGE_ELOG_CLASSES

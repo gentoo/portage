@@ -1,8 +1,6 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
 __all__ = [
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
@@ -947,7 +945,7 @@ class vardbapi(dbapi):
 		self._bump_mtime(cpv)
 
 	@coroutine
-	def unpack_metadata(self, pkg, dest_dir):
+	def unpack_metadata(self, pkg, dest_dir, loop=None):
 		"""
 		Unpack package metadata to a directory. This method is a coroutine.
 
@@ -956,7 +954,7 @@ class vardbapi(dbapi):
 		@param dest_dir: destination directory
 		@type dest_dir: str
 		"""
-		loop = asyncio._wrap_loop()
+		loop = asyncio._wrap_loop(loop)
 		if not isinstance(pkg, portage.config):
 			cpv = pkg
 		else:
@@ -972,7 +970,7 @@ class vardbapi(dbapi):
 
 	@coroutine
 	def unpack_contents(self, pkg, dest_dir,
-		include_config=None, include_unmodified_config=None):
+		include_config=None, include_unmodified_config=None, loop=None):
 		"""
 		Unpack package contents to a directory. This method is a coroutine.
 
@@ -998,7 +996,7 @@ class vardbapi(dbapi):
 			by QUICKPKG_DEFAULT_OPTS).
 		@type include_unmodified_config: bool
 		"""
-		loop = asyncio._wrap_loop()
+		loop = asyncio._wrap_loop(loop)
 		if not isinstance(pkg, portage.config):
 			settings = self.settings
 			cpv = pkg
@@ -1633,7 +1631,6 @@ class dblink:
 	At present this is implemented as a text backend in /var/db/pkg.
 	"""
 
-	import re
 	_normalize_needed = re.compile(r'//|^[^/]|./$|(^|/)\.\.?(/|$)')
 
 	_contents_re = re.compile(r'^(' + \
@@ -4038,7 +4035,9 @@ class dblink:
 				# since we need it to have private ${T} etc... for things
 				# like elog.
 				settings_clone = portage.config(clone=self.settings)
-				settings_clone.pop("PORTAGE_BUILDDIR_LOCKED", None)
+				# This reset ensures that there is no unintended leakage
+				# of variables which should not be shared.
+				settings_clone.reset()
 				settings_clone.setcpv(cur_cpv, mydb=self.vartree.dbapi)
 				if self._preserve_libs and "preserve-libs" in \
 					settings_clone["PORTAGE_RESTRICT"].split():

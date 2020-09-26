@@ -151,11 +151,11 @@ def xsplit(infile):
 		encoding=_encodings['fs'], errors='strict'), 'rb')
 	mydat = myfile.read()
 	myfile.close()
-	
+
 	splits = xsplit_mem(mydat)
 	if not splits:
 		return False
-	
+
 	myfile = open(_unicode_encode(infile + '.index',
 		encoding=_encodings['fs'], errors='strict'), 'wb')
 	myfile.write(splits[0])
@@ -213,7 +213,7 @@ def getindex_mem(myindex):
 	myindexlen = len(myindex)
 	startpos = 0
 	myret = []
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		mytestlen = decodeint(myindex[startpos:startpos + 4])
 		myret = myret + [myindex[startpos + 4:startpos + 4 + mytestlen]]
 		startpos = startpos + mytestlen + 12
@@ -227,7 +227,7 @@ def searchindex(myindex, myitem):
 	mylen = len(myitem)
 	myindexlen = len(myindex)
 	startpos = 0
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		mytestlen = decodeint(myindex[startpos:startpos + 4])
 		if mytestlen == mylen:
 			if myitem == myindex[startpos + 4:startpos + 4 + mytestlen]:
@@ -236,7 +236,7 @@ def searchindex(myindex, myitem):
 				datalen = decodeint(myindex[startpos + 8 + mytestlen:startpos + 12 + mytestlen])
 				return datapos, datalen
 		startpos = startpos + mytestlen + 12
-		
+
 def getitem(myid, myitem):
 	myindex = myid[0]
 	mydata = myid[1]
@@ -251,7 +251,7 @@ def xpand(myid, mydest):
 	mydata = myid[1]
 	myindexlen = len(myindex)
 	startpos = 0
-	while ((startpos + 8) < myindexlen):
+	while (startpos + 8) < myindexlen:
 		namelen = decodeint(myindex[startpos:startpos + 4])
 		datapos = decodeint(myindex[startpos + 4 + namelen:startpos + 8 + namelen])
 		datalen = decodeint(myindex[startpos + 8 + namelen:startpos + 12 + namelen])
@@ -325,7 +325,7 @@ class tbz2:
 		self.scan() # Don't care about condition... We'll rewrite the data anyway.
 
 		if break_hardlinks and self.filestat and self.filestat.st_nlink > 1:
-			tmp_fname = "%s.%d" % (self.file, os.getpid())
+			tmp_fname = "%s.%d" % (self.file, portage.getpid())
 			copyfile(self.file, tmp_fname)
 			try:
 				portage.util.apply_stat_permissions(self.file, self.filestat)
@@ -439,7 +439,7 @@ class tbz2:
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)
 		startpos = 0
-		while ((startpos + 8) < self.indexsize):
+		while (startpos + 8) < self.indexsize:
 			namelen = decodeint(self.index[startpos:startpos + 4])
 			datapos = decodeint(self.index[startpos + 4 + namelen:startpos + 8 + namelen])
 			datalen = decodeint(self.index[startpos + 8 + namelen:startpos + 12 + namelen])
@@ -472,7 +472,7 @@ class tbz2:
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mydata = {}
 		startpos = 0
-		while ((startpos + 8) < self.indexsize):
+		while (startpos + 8) < self.indexsize:
 			namelen = decodeint(self.index[startpos:startpos + 4])
 			datapos = decodeint(self.index[startpos + 4 + namelen:startpos + 8 + namelen])
 			datalen = decodeint(self.index[startpos + 8 + namelen:startpos + 12 + namelen])

@@ -5,7 +5,6 @@ from itertools import chain
 import warnings
 
 import portage
-from portage import _encodings, _unicode_decode, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.const import EBUILD_PHASES
 from portage.dep import Atom, check_required_use, use_reduce, \

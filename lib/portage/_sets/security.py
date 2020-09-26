@@ -1,4 +1,4 @@
-# Copyright 2007-2012 Gentoo Foundation
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage.glsa as glsa
@@ -11,9 +11,9 @@ __all__ = ["SecuritySet", "NewGlsaSet", "NewAffectedSet", "AffectedSet"]
 class SecuritySet(PackageSet):
 	_operations = ["merge"]
 	_skip_applied = False
-	
+
 	description = "package set that includes all packages possibly affected by a GLSA"
-		
+
 	def __init__(self, settings, vardbapi, portdbapi, least_change=True):
 		super(SecuritySet, self).__init__()
 		self._settings = settings
@@ -29,7 +29,7 @@ class SecuritySet(PackageSet):
 			glsaindexlist = list(glsaindexlist)
 		glsaindexlist.sort()
 		return glsaindexlist
-		
+
 	def load(self):
 		glsaindexlist = self.getGlsaList(self._skip_applied)
 		atomlist = []
@@ -39,7 +39,7 @@ class SecuritySet(PackageSet):
 			if self.useGlsa(myglsa):
 				atomlist += ["="+x for x in myglsa.getMergeList(least_change=self._least_change)]
 		self._setAtoms(self._reduce(atomlist))
-	
+
 	def _reduce(self, atomlist):
 		mydict = {}
 		for atom in atomlist[:]:
@@ -54,7 +54,7 @@ class SecuritySet(PackageSet):
 					atomlist.remove(mydict[cps][0])
 					mydict[cps] = (atom, cpv)
 		return atomlist
-	
+
 	def useGlsa(self, myglsa):
 		return True
 
@@ -65,12 +65,12 @@ class SecuritySet(PackageSet):
 			myglsa = glsa.Glsa(glsaid, self._settings, self._vardbapi, self._portdbapi)
 			if not myglsa.isVulnerable() and not myglsa.nr in applied_list:
 				myglsa.inject()
-	
+
 	def singleBuilder(cls, options, settings, trees):
 		least_change = not get_boolean(options, "use_emerge_resolver", False)
 		return cls(settings, trees["vartree"].dbapi, trees["porttree"].dbapi, least_change=least_change)
 	singleBuilder = classmethod(singleBuilder)
-	
+
 class NewGlsaSet(SecuritySet):
 	_skip_applied = True
 	description = "Package set that includes all packages possibly affected by an unapplied GLSA"

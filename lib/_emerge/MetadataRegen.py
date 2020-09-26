@@ -1,11 +1,12 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
+from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import portage
 from portage import os
-from portage.dep import _repo_separator
-from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 from portage.cache.cache_errors import CacheError
+from portage.dep import _repo_separator
 from portage.util._async.AsyncScheduler import AsyncScheduler
 
 class MetadataRegen(AsyncScheduler):

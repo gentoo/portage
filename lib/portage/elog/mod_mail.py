@@ -1,8 +1,10 @@
 # elog/mod_mail.py - elog dispatch module
-# Copyright 2006-2007 Gentoo Foundation
+# Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import portage.mail, socket
+import portage.mail
+import socket
+
 from portage.exception import PortageException
 from portage.localization import _
 from portage.util import writemsg
@@ -12,7 +14,7 @@ def process(mysettings, key, logentries, fulltext):
 		myrecipient = mysettings["PORTAGE_ELOG_MAILURI"].split()[0]
 	else:
 		myrecipient = "root@localhost"
-	
+
 	myfrom = mysettings["PORTAGE_ELOG_MAILFROM"]
 	myfrom = myfrom.replace("${HOST}", socket.getfqdn())
 	mysubject = mysettings["PORTAGE_ELOG_MAILSUBJECT"]
@@ -39,5 +41,3 @@ def process(mysettings, key, logentries, fulltext):
 		portage.mail.send_mail(mysettings, mymessage)
 	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
-
-	return

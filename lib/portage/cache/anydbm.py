@@ -1,8 +1,6 @@
-# Copyright 2005-2010 Gentoo Foundation
+# Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-
-from __future__ import absolute_import
 
 import dbm
 
@@ -12,6 +10,7 @@ except ImportError:
 	gdbm = None
 
 import pickle
+
 from portage import _unicode_encode
 from portage import os
 from portage.cache import fs_template

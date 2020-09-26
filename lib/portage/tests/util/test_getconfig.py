@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
@@ -6,7 +6,6 @@ import tempfile
 from portage import os
 from portage import shutil
 from portage import _unicode_encode
-from portage.const import PORTAGE_BASE_PATH
 from portage.tests import TestCase
 from portage.util import getconfig
 from portage.exception import ParseError

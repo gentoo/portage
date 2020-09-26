@@ -1,32 +1,32 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import sys
-import logging
-import time
-import signal
-import socket
 import datetime
 import io
-import re
+import logging
 import random
+import re
+import signal
+import socket
+import sys
 import tempfile
+import time
+
+from _emerge.UserQuery import UserQuery
 
 import portage
-from portage import os
 from portage import _unicode_decode
-from portage.exception import CommandNotFound
-from portage.util import writemsg_level
+from portage import os
+from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
+from portage.sync.getaddrinfo_validate import getaddrinfo_validate
+from portage.sync.syncbase import NewBase
+from portage.util import writemsg, writemsg_level, writemsg_stdout
+from portage.util.futures import asyncio
+
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
 warn = create_color_func("WARN")
-from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
-from portage.util import writemsg, writemsg_stdout
-from portage.util.futures import asyncio
-from portage.sync.getaddrinfo_validate import getaddrinfo_validate
-from _emerge.UserQuery import UserQuery
-from portage.sync.syncbase import NewBase
 
 try:
 	from gemato.exceptions import GematoException
@@ -133,10 +133,7 @@ class RsyncSync(NewBase):
 		if self.verify_metamanifest and gemato is not None:
 			# Use isolated environment if key is specified,
 			# system environment otherwise
-			if self.repo.sync_openpgp_key_path is not None:
-				openpgp_env = gemato.openpgp.OpenPGPEnvironment()
-			else:
-				openpgp_env = gemato.openpgp.OpenPGPSystemEnvironment()
+			openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
 
 		try:
 			# Load and update the keyring early. If it fails, then verification
@@ -230,15 +227,16 @@ class RsyncSync(NewBase):
 			addrinfos = None
 			uris = []
 
-			try:
-				addrinfos = getaddrinfo_validate(
-					socket.getaddrinfo(getaddrinfo_host, None,
-					family, socket.SOCK_STREAM))
-			except socket.error as e:
-				writemsg_level(
-					"!!! getaddrinfo failed for '%s': %s\n"
-					% (_unicode_decode(hostname), str(e)),
-					noiselevel=-1, level=logging.ERROR)
+			if 'RSYNC_PROXY' not in self.spawn_kwargs['env']:
+				try:
+					addrinfos = getaddrinfo_validate(
+						socket.getaddrinfo(
+							getaddrinfo_host, None, family, socket.SOCK_STREAM))
+				except socket.error as e:
+					writemsg_level(
+						"!!! getaddrinfo failed for '%s': %s\n"
+						% (_unicode_decode(hostname), str(e)),
+						noiselevel=-1, level=logging.ERROR)
 
 			if addrinfos:
 
@@ -294,7 +292,7 @@ class RsyncSync(NewBase):
 				effective_maxretries = len(uris) - 1
 
 			local_state_unchanged = True
-			while (1):
+			while 1:
 				if uris:
 					dosyncuri = uris.pop()
 				elif maxretries < 0 or retries > maxretries:
@@ -305,7 +303,7 @@ class RsyncSync(NewBase):
 					uris.extend(uris_orig)
 					dosyncuri = uris.pop()
 
-				if (retries==0):
+				if retries == 0:
 					if "--ask" in opts:
 						uq = UserQuery(opts)
 						if uq.query("Do you want to sync your ebuild repository " + \
@@ -360,7 +358,7 @@ class RsyncSync(NewBase):
 			# if synced successfully, verify now
 			if exitcode == 0 and self.verify_metamanifest:
 				if gemato is None:
-					writemsg_level("!!! Unable to verify: gemato-11.0+ is required\n",
+					writemsg_level("!!! Unable to verify: gemato-14.5+ is required\n",
 						level=logging.ERROR, noiselevel=-1)
 					exitcode = 127
 				else:
@@ -423,7 +421,7 @@ class RsyncSync(NewBase):
 				openpgp_env.close()
 
 	def _process_exitcode(self, exitcode, syncuri, out, maxretries):
-		if (exitcode==0):
+		if exitcode == 0:
 			pass
 		elif exitcode == SERVER_OUT_OF_DATE:
 			exitcode = 1
@@ -431,7 +429,7 @@ class RsyncSync(NewBase):
 			sys.stderr.write(
 				">>> Exceeded PORTAGE_RSYNC_RETRIES: %s\n" % maxretries)
 			exitcode = 1
-		elif (exitcode>0):
+		elif exitcode > 0:
 			msg = []
 			if exitcode==1:
 				msg.append("Rsync has reported that there is a syntax error. Please ensure")

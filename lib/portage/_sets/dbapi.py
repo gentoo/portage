@@ -1,16 +1,14 @@
-# Copyright 2007-2019 Gentoo Authors
+# Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
 import glob
-import re
 import time
 
 from portage import os
+from portage.exception import PortageKeyError
 from portage.versions import best, catsplit, vercmp
 from portage.dep import Atom, use_reduce
-from portage.exception import InvalidAtom
+from portage.dep._slot_operator import strip_slots
 from portage.localization import _
 from portage._sets.base import PackageSet
 from portage._sets import SetConfigError, get_boolean
@@ -48,7 +46,7 @@ class EverythingSet(PackageSet):
 					myatoms.append(atom)
 
 		self._setAtoms(myatoms)
-	
+
 	def singleBuilder(self, options, settings, trees):
 		return EverythingSet(trees["vartree"].dbapi)
 	singleBuilder = classmethod(singleBuilder)
@@ -156,7 +154,7 @@ class VariableSet(EverythingSet):
 
 		if not (includes or excludes):
 			raise SetConfigError(_("no includes or excludes given"))
-		
+
 		metadatadb = options.get("metadata-source", "vartree")
 		if not metadatadb in trees:
 			raise SetConfigError(_("invalid value '%s' for option metadata-source") % metadatadb)
@@ -266,7 +264,7 @@ class UnavailableBinaries(EverythingSet):
 
 class CategorySet(PackageSet):
 	_operations = ["merge", "unmerge"]
-	
+
 	def __init__(self, category, dbapi, only_visible=True):
 		super(CategorySet, self).__init__()
 		self._db = dbapi
@@ -277,7 +275,7 @@ class CategorySet(PackageSet):
 		else:
 			s="all"
 		self.description = "Package set containing %s packages of category %s" % (s, self._category)
-			
+
 	def load(self):
 		myatoms = []
 		for cp in self._db.cp_all():
@@ -285,7 +283,7 @@ class CategorySet(PackageSet):
 				if (not self._check) or len(self._db.match(cp)) > 0:
 					myatoms.append(cp)
 		self._setAtoms(myatoms)
-	
+
 	def _builderGetRepository(cls, options, repositories):
 		repository = options.get("repository", "porttree")
 		if not repository in repositories:
@@ -296,7 +294,7 @@ class CategorySet(PackageSet):
 	def _builderGetVisible(cls, options):
 		return get_boolean(options, "only_visible", True)
 	_builderGetVisible = classmethod(_builderGetVisible)
-		
+
 	def singleBuilder(cls, options, settings, trees):
 		if not "category" in options:
 			raise SetConfigError(_("no category given"))
@@ -307,13 +305,13 @@ class CategorySet(PackageSet):
 
 		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
-		
+
 		return CategorySet(category, dbapi=trees[repository].dbapi, only_visible=visible)
 	singleBuilder = classmethod(singleBuilder)
 
 	def multiBuilder(cls, options, settings, trees):
 		rValue = {}
-	
+
 		if "categories" in options:
 			categories = options["categories"].split()
 			invalid = set(categories).difference(settings.categories)
@@ -321,14 +319,14 @@ class CategorySet(PackageSet):
 				raise SetConfigError(_("invalid categories: %s") % ", ".join(list(invalid)))
 		else:
 			categories = settings.categories
-	
+
 		repository = cls._builderGetRepository(options, trees.keys())
 		visible = cls._builderGetVisible(options)
 		name_pattern = options.get("name_pattern", "$category/*")
-	
+
 		if not "$category" in name_pattern and not "${category}" in name_pattern:
 			raise SetConfigError(_("name_pattern doesn't include $category placeholder"))
-	
+
 		for cat in categories:
 			myset = CategorySet(cat, trees[repository].dbapi, only_visible=visible)
 			myname = name_pattern.replace("$category", cat)
@@ -347,7 +345,7 @@ class AgeSet(EverythingSet):
 		self._age = age
 
 	def _filter(self, atom):
-	
+
 		cpv = self._db.match(atom)[0]
 		try:
 			date, = self._db.aux_get(cpv, self._aux_keys)
@@ -359,7 +357,7 @@ class AgeSet(EverythingSet):
 			or (self._mode == "newer" and age >= self._age)):
 			return False
 		return True
-	
+
 	def singleBuilder(cls, options, settings, trees):
 		mode = options.get("mode", "older")
 		if str(mode).lower() not in ["newer", "older"]:
@@ -418,7 +416,7 @@ class DateSet(EverythingSet):
 
 		setformat = formats[0]
 
-		if (setformat == "package"):
+		if setformat == "package":
 			package = options.get("package")
 			try:
 				cpv = vardbapi.match(package)[0]
@@ -426,13 +424,13 @@ class DateSet(EverythingSet):
 				date = int(date)
 			except (KeyError, ValueError):
 				raise SetConfigError(_("cannot determine installation date of package %s") % package)
-		elif (setformat == "filestamp"):
+		elif setformat == "filestamp":
 			filestamp = options.get("filestamp")
 			try:
 				date = int(os.stat(filestamp).st_mtime)
 			except (OSError, ValueError):
 				raise SetConfigError(_("cannot determine 'filestamp' of '%s'") % filestamp)
-		elif (setformat == "seconds"):
+		elif setformat == "seconds":
 			try:
 				date = int(options.get("seconds"))
 			except ValueError:
@@ -486,52 +484,31 @@ class ChangedDepsSet(PackageSet):
 
 	def load(self):
 		depvars = ('RDEPEND', 'PDEPEND')
-
-		# regexp used to match atoms using subslot operator :=
-		subslot_repl_re = re.compile(r':[^[]*=')
+		ebuild_vars = depvars + ('EAPI',)
+		installed_vars = depvars + ('USE', 'EAPI')
 
 		atoms = []
 		for cpv in self._vardb.cpv_all():
 			# no ebuild, no update :).
-			if not self._portdb.cpv_exists(cpv):
+			try:
+				ebuild_metadata = dict(zip(ebuild_vars, self._portdb.aux_get(cpv, ebuild_vars)))
+			except PortageKeyError:
 				continue
 
 			# USE flags used to build the ebuild and EAPI
 			# (needed for Atom & use_reduce())
-			use, eapi = self._vardb.aux_get(cpv, ('USE', 'EAPI'))
-			usel = use.split()
-
-			# function used to recursively process atoms in nested lists.
-			def clean_subslots(depatom, usel=None):
-				if isinstance(depatom, list):
-					# process the nested list.
-					return [clean_subslots(x, usel) for x in depatom]
-
-				try:
-					# this can be either an atom or some special operator.
-					# in the latter case, we get InvalidAtom and pass it as-is.
-					a = Atom(depatom)
-				except InvalidAtom:
-					return depatom
-				# if we're processing portdb, we need to evaluate USE flag
-				# dependency conditionals to make them match vdb. this
-				# requires passing the list of USE flags, so we reuse it
-				# as conditional for the operation as well.
-				if usel is not None:
-					a = a.evaluate_conditionals(usel)
-
-				# replace slot operator := dependencies with plain :=
-				# since we can't properly compare expanded slots
-				# in vardb to abstract slots in portdb.
-				return subslot_repl_re.sub(':=', a)
+			installed_metadata = dict(zip(installed_vars, self._vardb.aux_get(cpv, installed_vars)))
+			usel = frozenset(installed_metadata['USE'].split())
 
 			# get all *DEPEND variables from vdb & portdb and compare them.
 			# we need to do some cleaning up & expansion to make matching
 			# meaningful since vdb dependencies are conditional-free.
-			vdbvars = [clean_subslots(use_reduce(x, uselist=usel, eapi=eapi))
-					for x in self._vardb.aux_get(cpv, depvars)]
-			pdbvars = [clean_subslots(use_reduce(x, uselist=usel, eapi=eapi), usel)
-					for x in self._portdb.aux_get(cpv, depvars)]
+			vdbvars = [strip_slots(use_reduce(installed_metadata[k],
+				uselist=usel, eapi=installed_metadata['EAPI'], token_class=Atom))
+				for k in depvars]
+			pdbvars = [strip_slots(use_reduce(ebuild_metadata[k],
+				uselist=usel, eapi=ebuild_metadata['EAPI'], token_class=Atom))
+				for k in depvars]
 
 			# if dependencies don't match, trigger the rebuild.
 			if vdbvars != pdbvars:

@@ -1,13 +1,12 @@
 # Copyright 2012-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import os
-
+import portage
 from .EventLoop import EventLoop
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop
 
 
-_MAIN_PID = os.getpid()
+_MAIN_PID = portage.getpid()
 _instances = {}
 
 
@@ -17,7 +16,7 @@ def global_event_loop():
 	belongs exclusively to the current process.
 	"""
 
-	pid = os.getpid()
+	pid = portage.getpid()
 	instance = _instances.get(pid)
 	if instance is not None:
 		return instance

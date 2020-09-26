@@ -33,7 +33,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@coroutine
-	def init_update(self):
+	def init_update(self, loop=None):
 		"""
 		Create an update directory as a destination to sync updates to.
 		The directory will be populated with files from the previous
@@ -50,7 +50,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@property
-	def current_update(self):
+	def current_update(self, loop=None):
 		"""
 		Get the current update directory which would have been returned
 		from the most recent call to the init_update method. This raises
@@ -63,7 +63,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@coroutine
-	def commit_update(self):
+	def commit_update(self, loop=None):
 		"""
 		Commit the current update directory, so that is becomes the
 		latest immutable snapshot.
@@ -71,7 +71,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@coroutine
-	def abort_update(self):
+	def abort_update(self, loop=None):
 		"""
 		Delete the current update directory. If there was not an update
 		in progress, or it has already been committed, then this has
@@ -80,7 +80,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@coroutine
-	def garbage_collection(self):
+	def garbage_collection(self, loop=None):
 		"""
 		Remove expired snapshots.
 		"""

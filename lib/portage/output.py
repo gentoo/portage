@@ -1,8 +1,6 @@
 # Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
 __docformat__ = "epytext"
 
 import errno
@@ -159,7 +157,7 @@ def _parse_color_map(config_root='/', onerror=None):
 	"""
 	global codes, _styles
 	myfile = os.path.join(config_root, COLOR_MAP_FILE)
-	ansi_code_pattern = re.compile("^[0-9;]*m$") 
+	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	quotes = '\'"'
 	def strip_quotes(token):
 		if token[0] in quotes and token[0] == token[-1]:
@@ -174,10 +172,10 @@ def _parse_color_map(config_root='/', onerror=None):
 		for lineno, line in enumerate(lines):
 			commenter_pos = line.find("#")
 			line = line[:commenter_pos].strip()
-			
+
 			if len(line) == 0:
 				continue
-			
+
 			split_line = line.split("=")
 			if len(split_line) != 2:
 				e = ParseError(_("'%s', line %s: expected exactly one occurrence of '=' operator") % \
@@ -231,7 +229,7 @@ def _parse_color_map(config_root='/', onerror=None):
 		raise
 
 def nc_len(mystr):
-	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
+	tmp = re.sub(esc_seq + "^m]+m", "", mystr)
 	return len(tmp)
 
 _legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole)')

@@ -200,6 +200,15 @@ def parse_args(argv, repoman_default_opts):
 		help='select output type', default='default')
 
 	parser.add_argument(
+		'-j', '--jobs', dest='jobs', action='store', type=int, default=1,
+		help='Specifies the number of jobs (processes) to run simultaneously.')
+
+	parser.add_argument(
+		'-l', '--load-average', dest='load_average', action='store', type=float, default=None,
+		help='Specifies that no new jobs (processes) should be started if there are others '
+			'jobs running and the load average is at least load (a floating-point number).')
+
+	parser.add_argument(
 		'--mode', dest='mode', choices=mode_keys,
 		help='specify which mode repoman will run in (default=full)')
 

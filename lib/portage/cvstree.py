@@ -1,8 +1,6 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2017 Gentoo Foundation
+# Copyright 1998-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-from __future__ import print_function
 
 import io
 import re
@@ -123,7 +121,7 @@ def findchanged(entries, recursive=0, basedir=""):
 			mylist += findchanged(entries["dirs"][mydir], recursive, basedir + mydir)
 
 	return mylist
-	
+
 def findmissing(entries, recursive=0, basedir=""):
 	"""Recurses the entries tree to find all elements that are listed in the cvs
 	tree but do not exist on the filesystem. Returns a list of paths,
@@ -205,7 +203,7 @@ def apply_cvsignore_filter(files):
 		else:
 			x += 1
 	return files
-	
+
 def getentries(mydir, recursive=0):
 	"""Scans the given directory and returns a datadict of all the entries in
 	the directory separated as a dirs dict and a files dict.

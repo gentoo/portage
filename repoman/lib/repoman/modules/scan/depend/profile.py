@@ -2,7 +2,9 @@
 
 
 import copy
+import functools
 import os
+import types
 from pprint import pformat
 
 from _emerge.Package import Package
@@ -15,6 +17,10 @@ from repoman.modules.scan.depend._gen_arches import _gen_arches
 from portage.dep import Atom
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage.util import getconfig
+from portage.util.futures import asyncio
+from portage.util.futures.compat_coroutine import coroutine, coroutine_return
+from portage.util.futures.executor.fork import ForkExecutor
+from portage.util.futures.iter_completed import async_iter_completed
 
 
 def sort_key(item):
@@ -58,16 +64,14 @@ class ProfileDependsChecks(ScanBase):
 	def check(self, **kwargs):
 		'''Perform profile dependant dependency checks
 
-		@param arches:
 		@param pkg: Package in which we check (object).
 		@param ebuild: Ebuild which we check (object).
-		@param baddepsyntax: boolean
-		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
 		ebuild = kwargs.get('ebuild').get()
 		pkg = kwargs.get('pkg').get()
-		unknown_pkgs, baddepsyntax = _depend_checks(
+
+		ebuild.unknown_pkgs, ebuild.baddepsyntax = _depend_checks(
 			ebuild, pkg, self.portdb, self.qatracker, self.repo_metadata,
 			self.repo_settings.qadata)
 
@@ -90,8 +94,64 @@ class ProfileDependsChecks(ScanBase):
 				relevant_profiles.append((keyword, groups, prof))
 
 		relevant_profiles.sort(key=sort_key)
+		ebuild.relevant_profiles = relevant_profiles
 
-		for keyword, groups, prof in relevant_profiles:
+		if self.options.jobs <= 1:
+			for task in self._iter_tasks(None, None, ebuild, pkg):
+				task, results = task
+				for result in results:
+					self._check_result(task, result)
+
+		loop = asyncio._wrap_loop()
+		loop.run_until_complete(self._async_check(loop=loop, **kwargs))
+
+		return False
+
+	@coroutine
+	def _async_check(self, loop=None, **kwargs):
+		'''Perform async profile dependant dependency checks
+
+		@param arches:
+		@param pkg: Package in which we check (object).
+		@param ebuild: Ebuild which we check (object).
+		@param baddepsyntax: boolean
+		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
+		@returns: dictionary
+		'''
+		loop = asyncio._wrap_loop(loop)
+		ebuild = kwargs.get('ebuild').get()
+		pkg = kwargs.get('pkg').get()
+		unknown_pkgs = ebuild.unknown_pkgs
+		baddepsyntax = ebuild.baddepsyntax
+
+		# Use max_workers=True to ensure immediate fork, since _iter_tasks
+		# needs the fork to create a snapshot of current state.
+		executor = ForkExecutor(max_workers=self.options.jobs)
+
+		if self.options.jobs > 1:
+			for future_done_set in async_iter_completed(self._iter_tasks(loop, executor, ebuild, pkg),
+				max_jobs=self.options.jobs, max_load=self.options.load_average, loop=loop):
+				for task in (yield future_done_set):
+					task, results = task.result()
+					for result in results:
+						self._check_result(task, result)
+
+		if not baddepsyntax and unknown_pkgs:
+			type_map = {}
+			for mytype, atom in unknown_pkgs:
+				type_map.setdefault(mytype, set()).add(atom)
+			for mytype, atoms in type_map.items():
+				self.qatracker.add_error(
+					"dependency.unknown", "%s: %s: %s"
+					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
+
+	@coroutine
+	def _task(self, task, loop=None):
+		yield task.future
+		coroutine_return((task, task.future.result()))
+
+	def _iter_tasks(self, loop, executor, ebuild, pkg):
+		for keyword, groups, prof in ebuild.relevant_profiles:
 
 			is_stable_profile = prof.status == "stable"
 			is_dev_profile = prof.status == "dev" and \
@@ -154,6 +214,22 @@ class ProfileDependsChecks(ScanBase):
 			dep_settings.usemask = dep_settings._use_manager.getUseMask(
 				pkg, stable=dep_settings._parent_stable)
 
+			task = types.SimpleNamespace(ebuild=ebuild, prof=prof, keyword=keyword)
+
+			target = functools.partial(self._task_subprocess, task, pkg, dep_settings)
+
+			if self.options.jobs <= 1:
+				yield (task, target())
+			else:
+				task.future = asyncio.ensure_future(loop.run_in_executor(executor, target), loop=loop)
+				yield self._task(task, loop=loop)
+
+
+	def _task_subprocess(self, task, pkg, dep_settings):
+			ebuild = task.ebuild
+			baddepsyntax = ebuild.baddepsyntax
+			results = []
+			prof = task.prof
 			if not baddepsyntax:
 				ismasked = not ebuild.archs or \
 					pkg.cpv not in self.portdb.xmatch("match-visible",
@@ -163,7 +239,7 @@ class ProfileDependsChecks(ScanBase):
 						self.have['pmasked'] = bool(dep_settings._getMaskAtom(
 							pkg.cpv, ebuild.metadata))
 					if self.options.ignore_masked:
-						continue
+						return results
 					# we are testing deps for a masked package; give it some lee-way
 					suffix = "masked"
 					matchmode = "minimum-all-ignore-profile"
@@ -190,6 +266,22 @@ class ProfileDependsChecks(ScanBase):
 					success, atoms = portage.dep_check(
 						myvalue, self.portdb, dep_settings,
 						use="all", mode=matchmode, trees=self.repo_settings.trees)
+
+					results.append(types.SimpleNamespace(atoms=atoms, success=success, mykey=mykey, mytype=mytype))
+
+			return results
+
+
+	def _check_result(self, task, result):
+					prof = task.prof
+					keyword = task.keyword
+					ebuild = task.ebuild
+					unknown_pkgs = ebuild.unknown_pkgs
+
+					success = result.success
+					atoms = result.atoms
+					mykey = result.mykey
+					mytype = result.mytype
 
 					if success:
 						if atoms:
@@ -223,7 +315,7 @@ class ProfileDependsChecks(ScanBase):
 
 							# if we emptied out our list, continue:
 							if not all_atoms:
-								continue
+								return
 
 							# Filter out duplicates.  We do this by hand (rather
 							# than use a set) so the order is stable and better
@@ -254,17 +346,6 @@ class ProfileDependsChecks(ScanBase):
 								"%s: %s: %s(%s)\n%s"
 								% (ebuild.relative_path, mytype, keyword,
 									prof, pformat(atoms, indent=6)))
-
-		if not baddepsyntax and unknown_pkgs:
-			type_map = {}
-			for mytype, atom in unknown_pkgs:
-				type_map.setdefault(mytype, set()).add(atom)
-			for mytype, atoms in type_map.items():
-				self.qatracker.add_error(
-					"dependency.unknown", "%s: %s: %s"
-					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
-
-		return False
 
 	@property
 	def runInEbuilds(self):

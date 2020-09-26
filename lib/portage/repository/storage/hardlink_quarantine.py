@@ -39,59 +39,59 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
 		self._current_update = None
 
 	@coroutine
-	def _check_call(self, cmd):
+	def _check_call(self, cmd, loop=None):
 		"""
 		Run cmd and raise RepoStorageException on failure.
 
 		@param cmd: command to executre
 		@type cmd: list
 		"""
-		p = SpawnProcess(args=cmd, scheduler=asyncio._wrap_loop(), **self._spawn_kwargs)
+		p = SpawnProcess(args=cmd, scheduler=asyncio._wrap_loop(loop), **self._spawn_kwargs)
 		p.start()
 		if (yield p.async_wait()) != os.EX_OK:
 			raise RepoStorageException('command exited with status {}: {}'.\
 				format(p.returncode, ' '.join(cmd)))
 
 	@coroutine
-	def init_update(self):
+	def init_update(self, loop=None):
 		update_location = os.path.join(self._user_location, '.tmp-unverified-download-quarantine')
-		yield self._check_call(['rm', '-rf', update_location])
+		yield self._check_call(['rm', '-rf', update_location], loop=loop)
 
 		# Use  rsync --link-dest to hardlink a files into self._update_location,
 		# since cp -l is not portable.
 		yield self._check_call(['rsync', '-a', '--link-dest', self._user_location,
 			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
 			'--exclude', '/{}'.format(os.path.basename(update_location)),
-			self._user_location + '/', update_location + '/'])
+			self._user_location + '/', update_location + '/'], loop=loop)
 
 		self._update_location = update_location
 
 		coroutine_return(self._update_location)
 
 	@property
-	def current_update(self):
+	def current_update(self, loop=None):
 		if self._update_location is None:
 			raise RepoStorageException('current update does not exist')
 		return self._update_location
 
 	@coroutine
-	def commit_update(self):
+	def commit_update(self, loop=None):
 		update_location = self.current_update
 		self._update_location = None
 		yield self._check_call(['rsync', '-a', '--delete',
 			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
 			'--exclude', '/{}'.format(os.path.basename(update_location)),
-			update_location + '/', self._user_location + '/'])
+			update_location + '/', self._user_location + '/'], loop=loop)
 
-		yield self._check_call(['rm', '-rf', update_location])
+		yield self._check_call(['rm', '-rf', update_location], loop=loop)
 
 	@coroutine
-	def abort_update(self):
+	def abort_update(self, loop=None):
 		if self._update_location is not None:
 			update_location = self._update_location
 			self._update_location = None
-			yield self._check_call(['rm', '-rf', update_location])
+			yield self._check_call(['rm', '-rf', update_location], loop=loop)
 
 	@coroutine
-	def garbage_collection(self):
-		yield self.abort_update()
+	def garbage_collection(self, loop=None):
+		yield self.abort_update(loop=loop)

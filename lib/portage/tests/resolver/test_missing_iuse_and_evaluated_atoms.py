@@ -1,4 +1,4 @@
-# Copyright 2010 Gentoo Foundation
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -8,9 +8,9 @@ class MissingIUSEandEvaluatedAtomsTestCase(TestCase):
 
 	def testMissingIUSEandEvaluatedAtoms(self):
 		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "dev-libs/B[foo?]", "IUSE": "foo bar", "EAPI": 2 }, 
-			"dev-libs/A-2": { "DEPEND": "dev-libs/B[foo?,bar]", "IUSE": "foo bar", "EAPI": 2 }, 
-			"dev-libs/B-1": { "IUSE": "bar" }, 
+			"dev-libs/A-1": { "DEPEND": "dev-libs/B[foo?]", "IUSE": "foo bar", "EAPI": 2 },
+			"dev-libs/A-2": { "DEPEND": "dev-libs/B[foo?,bar]", "IUSE": "foo bar", "EAPI": 2 },
+			"dev-libs/B-1": { "IUSE": "bar" },
 			}
 
 		test_cases = (

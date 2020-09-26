@@ -1,8 +1,6 @@
 # Copyright 2013-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import division
-
 import collections
 import errno
 import logging
@@ -417,7 +415,7 @@ class FetchTask(CompositeTask):
 			self._fetch_tmp_dir_info = 'distfiles'
 			distdir = self.config.options.distfiles
 
-		tmp_basename = self.distfile + '._emirrordist_fetch_.%s' % os.getpid()
+		tmp_basename = self.distfile + '._emirrordist_fetch_.%s' % portage.getpid()
 
 		variables = {
 			"DISTDIR": distdir,
@@ -458,7 +456,7 @@ class FetchTask(CompositeTask):
 		if self._was_cancelled():
 			self.wait()
 			return
-		
+
 		if os.path.exists(self._fetch_tmp_file):
 			self._start_task(
 				FileDigester(file_path=self._fetch_tmp_file,
@@ -624,7 +622,7 @@ class FetchTask(CompositeTask):
 
 		head, tail = os.path.split(dest)
 		hardlink_tmp = os.path.join(head, ".%s._mirrordist_hardlink_.%s" % \
-			(tail, os.getpid()))
+			(tail, portage.getpid()))
 
 		try:
 			try:
