@@ -257,37 +257,54 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
+
+	def copy_file():
+		dest_tmp = dest + "#new"
+		dest_tmp_bytes = _unicode_encode(dest_tmp, encoding=encoding,
+			errors='strict')
+		try: # For safety copy then move it over.
+			_copyfile(src_bytes, dest_tmp_bytes)
+			_apply_stat(sstat, dest_tmp_bytes)
+			if xattr_enabled:
+				try:
+					_copyxattr(src_bytes, dest_tmp_bytes,
+						exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", ""))
+				except SystemExit:
+					raise
+				except:
+					msg = _("Failed to copy extended attributes. "
+						"In order to avoid this error, set "
+						"FEATURES=\"-xattr\" in make.conf.")
+					msg = textwrap.wrap(msg, 65)
+					for line in msg:
+						writemsg("!!! %s\n" % (line,), noiselevel=-1)
+					raise
+			_rename(dest_tmp_bytes, dest_bytes)
+			_os.unlink(src_bytes)
+		finally:
+			if _os.path.exists(dest_tmp_bytes):
+				_os.unlink(dest_tmp_bytes)
 	if renamefailed:
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
-			dest_tmp = dest + "#new"
-			dest_tmp_bytes = _unicode_encode(dest_tmp, encoding=encoding,
-				errors='strict')
-			try: # For safety copy then move it over.
-				_copyfile(src_bytes, dest_tmp_bytes)
-				_apply_stat(sstat, dest_tmp_bytes)
-				if xattr_enabled:
-					try:
-						_copyxattr(src_bytes, dest_tmp_bytes,
-							exclude=mysettings.get("PORTAGE_XATTR_EXCLUDE", ""))
-					except SystemExit:
-						raise
-					except:
-						msg = _("Failed to copy extended attributes. "
-							"In order to avoid this error, set "
-							"FEATURES=\"-xattr\" in make.conf.")
-						msg = textwrap.wrap(msg, 65)
-						for line in msg:
-							writemsg("!!! %s\n" % (line,), noiselevel=-1)
-						raise
-				_rename(dest_tmp_bytes, dest_bytes)
-				_os.unlink(src_bytes)
+			try:
+				copy_file()
 			except SystemExit as e:
 				raise
 			except Exception as e:
 				writemsg("!!! %s\n" % _('copy %(src)s -> %(dest)s failed.') %
 					{"src": src, "dest": dest}, noiselevel=-1)
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
-				return None
+				try:
+					writemsg("!!! unlink %s then retry.\n" % dest,
+						noiselevel=-1)
+					if _os.path.exists(dest_bytes):
+						_os.unlink(dest_bytes)
+					copy_file()
+				except SystemExit as e:
+					raise
+				except Exception as e:
+					writemsg("!!! %s\n" % (e,), noiselevel=-1)
+					return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
 			a = spawn([MOVE_BINARY, '-f', src, dest], env=os.environ)
