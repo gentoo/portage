@@ -706,10 +706,10 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 						if unshare_net:
 							# use 'localhost' to avoid hostname resolution problems
 							try:
-								# pypy3 does not implement socket.sethostname()
+								# Old pypy3 versions do not implement socket.sethostname()
 								new_hostname = b'localhost'
 								if hasattr(socket, 'sethostname'):
-									socket.sethostname(new_hostname)
+									socket.sethostname(new_hostname.decode("ascii"))
 								else:
 									if libc.sethostname(new_hostname, len(new_hostname)) != 0:
 										errno_value = ctypes.get_errno()
