@@ -262,6 +262,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			dest_tmp = dest + "#new"
 			dest_tmp_bytes = _unicode_encode(dest_tmp, encoding=encoding,
 				errors='strict')
+			success = False
 			try: # For safety copy then move it over.
 				_copyfile(src_bytes, dest_tmp_bytes)
 				_apply_stat(sstat, dest_tmp_bytes)
@@ -281,13 +282,18 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 						raise
 				_rename(dest_tmp_bytes, dest_bytes)
 				_os.unlink(src_bytes)
-			except SystemExit as e:
-				raise
+				success = True
 			except Exception as e:
 				writemsg("!!! %s\n" % _('copy %(src)s -> %(dest)s failed.') %
 					{"src": src, "dest": dest}, noiselevel=-1)
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				return None
+			finally:
+				if not success:
+					try:
+						_os.unlink(dest_tmp_bytes)
+					except OSError:
+						pass
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
 			a = spawn([MOVE_BINARY, '-f', src, dest], env=os.environ)
