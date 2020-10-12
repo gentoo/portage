@@ -558,8 +558,7 @@ move dev-util/git dev-vcs/git
 					output, _err = yield proc.communicate()
 					yield proc.wait()
 					if proc.returncode != os.EX_OK:
-						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+						portage.writemsg(output)
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))
