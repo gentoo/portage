@@ -2,11 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
-import sys
 
 import portage
 from portage import shutil, os
-from portage import _unicode_decode
 from portage.const import (BASH_BINARY, BINREPOS_CONF_FILE, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
