@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-3.0.2
+==================================
+* Bug Fixes:
+    - Bug 748144 Make file.size fatal for files larger than 20 KiB
+
 repoman-3.0.1
 ==================================
 * Bug Fixes:
