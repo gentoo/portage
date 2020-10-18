@@ -59,7 +59,6 @@ qawarnings:
     - ebuild.badheader
     - ebuild.patches
     - file.empty
-    - file.size
     - HOMEPAGE.virtual
     - inherit.unused
     - inherit.deprecated

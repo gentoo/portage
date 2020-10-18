@@ -60,7 +60,6 @@ qahelp:
     file:
         executable: "Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do not need the executable bit"
         size: "Files in the files directory must be under 20 KiB"
-        size-fatal: "Files in the files directory must be under 60 KiB"
         empty: "Empty file in the files directory"
         name: "File/dir name must be composed of only the following chars: %s "
         UTF8: "File is not UTF8 compliant"
