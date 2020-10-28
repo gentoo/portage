@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2018-2019 Gentoo Authors
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -19,6 +19,11 @@ KILL_SIGNALS = (
 	signal.SIGHUP,
 )
 
+SIGTSTP_SIGCONT = (
+	signal.SIGTSTP,
+	signal.SIGCONT,
+)
+
 
 def forward_kill_signal(pid, signum, frame):
 	if pid == 0:
@@ -26,6 +31,18 @@ def forward_kill_signal(pid, signum, frame):
 		# process group are also sent to the current process.
 		signal.signal(signum, signal.SIG_DFL)
 	os.kill(pid, signum)
+
+
+def forward_sigtstp_sigcont(pid, signum, frame):
+	handler = None
+	if pid == 0:
+		# Temporarily disable the handler in order to prevent it from
+		# being called recursively, since the signal will also be sent
+		# to the current process.
+		handler = signal.signal(signum, signal.SIG_DFL)
+	os.kill(pid, signum)
+	if handler is not None:
+		signal.signal(signum, handler)
 
 
 def preexec_fn(uid, gid, groups, umask):
@@ -96,6 +113,11 @@ def main(argv):
 	sig_handler = functools.partial(forward_kill_signal, 0 if setsid else main_child_pid)
 	for signum in KILL_SIGNALS:
 		signal.signal(signum, sig_handler)
+
+	# For correct operation of Ctrl+Z, forward SIGTSTP and SIGCONT.
+	sigtstp_sigcont_handler = functools.partial(forward_sigtstp_sigcont, 0 if setsid else main_child_pid)
+	for signum in SIGTSTP_SIGCONT:
+		signal.signal(signum, sigtstp_sigcont_handler)
 
 	# wait for child processes
 	while True:
