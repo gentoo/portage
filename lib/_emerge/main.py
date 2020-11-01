@@ -645,6 +645,11 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices": y_or_n
 		},
 
+		"--quickpkg-direct-root": {
+			"help": "Specify the root to use as the --quickpkg-direct package source",
+			"action" : "store"
+		},
+
 		"--quiet": {
 			"shortopt" : "-q",
 			"help"     : "reduced or condensed output",

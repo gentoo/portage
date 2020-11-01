@@ -41,7 +41,7 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ConfigProtect, shlex_split, new_protect_filename
 from portage.util import cmp_sort_key, writemsg, writemsg_stdout
-from portage.util import ensure_dirs
+from portage.util import ensure_dirs, normalize_path
 from portage.util import writemsg_level, write_atomic
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
@@ -4567,8 +4567,15 @@ class depgraph:
 				self._dynamic_config._skip_restart = True
 				return False, myfavorites
 
+		# Since --quickpkg-direct assumes that --quickpkg-direct-root is
+		# immutable, assert that there are no merge or unmerge tasks
+		# for --quickpkg-direct-root.
+		quickpkg_root = normalize_path(os.path.abspath(
+			self._frozen_config.myopts.get('--quickpkg-direct-root',
+			self._frozen_config._running_root.settings['ROOT']))).rstrip(os.path.sep) + os.path.sep
 		if (self._frozen_config.myopts.get('--quickpkg-direct', 'n') == 'y' and
-			self._frozen_config.target_root is not self._frozen_config._running_root):
+			self._frozen_config.settings['ROOT'] != quickpkg_root and
+			self._frozen_config._running_root.settings['ROOT'] == quickpkg_root):
 			running_root = self._frozen_config._running_root.root
 			for node in self._dynamic_config.digraph:
 				if (isinstance(node, Package) and node.operation in ('merge', 'uninstall') and
