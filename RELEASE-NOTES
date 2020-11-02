@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.9
+==================================
+* Bug Fixes:
+    - Bug 199722 Enable QA Notice for deprecated hasq/useq in *rm phases
+    - Bug 704498 Fix pid-sandbox to handle Ctrl+Z correctly
+    - Bug 752066 Add emerge --quickpkg-direct-root option
+    - Bug 752147 Fix make.conf to expand special *ROOT variables
+    - Bug 752153 Add @golang-rebuild package set
+
 portage-3.0.8
 ==================================
 * Bug Fixes:
