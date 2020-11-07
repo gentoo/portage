@@ -116,7 +116,7 @@ class UseManager:
 			directory
 		@type recursive: bool
 		@param eapi_filter: a function that accepts a single eapi
-			argument, and returns true if the the current file type
+			argument, and returns true if the current file type
 			is supported by the given EAPI
 		@type eapi_filter: callable
 		@param eapi: the EAPI of the current profile node, which allows
@@ -165,7 +165,7 @@ class UseManager:
 			directory
 		@type recursive: bool
 		@param eapi_filter: a function that accepts a single eapi
-			argument, and returns true if the the current file type
+			argument, and returns true if the current file type
 			is supported by the given EAPI
 		@type eapi_filter: callable
 		@param user_config: current file is part of the local
