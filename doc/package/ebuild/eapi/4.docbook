@@ -153,7 +153,7 @@ This new REQUIRED_USE metadata key is used to specify what USE flag combinations
 It's a semi common occurrence that an ebuild may need to state that they disallow USE flags in specific combinations- either mysql or sqlite for example, but not both.
 </para>
 <para>
-Existing solutions rely on checking the the USE configuration in pkg_setup which is non-optimal due to pkg_setup being ran potentially hours after the initial emerge -p invocation.
+Existing solutions rely on checking the USE configuration in pkg_setup which is non-optimal due to pkg_setup being ran potentially hours after the initial emerge -p invocation.
 </para>
 <para>
 Current versions of EAPI4 support a phase hook pkg_pretend that is intended to move pre-build checks to just after resolution. It has been proposed that pkg_pretend should continue the tradition of adhoc shell code validating the USE state- this too is non optimal for the following reasons-

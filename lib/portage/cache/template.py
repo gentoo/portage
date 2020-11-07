@@ -293,7 +293,7 @@ def serialize_eclasses(eclass_dict, chf_type='mtime', paths=True):
 	"""takes a dict, returns a string representing said dict"""
 	"""The "new format", which causes older versions of <portage-2.1.2 to
 	traceback with a ValueError due to failed int() conversion.  This format
-	isn't currently written, but the the capability to read it is already built
+	isn't currently written, but the capability to read it is already built
 	in.
 	return "\t".join(["%s\t%s" % (k, str(v)) \
 		for k, v in eclass_dict.iteritems()])

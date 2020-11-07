@@ -144,7 +144,7 @@ class KeywordsManager:
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
 		need to accept for the given package. If the KEYWORDS are empty
-		and the the ** keyword has not been accepted, the returned list will
+		and the ** keyword has not been accepted, the returned list will
 		contain ** alone (in order to distinguish from the case of "none
 		missing").
 

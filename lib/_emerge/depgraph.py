@@ -10061,7 +10061,7 @@ def _resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 
 				# If this package was pulled in by a parent
 				# package scheduled for merge, removing this
-				# package may cause the the parent package's
+				# package may cause the parent package's
 				# dependency to become unsatisfied.
 				for parent_node, atom in \
 					mydepgraph._dynamic_config._parent_atoms.get(pkg, []):
