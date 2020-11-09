@@ -19,10 +19,11 @@ def deprecated_profile_check(settings=None):
 	if settings is not None:
 		config_root = settings["PORTAGE_CONFIGROOT"]
 		eprefix = settings["EPREFIX"]
-		for x in reversed(settings.profiles):
-			deprecated_profile_file = os.path.join(x, "deprecated")
-			if os.access(deprecated_profile_file, os.R_OK):
-				break
+		for x in reversed(settings._locations_manager.profiles_complex):
+			if x.show_deprecated_warning:
+				deprecated_profile_file = os.path.join(x.location, "deprecated")
+				if os.access(deprecated_profile_file, os.R_OK):
+					break
 		else:
 			deprecated_profile_file = None
 
