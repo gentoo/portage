@@ -1296,8 +1296,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						if v is not None:
 							variables[k] = v
 
-					myfetch = shlex_split(locfetch)
-					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
+					myfetch = varexpand(locfetch, mydict=variables)
+					myfetch = shlex_split(myfetch)
+
 					myret = -1
 					try:
 
