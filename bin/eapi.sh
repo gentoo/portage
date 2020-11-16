@@ -174,6 +174,14 @@ ___eapi_econf_passes_--disable-silent-rules() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]]
 }
 
+___eapi_econf_passes_--datarootdir() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_econf_passes_--disable-static() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
 ___eapi_econf_passes_--docdir_and_--htmldir() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
