@@ -603,6 +603,12 @@ econf() {
 		if ___eapi_econf_passes_--disable-dependency-tracking || ___eapi_econf_passes_--disable-silent-rules || ___eapi_econf_passes_--docdir_and_--htmldir || ___eapi_econf_passes_--with-sysroot; then
 			local conf_help=$("${ECONF_SOURCE}/configure" --help 2>/dev/null)
 
+			if ___eapi_econf_passes_--datarootdir; then
+				if [[ ${conf_help} == *--datarootdir* ]]; then
+					conf_args+=( --datarootdir="${EPREFIX}"/usr/share )
+				fi
+			fi
+
 			if ___eapi_econf_passes_--disable-dependency-tracking; then
 				if [[ ${conf_help} == *--disable-dependency-tracking* ]]; then
 					conf_args+=( --disable-dependency-tracking )
@@ -612,6 +618,13 @@ econf() {
 			if ___eapi_econf_passes_--disable-silent-rules; then
 				if [[ ${conf_help} == *--disable-silent-rules* ]]; then
 					conf_args+=( --disable-silent-rules )
+				fi
+			fi
+
+			if ___eapi_econf_passes_--disable-static; then
+				if [[ ${conf_help} == *--disable-static* || \
+						${conf_help} == *--enable-static* ]]; then
+					conf_args+=( --disable-static )
 				fi
 			fi
 
