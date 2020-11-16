@@ -7905,7 +7905,7 @@ class depgraph:
 								if check_asap_parent:
 									for node in nodes:
 										parents = mygraph.parent_nodes(node,
-											ignore_priority=DepPrioritySatisfiedRange.ignore_soft)
+											ignore_priority=DepPrioritySatisfiedRange.ignore_medium_soft)
 										if any(x in asap_nodes for x in parents):
 											selected_nodes = [node]
 											break
@@ -7921,7 +7921,7 @@ class depgraph:
 
 			if not selected_nodes:
 
-				def find_smallest_cycle(mergeable_nodes, priority_ranges):
+				def find_smallest_cycle(mergeable_nodes, local_priority_range):
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
 					else:
@@ -7938,18 +7938,27 @@ class depgraph:
 					# these smaller independent cycles.
 					smallest_cycle = None
 					ignore_priority = None
-					for node in nodes:
-						if not mygraph.parent_nodes(node):
-							continue
-						for local_priority_range in priority_ranges:
+
+					# Sort nodes for deterministic results.
+					nodes = sorted(nodes)
+					for priority in (local_priority_range.ignore_priority[i] for i in range(
+						local_priority_range.MEDIUM_POST,
+						local_priority_range.MEDIUM_SOFT + 1)):
+						for node in nodes:
+							if not mygraph.parent_nodes(node):
+								continue
 							selected_nodes = set()
-							if gather_deps(local_priority_range.ignore_medium_soft,
+							if gather_deps(priority,
 								mergeable_nodes, selected_nodes, node):
 								if smallest_cycle is None or \
 									len(selected_nodes) < len(smallest_cycle):
 									smallest_cycle = selected_nodes
-									ignore_priority = local_priority_range.ignore_medium_soft
-								break
+									ignore_priority = priority
+
+						# Exit this loop with the lowest possible priority, which
+						# minimizes the use of installed packages to break cycles.
+						if smallest_cycle is not None:
+							break
 
 					return smallest_cycle, ignore_priority
 
@@ -7963,7 +7972,7 @@ class depgraph:
 				for local_priority_range in priority_ranges:
 					mergeable_nodes = set(get_nodes(ignore_priority=local_priority_range.ignore_medium))
 					if mergeable_nodes:
-						selected_nodes, ignore_priority = find_smallest_cycle(mergeable_nodes, priority_ranges)
+						selected_nodes, ignore_priority = find_smallest_cycle(mergeable_nodes, local_priority_range)
 						if selected_nodes:
 							break
 
@@ -8001,19 +8010,19 @@ class depgraph:
 									(selected_nodes[0],), noiselevel=-1)
 
 			if selected_nodes and ignore_priority is not None:
-				# Try to merge ignored medium_soft deps as soon as possible
+				# Try to merge ignored medium_post deps as soon as possible
 				# if they're not satisfied by installed packages.
 				for node in selected_nodes:
 					children = set(mygraph.child_nodes(node))
 					soft = children.difference(
 						mygraph.child_nodes(node,
-						ignore_priority=DepPrioritySatisfiedRange.ignore_soft))
-					medium_soft = children.difference(
-						mygraph.child_nodes(node,
 							ignore_priority = \
-							DepPrioritySatisfiedRange.ignore_medium_soft))
-					medium_soft -= soft
-					for child in medium_soft:
+							DepPrioritySatisfiedRange.ignore_soft))
+					medium_post = children.difference(
+						mygraph.child_nodes(node,
+						ignore_priority=DepPrioritySatisfiedRange.ignore_medium_post))
+					medium_post -= soft
+					for child in medium_post:
 						if child in selected_nodes:
 							continue
 						if child in asap_nodes:

@@ -14,6 +14,7 @@ class DepPriorityNormalRange:
 	"""
 	MEDIUM      = 3
 	MEDIUM_SOFT = 2
+	MEDIUM_POST = 2
 	SOFT        = 1
 	NONE        = 0
 
@@ -37,6 +38,7 @@ class DepPriorityNormalRange:
 
 	ignore_medium      = _ignore_runtime
 	ignore_medium_soft = _ignore_runtime_post
+	ignore_medium_post = _ignore_runtime_post
 	ignore_soft        = _ignore_optional
 
 DepPriorityNormalRange.ignore_priority = (
