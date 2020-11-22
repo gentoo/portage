@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.10
+==================================
+* Bug Fixes:
+    - Bug 753497 profiles should not inherit deprecated messages
+    - Bug 754903 minimize use of installed packages to break cycles
+    - Bug 755950 compare_files: handle missing xattr support
+
 portage-3.0.9
 ==================================
 * Bug Fixes:
