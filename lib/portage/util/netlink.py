@@ -70,7 +70,7 @@ class RtNetlink:
 
 	def send_message(self, msg):
 		self.sock.sendto(msg, self.addr)
-		# Messages are variable length, but 128 is enough for the the ones we care about.
+		# Messages are variable length, but 128 is enough for the ones we care about.
 		resp = self.sock.recv(128)
 		return parse_message(resp)
 

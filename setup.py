@@ -655,7 +655,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '3.0.8',
+	version = '3.0.10',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

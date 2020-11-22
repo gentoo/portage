@@ -401,9 +401,14 @@ class config:
 			expand_map = env_d.copy()
 			self._expand_map = expand_map
 
-			# Allow make.globals to set default paths relative to ${EPREFIX}.
+			# Allow make.globals and make.conf to set paths relative to vars like ${EPREFIX}.
+			expand_map["BROOT"] = broot
 			expand_map["EPREFIX"] = eprefix
+			expand_map["EROOT"] = eroot
+			expand_map["ESYSROOT"] = esysroot
 			expand_map["PORTAGE_CONFIGROOT"] = config_root
+			expand_map["ROOT"] = target_root
+			expand_map["SYSROOT"] = sysroot
 
 			if portage._not_installed:
 				make_globals_path = os.path.join(PORTAGE_BASE_PATH, "cnf", "make.globals")
@@ -2034,7 +2039,7 @@ class config:
 		"""
 		Take a package and return a list of any KEYWORDS that the user may
 		need to accept for the given package. If the KEYWORDS are empty
-		and the the ** keyword has not been accepted, the returned list will
+		and the ** keyword has not been accepted, the returned list will
 		contain ** alone (in order to distinguish from the case of "none
 		missing").
 

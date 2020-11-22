@@ -50,7 +50,7 @@ from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage.package.ebuild.fetch import _hide_url_passwd
 from portage._sets import load_default_config, SETPREFIX
 from portage._sets.base import InternalPackageSet
-from portage.util import cmp_sort_key, writemsg, varexpand, \
+from portage.util import cmp_sort_key, normalize_path, writemsg, varexpand, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
 from portage.util.SlotObject import SlotObject
@@ -107,13 +107,26 @@ def action_build(emerge_config, trees=DeprecationWarning,
 	# before we get here, so warn if they're not (bug #267103).
 	chk_updated_cfg_files(settings['EROOT'], ['/etc/portage'])
 
+	quickpkg_root = normalize_path(os.path.abspath(
+		emerge_config.opts.get('--quickpkg-direct-root',
+		emerge_config.running_config.settings['ROOT']))).rstrip(os.path.sep) + os.path.sep
 	quickpkg_direct = ("--usepkg" in emerge_config.opts and
 		emerge_config.opts.get('--quickpkg-direct', 'n') == 'y' and
-		emerge_config.target_config is not emerge_config.running_config)
+		emerge_config.target_config.settings['ROOT'] != quickpkg_root)
 	if '--getbinpkg' in emerge_config.opts or quickpkg_direct:
 		kwargs = {}
 		if quickpkg_direct:
-			kwargs['add_repos'] = (emerge_config.running_config.trees['vartree'].dbapi,)
+			if quickpkg_root == emerge_config.running_config.settings['ROOT']:
+				quickpkg_vardb = emerge_config.running_config.trees['vartree'].dbapi
+			else:
+				quickpkg_settings = portage.config(
+					config_root=emerge_config.target_config.settings['PORTAGE_CONFIGROOT'],
+					target_root=quickpkg_root,
+					env=emerge_config.target_config.settings.backupenv.copy(),
+					sysroot=emerge_config.target_config.settings['SYSROOT'],
+					eprefix=emerge_config.target_config.settings['EPREFIX'])
+				quickpkg_vardb = portage.vartree(settings=quickpkg_settings).dbapi
+			kwargs['add_repos'] = (quickpkg_vardb,)
 
 		try:
 			emerge_config.target_config.trees['bintree'].populate(

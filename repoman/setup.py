@@ -448,7 +448,7 @@ def get_manpages():
 
 setup(
 	name = 'repoman',
-	version = '3.0.1',
+	version = '3.0.2',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',

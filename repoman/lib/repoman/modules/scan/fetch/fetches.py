@@ -120,12 +120,7 @@ class FetchChecks(ScanBase):
 							continue
 						filesdirlist.append(y + "/" + z)
 				# Current policy is no files over 20 KiB, these are the checks.
-				# File size between 20 KiB and 60 KiB causes a warning,
-				# while file size over 60 KiB causes an error.
-				elif mystat.st_size > 61440:
-					self.qatracker.add_error(
-						"file.size-fatal", "(%d KiB) %s/files/%s" % (
-							mystat.st_size // 1024, xpkg, y))
+				# File size over 20 KiB causes an error.
 				elif mystat.st_size > 20480:
 					self.qatracker.add_error(
 						"file.size", "(%d KiB) %s/files/%s" % (

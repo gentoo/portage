@@ -481,8 +481,7 @@ ___parallel_xargs() {
 }
 
 hasq() {
-	has $EBUILD_PHASE prerm postrm || eqawarn \
-		"QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
+	eqawarn "QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
 	has "$@"
 }
 

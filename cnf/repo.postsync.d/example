@@ -45,7 +45,8 @@ if [ -n "${repository_name}" ]; then
 			ret=1
 		fi
 	fi
-
+fi
+if [ -n "${repository_name}" ] && ! [ -e "${repository_path}/metadata/pkg_desc_index" ]; then
 	# Regenerate the metadata/pkg_desc_index file. This is not
 	# needed for https://gitweb.gentoo.org/repo/sync/gentoo.git which
 	# provides a freshly generated copy. The --external-cache-only

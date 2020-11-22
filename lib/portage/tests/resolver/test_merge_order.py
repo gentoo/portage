@@ -490,6 +490,16 @@ class MergeOrderTestCase(TestCase):
 				success=True,
 				all_permutations = True,
 				mergelist = ['x11-base/xorg-server-1.14.1', 'media-libs/mesa-9.1.3']),
+			# Test prioritization of the find_smallest_cycle function, which should
+			# minimize the use of installed packages to break cycles. If installed
+			# packages must be used to break cycles, then it should prefer to do this
+			# for runtime dependencies over buildtime dependencies. If a package needs
+			# to be uninstalled in order to solve a blocker, then it should prefer to
+			# do this before it uses an installed package to break a cycle.
+			ResolverPlaygroundTestCase(
+				["app-misc/some-app-a", "app-misc/some-app-b", "app-misc/some-app-c", "app-misc/circ-buildtime-a", "app-misc/blocker-buildtime-unbuilt-a", "media-libs/mesa", "x11-base/xorg-server", "app-misc/circ-direct-a", "app-misc/circ-direct-b", "app-misc/circ-satisfied-a", "app-misc/circ-satisfied-b", "app-misc/circ-satisfied-c"],
+				success = True,
+				mergelist = ['app-misc/circ-post-runtime-a-1', 'app-misc/circ-post-runtime-c-1', 'app-misc/circ-post-runtime-b-1', 'app-misc/some-app-b-1', 'app-misc/circ-runtime-a-1', 'app-misc/circ-runtime-b-1', 'app-misc/circ-runtime-c-1', 'app-misc/some-app-a-1', 'app-misc/blocker-buildtime-unbuilt-a-1', '[uninstall]app-misc/installed-blocker-a-1', '!app-misc/installed-blocker-a', 'app-misc/circ-direct-a-1', 'app-misc/circ-direct-b-1', 'x11-base/xorg-server-1.14.1', 'media-libs/mesa-9.1.3', 'app-misc/circ-buildtime-a-1', 'app-misc/circ-buildtime-b-1', 'app-misc/circ-buildtime-c-1', 'app-misc/some-app-c-1', 'app-misc/circ-satisfied-a-1', 'app-misc/circ-satisfied-b-1', 'app-misc/circ-satisfied-c-1']),
 		)
 
 		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)

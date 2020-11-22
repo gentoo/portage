@@ -30,7 +30,9 @@ _PORTAGE1_DIRECTORIES = frozenset([
 
 _profile_node = collections.namedtuple('_profile_node',
 	('location', 'portage1_directories', 'user_config',
-	'profile_formats', 'eapi', 'allow_build_id'))
+	'profile_formats', 'eapi', 'allow_build_id',
+	'show_deprecated_warning',
+))
 
 _allow_parent_colon = frozenset(
 	["portage-2"])
@@ -132,7 +134,7 @@ class LocationsManager:
 		if self.profile_path:
 			try:
 				self._addProfile(os.path.realpath(self.profile_path),
-					repositories, known_repos)
+					repositories, known_repos, ())
 			except ParseError as e:
 				if not portage._sync_mode:
 					writemsg(_("!!! Unable to parse profile: '%s'\n") % self.profile_path, noiselevel=-1)
@@ -154,7 +156,9 @@ class LocationsManager:
 					('profile-bashrcs', 'profile-set'),
 					read_corresponding_eapi_file(
 					custom_prof + os.sep, default=None),
-					True))
+					True,
+					show_deprecated_warning=False,
+				))
 			del custom_prof
 
 		self.profiles = tuple(self.profiles)
@@ -167,7 +171,7 @@ class LocationsManager:
 				noiselevel=-1)
 			raise DirectoryNotFound(var)
 
-	def _addProfile(self, currentPath, repositories, known_repos):
+	def _addProfile(self, currentPath, repositories, known_repos, previous_repos):
 		current_abs_path = os.path.abspath(currentPath)
 		allow_directories = True
 		allow_parent_colon = True
@@ -176,8 +180,8 @@ class LocationsManager:
 		current_formats = ()
 		eapi = None
 
-		intersecting_repos = [x for x in known_repos
-			if current_abs_path.startswith(x[0])]
+		intersecting_repos = tuple(x for x in known_repos
+			if current_abs_path.startswith(x[0]))
 		if intersecting_repos:
 			# Handle nested repositories. The longest path
 			# will be the correct one.
@@ -214,6 +218,14 @@ class LocationsManager:
 				for x in layout_data['profile-formats'])
 			current_formats = tuple(layout_data['profile-formats'])
 
+		# According to PMS, a deprecated profile warning is not inherited. Since
+		# the current profile node may have been inherited by a user profile
+		# node, the deprecation warning may be relevant even if it is not a
+		# top-level profile node. Therefore, consider the deprecated warning
+		# to be irrelevant when the current profile node belongs to the same
+		# repo as the previous profile node.
+		show_deprecated_warning = \
+			tuple(x[0] for x in previous_repos) != tuple(x[0] for x in intersecting_repos)
 
 		if compat_mode:
 			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
@@ -256,7 +268,7 @@ class LocationsManager:
 					parentPath = os.path.realpath(parentPath)
 
 				if exists_raise_eaccess(parentPath):
-					self._addProfile(parentPath, repositories, known_repos)
+					self._addProfile(parentPath, repositories, known_repos, intersecting_repos)
 				else:
 					raise ParseError(
 						_("Parent '%s' not found: '%s'") %  \
@@ -265,7 +277,9 @@ class LocationsManager:
 		self.profiles.append(currentPath)
 		self.profiles_complex.append(
 			_profile_node(currentPath, allow_directories, False,
-				current_formats, eapi, 'build-id' in current_formats))
+				current_formats, eapi, 'build-id' in current_formats,
+				show_deprecated_warning=show_deprecated_warning,
+		))
 
 	def _expand_parent_colon(self, parentsFile, parentPath,
 		repo_loc, repositories):

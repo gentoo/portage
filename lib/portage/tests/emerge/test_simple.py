@@ -2,11 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
-import sys
 
 import portage
 from portage import shutil, os
-from portage import _unicode_decode
 from portage.const import (BASH_BINARY, BINREPOS_CONF_FILE, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
@@ -294,7 +292,8 @@ call_has_and_best_version() {
 			path=binhost_remote_path)
 
 		test_commands = (
-			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "dev-libs/A"),
+			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "--quickpkg-direct-root", "/", "dev-libs/A"),
+			emerge_cmd + ("--usepkgonly", "--quickpkg-direct=y", "--quickpkg-direct-root", cross_root, "dev-libs/A"),
 			env_update_cmd,
 			portageq_cmd + ("envvar", "-v", "CONFIG_PROTECT", "EROOT",
 				"PORTAGE_CONFIGROOT", "PORTAGE_TMPDIR", "USERLAND"),
@@ -558,8 +557,7 @@ move dev-util/git dev-vcs/git
 					output, _err = yield proc.communicate()
 					yield proc.wait()
 					if proc.returncode != os.EX_OK:
-						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+						portage.writemsg(output)
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))

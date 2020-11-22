@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Nov 2019" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2020" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -844,7 +844,8 @@ b	blocked by another package (automatically resolved conflict)
 Enable use of installed packages directly as binary packages. This is
 similar to using binary packages produced by \fBquickpkg\fR(1), but
 installed packages are used directly as though they are binary packages.
-This option only works in combination with the \fB\-\-root=DIR\fR option,
+If \fB\-\-quickpkg\-direct\-root=DIR\fR is not also set to something
+other than "/", then \fB\-\-root=DIR\fR must be used,
 and it comes with the caveat that packages are only allowed to be
 installed into the root that is specified by the \fB\-\-root=DIR\fR
 option (the other root which serves as a source of packages is
@@ -856,6 +857,11 @@ quickpkg options are \fI\-\-include\-config\fR and
 \fI\-\-include\-unmodified\-config\fR (refer to the \fBquickpkg\fR(1)
 man page). When a configuration file is not included because it is
 protected, an ewarn message is logged.
+.TP
+.BR \-\-quickpkg\-direct\-root=DIR
+Specify the root to use as the \fB\-\-quickpkg\-direct\fR package source.
+This root is assumed to be immutable during the entire emerge operation.
+The default is set to "/".
 .TP
 .BR "\-\-quiet [ y | n ]" ", " \-q
 Results may vary, but the general outcome is a reduced or condensed
