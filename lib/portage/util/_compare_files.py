@@ -9,7 +9,7 @@ import stat
 
 from portage import _encodings
 from portage import _unicode_encode
-from portage.util._xattr import xattr
+from portage.util._xattr import XATTRS_WORKS, xattr
 
 def compare_files(file1, file2, skipped_types=()):
 	"""
@@ -45,7 +45,7 @@ def compare_files(file1, file2, skipped_types=()):
 	if "device_number" not in skipped_types and file1_stat.st_rdev != file2_stat.st_rdev:
 		differences.append("device_number")
 
-	if (xattr.XATTRS_WORKS and "xattr" not in skipped_types and
+	if (XATTRS_WORKS and "xattr" not in skipped_types and
 		sorted(xattr.get_all(file1, nofollow=True)) != sorted(xattr.get_all(file2, nofollow=True))):
 		differences.append("xattr")
 
