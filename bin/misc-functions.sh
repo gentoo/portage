@@ -372,8 +372,10 @@ install_qa_check_macho() {
 					# by looking at the SDK metacaches, TAPI-files, .tbd
 					# text versions of libraries, so just look there
 					local tbd=${lib%.*}.tbd
-					if [[ -e ${EROOT}/MacOSX.sdk/${tbd} ]] ; then
+					if [[ -e ${EROOT}/MacOSX.sdk/${lib%.*}.tbd ]] ; then
 						isok=yes  # it's in the SDK, so ok
+					elif [[ -e ${EROOT}/MacOSX.sdk/${lib}.tbd ]] ; then
+						isok=yes  # this happens in case of Framework refs
 					fi
 				fi
 				if [[ ${isok} == no ]] ; then
