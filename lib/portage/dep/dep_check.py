@@ -356,6 +356,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
+	virt_parent = trees[myroot].get("virt_parent")
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
@@ -596,8 +597,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 							if match_from_list(atom, cpv_slot_list):
 								circular_atom = atom
 								break
-						else:
-							for circular_child in circular_dependency.get(parent, []):
+				if circular_atom is None and circular_dependency is not None:
+					for circular_child in itertools.chain(
+								circular_dependency.get(parent, []),
+								circular_dependency.get(virt_parent, [])):
 								for atom in atoms:
 									if not atom.blocker and atom.match(circular_child):
 										circular_atom = atom
