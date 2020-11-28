@@ -360,9 +360,27 @@ install_qa_check_macho() {
 			elif [[ ${lib} == ${S}* ]] ; then
 				eqawarn "QA Notice: install_name references \${S}: ${lib} in ${obj}"
 				[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
-			elif ! install_name_is_relative ${lib} && [[ ! -e ${lib} && ! -e ${D}${lib} ]] ; then
-				eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
-				[[ -z ${ignore} ]] && touch "${T}"/.install_name_check_failed
+			elif ! install_name_is_relative ${lib} ; then
+				local isok=no
+				if [[ -e ${lib} || -e ${D}${lib} ]] ; then
+					isok=yes  # yay, we're ok
+				elif [[ -e "${EROOT}"/MacOSX.sdk ]] ; then
+					# trigger SDK mode, at least since Big Sur (11.0)
+					# there are no libraries in /usr/lib any more, but
+					# there are references too it (some library cache is
+					# in place), yet we can validate it sort of is sane
+					# by looking at the SDK metacaches, TAPI-files, .tbd
+					# text versions of libraries, so just look there
+					local tbd=${lib%.*}.tbd
+					if [[ -e ${EROOT}/MacOSX.sdk/${tbd} ]] ; then
+						isok=yes  # it's in the SDK, so ok
+					fi
+				fi
+				if [[ ${isok} == no ]] ; then
+					eqawarn "QA Notice: invalid reference to ${lib} in ${obj}"
+					[[ -z ${ignore} ]] && \
+						touch "${T}"/.install_name_check_failed
+				fi
 			fi
 		done
 
