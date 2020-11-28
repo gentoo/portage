@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.11
+==================================
+* Bug Fixes:
+    - Bug 756961 handle dev-lang/rust[system-bootstrap] dependency cycle
+    - Bug 757306 backtracking: fix virtual choices for circular deps
+
 portage-3.0.10
 ==================================
 * Bug Fixes:
