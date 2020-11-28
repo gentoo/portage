@@ -85,6 +85,8 @@ from _emerge.resolver.output import Display, format_unmatched_atom
 
 # Exposes a depgraph interface to dep_check.
 _dep_check_graph_interface = collections.namedtuple('_dep_check_graph_interface',(
+	# Checks if parent package will replace child.
+	'will_replace_child',
 	# Indicates a removal action, like depclean or prune.
 	'removal_action',
 	# Checks if update is desirable for a given package.
@@ -507,6 +509,7 @@ class _dynamic_depgraph_config:
 		# Track missed updates caused by solved conflicts.
 		self._conflict_missed_update = collections.defaultdict(dict)
 		dep_check_iface = _dep_check_graph_interface(
+			will_replace_child=depgraph._will_replace_child,
 			removal_action="remove" in myparams,
 			want_update_pkg=depgraph._want_update_pkg,
 		)
@@ -3104,6 +3107,22 @@ class depgraph:
 								self._frozen_config.myopts,
 								modified_use=self._pkg_use_enabled(pkg))),
 								level=logging.DEBUG, noiselevel=-1)
+				elif (pkg.installed and myparent and
+					pkg.root == myparent.root and
+					pkg.slot_atom == myparent.slot_atom):
+					# If the parent package is replacing the child package then
+					# there's no slot conflict. Since the child will be replaced,
+					# do not add it to the graph. No attempt will be made to
+					# satisfy its dependencies, which is unsafe if it has any
+					# missing dependencies, as discussed in bug 199856.
+					if debug:
+						writemsg_level(
+							"%s%s %s\n" % ("Replace Child:".ljust(15),
+							pkg, pkg_use_display(pkg,
+							self._frozen_config.myopts,
+							modified_use=self._pkg_use_enabled(pkg))),
+							level=logging.DEBUG, noiselevel=-1)
+					return 1
 
 				else:
 					if debug:
@@ -5877,6 +5896,27 @@ class depgraph:
 			(arg_atoms or update) and
 			not self._too_deep(depth))
 
+	def _will_replace_child(self, parent, root, atom):
+		"""
+		Check if a given parent package will replace a child package
+		for the given root and atom.
+
+		@param parent: parent package
+		@type parent: Package
+		@param root: child root
+		@type root: str
+		@param atom: child atom
+		@type atom: Atom
+		@rtype: Package
+		@return: child package to replace, or None
+		"""
+		if parent.root != root or parent.cp != atom.cp:
+			return None
+		for child in self._iter_match_pkgs(self._frozen_config.roots[root], "installed", atom):
+			if parent.slot_atom == child.slot_atom:
+				return child
+		return None
+
 	def _too_deep(self, depth):
 		"""
 		Check if a package depth is deeper than the max allowed depth.
@@ -6440,19 +6480,21 @@ class depgraph:
 					# Calculation of USE for unbuilt ebuilds is relatively
 					# expensive, so it is only performed lazily, after the
 					# above visibility checks are complete.
-
-					myarg = None
-					try:
-						for myarg, myarg_atom in self._iter_atoms_for_pkg(pkg):
-							if myarg.force_reinstall:
-								reinstall = True
-								break
-					except InvalidDependString:
-						if not installed:
-							# masked by corruption
-							continue
-					if not installed and myarg:
-						found_available_arg = True
+					effective_parent = parent or self._select_atoms_parent
+					if not (effective_parent and self._will_replace_child(
+						effective_parent, root, atom)):
+						myarg = None
+						try:
+							for myarg, myarg_atom in self._iter_atoms_for_pkg(pkg):
+								if myarg.force_reinstall:
+									reinstall = True
+									break
+						except InvalidDependString:
+							if not installed:
+								# masked by corruption
+								continue
+						if not installed and myarg:
+							found_available_arg = True
 
 					if atom.package and atom.unevaluated_atom.use:
 						#Make sure we don't miss a 'missing IUSE'.
