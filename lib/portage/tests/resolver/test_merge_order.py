@@ -231,8 +231,8 @@ class MergeOrderTestCase(TestCase):
 			},
 			"x11-drivers/xf86-video-fbdev-0.5.0-r1": {
 				"EAPI": "7",
-				"DEPEND": "x11-base/xorg-server:=",
-				"RDEPEND": "x11-base/xorg-server",
+				"DEPEND": "x11-base/xorg-server",
+				"RDEPEND": "x11-base/xorg-server:=",
 			}
 		}
 
@@ -325,8 +325,8 @@ class MergeOrderTestCase(TestCase):
 			},
 			"x11-drivers/xf86-video-fbdev-0.5.0-r1": {
 				"EAPI": "7",
-				"DEPEND": "x11-base/xorg-server:0/1.14.1=",
-				"RDEPEND": "x11-base/xorg-server",
+				"DEPEND": "x11-base/xorg-server",
+				"RDEPEND": "x11-base/xorg-server:0/1.14.1=",
 			}
 		}
 
