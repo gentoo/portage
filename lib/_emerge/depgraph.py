@@ -3107,7 +3107,7 @@ class depgraph:
 								self._frozen_config.myopts,
 								modified_use=self._pkg_use_enabled(pkg))),
 								level=logging.DEBUG, noiselevel=-1)
-				elif (pkg.installed and myparent and
+				elif (pkg.installed and isinstance(myparent, Package) and
 					pkg.root == myparent.root and
 					pkg.slot_atom == myparent.slot_atom):
 					# If the parent package is replacing the child package then
