@@ -27,6 +27,8 @@ from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
+# PREFIX LOCAL
+from portage.const import EPREFIX
 
 try:
 	from portage.xml.metadata import MetaDataXML
@@ -504,6 +506,22 @@ class _PostPhaseCommands(CompositeTask):
 		all_provides = (yield self.scheduler.run_in_executor(ForkExecutor(loop=self.scheduler), _get_all_provides, vardb))
 
 		unresolved = _get_unresolved_soname_deps(os.path.join(self.settings['PORTAGE_BUILDDIR'], 'build-info'), all_provides)
+
+		# BEGIN PREFIX LOCAL
+		if EPREFIX != "" and unresolved:
+			# in prefix, consider the host libs for any unresolved libs,
+			# so we kill warnings about missing libc.so.1, etc.
+			for obj, libs in list(unresolved):
+				unresolved.remove((obj, libs))
+				libs=list(libs)
+				for lib in list(libs):
+					for path in ['/lib64', '/lib/64', '/lib']:
+						if os.path.exists(os.path.join(path, lib)):
+							libs.remove(lib)
+							break
+				if len(libs) > 0:
+					unresolved.add((obj, tuple(libs)))
+		# END PREFIX LOCAL
 
 		if unresolved:
 			unresolved.sort()
