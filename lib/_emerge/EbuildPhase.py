@@ -515,12 +515,13 @@ class _PostPhaseCommands(CompositeTask):
 				unresolved.remove((obj, libs))
 				libs=list(libs)
 				for lib in list(libs):
-					for path in ['/lib64', '/lib/64', '/lib']:
+					for path in ['/lib64', '/lib/64', '/lib', \
+							'/usr/lib64', '/usr/lib/64', '/usr/lib']:
 						if os.path.exists(os.path.join(path, lib)):
 							libs.remove(lib)
 							break
 				if len(libs) > 0:
-					unresolved.add((obj, tuple(libs)))
+					unresolved.append((obj, tuple(libs)))
 		# END PREFIX LOCAL
 
 		if unresolved:
