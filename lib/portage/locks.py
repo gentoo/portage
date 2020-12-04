@@ -44,18 +44,7 @@ def _get_lock_fn():
 	if _lock_fn is not None:
 		return _lock_fn
 
-	def _test_lock(fd, lock_path):
-		os.close(fd)
-		try:
-			with open(lock_path, 'a') as f:
-				fcntl.lockf(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
-		except EnvironmentError as e:
-			if e.errno == errno.EAGAIN:
-				# Parent process holds lock, as expected.
-				sys.exit(0)
 
-		# Something went wrong.
-		sys.exit(1)
 
 	fd, lock_path = tempfile.mkstemp()
 	try:
@@ -64,8 +53,16 @@ def _get_lock_fn():
 		except EnvironmentError:
 			pass
 		else:
-			proc = multiprocessing.Process(target=_test_lock,
-				args=(fd, lock_path))
+			proc = multiprocessing.Process(
+				target=_subprocess_test_lock,
+				args=(
+					# Since file descriptors are not inherited unless the fork start
+					# method is used, the subprocess should only try to close an
+					# inherited file descriptor for the fork start method.
+					fd if multiprocessing.get_start_method() == "fork" else None,
+					lock_path,
+				),
+			)
 			proc.start()
 			proc.join()
 			if proc.exitcode == os.EX_OK:
@@ -80,6 +77,19 @@ def _get_lock_fn():
 	_lock_fn = fcntl.flock
 	return _lock_fn
 
+def _subprocess_test_lock(fd, lock_path):
+	if fd is not None:
+		os.close(fd)
+	try:
+		with open(lock_path, 'a') as f:
+			fcntl.lockf(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+	except EnvironmentError as e:
+		if e.errno == errno.EAGAIN:
+			# Parent process holds lock, as expected.
+			sys.exit(0)
+
+	# Something went wrong.
+	sys.exit(1)
 
 _open_fds = {}
 _open_inodes = {}
