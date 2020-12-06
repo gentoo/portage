@@ -2,11 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from .EventLoop import EventLoop
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop
 
-
-_MAIN_PID = portage.getpid()
 _instances = {}
 
 
@@ -22,10 +19,6 @@ def global_event_loop():
 		return instance
 
 	constructor = AsyncioEventLoop
-	# If the default constructor doesn't support multiprocessing,
-	# then multiprocessing constructor is used in subprocesses.
-	if not constructor.supports_multiprocessing and pid != _MAIN_PID:
-		constructor = EventLoop
 
 	# Use the _asyncio_wrapper attribute, so that unit tests can compare
 	# the reference to one retured from _wrap_loop(), since they should
