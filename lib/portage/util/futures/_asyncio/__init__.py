@@ -34,7 +34,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:_PortageEventLoopPolicy',
 	'portage.util.futures:compat_coroutine@_compat_coroutine',
-	'portage.util._eventloop.EventLoop:EventLoop@_EventLoop',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
@@ -246,14 +245,27 @@ def _wrap_loop(loop=None):
 def _safe_loop():
 	"""
 	Return an event loop that's safe to use within the current context.
-	For portage internal callers, this returns a globally shared event
-	loop instance. For external API consumers, this constructs a
-	temporary event loop instance that's safe to use in a non-main
-	thread (it does not override the global SIGCHLD handler).
+	For portage internal callers or external API consumers calling from
+	the main thread, this returns a globally shared event loop instance.
+
+	For external API consumers calling from a non-main thread, an
+	asyncio loop must be registered for the current thread, or else an
+	error will be raised like this:
+
+	  RuntimeError: There is no current event loop in thread 'Thread-1'.
+
+	In order to avoid this RuntimeError, the external API consumer
+	is responsible for setting an event loop and managing its lifecycle.
+	For example, this code will set an event loop for the current thread:
+
+	  asyncio.set_event_loop(asyncio.new_event_loop())
+
+	In order to avoid a ResourceWarning, the caller should also close the
+	corresponding loop before the current thread terminates.
 
 	@rtype: asyncio.AbstractEventLoop (or compatible)
 	@return: event loop instance
 	"""
-	if portage._internal_caller:
+	if portage._internal_caller or threading.current_thread() is threading.main_thread():
 		return _global_event_loop()
-	return _EventLoop(main=False)
+	return _AsyncioEventLoop()
