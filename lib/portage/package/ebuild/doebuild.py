@@ -39,7 +39,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.NeededEntry:NeededEntry',
 	'portage.util._dyn_libs.soname_deps:SonameDepsProcessor',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
-	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.util.ExtractKernelVersion:ExtractKernelVersion'
 )

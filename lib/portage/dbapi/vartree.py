@@ -41,7 +41,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap',
 	'portage.util._dyn_libs.NeededEntry:NeededEntry',
 	'portage.util._async.SchedulerInterface:SchedulerInterface',
-	'portage.util._eventloop.EventLoop:EventLoop',
 	'portage.util._eventloop.global_event_loop:global_event_loop',
 	'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,' + \
 		'_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo',
