@@ -217,12 +217,23 @@ class MergeOrderTestCase(TestCase):
 				"IUSE" : "X +encode",
 				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
 			},
+			"x11-base/xorg-drivers-1.20-r2": {
+				"EAPI": "7",
+				"IUSE": "+video_cards_fbdev",
+				"PDEPEND": "x11-base/xorg-server video_cards_fbdev? ( x11-drivers/xf86-video-fbdev )",
+			},
 			"x11-base/xorg-server-1.14.1" : {
 				"EAPI" : "5",
 				"SLOT": "0/1.14.1",
 				"DEPEND" : "media-libs/mesa",
 				"RDEPEND" : "media-libs/mesa",
+				"PDEPEND": "x11-base/xorg-drivers",
 			},
+			"x11-drivers/xf86-video-fbdev-0.5.0-r1": {
+				"EAPI": "7",
+				"DEPEND": "x11-base/xorg-server",
+				"RDEPEND": "x11-base/xorg-server:=",
+			}
 		}
 
 		installed = {
@@ -299,12 +310,24 @@ class MergeOrderTestCase(TestCase):
 				"USE" : "encode",
 				"RDEPEND" : "|| ( >=media-video/ffmpeg-0.6.90_rc0-r2[X=,encode=] >=media-video/libav-0.6.90_rc[X=,encode=] )",
 			},
+			"x11-base/xorg-drivers-1.20-r2": {
+				"EAPI": "7",
+				"IUSE": "+video_cards_fbdev",
+				"USE": "video_cards_fbdev",
+				"PDEPEND": "x11-base/xorg-server x11-drivers/xf86-video-fbdev",
+			},
 			"x11-base/xorg-server-1.14.1" : {
 				"EAPI" : "5",
 				"SLOT": "0/1.14.1",
 				"DEPEND" : "media-libs/mesa",
 				"RDEPEND" : "media-libs/mesa",
+				"PDEPEND": "x11-base/xorg-drivers",
 			},
+			"x11-drivers/xf86-video-fbdev-0.5.0-r1": {
+				"EAPI": "7",
+				"DEPEND": "x11-base/xorg-server",
+				"RDEPEND": "x11-base/xorg-server:0/1.14.1=",
+			}
 		}
 
 		test_cases = (
@@ -486,10 +509,10 @@ class MergeOrderTestCase(TestCase):
 			# Both deps are already satisfied by installed packages, but
 			# the := dep is given higher priority in merge order.
 			ResolverPlaygroundTestCase(
-				["media-libs/mesa", "x11-base/xorg-server"],
+				["media-libs/mesa", "x11-drivers/xf86-video-fbdev", "x11-base/xorg-server"],
 				success=True,
 				all_permutations = True,
-				mergelist = ['x11-base/xorg-server-1.14.1', 'media-libs/mesa-9.1.3']),
+				mergelist = ['x11-base/xorg-server-1.14.1', 'media-libs/mesa-9.1.3', 'x11-drivers/xf86-video-fbdev-0.5.0-r1']),
 			# Test prioritization of the find_smallest_cycle function, which should
 			# minimize the use of installed packages to break cycles. If installed
 			# packages must be used to break cycles, then it should prefer to do this

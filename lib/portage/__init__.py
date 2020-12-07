@@ -9,6 +9,7 @@ VERSION = "HEAD"
 # ===========================================================================
 
 try:
+	import asyncio
 	import sys
 	import errno
 	if not hasattr(errno, 'ESTALE'):
@@ -374,6 +375,9 @@ class _ForkWatcher:
 	@staticmethod
 	def hook(_ForkWatcher):
 		_ForkWatcher.current_pid = _os.getpid()
+		# Force instantiation of a new event loop policy as a workaround
+		# for https://bugs.python.org/issue22087.
+		asyncio.set_event_loop_policy(None)
 
 _ForkWatcher.hook(_ForkWatcher)
 

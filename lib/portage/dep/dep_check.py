@@ -356,6 +356,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
+	virt_parent = trees[myroot].get("virt_parent")
 	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	graph    = trees[myroot].get("graph")
@@ -404,9 +405,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 		for atom in atoms:
 			if atom.blocker:
 				continue
+
+			# It's not a downgrade if parent is replacing child.
+			replacing = (parent and graph_interface and
+				graph_interface.will_replace_child(parent, myroot, atom))
 			# Ignore USE dependencies here since we don't want USE
 			# settings to adversely affect || preference evaluation.
 			avail_pkg = mydbapi_match_pkgs(atom.without_use)
+			if not avail_pkg and replacing:
+				avail_pkg = [replacing]
 			if avail_pkg:
 				avail_pkg = avail_pkg[-1] # highest (ascending order)
 				avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
@@ -415,7 +422,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 				all_use_satisfied = False
 				break
 
-			if graph_db is not None and downgrade_probe is not None:
+			if not replacing and graph_db is not None and downgrade_probe is not None:
 				slot_matches = graph_db.match_pkgs(avail_slot)
 				if (len(slot_matches) > 1 and
 					avail_pkg < slot_matches[-1] and
@@ -462,7 +469,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 						avail_pkg = avail_pkg_use
 					avail_slot = Atom("%s:%s" % (atom.cp, avail_pkg.slot))
 
-			if downgrade_probe is not None and graph is not None:
+			if not replacing and downgrade_probe is not None and graph is not None:
 				highest_in_slot = mydbapi_match_pkgs(avail_slot)
 				highest_in_slot = (highest_in_slot[-1]
 					if highest_in_slot else None)
@@ -575,14 +582,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 				this_choice.all_in_graph = all_in_graph
 
 				circular_atom = None
-				if not (parent is None or priority is None) and \
-					(parent.onlydeps or
-					(priority.buildtime and not priority.satisfied and not priority.optional)):
+				if parent and parent.onlydeps:
 						# Check if the atom would result in a direct circular
-						# dependency and try to avoid that if it seems likely
-						# to be unresolvable. This is only relevant for
-						# buildtime deps that aren't already satisfied by an
-						# installed package.
+						# dependency and avoid that for --onlydeps arguments
+						# since it can defeat the purpose of --onlydeps.
+						# This check should only be used for --onlydeps
+						# arguments, since it can interfere with circular
+						# dependency backtracking choices, causing the test
+						# case for bug 756961 to fail.
 						cpv_slot_list = [parent]
 						for atom in atoms:
 							if atom.blocker:
@@ -596,8 +603,10 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None,
 							if match_from_list(atom, cpv_slot_list):
 								circular_atom = atom
 								break
-						else:
-							for circular_child in circular_dependency.get(parent, []):
+				if circular_atom is None and circular_dependency is not None:
+					for circular_child in itertools.chain(
+								circular_dependency.get(parent, []),
+								circular_dependency.get(virt_parent, [])):
 								for atom in atoms:
 									if not atom.blocker and atom.match(circular_child):
 										circular_atom = atom

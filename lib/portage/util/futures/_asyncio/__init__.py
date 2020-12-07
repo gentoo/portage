@@ -21,7 +21,8 @@ __all__ = (
 )
 
 import subprocess
-import sys
+import types
+import weakref
 
 import asyncio as _real_asyncio
 
@@ -34,7 +35,6 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures.unix_events:_PortageEventLoopPolicy',
 	'portage.util.futures:compat_coroutine@_compat_coroutine',
-	'portage.util._eventloop.EventLoop:EventLoop@_EventLoop',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
 from portage.util._eventloop.global_event_loop import (
@@ -246,14 +246,57 @@ def _wrap_loop(loop=None):
 def _safe_loop():
 	"""
 	Return an event loop that's safe to use within the current context.
-	For portage internal callers, this returns a globally shared event
-	loop instance. For external API consumers, this constructs a
-	temporary event loop instance that's safe to use in a non-main
-	thread (it does not override the global SIGCHLD handler).
+	For portage internal callers or external API consumers calling from
+	the main thread, this returns a globally shared event loop instance.
+
+	For external API consumers calling from a non-main thread, an
+	asyncio loop must be registered for the current thread, or else the
+	asyncio.get_event_loop() function will raise an error like this:
+
+	  RuntimeError: There is no current event loop in thread 'Thread-1'.
+
+	In order to avoid this RuntimeError, a loop will be automatically
+	created like this:
+
+	  asyncio.set_event_loop(asyncio.new_event_loop())
+
+	In order to avoid a ResourceWarning, automatically created loops
+	are added to a WeakValueDictionary, and closed via an atexit hook
+	if they still exist during exit for the current pid.
 
 	@rtype: asyncio.AbstractEventLoop (or compatible)
 	@return: event loop instance
 	"""
-	if portage._internal_caller:
+	if portage._internal_caller or threading.current_thread() is threading.main_thread():
 		return _global_event_loop()
-	return _EventLoop(main=False)
+
+	thread_key = threading.get_ident()
+	with _thread_weakrefs.lock:
+		if _thread_weakrefs.pid != portage.getpid():
+			_thread_weakrefs.pid = portage.getpid()
+			_thread_weakrefs.loops = weakref.WeakValueDictionary()
+		try:
+			loop = _thread_weakrefs.loops[thread_key]
+		except KeyError:
+			try:
+				_real_asyncio.get_event_loop()
+			except RuntimeError:
+				_real_asyncio.set_event_loop(_real_asyncio.new_event_loop())
+			loop = _thread_weakrefs.loops[thread_key] = _AsyncioEventLoop()
+	return loop
+
+
+def _thread_weakrefs_atexit():
+	with _thread_weakrefs.lock:
+		if _thread_weakrefs.pid == portage.getpid():
+			while True:
+				try:
+					thread_key, loop = _thread_weakrefs.loops.popitem()
+				except KeyError:
+					break
+				else:
+					loop.close()
+
+
+_thread_weakrefs = types.SimpleNamespace(lock=threading.Lock(), loops=None, pid=None)
+portage.process.atexit_register(_thread_weakrefs_atexit)

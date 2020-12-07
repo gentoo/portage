@@ -93,6 +93,7 @@ class DepPrioritySatisfiedRange:
 	ignore_medium      = _ignore_runtime
 	ignore_medium_soft = _ignore_satisfied_buildtime_slot_op
 	ignore_medium_post = _ignore_runtime_post
+	ignore_medium_post_satisifed = _ignore_satisfied_runtime_post
 	ignore_soft        = _ignore_optional
 
 

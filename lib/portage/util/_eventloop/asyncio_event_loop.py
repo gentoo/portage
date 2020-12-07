@@ -121,4 +121,8 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		try:
 			return self._loop.run_until_complete(future)
 		finally:
-			self._wakeup_fd = signal.set_wakeup_fd(-1)
+			try:
+				self._wakeup_fd = signal.set_wakeup_fd(-1)
+			except ValueError:
+				# This is intended to fail when not called in the main thread.
+				pass

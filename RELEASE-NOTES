@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.12
+==================================
+* Bug Fixes:
+    - Bug 758740 Use default asyncio event loop in child processes
+    - Bug 758755 Use default asyncio event loop in API consumer threads
+
+portage-3.0.11
+==================================
+* Bug Fixes:
+    - Bug 756961 handle dev-lang/rust[system-bootstrap] dependency cycle
+    - Bug 757306 backtracking: fix virtual choices for circular deps
+
 portage-3.0.10
 ==================================
 * Bug Fixes:
