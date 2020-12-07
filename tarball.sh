@@ -19,12 +19,11 @@ if [[ -e ${DEST} ]]; then
 fi
 
 ./tabcheck.py $(
-	find ./ -name .git -o -name .hg -prune -o -type f ! -name '*.py' -print \
+	find ./ -name .git -prune -o -type f ! -name '*.py' -print \
 		| xargs grep -l "#\!@PREFIX_PORTAGE_PYTHON@" \
 		| grep -v "^\./repoman/"
-	find ./ -name .git -o -name .hg -prune -o -type f -name '*.py' -print \
+	find ./ -name .git -prune -o -type f -name '*.py' -print \
 		| grep -v "^\./repoman/"
-
 )
 
 install -d -m0755 ${DEST}
