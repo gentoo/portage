@@ -11,6 +11,7 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 	'stack_dicts', 'stack_lists', 'unique_array', 'unique_everseen', 'varexpand',
 	'write_atomic', 'writedict', 'writemsg', 'writemsg_level', 'writemsg_stdout']
 
+from contextlib import AbstractContextManager
 from copy import deepcopy
 import errno
 import io
@@ -1246,7 +1247,7 @@ def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		stat_cached=stat_cached, follow_links=follow_links)
 	return all_applied
 
-class atomic_ofstream(ObjectProxy):
+class atomic_ofstream(AbstractContextManager, ObjectProxy):
 	"""Write a file atomically via os.rename().  Atomic replacement prevents
 	interprocess interference and prevents corruption of the target
 	file when the write is interrupted (for example, when an 'out of space'
@@ -1286,6 +1287,13 @@ class atomic_ofstream(ObjectProxy):
 			open_func(_unicode_encode(tmp_name,
 				encoding=_encodings['fs'], errors='strict'),
 				mode=mode, **kargs))
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		if exc_type is not None:
+			self.abort()
+		else:
+			self.close()
+		return None
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
