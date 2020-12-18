@@ -342,18 +342,17 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 
 	#create /etc/profile.env for bash support
 	profile_env_path = os.path.join(eroot, "etc", "profile.env")
-	outfile = atomic_ofstream(profile_env_path)
-	outfile.write(penvnotice)
+	with atomic_ofstream(profile_env_path) as outfile:
+		outfile.write(penvnotice)
 
-	env_keys = [x for x in env if x != "LDPATH"]
-	env_keys.sort()
-	for k in env_keys:
-		v = env[k]
-		if v.startswith('$') and not v.startswith('${'):
-			outfile.write("export %s=$'%s'\n" % (k, v[1:]))
-		else:
-			outfile.write("export %s='%s'\n" % (k, v))
-	outfile.close()
+		env_keys = [x for x in env if x != "LDPATH"]
+		env_keys.sort()
+		for k in env_keys:
+			v = env[k]
+			if v.startswith('$') and not v.startswith('${'):
+				outfile.write("export %s=$'%s'\n" % (k, v[1:]))
+			else:
+				outfile.write("export %s='%s'\n" % (k, v))
 
 	# Create the systemd user environment configuration file
 	# /etc/environment.d/10-gentoo-env.conf with the
@@ -363,8 +362,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 
 	systemd_gentoo_env_path = os.path.join(systemd_environment_dir,
 						"10-gentoo-env.conf")
-	systemd_gentoo_env = atomic_ofstream(systemd_gentoo_env_path)
-	try:
+	with atomic_ofstream(systemd_gentoo_env_path) as systemd_gentoo_env:
 		senvnotice = notice + "\n\n"
 		systemd_gentoo_env.write(senvnotice)
 
@@ -384,10 +382,6 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 			line = f"{env_key}={env_key_value}\n"
 
 			systemd_gentoo_env.write(line)
-	except:
-		systemd_gentoo_env.abort()
-		raise
-	systemd_gentoo_env.close()
 
 	#create /etc/csh.env for (t)csh support
 	outfile = atomic_ofstream(os.path.join(eroot, "etc", "csh.env"))
