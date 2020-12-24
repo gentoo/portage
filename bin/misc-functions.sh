@@ -194,7 +194,7 @@ install_qa_check() {
 			fi
 
 			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-			echo "${arch:3};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
+			echo "${arch#EM_};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
 		done }
 
 		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
