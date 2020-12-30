@@ -1,10 +1,11 @@
-dist: bionic
+dist: focal
 language: python
 python:
     - 3.6
     - 3.7
     - 3.8
-    - 3.9-dev
+    - 3.9
+    - 3.10-dev
     - pypy3
 
 # command to install dependencies
