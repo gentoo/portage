@@ -24,12 +24,13 @@ PYTHON_SUPPORTED_VERSIONS = [
 	'2.7',
 	'3.6',
 	'3.7',
-	'3.8'
+	'3.8',
+	'3.9'
 ]
 # The rest are just "nice to have".
 PYTHON_NICE_VERSIONS = [
 	'pypy3',
-	'3.9'
+	'3.10'
 ]
 
 EPREFIX = os.environ.get('PORTAGE_OVERRIDE_EPREFIX', '/')
