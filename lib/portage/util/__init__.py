@@ -1293,7 +1293,6 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
 			self.abort()
 		else:
 			self.close()
-		return None
 
 	def _get_target(self):
 		return object.__getattribute__(self, '_file')
