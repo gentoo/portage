@@ -1,4 +1,4 @@
-/* Copyright 2005-2016 Gentoo Foundation
+/* Copyright 2005-2020 Gentoo Authors
  * Distributed under the terms of the GNU General Public License v2
  */
 
@@ -15,7 +15,6 @@ static PyMethodDef LibcMethods[] = {
 	{NULL, NULL, 0, NULL}
 };
 
-#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef moduledef = {
 	PyModuleDef_HEAD_INIT,
 	"libc",								/* m_name */
@@ -35,13 +34,6 @@ PyInit_libc(void)
 	m = PyModule_Create(&moduledef);
 	return m;
 }
-#else
-PyMODINIT_FUNC
-initlibc(void)
-{
-	Py_InitModule("libc", LibcMethods);
-}
-#endif
 
 
 static PyObject *

@@ -361,7 +361,8 @@ except (ImportError, OSError) as e:
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
 
-_python_interpreter = os.path.realpath(sys.executable)
+_python_interpreter = (sys.executable if os.environ.get("VIRTUAL_ENV")
+	else os.path.realpath(sys.executable))
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
 _not_installed = os.path.isfile(os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed"))

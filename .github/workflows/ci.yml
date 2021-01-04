@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version:
+        - '3.6'
+        - '3.7'
+        - '3.8'
+        - '3.9'
+        - '3.10.0-alpha.3'
+        - 'pypy-3.6'
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install python dependencies
+      run: |
+        set -xe
+        sudo apt-get install -y --no-install-recommends libxslt-dev libxml2-dev libxml2-utils zstd
+        python -VV
+        python -m site
+        python -m pip install --upgrade pip
+        python -m pip install tox tox-gh-actions
+    - name: Test ./setup.py install --root=/tmp/install-root
+      run: |
+        printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
+        ./setup.py install --root=/tmp/install-root
+    - name: Run tox targets for ${{ matrix.python-version }}
+      run: |
+        tox -vv

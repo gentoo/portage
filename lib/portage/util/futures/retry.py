@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -113,7 +113,7 @@ class _Retry:
 
 	def _begin_try(self):
 		self._tries += 1
-		self._current_task = self._func()
+		self._current_task = asyncio.ensure_future(self._func(), loop=self._loop)
 		self._current_task.add_done_callback(self._try_done)
 		if self._try_timeout is not None:
 			self._try_timeout_handle = self._loop.call_later(
