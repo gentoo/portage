@@ -2,7 +2,6 @@
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import multiprocessing
 import platform
 import signal
 import sys
@@ -45,8 +44,6 @@ try:
 	from _emerge.main import emerge_main
 
 	if __name__ == "__main__":
-		# PREFIX LOCAL force start method for python3.8 on darwin
-		multiprocessing.set_start_method('fork')
 		from portage.exception import IsADirectory, ParseError, \
 				PermissionDenied
 		portage.process.sanitize_fds()
