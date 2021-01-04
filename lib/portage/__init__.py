@@ -19,6 +19,8 @@ try:
 	import re
 	import types
 	import platform
+	# PREFIX LOCAL
+	import multiprocessing
 
 	# Temporarily delete these imports, to ensure that only the
 	# wrapped versions are imported by portage internals.
@@ -37,6 +39,16 @@ except ImportError as e:
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
+
+# BEGIN PREFIX LOCAL
+# for bug #758230, on macOS the default was switched from fork to spawn,
+# the latter causing issues because all kinds of things can't be
+# pickled, so force fork mode for now
+try:
+	multiprocessing.set_start_method('fork')
+except RuntimeError:
+	pass
+# END PREFIX LOCAL
 
 try:
 
