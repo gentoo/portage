@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Sep 2020" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jan 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -746,6 +746,18 @@ the internet.  It must contain the full path to the executable as well as the
 place\-holders \\${DISTDIR}, \\${FILE} and \\${URI}.  The command should be
 written to place the fetched file at \\${DISTDIR}/\\${FILE}.
 Also see \fBRESUMECOMMAND\fR.
+.RS
+.TP
+.B Optional FETCHCOMMAND Placeholders
+.TS
+l l l
+___
+l l l.
+Placeholder	Meaning	Example
+
+\\${DIGESTS}	Space separated list of file digests	blake2b <hexdigest> sha512 <hexdigest>
+.TE
+.RE
 .TP
 .B FFLAGS FCFLAGS
 Use these variables to set the desired optimization/CPU instruction settings
