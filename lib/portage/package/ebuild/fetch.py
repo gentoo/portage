@@ -1291,6 +1291,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						"FILE":    os.path.basename(download_path)
 					}
 
+					try:
+						variables['DIGESTS'] = " ".join(["%s:%s" % (k.lower(), v)
+							for k, v in mydigests[myfile].items() if k != 'size'])
+					except KeyError:
+						pass
+
 					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
 						v = mysettings.get(k)
 						if v is not None:
