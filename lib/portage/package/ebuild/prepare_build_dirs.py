@@ -154,10 +154,12 @@ def _prepare_features_dirs(mysettings):
 
 	features_dirs = {
 		"ccache":{
+			"adjust": "ccache-permission-adjust" in mysettings.features,
 			"basedir_var":"CCACHE_DIR",
 			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
+			"adjust": True,
 			"basedir_var":"DISTCC_DIR",
 			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
@@ -171,7 +173,7 @@ def _prepare_features_dirs(mysettings):
 		"userpriv" in mysettings.features and \
 		"userpriv" not in restrict
 	for myfeature, kwargs in features_dirs.items():
-		if myfeature in mysettings.features:
+		if myfeature in mysettings.features and kwargs['adjust']:
 			failure = False
 			basedir = mysettings.get(kwargs["basedir_var"])
 			if basedir is None or not basedir.strip():

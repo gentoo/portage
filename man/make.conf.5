@@ -347,6 +347,10 @@ like "File not recognized: File truncated"), try recompiling the application
 with ccache disabled before reporting a bug. Unless you are doing development
 work, do not enable ccache.
 .TP
+.B ccache\-permission\-adjust
+Enable automatic permission adjustment for \fBCCACHE_DIR\fR when
+FEATURES=\fBccache\fR is enabled. This feature is enabled by default.
+.TP
 .B cgroup
 Use Linux control group to control processes spawned by ebuilds. This allows
 emerge to safely kill all subprocesses when ebuild phase exits.
