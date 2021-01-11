@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.13
+--------------
+* FETCHCOMMAND now supports a \${DIGESTS} placeholder which expands
+  to a space separated list of digests. Refer to the FETCHCOMMAND
+  documentation in the make.conf(5) man page.
+
 portage-3.0.6
 --------------
 * emerge --search now detects regular expressions automatically. This

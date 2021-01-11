@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.13
+==================================
+* Bug Fixes:
+    - Bug 763339 always allow event loops to run in threads
+    - Bug 764764 fix virtual/dist-kernel slot operator rebuilds
+    - Bug 764905 wrap asyncio child watcher for thread safety
+
 portage-3.0.12
 ==================================
 * Bug Fixes:
