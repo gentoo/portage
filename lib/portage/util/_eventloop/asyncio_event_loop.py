@@ -6,6 +6,7 @@ import signal
 
 import asyncio as _real_asyncio
 from asyncio.events import AbstractEventLoop as _AbstractEventLoop
+from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
 
 import portage
 
@@ -47,6 +48,7 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		self.set_debug = loop.set_debug
 		self.get_debug = loop.get_debug
 		self._wakeup_fd = -1
+		self._child_watcher = None
 
 		if portage._internal_caller:
 			loop.set_exception_handler(self._internal_caller_exception_handler)
@@ -87,7 +89,9 @@ class AsyncioEventLoop(_AbstractEventLoop):
 		@rtype: asyncio.AbstractChildWatcher
 		@return: the internal event loop's AbstractChildWatcher interface
 		"""
-		return _real_asyncio.get_child_watcher()
+		if self._child_watcher is None:
+			self._child_watcher = _ChildWatcherThreadSafetyWrapper(self, _real_asyncio.get_child_watcher())
+		return self._child_watcher
 
 	@property
 	def _asyncio_wrapper(self):
@@ -126,3 +130,27 @@ class AsyncioEventLoop(_AbstractEventLoop):
 			except ValueError:
 				# This is intended to fail when not called in the main thread.
 				pass
+
+
+class _ChildWatcherThreadSafetyWrapper(_AbstractChildWatcher):
+	def __init__(self, loop, real_watcher):
+		self._loop = loop
+		self._real_watcher = real_watcher
+
+	def close(self):
+		pass
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, a, b, c):
+		pass
+
+	def _child_exit(self, pid, status, callback, *args):
+		self._loop.call_soon_threadsafe(callback, pid, status, *args)
+
+	def add_child_handler(self, pid, callback, *args):
+		self._real_watcher.add_child_handler(pid, self._child_exit, callback, *args)
+
+	def remove_child_handler(self, pid):
+		return self._real_watcher.remove_child_handler(pid)
