@@ -2073,6 +2073,12 @@ class depgraph:
 			for parent, atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
 				if isinstance(parent, Package):
 					if parent in built_slot_operator_parents:
+						if hasattr(atom, '_orig_atom'):
+							# If atom is the result of virtual expansion, then
+							# derefrence it to _orig_atom so that it will be correctly
+							# handled as a built slot operator dependency when
+							# appropriate (see bug 764764).
+							atom = atom._orig_atom
 						# This parent may need to be rebuilt, therefore
 						# discard its soname and built slot operator
 						# dependency components which are not necessarily
@@ -2131,6 +2137,22 @@ class depgraph:
 					allow_repo=True)
 				if not atom_set.findAtomForPackage(candidate_pkg,
 					modified_use=self._pkg_use_enabled(candidate_pkg)):
+					if debug:
+						parent_atoms = []
+						for other_parent, other_atom in self._dynamic_config._parent_atoms.get(existing_pkg, []):
+							if other_parent is parent:
+								parent_atoms.append(other_atom)
+						msg = (
+							"",
+							"",
+							"check_reverse_dependencies:",
+							"   candidate package does not match atom '%s': %s" % (atom, candidate_pkg),
+							"   parent: %s" % parent,
+							"   parent atoms: %s" % " ".join(parent_atoms),
+							"",
+						)
+						writemsg_level("\n".join(msg),
+							noiselevel=-1, level=logging.DEBUG)
 					return False
 			return True
 

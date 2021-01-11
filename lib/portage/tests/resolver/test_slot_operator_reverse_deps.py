@@ -284,7 +284,7 @@ class SlotOperatorReverseDepsVirtualTestCase(TestCase):
 				["@world"],
 				options = {"--update": True, "--deep": True},
 				success = True,
-				mergelist = []
+				mergelist = ['sys-kernel/gentoo-kernel-5.10.6', 'virtual/dist-kernel-5.10.6', 'app-emulation/virtualbox-modules-6.1.16-r1', 'x11-drivers/nvidia-drivers-460.32.03']
 			),
 		)
 
