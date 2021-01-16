@@ -1,4 +1,4 @@
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import glob
@@ -15,7 +15,7 @@ from portage._sets import SetConfigError, get_boolean
 import portage
 
 __all__ = ["CategorySet", "ChangedDepsSet", "DowngradeSet",
-	"EverythingSet", "OwnerSet", "VariableSet"]
+	"EverythingSet", "OwnerSet", "SubslotChangedSet", "VariableSet"]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge"]
@@ -164,6 +164,41 @@ class VariableSet(EverythingSet):
 			excludes=frozenset(excludes.split()),
 			includes=frozenset(includes.split()),
 			variable=variable)
+
+	singleBuilder = classmethod(singleBuilder)
+
+class SubslotChangedSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = "Package set which contains all packages " + \
+		"for which the subslot of the highest visible ebuild is " + \
+		"different than the currently installed version."
+
+	def __init__(self, portdb=None, vardb=None):
+		super(SubslotChangedSet, self).__init__()
+		self._portdb = portdb
+		self._vardb = vardb
+
+	def load(self):
+		atoms = []
+		xmatch = self._portdb.xmatch
+		xmatch_level = "bestmatch-visible"
+		cp_list = self._vardb.cp_list
+		for cp in self._vardb.cp_all():
+			for pkg in cp_list(cp):
+				slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+				ebuild = xmatch(xmatch_level, slot_atom)
+				if not ebuild:
+					continue
+				if pkg.sub_slot != ebuild.sub_slot:
+					atoms.append(slot_atom)
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		return cls(portdb=trees["porttree"].dbapi,
+			vardb=trees["vartree"].dbapi)
 
 	singleBuilder = classmethod(singleBuilder)
 

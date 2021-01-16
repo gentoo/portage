@@ -574,6 +574,14 @@
 		to check.</para></listitem>
 		</itemizedlist>
 		</sect2>
+		<sect2 id='config-set-classes-SubslotChangedSet'>
+		<title>portage.sets.dbapi.SubslotChangedSet</title>
+		<para>
+		Package set which contains all packages for which the subslot of the highest
+		visible ebuild is different than the currently installed version.
+		This class doesn't support any extra options.
+		</para>
+		</sect2>
 		<sect2 id='config-set-classes-DowngradeSet'>
 		<title>portage.sets.dbapi.DowngradeSet</title>
 		<para>
