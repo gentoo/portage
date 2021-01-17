@@ -483,7 +483,7 @@ class binarytree:
 			myoldpkg = catsplit(mycpv)[1]
 			mynewpkg = catsplit(mynewcpv)[1]
 
-			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
+			if (mynewpkg != myoldpkg) and self.dbapi.cpv_exists(mynewcpv):
 				writemsg(_("!!! Cannot update binary: Destination exists.\n"),
 					noiselevel=-1)
 				writemsg("!!! "+mycpv+" -> "+mynewcpv+"\n", noiselevel=-1)
