@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -27,7 +27,7 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import BINREPOS_CONF_FILE, CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidPackageName, \
 	ParseError, PortageException
 from portage.localization import _
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
@@ -466,11 +466,7 @@ class binarytree:
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			try:
-				mycpv = self.dbapi._pkg_str(mycpv, None)
-			except (KeyError, InvalidData):
-				continue
-			mycpv_cp = portage.cpv_getkey(mycpv)
+			mycpv_cp = mycpv.cp
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
