@@ -1175,11 +1175,14 @@ def doebuild(myebuild, mydo, _unused=DeprecationWarning, settings=None, debug=0,
 				# the current user doesn't have write access to $PKGDIR.
 				if hasattr(portage, 'db'):
 					bintree = portage.db[mysettings['EROOT']]['bintree']
-					mysettings["PORTAGE_BINPKG_TMPFILE"] = \
-						bintree.getname(mysettings.mycpv) + \
-						".%s" % (portage.getpid(),)
-					bintree._ensure_dir(os.path.dirname(
-						mysettings["PORTAGE_BINPKG_TMPFILE"]))
+					binpkg_tmpfile_dir = os.path.join(bintree.pkgdir, mysettings["CATEGORY"])
+					bintree._ensure_dir(binpkg_tmpfile_dir)
+					with tempfile.NamedTemporaryFile(
+						prefix=mysettings["PF"],
+						suffix=".tbz2." + str(portage.getpid()),
+						dir=binpkg_tmpfile_dir,
+						delete=False) as binpkg_tmpfile:
+						mysettings["PORTAGE_BINPKG_TMPFILE"] = binpkg_tmpfile.name
 				else:
 					parent_dir = os.path.join(mysettings["PKGDIR"],
 						mysettings["CATEGORY"])
