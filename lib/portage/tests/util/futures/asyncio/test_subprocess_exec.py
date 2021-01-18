@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -9,7 +9,6 @@ from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio import create_subprocess_exec
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.unix_events import DefaultEventLoopPolicy
 
 
@@ -35,41 +34,38 @@ class SubprocessExecTestCase(TestCase):
 		echo_binary = echo_binary.encode()
 
 		def test(loop):
-			@coroutine
-			def test_coroutine(loop=None):
 
-				proc = (yield create_subprocess_exec(echo_binary, *args_tuple,
-						stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-						loop=loop))
+			async def test_coroutine():
 
-				out, err = (yield proc.communicate())
+				proc = await create_subprocess_exec(echo_binary, *args_tuple,
+					stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+				out, err = await proc.communicate()
 				self.assertEqual(tuple(out.split()), args_tuple)
 				self.assertEqual(proc.returncode, os.EX_OK)
 
-				proc = (yield create_subprocess_exec(
+				proc = await create_subprocess_exec(
 						'bash', '-c', 'echo foo; echo bar 1>&2;',
-						stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-						loop=loop))
+						stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-				out, err = (yield proc.communicate())
+				out, err = await proc.communicate()
 				self.assertEqual(out, b'foo\n')
 				self.assertEqual(err, b'bar\n')
 				self.assertEqual(proc.returncode, os.EX_OK)
 
-				proc = (yield create_subprocess_exec(
+				proc = await create_subprocess_exec(
 						'bash', '-c', 'echo foo; echo bar 1>&2;',
-						stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-						loop=loop))
+						stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-				out, err = (yield proc.communicate())
+				out, err = await proc.communicate()
 				self.assertEqual(out, b'foo\nbar\n')
 				self.assertEqual(err, None)
 				self.assertEqual(proc.returncode, os.EX_OK)
 
-				coroutine_return('success')
+				return 'success'
 
 			self.assertEqual('success',
-				loop.run_until_complete(test_coroutine(loop=loop)))
+				loop.run_until_complete(test_coroutine()))
 
 		self._run_test(test)
 
