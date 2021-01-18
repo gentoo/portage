@@ -1,4 +1,4 @@
-# Copyright 2011-2020 Gentoo Authors
+# Copyright 2011-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -14,7 +14,6 @@ from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util import (ensure_dirs, find_updated_config_files,
 	shlex_split)
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 
 
 class BinhostContentMap(Mapping):
@@ -225,8 +224,7 @@ call_has_and_best_version() {
 		loop.run_until_complete(asyncio.ensure_future(
 			self._async_test_simple(playground, metadata_xml_files, loop=loop), loop=loop))
 
-	@coroutine
-	def _async_test_simple(self, playground, metadata_xml_files, loop=None):
+	async def _async_test_simple(self, playground, metadata_xml_files, loop):
 
 		debug = playground.debug
 		settings = playground.settings
@@ -548,14 +546,14 @@ move dev-util/git dev-vcs/git
 				else:
 					local_env = env
 
-				proc = yield asyncio.create_subprocess_exec(*args,
-					env=local_env, stderr=None, stdout=stdout, loop=loop)
+				proc = await asyncio.create_subprocess_exec(*args,
+					env=local_env, stderr=None, stdout=stdout)
 
 				if debug:
-					yield proc.wait()
+					await proc.wait()
 				else:
-					output, _err = yield proc.communicate()
-					yield proc.wait()
+					output, _err = await proc.communicate()
+					await proc.wait()
 					if proc.returncode != os.EX_OK:
 						portage.writemsg(output)
 
