@@ -18,7 +18,6 @@ from portage.dep import Atom
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage.util import getconfig
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.util.futures.iter_completed import async_iter_completed
 
@@ -102,13 +101,12 @@ class ProfileDependsChecks(ScanBase):
 				for result in results:
 					self._check_result(task, result)
 
-		loop = asyncio._wrap_loop()
-		loop.run_until_complete(self._async_check(loop=loop, **kwargs))
+		loop = asyncio.get_event_loop()
+		loop.run_until_complete(self._async_check(loop, **kwargs))
 
 		return False
 
-	@coroutine
-	def _async_check(self, loop=None, **kwargs):
+	async def _async_check(self, loop, **kwargs):
 		'''Perform async profile dependant dependency checks
 
 		@param arches:
@@ -118,7 +116,6 @@ class ProfileDependsChecks(ScanBase):
 		@param unknown_pkgs: set of tuples (type, atom.unevaluated_atom)
 		@returns: dictionary
 		'''
-		loop = asyncio._wrap_loop(loop)
 		ebuild = kwargs.get('ebuild').get()
 		pkg = kwargs.get('pkg').get()
 		unknown_pkgs = ebuild.unknown_pkgs
@@ -130,8 +127,8 @@ class ProfileDependsChecks(ScanBase):
 
 		if self.options.jobs > 1:
 			for future_done_set in async_iter_completed(self._iter_tasks(loop, executor, ebuild, pkg),
-				max_jobs=self.options.jobs, max_load=self.options.load_average, loop=loop):
-				for task in (yield future_done_set):
+				max_jobs=self.options.jobs, max_load=self.options.load_average):
+				for task in (await future_done_set):
 					task, results = task.result()
 					for result in results:
 						self._check_result(task, result)
@@ -145,10 +142,9 @@ class ProfileDependsChecks(ScanBase):
 					"dependency.unknown", "%s: %s: %s"
 					% (ebuild.relative_path, mytype, ", ".join(sorted(atoms))))
 
-	@coroutine
-	def _task(self, task, loop=None):
-		yield task.future
-		coroutine_return((task, task.future.result()))
+	async def _task(self, task):
+		await task.future
+		return (task, task.future.result())
 
 	def _iter_tasks(self, loop, executor, ebuild, pkg):
 		for keyword, groups, prof in ebuild.relevant_profiles:
@@ -222,7 +218,7 @@ class ProfileDependsChecks(ScanBase):
 				yield (task, target())
 			else:
 				task.future = asyncio.ensure_future(loop.run_in_executor(executor, target), loop=loop)
-				yield self._task(task, loop=loop)
+				yield asyncio.ensure_future(self._task(task), loop=loop)
 
 
 	def _task_subprocess(self, task, pkg, dep_settings):
