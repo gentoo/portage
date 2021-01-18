@@ -214,7 +214,7 @@ class bindbapi(fakedbapi):
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		# inject will clear stale caches via cpv_inject.
-		self.bintree.inject(cpv, filename=tbz2path)
+		self.bintree.inject(cpv)
 
 
 	@coroutine
