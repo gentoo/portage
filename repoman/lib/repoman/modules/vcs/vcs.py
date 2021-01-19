@@ -156,5 +156,3 @@ def vcs_new_changed(relative_path, mychanged, mynew):
 		if x == relative_path:
 			return True
 	return False
-
-

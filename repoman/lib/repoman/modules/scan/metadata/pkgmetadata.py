@@ -24,10 +24,11 @@ except (ImportError, SystemError, RuntimeError, Exception):
 	sys.exit(1)
 
 # import our initialized portage instance
-from repoman._portage import portage
+from repoman._portage import portage # pylint: disable=unused-import
 from repoman.metadata import metadata_dtd_uri
 from repoman.modules.scan.scanbase import ScanBase
 
+# pylint: disable=ungrouped-imports
 from portage.exception import InvalidAtom
 from portage import os
 from portage.dep import Atom

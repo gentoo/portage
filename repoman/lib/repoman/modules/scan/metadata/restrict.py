@@ -54,4 +54,3 @@ class RestrictChecks(ScanBase):
 	@property
 	def runInEbuilds(self):
 		return (True, [self.check])
-

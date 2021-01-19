@@ -11,4 +11,3 @@ module_controller = Modules(path=path, namepath="repoman.modules.vcs")
 # initial development debug info
 #print(module_controller.module_names)
 module_names = module_controller.module_names[:]
-

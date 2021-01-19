@@ -128,7 +128,7 @@ class ProfileDependsChecks(ScanBase):
 		if self.options.jobs > 1:
 			for future_done_set in async_iter_completed(self._iter_tasks(loop, executor, ebuild, pkg),
 				max_jobs=self.options.jobs, max_load=self.options.load_average):
-				for task in (await future_done_set):
+				for task in await future_done_set:
 					task, results = task.result()
 					for result in results:
 						self._check_result(task, result)

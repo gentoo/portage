@@ -1,5 +1,5 @@
 
-import re
+import re # pylint: disable=unused-import
 
 from repoman.modules.linechecks.base import LineCheck
 

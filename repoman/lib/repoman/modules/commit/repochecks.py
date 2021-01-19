@@ -30,4 +30,3 @@ def commit_check(repolevel, reposplit):
 def conflict_check(vcs_settings, options):
 	if vcs_settings.vcs:
 		conflicts = vcs_settings.status.detect_conflicts(options)
-

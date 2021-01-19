@@ -12,6 +12,7 @@ from portage.const import BASH_BINARY
 from portage.output import red, green
 from portage import _unicode_encode, _unicode_decode
 
+# pylint: disable=ungrouped-imports
 from repoman._subprocess import repoman_popen
 
 

@@ -63,8 +63,8 @@ def _depend_checks(ebuild, pkg, portdb, qatracker, repo_metadata, qadata):
 
 	unknown_pkgs = set()
 
-	inherited_java_eclass = "java-pkg-2" in ebuild.inherited or \
-		"java-pkg-opt-2" in ebuild.inherited,
+	inherited_java_eclass = ("java-pkg-2" in ebuild.inherited or
+		"java-pkg-opt-2" in ebuild.inherited)
 	inherited_wxwidgets_eclass = "wxwidgets" in ebuild.inherited
 	# operator_tokens = set(["||", "(", ")"])
 	badsyntax = []

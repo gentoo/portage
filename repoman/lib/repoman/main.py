@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
@@ -25,6 +25,7 @@ from portage.util.futures.extendedfutures import (
 	ExtendedFuture,
 )
 
+# pylint: disable=ungrouped-imports
 from repoman.actions import Actions
 from repoman.argparser import parse_args
 from repoman.qa_data import QAData

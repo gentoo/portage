@@ -3,14 +3,12 @@
 import errno
 import logging
 import subprocess
-import sys
 
 import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage.exception import MissingParameter
-from portage.process import find_binary
 
 
 # Setup the GPG commands

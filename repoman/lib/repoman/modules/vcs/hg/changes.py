@@ -2,9 +2,10 @@
 Mercurial module Changes class submodule
 '''
 
+from repoman._portage import portage # pylint: disable=unused-import
 from repoman.modules.vcs.changes import ChangesBase
 from repoman._subprocess import repoman_popen
-from repoman._portage import portage
+
 from portage import os
 from portage.package.ebuild.digestgen import digestgen
 from portage.process import spawn

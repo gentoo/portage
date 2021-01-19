@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 # repoman: Utilities
-# Copyright 2007-2020 Gentoo Authors
+# Copyright 2007-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains utility functions to help repoman find ebuilds to
@@ -23,7 +23,6 @@ from itertools import chain
 import logging
 import pwd
 import stat
-import sys
 import time
 import textwrap
 import difflib
@@ -42,7 +41,8 @@ from portage.localization import _
 from portage.process import find_binary
 from portage.output import green
 
-from repoman.copyrights import update_copyright, update_copyright_year
+# pylint: disable=ungrouped-imports
+from repoman.copyrights import update_copyright_year
 
 
 normalize_path = util.normalize_path
