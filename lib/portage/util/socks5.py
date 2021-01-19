@@ -73,7 +73,7 @@ class ProxyManager:
 		"""
 		return self.socket_path is not None
 
-	async def ready(self, loop=None):
+	async def ready(self):
 		"""
 		Wait for the proxy socket to become ready. This method is a coroutine.
 		"""
