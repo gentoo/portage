@@ -101,7 +101,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 
 		indentation_chars = Counter()
 		for l in etree.tostring(_metadata_xml).splitlines():
-			indentation_chars.update(re.match(b"\s*", l).group(0))
+			indentation_chars.update(re.match(rb"\s*", l).group(0))
 		if len(indentation_chars) > 1:
 			self.qatracker.add_error("metadata.warning", "%s/metadata.xml: %s" %
 				(xpkg, "inconsistent use of tabs and spaces in indentation")
