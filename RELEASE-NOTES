@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.14
+==================================
+* Bug Fixes:
+    - Bug 571126 KeyError during package moves "global updates"
+                 triggered by FEATURES=binpkg-multi-instance (same
+                 root cause as bug 765847)
+    - Bug 739004 Add @changed-subslot package set
+    - Bug 765847 Spurious package file renames during application of
+                 package moves with FEATURES=binpkg-multi-instance
+    - Bug 766012 Copy on write when applying a package move to a binary
+                 package, so that the old version of a binary package
+                 will remain available until eclean-pkg deletes it
+
 portage-3.0.13
 ==================================
 * Bug Fixes:
