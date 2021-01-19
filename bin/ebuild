@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -46,7 +46,6 @@ portage._internal_caller = True
 from portage import os
 from portage import _encodings
 from portage import _shell_quote
-from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import VDB_PATH
 from portage.exception import PermissionDenied, PortageKeyError, \
@@ -111,7 +110,6 @@ if debug:
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
 if debug and "python-trace" in portage.features:
-	import portage.debug
 	portage.debug.set_trace(True)
 
 if not opts.color == 'y' and \

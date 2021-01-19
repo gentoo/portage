@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -197,16 +197,16 @@ def quickpkg_set(options, infos, arg, eout):
 	setconfig = load_default_config(settings, trees)
 	sets = setconfig.getSets()
 
-	set = arg[1:]
-	if not set in sets:
+	set_name = arg[1:]
+	if not set_name in sets:
 		eout.eerror("Package set not found: '%s'; skipping" % (arg,))
 		infos["missing"].append(arg)
 		return 1
 
 	try:
-		atoms = setconfig.getSetAtoms(set)
+		atoms = setconfig.getSetAtoms(set_name)
 	except PackageSetNotFound as e:
-		eout.eerror("Failed to process package set '%s' because " % set +
+		eout.eerror("Failed to process package set '%s' because " % set_name +
 			"it contains the non-existent package set '%s'; skipping" % e)
 		infos["missing"].append(arg)
 		return 1

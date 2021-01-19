@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
@@ -16,9 +16,16 @@ import io
 import re
 import subprocess
 import sys
+import termios
+import tty
 
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
+
+try:
+	import curses
+except ImportError:
+	curses = None
 
 from os import path as osp
 if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
@@ -454,7 +461,6 @@ class dispatch:
 def getch ():
     # from ASPN - Danny Yoo
     #
-    import tty, termios
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -466,8 +472,7 @@ def getch ():
     return ch
 
 def clear_screen():
-    try:
-        import curses
+    if curses is not None:
         try:
             curses.setupterm()
             sys.stdout.write(_unicode_decode(curses.tigetstr("clear")))
@@ -475,8 +480,6 @@ def clear_screen():
             return
         except curses.error:
             pass
-    except ImportError:
-        pass
     os.system("clear 2>/dev/null")
 
 shell = os.environ.get("SHELL")
@@ -503,7 +506,7 @@ def usage(argv):
 for x in sys.argv:
     if x in ('-h', '--help'):
         usage(sys.argv)
-    elif x in ('--version'):
+    elif x in ('--version',):
         print("Portage", portage.VERSION)
         sys.exit(os.EX_OK)
 

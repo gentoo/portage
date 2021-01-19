@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2009-2020 Gentoo Authors
+# Copyright 2009-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # unicode_literals for compat with TextIOWrapper in Python 2
@@ -49,7 +49,6 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 import portage
 portage._internal_caller = True
 from portage import os, _encodings, _unicode_encode, _unicode_decode
-from _emerge.MetadataRegen import MetadataRegen
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.cache.index.pkg_desc_index import pkg_desc_index_line_format, pkg_desc_index_line_read
 from portage.const import TIMESTAMP_FORMAT
@@ -65,6 +64,7 @@ from portage.util.changelog import ChangeLogTypeSort
 from portage import cpv_getkey
 from portage.dep import Atom, isjustname
 from portage.versions import vercmp
+from _emerge.MetadataRegen import MetadataRegen
 
 try:
 	from xml.etree import ElementTree
@@ -76,7 +76,7 @@ else:
 	except ImportError:
 		pass
 	else:
-		from portage.xml.metadata import parse_metadata_use
+		from portage.xml.metadata import parse_metadata_use # pylint: disable=ungrouped-imports
 
 
 def parse_args(args):

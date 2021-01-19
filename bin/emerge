@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import platform
@@ -40,12 +40,12 @@ try:
 	import portage
 	portage._internal_caller = True
 	portage._disable_legacy_globals()
+	from portage.elog import mod_echo
+	from portage.exception import IsADirectory, ParseError, PermissionDenied
 	from portage.util._eventloop.global_event_loop import global_event_loop
 	from _emerge.main import emerge_main
 
 	if __name__ == "__main__":
-		from portage.exception import IsADirectory, ParseError, \
-				PermissionDenied
 		portage.process.sanitize_fds()
 		try:
 			retval = emerge_main()
@@ -69,12 +69,7 @@ try:
 			# mod_echo output before showing the traceback.
 			import traceback
 			tb_str = traceback.format_exc()
-			try:
-				from portage.elog import mod_echo
-			except ImportError:
-				pass
-			else:
-				mod_echo.finalize()
+			mod_echo.finalize()
 			sys.stderr.write(tb_str)
 			sys.exit(1)
 		sys.exit(retval)

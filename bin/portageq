@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -100,7 +100,7 @@ docstrings = {}
 
 @uses_eroot
 def has_version(argv):
-	if (len(argv) < 2):
+	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
 		return 3
 
@@ -148,7 +148,7 @@ has_version.__doc__ = docstrings['has_version']
 
 @uses_eroot
 def best_version(argv):
-	if (len(argv) < 2):
+	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
 		return 3
 
@@ -189,7 +189,7 @@ best_version.__doc__ = docstrings['best_version']
 
 @uses_eroot
 def mass_best_version(argv):
-	if (len(argv) < 2):
+	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
 		return 2
 	try:
@@ -207,7 +207,7 @@ mass_best_version.__doc__ = docstrings['mass_best_version']
 
 @uses_eroot
 def metadata(argv):
-	if (len(argv) < 4):
+	if len(argv) < 4:
 		print('ERROR: insufficient parameters!', file=sys.stderr)
 		return 2
 
@@ -460,7 +460,7 @@ filter_protected.__doc__ = docstrings['filter_protected']
 
 @uses_eroot
 def best_visible(argv):
-	if (len(argv) < 2):
+	if len(argv) < 2:
 		writemsg("ERROR: insufficient parameters!\n", noiselevel=-1)
 		return 2
 
@@ -549,7 +549,7 @@ def mass_best_visible(argv):
 		"binary":"bintree",
 		"installed":"vartree"}
 
-	if (len(argv) < 2):
+	if len(argv) < 2:
 		print("ERROR: insufficient parameters!")
 		return 2
 	try:
@@ -1316,7 +1316,7 @@ def usage(argv):
 	help_mode = '--help' in argv
 	for name in commands:
 		doc = docstrings.get(name)
-		if (doc == None):
+		if doc == None:
 			print("   " + name)
 			print("      MISSING DOCUMENTATION!")
 			print("")
@@ -1325,7 +1325,7 @@ def usage(argv):
 		lines = doc.lstrip("\n").split("\n")
 		print("   " + name + " " + lines[0].strip())
 		if len(argv) > 1:
-			if (not help_mode):
+			if not help_mode:
 				lines = lines[:-1]
 			for line in lines[1:]:
 				print("      " + line.strip())

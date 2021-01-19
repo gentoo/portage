@@ -1,5 +1,5 @@
 #!/usr/bin/python -b
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -19,10 +19,10 @@ __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
 __noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
 
 def issyspkg(pkgline):
-	return (pkgline[0] == "*")
+	return pkgline[0] == "*"
 
 def iscandidate(logline):
-	return (__candidatematcher__.match(logline) \
+	return (__candidatematcher__.match(logline)
 				and not __noncandidatematcher__.search(logline))
 
 def getpkginfo(logline):
