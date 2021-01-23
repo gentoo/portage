@@ -1,4 +1,4 @@
-.TH "EMAINT" "1" "Jan 2017" "Portage VERSION" "Portage"
+.TH "EMAINT" "1" "Feb 2021" "Portage VERSION" "Portage"
 .SH NAME
 emaint \- performs package management related system health checks and maintenance
 .SH SYNOPSIS
@@ -82,6 +82,10 @@ OPTION
 .BR \-t \ \fINUM\fR,\  \-\-time \ \fINUM\fR
 Changes the minimum age \fINUM\fR (in days) of the logs to be listed or
 deleted.
+.SH OPTIONS merges command only
+.TP
+.BR \-y ", " \-\-yes
+Do not prompt for emerge invocations.
 .SH OPTIONS sync command only
 .TP
 .BR \-a ", " \-\-auto
