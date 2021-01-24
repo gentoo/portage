@@ -44,7 +44,8 @@ class FetchTask(CompositeTask):
 		if self.config.distfiles_db is not None and \
 			self.distfile not in self.config.distfiles_db:
 			self._previously_added = False
-			self.config.distfiles_db[self.distfile] = self.cpv
+			# Convert _pkg_str to str in order to prevent pickle problems.
+			self.config.distfiles_db[self.distfile] = str(self.cpv)
 
 		if not self._have_needed_digests():
 			msg = "incomplete digests: %s" % " ".join(self.digests)

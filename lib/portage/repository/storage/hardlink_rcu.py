@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -10,10 +10,6 @@ from portage.repository.storage.interface import (
 	RepoStorageInterface,
 )
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import (
-	coroutine,
-	coroutine_return,
-)
 
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -104,8 +100,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			self._latest_canonical = None
 		self._snapshots_dir = os.path.join(self._storage_location, 'snapshots')
 
-	@coroutine
-	def _check_call(self, cmd, privileged=False, loop=None):
+	async def _check_call(self, cmd, privileged=False):
 		"""
 		Run cmd and raise RepoStorageException on failure.
 
@@ -118,16 +113,15 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			kwargs = dict(fd_pipes=self._spawn_kwargs.get('fd_pipes'))
 		else:
 			kwargs = self._spawn_kwargs
-		p = SpawnProcess(args=cmd, scheduler=asyncio._wrap_loop(loop), **kwargs)
+		p = SpawnProcess(args=cmd, scheduler=asyncio.get_event_loop(), **kwargs)
 		p.start()
-		if (yield p.async_wait()) != os.EX_OK:
+		if await p.async_wait() != os.EX_OK:
 			raise RepoStorageException('command exited with status {}: {}'.\
 				format(p.returncode, ' '.join(cmd)))
 
-	@coroutine
-	def init_update(self, loop=None):
+	async def init_update(self):
 		update_location = os.path.join(self._storage_location, 'update')
-		yield self._check_call(['rm', '-rf', update_location], loop=loop)
+		await self._check_call(['rm', '-rf', update_location])
 
 		# This assumes normal umask permissions if it doesn't exist yet.
 		portage.util.ensure_dirs(self._storage_location)
@@ -138,19 +132,18 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 				os.stat(self._user_location))
 			# Use  rsync --link-dest to hardlink a files into update_location,
 			# since cp -l is not portable.
-			yield self._check_call(['rsync', '-a', '--link-dest', self._latest_canonical,
-				self._latest_canonical + '/', update_location + '/'], loop=loop)
+			await self._check_call(['rsync', '-a', '--link-dest', self._latest_canonical,
+				self._latest_canonical + '/', update_location + '/'])
 
 		elif not os.path.islink(self._user_location):
-			yield self._migrate(update_location, loop=loop)
-			update_location = (yield self.init_update(loop=loop))
+			await self._migrate(update_location)
+			update_location = await self.init_update()
 
 		self._update_location = update_location
 
-		coroutine_return(self._update_location)
+		return self._update_location
 
-	@coroutine
-	def _migrate(self, update_location, loop=None):
+	async def _migrate(self, update_location):
 		"""
 		When repo.user_location is a normal directory, migrate it to
 		storage so that it can be replaced with a symlink. After migration,
@@ -163,27 +156,26 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			portage.util.apply_stat_permissions(update_location,
 				os.stat(self._user_location))
 			# It's probably on a different device, so copy it.
-			yield self._check_call(['rsync', '-a',
-				self._user_location + '/', update_location + '/'], loop=loop)
+			await self._check_call(['rsync', '-a',
+				self._user_location + '/', update_location + '/'])
 
 			# Remove the old copy so that symlink can be created. Run with
 			# maximum privileges, since removal requires write access to
 			# the parent directory.
-			yield self._check_call(['rm', '-rf', user_location], privileged=True, loop=loop)
+			await self._check_call(['rm', '-rf', self._user_location], privileged=True)
 
 		self._update_location = update_location
 
 		# Make this copy the latest snapshot
-		yield self.commit_update(loop=loop)
+		await self.commit_update()
 
 	@property
-	def current_update(self, loop=None):
+	def current_update(self):
 		if self._update_location is None:
 			raise RepoStorageException('current update does not exist')
 		return self._update_location
 
-	@coroutine
-	def commit_update(self, loop=None):
+	async def commit_update(self):
 		update_location = self.current_update
 		self._update_location = None
 		try:
@@ -231,18 +223,13 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			os.symlink(self._latest_symlink, new_symlink)
 			os.rename(new_symlink, self._user_location)
 
-		coroutine_return()
-		yield None
-
-	@coroutine
-	def abort_update(self, loop=None):
+	async def abort_update(self):
 		if self._update_location is not None:
 			update_location = self._update_location
 			self._update_location = None
-			yield self._check_call(['rm', '-rf', update_location], loop=loop)
+			await self._check_call(['rm', '-rf', update_location])
 
-	@coroutine
-	def garbage_collection(self, loop=None):
+	async def garbage_collection(self):
 		snap_ttl = datetime.timedelta(days=self._ttl_days)
 		snapshots = sorted(int(name) for name in os.listdir(self._snapshots_dir))
 		# always preserve the latest snapshot
@@ -259,4 +246,4 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			snap_timestamp = datetime.datetime.utcfromtimestamp(st.st_mtime)
 			if (datetime.datetime.utcnow() - snap_timestamp) < snap_ttl:
 				continue
-			yield self._check_call(['rm', '-rf', snap_path], loop=loop)
+			await self._check_call(['rm', '-rf', snap_path])

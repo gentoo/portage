@@ -1,4 +1,4 @@
-# Copyright 2019 Gentoo Authors
+# Copyright 2019-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -185,7 +185,7 @@ class Socks5ServerTestCase(TestCase):
 				}
 
 				proxy = socks5.get_socks5_proxy(settings)
-				loop.run_until_complete(socks5.proxy.ready(loop=loop))
+				loop.run_until_complete(socks5.proxy.ready())
 
 				result = loop.run_until_complete(loop.run_in_executor(None,
 					self._fetch_via_proxy, proxy, host, server.server_port, path))

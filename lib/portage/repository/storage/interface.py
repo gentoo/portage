@@ -1,8 +1,7 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.exception import PortageException
-from portage.util.futures.compat_coroutine import coroutine
 
 
 class RepoStorageException(PortageException):
@@ -32,8 +31,7 @@ class RepoStorageInterface:
 		"""
 		raise NotImplementedError
 
-	@coroutine
-	def init_update(self, loop=None):
+	async def init_update(self):
 		"""
 		Create an update directory as a destination to sync updates to.
 		The directory will be populated with files from the previous
@@ -50,7 +48,7 @@ class RepoStorageInterface:
 		raise NotImplementedError
 
 	@property
-	def current_update(self, loop=None):
+	def current_update(self):
 		"""
 		Get the current update directory which would have been returned
 		from the most recent call to the init_update method. This raises
@@ -62,16 +60,14 @@ class RepoStorageInterface:
 		"""
 		raise NotImplementedError
 
-	@coroutine
-	def commit_update(self, loop=None):
+	async def commit_update(self):
 		"""
 		Commit the current update directory, so that is becomes the
 		latest immutable snapshot.
 		"""
 		raise NotImplementedError
 
-	@coroutine
-	def abort_update(self, loop=None):
+	async def abort_update(self):
 		"""
 		Delete the current update directory. If there was not an update
 		in progress, or it has already been committed, then this has
@@ -79,8 +75,7 @@ class RepoStorageInterface:
 		"""
 		raise NotImplementedError
 
-	@coroutine
-	def garbage_collection(self, loop=None):
+	async def garbage_collection(self):
 		"""
 		Remove expired snapshots.
 		"""

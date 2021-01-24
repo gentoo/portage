@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 
 import logging
-import sys
 
 # import our initialized portage instance
 from repoman._portage import portage

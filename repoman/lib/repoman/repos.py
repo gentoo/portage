@@ -15,6 +15,7 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.checksum import get_valid_checksum_keys
 
+# pylint: disable=ungrouped-imports
 from repoman.errors import err
 from repoman.profile import ProfileDesc, valid_profile_types
 

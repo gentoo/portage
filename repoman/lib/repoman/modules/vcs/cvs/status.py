@@ -6,7 +6,7 @@ import logging
 import subprocess
 import sys
 
-from repoman._portage import portage
+from repoman._portage import portage # pylint: disable=unused-import
 from portage import os
 from portage.const import BASH_BINARY
 from portage.output import red, green

@@ -4,7 +4,7 @@ Bazaar module Changes class submodule
 
 from repoman.modules.vcs.changes import ChangesBase
 from repoman._subprocess import repoman_popen
-from repoman._portage import portage
+from repoman._portage import portage # pylint: disable=unused-import
 from portage import os
 from portage.package.ebuild.digestgen import digestgen
 

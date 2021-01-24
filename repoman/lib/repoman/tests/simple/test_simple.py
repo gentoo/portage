@@ -1,4 +1,4 @@
-# Copyright 2011-2018 Gentoo Foundation
+# Copyright 2011-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -11,6 +11,8 @@ from portage import _unicode_decode
 from portage.process import find_binary
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
+
+# pylint: disable=ungrouped-imports
 from repoman import REPOMAN_BASE_PATH
 from repoman.copyrights import update_copyright_year
 from repoman.tests import TestCase

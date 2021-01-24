@@ -1,4 +1,4 @@
-# Copyright 2020 Gentoo Authors
+# Copyright 2020-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import sys
@@ -9,7 +9,6 @@ from portage.tests import TestCase
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio.streams import _writer
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.unix_events import _set_nonblocking
 
 
@@ -20,8 +19,7 @@ class AsyncFunctionTestCase(TestCase):
 		os.close(pw)
 		return ''.join(sys.stdin)
 
-	@coroutine
-	def _testAsyncFunctionStdin(self, loop=None):
+	async def _testAsyncFunctionStdin(self, loop):
 		test_string = '1\n2\n3\n'
 		pr, pw = os.pipe()
 		fd_pipes = {0:pr}
@@ -30,8 +28,8 @@ class AsyncFunctionTestCase(TestCase):
 		os.close(pr)
 		_set_nonblocking(pw)
 		with open(pw, mode='wb', buffering=0) as pipe_write:
-			yield _writer(pipe_write, test_string.encode('utf_8'), loop=loop)
-		self.assertEqual((yield reader.async_wait()), os.EX_OK)
+			await _writer(pipe_write, test_string.encode('utf_8'))
+		self.assertEqual((await reader.async_wait()), os.EX_OK)
 		self.assertEqual(reader.result, test_string)
 
 	def testAsyncFunctionStdin(self):

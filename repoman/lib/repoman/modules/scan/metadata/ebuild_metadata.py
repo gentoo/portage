@@ -3,7 +3,6 @@
 '''Ebuild Metadata Checks'''
 
 import re
-import sys
 
 from repoman.modules.scan.scanbase import ScanBase
 

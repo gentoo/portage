@@ -1,4 +1,4 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.Package import Package
@@ -76,7 +76,16 @@ class MoveHandler:
 						except (KeyError, InvalidData):
 							continue
 						if repo_match(cpv.repo):
-							errors.append("'%s' moved to '%s'" % (cpv, newcp))
+							build_time = getattr(cpv, 'build_time', None)
+							if build_time is not None:
+								# If this update has already been applied to the same
+								# package build then silently continue.
+								for maybe_applied in match('={}'.format(
+									cpv.replace(cpv.cp, str(newcp), 1))):
+									if maybe_applied.build_time == build_time:
+										break
+								else:
+									errors.append("'%s' moved to '%s'" % (cpv, newcp))
 				elif update_cmd[0] == "slotmove":
 					pkg, origslot, newslot = update_cmd[1:]
 					atom = pkg.with_slot(origslot)

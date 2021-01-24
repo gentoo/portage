@@ -3,13 +3,9 @@
 
 import codecs
 import subprocess
-import sys
 
 # import our initialized portage instance
 from repoman._portage import portage
-
-from portage import os
-from portage.process import find_binary
 from portage import _encodings, _unicode_encode
 
 

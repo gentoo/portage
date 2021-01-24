@@ -1,11 +1,10 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.repository.storage.interface import (
 	RepoStorageException,
 	RepoStorageInterface,
 )
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 
 
 class InplaceRepoStorage(RepoStorageInterface):
@@ -18,32 +17,22 @@ class InplaceRepoStorage(RepoStorageInterface):
 		self._user_location = repo.location
 		self._update_location = None
 
-	@coroutine
-	def init_update(self, loop=None):
+	async def init_update(self):
 		self._update_location = self._user_location
-		coroutine_return(self._update_location)
-		yield None
+		return self._update_location
 
 	@property
-	def current_update(self, loop=None):
+	def current_update(self):
 		if self._update_location is None:
 			raise RepoStorageException('current update does not exist')
 		return self._update_location
 
-	@coroutine
-	def commit_update(self, loop=None):
+	async def commit_update(self):
 		self.current_update
 		self._update_location = None
-		coroutine_return()
-		yield None
 
-	@coroutine
-	def abort_update(self, loop=None):
+	async def abort_update(self):
 		self._update_location = None
-		coroutine_return()
-		yield None
 
-	@coroutine
-	def garbage_collection(self, loop=None):
-		coroutine_return()
-		yield None
+	async def garbage_collection(self):
+		pass

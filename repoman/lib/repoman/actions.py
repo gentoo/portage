@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -30,6 +30,7 @@ from portage.output import (
 from portage.package.ebuild.digestgen import digestgen
 from portage.util import writemsg_level
 
+# pylint: disable=ungrouped-imports
 from repoman.copyrights import update_copyright
 from repoman.gpg import gpgsign, need_signature
 from repoman import utilities

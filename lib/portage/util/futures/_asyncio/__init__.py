@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -37,9 +37,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:compat_coroutine@_compat_coroutine',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
-from portage.util._eventloop.global_event_loop import (
-	global_event_loop as _global_event_loop,
-)
 # pylint: disable=redefined-builtin
 from portage.util.futures.futures import (
 	CancelledError,
@@ -238,7 +235,7 @@ def _wrap_loop(loop=None):
 	# The default loop returned by _wrap_loop should be consistent
 	# with global_event_loop, in order to avoid accidental registration
 	# of callbacks with a loop that is not intended to run.
-	loop = loop or _global_event_loop()
+	loop = loop or _safe_loop()
 	return (loop if hasattr(loop, '_asyncio_wrapper')
 		else _AsyncioEventLoop(loop=loop))
 
@@ -267,13 +264,15 @@ def _safe_loop():
 	@rtype: asyncio.AbstractEventLoop (or compatible)
 	@return: event loop instance
 	"""
-	if portage._internal_caller or threading.current_thread() is threading.main_thread():
-		return _global_event_loop()
+	loop = _get_running_loop()
+	if loop is not None:
+		return loop
 
 	thread_key = threading.get_ident()
 	with _thread_weakrefs.lock:
 		if _thread_weakrefs.pid != portage.getpid():
 			_thread_weakrefs.pid = portage.getpid()
+			_thread_weakrefs.mainloop = None
 			_thread_weakrefs.loops = weakref.WeakValueDictionary()
 		try:
 			loop = _thread_weakrefs.loops[thread_key]
@@ -283,7 +282,21 @@ def _safe_loop():
 			except RuntimeError:
 				_real_asyncio.set_event_loop(_real_asyncio.new_event_loop())
 			loop = _thread_weakrefs.loops[thread_key] = _AsyncioEventLoop()
+
+	if _thread_weakrefs.mainloop is None and threading.current_thread() is threading.main_thread():
+		_thread_weakrefs.mainloop = loop
+
 	return loop
+
+
+def _get_running_loop():
+	with _thread_weakrefs.lock:
+		if _thread_weakrefs.pid == portage.getpid():
+			try:
+				loop = _thread_weakrefs.loops[threading.get_ident()]
+			except KeyError:
+				return None
+			return loop if loop.is_running() else None
 
 
 def _thread_weakrefs_atexit():
@@ -297,6 +310,5 @@ def _thread_weakrefs_atexit():
 				else:
 					loop.close()
 
-
-_thread_weakrefs = types.SimpleNamespace(lock=threading.Lock(), loops=None, pid=None)
+_thread_weakrefs = types.SimpleNamespace(lock=threading.Lock(), loops=None, mainloop=None, pid=None)
 portage.process.atexit_register(_thread_weakrefs_atexit)

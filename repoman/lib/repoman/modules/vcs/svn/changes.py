@@ -138,5 +138,3 @@ class Changes(ChangesBase):
 				scanner.repolevel, scanner.reposplit, scanner.categories)):
 				self.repoman_settings["O"] = os.path.join(self.repo_settings.repodir, x)
 				digestgen(mysettings=self.repoman_settings, myportdb=self.repo_settings.portdb)
-
-

@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["bindbapi", "binarytree"]
@@ -27,10 +27,11 @@ from portage.cache.mappings import slot_dict_class
 from portage.const import BINREPOS_CONF_FILE, CACHE_PATH, SUPPORTED_XPAK_EXTENSIONS
 from portage.dbapi.virtual import fakedbapi
 from portage.dep import Atom, use_reduce, paren_enclose
-from portage.exception import AlarmSignal, InvalidData, InvalidPackageName, \
+from portage.exception import AlarmSignal, InvalidPackageName, \
 	ParseError, PortageException
 from portage.localization import _
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.executor.fork import ForkExecutor
@@ -214,7 +215,7 @@ class bindbapi(fakedbapi):
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
 		# inject will clear stale caches via cpv_inject.
-		self.bintree.inject(cpv, filename=tbz2path)
+		self.bintree.inject(cpv)
 
 
 	@coroutine
@@ -467,11 +468,7 @@ class binarytree:
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			try:
-				mycpv = self.dbapi._pkg_str(mycpv, None)
-			except (KeyError, InvalidData):
-				continue
-			mycpv_cp = portage.cpv_getkey(mycpv)
+			mycpv_cp = mycpv.cp
 			if mycpv_cp != origcp:
 				# Ignore PROVIDE virtual match.
 				continue
@@ -488,7 +485,18 @@ class binarytree:
 			myoldpkg = catsplit(mycpv)[1]
 			mynewpkg = catsplit(mynewcpv)[1]
 
-			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
+			# If this update has already been applied to the same
+			# package build then silently continue.
+			applied = False
+			for maybe_applied in self.dbapi.match('={}'.format(mynewcpv)):
+				if maybe_applied.build_time == mycpv.build_time:
+					applied = True
+					break
+
+			if applied:
+				continue
+
+			if (mynewpkg != myoldpkg) and self.dbapi.cpv_exists(mynewcpv):
 				writemsg(_("!!! Cannot update binary: Destination exists.\n"),
 					noiselevel=-1)
 				writemsg("!!! "+mycpv+" -> "+mynewcpv+"\n", noiselevel=-1)
@@ -518,24 +526,34 @@ class binarytree:
 					mydata[_unicode_encode(mynewpkg + '.ebuild',
 						encoding=_encodings['repo.content'])] = ebuild_data
 
-			mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
-
-			self.dbapi.cpv_remove(mycpv)
-			del self._pkg_paths[self.dbapi._instance_key(mycpv)]
 			metadata = self.dbapi._aux_cache_slot_dict()
 			for k in self.dbapi._aux_cache_keys:
 				v = mydata.get(_unicode_encode(k))
 				if v is not None:
 					v = _unicode_decode(v)
 					metadata[k] = " ".join(v.split())
+
+			# Create a copy of the old version of the package and
+			# apply the update to it. Leave behind the old version,
+			# assuming that it will be deleted by eclean-pkg when its
+			# time comes.
 			mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-			new_path = self.getname(mynewcpv)
-			self._pkg_paths[
-				self.dbapi._instance_key(mynewcpv)] = new_path[len(self.pkgdir)+1:]
-			if new_path != tbz2path:
-				self._ensure_dir(os.path.dirname(new_path))
-				_movefile(tbz2path, new_path, mysettings=self.settings)
-			self.inject(mynewcpv)
+			update_path = self.getname(mynewcpv, allocate_new=True) + ".partial"
+			self._ensure_dir(os.path.dirname(update_path))
+			update_path_lock = None
+			try:
+				update_path_lock = lockfile(update_path, wantnewlockfile=True)
+				copyfile(tbz2path, update_path)
+				mytbz2 = portage.xpak.tbz2(update_path)
+				mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
+				self.inject(mynewcpv, filename=update_path)
+			finally:
+				if update_path_lock is not None:
+					try:
+						os.unlink(update_path)
+					except OSError:
+						pass
+					unlockfile(update_path_lock)
 
 		return moves
 

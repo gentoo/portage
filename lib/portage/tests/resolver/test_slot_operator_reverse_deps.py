@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Gentoo Authors
+# Copyright 2016-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -189,6 +189,102 @@ class SlotOperatorReverseDepsLibGit2TestCase(TestCase):
 				success = True,
 				#mergelist = ['dev-libs/libgit2-0.28.4-r1', 'dev-libs/libgit2-glib-0.99.0.1', 'dev-vcs/gitg-3.32.1-r1'],
 				mergelist = [],
+			),
+		)
+
+		playground = ResolverPlayground(ebuilds=ebuilds,
+			installed=installed, world=world, debug=False)
+		try:
+			for test_case in test_cases:
+				playground.run_TestCase(test_case)
+				self.assertEqual(test_case.test_success, True,
+					test_case.fail_msg)
+		finally:
+			playground.debug = False
+			playground.cleanup()
+
+
+class SlotOperatorReverseDepsVirtualTestCase(TestCase):
+
+	def testSlotOperatorReverseDepsVirtual(self):
+		"""
+		Demonstrate bug #764764, where slot operator rebuilds were
+		not triggered for reverse deps of virtual/dist-kernel.
+		"""
+
+		ebuilds = {
+
+			"app-emulation/virtualbox-modules-6.1.16-r1": {
+				"EAPI": "7",
+				"DEPEND": "virtual/dist-kernel",
+				"RDEPEND": "virtual/dist-kernel:=",
+			},
+
+			"sys-kernel/gentoo-kernel-5.10.6": {
+				"EAPI": "7",
+				"SLOT": "5.10.6",
+			},
+
+			"sys-kernel/gentoo-kernel-5.10.5": {
+				"EAPI": "7",
+				"SLOT": "5.10.5",
+			},
+
+			"virtual/dist-kernel-5.10.5" : {
+				"EAPI": "7",
+				"SLOT": "0/5.10.5",
+				"RDEPEND": "~sys-kernel/gentoo-kernel-5.10.5",
+			},
+
+			"virtual/dist-kernel-5.10.6" : {
+				"EAPI": "7",
+				"SLOT": "0/5.10.6",
+				"RDEPEND": "~sys-kernel/gentoo-kernel-5.10.6"
+			},
+
+			"x11-drivers/nvidia-drivers-460.32.03" : {
+				"EAPI": "7",
+				"DEPEND": "virtual/dist-kernel",
+				"RDEPEND": "virtual/dist-kernel:=",
+			},
+
+		}
+
+		installed = {
+
+			"app-emulation/virtualbox-modules-6.1.16-r1": {
+				"EAPI": "7",
+				"DEPEND": "virtual/dist-kernel",
+				"RDEPEND": "virtual/dist-kernel:0/5.10.5=",
+			},
+
+			"sys-kernel/gentoo-kernel-5.10.5": {
+				"EAPI": "7",
+				"SLOT": "5.10.5",
+			},
+
+			"virtual/dist-kernel-5.10.5" : {
+				"EAPI": "7",
+				"SLOT": "0/5.10.5",
+				"RDEPEND": "~sys-kernel/gentoo-kernel-5.10.5"
+			},
+
+			"x11-drivers/nvidia-drivers-460.32.03" : {
+				"EAPI": "7",
+				"DEPEND": "virtual/dist-kernel",
+				"RDEPEND": "virtual/dist-kernel:0/5.10.5="
+			},
+
+		}
+
+		world = ["app-emulation/virtualbox-modules", "x11-drivers/nvidia-drivers"]
+
+		test_cases = (
+			ResolverPlaygroundTestCase(
+				["@world"],
+				options = {"--update": True, "--deep": True},
+				success = True,
+				mergelist = ['sys-kernel/gentoo-kernel-5.10.6', 'virtual/dist-kernel-5.10.6', 'app-emulation/virtualbox-modules-6.1.16-r1', 'x11-drivers/nvidia-drivers-460.32.03']
 			),
 		)
 

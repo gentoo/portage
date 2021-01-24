@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -68,10 +68,6 @@ def _generator_future(generator_func, *args, **kwargs):
 	the default event loop.
 	"""
 	loop = kwargs.get('loop')
-	if loop is None and portage._internal_caller:
-		# Require an explicit loop parameter, in order to support
-		# local event loops (bug 737698).
-		raise AssertionError("Missing required argument 'loop'")
 	loop = asyncio._wrap_loop(loop)
 	result = loop.create_future()
 	_GeneratorTask(generator_func(*args, **kwargs), result, loop=loop)

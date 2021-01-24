@@ -50,4 +50,3 @@ class Status:
 		@returns: Boolean
 		'''
 		return False
-

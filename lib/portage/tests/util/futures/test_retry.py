@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -32,18 +32,11 @@ class SucceedLater:
 	def __init__(self, duration):
 		self._succeed_time = time.monotonic() + duration
 
-	def __call__(self):
-		loop = global_event_loop()
-		result = loop.create_future()
+	async def __call__(self):
 		remaining = self._succeed_time - time.monotonic()
 		if remaining > 0:
-			loop.call_soon_threadsafe(lambda: None if result.done() else
-				result.set_exception(SucceedLaterException(
-				'time until success: {} seconds'.format(remaining))))
-		else:
-			loop.call_soon_threadsafe(lambda: None if result.done() else
-				result.set_result('success'))
-		return result
+			await asyncio.sleep(remaining)
+		return 'success'
 
 
 class SucceedNeverException(Exception):
@@ -54,20 +47,17 @@ class SucceedNever:
 	"""
 	A callable object that never succeeds.
 	"""
-	def __call__(self):
-		loop = global_event_loop()
-		result = loop.create_future()
-		loop.call_soon_threadsafe(lambda: None if result.done() else
-			result.set_exception(SucceedNeverException('expected failure')))
-		return result
+	async def __call__(self):
+		raise SucceedNeverException('expected failure')
 
 
 class HangForever:
 	"""
 	A callable object that sleeps forever.
 	"""
-	def __call__(self):
-		return asyncio.Future()
+	async def __call__(self):
+		while True:
+			await asyncio.sleep(9)
 
 
 class RetryTestCase(TestCase):

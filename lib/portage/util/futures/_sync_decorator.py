@@ -1,4 +1,4 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -17,9 +17,7 @@ def _sync_decorator(func, loop=None):
 	"""
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
-		nonlocal loop
-		loop = kwargs['loop'] = asyncio._wrap_loop(kwargs.get('loop') or loop)
-		return loop.run_until_complete(func(*args, **kwargs))
+		return (loop or asyncio.get_event_loop()).run_until_complete(func(*args, **kwargs))
 	return wrapper
 
 

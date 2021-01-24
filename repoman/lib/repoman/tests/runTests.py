@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # runTests.py -- Portage Unit Test Functionality
-# Copyright 2006-2017 Gentoo Foundation
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
-import sys
 import os.path as osp
+import sys
 import grp
 import platform
 import pwd
@@ -41,17 +41,17 @@ sys.path.insert(0, portage_pym)
 # import our centrally initialized portage instance
 from repoman._portage import portage
 portage._internal_caller = True
+import repoman.tests as tests
 
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.const import PORTAGE_BIN_PATH
 
 if os.environ.get('NOCOLOR') in ('yes', 'true'):
 	portage.output.nocolor()
 
-import repoman.tests as tests
-from portage.const import PORTAGE_BIN_PATH
 path = os.environ.get("PATH", "").split(":")
 path = [x for x in path if x]
 

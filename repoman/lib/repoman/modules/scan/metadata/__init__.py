@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Gentoo Foundation
+# Copyright 2015-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Metadata plug-in module for repoman.
@@ -87,4 +87,3 @@ module_spec = {
 	},
 	'version': 1,
 }
-

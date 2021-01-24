@@ -1,10 +1,9 @@
-# Copyright 2020 Gentoo Authors
+# Copyright 2020-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.executor.fork import ForkExecutor
 
 
@@ -65,7 +64,7 @@ class AuxdbTestCase(TestCase):
 		def test_func():
 			loop = asyncio._wrap_loop()
 			return loop.run_until_complete(self._test_mod_async(
-				ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb, loop=loop))
+				ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb))
 
 		self.assertTrue(test_func())
 
@@ -91,14 +90,13 @@ class AuxdbTestCase(TestCase):
 
 		self.assertEqual(auxdb[cpv]['RESTRICT'], 'test')
 
-	@coroutine
-	def _test_mod_async(self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb, loop=None):
+	async def _test_mod_async(self, ebuilds, ebuild_inherited, eclass_defined_phases, eclass_depend, portdb):
 
 		for cpv, metadata in ebuilds.items():
-			defined_phases, depend, eapi, inherited = yield portdb.async_aux_get(cpv, ['DEFINED_PHASES', 'DEPEND', 'EAPI', 'INHERITED'], loop=loop)
+			defined_phases, depend, eapi, inherited = await portdb.async_aux_get(cpv, ['DEFINED_PHASES', 'DEPEND', 'EAPI', 'INHERITED'])
 			self.assertEqual(defined_phases, eclass_defined_phases)
 			self.assertEqual(depend, eclass_depend)
 			self.assertEqual(eapi, metadata['EAPI'])
 			self.assertEqual(frozenset(inherited.split()), ebuild_inherited)
 
-		coroutine_return(True)
+		return True

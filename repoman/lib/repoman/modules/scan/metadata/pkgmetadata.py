@@ -24,10 +24,11 @@ except (ImportError, SystemError, RuntimeError, Exception):
 	sys.exit(1)
 
 # import our initialized portage instance
-from repoman._portage import portage
+from repoman._portage import portage # pylint: disable=unused-import
 from repoman.metadata import metadata_dtd_uri
 from repoman.modules.scan.scanbase import ScanBase
 
+# pylint: disable=ungrouped-imports
 from portage.exception import InvalidAtom
 from portage import os
 from portage.dep import Atom
@@ -100,7 +101,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
 
 		indentation_chars = Counter()
 		for l in etree.tostring(_metadata_xml).splitlines():
-			indentation_chars.update(re.match(b"\s*", l).group(0))
+			indentation_chars.update(re.match(rb"\s*", l).group(0))
 		if len(indentation_chars) > 1:
 			self.qatracker.add_error("metadata.warning", "%s/metadata.xml: %s" %
 				(xpkg, "inconsistent use of tabs and spaces in indentation")

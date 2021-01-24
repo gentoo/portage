@@ -1,5 +1,5 @@
 # SOCKSv5 proxy manager for network-sandbox
-# Copyright 2015-2020 Gentoo Authors
+# Copyright 2015-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -11,7 +11,6 @@ import portage.data
 from portage import _python_interpreter
 from portage.data import portage_gid, portage_uid, userpriv_groups
 from portage.process import atexit_register, spawn
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures import asyncio
 
 class ProxyManager:
@@ -74,9 +73,7 @@ class ProxyManager:
 		"""
 		return self.socket_path is not None
 
-
-	@coroutine
-	def ready(self, loop=None):
+	async def ready(self):
 		"""
 		Wait for the proxy socket to become ready. This method is a coroutine.
 		"""
@@ -98,7 +95,7 @@ class ProxyManager:
 			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
-				yield asyncio.sleep(0.2, loop=loop)
+				await asyncio.sleep(0.2)
 			else:
 				break
 			finally:

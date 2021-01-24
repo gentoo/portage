@@ -6,6 +6,8 @@ import re
 
 from repoman._portage import portage
 from portage import os
+
+# pylint: disable=ungrouped-imports
 from repoman._subprocess import repoman_popen, repoman_getstatusoutput
 
 
@@ -75,4 +77,3 @@ class Status:
 		@returns: Boolean
 		'''
 		return dirname in [".git"]
-
