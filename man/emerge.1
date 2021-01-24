@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Nov 2020" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Feb 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -356,8 +356,8 @@ intended to be set in the \fBmake.conf\fR(5)
 Automatically unmask packages and generate package.use
 settings as necessary to satisfy dependencies. This option
 is disabled by default, except for portions of behavior
-which are controlled by the \fB\-\-autounmask\-use\fR and
-\fB\-\-autounmask\-license\fR options (\fB\-\-autounmask=n\fR
+which are controlled by the \fB\-\-autounmask\-use\fR
+(\fB\-\-autounmask=n\fR
 disables autounmask behavior entirely). If any configuration
 changes are required, then they will be displayed
 after the merge list and emerge will immediately
@@ -413,10 +413,7 @@ will be created. This leads to unsatisfied dependencies if
 no other solution exists.
 .TP
 .BR "\-\-autounmask\-license < y | n >"
-Allow autounmask package.license changes. This option is enabled by default
-(either \fB\-\-autounmask=n\fR or \fB\-\-autounmask\-license=n\fR disables
-it). The \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
-disable this option by default in \fBmake.conf\fR(5).
+Allow autounmask package.license changes.
 .TP
 .BR "\-\-autounmask\-use < y | n >"
 Allow autounmask package.use changes. This option is enabled by default

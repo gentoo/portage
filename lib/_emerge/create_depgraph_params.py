@@ -1,4 +1,4 @@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
@@ -45,7 +45,7 @@ def create_depgraph_params(myopts, myaction):
 	autounmask_keep_masks = myopts.get("--autounmask-keep-masks")
 
 	autounmask = myopts.get("--autounmask")
-	autounmask_license = myopts.get('--autounmask-license')
+	autounmask_license = myopts.get('--autounmask-license', 'y' if autounmask is True else 'n')
 	autounmask_use = myopts.get('--autounmask-use')
 	if autounmask == 'n':
 		autounmask = False
@@ -53,7 +53,7 @@ def create_depgraph_params(myopts, myaction):
 		if autounmask is None:
 			if autounmask_use in (None, 'y'):
 				autounmask = True
-			elif autounmask_license in (None, 'y'):
+			if autounmask_license in ('y',):
 				autounmask = True
 
 			# Do not enable package.accept_keywords or package.mask
@@ -67,7 +67,7 @@ def create_depgraph_params(myopts, myaction):
 
 	myparams['autounmask'] = autounmask
 	myparams['autounmask_keep_use'] = True if autounmask_use == 'n' else False
-	myparams['autounmask_keep_license'] = True if autounmask_license == 'n' else False
+	myparams['autounmask_keep_license'] = False if autounmask_license == 'y' else True
 	myparams['autounmask_keep_keywords'] = False if autounmask_keep_keywords in (None, 'n') else True
 	myparams['autounmask_keep_masks'] = False if autounmask_keep_masks in (None, 'n') else True
 
