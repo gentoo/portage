@@ -375,7 +375,7 @@ _sync_mode = False
 class _ForkWatcher:
 	@staticmethod
 	def hook(_ForkWatcher):
-		_ForkWatcher.current_pid = _os.getpid()
+		_ForkWatcher.current_pid = None
 		# Force instantiation of a new event loop policy as a workaround
 		# for https://bugs.python.org/issue22087.
 		asyncio.set_event_loop_policy(None)
@@ -388,6 +388,8 @@ def getpid():
 	"""
 	Cached version of os.getpid(). ForkProcess updates the cache.
 	"""
+	if _ForkWatcher.current_pid is None:
+		_ForkWatcher.current_pid = _os.getpid()
 	return _ForkWatcher.current_pid
 
 def _get_stdin():
