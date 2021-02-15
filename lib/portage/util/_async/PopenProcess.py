@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.SubProcess import SubProcess
@@ -13,7 +13,7 @@ class PopenProcess(SubProcess):
 		self._registered = True
 
 		if self.pipe_reader is None:
-			self._async_waitpid()
+			self.scheduler.call_soon(self._async_waitpid)
 		else:
 			try:
 				self.pipe_reader.scheduler = self.scheduler
