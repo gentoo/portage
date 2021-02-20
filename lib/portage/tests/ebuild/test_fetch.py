@@ -7,7 +7,8 @@ import tempfile
 
 import portage
 from portage import shutil, os
-from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
+from portage.checksum import checksum_str
+from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
@@ -18,8 +19,14 @@ from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
-from portage.package.ebuild.fetch import (_download_suffix, fetch, FlatLayout,
-		FilenameHashLayout, MirrorLayoutConfig)
+from portage.package.ebuild.fetch import (
+	DistfileName,
+	_download_suffix,
+	fetch,
+	FilenameHashLayout,
+	FlatLayout,
+	MirrorLayoutConfig,
+)
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.Package import Package
 
@@ -142,9 +149,14 @@ class EbuildFetchTestCase(TestCase):
 				content["/distfiles/layout.conf"] = layout_data.encode("utf8")
 
 				for k, v in distfiles.items():
+					filename = DistfileName(
+						k,
+						digests=dict((algo, checksum_str(v, hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+					)
+
 					# mirror path
 					for layout in layouts:
-						content["/distfiles/" + layout.get_path(k)] = v
+						content["/distfiles/" + layout.get_path(filename)] = v
 					# upstream path
 					content["/distfiles/{}.txt".format(k)] = v
 
@@ -499,6 +511,10 @@ class EbuildFetchTestCase(TestCase):
 				io.StringIO(conf))
 
 	def test_filename_hash_layout_get_filenames(self):
+		filename = DistfileName(
+			'foo-1.tar.gz',
+			digests=dict((algo, checksum_str(b'', hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+		)
 		layouts = (
 			FlatLayout(),
 			FilenameHashLayout('SHA1', '4'),
@@ -506,7 +522,6 @@ class EbuildFetchTestCase(TestCase):
 			FilenameHashLayout('SHA1', '8:16'),
 			FilenameHashLayout('SHA1', '8:16:24'),
 		)
-		filename = 'foo-1.tar.gz'
 
 		for layout in layouts:
 			distdir = tempfile.mkdtemp()
@@ -520,6 +535,12 @@ class EbuildFetchTestCase(TestCase):
 				with open(path, 'wb') as f:
 					pass
 
-				self.assertEqual([filename], list(layout.get_filenames(distdir)))
+				file_list = list(layout.get_filenames(distdir))
+				self.assertTrue(len(file_list) > 0)
+				for filename_result in file_list:
+					if isinstance(filename_result, DistfileName):
+						self.assertTrue(filename_result.digests_equal(filename))
+					else:
+						self.assertEqual(filename_result, str(filename))
 			finally:
 				shutil.rmtree(distdir)

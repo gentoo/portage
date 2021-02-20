@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['fetch']
@@ -344,6 +344,57 @@ _size_suffix_map = {
 }
 
 
+class DistfileName(str):
+	"""
+	The DistfileName type represents a distfile name and associated
+	content digests, used by MirrorLayoutConfig and related layout
+	implementations.
+
+	The path of a distfile within a layout must be dependent on
+	nothing more than the distfile name and its associated content
+	digests. For filename-hash layout, path is dependent on distfile
+	name alone, and the get_filenames implementation yields strings
+	corresponding to distfile names. For content-hash layout, path is
+	dependent on content digest alone, and the get_filenames
+	implementation yields DistfileName instances whose names are equal
+	to content digest values. The content-hash layout simply lacks
+	the filename-hash layout's innate ability to translate a distfile
+	path to a distfile name, and instead caries an innate ability
+	to translate a distfile path to a content digest.
+
+	In order to prepare for a migration from filename-hash to
+	content-hash layout, all consumers of the layout get_filenames
+	method need to be updated to work with content digests as a
+	substitute for distfile names. For example, in order to prepare
+	emirrordist for content-hash, a key-value store needs to be
+	added as a means to associate distfile names with content
+	digest values yielded by the content-hash get_filenames
+	implementation.
+	"""
+	def __new__(cls, s, digests=None):
+		return str.__new__(cls, s)
+
+	def __init__(self, s, digests=None):
+		super().__init__()
+		self.digests = {} if digests is None else digests
+
+	def digests_equal(self, other):
+		"""
+		Test if digests compare equal to those of another instance.
+		"""
+		if not isinstance(other, DistfileName):
+			return False
+		matches = []
+		for algo, digest in self.digests.items():
+			other_digest = other.digests.get(algo)
+			if other_digest is not None:
+				if other_digest == digest:
+					matches.append(algo)
+				else:
+					return False
+		return bool(matches)
+
+
 class FlatLayout:
 	def get_path(self, filename):
 		return filename
@@ -439,19 +490,36 @@ class MirrorLayoutConfig:
 		self.structure = data
 
 	@staticmethod
-	def validate_structure(val):
+	def validate_structure(val, filename=None):
+		"""
+		If the filename argument is given, then supported hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param val: layout.conf entry args
+		@param filename: filename with digests attribute
+		@return: True if args are valid for available digest algorithms,
+			and False otherwise
+		"""
 		if val[0] == 'flat':
 			return FlatLayout.verify_args(val)
-		if val[0] == 'filename-hash':
+		elif val[0] == 'filename-hash':
 			return FilenameHashLayout.verify_args(val)
 		return False
 
-	def get_best_supported_layout(self):
+	def get_best_supported_layout(self, filename=None):
+		"""
+		If the filename argument is given, then acceptable hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param filename: filename with digests attribute
+		"""
 		for val in self.structure:
-			if self.validate_structure(val):
+			if self.validate_structure(val, filename=filename):
 				if val[0] == 'flat':
 					return FlatLayout(*val[1:])
-				if val[0] == 'filename-hash':
+				elif val[0] == 'filename-hash':
 					return FilenameHashLayout(*val[1:])
 		# fallback
 		return FlatLayout()
@@ -515,7 +583,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 
 	# For some protocols, urlquote is required for correct behavior,
 	# and it must not be used for other protocols like rsync and sftp.
-	path = mirror_conf.get_best_supported_layout().get_path(filename)
+	path = mirror_conf.get_best_supported_layout(filename=filename).get_path(filename)
 	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
 		path = urlquote(path)
 	return mirror_url + "/distfiles/" + path
@@ -722,15 +790,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if hasattr(myuris, 'items'):
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
-				file_uri_tuples.append((myfile, myuri))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+				)
 			if not uri_set:
-				file_uri_tuples.append((myfile, None))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+				)
 	else:
 		for myuri in myuris:
 			if urlparse(myuri).scheme:
-				file_uri_tuples.append((os.path.basename(myuri), myuri))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+				)
 			else:
-				file_uri_tuples.append((os.path.basename(myuri), None))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+				)
 
 	filedict = OrderedDict()
 	primaryuri_dict = {}
