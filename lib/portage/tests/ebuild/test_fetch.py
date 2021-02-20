@@ -20,6 +20,7 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
 from portage.package.ebuild.fetch import (
+	ContentHashLayout,
 	DistfileName,
 	_download_suffix,
 	fetch,
@@ -108,6 +109,11 @@ class EbuildFetchTestCase(TestCase):
 				"[structure]",
 				"1=filename-hash BLAKE2B 8",
 				"0=flat",
+			),
+			(
+				"[structure]",
+				"0=content-hash SHA512 8:8:8",
+				"1=flat",
 			),
 		)
 
@@ -444,6 +450,35 @@ class EbuildFetchTestCase(TestCase):
 		self.assertEqual(FilenameHashLayout('SHA1', '8:16:24').get_path('foo-1.tar.gz'),
 				'19/c3b6/37a94b/foo-1.tar.gz')
 
+	def test_content_hash_layout(self):
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash',)))
+		self.assertTrue(ContentHashLayout.verify_args(('content-hash', 'SHA1', '8')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'INVALID-HASH', '8')))
+		self.assertTrue(ContentHashLayout.verify_args(('content-hash', 'SHA1', '4:8:12')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', '3')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', 'junk')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', '4:8:junk')))
+
+		filename = DistfileName(
+			'foo-1.tar.gz',
+			digests=dict((algo, checksum_str(b'', hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+		)
+
+		# Raise KeyError for a hash algorithm SHA1 which is not in MANIFEST2_HASH_DEFAULTS.
+		self.assertRaises(KeyError, ContentHashLayout('SHA1', '4').get_path, filename)
+
+		# Raise AttributeError for a plain string argument.
+		self.assertRaises(AttributeError, ContentHashLayout('SHA512', '4').get_path, str(filename))
+
+		self.assertEqual(ContentHashLayout('SHA512', '4').get_path(filename),
+				'c/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8').get_path(filename),
+				'cf/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8:16').get_path(filename),
+				'cf/83e1/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8:16:24').get_path(filename),
+				'cf/83e1/357eef/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+
 	def test_mirror_layout_config(self):
 		mlc = MirrorLayoutConfig()
 		self.assertEqual(mlc.serialize(), ())
@@ -521,6 +556,7 @@ class EbuildFetchTestCase(TestCase):
 			FilenameHashLayout('SHA1', '8'),
 			FilenameHashLayout('SHA1', '8:16'),
 			FilenameHashLayout('SHA1', '8:16:24'),
+			ContentHashLayout('SHA512', '8:8:8'),
 		)
 
 		for layout in layouts:

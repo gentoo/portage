@@ -464,6 +464,97 @@ class FilenameHashLayout:
 		return False
 
 
+class ContentHashLayout(FilenameHashLayout):
+	"""
+	The content-hash layout is identical to the filename-hash layout,
+	except for these three differences:
+
+	1) A content digest is used instead of a filename digest.
+
+	2) The final element of the path returned from the get_path method
+	corresponds to the complete content digest. The path is a function
+	of the content digest alone.
+
+	3) Because the path is a function of content digest alone, the
+	get_filenames implementation cannot derive distfiles names from
+	paths, so it instead yields DistfileName instances whose names are
+	equal to content digest values. The DistfileName documentation
+	discusses resulting implications.
+
+	Motivations to use the content-hash layout instead of the
+	filename-hash layout may include:
+
+	1) Since the file path is independent of the file name, file
+	name collisions cannot occur. This makes the content-hash
+	layout suitable for storage of multiple types of files (not
+	only gentoo distfiles). For example, it can be used to store
+	distfiles for multiple linux distros within the same tree,
+	with automatic deduplication based on content digest. This
+	layout can be used to store and distribute practically anything
+	(including binary packages for example).
+
+	2) Allows multiple revisions for the same distfiles name. An
+	existing distfile can be updated, and if a user still has an
+	older copy of an ebuild repository (or an overlay), then a user
+	can successfully fetch a desired revision of the distfile as
+	long as it has not been purged from the mirror.
+
+	3) File integrity data is integrated into the layout itself,
+	making it very simple to verify the integrity of any file that
+	it contains. The only tool required is an implementation of
+	the chosen hash algorithm.
+	"""
+
+	def get_path(self, filename):
+		"""
+		For content-hash, the path is a function of the content digest alone.
+		The final element of the path returned from the get_path method
+		corresponds to the complete content digest.
+		"""
+		fnhash = remaining = filename.digests[self.algo]
+		ret = ""
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			ret += remaining[:c] + "/"
+			remaining = remaining[c:]
+		return ret + fnhash
+
+	def get_filenames(self, distdir):
+		"""
+		Yields DistfileName instances each with filename corresponding
+		to a digest value for self.algo, and which can be compared to
+		other DistfileName instances with their digests_equal method.
+		"""
+		for filename in super(ContentHashLayout, self).get_filenames(distdir):
+			yield DistfileName(
+				filename, digests=dict([(self.algo, filename)])
+			)
+
+	@staticmethod
+	def verify_args(args, filename=None):
+		"""
+		If the filename argument is given, then supported hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param args: layout.conf entry args
+		@param filename: filename with digests attribute
+		@return: True if args are valid for available digest algorithms,
+				and False otherwise
+		"""
+		if len(args) != 3:
+			return False
+		if filename is None:
+			supported_algos = get_valid_checksum_keys()
+		else:
+			supported_algos = filename.digests
+		algo = args[1].upper()
+		if algo not in supported_algos:
+			return False
+		return FilenameHashLayout.verify_args(args)
+
+
 class MirrorLayoutConfig:
 	"""
 	Class to read layout.conf from a mirror.
@@ -505,6 +596,8 @@ class MirrorLayoutConfig:
 			return FlatLayout.verify_args(val)
 		elif val[0] == 'filename-hash':
 			return FilenameHashLayout.verify_args(val)
+		elif val[0] == 'content-hash':
+			return ContentHashLayout.verify_args(val, filename=filename)
 		return False
 
 	def get_best_supported_layout(self, filename=None):
@@ -521,6 +614,8 @@ class MirrorLayoutConfig:
 					return FlatLayout(*val[1:])
 				elif val[0] == 'filename-hash':
 					return FilenameHashLayout(*val[1:])
+				elif val[0] == 'content-hash':
+					return ContentHashLayout(*val[1:])
 		# fallback
 		return FlatLayout()
 
@@ -533,6 +628,8 @@ class MirrorLayoutConfig:
 				ret.append(FlatLayout(*val[1:]))
 			elif val[0] == 'filename-hash':
 				ret.append(FilenameHashLayout(*val[1:]))
+			elif val[0] == 'content-hash':
+				ret.append(ContentHashLayout(*val[1:]))
 		if not ret:
 			ret.append(FlatLayout())
 		return ret
