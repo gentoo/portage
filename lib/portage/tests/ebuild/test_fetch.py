@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Gentoo Authors
+# Copyright 2019-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -50,22 +50,9 @@ class EbuildFetchTestCase(TestCase):
 
 		loop = SchedulerInterface(global_event_loop())
 
-		def run_async(func, *args, **kwargs):
-			with ForkExecutor(loop=loop) as executor:
-				return loop.run_until_complete(loop.run_in_executor(executor,
-					functools.partial(func, *args, **kwargs)))
-
 		scheme = 'http'
 		host = '127.0.0.1'
 		content = {}
-
-		content['/distfiles/layout.conf'] = b'[structure]\n0=flat\n'
-
-		for k, v in distfiles.items():
-			# mirror path
-			content['/distfiles/{}'.format(k)] = v
-			# upstream path
-			content['/distfiles/{}.txt'.format(k)] = v
 
 		with AsyncHTTPServer(host, content, loop) as server:
 			ebuilds_subst = {}
@@ -86,22 +73,86 @@ class EbuildFetchTestCase(TestCase):
 
 			playground = ResolverPlayground(ebuilds=ebuilds_subst, distfiles=distfiles, user_config=user_config_subst)
 			ro_distdir = tempfile.mkdtemp()
-			eubin = os.path.join(playground.eprefix, "usr", "bin")
 			try:
-				fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
-				fetch_bin = portage.process.find_binary(fetchcommand[0])
-				if fetch_bin is None:
-					self.skipTest('FETCHCOMMAND not found: {}'.format(playground.settings['FETCHCOMMAND']))
-				os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
-				resumecommand = portage.util.shlex_split(playground.settings['RESUMECOMMAND'])
-				resume_bin = portage.process.find_binary(resumecommand[0])
-				if resume_bin is None:
-					self.skipTest('RESUMECOMMAND not found: {}'.format(playground.settings['RESUMECOMMAND']))
-				if resume_bin != fetch_bin:
-					os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
-				root_config = playground.trees[playground.eroot]['root_config']
-				portdb = root_config.trees["porttree"].dbapi
+				self._testEbuildFetch(loop, scheme, host, distfiles, ebuilds, content, server, playground, ro_distdir)
+			finally:
+				shutil.rmtree(ro_distdir)
+				playground.cleanup()
+
+	def _testEbuildFetch(
+		self,
+		loop,
+		scheme,
+		host,
+		distfiles,
+		ebuilds,
+		content,
+		server,
+		playground,
+		ro_distdir,
+	):
+		mirror_layouts = (
+			(
+				"[structure]",
+				"0=filename-hash BLAKE2B 8",
+				"1=flat",
+			),
+			(
+				"[structure]",
+				"1=filename-hash BLAKE2B 8",
+				"0=flat",
+			),
+		)
+
+		fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
+		fetch_bin = portage.process.find_binary(fetchcommand[0])
+		if fetch_bin is None:
+			self.skipTest(
+				"FETCHCOMMAND not found: {}".format(playground.settings["FETCHCOMMAND"])
+			)
+		eubin = os.path.join(playground.eprefix, "usr", "bin")
+		os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
+		resumecommand = portage.util.shlex_split(playground.settings["RESUMECOMMAND"])
+		resume_bin = portage.process.find_binary(resumecommand[0])
+		if resume_bin is None:
+			self.skipTest(
+				"RESUMECOMMAND not found: {}".format(
+					playground.settings["RESUMECOMMAND"]
+				)
+			)
+		if resume_bin != fetch_bin:
+			os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
+		root_config = playground.trees[playground.eroot]["root_config"]
+		portdb = root_config.trees["porttree"].dbapi
+
+		def run_async(func, *args, **kwargs):
+			with ForkExecutor(loop=loop) as executor:
+				return loop.run_until_complete(
+					loop.run_in_executor(
+						executor, functools.partial(func, *args, **kwargs)
+					)
+				)
+
+		for layout_lines in mirror_layouts:
 				settings = config(clone=playground.settings)
+				layout_data = "".join("{}\n".format(line) for line in layout_lines)
+				mirror_conf = MirrorLayoutConfig()
+				mirror_conf.read_from_file(io.StringIO(layout_data))
+				layouts = mirror_conf.get_all_layouts()
+				content["/distfiles/layout.conf"] = layout_data.encode("utf8")
+
+				for k, v in distfiles.items():
+					# mirror path
+					for layout in layouts:
+						content["/distfiles/" + layout.get_path(k)] = v
+					# upstream path
+					content["/distfiles/{}.txt".format(k)] = v
+
+				for filename in os.listdir(settings["DISTDIR"]):
+					try:
+						os.unlink(os.path.join(settings["DISTDIR"], filename))
+					except OSError:
+						pass
 
 				# Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
 				foo_uri = {'foo': ('{scheme}://{host}:{port}/distfiles/foo'.format(scheme=scheme, host=host, port=server.server_port),)}
@@ -172,7 +223,10 @@ class EbuildFetchTestCase(TestCase):
 					filter(None, [PORTAGE_PYM_PATH] + os.environ.get('PYTHONPATH', '').split(':')))
 
 				for k in distfiles:
-					os.unlink(os.path.join(settings['DISTDIR'], k))
+					try:
+						os.unlink(os.path.join(settings['DISTDIR'], k))
+					except OSError:
+						pass
 
 				proc = loop.run_until_complete(asyncio.create_subprocess_exec(*emirrordist_cmd, env=env))
 				self.assertEqual(loop.run_until_complete(proc.wait()), 0)
@@ -354,9 +408,6 @@ class EbuildFetchTestCase(TestCase):
 						os.chmod(settings['DISTDIR'], orig_distdir_mode)
 						settings.features.remove('skiprocheck')
 						settings.features.add('distlocks')
-			finally:
-				shutil.rmtree(ro_distdir)
-				playground.cleanup()
 
 	def test_flat_layout(self):
 		self.assertTrue(FlatLayout.verify_args(('flat',)))
