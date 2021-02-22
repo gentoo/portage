@@ -313,8 +313,8 @@ per\-package PATH attribute in the 'Packages' index directs them to
 download the file from the correct URI, and they automatically use
 BUILD_TIME metadata to select the latest builds.
 
-There is currently no automated way to prune old builds from PKGDIR,
-although it is possible to remove packages manually, and then run
+The \fBeclean\-pkg\fR command can be used to prune old builds from PKGDIR.
+It is also possible to remove packages manually, and then run
 \(aqemaint \-\-fix binhost' to update the ${PKGDIR}/Packages index.
 .TP
 .B buildpkg
