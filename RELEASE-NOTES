@@ -1,6 +1,18 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.15
+==================================
+* Bug Fixes:
+    - Bug 715112 default enable FEATURES=binpkg-multi-instance
+    - Bug 756778 content-hash distfiles layout
+    - Bug 766459 emirrordist: prevent distfiles_db _pkg_str pickle problems
+    - Bug 766767 emaint --fix merges: add -y, --yes option
+    - Bug 766773 emerge: disable --autounmask-license by default
+    - Bug 767913 portage.getpid: call os.getpid() lazily
+    - Bug 770712 PopenProcess: use call_soon for _async_waipid in _start
+    - Bug 771549 prevent USE="${USE} ..." misbehavior
+
 portage-3.0.14
 ==================================
 * Bug Fixes:

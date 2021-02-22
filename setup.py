@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from distutils.core import setup, Command, Extension
@@ -655,7 +655,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '3.0.14',
+	version = '3.0.15',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
