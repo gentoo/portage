@@ -612,9 +612,20 @@ class config:
 
 			mygcfg = {}
 			if profiles_complex:
-				mygcfg_dlists = [getconfig(os.path.join(x.location, "make.defaults"),
-					tolerant=tolerant, expand=expand_map, recursive=x.portage1_directories)
-					for x in profiles_complex]
+				mygcfg_dlists = []
+				for x in profiles_complex:
+					# Prevent accidents triggered by USE="${USE} ..." settings
+					# at the top of make.defaults which caused parent profile
+					# USE to override parent profile package.use settings.
+					# It would be nice to guard USE_EXPAND variables like
+					# this too, but unfortunately USE_EXPAND is not known
+					# until after make.defaults has been evaluated, so that
+					# will require some form of make.defaults preprocessing.
+					expand_map.pop("USE", None)
+					mygcfg_dlists.append(
+						getconfig(os.path.join(x.location, "make.defaults"),
+						tolerant=tolerant, expand=expand_map,
+						recursive=x.portage1_directories))
 				self._make_defaults = mygcfg_dlists
 				mygcfg = stack_dicts(mygcfg_dlists,
 					incrementals=self.incrementals)

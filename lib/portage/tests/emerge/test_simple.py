@@ -322,11 +322,11 @@ call_has_and_best_version() {
 			rm_cmd + ("-rf", cachedir),
 			emerge_cmd + ("--oneshot", "virtual/foo"),
 			lambda: self.assertFalse(os.path.exists(
-				os.path.join(pkgdir, "virtual", "foo-0.tbz2"))),
+				os.path.join(pkgdir, "virtual", "foo", "foo-0-1.xpak"))),
 			({"FEATURES" : "unmerge-backup"},) + \
 				emerge_cmd + ("--unmerge", "virtual/foo"),
 			lambda: self.assertTrue(os.path.exists(
-				os.path.join(pkgdir, "virtual", "foo-0.tbz2"))),
+				os.path.join(pkgdir, "virtual", "foo", "foo-0-1.xpak"))),
 			emerge_cmd + ("--pretend", "dev-libs/A"),
 			ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
 			emerge_cmd + ("--pretend", "--tree", "--complete-graph", "dev-libs/A"),

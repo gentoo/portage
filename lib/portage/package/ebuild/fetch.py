@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['fetch']
@@ -344,6 +344,57 @@ _size_suffix_map = {
 }
 
 
+class DistfileName(str):
+	"""
+	The DistfileName type represents a distfile name and associated
+	content digests, used by MirrorLayoutConfig and related layout
+	implementations.
+
+	The path of a distfile within a layout must be dependent on
+	nothing more than the distfile name and its associated content
+	digests. For filename-hash layout, path is dependent on distfile
+	name alone, and the get_filenames implementation yields strings
+	corresponding to distfile names. For content-hash layout, path is
+	dependent on content digest alone, and the get_filenames
+	implementation yields DistfileName instances whose names are equal
+	to content digest values. The content-hash layout simply lacks
+	the filename-hash layout's innate ability to translate a distfile
+	path to a distfile name, and instead caries an innate ability
+	to translate a distfile path to a content digest.
+
+	In order to prepare for a migration from filename-hash to
+	content-hash layout, all consumers of the layout get_filenames
+	method need to be updated to work with content digests as a
+	substitute for distfile names. For example, in order to prepare
+	emirrordist for content-hash, a key-value store needs to be
+	added as a means to associate distfile names with content
+	digest values yielded by the content-hash get_filenames
+	implementation.
+	"""
+	def __new__(cls, s, digests=None):
+		return str.__new__(cls, s)
+
+	def __init__(self, s, digests=None):
+		super().__init__()
+		self.digests = {} if digests is None else digests
+
+	def digests_equal(self, other):
+		"""
+		Test if digests compare equal to those of another instance.
+		"""
+		if not isinstance(other, DistfileName):
+			return False
+		matches = []
+		for algo, digest in self.digests.items():
+			other_digest = other.digests.get(algo)
+			if other_digest is not None:
+				if other_digest == digest:
+					matches.append(algo)
+				else:
+					return False
+		return bool(matches)
+
+
 class FlatLayout:
 	def get_path(self, filename):
 		return filename
@@ -413,6 +464,97 @@ class FilenameHashLayout:
 		return False
 
 
+class ContentHashLayout(FilenameHashLayout):
+	"""
+	The content-hash layout is identical to the filename-hash layout,
+	except for these three differences:
+
+	1) A content digest is used instead of a filename digest.
+
+	2) The final element of the path returned from the get_path method
+	corresponds to the complete content digest. The path is a function
+	of the content digest alone.
+
+	3) Because the path is a function of content digest alone, the
+	get_filenames implementation cannot derive distfiles names from
+	paths, so it instead yields DistfileName instances whose names are
+	equal to content digest values. The DistfileName documentation
+	discusses resulting implications.
+
+	Motivations to use the content-hash layout instead of the
+	filename-hash layout may include:
+
+	1) Since the file path is independent of the file name, file
+	name collisions cannot occur. This makes the content-hash
+	layout suitable for storage of multiple types of files (not
+	only gentoo distfiles). For example, it can be used to store
+	distfiles for multiple linux distros within the same tree,
+	with automatic deduplication based on content digest. This
+	layout can be used to store and distribute practically anything
+	(including binary packages for example).
+
+	2) Allows multiple revisions for the same distfiles name. An
+	existing distfile can be updated, and if a user still has an
+	older copy of an ebuild repository (or an overlay), then a user
+	can successfully fetch a desired revision of the distfile as
+	long as it has not been purged from the mirror.
+
+	3) File integrity data is integrated into the layout itself,
+	making it very simple to verify the integrity of any file that
+	it contains. The only tool required is an implementation of
+	the chosen hash algorithm.
+	"""
+
+	def get_path(self, filename):
+		"""
+		For content-hash, the path is a function of the content digest alone.
+		The final element of the path returned from the get_path method
+		corresponds to the complete content digest.
+		"""
+		fnhash = remaining = filename.digests[self.algo]
+		ret = ""
+		for c in self.cutoffs:
+			assert c % 4 == 0
+			c = c // 4
+			ret += remaining[:c] + "/"
+			remaining = remaining[c:]
+		return ret + fnhash
+
+	def get_filenames(self, distdir):
+		"""
+		Yields DistfileName instances each with filename corresponding
+		to a digest value for self.algo, and which can be compared to
+		other DistfileName instances with their digests_equal method.
+		"""
+		for filename in super(ContentHashLayout, self).get_filenames(distdir):
+			yield DistfileName(
+				filename, digests=dict([(self.algo, filename)])
+			)
+
+	@staticmethod
+	def verify_args(args, filename=None):
+		"""
+		If the filename argument is given, then supported hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param args: layout.conf entry args
+		@param filename: filename with digests attribute
+		@return: True if args are valid for available digest algorithms,
+				and False otherwise
+		"""
+		if len(args) != 3:
+			return False
+		if filename is None:
+			supported_algos = get_valid_checksum_keys()
+		else:
+			supported_algos = filename.digests
+		algo = args[1].upper()
+		if algo not in supported_algos:
+			return False
+		return FilenameHashLayout.verify_args(args)
+
+
 class MirrorLayoutConfig:
 	"""
 	Class to read layout.conf from a mirror.
@@ -439,20 +581,41 @@ class MirrorLayoutConfig:
 		self.structure = data
 
 	@staticmethod
-	def validate_structure(val):
+	def validate_structure(val, filename=None):
+		"""
+		If the filename argument is given, then supported hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param val: layout.conf entry args
+		@param filename: filename with digests attribute
+		@return: True if args are valid for available digest algorithms,
+			and False otherwise
+		"""
 		if val[0] == 'flat':
 			return FlatLayout.verify_args(val)
-		if val[0] == 'filename-hash':
+		elif val[0] == 'filename-hash':
 			return FilenameHashLayout.verify_args(val)
+		elif val[0] == 'content-hash':
+			return ContentHashLayout.verify_args(val, filename=filename)
 		return False
 
-	def get_best_supported_layout(self):
+	def get_best_supported_layout(self, filename=None):
+		"""
+		If the filename argument is given, then acceptable hash
+		algorithms are constrained by digests available in the filename
+		digests attribute.
+
+		@param filename: filename with digests attribute
+		"""
 		for val in self.structure:
-			if self.validate_structure(val):
+			if self.validate_structure(val, filename=filename):
 				if val[0] == 'flat':
 					return FlatLayout(*val[1:])
-				if val[0] == 'filename-hash':
+				elif val[0] == 'filename-hash':
 					return FilenameHashLayout(*val[1:])
+				elif val[0] == 'content-hash':
+					return ContentHashLayout(*val[1:])
 		# fallback
 		return FlatLayout()
 
@@ -465,6 +628,8 @@ class MirrorLayoutConfig:
 				ret.append(FlatLayout(*val[1:]))
 			elif val[0] == 'filename-hash':
 				ret.append(FilenameHashLayout(*val[1:]))
+			elif val[0] == 'content-hash':
+				ret.append(ContentHashLayout(*val[1:]))
 		if not ret:
 			ret.append(FlatLayout())
 		return ret
@@ -515,7 +680,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 
 	# For some protocols, urlquote is required for correct behavior,
 	# and it must not be used for other protocols like rsync and sftp.
-	path = mirror_conf.get_best_supported_layout().get_path(filename)
+	path = mirror_conf.get_best_supported_layout(filename=filename).get_path(filename)
 	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
 		path = urlquote(path)
 	return mirror_url + "/distfiles/" + path
@@ -722,15 +887,23 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	if hasattr(myuris, 'items'):
 		for myfile, uri_set in myuris.items():
 			for myuri in uri_set:
-				file_uri_tuples.append((myfile, myuri))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+				)
 			if not uri_set:
-				file_uri_tuples.append((myfile, None))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+				)
 	else:
 		for myuri in myuris:
 			if urlparse(myuri).scheme:
-				file_uri_tuples.append((os.path.basename(myuri), myuri))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+				)
 			else:
-				file_uri_tuples.append((os.path.basename(myuri), None))
+				file_uri_tuples.append(
+					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+				)
 
 	filedict = OrderedDict()
 	primaryuri_dict = {}

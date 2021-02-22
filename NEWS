@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+
+portage-3.0.15
+--------------
+* FEATURES=binpkg-multi-instance is now enabled by default.
+
 portage-3.0.13
 --------------
 * FETCHCOMMAND now supports a \${DIGESTS} placeholder which expands

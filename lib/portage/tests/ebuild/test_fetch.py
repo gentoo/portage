@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Gentoo Authors
+# Copyright 2019-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -7,7 +7,8 @@ import tempfile
 
 import portage
 from portage import shutil, os
-from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
+from portage.checksum import checksum_str
+from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
@@ -18,8 +19,15 @@ from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.package.ebuild.config import config
 from portage.package.ebuild.digestgen import digestgen
-from portage.package.ebuild.fetch import (_download_suffix, fetch, FlatLayout,
-		FilenameHashLayout, MirrorLayoutConfig)
+from portage.package.ebuild.fetch import (
+	ContentHashLayout,
+	DistfileName,
+	_download_suffix,
+	fetch,
+	FilenameHashLayout,
+	FlatLayout,
+	MirrorLayoutConfig,
+)
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.Package import Package
 
@@ -50,22 +58,9 @@ class EbuildFetchTestCase(TestCase):
 
 		loop = SchedulerInterface(global_event_loop())
 
-		def run_async(func, *args, **kwargs):
-			with ForkExecutor(loop=loop) as executor:
-				return loop.run_until_complete(loop.run_in_executor(executor,
-					functools.partial(func, *args, **kwargs)))
-
 		scheme = 'http'
 		host = '127.0.0.1'
 		content = {}
-
-		content['/distfiles/layout.conf'] = b'[structure]\n0=flat\n'
-
-		for k, v in distfiles.items():
-			# mirror path
-			content['/distfiles/{}'.format(k)] = v
-			# upstream path
-			content['/distfiles/{}.txt'.format(k)] = v
 
 		with AsyncHTTPServer(host, content, loop) as server:
 			ebuilds_subst = {}
@@ -86,22 +81,96 @@ class EbuildFetchTestCase(TestCase):
 
 			playground = ResolverPlayground(ebuilds=ebuilds_subst, distfiles=distfiles, user_config=user_config_subst)
 			ro_distdir = tempfile.mkdtemp()
-			eubin = os.path.join(playground.eprefix, "usr", "bin")
 			try:
-				fetchcommand = portage.util.shlex_split(playground.settings['FETCHCOMMAND'])
-				fetch_bin = portage.process.find_binary(fetchcommand[0])
-				if fetch_bin is None:
-					self.skipTest('FETCHCOMMAND not found: {}'.format(playground.settings['FETCHCOMMAND']))
-				os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
-				resumecommand = portage.util.shlex_split(playground.settings['RESUMECOMMAND'])
-				resume_bin = portage.process.find_binary(resumecommand[0])
-				if resume_bin is None:
-					self.skipTest('RESUMECOMMAND not found: {}'.format(playground.settings['RESUMECOMMAND']))
-				if resume_bin != fetch_bin:
-					os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
-				root_config = playground.trees[playground.eroot]['root_config']
-				portdb = root_config.trees["porttree"].dbapi
+				self._testEbuildFetch(loop, scheme, host, distfiles, ebuilds, content, server, playground, ro_distdir)
+			finally:
+				shutil.rmtree(ro_distdir)
+				playground.cleanup()
+
+	def _testEbuildFetch(
+		self,
+		loop,
+		scheme,
+		host,
+		distfiles,
+		ebuilds,
+		content,
+		server,
+		playground,
+		ro_distdir,
+	):
+		mirror_layouts = (
+			(
+				"[structure]",
+				"0=filename-hash BLAKE2B 8",
+				"1=flat",
+			),
+			(
+				"[structure]",
+				"1=filename-hash BLAKE2B 8",
+				"0=flat",
+			),
+			(
+				"[structure]",
+				"0=content-hash SHA512 8:8:8",
+				"1=flat",
+			),
+		)
+
+		fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
+		fetch_bin = portage.process.find_binary(fetchcommand[0])
+		if fetch_bin is None:
+			self.skipTest(
+				"FETCHCOMMAND not found: {}".format(playground.settings["FETCHCOMMAND"])
+			)
+		eubin = os.path.join(playground.eprefix, "usr", "bin")
+		os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
+		resumecommand = portage.util.shlex_split(playground.settings["RESUMECOMMAND"])
+		resume_bin = portage.process.find_binary(resumecommand[0])
+		if resume_bin is None:
+			self.skipTest(
+				"RESUMECOMMAND not found: {}".format(
+					playground.settings["RESUMECOMMAND"]
+				)
+			)
+		if resume_bin != fetch_bin:
+			os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
+		root_config = playground.trees[playground.eroot]["root_config"]
+		portdb = root_config.trees["porttree"].dbapi
+
+		def run_async(func, *args, **kwargs):
+			with ForkExecutor(loop=loop) as executor:
+				return loop.run_until_complete(
+					loop.run_in_executor(
+						executor, functools.partial(func, *args, **kwargs)
+					)
+				)
+
+		for layout_lines in mirror_layouts:
 				settings = config(clone=playground.settings)
+				layout_data = "".join("{}\n".format(line) for line in layout_lines)
+				mirror_conf = MirrorLayoutConfig()
+				mirror_conf.read_from_file(io.StringIO(layout_data))
+				layouts = mirror_conf.get_all_layouts()
+				content["/distfiles/layout.conf"] = layout_data.encode("utf8")
+
+				for k, v in distfiles.items():
+					filename = DistfileName(
+						k,
+						digests=dict((algo, checksum_str(v, hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+					)
+
+					# mirror path
+					for layout in layouts:
+						content["/distfiles/" + layout.get_path(filename)] = v
+					# upstream path
+					content["/distfiles/{}.txt".format(k)] = v
+
+				for filename in os.listdir(settings["DISTDIR"]):
+					try:
+						os.unlink(os.path.join(settings["DISTDIR"], filename))
+					except OSError:
+						pass
 
 				# Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
 				foo_uri = {'foo': ('{scheme}://{host}:{port}/distfiles/foo'.format(scheme=scheme, host=host, port=server.server_port),)}
@@ -172,7 +241,10 @@ class EbuildFetchTestCase(TestCase):
 					filter(None, [PORTAGE_PYM_PATH] + os.environ.get('PYTHONPATH', '').split(':')))
 
 				for k in distfiles:
-					os.unlink(os.path.join(settings['DISTDIR'], k))
+					try:
+						os.unlink(os.path.join(settings['DISTDIR'], k))
+					except OSError:
+						pass
 
 				proc = loop.run_until_complete(asyncio.create_subprocess_exec(*emirrordist_cmd, env=env))
 				self.assertEqual(loop.run_until_complete(proc.wait()), 0)
@@ -354,9 +426,6 @@ class EbuildFetchTestCase(TestCase):
 						os.chmod(settings['DISTDIR'], orig_distdir_mode)
 						settings.features.remove('skiprocheck')
 						settings.features.add('distlocks')
-			finally:
-				shutil.rmtree(ro_distdir)
-				playground.cleanup()
 
 	def test_flat_layout(self):
 		self.assertTrue(FlatLayout.verify_args(('flat',)))
@@ -380,6 +449,35 @@ class EbuildFetchTestCase(TestCase):
 				'19/c3b6/foo-1.tar.gz')
 		self.assertEqual(FilenameHashLayout('SHA1', '8:16:24').get_path('foo-1.tar.gz'),
 				'19/c3b6/37a94b/foo-1.tar.gz')
+
+	def test_content_hash_layout(self):
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash',)))
+		self.assertTrue(ContentHashLayout.verify_args(('content-hash', 'SHA1', '8')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'INVALID-HASH', '8')))
+		self.assertTrue(ContentHashLayout.verify_args(('content-hash', 'SHA1', '4:8:12')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', '3')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', 'junk')))
+		self.assertFalse(ContentHashLayout.verify_args(('content-hash', 'SHA1', '4:8:junk')))
+
+		filename = DistfileName(
+			'foo-1.tar.gz',
+			digests=dict((algo, checksum_str(b'', hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+		)
+
+		# Raise KeyError for a hash algorithm SHA1 which is not in MANIFEST2_HASH_DEFAULTS.
+		self.assertRaises(KeyError, ContentHashLayout('SHA1', '4').get_path, filename)
+
+		# Raise AttributeError for a plain string argument.
+		self.assertRaises(AttributeError, ContentHashLayout('SHA512', '4').get_path, str(filename))
+
+		self.assertEqual(ContentHashLayout('SHA512', '4').get_path(filename),
+				'c/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8').get_path(filename),
+				'cf/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8:16').get_path(filename),
+				'cf/83e1/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+		self.assertEqual(ContentHashLayout('SHA512', '8:16:24').get_path(filename),
+				'cf/83e1/357eef/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
 
 	def test_mirror_layout_config(self):
 		mlc = MirrorLayoutConfig()
@@ -448,14 +546,18 @@ class EbuildFetchTestCase(TestCase):
 				io.StringIO(conf))
 
 	def test_filename_hash_layout_get_filenames(self):
+		filename = DistfileName(
+			'foo-1.tar.gz',
+			digests=dict((algo, checksum_str(b'', hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
+		)
 		layouts = (
 			FlatLayout(),
 			FilenameHashLayout('SHA1', '4'),
 			FilenameHashLayout('SHA1', '8'),
 			FilenameHashLayout('SHA1', '8:16'),
 			FilenameHashLayout('SHA1', '8:16:24'),
+			ContentHashLayout('SHA512', '8:8:8'),
 		)
-		filename = 'foo-1.tar.gz'
 
 		for layout in layouts:
 			distdir = tempfile.mkdtemp()
@@ -469,6 +571,12 @@ class EbuildFetchTestCase(TestCase):
 				with open(path, 'wb') as f:
 					pass
 
-				self.assertEqual([filename], list(layout.get_filenames(distdir)))
+				file_list = list(layout.get_filenames(distdir))
+				self.assertTrue(len(file_list) > 0)
+				for filename_result in file_list:
+					if isinstance(filename_result, DistfileName):
+						self.assertTrue(filename_result.digests_equal(filename))
+					else:
+						self.assertEqual(filename_result, str(filename))
 			finally:
 				shutil.rmtree(distdir)
