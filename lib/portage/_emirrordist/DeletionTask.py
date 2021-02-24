@@ -5,6 +5,7 @@ import errno
 import logging
 
 from portage import os
+from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util._async.FileCopier import FileCopier
 from _emerge.CompositeTask import CompositeTask
 
@@ -99,6 +100,10 @@ class DeletionTask(CompositeTask):
 	def _delete_links(self):
 		success = True
 		for layout in self.config.layouts:
+			if isinstance(layout, ContentHashLayout) and not self.distfile.digests:
+				logging.debug(("_delete_links: '%s' has "
+					"no digests") % self.distfile)
+				continue
 			distfile_path = os.path.join(
 				self.config.options.distfiles,
 				layout.get_path(self.distfile))
@@ -133,6 +138,9 @@ class DeletionTask(CompositeTask):
 			else:
 				logging.debug(("drop '%s' from "
 					"distfiles db") % self.distfile)
+
+		if self.config.content_db is not None:
+			self.config.content_db.remove(self.distfile)
 
 		if self.config.deletion_db is not None:
 			try:

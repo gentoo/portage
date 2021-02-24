@@ -10,6 +10,7 @@ import time
 from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
+from .ContentDB import ContentDB
 
 class Config:
 	def __init__(self, options, portdb, event_loop):
@@ -64,6 +65,11 @@ class Config:
 		if getattr(options, 'distfiles_db', None) is not None:
 			self.distfiles_db = self._open_shelve(
 				options.distfiles_db, 'distfiles')
+
+		self.content_db = None
+		if getattr(options, 'content_db', None) is not None:
+			self.content_db = ContentDB(self._open_shelve(
+				options.content_db, 'content'))
 
 		self.deletion_db = None
 		if getattr(options, 'deletion_db', None) is not None:

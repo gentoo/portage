@@ -4,6 +4,7 @@
 import functools
 import io
 import tempfile
+import types
 
 import portage
 from portage import shutil, os
@@ -28,6 +29,7 @@ from portage.package.ebuild.fetch import (
 	FlatLayout,
 	MirrorLayoutConfig,
 )
+from portage._emirrordist.Config import Config as EmirrordistConfig
 from _emerge.EbuildFetcher import EbuildFetcher
 from _emerge.Package import Package
 
@@ -172,6 +174,16 @@ class EbuildFetchTestCase(TestCase):
 				with open(os.path.join(settings['DISTDIR'], 'layout.conf'), 'wt') as f:
 					f.write(layout_data)
 
+				if any(isinstance(layout, ContentHashLayout) for layout in layouts):
+					content_db = os.path.join(playground.eprefix, 'var/db/emirrordist/content.db')
+					os.makedirs(os.path.dirname(content_db), exist_ok=True)
+					try:
+						os.unlink(content_db)
+					except OSError:
+						pass
+				else:
+					content_db = None
+
 				# Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
 				foo_uri = {'foo': ('{scheme}://{host}:{port}/distfiles/foo'.format(scheme=scheme, host=host, port=server.server_port),)}
 				foo_path = os.path.join(settings['DISTDIR'], 'foo')
@@ -233,8 +245,12 @@ class EbuildFetchTestCase(TestCase):
 					os.path.join(self.bindir, 'emirrordist'),
 					'--distfiles', settings['DISTDIR'],
 					'--config-root', settings['EPREFIX'],
+					'--delete',
 					'--repositories-configuration', settings.repositories.config_string(),
 					'--repo', 'test_repo', '--mirror')
+
+				if content_db is not None:
+					emirrordist_cmd = emirrordist_cmd + ('--content-db', content_db,)
 
 				env = settings.environ()
 				env['PYTHONPATH'] = ':'.join(
@@ -252,6 +268,19 @@ class EbuildFetchTestCase(TestCase):
 				for k in distfiles:
 					with open(os.path.join(settings['DISTDIR'], layouts[0].get_path(k)), 'rb') as f:
 						self.assertEqual(f.read(), distfiles[k])
+
+				if content_db is not None:
+					loop.run_until_complete(
+						self._test_content_db(
+							emirrordist_cmd,
+							env,
+							layouts,
+							content_db,
+							distfiles,
+							settings,
+							portdb,
+						)
+					)
 
 				# Tests only work with one ebuild at a time, so the config
 				# pool only needs a single config instance.
@@ -426,6 +455,125 @@ class EbuildFetchTestCase(TestCase):
 						os.chmod(settings['DISTDIR'], orig_distdir_mode)
 						settings.features.remove('skiprocheck')
 						settings.features.add('distlocks')
+
+	async def _test_content_db(
+		self, emirrordist_cmd, env, layouts, content_db, distfiles, settings, portdb
+	):
+		# Simulate distfile digest change for ContentDB.
+		emdisopts = types.SimpleNamespace(
+			content_db=content_db, distfiles=settings["DISTDIR"]
+		)
+		with EmirrordistConfig(
+			emdisopts, portdb, asyncio.get_event_loop()
+		) as emdisconf:
+			# Copy revisions from bar to foo.
+			for revision_key in emdisconf.content_db["filename:{}".format("bar")]:
+				emdisconf.content_db.add(
+					DistfileName("foo", digests=dict(revision_key))
+				)
+
+			# Copy revisions from foo to bar.
+			for revision_key in emdisconf.content_db["filename:{}".format("foo")]:
+				emdisconf.content_db.add(
+					DistfileName("bar", digests=dict(revision_key))
+				)
+
+			content_db_state = dict(emdisconf.content_db.items())
+			self.assertEqual(content_db_state, dict(emdisconf.content_db.items()))
+			self.assertEqual(
+				[
+					k[len("filename:") :]
+					for k in content_db_state
+					if k.startswith("filename:")
+				],
+				["bar", "foo"],
+			)
+			self.assertEqual(
+				content_db_state["filename:foo"], content_db_state["filename:bar"]
+			)
+			self.assertEqual(len(content_db_state["filename:foo"]), 2)
+
+		for k in distfiles:
+			try:
+				os.unlink(os.path.join(settings["DISTDIR"], k))
+			except OSError:
+				pass
+
+		proc = await asyncio.create_subprocess_exec(*emirrordist_cmd, env=env)
+		self.assertEqual(await proc.wait(), 0)
+
+		for k in distfiles:
+			with open(
+				os.path.join(settings["DISTDIR"], layouts[0].get_path(k)), "rb"
+			) as f:
+				self.assertEqual(f.read(), distfiles[k])
+
+		with EmirrordistConfig(
+			emdisopts, portdb, asyncio.get_event_loop()
+		) as emdisconf:
+			self.assertEqual(content_db_state, dict(emdisconf.content_db.items()))
+
+			# Verify that remove works as expected
+			filename = [filename for filename in distfiles if filename == "foo"][0]
+			self.assertTrue(bool(filename.digests))
+			emdisconf.content_db.remove(filename)
+			# foo should still have a content revision corresponding to bar's content.
+			self.assertEqual(
+				[
+					k[len("filename:") :]
+					for k in emdisconf.content_db
+					if k.startswith("filename:")
+				],
+				["bar", "foo"],
+			)
+			self.assertEqual(len(emdisconf.content_db["filename:foo"]), 1)
+			self.assertEqual(
+				len(
+					[
+						revision_key
+						for revision_key in emdisconf.content_db["filename:foo"]
+						if not filename.digests_equal(
+							DistfileName(
+								"foo",
+								digests=dict(revision_key),
+							)
+						)
+					]
+				),
+				1,
+			)
+			# bar should still have a content revision corresponding to foo's content.
+			self.assertEqual(len(emdisconf.content_db["filename:bar"]), 2)
+			self.assertEqual(
+				len(
+					[
+						revision_key
+						for revision_key in emdisconf.content_db["filename:bar"]
+						if filename.digests_equal(
+							DistfileName(
+								"bar",
+								digests=dict(revision_key),
+							)
+						)
+					]
+				),
+				1,
+			)
+			# remove the foo which refers to bar's content
+			bar = [filename for filename in distfiles if filename == "bar"][0]
+			foo_remaining = DistfileName("foo", digests=bar.digests)
+			emdisconf.content_db.remove(foo_remaining)
+			self.assertEqual(
+				[
+					k[len("filename:") :]
+					for k in emdisconf.content_db
+					if k.startswith("filename:")
+				],
+				["bar"],
+			)
+			self.assertRaises(KeyError, emdisconf.content_db.__getitem__, "filename:foo")
+			# bar should still have a content revision corresponding to foo's content.
+			self.assertEqual(len(emdisconf.content_db["filename:bar"]), 2)
 
 	def test_flat_layout(self):
 		self.assertTrue(FlatLayout.verify_args(('flat',)))
