@@ -898,11 +898,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		for myuri in myuris:
 			if urlparse(myuri).scheme:
 				file_uri_tuples.append(
-					(DistfileName(myfile, digests=mydigests.get(myfile)), myuri)
+					(DistfileName(myfile, digests=mydigests.get(os.path.basename(myuri))), myuri)
 				)
 			else:
 				file_uri_tuples.append(
-					(DistfileName(myfile, digests=mydigests.get(myfile)), None)
+					(DistfileName(myfile, digests=mydigests.get(os.path.basename(myuri))), None)
 				)
 
 	filedict = OrderedDict()
