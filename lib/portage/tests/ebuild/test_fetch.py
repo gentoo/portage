@@ -92,7 +92,7 @@ class EbuildFetchTestCase(TestCase):
 		loop,
 		scheme,
 		host,
-		distfiles,
+		orig_distfiles,
 		ebuilds,
 		content,
 		server,
@@ -153,12 +153,13 @@ class EbuildFetchTestCase(TestCase):
 				mirror_conf.read_from_file(io.StringIO(layout_data))
 				layouts = mirror_conf.get_all_layouts()
 				content["/distfiles/layout.conf"] = layout_data.encode("utf8")
-
-				for k, v in distfiles.items():
+				distfiles = {}
+				for k, v in orig_distfiles.items():
 					filename = DistfileName(
 						k,
 						digests=dict((algo, checksum_str(v, hashname=algo)) for algo in MANIFEST2_HASH_DEFAULTS),
 					)
+					distfiles[filename] = v
 
 					# mirror path
 					for layout in layouts:
@@ -166,11 +167,10 @@ class EbuildFetchTestCase(TestCase):
 					# upstream path
 					content["/distfiles/{}.txt".format(k)] = v
 
-				for filename in os.listdir(settings["DISTDIR"]):
-					try:
-						os.unlink(os.path.join(settings["DISTDIR"], filename))
-					except OSError:
-						pass
+				shutil.rmtree(settings["DISTDIR"])
+				os.makedirs(settings["DISTDIR"])
+				with open(os.path.join(settings['DISTDIR'], 'layout.conf'), 'wt') as f:
+					f.write(layout_data)
 
 				# Demonstrate that fetch preserves a stale file in DISTDIR when no digests are given.
 				foo_uri = {'foo': ('{scheme}://{host}:{port}/distfiles/foo'.format(scheme=scheme, host=host, port=server.server_port),)}
@@ -250,7 +250,7 @@ class EbuildFetchTestCase(TestCase):
 				self.assertEqual(loop.run_until_complete(proc.wait()), 0)
 
 				for k in distfiles:
-					with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
+					with open(os.path.join(settings['DISTDIR'], layouts[0].get_path(k)), 'rb') as f:
 						self.assertEqual(f.read(), distfiles[k])
 
 				# Tests only work with one ebuild at a time, so the config

@@ -8,6 +8,7 @@ from portage.checksum import (_apply_hash_filter,
 	_filter_unaccelarated_hashes, _hash_filter)
 from portage.dep import use_reduce
 from portage.exception import PortageException, PortageKeyError
+from portage.package.ebuild.fetch import DistfileName
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.util.futures.iter_completed import iter_gather
@@ -259,7 +260,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 				cpv=cpv,
 				background=True,
 				digests=file_digests,
-				distfile=filename,
+				distfile=DistfileName(filename, digests=file_digests),
 				restrict=restrict,
 				uri_tuple=uri_tuple,
 				config=config))
