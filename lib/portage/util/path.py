@@ -1,4 +1,4 @@
-# Copyright 2014 Gentoo Foundation
+# Copyright 2014-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -45,4 +45,6 @@ def iter_parents(path):
 	yield path
 	while path != os.sep:
 		path = os.path.dirname(path)
+		if not path:
+			break
 		yield path
