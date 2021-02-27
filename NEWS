@@ -1,5 +1,8 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.16
+--------------
+* emirrordist supports the content-hash distfiles mirror layout.
 
 portage-3.0.15
 --------------

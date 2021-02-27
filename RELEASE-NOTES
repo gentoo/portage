@@ -1,6 +1,15 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.16
+==================================
+* Bug Fixes:
+    - Bug 721680 Add emirrordist shelve dump/restore
+	- Bug 749333 PORTAGE_REPOSITORIES: don't override repos with aliases
+	- Bug 756778 emirrordist --content-db for content-hash layout support
+	- Bug 772785 don't enable binpkg-multi-instance for existing installs
+	- Bug 772806 prevent infinite loop after empty os.path.dirname result
+
 portage-3.0.15
 ==================================
 * Bug Fixes:
