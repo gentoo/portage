@@ -1076,6 +1076,8 @@ class RepoConfigLoader:
 		keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
+			if repo_name != repo.name:
+				continue
 			config_string += "\n[%s]\n" % repo_name
 			for key in sorted(keys):
 				if key == "main_repo" and repo_name != "DEFAULT":
