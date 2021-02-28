@@ -2,6 +2,7 @@
 # Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from distutils import sysconfig
 from distutils.core import setup, Command, Extension
 from distutils.command.build import build
 from distutils.command.build_ext import build_ext as _build_ext
@@ -19,6 +20,7 @@ from distutils.util import change_root, subst_vars
 import codecs
 import collections
 import glob
+import itertools
 import os
 import os.path
 import platform
@@ -26,6 +28,12 @@ import re
 import subprocess
 import sys
 
+autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.basename(
+	os.path.dirname(__file__)
+).startswith("pip-")
+venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
+create_entry_points = bool(autodetect_pip or venv_prefix)
+eprefix = sysconfig.get_python_lib() if venv_prefix else ""
 
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_apidoc'.
@@ -220,8 +228,9 @@ class x_build_scripts_custom(build_scripts):
 				self.scripts = x_scripts[self.dir_name]
 			else:
 				self.scripts = set(self.scripts)
-				for other_files in x_scripts.values():
-					self.scripts.difference_update(other_files)
+				if not (create_entry_points and self.dir_name == "portage"):
+					for other_files in x_scripts.values():
+						self.scripts.difference_update(other_files)
 
 	def run(self):
 		# group scripts by subdirectory
@@ -471,9 +480,10 @@ class x_install_lib(install_lib):
 			'VERSION': self.distribution.get_version(),
 		})
 		rewrite_file('portage/const.py', {
-			'PORTAGE_BASE_PATH': self.portage_base,
-			'PORTAGE_BIN_PATH': self.portage_bindir,
-			'PORTAGE_CONFIG_PATH': self.portage_confdir,
+			'EPREFIX': eprefix,
+			'GLOBAL_CONFIG_PATH': self.portage_confdir,
+			'PORTAGE_BASE_PATH': eprefix + self.portage_base,
+			'PORTAGE_BIN_PATH': eprefix + self.portage_bindir,
 		})
 
 		return ret
@@ -675,7 +685,12 @@ setup(
 		['$portage_base/bin', ['bin/deprecated-path']],
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
-
+	entry_points={
+		"console_scripts": [
+			"{}=portage.util.bin_entry_point:bin_entry_point".format(os.path.basename(path))
+			for path in itertools.chain.from_iterable(x_scripts.values())
+		],
+	} if create_entry_points else {},
 	ext_modules = [Extension(name=n, sources=m,
 		extra_compile_args=['-D_FILE_OFFSET_BITS=64',
 		'-D_LARGEFILE_SOURCE', '-D_LARGEFILE64_SOURCE'])
