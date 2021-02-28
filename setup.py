@@ -691,7 +691,9 @@ setup(
 			for path in itertools.chain.from_iterable(x_scripts.values())
 		],
 	} if create_entry_points else {},
-	ext_modules = [Extension(name=n, sources=m,
+	# create_entry_points disables ext_modules, for pure python
+	ext_modules = [] if create_entry_points else [
+		Extension(name=n, sources=m,
 		extra_compile_args=['-D_FILE_OFFSET_BITS=64',
 		'-D_LARGEFILE_SOURCE', '-D_LARGEFILE64_SOURCE'])
 		for n, m in x_c_helpers.items()],
