@@ -729,5 +729,7 @@ setup(
 		'Operating System :: POSIX',
 		'Programming Language :: Python :: 3',
 		'Topic :: System :: Installation/Setup'
-	]
+	],
+
+	python_requires = ">=3.6",
 )
