@@ -10,17 +10,24 @@ class UseFlagsTestCase(TestCase):
 		ebuilds = {
 			"dev-libs/A-1": { "IUSE": "X", },
 			"dev-libs/B-1": { "IUSE": "X Y", },
+			"dev-libs/C-1": { "IUSE": "abi_x86_32", "EAPI": "7" },
+			"dev-libs/D-1": { "IUSE": "abi_x86_32", "EAPI": "7", "RDEPEND": "dev-libs/C[abi_x86_32?]" },
 			}
 
 		installed = {
 			"dev-libs/A-1": { "IUSE": "X", },
 			"dev-libs/B-1": { "IUSE": "X", },
+			"dev-libs/C-1": { "IUSE": "abi_x86_32", "USE": "abi_x86_32", "EAPI": "7" },
+			"dev-libs/D-1": { "IUSE": "abi_x86_32", "USE": "abi_x86_32", "EAPI": "7", "RDEPEND": "dev-libs/C[abi_x86_32]" },
 			}
 
 		binpkgs = installed
 
 		user_config = {
-			"package.use": ( "dev-libs/A X", ),
+			"package.use": (
+				"dev-libs/A X",
+				"dev-libs/D abi_x86_32",
+			),
 			"use.force": ( "Y", ),
 		}
 
@@ -38,6 +45,15 @@ class UseFlagsTestCase(TestCase):
 				options = {"--usepkg": True},
 				success = True,
 				mergelist = ["dev-libs/A-1"]),
+
+			# Bug 773469 - Demonstrate --autounmask-use interference with --binpkg-respect-use=y
+			ResolverPlaygroundTestCase(
+				["dev-libs/C", "dev-libs/D"],
+				options={"--usepkg": True, "--binpkg-respect-use": "y"},
+				success=False,
+				use_changes={"dev-libs/C-1": {"abi_x86_32": True}},
+				mergelist=["dev-libs/C-1", "[binary]dev-libs/D-1"],
+			),
 
 			#--binpkg-respect-use=n: use binpkgs with different use flags
 			ResolverPlaygroundTestCase(
