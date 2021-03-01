@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Feb 2021" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Mar 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -417,7 +417,8 @@ Allow autounmask package.license changes.
 .TP
 .BR "\-\-autounmask\-use < y | n >"
 Allow autounmask package.use changes. This option is enabled by default
-(either \fB\-\-autounmask=n\fR or \fB\-\-autounmask\-use=n\fR disables
+(any of \fB\-\-autounmask=n\fR, \fB\-\-autounmask\-use=n\fR,
+or \fB\-\-binpkg-\-respect\-use=y\fR  disables
 it). The \fBEMERGE_DEFAULT_OPTS\fR variable may be used to
 disable this option by default in \fBmake.conf\fR(5).
 .TP
@@ -448,7 +449,9 @@ Tells emerge to ignore binary packages if their USE flags
 don't match the current configuration. In order to help avoid issues
 with resolving inconsistent USE flag settings, this option is
 automatically enabled unless the \fB\-\-usepkgonly\fR option
-is enabled.
+is enabled. If \fB\-\-binpkg\-respect\-use\fR is given explicitly,
+then it implies \fB\-\-autounmask\-use=n\fR, because these options
+naturally oppose eachother.
 .TP
 .BR "\-\-buildpkg [ y | n ]" ", " \-b
 Tells emerge to build binary packages for all ebuilds processed in

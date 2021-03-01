@@ -46,15 +46,23 @@ class UseFlagsTestCase(TestCase):
 				success = True,
 				mergelist = ["dev-libs/A-1"]),
 
-			# In the unit test case for bug 773469, the --autounmask-backtrack option
-			# is needed in order to trigger the --binpkg-respect-use=y behavior that
-			# appears confusingly similar to --binpkg-respect-use=n behavior.
+			# For bug 773469, we wanted --binpkg-respect-use=y to trigger a
+			# slot collision. Instead, a combination of default --autounmask-use
+			# combined with --autounmask-backtrack=y from EMERGE_DEFAULT_OPTS
+			# triggered this behavior which appeared confusingly similar to
+			#--binpkg-respect-use=n behavior.
+			#ResolverPlaygroundTestCase(
+			#	["dev-libs/C", "dev-libs/D"],
+			#	options={"--usepkg": True, "--binpkg-respect-use": "y", "--autounmask-backtrack": "y"},
+			#	success=True,
+			#	use_changes={"dev-libs/C-1": {"abi_x86_32": True}},
+			#	mergelist=["[binary]dev-libs/C-1", "[binary]dev-libs/D-1"],
 			ResolverPlaygroundTestCase(
 				["dev-libs/C", "dev-libs/D"],
 				options={"--usepkg": True, "--binpkg-respect-use": "y", "--autounmask-backtrack": "y"},
-				success=True,
-				use_changes={"dev-libs/C-1": {"abi_x86_32": True}},
-				mergelist=["[binary]dev-libs/C-1", "[binary]dev-libs/D-1"],
+				success=False,
+				slot_collision_solutions=[{"dev-libs/C-1": {"abi_x86_32": True}}],
+				mergelist=["dev-libs/C-1", "[binary]dev-libs/D-1"],
 			),
 
 			#--binpkg-respect-use=n: use binpkgs with different use flags

@@ -41,12 +41,22 @@ def create_depgraph_params(myopts, myaction):
 	# binpkg_changed_deps: reject binary packages with outdated deps
 	myparams = {"recurse" : True}
 
+	binpkg_respect_use = myopts.get("--binpkg-respect-use")
+	if binpkg_respect_use is not None:
+		myparams["binpkg_respect_use"] = binpkg_respect_use
+	elif "--usepkgonly" not in myopts:
+		# If --binpkg-respect-use is not explicitly specified, we enable
+		# the behavior automatically (like requested in bug #297549), as
+		# long as it doesn't strongly conflict with other options that
+		# have been specified.
+		myparams["binpkg_respect_use"] = "auto"
+
 	autounmask_keep_keywords = myopts.get("--autounmask-keep-keywords")
 	autounmask_keep_masks = myopts.get("--autounmask-keep-masks")
 
 	autounmask = myopts.get("--autounmask")
 	autounmask_license = myopts.get('--autounmask-license', 'y' if autounmask is True else 'n')
-	autounmask_use = myopts.get('--autounmask-use')
+	autounmask_use = 'n' if myparams.get('binpkg_respect_use') == 'y' else myopts.get('--autounmask-use')
 	if autounmask == 'n':
 		autounmask = False
 	else:
@@ -152,16 +162,6 @@ def create_depgraph_params(myopts, myaction):
 		myopts.get('--deep') is True and \
 		'--update' in myopts:
 		myparams['rebuilt_binaries'] = True
-
-	binpkg_respect_use = myopts.get('--binpkg-respect-use')
-	if binpkg_respect_use is not None:
-		myparams['binpkg_respect_use'] = binpkg_respect_use
-	elif '--usepkgonly' not in myopts:
-		# If --binpkg-respect-use is not explicitly specified, we enable
-		# the behavior automatically (like requested in bug #297549), as
-		# long as it doesn't strongly conflict with other options that
-		# have been specified.
-		myparams['binpkg_respect_use'] = 'auto'
 
 	binpkg_changed_deps = myopts.get('--binpkg-changed-deps')
 	if binpkg_changed_deps is not None:
