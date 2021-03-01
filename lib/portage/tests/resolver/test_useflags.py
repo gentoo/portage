@@ -46,13 +46,15 @@ class UseFlagsTestCase(TestCase):
 				success = True,
 				mergelist = ["dev-libs/A-1"]),
 
-			# Bug 773469 - Demonstrate --autounmask-use interference with --binpkg-respect-use=y
+			# In the unit test case for bug 773469, the --autounmask-backtrack option
+			# is needed in order to trigger the --binpkg-respect-use=y behavior that
+			# appears confusingly similar to --binpkg-respect-use=n behavior.
 			ResolverPlaygroundTestCase(
 				["dev-libs/C", "dev-libs/D"],
-				options={"--usepkg": True, "--binpkg-respect-use": "y"},
-				success=False,
+				options={"--usepkg": True, "--binpkg-respect-use": "y", "--autounmask-backtrack": "y"},
+				success=True,
 				use_changes={"dev-libs/C-1": {"abi_x86_32": True}},
-				mergelist=["dev-libs/C-1", "[binary]dev-libs/D-1"],
+				mergelist=["[binary]dev-libs/C-1", "[binary]dev-libs/D-1"],
 			),
 
 			#--binpkg-respect-use=n: use binpkgs with different use flags
