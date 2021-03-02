@@ -672,6 +672,7 @@ setup(
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
+	description = 'Portage is the package management and distribution system for Gentoo',
 
 	package_dir = {'': 'lib'},
 	packages = list(find_packages()),
