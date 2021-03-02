@@ -423,6 +423,22 @@ class x_install_data(install_data):
 			('subst_paths', 'paths'))
 
 	def run(self):
+		def re_sub_file(path, pattern, repl):
+			print('Rewriting %s' % path)
+			with codecs.open(path, 'r', 'utf-8') as f:
+				data = f.read()
+			data = re.sub(pattern, repl, data, flags=re.MULTILINE)
+			with codecs.open(path, 'w', 'utf-8') as f:
+				f.write(data)
+
+		if create_entry_points:
+			# Prefix location and sync-openpgp-key-path for venv. There
+			# is no intention to do this for normal EPREFIX. This behavior
+			# is intended only when create_entry_points is True, so that
+			# if emerge --sync runs in a venv, the operation will not
+			# accidentally modify paths outside of sys.prefix.
+			re_sub_file('cnf/repos.conf', r'= /', '= {}/'.format(eprefix))
+
 		self.run_command('build_man')
 
 		def process_data_files(df):
