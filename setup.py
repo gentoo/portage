@@ -679,6 +679,7 @@ setup(
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 	description = 'Portage is the package management and distribution system for Gentoo',
+	license = 'GPLV2',
 	long_description = long_description,
 	long_description_content_type = 'text/plain',
 
