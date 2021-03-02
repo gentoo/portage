@@ -539,7 +539,7 @@ class x_sdist(sdist):
 
 	def initialize_options(self):
 		super().initialize_options()
-		self.formats = ['bztar']
+		self.formats = ['xztar']
 
 	def finalize_options(self):
 		if self.owner is None:
