@@ -34,6 +34,8 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
 eprefix = sysconfig.get_python_lib() if venv_prefix else ""
+with open(os.path.join(os.path.dirname(__file__), 'README'), 'rt') as f:
+	long_description = f.read()
 
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_apidoc'.
@@ -673,6 +675,8 @@ setup(
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 	description = 'Portage is the package management and distribution system for Gentoo',
+	long_description = long_description,
+	long_description_content_type = 'text/plain',
 
 	package_dir = {'': 'lib'},
 	packages = list(find_packages()),
