@@ -672,6 +672,10 @@ setup(
 	name = 'portage',
 	version = '3.0.16',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
+	project_urls = {
+		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',
+		'Documentation': 'https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage',
+	},
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
 	description = 'Portage is the package management and distribution system for Gentoo',
