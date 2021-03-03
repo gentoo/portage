@@ -33,7 +33,7 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 ).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
-eprefix = sysconfig.get_python_lib() if venv_prefix else ""
+eprefix = ""
 with open(os.path.join(os.path.dirname(__file__), 'README'), 'rt') as f:
 	long_description = f.read()
 
@@ -497,12 +497,49 @@ class x_install_lib(install_lib):
 		rewrite_file('portage/__init__.py', {
 			'VERSION': self.distribution.get_version(),
 		})
-		rewrite_file('portage/const.py', {
-			'EPREFIX': eprefix,
-			'GLOBAL_CONFIG_PATH': self.portage_confdir,
-			'PORTAGE_BASE_PATH': eprefix + self.portage_base,
-			'PORTAGE_BIN_PATH': eprefix + self.portage_bindir,
-		})
+
+		def re_sub_file(path, pattern_repl_items):
+			path = os.path.join(self.install_dir, path)
+			print("Rewriting %s" % path)
+			with codecs.open(path, "r", "utf-8") as f:
+				data = f.read()
+			for pattern, repl in pattern_repl_items:
+				data = re.sub(pattern, repl, data, flags=re.MULTILINE)
+			with codecs.open(path, "w", "utf-8") as f:
+				f.write(data)
+
+		val_dict = {
+			"GLOBAL_CONFIG_PATH": self.portage_confdir,
+		}
+		if create_entry_points:
+			re_sub_file(
+				"portage/const.py",
+				(
+					(
+						"^(PORTAGE_BASE_PATH\s*=\s*)(.*)",
+						lambda m: "{}{}".format(
+							m.group(1),
+							'os.path.realpath(os.path.join(__file__, "../../usr/lib/portage"))',
+						),
+					),
+					(
+						"^(EPREFIX\s*=\s*)(.*)",
+						lambda m: "{}{}".format(
+							m.group(1),
+							'os.path.realpath(os.path.join(__file__, "../.."))',
+						),
+					),
+				),
+			)
+		else:
+			val_dict.update(
+				{
+					"EPREFIX": eprefix,
+					"PORTAGE_BASE_PATH": eprefix + self.portage_base,
+					"PORTAGE_BIN_PATH": eprefix + self.portage_bindir,
+				}
+			)
+		rewrite_file("portage/const.py", val_dict)
 
 		return ret
 
