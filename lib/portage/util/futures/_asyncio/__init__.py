@@ -25,6 +25,7 @@ import types
 import weakref
 
 import asyncio as _real_asyncio
+from asyncio.subprocess import Process
 
 try:
 	import threading
@@ -45,7 +46,6 @@ from portage.util.futures.futures import (
 	TimeoutError,
 )
 # pylint: enable=redefined-builtin
-from portage.util.futures._asyncio.process import _Process
 from portage.util.futures._asyncio.tasks import (
 	ALL_COMPLETED,
 	FIRST_COMPLETED,
@@ -124,8 +124,8 @@ def create_subprocess_exec(*args, **kwargs):
 	@type loop: event loop
 	@type kwargs: varies
 	@param kwargs: subprocess.Popen parameters
-	@rtype: asyncio.Future (or compatible)
-	@return: subset of asyncio.subprocess.Process interface
+	@rtype: asyncio.subprocess.Process (or compatible)
+	@return: asyncio.subprocess.Process interface
 	"""
 	loop = _wrap_loop(kwargs.pop('loop', None))
 	# Python 3.4 and later implement PEP 446, which makes newly
@@ -138,7 +138,7 @@ def create_subprocess_exec(*args, **kwargs):
 
 	result = loop.create_future()
 
-	result.set_result(_Process(subprocess.Popen(
+	result.set_result(Process(subprocess.Popen(
 		args,
 		stdin=kwargs.pop('stdin', None),
 		stdout=kwargs.pop('stdout', None),
