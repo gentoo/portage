@@ -311,9 +311,6 @@ class digraph:
 	def debug_print(self):
 		def output(s):
 			writemsg(s, noiselevel=-1)
-		# Use unicode_literals to force unicode format
-		# strings for python-2.x safety, ensuring that
-		# node.__unicode__() is used when necessary.
 		for node in self.nodes:
 			output("%s " % (node,))
 			if self.nodes[node][0]:

@@ -453,15 +453,6 @@ class Package(Task):
 		else:
 			qacat = k + ".syntax"
 
-		# For unicode safety with python-2.x we need to avoid
-		# using the string format operator with a non-unicode
-		# format string, since that will result in the
-		# PortageException.__str__() method being invoked,
-		# followed by unsafe decoding that may result in a
-		# UnicodeDecodeError. Therefore, use unicode_literals
-		# to ensure that format strings are unicode, so that
-		# PortageException.__unicode__() is used when necessary
-		# in python-2.x.
 		if not self.installed:
 			categorized_error = False
 			if e.errors:

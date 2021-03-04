@@ -73,9 +73,6 @@ class database(fs_template.FsBased):
 				v = values.get(k)
 				if not v:
 					continue
-				# NOTE: This format string requires unicode_literals, so that
-				# k and v are coerced to unicode, in order to prevent TypeError
-				# when writing raw bytes to TextIOWrapper with Python 2.
 				myf.write("%s=%s\n" % (k, v))
 
 		self._ensure_access(fp)

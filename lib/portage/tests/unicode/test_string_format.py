@@ -15,9 +15,6 @@ class StringFormatTestCase(TestCase):
 	which may be either python2 or python3.
 	"""
 
-	# We need unicode_literals in order to get some unicode test strings
-	# in a way that works in both python2 and python3.
-
 	unicode_strings = (
 		'\u2018',
 		'\u2019',
@@ -31,8 +28,6 @@ class StringFormatTestCase(TestCase):
 			arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings['content'])
 			dependency_arg = DependencyArg(arg=arg_unicode)
 
-			# Use unicode_literals for unicode format string so that
-			# __unicode__() is called in Python 2.
 			formatted_str = "%s" % (dependency_arg,)
 			self.assertEqual(formatted_str, arg_unicode)
 
@@ -48,8 +43,6 @@ class StringFormatTestCase(TestCase):
 			arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings['content'])
 			e = PortageException(arg_unicode)
 
-			# Use unicode_literals for unicode format string so that
-			# __unicode__() is called in Python 2.
 			formatted_str = "%s" % (e,)
 			self.assertEqual(formatted_str, arg_unicode)
 
@@ -66,8 +59,6 @@ class StringFormatTestCase(TestCase):
 				for arg_unicode in self.unicode_strings:
 					e = UseFlagDisplay(arg_unicode, enabled, forced)
 
-					# Use unicode_literals for unicode format string so that
-					# __unicode__() is called in Python 2.
 					formatted_str = "%s" % (e,)
 					self.assertEqual(isinstance(formatted_str, str), True)
 

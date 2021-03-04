@@ -111,8 +111,6 @@ def pkg_use_display(pkg, opts, modified_use=None):
 			flags.sort(key=UseFlagDisplay.sort_combined)
 		else:
 			flags.sort(key=UseFlagDisplay.sort_separated)
-		# Use unicode_literals to force unicode format string so
-		# that UseFlagDisplay.__unicode__() is called in python2.
 		flag_displays.append('%s="%s"' % (varname,
 			' '.join("%s" % (f,) for f in flags)))
 

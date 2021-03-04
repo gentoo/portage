@@ -2,8 +2,6 @@
 # Copyright 2009-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-# unicode_literals for compat with TextIOWrapper in Python 2
-
 import argparse
 import platform
 import signal
