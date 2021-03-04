@@ -2,7 +2,6 @@
 # Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from distutils import sysconfig
 from distutils.core import setup, Command, Extension
 from distutils.command.build import build
 from distutils.command.build_ext import build_ext as _build_ext
@@ -33,7 +32,6 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 ).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
-eprefix = ""
 with open(os.path.join(os.path.dirname(__file__), 'README'), 'rt') as f:
 	long_description = f.read()
 
@@ -431,14 +429,6 @@ class x_install_data(install_data):
 			with codecs.open(path, 'w', 'utf-8') as f:
 				f.write(data)
 
-		if create_entry_points:
-			# Prefix location and sync-openpgp-key-path for venv. There
-			# is no intention to do this for normal EPREFIX. This behavior
-			# is intended only when create_entry_points is True, so that
-			# if emerge --sync runs in a venv, the operation will not
-			# accidentally modify paths outside of sys.prefix.
-			re_sub_file('cnf/repos.conf', r'= /', '= {}/'.format(eprefix))
-
 		self.run_command('build_man')
 
 		def process_data_files(df):
@@ -516,14 +506,14 @@ class x_install_lib(install_lib):
 				"portage/const.py",
 				(
 					(
-						"^(PORTAGE_BASE_PATH\s*=\s*)(.*)",
+						r"^(PORTAGE_BASE_PATH\s*=\s*)(.*)",
 						lambda m: "{}{}".format(
 							m.group(1),
 							'os.path.realpath(os.path.join(__file__, "../../usr/lib/portage"))',
 						),
 					),
 					(
-						"^(EPREFIX\s*=\s*)(.*)",
+						r"^(EPREFIX\s*=\s*)(.*)",
 						lambda m: "{}{}".format(
 							m.group(1),
 							'os.path.realpath(os.path.join(__file__, "../.."))',
@@ -534,9 +524,8 @@ class x_install_lib(install_lib):
 		else:
 			val_dict.update(
 				{
-					"EPREFIX": eprefix,
-					"PORTAGE_BASE_PATH": eprefix + self.portage_base,
-					"PORTAGE_BIN_PATH": eprefix + self.portage_bindir,
+					"PORTAGE_BASE_PATH": self.portage_base,
+					"PORTAGE_BIN_PATH": self.portage_bindir,
 				}
 			)
 		rewrite_file("portage/const.py", val_dict)
