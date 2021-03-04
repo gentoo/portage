@@ -341,11 +341,11 @@ def catpkgsplit(mydata, silent=1, eapi=None):
 
 class _pkg_str(str):
 	"""
-	This class represents a cpv. It inherits from str (unicode in python2) and
-	has attributes that cache results for use by functions like catpkgsplit and
-	cpv_getkey which are called frequently (especially in match_from_list).
-	Instances are typically created in dbapi.cp_list() or the Atom contructor,
-	and propagate from there. Generally, code that pickles these objects will
+	This class represents a cpv. It inherits from str and has attributes
+	that cache results for use by functions like catpkgsplit and cpv_getkey
+	which are called frequently (especially in match_from_list).  Instances
+	are typically created in dbapi.cp_list() or the Atom contructor, and
+	propagate from there. Generally, code that pickles these objects will
 	manually convert them to a plain unicode object first.
 
 	Instances of this class will have missing attributes for metadata that
