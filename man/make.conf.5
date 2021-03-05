@@ -849,7 +849,7 @@ Defaults to false.
 Defines the location where created .tbz2 binary packages will be
 stored when the \fBemerge\fR(1) \fB\-\-buildpkg\fR option is enabled.
 By default, a given package is stored in a subdirectory corresponding
-to it's category. However, for backward compatibility with the layout
+to its category. However, for backward compatibility with the layout
 used by older versions of portage, if the \fI${PKGDIR}/All\fR directory
 exists then all packages will be stored inside of it and symlinks to
 the packages will be created in the category subdirectories.
@@ -878,7 +878,7 @@ build packages for clients.  It defines the URI header field for the package
 index file which is located at ${PKGDIR}/Packages. Clients that have
 \fBPORTAGE_BINHOST\fR properly configured will be able to fetch the index and
 use the URI header field as a base URI for fetching binary packages. If the URI
-header field is not defined then the client will use it's ${PORTAGE_BINHOST}
+header field is not defined then the client will use its ${PORTAGE_BINHOST}
 setting as the base URI.
 .TP
 .B PORTAGE_BINPKG_FORMAT
@@ -989,7 +989,7 @@ Defaults to 0.
 .TP
 \fBPORTAGE_IONICE_COMMAND\fR = \fI[ionice command string]\fR
 This variable should contain a command for portage to call in order
-to adjust the io priority of portage and it's subprocesses. The command
+to adjust the io priority of portage and its subprocesses. The command
 string should contain a \\${PID} place-holder that will be substituted
 with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
@@ -1006,7 +1006,7 @@ Logs are created only when this is set. They are stored as
 ${CATEGORY}:${PF}:YYYYMMDD\-HHMMSS.log in the directory specified. If the
 directory does not exist, it will be created automatically and group
 permissions will be applied to it.  If the directory already exists, portage
-will not modify it's permissions.
+will not modify its permissions.
 .TP
 .B PORTAGE_LOGDIR_CLEAN
 This variable should contain a command for portage to call in order
