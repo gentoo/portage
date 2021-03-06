@@ -20,7 +20,7 @@ def bin_entry_point():
 	if os.access(script_path, os.X_OK):
 		with open(script_path, "rt") as f:
 			shebang = f.readline()
-		python_match = re.search(r"/python\s+([^/]*)\s+$", shebang)
+		python_match = re.search(r"/python[\d\.]*\s+([^/]*)\s+$", shebang)
 		if python_match:
 			sys.argv = [
 				os.path.join(os.path.dirname(sys.argv[0]), "python"),
