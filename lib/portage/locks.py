@@ -8,6 +8,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno
 import fcntl
+import functools
 import multiprocessing
 import sys
 import tempfile
@@ -45,7 +46,11 @@ def _get_lock_fn():
 	if _lock_fn is not None:
 		return _lock_fn
 
-	if _test_lock_fn(fcntl.lockf):
+	if _test_lock_fn(
+		lambda path, fd, flags: functools.partial(
+			unlockfile, (path, fcntl.lockf(fd, flags), flags, fcntl.lockf)
+		)
+	):
 		_lock_fn = fcntl.lockf
 		return _lock_fn
 
@@ -54,14 +59,14 @@ def _get_lock_fn():
 	return _lock_fn
 
 
-def _test_lock_fn(lock_fn: typing.Callable[[int, int], None]) -> bool:
+def _test_lock_fn(lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]]) -> bool:
 	def _test_lock(fd, lock_path):
 		os.close(fd)
 		try:
 			with open(lock_path, 'a') as f:
-				lock_fn(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
-		except EnvironmentError as e:
-			if e.errno == errno.EAGAIN:
+				lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+		except (TryAgain, EnvironmentError) as e:
+			if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
 				# Parent process holds lock, as expected.
 				sys.exit(0)
 
@@ -71,8 +76,8 @@ def _test_lock_fn(lock_fn: typing.Callable[[int, int], None]) -> bool:
 	fd, lock_path = tempfile.mkstemp()
 	try:
 		try:
-			lock_fn(fd, fcntl.LOCK_EX)
-		except EnvironmentError:
+			lock_fn(lock_path, fd, fcntl.LOCK_EX)
+		except (TryAgain, EnvironmentError):
 			pass
 		else:
 			proc = multiprocessing.Process(target=_test_lock,
