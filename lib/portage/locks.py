@@ -1,5 +1,5 @@
 # portage: Lock management code
-# Copyright 2004-2020 Gentoo Authors
+# Copyright 2004-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
@@ -12,6 +12,7 @@ import multiprocessing
 import sys
 import tempfile
 import time
+import typing
 import warnings
 
 import portage
@@ -44,11 +45,21 @@ def _get_lock_fn():
 	if _lock_fn is not None:
 		return _lock_fn
 
+	if _test_lock_fn(fcntl.lockf):
+		_lock_fn = fcntl.lockf
+		return _lock_fn
+
+	# Fall back to fcntl.flock.
+	_lock_fn = fcntl.flock
+	return _lock_fn
+
+
+def _test_lock_fn(lock_fn: typing.Callable[[int, int], None]) -> bool:
 	def _test_lock(fd, lock_path):
 		os.close(fd)
 		try:
 			with open(lock_path, 'a') as f:
-				fcntl.lockf(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+				lock_fn(f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
 		except EnvironmentError as e:
 			if e.errno == errno.EAGAIN:
 				# Parent process holds lock, as expected.
@@ -60,7 +71,7 @@ def _get_lock_fn():
 	fd, lock_path = tempfile.mkstemp()
 	try:
 		try:
-			fcntl.lockf(fd, fcntl.LOCK_EX)
+			lock_fn(fd, fcntl.LOCK_EX)
 		except EnvironmentError:
 			pass
 		else:
@@ -69,16 +80,12 @@ def _get_lock_fn():
 			proc.start()
 			proc.join()
 			if proc.exitcode == os.EX_OK:
-				# Use fcntl.lockf because the test passed.
-				_lock_fn = fcntl.lockf
-				return _lock_fn
+				# the test passed
+				return True
 	finally:
 		os.close(fd)
 		os.unlink(lock_path)
-
-	# Fall back to fcntl.flock.
-	_lock_fn = fcntl.flock
-	return _lock_fn
+	return False
 
 
 _open_fds = {}
