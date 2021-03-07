@@ -25,7 +25,16 @@ import types
 import weakref
 
 import asyncio as _real_asyncio
-from asyncio.subprocess import Process
+# pylint: disable=redefined-builtin
+from asyncio import (
+	ALL_COMPLETED,
+	CancelledError,
+	FIRST_COMPLETED,
+	FIRST_EXCEPTION,
+	Future,
+	InvalidStateError,
+	TimeoutError,
+)
 
 try:
 	import threading
@@ -38,20 +47,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util.futures:compat_coroutine@_compat_coroutine',
 )
 from portage.util._eventloop.asyncio_event_loop import AsyncioEventLoop as _AsyncioEventLoop
-# pylint: disable=redefined-builtin
-from portage.util.futures.futures import (
-	CancelledError,
-	Future,
-	InvalidStateError,
-	TimeoutError,
-)
-# pylint: enable=redefined-builtin
-from portage.util.futures._asyncio.tasks import (
-	ALL_COMPLETED,
-	FIRST_COMPLETED,
-	FIRST_EXCEPTION,
-	wait,
-)
 
 
 _lock = threading.Lock()
@@ -131,20 +126,17 @@ def create_subprocess_exec(*args, **kwargs):
 	# Python 3.4 and later implement PEP 446, which makes newly
 	# created file descriptors non-inheritable by default.
 	kwargs.setdefault('close_fds', False)
-	if isinstance(loop._asyncio_wrapper, _AsyncioEventLoop):
-		# Use the real asyncio create_subprocess_exec (loop argument
-		# is deprecated since since Python 3.8).
-		return _real_asyncio.create_subprocess_exec(*args, **kwargs)
+	# Use the real asyncio create_subprocess_exec (loop argument
+	# is deprecated since since Python 3.8).
+	return ensure_future(_real_asyncio.create_subprocess_exec(*args, **kwargs), loop=loop)
 
-	result = loop.create_future()
 
-	result.set_result(Process(subprocess.Popen(
-		args,
-		stdin=kwargs.pop('stdin', None),
-		stdout=kwargs.pop('stdout', None),
-		stderr=kwargs.pop('stderr', None), **kwargs), loop))
-
-	return result
+def wait(futures, loop=None, timeout=None, return_when=ALL_COMPLETED):
+	"""
+	Wraps asyncio.wait() and omits the loop argument which is not
+	supported since python 3.10.
+	"""
+	return _real_asyncio.wait(futures, timeout=timeout, return_when=return_when)
 
 
 def iscoroutinefunction(func):
