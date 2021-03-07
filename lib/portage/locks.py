@@ -35,64 +35,6 @@ _quiet = False
 
 
 _lock_fn = None
-
-
-def _get_lock_fn():
-	"""
-	Returns fcntl.lockf if proven to work, and otherwise returns fcntl.flock.
-	On some platforms fcntl.lockf is known to be broken.
-	"""
-	global _lock_fn
-	if _lock_fn is not None:
-		return _lock_fn
-
-	if _test_lock_fn(
-		lambda path, fd, flags: functools.partial(
-			unlockfile, (path, fcntl.lockf(fd, flags), flags, fcntl.lockf)
-		)
-	):
-		_lock_fn = fcntl.lockf
-		return _lock_fn
-
-	# Fall back to fcntl.flock.
-	_lock_fn = fcntl.flock
-	return _lock_fn
-
-
-def _test_lock_fn(lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]]) -> bool:
-	def _test_lock(fd, lock_path):
-		os.close(fd)
-		try:
-			with open(lock_path, 'a') as f:
-				lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
-		except (TryAgain, EnvironmentError) as e:
-			if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
-				# Parent process holds lock, as expected.
-				sys.exit(0)
-
-		# Something went wrong.
-		sys.exit(1)
-
-	fd, lock_path = tempfile.mkstemp()
-	try:
-		try:
-			lock_fn(lock_path, fd, fcntl.LOCK_EX)
-		except (TryAgain, EnvironmentError):
-			pass
-		else:
-			proc = multiprocessing.Process(target=_test_lock,
-				args=(fd, lock_path))
-			proc.start()
-			proc.join()
-			if proc.exitcode == os.EX_OK:
-				# the test passed
-				return True
-	finally:
-		os.close(fd)
-		os.unlink(lock_path)
-	return False
-
-
 _open_fds = {}
 _open_inodes = {}
 
@@ -115,6 +57,65 @@ class _lock_manager:
 		os.close(self.fd)
 		del _open_fds[self.fd]
 		del _open_inodes[self.inode_key]
+
+
+def _get_lock_fn():
+	"""
+	Returns fcntl.lockf if proven to work, and otherwise returns fcntl.flock.
+	On some platforms fcntl.lockf is known to be broken.
+	"""
+	global _lock_fn
+	if _lock_fn is not None:
+		return _lock_fn
+
+	if _test_lock_fn(
+		lambda path, fd, flags: fcntl.lockf(fd, flags) and functools.partial(
+			unlockfile, (path, fd, flags, fcntl.lockf)
+		)
+	):
+		_lock_fn = fcntl.lockf
+		return _lock_fn
+
+	# Fall back to fcntl.flock.
+	_lock_fn = fcntl.flock
+	return _lock_fn
+
+
+def _test_lock_fn(lock_fn: typing.Callable[[str, int, int], typing.Callable[[], None]]) -> bool:
+	def _test_lock(fd, lock_path):
+		os.close(fd)
+		try:
+			with open(lock_path, 'a') as f:
+				lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX|fcntl.LOCK_NB)
+		except (TryAgain, EnvironmentError) as e:
+			if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
+				# Parent process holds lock, as expected.
+				sys.exit(0)
+
+
+		# Something went wrong.
+		sys.exit(1)
+
+	fd, lock_path = tempfile.mkstemp()
+	unlock_fn = None
+	try:
+		try:
+			unlock_fn = lock_fn(lock_path, fd, fcntl.LOCK_EX)
+		except (TryAgain, EnvironmentError):
+			pass
+		else:
+			_lock_manager(fd, os.fstat(fd), lock_path)
+			proc = multiprocessing.Process(target=_test_lock,
+				args=(fd, lock_path))
+			proc.start()
+			proc.join()
+			if proc.exitcode == os.EX_OK:
+				# the test passed
+				return True
+	finally:
+		if unlock_fn is not None:
+			unlock_fn()
+	return False
 
 
 def _close_fds():
