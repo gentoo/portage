@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.17
+==================================
+* Bug Fixes:
+    - Bug 773469 emerge --binpkg-respect-use=y implies --autounmask-use=n
+
 portage-3.0.16
 ==================================
 * Bug Fixes:
