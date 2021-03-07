@@ -429,6 +429,10 @@ class x_install_data(install_data):
 			with codecs.open(path, 'w', 'utf-8') as f:
 				f.write(data)
 
+		if create_entry_points:
+			re_sub_file('cnf/repos.conf', r'= /', '= %(EPREFIX)s/')
+			re_sub_file('cnf/make.globals', r'DIR="/', 'DIR="${EPREFIX}/')
+
 		self.run_command('build_man')
 
 		def process_data_files(df):
