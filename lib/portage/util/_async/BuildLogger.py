@@ -1,4 +1,4 @@
-# Copyright 2020 Gentoo Authors
+# Copyright 2020-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -11,7 +11,6 @@ from portage.util import shlex_split
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 
 class BuildLogger(AsynchronousTask):
 	"""
@@ -78,16 +77,15 @@ class BuildLogger(AsynchronousTask):
 		pipe_logger.start()
 
 		self._main_task_cancel = functools.partial(self._main_cancel, filter_proc, pipe_logger)
-		self._main_task = asyncio.ensure_future(self._main(filter_proc, pipe_logger, loop=self.scheduler), loop=self.scheduler)
+		self._main_task = asyncio.ensure_future(self._main(filter_proc, pipe_logger), loop=self.scheduler)
 		self._main_task.add_done_callback(self._main_exit)
 
-	@coroutine
-	def _main(self, filter_proc, pipe_logger, loop=None):
+	async def _main(self, filter_proc, pipe_logger):
 		try:
 			if pipe_logger.poll() is None:
-				yield pipe_logger.async_wait()
+				await pipe_logger.async_wait()
 			if filter_proc is not None and filter_proc.poll() is None:
-				yield filter_proc.async_wait()
+				await filter_proc.async_wait()
 		except asyncio.CancelledError:
 			self._main_cancel(filter_proc, pipe_logger)
 			raise
