@@ -7,7 +7,8 @@ __all__ = (
 )
 
 import asyncio as _real_asyncio
-from asyncio.unix_events import AbstractChildWatcher as _AbstractChildWatcher
+from asyncio import events
+from asyncio.unix_events import AbstractChildWatcher
 
 import fcntl
 import os
@@ -15,7 +16,6 @@ import os
 from portage.util._eventloop.global_event_loop import (
 	global_event_loop as _global_event_loop,
 )
-from portage.util.futures import events
 
 
 class _PortageEventLoop(events.AbstractEventLoop):
@@ -83,27 +83,7 @@ else:
 		fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 
 
-class AbstractChildWatcher(_AbstractChildWatcher):
-	def add_child_handler(self, pid, callback, *args):
-		raise NotImplementedError()
-
-	def remove_child_handler(self, pid):
-		raise NotImplementedError()
-
-	def attach_loop(self, loop):
-		raise NotImplementedError()
-
-	def close(self):
-		raise NotImplementedError()
-
-	def __enter__(self):
-		raise NotImplementedError()
-
-	def __exit__(self, a, b, c):
-		raise NotImplementedError()
-
-
-class _PortageChildWatcher(_AbstractChildWatcher):
+class _PortageChildWatcher(AbstractChildWatcher):
 	def __init__(self, loop):
 		"""
 		@type loop: EventLoop
