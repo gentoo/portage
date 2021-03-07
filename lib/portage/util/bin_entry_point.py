@@ -28,6 +28,7 @@ def bin_entry_point():
 				script_path,
 			] + sys.argv[1:]
 			os.execvp(sys.argv[0], sys.argv)
+		sys.argv[0] = script_path
 		os.execvp(sys.argv[0], sys.argv)
 	else:
 		print("File not found:", script_path, file=sys.stderr)
