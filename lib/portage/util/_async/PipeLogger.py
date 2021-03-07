@@ -1,4 +1,4 @@
-# Copyright 2008-2020 Gentoo Authors
+# Copyright 2008-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -9,7 +9,6 @@ import portage
 from portage import os, _encodings, _unicode_encode
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio.streams import _writer
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.unix_events import _set_nonblocking
 from _emerge.AbstractPollTask import AbstractPollTask
 
@@ -53,7 +52,7 @@ class PipeLogger(AbstractPollTask):
 		fcntl.fcntl(fd, fcntl.F_SETFL,
 			fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd, loop=self.scheduler), loop=self.scheduler)
+		self._io_loop_task = asyncio.ensure_future(self._io_loop(self.input_fd), loop=self.scheduler)
 		self._io_loop_task.add_done_callback(self._io_loop_done)
 		self._registered = True
 
@@ -62,8 +61,7 @@ class PipeLogger(AbstractPollTask):
 		if self.returncode is None:
 			self.returncode = self._cancelled_returncode
 
-	@coroutine
-	def _io_loop(self, input_file, loop=None):
+	async def _io_loop(self, input_file):
 		background = self.background
 		stdout_fd = self.stdout_fd
 		log_file = self._log_file
@@ -77,7 +75,7 @@ class PipeLogger(AbstractPollTask):
 				future = self.scheduler.create_future()
 				self.scheduler.add_reader(fd, future.set_result, None)
 				try:
-					yield future
+					await future
 				finally:
 					# The loop and input file may have been closed.
 					if not self.scheduler.is_closed():
@@ -130,7 +128,7 @@ class PipeLogger(AbstractPollTask):
 				if self._log_file_nb:
 					# Use the _writer function which uses os.write, since the
 					# log_file.write method looses data when an EAGAIN occurs.
-					yield _writer(log_file, buf, loop=self.scheduler)
+					await _writer(log_file, buf)
 				else:
 					# For gzip.GzipFile instances, the above _writer function
 					# will not work because data written directly to the file
