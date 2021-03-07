@@ -5045,7 +5045,14 @@ class dblink:
 							% (relative_path, myabsto)])
 
 					showMessage("%s %s -> %s\n" % (zing, mydest, myto))
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime // 1000000000)+"\n")
+					outfile.write(
+						self._format_contents_line(
+							node_type="sym",
+							abs_path=myrealdest,
+							symlink_target=myto,
+							mtime_ns=mymtime,
+						)
+					)
 				else:
 					showMessage(_("!!! Failed to move file.\n"),
 						level=logging.ERROR, noiselevel=-1)
@@ -5146,7 +5153,9 @@ class dblink:
 				except OSError:
 					pass
 
-				outfile.write("dir "+myrealdest+"\n")
+				outfile.write(
+					self._format_contents_line(node_type="dir", abs_path=myrealdest)
+				)
 				# recurse and merge this directory
 				mergelist.extend(join(relative_path, child) for child in
 					os.listdir(join(srcroot, relative_path)))
@@ -5194,7 +5203,14 @@ class dblink:
 						pass
 
 				if mymtime != None:
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime // 1000000000)+"\n")
+					outfile.write(
+						self._format_contents_line(
+							node_type="obj",
+							abs_path=myrealdest,
+							md5_digest=mymd5,
+							mtime_ns=mymtime,
+						)
+					)
 				showMessage("%s %s\n" % (zing,mydest))
 			else:
 				# we are merging a fifo or device node
@@ -5214,9 +5230,13 @@ class dblink:
 					else:
 						return 1
 				if stat.S_ISFIFO(mymode):
-					outfile.write("fif %s\n" % myrealdest)
+					outfile.write(
+						self._format_contents_line(node_type="fif", abs_path=myrealdest)
+					)
 				else:
-					outfile.write("dev %s\n" % myrealdest)
+					outfile.write(
+						self._format_contents_line(node_type="dev", abs_path=myrealdest)
+					)
 				showMessage(zing + " " + mydest + "\n")
 
 	def _protect(self, cfgfiledict, protect_if_modified, src_md5,
@@ -5277,6 +5297,18 @@ class dblink:
 				force=force)
 
 		return dest, protected, move_me
+
+	def _format_contents_line(
+		self, node_type, abs_path, md5_digest=None, symlink_target=None, mtime_ns=None
+	):
+		fields = [node_type, abs_path]
+		if md5_digest is not None:
+			fields.append(md5_digest)
+		elif symlink_target is not None:
+			fields.append("-> {}".format(symlink_target))
+		if mtime_ns is not None:
+			fields.append(str(mtime_ns // 1000000000))
+		return "{}\n".format(" ".join(fields))
 
 	def _merged_path(self, path, lstatobj, exists=True):
 		previous_path = self._device_path_map.get(lstatobj.st_dev)
