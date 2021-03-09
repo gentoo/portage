@@ -614,9 +614,9 @@ class vardbapi(dbapi):
 			timestamp = time.time()
 			self._aux_cache["timestamp"] = timestamp
 
-			f = atomic_ofstream(self._aux_cache_filename, 'wb')
-			pickle.dump(self._aux_cache, f, protocol=2)
-			f.close()
+			with atomic_ofstream(self._aux_cache_filename, 'wb') as f:
+				pickle.dump(self._aux_cache, f, protocol=2)
+
 			apply_secpass_permissions(
 				self._aux_cache_filename, mode=0o644)
 

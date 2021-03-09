@@ -18,13 +18,12 @@ class VdbMetadataDelta:
 		self._vardb = vardb
 
 	def initialize(self, timestamp):
-		f = atomic_ofstream(self._vardb._cache_delta_filename, 'w',
-			encoding=_encodings['repo.content'], errors='strict')
-		json.dump({
-			"version": self._format_version,
-			"timestamp": timestamp
+		with atomic_ofstream(self._vardb._cache_delta_filename, 'w',
+			encoding=_encodings['repo.content'], errors='strict') as f:
+			json.dump({
+				"version": self._format_version,
+				"timestamp": timestamp
 			}, f, ensure_ascii=False)
-		f.close()
 
 	def load(self):
 
