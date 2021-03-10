@@ -502,10 +502,13 @@ class x_install_lib(install_lib):
 			with codecs.open(path, "w", "utf-8") as f:
 				f.write(data)
 
-		val_dict = {
-			"GLOBAL_CONFIG_PATH": self.portage_confdir,
-		}
+		val_dict = {}
 		if create_entry_points:
+			val_dict.update(
+				{
+					"GLOBAL_CONFIG_PATH": self.portage_confdir,
+				}
+			)
 			re_sub_file(
 				"portage/const.py",
 				(
