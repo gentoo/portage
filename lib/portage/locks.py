@@ -113,6 +113,10 @@ def _test_lock_fn(lock_fn: typing.Callable[[str, int, int], typing.Callable[[], 
 				# the test passed
 				return True
 	finally:
+		try:
+			os.unlink(lock_path)
+		except OSError:
+			pass
 		if unlock_fn is not None:
 			unlock_fn()
 	return False
