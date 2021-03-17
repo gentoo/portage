@@ -10,7 +10,8 @@ import portage
 from portage import eclass_cache, os
 from portage.checksum import get_valid_checksum_keys
 from portage.const import (PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
-from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
+from portage.eapi import (eapi_allows_directories_on_profile_level_and_repository_level,
+	eapi_has_repo_deps)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
@@ -64,6 +65,12 @@ def _find_invalid_path_char(path, pos=0, endpos=None):
 		return m.start()
 
 	return -1
+
+def allow_profile_repo_deps(repo):
+	if eapi_has_repo_deps(repo.eapi):
+		return True
+
+	return False
 
 class RepoConfig:
 	"""Stores config of one repository"""

@@ -1259,8 +1259,9 @@ class Atom(str):
 
 		self.__dict__['eapi'] = eapi
 		if eapi is not None:
-			# Ignore allow_repo when eapi is specified.
-			allow_repo = eapi_attrs.repo_deps
+			# If allow_repo is not set, use default from eapi
+			if allow_repo is None:
+				allow_repo = eapi_attrs.repo_deps
 		else:
 			# These parameters have "smart" defaults that are only
 			# applied when the caller does not explicitly pass in a
