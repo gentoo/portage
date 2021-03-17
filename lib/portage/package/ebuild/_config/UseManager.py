@@ -1,4 +1,4 @@
-# Copyright 2010-2014 Gentoo Foundation
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -11,6 +11,7 @@ from portage.dep import Atom, dep_getrepo, dep_getslot, ExtendedAtomDict, remove
 from portage.eapi import eapi_has_use_aliases, eapi_supports_stable_use_forcing_and_masking
 from portage.exception import InvalidAtom
 from portage.localization import _
+from portage.repository.config import allow_profile_repo_deps
 from portage.util import grabfile, grabdict, grabdict_package, read_corresponding_eapi_file, stack_lists, writemsg
 from portage.versions import _pkg_str
 
@@ -154,7 +155,7 @@ class UseManager:
 
 	def _parse_file_to_dict(self, file_name, juststrings=False, recursive=True,
 		eapi_filter=None, user_config=False, eapi=None, eapi_default="0",
-		allow_build_id=False):
+		allow_repo=False, allow_build_id=False):
 		"""
 		@param file_name: input file name
 		@type file_name: str
@@ -193,8 +194,9 @@ class UseManager:
 			ret = ExtendedAtomDict(dict)
 		else:
 			ret = {}
+		allow_repo = allow_repo or extended_syntax
 		file_dict = grabdict_package(file_name, recursive=recursive,
-			allow_wildcard=extended_syntax, allow_repo=extended_syntax,
+			allow_wildcard=extended_syntax, allow_repo=allow_repo,
 			verify_eapi=(not extended_syntax), eapi=eapi,
 			eapi_default=eapi_default, allow_build_id=allow_build_id,
 			allow_use=False)
@@ -277,6 +279,7 @@ class UseManager:
 			ret[repo.name] = self._parse_file_to_dict(
 				os.path.join(repo.location, "profiles", file_name),
 				eapi_filter=eapi_filter, eapi_default=repo.eapi,
+				allow_repo=allow_profile_repo_deps(repo),
 				allow_build_id=("build-id" in repo.profile_formats))
 		return ret
 
@@ -294,7 +297,8 @@ class UseManager:
 			os.path.join(profile.location, file_name), juststrings,
 			recursive=profile.portage1_directories, eapi_filter=eapi_filter,
 			user_config=profile.user_config, eapi=profile.eapi,
-			eapi_default=None, allow_build_id=profile.allow_build_id)
+			eapi_default=None, allow_build_id=profile.allow_build_id,
+			allow_repo=allow_profile_repo_deps(profile))
 			for profile in locations)
 
 	def _parse_repository_usealiases(self, repositories):

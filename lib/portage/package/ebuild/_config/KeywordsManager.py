@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -12,6 +12,7 @@ from portage import os
 from portage.dep import ExtendedAtomDict
 from portage.localization import _
 from portage.package.ebuild._config.helper import ordered_by_atom_specificity
+from portage.repository.config import allow_profile_repo_deps
 from portage.util import grabdict_package, stack_lists
 from portage.versions import _pkg_str
 
@@ -25,6 +26,7 @@ class KeywordsManager:
 			os.path.join(x.location, "package.keywords"),
 			recursive=x.portage1_directories,
 			verify_eapi=True, eapi=x.eapi, eapi_default=None,
+			allow_repo=allow_profile_repo_deps(x),
 			allow_build_id=x.allow_build_id)
 			for x in profiles]
 		for pkeyworddict in rawpkeywords:
@@ -41,7 +43,8 @@ class KeywordsManager:
 		raw_p_accept_keywords = [grabdict_package(
 			os.path.join(x.location, "package.accept_keywords"),
 			recursive=x.portage1_directories,
-			verify_eapi=True, eapi=x.eapi, eapi_default=None)
+			verify_eapi=True, eapi=x.eapi, eapi_default=None,
+			allow_repo=allow_profile_repo_deps(x))
 			for x in profiles]
 		for d in raw_p_accept_keywords:
 			if not d:

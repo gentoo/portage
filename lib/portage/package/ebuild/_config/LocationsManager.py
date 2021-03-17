@@ -1,11 +1,10 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
 	'LocationsManager',
 )
 
-import collections
 import io
 import warnings
 
@@ -20,19 +19,13 @@ from portage.util import ensure_dirs, grabfile, \
 	normalize_path, read_corresponding_eapi_file, shlex_split, writemsg
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.repository.config import parse_layout_conf, \
-	_portage1_profiles_allow_directories
+	_portage1_profiles_allow_directories, _profile_node
 
 
 _PORTAGE1_DIRECTORIES = frozenset([
 	'package.mask', 'package.provided',
 	'package.use', 'package.use.mask', 'package.use.force',
 	'use.mask', 'use.force'])
-
-_profile_node = collections.namedtuple('_profile_node',
-	('location', 'portage1_directories', 'user_config',
-	'profile_formats', 'eapi', 'allow_build_id',
-	'show_deprecated_warning',
-))
 
 _allow_parent_colon = frozenset(
 	["portage-2"])

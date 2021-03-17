@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003-2020 Gentoo Authors
+# Copyright 2003-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -1259,8 +1259,9 @@ class Atom(str):
 
 		self.__dict__['eapi'] = eapi
 		if eapi is not None:
-			# Ignore allow_repo when eapi is specified.
-			allow_repo = eapi_attrs.repo_deps
+			# If allow_repo is not set, use default from eapi
+			if allow_repo is None:
+				allow_repo = eapi_attrs.repo_deps
 		else:
 			# These parameters have "smart" defaults that are only
 			# applied when the caller does not explicitly pass in a

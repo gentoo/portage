@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -42,7 +42,10 @@ from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
 from portage.process import fakeroot_capable, sandbox_capable
-from portage.repository.config import load_repository_config
+from portage.repository.config import (
+	allow_profile_repo_deps,
+	load_repository_config,
+)
 from portage.util import ensure_dirs, getconfig, grabdict, \
 	grabdict_package, grabfile, grabfile_package, LazyItemsDict, \
 	normalize_path, shlex_split, stack_dictlist, stack_dicts, stack_lists, \
@@ -593,6 +596,7 @@ class config:
 				packages_list = [grabfile_package(
 					os.path.join(x.location, "packages"),
 					verify_eapi=True, eapi=x.eapi, eapi_default=None,
+					allow_repo=allow_profile_repo_deps(x),
 					allow_build_id=x.allow_build_id)
 					for x in profiles_complex]
 			except EnvironmentError as e:
@@ -812,7 +816,8 @@ class config:
 						portage.dep.ExtendedAtomDict(dict)
 					bashrc = grabdict_package(os.path.join(profile.location,
 						"package.bashrc"), recursive=1, allow_wildcard=True,
-								allow_repo=True, verify_eapi=True,
+								allow_repo=allow_profile_repo_deps(profile),
+								verify_eapi=True,
 								eapi=profile.eapi, eapi_default=None,
 								allow_build_id=profile.allow_build_id)
 					if not bashrc:
