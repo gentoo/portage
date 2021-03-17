@@ -32,7 +32,7 @@ _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
-	'profile-default-eapi', 'build-id'])
+	'profile-default-eapi', 'build-id', 'profile-repo-deps'])
 
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
@@ -68,6 +68,9 @@ def _find_invalid_path_char(path, pos=0, endpos=None):
 
 def allow_profile_repo_deps(repo):
 	if eapi_has_repo_deps(repo.eapi):
+		return True
+
+	if 'profile-repo-deps' in repo.profile_formats:
 		return True
 
 	return False
