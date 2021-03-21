@@ -14,6 +14,7 @@ import textwrap
 import time
 import warnings
 from itertools import chain
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -2634,13 +2635,54 @@ def apply_priorities(settings):
 	nice(settings)
 
 def nice(settings):
+	nice_value: str = settings.get("PORTAGE_NICENESS", "").strip()
+	if not nice_value:
+		return
+
 	try:
-		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+		current_nice_value = os.nice(int(nice_value))
+		# Calling os.nice() with a value outside of the valid range of
+		# nice values, e.g. 20, caps the process's nice value. This is
+		# because the argument of os.nice() is not an absolute value,
+		# but the increment to the process's current nice
+		# value. Hence users may use PORTAGE_NICENESS=20 without any
+		# issues here. However, below we write nice_value potentially
+		# to /proc/self/autogroup, which will only accept valid nice
+		# values. Therefore we simply set nice_value to what os.nice()
+		# returned (i.e. the process's current nice value).
+		nice_value = str(current_nice_value)
 	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
-		out.eerror("Failed to change nice value to '%s'" % \
-			settings.get("PORTAGE_NICENESS", "0"))
+		out.eerror(f"Failed to change nice value to {nice_value}")
 		out.eerror("%s\n" % str(e))
+
+	autogroup_file = Path("/proc/self/autogroup")
+	try:
+		f = autogroup_file.open("r+")
+	except EnvironmentError:
+		# Autogroup scheduling is not enabled on this system.
+		return
+
+	with f:
+		line = f.readline()
+		original_autogroup_nice_value = line.split(" ")[2]
+
+		# We need to restore the original nice value of the
+		# autogroup, as otherwise the session, e.g. the
+		# terminal where portage was executed in, would
+		# continue running with that value.
+		portage.atexit_register(
+			lambda value: autogroup_file.write_text(value),
+			original_autogroup_nice_value,
+		)
+
+		try:
+			f.write(nice_value)
+		except EnvironmentError as e:
+			out = portage.output.EOutput()
+			out.eerror(f"Failed to change autogroup's nice value to {nice_value}")
+			out.eerror("%s\n" % str(e))
+
 
 def ionice(settings):
 

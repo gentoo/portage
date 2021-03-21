@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "May 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jun 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -1031,6 +1031,14 @@ The value of this variable will be added to the current nice level that
 emerge is running at.  In other words, this will not set the nice level,
 it will increment it.  For more information about nice levels and what
 are acceptable ranges, see \fBnice\fR(1).
+.br
+If set and portage is run under Linux with autogroup scheduling (see
+\fBsched\fR(7)) enabled, then portage will set the nice value of its
+autogroup to PORTAGE_NICENESS. Upon exiting, portage will restore the
+original value. Note that if the function responsible for restoring the
+original value is not run, e.g., because portage's process was killed,
+then the autogroup will stay niced. In such a case, the value can be
+reset via corresponding autogroup pseudo\-file in /proc.
 .TP
 \fBPORTAGE_RO_DISTDIRS\fR = \fI[space delimited list of directories]\fR
 When a given file does not exist in \fBDISTDIR\fR, search for the file
