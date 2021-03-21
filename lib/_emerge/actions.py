@@ -14,6 +14,7 @@ import textwrap
 import time
 import warnings
 from itertools import chain
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -2634,13 +2635,42 @@ def apply_priorities(settings):
 	nice(settings)
 
 def nice(settings):
+	nice_value: str = settings.get("PORTAGE_NICENESS", "0")
+
 	try:
-		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+		os.nice(int(nice_value))
 	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
-		out.eerror("Failed to change nice value to '%s'" % \
-			settings.get("PORTAGE_NICENESS", "0"))
+		out.eerror(f"Failed to change nice value to {nice_value}")
 		out.eerror("%s\n" % str(e))
+
+	autogroup_file = Path("/proc/self/autogroup")
+	try:
+		f = autogroup_file.open("r+")
+	except EnvironmentError:
+		# Autogroup scheduling is not enabled on this system.
+		return
+
+	with f:
+		line = f.readline()
+		original_autogroup_nice_value = line.split(" ")[2]
+
+		# We need to restore the original nice value of the
+		# autogroup, as otherwise the session, e.g. the
+		# terminal where portage was executed in, would
+		# continue running with that value.
+		portage.atexit_register(
+			lambda value: autogroup_file.open("w").write(value),
+			original_autogroup_nice_value,
+		)
+
+		try:
+			f.write(nice_value)
+		except EnvironmentError as e:
+			out = portage.output.EOutput()
+			out.eerror(f"Failed to change autogroup's nice value to {nice_value}")
+			out.eerror("%s\n" % str(e))
+
 
 def ionice(settings):
 
