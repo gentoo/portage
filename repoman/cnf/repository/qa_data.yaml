@@ -80,6 +80,7 @@ qawarnings:
     - usage.obsolete
     - upstream.workaround
     - uri.https
+    - variable.phase
     - virtual.suspect
     - wxwidgets.eclassnotused
 

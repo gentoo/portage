@@ -3,6 +3,7 @@
 
 import collections
 import subprocess
+import sys
 import time
 import types
 
@@ -141,6 +142,12 @@ class SimpleRepomanTestCase(TestCase):
 
 """ % time.gmtime().tm_year
 
+		pkg_preinst_references_forbidden_var = """
+pkg_preinst() {
+	echo "This ${A} reference is not allowed. Neither is this $BROOT reference."
+}
+"""
+
 		repo_configs = {
 			"test_repo": {
 				"layout.conf":
@@ -194,13 +201,14 @@ class SimpleRepomanTestCase(TestCase):
 			"dev-libs/C-0": {
 				"COPYRIGHT_HEADER" : copyright_header,
 				"DESCRIPTION" : "Desc goes here",
-				"EAPI" : "4",
+				"EAPI" : "7",
 				"HOMEPAGE" : "https://example.com",
 				"IUSE" : "flag",
 				# must be unstable, since dev-libs/A[flag] is stable masked
 				"KEYWORDS": "~x86",
 				"LICENSE": "GPL-2",
 				"RDEPEND": "flag? ( dev-libs/A[flag] )",
+				"MISC_CONTENT": pkg_preinst_references_forbidden_var,
 			},
 		}
 		licenses = ["GPL-2"]
@@ -292,7 +300,15 @@ class SimpleRepomanTestCase(TestCase):
 
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
-		expected_warnings = {"returncode": 0}
+		expected_warnings = {
+			"returncode": 0,
+			"warns": {
+				"variable.phase": [
+					"dev-libs/C/C-0.ebuild: line 15: phase pkg_preinst: EAPI 7: variable A: Forbidden reference to variable specified by PMS",
+					"dev-libs/C/C-0.ebuild: line 15: phase pkg_preinst: EAPI 7: variable BROOT: Forbidden reference to variable specified by PMS",
+				]
+			},
+		}
 
 		git_test = (
 			("", RepomanRun(args=["manifest"])),
@@ -380,7 +396,7 @@ class SimpleRepomanTestCase(TestCase):
 				# triggered by python -Wd will be visible.
 				stdout = subprocess.PIPE
 
-			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
+			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B", "dev-libs/C"):
 				abs_cwd = os.path.join(test_repo_symlink, cwd)
 
 				proc = await asyncio.create_subprocess_exec(
@@ -413,7 +429,11 @@ class SimpleRepomanTestCase(TestCase):
 						await cmd.run()
 						if cmd.result["result"] != cmd.expected and cmd.result.get("stdio"):
 							portage.writemsg(cmd.result["stdio"])
-						self.assertEqual(cmd.result["result"], cmd.expected)
+						try:
+							self.assertEqual(cmd.result["result"], cmd.expected)
+						except Exception:
+							print(cmd.result["result"], file=sys.stderr, flush=True)
+							raise
 						continue
 
 					proc = await asyncio.create_subprocess_exec(

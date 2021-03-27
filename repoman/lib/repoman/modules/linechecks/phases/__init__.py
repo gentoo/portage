@@ -29,6 +29,12 @@ module_spec = {
 			'class': "SrcUnpackPatches",
 			'description': doc,
 		},
+		'pmsvariablerefphasescope-check': {
+			'name': "pmsvariablerefphasescope",
+			'sourcefile': "phase",
+			'class': "PMSVariableReference",
+			'description': doc,
+		},
 	},
 	'version': 1,
 }
