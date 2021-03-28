@@ -222,5 +222,7 @@ def _handle_result(can_force, exitcode, options, qadata, repo_settings, scanner,
 	if actions.inform(can_force.get(), result):
 		# perform any other actions
 		actions.perform(qa_output)
+	elif result['fail']:
+		return 1
 
 	return 0
