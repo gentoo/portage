@@ -70,6 +70,11 @@ older permissions of the first check in may be inherited. As
 mentioned in the \fBci\fR(1) man page, users can control access
 to RCS files by setting the permissions of the directory
 containing the files.
+.SH "CONF-UPDATE HOOKS"
+\fIdispatch\-conf\fR will run hooks in \fB/etc/portage/conf-update.d\fR.
+The first argument of the hook is either \fIpre-session\fR, \fIpost-ression\fR,
+\fIpre-update\fR, or, \fIpost-update\fR. In case of *-update events, a second
+argument containing the path of the configuration file is also provided.
 .SH "REPORTING BUGS"
 Please report bugs via https://bugs.gentoo.org/
 .SH "AUTHORS"
