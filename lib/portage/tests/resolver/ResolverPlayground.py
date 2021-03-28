@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import bz2
@@ -44,7 +44,13 @@ class ResolverPlayground:
 	config_files = frozenset(("eapi", "layout.conf", "make.conf", "modules", "package.accept_keywords",
 		"package.keywords", "package.license", "package.mask", "package.properties",
 		"package.provided", "packages",
-		"package.unmask", "package.use", "package.use.aliases", "package.use.stable.mask",
+		"package.unmask",
+		"package.use",
+		"package.use.aliases",
+		"package.use.force",
+		"package.use.mask",
+		"package.use.stable.force",
+		"package.use.stable.mask",
 		"soname.provided",
 		"unpack_dependencies", "use.aliases", "use.force", "use.mask", "layout.conf"))
 
