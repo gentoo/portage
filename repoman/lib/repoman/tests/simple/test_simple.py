@@ -3,6 +3,7 @@
 
 import subprocess
 import time
+import types
 
 from repoman._portage import portage
 from portage import os
@@ -10,11 +11,61 @@ from portage.process import find_binary
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
 from portage.util.futures import asyncio
+from portage.util.futures._asyncio.streams import _reader
+from portage.util._async.AsyncFunction import AsyncFunction
 
 # pylint: disable=ungrouped-imports
 from repoman import REPOMAN_BASE_PATH
 from repoman.copyrights import update_copyright_year
+from repoman.main import _repoman_init, _repoman_scan, _handle_result
 from repoman.tests import TestCase
+
+
+class RepomanRun(types.SimpleNamespace):
+	async def run(self):
+		self.expected = getattr(self, "expected", None) or {"returncode": 0}
+		if self.debug:
+			fd_pipes = {}
+			pr = None
+			pw = None
+		else:
+			pr, pw = os.pipe()
+			fd_pipes = {1: pw, 2: pw}
+			pr = open(pr, "rb", 0)
+
+		proc = AsyncFunction(
+			scheduler=asyncio.get_event_loop(),
+			target=self._subprocess,
+			args=(self.args, self.cwd, self.env, self.expected, self.debug),
+			fd_pipes=fd_pipes,
+		)
+
+		proc.start()
+		if pw is not None:
+			os.close(pw)
+
+		await proc.async_wait()
+
+		if pr is None:
+			stdio = None
+		else:
+			stdio = await _reader(pr)
+
+		self.result = {
+			"stdio": stdio,
+			"result": proc.result,
+		}
+
+	@staticmethod
+	def _subprocess(args, cwd, env, expected, debug):
+		os.chdir(cwd)
+		os.environ.update(env)
+		repoman_vars = _repoman_init(["repoman"] + args)
+		if repoman_vars.exitcode is not None:
+			return repoman_vars.exitcode
+		result = _repoman_scan(*repoman_vars)
+		returncode = _handle_result(*repoman_vars, result)
+		return {"returncode": returncode}
 
 
 class SimpleRepomanTestCase(TestCase):
@@ -229,23 +280,23 @@ class SimpleRepomanTestCase(TestCase):
 		committer_email = "gentoo-dev@gentoo.org"
 
 		git_test = (
-			("", repoman_cmd + ("manifest",)),
+			("", RepomanRun(args=["manifest"])),
 			("", git_cmd + ("config", "--global", "user.name", committer_name,)),
 			("", git_cmd + ("config", "--global", "user.email", committer_email,)),
 			("", git_cmd + ("init-db",)),
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
-			("", repoman_cmd + ("full", "-d")),
-			("", repoman_cmd + ("full", "--include-profiles", "default/linux/x86/test_profile")),
+			("", RepomanRun(args=["full", "-d"])),
+			("", RepomanRun(args=["full", "--include-profiles", "default/linux/x86/test_profile"])),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
-			("", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 2")),
+			("", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 2"])),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "3.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "3.ebuild")),
-			("dev-libs", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 3")),
+			("dev-libs", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 3"])),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "4.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "4.ebuild")),
-			("dev-libs/A", repoman_cmd + ("commit", "-m", "cat/pkg: bump to version 4")),
+			("dev-libs/A", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 4"])),
 		)
 
 		env = {
@@ -340,6 +391,16 @@ class SimpleRepomanTestCase(TestCase):
 			if git_binary is not None:
 				for cwd, cmd in git_test:
 					abs_cwd = os.path.join(test_repo_symlink, cwd)
+					if isinstance(cmd, RepomanRun):
+						cmd.cwd = abs_cwd
+						cmd.env = env
+						cmd.debug = debug
+						await cmd.run()
+						if cmd.result["result"] != cmd.expected and cmd.result.get("stdio"):
+							portage.writemsg(cmd.result["stdio"])
+						self.assertEqual(cmd.result["result"], cmd.expected)
+						continue
+
 					proc = await asyncio.create_subprocess_exec(
 						*cmd, env=env, stderr=None, stdout=stdout, cwd=abs_cwd
 					)
