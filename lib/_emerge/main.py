@@ -187,6 +187,7 @@ def insert_optional_args(args):
 		'q' : y_or_n,
 		'v' : y_or_n,
 		'w' : y_or_n,
+		'W' : y_or_n,
 	}
 
 	arg_stack = args[:]
@@ -470,6 +471,7 @@ def parse_opts(tmpcmdline, silent=False):
 		},
 
 		"--deselect": {
+			"shortopt" : "-W",
 			"help"    : "remove atoms/sets from the world file",
 			"choices" : true_y_or_n
 		},
