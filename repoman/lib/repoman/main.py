@@ -58,7 +58,7 @@ def repoman_main(argv):
 		nocolor()
 
 	options, arguments = parse_args(
-		sys.argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
+		argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
 
 	if options.version:
 		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
