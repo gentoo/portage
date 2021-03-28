@@ -13,6 +13,7 @@ class BuildIdProfileFormatTestCase(TestCase):
 			"packages": ("=app-misc/A-1-2::test_repo",),
 			"package.mask": ("<app-misc/A-1::test_repo",),
 			"package.keywords": ("app-misc/A-1::test_repo x86",),
+			"package.unmask": (">=app-misc/A-1::test_repo",),
 			"package.use": ("app-misc/A-1::test_repo foo",),
 			"package.use.mask": ("app-misc/A-1::test_repo -foo",),
 			"package.use.stable.mask": ("app-misc/A-1::test_repo -foo",),
