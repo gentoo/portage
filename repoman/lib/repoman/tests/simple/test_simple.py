@@ -2,15 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
-import sys
 import time
 
 from repoman._portage import portage
 from portage import os
-from portage import _unicode_decode
 from portage.process import find_binary
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
+from portage.util.futures import asyncio
 
 # pylint: disable=ungrouped-imports
 from repoman import REPOMAN_BASE_PATH
@@ -169,6 +168,39 @@ class SimpleRepomanTestCase(TestCase):
 
 		playground = ResolverPlayground(ebuilds=ebuilds,
 			profile=profile, repo_configs=repo_configs, debug=debug)
+
+		loop = asyncio._wrap_loop()
+		loop.run_until_complete(
+			asyncio.ensure_future(
+				self._async_test_simple(
+					playground,
+					metadata_xml_files,
+					profiles,
+					profile,
+					licenses,
+					arch_list,
+					use_desc,
+					metadata_xsd,
+					copyright_header,
+					debug,
+				),
+				loop=loop,
+			)
+		)
+
+	async def _async_test_simple(
+		self,
+		playground,
+		metadata_xml_files,
+		profiles,
+		profile,
+		licenses,
+		arch_list,
+		use_desc,
+		metadata_xsd,
+		copyright_header,
+		debug,
+	):
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
 		eroot = settings["EROOT"]
@@ -284,39 +316,50 @@ class SimpleRepomanTestCase(TestCase):
 
 			for cwd in ("", "dev-libs", "dev-libs/A", "dev-libs/B"):
 				abs_cwd = os.path.join(test_repo_symlink, cwd)
-				proc = subprocess.Popen(repoman_cmd + ("full",),
-					cwd=abs_cwd, env=env, stdout=stdout)
+
+				proc = await asyncio.create_subprocess_exec(
+					*(repoman_cmd + ("full",)),
+					env=env,
+					stderr=None,
+					stdout=stdout,
+					cwd=abs_cwd
+				)
 
 				if debug:
-					proc.wait()
+					await proc.wait()
 				else:
-					output = proc.stdout.readlines()
-					proc.wait()
-					proc.stdout.close()
+					output, _err = await proc.communicate()
+					await proc.wait()
 					if proc.returncode != os.EX_OK:
-						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+						portage.writemsg(output)
 
-				self.assertEqual(os.EX_OK, proc.returncode,
-					"repoman failed in %s" % (cwd,))
+				self.assertEqual(
+					os.EX_OK, proc.returncode, "repoman failed in %s" % (cwd,)
+				)
 
 			if git_binary is not None:
 				for cwd, cmd in git_test:
 					abs_cwd = os.path.join(test_repo_symlink, cwd)
-					proc = subprocess.Popen(cmd,
-						cwd=abs_cwd, env=env, stdout=stdout)
+					proc = await asyncio.create_subprocess_exec(
+						*cmd, env=env, stderr=None, stdout=stdout, cwd=abs_cwd
+					)
 
 					if debug:
-						proc.wait()
+						await proc.wait()
 					else:
-						output = proc.stdout.readlines()
-						proc.wait()
-						proc.stdout.close()
+						output, _err = await proc.communicate()
+						await proc.wait()
 						if proc.returncode != os.EX_OK:
-							for line in output:
-								sys.stderr.write(_unicode_decode(line))
+							portage.writemsg(output)
 
-					self.assertEqual(os.EX_OK, proc.returncode,
-						"%s failed in %s" % (cmd, cwd,))
+					self.assertEqual(
+						os.EX_OK,
+						proc.returncode,
+						"%s failed in %s"
+						% (
+							cmd,
+							cwd,
+						),
+					)
 		finally:
 			playground.cleanup()
