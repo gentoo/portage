@@ -1,6 +1,7 @@
 # Copyright 2011-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
 import subprocess
 import time
 import types
@@ -65,7 +66,20 @@ class RepomanRun(types.SimpleNamespace):
 			return repoman_vars.exitcode
 		result = _repoman_scan(*repoman_vars)
 		returncode = _handle_result(*repoman_vars, result)
-		return {"returncode": returncode}
+		qawarnings = repoman_vars.vcs_settings.qatracker.qawarnings
+		warns = collections.defaultdict(list)
+		fails = collections.defaultdict(list)
+		for qacat, issues in repoman_vars.vcs_settings.qatracker.fails.items():
+			if qacat in qawarnings:
+				warns[qacat].extend(issues)
+			else:
+				fails[qacat].extend(issues)
+		result = {"returncode": returncode}
+		if fails:
+			result["fails"] = fails
+		if warns:
+			result["warns"] = warns
+		return result
 
 
 class SimpleRepomanTestCase(TestCase):
@@ -122,9 +136,9 @@ class SimpleRepomanTestCase(TestCase):
 			self.assertFalse(True, skip_reason)
 			return
 
-		copyright_header = """# Copyright 1999-%s Gentoo Foundation
+		copyright_header = """# Copyright 1999-%s Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
+
 """ % time.gmtime().tm_year
 
 		repo_configs = {
@@ -278,6 +292,7 @@ class SimpleRepomanTestCase(TestCase):
 
 		committer_name = "Gentoo Dev"
 		committer_email = "gentoo-dev@gentoo.org"
+		expected_warnings = {"returncode": 0}
 
 		git_test = (
 			("", RepomanRun(args=["manifest"])),
@@ -286,14 +301,14 @@ class SimpleRepomanTestCase(TestCase):
 			("", git_cmd + ("init-db",)),
 			("", git_cmd + ("add", ".")),
 			("", git_cmd + ("commit", "-a", "-m", "add whole repo")),
-			("", RepomanRun(args=["full", "-d"])),
-			("", RepomanRun(args=["full", "--include-profiles", "default/linux/x86/test_profile"])),
+			("", RepomanRun(args=["full", "-d"], expected=expected_warnings)),
+			("", RepomanRun(args=["full", "--include-profiles", "default/linux/x86/test_profile"], expected=expected_warnings)),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "2.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "2.ebuild")),
-			("", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 2"])),
+			("", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 2"], expected=expected_warnings)),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "3.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "3.ebuild")),
-			("dev-libs", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 3"])),
+			("dev-libs", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 3"], expected=expected_warnings)),
 			("", cp_cmd + (test_ebuild, test_ebuild[:-8] + "4.ebuild")),
 			("", git_cmd + ("add", test_ebuild[:-8] + "4.ebuild")),
 			("dev-libs/A", RepomanRun(args=["commit", "-m", "cat/pkg: bump to version 4"])),
