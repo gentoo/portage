@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.18
+==================================
+* Bug Fixes:
+    - Bug 651208 profile-repo-deps profile-formats support
+    - Bug 719260 remove glsa --quiet blank line
+    - Bug 722748 suppress emerge --oneshot portage suggestion
+
 portage-3.0.17
 ==================================
 * Bug Fixes:
