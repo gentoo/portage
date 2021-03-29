@@ -277,13 +277,45 @@ class SyncRepos:
 		mypvs = portage.best(
 			self.emerge_config.target_config.trees['vartree'].dbapi.match(
 				portage.const.PORTAGE_PACKAGE_ATOM))
+		try:
+			old_use = (
+				self.emerge_config.target_config.trees["vartree"]
+				.dbapi.aux_get(mypvs, ["USE"])[0]
+				.split()
+			)
+		except KeyError:
+			old_use = ()
 
-		chk_updated_cfg_files(self.emerge_config.target_config.root,
+		chk_updated_cfg_files(
+			self.emerge_config.target_config.root,
 			portage.util.shlex_split(
-				self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")))
+				self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")
+			),
+		)
 
 		msgs = []
-		if mybestpv != mypvs and "--quiet" not in self.emerge_config.opts:
+		if not (mybestpv and mypvs) or mybestpv == mypvs or "--quiet" in self.emerge_config.opts:
+			return msgs
+
+		# Suggest to update to the latest available version of portage.
+		# Since changes to PYTHON_TARGETS cause complications, this message
+		# is suppressed if the new version has different PYTHON_TARGETS enabled
+		# than previous version.
+		portdb = self.emerge_config.target_config.trees["porttree"].dbapi
+		portdb.doebuild_settings.setcpv(mybestpv, mydb=portdb)
+		usemask = portdb.doebuild_settings.usemask
+		useforce = portdb.doebuild_settings.useforce
+		new_use = (
+			frozenset(portdb.doebuild_settings["PORTAGE_USE"].split()) | useforce
+		) - usemask
+		new_python_targets = frozenset(
+			x for x in new_use if x.startswith("python_targets_")
+		)
+		old_python_targets = frozenset(
+			x for x in old_use if x.startswith("python_targets_")
+		)
+
+		if new_python_targets == old_python_targets:
 			msgs.append('')
 			msgs.append(warn(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
 			msgs.append(warn(" * ")+"that you update portage now, before any other packages are updated.")
