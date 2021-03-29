@@ -290,7 +290,8 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 		elif mode == "inject":
 			sys.stdout.write("injecting " + myid + "\n")
 			myglsa.inject()
-		sys.stdout.write("\n")
+		if not quiet:
+			sys.stdout.write("\n")
 	sys.exit(0)
 
 # test is a bit different as Glsa.test() produces no output
