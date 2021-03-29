@@ -1,4 +1,4 @@
-# Copyright 2014-2020 Gentoo Authors
+# Copyright 2014-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
@@ -55,14 +55,23 @@ class SyncLocalTestCase(TestCase):
 		}
 
 		ebuilds = {
-			"dev-libs/A-0": {}
+			"dev-libs/A-0": {},
+			"sys-apps/portage-3.0": {"IUSE": "+python_targets_python3_8"},
+		}
+
+		installed = {
+			"sys-apps/portage-2.3.99": {
+				"EAPI": "7",
+				"IUSE": "+python_targets_python3_8",
+				"USE": "python_targets_python3_8",
+			},
 		}
 
 		user_config = {
 			'make.conf': ('FEATURES="metadata-transfer"',)
 		}
 
-		playground = ResolverPlayground(ebuilds=ebuilds,
+		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed,
 			profile=profile, user_config=user_config, debug=debug)
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
