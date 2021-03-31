@@ -62,6 +62,8 @@ class RepomanRun(types.SimpleNamespace):
 	def _subprocess(args, cwd, env, expected, debug):
 		os.chdir(cwd)
 		os.environ.update(env)
+		if debug:
+			args = ["-vvvv"] + args
 		repoman_vars = _repoman_init(["repoman"] + args)
 		if repoman_vars.exitcode is not None:
 			return repoman_vars.exitcode
