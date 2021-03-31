@@ -1,5 +1,5 @@
 # repoman: Argument parser
-# Copyright 2007-2019 Gentoo Authors
+# Copyright 2007-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """This module contains functions used in Repoman to parse CLI arguments."""
@@ -222,7 +222,7 @@ def parse_args(argv, repoman_default_opts):
 	if not opts.ignore_default_opts:
 		default_opts = util.shlex_split(repoman_default_opts)
 		if default_opts:
-			opts = parser.parse_args(default_opts + sys.argv[1:])
+			opts = parser.parse_args(default_opts + argv[1:])
 
 	args = []
 	if opts.mode is not None:
