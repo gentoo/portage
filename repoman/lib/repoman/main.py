@@ -82,7 +82,7 @@ def _repoman_init(argv):
 
 	if options.version:
 		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
-		return _repoman_main_vars(exitcode=0)
+		return _repoman_main_vars(None, 0, None, None, None, None, None)
 
 	logger = logging.getLogger()
 

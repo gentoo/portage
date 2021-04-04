@@ -66,7 +66,7 @@ class RepomanRun(types.SimpleNamespace):
 			args = ["-vvvv"] + args
 		repoman_vars = _repoman_init(["repoman"] + args)
 		if repoman_vars.exitcode is not None:
-			return repoman_vars.exitcode
+			return {"returncode": repoman_vars.exitcode}
 		result = _repoman_scan(*repoman_vars)
 		returncode = _handle_result(*repoman_vars, result)
 		qawarnings = repoman_vars.vcs_settings.qatracker.qawarnings
@@ -313,6 +313,7 @@ pkg_preinst() {
 		}
 
 		git_test = (
+			("", RepomanRun(args=["--version"])),
 			("", RepomanRun(args=["manifest"])),
 			("", git_cmd + ("config", "--global", "user.name", committer_name,)),
 			("", git_cmd + ("config", "--global", "user.email", committer_email,)),
