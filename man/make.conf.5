@@ -998,7 +998,18 @@ will set idle io priority. For more information about ionice, see
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a
 log file. In order to filter ANSI escape codes from build logs,
-\fBansifilter\fR(1) is a convenient setting for this variable.
+\fBansifilter\fR(1) is a convenient setting for this variable. Generally,
+PORTAGE_LOG_FILTER_FILE_CMD should include a supervisor that falls back
+to cat if the real filter command fails after exec. For example, a
+supervisor is needed for ansifilter, in case it fails after exec due to
+a problem resolving libstdc++ during a gcc upgrade.
+.br
+.I Example:
+.nf
+# Use bash as a supervisor, for fallback to cat if ansifilter fails
+# after exec due to a problem resolving libstdc++ during a gcc upgrade.
+PORTAGE_LOG_FILTER_FILE_CMD="bash -c \\"ansifilter; exec cat\\""
+.fi
 .TP
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
