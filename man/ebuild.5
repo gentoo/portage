@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Jul 2019" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "Apr 2021" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -799,6 +799,11 @@ Beginning with \fBEAPI 4\fR, an array or space\-delimited list of documentation
 files for the default src_install function to install using dodoc. If
 undefined, a reasonable default list is used. See the documentation for
 src_install below.
+.TP
+.B PATCHES
+Beginning with \fBEAPI 6\fR, an array of patches for applying in the default
+\fIsrc_prepare\fR function using \fIeapply\fR.
+
 
 .SS "QA Control Variables:"
 .TP
@@ -1209,6 +1214,21 @@ message\fR is displayed.
 .B unpack\fR \fI<source>\fR \fI[list of more sources]
 This function uncompresses and/or untars a list of sources into the current
 directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
+
+.SS "Prepare:"
+.TP
+.B eapply\fR \fI[patch options]\fR \fI<files|directories>
+Applies patches to the \fB${WORKDIR}\fR with specified options. Default patch level is \fI\-p1\fR. If a directory specified, all patches from it with
+\fI.patch\fR or \fI.diff\fR suffix are applied.
+This function is available beginning with \fBEAPI 6\fR, replacing old
+\fBepatch.eclass\fR(5) functions.
+.TP
+.B eapply_user
+Applies user\-provided patches to the \fB${WORKDIR}\fR from Portage config
+directory tree. For directory syntax and applying rules, see
+\fI/etc/portage/patches/\fR section in \fBportage\fR(5). This function is
+available beginning with \fBEAPI 6\fR, replacing old \fBepatch.eclass\fR(5)
+functions.
 
 .SS "Compile:"
 .TP
