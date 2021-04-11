@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Mar 2021" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Apr 2021" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -77,6 +77,9 @@ site-specific overrides of \fB/etc/portage/make.profile/\fR
 .TP
 .BR /etc/portage/sets/
 user\-defined package sets
+.TP
+.BR /etc/portage/patches/
+user\-provided patches to packages
 .TP
 .BR /var/db/repos/gentoo/
 .nf
@@ -1373,6 +1376,34 @@ set name is prefixed with \fB@\fR.
 
 Also see \fB/var/lib/portage/world_sets\fR and the \fBemerge\fR(1)
 \fB\-\-list\-sets\fR option.
+.RE
+.TP
+.BR /etc/portage/patches/
+.RS
+In this directory patches to the package source tree can be created.
+For each package, patches are taken from these subdirectories in the
+following order:
+.nr step 1 1
+.IP \n[step]. 3
+/etc/portage/patches/${CATEGORY}/${P}\-${PR}[:${SLOT}]
+.IP \n+[step].
+/etc/portage/patches/${CATEGORY}/${P}[:${SLOT}]
+.IP \n+[step].
+/etc/portage/patches/${CATEGORY}/${PN}[:${SLOT}]
+.RE 2
+
+Patches from more-specific directories overrides patches from less-specific,
+i.e. if patches with the same name coexist in different directories matches
+same package, only patch from directory matches the first matching pattern
+will be applied. Patches for each package are applied in the POSIX
+lexicographic order. Patch file name must end in ".patch" or, for
+\fBEAPI\fR >= \fB6\fR, in ".diff".
+
+If package ebuild uses \fBEAPI\fR <= \fB5\fR, it must explicitly invoke
+\fBepatch_user\fR or inherit \fBepatch.eclass\fR(5) and rely on default
+\fBsrc_prepare\fR for apply patches. Otherwise, patches are silently
+ignored. If package ebuild uses \fBEAPI\fR >= \fB6\fR, applying user
+patches is mandatory.
 .RE
 .TP
 .BR /var/db/repos/gentoo/
