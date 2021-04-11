@@ -62,6 +62,7 @@ class RepomanRun(types.SimpleNamespace):
 	def _subprocess(args, cwd, env, expected, debug):
 		os.chdir(cwd)
 		os.environ.update(env)
+		portage.const.EPREFIX = env["PORTAGE_OVERRIDE_EPREFIX"]
 		if debug:
 			args = ["-vvvv"] + args
 		repoman_vars = _repoman_init(["repoman"] + args)
