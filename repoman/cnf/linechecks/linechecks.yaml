@@ -25,7 +25,7 @@ errors:
     DEPRECATED_BINDNOW_FLAGS: 'Deprecated bindnow-flags call'
     EAPI_DEFINED_AFTER_INHERIT: 'EAPI defined after inherit'
     NO_AS_NEEDED: 'Upstream asneeded linking bug (no-as-needed)'
-    PRESERVE_OLD_LIB: 'Ebuild calls deprecated preserve_old_lib'
+    PRESERVE_OLD_LIB: 'Ebuild calls preserve_old_lib function reserved for system packages'
     BUILT_WITH_USE: 'built_with_use'
     NO_OFFSET_WITH_HELPERS: 'Helper function is used with D, ROOT, ED, EROOT or EPREFIX'
     USEQ_ERROR: 'Ebuild calls deprecated useq function'

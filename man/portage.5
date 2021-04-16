@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Sep 2020" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Mar 2021" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -1466,7 +1466,7 @@ The EAPI to use for profiles when unspecified. This attribute is
 supported only if profile-default-eapi is included in profile-formats.
 .TP
 .BR profile\-formats " = [pms] [portage-1] [portage-2] [profile-bashrcs] \
-[profile-set] [profile-default-eapi] [build-id]"
+[profile-set] [profile-default-eapi] [build-id] [profile-repo-deps]"
 Control functionality available to profiles in this repo such as which files
 may be dirs, or the syntax available in parent files.  Use "portage-2" if you're
 unsure.  The default is "portage-1-compat" mode which is meant to be compatible
@@ -1481,6 +1481,8 @@ dependency atoms in the profile to refer to specific builds (see the
 binpkg\-multi\-instance FEATURES setting in \fBmake.conf\fR(5)). A
 build\-id atom is identical to a version-specific atom, except that the
 version is followed by a hyphen and an integer build\-id.
+Setting profile\-repo\-deps allows dependency atoms in the profile to
+refer to specific repositories.
 .RE
 .RE
 

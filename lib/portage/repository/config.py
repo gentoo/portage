@@ -1,16 +1,21 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
 import io
 import logging
 import warnings
 import re
+import typing
 
 import portage
 from portage import eclass_cache, os
 from portage.checksum import get_valid_checksum_keys
 from portage.const import (PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH)
-from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
+from portage.eapi import (
+	eapi_allows_directories_on_profile_level_and_repository_level,
+	eapi_has_repo_deps,
+)
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import (normalize_path, read_corresponding_eapi_file, shlex_split,
 	stack_lists, writemsg, writemsg_level, _recursive_file_list)
@@ -25,13 +30,25 @@ from portage import _encodings
 from portage import manifest
 import portage.sync
 
+_profile_node = collections.namedtuple(
+	"_profile_node",
+	(
+		"location",
+		"portage1_directories",
+		"user_config",
+		"profile_formats",
+		"eapi",
+		"allow_build_id",
+		"show_deprecated_warning",
+	),
+)
 
 # Characters prohibited by repoman's file.name check.
 _invalid_path_char_re = re.compile(r'[^a-zA-Z0-9._\-+/]')
 
 _valid_profile_formats = frozenset(
 	['pms', 'portage-1', 'portage-2', 'profile-bashrcs', 'profile-set',
-	'profile-default-eapi', 'build-id'])
+	'profile-default-eapi', 'build-id', 'profile-repo-deps'])
 
 _portage1_profiles_allow_directories = frozenset(
 	["portage-1-compat", "portage-1", 'portage-2'])
@@ -1076,6 +1093,8 @@ class RepoConfigLoader:
 		keys = bool_keys + str_or_int_keys + str_tuple_keys + repo_config_tuple_keys
 		config_string = ""
 		for repo_name, repo in sorted(self.prepos.items(), key=lambda x: (x[0] != "DEFAULT", x[0])):
+			if repo_name != repo.name:
+				continue
 			config_string += "\n[%s]\n" % repo_name
 			for key in sorted(keys):
 				if key == "main_repo" and repo_name != "DEFAULT":
@@ -1093,6 +1112,17 @@ class RepoConfigLoader:
 			for o, v in repo.module_specific_options.items():
 				config_string += "%s = %s\n" % (o, v)
 		return config_string.lstrip("\n")
+
+def allow_profile_repo_deps(
+	repo: typing.Union[RepoConfig, _profile_node],
+) -> bool:
+	if eapi_has_repo_deps(repo.eapi):
+		return True
+
+	if 'profile-repo-deps' in repo.profile_formats:
+		return True
+
+	return False
 
 def load_repository_config(settings, extra_files=None):
 	repoconfigpaths = []

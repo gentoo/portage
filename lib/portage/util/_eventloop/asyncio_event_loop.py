@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import os
@@ -16,11 +16,6 @@ class AsyncioEventLoop(_AbstractEventLoop):
 	Implementation of asyncio.AbstractEventLoop which wraps asyncio's
 	event loop and is minimally compatible with _PortageEventLoop.
 	"""
-
-	# Use portage's internal event loop in subprocesses, as a workaround
-	# for https://bugs.python.org/issue22087, and also
-	# https://bugs.python.org/issue29703 which affects pypy3-5.10.1.
-	supports_multiprocessing = False
 
 	def __init__(self, loop=None):
 		loop = loop or _real_asyncio.get_event_loop()

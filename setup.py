@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from distutils.core import setup, Command, Extension
@@ -19,6 +19,7 @@ from distutils.util import change_root, subst_vars
 import codecs
 import collections
 import glob
+import itertools
 import os
 import os.path
 import platform
@@ -26,6 +27,13 @@ import re
 import subprocess
 import sys
 
+autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.basename(
+	os.path.dirname(__file__)
+).startswith("pip-")
+venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
+create_entry_points = bool(autodetect_pip or venv_prefix)
+with open(os.path.join(os.path.dirname(__file__), 'README'), 'rt') as f:
+	long_description = f.read()
 
 # TODO:
 # - smarter rebuilds of docs w/ 'install_docbook' and 'install_apidoc'.
@@ -220,8 +228,9 @@ class x_build_scripts_custom(build_scripts):
 				self.scripts = x_scripts[self.dir_name]
 			else:
 				self.scripts = set(self.scripts)
-				for other_files in x_scripts.values():
-					self.scripts.difference_update(other_files)
+				if not (create_entry_points and self.dir_name == "portage"):
+					for other_files in x_scripts.values():
+						self.scripts.difference_update(other_files)
 
 	def run(self):
 		# group scripts by subdirectory
@@ -412,6 +421,18 @@ class x_install_data(install_data):
 			('subst_paths', 'paths'))
 
 	def run(self):
+		def re_sub_file(path, pattern, repl):
+			print('Rewriting %s' % path)
+			with codecs.open(path, 'r', 'utf-8') as f:
+				data = f.read()
+			data = re.sub(pattern, repl, data, flags=re.MULTILINE)
+			with codecs.open(path, 'w', 'utf-8') as f:
+				f.write(data)
+
+		if create_entry_points:
+			re_sub_file('cnf/repos.conf', r'= /', '= %(EPREFIX)s/')
+			re_sub_file('cnf/make.globals', r'DIR="/', 'DIR="${EPREFIX}/')
+
 		self.run_command('build_man')
 
 		def process_data_files(df):
@@ -470,11 +491,51 @@ class x_install_lib(install_lib):
 		rewrite_file('portage/__init__.py', {
 			'VERSION': self.distribution.get_version(),
 		})
-		rewrite_file('portage/const.py', {
-			'PORTAGE_BASE_PATH': self.portage_base,
-			'PORTAGE_BIN_PATH': self.portage_bindir,
-			'PORTAGE_CONFIG_PATH': self.portage_confdir,
-		})
+
+		def re_sub_file(path, pattern_repl_items):
+			path = os.path.join(self.install_dir, path)
+			print("Rewriting %s" % path)
+			with codecs.open(path, "r", "utf-8") as f:
+				data = f.read()
+			for pattern, repl in pattern_repl_items:
+				data = re.sub(pattern, repl, data, flags=re.MULTILINE)
+			with codecs.open(path, "w", "utf-8") as f:
+				f.write(data)
+
+		val_dict = {}
+		if create_entry_points:
+			val_dict.update(
+				{
+					"GLOBAL_CONFIG_PATH": self.portage_confdir,
+				}
+			)
+			re_sub_file(
+				"portage/const.py",
+				(
+					(
+						r"^(PORTAGE_BASE_PATH\s*=\s*)(.*)",
+						lambda m: "{}{}".format(
+							m.group(1),
+							'os.path.realpath(os.path.join(__file__, "../../usr/lib/portage"))',
+						),
+					),
+					(
+						r"^(EPREFIX\s*=\s*)(.*)",
+						lambda m: "{}{}".format(
+							m.group(1),
+							'os.path.realpath(os.path.join(__file__, "../.."))',
+						),
+					),
+				),
+			)
+		else:
+			val_dict.update(
+				{
+					"PORTAGE_BASE_PATH": self.portage_base,
+					"PORTAGE_BIN_PATH": self.portage_bindir,
+				}
+			)
+		rewrite_file("portage/const.py", val_dict)
 
 		return ret
 
@@ -527,8 +588,11 @@ class x_install_scripts(install_scripts):
 class x_sdist(sdist):
 	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
 
+	def initialize_options(self):
+		super().initialize_options()
+		self.formats = ['xztar']
+
 	def finalize_options(self):
-		self.formats = ['bztar']
 		if self.owner is None:
 			self.owner = 'root'
 		if self.group is None:
@@ -655,10 +719,18 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '3.0.14',
+	version = '3.0.18',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
+	project_urls = {
+		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',
+		'Documentation': 'https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage',
+	},
 	author = 'Gentoo Portage Development Team',
 	author_email = 'dev-portage@gentoo.org',
+	description = 'Portage is the package management and distribution system for Gentoo',
+	license = 'GPLV2',
+	long_description = long_description,
+	long_description_content_type = 'text/plain',
 
 	package_dir = {'': 'lib'},
 	packages = list(find_packages()),
@@ -675,8 +747,15 @@ setup(
 		['$portage_base/bin', ['bin/deprecated-path']],
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
-
-	ext_modules = [Extension(name=n, sources=m,
+	entry_points={
+		"console_scripts": [
+			"{}=portage.util.bin_entry_point:bin_entry_point".format(os.path.basename(path))
+			for path in itertools.chain.from_iterable(x_scripts.values())
+		],
+	} if create_entry_points else {},
+	# create_entry_points disables ext_modules, for pure python
+	ext_modules = [] if create_entry_points else [
+		Extension(name=n, sources=m,
 		extra_compile_args=['-D_FILE_OFFSET_BITS=64',
 		'-D_LARGEFILE_SOURCE', '-D_LARGEFILE64_SOURCE'])
 		for n, m in x_c_helpers.items()],
@@ -714,5 +793,7 @@ setup(
 		'Operating System :: POSIX',
 		'Programming Language :: Python :: 3',
 		'Topic :: System :: Installation/Setup'
-	]
+	],
+
+	python_requires = ">=3.6",
 )

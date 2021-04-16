@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Gentoo Authors
+# Copyright 2013-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import copy
@@ -10,6 +10,7 @@ import time
 from portage import os
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
+from .ContentDB import ContentDB
 
 class Config:
 	def __init__(self, options, portdb, event_loop):
@@ -25,24 +26,24 @@ class Config:
 		self.start_time = time.time()
 		self._open_files = []
 
-		self.log_success = self._open_log('success', options.success_log, 'a')
-		self.log_failure = self._open_log('failure', options.failure_log, 'a')
+		self.log_success = self._open_log('success', getattr(options, 'success_log', None), 'a')
+		self.log_failure = self._open_log('failure', getattr(options, 'failure_log', None), 'a')
 
 		self.distfiles = None
-		if options.distfiles is not None:
+		if getattr(options, 'distfiles', None) is not None:
 			self.distfiles = options.distfiles
 
 		self.mirrors = copy.copy(portdb.settings.thirdpartymirrors())
 
-		if options.mirror_overrides is not None:
+		if getattr(options, 'mirror_overrides', None) is not None:
 			self.mirrors.update(grabdict(options.mirror_overrides))
 
-		if options.mirror_skip is not None:
+		if getattr(options, 'mirror_skip', None) is not None:
 			for x in options.mirror_skip.split(","):
 				self.mirrors[x] = []
 
 		self.whitelist = None
-		if options.whitelist_from is not None:
+		if getattr(options, 'whitelist_from', None) is not None:
 			self.whitelist = set()
 			for filename in options.whitelist_from:
 				for line in grablines(filename):
@@ -51,27 +52,32 @@ class Config:
 						self.whitelist.add(line)
 
 		self.restrict_mirror_exemptions = None
-		if options.restrict_mirror_exemptions is not None:
+		if getattr(options, 'restrict_mirror_exemptions', None) is not None:
 			self.restrict_mirror_exemptions = frozenset(
 				options.restrict_mirror_exemptions.split(","))
 
 		self.recycle_db = None
-		if options.recycle_db is not None:
+		if getattr(options, 'recycle_db', None) is not None:
 			self.recycle_db = self._open_shelve(
 				options.recycle_db, 'recycle')
 
 		self.distfiles_db = None
-		if options.distfiles_db is not None:
+		if getattr(options, 'distfiles_db', None) is not None:
 			self.distfiles_db = self._open_shelve(
 				options.distfiles_db, 'distfiles')
 
+		self.content_db = None
+		if getattr(options, 'content_db', None) is not None:
+			self.content_db = ContentDB(self._open_shelve(
+				options.content_db, 'content'))
+
 		self.deletion_db = None
-		if options.deletion_db is not None:
+		if getattr(options, 'deletion_db', None) is not None:
 			self.deletion_db = self._open_shelve(
 				options.deletion_db, 'deletion')
 
 		self.layout_conf = MirrorLayoutConfig()
-		if options.layout_conf is None:
+		if getattr(options, 'layout_conf', None) is None:
 			options.layout_conf = os.path.join(self.distfiles,
 					'layout.conf')
 		self.layout_conf.read_from_file(options.layout_conf)
@@ -79,7 +85,7 @@ class Config:
 
 	def _open_log(self, log_desc, log_path, mode):
 
-		if log_path is None or self.options.dry_run:
+		if log_path is None or getattr(self.options, 'dry_run', False):
 			log_func = logging.info
 			line_format = "%s: %%s" % log_desc
 			add_newline = False
@@ -106,12 +112,13 @@ class Config:
 			self._log_func(self._line_format % (msg,))
 
 	def _open_shelve(self, db_file, db_desc):
-		if self.options.dry_run:
+		dry_run = getattr(self.options, 'dry_run', False)
+		if dry_run:
 			open_flag = "r"
 		else:
 			open_flag = "c"
 
-		if self.options.dry_run and not os.path.exists(db_file):
+		if dry_run and not os.path.exists(db_file):
 			db = {}
 		else:
 			try:
@@ -123,7 +130,7 @@ class Config:
 					from bsddb3 import dbshelve
 					db = dbshelve.open(db_file, flags=open_flag)
 
-		if self.options.dry_run:
+		if dry_run:
 			logging.warning("dry-run: %s db opened in readonly mode" % db_desc)
 			if not isinstance(db, dict):
 				volatile_db = dict((k, db[k]) for k in db)

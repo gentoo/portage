@@ -554,8 +554,6 @@ class Display:
 		"""
 		writemsg_stdout('\n%s\n' % (self.counters,), noiselevel=-1)
 		if show_repos:
-			# Use unicode_literals to force unicode format string so
-			# that RepoDisplay.__unicode__() is called in python2.
 			writemsg_stdout("%s" % (self.conf.repo_display,),
 				noiselevel=-1)
 

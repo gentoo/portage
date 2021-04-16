@@ -1,4 +1,4 @@
-# Copyright 2006-2013 Gentoo Foundation
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -6,12 +6,13 @@ from portage.dep import isvalidatom
 
 class IsValidAtomTestCase:
 	def __init__(self, atom, expected, allow_wildcard=False,
-		allow_repo=False, allow_build_id=False):
+		allow_repo=False, allow_build_id=False, eapi=None):
 		self.atom = atom
 		self.expected = expected
 		self.allow_wildcard = allow_wildcard
 		self.allow_repo = allow_repo
 		self.allow_build_id = allow_build_id
+		self.eapi = eapi
 
 class IsValidAtom(TestCase):
 
@@ -137,6 +138,24 @@ class IsValidAtom(TestCase):
 			IsValidAtomTestCase("=sys-apps/portage-2.2*:foo::repo[doc?]", False, allow_repo=False),
 			IsValidAtomTestCase("null/portage::repo", False, allow_repo=False),
 
+			# Testing repo atoms with eapi
+
+			# If allow_repo is None, it should be overwritten by eapi
+			IsValidAtomTestCase("sys-apps/portage::repo", True, allow_repo=None),
+			IsValidAtomTestCase("sys-apps/portage::repo", False, allow_repo=None, eapi="5"),
+			IsValidAtomTestCase("sys-apps/portage::repo", True,  allow_repo=None, eapi="5-progress"),
+			IsValidAtomTestCase("sys-apps/portage::repo", False, allow_repo=None, eapi="7"),
+
+			# If allow_repo is not None, it should not be overwritten by eapi
+			IsValidAtomTestCase("sys-apps/portage::repo", False, allow_repo=False),
+			IsValidAtomTestCase("sys-apps/portage::repo", False, allow_repo=False, eapi="5"),
+			IsValidAtomTestCase("sys-apps/portage::repo", False,  allow_repo=False, eapi="5-progress"),
+			IsValidAtomTestCase("sys-apps/portage::repo", False, allow_repo=False, eapi="7"),
+			IsValidAtomTestCase("sys-apps/portage::repo", True, allow_repo=True),
+			IsValidAtomTestCase("sys-apps/portage::repo", True, allow_repo=True, eapi="5"),
+			IsValidAtomTestCase("sys-apps/portage::repo", True,  allow_repo=True, eapi="5-progress"),
+			IsValidAtomTestCase("sys-apps/portage::repo", True, allow_repo=True, eapi="7"),
+
 			IsValidAtomTestCase("virtual/ffmpeg:0/53", True),
 			IsValidAtomTestCase("virtual/ffmpeg:0/53=", True),
 			IsValidAtomTestCase("virtual/ffmpeg:0/53*", False),
@@ -157,6 +176,7 @@ class IsValidAtom(TestCase):
 				atom_type = "invalid"
 			self.assertEqual(bool(isvalidatom(test_case.atom, allow_wildcard=test_case.allow_wildcard,
 				allow_repo=test_case.allow_repo,
-				allow_build_id=test_case.allow_build_id)),
+				allow_build_id=test_case.allow_build_id,
+				eapi=test_case.eapi)),
 				test_case.expected,
 				msg="isvalidatom(%s) != %s" % (test_case.atom, test_case.expected))

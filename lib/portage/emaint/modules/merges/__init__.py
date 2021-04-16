@@ -1,4 +1,4 @@
-# Copyright 2005-2014 Gentoo Foundation
+# Copyright 2005-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 doc = """Scan for failed merges and fix them."""
@@ -26,7 +26,17 @@ module_spec = {
 					'action': 'store_true',
 					'func': 'purge'
 				}
-			}
+			},
+			'opt_desc': {
+				'yes': {
+					"short": "-y",
+					"long": "--yes",
+					"help": ("(merges submodule only): Do not prompt for "
+						"emerge invocations"),
+					"action": "store_true",
+					"dest": "yes",
+				}
+			},
 		}
 	}
 }

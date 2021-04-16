@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Gentoo Authors
+# Copyright 2013-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -46,6 +46,9 @@ class FetchTask(CompositeTask):
 			self._previously_added = False
 			# Convert _pkg_str to str in order to prevent pickle problems.
 			self.config.distfiles_db[self.distfile] = str(self.cpv)
+
+		if self.config.content_db is not None:
+			self.config.content_db.add(self.distfile)
 
 		if not self._have_needed_digests():
 			msg = "incomplete digests: %s" % " ".join(self.digests)

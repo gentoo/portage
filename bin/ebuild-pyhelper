@@ -1,0 +1,21 @@
+#!/bin/bash
+# Copyright 2010-2021 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+export __PORTAGE_HELPER_CWD=${PWD}
+
+if [[ ${0##*/} == "ebuild-pyhelper" ]]; then
+	echo "ebuild-pyhelper: must be called via symlink" &>2
+	exit 1
+fi
+
+# Use safe cwd, avoiding unsafe import for bug #469338.
+cd "${PORTAGE_PYM_PATH}" || exit 1
+for path in "${PORTAGE_BIN_PATH}/${0##*/}"{.py,}; do
+	if [[ -x "${path}" ]]; then
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			exec "${PORTAGE_PYTHON:-/usr/bin/python}" "${path}" "$@"
+	fi
+done
+echo "File not found: ${path}" >&2
+exit 1

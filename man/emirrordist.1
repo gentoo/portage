@@ -1,4 +1,4 @@
-.TH "EMIRRORDIST" "1" "Dec 2015" "Portage VERSION" "Portage"
+.TH "EMIRRORDIST" "1" "Feb 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 emirrordist \- a fetch tool for mirroring of package distfiles
 .SH SYNOPSIS
@@ -65,6 +65,10 @@ reporting purposes. Opened in append mode.
 \fB\-\-scheduled\-deletion\-log\fR=\fIFILE\fR
 Log file for scheduled deletions, with tab\-delimited output, for
 reporting purposes. Overwritten with each run.
+.TP
+\fB\-\-content\-db\fR=\fIFILE\fR
+Database file used to pair content digests with distfiles names
+(required for content\-hash layout).
 .TP
 \fB\-\-delete\fR
 Enable deletion of unused distfiles.

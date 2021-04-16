@@ -1,4 +1,4 @@
-# Copyright 2013-2020 Gentoo Authors
+# Copyright 2013-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -7,6 +7,7 @@ import sys
 
 import portage
 from portage import os
+from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util import normalize_path, _recursive_file_list
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
@@ -149,6 +150,12 @@ common_options = (
 		"longopt"  : "--distfiles-db",
 		"help"     : "database file used to track which ebuilds a "
 			"distfile belongs to",
+		"metavar"  : "FILE"
+	},
+	{
+		"longopt"  : "--content-db",
+		"help"     : "database file used to map content digests to"
+			"distfiles names (required for content-hash layout)",
 		"metavar"  : "FILE"
 	},
 	{
@@ -440,6 +447,12 @@ def emirrordist_main(args):
 
 		if not options.mirror:
 			parser.error('No action specified')
+
+		if options.delete and config.content_db is None:
+			for layout in config.layouts:
+				if isinstance(layout, ContentHashLayout):
+					parser.error("content-hash layout requires "
+						"--content-db to be specified")
 
 		returncode = os.EX_OK
 

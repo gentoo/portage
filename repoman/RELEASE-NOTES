@@ -1,6 +1,12 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+repoman-3.0.3
+==================================
+* Bug Fixes:
+    - Bug 608664 variable.phase check like pkgcheck VariableScopeCheck
+    - Bug 692486 Change message for preserve_old_lib
+
 repoman-3.0.2
 ==================================
 * Bug Fixes:

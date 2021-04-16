@@ -1,0 +1,36 @@
+#!/usr/bin/python -b
+# Copyright 2020-2021 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+import argparse
+import sys
+
+from os import path as osp
+if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
+	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+import portage
+portage._internal_caller = True
+from portage.util.shelve import dump, restore
+
+
+def main(argv=None):
+	parser = argparse.ArgumentParser(prog="shelve-utils")
+	subparsers = parser.add_subparsers(help="sub-command help")
+
+	dump_command = subparsers.add_parser("dump", help="dump shelve database")
+	dump_command.add_argument("src", help="input shelve file")
+	dump_command.add_argument("dest", help="output pickle file")
+	dump_command.set_defaults(func=dump)
+
+	restore_command = subparsers.add_parser("restore", help="restore shelve database")
+	restore_command.add_argument("src", help="input pickle file")
+	restore_command.add_argument("dest", help="output shelve file")
+	restore_command.set_defaults(func=restore)
+
+	args = parser.parse_args(args=portage._decode_argv(argv or sys.argv)[1:])
+	args.func(args)
+
+
+if __name__ == "__main__":
+	portage.util.initialize_logger()
+	main(argv=sys.argv)

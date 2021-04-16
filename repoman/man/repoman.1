@@ -1,4 +1,4 @@
-.TH "REPOMAN" "1" "Aug 2020" "Repoman VERSION" "Repoman"
+.TH "REPOMAN" "1" "March 2021" "Repoman VERSION" "Repoman"
 .SH NAME
 repoman \- Gentoo's program to enforce a minimal level of quality assurance in
 packages added to the ebuild repository
@@ -444,6 +444,9 @@ The ebuild makes use of an obsolete construct
 .B variable.invalidchar
 A variable contains an invalid character that is not part of the ASCII
 character set.
+.TP
+.B variable.phase
+Variable referenced found within scope of incorrect ebuild phase as specified by PMS.
 .TP
 .B variable.readonly
 Assigning a readonly variable

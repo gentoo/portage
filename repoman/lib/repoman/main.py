@@ -3,6 +3,7 @@
 # Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import collections
 import io
 import logging
 import sys
@@ -47,7 +48,26 @@ portage.util.initialize_logger(LOGLEVEL)
 
 VALID_VERSIONS = [1,]
 
+_repoman_main_vars = collections.namedtuple("_repoman_main_vars", (
+	"can_force",
+	"exitcode",
+	"options",
+	"qadata",
+	"repo_settings",
+	"scanner",
+	"vcs_settings",
+))
+
+
 def repoman_main(argv):
+	repoman_vars = _repoman_init(argv)
+	if repoman_vars.exitcode is not None:
+		return repoman_vars.exitcode
+	result = _repoman_scan(*repoman_vars)
+	return _handle_result(*repoman_vars, result)
+
+
+def _repoman_init(argv):
 	config_root = os.environ.get("PORTAGE_CONFIGROOT")
 	repoman_settings = portage.config(config_root=config_root, local_config=False)
 	repoman_settings.valid_versions = VALID_VERSIONS
@@ -58,11 +78,11 @@ def repoman_main(argv):
 		nocolor()
 
 	options, arguments = parse_args(
-		sys.argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
+		argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
 
 	if options.version:
 		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
-		sys.exit(0)
+		return _repoman_main_vars(None, 0, None, None, None, None, None)
 
 	logger = logging.getLogger()
 
@@ -75,10 +95,15 @@ def repoman_main(argv):
 	# something other than a QA issue) makes it impossible to
 	# commit (like if Manifest generation fails).
 	can_force = ExtendedFuture(True)
+	repo_settings, vcs_settings, scanner, qadata = _create_scanner(options, can_force, config_root, repoman_settings)
+	return _repoman_main_vars(can_force, None, options, qadata, repo_settings, scanner, vcs_settings)
+
+
+def _create_scanner(options, can_force, config_root, repoman_settings):
 
 	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
 	if portdir is None:
-		sys.exit(1)
+		return (None, None, None, None)
 
 	myreporoot = os.path.basename(portdir_overlay)
 	myreporoot += mydir[len(portdir_overlay):]
@@ -117,6 +142,10 @@ def repoman_main(argv):
 	# Perform the main checks
 	scanner = Scanner(repo_settings, myreporoot, config_root, options,
 					vcs_settings, mydir, env)
+	return repo_settings, vcs_settings, scanner, qadata
+
+
+def _repoman_scan(can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings):
 	scanner.scan_pkgs(can_force)
 
 	if options.if_modified == "y" and len(scanner.effective_scanlist) < 1:
@@ -142,6 +171,10 @@ def repoman_main(argv):
 		(result['warn'] and not (options.quiet or options.mode == "scan")):
 		result['full'] = 0
 
+	return result
+
+
+def _handle_result(can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings, result):
 	commitmessage = None
 	if options.commitmsg:
 		commitmessage = options.commitmsg
@@ -189,5 +222,7 @@ def repoman_main(argv):
 	if actions.inform(can_force.get(), result):
 		# perform any other actions
 		actions.perform(qa_output)
+	elif result['fail']:
+		return 1
 
-	sys.exit(0)
+	return 0

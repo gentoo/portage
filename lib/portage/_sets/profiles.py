@@ -1,9 +1,10 @@
-# Copyright 2007-2014 Gentoo Foundation
+# Copyright 2007-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
 
 from portage import os
+from portage.repository.config import allow_profile_repo_deps
 from portage.util import grabfile_package, stack_lists
 from portage._sets.base import PackageSet
 from portage._sets import get_boolean
@@ -15,7 +16,9 @@ class PackagesSystemSet(PackageSet):
 	_operations = ["merge"]
 
 	def __init__(self, profiles, debug=False):
-		super(PackagesSystemSet, self).__init__()
+		super(PackagesSystemSet, self).__init__(
+			allow_repo=any(allow_profile_repo_deps(x) for x in profiles)
+		)
 		self._profiles = profiles
 		self._debug = debug
 		if profiles:
@@ -35,7 +38,8 @@ class PackagesSystemSet(PackageSet):
 
 		mylist = [grabfile_package(os.path.join(x.location, "packages"),
 			verify_eapi=True, eapi=x.eapi, eapi_default=None,
-			allow_build_id=x.allow_build_id)
+			allow_build_id=x.allow_build_id,
+			allow_repo=allow_profile_repo_deps(x))
 			for x in self._profiles]
 
 		if debug:

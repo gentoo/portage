@@ -14,6 +14,7 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage.checksum import get_valid_checksum_keys
+from portage.repository.config import allow_profile_repo_deps
 
 # pylint: disable=ungrouped-imports
 from repoman.errors import err
@@ -233,7 +234,9 @@ def repo_metadata(portdb, repoman_settings):
 	profile_list = []
 	global_pmasklines = []
 
-	for path in portdb.porttrees:
+	for repo in portdb.repositories:
+		path = repo.location
+
 		try:
 			liclist.update(os.listdir(os.path.join(path, "licenses")))
 		except OSError:
@@ -265,7 +268,8 @@ def repo_metadata(portdb, repoman_settings):
 		global_pmasklines.append(
 			portage.util.grabfile_package(
 				os.path.join(path, 'profiles', 'package.mask'),
-				recursive=1, verify_eapi=True))
+				recursive=1, verify_eapi=True,
+				allow_repo=allow_profile_repo_deps(repo)))
 
 		desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 		try:

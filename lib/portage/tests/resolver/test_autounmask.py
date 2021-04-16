@@ -1,4 +1,4 @@
-# Copyright 2010-2019 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -440,12 +440,33 @@ class AutounmaskTestCase(TestCase):
 					mergelist=["dev-libs/A-1"],
 					license_changes={ "dev-libs/A-1": set(["TEST"]) }),
 
-				# Test default --autounmask-license
+				# Test that --autounmask enables --autounmask-license
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],
+					options={"--autounmask": True},
 					success=False,
 					mergelist=["dev-libs/A-1"],
 					license_changes={ "dev-libs/A-1": set(["TEST"]) }),
+
+				# Test that --autounmask-license is not enabled by default
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					success=False,
+				),
+
+				# Test that --autounmask does not override --autounmask-license=n
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options={"--autounmask": True, "--autounmask-license": "n"},
+					success=False,
+				),
+
+				# Test that --autounmask=n overrides --autounmask-license=y
+				ResolverPlaygroundTestCase(
+					["=dev-libs/A-1"],
+					options={"--autounmask": "n", "--autounmask-license": "y"},
+					success=False,
+				),
 
 				ResolverPlaygroundTestCase(
 					["=dev-libs/A-1"],

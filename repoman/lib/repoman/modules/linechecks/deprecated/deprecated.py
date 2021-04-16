@@ -19,7 +19,7 @@ class DeprecatedHasq(LineCheck):
 
 
 class PreserveOldLib(LineCheck):
-	"""Check for calls to the deprecated preserve_old_lib function."""
+	"""Check for calls to the preserve_old_lib function reserved for system packages."""
 	repoman_check_name = 'ebuild.minorsyn'
 	re = re.compile(r'.*preserve_old_lib')
 	error = 'PRESERVE_OLD_LIB'

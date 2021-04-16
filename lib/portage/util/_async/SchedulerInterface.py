@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Gentoo Authors
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import gzip
@@ -8,7 +8,6 @@ from portage import _encodings
 from portage import _unicode_encode
 from portage.util import writemsg_level
 from portage.util.futures._asyncio.streams import _writer
-from portage.util.futures.compat_coroutine import coroutine
 from ..SlotObject import SlotObject
 
 class SchedulerInterface(SlotObject):
@@ -55,9 +54,8 @@ class SchedulerInterface(SlotObject):
 	def _return_false():
 		return False
 
-	@coroutine
-	def async_output(self, msg, log_file=None, background=None,
-		level=0, noiselevel=-1, loop=None):
+	async def async_output(self, msg, log_file=None, background=None,
+		level=0, noiselevel=-1):
 		"""
 		Output a msg to stdio (if not in background) and to a log file
 		if provided.
@@ -81,7 +79,7 @@ class SchedulerInterface(SlotObject):
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 		if log_file is not None:
-			yield _writer(log_file, _unicode_encode(msg), loop=loop)
+			await _writer(log_file, _unicode_encode(msg))
 
 	def output(self, msg, log_path=None, background=None,
 		level=0, noiselevel=-1):

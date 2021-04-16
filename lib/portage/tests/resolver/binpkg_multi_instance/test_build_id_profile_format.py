@@ -1,4 +1,4 @@
-# Copyright 2015 Gentoo Foundation
+# Copyright 2015-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
@@ -10,14 +10,22 @@ class BuildIdProfileFormatTestCase(TestCase):
 	def testBuildIdProfileFormat(self):
 
 		profile = {
-			"packages": ("=app-misc/A-1-2",),
+			"packages": ("=app-misc/A-1-2::test_repo",),
+			"package.mask": ("<app-misc/A-1::test_repo",),
+			"package.keywords": ("app-misc/A-1::test_repo x86",),
+			"package.unmask": (">=app-misc/A-1::test_repo",),
+			"package.use": ("app-misc/A-1::test_repo foo",),
+			"package.use.mask": ("app-misc/A-1::test_repo -foo",),
+			"package.use.stable.mask": ("app-misc/A-1::test_repo -foo",),
+			"package.use.force": ("app-misc/A-1::test_repo foo",),
+			"package.use.stable.force": ("app-misc/A-1::test_repo foo",),
 			"package.provided": ("sys-libs/zlib-1.2.8-r1",),
 		}
 
 		repo_configs = {
 			"test_repo": {
 				"layout.conf": (
-					"profile-formats = build-id profile-set",
+					"profile-formats = build-id profile-repo-deps profile-set",
 				),
 			}
 		}

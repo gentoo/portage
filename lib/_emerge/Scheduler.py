@@ -1188,8 +1188,6 @@ class Scheduler(PollScheduler):
 				printer.eerror(line)
 			printer.eerror("")
 			for failed_pkg in self._failed_pkgs_all:
-				# Use unicode_literals to force unicode format string so
-				# that Package.__unicode__() is called in python2.
 				msg = " %s" % (failed_pkg.pkg,)
 				if failed_pkg.postinst_failure:
 					msg += " (postinst failed)"

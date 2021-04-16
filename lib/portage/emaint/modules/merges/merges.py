@@ -1,4 +1,4 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
@@ -186,7 +186,7 @@ class MergesHandler:
 			pkg_atoms.add(pkg_atom)
 
 
-	def _emerge_pkg_atoms(self, module_output, pkg_atoms):
+	def _emerge_pkg_atoms(self, module_output, pkg_atoms, yes=False):
 		"""
 		Emerge the specified packages atoms.
 
@@ -194,6 +194,8 @@ class MergesHandler:
 		@type module_output: Class
 		@param pkg_atoms: packages atoms to emerge
 		@type pkg_atoms: set
+		@param yes: do not prompt for emerge invocations
+		@type yes: bool
 		@rtype: list
 		@return: List of results
 		"""
@@ -206,7 +208,7 @@ class MergesHandler:
 			portage._python_interpreter,
 			'-b',
 			os.path.join(EPREFIX or '/', 'usr', 'bin', 'emerge'),
-			'--ask',
+			'--ask=n' if yes else '--ask',
 			'--quiet',
 			'--oneshot',
 			'--complete-graph=y'
@@ -265,7 +267,8 @@ class MergesHandler:
 			errors.append(', '.join(sorted(failed_pkgs)))
 			return (False, errors)
 		self._remove_failed_dirs(failed_pkgs)
-		results = self._emerge_pkg_atoms(module_output, pkg_atoms)
+		results = self._emerge_pkg_atoms(module_output, pkg_atoms,
+			yes=kwargs.get('options', {}).get("yes", False))
 		# list any new failed merges
 		for pkg in sorted(self._scan()):
 			results.append("'%s' still found as a failed merge." % pkg)

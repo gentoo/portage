@@ -1,6 +1,39 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.18
+==================================
+* Bug Fixes:
+    - Bug 651208 profile-repo-deps profile-formats support
+    - Bug 719260 remove glsa --quiet blank line
+    - Bug 722748 suppress emerge --oneshot portage suggestion
+
+portage-3.0.17
+==================================
+* Bug Fixes:
+    - Bug 773469 emerge --binpkg-respect-use=y implies --autounmask-use=n
+
+portage-3.0.16
+==================================
+* Bug Fixes:
+    - Bug 721680 Add emirrordist shelve dump/restore
+	- Bug 749333 PORTAGE_REPOSITORIES: don't override repos with aliases
+	- Bug 756778 emirrordist --content-db for content-hash layout support
+	- Bug 772785 don't enable binpkg-multi-instance for existing installs
+	- Bug 772806 prevent infinite loop after empty os.path.dirname result
+
+portage-3.0.15
+==================================
+* Bug Fixes:
+    - Bug 715112 default enable FEATURES=binpkg-multi-instance
+    - Bug 756778 content-hash distfiles layout
+    - Bug 766459 emirrordist: prevent distfiles_db _pkg_str pickle problems
+    - Bug 766767 emaint --fix merges: add -y, --yes option
+    - Bug 766773 emerge: disable --autounmask-license by default
+    - Bug 767913 portage.getpid: call os.getpid() lazily
+    - Bug 770712 PopenProcess: use call_soon for _async_waipid in _start
+    - Bug 771549 prevent USE="${USE} ..." misbehavior
+
 portage-3.0.14
 ==================================
 * Bug Fixes:

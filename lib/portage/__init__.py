@@ -388,7 +388,7 @@ _sync_mode = False
 class _ForkWatcher:
 	@staticmethod
 	def hook(_ForkWatcher):
-		_ForkWatcher.current_pid = _os.getpid()
+		_ForkWatcher.current_pid = None
 		# Force instantiation of a new event loop policy as a workaround
 		# for https://bugs.python.org/issue22087.
 		asyncio.set_event_loop_policy(None)
@@ -401,6 +401,8 @@ def getpid():
 	"""
 	Cached version of os.getpid(). ForkProcess updates the cache.
 	"""
+	if _ForkWatcher.current_pid is None:
+		_ForkWatcher.current_pid = _os.getpid()
 	return _ForkWatcher.current_pid
 
 def _get_stdin():
@@ -476,16 +478,16 @@ def abssymlink(symlink, target=None):
 _doebuild_manifest_exempt_depend = 0
 
 _testing_eapis = frozenset([
-	"4-python",
-	"5-progress",
 ])
 _deprecated_eapis = frozenset([
-	"4_pre1",
-	"4-slot-abi",
-	"3_pre2",
 	"3_pre1",
+	"3_pre2",
+	"4_pre1",
+	"4-python",
+	"4-slot-abi",
 	"5_pre1",
 	"5_pre2",
+	"5-progress",
 	"6_pre1",
 	"7_pre1",
 ])
@@ -495,11 +497,7 @@ def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	if not isinstance(eapi, str):
-		# Only call str() when necessary since with python2 it
-		# can trigger UnicodeEncodeError if EAPI is corrupt.
-		eapi = str(eapi)
-	eapi = eapi.strip()
+	eapi = str(eapi).strip()
 
 	return eapi in _supported_eapis
 

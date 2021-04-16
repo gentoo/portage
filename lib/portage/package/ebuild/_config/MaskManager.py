@@ -1,4 +1,4 @@
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = (
@@ -10,6 +10,7 @@ import warnings
 from portage import os
 from portage.dep import ExtendedAtomDict, match_from_list
 from portage.localization import _
+from portage.repository.config import allow_profile_repo_deps
 from portage.util import append_repo, grabfile_package, stack_lists, writemsg
 from portage.versions import _pkg_str
 
@@ -41,6 +42,7 @@ class MaskManager:
 						recursive=repo_config.portage1_profiles,
 						remember_source_file=True, verify_eapi=True,
 						eapi_default=repo_config.eapi,
+						allow_repo=allow_profile_repo_deps(repo_config),
 						allow_build_id=("build-id"
 						in repo_config.profile_formats))
 				if repo_config.portage1_profiles_compat and os.path.isdir(path):
@@ -110,6 +112,7 @@ class MaskManager:
 			repo_lines = grabfile_package(os.path.join(repo.location, "profiles", "package.unmask"), \
 				recursive=1, remember_source_file=True,
 				verify_eapi=True, eapi_default=repo.eapi,
+				allow_repo=allow_profile_repo_deps(repo),
 				allow_build_id=("build-id" in repo.profile_formats))
 			lines = stack_lists([repo_lines], incremental=1, \
 				remember_source_file=True, warn_for_unmatched_removal=True,
@@ -126,6 +129,7 @@ class MaskManager:
 				recursive=x.portage1_directories,
 				remember_source_file=True, verify_eapi=True,
 				eapi=x.eapi, eapi_default=None,
+				allow_repo=allow_profile_repo_deps(x),
 				allow_build_id=x.allow_build_id))
 			if x.portage1_directories:
 				profile_pkgunmasklines.append(grabfile_package(
@@ -133,6 +137,7 @@ class MaskManager:
 					recursive=x.portage1_directories,
 					remember_source_file=True, verify_eapi=True,
 					eapi=x.eapi, eapi_default=None,
+					allow_repo=allow_profile_repo_deps(x),
 					allow_build_id=x.allow_build_id))
 		profile_pkgmasklines = stack_lists(profile_pkgmasklines, incremental=1, \
 			remember_source_file=True, warn_for_unmatched_removal=True,

@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -9,7 +9,6 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'_emerge.PipeReader:PipeReader',
 	'portage.util.futures:asyncio',
 )
-from portage.util.futures.compat_coroutine import coroutine
 
 
 def _reader(input_file, loop=None):
@@ -55,8 +54,7 @@ class _Reader:
 			self._pipe_reader = None
 
 
-@coroutine
-def _writer(output_file, content, loop=None):
+async def _writer(output_file, content, loop=DeprecationWarning):
 	"""
 	Asynchronously write bytes to output file. The output file is
 	assumed to be in non-blocking mode. If an EnvironmentError
@@ -68,10 +66,9 @@ def _writer(output_file, content, loop=None):
 	@type output_file: file object
 	@param content: content to write
 	@type content: bytes
-	@param loop: asyncio.AbstractEventLoop (or compatible)
-	@type loop: event loop
+	@param loop: deprecated
 	"""
-	loop = asyncio._wrap_loop(loop)
+	loop = asyncio.get_event_loop()
 	fd = output_file.fileno()
 	while content:
 		try:
@@ -82,7 +79,7 @@ def _writer(output_file, content, loop=None):
 			waiter = loop.create_future()
 			loop.add_writer(fd, lambda: waiter.done() or waiter.set_result(None))
 			try:
-				yield waiter
+				await waiter
 			finally:
 				# The loop and output file may have been closed.
 				if not loop.is_closed():

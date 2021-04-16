@@ -1256,6 +1256,7 @@ class binarytree:
 		# process) and then updated it, all while holding a lock.
 		pkgindex_lock = None
 		try:
+			os.makedirs(self.pkgdir, exist_ok=True)
 			pkgindex_lock = lockfile(self._pkgindex_file,
 				wantnewlockfile=1)
 			if filename is not None:

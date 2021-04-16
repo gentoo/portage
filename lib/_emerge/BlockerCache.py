@@ -133,9 +133,9 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		if len(self._modified) >= self._cache_threshold and \
 			secpass >= 2:
 			try:
-				f = portage.util.atomic_ofstream(self._cache_filename, mode='wb')
-				pickle.dump(self._cache_data, f, protocol=2)
-				f.close()
+				with portage.util.atomic_ofstream(self._cache_filename, mode='wb') as f:
+					pickle.dump(self._cache_data, f, protocol=2)
+
 				portage.util.apply_secpass_permissions(
 					self._cache_filename, gid=portage.portage_gid, mode=0o644)
 			except (IOError, OSError):

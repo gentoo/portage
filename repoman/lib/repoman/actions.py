@@ -307,7 +307,6 @@ the whole commit message to abort.
 				utilities.repoman_sez(
 					"\"Make your QA payment on time"
 					" and you'll never see the likes of me.\"\n")
-			sys.exit(1)
 
 
 	def _fail(self, result, can_force):

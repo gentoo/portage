@@ -1,10 +1,12 @@
-# Copyright 2013-2019 Gentoo Authors
+# Copyright 2013-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import itertools
 import logging
 import stat
 
 from portage import os
+from portage.package.ebuild.fetch import DistfileName
 from .DeletionTask import DeletionTask
 
 class DeletionIterator:
@@ -21,8 +23,25 @@ class DeletionIterator:
 		deletion_delay = self._config.options.deletion_delay
 		start_time = self._config.start_time
 		distfiles_set = set()
-		for layout in self._config.layouts:
-			distfiles_set.update(layout.get_filenames(distdir))
+		distfiles_set.update(
+			(
+				filename
+				if isinstance(filename, DistfileName)
+				else DistfileName(filename)
+				for filename in itertools.chain.from_iterable(
+					layout.get_filenames(distdir) for layout in self._config.layouts
+				)
+			)
+			if self._config.content_db is None
+			else itertools.chain.from_iterable(
+				(
+					self._config.content_db.get_filenames_translate(filename)
+					for filename in itertools.chain.from_iterable(
+						layout.get_filenames(distdir) for layout in self._config.layouts
+					)
+				)
+			)
+		)
 		for filename in distfiles_set:
 			# require at least one successful stat()
 			exceptions = []

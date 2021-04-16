@@ -129,6 +129,7 @@ qahelp:
         obsolete: "The ebuild makes use of an obsolete construct"
     variable:
         invalidchar: "A variable contains an invalid character that is not part of the ASCII character set"
+        phase: "Variable referenced found within scope of incorrect ebuild phase as specified by PMS"
         readonly: "Assigning a readonly variable"
         usedwithhelpers: "Ebuild uses D, ROOT, BROOT, ED, EROOT or EPREFIX with helpers"
     virtual:
