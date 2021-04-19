@@ -1,5 +1,5 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003-2020 Gentoo Authors
+# Copyright 2003-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
@@ -116,7 +116,7 @@ def read_config(mandatory_opts):
 	loader = KeyValuePairFileLoader(config_path, None)
 	opts, _errors = loader.load()
 	if not opts:
-		print(_('dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'), file=sys.stderr)
+		print(_('dispatch-conf: Error reading {}; fatal').format(config_path), file=sys.stderr)
 		sys.exit(1)
 
 	# Handle quote removal here, since KeyValuePairFileLoader doesn't do that.
