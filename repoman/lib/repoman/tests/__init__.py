@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -10,28 +10,61 @@ import unittest
 from unittest.runner import TextTestResult as _TextTestResult
 
 import repoman
-from repoman import REPOMAN_BASE_PATH
 from repoman._portage import portage
 
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-from portage.const import EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BIN_PATH
+from portage.proxy.objectproxy import ObjectProxy
 
-if repoman._not_installed:
-	cnf_path = os.path.join(REPOMAN_BASE_PATH, 'cnf')
-	cnf_path_repoman = cnf_path
-	cnf_etc_path = cnf_path
-	cnf_bindir = os.path.join(REPOMAN_BASE_PATH, 'bin')
-	cnf_sbindir = cnf_bindir
-else:
-	cnf_path = os.path.join(EPREFIX or '/', GLOBAL_CONFIG_PATH)
-	cnf_path_repoman = os.path.join(EPREFIX or '/',
-		sys.prefix.lstrip(os.sep), 'share', 'repoman')
-	cnf_etc_path = os.path.join(EPREFIX or '/', 'etc')
-	cnf_eprefix = EPREFIX
-	cnf_bindir = os.path.join(EPREFIX or '/', 'usr', 'bin')
-	cnf_sbindir = os.path.join(EPREFIX or '/', 'usr', 'sbin')
+
+# This remains constant when the real value is a mock.
+EPREFIX_ORIG = portage.const.EPREFIX
+
+
+class lazy_value(ObjectProxy):
+	__slots__ = ('_func',)
+	def __init__(self, func):
+		ObjectProxy.__init__(self)
+		object.__setattr__(self, '_func', func)
+	def _get_target(self):
+		return object.__getattribute__(self, '_func')()
+
+
+@lazy_value
+def cnf_path():
+	if repoman._not_installed:
+		return os.path.join(repoman.REPOMAN_BASE_PATH, 'cnf')
+	return os.path.join(EPREFIX_ORIG or '/', portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
+
+
+@lazy_value
+def cnf_path_repoman():
+	if repoman._not_installed:
+		return str(cnf_path)
+	return os.path.join(EPREFIX_ORIG or '/', sys.prefix.lstrip(os.sep), 'share', 'repoman')
+
+
+@lazy_value
+def cnf_etc_path():
+	if repoman._not_installed:
+		return str(cnf_path)
+	return os.path.join(EPREFIX_ORIG or '/', 'etc')
+
+
+@lazy_value
+def cnf_bindir():
+	if repoman._not_installed:
+		return os.path.join(repoman.REPOMAN_BASE_PATH, 'bin')
+	#return os.path.join(portage.const.EPREFIX or '/', 'usr', 'bin')
+	return os.path.join(EPREFIX_ORIG or '/', 'usr', 'bin')
+
+
+@lazy_value
+def cnf_sbindir():
+	if repoman._not_installed:
+		return str(cnf_bindir)
+	return os.path.join(portage.const.EPREFIX or '/', 'usr', 'sbin')
 
 
 def main():

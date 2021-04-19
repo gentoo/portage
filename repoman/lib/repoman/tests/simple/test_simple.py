@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
+import errno
 import subprocess
 import sys
 import time
@@ -20,7 +21,7 @@ from portage.util._async.AsyncFunction import AsyncFunction
 from repoman import REPOMAN_BASE_PATH
 from repoman.copyrights import update_copyright_year
 from repoman.main import _repoman_init, _repoman_scan, _handle_result
-from repoman.tests import TestCase
+from repoman.tests import TestCase, cnf_bindir, cnf_path_repoman
 
 
 class RepomanRun(types.SimpleNamespace):
@@ -286,6 +287,8 @@ pkg_preinst() {
 		test_repo_location = settings.repositories["test_repo"].location
 		profiles_dir = os.path.join(test_repo_location, "profiles")
 		license_dir = os.path.join(test_repo_location, "licenses")
+		eubin = os.path.join(eprefix, "usr", "bin")
+		ecnfdir = os.path.join(eprefix, "usr/share/repoman/qa_data")
 
 		repoman_cmd = (portage._python_interpreter, "-b", "-Wd",
 			os.path.join(self.bindir, "repoman"))
@@ -351,10 +354,16 @@ pkg_preinst() {
 			# avoid problems from nested sandbox instances
 			env["FEATURES"] = "-sandbox -usersandbox"
 
-		dirs = [homedir, license_dir, profiles_dir, distdir]
+		dirs = [homedir, license_dir, profiles_dir, distdir, ecnfdir, eubin]
 		try:
 			for d in dirs:
 				ensure_dirs(d)
+			try:
+				os.symlink(cnf_path_repoman, ecnfdir)
+			except OSError as e:
+				if e.errno != errno.EEXIST:
+					raise
+			os.symlink(os.path.join(cnf_bindir, "repoman"), os.path.join(eubin, "repoman"))
 			with open(os.path.join(test_repo_location, "skel.ChangeLog"), 'w') as f:
 				f.write(copyright_header)
 			with open(os.path.join(profiles_dir, "profiles.desc"), 'w') as f:
