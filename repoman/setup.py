@@ -337,10 +337,13 @@ class x_install_scripts(install_scripts):
 
 
 class x_sdist(sdist):
-	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
+	""" sdist defaulting to .tar.xz format, and archive files owned by root """
+
+	def initialize_options(self):
+		super().initialize_options()
+		self.formats = ['xztar']
 
 	def finalize_options(self):
-		self.formats = ['bztar']
 		if self.owner is None:
 			self.owner = 'root'
 		if self.group is None:
