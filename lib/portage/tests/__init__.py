@@ -62,11 +62,14 @@ def main():
 	suite = unittest.TestSuite()
 	basedir = Path(__file__).resolve().parent
 
-	usage = "usage: %s [options] [tests to run]" % Path(sys.argv[0]).name
+	argv0 = Path(sys.argv[0])
+
+	usage = "usage: %s [options] [tests to run]" % argv0.name
 	parser = argparse.ArgumentParser(usage=usage)
 	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
-	options, args = parser.parse_known_args(args=sys.argv)
+	parser.add_argument("tests", nargs='*', type=Path)
+	options = parser.parse_args(args=sys.argv)
 
 	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
 		os.environ.get('TERM') == 'dumb' or
@@ -74,15 +77,15 @@ def main():
 		portage.output.nocolor()
 
 	if options.list_tests:
-		testdir = Path(sys.argv[0]).parent
+		testdir = argv0.parent
 		for mydir in getTestDirs(basedir):
 			testsubdir = mydir.name
 			for name in getTestNames(mydir):
 				print("%s/%s/%s.py" % (testdir, testsubdir, name))
 		return os.EX_OK
 
-	if len(args) > 1:
-		suite.addTests(getTestFromCommandLine(args[1:], basedir))
+	if len(options.tests) > 1:
+		suite.addTests(getTestFromCommandLine(options.tests[1:], basedir))
 	else:
 		for mydir in getTestDirs(basedir):
 			suite.addTests(getTests(mydir, basedir))
@@ -102,7 +105,7 @@ def my_import(name):
 def getTestFromCommandLine(args, base_path):
 	result = []
 	for arg in args:
-		realpath = Path(arg).resolve()
+		realpath = arg.resolve()
 		path = realpath.parent
 		f = realpath.relative_to(path)
 
