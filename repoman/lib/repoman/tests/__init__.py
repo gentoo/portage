@@ -1,5 +1,5 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
@@ -261,22 +261,6 @@ class TestCase(unittest.TestCase):
 			if hasattr(excClass, '__name__'): excName = excClass.__name__
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
-
-	def assertExists(self, path):
-		"""Make sure |path| exists"""
-		if not os.path.exists(path):
-			msg = ['path is missing: %s' % (path,)]
-			while path != '/':
-				path = os.path.dirname(path)
-				if not path:
-					# If we're given something like "foo", abort once we get to "".
-					break
-				result = os.path.exists(path)
-				msg.append('\tos.path.exists(%s): %s' % (path, result))
-				if result:
-					msg.append('\tcontents: %r' % os.listdir(path))
-					break
-			raise self.failureException('\n'.join(msg))
 
 	def assertNotExists(self, path):
 		"""Make sure |path| does not exist"""
