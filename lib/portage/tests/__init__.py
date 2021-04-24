@@ -6,6 +6,7 @@ import argparse
 import sys
 import time
 import unittest
+from pathlib import Path
 
 from unittest.runner import TextTestResult as _TextTestResult
 
@@ -59,9 +60,9 @@ def cnf_sbindir():
 
 def main():
 	suite = unittest.TestSuite()
-	basedir = os.path.dirname(os.path.realpath(__file__))
+	basedir = Path(__file__).resolve().parent
 
-	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
+	usage = "usage: %s [options] [tests to run]" % Path(sys.argv[0]).name
 	parser = argparse.ArgumentParser(usage=usage)
 	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
@@ -73,9 +74,9 @@ def main():
 		portage.output.nocolor()
 
 	if options.list_tests:
-		testdir = os.path.dirname(sys.argv[0])
+		testdir = Path(sys.argv[0]).parent
 		for mydir in getTestDirs(basedir):
-			testsubdir = os.path.basename(mydir)
+			testsubdir = mydir.name
 			for name in getTestNames(mydir):
 				print("%s/%s/%s.py" % (testdir, testsubdir, name))
 		return os.EX_OK
@@ -84,7 +85,7 @@ def main():
 		suite.addTests(getTestFromCommandLine(args[1:], basedir))
 	else:
 		for mydir in getTestDirs(basedir):
-			suite.addTests(getTests(os.path.join(basedir, mydir), basedir))
+			suite.addTests(getTests(mydir, basedir))
 
 	result = TextTestRunner(verbosity=2).run(suite)
 	if not result.wasSuccessful():
@@ -101,47 +102,40 @@ def my_import(name):
 def getTestFromCommandLine(args, base_path):
 	result = []
 	for arg in args:
-		realpath = os.path.realpath(arg)
-		path = os.path.dirname(realpath)
-		f = realpath[len(path)+1:]
+		realpath = Path(arg).resolve()
+		path = realpath.parent
+		f = realpath.relative_to(path)
 
-		if not f.startswith("test") or not f.endswith(".py"):
+		if not f.name.startswith("test") or not f.suffix == ".py":
 			raise Exception("Invalid argument: '%s'" % arg)
 
-		mymodule = f[:-3]
+		mymodule = f.stem
 		result.extend(getTestsFromFiles(path, base_path, [mymodule]))
 	return result
 
 def getTestDirs(base_path):
-	TEST_FILE = b'__test__.py'
+	TEST_FILE = '__test__.py'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__.py
 	# to each dir we want tested.
-	for root, dirs, files in os.walk(base_path):
-		try:
-			root = _unicode_decode(root,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeDecodeError:
-			continue
-
-		if TEST_FILE in files:
-			testDirs.append(root)
+	for testFile in base_path.rglob(TEST_FILE):
+		testDirs.append(testFile.parent)
 
 	testDirs.sort()
 	return testDirs
 
 def getTestNames(path):
-	files = os.listdir(path)
-	files = [f[:-3] for f in files if f.startswith("test") and f.endswith(".py")]
+	files = path.glob('*')
+	files = [f.stem for f in files
+	         if f.name.startswith('test') and f.suffix == ".py"]
 	files.sort()
 	return files
 
 def getTestsFromFiles(path, base_path, files):
-	parent_path = path[len(base_path)+1:]
-	parent_module = ".".join(("portage", "tests", parent_path))
-	parent_module = parent_module.replace('/', '.')
+	parent_path = path.relative_to(base_path)
+	parent_module = ".".join(("portage", "tests") + parent_path.parts)
 	result = []
 	for mymodule in files:
 		# Make the trailing / a . for module importing
@@ -287,7 +281,8 @@ class TestCase(unittest.TestCase):
 
 	def assertNotExists(self, path):
 		"""Make sure |path| does not exist"""
-		if os.path.exists(path):
+		path = Path(path)
+		if path.exists():
 			raise self.failureException('path exists when it should not: %s' % path)
 
 class TextTestRunner(unittest.TextTestRunner):
