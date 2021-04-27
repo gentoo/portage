@@ -367,6 +367,11 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env,
 		systemd_gentoo_env.write(senvnotice)
 
 		for env_key in env_keys:
+			# Skip PATH since this makes it impossible to use
+			# "systemctl --user import-environment PATH".
+			if env_key == 'PATH':
+				continue
+
 			env_key_value = env[env_key]
 
 			# Skip variables with the empty string
