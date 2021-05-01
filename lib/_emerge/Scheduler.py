@@ -25,7 +25,6 @@ from portage._sets import SETPREFIX
 from portage._sets.base import InternalPackageSet
 from portage.util import ensure_dirs, writemsg, writemsg_level
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.SlotObject import SlotObject
 from portage.util._async.SchedulerInterface import SchedulerInterface
 from portage.package.ebuild.digestcheck import digestcheck
@@ -767,8 +766,7 @@ class Scheduler(PollScheduler):
 
 		return prefetcher
 
-	@coroutine
-	def _run_pkg_pretend(self, loop=None):
+	async def _run_pkg_pretend(self, loop=None):
 		"""
 		Since pkg_pretend output may be important, this method sends all
 		output directly to stdout (regardless of options like --quiet or
@@ -805,7 +803,7 @@ class Scheduler(PollScheduler):
 				# Get required SRC_URI metadata (it's not cached in x.metadata
 				# because some packages have an extremely large SRC_URI value).
 				portdb = root_config.trees["porttree"].dbapi
-				(settings.configdict["pkg"]["SRC_URI"],) = yield portdb.async_aux_get(
+				(settings.configdict["pkg"]["SRC_URI"],) = await portdb.async_aux_get(
 					x.cpv, ["SRC_URI"], myrepo=x.repo, loop=loop
 				)
 
@@ -825,7 +823,7 @@ class Scheduler(PollScheduler):
 			settings["PORTAGE_BUILDDIR"] = build_dir_path
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
-			yield build_dir.async_lock()
+			await build_dir.async_lock()
 			current_task = None
 
 			try:
@@ -851,7 +849,7 @@ class Scheduler(PollScheduler):
 						phase='clean', scheduler=sched_iface, settings=settings)
 					current_task = clean_phase
 					clean_phase.start()
-					yield clean_phase.async_wait()
+					await clean_phase.async_wait()
 
 				if x.built:
 					tree = "bintree"
@@ -870,7 +868,7 @@ class Scheduler(PollScheduler):
 							# handles fetch, verification, and the
 							# bintree.inject call which moves the file.
 							fetched = fetcher.pkg_path
-						if (yield fetcher.async_wait()) != os.EX_OK:
+						if await fetcher.async_wait() != os.EX_OK:
 							failures += 1
 							self._record_pkg_failure(x, settings, fetcher.returncode)
 							continue
@@ -883,7 +881,7 @@ class Scheduler(PollScheduler):
 						scheduler=sched_iface, _pkg_path=filename)
 					current_task = verifier
 					verifier.start()
-					if (yield verifier.async_wait()) != os.EX_OK:
+					if await verifier.async_wait() != os.EX_OK:
 						failures += 1
 						self._record_pkg_failure(x, settings, verifier.returncode)
 						continue
@@ -893,7 +891,7 @@ class Scheduler(PollScheduler):
 
 					infloc = os.path.join(build_dir_path, "build-info")
 					ensure_dirs(infloc)
-					yield bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
+					await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
 					ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
 					settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
 					settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
@@ -927,7 +925,7 @@ class Scheduler(PollScheduler):
 
 				current_task = pretend_phase
 				pretend_phase.start()
-				ret = yield pretend_phase.async_wait()
+				ret = await pretend_phase.async_wait()
 				if ret != os.EX_OK:
 					failures += 1
 					self._record_pkg_failure(x, settings, ret)
@@ -942,14 +940,14 @@ class Scheduler(PollScheduler):
 							phase='clean', scheduler=sched_iface,
 							settings=settings)
 						clean_phase.start()
-						yield clean_phase.async_wait()
+						await clean_phase.async_wait()
 
-				yield build_dir.async_unlock()
+				await build_dir.async_unlock()
 				self._deallocate_config(settings)
 
 		if failures:
-			return coroutine_return(FAILURE)
-		coroutine_return(os.EX_OK)
+			return FAILURE
+		return os.EX_OK
 
 	def _record_pkg_failure(self, pkg, settings, ret):
 		"""Record a package failure. This eliminates the package
