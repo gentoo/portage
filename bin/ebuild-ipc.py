@@ -1,16 +1,30 @@
 #!/usr/bin/python -b
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import os
+	import signal
+
+	def exithandler(signum, _frame):
+		signal.signal(signum, signal.SIG_DFL)
+		os.kill(os.getpid(), signum)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+except KeyboardInterrupt:
+	raise SystemExit(130)
+
 import errno
 import logging
-import os
 import pickle
 import platform
-import signal
 import sys
 import time
 
