@@ -33,16 +33,31 @@ class PipeLogger(AbstractPollTask):
 			self._log_file = log_file_path
 			_set_nonblocking(self._log_file.fileno())
 		elif log_file_path is not None:
-			self._log_file = open(_unicode_encode(log_file_path,
-				encoding=_encodings['fs'], errors='strict'), mode='ab')
-			if log_file_path.endswith('.gz'):
-				self._log_file_real = self._log_file
-				self._log_file = gzip.GzipFile(filename='', mode='ab',
-					fileobj=self._log_file)
+			try:
+				self._log_file = open(
+					_unicode_encode(
+						log_file_path, encoding=_encodings["fs"], errors="strict"
+					),
+					mode="ab",
+				)
 
-			portage.util.apply_secpass_permissions(log_file_path,
-				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0o660)
+				if log_file_path.endswith(".gz"):
+					self._log_file_real = self._log_file
+					self._log_file = gzip.GzipFile(
+						filename="", mode="ab", fileobj=self._log_file
+					)
+
+				portage.util.apply_secpass_permissions(
+					log_file_path,
+					uid=portage.portage_uid,
+					gid=portage.portage_gid,
+					mode=0o660,
+				)
+			except FileNotFoundError:
+				if self._was_cancelled():
+					self._async_wait()
+					return
+				raise
 
 		if isinstance(self.input_fd, int):
 			self.input_fd = os.fdopen(self.input_fd, 'rb', 0)
