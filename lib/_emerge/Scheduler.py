@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
@@ -790,6 +790,10 @@ class Scheduler(PollScheduler):
 
 			if "pretend" not in x.defined_phases:
 				continue
+
+			self._termination_check()
+			if self._terminated_tasks:
+				raise asyncio.CancelledError
 
 			out_str = "Running pre-merge checks for " + colorize("INFORM", x.cpv)
 			self._status_msg(out_str)
