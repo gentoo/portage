@@ -1,7 +1,6 @@
 # Copyright 2014-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
 from portage.repository.config import allow_profile_repo_deps
 from portage.util import grabfile_package, stack_lists
 from portage._sets.base import PackageSet
@@ -25,7 +24,7 @@ class ProfilePackageSet(PackageSet):
 
 	def load(self):
 		self._setAtoms(x for x in stack_lists(
-			[grabfile_package(os.path.join(y.location, "packages"),
+			[grabfile_package(y.location / "packages",
 			verify_eapi=True, eapi=y.eapi, eapi_default=None,
 			allow_build_id=y.allow_build_id, allow_repo=allow_profile_repo_deps(y))
 			for y in self._profiles

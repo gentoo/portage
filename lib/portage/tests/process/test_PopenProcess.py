@@ -3,8 +3,9 @@
 
 import subprocess
 import tempfile
+from pathlib import Path
+import os
 
-from portage import os
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
@@ -54,7 +55,7 @@ class PopenPipeTestCase(TestCase):
 
 			consumer = PipeLogger(background=True,
 				input_fd=producer.proc.stdout,
-				log_file_path=log_file_path)
+				log_file_path=Path(log_file_path))
 
 			producer.pipe_reader = consumer
 

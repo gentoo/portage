@@ -3,6 +3,7 @@
 
 import logging
 import textwrap
+import os as _os
 
 import portage
 from portage import os
@@ -95,7 +96,7 @@ def post_emerge(myaction, myopts, myfiles,
 	infodirs = settings.get("INFOPATH","").split(":") + \
 		settings.get("INFODIR","").split(":")
 
-	os.chdir("/")
+	_os.chdir(os.sep)
 
 	if retval == os.EX_OK:
 		exit_msg = " *** exiting successfully."

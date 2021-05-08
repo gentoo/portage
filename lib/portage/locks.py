@@ -15,6 +15,7 @@ import tempfile
 import time
 import typing
 import warnings
+from pathlib import Path
 
 import portage
 from portage import os, _encodings, _unicode_decode
@@ -40,7 +41,7 @@ _open_inodes = {}
 
 class _lock_manager:
 	__slots__ = ('fd', 'inode_key')
-	def __init__(self, fd, fstat_result, path):
+	def __init__(self, fd, fstat_result, path: Path):
 		self.fd = fd
 		self.inode_key = (fstat_result.st_dev, fstat_result.st_ino)
 		if self.inode_key in _open_inodes:
@@ -97,6 +98,7 @@ def _test_lock_fn(lock_fn: typing.Callable[[str, int, int], typing.Callable[[], 
 		sys.exit(1)
 
 	fd, lock_path = tempfile.mkstemp()
+	lock_path = Path(lock_path)
 	unlock_fn = None
 	try:
 		try:
@@ -137,7 +139,7 @@ def lockdir(mydir, flags=0):
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
+def lockfile(mypath: Path, wantnewlockfile=0, unlinkfile=0,
 	waiting_msg=None, flags=0):
 	"""
 	If wantnewlockfile is True then this creates a lockfile in the parent
@@ -152,14 +154,14 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	return lock
 
 
-def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
+def _lockfile_iteration(mypath: Path, wantnewlockfile=False, unlinkfile=False,
 	waiting_msg=None, flags=0):
 	"""
 	Acquire a lock on mypath, without retry. Return None if the lockfile
 	was removed by previous lock holder (caller must retry).
 
 	@param mypath: lock file path
-	@type mypath: str
+	@type mypath: Path
 	@param wantnewlockfile: use a separate new lock file
 	@type wantnewlockfile: bool
 	@param unlinkfile: remove lock file prior to unlock
@@ -199,15 +201,15 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 		wantnewlockfile = 0
 		unlinkfile      = 0
 	elif wantnewlockfile:
-		base, tail = os.path.split(mypath)
-		lockfilename = os.path.join(base, "." + tail + ".portage_lockfile")
+		base, tail = mypath.parent, mypath.name
+		lockfilename = base / ("." + tail + ".portage_lockfile")
 		lockfilename_path = lockfilename
 		unlinkfile   = 1
 	else:
 		lockfilename = mypath
 
-	if isinstance(mypath, str):
-		if not os.path.exists(os.path.dirname(mypath)):
+	if isinstance(mypath, Path):
+		if not os.path.exists(mypath.parent):
 			raise DirectoryNotFound(os.path.dirname(mypath))
 		preexisting = os.path.exists(lockfilename)
 		old_mask = os.umask(000)
@@ -317,9 +319,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 				# to close the file descriptor because it may
 				# still be in use.
 				os.close(myfd)
-			lockfilename_path = _unicode_decode(lockfilename_path,
-				encoding=_encodings['fs'], errors='strict')
-			if not isinstance(lockfilename_path, str):
+			if not isinstance(lockfilename_path, Path):
 				raise
 			link_success = hardlink_lockfile(lockfilename_path,
 				waiting_msg=waiting_msg, flags=flags)
@@ -332,7 +332,7 @@ def _lockfile_iteration(mypath, wantnewlockfile=False, unlinkfile=False,
 			raise
 
 	fstat_result = None
-	if isinstance(lockfilename, str) and myfd != HARDLINK_FD and unlinkfile:
+	if isinstance(lockfilename, Path) and myfd != HARDLINK_FD and unlinkfile:
 		try:
 			(removed, fstat_result) = _lockfile_was_removed(myfd, lockfilename)
 		except Exception:
@@ -463,7 +463,7 @@ def unlockfile(mytuple):
 		return True
 
 	# myfd may be None here due to myfd = mypath in lockfile()
-	if isinstance(lockfilename, str) and \
+	if isinstance(lockfilename, Path) and \
 		not os.path.exists(lockfilename):
 		writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 		if myfd is not None:
@@ -476,7 +476,7 @@ def unlockfile(mytuple):
 			unlinkfile = 1
 		locking_method(myfd, fcntl.LOCK_UN)
 	except OSError:
-		if isinstance(lockfilename, str):
+		if isinstance(lockfilename, Path):
 			_open_fds[myfd].close()
 		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
@@ -509,15 +509,15 @@ def unlockfile(mytuple):
 	# why test lockfilename?  because we may have been handed an
 	# fd originally, and the caller might not like having their
 	# open fd closed automatically on them.
-	if isinstance(lockfilename, str):
+	if isinstance(lockfilename, Path):
 		_open_fds[myfd].close()
 
 	return True
 
 
 def hardlock_name(path):
-	base, tail = os.path.split(path)
-	return os.path.join(base, ".%s.hardlock-%s-%s" %
+	base, tail = path.parent, path.name
+	return base / (".%s.hardlock-%s-%s" %
 		(tail, portage._decode_argv([os.uname()[1]])[0], portage.getpid()))
 
 def hardlink_is_mine(link, lock):
@@ -673,17 +673,16 @@ def unhardlink_lockfile(lockfilename, unlinkfile=True):
 	except OSError:
 		pass
 
-def hardlock_cleanup(path, remove_all_locks=False):
+def hardlock_cleanup(path: Path, remove_all_locks=False):
 	myhost = portage._decode_argv([os.uname()[1]])[0]
-	mydl = os.listdir(path)
 
 	results = []
 	mycount = 0
 
 	mylist = {}
-	for x in mydl:
-		if os.path.isfile(path + "/" + x):
-			parts = x.split(".hardlock-")
+	for x in path.iterdir():
+		if os.path.isfile(x):
+			parts = str(x).split(".hardlock-")
 			if len(parts) == 2:
 				filename = parts[0][1:]
 				hostpid  = parts[1].split("-")

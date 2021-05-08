@@ -811,6 +811,7 @@ def envvar(argv):
 
 	exit_status = 0
 
+	import sys
 	for arg in argv:
 		if arg in ("PORTDIR", "PORTDIR_OVERLAY", "SYNC"):
 			print("WARNING: 'portageq envvar %s' is deprecated. Use any of "

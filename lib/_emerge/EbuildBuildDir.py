@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
+from pathlib import Path
 
 from _emerge.AsynchronousLock import AsynchronousLock
 
@@ -32,7 +33,7 @@ class EbuildBuildDir(SlotObject):
 		settings = self.settings
 		if 'keepwork' in settings.features:
 			return
-		log_file = settings.get('PORTAGE_LOG_FILE')
+		log_file = Path(settings['PORTAGE_LOG_FILE']) if 'PORTAGE_LOG_FILE' in settings else None
 		if log_file is not None and os.path.isfile(log_file):
 			try:
 				os.unlink(log_file)
@@ -54,10 +55,10 @@ class EbuildBuildDir(SlotObject):
 		if self._lock_obj is not None:
 			raise self.AlreadyLocked((self._lock_obj,))
 
-		dir_path = self.settings.get('PORTAGE_BUILDDIR')
-		if not dir_path:
+		if 'PORTAGE_BUILDDIR' not in self.settings:
 			raise AssertionError('PORTAGE_BUILDDIR is unset')
-		catdir = os.path.dirname(dir_path)
+		dir_path = Path(self.settings['PORTAGE_BUILDDIR'])
+		catdir = dir_path.parent
 		self._catdir = catdir
 		catdir_lock = AsynchronousLock(path=catdir, scheduler=self.scheduler)
 		builddir_lock = AsynchronousLock(path=dir_path, scheduler=self.scheduler)
@@ -102,11 +103,11 @@ class EbuildBuildDir(SlotObject):
 				result.set_result(None)
 
 		try:
-			portage.util.ensure_dirs(os.path.dirname(catdir),
+			portage.util.ensure_dirs(catdir.parent,
 				gid=portage.portage_gid,
 				mode=0o70, mask=0)
 		except PortageException:
-			if not os.path.isdir(os.path.dirname(catdir)):
+			if not os.path.isdir(catdir.parent):
 				raise
 
 		catdir_lock.addExitListener(catdir_locked)

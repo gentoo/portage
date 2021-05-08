@@ -4,6 +4,7 @@
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 import portage
 from portage import os
@@ -41,7 +42,8 @@ common_options = (
 	{
 		"longopt"  : "--distfiles",
 		"help"     : "distfiles directory to use (required)",
-		"metavar"  : "DIR"
+		"metavar"  : "DIR",
+		"type"     : Path
 	},
 	{
 		"longopt"  : "--jobs",
@@ -69,7 +71,8 @@ common_options = (
 	{
 		"longopt"  : "--config-root",
 		"help"     : "location of portage config files",
-		"metavar"  : "DIR"
+		"metavar"  : "DIR",
+		"type"     : Path
 	},
 	{
 		"longopt"  : "--repositories-configuration",
@@ -342,8 +345,7 @@ def emirrordist_main(args):
 				"writable directory") % options.temp_dir)
 
 	if options.distfiles is not None:
-		options.distfiles = normalize_path(
-			os.path.abspath(options.distfiles))
+		options.distfiles = normalize_path(options.distfiles.resolve())
 
 		if not (os.path.isdir(options.distfiles) and
 			os.access(options.distfiles, os.W_OK|os.X_OK)):

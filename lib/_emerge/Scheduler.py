@@ -12,6 +12,7 @@ import time
 import warnings
 import weakref
 import zlib
+from pathlib import Path
 
 import portage
 from portage import os
@@ -217,8 +218,7 @@ class Scheduler(PollScheduler):
 		for root in self.trees:
 			self._config_pool[root] = []
 
-		self._fetch_log = os.path.join(_emerge.emergelog._emerge_log_dir,
-			'emerge-fetch.log')
+		self._fetch_log = _emerge.emergelog._emerge_log_dir / 'emerge-fetch.log'
 		fetch_iface = self._fetch_iface_class(log_file=self._fetch_log,
 			schedule=self._schedule_fetch)
 		self._sched_iface = self._iface_class(
@@ -662,7 +662,7 @@ class Scheduler(PollScheduler):
 			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
-			pkgsettings['O'] = os.path.dirname(ebuild_path)
+			pkgsettings['O'] = ebuild_path.parent
 			if not digestgen(mysettings=pkgsettings, myportdb=portdb):
 				writemsg_level(
 					"!!! Unable to generate manifest for '%s'.\n" \
@@ -708,7 +708,7 @@ class Scheduler(PollScheduler):
 			ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
-			quiet_config["O"] = os.path.dirname(ebuild_path)
+			quiet_config["O"] = str(ebuild_path.parent)
 			if not digestcheck([], quiet_config, strict=True):
 				failures |= 1
 
@@ -816,11 +816,10 @@ class Scheduler(PollScheduler):
 				self._deallocate_config(settings)
 				continue
 
-			build_dir_path = os.path.join(
-				os.path.realpath(settings["PORTAGE_TMPDIR"]),
+			build_dir_path = Path(settings["PORTAGE_TMPDIR"]).resolve().joinpath(
 				"portage", x.category, x.pf)
 			existing_builddir = os.path.isdir(build_dir_path)
-			settings["PORTAGE_BUILDDIR"] = build_dir_path
+			settings["PORTAGE_BUILDDIR"] = str(build_dir_path)
 			build_dir = EbuildBuildDir(scheduler=sched_iface,
 				settings=settings)
 			await build_dir.async_lock()
@@ -910,7 +909,7 @@ class Scheduler(PollScheduler):
 
 				portage.package.ebuild.doebuild.doebuild_environment(ebuild_path,
 					"pretend", settings=settings,
-					db=self.trees[settings['EROOT']][tree].dbapi)
+					db=self.trees[Path(settings['EROOT'])][tree].dbapi)
 
 				prepare_build_dirs(root_config.root, settings, cleanup=0)
 
@@ -989,7 +988,7 @@ class Scheduler(PollScheduler):
 			# Even for --pretend --fetch mode, PORTAGE_TMPDIR is required
 			# since it might spawn pkg_nofetch which requires PORTAGE_BUILDDIR
 			# for ensuring sane $PWD (bug #239560) and storing elog messages.
-			tmpdir = root_config.settings.get("PORTAGE_TMPDIR", "")
+			tmpdir = Path(root_config.settings.get("PORTAGE_TMPDIR", ""))
 			if not tmpdir or not os.path.isdir(tmpdir):
 				msg = (
 					'The directory specified in your PORTAGE_TMPDIR variable does not exist:',
@@ -1603,7 +1602,7 @@ class Scheduler(PollScheduler):
 		return temp_settings
 
 	def _deallocate_config(self, settings):
-		self._config_pool[settings['EROOT']].append(settings)
+		self._config_pool[Path(settings['EROOT'])].append(settings)
 
 	def _keep_scheduling(self):
 		return bool(not self._terminated.is_set() and self._pkg_queue and \

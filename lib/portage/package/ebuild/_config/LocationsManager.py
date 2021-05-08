@@ -7,16 +7,20 @@ __all__ = (
 
 import io
 import warnings
+from pathlib import Path
+from typing import Optional
+import os as _os
+import shlex
 
 import portage
-from portage import os, eapi_is_supported, _encodings, _unicode_encode
+from portage import os, eapi_is_supported, _encodings, is_relative_to
 from portage.const import CUSTOM_PROFILE_PATH, GLOBAL_CONFIG_PATH, \
 	PROFILE_PATH, USER_CONFIG_PATH
 from portage.eapi import eapi_allows_directories_on_profile_level_and_repository_level
 from portage.exception import DirectoryNotFound, InvalidLocation, ParseError
 from portage.localization import _
 from portage.util import ensure_dirs, grabfile, \
-	normalize_path, read_corresponding_eapi_file, shlex_split, writemsg
+	normalize_path, read_corresponding_eapi_file, writemsg
 from portage.util._path import exists_raise_eaccess, isdir_raise_eaccess
 from portage.repository.config import parse_layout_conf, \
 	_portage1_profiles_allow_directories, _profile_node
@@ -32,8 +36,12 @@ _allow_parent_colon = frozenset(
 
 class LocationsManager:
 
-	def __init__(self, config_root=None, eprefix=None, config_profile_path=None, local_config=True, \
-		target_root=None, sysroot=None):
+	def __init__(self, config_root: Optional[Path] = None,
+		eprefix: Optional[Path] = None,
+		config_profile_path: Optional[Path] = None,
+		local_config=True,
+		target_root: Optional[Path] = None,
+		sysroot: Optional[Path] = None):
 		self.user_profile_dir = None
 		self._local_repo_conf_path = None
 		self.eprefix = eprefix
@@ -50,28 +58,27 @@ class LocationsManager:
 				self.eprefix = ""
 
 		if self.config_root is None:
-			self.config_root = portage.const.EPREFIX + os.sep
+			self.config_root = portage.const.EPREFIX
 
-		self.config_root = normalize_path(os.path.abspath(
-			self.config_root or os.sep)).rstrip(os.sep) + os.sep
+		self.config_root = normalize_path(self.config_root.resolve())
 
 		self._check_var_directory("PORTAGE_CONFIGROOT", self.config_root)
-		self.abs_user_config = os.path.join(self.config_root, USER_CONFIG_PATH)
+		self.abs_user_config = self.config_root / USER_CONFIG_PATH
 		self.config_profile_path = config_profile_path
 
 		if self.sysroot is None:
 			self.sysroot = "/"
 		else:
-			self.sysroot = normalize_path(os.path.abspath(self.sysroot or os.sep)).rstrip(os.sep) + os.sep
+			self.sysroot = normalize_path(Path(self.sysroot or os.sep).absolute())
 
-		self.esysroot = self.sysroot.rstrip(os.sep) + self.eprefix + os.sep
+		self.esysroot = self.sysroot / self.eprefix.relative_to(os.sep)
 
 		# TODO: Set this via the constructor using
 		# PORTAGE_OVERRIDE_EPREFIX.
 		self.broot = portage.const.EPREFIX
 
 	def load_profiles(self, repositories, known_repository_paths):
-		known_repository_paths = set(os.path.realpath(x)
+		known_repository_paths = set(Path(_os.path.realpath(x))
 			for x in known_repository_paths)
 
 		known_repos = []
@@ -86,19 +93,16 @@ class LocationsManager:
 					"profile_eapi_when_unspecified": repo.eapi
 				}
 			# force a trailing '/' for ease of doing startswith checks
-			known_repos.append((x + '/', layout_data))
+			known_repos.append((x, layout_data))
 		known_repos = tuple(known_repos)
 
 		if self.config_profile_path is None:
-			deprecated_profile_path = os.path.join(
-				self.config_root, 'etc', 'make.profile')
-			self.config_profile_path = \
-				os.path.join(self.config_root, PROFILE_PATH)
+			deprecated_profile_path = self.config_root / 'etc' / 'make.profile'
+			self.config_profile_path = self.config_root / PROFILE_PATH
 			if isdir_raise_eaccess(self.config_profile_path):
 				self.profile_path = self.config_profile_path
 				if isdir_raise_eaccess(deprecated_profile_path) and not \
-					os.path.samefile(self.profile_path,
-					deprecated_profile_path):
+					self.profile_path.samefile(deprecated_profile_path):
 					# Don't warn if they refer to the same path, since
 					# that can be used for backward compatibility with
 					# old software.
@@ -126,7 +130,7 @@ class LocationsManager:
 		self.profiles_complex = []
 		if self.profile_path:
 			try:
-				self._addProfile(os.path.realpath(self.profile_path),
+				self._addProfile(Path(_os.path.realpath(self.profile_path)),
 					repositories, known_repos, ())
 			except ParseError as e:
 				if not portage._sync_mode:
@@ -136,9 +140,8 @@ class LocationsManager:
 				self.profiles_complex = []
 
 		if self._user_config and self.profiles:
-			custom_prof = os.path.join(
-				self.config_root, CUSTOM_PROFILE_PATH)
-			if os.path.exists(custom_prof):
+			custom_prof = self.config_root / CUSTOM_PROFILE_PATH
+			if custom_prof.exists():
 				# For read_corresponding_eapi_file, specify default=None
 				# in order to allow things like wildcard atoms when
 				# is no explicit EAPI setting.
@@ -148,7 +151,7 @@ class LocationsManager:
 					_profile_node(custom_prof, True, True,
 					('profile-bashrcs', 'profile-set'),
 					read_corresponding_eapi_file(
-					custom_prof + os.sep, default=None),
+					custom_prof, default=None),
 					True,
 					show_deprecated_warning=False,
 				))
@@ -162,10 +165,10 @@ class LocationsManager:
 			writemsg(_("!!! Error: %s='%s' is not a directory. "
 				"Please correct this.\n") % (varname, var),
 				noiselevel=-1)
-			raise DirectoryNotFound(var)
+			raise DirectoryNotFound(str(var))
 
-	def _addProfile(self, currentPath, repositories, known_repos, previous_repos):
-		current_abs_path = os.path.abspath(currentPath)
+	def _addProfile(self, currentPath: Path, repositories, known_repos, previous_repos):
+		current_abs_path = currentPath.resolve()
 		allow_directories = True
 		allow_parent_colon = True
 		repo_loc = None
@@ -174,20 +177,19 @@ class LocationsManager:
 		eapi = None
 
 		intersecting_repos = tuple(x for x in known_repos
-			if current_abs_path.startswith(x[0]))
+			if is_relative_to(current_abs_path, x[0]))
 		if intersecting_repos:
 			# Handle nested repositories. The longest path
 			# will be the correct one.
 			repo_loc, layout_data = max(intersecting_repos,
-				key=lambda x:len(x[0]))
+				key=lambda x:len(x[0].parts))
 			eapi = layout_data.get("profile_eapi_when_unspecified")
 
-		eapi_file = os.path.join(currentPath, "eapi")
+		eapi_file = currentPath / "eapi"
 		eapi = eapi or "0"
 		f = None
 		try:
-			f = io.open(_unicode_encode(eapi_file,
-				encoding=_encodings['fs'], errors='strict'),
+			f = eapi_file.open(
 				mode='r', encoding=_encodings['content'], errors='replace')
 			eapi = f.readline().strip()
 		except IOError:
@@ -221,9 +223,9 @@ class LocationsManager:
 			tuple(x[0] for x in previous_repos) != tuple(x[0] for x in intersecting_repos)
 
 		if compat_mode:
-			offenders = _PORTAGE1_DIRECTORIES.intersection(os.listdir(currentPath))
+			offenders = _PORTAGE1_DIRECTORIES.intersection(_os.listdir(currentPath))
 			offenders = sorted(x for x in offenders
-				if os.path.isdir(os.path.join(currentPath, x)))
+				if (currentPath / x).is_dir())
 			if offenders:
 				warnings.warn(_(
 					"\nThe selected profile is implicitly using the 'portage-1' format:\n"
@@ -237,28 +239,28 @@ class LocationsManager:
 					% dict(profile_path=currentPath, repo_name=repo_loc,
 						files='\n\t'.join(offenders)))
 
-		parentsFile = os.path.join(currentPath, "parent")
+		parentsFile = currentPath / "parent"
 		if exists_raise_eaccess(parentsFile):
-			parents = grabfile(parentsFile)
+			parents: List[str] = grabfile(parentsFile)
 			if not parents:
 				raise ParseError(
 					_("Empty parent file: '%s'") % parentsFile)
 			for parentPath in parents:
-				abs_parent = parentPath[:1] == os.sep
-				if not abs_parent and allow_parent_colon:
+				if not parentPath.startswith(os.sep) and allow_parent_colon:
 					parentPath = self._expand_parent_colon(parentsFile,
 						parentPath, repo_loc, repositories)
+				else:
+					parentPath = Path(parentPath)
 
-				# NOTE: This os.path.join() call is intended to ignore
+				# NOTE: This Path.joinpath (/) call is intended to ignore
 				# currentPath if parentPath is already absolute.
-				parentPath = normalize_path(os.path.join(
-					currentPath, parentPath))
+				parentPath = normalize_path(currentPath / parentPath)
 
-				if abs_parent or repo_loc is None or \
-					not parentPath.startswith(repo_loc):
+				if parentPath.is_absolute() or repo_loc is None or \
+					not is_relative_to(repo_loc, parentPath):
 					# It seems that this parent may point outside
 					# of the current repo, so realpath it.
-					parentPath = os.path.realpath(parentPath)
+					parentPath = parentPath.absolute()
 
 				if exists_raise_eaccess(parentPath):
 					self._addProfile(parentPath, repositories, known_repos, intersecting_repos)
@@ -274,11 +276,12 @@ class LocationsManager:
 				show_deprecated_warning=show_deprecated_warning,
 		))
 
-	def _expand_parent_colon(self, parentsFile, parentPath,
-		repo_loc, repositories):
+	def _expand_parent_colon(self, parentsFile: Path, parentPath: str,
+			repo_loc: Path, repositories):
+		# if isinstance(parentPath, Path): breakpoint()
 		colon = parentPath.find(":")
 		if colon == -1:
-			return parentPath
+			return Path(parentPath)
 
 		if colon == 0:
 			if repo_loc is None:
@@ -302,17 +305,16 @@ class LocationsManager:
 
 		return parentPath
 
-	def set_root_override(self, root_overwrite=None):
+	def set_root_override(self, root_overwrite: Optional[Path] = None):
 		# Allow ROOT setting to come from make.conf if it's not overridden
 		# by the constructor argument (from the calling environment).
 		if self.target_root is None and root_overwrite is not None:
 			self.target_root = root_overwrite
 			if not self.target_root.strip():
 				self.target_root = None
-		self.target_root = self.target_root or os.sep
+		self.target_root = self.target_root or Path(os.sep)
 
-		self.target_root = normalize_path(os.path.abspath(
-			self.target_root)).rstrip(os.path.sep) + os.path.sep
+		self.target_root = normalize_path(self.target_root.resolve())
 
 		if self.sysroot != "/" and self.sysroot != self.target_root:
 			writemsg(_("!!! Error: SYSROOT (currently %s) must "
@@ -324,27 +326,28 @@ class LocationsManager:
 		ensure_dirs(self.target_root)
 		self._check_var_directory("ROOT", self.target_root)
 
-		self.eroot = self.target_root.rstrip(os.sep) + self.eprefix + os.sep
+		self.eroot = self.target_root / self.eprefix.relative_to(os.sep)
 
 		self.global_config_path = GLOBAL_CONFIG_PATH
 		if portage.const.EPREFIX:
-			self.global_config_path = os.path.join(portage.const.EPREFIX,
-				GLOBAL_CONFIG_PATH.lstrip(os.sep))
+			self.global_config_path = (portage.const.EPREFIX /
+				GLOBAL_CONFIG_PATH.relative_to(os.sep))
 
-	def set_port_dirs(self, portdir, portdir_overlay):
+	def set_port_dirs(self, portdir: Optional[Path], portdir_overlay: Optional):
 		self.portdir = portdir
 		self.portdir_overlay = portdir_overlay
 		if self.portdir_overlay is None:
 			self.portdir_overlay = ""
 
 		self.overlay_profiles = []
-		for ov in shlex_split(self.portdir_overlay):
-			ov = normalize_path(ov)
-			profiles_dir = os.path.join(ov, "profiles")
-			if isdir_raise_eaccess(profiles_dir):
+		for ov in shlex.split(self.portdir_overlay):
+			ov = normalize_path(Path(ov))
+			profiles_dir = ov / "profiles"
+			if profiles_dir.is_dir():
 				self.overlay_profiles.append(profiles_dir)
 
-		self.profile_locations = [os.path.join(portdir, "profiles")] + self.overlay_profiles
+		self.profile_locations = ([portdir / "profiles"] if portdir else []) \
+			+ self.overlay_profiles
 		self.profile_and_user_locations = self.profile_locations[:]
 		if self._user_config:
 			self.profile_and_user_locations.append(self.abs_user_config)

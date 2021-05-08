@@ -8,6 +8,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild._metadata_invalid:eapi_invalid',
 )
+import os as _os
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
@@ -35,10 +36,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _start(self):
 		ebuild_path = self.ebuild_hash.location
 
-		with io.open(_unicode_encode(ebuild_path,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['repo.content'],
-			errors='replace') as f:
+		with ebuild_path.open('r', encoding=_encodings['repo.content'], errors='replace') as f:
 			self._eapi, self._eapi_lineno = portage._parse_eapi_ebuild_head(f)
 
 		parsed_eapi = self._eapi
@@ -88,7 +86,7 @@ class EbuildMetadataPhase(SubProcess):
 		self._files = self._files_dict()
 		files = self._files
 
-		master_fd, slave_fd = os.pipe()
+		master_fd, slave_fd = _os.pipe()
 
 		fcntl.fcntl(master_fd, fcntl.F_SETFL,
 			fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
@@ -107,7 +105,7 @@ class EbuildMetadataPhase(SubProcess):
 			fd_pipes=fd_pipes, returnpid=True)
 		settings.pop("PORTAGE_PIPE_FD", None)
 
-		os.close(slave_fd)
+		_os.close(slave_fd)
 		null_input.close()
 
 		if isinstance(retval, int):
@@ -148,7 +146,7 @@ class EbuildMetadataPhase(SubProcess):
 		# early due to an unsupported EAPI
 		if self.returncode == os.EX_OK and \
 			self._raw_metadata is not None:
-			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
+			metadata_lines = b''.join(self._raw_metadata).decode(
 				encoding=_encodings['repo.content'],
 				errors='replace').splitlines()
 			metadata_valid = True

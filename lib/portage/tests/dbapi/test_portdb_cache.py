@@ -4,9 +4,10 @@
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
 
 import portage
-from portage import os
+import os
 from portage import _unicode_decode
 from portage.const import (BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.tests import TestCase
@@ -128,7 +129,7 @@ class PortdbCacheTestCase(TestCase):
 				pythonpath = ""
 			else:
 				pythonpath = ":" + pythonpath
-			pythonpath = PORTAGE_PYM_PATH + pythonpath
+			pythonpath = str(PORTAGE_PYM_PATH) + pythonpath
 
 		env = {
 			"PATH" : os.environ.get("PATH", ""),
@@ -147,7 +148,7 @@ class PortdbCacheTestCase(TestCase):
 
 		try:
 			for d in dirs:
-				ensure_dirs(d)
+				ensure_dirs(Path(d))
 
 			if debug:
 				# The subprocess inherits both stdout and stderr, for
@@ -176,7 +177,7 @@ class PortdbCacheTestCase(TestCase):
 					proc.stdout.close()
 					if proc.returncode != os.EX_OK:
 						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+							sys.stderr.write(line.decode())
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"command %d failed with args %s" % (i, args,))

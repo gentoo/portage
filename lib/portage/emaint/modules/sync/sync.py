@@ -12,6 +12,7 @@ from portage.sync.controller import SyncManager
 from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.AsyncScheduler import AsyncScheduler
+from pathlib import Path
 
 import _emerge
 from _emerge.emergelog import emergelog
@@ -288,9 +289,9 @@ class SyncRepos:
 
 		chk_updated_cfg_files(
 			self.emerge_config.target_config.root,
-			portage.util.shlex_split(
+			[Path(x) for x in portage.util.shlex_split(
 				self.emerge_config.target_config.settings.get("CONFIG_PROTECT", "")
-			),
+			)],
 		)
 
 		msgs = []

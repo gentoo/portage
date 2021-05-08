@@ -621,8 +621,7 @@ class Display:
 			if pkg_info.ebuild_path is None:
 				raise AssertionError(
 					"ebuild not found for '%s'" % pkg.cpv)
-			pkg_info.repo_path_real = os.path.dirname(os.path.dirname(
-				os.path.dirname(pkg_info.ebuild_path)))
+			pkg_info.repo_path_real = pkg_info.ebuild_path.parents[2]
 		else:
 			pkg_info.repo_path_real = self.portdb.getRepositoryPath(pkg.repo)
 		pkg_info.use = list(self.conf.pkg_use_enabled(pkg))
@@ -853,7 +852,7 @@ class Display:
 								pkg_info.attr_display)
 						myprint += self.indent + \
 							self.pkgprint(pkg_str, pkg_info) + " " + \
-							pkg_info.oldbest + darkgreen("to " + pkg.root)
+							pkg_info.oldbest + darkgreen("to " + str(pkg.root))
 				else:
 					if self.conf.columns:
 						myprint = self._set_root_columns(pkg, pkg_info)

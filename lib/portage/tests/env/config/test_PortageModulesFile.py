@@ -1,10 +1,11 @@
 # Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+import os
 from portage.tests import TestCase
 from portage.env.config import PortageModulesFile
 from tempfile import mkstemp
+from pathlib import Path
 
 class PortageModulesFileTestCase(TestCase):
 
@@ -19,7 +20,7 @@ class PortageModulesFileTestCase(TestCase):
 
 	def testPortageModulesFile(self):
 		self.BuildFile()
-		f = PortageModulesFile(self.fname)
+		f = PortageModulesFile(Path(self.fname))
 		f.load()
 		for k in self.keys:
 			self.assertEqual(f[k], self.items[k])

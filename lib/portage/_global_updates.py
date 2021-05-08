@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
+from typing import Dict
 
 from portage import best, os
 from portage.const import WORLD_FILE
@@ -12,6 +13,7 @@ from portage.output import bold, colorize
 from portage.update import grab_updates, parse_updates, update_config_files, update_dbentry
 from portage.util import grabfile, shlex_split, \
 	writemsg, writemsg_stdout, write_atomic
+from pathlib import Path
 
 def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	"""
@@ -38,14 +40,14 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	return _do_global_updates(trees, prev_mtimes,
 		quiet=quiet, if_mtime_changed=if_mtime_changed)
 
-def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
-	root = trees._running_eroot
+def _do_global_updates(trees, prev_mtimes: Dict[str, int], quiet=False, if_mtime_changed=True):
+	root = Path(trees._running_eroot)
 	mysettings = trees[root]["vartree"].settings
 	portdb = trees[root]["porttree"].dbapi
 	vardb = trees[root]["vartree"].dbapi
 	bindb = trees[root]["bintree"].dbapi
 
-	world_file = os.path.join(mysettings['EROOT'], WORLD_FILE)
+	world_file = mysettings['EROOT'] / WORLD_FILE
 	world_list = grabfile(world_file)
 	world_modified = False
 	world_warnings = set()
@@ -61,7 +63,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 	update_notice_printed = False
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
-		updpath = os.path.join(repo, "profiles", "updates")
+		updpath = repo / "profiles" / "updates"
 		if not os.path.isdir(updpath):
 			continue
 
@@ -96,7 +98,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 				valid_updates, errors = parse_updates(mycontent)
 				myupd.extend(valid_updates)
 				if not quiet:
-					writemsg_stdout(bold(mykey))
+					writemsg_stdout(bold(str(mykey)))
 					writemsg_stdout(len(valid_updates) * "." + "\n")
 				if len(errors) == 0:
 					# Update our internal mtime since we
@@ -203,8 +205,8 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 				(repo_name == master_repo and repository not in repo_map)
 
 		update_config_files(root,
-			shlex_split(mysettings.get("CONFIG_PROTECT", "")),
-			shlex_split(mysettings.get("CONFIG_PROTECT_MASK", "")),
+			[Path(x) for x in shlex_split(mysettings.get("CONFIG_PROTECT", ""))],
+			[Path(x) for x in shlex_split(mysettings.get("CONFIG_PROTECT_MASK", ""))],
 			repo_map, match_callback=_config_repo_match,
 			case_insensitive="case-insensitive-fs"
 			in mysettings.features)
@@ -217,7 +219,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
 			# been processed because the mtimedb will
 			# automatically commit when killed by ctrl C.
 			for mykey, mtime in timestamps.items():
-				prev_mtimes[mykey] = mtime
+				prev_mtimes[str(mykey)] = mtime
 
 		do_upgrade_packagesmessage = False
 		# We gotta do the brute force updates for these now.

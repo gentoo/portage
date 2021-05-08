@@ -3,16 +3,18 @@
 
 import io
 import tempfile
+import os
+import shutil
+from pathlib import Path
 
 import portage
-from portage import os, shutil, _encodings
+from portage import _encodings
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.package.ebuild._config.LicenseManager import LicenseManager
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
-from portage.util import normalize_path
 
 class ConfigTestCase(TestCase):
 
@@ -30,7 +32,7 @@ class ConfigTestCase(TestCase):
 			settings = config(clone=playground.settings)
 			result = playground.run(["=dev-libs/A-1"])
 			pkg, existing_node = result.depgraph._select_package(
-				playground.eroot, Atom("=dev-libs/A-1"))
+				Path(playground.eroot), Atom("=dev-libs/A-1"))
 			settings.setcpv(pkg)
 
 			# clone after setcpv tests deepcopy of LazyItemsDict
@@ -97,10 +99,10 @@ class ConfigTestCase(TestCase):
 		try:
 			portage.util.noiselimit = -2
 
-			license_group_locations = (os.path.join(playground.settings.repositories["test_repo"].location, "profiles"),)
+			license_group_locations = (Path(os.path.join(playground.settings.repositories["test_repo"].location, "profiles")),)
 			pkg_license = os.path.join(playground.eroot, "etc", "portage")
 
-			lic_man = LicenseManager(license_group_locations, pkg_license)
+			lic_man = LicenseManager(license_group_locations, Path(pkg_license))
 
 			self.assertEqual(lic_man._accept_license_str, None)
 			self.assertEqual(lic_man._accept_license, None)
@@ -300,7 +302,7 @@ class ConfigTestCase(TestCase):
 			"dev-libs/A A",
 		)
 
-		eprefix = normalize_path(tempfile.mkdtemp())
+		eprefix = tempfile.mkdtemp()
 		playground = None
 		try:
 			user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
@@ -324,7 +326,7 @@ class ConfigTestCase(TestCase):
 
 			result = playground.run(["=dev-libs/A-1"])
 			pkg, existing_node = result.depgraph._select_package(
-				playground.eroot, Atom("=dev-libs/A-1"))
+				Path(playground.eroot), Atom("=dev-libs/A-1"))
 			settings.setcpv(pkg)
 			self.assertTrue("static-libs" in
 				settings["PORTAGE_USE"].split())
@@ -332,7 +334,7 @@ class ConfigTestCase(TestCase):
 			# Test bug #522362, where a USE=static-libs package.env
 			# setting leaked from one setcpv call to the next.
 			pkg, existing_node = result.depgraph._select_package(
-				playground.eroot, Atom("=dev-libs/B-1"))
+				Path(playground.eroot), Atom("=dev-libs/B-1"))
 			settings.setcpv(pkg)
 			self.assertTrue("static-libs" not in
 				settings["PORTAGE_USE"].split())

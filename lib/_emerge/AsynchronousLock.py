@@ -4,6 +4,7 @@
 import fcntl
 import logging
 import sys
+from pathlib import Path
 
 try:
 	import dummy_threading
@@ -40,6 +41,7 @@ class AsynchronousLock(AsynchronousTask):
 		('_imp', '_force_async', '_force_dummy', '_force_process', \
 		'_force_thread', '_unlock_future')
 
+	path: Path
 	_use_process_by_default = True
 
 	def _start(self):
@@ -117,6 +119,8 @@ class _LockThread(AbstractPollTask):
 
 	__slots__ = ('path',) + \
 		('_force_dummy', '_lock_obj', '_thread', '_unlock_future')
+
+	path: Path
 
 	def _start(self):
 		self._registered = True
@@ -196,7 +200,7 @@ class _LockProcess(AbstractPollTask):
 		self._registered = True
 		self._proc = SpawnProcess(
 			args=[portage._python_interpreter,
-				os.path.join(portage._bin_path, 'lock-helper.py'), self.path],
+				str(portage._bin_path / 'lock-helper.py'), self.path],
 				env=dict(os.environ, PORTAGE_PYM_PATH=portage._pym_path),
 				fd_pipes={0:out_pr, 1:in_pw, 2:sys.__stderr__.fileno()},
 				scheduler=self.scheduler)

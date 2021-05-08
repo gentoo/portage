@@ -12,6 +12,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 import portage
 from portage import _encodings, os, shutil
@@ -111,7 +112,7 @@ diffstatusoutput_mixed = diff_mixed_wrapper(diffstatusoutput)
 def read_config(mandatory_opts):
 	eprefix = portage.settings["EPREFIX"]
 	if portage._not_installed:
-		config_path = os.path.join(portage.PORTAGE_BASE_PATH, "cnf", "dispatch-conf.conf")
+		config_path = portage.PORTAGE_BASE_PATH.joinpath("cnf", "dispatch-conf.conf")
 	else:
 		config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
 	loader = KeyValuePairFileLoader(config_path, None)
@@ -135,7 +136,7 @@ def read_config(mandatory_opts):
 
 	# archive-dir supports ${EPREFIX} expansion, in order to avoid hardcoding
 	variables = {"EPREFIX": eprefix}
-	opts['archive-dir'] = varexpand(opts['archive-dir'], mydict=variables)
+	opts['archive-dir'] = Path(varexpand(opts['archive-dir'], mydict=variables))
 
 	if not os.path.exists(opts['archive-dir']):
 		os.mkdir(opts['archive-dir'])

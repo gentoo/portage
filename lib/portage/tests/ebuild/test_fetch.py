@@ -5,9 +5,11 @@ import functools
 import io
 import tempfile
 import types
+import shutil
+import os
+from pathlib import Path
 
 import portage
-from portage import shutil, os
 from portage.checksum import checksum_str
 from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
 from portage.tests import TestCase
@@ -165,9 +167,10 @@ class EbuildFetchTestCase(TestCase):
 
 					# mirror path
 					for layout in layouts:
-						content["/distfiles/" + layout.get_path(filename)] = v
+						if not isinstance(layout.get_path(filename), Path): breakpoint()
+						content[str("/distfiles" / layout.get_path(filename))] = v
 					# upstream path
-					content["/distfiles/{}.txt".format(k)] = v
+					content[str(Path("/distfiles", k).with_suffix(".txt"))] = v
 
 				shutil.rmtree(settings["DISTDIR"])
 				os.makedirs(settings["DISTDIR"])
@@ -196,13 +199,13 @@ class EbuildFetchTestCase(TestCase):
 				with open(foo_path, 'rb') as f:
 					self.assertEqual(f.read(), foo_stale_content)
 				with open(foo_path, 'rb') as f:
-					self.assertNotEqual(f.read(), distfiles['foo'])
+					self.assertNotEqual(f.read(), distfiles[Path('foo')])
 
 				# Use force=True to update the stale file.
 				self.assertTrue(bool(run_async(fetch, foo_uri, settings, try_mirrors=False, force=True)))
 
 				with open(foo_path, 'rb') as f:
-					self.assertEqual(f.read(), distfiles['foo'])
+					self.assertEqual(f.read(), distfiles[Path('foo')])
 
 				# Test force=True with FEATURES=skiprocheck, using read-only DISTDIR.
 				# FETCHCOMMAND is set to temporarily chmod +w DISTDIR. Note that
@@ -238,7 +241,7 @@ class EbuildFetchTestCase(TestCase):
 					os.unlink(temp_fetchcommand)
 
 				with open(foo_path, 'rb') as f:
-					self.assertEqual(f.read(), distfiles['foo'])
+					self.assertEqual(f.read(), distfiles[Path('foo')])
 
 				# Test emirrordist invocation.
 				emirrordist_cmd = (portage._python_interpreter, '-b', '-Wd',
@@ -254,7 +257,7 @@ class EbuildFetchTestCase(TestCase):
 
 				env = settings.environ()
 				env['PYTHONPATH'] = ':'.join(
-					filter(None, [PORTAGE_PYM_PATH] + os.environ.get('PYTHONPATH', '').split(':')))
+					filter(None, [str(PORTAGE_PYM_PATH)] + os.environ.get('PYTHONPATH', '').split(':')))
 
 				for k in distfiles:
 					try:
@@ -267,7 +270,7 @@ class EbuildFetchTestCase(TestCase):
 
 				for k in distfiles:
 					with open(os.path.join(settings['DISTDIR'], layouts[0].get_path(k)), 'rb') as f:
-						self.assertEqual(f.read(), distfiles[k])
+						self.assertEqual(f.read(), distfiles[Path(k)])
 
 				if content_db is not None:
 					loop.run_until_complete(
@@ -316,7 +319,7 @@ class EbuildFetchTestCase(TestCase):
 					self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 					for k in settings['AA'].split():
 						with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-							self.assertEqual(f.read(), distfiles[k])
+							self.assertEqual(f.read(), distfiles[Path(k)])
 
 					# Test digestgen with fetch
 					os.unlink(os.path.join(os.path.dirname(ebuild_path), 'Manifest'))
@@ -328,7 +331,7 @@ class EbuildFetchTestCase(TestCase):
 								digestgen, mysettings=settings, myportdb=portdb)))))
 					for k in settings['AA'].split():
 						with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-							self.assertEqual(f.read(), distfiles[k])
+							self.assertEqual(f.read(), distfiles[Path(k)])
 
 					# Test missing files in DISTDIR
 					for k in settings['AA'].split():
@@ -336,7 +339,7 @@ class EbuildFetchTestCase(TestCase):
 					self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 					for k in settings['AA'].split():
 						with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-							self.assertEqual(f.read(), distfiles[k])
+							self.assertEqual(f.read(), distfiles[Path(k)])
 
 					# Test empty files in DISTDIR
 					for k in settings['AA'].split():
@@ -347,18 +350,18 @@ class EbuildFetchTestCase(TestCase):
 					self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 					for k in settings['AA'].split():
 						with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-							self.assertEqual(f.read(), distfiles[k])
+							self.assertEqual(f.read(), distfiles[Path(k)])
 
 					# Test non-empty files containing null bytes in DISTDIR
 					for k in settings['AA'].split():
 						file_path = os.path.join(settings['DISTDIR'], k)
 						with open(file_path, 'wb') as f:
-							f.write(len(distfiles[k]) * b'\0')
-						self.assertEqual(os.stat(file_path).st_size, len(distfiles[k]))
+							f.write(len(distfiles[Path(k)]) * b'\0')
+						self.assertEqual(os.stat(file_path).st_size, len(distfiles[Path(k)]))
 					self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 					for k in settings['AA'].split():
 						with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-							self.assertEqual(f.read(), distfiles[k])
+							self.assertEqual(f.read(), distfiles[Path(k)])
 
 					# Test PORTAGE_RO_DISTDIRS
 					settings['PORTAGE_RO_DISTDIRS'] = '"{}"'.format(ro_distdir)
@@ -374,7 +377,7 @@ class EbuildFetchTestCase(TestCase):
 							file_path = os.path.join(settings['DISTDIR'], k)
 							self.assertTrue(os.path.islink(file_path))
 							with open(file_path, 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 							os.unlink(file_path)
 					finally:
 						settings.pop('PORTAGE_RO_DISTDIRS')
@@ -390,7 +393,7 @@ class EbuildFetchTestCase(TestCase):
 						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 						for k in settings['AA'].split():
 							with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 					finally:
 						settings['GENTOO_MIRRORS'] = orig_mirrors
 						settings['FETCHCOMMAND'] = orig_fetchcommand
@@ -403,7 +406,7 @@ class EbuildFetchTestCase(TestCase):
 						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 						for k in settings['AA'].split():
 							with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 					finally:
 						os.chmod(settings['DISTDIR'], orig_distdir_mode)
 
@@ -413,13 +416,13 @@ class EbuildFetchTestCase(TestCase):
 						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 						for k in settings['AA'].split():
 							with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 						for k in settings['AA'].split():
 							os.unlink(os.path.join(settings['DISTDIR'], k))
 						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 						for k in settings['AA'].split():
 							with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 					finally:
 						settings.pop('PORTAGE_PARALLEL_FETCHONLY')
 
@@ -431,11 +434,11 @@ class EbuildFetchTestCase(TestCase):
 							file_path = os.path.join(settings['DISTDIR'], k)
 							os.unlink(file_path)
 							with open(file_path + _download_suffix, 'wb') as f:
-								f.write(distfiles[k][:2])
+								f.write(distfiles[Path(k)][:2])
 						self.assertEqual(loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0)
 						for k in settings['AA'].split():
 							with open(os.path.join(settings['DISTDIR'], k), 'rb') as f:
-								self.assertEqual(f.read(), distfiles[k])
+								self.assertEqual(f.read(), distfiles[Path(k)])
 					finally:
 						settings['PORTAGE_FETCH_RESUME_MIN_SIZE'] = orig_resume_min_size
 
@@ -506,7 +509,7 @@ class EbuildFetchTestCase(TestCase):
 			with open(
 				os.path.join(settings["DISTDIR"], layouts[0].get_path(k)), "rb"
 			) as f:
-				self.assertEqual(f.read(), distfiles[k])
+				self.assertEqual(f.read(), distfiles[Path(k)])
 
 		with EmirrordistConfig(
 			emdisopts, portdb, asyncio.get_event_loop()
@@ -589,14 +592,14 @@ class EbuildFetchTestCase(TestCase):
 		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', 'junk')))
 		self.assertFalse(FilenameHashLayout.verify_args(('filename-hash', 'SHA1', '4:8:junk')))
 
-		self.assertEqual(FilenameHashLayout('SHA1', '4').get_path('foo-1.tar.gz'),
-				'1/foo-1.tar.gz')
-		self.assertEqual(FilenameHashLayout('SHA1', '8').get_path('foo-1.tar.gz'),
-				'19/foo-1.tar.gz')
-		self.assertEqual(FilenameHashLayout('SHA1', '8:16').get_path('foo-1.tar.gz'),
-				'19/c3b6/foo-1.tar.gz')
-		self.assertEqual(FilenameHashLayout('SHA1', '8:16:24').get_path('foo-1.tar.gz'),
-				'19/c3b6/37a94b/foo-1.tar.gz')
+		self.assertEqual(FilenameHashLayout('SHA1', '4').get_path(Path('foo-1.tar.gz')),
+				Path('1/foo-1.tar.gz'))
+		self.assertEqual(FilenameHashLayout('SHA1', '8').get_path(Path('foo-1.tar.gz')),
+				Path('19/foo-1.tar.gz'))
+		self.assertEqual(FilenameHashLayout('SHA1', '8:16').get_path(Path('foo-1.tar.gz')),
+				Path('19/c3b6/foo-1.tar.gz'))
+		self.assertEqual(FilenameHashLayout('SHA1', '8:16:24').get_path(Path('foo-1.tar.gz')),
+				Path('19/c3b6/37a94b/foo-1.tar.gz'))
 
 	def test_content_hash_layout(self):
 		self.assertFalse(ContentHashLayout.verify_args(('content-hash',)))
@@ -619,13 +622,13 @@ class EbuildFetchTestCase(TestCase):
 		self.assertRaises(AttributeError, ContentHashLayout('SHA512', '4').get_path, str(filename))
 
 		self.assertEqual(ContentHashLayout('SHA512', '4').get_path(filename),
-				'c/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+				Path('c/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e'))
 		self.assertEqual(ContentHashLayout('SHA512', '8').get_path(filename),
-				'cf/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+				Path('cf/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e'))
 		self.assertEqual(ContentHashLayout('SHA512', '8:16').get_path(filename),
-				'cf/83e1/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+				Path('cf/83e1/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e'))
 		self.assertEqual(ContentHashLayout('SHA512', '8:16:24').get_path(filename),
-				'cf/83e1/357eef/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e')
+				Path('cf/83e1/357eef/cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e'))
 
 	def test_mirror_layout_config(self):
 		mlc = MirrorLayoutConfig()
@@ -653,8 +656,8 @@ class EbuildFetchTestCase(TestCase):
 			('flat',)
 		))
 		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
-		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
-				'19/c3b6/foo-1.tar.gz')
+		self.assertEqual(mlc.get_best_supported_layout().get_path(Path('foo-1.tar.gz')),
+				Path('19/c3b6/foo-1.tar.gz'))
 		serialized = mlc.serialize()
 
 		# test fallback
@@ -671,8 +674,8 @@ class EbuildFetchTestCase(TestCase):
 			('flat',)
 		))
 		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
-		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
-				'19c3b637/foo-1.tar.gz')
+		self.assertEqual(mlc.get_best_supported_layout().get_path(Path('foo-1.tar.gz')),
+				Path('19c3b637/foo-1.tar.gz'))
 
 		# test deserialization
 		mlc.deserialize(serialized)
@@ -681,8 +684,8 @@ class EbuildFetchTestCase(TestCase):
 			('flat',)
 		))
 		self.assertIsInstance(mlc.get_best_supported_layout(), FilenameHashLayout)
-		self.assertEqual(mlc.get_best_supported_layout().get_path('foo-1.tar.gz'),
-				'19/c3b6/foo-1.tar.gz')
+		self.assertEqual(mlc.get_best_supported_layout().get_path(Path('foo-1.tar.gz')),
+				Path('19/c3b6/foo-1.tar.gz'))
 
 		# test erraneous input
 		conf = '''
@@ -719,12 +722,12 @@ class EbuildFetchTestCase(TestCase):
 				with open(path, 'wb') as f:
 					pass
 
-				file_list = list(layout.get_filenames(distdir))
+				file_list = list(layout.get_filenames(Path(distdir)))
 				self.assertTrue(len(file_list) > 0)
 				for filename_result in file_list:
 					if isinstance(filename_result, DistfileName):
 						self.assertTrue(filename_result.digests_equal(filename))
 					else:
-						self.assertEqual(filename_result, str(filename))
+						self.assertEqual(str(filename_result), str(filename))
 			finally:
 				shutil.rmtree(distdir)

@@ -3,6 +3,7 @@
 
 from portage.tests import TestCase
 from portage.util.install_mask import InstallMask
+from pathlib import Path
 
 
 class InstallMaskTestCase(TestCase):
@@ -160,6 +161,6 @@ class InstallMaskTestCase(TestCase):
 		for install_mask_str, paths in cases:
 			install_mask = InstallMask(install_mask_str)
 			for path, expected in paths:
-				self.assertEqual(install_mask.match(path), expected,
+				self.assertEqual(install_mask.match(Path(path)), expected,
 					'unexpected match result for "{}" with path {}'.\
 					format(install_mask_str, path))

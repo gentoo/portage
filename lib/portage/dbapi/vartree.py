@@ -70,6 +70,7 @@ from portage import _unicode_encode
 from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
+from portage.util import append_suffix
 
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildPhase import EbuildPhase
@@ -98,6 +99,8 @@ import tempfile
 import textwrap
 import time
 import warnings
+from pathlib import Path
+from typing import Optional
 
 
 class vardbapi(dbapi):
@@ -157,11 +160,11 @@ class vardbapi(dbapi):
 				DeprecationWarning, stacklevel=2)
 
 		self._eroot = settings['EROOT']
-		self._dbroot = self._eroot + VDB_PATH
+		self._dbroot = self._eroot / VDB_PATH
 		self._lock = None
 		self._lock_count = 0
 
-		self._conf_mem_file = self._eroot + CONFIG_MEMORY_FILE
+		self._conf_mem_file = self._eroot / CONFIG_MEMORY_FILE
 		self._fs_lock_obj = None
 		self._fs_lock_count = 0
 		self._slot_locks = {}
@@ -178,16 +181,13 @@ class vardbapi(dbapi):
 			"PROVIDES", "REQUIRES"
 			])
 		self._aux_cache_obj = None
-		self._aux_cache_filename = os.path.join(self._eroot,
-			CACHE_PATH, "vdb_metadata.pickle")
-		self._cache_delta_filename = os.path.join(self._eroot,
-			CACHE_PATH, "vdb_metadata_delta.json")
+		self._aux_cache_filename = self._eroot / CACHE_PATH / "vdb_metadata.pickle"
+		self._cache_delta_filename = self._eroot / CACHE_PATH / "vdb_metadata_delta.json"
 		self._cache_delta = VdbMetadataDelta(self)
-		self._counter_path = os.path.join(self._eroot,
-			CACHE_PATH, "counter")
+		self._counter_path = self._eroot / CACHE_PATH / "counter"
 
 		self._plib_registry = PreservedLibsRegistry(settings["ROOT"],
-			os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"))
+			self._eroot / PRIVATE_PATH / "preserved_libs_registry")
 		self._linkmap = LinkageMap(self)
 		self._owners = self._owners_db(self)
 
@@ -213,14 +213,10 @@ class vardbapi(dbapi):
 			DeprecationWarning, stacklevel=3)
 		return self.settings['ROOT']
 
-	def getpath(self, mykey, filename=None):
-		# This is an optimized hotspot, so don't use unicode-wrapped
-		# os module and don't use os.path.join().
-		rValue = self._eroot + VDB_PATH + _os.sep + mykey
+	def getpath(self, mykey: str, filename: Optional[str] = None) -> Path:
+		rValue = self._eroot / VDB_PATH / mykey
 		if filename is not None:
-			# If filename is always relative, we can do just
-			# rValue += _os.sep + filename
-			rValue = _os.path.join(rValue, filename)
+			rValue /= filename
 		return rValue
 
 	def lock(self):
@@ -318,9 +314,9 @@ class vardbapi(dbapi):
 		This is called before an after any modifications, so that consumers
 		can use directory mtimes to validate caches. See bug #290428.
 		"""
-		base = self._eroot + VDB_PATH
+		base = self._eroot / VDB_PATH
 		cat = catsplit(cpv)[0]
-		catdir = base + _os.sep + cat
+		catdir = base / cat
 		t = time.time()
 		t = (t, t)
 		try:
@@ -407,14 +403,14 @@ class vardbapi(dbapi):
 			new_pf = catsplit(mynewcpv)[1]
 			if new_pf != old_pf:
 				try:
-					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
-						os.path.join(newpath, new_pf + ".ebuild"))
+					os.rename(append_suffix(newpath / old_pf,  ".ebuild"),
+						append_suffix(newpath / new_pf, ".ebuild"))
 				except EnvironmentError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
-			write_atomic(os.path.join(newpath, "PF"), new_pf+"\n")
-			write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat+"\n")
+			write_atomic(newpath / "PF", new_pf+"\n")
+			write_atomic(newpath / "CATEGORY", mynewcat+"\n")
 
 		return moves
 
@@ -431,21 +427,20 @@ class vardbapi(dbapi):
 			if cpc[0] == mystat:
 				return cpc[1][:]
 		cat_dir = self.getpath(mysplit[0])
-		try:
-			dir_list = os.listdir(cat_dir)
-		except EnvironmentError as e:
-			if e.errno == PermissionDenied.errno:
-				raise PermissionDenied(cat_dir)
-			del e
+
+		if cat_dir.is_dir():
+			dir_list=cat_dir.iterdir()
+		else:
 			dir_list = []
 
 		returnme = []
 		for x in dir_list:
-			if self._excluded_dirs.match(x) is not None:
+			x = x.relative_to(cat_dir)
+			if self._excluded_dirs.match(str(x)) is not None:
 				continue
-			ps = pkgsplit(x)
+			ps = pkgsplit(str(x))
 			if not ps:
-				self.invalidentry(os.path.join(self.getpath(mysplit[0]), x))
+				self.invalidentry(self.getpath(mysplit[0]) / x)
 				continue
 			if len(mysplit) > 1:
 				if ps[0] == mysplit[1]:
@@ -472,7 +467,7 @@ class vardbapi(dbapi):
 
 	def _iter_cpv_all(self, use_cache=True, sort=False):
 		returnme = []
-		basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
+		basepath = self._eroot / VDB_PATH
 
 		if use_cache:
 			from portage import listdir
@@ -492,24 +487,23 @@ class vardbapi(dbapi):
 			catdirs.sort()
 
 		for x in catdirs:
-			if self._excluded_dirs.match(x) is not None:
+			if self._excluded_dirs.match(x.name) is not None:
 				continue
-			if not self._category_re.match(x):
+			if not self._category_re.match(x.name):
 				continue
 
-			pkgdirs = listdir(basepath + x, EmptyOnError=1, dirsonly=1)
+			pkgdirs = listdir(x, EmptyOnError=1, dirsonly=1)
 			if sort:
 				pkgdirs.sort()
 
-			for y in pkgdirs:
-				if self._excluded_dirs.match(y) is not None:
+			for subpath in pkgdirs:
+				if self._excluded_dirs.match(subpath.name) is not None:
 					continue
-				subpath = x + "/" + y
 				# -MERGING- should never be a cpv, nor should files.
 				try:
-					subpath = _pkg_str(subpath, db=self)
+					subpath = _pkg_str(str(subpath.relative_to(basepath)), db=self)
 				except InvalidData:
-					self.invalidentry(self.getpath(subpath))
+					self.invalidentry(subpath)
 					continue
 
 				yield subpath
@@ -571,7 +565,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
+			curmtime = os.stat(self._eroot / VDB_PATH / mycat).st_mtime_ns
 		except (IOError, OSError):
 			curmtime=0
 
@@ -603,7 +597,7 @@ class vardbapi(dbapi):
 			(len(self._aux_cache["modified"]) >= self._aux_cache_threshold or
 			not os.path.exists(self._cache_delta_filename)):
 
-			ensure_dirs(os.path.dirname(self._aux_cache_filename))
+			ensure_dirs(self._aux_cache_filename.parent)
 
 			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
@@ -755,8 +749,9 @@ class vardbapi(dbapi):
 		if cache_valid:
 			# Migrate old metadata to unicode.
 			for k, v in metadata.items():
-				metadata[k] = _unicode_decode(v,
-					encoding=_encodings['repo.content'], errors='replace')
+				pass
+				# metadata[k] = _unicode_decode(v,
+				# 	encoding=_encodings['repo.content'], errors='replace')
 
 			mydata.update(metadata)
 			pull_me.difference_update(mydata)
@@ -805,8 +800,7 @@ class vardbapi(dbapi):
 				continue
 			try:
 				with io.open(
-					_unicode_encode(os.path.join(mydir, x),
-					encoding=_encodings['fs'], errors='strict'),
+					mydir / x,
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace') as f:
 					myd = f.read()
@@ -1247,7 +1241,6 @@ class vardbapi(dbapi):
 			self._vardb = vardb
 
 		def add(self, cpv):
-			eroot_len = len(self._vardb._eroot)
 			pkg_hash = self._hash_pkg(cpv)
 			db = self._vardb._dblink(cpv)
 			if not db.getcontents():
@@ -1255,6 +1248,7 @@ class vardbapi(dbapi):
 				self._add_path("", pkg_hash)
 
 			for x in db._contents.keys():
+				# breakpoint()
 				self._add_path(x[eroot_len:], pkg_hash)
 
 			self._vardb._aux_cache["modified"].add(cpv)
@@ -1281,7 +1275,7 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(_unicode_encode(s,
+			h.update(s.encode(
 				encoding=_encodings['repo.content'],
 				errors='backslashreplace'))
 			h = h.hexdigest()
@@ -1677,10 +1671,10 @@ class dblink:
 		self.vartree = vartree
 		self._blockers = blockers
 		self._scheduler = scheduler
-		self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
-		self.dbcatdir = self.dbroot+"/"+cat
-		self.dbpkgdir = self.dbcatdir+"/"+pkg
-		self.dbtmpdir = self.dbcatdir+"/"+MERGING_IDENTIFIER+pkg
+		self.dbroot = normalize_path(self._eroot / VDB_PATH)
+		self.dbcatdir = self.dbroot / cat
+		self.dbpkgdir = self.dbcatdir / pkg
+		self.dbtmpdir = self.dbcatdir / (MERGING_IDENTIFIER + pkg)
 		self.dbdir = self.dbpkgdir
 		self.settings = mysettings
 		self._verbose = self.settings.get("PORTAGE_VERBOSE") == "1"
@@ -1859,11 +1853,10 @@ class dblink:
 		"""
 		if self.contentscache is not None:
 			return self.contentscache
-		contents_file = os.path.join(self.dbdir, "CONTENTS")
+		contents_file = self.dbdir / "CONTENTS"
 		pkgfiles = {}
 		try:
-			with io.open(_unicode_encode(contents_file,
-				encoding=_encodings['fs'], errors='strict'),
+			with io.open(contents_file,
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace') as f:
 				mylines = f.readlines()
@@ -5442,14 +5435,14 @@ class dblink:
 			) as f:
 			return f.read()
 
-	def setfile(self,fname,data):
+	def setfile(self,fname: Path,data):
 		kwargs = {}
 		if fname == 'environment.bz2' or not isinstance(data, str):
 			kwargs['mode'] = 'wb'
 		else:
 			kwargs['mode'] = 'w'
 			kwargs['encoding'] = _encodings['repo.content']
-		write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+		write_atomic(self.dbdir / fname, data, **kwargs)
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):

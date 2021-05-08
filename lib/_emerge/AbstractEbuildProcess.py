@@ -8,6 +8,8 @@ import stat
 import subprocess
 import tempfile
 import textwrap
+import os as _os
+from pathlib import Path
 from _emerge.SpawnProcess import SpawnProcess
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.EbuildIpcDaemon import EbuildIpcDaemon
@@ -61,7 +63,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		# die_hooks for some reason, and PORTAGE_BUILDDIR
 		# doesn't exist yet.
 		if need_builddir and \
-			not os.path.isdir(self.settings['PORTAGE_BUILDDIR']):
+			not os.path.isdir(Path(self.settings['PORTAGE_BUILDDIR'])):
 			msg = _("The ebuild phase '%s' has been aborted "
 			"since PORTAGE_BUILDDIR does not exist: '%s'") % \
 			(self.phase, self.settings['PORTAGE_BUILDDIR'])
@@ -192,7 +194,7 @@ class AbstractEbuildProcess(SpawnProcess):
 		if 0 not in self.fd_pipes and \
 			self.phase not in self._phases_interactive_whitelist and \
 			"interactive" not in self.settings.get("PROPERTIES", "").split():
-			null_fd = os.open('/dev/null', os.O_RDONLY)
+			null_fd = _os.open('/dev/null', os.O_RDONLY)
 			self.fd_pipes[0] = null_fd
 
 		self.log_filter_file = self.settings.get('PORTAGE_LOG_FILTER_FILE_CMD')
@@ -204,10 +206,8 @@ class AbstractEbuildProcess(SpawnProcess):
 
 	def _init_ipc_fifos(self):
 
-		input_fifo = os.path.join(
-			self.settings['PORTAGE_BUILDDIR'], '.ipc_in')
-		output_fifo = os.path.join(
-			self.settings['PORTAGE_BUILDDIR'], '.ipc_out')
+		input_fifo =  Path(self.settings['PORTAGE_BUILDDIR']) / '.ipc_in'
+		output_fifo = Path(self.settings['PORTAGE_BUILDDIR']) / '.ipc_out'
 
 		for p in (input_fifo, output_fifo):
 

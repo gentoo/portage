@@ -3,8 +3,9 @@
 
 import tempfile
 import time
-from portage import os
-from portage import shutil
+import os
+import shutil
+from pathlib import Path
 from portage import _python_interpreter
 from portage.tests import TestCase
 from portage.const import PORTAGE_BIN_PATH
@@ -72,8 +73,8 @@ class IpcDaemonTestCase(TestCase):
 				exit_command = ExitCommand()
 				commands = {'exit' : exit_command}
 				daemon = EbuildIpcDaemon(commands=commands,
-					input_fifo=input_fifo,
-					output_fifo=output_fifo)
+					input_fifo=Path(input_fifo),
+					output_fifo=Path(output_fifo))
 				proc = SpawnProcess(
 					args=[BASH_BINARY, "-c",
 					'"$PORTAGE_BIN_PATH"/ebuild-ipc exit %d' % exitcode],
@@ -90,7 +91,7 @@ class IpcDaemonTestCase(TestCase):
 				start_time = time.time()
 				self._run(event_loop, task_scheduler, self._SCHEDULE_TIMEOUT)
 
-				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
+				hardlock_cleanup(Path(env['PORTAGE_BUILDDIR']),
 					remove_all_locks=True)
 
 				self.assertEqual(self.received_command, True,
@@ -110,8 +111,8 @@ class IpcDaemonTestCase(TestCase):
 				exit_command = ExitCommand()
 				commands = {'exit' : exit_command}
 				daemon = EbuildIpcDaemon(commands=commands,
-					input_fifo=input_fifo,
-					output_fifo=output_fifo)
+					input_fifo=Path(input_fifo),
+					output_fifo=Path(output_fifo))
 				proc = SleepProcess(seconds=sleep_time_s)
 				task_scheduler = TaskScheduler(iter([daemon, proc]),
 					max_jobs=2, event_loop=event_loop)
@@ -125,7 +126,7 @@ class IpcDaemonTestCase(TestCase):
 				start_time = time.time()
 				self._run(event_loop, task_scheduler, short_timeout_s)
 
-				hardlock_cleanup(env['PORTAGE_BUILDDIR'],
+				hardlock_cleanup(Path(env['PORTAGE_BUILDDIR']),
 					remove_all_locks=True)
 
 				self.assertEqual(self.received_command, False,

@@ -8,6 +8,9 @@ VERSION = "HEAD"
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
 # ===========================================================================
 
+class MarcoError(Exception):
+	pass
+
 try:
 	import asyncio
 	import sys
@@ -19,6 +22,8 @@ try:
 	import re
 	import types
 	import platform
+	from pathlib import Path
+	from typing import Optional, Dict, Any
 
 	# Temporarily delete these imports, to ensure that only the
 	# wrapped versions are imported by portage internals.
@@ -26,6 +31,7 @@ try:
 	del os
 	import shutil
 	del shutil
+
 
 except ImportError as e:
 	sys.stderr.write("\n\n")
@@ -172,21 +178,42 @@ def _decode_argv(argv):
 	# With Python 3, the surrogateescape encoding error handler makes it
 	# possible to access the original argv bytes, which can be useful
 	# if their actual encoding does no match the filesystem encoding.
+	return argv
+	# What is going on here?
 	fs_encoding = sys.getfilesystemencoding()
 	return [_unicode_decode(x.encode(fs_encoding, 'surrogateescape'))
 		for x in argv]
 
 
-def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace'):
+def _unicode_encode(s, encoding=_encodings['content'], errors='backslashreplace', error=True):
 	if isinstance(s, str):
+		# breakpoint()
+		if error:
+			raise MarcoError(s)
 		s = s.encode(encoding, errors)
 	return s
 
 
-def _unicode_decode(s, encoding=_encodings['content'], errors='replace'):
+def _unicode_decode(s, encoding=_encodings['content'], errors='replace', error=True):
+	if isinstance(s, (str, bytes)):
+		if error:
+			raise MarcoError(s)
 	if isinstance(s, bytes):
 		s = str(s, encoding=encoding, errors=errors)
 	return s
+
+
+def is_relative_to(innerpath, outerpath):
+	if hasattr(outerpath, 'is_relative_to'): # 3.9
+		return innerpath.is_relative_to(outerpath)
+	else:
+		# Re-implementation
+		try:
+			innerpath.relative_to(outerpath)
+			return True
+		except ValueError:
+			return False
+
 
 
 _native_string = _unicode_decode
@@ -224,7 +251,6 @@ class _unicode_func_wrapper:
 		return (wrapped_args, wrapped_kwargs)
 
 	def __call__(self, *args, **kwargs):
-
 		encoding = self._encoding
 		wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
@@ -362,10 +388,10 @@ except (ImportError, OSError) as e:
 # ===========================================================================
 
 _python_interpreter = (sys.executable if os.environ.get("VIRTUAL_ENV")
-	else os.path.realpath(sys.executable))
+	else Path(sys.executable).resolve())
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
-_not_installed = os.path.isfile(os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed"))
+_not_installed = (PORTAGE_BASE_PATH / ".portage_not_installed").is_file()
 
 # Api consumers included in portage should set this to True.
 _internal_caller = False
@@ -405,7 +431,7 @@ def _get_stdin():
 
 _shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
 
-def _shell_quote(s):
+def _shell_quote(s: str):
 	"""
 	Quote a string in double-quotes and use backslashes to
 	escape any backslashes, double-quotes, dollar signs, or
@@ -437,6 +463,7 @@ def load_mod(name):
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
+		import os
 		return os.getcwd()
 	except OSError: #dir doesn't exist
 		os.chdir("/")
@@ -529,13 +556,16 @@ def portageexit():
 
 class _trees_dict(dict):
 	__slots__ = ('_running_eroot', '_target_eroot',)
+	_running_eroot: Path
+	_target_eroot: Path
 	def __init__(self, *pargs, **kargs):
 		dict.__init__(self, *pargs, **kargs)
 		self._running_eroot = None
 		self._target_eroot = None
 
-def create_trees(config_root=None, target_root=None, trees=None, env=None,
-	sysroot=None, eprefix=None):
+def create_trees(config_root: Optional[Path] = None,
+	target_root: Optional[Path] = None, trees=None, env=None,
+	sysroot: Optional[Path] = None, eprefix: Optional[Path] = None) -> Dict[Path, Dict[str, Any]]:
 
 	if trees is None:
 		trees = _trees_dict()
@@ -552,9 +582,9 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 	settings.lock()
 
 	depcachedir = settings.get('PORTAGE_DEPCACHEDIR')
-	trees._target_eroot = settings['EROOT']
-	myroots = [(settings['EROOT'], settings)]
-	if settings["ROOT"] == "/" and settings["EPREFIX"] == const.EPREFIX:
+	trees._target_eroot = Path(settings['EROOT'])
+	myroots = [(Path(settings['EROOT']), settings)]
+	if settings["ROOT"] == Path(os.sep) and settings["EPREFIX"] == const.EPREFIX:
 		trees._running_eroot = trees._target_eroot
 	else:
 
@@ -571,11 +601,11 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 				clean_env[k] = v
 		if depcachedir is not None:
 			clean_env['PORTAGE_DEPCACHEDIR'] = depcachedir
-		settings = config(config_root=None, target_root="/",
+		settings = config(config_root=None, target_root=Path(os.sep),
 			env=clean_env, sysroot="/", eprefix=None)
 		settings.lock()
-		trees._running_eroot = settings['EROOT']
-		myroots.append((settings['EROOT'], settings))
+		trees._running_eroot = Path(settings['EROOT'])
+		myroots.append((Path(settings['EROOT']), settings))
 
 	for myroot, mysettings in myroots:
 		trees[myroot] = portage.util.LazyItemsDict(trees.get(myroot, {}))
@@ -586,7 +616,7 @@ def create_trees(config_root=None, target_root=None, trees=None, env=None,
 		trees[myroot].addLazySingleton("porttree",
 			portagetree, settings=mysettings)
 		trees[myroot].addLazySingleton("bintree",
-			binarytree, pkgdir=mysettings["PKGDIR"], settings=mysettings)
+			binarytree, pkgdir=Path(mysettings["PKGDIR"]), settings=mysettings)
 	return trees
 
 if VERSION == 'HEAD':
@@ -595,17 +625,17 @@ if VERSION == 'HEAD':
 			global VERSION
 			if VERSION is not self:
 				return VERSION
-			if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, '.git')):
+			if os.path.isdir(PORTAGE_BASE_PATH / '.git'):
 				encoding = _encodings['fs']
-				cmd = [BASH_BINARY, "-c", ("cd %s ; git describe --match 'portage-*' || exit $? ; " + \
+				cmd = [str(BASH_BINARY), "-c", ("cd %s ; git describe --match 'portage-*' || exit $? ; " + \
 					"if [ -n \"`git diff-index --name-only --diff-filter=M HEAD`\" ] ; " + \
 					"then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; " + \
-					"exit 0") % _shell_quote(PORTAGE_BASE_PATH)]
-				cmd = [_unicode_encode(x, encoding=encoding, errors='strict')
+					"exit 0") % _shell_quote(str(PORTAGE_BASE_PATH))]
+				cmd = [x.encode(encoding=encoding, errors='strict')
 					for x in cmd]
 				proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 					stderr=subprocess.STDOUT)
-				output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+				output = proc.communicate()[0].decode(encoding=encoding)
 				status = proc.wait()
 				if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
 					output_lines = output.splitlines()

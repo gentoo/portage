@@ -10,6 +10,7 @@ from portage import os
 from portage.module import Modules
 from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
+from pathlib import Path
 
 class OptionItem:
 	"""class to hold module ArgumentParser options data
@@ -160,10 +161,7 @@ def emaint_main(myargv):
 	# files (such as the world file) have sane permissions.
 	os.umask(0o22)
 
-	module_path = os.path.join(
-		(os.path.dirname(
-		os.path.realpath(__file__))), "modules"
-		)
+	module_path = Path(__file__).parent / "modules"
 	module_controller = Modules(
 		path=module_path,
 		namepath="portage.emaint.modules")

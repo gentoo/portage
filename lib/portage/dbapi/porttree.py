@@ -5,6 +5,8 @@ __all__ = [
 	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
 ]
 
+from typing import Optional, Dict, Any
+from pathlib import Path
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
@@ -145,16 +147,12 @@ class _better_cache:
 
 	def _scan_cat(self, cat):
 		for repo in self._repo_list:
-			cat_dir = repo.location + "/" + cat
-			try:
-				pkg_list = os.listdir(cat_dir)
-			except OSError as e:
-				if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
-					raise
+			cat_dir = repo.location / cat
+			if not cat_dir.exists() or not cat_dir.is_dir():
 				continue
-			for p in pkg_list:
+			for p in cat_dir.iterdir():
 				try:
-					atom = Atom("%s/%s" % (cat, p))
+					atom = Atom("%s/%s" % (cat, p.name))
 				except InvalidAtom:
 					continue
 				if atom != atom.cp:
@@ -219,7 +217,7 @@ class portdbapi(dbapi):
 		# this purpose because doebuild makes many changes to the config
 		# instance that is passed in.
 		self.doebuild_settings = config(clone=self.settings)
-		self.depcachedir = os.path.realpath(self.settings.depcachedir)
+		self.depcachedir = Path(self.settings.depcachedir).resolve()
 
 		if os.environ.get("SANDBOX_ON") == "1":
 			# Make api consumers exempt from sandbox violations
@@ -236,8 +234,9 @@ class portdbapi(dbapi):
 		# root eclass dir, we assume that PORTDIR is invalid or
 		# missing. This check allows aux_get() to detect a missing
 		# repository and return early by raising a KeyError.
-		self._have_root_eclass_dir = os.path.isdir(
-			os.path.join(self.settings.repositories.mainRepoLocation(), "eclass"))
+		self._have_root_eclass_dir = \
+			self.settings.repositories.mainRepoLocation() is not None and \
+			(self.settings.repositories.mainRepoLocation() /  "eclass").is_dir()
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache = {}
@@ -254,8 +253,8 @@ class portdbapi(dbapi):
 		self._ro_auxdb = {}
 		self._init_cache_dirs()
 		try:
-			depcachedir_st = os.stat(self.depcachedir)
-			depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
+			depcachedir_st = self.depcachedir.stat()
+			depcachedir_w_ok = _os.access(self.depcachedir, os.W_OK)
 		except OSError:
 			depcachedir_st = None
 			depcachedir_w_ok = False
@@ -387,15 +386,15 @@ class portdbapi(dbapi):
 
 	def findLicensePath(self, license_name):
 		for x in reversed(self.porttrees):
-			license_path = os.path.join(x, "licenses", license_name)
+			license_path = x / "licenses" / license_name
 			if os.access(license_path, os.R_OK):
 				return license_path
 		return None
 
-	def findname(self,mycpv, mytree = None, myrepo = None):
+	def findname(self,mycpv, mytree: Path = None, myrepo = None) -> Optional[Path]:
 		return self.findname2(mycpv, mytree, myrepo)[0]
 
-	def getRepositoryPath(self, repository_id):
+	def getRepositoryPath(self, repository_id) -> Path:
 		"""
 		This function is required for GLEP 42 compliance; given a valid repository ID
 		it must return a path to the repository
@@ -452,7 +451,7 @@ class portdbapi(dbapi):
 		"""
 		return self.settings.repositories.ignored_repos
 
-	def findname2(self, mycpv, mytree=None, myrepo=None):
+	def findname2(self, mycpv: str, mytree: Optional[Path] = None, myrepo=None):
 		"""
 		Returns the location of the CPV, and what overlay it was in.
 		Searches overlays first, then PORTDIR; this allows us to return the first
@@ -499,13 +498,9 @@ class portdbapi(dbapi):
 					continue
 				mytrees.append(repo.location)
 
-		# For optimal performace in this hot spot, we do manual unicode
-		# handling here instead of using the wrapped os module.
-		encoding = _encodings['fs']
-		errors = 'strict'
-
-		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
-			mysplit[1] + ".ebuild"
+		# Can't use with_suffix here because it replaces the minor version
+		# number, assuming it's a suffix
+		relative_path = (Path(mysplit[0]) / psplit[0] / (mysplit[1] + ".ebuild"))
 
 		# There is no need to access the filesystem when the package
 		# comes from this db and the package repo attribute corresponds
@@ -513,12 +508,11 @@ class portdbapi(dbapi):
 		# the cp_list method.
 		if (myrepo is not None and myrepo == getattr(mycpv, 'repo', None)
 			and self is getattr(mycpv, '_db', None)):
-			return (mytree + _os.sep + relative_path, mytree)
+			return (mytree / relative_path, mytree)
 
 		for x in mytrees:
-			filename = x + _os.sep + relative_path
-			if _os.access(_unicode_encode(filename,
-				encoding=encoding, errors=errors), _os.R_OK):
+			filename = x / relative_path
+			if _os.access(filename, _os.R_OK):
 				return (filename, x)
 		return (None, 0)
 
@@ -607,7 +601,7 @@ class portdbapi(dbapi):
 			self.async_aux_get(mycpv, mylist, mytree=mytree,
 			myrepo=myrepo, loop=loop))
 
-	def async_aux_get(self, mycpv, mylist, mytree=None, myrepo=None, loop=None):
+	def async_aux_get(self, mycpv, mylist, mytree: Optional[Path] = None, myrepo=None, loop=None):
 		"""
 		Asynchronous form form of aux_get.
 
@@ -635,8 +629,10 @@ class portdbapi(dbapi):
 		future = loop.create_future()
 		cache_me = False
 		if myrepo is not None:
+			# breakpoint()
 			mytree = self.treemap.get(myrepo)
 			if mytree is None:
+				# breakpoint()
 				future.set_exception(PortageKeyError(myrepo))
 				return future
 
@@ -661,6 +657,7 @@ class portdbapi(dbapi):
 			cat, pkg = mycpv.split("/", 1)
 		except ValueError:
 			# Missing slash. Can't find ebuild so raise PortageKeyError.
+			# breakpoint()
 			future.set_exception(PortageKeyError(mycpv))
 			return future
 
@@ -669,6 +666,7 @@ class portdbapi(dbapi):
 		if not myebuild:
 			writemsg("!!! aux_get(): %s\n" % \
 				_("ebuild not found for '%s'") % mycpv, noiselevel=1)
+			# breakpoint()
 			future.set_exception(PortageKeyError(mycpv))
 			return future
 
@@ -681,6 +679,7 @@ class portdbapi(dbapi):
 			return future
 
 		if myebuild in self._broken_ebuilds:
+			# breakpoint()
 			future.set_exception(PortageKeyError(mycpv))
 			return future
 
@@ -708,6 +707,7 @@ class portdbapi(dbapi):
 		if proc is not None:
 			if proc.returncode != os.EX_OK:
 				self._broken_ebuilds.add(myebuild)
+				# breakpoint()
 				future.set_exception(PortageKeyError(mycpv))
 				return
 			mydata = proc.metadata
@@ -731,7 +731,7 @@ class portdbapi(dbapi):
 
 		future.set_result(returnme)
 
-	def getFetchMap(self, mypkg, useflags=None, mytree=None):
+	def getFetchMap(self, mypkg, useflags=None, mytree=None) -> Dict[Path, Any]:
 		"""
 		Get the SRC_URI metadata as a dict which maps each file name to a
 		set of alternative URIs.
@@ -816,9 +816,9 @@ class portdbapi(dbapi):
 		myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
 		if myebuild is None:
 			raise AssertionError(_("ebuild not found for '%s'") % mypkg)
-		pkgdir = os.path.dirname(myebuild)
+		pkgdir = myebuild.parent
 		mf = self.repositories.get_repo_for_location(
-			os.path.dirname(os.path.dirname(pkgdir))).load_manifest(
+			pkgdir.parents[1]).load_manifest(
 				pkgdir, self.settings["DISTDIR"])
 		checksums = mf.getDigests()
 		if not checksums:
@@ -836,7 +836,7 @@ class portdbapi(dbapi):
 				if debug:
 					writemsg(_("[bad digest]: missing %(file)s for %(pkg)s\n") % {"file":myfile, "pkg":mypkg})
 				continue
-			file_path = os.path.join(self.settings["DISTDIR"], myfile)
+			file_path = self.settings["DISTDIR"] / myfile
 			mystat = None
 			try:
 				mystat = os.stat(file_path)
@@ -954,9 +954,9 @@ class portdbapi(dbapi):
 			trees = self.porttrees
 		for x in categories:
 			for oroot in trees:
-				for y in listdir(oroot+"/"+x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
+				for y in listdir(oroot / x, EmptyOnError=1, ignorecvs=1, dirsonly=1):
 					try:
-						atom = Atom("%s/%s" % (x, y))
+						atom = Atom("%s/%s" % (x, y.name))
 					except InvalidAtom:
 						continue
 					if atom != atom.cp:
@@ -967,7 +967,7 @@ class portdbapi(dbapi):
 			l.sort(reverse=reverse)
 		return l
 
-	def cp_list(self, mycp, use_cache=1, mytree=None):
+	def cp_list(self, mycp: str, use_cache=1, mytree: Optional[Path] = None):
 		# NOTE: Cache can be safely shared with the match cache, since the
 		# match cache uses the result from dep_expand for the cache_key.
 		if self.frozen and mytree is not None \
@@ -985,13 +985,14 @@ class portdbapi(dbapi):
 				# profile (due to differences in _get_implicit_iuse).
 				self.xcache["match-all"][(mycp, mycp)] = cachelist
 				return cachelist[:]
+		# if isinstance(mycp, Path): breakpoint()
 		mysplit = mycp.split("/")
 		invalid_category = mysplit[0] not in self._categories
 		# Process repos in ascending order by repo.priority, so that
 		# stable sort by version produces results ordered by
 		# (pkg.version, repo.priority).
 		if mytree is not None:
-			if isinstance(mytree, str):
+			if isinstance(mytree, (str, Path)):
 				repos = [self.repositories.get_repo_for_location(mytree)]
 			else:
 				# assume it's iterable
@@ -1005,20 +1006,20 @@ class portdbapi(dbapi):
 		mylist = []
 		for repo in repos:
 			oroot = repo.location
-			try:
-				file_list = os.listdir(os.path.join(oroot, mycp))
-			except OSError:
+			if not (oroot / mycp).is_dir():
 				continue
+			file_list = (oroot / mycp).iterdir()
 			for x in file_list:
+				x = x.relative_to(oroot / mycp)
 				pf = None
-				if x[-7:] == '.ebuild':
-					pf = x[:-7]
+				if x.suffix == '.ebuild':
+					pf = str(x.with_suffix(''))
 
 				if pf is not None:
 					ps = pkgsplit(pf)
 					if not ps:
 						writemsg(_("\nInvalid ebuild name: %s\n") % \
-							os.path.join(oroot, mycp, x), noiselevel=-1)
+							(oroot / mycp / x), noiselevel=-1)
 						continue
 					if ps[0] != mysplit[1]:
 						writemsg(_("\nInvalid ebuild name: %s\n") % \
@@ -1032,7 +1033,7 @@ class portdbapi(dbapi):
 					mylist.append(_pkg_str(mysplit[0]+"/"+pf, db=self, repo=repo.name))
 		if invalid_category and mylist:
 			writemsg(_("\n!!! '%s' has a category that is not listed in " \
-				"%setc/portage/categories\n") % \
+				"%s/etc/portage/categories\n") % \
 				(mycp, self.settings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
 		# Always sort in ascending order here since it's handy and
@@ -1426,9 +1427,10 @@ class FetchlistDict(Mapping):
 		"""pkgdir is a directory containing ebuilds and settings is passed into
 		portdbapi.getfetchlist for __getitem__ calls."""
 		self.pkgdir = pkgdir
-		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
+		self.cp = str(pkgdir.relative_to(pkgdir.parents[1]))
 		self.settings = settings
-		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
+		self.mytree = pkgdir.parents[1].resolve()
+		# self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
 		self.portdb = mydbapi
 
 	def __getitem__(self, pkg_key):
@@ -1523,7 +1525,7 @@ def _async_manifest_fetchlist(portdb, repo_config, cp, cpv_list=None,
 	return result
 
 
-def _parse_uri_map(cpv, metadata, use=None):
+def _parse_uri_map(cpv, metadata, use=None) -> Dict[Path, Any]:
 
 	myuris = use_reduce(metadata.get('SRC_URI', ''),
 		uselist=use, matchall=(use is None),
@@ -1537,13 +1539,13 @@ def _parse_uri_map(cpv, metadata, use=None):
 		uri = myuris.pop()
 		if myuris and myuris[-1] == "->":
 			myuris.pop()
-			distfile = myuris.pop()
+			distfile = Path(myuris.pop())
 		else:
-			distfile = os.path.basename(uri)
-			if not distfile:
+			if not uri:
 				raise portage.exception.InvalidDependString(
 					("getFetchMap(): '%s' SRC_URI has no file " + \
 					"name: '%s'") % (cpv, uri))
+			distfile = Path(uri)
 
 		uri_set = uri_map.get(distfile)
 		if uri_set is None:

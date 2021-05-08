@@ -7,6 +7,7 @@ import platform
 import signal
 import stat
 import sys
+from pathlib import Path
 
 # This block ensures that ^C interrupts are handled quietly.
 try:
@@ -1014,7 +1015,7 @@ def egencache_main(args):
 			# has had an opportunity to create it. This ensures that
 			# we don't use the cache in the "volatile" mode which is
 			# undesirable for egencache.
-			if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+			if not os.access(Path(settings["PORTAGE_DEPCACHEDIR"]), os.W_OK):
 				writemsg_level("ecachegen: error: " + \
 					"write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
 					level=logging.ERROR, noiselevel=-1)

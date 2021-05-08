@@ -70,14 +70,13 @@ def getmaskingreason(mycpv, metadata=None, settings=None,
 	locations = []
 	if pkg.repo in settings.repositories:
 		for repo in settings.repositories[pkg.repo].masters + (settings.repositories[pkg.repo],):
-			locations.append(os.path.join(repo.location, "profiles"))
+			locations.append(repo.location / "profiles")
 	locations.extend(settings.profiles)
-	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH))
+	locations.append(settings["PORTAGE_CONFIGROOT"] / USER_CONFIG_PATH)
 	locations.reverse()
 	pmasklists = []
 	for profile in locations:
-		pmask_filename = os.path.join(profile, "package.mask")
+		pmask_filename = profile / "package.mask"
 		node = None
 		for l, recursive_filename in grablines(pmask_filename,
 			recursive=1, remember_source_file=True):

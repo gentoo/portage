@@ -104,8 +104,8 @@ class DeletionTask(CompositeTask):
 				logging.debug(("_delete_links: '%s' has "
 					"no digests") % self.distfile)
 				continue
-			distfile_path = os.path.join(
-				self.config.options.distfiles,
+			distfile_path = (
+				self.config.options.distfiles /
 				layout.get_path(self.distfile))
 			try:
 				os.unlink(distfile_path)

@@ -13,7 +13,7 @@ def load_unpack_dependencies_configuration(repositories):
 	for repo in repositories.repos_with_profiles():
 		for eapi in _supported_eapis:
 			if eapi_has_automatic_unpack_dependencies(eapi):
-				file_name = os.path.join(repo.location, "profiles", "unpack_dependencies", eapi)
+				file_name = repo.location / "profiles" / "unpack_dependencies" / eapi
 				lines = grabfile(file_name, recursive=True)
 				for line in lines:
 					elements = line.split()

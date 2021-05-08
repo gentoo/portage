@@ -9,6 +9,7 @@ __all__ = ['ConfigParserError', 'NoOptionError', 'ParsingError',
 # - RawConfigParser that provides no interpolation for values.
 
 import io
+from pathlib import Path
 
 from configparser import (Error as ConfigParserError,
 	NoOptionError, ParsingError, RawConfigParser)
@@ -37,7 +38,14 @@ def read_configs(parser, paths):
 		source_kwarg = 'filename'
 
 	for p in paths:
-		if isinstance(p, str):
+		if isinstance(p, Path):
+			kwargs = {source_kwarg: p}
+			try:
+				with p.open('r') as f:
+					read_file(f, **kwargs)
+			except EnvironmentError:
+				pass
+		elif isinstance(p, str):
 			f = None
 			try:
 				f = io.open(_unicode_encode(p,

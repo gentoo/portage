@@ -5,6 +5,7 @@ __all__ = ["dbapi"]
 
 import functools
 import re
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

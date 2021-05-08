@@ -6,6 +6,8 @@ import functools
 import logging
 import signal
 import sys
+from pathlib import Path
+import os as _os
 
 from _emerge.SubProcess import SubProcess
 import portage
@@ -34,6 +36,8 @@ class SpawnProcess(SubProcess):
 
 	__slots__ = ("args", "log_filter_file") + \
 		_spawn_kwarg_names + ("_main_task", "_main_task_cancel", "_selinux_type",)
+
+	logfile: Path
 
 	# Max number of attempts to kill the processes listed in cgroup.procs,
 	# given that processes may fork before they can be killed.
@@ -65,7 +69,7 @@ class SpawnProcess(SubProcess):
 			# access to stdin. Until then, use /dev/null so that any
 			# attempts to read from stdin will immediately return EOF
 			# instead of blocking indefinitely.
-			null_input = os.open('/dev/null', os.O_RDWR)
+			null_input = _os.open(os.devnull, os.O_RDWR)
 			fd_pipes[0] = null_input
 
 		fd_pipes.setdefault(0, portage._get_stdin().fileno())

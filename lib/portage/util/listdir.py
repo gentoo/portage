@@ -5,6 +5,7 @@ __all__ = ['cacheddir', 'listdir']
 
 import errno
 import stat
+from pathlib import Path
 
 
 from portage import os
@@ -20,12 +21,12 @@ from portage.util import normalize_path
 # it manually).
 dircache = {}
 
-def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
+def cacheddir(my_original_path: Path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
 	mypath = normalize_path(my_original_path)
 	try:
-		pathstat = os.stat(mypath)
-		if not stat.S_ISDIR(pathstat.st_mode):
+		if not mypath.is_dir():
 			raise DirectoryNotFound(mypath)
+		pathstat = os.stat(mypath)
 	except EnvironmentError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mypath)
@@ -35,7 +36,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		return [], []
 	else:
 		try:
-			fpaths = os.listdir(mypath)
+			fpaths = list(mypath.iterdir())
 		except EnvironmentError as e:
 			if e.errno != errno.EACCES:
 				raise
@@ -45,9 +46,9 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 		for x in fpaths:
 			try:
 				if followSymlinks:
-					pathstat = os.stat(mypath+"/"+x)
+					pathstat = os.stat(x)
 				else:
-					pathstat = os.lstat(mypath+"/"+x)
+					pathstat = os.lstat(x)
 
 				if stat.S_ISREG(pathstat[stat.ST_MODE]):
 					ftype.append(0)
@@ -67,7 +68,7 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			if file_path in ignorelist:
 				pass
 			elif ignorecvs:
-				if file_path[:2] != ".#" and \
+				if file_path.suffix != '.#' and \
 					not (file_type == 1 and file_path in VCS_DIRS):
 					ret_list.append(file_path)
 					ret_ftype.append(file_type)
@@ -77,13 +78,13 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 
 	return ret_list, ret_ftype
 
-def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
+def listdir(mypath: Path, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], followSymlinks=True,
 	EmptyOnError=False, dirsonly=False):
 	"""
 	Portage-specific implementation of os.listdir
 
 	@param mypath: Path whose contents you wish to list
-	@type mypath: String
+	@type mypath: Path
 	@param recursive: Recursively scan directories contained within mypath
 	@type recursive: Boolean
 	@param filesonly; Only return files, not more directories

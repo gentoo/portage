@@ -31,7 +31,6 @@ class SubprocessExecTestCase(TestCase):
 		args_tuple = (b'hello', b'world')
 		echo_binary = find_binary("echo")
 		self.assertNotEqual(echo_binary, None)
-		echo_binary = echo_binary.encode()
 
 		def test(loop):
 
@@ -73,7 +72,6 @@ class SubprocessExecTestCase(TestCase):
 		stdin_data = b'hello world'
 		cat_binary = find_binary("cat")
 		self.assertNotEqual(cat_binary, None)
-		cat_binary = cat_binary.encode()
 
 		def test(loop):
 			proc = loop.run_until_complete(
@@ -92,11 +90,9 @@ class SubprocessExecTestCase(TestCase):
 		stdin_data = b'hello world'
 		cat_binary = find_binary("cat")
 		self.assertNotEqual(cat_binary, None)
-		cat_binary = cat_binary.encode()
 
 		echo_binary = find_binary("echo")
 		self.assertNotEqual(echo_binary, None)
-		echo_binary = echo_binary.encode()
 
 		def test(loop):
 
@@ -131,7 +127,6 @@ class SubprocessExecTestCase(TestCase):
 		args_tuple = (b'hello', b'world')
 		echo_binary = find_binary("echo")
 		self.assertNotEqual(echo_binary, None)
-		echo_binary = echo_binary.encode()
 
 		def test(loop):
 			with open(os.devnull, 'rb', 0) as devnull:
@@ -159,7 +154,6 @@ class SubprocessExecTestCase(TestCase):
 		stdin_data = b'hello world'
 		cat_binary = find_binary("cat")
 		self.assertNotEqual(cat_binary, None)
-		cat_binary = cat_binary.encode()
 
 		def test(loop):
 			proc = loop.run_until_complete(

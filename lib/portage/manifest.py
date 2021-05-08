@@ -7,6 +7,9 @@ import logging
 import re
 import stat
 import warnings
+from pathlib import Path
+import os as _os
+from typing import Optional, List
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -44,8 +47,8 @@ def manifest2AuxfileFilter(filename):
 			return False
 	return not filename[:7] == 'digest-'
 
-def manifest2MiscfileFilter(filename):
-	return not (filename == "Manifest" or filename.endswith(".ebuild"))
+def manifest2MiscfileFilter(filepath: Path):
+	return not (filepath.name == "Manifest" or filepath.suffix == ".ebuild")
 
 def guessManifestFileType(filename):
 	""" Perform a best effort guess of which type the given filename is, avoid using this if possible """
@@ -75,18 +78,20 @@ def parseManifest2(line):
 		hashes = dict(zip(tokens[1::2], tokens[2::2]))
 		hashes["size"] = int(tokens[0])
 		myentry = Manifest2Entry(type=match.group(1),
-			name=match.group(2), hashes=hashes)
+			name=Path(match.group(2)), hashes=hashes)
 	return myentry
 
 class ManifestEntry:
 	__slots__ = ("type", "name", "hashes")
+	type: str
+	name: Path  # Relative
 	def __init__(self, **kwargs):
 		for k, v in kwargs.items():
 			setattr(self, k, v)
 
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):
-		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
+		myline = " ".join([self.type, str(self.name), str(self.hashes["size"])])
 		myhashkeys = list(self.hashes)
 		myhashkeys.remove("size")
 		myhashkeys.sort()
@@ -108,7 +113,7 @@ class Manifest2Entry(ManifestEntry):
 
 class Manifest:
 	parsers = (parseManifest2,)
-	def __init__(self, pkgdir, distdir=None, fetchlist_dict=None,
+	def __init__(self, pkgdir: Path, distdir: Optional[Path] = None, fetchlist_dict=None,
 		manifest1_compat=DeprecationWarning, from_scratch=False, thin=False,
 		allow_missing=False, allow_create=True, hashes=None, required_hashes=None,
 		find_invalid_path_char=None, strict_misc_digests=True):
@@ -127,7 +132,7 @@ class Manifest:
 		if find_invalid_path_char is None:
 			find_invalid_path_char = _find_invalid_path_char
 		self._find_invalid_path_char = find_invalid_path_char
-		self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
+		self.pkgdir = pkgdir
 		self.fhashdict = {}
 		self.hashes = set()
 		self.required_hashes = set()
@@ -165,7 +170,7 @@ class Manifest:
 
 	def getFullname(self):
 		""" Returns the absolute path to the Manifest file for this instance """
-		return os.path.join(self.pkgdir, "Manifest")
+		return self.pkgdir / "Manifest"
 
 	def getDigests(self):
 		""" Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue} """
@@ -182,16 +187,14 @@ class Manifest:
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			with io.open(_unicode_encode(file_path,
-				encoding=_encodings['fs'], errors='strict'), mode='r',
-				encoding=_encodings['repo.content'], errors='replace') as f:
+			with file_path.open('r', encoding=_encodings['repo.content'], errors='replace') as f:
 				if myhashdict is None:
 					myhashdict = {}
 				self._parseDigests(f, myhashdict=myhashdict, **kwargs)
 			return myhashdict
 		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
-				raise FileNotFound(file_path)
+				raise FileNotFound(str(file_path))
 			else:
 				raise
 
@@ -248,7 +251,8 @@ class Manifest:
 			myfiles.sort()
 			for f in myfiles:
 				myentry = Manifest2Entry(
-					type=t, name=f, hashes=self.fhashdict[t][f].copy())
+					type=t, name=f,
+					hashes=self.fhashdict[t][f].copy())
 				for h in list(myentry.hashes):
 					if h not in valid_hashes:
 						del myentry.hashes[h]
@@ -275,11 +279,10 @@ class Manifest:
 			myentries = list(self._createManifestEntries())
 			update_manifest = True
 			preserved_stats = {}
-			preserved_stats[self.pkgdir.rstrip(os.sep)] = os.stat(self.pkgdir)
+			preserved_stats[self.pkgdir] = self.pkgdir.stat()
 			if myentries and not force:
 				try:
-					f = io.open(_unicode_encode(self.getFullname(),
-						encoding=_encodings['fs'], errors='strict'),
+					f = self.getFullname().open(
 						mode='r', encoding=_encodings['repo.content'],
 						errors='replace')
 					oldentries = list(self._parseManifestLines(f))
@@ -349,7 +352,7 @@ class Manifest:
 		_update_max = (lambda st: max_mtime if max_mtime is not None
 			and max_mtime > st[stat.ST_MTIME] else st[stat.ST_MTIME])
 		_stat = (lambda path: preserved_stats[path] if path in preserved_stats
-			else os.stat(path))
+			else path.stat())
 
 		for stat_result in preserved_stats.values():
 			max_mtime = _update_max(stat_result)
@@ -357,30 +360,23 @@ class Manifest:
 		for entry in entries:
 			if entry.type == 'DIST':
 				continue
-			abs_path = (os.path.join(self.pkgdir, 'files', entry.name) if
-				entry.type == 'AUX' else os.path.join(self.pkgdir, entry.name))
+			abs_path = ((self.pkgdir / 'files' / entry.name) if
+				entry.type == 'AUX' else (self.pkgdir / entry.name))
 			max_mtime = _update_max(_stat(abs_path))
 
 		if not self.thin:
 			# Account for changes to all relevant nested directories.
 			# This is not necessary for thin manifests because
 			# self.pkgdir is already included via preserved_stats.
-			for parent_dir, dirs, files in os.walk(self.pkgdir.rstrip(os.sep)):
-				try:
-					parent_dir = _unicode_decode(parent_dir,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					# If an absolute path cannot be decoded, then it is
-					# always excluded from the manifest (repoman will
-					# report such problems).
-					pass
-				else:
-					max_mtime = _update_max(_stat(parent_dir))
+			for path in self.pkgdir.rglob('*'):
+				if not path.is_dir():
+					continue
+				max_mtime = _update_max(_stat(path))
 
 		if max_mtime is not None:
 			for path in preserved_stats:
 				try:
-					os.utime(path, (max_mtime, max_mtime))
+					_os.utime(path, (max_mtime, max_mtime))
 				except OSError as e:
 					# Even though we have write permission, utime fails
 					# with EPERM if path is owned by a different user.
@@ -399,16 +395,16 @@ class Manifest:
 		""" Validate signature on Manifest """
 		raise NotImplementedError()
 
-	def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
+	def addFile(self, ftype, fname: Path, hashdict=None, ignoreMissing=False):
 		""" Add entry to Manifest optionally using hashdict to avoid recalculation of hashes """
-		if ftype == "AUX" and not fname.startswith("files/"):
-			fname = os.path.join("files", fname)
-		if not os.path.exists(self.pkgdir+fname) and not ignoreMissing:
+		if ftype == "AUX" and not fname.parents[-1].name == "files":
+			fname = "files" / fname
+		if not os.path.exists(self.pkgdir / fname) and not ignoreMissing:
 			raise FileNotFound(fname)
 		if not ftype in MANIFEST2_IDENTIFIERS:
 			raise InvalidDataType(ftype)
-		if ftype == "AUX" and fname.startswith("files"):
-			fname = fname[6:]
+		if ftype == "AUX" and fname.parents[-1].name == "files":
+			fname = fname.relative_to(fname.parents[-1])
 		self.fhashdict[ftype][fname] = {}
 		if hashdict != None:
 			self.fhashdict[ftype][fname].update(hashdict)
@@ -419,8 +415,9 @@ class Manifest:
 		""" Remove given entry from Manifest """
 		del self.fhashdict[ftype][fname]
 
-	def hasFile(self, ftype, fname):
+	def hasFile(self, ftype, fname: Path):
 		""" Return whether the Manifest contains an entry for the given type,filename pair """
+		fname = self._getRelname(ftype, fname)
 		return fname in self.fhashdict[ftype]
 
 	def findFile(self, fname):
@@ -455,7 +452,7 @@ class Manifest:
 			required_hashes=self.required_hashes,
 			find_invalid_path_char=self._find_invalid_path_char,
 			strict_misc_digests=self.strict_misc_digests)
-		pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
+		pn = self.pkgdir.name
 		cat = self._pkgdir_category()
 
 		pkgdir = self.pkgdir
@@ -480,7 +477,7 @@ class Manifest:
 		required_hash_types.add("size")
 		required_hash_types.update(self.required_hashes)
 		for f in distlist:
-			fname = os.path.join(self.distdir, f)
+			fname = self.distdir / f
 			mystat = None
 			try:
 				mystat = os.stat(fname)
@@ -501,10 +498,10 @@ class Manifest:
 					if f in requiredDistfiles:
 						raise
 
-	def _is_cpv(self, cat, pn, filename):
-		if not filename.endswith(".ebuild"):
+	def _is_cpv(self, cat, pn, filename: Path) -> Optional[str]:
+		if not filename.suffix == ".ebuild":
 			return None
-		pf = filename[:-7]
+		pf = filename.stem
 		ps = portage.versions._pkgsplit(pf)
 		cpv = "%s/%s" % (cat, pf)
 		if not ps:
@@ -516,17 +513,12 @@ class Manifest:
 				"match directory name: '%s'") % cpv)
 		return cpv
 
-	def _update_thin_pkgdir(self, cat, pn, pkgdir):
-		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-			break
+	def _update_thin_pkgdir(self, cat, pn, pkgdir: Path) -> List[str]:
 		cpvlist = []
-		for f in pkgdir_files:
-			try:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
+		for f in pkgdir.iterdir():
+			if f.name[:1] == '.':
 				continue
-			if f[:1] == '.':
+			if not f.is_file():
 				continue
 			pf = self._is_cpv(cat, pn, f)
 			if pf is not None:
@@ -535,15 +527,10 @@ class Manifest:
 
 	def _update_thick_pkgdir(self, cat, pn, pkgdir):
 		cpvlist = []
-		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-			break
-		for f in pkgdir_files:
-			try:
-				f = _unicode_decode(f,
-					encoding=_encodings['fs'], errors='strict')
-			except UnicodeDecodeError:
-				continue
-			if f[:1] == ".":
+		for f in pkgdir.iterdir():
+			fabs = f
+			f = f.relative_to(pkgdir)
+			if f.name[:1] == ".":
 				continue
 			pf = self._is_cpv(cat, pn, f)
 			if pf is not None:
@@ -554,21 +541,12 @@ class Manifest:
 				mytype = "MISC"
 			else:
 				continue
-			self.fhashdict[mytype][f] = perform_multiple_checksums(self.pkgdir+f, self.hashes)
+			self.fhashdict[mytype][f] = perform_multiple_checksums(fabs, self.hashes)
 		recursive_files = []
 
 		pkgdir = self.pkgdir
-		cut_len = len(os.path.join(pkgdir, "files") + os.sep)
-		for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
-			for f in files:
-				try:
-					f = _unicode_decode(f,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					continue
-				full_path = os.path.join(parentdir, f)
-				recursive_files.append(full_path[cut_len:])
-		for f in recursive_files:
+		for f in (pkgdir / "files").rglob("*"):
+			f = f.relative_to(pkgdir / "files")
 			if self._find_invalid_path_char(f) != -1 or \
 				not manifest2AuxfileFilter(f):
 				continue
@@ -577,16 +555,26 @@ class Manifest:
 		return cpvlist
 
 	def _pkgdir_category(self):
-		return self.pkgdir.rstrip(os.sep).split(os.sep)[-2]
+		return self.pkgdir.parent.name
 
-	def _getAbsname(self, ftype, fname):
+	def _getAbsname(self, ftype: str, fname: Path):
 		if ftype == "DIST":
-			absname = os.path.join(self.distdir, fname)
+			absname = self.distdir / fname
 		elif ftype == "AUX":
-			absname = os.path.join(self.pkgdir, "files", fname)
+			absname = self.pkgdir / "files" / fname
 		else:
-			absname = os.path.join(self.pkgdir, fname)
+			absname = self.pkgdir / fname
 		return absname
+
+	def _getRelname(self, ftype: str, fname: Path):
+		if not fname.is_absolute():
+			return fname
+		if ftype == "DIST":
+			return fname.relative_to(self.distdir)
+		elif ftype == "AUX":
+			return fname.relative_to(self.pkgdir / "files")
+		else:
+			return fname.relative_to(self.pkgdir)
 
 	def checkAllHashes(self, ignoreMissingFiles=False):
 		for t in MANIFEST2_IDENTIFIERS:
@@ -597,7 +585,8 @@ class Manifest:
 			self.checkFileHashes(idtype, f, ignoreMissing=ignoreMissingFiles,
 				hash_filter=hash_filter)
 
-	def checkFileHashes(self, ftype, fname, ignoreMissing=False, hash_filter=None):
+	def checkFileHashes(self, ftype: str, fname: Path, ignoreMissing=False, hash_filter=None):
+		fname = self._getRelname(ftype, fname)
 		digests = _filter_unaccelarated_hashes(self.fhashdict[ftype][fname])
 		if hash_filter is not None:
 			digests = _apply_hash_filter(digests, hash_filter)

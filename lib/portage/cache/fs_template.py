@@ -3,8 +3,10 @@
 # Author(s): Brian Harring (ferringb@gentoo.org)
 
 import os as _os
+from pathlib import Path
 from portage.cache import template
 from portage import os
+from typing import Optional, Union
 
 from portage.proxy.lazyimport import lazyimport
 lazyimport(globals(),
@@ -29,9 +31,9 @@ class FsBased(template.database):
 				setattr(self, "_"+x, y)
 		super(FsBased, self).__init__(*args, **config)
 
-		if self.label.startswith(os.path.sep):
-			# normpath.
-			self.label = os.path.sep + os.path.normpath(self.label).lstrip(os.path.sep)
+		# if self.label.startswith(os.path.sep):
+		# 	# normpath.
+		# 	self.label = os.path.sep + os.path.normpath(self.label).lstrip(os.path.sep)
 
 
 	def _ensure_access(self, path, mtime=-1):
@@ -46,17 +48,17 @@ class FsBased(template.database):
 			return False
 		return True
 
-	def _ensure_dirs(self, path=None):
+	def _ensure_dirs(self, path: Optional[Path] = None):
 		"""with path!=None, ensure beyond self.location.  otherwise, ensure self.location"""
 		if path:
-			path = os.path.dirname(path)
+			path = path.parent
 			base = self.location
 		else:
 			path = self.location
-			base='/'
+			base = Path('/')
 
-		for d in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
-			base = os.path.join(base,d)
+		for d in path.relative_to(path.root).parts:
+			base = base / d
 			if ensure_dirs(base):
 				# We only call apply_permissions if ensure_dirs created
 				# a new directory, so as not to interfere with
@@ -78,11 +80,11 @@ class FsBased(template.database):
 			except OSError:
 				pass
 
-def gen_label(base, label):
+def gen_label(base: Path, label: Union[Path, str]) -> Path:
 	"""if supplied label is a path, generate a unique label based upon label, and supplied base path"""
-	if label.find(os.path.sep) == -1:
+	if isinstance(label, str):
 		return label
-	label = label.strip("\"").strip("'")
-	label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
-	tail = os.path.split(label)[1]
-	return "%s-%X" % (tail, abs(label.__hash__()))
+	if '\"' in str(label) or "'" in str(label):
+		raise Exception("hi")
+		# breakpoint()
+	return Path("%s-%X" % (label.name, abs(label.__hash__())))

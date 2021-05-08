@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
+from copy import copy
 from portage import _encodings, _unicode_decode
 from portage.localization import _
 
@@ -9,7 +10,7 @@ from portage.localization import _
 class PortageException(Exception):
 	"""General superclass for portage exceptions"""
 	def __init__(self, value):
-		self.value = value[:]
+		self.value = copy(value)
 
 	def __str__(self):
 		if isinstance(self.value, str):

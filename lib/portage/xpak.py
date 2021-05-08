@@ -24,6 +24,7 @@ __all__ = [
 
 import array
 import errno
+from pathlib import Path
 
 import portage
 from portage import os
@@ -116,10 +117,12 @@ def xpak_mem(mydata):
 
 	mydata_encoded = {}
 	for k, v in mydata.items():
-		k = _unicode_encode(k,
-			encoding=_encodings['repo.content'], errors='backslashreplace')
-		v = _unicode_encode(v,
-			encoding=_encodings['repo.content'], errors='backslashreplace')
+		# This is unfortunate, any way to reconcile?
+		if isinstance(k, str):
+			k = k.encode(encoding=_encodings['repo.content'], errors='replace')
+		if isinstance(v, str):
+			v = v.encode(
+				encoding=_encodings['repo.content'], errors='backslashreplace')
 		mydata_encoded[k] = v
 	mydata = mydata_encoded
 	del mydata_encoded
@@ -274,7 +277,8 @@ def xpand(myid, mydest):
 		startpos = startpos + namelen + 12
 
 class tbz2:
-	def __init__(self, myfile):
+	file: Path
+	def __init__(self, myfile: Path):
 		self.file = myfile
 		self.filestat = None
 		self.index = b''
@@ -333,8 +337,7 @@ class tbz2:
 				pass
 			os.rename(tmp_fname, self.file)
 
-		myfile = open(_unicode_encode(self.file,
-			encoding=_encodings['fs'], errors='strict'), 'ab+')
+		myfile = self.file.open('ab+')
 		if not myfile:
 			raise IOError
 		myfile.seek(-self.xpaksize, 2) # 0,2 or -0,2 just mean EOF.

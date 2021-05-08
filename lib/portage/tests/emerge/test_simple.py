@@ -3,9 +3,11 @@
 
 import argparse
 import subprocess
+import shutil
+import os
+from pathlib import Path
 
 import portage
-from portage import shutil, os
 from portage.const import (BASH_BINARY, BINREPOS_CONF_FILE, PORTAGE_PYM_PATH, USER_CONFIG_PATH)
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
@@ -46,7 +48,7 @@ class SimpleEmergeTestCase(TestCase):
 
 	def testSimple(self):
 
-		debug = False
+		debug = True
 
 		install_something = """
 S="${WORKDIR}"
@@ -230,7 +232,7 @@ call_has_and_best_version() {
 		debug = playground.debug
 		settings = playground.settings
 		eprefix = settings["EPREFIX"]
-		eroot = settings["EROOT"]
+		eroot = Path(settings["EROOT"])
 		trees = playground.trees
 		portdb = trees[eroot]["porttree"].dbapi
 		test_repo_location = settings.repositories["test_repo"].location
@@ -376,9 +378,9 @@ call_has_and_best_version() {
 			portageq_cmd + ("metadata", eroot, "ebuild", "dev-libs/A-1", "EAPI", "IUSE", "RDEPEND"),
 			portageq_cmd + ("metadata", eroot, "binary", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
 			portageq_cmd + ("metadata", eroot, "installed", "dev-libs/A-1", "EAPI", "USE", "RDEPEND"),
-			portageq_cmd + ("owners", eroot, eroot + "usr"),
-			emerge_cmd + ("-p", eroot + "usr"),
-			emerge_cmd + ("-p", "--unmerge", "-q", eroot + "usr"),
+			portageq_cmd + ("owners", eroot, eroot / "usr"),
+			emerge_cmd + ("-p", eroot / "usr"),
+			emerge_cmd + ("-p", "--unmerge", "-q", eroot / "usr"),
 			emerge_cmd + ("--unmerge", "--quiet", "dev-libs/A"),
 			emerge_cmd + ("-C", "--quiet", "dev-libs/B"),
 
@@ -472,7 +474,7 @@ call_has_and_best_version() {
 				pythonpath = ""
 			else:
 				pythonpath = ":" + pythonpath
-			pythonpath = PORTAGE_PYM_PATH + pythonpath
+			pythonpath = str(PORTAGE_PYM_PATH) + pythonpath
 
 		env = {
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
@@ -563,7 +565,7 @@ move dev-util/git dev-vcs/git
 					output, _err = await proc.communicate()
 					await proc.wait()
 					if proc.returncode != os.EX_OK:
-						portage.writemsg(output)
+						portage.writemsg(output.decode())
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))

@@ -18,7 +18,7 @@ class CommandOutputSetTestCase(TestCase):
 	def testCommand(self):
 
 		params = set(test_cps)
-		command = find_binary("bash")
+		command = str(find_binary("bash"))
 		command += " -c '"
 		for a in params:
 			command += " echo -e \"%s\" ; " % a

@@ -17,6 +17,8 @@ import sys
 import tempfile
 import time
 
+from pathlib import Path
+from typing import Iterator
 from collections import OrderedDict
 from urllib.parse import urlparse
 from urllib.parse import quote as urlquote
@@ -49,7 +51,7 @@ from portage.locks import lockfile, unlockfile
 from portage.output import colorize, EOutput
 from portage.util import apply_recursive_permissions, \
 	apply_secpass_permissions, ensure_dirs, grabdict, shlex_split, \
-	varexpand, writemsg, writemsg_level, writemsg_stdout
+	varexpand, writemsg, writemsg_level, writemsg_stdout, unroot
 from portage.process import spawn
 
 _download_suffix = '.__download__'
@@ -170,7 +172,7 @@ def _userpriv_test_write_file(settings, file_path):
 		return rval
 
 	args = [BASH_BINARY, "-c", _userpriv_test_write_cmd_script % \
-		{"file_path" : _shell_quote(file_path)}]
+		{"file_path" : _shell_quote(str(file_path))}]
 
 	returncode = _spawn_fetch(settings, args)
 
@@ -203,7 +205,7 @@ def _ensure_distdir(settings, distdir):
 
 	userfetch = portage.data.secpass >= 2 and "userfetch" in settings.features
 	userpriv = portage.data.secpass >= 2 and "userpriv" in settings.features
-	write_test_file = os.path.join(distdir, ".__portage_test_write__")
+	write_test_file = distdir / ".__portage_test_write__"
 
 	try:
 		st = os.stat(distdir)
@@ -231,7 +233,7 @@ def _ensure_distdir(settings, distdir):
 				_("Failed to apply recursive permissions for the portage group."))
 
 
-def _checksum_failure_temp_file(settings, distdir, basename):
+def _checksum_failure_temp_file(settings, distdir: Path, basename: Path):
 	"""
 	First try to find a duplicate temp file with the same checksum and return
 	that filename if available. Otherwise, use mkstemp to create a new unique
@@ -240,18 +242,17 @@ def _checksum_failure_temp_file(settings, distdir, basename):
 	function returns a temp filename.
 	"""
 
-	filename = os.path.join(distdir, basename)
-	if basename.endswith(_download_suffix):
-		normal_basename = basename[:-len(_download_suffix)]
+	filename = distdir / basename
+	if basename.suffix == _download_suffix:
+		normal_basename = basename.with_suffix('')
 	else:
 		normal_basename = basename
 	size = os.stat(filename).st_size
 	checksum = None
-	tempfile_re = re.compile(re.escape(normal_basename) + r'\._checksum_failure_\..*')
-	for temp_filename in os.listdir(distdir):
-		if not tempfile_re.match(temp_filename):
+	tempfile_re = re.compile(re.escape(str(normal_basename)) + r'\._checksum_failure_\..*')
+	for temp_filename in distdir.iterdir():
+		if not tempfile_re.match(temp_filename.name):
 			continue
-		temp_filename = os.path.join(distdir, temp_filename)
 		try:
 			if size != os.stat(temp_filename).st_size:
 				continue
@@ -269,7 +270,8 @@ def _checksum_failure_temp_file(settings, distdir, basename):
 			return temp_filename
 
 	fd, temp_filename = \
-		tempfile.mkstemp("", normal_basename + "._checksum_failure_.", distdir)
+		tempfile.mkstemp("", str(normal_basename) + "._checksum_failure_.", distdir)
+	temp_filename = Path(temp_filename)
 	os.close(fd)
 	_movefile(filename, temp_filename, mysettings=settings)
 	return temp_filename
@@ -292,7 +294,7 @@ def _check_digests(filename, digests, show_errors=1):
 		return False
 	return True
 
-def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
+def _check_distfile(filename: Path, digests, eout, show_errors=1, hash_filter=None):
 	"""
 	@return a tuple of (match, stat_obj) where match is True if filename
 	matches all given digests (if any) and stat_obj is a stat result, or
@@ -312,7 +314,7 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
 		return (False, st)
 	if not digests:
 		if size is not None:
-			eout.ebegin(_("%s size ;-)") % os.path.basename(filename))
+			eout.ebegin(_("%s size ;-)") % filename.name)
 			eout.eend(0)
 		elif st.st_size == 0:
 			# Zero-byte distfiles are always invalid.
@@ -322,7 +324,7 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
 		if hash_filter is not None:
 			digests = _apply_hash_filter(digests, hash_filter)
 		if _check_digests(filename, digests, show_errors=show_errors):
-			eout.ebegin("%s %s ;-)" % (os.path.basename(filename),
+			eout.ebegin("%s %s ;-)" % (filename.name,
 				" ".join(sorted(digests))))
 			eout.eend(0)
 		else:
@@ -344,7 +346,8 @@ _size_suffix_map = {
 }
 
 
-class DistfileName(str):
+# See https://bugs.python.org/issue24132 for why subclass wierdly
+class DistfileName(type(Path())):
 	"""
 	The DistfileName type represents a distfile name and associated
 	content digests, used by MirrorLayoutConfig and related layout
@@ -372,7 +375,7 @@ class DistfileName(str):
 	implementation.
 	"""
 	def __new__(cls, s, digests=None):
-		return str.__new__(cls, s)
+		return super().__new__(cls, s)
 
 	def __init__(self, s, digests=None):
 		super().__init__()
@@ -399,16 +402,10 @@ class FlatLayout:
 	def get_path(self, filename):
 		return filename
 
-	def get_filenames(self, distdir):
-		for dirpath, dirnames, filenames in os.walk(distdir,
-				onerror=_raise_exc):
-			for filename in filenames:
-				try:
-					yield portage._unicode_decode(filename, errors='strict')
-				except UnicodeDecodeError:
-					# Ignore it. Distfiles names must have valid UTF8 encoding.
-					pass
-			return
+	def get_filenames(self, distdir: Path):
+		for file in distdir.iterdir():
+			if file.is_file():
+				yield file.relative_to(distdir)
 
 	@staticmethod
 	def verify_args(args):
@@ -420,29 +417,25 @@ class FilenameHashLayout:
 		self.algo = algo
 		self.cutoffs = [int(x) for x in cutoffs.split(':')]
 
-	def get_path(self, filename):
-		fnhash = checksum_str(filename.encode('utf8'), self.algo)
-		ret = ''
+	def get_path(self, filename: Path) -> Path:
+		fnhash = checksum_str(bytes(filename), self.algo)
+		ret = Path()
 		for c in self.cutoffs:
 			assert c % 4 == 0
 			c = c // 4
-			ret += fnhash[:c] + '/'
+			ret /= Path(fnhash[:c])
 			fnhash = fnhash[c:]
-		return ret + filename
+		return ret / filename
 
-	def get_filenames(self, distdir):
+	def get_filenames(self, distdir: Path) -> Iterator[Path]:
 		pattern = ''
 		for c in self.cutoffs:
 			assert c % 4 == 0
 			c = c // 4
 			pattern += c * '[0-9a-f]' + '/'
 		pattern += '*'
-		for x in glob.iglob(portage._unicode_encode(os.path.join(distdir, pattern), errors='strict')):
-			try:
-				yield portage._unicode_decode(x, errors='strict').rsplit('/', 1)[1]
-			except UnicodeDecodeError:
-				# Ignore it. Distfiles names must have valid UTF8 encoding.
-				pass
+		for x in distdir.glob(pattern):
+			yield x.relative_to(distdir)
 
 	@staticmethod
 	def verify_args(args):
@@ -505,20 +498,21 @@ class ContentHashLayout(FilenameHashLayout):
 	the chosen hash algorithm.
 	"""
 
-	def get_path(self, filename):
+	def get_path(self, filename: Path) -> Path:
 		"""
 		For content-hash, the path is a function of the content digest alone.
 		The final element of the path returned from the get_path method
 		corresponds to the complete content digest.
 		"""
 		fnhash = remaining = filename.digests[self.algo]
-		ret = ""
+		# if isinstance(remaining, Path): breakpoint()
+		ret = Path()
 		for c in self.cutoffs:
 			assert c % 4 == 0
 			c = c // 4
-			ret += remaining[:c] + "/"
+			ret /= remaining[:c]
 			remaining = remaining[c:]
-		return ret + fnhash
+		return ret / fnhash
 
 	def get_filenames(self, distdir):
 		"""
@@ -689,7 +683,7 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	# and it must not be used for other protocols like rsync and sftp.
 	path = mirror_conf.get_best_supported_layout(filename=filename).get_path(filename)
 	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
-		path = urlquote(path)
+		path = urlquote(str(path))
 	if mirror_url[:1] == "/":
 		return os.path.join(mirror_url, path)
 	else:
@@ -819,13 +813,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	check_config_instance(mysettings)
 
-	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
-		CUSTOM_MIRRORS_FILE), recursive=1)
+	custommirrors = grabdict(
+		mysettings["PORTAGE_CONFIGROOT"] / CUSTOM_MIRRORS_FILE,
+		recursive=1)
 
 	if listonly or ("distlocks" not in features):
 		use_locks = 0
 
-	distdir_writable = os.access(mysettings["DISTDIR"], os.W_OK)
+	distdir_writable = os.access(Path(mysettings["DISTDIR"]), os.W_OK)
 	fetch_to_ro = 0
 	if "skiprocheck" in features:
 		fetch_to_ro = 1
@@ -862,10 +857,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	skip_manifest = mysettings.get("EBUILD_SKIP_MANIFEST") == "1"
 	if skip_manifest:
 		allow_missing_digests = True
-	pkgdir = mysettings.get("O")
+	pkgdir = Path(mysettings['O']) if mysettings.get("O") else None
 	if digests is None and not (pkgdir is None or skip_manifest):
 		mydigests = mysettings.repositories.get_repo_for_location(
-			os.path.dirname(os.path.dirname(pkgdir))).load_manifest(
+			pkgdir.parents[1]).load_manifest(
 			pkgdir, mysettings["DISTDIR"]).getTypeDigests("DIST")
 	elif digests is None or skip_manifest:
 		# no digests because fetch was not called for a specific package
@@ -873,9 +868,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	else:
 		mydigests = digests
 
-	ro_distdirs = [x for x in \
+	ro_distdirs = [Path(x) for x in \
 		shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
-		if os.path.isdir(x)]
+		if os.path.isdir(Path(x))]
 
 	restrict_fetch = "fetch" in restrict
 	force_mirror = "force-mirror" in features and not restrict_mirror
@@ -915,8 +910,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		if myfile not in filedict:
 			filedict[myfile]=[]
 			if distdir_writable:
-				mirror_cache = os.path.join(mysettings["DISTDIR"],
-						".mirror-cache.json")
+				mirror_cache = Path(mysettings["DISTDIR"], ".mirror-cache.json")
 			else:
 				mirror_cache = None
 
@@ -999,7 +993,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	if can_fetch and not fetch_to_ro:
 		try:
-			_ensure_distdir(mysettings, mysettings["DISTDIR"])
+			_ensure_distdir(mysettings, Path(mysettings["DISTDIR"]))
 		except PortageException as e:
 			if not os.path.isdir(mysettings["DISTDIR"]):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -1008,7 +1002,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 	if can_fetch and \
 		not fetch_to_ro and \
-		not os.access(mysettings["DISTDIR"], os.W_OK):
+		not os.access(Path(mysettings["DISTDIR"]), os.W_OK):
 		writemsg(_("!!! No write access to '%s'\n") % mysettings["DISTDIR"],
 			noiselevel=-1)
 		can_fetch = False
@@ -1037,6 +1031,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				got = set(orig_digests)
 				got.discard("size")
 				got = " ".join(sorted(got))
+				breakpoint()
 				reason = (_("Insufficient data for checksum verification"),
 					got, expected)
 				writemsg(_("!!! Fetched file: %s VERIFY FAILED!\n") % myfile,
@@ -1064,8 +1059,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			if size is not None:
 				pruned_digests["size"] = size
 
-		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
-		download_path = myfile_path if fetch_to_ro else myfile_path + _download_suffix
+		myfile_path = Path(mysettings["DISTDIR"], myfile)
+		download_path = myfile_path if fetch_to_ro else myfile_path.with_suffix(_download_suffix)
 		has_space = True
 		has_space_superuser = True
 		file_lock = None
@@ -1167,7 +1162,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						# is either corrupt or its identity has changed since
 						# the last time it was fetched, so rename it.
 						temp_filename = _checksum_failure_temp_file(
-							mysettings, mysettings["DISTDIR"], myfile)
+							mysettings, Path(mysettings["DISTDIR"]), myfile)
 						writemsg_stdout(_("Refetching... "
 							"File renamed to '%s'\n\n") % \
 							temp_filename, noiselevel=-1)
@@ -1369,8 +1364,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 				global_config_path = GLOBAL_CONFIG_PATH
 				if portage.const.EPREFIX:
-					global_config_path = os.path.join(portage.const.EPREFIX,
-							GLOBAL_CONFIG_PATH.lstrip(os.sep))
+					global_config_path = portage.const.EPREFIX / unroot(GLOBAL_CONFIG_PATH)
 
 				missing_file_param = False
 				fetchcommand_var = "FETCHCOMMAND_" + protocol.upper()
@@ -1478,7 +1472,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						_hide_url_passwd(loc))
 					variables = {
 						"URI":     loc,
-						"FILE":    os.path.basename(download_path)
+						"FILE":   str(download_path.name)
 					}
 
 					try:
@@ -1490,7 +1484,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 					for k in ("DISTDIR", "PORTAGE_SSH_OPTS"):
 						v = mysettings.get(k)
 						if v is not None:
-							variables[k] = v
+							variables[k] = str(v)
 
 					myfetch = varexpand(locfetch, mydict=variables)
 					myfetch = shlex_split(myfetch)

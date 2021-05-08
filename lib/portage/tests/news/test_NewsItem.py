@@ -2,7 +2,8 @@
 # Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+import os
+
 from portage.tests import TestCase
 from portage.news import NewsItem
 from portage.dbapi.virtual import testdbapi

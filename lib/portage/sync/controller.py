@@ -6,6 +6,7 @@ import logging
 import grp
 import pwd
 import warnings
+from pathlib import Path
 
 import portage
 from portage import os
@@ -112,7 +113,7 @@ class SyncManager:
 		self.emerge_config = emerge_config
 		self.settings, self.trees, self.mtimedb = emerge_config
 		self.xterm_titles = "notitles" not in self.settings.features
-		self.portdb = self.trees[self.settings['EROOT']]['porttree'].dbapi
+		self.portdb = self.trees[Path(self.settings['EROOT'])]['porttree'].dbapi
 		return SyncRepo(sync_task=AsyncFunction(target=self.sync,
 			kwargs=dict(emerge_config=emerge_config, repo=repo,
 			master_hooks=master_hooks)),
@@ -341,8 +342,7 @@ class SyncManager:
 			updatecache_flg = False
 
 		if updatecache_flg and \
-			os.path.exists(os.path.join(
-			repo.location, 'metadata', 'md5-cache')):
+			os.path.exists(repo.location / 'metadata' / 'md5-cache'):
 
 			# Only update cache for repo.location since that's
 			# the only one that's been synced here.

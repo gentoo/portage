@@ -4,6 +4,7 @@
 __all__ = ['digestcheck']
 
 import warnings
+from pathlib import Path
 
 from portage import os, _encodings, _unicode_decode
 from portage.checksum import _hash_filter
@@ -28,13 +29,12 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 
 	if mysettings.get("EBUILD_SKIP_MANIFEST") == "1":
 		return 1
-	pkgdir = mysettings["O"]
+	pkgdir = Path(mysettings["O"])
 	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
 	if hash_filter.transparent:
 		hash_filter = None
 	if mf is None:
-		mf = mysettings.repositories.get_repo_for_location(
-			os.path.dirname(os.path.dirname(pkgdir)))
+		mf = mysettings.repositories.get_repo_for_location(pkgdir.parents[1])
 		mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
 	eout = EOutput()
 	eout.quiet = mysettings.get("PORTAGE_QUIET", None) == "1"
@@ -83,18 +83,18 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 		# would otherwise be detected below.
 		return 1
 	# Make sure that all of the ebuilds are actually listed in the Manifest.
-	for f in os.listdir(pkgdir):
+	for f in pkgdir.iterdir():
 		pf = None
-		if f[-7:] == '.ebuild':
-			pf = f[:-7]
+		if f.suffix == '.ebuild':
+			pf = f.with_suffix('')
 		if pf is not None and not mf.hasFile("EBUILD", f):
 			writemsg(_("!!! A file is not listed in the Manifest: '%s'\n") % \
-				os.path.join(pkgdir, f), noiselevel=-1)
+				f, noiselevel=-1)
 			if strict:
 				return 0
 	# epatch will just grab all the patches out of a directory, so we have to
 	# make sure there aren't any foreign files that it might grab.
-	filesdir = os.path.join(pkgdir, "files")
+	filesdir = pkgdir / "files"
 
 	for parent, dirs, files in os.walk(filesdir):
 		try:

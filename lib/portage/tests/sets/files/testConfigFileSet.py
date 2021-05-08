@@ -3,8 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
+import os
+from pathlib import Path
 
-from portage import os
 from portage.tests import TestCase, test_cps
 from portage._sets.files import ConfigFileSet
 
@@ -26,6 +27,6 @@ class ConfigFileSetTestCase(TestCase):
 		os.unlink(self.testfile)
 
 	def testConfigStaticFileSet(self):
-		s = ConfigFileSet(self.testfile)
+		s = ConfigFileSet(Path(self.testfile))
 		s.load()
 		self.assertEqual(set(test_cps), s.getAtoms())

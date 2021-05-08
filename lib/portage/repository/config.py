@@ -7,6 +7,8 @@ import logging
 import warnings
 import re
 import typing
+import os as _os
+from pathlib import Path
 
 import portage
 from portage import eclass_cache, os
@@ -68,11 +70,12 @@ def _gen_valid_repo(name):
 		name = None
 	return name
 
-def _find_invalid_path_char(path, pos=0, endpos=None):
+def _find_invalid_path_char(path: Path, pos=0, endpos=None):
 	"""
 	Returns the position of the first invalid character found in basename,
 	or -1 if no invalid characters are found.
 	"""
+	path = str(path)
 	if endpos is None:
 		endpos = len(path)
 
@@ -145,6 +148,8 @@ class RepoConfig:
 		'_eapis_deprecated',
 		'_masters_orig',
 		)
+
+	sync_rcu_store_dir: typing.Optional[Path]
 
 	def __init__(self, name, repo_opts, local_config=True):
 		"""Build a RepoConfig with options in repo_opts
@@ -258,7 +263,7 @@ class RepoConfig:
 		self.sync_rcu = repo_opts.get(
 			'sync-rcu', 'false').lower() in ('true', 'yes')
 
-		self.sync_rcu_store_dir = repo_opts.get('sync-rcu-store-dir')
+		self.sync_rcu_store_dir = Path(repo_opts['sync-rcu-store-dir']) if 'sync-rcu-store-dir' in repo_opts else None
 
 		for k in ('sync-rcu-spare-snapshots', 'sync-rcu-ttl-days'):
 			v = repo_opts.get(k, '').strip() or None
@@ -281,13 +286,14 @@ class RepoConfig:
 
 		self.user_location = None
 		location = repo_opts.get('location')
-		if location is not None and location.strip():
-			if os.path.isdir(location) or portage._sync_mode:
+		if location is not None:
+			location = Path(location)
+			if location.is_dir() or portage._sync_mode:
 				# The user_location is required for sync-rcu support,
 				# since it manages a symlink which resides at that
 				# location (and realpath is irreversible).
 				self.user_location = location
-				location = os.path.realpath(location)
+				location = Path(_os.path.realpath(location))
 		else:
 			location = None
 		self.location = location
@@ -367,7 +373,7 @@ class RepoConfig:
 				'profile_eapi_when_unspecified', '0')
 
 			eapi = read_corresponding_eapi_file(
-				os.path.join(self.location, REPO_NAME_LOC),
+				self.location / REPO_NAME_LOC,
 				default=self.eapi)
 
 			self.portage1_profiles = eapi_allows_directories_on_profile_level_and_repository_level(eapi) or \
@@ -408,10 +414,10 @@ class RepoConfig:
 			name = None
 			if fmt == 'pms':
 				from portage.cache.metadata import database
-				name = 'metadata/cache'
+				name = Path('metadata/cache')
 			elif fmt == 'md5-dict':
 				from portage.cache.flat_hash import md5_database as database
-				name = 'metadata/md5-cache'
+				name = Path('metadata/md5-cache')
 
 			if name is not None:
 				yield database(self.location, name,
@@ -483,17 +489,13 @@ class RepoConfig:
 		Read repo_name from repo_path.
 		Returns repo_name, missing.
 		"""
-		repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
+		repo_name_path = repo_path / REPO_NAME_LOC
 		f = None
 		try:
-			f = io.open(
-				_unicode_encode(repo_name_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='r', encoding=_encodings['repo.content'],
-				errors='replace')
+			f = repo_name_path.open('r', encoding=_encodings['repo.content'], errors='replace')
 			return f.readline().strip(), False
 		except EnvironmentError:
-			return "x-" + os.path.basename(repo_path), True
+			return "x-" + repo_path.name, True
 		finally:
 			if f is not None:
 				f.close()
@@ -551,7 +553,7 @@ class RepoConfigLoader:
 	"""Loads and store config of several repositories, loaded from PORTDIR_OVERLAY or repos.conf"""
 
 	@staticmethod
-	def _add_repositories(portdir, portdir_overlay, prepos,
+	def _add_repositories(portdir: typing.Optional[Path], portdir_overlay, prepos,
 		ignored_map, local_config, default_portdir):
 		"""Add overlays in PORTDIR_OVERLAY as repositories"""
 		overlays = []
@@ -561,7 +563,7 @@ class RepoConfigLoader:
 			portdir_orig = portdir
 			overlays.append(portdir)
 		try:
-			port_ov = [normalize_path(i) for i in shlex_split(portdir_overlay)]
+			port_ov = [normalize_path(Path(i)) for i in shlex_split(portdir_overlay)]
 		except ValueError as e:
 			#File "/usr/lib/python3.2/shlex.py", line 168, in read_token
 			#	raise ValueError("No closing quotation")
@@ -676,7 +678,7 @@ class RepoConfigLoader:
 
 		recursive_paths = []
 		for p in paths:
-			if isinstance(p, str):
+			if isinstance(p, (str, Path)):
 				recursive_paths.extend(_recursive_file_list(p))
 			else:
 				recursive_paths.append(p)
@@ -719,12 +721,12 @@ class RepoConfigLoader:
 		}
 
 		if "PORTAGE_REPOSITORIES" in settings:
-			portdir = ""
+			portdir = None
 			portdir_overlay = ""
 			# deprecated portdir_sync
 			portdir_sync = ""
 		else:
-			portdir = settings.get("PORTDIR", "")
+			portdir = Path(settings["PORTDIR"]) if settings.get("PORTDIR") else None
 			portdir_overlay = settings.get("PORTDIR_OVERLAY", "")
 			# deprecated portdir_sync
 			portdir_sync = settings.get("SYNC", "")
@@ -749,7 +751,7 @@ class RepoConfigLoader:
 
 		repo_locations = frozenset(repo.location for repo in prepos.values())
 		for repo_location in ('var/db/repos/gentoo', 'usr/portage'):
-			default_portdir = os.path.join(os.sep, settings['EPREFIX'].lstrip(os.sep), repo_location)
+			default_portdir = Path(settings['EPREFIX']) / repo_location
 			if default_portdir in repo_locations:
 				break
 
@@ -758,8 +760,8 @@ class RepoConfigLoader:
 		portdir = self._add_repositories(portdir, portdir_overlay, prepos,
 			ignored_map, settings.local_config,
 			default_portdir)
-		if portdir and portdir.strip():
-			portdir = os.path.realpath(portdir)
+		if portdir:
+			portdir = portdir.resolve()
 
 		ignored_repos = tuple((repo_name, tuple(paths)) \
 			for repo_name, paths in ignored_map.items())
@@ -959,7 +961,7 @@ class RepoConfigLoader:
 				repo.name != self.mainRepo().name and not portage._sync_mode:
 				# TODO: Delete masters code in lib/portage/tests/resolver/ResolverPlayground.py when deleting this warning.
 				writemsg_level("!!! %s\n" % _("Repository '%s' is missing masters attribute in '%s'") %
-					(repo.name, os.path.join(repo.location, "metadata", "layout.conf")) +
+					(repo.name, repo.location / "metadata" / "layout.conf") +
 					"!!! %s\n" % _("Set 'masters = %s' in this file for future compatibility") %
 					self.mainRepo().name, level=logging.WARNING, noiselevel=-1)
 
@@ -980,12 +982,12 @@ class RepoConfigLoader:
 			self._prepos_changed = False
 		return self._repo_location_list
 
-	def mainRepoLocation(self):
+	def mainRepoLocation(self) -> typing.Optional[Path]:
 		"""Returns the location of main repo"""
 		main_repo = self.prepos['DEFAULT'].main_repo
 		if main_repo is not None and main_repo in self.prepos:
 			return self.prepos[main_repo].location
-		return ''
+		return None
 
 	def mainRepo(self):
 		"""Returns the main repo"""
@@ -1130,10 +1132,10 @@ def load_repository_config(settings, extra_files=None):
 		repoconfigpaths.append(io.StringIO(settings["PORTAGE_REPOSITORIES"]))
 	else:
 		if portage._not_installed:
-			repoconfigpaths.append(os.path.join(PORTAGE_BASE_PATH, "cnf", "repos.conf"))
+			repoconfigpaths.append(PORTAGE_BASE_PATH / "cnf" / "repos.conf")
 		else:
-			repoconfigpaths.append(os.path.join(settings.global_config_path, "repos.conf"))
-		repoconfigpaths.append(os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "repos.conf"))
+			repoconfigpaths.append(settings.global_config_path / "repos.conf")
+		repoconfigpaths.append(settings["PORTAGE_CONFIGROOT"] / USER_CONFIG_PATH / "repos.conf")
 	if extra_files:
 		repoconfigpaths.extend(extra_files)
 	return RepoConfigLoader(repoconfigpaths, settings)
@@ -1146,10 +1148,10 @@ def _get_repo_name(repo_location, cached=None):
 		return None
 	return name
 
-def parse_layout_conf(repo_location, repo_name=None):
-	eapi = read_corresponding_eapi_file(os.path.join(repo_location, REPO_NAME_LOC))
+def parse_layout_conf(repo_location: Path, repo_name=None):
+	eapi = read_corresponding_eapi_file(repo_location / REPO_NAME_LOC)
 
-	layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
+	layout_filename = repo_location / "metadata" /"layout.conf"
 	layout_file = KeyValuePairFileLoader(layout_filename, None, None)
 	layout_data, layout_errors = layout_file.load()
 
@@ -1206,9 +1208,9 @@ def parse_layout_conf(repo_location, repo_name=None):
 		# will NOT recognize md5-dict format unless it is explicitly
 		# listed in layout.conf.
 		cache_formats = []
-		if os.path.isdir(os.path.join(repo_location, 'metadata', 'md5-cache')):
+		if (repo_location / 'metadata' / 'md5-cache').is_dir():
 			cache_formats.append('md5-dict')
-		if os.path.isdir(os.path.join(repo_location, 'metadata', 'cache')):
+		if (repo_location / 'metadata' / 'cache').is_dir():
 			cache_formats.append('pms')
 	data['cache-formats'] = tuple(cache_formats)
 

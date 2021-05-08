@@ -135,7 +135,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	try:
 		dstat = os.lstat(dest)
 	except (OSError, IOError):
-		dstat = os.lstat(os.path.dirname(dest))
+		dstat = os.lstat(dest.parent)
 		destexists = 0
 
 	if bsd_chflags:

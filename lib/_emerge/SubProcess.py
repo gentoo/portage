@@ -3,7 +3,7 @@
 
 import logging
 
-from portage import os
+import os
 from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from _emerge.AbstractPollTask import AbstractPollTask

@@ -7,6 +7,7 @@ import collections
 import errno
 import fnmatch
 import operator
+from pathlib import Path
 
 from portage import os, _unicode_decode
 from portage.exception import (
@@ -76,7 +77,7 @@ class InstallMask:
 		number of fnmatch calls.
 		"""
 		current_dir = self._anchored
-		components = list(filter(None, path.split('/')))
+		components = list(filter(None, path.parts))
 		patterns = []
 		patterns.extend(current_dir.get('.', []))
 		for component in components:
@@ -96,10 +97,10 @@ class InstallMask:
 
 		return iter(self._unanchored)
 
-	def match(self, path):
+	def match(self, path: Path):
 		"""
 		@param path: file path relative to ${ED}
-		@type path: str
+		@type path: Path
 		@rtype: bool
 		@return: True if path matches INSTALL_MASK, False otherwise
 		"""
@@ -109,17 +110,14 @@ class InstallMask:
 			is_inclusive, pattern = pattern_obj.is_inclusive, pattern_obj.pattern
 			# absolute path pattern
 			if pattern_obj.leading_slash:
-				# handle trailing slash for explicit directory match
-				if path.endswith('/'):
-					pattern = pattern.rstrip('/') + '/'
 				# match either exact path or one of parent dirs
 				# the latter is done via matching pattern/*
-				if (fnmatch.fnmatch(path, pattern[1:])
+				if (fnmatch.fnmatch(path, pattern[1:].rstrip('/'))
 						or fnmatch.fnmatch(path, pattern[1:].rstrip('/') + '/*')):
 					ret = is_inclusive
 			# filename
 			else:
-				if fnmatch.fnmatch(os.path.basename(path), pattern):
+				if fnmatch.fnmatch(path.name, pattern):
 					ret = is_inclusive
 		return ret
 

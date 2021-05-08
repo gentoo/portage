@@ -15,7 +15,7 @@ def _(mystr):
 	Python 2, by ensuring that string format operations invoke
 	__unicode__() instead of __str__().
 	"""
-	return _unicode_decode(mystr)
+	return mystr
 
 def localization_example():
 	# Dict references allow translators to rearrange word order.
@@ -41,4 +41,4 @@ def localized_size(num_bytes):
 	except UnicodeDecodeError:
 		# failure to decode locale data
 		formatted_num = str(num_kib)
-	return _unicode_decode(formatted_num, encoding=_encodings['stdio']) + ' KiB'
+	return formatted_num + ' KiB'

@@ -2,10 +2,11 @@
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+import os
 from portage.tests import TestCase
 from portage.env.config import PackageKeywordsFile
 from tempfile import mkstemp
+from pathlib import Path
 
 class PackageKeywordsFileTestCase(TestCase):
 
@@ -19,7 +20,7 @@ class PackageKeywordsFileTestCase(TestCase):
 
 		self.BuildFile()
 		try:
-			f = PackageKeywordsFile(self.fname)
+			f = PackageKeywordsFile(Path(self.fname))
 			f.load()
 			i = 0
 			for cpv, keyword in f.items():

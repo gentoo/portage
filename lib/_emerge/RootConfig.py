@@ -1,10 +1,13 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from pathlib import Path
+
 class RootConfig:
 	"""This is used internally by depgraph to track information about a
 	particular $ROOT."""
 	__slots__ = ("mtimedb", "root", "setconfig", "sets", "settings", "trees")
+	root: Path
 
 	pkg_tree_map = {
 		"ebuild"    : "porttree",
@@ -19,7 +22,7 @@ class RootConfig:
 	def __init__(self, settings, trees, setconfig):
 		self.trees = trees
 		self.settings = settings
-		self.root = self.settings['EROOT']
+		self.root = Path(self.settings['EROOT'])
 		self.setconfig = setconfig
 		if setconfig is None:
 			self.sets = {}

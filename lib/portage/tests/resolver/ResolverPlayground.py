@@ -5,10 +5,11 @@ import bz2
 import fnmatch
 import tempfile
 import portage
+import os
+import shutil
 
+from pathlib import Path
 from itertools import permutations
-from portage import os
-from portage import shutil
 from portage.const import (
 	GLOBAL_CONFIG_PATH,
 	PORTAGE_BIN_PATH,
@@ -32,10 +33,11 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
-try:
-	from repoman.tests import cnf_path_repoman
-except ImportError:
-	cnf_path_repoman = None
+# try:
+# 	from repoman.tests import cnf_path_repoman
+# except ImportError:
+cnf_path_repoman = None
+portage._disable_legacy_globals()
 
 
 class ResolverPlayground:
@@ -105,16 +107,16 @@ class ResolverPlayground:
 
 		self.debug = debug
 		if eprefix is None:
-			self.eprefix = normalize_path(tempfile.mkdtemp())
+			self.eprefix = str(normalize_path(Path(tempfile.mkdtemp())))
 
 			# EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
 			eubin = os.path.join(self.eprefix, "usr", "bin")
-			ensure_dirs(eubin)
+			ensure_dirs(Path(eubin))
 			for x in self.portage_bin:
 				os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eubin, x))
 
 			eusbin = os.path.join(self.eprefix, "usr", "sbin")
-			ensure_dirs(eusbin)
+			ensure_dirs(Path(eusbin))
 			for x in self.portage_sbin:
 				os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eusbin, x))
 
@@ -166,7 +168,7 @@ class ResolverPlayground:
 			finally:
 				os.environ['PATH'] = orig_path
 		else:
-			self.eprefix = normalize_path(eprefix)
+			self.eprefix = str(normalize_path(Path(eprefix)))
 
 		# Tests may override portage.const.EPREFIX in order to
 		# simulate a prefix installation. It's reasonable to do
@@ -174,9 +176,9 @@ class ResolverPlayground:
 		# the "real" value of portage.const.EPREFIX is entirely
 		# irrelevant (see bug #492932).
 		self._orig_eprefix = portage.const.EPREFIX
-		portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
+		portage.const.EPREFIX = Path(self.eprefix)
 
-		self.eroot = self.eprefix + os.sep
+		self.eroot = Path(self.eprefix)
 		if targetroot:
 			self.target_root = os.path.join(self.eroot, 'target_root')
 		else:
@@ -297,7 +299,7 @@ class ResolverPlayground:
 			ebuild_dir = os.path.join(repo_dir, a.cp)
 			ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
 
-			portdb = self.trees[self.eroot]["porttree"].dbapi
+			portdb = self.trees[Path(self.eroot)]["porttree"].dbapi
 			tmpsettings['O'] = ebuild_dir
 			if not digestgen(mysettings=tmpsettings, myportdb=portdb):
 				raise AssertionError('digest creation failed for %s' % ebuild_path)
@@ -332,8 +334,8 @@ class ResolverPlayground:
 			else:
 				binpkg_path = os.path.join(category_dir, pf + ".tbz2")
 
-			ensure_dirs(os.path.dirname(binpkg_path))
-			t = portage.xpak.tbz2(binpkg_path)
+			ensure_dirs(Path(os.path.dirname(binpkg_path)))
+			t = portage.xpak.tbz2(Path(binpkg_path))
 			t.recompose_mem(portage.xpak.xpak_mem(metadata))
 
 	def _create_installed(self, installed):
@@ -497,7 +499,7 @@ class ResolverPlayground:
 		make_conf = {
 			"ACCEPT_KEYWORDS": "x86",
 			"CLEAN_DELAY": "0",
-			"DISTDIR" : self.distdir,
+			"DISTDIR" : Path(self.distdir),
 			"EMERGE_WARNING_DELAY": "0",
 			"PKGDIR": self.pkgdir,
 			"PORTAGE_INST_GID": str(portage.data.portage_gid),
@@ -541,8 +543,8 @@ class ResolverPlayground:
 
 		#Create /usr/share/portage/config/make.globals
 		make_globals_path = os.path.join(self.eroot,
-			GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals")
-		ensure_dirs(os.path.dirname(make_globals_path))
+			GLOBAL_CONFIG_PATH.relative_to(os.sep), "make.globals")
+		ensure_dirs(Path(os.path.dirname(make_globals_path)))
 		os.symlink(os.path.join(cnf_path, "make.globals"),
 			make_globals_path)
 
@@ -596,7 +598,7 @@ class ResolverPlayground:
 
 		create_trees_kwargs = {}
 		if self.target_root != os.sep:
-			create_trees_kwargs["target_root"] = self.target_root
+			create_trees_kwargs["target_root"] = Path(self.target_root)
 
 		env = {
 			"PORTAGE_REPOSITORIES": "\n".join("[%s]\n%s" % (repo_name, "\n".join("%s = %s" % (k, v) for k, v in repo_config.items())) for repo_name, repo_config in self._repositories.items())
@@ -605,7 +607,7 @@ class ResolverPlayground:
 		if self.debug:
 			env["PORTAGE_DEBUG"] = "1"
 
-		trees = portage.create_trees(env=env, eprefix=self.eprefix,
+		trees = portage.create_trees(env=env, eprefix=Path(self.eprefix),
 			**create_trees_kwargs)
 
 		for root, root_trees in trees.items():

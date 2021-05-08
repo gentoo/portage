@@ -31,6 +31,7 @@ class MirrorDistTask(CompositeTask):
 		self._fetch_iterator = None
 
 	def _start(self):
+		breakpoint
 		self._fetch_iterator = FetchIterator(self._config)
 		fetch = TaskScheduler(iter(self._fetch_iterator),
 			max_jobs=self._config.options.jobs,

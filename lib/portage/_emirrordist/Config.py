@@ -78,8 +78,7 @@ class Config:
 
 		self.layout_conf = MirrorLayoutConfig()
 		if getattr(options, 'layout_conf', None) is None:
-			options.layout_conf = os.path.join(self.distfiles,
-					'layout.conf')
+			options.layout_conf = self.distfiles / 'layout.conf'
 		self.layout_conf.read_from_file(options.layout_conf)
 		self.layouts = self.layout_conf.get_all_layouts()
 

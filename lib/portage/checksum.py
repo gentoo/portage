@@ -10,8 +10,8 @@ import portage
 import stat
 import subprocess
 import tempfile
+from pathlib import Path
 
-from portage import _encodings, _unicode_decode, _unicode_encode
 from portage import os
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
@@ -37,12 +37,11 @@ from portage.localization import _
 hashfunc_map = {}
 hashorigin_map = {}
 
-def _open_file(filename):
+def _open_file(filename: os.PathLike):
 	try:
-		return open(_unicode_encode(filename,
-			encoding=_encodings['fs'], errors='strict'), 'rb')
+		return open(filename, 'rb')
 	except IOError as e:
-		func_call = "open('%s')" % _unicode_decode(filename)
+		func_call = "open('%s')" % filename
 		if e.errno == errno.EPERM:
 			raise portage.exception.OperationNotPermitted(func_call)
 		elif e.errno == errno.EACCES:
@@ -288,8 +287,8 @@ if "WHIRLPOOL" not in hashfunc_map:
 
 # There is only one implementation for size
 class SizeHash:
-	def checksum_file(self, filename):
-		size = os.stat(filename).st_size
+	def checksum_file(self, filename: Path):
+		size = filename.stat().st_size
 		return (size, size)
 
 hashfunc_map["size"] = SizeHash()
@@ -301,10 +300,8 @@ hashfunc_keys = frozenset(hashfunc_map)
 
 
 prelink_capable = False
-if os.path.exists(PRELINK_BINARY):
+if PRELINK_BINARY.exists():
 	cmd = [PRELINK_BINARY, "--version"]
-	cmd = [_unicode_encode(x, encoding=_encodings['fs'], errors='strict')
-		for x in cmd]
 	proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 		stderr=subprocess.STDOUT)
 	proc.communicate()
@@ -326,8 +323,7 @@ def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, "MD5", calc_prelink)[0]
 
 def _perform_md5_merge(x, **kwargs):
-	return perform_md5(_unicode_encode(x,
-		encoding=_encodings['merge'], errors='strict'), **kwargs)
+	return perform_md5(x, **kwargs)
 
 def perform_all(x, calc_prelink=0):
 	mydict = {}
@@ -482,15 +478,10 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 
 	return file_is_ok, reason
 
-def perform_checksum(filename, hashname="MD5", calc_prelink=0):
+def perform_checksum(filename: Path, hashname="MD5", calc_prelink=0):
 	"""
-	Run a specific checksum against a file. The filename can
-	be either unicode or an encoded byte string. If filename
-	is unicode then a UnicodeDecodeError will be raised if
-	necessary.
-
 	@param filename: File to run the checksum against
-	@type filename: String
+	@type filename: Path
 	@param hashname: The type of hash function to run
 	@type hashname: String
 	@param calc_prelink: Whether or not to reverse prelink before running the checksum
@@ -499,10 +490,6 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 	@return: The hash and size of the data
 	"""
 	global prelink_capable
-	# Make sure filename is encoded with the correct encoding before
-	# it is passed to spawn (for prelink) and/or the hash function.
-	filename = _unicode_encode(filename,
-		encoding=_encodings['fs'], errors='strict')
 	myfilename = filename
 	prelink_tmpfile = None
 	try:
@@ -543,12 +530,12 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 					raise
 				del e
 
-def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
+def perform_multiple_checksums(filename: Path, hashes=["MD5"], calc_prelink=0):
 	"""
 	Run a group of checksums against a file.
 
 	@param filename: File to run the checksums against
-	@type filename: String
+	@type filename: Path
 	@param hashes: A list of checksum functions to run against the file
 	@type hashname: List
 	@param calc_prelink: Whether or not to reverse prelink before running the checksum

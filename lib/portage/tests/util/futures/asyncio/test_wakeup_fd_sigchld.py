@@ -53,7 +53,7 @@ sys.exit(os.EX_OK)
 		pythonpath = os.environ.get('PYTHONPATH', '').strip().split(':')
 		if not pythonpath or pythonpath[0] != PORTAGE_PYM_PATH:
 			pythonpath = [PORTAGE_PYM_PATH] + pythonpath
-		pythonpath = ':'.join(filter(None, pythonpath))
+		pythonpath = ':'.join(str(x) for x in pythonpath if x is not None)
 
 		proc = subprocess.Popen(
 			[portage._python_interpreter, '-c', script],

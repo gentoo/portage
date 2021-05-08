@@ -48,15 +48,15 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
 				format(p.returncode, ' '.join(cmd)))
 
 	async def init_update(self):
-		update_location = os.path.join(self._user_location, '.tmp-unverified-download-quarantine')
-		await self._check_call(['rm', '-rf', update_location])
+		update_location = self._user_location / '.tmp-unverified-download-quarantine'
+		await self._check_call(['rm', '-rf', str(update_location)])
 
 		# Use  rsync --link-dest to hardlink a files into self._update_location,
 		# since cp -l is not portable.
-		await self._check_call(['rsync', '-a', '--link-dest', self._user_location,
+		await self._check_call(['rsync', '-a', '--link-dest', str(self._user_location),
 			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
-			'--exclude', '/{}'.format(os.path.basename(update_location)),
-			self._user_location + '/', update_location + '/'])
+			'--exclude', '/{}'.format(update_location.name),
+			str(self._user_location) + '/', str(update_location) + "/"])
 
 		self._update_location = update_location
 
@@ -73,8 +73,8 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
 		self._update_location = None
 		await self._check_call(['rsync', '-a', '--delete',
 			'--exclude=/distfiles', '--exclude=/local', '--exclude=/lost+found', '--exclude=/packages',
-			'--exclude', '/{}'.format(os.path.basename(update_location)),
-			update_location + '/', self._user_location + '/'])
+			'--exclude', '/{}'.format(update_location.name),
+			str(update_location) + '/', str(self._user_location) + '/'])
 
 		await self._check_call(['rm', '-rf', update_location])
 

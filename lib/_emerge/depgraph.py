@@ -11,6 +11,8 @@ import warnings
 import collections
 from collections import deque, OrderedDict
 from itertools import chain
+from pathlib import Path
+from typing import Union, List, Dict, Any, Optional
 
 import portage
 from portage import os
@@ -112,9 +114,10 @@ def _wildcard_set(atoms):
 
 class _frozen_depgraph_config:
 
-	def __init__(self, settings, trees, myopts, params, spinner):
+	def __init__(self, settings, trees: Dict[Path, Dict[str, Optional[Any]]],
+			myopts, params, spinner):
 		self.settings = settings
-		self.target_root = settings["EROOT"]
+		self.target_root = Path(settings["EROOT"])
 		self.myopts = myopts
 		self.edebug = 0
 		if settings.get("PORTAGE_DEBUG", "") == "1":
@@ -406,7 +409,6 @@ class _dynamic_depgraph_config:
 	identify any conflicts that are modeled within the digraph and determine the best way to handle them.
 
 	"""
-
 	def __init__(self, depgraph, myparams, allow_backtracking, backtrack_parameters):
 		self.myparams = myparams.copy()
 		self._vdb_loaded = False
@@ -3428,7 +3430,7 @@ class depgraph:
 			depend_root = myroot
 		else:
 			if eapi_attrs.bdepend:
-				depend_root = pkg.root_config.settings["ESYSROOT"]
+				depend_root = Path(pkg.root_config.settings["ESYSROOT"])
 			else:
 				depend_root = self._frozen_config._running_root.root
 				root_deps = self._frozen_config.myopts.get("--root-deps")
@@ -3548,7 +3550,7 @@ class depgraph:
 		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
-	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
+	def _add_pkg_dep_string(self, pkg, dep_root: Path, dep_priority, dep_string,
 		allow_unsatisfied):
 		_autounmask_backup = self._dynamic_config._autounmask
 		if dep_priority.optional or dep_priority.ignored:
@@ -3593,7 +3595,7 @@ class depgraph:
 				dep.child.root, dep.child.slot_atom, installed=False)) and \
 			not slot_operator_rebuild
 
-	def _wrapped_add_pkg_dep_string(self, pkg, dep_root, dep_priority,
+	def _wrapped_add_pkg_dep_string(self, pkg, dep_root: Path, dep_priority,
 		dep_string, allow_unsatisfied):
 		if isinstance(pkg.depth, int):
 			depth = pkg.depth + 1
@@ -3925,7 +3927,7 @@ class depgraph:
 					child_pkgs.sort()
 				yield (atom, child_pkgs[-1])
 
-	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct, _disjunctions_recursive=None):
+	def _queue_disjunctive_deps(self, pkg, dep_root: Path, dep_priority, dep_struct, _disjunctions_recursive=None):
 		"""
 		Queue disjunctive (virtual and ||) deps in self._dynamic_config._dep_disjunctive_stack.
 		Yields non-disjunctive deps. Raises InvalidDependString when
@@ -3952,7 +3954,7 @@ class depgraph:
 		if _disjunctions_recursive is None and disjunctions:
 			self._queue_disjunction(pkg, dep_root, dep_priority, disjunctions)
 
-	def _queue_disjunction(self, pkg, dep_root, dep_priority, dep_struct):
+	def _queue_disjunction(self, pkg, dep_root: Path, dep_priority, dep_struct):
 		self._dynamic_config._dep_disjunctive_stack.append(
 			(pkg, dep_root, dep_priority, dep_struct))
 
@@ -4057,7 +4059,7 @@ class depgraph:
 			if spinner_cb.handle is not None:
 				spinner_cb.handle.cancel()
 
-	def _select_files(self, myfiles):
+	def _select_files(self, myfiles: List[Union[Path, str]]):
 		"""Given a list of .tbz2s, .ebuilds sets, and deps, populate
 		self._dynamic_config._initial_arg_list and call self._resolve to create the
 		appropriate depgraph and return a favorite list."""
@@ -4080,7 +4082,10 @@ class depgraph:
 		args = []
 		onlydeps = "--onlydeps" in self._frozen_config.myopts
 		lookup_owners = []
+		import os
 		for x in myfiles:
+			if isinstance(x, Path):
+				x = str(x) # TODO: I don't want to deal with this right now? is `myfiles` just files?
 			ext = os.path.splitext(x)[1]
 			if ext==".tbz2":
 				if not os.path.exists(x):
@@ -4181,6 +4186,7 @@ class depgraph:
 				if x.startswith(SETPREFIX):
 					s = x[len(SETPREFIX):]
 					if s not in sets:
+						# breakpoint()
 						raise portage.exception.PackageSetNotFound(s)
 					if s in depgraph_sets.sets:
 						continue
@@ -4615,9 +4621,9 @@ class depgraph:
 		# Since --quickpkg-direct assumes that --quickpkg-direct-root is
 		# immutable, assert that there are no merge or unmerge tasks
 		# for --quickpkg-direct-root.
-		quickpkg_root = normalize_path(os.path.abspath(
+		quickpkg_root = normalize_path(
 			self._frozen_config.myopts.get('--quickpkg-direct-root',
-			self._frozen_config._running_root.settings['ROOT']))).rstrip(os.path.sep) + os.path.sep
+			Path(self._frozen_config._running_root.settings['ROOT'])).absolute())
 		if (self._frozen_config.myopts.get('--quickpkg-direct', 'n') == 'y' and
 			self._frozen_config.settings['ROOT'] != quickpkg_root and
 			self._frozen_config._running_root.settings['ROOT'] == quickpkg_root):
@@ -4833,7 +4839,7 @@ class depgraph:
 		kwargs["trees"] = self._dynamic_config._graph_trees
 		return self._select_atoms_highest_available(*pargs, **kwargs)
 
-	def _select_atoms_highest_available(self, root, depstring,
+	def _select_atoms_highest_available(self, root: Path, depstring,
 		myuse=None, parent=None, strict=True, trees=None, priority=None):
 		"""This will raise InvalidDependString if necessary. If trees is
 		None then self._dynamic_config._filtered_trees is used."""
@@ -6334,7 +6340,8 @@ class depgraph:
 				self._dynamic_config._need_restart = True
 		return new_use
 
-	def _wrapped_select_pkg_highest_available_imp(self, root, atom, onlydeps=False, autounmask_level=None, parent=None):
+	def _wrapped_select_pkg_highest_available_imp(self, root: Path, atom, onlydeps=False, autounmask_level=None, parent=None):
+		# if isinstance(root, str): breakpoint()
 		root_config = self._frozen_config.roots[root]
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		dbs = self._dynamic_config._filtered_trees[root]["dbs"]
@@ -8959,8 +8966,7 @@ class depgraph:
 
 		for root in roots:
 			settings = self._frozen_config.roots[root].settings
-			abs_user_config = os.path.join(
-				settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+			abs_user_config = settings["PORTAGE_CONFIGROOT"] / USER_CONFIG_PATH
 
 			if len(roots) > 1:
 				writemsg("\nFor %s:\n" % abs_user_config, noiselevel=-1)
@@ -9047,8 +9053,7 @@ class depgraph:
 		if write_to_file and file_to_write_to:
 			for root in roots:
 				settings = self._frozen_config.roots[root].settings
-				abs_user_config = os.path.join(
-					settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+				abs_user_config = settings["PORTAGE_CONFIGROOT"] /USER_CONFIG_PATH
 				ensure_dirs(abs_user_config)
 
 				if root in unstable_keyword_msg:
@@ -9077,8 +9082,7 @@ class depgraph:
 			if autounmask_continue:
 				return True
 			for root in roots:
-				chk_updated_cfg_files(root,
-					[os.path.join(os.sep, USER_CONFIG_PATH)])
+				chk_updated_cfg_files(root, [os.sep / USER_CONFIG_PATH])
 		elif not pretend and not autounmask_write and roots:
 			writemsg("\nUse --autounmask-write to write changes to config files (honoring\n"
 				"CONFIG_PROTECT). Carefully examine the list of proposed changes,\n"
@@ -9995,8 +9999,8 @@ def _spinner_stop(spinner):
 
 	portage.writemsg_stdout("... done!\n")
 
-def backtrack_depgraph(settings, trees, myopts, myparams,
-	myaction, myfiles, spinner):
+def backtrack_depgraph(settings, trees: Dict[Path, Dict[str, Optional[Any]]],
+	myopts, myparams, myaction, myfiles, spinner):
 	"""
 	Raises PackageSetNotFound if myfiles contains a missing package set.
 	"""
@@ -10008,8 +10012,10 @@ def backtrack_depgraph(settings, trees, myopts, myparams,
 		_spinner_stop(spinner)
 
 
-def _backtrack_depgraph(settings, trees, myopts, myparams, myaction, myfiles, spinner):
+def _backtrack_depgraph(settings, trees: Dict[Path, Dict[str, Optional[Any]]],
+	myopts, myparams, myaction, myfiles, spinner):
 
+	# breakpoint()
 	debug = "--debug" in myopts
 	mydepgraph = None
 	max_retries = myopts.get('--backtrack', 10)

@@ -293,7 +293,7 @@ def slot_dict_class(keys, prefix="_val_"):
 			allowed_keys = keys_set
 			_prefix = prefix
 			__slots__ = ("__weakref__",) + \
-				tuple(prefix + k for k in allowed_keys)
+				tuple(prefix + str(k) for k in allowed_keys)
 
 			def __init__(self, *args, **kwargs):
 

@@ -24,12 +24,16 @@ import string
 import sys
 import traceback
 import glob
+from pathlib import Path
+from typing import Iterator, List, Union
+import os as _os
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'pickle',
 	'portage.dep:Atom',
 	'subprocess',
+	'portage.util:unroot'
 )
 
 from portage import os
@@ -57,7 +61,7 @@ def initialize_logger(level=logging.WARNING):
 	"""
 	logging.basicConfig(level=level, format='[%(levelname)-4s] %(message)s')
 
-def writemsg(mystr, noiselevel=0, fd=None):
+def writemsg(mystr: str, noiselevel=0, fd=None):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
 	global noiselimit
 	if fd is None:
@@ -65,10 +69,10 @@ def writemsg(mystr, noiselevel=0, fd=None):
 	if noiselevel <= noiselimit:
 		# avoid potential UnicodeEncodeError
 		if isinstance(fd, io.StringIO):
-			mystr = _unicode_decode(mystr,
+			mystr = mystr.encode(
 				encoding=_encodings['content'], errors='replace')
 		else:
-			mystr = _unicode_encode(mystr,
+			mystr = mystr.encode(
 				encoding=_encodings['stdio'], errors='backslashreplace')
 			if fd in (sys.stdout, sys.stderr):
 				fd = fd.buffer
@@ -99,21 +103,16 @@ def writemsg_level(msg, level=0, noiselevel=0):
 		fd = sys.stdout
 	writemsg(msg, noiselevel=noiselevel, fd=fd)
 
-def normalize_path(mypath):
+def normalize_path(mypath: Path):
 	"""
 	os.path.normpath("//foo") returns "//foo" instead of "/foo"
 	We dislike this behavior so we create our own normpath func
 	to fix it.
 	"""
-	if isinstance(mypath, bytes):
-		path_sep = os.path.sep.encode()
-	else:
-		path_sep = os.path.sep
-
-	if mypath.startswith(path_sep):
-		# posixpath.normpath collapses 3 or more leading slashes to just 1.
-		return os.path.normpath(2*path_sep + mypath)
-	return os.path.normpath(mypath)
+	# if isinstance(mypath, str): breakpoint()
+	if mypath.root == '//':
+		return '/' / mypath.relative_to('//')
+	return mypath
 
 def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -389,7 +388,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 	Read the 'eapi' file from the directory 'filename' is in.
 	Returns "0" if the file is not present or invalid.
 	"""
-	eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+	eapi_file = filename.with_name("eapi")
 	try:
 		eapi = _eapi_cache[eapi_file]
 	except KeyError:
@@ -401,8 +400,7 @@ def read_corresponding_eapi_file(filename, default="0"):
 
 	eapi = None
 	try:
-		with io.open(_unicode_encode(eapi_file,
-			encoding=_encodings['fs'], errors='strict'),
+		with eapi_file.open(
 			mode='r', encoding=_encodings['repo.content'], errors='replace') as f:
 			lines = f.readlines()
 		if len(lines) == 1:
@@ -471,7 +469,7 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0,
 	if verify_eapi and eapi is None:
 		eapi = read_corresponding_eapi_file(
 			myfilename, default=eapi_default)
-	mybasename = os.path.basename(myfilename)
+	mybasename = myfilename.name
 	is_packages_file = mybasename == 'packages'
 	atoms = []
 	for pkg, source_file in pkgs:
@@ -512,21 +510,21 @@ def grabfile_package(myfilename, compatlevel=0, recursive=0,
 def _recursive_basename_filter(f):
 	return not f.startswith(".") and not f.endswith("~")
 
-def _recursive_file_list(path):
+def _recursive_file_list(path: Path) -> Iterator[Path]:
 	# path may be a regular file or a directory
 
 	def onerror(e):
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(path)
 
-	stack = [os.path.split(path)]
+	stack = [_os.path.split(path)]
 
 	while stack:
 		parent, fname = stack.pop()
-		fullpath = os.path.join(parent, fname)
+		fullpath = _os.path.join(parent, fname)
 
 		try:
-			st = os.stat(fullpath)
+			st = _os.stat(fullpath)
 		except OSError as e:
 			onerror(e)
 			continue
@@ -535,7 +533,7 @@ def _recursive_file_list(path):
 			if fname in VCS_DIRS or not _recursive_basename_filter(fname):
 				continue
 			try:
-				children = os.listdir(fullpath)
+				children = _os.listdir(fullpath)
 			except OSError as e:
 				onerror(e)
 				continue
@@ -548,9 +546,9 @@ def _recursive_file_list(path):
 
 		elif stat.S_ISREG(st.st_mode):
 			if _recursive_basename_filter(fname):
-				yield fullpath
+				yield Path(fullpath)
 
-def grablines(myfilename, recursive=0, remember_source_file=False):
+def grablines(myfilename: Path, recursive=0, remember_source_file=False):
 	mylines = []
 	if recursive:
 		for f in _recursive_file_list(myfilename):
@@ -559,8 +557,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 
 	else:
 		try:
-			with io.open(_unicode_encode(myfilename,
-				encoding=_encodings['fs'], errors='strict'),
+			with myfilename.open(
 				mode='r', encoding=_encodings['content'], errors='replace') as myfile:
 				if remember_source_file:
 					mylines = [(line, myfilename) for line in myfile.readlines()]
@@ -604,7 +601,7 @@ class _getconfig_shlex(shlex.shlex):
 		self.__portage_tolerant = portage_tolerant
 
 	def allow_sourcing(self, var_expand_map):
-		self.source = portage._native_string("source")
+		self.source = "source"
 		self.var_expand_map = var_expand_map
 
 	def sourcehook(self, newfile):
@@ -660,9 +657,7 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 
 	f = None
 	try:
-		f = open(_unicode_encode(mycfg,
-			encoding=_encodings['fs'], errors='strict'), mode='r',
-			encoding=_encodings['content'], errors='replace')
+		f = mycfg.open('r', encoding=_encodings['content'], errors='replace')
 		content = f.read()
 	except IOError as e:
 		if e.errno == PermissionDenied.errno:
@@ -676,19 +671,12 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		if f is not None:
 			f.close()
 
-	# Since this file has unicode_literals enabled, and Python 2's
-	# shlex implementation does not support unicode, the following code
-	# uses _native_string() to encode unicode literals when necessary.
-
-	# Workaround for avoiding a silent error in shlex that is
-	# triggered by a source statement at the end of the file
-	# without a trailing newline after the source statement.
-	if content and content[-1] != portage._native_string('\n'):
-		content += portage._native_string('\n')
+	if content and content[-1] != '\n':
+		content += '\n'
 
 	# Warn about dos-style line endings since that prevents
 	# people from being able to source them with bash.
-	if portage._native_string('\r') in content:
+	if '\r' in content:
 		writemsg(("!!! " + _("Please use dos2unix to convert line endings " + \
 			"in config file: '%s'") + "\n") % mycfg, noiselevel=-1)
 
@@ -699,21 +687,20 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 		# attribute is properly set.
 		lex = _getconfig_shlex(instream=content, infile=mycfg, posix=True,
 			portage_tolerant=tolerant)
-		lex.wordchars = portage._native_string(string.digits +
-			string.ascii_letters + r"~!@#$%*_\:;?,./-+{}")
-		lex.quotes = portage._native_string("\"'")
+		lex.wordchars = string.digits + string.ascii_letters + r"~!@#$%*_\:;?,./-+{}"
+		lex.quotes = "\"'"
 		if allow_sourcing:
 			lex.allow_sourcing(expand_map)
 
 		while True:
-			key = _unicode_decode(lex.get_token())
+			key = lex.get_token()
 			if key == "export":
-				key = _unicode_decode(lex.get_token())
+				key = lex.get_token()
 			if key is None:
 				#normal end of file
 				break
 
-			equ = _unicode_decode(lex.get_token())
+			equ = lex.get_token()
 			if not equ:
 				msg = lex.error_leader() + _("Unexpected EOF")
 				if not tolerant:
@@ -731,7 +718,7 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 					writemsg("%s\n" % msg, noiselevel=-1)
 					return mykeys
 
-			val = _unicode_decode(lex.get_token())
+			val = lex.get_token()
 			if val is None:
 				msg = lex.error_leader() + \
 					_("Unexpected end of config file: variable '%s'") % (key,)
@@ -769,7 +756,7 @@ def getconfig(mycfg, tolerant=False, allow_sourcing=False, expand=True,
 _varexpand_word_chars = frozenset(string.ascii_letters + string.digits + "_")
 _varexpand_unexpected_eof_msg = "unexpected EOF while looking for matching `}'"
 
-def varexpand(mystring, mydict=None, error_leader=None):
+def varexpand(mystring: str, mydict=None, error_leader=None):
 	if mydict is None:
 		mydict = {}
 
@@ -890,7 +877,7 @@ def varexpand(mystring, mydict=None, error_leader=None):
 					return ""
 				numvars += 1
 				if myvarname in mydict:
-					newstring.append(mydict[myvarname])
+					newstring.append(str(mydict[myvarname]))
 			else:
 				newstring.append(current)
 				pos += 1
@@ -1030,11 +1017,12 @@ def unique_everseen(iterable, key=None):
 				seen_add(k)
 				yield element
 
-def _do_stat(filename, follow_links=True):
+def _do_stat(filename: Path, follow_links=True):
 	try:
 		if follow_links:
-			return os.stat(filename)
-		return os.lstat(filename)
+			# if not isinstance(filename, Path): breakpoint()
+			return filename.stat()
+		return filename.lstat()
 	except OSError as oe:
 		func_call = "stat('%s')" % filename
 		if oe.errno == errno.EPERM:
@@ -1068,7 +1056,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 		(gid != -1 and gid != stat_cached.st_gid):
 		try:
 			if follow_links:
-				os.chown(filename, uid, gid)
+				_os.chown(filename, uid, gid)
 			else:
 				portage.data.lchown(filename, uid, gid)
 			modified = True
@@ -1123,7 +1111,7 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 
 	if new_mode != -1:
 		try:
-			os.chmod(filename, new_mode)
+			filename.chmod(new_mode)
 			modified = True
 		except OSError as oe:
 			func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
@@ -1138,13 +1126,13 @@ def apply_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
 			raise
 	return modified
 
-def apply_stat_permissions(filename, newstat, **kwargs):
+def apply_stat_permissions(filename: Path, newstat: os.stat_result, **kwargs):
 	"""A wrapper around apply_secpass_permissions that gets
 	uid, gid, and mode from a stat object"""
 	return apply_secpass_permissions(filename, uid=newstat.st_uid, gid=newstat.st_gid,
 	mode=newstat.st_mode, **kwargs)
 
-def apply_recursive_permissions(top, uid=-1, gid=-1,
+def apply_recursive_permissions(top: Path, uid=-1, gid=-1,
 	dirmode=-1, dirmask=-1, filemode=-1, filemask=-1, onerror=None):
 	"""A wrapper around apply_secpass_permissions that applies permissions
 	recursively.  If optional argument onerror is specified, it should be a
@@ -1194,26 +1182,29 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 		all_applied = False
 		onerror(e)
 
-	for dirpath, dirnames, filenames in os.walk(top):
-		for name, mode, mask in chain(
-			((x, filemode, filemask) for x in filenames),
-			((x, dirmode, dirmask) for x in dirnames)):
-			try:
-				applied = apply_secpass_permissions(os.path.join(dirpath, name),
-					uid=uid, gid=gid, mode=mode, mask=mask,
-					follow_links=follow_links)
-				if not applied:
-					all_applied = False
-			except PortageException as e:
-				# Ignore InvalidLocation exceptions such as FileNotFound
-				# and DirectoryNotFound since sometimes things disappear,
-				# like when adjusting permissions on DISTCC_DIR.
-				if not isinstance(e, portage.exception.InvalidLocation):
-					all_applied = False
-					onerror(e)
+	for name in top.rglob('*'):
+		if name.is_dir():
+			mode = dirmode
+			mask = dirmask
+		else:
+			mode = filemode
+			mask = filemask
+		try:
+			applied = apply_secpass_permissions(name,
+				uid=uid, gid=gid, mode=mode, mask=mask,
+				follow_links=follow_links)
+			if not applied:
+				all_applied = False
+		except PortageException as e:
+			# Ignore InvalidLocation exceptions such as FileNotFound
+			# and DirectoryNotFound since sometimes things disappear,
+			# like when adjusting permissions on DISTCC_DIR.
+			if not isinstance(e, portage.exception.InvalidLocation):
+				all_applied = False
+				onerror(e)
 	return all_applied
 
-def apply_secpass_permissions(filename, uid=-1, gid=-1, mode=-1, mask=-1,
+def apply_secpass_permissions(filename: Path, uid=-1, gid=-1, mode=-1, mask=-1,
 	stat_cached=None, follow_links=True):
 	"""A wrapper around apply_permissions that uses secpass and simple
 	logic to apply as much of the permissions as possible without
@@ -1265,13 +1256,12 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
 			kargs.setdefault('errors', 'backslashreplace')
 
 		if follow_links:
-			canonical_path = os.path.realpath(filename)
+			canonical_path = _os.path.realpath(filename)
 			object.__setattr__(self, '_real_name', canonical_path)
 			tmp_name = "%s.%i" % (canonical_path, portage.getpid())
 			try:
 				object.__setattr__(self, '_file',
-					open_func(_unicode_encode(tmp_name,
-						encoding=_encodings['fs'], errors='strict'),
+					open_func(tmp_name,
 						mode=mode, **kargs))
 				return
 			except IOError as e:
@@ -1313,7 +1303,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
 				f.close()
 				if not object.__getattribute__(self, '_aborted'):
 					try:
-						apply_stat_permissions(f.name, os.stat(real_name))
+						apply_stat_permissions(Path(f.name), _os.stat(real_name))
 					except OperationNotPermitted:
 						pass
 					except FileNotFound:
@@ -1323,12 +1313,12 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
 							pass
 						else:
 							raise
-					os.rename(f.name, real_name)
+					_os.rename(f.name, real_name)
 			finally:
 				# Make sure we cleanup the temp file
 				# even if an exception is raised.
 				try:
-					os.unlink(f.name)
+					_os.unlink(f.name) # TODO: what?
 				except OSError as oe:
 					pass
 
@@ -1376,7 +1366,7 @@ def write_atomic(file_path, content, **kwargs):
 		else:
 			raise
 
-def ensure_dirs(dir_path, **kwargs):
+def ensure_dirs(dir_path: Union[Path, str], **kwargs):
 	"""Create a directory and call apply_permissions.
 	Returns True if a directory is created or the permissions needed to be
 	modified, and False otherwise.
@@ -1387,16 +1377,18 @@ def ensure_dirs(dir_path, **kwargs):
 	"""
 
 	created_dir = False
+	if isinstance(dir_path, str):  # This is for backwards compat with tests
+		dir_path = Path(dir_path)
 
 	try:
-		os.makedirs(dir_path)
+		dir_path.mkdir(parents=True)
 		created_dir = True
 	except OSError as oe:
 		func_call = "makedirs('%s')" % dir_path
 		if oe.errno in (errno.EEXIST,):
 			pass
 		else:
-			if os.path.isdir(dir_path):
+			if dir_path.is_dir():
 				# NOTE: DragonFly raises EPERM for makedir('/')
 				# and that is supposed to be ignored here.
 				# Also, sometimes mkdir raises EISDIR on FreeBSD
@@ -1561,7 +1553,9 @@ class LazyItemsDict(UserDict):
 			return result
 
 class ConfigProtect:
-	def __init__(self, myroot, protect_list, mask_list,
+	protect_list: List[Path]
+	mask_list: List[Path]
+	def __init__(self, myroot: Path, protect_list: List[Path], mask_list: List[Path],
 		case_insensitive=False):
 		self.myroot = myroot
 		self.protect_list = protect_list
@@ -1578,11 +1572,10 @@ class ConfigProtect:
 		self.protect = []
 		self._dirs = set()
 		for x in self.protect_list:
-			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			ppath = normalize_path(self.myroot / unroot(x))
 			# Protect files that don't exist (bug #523684). If the
 			# parent directory doesn't exist, we can safely skip it.
-			if os.path.isdir(os.path.dirname(ppath)):
+			if os.path.isdir(ppath.parent):
 				self.protect.append(ppath)
 			try:
 				if stat.S_ISDIR(os.stat(ppath).st_mode):
@@ -1592,8 +1585,7 @@ class ConfigProtect:
 
 		self.protectmask = []
 		for x in self.mask_list:
-			ppath = normalize_path(
-				os.path.join(self.myroot, x.lstrip(os.path.sep)))
+			ppath = normalize_path(self.myroot / unroot(x))
 			if self.case_insensitive:
 				ppath = ppath.lower()
 			try:
@@ -1703,8 +1695,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 					if e.errno != errno.ENOENT:
 						raise
 				else:
-					pfile_link = _unicode_decode(pfile_link,
-						encoding=_encodings['merge'], errors='replace')
+					pfile_link = pfile_link
 					if pfile_link == newmd5:
 						return old_pfile
 			else:
@@ -1720,7 +1711,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
 						return old_pfile
 	return new_pfile
 
-def find_updated_config_files(target_root, config_protect):
+def find_updated_config_files(target_root, config_protect: List[Path]):
 	"""
 	Return a tuple of configuration files that needs to be updated.
 	The tuple contains lists organized like this:
@@ -1737,7 +1728,7 @@ def find_updated_config_files(target_root, config_protect):
 		for x in config_protect:
 			files = []
 
-			x = os.path.join(target_root, x.lstrip(os.path.sep))
+			x = target_root / unroot(x)
 			if not os.access(x, os.W_OK):
 				continue
 			try:
@@ -1755,31 +1746,17 @@ def find_updated_config_files(target_root, config_protect):
 				except OSError:
 					pass
 
-			if stat.S_ISDIR(mymode):
-				mycommand = \
-					"find '%s' -name '.*' -type d -prune -o -name '._cfg????_*'" % x
+			if x.is_dir():
+				files = [d for d in x.rglob('._cfg????_*') if d.is_dir()]
 			else:
-				mycommand = "find '%s' -maxdepth 1 -name '._cfg????_%s'" % \
-						os.path.split(x.rstrip(os.path.sep))
-			mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-			cmd = shlex_split(mycommand)
+				files = [d for d in x.glob(f'._cfg????_{x.name}')]
 
-			cmd = [_unicode_encode(arg, encoding=encoding, errors='strict')
-				for arg in cmd]
-			proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-				stderr=subprocess.STDOUT)
-			output = _unicode_decode(proc.communicate()[0], encoding=encoding)
-			status = proc.wait()
-			if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-				files = output.split('\0')
-				# split always produces an empty string as the last element
-				if files and not files[-1]:
-					del files[-1]
-				if files:
-					if stat.S_ISDIR(mymode):
-						yield (x, files)
-					else:
-						yield (x, None)
+			if files:
+				if stat.S_ISDIR(mymode):
+					yield (x, files)
+				else:
+					# Not sure what is going on here, is files discarded?
+					yield (x, None)
 
 _ld_so_include_re = re.compile(r'^include\s+(\S.*)')
 
@@ -1806,3 +1783,15 @@ def getlibpaths(root, env=None):
 	rval.append("/lib")
 
 	return [normalize_path(x) for x in rval if x]
+
+
+def unroot(path: Path):
+	# if isinstance(path ,str): breakpoint()
+	if not path.is_absolute():
+		# error?
+		return path
+	return path.relative_to(path.root)
+
+def append_suffix(path: Path, suffix: str):
+	# https://stackoverflow.com/q/49380572
+	return path.with_suffix(path.suffix + suffix)

@@ -2,13 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
+from pathlib import Path
 
 from portage import os
 from portage.exception import PermissionDenied
 
-def exists_raise_eaccess(path):
+def exists_raise_eaccess(path: Path):
 	try:
-		os.stat(path)
+		path.stat()
 	except OSError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied("stat('%s')" % path)
@@ -16,9 +17,9 @@ def exists_raise_eaccess(path):
 	else:
 		return True
 
-def isdir_raise_eaccess(path):
+def isdir_raise_eaccess(path: Path):
 	try:
-		st = os.stat(path)
+		st = path.stat()
 	except OSError as e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied("stat('%s')" % path)

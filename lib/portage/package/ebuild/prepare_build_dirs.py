@@ -7,6 +7,7 @@ import errno
 import gzip
 import stat
 import time
+from pathlib import Path
 
 import portage
 from portage import os, shutil, _encodings, _unicode_encode, _unicode_decode
@@ -29,12 +30,12 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 		raise TypeError("settings argument is required")
 
 	mysettings = settings
-	clean_dirs = [mysettings["HOME"]]
+	clean_dirs = [Path(mysettings["HOME"])]
 
 	# We enable cleanup when we want to make sure old cruft (such as the old
 	# environment) doesn't interfere with the current phase.
 	if cleanup and 'keeptemp' not in mysettings.features:
-		clean_dirs.append(mysettings["T"])
+		clean_dirs.append(Path(mysettings["T"]))
 
 	for clean_dir in clean_dirs:
 		try:
@@ -67,10 +68,10 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 				raise
 		return True
 
-	mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
+	mysettings["PKG_LOGDIR"] = str(Path(mysettings["T"], "logging"))
 
-	mydirs = [os.path.dirname(mysettings["PORTAGE_BUILDDIR"])]
-	mydirs.append(os.path.dirname(mydirs[-1]))
+	mydirs = [Path(mysettings["PORTAGE_BUILDDIR"]).parent]
+	mydirs.append(mydirs[-1].parent)
 
 	try:
 		for mydir in mydirs:
@@ -83,7 +84,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 					raise
 		for dir_key in ("HOME", "PKG_LOGDIR", "T"):
 			ensure_dirs(mysettings[dir_key], mode=0o755)
-			apply_secpass_permissions(mysettings[dir_key],
+			apply_secpass_permissions(Path(mysettings[dir_key]),
 				uid=portage_uid, gid=portage_gid)
 	except PermissionDenied as e:
 		writemsg(_("Permission Denied: %s\n") % str(e), noiselevel=-1)
@@ -98,7 +99,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 	# Reset state for things like noauto and keepwork in FEATURES.
 	for x in ('.die_hooks',):
 		try:
-			os.unlink(os.path.join(mysettings['PORTAGE_BUILDDIR'], x))
+			os.unlink(Path(mysettings['PORTAGE_BUILDDIR'], x))
 		except OSError:
 			pass
 
@@ -155,11 +156,11 @@ def _prepare_features_dirs(mysettings):
 	features_dirs = {
 		"ccache":{
 			"basedir_var":"CCACHE_DIR",
-			"default_dir":os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
+			"default_dir": Path(mysettings["PORTAGE_TMPDIR"], "ccache"),
 			"always_recurse":False},
 		"distcc":{
 			"basedir_var":"DISTCC_DIR",
-			"default_dir":os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
+			"default_dir": Path(mysettings["BUILD_PREFIX"], ".distcc"),
 			"subdirs":("lock", "state"),
 			"always_recurse":True}
 	}
@@ -345,14 +346,13 @@ def _prepare_workdir(mysettings):
 				writemsg("!!! %s: %s\n" %
 					(_("Permission Denied"), log_subdir), noiselevel=-1)
 
-	tmpdir_log_path = os.path.join(
-		mysettings["T"], "build.log%s" % compress_log_ext)
+	tmpdir_log_path = Path(mysettings["T"], "build.log%s" % compress_log_ext)
 	if not logdir_subdir_ok:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The
 		# current policy will allow it to work when a pty is available, but
 		# not through a normal pipe. See bug #162404.
-		mysettings["PORTAGE_LOG_FILE"] = tmpdir_log_path
+		mysettings["PORTAGE_LOG_FILE"] = str(tmpdir_log_path)
 	else:
 		# Create a symlink from tmpdir_log_path to PORTAGE_LOG_FILE, as
 		# requested in bug #412865.
@@ -405,12 +405,11 @@ def _ensure_log_subdirs(logdir, subdir):
 		ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
 
 def _prepare_fake_filesdir(settings):
-	real_filesdir = settings["O"]+"/files"
-	symlink_path = settings["FILESDIR"]
+	real_filesdir = Path(settings["O"], "files")
+	symlink_path = Path(settings["FILESDIR"])
 
-	try:
-		link_target = os.readlink(symlink_path)
-	except OSError:
+	link_target = symlink_path.resolve()
+	if not link_target.exists():
 		os.symlink(real_filesdir, symlink_path)
 	else:
 		if link_target != real_filesdir:
@@ -419,7 +418,7 @@ def _prepare_fake_filesdir(settings):
 
 def _prepare_fake_distdir(settings, alist):
 	orig_distdir = settings["DISTDIR"]
-	edpath = os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+	edpath = Path(settings["PORTAGE_BUILDDIR"], "distdir")
 	portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
 
 	# Remove any unexpected files or directories.

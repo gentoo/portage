@@ -3,9 +3,9 @@
 
 import tempfile
 
-from portage import os
-from portage import shutil
-from portage import _unicode_encode
+from pathlib import Path
+import os
+import shutil
 from portage.tests import TestCase
 from portage.util import getconfig
 from portage.exception import ParseError
@@ -26,7 +26,7 @@ class GetConfigTestCase(TestCase):
 
 	def testGetConfig(self):
 		make_globals_file = os.path.join(self.cnf_path, "make.globals")
-		d = getconfig(make_globals_file)
+		d = getconfig(Path(make_globals_file))
 		for k, v in self._cases.items():
 			self.assertEqual(d[k], v)
 
@@ -40,7 +40,7 @@ class GetConfigTestCase(TestCase):
 			with open(sourced_file, 'w') as f:
 				f.write('PASSES_SOURCING_TEST="True"\n')
 
-			d = getconfig(make_conf_file, allow_sourcing=True, expand={"DIR": tempdir})
+			d = getconfig(Path(make_conf_file), allow_sourcing=True, expand={"DIR": tempdir})
 
 			# PASSES_SOURCING_TEST should exist in getconfig result.
 			self.assertTrue(d is not None)
@@ -49,7 +49,7 @@ class GetConfigTestCase(TestCase):
 			# With allow_sourcing=True and empty expand map, this should
 			# throw a FileNotFound exception.
 			self.assertRaisesMsg("An empty expand map should throw an exception",
-				ParseError, getconfig, make_conf_file, allow_sourcing=True, expand={})
+				ParseError, getconfig, Path(make_conf_file), allow_sourcing=True, expand={})
 		finally:
 			shutil.rmtree(tempdir)
 
@@ -67,9 +67,9 @@ class GetConfigTestCase(TestCase):
 					line = "export %s=$'%s'\n" % (k, v[1:])
 				else:
 					line = "export %s='%s'\n" % (k, v)
-				f.write(_unicode_encode(line))
+				f.write(line.encode())
 			f.flush()
 
-			d = getconfig(f.name, expand=False)
+			d = getconfig(Path(f.name), expand=False)
 			for k, v in cases.items():
 				self.assertEqual(d.get(k), v)

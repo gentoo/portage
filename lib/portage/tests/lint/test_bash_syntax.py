@@ -4,12 +4,11 @@
 from itertools import chain
 import stat
 import subprocess
+import os
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
-from portage import os
 from portage import _encodings
-from portage import _unicode_decode, _unicode_encode
 
 class BashSyntaxTestCase(TestCase):
 
@@ -20,11 +19,7 @@ class BashSyntaxTestCase(TestCase):
 			locations.append(misc_dir)
 		for parent, dirs, files in \
 			chain.from_iterable(os.walk(x) for x in locations):
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='strict')
 			for x in files:
-				x = _unicode_decode(x,
-					encoding=_encodings['fs'], errors='strict')
 				ext = x.split('.')[-1]
 				if ext in ('.py', '.pyc', '.pyo'):
 					continue
@@ -34,19 +29,18 @@ class BashSyntaxTestCase(TestCase):
 					continue
 
 				# Check for bash shebang
-				f = open(_unicode_encode(x,
-					encoding=_encodings['fs'], errors='strict'), 'rb')
-				line = _unicode_decode(f.readline(),
+				f = open(x, 'rb')
+				line = f.readline().decode(
 					encoding=_encodings['content'], errors='replace')
 				f.close()
 				if line[:2] == '#!' and \
 					'bash' in line:
-					cmd = [BASH_BINARY, "-n", x]
-					cmd = [_unicode_encode(x,
+					cmd = [str(BASH_BINARY), "-n", x]
+					cmd = [x.encode(
 						encoding=_encodings['fs'], errors='strict') for x in cmd]
 					proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
 						stderr=subprocess.STDOUT)
-					output = _unicode_decode(proc.communicate()[0],
+					output = proc.communicate()[0].decode(
 						encoding=_encodings['fs'])
 					status = proc.wait()
 					self.assertEqual(os.WIFEXITED(status) and \

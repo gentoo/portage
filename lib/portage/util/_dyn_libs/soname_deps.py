@@ -7,6 +7,7 @@ import functools
 from itertools import chain
 import os
 import re
+from pathlib import Path
 
 from portage.util import shlex_split
 from portage.util import (
@@ -79,8 +80,8 @@ class SonameDepsProcessor:
 			runpaths = frozenset()
 			if entry.runpaths is not None:
 				expand = {"ORIGIN": os.path.dirname(entry.filename)}
-				runpaths = frozenset(normalize_path(varexpand(x, expand,
-					error_leader=lambda: "%s: DT_RUNPATH: " % entry.filename))
+				runpaths = frozenset(str(normalize_path(Path(varexpand(x, expand,
+					error_leader=lambda: "%s: DT_RUNPATH: " % entry.filename))))
 					for x in entry.runpaths)
 			for x in entry.needed:
 				if (self._requires_exclude is None or

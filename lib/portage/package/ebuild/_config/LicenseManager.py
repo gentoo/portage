@@ -34,8 +34,8 @@ class LicenseManager:
 			self._read_user_config(abs_user_config)
 
 	def _read_user_config(self, abs_user_config):
-		licdict = grabdict_package(os.path.join(
-			abs_user_config, "package.license"), recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
+		licdict = grabdict_package(abs_user_config / "package.license",
+			recursive=1, allow_wildcard=True, allow_repo=True, verify_eapi=False)
 		for k, v in licdict.items():
 			self._plicensedict.setdefault(k.cp, {})[k] = \
 				self.expandLicenseTokens(v)
@@ -43,7 +43,7 @@ class LicenseManager:
 	def _read_license_groups(self, locations):
 		for loc in locations:
 			for k, v in grabdict(
-				os.path.join(loc, "license_groups")).items():
+				loc / "license_groups").items():
 				self._license_groups.setdefault(k, []).extend(v)
 
 		for k, v in self._license_groups.items():

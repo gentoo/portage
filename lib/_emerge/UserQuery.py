@@ -46,7 +46,7 @@ class UserQuery:
 		elif colours is None:
 			colours=[bold]
 		colours=(colours*len(responses))[:len(responses)]
-		responses = [_unicode_decode(x) for x in responses]
+		responses = [x for x in responses]
 		if "--alert" in self.myopts:
 			prompt = '\a' + prompt
 		print(bold(prompt), end=' ')

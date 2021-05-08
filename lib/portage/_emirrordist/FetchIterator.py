@@ -43,7 +43,6 @@ class FetchIterator:
 				yield cp
 
 	def __iter__(self):
-
 		portdb = self._config.portdb
 		get_repo_for_location = portdb.repositories.get_repo_for_location
 
@@ -227,7 +226,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 				digests = digests_future.result()
 			else:
 				digests = repo_config.load_manifest(
-					os.path.join(repo_config.location, cpv.cp)).\
+					repo_config.location / cpv.cp).\
 					getTypeDigests("DIST")
 		except (EnvironmentError, PortageException) as e:
 			digests_future.done() or digests_future.set_exception(e)

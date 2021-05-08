@@ -26,7 +26,7 @@ class DoIns(setup_env.BinTestCase):
 				pass
 			doins('test')
 			exists_in_D('/test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			# By default, `install`'s permission is 755.
 			if stat.S_IMODE(st.st_mode) != 0o755:
 				raise tests.TestCase.failureException
@@ -42,7 +42,7 @@ class DoIns(setup_env.BinTestCase):
 			with open(os.path.join(env['S'], 'test'), 'w'):
 				pass
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if stat.S_IMODE(st.st_mode) != 0o644:
 				raise tests.TestCase.failureException
 			self.assertEqual(
@@ -62,7 +62,7 @@ class DoIns(setup_env.BinTestCase):
 			with open(os.path.join(env['S'], 'test'), 'w'):
 				pass
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if stat.S_IMODE(st.st_mode) != 0o400:
 				raise tests.TestCase.failureException
 		finally:
@@ -82,7 +82,7 @@ class DoIns(setup_env.BinTestCase):
 			# check if chown actually runs or not.
 			env['INSOPTIONS'] = '-o %d' % uid
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if st.st_uid != uid:
 				raise tests.TestCase.failureException
 		finally:
@@ -100,7 +100,7 @@ class DoIns(setup_env.BinTestCase):
 			# Similary to testDoInsOptionUid, use user name.
 			env['INSOPTIONS'] = '-o %s' % pw.pw_name
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if st.st_uid != uid:
 				raise tests.TestCase.failureException
 		finally:
@@ -117,7 +117,7 @@ class DoIns(setup_env.BinTestCase):
 			# Similary to testDoInsOptionUid, use gid.
 			env['INSOPTIONS'] = '-g %d' % gid
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if st.st_gid != gid:
 				raise tests.TestCase.failureException
 		finally:
@@ -135,7 +135,7 @@ class DoIns(setup_env.BinTestCase):
 			# Similary to testDoInsOptionUid, use group name.
 			env['INSOPTIONS'] = '-g %s' % gr.gr_name
 			doins('test')
-			st = os.lstat(env['D'] + '/test')
+			st = os.lstat(env['D'] / 'test')
 			if st.st_gid != gid:
 				raise tests.TestCase.failureException
 		finally:
@@ -181,7 +181,7 @@ class DoIns(setup_env.BinTestCase):
 			with open(os.path.join(env['S'], 'testdir/test'), 'w'):
 				pass
 			doins('-r testdir')
-			st = os.lstat(env['D'] + '/testdir')
+			st = os.lstat(env['D'] / 'testdir')
 			if stat.S_IMODE(st.st_mode) != 0o755:
 				raise tests.TestCase.failureException
 		finally:
@@ -226,9 +226,9 @@ class DoIns(setup_env.BinTestCase):
 			exists_in_D('/symlink')
 			# Make sure installed symlink is actually a symbolic
 			# link pointing to test.
-			if not os.path.islink(env['D'] + '/symlink'):
+			if not os.path.islink(env['D'] / 'symlink'):
 				raise tests.TestCase.failureException
-			if os.readlink(env['D'] + '/symlink') != 'test':
+			if os.readlink(env['D'] / 'symlink') != 'test':
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -253,9 +253,9 @@ class DoIns(setup_env.BinTestCase):
 			exists_in_D('/test/symlink')
 			# Make sure installed symlink is actually a symbolic
 			# link pointing to test.
-			if not os.path.islink(env['D'] + '/test/symlink'):
+			if not os.path.islink(env['D'] / 'test/symlink'):
 				raise tests.TestCase.failureException
-			if os.readlink(env['D'] + '/test/symlink') != 'test':
+			if os.readlink(env['D'] / 'test/symlink') != 'test':
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -275,9 +275,9 @@ class DoIns(setup_env.BinTestCase):
 			doins('test symlink')
 			# Make sure installed symlink is actually a symbolic
 			# link pointing to test.
-			if not os.path.islink(env['D'] + '/symlink'):
+			if not os.path.islink(env['D'] / 'symlink'):
 				raise tests.TestCase.failureException
-			if os.readlink(env['D'] + '/symlink') != 'test':
+			if os.readlink(env['D'] / 'symlink') != 'test':
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -301,11 +301,11 @@ class DoIns(setup_env.BinTestCase):
 			doins('-r test')
 			# Make sure installed symlink is actually a symbolic
 			# link pointing to test.
-			if not os.path.islink(env['D'] + '/test/symlink'):
+			if not os.path.islink(env['D'] / 'test/symlink'):
 				raise tests.TestCase.failureException
-			if not os.path.isdir(env['D'] + '/test/symlink'):
+			if not os.path.isdir(env['D'] / 'test/symlink'):
 				raise tests.TestCase.failureException
-			if os.readlink(env['D'] + '/test/symlink') != 'test':
+			if os.readlink(env['D'] / 'test/symlink') != 'test':
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -324,10 +324,10 @@ class DoIns(setup_env.BinTestCase):
 				pass
 			# Create a dangling symlink. If removal does not work,
 			# this would easily cause ENOENT error.
-			os.symlink('foo/bar', env['D'] + '/test')
+			os.symlink('foo/bar', env['D'] / 'test')
 			doins('test')
 			# Actual file should be installed.
-			if os.path.islink(env['D'] + '/test'):
+			if os.path.islink(env['D'] / 'test'):
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()
@@ -345,11 +345,11 @@ class DoIns(setup_env.BinTestCase):
 			with open(test_path, 'w'):
 				pass
 			# Create hardlink at the dest.
-			os.link(test_path, env['D'] + '/test')
+			os.link(test_path, env['D'] / 'test')
 			doins('test')
 			# The hardlink should be unlinked, and then a copy
 			# should be created.
-			if os.path.samefile(test_path, env['D'] + '/test'):
+			if os.path.samefile(test_path, env['D'] / 'test'):
 				raise tests.TestCase.failureException
 		finally:
 			self.cleanup()

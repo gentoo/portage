@@ -3,6 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import os
+from pathlib import Path
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
@@ -27,55 +28,55 @@ import os
 # The variables in this file are grouped by config_root, target_root.
 
 # variables used with config_root (these need to be relative)
-USER_CONFIG_PATH         = "etc/portage"
-BINREPOS_CONF_FILE       = USER_CONFIG_PATH + "/binrepos.conf"
-MAKE_CONF_FILE           = USER_CONFIG_PATH + "/make.conf"
-MODULES_FILE_PATH        = USER_CONFIG_PATH + "/modules"
-CUSTOM_PROFILE_PATH      = USER_CONFIG_PATH + "/profile"
-USER_VIRTUALS_FILE       = USER_CONFIG_PATH + "/virtuals"
-EBUILD_SH_ENV_FILE       = USER_CONFIG_PATH + "/bashrc"
-EBUILD_SH_ENV_DIR        = USER_CONFIG_PATH + "/env"
-CUSTOM_MIRRORS_FILE      = USER_CONFIG_PATH + "/mirrors"
-COLOR_MAP_FILE           = USER_CONFIG_PATH + "/color.map"
-PROFILE_PATH             = USER_CONFIG_PATH + "/make.profile"
-MAKE_DEFAULTS_FILE       = PROFILE_PATH + "/make.defaults"  # FIXME: not used
-DEPRECATED_PROFILE_FILE  = PROFILE_PATH + "/deprecated"
+USER_CONFIG_PATH         = Path("etc/portage")
+BINREPOS_CONF_FILE       = USER_CONFIG_PATH / "binrepos.conf"
+MAKE_CONF_FILE           = USER_CONFIG_PATH / "make.conf"
+MODULES_FILE_PATH        = USER_CONFIG_PATH / "modules"
+CUSTOM_PROFILE_PATH      = USER_CONFIG_PATH / "profile"
+USER_VIRTUALS_FILE       = USER_CONFIG_PATH / "virtuals"
+EBUILD_SH_ENV_FILE       = USER_CONFIG_PATH / "bashrc"
+EBUILD_SH_ENV_DIR        = USER_CONFIG_PATH / "env"
+CUSTOM_MIRRORS_FILE      = USER_CONFIG_PATH / "mirrors"
+COLOR_MAP_FILE           = USER_CONFIG_PATH / "color.map"
+PROFILE_PATH             = USER_CONFIG_PATH / "make.profile"
+MAKE_DEFAULTS_FILE       = PROFILE_PATH / "make.defaults"  # FIXME: not used
+DEPRECATED_PROFILE_FILE  = PROFILE_PATH / "deprecated"
 
 # variables used with targetroot (these need to be absolute, but not
 # have a leading '/' since they are used directly with os.path.join on EROOT)
-VDB_PATH                 = "var/db/pkg"
-CACHE_PATH               = "var/cache/edb"
-PRIVATE_PATH             = "var/lib/portage"
-WORLD_FILE               = PRIVATE_PATH + "/world"
-WORLD_SETS_FILE          = PRIVATE_PATH + "/world_sets"
-CONFIG_MEMORY_FILE       = PRIVATE_PATH + "/config"
-NEWS_LIB_PATH            = "var/lib/gentoo"
+VDB_PATH                 = Path("var/db/pkg")
+CACHE_PATH               = Path("var/cache/edb")
+PRIVATE_PATH             = Path("var/lib/portage")
+WORLD_FILE               = PRIVATE_PATH / "world"
+WORLD_SETS_FILE          = PRIVATE_PATH / "world_sets"
+CONFIG_MEMORY_FILE       = PRIVATE_PATH / "config"
+NEWS_LIB_PATH            = Path("var/lib/gentoo")
 
 # these variables get EPREFIX prepended automagically when they are
 # translated into their lowercase variants
-DEPCACHE_PATH            = "/var/cache/edb/dep"
-GLOBAL_CONFIG_PATH       = "/usr/share/portage/config"
+DEPCACHE_PATH            = Path("/var/cache/edb/dep")
+GLOBAL_CONFIG_PATH       = Path("/usr/share/portage/config")
 
 # these variables are not used with target_root or config_root
 # NOTE: Use realpath(__file__) so that python module symlinks in site-packages
 # are followed back to the real location of the whole portage installation.
 # NOTE: Please keep PORTAGE_BASE_PATH in one line to help substitutions.
-PORTAGE_BASE_PATH        = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__).split(os.sep)[:-3]))
-PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH + "/bin"
-PORTAGE_PYM_PATH         = os.path.realpath(os.path.join(__file__, '../..'))
-LOCALE_DATA_PATH         = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
-EBUILD_SH_BINARY         = PORTAGE_BIN_PATH + "/ebuild.sh"
-MISC_SH_BINARY           = PORTAGE_BIN_PATH + "/misc-functions.sh"
-SANDBOX_BINARY           = "/usr/bin/sandbox"
-FAKEROOT_BINARY          = "/usr/bin/fakeroot"
-BASH_BINARY              = "/bin/bash"
-MOVE_BINARY              = "/bin/mv"
-PRELINK_BINARY           = "/usr/sbin/prelink"
+PORTAGE_BASE_PATH        = Path(__file__).parents[2]
+PORTAGE_BIN_PATH         = PORTAGE_BASE_PATH / "bin"
+PORTAGE_PYM_PATH         = Path(__file__).parents[1]
+LOCALE_DATA_PATH         = PORTAGE_BASE_PATH / "locale"  # FIXME: not used
+EBUILD_SH_BINARY         = PORTAGE_BIN_PATH / "ebuild.sh"
+MISC_SH_BINARY           = PORTAGE_BIN_PATH / "misc-functions.sh"
+SANDBOX_BINARY           = Path("/usr/bin/sandbox")
+FAKEROOT_BINARY          = Path("/usr/bin/fakeroot")
+BASH_BINARY              = Path("/bin/bash")
+MOVE_BINARY              = Path("/bin/mv")
+PRELINK_BINARY           = Path("/usr/sbin/prelink")
 
-INVALID_ENV_FILE         = "/etc/spork/is/not/valid/profile.env"
+INVALID_ENV_FILE         = Path("/etc/spork/is/not/valid/profile.env")
 MERGING_IDENTIFIER       = "-MERGING-"
-REPO_NAME_FILE           = "repo_name"
-REPO_NAME_LOC            = "profiles" + "/" + REPO_NAME_FILE
+REPO_NAME_FILE           = Path("repo_name")
+REPO_NAME_LOC            = Path("profiles") / REPO_NAME_FILE
 
 PORTAGE_PACKAGE_ATOM     = "sys-apps/portage"
 LIBC_PACKAGE_ATOM        = "virtual/libc"
@@ -224,17 +225,15 @@ MANIFEST2_IDENTIFIERS    = ("AUX", "MISC", "DIST", "EBUILD")
 # a config instance (since it's possible to contruct a config instance with
 # a different EPREFIX). Therefore, the EPREFIX constant should *NOT* be used
 # in the definition of any other constants within this file.
-EPREFIX = ""
+EPREFIX = Path('/')
 
 # pick up EPREFIX from the environment if set
 if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:
-	EPREFIX = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
-	if EPREFIX:
-		EPREFIX = os.path.normpath(EPREFIX)
-		if EPREFIX == os.sep:
-			EPREFIX = ""
+	envprefix = os.environ["PORTAGE_OVERRIDE_EPREFIX"]
+	if envprefix:
+		EPREFIX = Path(envprefix)
 
-VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
+VCS_DIRS = [Path(x) for x in ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")]
 
 # List of known live eclasses. Keep it in sync with cnf/sets/portage.conf
 LIVE_ECLASSES = frozenset([
