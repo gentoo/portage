@@ -1072,7 +1072,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 		myoptions.deep = deep
 
-	if myoptions.jobs:
+	if myoptions.jobs is not None:
 		jobs = None
 		if myoptions.jobs == "True":
 			jobs = True
