@@ -432,6 +432,11 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				cp_dict[k].update(v)
 		pkgmap = [unordered[cp] for cp in sorted(unordered)]
 
+	# Sort each set of selected packages
+	if ordered:
+		for pkg in pkgmap:
+			pkg["selected"] = sorted(pkg["selected"], key=cpv_sort_key())
+
 	for x in range(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
