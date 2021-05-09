@@ -166,15 +166,14 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 						"="+"/".join(sp_absx[sp_vdb_len:]))
 
 		newline=""
-		if not "--quiet" in myopts:
+		if not quiet:
 			newline="\n"
 		if settings["ROOT"] != "/":
 			writemsg_level(darkgreen(newline+ \
 				">>> Using system located in ROOT tree %s\n" % \
 				settings["ROOT"]))
 
-		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
-			not "--quiet" in myopts:
+		if (("--pretend" in myopts) or ("--ask" in myopts)) and not quiet:
 			writemsg_level(darkgreen(newline+\
 				">>> These are the packages that would be unmerged:\n"))
 
