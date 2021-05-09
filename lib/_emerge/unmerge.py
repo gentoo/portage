@@ -99,7 +99,6 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 
 			global_unmerge = 1
 
-		localtree = vartree
 		# process all arguments and add all
 		# valid db entries to candidate_catpkgs
 		if global_unmerge:
@@ -199,7 +198,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				sys.exit(1)
 
 			if not mymatch and x[0] not in "<>=~":
-				mymatch = localtree.dep_match(x)
+				mymatch = vartree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x.replace("null/", ""), unmerge_action), noiselevel=-1)
@@ -242,14 +241,14 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				slotmap={}
 				for mypkg in mymatch:
 					if unmerge_action == "clean":
-						myslot = localtree.getslot(mypkg)
+						myslot = vartree.getslot(mypkg)
 					else:
 						# since we're pruning, we don't care about slots
 						# and put all the pkgs in together
 						myslot = 0
 					if myslot not in slotmap:
 						slotmap[myslot] = {}
-					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
+					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for mypkg in vartree.dbapi.cp_list(
 					portage.cpv_getkey(mymatch[0])):
@@ -445,7 +444,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				continue
 			mylist.difference_update(all_selected)
 		cp = portage.cpv_getkey(next(iter(selected)))
-		for y in localtree.dep_match(cp):
+		for y in vartree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 				y not in pkgmap[x]["selected"] and \
 				y not in pkgmap[x]["protected"] and \
