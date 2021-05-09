@@ -71,7 +71,7 @@ class PackageUninstall(CompositeTask):
 
 		# Output only gets logged if it comes after prepare_build_dirs()
 		# which initializes PORTAGE_LOG_FILE.
-		retval, pkgmap = _unmerge_display(self.pkg.root_config,
+		retval, _ = _unmerge_display(self.pkg.root_config,
 			self.opts, "unmerge", [self.pkg.cpv], clean_delay=0,
 			writemsg_level=self._writemsg_level)
 
