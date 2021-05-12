@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -923,6 +923,12 @@ __ebuild_phase_funcs() {
 
 				declare -F src_prepare >/dev/null || \
 					src_prepare() { default; }
+			fi
+
+			# defaults starting with EAPI 8
+			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress 6 7; then
+				[[ ${phase_func} == src_prepare ]] && \
+					default_src_prepare() { __eapi8_src_prepare; }
 			fi
 			;;
 	esac

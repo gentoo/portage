@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -851,6 +851,17 @@ __eapi6_src_install() {
 	fi
 
 	einstalldocs
+}
+
+__eapi8_src_prepare() {
+	local f
+	if ___is_indexed_array_var PATCHES ; then
+		[[ ${#PATCHES[@]} -gt 0 ]] && eapply -- "${PATCHES[@]}"
+	elif [[ -n ${PATCHES} ]]; then
+		eapply -- ${PATCHES}
+	fi
+
+	eapply_user
 }
 
 ___best_version_and_has_version_common() {
