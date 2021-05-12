@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -175,18 +175,15 @@ def grab_updates(updpath, prev_mtimes=None):
 		raise
 	if prev_mtimes is None:
 		prev_mtimes = {}
-	# validate the file name (filter out CVS directory, etc...)
-	mylist = [myfile for myfile in mylist if len(myfile) == 7 and myfile[1:3] == "Q-"]
-	if len(mylist) == 0:
-		return []
-
-	# sort by (year, quarter)
-	mylist.sort(key=lambda x: (x[3:], x[:2]))
 
 	update_data = []
 	for myfile in mylist:
+		if myfile.startswith("."):
+			continue
 		file_path = os.path.join(updpath, myfile)
 		mystat = os.stat(file_path)
+		if not stat.S_ISREG(mystat.st_mode):
+			continue
 		if update_data or \
 			file_path not in prev_mtimes or \
 			int(prev_mtimes[file_path]) != mystat[stat.ST_MTIME]:
