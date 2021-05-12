@@ -253,7 +253,11 @@ ___eapi_bash_3_2() {
 }
 
 ___eapi_bash_4_2() {
-	! ___eapi_bash_3_2 "$@"
+	[[ ${1-${EAPI-0}} =~ ^(6|7)$ ]]
+}
+
+___eapi_bash_5_0() {
+	true
 }
 
 ___eapi_has_ENV_UNSET() {
