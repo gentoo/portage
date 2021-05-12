@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -17,4 +17,10 @@ export _E_INSDESTTREE_='/usr/include/'
 if ___eapi_has_DESTTREE_INSDESTTREE; then
 	export INSDESTTREE=${_E_INSDESTTREE_}
 fi
+
+if ! ___eapi_doheader_respects_insopts; then
+	export INSOPTIONS=-m0644
+	export DIROPTIONS=""
+fi
+
 exec doins "$@"
