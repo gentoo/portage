@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012-2018 Gentoo Foundation
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -236,6 +236,10 @@ ___eapi_domo_respects_into() {
 
 ___eapi_has_DESTTREE_INSDESTTREE() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
+}
+
+___eapi_usev_has_second_arg() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
 }
 
 # OTHERS
