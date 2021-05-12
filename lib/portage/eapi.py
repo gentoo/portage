@@ -22,6 +22,10 @@ def eapi_has_slot_operator(eapi):
 def eapi_has_src_uri_arrows(eapi):
 	return eapi not in ("0", "1")
 
+def eapi_has_selective_src_uri_restriction(eapi):
+	return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi",
+			"5", "5-progress", "6", "7")
+
 def eapi_has_use_deps(eapi):
 	return eapi not in ("0", "1")
 
@@ -143,7 +147,8 @@ _eapi_attrs = collections.namedtuple('_eapi_attrs',
 	'iuse_defaults iuse_effective posixish_locale '
 	'path_variables_end_with_trailing_slash '
 	'prefix '
-	'repo_deps required_use required_use_at_most_one_of slot_operator slot_deps '
+	'repo_deps required_use required_use_at_most_one_of '
+	'selective_src_uri_restriction slot_operator slot_deps '
 	'src_uri_arrows strong_blocks use_deps use_dep_defaults '
 	'empty_groups_always_true sysroot')
 
@@ -228,6 +233,7 @@ def _get_eapi_attrs(eapi):
 		repo_deps = (eapi is None or eapi_has_repo_deps.func(eapi)),
 		required_use = (eapi is None or eapi_has_required_use.func(eapi)),
 		required_use_at_most_one_of = (eapi is None or eapi_has_required_use_at_most_one_of.func(eapi)),
+		selective_src_uri_restriction = (eapi is None or eapi_has_selective_src_uri_restriction.func(eapi)),
 		slot_deps = (eapi is None or eapi_has_slot_deps.func(eapi)),
 		slot_operator = (eapi is None or eapi_has_slot_operator.func(eapi)),
 		src_uri_arrows = (eapi is None or eapi_has_src_uri_arrows.func(eapi)),
