@@ -262,6 +262,10 @@ ___eapi_has_DESTTREE_INSDESTTREE() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6)$ ]]
 }
 
+___eapi_usev_has_second_arg() {
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
 # OTHERS
 
 ___eapi_enables_failglob_in_global_scope() {
