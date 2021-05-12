@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}/eapi.sh" || exit 1
@@ -475,11 +475,15 @@ ___parallel_xargs() {
 }
 
 hasq() {
+	___eapi_has_hasq || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+
 	eqawarn "QA Notice: The 'hasq' function is deprecated (replaced by 'has')"
 	has "$@"
 }
 
 hasv() {
+	___eapi_has_hasv || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+
 	if has "$@" ; then
 		echo "$1"
 		return 0
