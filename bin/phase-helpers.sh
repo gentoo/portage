@@ -197,8 +197,12 @@ useq() {
 }
 
 usev() {
+	local nargs=1
+	___eapi_usev_has_second_arg && nargs=2
+	[[ ${#} -gt ${nargs} ]] && die "usev takes at most ${nargs} arguments"
+
 	if use ${1}; then
-		echo "${1#!}"
+		echo "${2:-${1#!}}"
 		return 0
 	fi
 	return 1
