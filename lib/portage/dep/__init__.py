@@ -686,7 +686,13 @@ def _use_reduce_cached(depstr, uselist, masklist, matchall, excludeall, \
 				need_bracket = True
 			else:
 				need_simple_token = False
-				if token_class and not is_src_uri:
+				if is_src_uri:
+					if (not eapi_attrs.selective_src_uri_restriction and
+							token.startswith(("fetch+", "mirror+"))):
+						raise InvalidDependString(
+							_("Selective fetch/mirror restriction not allowed "
+							"in EAPI %s: token %s") % (eapi, pos+1))
+				elif token_class:
 					#Add a hack for SRC_URI here, to avoid conditional code at the consumer level
 					try:
 						token = token_class(token, eapi=eapi,

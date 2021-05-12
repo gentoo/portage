@@ -898,6 +898,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
+		override_mirror = myuri.startswith("mirror+")
+		override_fetch = override_mirror or myuri.startswith("fetch+")
+		if override_fetch:
+			myuri = myuri.partition("+")[2]
+
 		if myfile not in filedict:
 			filedict[myfile]=[]
 			if distdir_writable:
@@ -906,12 +911,17 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 			else:
 				mirror_cache = None
 
+			# fetch restriction implies mirror restriction
+			# but fetch unrestriction does not grant mirror permission
+			file_restrict_mirror = ((restrict_fetch or restrict_mirror)
+					and not override_mirror)
+
 			# With fetch restriction, a normal uri may only be fetched from
 			# custom local mirrors (if available).  A mirror:// uri may also
 			# be fetched from specific mirrors (effectively overriding fetch
 			# restriction, but only for specific mirrors).
 			location_lists = [local_mirrors]
-			if not restrict_fetch and not restrict_mirror:
+			if not file_restrict_mirror:
 				location_lists.append(public_mirrors)
 
 			for l in itertools.chain(*location_lists):
@@ -946,7 +956,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
 		else:
-			if restrict_fetch or force_mirror:
+			if (restrict_fetch and not override_fetch) or force_mirror:
 				# Only fetch from specific mirrors is allowed.
 				continue
 			primaryuris = primaryuri_dict.get(myfile)
