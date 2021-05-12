@@ -174,6 +174,18 @@ ___eapi_unpack_supports_txz() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress)$ ]]
 }
 
+___eapi_unpack_supports_7z() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_unpack_supports_lha() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
+___eapi_unpack_supports_rar() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-python|4-slot-abi|5|5-progress|6|7)$ ]]
+}
+
 ___eapi_econf_passes_--disable-dependency-tracking() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
 }
