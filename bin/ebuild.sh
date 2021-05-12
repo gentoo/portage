@@ -23,6 +23,8 @@ __check_bash_version() {
 		maj=3 min=2
 	elif ___eapi_bash_4_2 ; then
 		maj=4 min=2
+	elif ___eapi_bash_5_0 ; then
+		maj=5 min=0
 	else
 		return
 	fi
