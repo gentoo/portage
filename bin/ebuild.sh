@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -23,6 +23,8 @@ __check_bash_version() {
 		maj=3 min=2
 	elif ___eapi_bash_4_2 ; then
 		maj=4 min=2
+	elif ___eapi_bash_5_0 ; then
+		maj=5 min=0
 	else
 		return
 	fi
