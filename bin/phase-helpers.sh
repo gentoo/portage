@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if ___eapi_has_DESTTREE_INSDESTTREE; then
@@ -190,6 +190,8 @@ dostrip() {
 }
 
 useq() {
+	___eapi_has_useq || die "'${FUNCNAME}' banned in EAPI ${EAPI}"
+
 	eqawarn "QA Notice: The 'useq' function is deprecated (replaced by 'use')"
 	use ${1}
 }
