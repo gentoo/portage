@@ -871,6 +871,17 @@ __eapi6_src_install() {
 	einstalldocs
 }
 
+__eapi8_src_prepare() {
+	local f
+	if ___is_indexed_array_var PATCHES ; then
+		[[ ${#PATCHES[@]} -gt 0 ]] && eapply -- "${PATCHES[@]}"
+	elif [[ -n ${PATCHES} ]]; then
+		eapply -- ${PATCHES}
+	fi
+
+	eapply_user
+}
+
 ___best_version_and_has_version_common() {
 	local atom root root_arg
 	local -a cmd=()
