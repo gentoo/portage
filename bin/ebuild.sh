@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -647,6 +647,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		fi
 
 		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
+			PROPERTIES=${PORTAGE_PROPERTIES}
 			RESTRICT=${PORTAGE_RESTRICT}
 			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
 			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
