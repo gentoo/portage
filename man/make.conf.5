@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -1138,6 +1138,25 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 \fBQA_STRICT_WX_LOAD = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBALLOW_TEST\fR = \fI[token]...\fR
+This variable can be used to select the kinds of additional tests to run,
+particularly overriding \fBRESTRICT\fR="\fBtest\fR".  It contains
+a whitespace-separated list of tokens.  The following tokens are currently
+recognized:
+.RS
+.TP
+.B all
+Run tests in all packages, even if they specify \fBRESTRICT\fR="\fBtest\fR".
+This option is certain to cause test failures, it is intended to be used
+by developers when testing specific packages.
+.TP
+.B network
+Run tests in packages specifying \fBPROPERTIES\fR="\fBtest_network\fR".  Note
+that this will most likely cause Internet access during the test suite which
+could cause additional costs, privacy concerns and intermittent test failures.
+.TP
+.RE
 .TP
 .B RESUMECOMMAND
 This variable contains the command used for resuming package sources that

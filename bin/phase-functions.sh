@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -23,7 +23,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_ECLASS_LOCATIONS \
 	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
 	PORTAGE_INTERNAL_CALLER PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
-	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX \
+	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX PORTAGE_PROPERTIES \
 	PORTAGE_PYM_PATH PORTAGE_PYTHON PORTAGE_PYTHONPATH \
 	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
 	PORTAGE_REPO_NAME PORTAGE_REPOSITORIES PORTAGE_RESTRICT \
@@ -489,7 +489,9 @@ __dyn_test() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	if has test ${RESTRICT} ; then
+	if has test ${RESTRICT} && ! has all ${ALLOW_TEST} &&
+			! { has test_network ${PROPERTIES} && has network ${ALLOW_TEST}; }
+	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
 

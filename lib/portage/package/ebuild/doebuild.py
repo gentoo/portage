@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -142,11 +142,14 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
 	kwargs['mountns'] = 'mount-sandbox' in settings.features
-	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		(phase == 'unpack' and \
-		'live' in settings.configdict['pkg'].get('PROPERTIES', '').split()) or \
-		phase in _ipc_phases or \
-		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
+	kwargs['networked'] = (
+		'network-sandbox' not in settings.features or
+		(phase == 'unpack' and
+			'live' in settings['PORTAGE_PROPERTIES'].split()) or
+		(phase == 'test' and
+			'test_network' in settings['PORTAGE_PROPERTIES'].split()) or
+		phase in _ipc_phases or
+		'network-sandbox' in settings['PORTAGE_RESTRICT'].split())
 	kwargs['pidns'] = ('pid-sandbox' in settings.features and
 		phase not in _global_pid_phases)
 

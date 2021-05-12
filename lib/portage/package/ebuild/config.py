@@ -1359,12 +1359,13 @@ class config:
 
 			values['ACCEPT_LICENSE'] = settings._license_manager.get_prunned_accept_license( \
 				settings.mycpv, use, settings.get('LICENSE', ''), settings.get('SLOT'), settings.get('PORTAGE_REPO_NAME'))
-			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
+			values['PORTAGE_PROPERTIES'] = self._flatten('PROPERTIES', use, settings)
+			values['PORTAGE_RESTRICT'] = self._flatten('RESTRICT', use, settings)
 			return values
 
-		def _restrict(self, use, settings):
+		def _flatten(self, var, use, settings):
 			try:
-				restrict = set(use_reduce(settings.get('RESTRICT', ''), uselist=use, flat=True))
+				restrict = set(use_reduce(settings.get(var, ''), uselist=use, flat=True))
 			except InvalidDependString:
 				restrict = set()
 			return ' '.join(sorted(restrict))
@@ -1713,17 +1714,25 @@ class config:
 			iuse_implicit_match = self._iuse_implicit_match
 
 		if pkg is None:
+			raw_properties = pkg_configdict.get("PROPERTIES")
 			raw_restrict = pkg_configdict.get("RESTRICT")
 		else:
+			raw_properties = pkg._raw_metadata["PROPERTIES"]
 			raw_restrict = pkg._raw_metadata["RESTRICT"]
 
 		restrict_test = False
 		if raw_restrict:
 			try:
 				if built_use is not None:
+					properties = use_reduce(raw_properties,
+						uselist=built_use, flat=True)
 					restrict = use_reduce(raw_restrict,
 						uselist=built_use, flat=True)
 				else:
+					properties = use_reduce(raw_properties,
+						uselist=frozenset(x for x in self['USE'].split()
+						if x in explicit_iuse or iuse_implicit_match(x)),
+						flat=True)
 					restrict = use_reduce(raw_restrict,
 						uselist=frozenset(x for x in self['USE'].split()
 						if x in explicit_iuse or iuse_implicit_match(x)),
@@ -1731,7 +1740,10 @@ class config:
 			except PortageException:
 				pass
 			else:
-				restrict_test = "test" in restrict
+				allow_test = self.get('ALLOW_TEST', '').split()
+				restrict_test = (
+					"test" in restrict and not "all" in allow_test and
+					not ("test_network" in properties and "network" in allow_test))
 
 		if restrict_test and "test" in self.features:
 			# Handle it like IUSE="-test", since features USE is
@@ -1754,6 +1766,8 @@ class config:
 		lazy_vars = self._lazy_vars(built_use, self)
 		env_configdict.addLazySingleton('ACCEPT_LICENSE',
 			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
+		env_configdict.addLazySingleton('PORTAGE_PROPERTIES',
+			lazy_vars.__getitem__, 'PORTAGE_PROPERTIES')
 		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
 			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
