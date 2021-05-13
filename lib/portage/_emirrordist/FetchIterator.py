@@ -171,10 +171,6 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 			result.set_result(fetch_tasks)
 			return
 
-		if "fetch" in restrict:
-			result.set_result(fetch_tasks)
-			return
-
 		try:
 			uri_map = fetch_map_result.result()
 		except PortageException as e:
@@ -187,28 +183,42 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 			result.set_result(fetch_tasks)
 			return
 
-		if "mirror" in restrict:
-			skip = False
-			if config.restrict_mirror_exemptions is not None:
-				new_uri_map = {}
-				for filename, uri_tuple in uri_map.items():
-					for uri in uri_tuple:
-						if uri[:9] == "mirror://":
-							i = uri.find("/", 9)
-							if i != -1 and uri[9:i].strip("/") in \
-								config.restrict_mirror_exemptions:
-								new_uri_map[filename] = uri_tuple
-								break
-				if new_uri_map:
-					uri_map = new_uri_map
-				else:
-					skip = True
-			else:
-				skip = True
+		new_uri_map = {}
+		restrict_fetch = "fetch" in restrict
+		restrict_mirror = restrict_fetch or "mirror" in restrict
+		for filename, uri_tuple in uri_map.items():
+			new_uris = []
+			for uri in uri_tuple:
+				override_mirror = uri.startswith("mirror+")
+				override_fetch = override_mirror or uri.startswith("fetch+")
+				if override_fetch:
+					uri = uri.partition("+")[2]
 
-			if skip:
-				result.set_result(fetch_tasks)
-				return
+				# skip fetch-restricted files unless overriden via fetch+
+				# or mirror+
+				if restrict_fetch and not override_fetch:
+					continue
+				# skip mirror-restricted files unless override via mirror+
+				# or in config_mirror_exemptions
+				if restrict_mirror and not override_mirror:
+					if (config.restrict_mirror_exemptions is None or
+							not uri.startswith("mirror://")):
+						continue
+					mirror_name = uri.split('/', 3)[2]
+					if mirror_name not in config.restrict_mirror_exemptions:
+						continue
+				# if neither fetch or mirror restriction applies to the URI
+				# or it is exempted from them, readd it (with fetch+/mirror+
+				# prefix stripped)
+				new_uris.append(uri)
+
+			# if we've gotten any new URIs, then we readd the file
+			if new_uris:
+				new_uri_map[filename] = new_uris
+
+		if not new_uri_map:
+			result.set_result(fetch_tasks)
+			return
 
 		# Parse Manifest for this cp if we haven't yet.
 		try:
@@ -221,7 +231,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 					getTypeDigests("DIST")
 		except (EnvironmentError, PortageException) as e:
 			digests_future.done() or digests_future.set_exception(e)
-			for filename in uri_map:
+			for filename in new_uri_map:
 				config.log_failure(
 					"%s\t%s\tManifest exception %s" %
 					(cpv, filename, e))
@@ -232,14 +242,14 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv,
 			digests_future.done() or digests_future.set_result(digests)
 
 		if not digests:
-			for filename in uri_map:
+			for filename in new_uri_map:
 				config.log_failure("%s\t%s\tdigest entry missing" %
 					(cpv, filename))
 				config.file_failures[filename] = cpv
 			result.set_result(fetch_tasks)
 			return
 
-		for filename, uri_tuple in uri_map.items():
+		for filename, uri_tuple in new_uri_map.items():
 			file_digests = digests.get(filename)
 			if file_digests is None:
 				config.log_failure("%s\t%s\tdigest entry missing" %
