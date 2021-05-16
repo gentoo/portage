@@ -560,7 +560,7 @@ class Scheduler(PollScheduler):
 			if pargs:
 				self.status = pargs[0]
 
-	def _schedule_fetch(self, fetcher):
+	def _schedule_fetch(self, fetcher, force_queue=False):
 		"""
 		Schedule a fetcher, in order to control the number of concurrent
 		fetchers. If self._max_jobs is greater than 1 then the fetch
@@ -571,7 +571,7 @@ class Scheduler(PollScheduler):
 		would be required before it would be possible to enable
 		concurrent fetching within the parallel-fetch queue.
 		"""
-		if self._max_jobs > 1:
+		if self._max_jobs > 1 and not force_queue:
 			fetcher.start()
 		else:
 			self._task_queues.fetch.addFront(fetcher)
