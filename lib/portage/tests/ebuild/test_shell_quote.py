@@ -72,6 +72,53 @@ class ShellQuoteTestCase(TestCase):
 			("abc''xyz","\"abc''xyz\""),
 			("'abcxyz'","\"'abcxyz'\""),
 
+			# String contains ;, should be double-quoted to prevent command separation.
+			("abc;xyz","\"abc;xyz\""),
+			("abc;;xyz","\"abc;;xyz\""),
+			(";abcxyz;","\";abcxyz;\""),
+
+			# String contains &, should be double-quoted to prevent job control.
+			("abc&xyz","\"abc&xyz\""),
+			("abc&&xyz","\"abc&&xyz\""),
+			("&abcxyz&","\"&abcxyz&\""),
+
+			# String contains |, should be double-quoted to prevent piping.
+			("abc|xyz","\"abc|xyz\""),
+			("abc||xyz","\"abc||xyz\""),
+			("|abcxyz|","\"|abcxyz|\""),
+
+			# String contains (), should be double-quoted to prevent
+			# command group / array initialization.
+			("abc()xyz","\"abc()xyz\""),
+			("abc(())xyz","\"abc(())xyz\""),
+			("((abcxyz))","\"((abcxyz))\""),
+
+			# String contains {}. Parameter expansion of the form ${} is already
+			# rendered safe by escaping the $, but {} could also occur on its own,
+			# for example in a brace expansion such as filename.{ext1,ext2},
+			# so the string should be double-quoted.
+			("abc{}xyz","\"abc{}xyz\""),
+			("abc{{}}xyz","\"abc{{}}xyz\""),
+			("{{abcxyz}}","\"{{abcxyz}}\""),
+
+			# String contains [], should be double-quoted to prevent testing
+			("abc[]xyz","\"abc[]xyz\""),
+			("abc[[]]xyz","\"abc[[]]xyz\""),
+			("[[abcxyz]]","\"[[abcxyz]]\""),
+
+			# String contains #, should be double-quoted to prevent comment.
+			("#abc","\"#abc\""),
+
+			# String contains !, should be double-quoted to prevent e.g. history substitution.
+			("!abc","\"!abc\""),
+
+			# String contains ~, should be double-quoted to prevent home directory expansion.
+			("~abc","\"~abc\""),
+
+			# String contains ?, should be double-quoted to prevent globbing.
+			("abc?xyz","\"abc?xyz\""),
+			("abc??xyz","\"abc??xyz\""),
+			("?abcxyz?","\"?abcxyz?\""),
 		]
 
 		for (data,expected_result) in test_data:

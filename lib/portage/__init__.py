@@ -403,7 +403,7 @@ def _get_stdin():
 		return sys.__stdin__
 	return sys.stdin
 
-_shell_quote_re = re.compile(r"[\s><=*\\\"'$`]")
+_shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
 
 def _shell_quote(s):
 	"""
