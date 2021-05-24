@@ -719,7 +719,7 @@ class build_ext(_build_ext):
 
 setup(
 	name = 'portage',
-	version = '3.0.18',
+	version = '3.0.19',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	project_urls = {
 		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',

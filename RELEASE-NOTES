@@ -1,6 +1,19 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.19
+==================================
+    - Bug 520378: allow emerge --fetchonly to log to emerge-fetch.log
+    - Bug 698244: portage(5) document user patch / eapply_user
+    - Bug 781854: Suggest PORTAGE_LOG_FILTER_FILE_CMD cat fallback
+    - Bug 782724: sort emerge --unmerge order for determinism
+    - Bug 783957: lazily evaluate cnf_* variables in tests
+    - Bug 784566: make emerge insensitive to relative order of optional
+                  and positional arguments
+    - Bug 787545: emerge CTRL C may be ignored when running pkg_pretend
+    - Bug 787563: ebuild-ipc could handle KeyboardInterrupt
+    - Bug 788967: emerge --jobs= triggers TypeError
+
 portage-3.0.18
 ==================================
 * Bug Fixes:
