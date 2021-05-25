@@ -21,7 +21,7 @@ from portage.util._dyn_libs.soname_deps_qa import (
 )
 from portage.package.ebuild.prepare_build_dirs import (_prepare_workdir,
 		_prepare_fake_distdir, _prepare_fake_filesdir)
-from portage.util import writemsg
+from portage.util import writemsg, ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util.futures import asyncio
@@ -41,6 +41,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.elog:messages@elog_messages',
 	'portage.package.ebuild.doebuild:_check_build_log,' + \
 		'_post_phase_cmds,_post_phase_userpriv_perms,' + \
+		'_post_phase_emptydir_cleanup,' +
 		'_post_src_install_soname_symlinks,' + \
 		'_post_src_install_uid_fix,_postinst_bsdflags,' + \
 		'_post_src_install_write_metadata,' + \
@@ -89,6 +90,7 @@ class EbuildPhase(CompositeTask):
 						'logging', self.phase))
 				except OSError:
 					pass
+			ensure_dirs(os.path.join(self.settings["PORTAGE_BUILDDIR"], "empty"))
 
 		if self.phase in ('nofetch', 'pretend', 'setup'):
 
@@ -270,6 +272,7 @@ class EbuildPhase(CompositeTask):
 
 		settings = self.settings
 		_post_phase_userpriv_perms(settings)
+		_post_phase_emptydir_cleanup(settings)
 
 		if self.phase == "unpack":
 			# Bump WORKDIR timestamp, in case tar gave it a timestamp

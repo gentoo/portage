@@ -1770,6 +1770,11 @@ def _post_phase_userpriv_perms(mysettings):
 				filemode=0o600, filemask=0)
 
 
+def _post_phase_emptydir_cleanup(mysettings):
+	empty_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "empty")
+	shutil.rmtree(empty_dir, ignore_errors=True)
+
+
 def _check_build_log(mysettings, out=None):
 	"""
 	Search the content of $PORTAGE_LOG_FILE if it exists
