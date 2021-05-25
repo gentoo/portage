@@ -278,7 +278,8 @@ __dyn_clean() {
 	cd "${PORTAGE_PYM_PATH}" || \
 		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
 
-	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
+	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir" \
+		"${PORTAGE_BUILDDIR}/empty"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
 	if [[ $EMERGE_FROM = binary ]] || \
