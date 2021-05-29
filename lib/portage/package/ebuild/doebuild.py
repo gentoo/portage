@@ -1863,6 +1863,10 @@ def _check_build_log(mysettings, out=None):
 		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
 	make_jobserver = []
 
+	# we deduplicate these since they is repeated for every setup.py call
+	setuptools_warn = set()
+	setuptools_warn_re = re.compile(r'.*\/setuptools\/.*: UserWarning: (.*)')
+
 	def _eerror(lines):
 		for line in lines:
 			eerror(line, phase="install", key=mysettings.mycpv, out=out)
@@ -1891,6 +1895,10 @@ def _check_build_log(mysettings, out=None):
 
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
+
+			m = setuptools_warn_re.match(line)
+			if m is not None:
+				setuptools_warn.add(m.group(1))
 
 	except (EOFError, zlib.error) as e:
 		_eerror(["portage encountered a zlib error: '%s'" % (e,),
@@ -1943,6 +1951,12 @@ def _check_build_log(mysettings, out=None):
 		msg = [_("QA Notice: make jobserver unavailable:")]
 		msg.append("")
 		msg.extend("\t" + line for line in make_jobserver)
+		_eqawarn(msg)
+
+	if setuptools_warn:
+		msg = [_("QA Notice: setuptools warnings detected:")]
+		msg.append("")
+		msg.extend("\t" + line for line in sorted(setuptools_warn))
 		_eqawarn(msg)
 
 	f.close()
