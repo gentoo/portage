@@ -1253,7 +1253,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:
-						mirror_file = os.path.join(mydir, myfile)
+						mirror_file = get_mirror_url(mydir, myfile, mysettings)
 						try:
 							shutil.copyfile(mirror_file, download_path)
 							writemsg(_("Local mirror has file: %s\n") % myfile)
