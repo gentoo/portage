@@ -663,8 +663,15 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	else:
 		tmpfile = '.layout.conf.%s' % urlparse(mirror_url).hostname
 		try:
-			if fetch({tmpfile: (mirror_url + '/distfiles/layout.conf',)},
-					mysettings, force=1, try_mirrors=0):
+			if mirror_url[:1] == "/":
+				tmpfile = os.path.join(mirror_url, "layout.conf")
+				mirror_conf.read_from_file(tmpfile)
+			elif fetch(
+				{tmpfile: (mirror_url + "/distfiles/layout.conf",)},
+				mysettings,
+				force=1,
+				try_mirrors=0,
+			):
 				tmpfile = os.path.join(mysettings['DISTDIR'], tmpfile)
 				mirror_conf.read_from_file(tmpfile)
 			else:
@@ -683,8 +690,10 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	path = mirror_conf.get_best_supported_layout(filename=filename).get_path(filename)
 	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
 		path = urlquote(path)
-	return mirror_url + "/distfiles/" + path
-
+	if mirror_url[:1] == "/":
+		return os.path.join(mirror_url, path)
+	else:
+		return mirror_url + "/distfiles/" + path
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
@@ -1212,7 +1221,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				if distdir_writable and ro_distdirs:
 					readonly_file = None
 					for x in ro_distdirs:
-						filename = os.path.join(x, myfile)
+						filename = get_mirror_url(x, myfile, mysettings)
 						match, mystat = _check_distfile(
 							filename, pruned_digests, eout, hash_filter=hash_filter)
 						if match:
