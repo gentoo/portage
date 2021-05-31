@@ -201,10 +201,15 @@ install_qa_check() {
 			echo "${QA_SONAME_NO_SYMLINK}" > \
 			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
 
-		if has binchecks ${RESTRICT} && \
-			[ -s "${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2" ] ; then
-			eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
-			eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+		if [[ -s ${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2 ]]; then
+			if grep -qs '<stabilize-allarches/>' "${EBUILD%/*}/metadata.xml"; then
+				eqawarn "QA Notice: stabilize-allarches/> found on package installing ELF files"
+			fi
+
+			if has binchecks ${RESTRICT}; then
+				eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
+				eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
+			fi
 		fi
 	fi
 
