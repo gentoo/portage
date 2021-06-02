@@ -203,7 +203,7 @@ install_qa_check() {
 
 		if [[ -s ${PORTAGE_BUILDDIR}/build-info/NEEDED.ELF.2 ]]; then
 			if grep -qs '<stabilize-allarches/>' "${EBUILD%/*}/metadata.xml"; then
-				eqawarn "QA Notice: stabilize-allarches/> found on package installing ELF files"
+				eqawarn "QA Notice: <stabilize-allarches/> found on package installing ELF files"
 			fi
 
 			if has binchecks ${RESTRICT}; then
