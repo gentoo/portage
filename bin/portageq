@@ -26,8 +26,10 @@ if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(
 	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib")]
 	sys.path.insert(0, pym_paths[0])
 else:
-	import distutils.sysconfig
-	pym_paths = [os.path.join(distutils.sysconfig.get_python_lib(), x) for x in ("_emerge", "portage")]
+	import sysconfig
+	pym_paths = [
+		os.path.join(sysconfig.get_path("purelib"), x) for x in ("_emerge", "portage")
+	]
 # Avoid sandbox violations after Python upgrade.
 if os.environ.get("SANDBOX_ON") == "1":
 	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
