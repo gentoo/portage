@@ -2,19 +2,34 @@
 # Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from distutils.core import setup, Command, Extension
-from distutils.command.build import build
-from distutils.command.build_ext import build_ext as _build_ext
-from distutils.command.build_scripts import build_scripts
-from distutils.command.clean import clean
-from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_lib import install_lib
-from distutils.command.install_scripts import install_scripts
-from distutils.command.sdist import sdist
-from distutils.dep_util import newer
-from distutils.dir_util import mkpath, remove_tree
-from distutils.util import change_root, subst_vars
+try:
+	from setuptools.core import setup, Command, Extension
+	from setuptools.command.build import build
+	from setuptools.command.build_ext import build_ext as _build_ext
+	from setuptools.command.build_scripts import build_scripts
+	from setuptools.command.clean import clean
+	from setuptools.command.install import install
+	from setuptools.command.install_data import install_data
+	from setuptools.command.install_lib import install_lib
+	from setuptools.command.install_scripts import install_scripts
+	from setuptools.command.sdist import sdist
+	from setuptools.dep_util import newer
+	from setuptools.dir_util import mkpath, remove_tree
+	from setuptools.util import change_root, subst_vars
+except ImportError:
+	from distutils.core import setup, Command, Extension
+	from distutils.command.build import build
+	from distutils.command.build_ext import build_ext as _build_ext
+	from distutils.command.build_scripts import build_scripts
+	from distutils.command.clean import clean
+	from distutils.command.install import install
+	from distutils.command.install_data import install_data
+	from distutils.command.install_lib import install_lib
+	from distutils.command.install_scripts import install_scripts
+	from distutils.command.sdist import sdist
+	from distutils.dep_util import newer
+	from distutils.dir_util import mkpath, remove_tree
+	from distutils.util import change_root, subst_vars
 
 import codecs
 import collections
