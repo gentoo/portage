@@ -2660,7 +2660,7 @@ def nice(settings):
 		# terminal where portage was executed in, would
 		# continue running with that value.
 		portage.atexit_register(
-			lambda value: autogroup_file.open("w").write(value),
+			lambda value: autogroup_file.write_text(value),
 			original_autogroup_nice_value,
 		)
 
