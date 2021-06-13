@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.20
+==================================
+    - Bug 777492: PORTAGE_NICENESS: Consider autogroup scheduling
+    - Bug 794166: setup.py: prefer setuptools over distutils
+
 portage-3.0.19
 ==================================
     - Bug 520378: allow emerge --fetchonly to log to emerge-fetch.log
