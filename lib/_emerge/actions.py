@@ -2635,7 +2635,9 @@ def apply_priorities(settings):
 	nice(settings)
 
 def nice(settings):
-	nice_value: str = settings.get("PORTAGE_NICENESS", "0")
+	nice_value: str = settings.get("PORTAGE_NICENESS", "do-not-change")
+	if nice_value == "do-not-change":
+		return
 
 	try:
 		current_nice_value = os.nice(int(nice_value))
