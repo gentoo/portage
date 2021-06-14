@@ -2638,7 +2638,17 @@ def nice(settings):
 	nice_value: str = settings.get("PORTAGE_NICENESS", "0")
 
 	try:
-		os.nice(int(nice_value))
+		current_nice_value = os.nice(int(nice_value))
+		# Calling os.nice() with a value outside of the valid range of
+		# nice values, e.g. 20, caps the process's nice value. This is
+		# because the argument of os.nice() is not an absolute value,
+		# but the increment to the process's current nice
+		# value. Hence users may use PORTAGE_NICENESS=20 without any
+		# issues here. However, below we write nice_value potentially
+		# to /proc/self/autogroup, which will only accept valid nice
+		# values. Therefore we simply set nice_value to what os.nice()
+		# returned (i.e. the process's current nice value).
+		nice_value = str(current_nice_value)
 	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
 		out.eerror(f"Failed to change nice value to {nice_value}")
