@@ -36,7 +36,7 @@ jobs:
         python -m pip install tox tox-gh-actions
     - name: Test ./setup.py install --root=/tmp/install-root
       run: |
-        printf "[build_ext]\nportage-ext-modules=true" >> setup.cfg
+        printf "[build_ext]\nportage_ext_modules=true" >> setup.cfg
         ./setup.py install --root=/tmp/install-root
     - name: Run tox targets for ${{ matrix.python-version }}
       run: |

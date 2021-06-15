@@ -720,7 +720,7 @@ class build_ext(_build_ext):
 	]
 
 	boolean_options = _build_ext.boolean_options + [
-		'portage-ext-modules',
+		'portage_ext_modules',
 	]
 
 	def initialize_options(self):

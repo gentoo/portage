@@ -26,7 +26,7 @@ native extensions for all invocations of the build_ext command (the
 build_ext command is invoked automatically by other build commands):
 
    [build_ext]
-   portage-ext-modules=true
+   portage_ext_modules=true
 
 Currently, the native extensions only include libc bindings which are
 used to validate LC_CTYPE and LC_COLLATE behavior for EAPI 6. If the
