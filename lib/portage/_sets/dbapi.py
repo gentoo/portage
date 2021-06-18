@@ -86,7 +86,7 @@ class OwnerSet(PackageSet):
 		exclude_paths = expanded_exclude_paths
 
 		pkg_str = vardb._pkg_str
-		if exclude_paths:
+		if not exclude_paths:
 			for link, p in vardb._owners.iter_owners(paths):
 				pkg = pkg_str(link.mycpv, None)
 				rValue.add("%s:%s" % (pkg.cp, pkg.slot))
