@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2018-2021 Gentoo Authors
+# Copyright 2018-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -12,7 +12,6 @@ import subprocess
 import sys
 import termios
 
-from pathlib import Path
 
 KILL_SIGNALS = (
 	signal.SIGINT,
@@ -92,28 +91,9 @@ def main(argv):
 			'preexec_fn': functools.partial(preexec_fn, uid, gid, groups, umask),
 			'pass_fds': pass_fds,
 		}
-
-		# Try to obtain the current autogroup's nice value.
-		autogroup_nice = None
-		autogroup_file = Path("/proc/self/autogroup")
-		try:
-			f = autogroup_file.open("r")
-		except EnvironmentError:
-			pass
-		else:
-			with f:
-				line = f.readline()
-				autogroup_nice = line.split(" ")[2]
-
 		# Isolate parent process from process group SIGSTOP (bug 675870)
 		setsid = True
 		os.setsid()
-
-		if autogroup_nice:
-			# Set the previously obtained autogroup nice value again,
-			# since we created a new session with os.setsid() above.
-			autogroup_file.write_text(autogroup_nice)
-
 		if sys.stdout.isatty():
 			try:
 				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
