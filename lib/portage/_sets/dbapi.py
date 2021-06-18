@@ -14,8 +14,16 @@ from portage._sets.base import PackageSet
 from portage._sets import SetConfigError, get_boolean
 import portage
 
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
+
 __all__ = ["CategorySet", "ChangedDepsSet", "DowngradeSet",
-	"EverythingSet", "OwnerSet", "SubslotChangedSet", "VariableSet"]
+	"EverythingSet",
+	"OwnerSet",
+	"SubslotChangedSet",
+	"UnsatisfiedDepsSet",
+	"VariableSet",
+]
 
 class EverythingSet(PackageSet):
 	_operations = ["merge"]
@@ -300,6 +308,69 @@ class UnavailableBinaries(EverythingSet):
 
 		return cls(trees["vartree"].dbapi,
 			metadatadb=trees[metadatadb].dbapi)
+
+	singleBuilder = classmethod(singleBuilder)
+
+class UnsatisfiedDepsSet(PackageSet):
+
+	_operations = ["merge", "unmerge"]
+
+	description = (
+		"Package set which contains all installed packages "
+		"having one or more unsatisfied runtime dependencies."
+	)
+
+	def __init__(self, vardb=None):
+		super().__init__()
+		self._vardb = vardb
+
+	def load(self):
+		vardb = self._vardb
+		trees = {
+			vardb.settings["EROOT"]: {
+				"porttree": vardb.vartree,
+				"vartree": vardb.vartree,
+			}
+		}
+		root_config = RootConfig(vardb.settings, trees[vardb.settings["EROOT"]], None)
+		atoms = []
+		for pkg_str in vardb.cpv_all():
+			try:
+				metadata = dict(
+					zip(
+						vardb._aux_cache_keys,
+						vardb.aux_get(pkg_str, vardb._aux_cache_keys),
+					)
+				)
+			except KeyError:
+				continue
+			pkg = Package(
+				built=True,
+				cpv=pkg_str,
+				installed=True,
+				metadata=metadata,
+				root_config=root_config,
+				type_name="installed",
+			)
+
+			runtime_deps = " ".join(pkg._metadata[k] for k in Package._runtime_keys)
+
+			success, unsatisfied_deps = portage.dep_check(
+				runtime_deps,
+				None,
+				vardb.settings,
+				myuse=pkg.use.enabled,
+				myroot=vardb.settings["EROOT"],
+				trees=trees,
+			)
+
+			if not (success and not unsatisfied_deps):
+				atoms.append(pkg.slot_atom)
+
+		self._setAtoms(atoms)
+
+	def singleBuilder(cls, options, settings, trees):
+		return cls(vardb=trees["vartree"].dbapi)
 
 	singleBuilder = classmethod(singleBuilder)
 
