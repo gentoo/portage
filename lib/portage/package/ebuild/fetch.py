@@ -907,8 +907,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
-		override_mirror = myuri.startswith("mirror+")
-		override_fetch = override_mirror or myuri.startswith("fetch+")
+		override_mirror = (myuri or "").startswith("mirror+")
+		override_fetch = override_mirror or (myuri or "").startswith("fetch+")
 		if override_fetch:
 			myuri = myuri.partition("+")[2]
 
