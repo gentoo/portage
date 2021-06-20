@@ -16,7 +16,7 @@ exp_tf() {
 	done
 }
 exp_tf FEATURES compressdebug installsources nostrip splitdebug xattr
-exp_tf RESTRICT binchecks installsources splitdebug strip
+exp_tf PORTAGE_RESTRICT binchecks installsources splitdebug strip
 
 if ! ___eapi_has_prefix_variables; then
 	EPREFIX= ED=${D}
@@ -24,7 +24,7 @@ fi
 
 banner=false
 SKIP_STRIP=false
-if ${RESTRICT_strip} || ${FEATURES_nostrip} ; then
+if ${PORTAGE_RESTRICT_strip} || ${FEATURES_nostrip} ; then
 	SKIP_STRIP=true
 	banner=true
 	${FEATURES_installsources} || exit 0
@@ -167,7 +167,7 @@ mkdir -p "${tmpdir}"/{inodes,splitdebug,sources}
 # Usage: save_elf_sources <elf>
 save_elf_sources() {
 	${FEATURES_installsources} || return 0
-	${RESTRICT_installsources} && return 0
+	${PORTAGE_RESTRICT_installsources} && return 0
 	if ! ${debugedit_found} ; then
 		if ! ${debugedit_warned} ; then
 			debugedit_warned=true
@@ -192,7 +192,7 @@ save_elf_sources() {
 # Usage: save_elf_debug <elf> [splitdebug file]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
-	${RESTRICT_splitdebug} && return 0
+	${PORTAGE_RESTRICT_splitdebug} && return 0
 
 	# NOTE: Debug files must be installed in
 	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
@@ -318,7 +318,7 @@ process_ar() {
 		# There is no concept of splitdebug for objects not yet
 		# linked in (only for finally linked ELFs), so we have to
 		# retain the debug info in the archive itself.
-		if ! ${FEATURES_splitdebug} || ${RESTRICT_splitdebug} ; then
+		if ! ${FEATURES_splitdebug} || ${PORTAGE_RESTRICT_splitdebug} ; then
 			${STRIP} -g "${x}" && ${RANLIB} "${x}"
 		fi
 	fi
@@ -327,7 +327,7 @@ process_ar() {
 # The existance of the section .symtab tells us that a binary is stripped.
 # We want to log already stripped binaries, as this may be a QA violation.
 # They prevent us from getting the splitdebug data.
-if ! ${RESTRICT_binchecks} ; then
+if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	# We need to do the non-stripped scan serially first before we turn around
 	# and start stripping the files ourselves.  The log parsing can be done in
 	# parallel though.
@@ -459,7 +459,7 @@ __multijob_finish
 cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \
    ${FEATURES_installsources} && \
-   ! ${RESTRICT_installsources} && \
+   ! ${PORTAGE_RESTRICT_installsources} && \
    ${debugedit_found}
 then
 	__vecho "installsources: rsyncing source files"

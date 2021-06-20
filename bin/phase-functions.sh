@@ -490,8 +490,8 @@ __dyn_test() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	if has test ${RESTRICT} && ! has all ${ALLOW_TEST} &&
-			! { has test_network ${PROPERTIES} && has network ${ALLOW_TEST}; }
+	if has test ${PORTAGE_RESTRICT} && ! has all ${ALLOW_TEST} &&
+			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; }
 	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
@@ -704,7 +704,7 @@ __dyn_install() {
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
+	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 	then
 		>> DEBUGBUILD
 	fi
@@ -759,7 +759,7 @@ __dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT} ;
+	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 	then
 		echo "debug (large)"
 	else
