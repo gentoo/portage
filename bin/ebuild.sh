@@ -653,13 +653,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			shopt -u failglob
 		fi
 
-		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
-			PROPERTIES=${PORTAGE_PROPERTIES}
-			RESTRICT=${PORTAGE_RESTRICT}
-			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
-			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
-		fi
-
 		[ "${EAPI+set}" = set ] || EAPI=0
 
 		# export EAPI for helpers (especially since we unset it above)
@@ -687,6 +680,13 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
 		unset E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
+
+		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
+			PROPERTIES=${PORTAGE_PROPERTIES}
+			RESTRICT=${PORTAGE_RESTRICT}
+			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
+		fi
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case ${EAPI} in
