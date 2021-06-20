@@ -2,7 +2,7 @@
 
 ignored_flag_check() {
 	type -P scanelf > /dev/null || return
-	has binchecks ${RESTRICT} && return
+	has binchecks ${PORTAGE_RESTRICT} && return
 
 	local qa_var="QA_FLAGS_IGNORED_${ARCH/-/_}"
 	eval "[[ -n \${!qa_var} ]] && QA_FLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
@@ -65,7 +65,7 @@ ignored_flag_check() {
 
 	# Check for files built without respecting LDFLAGS
 	if [[ "${LDFLAGS}" == *,--defsym=__gentoo_check_ldflags__* ]] && \
-		! has binchecks ${RESTRICT} ; then
+		! has binchecks ${PORTAGE_RESTRICT} ; then
 		f=$(LC_ALL=C comm -2 -3 <(scanelf -qyRF '#k%p' -k .dynsym "${ED%/}/" | LC_ALL=C sort) \
 			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then

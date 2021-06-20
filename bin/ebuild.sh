@@ -737,7 +737,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	fi
 fi
 
-if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
+if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 then
 	export DEBUGBUILD=1
 fi
