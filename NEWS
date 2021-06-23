@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.21
+--------------
+* EAPI 8 fixups.
+
 portage-3.0.20
 --------------
 * Finalize EAPI 8.
