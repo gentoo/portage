@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2018-2020 Gentoo Authors
+# Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -12,6 +12,7 @@ import subprocess
 import sys
 import termios
 
+from pathlib import Path
 
 KILL_SIGNALS = (
 	signal.SIGINT,
@@ -91,9 +92,26 @@ def main(argv):
 			'preexec_fn': functools.partial(preexec_fn, uid, gid, groups, umask),
 			'pass_fds': pass_fds,
 		}
+
+		# Obtain the current nice value, which will be potentially be
+		# used as the newly created session's autogroup nice value.
+		nice_value = os.nice(0)
+
 		# Isolate parent process from process group SIGSTOP (bug 675870)
 		setsid = True
 		os.setsid()
+
+		# Set the previously obtained autogroup nice value again,
+		# since we created a new session with os.setsid() above.
+		try:
+			Path("/proc/self/autogroup").write_text(str(nice_value))
+		except EnvironmentError as e:
+			# The process is likely not allowed to set the autogroup
+			# value (Linux employs a rate limiting for unprivileged
+			# changes to the autogroup value) or autogroups are not
+			# enabled. Nothing we can do here, so we simply carry on.
+			pass
+
 		if sys.stdout.isatty():
 			try:
 				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)

@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "May 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Jun 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -993,6 +993,9 @@ string should contain a \\${PID} place-holder that will be substituted
 with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
 \fBionice\fR(1). This variable is unset by default.
+.br
+Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
+FEATURES="pid\-sandbox" is enabled.
 .TP
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a
