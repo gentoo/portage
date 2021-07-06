@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = [
@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:Atom,dep_getkey,match_from_list,use_reduce,_match_slot',
 	'portage.package.ebuild.doebuild:doebuild',
-	'portage.package.ebuild.fetch:_download_suffix',
+	'portage.package.ebuild.fetch:get_mirror_url,_download_suffix',
 	'portage.util:ensure_dirs,shlex_split,writemsg,writemsg_level',
 	'portage.util.listdir:listdir',
 	'portage.versions:best,catsplit,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp,_pkg_str',
@@ -309,7 +309,7 @@ class portdbapi(dbapi):
 					self._pregen_auxdb[x] = cache
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["BDEPEND", "DEPEND", "EAPI",
+			["BDEPEND", "DEPEND", "EAPI", "IDEPEND",
 			"INHERITED", "IUSE", "KEYWORDS", "LICENSE",
 			"PDEPEND", "PROPERTIES", "RDEPEND", "repository",
 			"RESTRICT", "SLOT", "DEFINED_PHASES", "REQUIRED_USE"])
@@ -859,7 +859,11 @@ class portdbapi(dbapi):
 				if ro_distdirs is not None:
 					for x in shlex_split(ro_distdirs):
 						try:
-							mystat = os.stat(os.path.join(x, myfile))
+							mystat = os.stat(
+								portage.package.ebuild.fetch.get_mirror_url(
+									x, myfile, self.settings
+								)
+							)
 						except OSError:
 							pass
 						else:

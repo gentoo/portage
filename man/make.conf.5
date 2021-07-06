@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Feb 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "May 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -1004,7 +1004,18 @@ will set idle io priority. For more information about ionice, see
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a
 log file. In order to filter ANSI escape codes from build logs,
-\fBansifilter\fR(1) is a convenient setting for this variable.
+\fBansifilter\fR(1) is a convenient setting for this variable. Generally,
+PORTAGE_LOG_FILTER_FILE_CMD should include a supervisor that falls back
+to cat if the real filter command fails after exec. For example, a
+supervisor is needed for ansifilter, in case it fails after exec due to
+a problem resolving libstdc++ during a gcc upgrade.
+.br
+.I Example:
+.nf
+# Use bash as a supervisor, for fallback to cat if ansifilter fails
+# after exec due to a problem resolving libstdc++ during a gcc upgrade.
+PORTAGE_LOG_FILTER_FILE_CMD="bash -c \\"ansifilter; exec cat\\""
+.fi
 .TP
 .B PORTAGE_LOGDIR
 This variable defines the directory in which per\-ebuild logs are kept.
@@ -1144,6 +1155,25 @@ settings from ebuilds.  See also \fBebuild\fR(5).
 \fBQA_STRICT_WX_LOAD = \fI"set"\fR
 Set this to cause portage to ignore any \fIQA_WX_LOAD\fR override
 settings from ebuilds.  See also \fBebuild\fR(5).
+.TP
+\fBALLOW_TEST\fR = \fI[token]...\fR
+This variable can be used to select the kinds of additional tests to run,
+particularly overriding \fBRESTRICT\fR="\fBtest\fR".  It contains
+a whitespace-separated list of tokens.  The following tokens are currently
+recognized:
+.RS
+.TP
+.B all
+Run tests in all packages, even if they specify \fBRESTRICT\fR="\fBtest\fR".
+This option is certain to cause test failures, it is intended to be used
+by developers when testing specific packages.
+.TP
+.B network
+Run tests in packages specifying \fBPROPERTIES\fR="\fBtest_network\fR".  Note
+that this will most likely cause Internet access during the test suite which
+could cause additional costs, privacy concerns and intermittent test failures.
+.TP
+.RE
 .TP
 .B RESUMECOMMAND
 This variable contains the command used for resuming package sources that

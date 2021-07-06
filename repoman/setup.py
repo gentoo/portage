@@ -1,19 +1,33 @@
 #!/usr/bin/env python
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from distutils.core import setup, Command
-from distutils.command.build import build
-from distutils.command.build_scripts import build_scripts
-from distutils.command.clean import clean
-from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_lib import install_lib
-from distutils.command.install_scripts import install_scripts
-from distutils.command.sdist import sdist
-from distutils.dep_util import newer
-from distutils.dir_util import mkpath, remove_tree
-from distutils.util import change_root, subst_vars
+try:
+	from setuptools.core import setup, Command
+	from setuptools.command.build import build
+	from setuptools.command.build_scripts import build_scripts
+	from setuptools.command.clean import clean
+	from setuptools.command.install import install
+	from setuptools.command.install_data import install_data
+	from setuptools.command.install_lib import install_lib
+	from setuptools.command.install_scripts import install_scripts
+	from setuptools.command.sdist import sdist
+	from setuptools.dep_util import newer
+	from setuptools.dir_util import mkpath, remove_tree
+	from setuptools.util import change_root, subst_vars
+except ImportError:
+	from distutils.core import setup, Command
+	from distutils.command.build import build
+	from distutils.command.build_scripts import build_scripts
+	from distutils.command.clean import clean
+	from distutils.command.install import install
+	from distutils.command.install_data import install_data
+	from distutils.command.install_lib import install_lib
+	from distutils.command.install_scripts import install_scripts
+	from distutils.command.sdist import sdist
+	from distutils.dep_util import newer
+	from distutils.dir_util import mkpath, remove_tree
+	from distutils.util import change_root, subst_vars
 
 import codecs
 import collections
@@ -337,10 +351,13 @@ class x_install_scripts(install_scripts):
 
 
 class x_sdist(sdist):
-	""" sdist defaulting to .tar.bz2 format, and archive files owned by root """
+	""" sdist defaulting to .tar.xz format, and archive files owned by root """
+
+	def initialize_options(self):
+		super().initialize_options()
+		self.formats = ['xztar']
 
 	def finalize_options(self):
-		self.formats = ['bztar']
 		if self.owner is None:
 			self.owner = 'root'
 		if self.group is None:

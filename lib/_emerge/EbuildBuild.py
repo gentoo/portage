@@ -23,6 +23,7 @@ from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util.path import first_existing
 
 
 class EbuildBuild(CompositeTask):
@@ -160,16 +161,32 @@ class EbuildBuild(CompositeTask):
 						self._default_final_exit)
 				return
 
+			quiet_setting = settings.get("PORTAGE_QUIET", False)
+			fetch_log = None
+			logwrite_access = False
+			if quiet_setting:
+				fetch_log = os.path.join(
+					_emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
+				)
+				logwrite_access = os.access(first_existing(fetch_log), os.W_OK)
+
 			fetcher = EbuildFetcher(
 				config_pool=self.config_pool,
 				ebuild_path=self._ebuild_path,
 				fetchall=self.opts.fetch_all_uri,
 				fetchonly=self.opts.fetchonly,
-				background=False,
-				logfile=None,
+				background=quiet_setting if logwrite_access else False,
+				logfile=fetch_log if logwrite_access else None,
 				pkg=self.pkg,
-				scheduler=self.scheduler)
-			self._start_task(fetcher, self._fetchonly_exit)
+				scheduler=self.scheduler,
+			)
+
+			if fetch_log and logwrite_access:
+				fetcher.addExitListener(self._fetchonly_exit)
+				self._task_queued(fetcher)
+				self.scheduler.fetch.schedule(fetcher, force_queue=True)
+			else:
+				self._start_task(fetcher, self._fetchonly_exit)
 			return
 
 		self._build_dir = EbuildBuildDir(

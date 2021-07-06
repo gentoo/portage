@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Prevent aliases from causing portage to act inappropriately.
@@ -23,6 +23,8 @@ __check_bash_version() {
 		maj=3 min=2
 	elif ___eapi_bash_4_2 ; then
 		maj=4 min=2
+	elif ___eapi_bash_5_0 ; then
+		maj=5 min=0
 	else
 		return
 	fi
@@ -184,9 +186,9 @@ export SANDBOX_ON=0
 # Ensure that $PWD is sane whenever possible, to protect against
 # exploitation of insecure search path for python -c in ebuilds.
 # See bug #239560, bug #469338, and bug #595028.
-if [[ -d ${HOME} ]]; then
-	# Use portage's temporary HOME directory if available.
-	cd "${HOME}" || die
+# EAPI 8 requires us to use an empty directory here.
+if [[ -d ${PORTAGE_BUILDDIR}/empty ]]; then
+	cd "${PORTAGE_BUILDDIR}/empty" || die
 else
 	cd "${PORTAGE_PYM_PATH}" || \
 		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
@@ -255,6 +257,9 @@ inherit() {
 	local B_RDEPEND
 	local B_PDEPEND
 	local B_BDEPEND
+	local B_IDEPEND
+	local B_PROPERTIES
+	local B_RESTRICT
 	while [ "$1" ]; do
 		location=""
 		potential_location=""
@@ -299,14 +304,24 @@ inherit() {
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
-			unset B_BDEPEND
+			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
 			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
 			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
 			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
 			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
-			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND
+			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
+
+			if ___eapi_has_accumulated_PROPERTIES; then
+				[[ ${PROPERTIES+set} == set ]] && B_PROPERTIES=${PROPERTIES}
+				unset PROPERTIES
+			fi
+			if ___eapi_has_accumulated_RESTRICT; then
+				[[ ${RESTRICT+set} == set ]] && B_RESTRICT=${RESTRICT}
+				unset RESTRICT
+			fi
+
 			#turn on glob expansion
 			set +f
 		fi
@@ -325,6 +340,7 @@ inherit() {
 			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
 			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
 			[ "${BDEPEND+set}"      = set ] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
+			[ "${IDEPEND+set}"      = set ] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
 			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 			[ "${B_IUSE+set}"     = set ] || unset IUSE
@@ -343,6 +359,26 @@ inherit() {
 
 			[ "${B_BDEPEND+set}"  = set ] && BDEPEND="${B_BDEPEND}"
 			[ "${B_BDEPEND+set}"  = set ] || unset BDEPEND
+
+			[ "${B_IDEPEND+set}"  = set ] && IDEPEND="${B_IDEPEND}"
+			[ "${B_IDEPEND+set}"  = set ] || unset IDEPEND
+
+			if ___eapi_has_accumulated_PROPERTIES; then
+				[[ ${PROPERTIES+set} == set ]] &&
+					E_PROPERTIES+=${E_PROPERTIES:+ }${PROPERTIES}
+				[[ ${B_PROPERTIES+set} == set ]] &&
+					PROPERTIES=${B_PROPERTIES}
+				[[ ${B_PROPERTIES+set} == set ]] ||
+					unset PROPERTIES
+			fi
+			if ___eapi_has_accumulated_RESTRICT; then
+				[[ ${RESTRICT+set} == set ]] &&
+					E_RESTRICT+=${E_RESTRICT:+ }${RESTRICT}
+				[[ ${B_RESTRICT+set} == set ]] &&
+					RESTRICT=${B_RESTRICT}
+				[[ ${B_RESTRICT+set} == set ]] ||
+					unset RESTRICT
+			fi
 
 			#turn on glob expansion
 			set +f
@@ -600,10 +636,10 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		# In order to ensure correct interaction between ebuilds and
 		# eclasses, they need to be unset before this process of
 		# interaction begins.
-		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND
+		unset EAPI DEPEND RDEPEND PDEPEND BDEPEND PROPERTIES RESTRICT
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
-		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND
-		unset PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
+		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -615,12 +651,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 
 		if ___eapi_enables_failglob_in_global_scope; then
 			shopt -u failglob
-		fi
-
-		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
-			RESTRICT=${PORTAGE_RESTRICT}
-			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
-			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
 		fi
 
 		[ "${EAPI+set}" = set ] || EAPI=0
@@ -640,9 +670,23 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
 		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
-		
+
+		if ___eapi_has_accumulated_PROPERTIES; then
+			PROPERTIES+=${PROPERTIES:+ }${E_PROPERTIES}
+		fi
+		if ___eapi_has_accumulated_RESTRICT; then
+			RESTRICT+=${RESTRICT:+ }${E_RESTRICT}
+		fi
+
 		unset ECLASS E_IUSE E_REQUIRED_USE E_DEPEND E_RDEPEND E_PDEPEND
-		unset E_BDEPEND __INHERITED_QA_CACHE
+		unset E_BDEPEND E_PROPERTIES E_RESTRICT __INHERITED_QA_CACHE
+
+		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
+			PROPERTIES=${PORTAGE_PROPERTIES}
+			RESTRICT=${PORTAGE_RESTRICT}
+			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
+		fi
 
 		# alphabetically ordered by $EBUILD_PHASE value
 		case ${EAPI} in
@@ -693,7 +737,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 	fi
 fi
 
-if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
+if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 then
 	export DEBUGBUILD=1
 fi
@@ -712,11 +756,14 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES UNUSED_05 UNUSED_04
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND UNUSED_04
 		UNUSED_03 UNUSED_02 UNUSED_01"
 
 	if ! ___eapi_has_BDEPEND; then
 		unset BDEPEND
+	fi
+	if ! ___eapi_has_IDEPEND; then
+		unset IDEPEND
 	fi
 
 	# The extra $(echo) commands remove newlines.

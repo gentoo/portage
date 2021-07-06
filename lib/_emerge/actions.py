@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import collections
@@ -53,6 +53,7 @@ from portage._sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, normalize_path, writemsg, varexpand, \
 	writemsg_level, writemsg_stdout
 from portage.util.digraph import digraph
+from portage.util.path import first_existing
 from portage.util.SlotObject import SlotObject
 from portage.util._async.run_main_scheduler import run_main_scheduler
 from portage.util._async.SchedulerInterface import SchedulerInterface
@@ -1368,6 +1369,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 		runtime_post = UnmergeDepPriority(runtime_post=True)
 		buildtime = UnmergeDepPriority(buildtime=True)
 		priority_map = {
+			"IDEPEND": runtime,
 			"RDEPEND": runtime,
 			"PDEPEND": runtime_post,
 			"BDEPEND": buildtime,
@@ -3201,10 +3203,27 @@ def run_action(emerge_config):
 	# This helps minimize parallel emerge.log entries that can confuse log
 	# parsers like genlop.
 	disable_emergelog = False
+
+	emerge_log_dir = emerge_config.target_config.settings.get("EMERGE_LOG_DIR")
+	default_log_dir = os.path.join(
+		os.sep, portage.const.EPREFIX.lstrip(os.sep), "var", "log"
+	)
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
 		if x in emerge_config.opts:
-			disable_emergelog = True
-			break
+			if x == "--fetchonly" and "--quiet" in emerge_config.opts:
+				# Log will be used to store fetch progress
+				log_dir = emerge_log_dir if emerge_log_dir else default_log_dir
+				disable_emergelog = not all(
+					os.access(logfile, os.W_OK)
+					for logfile in set(
+						first_existing(os.path.join(log_dir, logfile))
+						for logfile in ("emerge.log", "emerge-fetch.log")
+					)
+				)
+				break
+			else:
+				disable_emergelog = True
+				break
 	if disable_emergelog:
 		pass
 	elif emerge_config.action in ("search", "info"):
@@ -3216,8 +3235,6 @@ def run_action(emerge_config):
 	_emerge.emergelog._disable = disable_emergelog
 
 	if not disable_emergelog:
-		emerge_log_dir = \
-			emerge_config.target_config.settings.get('EMERGE_LOG_DIR')
 		if emerge_log_dir:
 			try:
 				# At least the parent needs to exist for the lock file.
@@ -3231,8 +3248,7 @@ def run_action(emerge_config):
 			else:
 				_emerge.emergelog._emerge_log_dir = emerge_log_dir
 		else:
-			_emerge.emergelog._emerge_log_dir = os.path.join(os.sep,
-				portage.const.EPREFIX.lstrip(os.sep), "var", "log")
+			_emerge.emergelog._emerge_log_dir = default_log_dir
 			portage.util.ensure_dirs(_emerge.emergelog._emerge_log_dir)
 
 	if not "--pretend" in emerge_config.opts:

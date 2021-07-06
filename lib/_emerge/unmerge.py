@@ -99,7 +99,6 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 
 			global_unmerge = 1
 
-		localtree = vartree
 		# process all arguments and add all
 		# valid db entries to candidate_catpkgs
 		if global_unmerge:
@@ -166,15 +165,14 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 						"="+"/".join(sp_absx[sp_vdb_len:]))
 
 		newline=""
-		if not "--quiet" in myopts:
+		if not quiet:
 			newline="\n"
 		if settings["ROOT"] != "/":
 			writemsg_level(darkgreen(newline+ \
 				">>> Using system located in ROOT tree %s\n" % \
 				settings["ROOT"]))
 
-		if (("--pretend" in myopts) or ("--ask" in myopts)) and \
-			not "--quiet" in myopts:
+		if ("--pretend" in myopts or "--ask" in myopts) and not quiet:
 			writemsg_level(darkgreen(newline+\
 				">>> These are the packages that would be unmerged:\n"))
 
@@ -200,7 +198,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				sys.exit(1)
 
 			if not mymatch and x[0] not in "<>=~":
-				mymatch = localtree.dep_match(x)
+				mymatch = vartree.dep_match(x)
 			if not mymatch:
 				portage.writemsg("\n--- Couldn't find '%s' to %s.\n" % \
 					(x.replace("null/", ""), unmerge_action), noiselevel=-1)
@@ -243,14 +241,14 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				slotmap={}
 				for mypkg in mymatch:
 					if unmerge_action == "clean":
-						myslot = localtree.getslot(mypkg)
+						myslot = vartree.getslot(mypkg)
 					else:
 						# since we're pruning, we don't care about slots
 						# and put all the pkgs in together
 						myslot = 0
 					if myslot not in slotmap:
 						slotmap[myslot] = {}
-					slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)] = mypkg
+					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for mypkg in vartree.dbapi.cp_list(
 					portage.cpv_getkey(mymatch[0])):
@@ -432,6 +430,11 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				cp_dict[k].update(v)
 		pkgmap = [unordered[cp] for cp in sorted(unordered)]
 
+	# Sort each set of selected packages
+	if ordered:
+		for pkg in pkgmap:
+			pkg["selected"] = sorted(pkg["selected"], key=cpv_sort_key())
+
 	for x in range(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
@@ -441,7 +444,7 @@ def _unmerge_display(root_config, myopts, unmerge_action,
 				continue
 			mylist.difference_update(all_selected)
 		cp = portage.cpv_getkey(next(iter(selected)))
-		for y in localtree.dep_match(cp):
+		for y in vartree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 				y not in pkgmap[x]["selected"] and \
 				y not in pkgmap[x]["protected"] and \

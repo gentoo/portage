@@ -1,5 +1,5 @@
 #!@PORTAGE_BASH@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Hardcoded bash lists are needed for backward compatibility with
@@ -8,7 +8,7 @@
 # when portage is upgrading itself.
 
 PORTAGE_READONLY_METADATA="BDEPEND DEFINED_PHASES DEPEND DESCRIPTION
-	EAPI HOMEPAGE INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
+	EAPI HOMEPAGE IDEPEND INHERITED IUSE REQUIRED_USE KEYWORDS LICENSE
 	PDEPEND RDEPEND REPOSITORY RESTRICT SLOT SRC_URI"
 
 PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
@@ -23,7 +23,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_ECLASS_LOCATIONS \
 	PORTAGE_GID PORTAGE_GRPNAME PORTAGE_INST_GID PORTAGE_INST_UID \
 	PORTAGE_INTERNAL_CALLER PORTAGE_IPC_DAEMON PORTAGE_IUSE PORTAGE_LOG_FILE \
-	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX \
+	PORTAGE_MUTABLE_FILTERED_VARS PORTAGE_OVERRIDE_EPREFIX PORTAGE_PROPERTIES \
 	PORTAGE_PYM_PATH PORTAGE_PYTHON PORTAGE_PYTHONPATH \
 	PORTAGE_READONLY_METADATA PORTAGE_READONLY_VARS \
 	PORTAGE_REPO_NAME PORTAGE_REPOSITORIES PORTAGE_RESTRICT \
@@ -278,7 +278,8 @@ __dyn_clean() {
 	cd "${PORTAGE_PYM_PATH}" || \
 		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
 
-	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
+	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir" \
+		"${PORTAGE_BUILDDIR}/empty"
 	rm -f "${PORTAGE_BUILDDIR}/.installed"
 
 	if [[ $EMERGE_FROM = binary ]] || \
@@ -489,7 +490,9 @@ __dyn_test() {
 		die "The source directory '${S}' doesn't exist"
 	fi
 
-	if has test ${RESTRICT} ; then
+	if has test ${PORTAGE_RESTRICT} && ! has all ${ALLOW_TEST} &&
+			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; }
+	then
 		einfo "Skipping make test/check due to ebuild restriction."
 		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
 
@@ -701,7 +704,7 @@ __dyn_install() {
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT}
+	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 	then
 		>> DEBUGBUILD
 	fi
@@ -756,7 +759,7 @@ __dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}"
 	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if has nostrip ${FEATURES} ${RESTRICT} || has strip ${RESTRICT} ;
+	if has nostrip ${FEATURES} ${PORTAGE_RESTRICT} || has strip ${PORTAGE_RESTRICT}
 	then
 		echo "debug (large)"
 	else
@@ -924,6 +927,12 @@ __ebuild_phase_funcs() {
 
 				declare -F src_prepare >/dev/null || \
 					src_prepare() { default; }
+			fi
+
+			# defaults starting with EAPI 8
+			if ! has ${eapi} 2 3 4 4-python 4-slot-abi 5 5-progress 6 7; then
+				[[ ${phase_func} == src_prepare ]] && \
+					default_src_prepare() { __eapi8_src_prepare; }
 			fi
 			;;
 	esac

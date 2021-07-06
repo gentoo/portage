@@ -2,7 +2,7 @@
 # text relocations, executable stacks
 
 elf_check() {
-	if ! type -P scanelf >/dev/null || has binchecks ${RESTRICT}; then
+	if ! type -P scanelf >/dev/null || has binchecks ${PORTAGE_RESTRICT}; then
 		return
 	fi
 

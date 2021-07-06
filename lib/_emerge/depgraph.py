@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -3392,11 +3392,13 @@ class depgraph:
 			"deep" not in self._dynamic_config.myparams:
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
+			edepend["IDEPEND"] = ""
 
 		if pkg.onlydeps and \
 			self._frozen_config.myopts.get("--onlydeps-with-rdeps") == 'n':
 			edepend["RDEPEND"] = ""
 			edepend["PDEPEND"] = ""
+			edepend["IDEPEND"] = ""
 
 		ignore_build_time_deps = False
 		if pkg.built and not removal_action:
@@ -3451,6 +3453,8 @@ class depgraph:
 		# deps influence choices for run-time deps (bug 639346).
 		deps = (
 			(myroot, edepend["RDEPEND"],
+				self._priority(runtime=True)),
+			(self._frozen_config._running_root.root, edepend["IDEPEND"],
 				self._priority(runtime=True)),
 			(myroot, edepend["PDEPEND"],
 				self._priority(runtime_post=True)),
@@ -5156,6 +5160,7 @@ class depgraph:
 								dep_strings.add(node._metadata[k])
 						if priority.runtime:
 							dep_strings.add(node._metadata["RDEPEND"])
+							dep_strings.add(node._metadata["IDEPEND"])
 						if priority.runtime_post:
 							dep_strings.add(node._metadata["PDEPEND"])
 

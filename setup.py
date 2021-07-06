@@ -2,19 +2,34 @@
 # Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from distutils.core import setup, Command, Extension
-from distutils.command.build import build
-from distutils.command.build_ext import build_ext as _build_ext
-from distutils.command.build_scripts import build_scripts
-from distutils.command.clean import clean
-from distutils.command.install import install
-from distutils.command.install_data import install_data
-from distutils.command.install_lib import install_lib
-from distutils.command.install_scripts import install_scripts
-from distutils.command.sdist import sdist
-from distutils.dep_util import newer
-from distutils.dir_util import mkpath, remove_tree
-from distutils.util import change_root, subst_vars
+try:
+	from setuptools.core import setup, Command, Extension
+	from setuptools.command.build import build
+	from setuptools.command.build_ext import build_ext as _build_ext
+	from setuptools.command.build_scripts import build_scripts
+	from setuptools.command.clean import clean
+	from setuptools.command.install import install
+	from setuptools.command.install_data import install_data
+	from setuptools.command.install_lib import install_lib
+	from setuptools.command.install_scripts import install_scripts
+	from setuptools.command.sdist import sdist
+	from setuptools.dep_util import newer
+	from setuptools.dir_util import mkpath, remove_tree
+	from setuptools.util import change_root, subst_vars
+except ImportError:
+	from distutils.core import setup, Command, Extension
+	from distutils.command.build import build
+	from distutils.command.build_ext import build_ext as _build_ext
+	from distutils.command.build_scripts import build_scripts
+	from distutils.command.clean import clean
+	from distutils.command.install import install
+	from distutils.command.install_data import install_data
+	from distutils.command.install_lib import install_lib
+	from distutils.command.install_scripts import install_scripts
+	from distutils.command.sdist import sdist
+	from distutils.dep_util import newer
+	from distutils.dir_util import mkpath, remove_tree
+	from distutils.util import change_root, subst_vars
 
 import codecs
 import collections
@@ -504,26 +519,29 @@ class x_install_lib(install_lib):
 
 		val_dict = {}
 		if create_entry_points:
-			val_dict.update(
-				{
-					"GLOBAL_CONFIG_PATH": self.portage_confdir,
-				}
-			)
 			re_sub_file(
 				"portage/const.py",
 				(
 					(
+						r"^(GLOBAL_CONFIG_PATH\s*=\s*[\"'])(.*)([\"'])",
+						lambda m: "{}{}{}".format(
+							m.group(1),
+							m.group(2).partition("/usr")[-1],
+							m.group(3),
+						),
+					),
+					(
 						r"^(PORTAGE_BASE_PATH\s*=\s*)(.*)",
 						lambda m: "{}{}".format(
 							m.group(1),
-							'os.path.realpath(os.path.join(__file__, "../../usr/lib/portage"))',
+							'os.path.join(os.path.realpath(__import__("sys").prefix), "lib/portage")',
 						),
 					),
 					(
 						r"^(EPREFIX\s*=\s*)(.*)",
 						lambda m: "{}{}".format(
 							m.group(1),
-							'os.path.realpath(os.path.join(__file__, "../.."))',
+							'__import__("sys").prefix',
 						),
 					),
 				),
@@ -555,6 +573,10 @@ class x_install_scripts_custom(install_scripts):
 		# prepend root
 		if self.root is not None:
 			self.install_dir = change_root(self.root, self.install_dir)
+
+	def run(self):
+		if not create_entry_points:
+			install_scripts.run(self)
 
 
 class x_install_scripts_bin(x_install_scripts_custom):
@@ -705,7 +727,7 @@ class build_ext(_build_ext):
 	]
 
 	boolean_options = _build_ext.boolean_options + [
-		'portage-ext-modules',
+		'portage_ext_modules',
 	]
 
 	def initialize_options(self):
@@ -717,9 +739,51 @@ class build_ext(_build_ext):
 			_build_ext.run(self)
 
 
+def venv_data_files(locations):
+	if not create_entry_points:
+		return
+	for dest_prefix, source_path, file_args in locations:
+		specific_files = []
+		mode_arg = None
+		for arg in file_args:
+			if arg.startswith("-m"):
+				mode_arg = int(arg[2:], 8)
+			else:
+				specific_files.append(arg)
+
+		abs_source_path = os.path.abspath(source_path)
+		for root, dirs, files in os.walk(abs_source_path):
+
+			root_offset = root[len(abs_source_path) :].lstrip("/")
+			dest_path = os.path.join(dest_prefix, root_offset)
+
+			if specific_files:
+				matched_files = list(
+					itertools.chain.from_iterable(
+						glob.glob(os.path.join(root, x)) for x in specific_files
+					)
+				)
+			else:
+				matched_files = [os.path.join(root, x) for x in files]
+
+			if mode_arg:
+				for filename in matched_files:
+					if not os.path.islink(filename):
+						os.chmod(filename, mode_arg)
+
+			yield (dest_path, matched_files)
+
+
+def get_data_files(regular_files, venv_files):
+	if create_entry_points:
+		return list(venv_data_files(venv_files))
+
+	return regular_files
+
+
 setup(
 	name = 'portage',
-	version = '3.0.18',
+	version = '3.0.21',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	project_urls = {
 		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',
@@ -737,7 +801,7 @@ setup(
 	# something to cheat build & install commands
 	scripts = list(find_scripts()),
 
-	data_files = list(get_manpages()) + [
+	data_files = get_data_files(list(get_manpages()) + [
 		['$sysconfdir', ['cnf/etc-update.conf', 'cnf/dispatch-conf.conf']],
 		['$logrotatedir', ['cnf/logrotate.d/elog-save-summary']],
 		['$portage_confdir', [
@@ -747,6 +811,21 @@ setup(
 		['$portage_base/bin', ['bin/deprecated-path']],
 		['$sysconfdir/portage/repo.postsync.d', ['cnf/repo.postsync.d/example']],
 	],
+	[
+		("etc", "cnf", ("etc-update.conf", "dispatch-conf.conf")),
+		("etc/logrotate.d", "cnf/logrotate.d", ("elog-save-summary",)),
+		("etc/portage/repo.postsync.d", "cnf/repo.postsync.d", ("example",)),
+		(
+			"share/portage/config",
+			"cnf",
+			("make.conf.example", "make.globals", "repos.conf"),
+		),
+		("share/portage/config/sets", "cnf/sets", ("*.conf",)),
+		("share/man/man1", "man", ("*.1",)),
+		("share/man/man5", "man", ("*.5",)),
+		("share/portage/doc", "", ("NEWS", "RELEASE-NOTES")),
+		("lib/portage/bin", "bin", ("-m0755",)),
+	]),
 	entry_points={
 		"console_scripts": [
 			"{}=portage.util.bin_entry_point:bin_entry_point".format(os.path.basename(path))

@@ -416,7 +416,7 @@ def _get_stdin():
 		return sys.__stdin__
 	return sys.stdin
 
-_shell_quote_re = re.compile(r"[\s><=*\\\"'$`]")
+_shell_quote_re = re.compile(r"[\s><=*\\\"'$`;&|(){}\[\]#!~?]")
 
 def _shell_quote(s):
 	"""
@@ -532,7 +532,7 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'BDEPEND', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'UNUSED_05', 'UNUSED_04',
+	'PROPERTIES', 'DEFINED_PHASES', 'IDEPEND', 'UNUSED_04',
 	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
 )
 auxdbkeylen = len(auxdbkeys)

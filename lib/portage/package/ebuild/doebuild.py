@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ['doebuild', 'doebuild_environment', 'spawn', 'spawnebuild']
@@ -143,11 +143,14 @@ def _doebuild_spawn(phase, settings, actionmap=None, **kwargs):
 	kwargs['ipc'] = 'ipc-sandbox' not in settings.features or \
 		phase in _ipc_phases
 	kwargs['mountns'] = 'mount-sandbox' in settings.features
-	kwargs['networked'] = 'network-sandbox' not in settings.features or \
-		(phase == 'unpack' and \
-		'live' in settings.configdict['pkg'].get('PROPERTIES', '').split()) or \
-		phase in _ipc_phases or \
-		'network-sandbox' in settings['PORTAGE_RESTRICT'].split()
+	kwargs['networked'] = (
+		'network-sandbox' not in settings.features or
+		(phase == 'unpack' and
+			'live' in settings['PORTAGE_PROPERTIES'].split()) or
+		(phase == 'test' and
+			'test_network' in settings['PORTAGE_PROPERTIES'].split()) or
+		phase in _ipc_phases or
+		'network-sandbox' in settings['PORTAGE_RESTRICT'].split())
 	kwargs['pidns'] = ('pid-sandbox' in settings.features and
 		phase not in _global_pid_phases)
 
@@ -1857,6 +1860,11 @@ def _post_phase_userpriv_perms(mysettings):
 				filemode=0o600, filemask=0)
 
 
+def _post_phase_emptydir_cleanup(mysettings):
+	empty_dir = os.path.join(mysettings["PORTAGE_BUILDDIR"], "empty")
+	shutil.rmtree(empty_dir, ignore_errors=True)
+
+
 def _check_build_log(mysettings, out=None):
 	"""
 	Search the content of $PORTAGE_LOG_FILE if it exists
@@ -1950,6 +1958,10 @@ def _check_build_log(mysettings, out=None):
 		re.compile(r'g?make\[\d+\]: warning: jobserver unavailable:')
 	make_jobserver = []
 
+	# we deduplicate these since they is repeated for every setup.py call
+	setuptools_warn = set()
+	setuptools_warn_re = re.compile(r'.*\/setuptools\/.*: UserWarning: (.*)')
+
 	def _eerror(lines):
 		for line in lines:
 			eerror(line, phase="install", key=mysettings.mycpv, out=out)
@@ -1978,6 +1990,10 @@ def _check_build_log(mysettings, out=None):
 
 			if make_jobserver_re.match(line) is not None:
 				make_jobserver.append(line.rstrip("\n"))
+
+			m = setuptools_warn_re.match(line)
+			if m is not None:
+				setuptools_warn.add(m.group(1))
 
 	except (EOFError, zlib.error) as e:
 		_eerror(["portage encountered a zlib error: '%s'" % (e,),
@@ -2030,6 +2046,12 @@ def _check_build_log(mysettings, out=None):
 		msg = [_("QA Notice: make jobserver unavailable:")]
 		msg.append("")
 		msg.extend("\t" + line for line in make_jobserver)
+		_eqawarn(msg)
+
+	if setuptools_warn:
+		msg = [_("QA Notice: setuptools warnings detected:")]
+		msg.append("")
+		msg.extend("\t" + line for line in sorted(setuptools_warn))
 		_eqawarn(msg)
 
 	f.close()

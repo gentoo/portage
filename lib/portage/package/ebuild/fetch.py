@@ -664,8 +664,15 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	else:
 		tmpfile = '.layout.conf.%s' % urlparse(mirror_url).hostname
 		try:
-			if fetch({tmpfile: (mirror_url + '/distfiles/layout.conf',)},
-					mysettings, force=1, try_mirrors=0):
+			if mirror_url[:1] == "/":
+				tmpfile = os.path.join(mirror_url, "layout.conf")
+				mirror_conf.read_from_file(tmpfile)
+			elif fetch(
+				{tmpfile: (mirror_url + "/distfiles/layout.conf",)},
+				mysettings,
+				force=1,
+				try_mirrors=0,
+			):
 				tmpfile = os.path.join(mysettings['DISTDIR'], tmpfile)
 				mirror_conf.read_from_file(tmpfile)
 			else:
@@ -684,8 +691,10 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
 	path = mirror_conf.get_best_supported_layout(filename=filename).get_path(filename)
 	if urlparse(mirror_url).scheme in ('ftp', 'http', 'https'):
 		path = urlquote(path)
-	return mirror_url + "/distfiles/" + path
-
+	if mirror_url[:1] == "/":
+		return os.path.join(mirror_url, path)
+	else:
+		return mirror_url + "/distfiles/" + path
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	locks_in_subdir=".locks", use_locks=1, try_mirrors=1, digests=None,
@@ -814,8 +823,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
 		CUSTOM_MIRRORS_FILE), recursive=1)
 
-	mymirrors=[]
-
 	if listonly or ("distlocks" not in features):
 		use_locks = 0
 
@@ -833,16 +840,22 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				"FEATURES in /etc/portage/make.conf\n"), noiselevel=-1)
 #			use_locks = 0
 
-	# local mirrors are always added
-	if try_mirrors and "local" in custommirrors:
-		mymirrors += custommirrors["local"]
-
-	if restrict_mirror:
-		# We don't add any mirrors.
-		pass
-	else:
-		if try_mirrors:
-			mymirrors += [x.rstrip("/") for x in mysettings["GENTOO_MIRRORS"].split() if x]
+	local_mirrors = []
+	public_mirrors = []
+	fsmirrors = []
+	if try_mirrors:
+		for x in custommirrors.get("local", []):
+			if x.startswith("/"):
+				fsmirrors.append(x)
+			else:
+				local_mirrors.append(x)
+		for x in mysettings["GENTOO_MIRRORS"].split():
+			if not x:
+				continue
+			if x.startswith('/'):
+				fsmirrors.append(x.rstrip("/"))
+			else:
+				public_mirrors.append(x.rstrip("/"))
 
 	hash_filter = _hash_filter(mysettings.get("PORTAGE_CHECKSUM_FILTER", ""))
 	if hash_filter.transparent:
@@ -865,23 +878,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 		shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
 		if os.path.isdir(x)]
 
-	fsmirrors = []
-	for x in range(len(mymirrors)-1,-1,-1):
-		if mymirrors[x] and mymirrors[x][0]=='/':
-			fsmirrors += [mymirrors[x]]
-			del mymirrors[x]
-
 	restrict_fetch = "fetch" in restrict
 	force_mirror = "force-mirror" in features and not restrict_mirror
-	custom_local_mirrors = custommirrors.get("local", [])
-	if restrict_fetch:
-		# With fetch restriction, a normal uri may only be fetched from
-		# custom local mirrors (if available).  A mirror:// uri may also
-		# be fetched from specific mirrors (effectively overriding fetch
-		# restriction, but only for specific mirrors).
-		locations = custom_local_mirrors
-	else:
-		locations = mymirrors
 
 	file_uri_tuples = []
 	# Check for 'items' attribute since OrderedDict is not a dict.
@@ -910,6 +908,11 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
 	for myfile, myuri in file_uri_tuples:
+		override_mirror = (myuri or "").startswith("mirror+")
+		override_fetch = override_mirror or (myuri or "").startswith("fetch+")
+		if override_fetch:
+			myuri = myuri.partition("+")[2]
+
 		if myfile not in filedict:
 			filedict[myfile]=[]
 			if distdir_writable:
@@ -917,7 +920,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 						".mirror-cache.json")
 			else:
 				mirror_cache = None
-			for l in locations:
+
+			# fetch restriction implies mirror restriction
+			# but fetch unrestriction does not grant mirror permission
+			file_restrict_mirror = ((restrict_fetch or restrict_mirror)
+					and not override_mirror)
+
+			# With fetch restriction, a normal uri may only be fetched from
+			# custom local mirrors (if available).  A mirror:// uri may also
+			# be fetched from specific mirrors (effectively overriding fetch
+			# restriction, but only for specific mirrors).
+			location_lists = [local_mirrors]
+			if not file_restrict_mirror:
+				location_lists.append(public_mirrors)
+
+			for l in itertools.chain(*location_lists):
 				filedict[myfile].append(functools.partial(
 					get_mirror_url, l, myfile, mysettings, mirror_cache))
 		if myuri is None:
@@ -949,7 +966,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				writemsg(_("Invalid mirror definition in SRC_URI:\n"), noiselevel=-1)
 				writemsg("  %s\n" % (myuri), noiselevel=-1)
 		else:
-			if restrict_fetch or force_mirror:
+			if (restrict_fetch and not override_fetch) or force_mirror:
 				# Only fetch from specific mirrors is allowed.
 				continue
 			primaryuris = primaryuri_dict.get(myfile)
@@ -1205,7 +1222,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 				if distdir_writable and ro_distdirs:
 					readonly_file = None
 					for x in ro_distdirs:
-						filename = os.path.join(x, myfile)
+						filename = get_mirror_url(x, myfile, mysettings)
 						match, mystat = _check_distfile(
 							filename, pruned_digests, eout, hash_filter=hash_filter)
 						if match:
@@ -1237,7 +1254,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0,
 
 				if fsmirrors and not os.path.exists(myfile_path) and has_space:
 					for mydir in fsmirrors:
-						mirror_file = os.path.join(mydir, myfile)
+						mirror_file = get_mirror_url(mydir, myfile, mysettings)
 						try:
 							shutil.copyfile(mirror_file, download_path)
 							writemsg(_("Local mirror has file: %s\n") % myfile)

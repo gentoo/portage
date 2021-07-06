@@ -79,8 +79,14 @@ class OwnerSet(PackageSet):
 				glob.iglob(os.path.join(eroot, p.lstrip(os.sep))))
 		paths = expanded_paths
 
+		expanded_exclude_paths = []
+		for p in (exclude_paths or ()):
+			expanded_exclude_paths.extend(expanded_exc_p[len(eroot)-1:] for expanded_exc_p in
+				glob.iglob(os.path.join(eroot, p.lstrip(os.sep))))
+		exclude_paths = expanded_exclude_paths
+
 		pkg_str = vardb._pkg_str
-		if exclude_paths is None:
+		if not exclude_paths:
 			for link, p in vardb._owners.iter_owners(paths):
 				pkg = pkg_str(link.mycpv, None)
 				rValue.add("%s:%s" % (pkg.cp, pkg.slot))

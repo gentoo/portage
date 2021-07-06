@@ -4,6 +4,12 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
+option_r=
+if [[ ___eapi_has_dosym_r && $1 == -r ]]; then
+	option_r=t
+	shift
+fi
+
 if [[ $# -ne 2 ]] ; then
 	__helpers_die "${0##*/}: two arguments needed"
 	exit 1
@@ -18,9 +24,68 @@ if [[ ${2} == */ ]] || [[ -d ${ED%/}/${2#/} && ! -L ${ED%/}/${2#/} ]] ; then
 	__helpers_die "${0##*/}: dosym target omits basename: '${2}'"
 fi
 
+target=$1
+
+if [[ ${option_r} ]]; then
+	# Transparent bash-only replacement for GNU "realpath -m -s".
+	# Resolve references to "/./", "/../" and remove extra "/" characters
+	# from <path>, without touching any actual file.
+	dosym_canonicalize() {
+		local path slash i prev out IFS=/
+
+		path=( $1 )
+		[[ $1 == /* ]] && slash=/
+
+		while true; do
+			# Find first instance of non-".." path component followed by "..",
+			# or as a special case, "/.." at the beginning of the path.
+			# Also drop empty and "." path components as we go along.
+			prev=
+			for i in ${!path[@]}; do
+				if [[ -z ${path[i]} || ${path[i]} == . ]]; then
+					unset "path[i]"
+				elif [[ ${path[i]} != .. ]]; then
+					prev=${i}
+				elif [[ ${prev} || ${slash} ]]; then
+					# Found, remove path components and reiterate
+					[[ ${prev} ]] && unset "path[prev]"
+					unset "path[i]"
+					continue 2
+				fi
+			done
+			# No (further) instance found, so we're done
+			break
+		done
+
+		out="${slash}${path[*]}"
+		echo "${out:-.}"
+	}
+
+	# Expansion makes sense only for an absolute target path
+	[[ ${target} == /* ]] || __helpers_die \
+		"${0##*/}: -r specified but no absolute target path: '${target}'"
+
+	target=$(dosym_canonicalize "${target}")
+	linkdir=$(dosym_canonicalize "/${2#/}")
+	linkdir=${linkdir%/*}	# poor man's dirname(1)
+	linkdir=${linkdir:-/}	# always keep the initial "/"
+
+	IFS=/
+	for comp in ${linkdir}; do
+		if [[ ${target%%/*} == "${comp}" ]]; then
+			target=${target#"${comp}"}
+			target=${target#/}
+		else
+			target=..${target:+/}${target}
+		fi
+	done
+	unset IFS
+	target=${target:-.}
+fi
+
 destdir=${2%/*}
 [[ ! -d ${ED%/}/${destdir#/} ]] && dodir "${destdir}"
-ln -snf "${1}" "${ED%/}/${2#/}"
+ln -snf "${target}" "${ED%/}/${2#/}"
 
 ret=$?
 [[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"

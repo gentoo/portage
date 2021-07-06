@@ -1,5 +1,5 @@
 # portage: Constants
-# Copyright 1998-2019 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # ===========================================================================
@@ -229,7 +229,7 @@ SUPPORTED_FEATURES       = frozenset([
 	"xattr",
 ])
 
-EAPI                     = 7
+EAPI                     = 8
 
 HASHING_BLOCKSIZE        = 32768
 

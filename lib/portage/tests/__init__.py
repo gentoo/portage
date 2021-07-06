@@ -1,11 +1,12 @@
 # tests/__init__.py -- Portage Unit Test functionality
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import argparse
 import sys
 import time
 import unittest
+from pathlib import Path
 
 from unittest.runner import TextTestResult as _TextTestResult
 
@@ -13,32 +14,62 @@ import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
-from portage.const import (EPREFIX, GLOBAL_CONFIG_PATH, PORTAGE_BASE_PATH,
-	PORTAGE_BIN_PATH)
+from portage.proxy.objectproxy import ObjectProxy
 
 
-if portage._not_installed:
-	cnf_path = os.path.join(PORTAGE_BASE_PATH, 'cnf')
-	cnf_etc_path = cnf_path
-	cnf_bindir = PORTAGE_BIN_PATH
-	cnf_sbindir = cnf_bindir
-else:
-	cnf_path = os.path.join(EPREFIX or '/', GLOBAL_CONFIG_PATH)
-	cnf_etc_path = os.path.join(EPREFIX or '/', 'etc')
-	cnf_eprefix = EPREFIX
-	cnf_bindir = os.path.join(EPREFIX or '/', 'usr', 'bin')
-	cnf_sbindir = os.path.join(EPREFIX or '/', 'usr', 'sbin')
+# This remains constant when the real value is a mock.
+EPREFIX_ORIG = portage.const.EPREFIX
+
+
+class lazy_value(ObjectProxy):
+	__slots__ = ('_func',)
+	def __init__(self, func):
+		ObjectProxy.__init__(self)
+		object.__setattr__(self, '_func', func)
+	def _get_target(self):
+		return object.__getattribute__(self, '_func')()
+
+
+@lazy_value
+def cnf_path():
+	if portage._not_installed:
+		return os.path.join(portage.const.PORTAGE_BASE_PATH, 'cnf')
+	return os.path.join(EPREFIX_ORIG or '/', portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
+
+
+@lazy_value
+def cnf_etc_path():
+	if portage._not_installed:
+		return str(cnf_path)
+	return os.path.join(EPREFIX_ORIG or '/', 'etc')
+
+
+@lazy_value
+def cnf_bindir():
+	if portage._not_installed:
+		return portage.const.PORTAGE_BIN_PATH
+	return os.path.join(portage.const.EPREFIX or '/', 'usr', 'bin')
+
+
+@lazy_value
+def cnf_sbindir():
+	if portage._not_installed:
+		return str(cnf_bindir)
+	return os.path.join(portage.const.EPREFIX or '/', 'usr', 'sbin')
 
 
 def main():
 	suite = unittest.TestSuite()
-	basedir = os.path.dirname(os.path.realpath(__file__))
+	basedir = Path(__file__).resolve().parent
 
-	usage = "usage: %s [options] [tests to run]" % os.path.basename(sys.argv[0])
+	argv0 = Path(sys.argv[0])
+
+	usage = "usage: %s [options] [tests to run]" % argv0.name
 	parser = argparse.ArgumentParser(usage=usage)
 	parser.add_argument("-l", "--list", help="list all tests",
 		action="store_true", dest="list_tests")
-	options, args = parser.parse_known_args(args=sys.argv)
+	parser.add_argument("tests", nargs='*', type=Path)
+	options = parser.parse_args(args=sys.argv)
 
 	if (os.environ.get('NOCOLOR') in ('yes', 'true') or
 		os.environ.get('TERM') == 'dumb' or
@@ -46,18 +77,18 @@ def main():
 		portage.output.nocolor()
 
 	if options.list_tests:
-		testdir = os.path.dirname(sys.argv[0])
+		testdir = argv0.parent
 		for mydir in getTestDirs(basedir):
-			testsubdir = os.path.basename(mydir)
+			testsubdir = mydir.name
 			for name in getTestNames(mydir):
 				print("%s/%s/%s.py" % (testdir, testsubdir, name))
 		return os.EX_OK
 
-	if len(args) > 1:
-		suite.addTests(getTestFromCommandLine(args[1:], basedir))
+	if len(options.tests) > 1:
+		suite.addTests(getTestFromCommandLine(options.tests[1:], basedir))
 	else:
 		for mydir in getTestDirs(basedir):
-			suite.addTests(getTests(os.path.join(basedir, mydir), basedir))
+			suite.addTests(getTests(mydir, basedir))
 
 	result = TextTestRunner(verbosity=2).run(suite)
 	if not result.wasSuccessful():
@@ -74,47 +105,40 @@ def my_import(name):
 def getTestFromCommandLine(args, base_path):
 	result = []
 	for arg in args:
-		realpath = os.path.realpath(arg)
-		path = os.path.dirname(realpath)
-		f = realpath[len(path)+1:]
+		realpath = arg.resolve()
+		path = realpath.parent
+		f = realpath.relative_to(path)
 
-		if not f.startswith("test") or not f.endswith(".py"):
+		if not f.name.startswith("test") or not f.suffix == ".py":
 			raise Exception("Invalid argument: '%s'" % arg)
 
-		mymodule = f[:-3]
+		mymodule = f.stem
 		result.extend(getTestsFromFiles(path, base_path, [mymodule]))
 	return result
 
 def getTestDirs(base_path):
-	TEST_FILE = b'__test__.py'
+	TEST_FILE = '__test__.py'
 	testDirs = []
 
 	# the os.walk help mentions relative paths as being quirky
 	# I was tired of adding dirs to the list, so now we add __test__.py
 	# to each dir we want tested.
-	for root, dirs, files in os.walk(base_path):
-		try:
-			root = _unicode_decode(root,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeDecodeError:
-			continue
-
-		if TEST_FILE in files:
-			testDirs.append(root)
+	for testFile in base_path.rglob(TEST_FILE):
+		testDirs.append(testFile.parent)
 
 	testDirs.sort()
 	return testDirs
 
 def getTestNames(path):
-	files = os.listdir(path)
-	files = [f[:-3] for f in files if f.startswith("test") and f.endswith(".py")]
+	files = path.glob('*')
+	files = [f.stem for f in files
+	         if f.name.startswith('test') and f.suffix == ".py"]
 	files.sort()
 	return files
 
 def getTestsFromFiles(path, base_path, files):
-	parent_path = path[len(base_path)+1:]
-	parent_module = ".".join(("portage", "tests", parent_path))
-	parent_module = parent_module.replace('/', '.')
+	parent_path = path.relative_to(base_path)
+	parent_module = ".".join(("portage", "tests") + parent_path.parts)
 	result = []
 	for mymodule in files:
 		# Make the trailing / a . for module importing
@@ -258,25 +282,10 @@ class TestCase(unittest.TestCase):
 			else: excName = str(excClass)
 			raise self.failureException("%s not raised: %s" % (excName, msg))
 
-	def assertExists(self, path):
-		"""Make sure |path| exists"""
-		if not os.path.exists(path):
-			msg = ['path is missing: %s' % (path,)]
-			while path != '/':
-				path = os.path.dirname(path)
-				if not path:
-					# If we're given something like "foo", abort once we get to "".
-					break
-				result = os.path.exists(path)
-				msg.append('\tos.path.exists(%s): %s' % (path, result))
-				if result:
-					msg.append('\tcontents: %r' % os.listdir(path))
-					break
-			raise self.failureException('\n'.join(msg))
-
 	def assertNotExists(self, path):
 		"""Make sure |path| does not exist"""
-		if os.path.exists(path):
+		path = Path(path)
+		if path.exists():
 			raise self.failureException('path exists when it should not: %s' % path)
 
 class TextTestRunner(unittest.TextTestRunner):

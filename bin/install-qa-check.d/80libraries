@@ -92,7 +92,7 @@ scanelf_lib_check() {
 lib_check() {
 	local f x i j
 
-	if type -P scanelf >/dev/null && ! has binchecks ${RESTRICT}; then
+	if type -P scanelf >/dev/null && ! has binchecks ${PORTAGE_RESTRICT}; then
 		scanelf_lib_check
 	fi
 

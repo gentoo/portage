@@ -834,7 +834,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 	tmpcmdline = insert_optional_args(tmpcmdline)
 
-	myoptions = parser.parse_args(args=tmpcmdline)
+	myoptions = getattr(parser, "parse_intermixed_args", parser.parse_args)(args=tmpcmdline)
 
 	if myoptions.alert in true_y:
 		myoptions.alert = True
@@ -1072,7 +1072,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 		myoptions.deep = deep
 
-	if myoptions.jobs:
+	if myoptions.jobs is not None:
 		jobs = None
 		if myoptions.jobs == "True":
 			jobs = True

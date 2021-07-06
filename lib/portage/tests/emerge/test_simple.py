@@ -1,6 +1,7 @@
 # Copyright 2011-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import argparse
 import subprocess
 
 import portage
@@ -289,7 +290,14 @@ call_has_and_best_version() {
 			port=binhost_server.server_port,
 			path=binhost_remote_path)
 
-		test_commands = (
+		test_commands = ()
+
+		if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
+			test_commands += (
+				emerge_cmd + ("--oneshot", "dev-libs/A", "-v", "dev-libs/A"),
+			)
+
+		test_commands += (
 			emerge_cmd + ("--usepkgonly", "--root", cross_root, "--quickpkg-direct=y", "--quickpkg-direct-root", "/", "dev-libs/A"),
 			emerge_cmd + ("--usepkgonly", "--quickpkg-direct=y", "--quickpkg-direct-root", cross_root, "dev-libs/A"),
 			env_update_cmd,

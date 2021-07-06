@@ -57,7 +57,12 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 worldlist = portage.grabfile(world_file)
 syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
-logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
+if portage.settings.get("EMERGE_LOG_DIR"):
+	logfile = portage.grabfile(
+		os.path.join(portage.settings["EMERGE_LOG_DIR"], "emerge.log")
+	)
+else:
+	logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
 biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:

@@ -1,16 +1,30 @@
 #!@PREFIX_PORTAGE_PYTHON@ -b
-# Copyright 2010-2018 Gentoo Foundation
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
 # to communicate with portage's main python process.
 
+# This block ensures that ^C interrupts are handled quietly.
+try:
+	import os
+	import signal
+
+	def exithandler(signum, _frame):
+		signal.signal(signum, signal.SIG_DFL)
+		os.kill(os.getpid(), signum)
+
+	signal.signal(signal.SIGINT, exithandler)
+	signal.signal(signal.SIGTERM, exithandler)
+	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+except KeyboardInterrupt:
+	raise SystemExit(130)
+
 import errno
 import logging
-import os
 import pickle
 import platform
-import signal
 import sys
 import time
 
@@ -29,8 +43,10 @@ if os.path.isfile(os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(
 	pym_paths = [os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib")]
 	sys.path.insert(0, pym_paths[0])
 else:
-	import distutils.sysconfig
-	pym_paths = [os.path.join(distutils.sysconfig.get_python_lib(), x) for x in ("_emerge", "portage")]
+	import sysconfig
+	pym_paths = [
+		os.path.join(sysconfig.get_path("purelib"), x) for x in ("_emerge", "portage")
+	]
 # Avoid sandbox violations after Python upgrade.
 if os.environ.get("SANDBOX_ON") == "1":
 	sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
