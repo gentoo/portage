@@ -1871,6 +1871,10 @@ def _check_build_log(mysettings, out=None):
 	# we deduplicate these since they is repeated for every setup.py call
 	setuptools_warn = set()
 	setuptools_warn_re = re.compile(r'.*\/setuptools\/.*: UserWarning: (.*)')
+	# skip useless version normalization warnings
+	setuptools_warn_ignore_re = [
+		re.compile(r'Normalizing .*')
+	]
 
 	def _eerror(lines):
 		for line in lines:
@@ -1903,7 +1907,12 @@ def _check_build_log(mysettings, out=None):
 
 			m = setuptools_warn_re.match(line)
 			if m is not None:
-				setuptools_warn.add(m.group(1))
+				warn_text = m.group(1)
+				for ign in setuptools_warn_ignore_re:
+					if ign.match(warn_text):
+						break
+				else:
+					setuptools_warn.add(warn_text)
 
 	except (EOFError, zlib.error) as e:
 		_eerror(["portage encountered a zlib error: '%s'" % (e,),
