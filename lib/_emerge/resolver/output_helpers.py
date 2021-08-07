@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 """Contains private support functions for the Display class
@@ -7,6 +7,8 @@ in output.py
 
 __all__ = (
 	)
+
+import re
 
 from portage import os
 from portage._sets.base import InternalPackageSet
@@ -214,6 +216,21 @@ class _DisplayConfig:
 		self.pkg = depgraph._pkg
 
 
+_alnum_sort_re = re.compile(r'(\d+)')
+
+
+def _alnum_sort_key(x):
+	def _convert_even_to_int(it):
+		it = iter(it)
+		try:
+			while True:
+				yield next(it)
+				yield int(next(it))
+		except StopIteration:
+			pass
+	return tuple(_convert_even_to_int(_alnum_sort_re.split(x)))
+
+
 def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	old_iuse, old_use,
 	is_new, feature_flags, reinst_flags):
@@ -233,7 +250,7 @@ def _create_use_string(conf, name, cur_iuse, iuse_forced, cur_use,
 	removed_iuse = set(old_iuse).difference(cur_iuse)
 	any_iuse = cur_iuse.union(old_iuse)
 	any_iuse = list(any_iuse)
-	any_iuse.sort()
+	any_iuse.sort(key=_alnum_sort_key)
 
 	for flag in any_iuse:
 		flag_str = None
