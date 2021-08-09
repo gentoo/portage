@@ -11,6 +11,7 @@
 # 	arm_{32,64}
 # 	hppa_{32,64}
 # 	ia_{32,64}
+# 	loong_{ilp32s,ilp32f,ilp32d,lp64s,lp64f,lp64d}
 # 	m68k_{32,64}
 # 	mips_{eabi32,eabi64,n32,n64,o32,o64}
 # 	ppc_{32,64}
@@ -37,6 +38,13 @@ from portage.util.elf.constants import (
     EF_MIPS_ABI2,
     EF_RISCV_FLOAT_ABI_DOUBLE,
     EF_RISCV_RVC,
+    EF_LOONGARCH_ABI_LP64_SOFT_FLOAT,
+    EF_LOONGARCH_ABI_LP64_SINGLE_FLOAT,
+    EF_LOONGARCH_ABI_LP64_DOUBLE_FLOAT,
+    EF_LOONGARCH_ABI_ILP32_SOFT_FLOAT,
+    EF_LOONGARCH_ABI_ILP32_SINGLE_FLOAT,
+    EF_LOONGARCH_ABI_ILP32_DOUBLE_FLOAT,
+    EF_LOONGARCH_ABI_MASK,
     ELFCLASS32,
     ELFCLASS64,
     EM_386,
@@ -46,6 +54,7 @@ from portage.util.elf.constants import (
     EM_ARM,
     EM_ALTERA_NIOS2,
     EM_IA_64,
+    EM_LOONGARCH,
     EM_MIPS,
     EM_PARISC,
     EM_PPC,
@@ -71,6 +80,7 @@ _machine_prefix_map = {
     EM_ALTERA_NIOS2: "nios2",
     EM_ARM: "arm",
     EM_IA_64: "ia64",
+    EM_LOONGARCH: "loong",
     EM_MIPS: "mips",
     EM_PARISC: "hppa",
     EM_PPC: "ppc",
@@ -84,12 +94,27 @@ _machine_prefix_map = {
     EM_X86_64: "x86",
 }
 
+_loong_abi_map = {
+    EF_LOONGARCH_ABI_LP64_SOFT_FLOAT: "lp64s",
+    EF_LOONGARCH_ABI_LP64_SINGLE_FLOAT: "lp64f",
+    EF_LOONGARCH_ABI_LP64_DOUBLE_FLOAT: "lp64d",
+    EF_LOONGARCH_ABI_ILP32_SOFT_FLOAT: "ilp32s",
+    EF_LOONGARCH_ABI_ILP32_SINGLE_FLOAT: "ilp32f",
+    EF_LOONGARCH_ABI_ILP32_DOUBLE_FLOAT: "ilp32d",
+}
+
 _mips_abi_map = {
     E_MIPS_ABI_EABI32: "eabi32",
     E_MIPS_ABI_EABI64: "eabi64",
     E_MIPS_ABI_O32: "o32",
     E_MIPS_ABI_O64: "o64",
 }
+
+
+def _compute_suffix_loong(elf_header):
+
+    loong_abi = elf_header.e_flags & EF_LOONGARCH_ABI_MASK
+    return _loong_abi_map.get(loong_abi)
 
 
 def _compute_suffix_mips(elf_header):
@@ -136,6 +161,7 @@ def _compute_suffix_riscv(elf_header):
 
 
 _specialized_funcs = {
+    "loong": _compute_suffix_loong,
     "mips": _compute_suffix_mips,
     "riscv": _compute_suffix_riscv,
 }
