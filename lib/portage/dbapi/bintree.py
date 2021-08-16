@@ -44,6 +44,7 @@ from portage import _unicode_encode
 import codecs
 import errno
 import io
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -335,6 +336,10 @@ class binarytree:
 
 		if pkgdir is None:
 			raise TypeError("pkgdir parameter is required")
+
+		__, __, diskspace = shutil.disk_usage(pkgdir)
+		if not max(0, diskspace):
+			raise OSError("PKGDIR has no remaining disk space")
 
 		if settings is None:
 			raise TypeError("settings parameter is required")

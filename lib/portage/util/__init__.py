@@ -13,9 +13,10 @@ __all__ = ['apply_permissions', 'apply_recursive_permissions',
 
 from contextlib import AbstractContextManager
 from copy import deepcopy
-import errno
-import io
 from itertools import chain, filterfalse
+import errno
+import glob
+import io
 import logging
 import re
 import shlex
@@ -23,7 +24,6 @@ import stat
 import string
 import sys
 import traceback
-import glob
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
