@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.22
+--------------
+* USE flags are now sorted with respect to numerical segments in emerge
+  output (e.g. python3_10 comes after python3_9).
+* setuptools version normalization warnings are now ignored.
+* FEATURES=installsources no longer copies irrelevant directory trees
+  with gcc-11.
+* sdist archives built using "build" now include setup.py.
+
 portage-3.0.21
 --------------
 * EAPI 8 fixups.
