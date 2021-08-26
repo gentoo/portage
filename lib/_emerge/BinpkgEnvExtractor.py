@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+from pathlib import Path
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
@@ -21,11 +22,10 @@ class BinpkgEnvExtractor(CompositeTask):
 		return os.path.exists(self._get_dest_env_path())
 
 	def _get_saved_env_path(self):
-		return os.path.join(os.path.dirname(self.settings['EBUILD']),
-			"environment.bz2")
+		return Path(self.settings['EBUILD']).parent / "environment.bz2"
 
 	def _get_dest_env_path(self):
-		return os.path.join(self.settings["T"], "environment")
+		return Path(self.settings["T"]) / "environment"
 
 	def _start(self):
 		saved_env_path = self._get_saved_env_path()
@@ -35,8 +35,8 @@ class BinpkgEnvExtractor(CompositeTask):
 			_shell_quote(dest_env_path))
 
 		logfile = None
-		if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
-			logfile = self.settings.get("PORTAGE_LOG_FILE")
+		if self.settings.get("PORTAGE_BACKGROUND") != "subprocess" and 'PORTAGE_LOG_FILE' in self.settings:
+			logfile = Path(self.settings["PORTAGE_LOG_FILE"])
 
 		extractor_proc = SpawnProcess(
 			args=[BASH_BINARY, "-c", shell_cmd],

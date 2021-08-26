@@ -29,7 +29,7 @@ class hashed_path:
 			# thus use the defacto python compatibility work around;
 			# access via index, which guarantees you get the raw int.
 			try:
-				self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
+				self.mtime = obj = self.location.stat()[stat.ST_MTIME]
 			except OSError as e:
 				if e.errno in (errno.ENOENT, errno.ESTALE):
 					raise FileNotFound(self.location)
@@ -68,7 +68,7 @@ class cache:
 		if porttree_root:
 			self.porttree_root = porttree_root
 			self.porttrees = (normalize_path(self.porttree_root),)
-			self._master_eclass_root = os.path.join(self.porttrees[0], "eclass")
+			self._master_eclass_root = self.porttrees[0] / "eclass"
 			self.update_eclasses()
 		else:
 			self.porttree_root = None
@@ -105,28 +105,21 @@ class cache:
 		self.eclasses = {}
 		self._eclass_locations = {}
 		master_eclasses = {}
-		eclass_len = len(".eclass")
-		ignored_listdir_errnos = (errno.ENOENT, errno.ENOTDIR)
-		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
-			try:
-				eclass_filenames = os.listdir(x)
-			except OSError as e:
-				if e.errno in ignored_listdir_errnos:
-					del e
-					continue
-				elif e.errno == PermissionDenied.errno:
-					raise PermissionDenied(x)
-				raise
+		for x in [normalize_path(y / "eclass") for y in self.porttrees]:
+			if x.is_dir():
+				eclass_filenames = x.iterdir()
+			else:
+				continue
 			for y in eclass_filenames:
-				if not y.endswith(".eclass"):
+				if not y.suffix == ".eclass":
 					continue
-				obj = hashed_path(os.path.join(x, y))
+				obj = hashed_path(y)
 				obj.eclass_dir = x
 				try:
 					mtime = obj.mtime
 				except FileNotFound:
 					continue
-				ys = y[:-eclass_len]
+				ys = y.stem
 				if x == self._master_eclass_root:
 					master_eclasses[ys] = mtime
 					self.eclasses[ys] = obj
@@ -175,6 +168,6 @@ class cache:
 	@property
 	def eclass_locations_string(self):
 		if self._eclass_locations_str is None:
-			self._eclass_locations_str = " ".join(_shell_quote(x)
+			self._eclass_locations_str = " ".join(_shell_quote(str(x))
 				for x in reversed(self.porttrees))
 		return self._eclass_locations_str

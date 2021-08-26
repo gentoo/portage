@@ -20,6 +20,7 @@ from portage.util import writemsg, writemsg_level
 from portage.util.digraph import digraph
 from portage.util.SlotObject import SlotObject
 from portage.versions import vercmp
+from pathlib import Path
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
@@ -753,7 +754,7 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	Takes a depend string, parses it, and selects atoms.
 	The myroot parameter is unused (use mysettings['EROOT'] instead).
 	"""
-	myroot = mysettings['EROOT']
+	myroot = Path(mysettings['EROOT'])
 	edebug = mysettings.get("PORTAGE_DEBUG", None) == "1"
 	#check_config_instance(mysettings)
 	if trees is None:

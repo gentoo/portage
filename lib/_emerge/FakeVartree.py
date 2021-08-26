@@ -27,7 +27,7 @@ class FakeVardbGetPath:
 		self.settings = vardb.settings
 
 	def __call__(self, cpv, filename=None):
-		path = os.path.join(self.settings['EROOT'], VDB_PATH, cpv)
+		path = self.settings['EROOT'] / VDB_PATH / cpv
 		if filename is not None:
 			path =os.path.join(path, filename)
 		return path
@@ -286,7 +286,7 @@ def grab_global_updates(portdb):
 
 	for repo_name in portdb.getRepositories():
 		repo = portdb.getRepositoryPath(repo_name)
-		updpath = os.path.join(repo, "profiles", "updates")
+		updpath = repo / "profiles" / "updates"
 		if not os.path.isdir(updpath):
 			continue
 

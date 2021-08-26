@@ -7,6 +7,7 @@ import socket
 import struct
 import tempfile
 import time
+from pathlib import Path
 
 import portage
 from portage.tests import TestCase
@@ -137,7 +138,7 @@ def socks5_http_get_ipv4(proxy, host, port, path):
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 	f = _socket_file_wrapper(s, s.makefile('rb', 1024))
 	try:
-		s.connect(proxy)
+		s.connect(str(proxy))
 		s.send(struct.pack('!BBB', 0x05, 0x01, 0x00))
 		vers, method = struct.unpack('!BB', s.recv(2))
 		s.send(struct.pack('!BBBB', 0x05, 0x01, 0x00, 0x01))
@@ -180,7 +181,7 @@ class Socks5ServerTestCase(TestCase):
 			with AsyncHTTPServer(host, {path: content}, loop) as server:
 
 				settings = {
-					'PORTAGE_TMPDIR': tempdir,
+					'PORTAGE_TMPDIR': Path(tempdir),
 					'PORTAGE_BIN_PATH': PORTAGE_BIN_PATH,
 				}
 

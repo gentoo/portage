@@ -6,11 +6,13 @@ import grp
 import os
 import platform
 import pwd
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.output:colorize',
 	'portage.util:writemsg',
+	'portage.util:unroot',
 	'portage.util.path:first_existing',
 	'subprocess'
 )
@@ -47,7 +49,7 @@ def _target_eprefix():
 	@rtype: str
 	@return: the target EPREFIX
 	"""
-	eprefix = os.environ.get("EPREFIX", portage.const.EPREFIX)
+	eprefix = Path(os.environ.get("EPREFIX", portage.const.EPREFIX))
 	if eprefix:
 		eprefix = portage.util.normalize_path(eprefix)
 	return eprefix
@@ -57,15 +59,14 @@ def _target_root():
 	Calculate the target ROOT. The result is equivalent to
 	portage.settings["ROOT"], but the calculation
 	is done without the expense of instantiating portage.settings.
-	@rtype: str
-	@return: the target ROOT (always ends with a slash)
+	@rtype: Path
+	@return: the target ROOT
 	"""
-	root = os.environ.get("ROOT")
-	if not root:
-		# Handle either empty or unset ROOT.
-		root = os.sep
-	root = portage.util.normalize_path(root)
-	return root.rstrip(os.sep) + os.sep
+	if "ROOT" in os.environ:
+		root = Path(os.environ["ROOT"] or os.sep)
+	else:
+		root = Path(os.sep)
+	return portage.util.normalize_path(root)
 
 def portage_group_warning():
 	warn_prefix = colorize("BAD", "*** WARNING ***  ")
@@ -127,10 +128,9 @@ def _get_global(k):
 		else:
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
-			eroot_or_parent = first_existing(os.path.join(
-				_target_root(), _target_eprefix().lstrip(os.sep)))
+			eroot_or_parent = first_existing(_target_root() / unroot(_target_eprefix()))
 			try:
-				eroot_st = os.stat(eroot_or_parent)
+				eroot_st = eroot_or_parent.stat()
 			except OSError:
 				pass
 			else:
@@ -229,8 +229,7 @@ def _get_global(k):
 		else:
 			# The config class has equivalent code, but we also need to
 			# do it here if _disable_legacy_globals() has been called.
-			eroot_or_parent = first_existing(os.path.join(
-				_target_root(), _target_eprefix().lstrip(os.sep)))
+			eroot_or_parent = first_existing(_target_root() / unroot(_target_eprefix()))
 			try:
 				eroot_st = os.stat(eroot_or_parent)
 			except OSError:

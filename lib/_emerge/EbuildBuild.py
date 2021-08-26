@@ -92,8 +92,7 @@ class EbuildBuild(CompositeTask):
 			prefetcher.poll() is None:
 
 			if not self.background:
-				fetch_log = os.path.join(
-					_emerge.emergelog._emerge_log_dir, 'emerge-fetch.log')
+				fetch_log = _emerge.emergelog._emerge_log_dir / 'emerge-fetch.log'
 				msg = (
 					'Fetching files in the background.',
 					'To view fetch progress, run in another terminal:',
@@ -115,7 +114,7 @@ class EbuildBuild(CompositeTask):
 		settings = self.settings
 		if 'strict' in settings.features and \
 			'digest' not in settings.features:
-			settings['O'] = os.path.dirname(self._ebuild_path)
+			settings['O'] = str(self._ebuild_path.parent)
 			quiet_setting = settings.get('PORTAGE_QUIET')
 			settings['PORTAGE_QUIET'] = '1'
 			try:

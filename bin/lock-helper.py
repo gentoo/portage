@@ -4,6 +4,7 @@
 
 import os
 import sys
+from pathlib import Path
 sys.path.insert(0, os.environ['PORTAGE_PYM_PATH'])
 import portage
 portage._internal_caller = True
@@ -18,7 +19,7 @@ def main(args):
 	# Make locks quiet since unintended locking messages displayed on
 	# stdout would corrupt the intended output of this program.
 	portage.locks._quiet = True
-	lock_obj = portage.locks.lockfile(args[0], wantnewlockfile=True)
+	lock_obj = portage.locks.lockfile(Path(args[0]), wantnewlockfile=True)
 	sys.stdout.write('\0')
 	sys.stdout.flush()
 	sys.stdin.read(1)

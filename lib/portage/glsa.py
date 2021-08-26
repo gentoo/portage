@@ -7,6 +7,8 @@ import portage
 import re
 import sys
 import xml.dom.minidom
+from pathlib import Path
+from typing import List
 
 from functools import reduce
 
@@ -39,7 +41,7 @@ def get_applied_glsas(settings):
 	@rtype:		list
 	@return:	list of glsa IDs
 	"""
-	return grabfile(os.path.join(settings["EROOT"], PRIVATE_PATH, "glsa_injected"))
+	return grabfile(settings["EROOT"] / PRIVATE_PATH / "glsa_injected")
 
 
 # TODO: use the textwrap module instead
@@ -89,7 +91,7 @@ def wrap(text, width, caption=""):
 	rValue = rValue.replace(SPACE_ESCAPE, " ")
 	return rValue
 
-def get_glsa_list(myconfig):
+def get_glsa_list(myconfig) -> List[str]:
 	"""
 	Returns a list of all available GLSAs in the given repository
 	by comparing the filelist there with the pattern described in
@@ -104,20 +106,20 @@ def get_glsa_list(myconfig):
 	rValue = []
 
 	if "GLSA_DIR" in myconfig:
-		repository = myconfig["GLSA_DIR"]
+		raise Exception("Doesn't get here!")
+		repository = Path(myconfig["GLSA_DIR"])
 	else:
-		repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
+		repository = Path(myconfig["PORTDIR"], "metadata", "glsa")
 
 	if not os.access(repository, os.R_OK):
 		return []
-	dirlist = os.listdir(repository)
 	prefix = "glsa-"
 	suffix = ".xml"
 
-	for f in dirlist:
+	for f in repository.iterdir():
 		try:
-			if f[:len(prefix)] == prefix and f[-1*len(suffix):] == suffix:
-				rValue.append(f[len(prefix):-1*len(suffix)])
+			if f.name.startswith(prefix) and f.suffix == suffix:
+				rValue.append(f.with_suffix('').name[len(prefix):])
 		except IndexError:
 			pass
 	return rValue
@@ -439,7 +441,7 @@ class Glsa:
 	This class is a wrapper for the XML data and provides methods to access
 	and display the contained data.
 	"""
-	def __init__(self, myid, myconfig, vardbapi, portdbapi):
+	def __init__(self, myid: str, myconfig, vardbapi, portdbapi):
 		"""
 		Simple constructor to set the ID, store the config and gets the
 		XML data by calling C{self.read()}.
@@ -455,8 +457,6 @@ class Glsa:
 		@type	portdbapi: portage.dbapi.porttree.portdbapi
 		@param	portdbapi: ebuild repository
 		"""
-		myid = _unicode_decode(myid,
-			encoding=_encodings['content'], errors='strict')
 		if re.match(r'\d{6}-\d{2}', myid):
 			self.type = "id"
 		elif os.path.exists(myid):
@@ -478,13 +478,14 @@ class Glsa:
 		@return:	None
 		"""
 		if "GLSA_DIR" in self.config:
-			repository = "file://" + self.config["GLSA_DIR"]+"/"
+			raise Exception("marco!")
+			repository = self.config["GLSA_DIR"]
 		else:
-			repository = "file://" + self.config["PORTDIR"] + "/metadata/glsa/"
+			repository = Path(self.config["PORTDIR"], "metadata/glsa/")
 		if self.type == "file":
 			myurl = "file://"+self.nr
 		else:
-			myurl = repository + "glsa-%s.xml" % str(self.nr)
+			myurl = (repository / ("glsa-%s.xml" % str(self.nr))).as_uri()
 
 		f = urllib_request_urlopen(myurl)
 		try:

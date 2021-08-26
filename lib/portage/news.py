@@ -9,6 +9,7 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 
 from collections import OrderedDict
 
+from pathlib import Path
 import fnmatch
 import io
 import logging
@@ -19,6 +20,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.const import NEWS_LIB_PATH
+from portage import is_relative_to
 from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
@@ -63,26 +65,26 @@ class NewsManager:
 		portdir = portdb.repositories.mainRepoLocation()
 		profiles_base = None
 		if portdir is not None:
-			profiles_base = os.path.join(portdir, 'profiles') + os.path.sep
+			profiles_base = portdir / 'profiles'
 		profile_path = None
 		if profiles_base is not None and portdb.settings.profile_path:
 			profile_path = normalize_path(
-				os.path.realpath(portdb.settings.profile_path))
-			if profile_path.startswith(profiles_base):
-				profile_path = profile_path[len(profiles_base):]
+				portdb.settings.profile_path.resolve())
+			if is_relative_to(profile_path, profiles_base):
+				profile_path = profile_path.relative_to(profiles_base)
 		self._profile_path = profile_path
 
 	def _unread_filename(self, repoid):
-		return os.path.join(self.unread_path, 'news-%s.unread' % repoid)
+		return self.unread_path / ('news-%s.unread' % repoid)
 
 	def _skip_filename(self, repoid):
-		return os.path.join(self.unread_path, 'news-%s.skip' % repoid)
+		return self.unread_path / ('news-%s.skip' % repoid)
 
 	def _news_dir(self, repoid):
 		repo_path = self.portdb.getRepositoryPath(repoid)
 		if repo_path is None:
 			raise AssertionError(_("Invalid repoID: %s") % repoid)
-		return os.path.join(repo_path, self.news_path)
+		return repo_path / self.news_path
 
 	def updateItems(self, repoid):
 		"""
@@ -103,12 +105,8 @@ class NewsManager:
 			return
 
 		news_dir = self._news_dir(repoid)
-		try:
-			news = _os.listdir(_unicode_encode(news_dir,
-				encoding=_encodings['fs'], errors='strict'))
-		except OSError:
+		if not news_dir.exists():
 			return
-
 		skip_filename = self._skip_filename(repoid)
 		unread_filename = self._unread_filename(repoid)
 		unread_lock = lockfile(unread_filename, wantnewlockfile=1)
@@ -121,22 +119,11 @@ class NewsManager:
 			except PermissionDenied:
 				return
 
-			for itemid in news:
-				try:
-					itemid = _unicode_decode(itemid,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					itemid = _unicode_decode(itemid,
-						encoding=_encodings['fs'], errors='replace')
-					writemsg_level(
-						_("!!! Invalid encoding in news item name: '%s'\n") % \
-						itemid, level=logging.ERROR, noiselevel=-1)
-					continue
-
+			for itemdir in news_dir.iterdir():
+				itemid = itemdir.name
 				if itemid in skip:
 					continue
-				filename = os.path.join(news_dir, itemid,
-					itemid + "." + self.language_id + ".txt")
+				filename = (itemdir / itemid).with_suffix(f".{self.language_id}.txt")
 				if not os.path.isfile(filename):
 					continue
 				item = NewsItem(filename, itemid)
@@ -208,7 +195,8 @@ class NewsItem:
 	Creation of a news item involves passing in the path to the particular news item.
 	"""
 
-	def __init__(self, path, name):
+	path: Path
+	def __init__(self, path: Path, name):
 		"""
 		For a given news item we only want if it path is a file.
 		"""
@@ -258,8 +246,7 @@ class NewsItem:
 		return self._valid
 
 	def parse(self):
-		f = io.open(_unicode_encode(self.path,
-			encoding=_encodings['fs'], errors='strict'),
+		f = io.open(self.path,
 			mode='r', encoding=_encodings['content'], errors='replace')
 		lines = f.readlines()
 		f.close()
@@ -403,8 +390,8 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
 	@return: dictionary mapping repos to integer counts of unread news items
 	"""
 
-	NEWS_PATH = os.path.join("metadata", "news")
-	UNREAD_PATH = os.path.join(vardb.settings['EROOT'], NEWS_LIB_PATH, "news")
+	NEWS_PATH = Path("metadata") / "news"
+	UNREAD_PATH = vardb.settings['EROOT'] / NEWS_LIB_PATH / "news"
 	news_counts = OrderedDict()
 	if repos is None:
 		repos = portdb.getRepositories()

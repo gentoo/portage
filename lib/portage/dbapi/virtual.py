@@ -59,6 +59,7 @@ class fakedbapi(dbapi):
 		# Fallback for interfaces such as aux_get where API consumers
 		# may pass in a plain string.
 		latest = None
+		# breakpoint()
 		for pkg in self.cp_list(cpv_getkey(cpv)):
 			if pkg == cpv and (
 				latest is None or

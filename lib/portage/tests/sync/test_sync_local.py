@@ -5,9 +5,11 @@ import datetime
 import subprocess
 import sys
 import textwrap
+import os
+import shutil
 
 import portage
-from portage import os, shutil, _shell_quote
+from portage import _shell_quote
 from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, TIMESTAMP_FORMAT
 from portage.process import find_binary
@@ -114,14 +116,14 @@ class SyncLocalTestCase(TestCase):
 				"repo_extra_keys": "" if xtra_keys is None else xtra_keys}
 
 		def alter_ebuild():
-			with open(os.path.join(repo.location + "_sync",
+			with open(os.path.join(str(repo.location) + "_sync",
 				"dev-libs", "A", "A-0.ebuild"), "a") as f:
 				f.write("\n")
 			bump_timestamp()
 
 		def bump_timestamp():
 			bump_timestamp.timestamp += datetime.timedelta(seconds=1)
-			with open(os.path.join(repo.location + '_sync', 'metadata', 'timestamp.chk'), 'w') as f:
+			with open(os.path.join(str(repo.location) + '_sync', 'metadata', 'timestamp.chk'), 'w') as f:
 				f.write(bump_timestamp.timestamp.strftime('%s\n' % TIMESTAMP_FORMAT,))
 
 		bump_timestamp.timestamp = datetime.datetime.utcnow()
@@ -149,18 +151,18 @@ class SyncLocalTestCase(TestCase):
 
 		rename_repo = (
 			(homedir, lambda: os.rename(repo.location,
-				repo.location + "_sync")),
+				str(repo.location) + "_sync")),
 		)
 
 		rsync_opts_repos = (
 			(homedir, alter_ebuild),
 			(homedir, lambda: repos_set_conf("rsync", None,
 				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
-				_shell_quote(repo.location + "_back"))),
+				_shell_quote(str(repo.location) + "_back"))),
 			(homedir, cmds['emerge'] + ("--sync",)),
 			(homedir, lambda: self.assertTrue(os.path.exists(
-				repo.location + "_back"))),
-			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+				str(repo.location) + "_back"))),
+			(homedir, lambda: shutil.rmtree(str(repo.location) + "_back")),
 			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
@@ -168,10 +170,10 @@ class SyncLocalTestCase(TestCase):
 			(homedir, alter_ebuild),
 			(homedir, lambda: repos_set_conf("rsync",
 					"sync-rsync-extra-opts = --backup --backup-dir=%s" %
-					_shell_quote(repo.location+"_back"))),
+					_shell_quote(str(repo.location)+"_back"))),
 			(homedir, cmds['emerge'] + ("--sync",)),
-			(homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
-			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+			(homedir, lambda: self.assertTrue(os.path.exists(str(repo.location) + "_back"))),
+			(homedir, lambda: shutil.rmtree(str(repo.location) + "_back")),
 			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
@@ -179,12 +181,12 @@ class SyncLocalTestCase(TestCase):
 			(homedir, alter_ebuild),
 			(homedir, lambda: repos_set_conf("rsync",
 				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
-				_shell_quote(repo.location + "_back_nowhere"),
+				_shell_quote(str(repo.location) + "_back_nowhere"),
 				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
-				_shell_quote(repo.location + "_back"))),
+				_shell_quote(str(repo.location) + "_back"))),
 			(homedir, cmds['emerge'] + ("--sync",)),
-			(homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
-			(homedir, lambda: shutil.rmtree(repo.location + "_back")),
+			(homedir, lambda: self.assertTrue(os.path.exists(str(repo.location) + "_back"))),
+			(homedir, lambda: shutil.rmtree(str(repo.location) + "_back")),
 			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
@@ -192,10 +194,10 @@ class SyncLocalTestCase(TestCase):
 			(homedir, alter_ebuild),
 			(homedir, lambda: repos_set_conf("rsync",
 				"sync-rsync-extra-opts = --backup --backup-dir=%s" %
-				_shell_quote(repo.location + "_back_nowhere"),
+				_shell_quote(str(repo.location) + "_back_nowhere"),
 				"sync-rsync-extra-opts = ")),
 			(homedir, cmds['emerge'] + ("--sync",)),
-			(homedir, lambda: self.assertFalse(os.path.exists(repo.location + "_back"))),
+			(homedir, lambda: self.assertFalse(os.path.exists(str(repo.location) + "_back"))),
 			(homedir, lambda: repos_set_conf("rsync")),
 		)
 
@@ -209,26 +211,26 @@ class SyncLocalTestCase(TestCase):
 		)
 
 		revert_rcu_layout = (
-			(homedir, lambda: os.rename(repo.user_location, repo.user_location + '.bak')),
-			(homedir, lambda: os.rename(os.path.realpath(repo.user_location + '.bak'), repo.user_location)),
-			(homedir, lambda: os.unlink(repo.user_location + '.bak')),
-			(homedir, lambda: shutil.rmtree(repo.user_location + '_rcu_storedir')),
+			(homedir, lambda: os.rename(repo.user_location, str(repo.user_location) + '.bak')),
+			(homedir, lambda: os.rename(os.path.realpath(str(repo.user_location) + '.bak'), repo.user_location)),
+			(homedir, lambda: os.unlink(str(repo.user_location) + '.bak')),
+			(homedir, lambda: shutil.rmtree(str(repo.user_location) + '_rcu_storedir')),
 		)
 
 		upstream_git_commit = (
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				git_cmd + ('commit', '--allow-empty', '-m', 'test empty commit'),
 			),
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				git_cmd + ('commit', '--allow-empty', '-m', 'test empty commit 2'),
 			),
 		)
 
 		delete_sync_repo = (
 			(homedir, lambda: shutil.rmtree(
-				repo.location + "_sync")),
+				str(repo.location) + "_sync")),
 		)
 
 		git_repo_create = (
@@ -280,23 +282,23 @@ class SyncLocalTestCase(TestCase):
 
 		upstream_hg_commit = (
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				lambda: append_newline(
-					os.path.join(repo.location + "_sync", "metadata/layout.conf")
+					os.path.join(str(repo.location) + "_sync", "metadata/layout.conf")
 				),
 			),
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				hg_cmd + ("commit", "metadata/layout.conf", "-m", "test empty commit"),
 			),
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				lambda: append_newline(
-					os.path.join(repo.location + "_sync", "metadata/layout.conf")
+					os.path.join(str(repo.location) + "_sync", "metadata/layout.conf")
 				),
 			),
 			(
-				repo.location + "_sync",
+				str(repo.location) + "_sync",
 				hg_cmd
 				+ ("commit", "metadata/layout.conf", "-m", "test empty commit 2"),
 			),
@@ -327,7 +329,7 @@ class SyncLocalTestCase(TestCase):
 				pythonpath = ""
 			else:
 				pythonpath = ":" + pythonpath
-			pythonpath = PORTAGE_PYM_PATH + pythonpath
+			pythonpath = str(PORTAGE_PYM_PATH) + pythonpath
 
 		env = {
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
@@ -392,7 +394,7 @@ class SyncLocalTestCase(TestCase):
 					proc.stdout.close()
 					if proc.returncode != os.EX_OK:
 						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+							sys.stderr.write(line.decode())
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"%s failed in %s" % (cmd, cwd,))

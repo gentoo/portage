@@ -24,7 +24,7 @@ def MockSubprocessPopen(stdin):
 	"""
 	# pylint: disable=protected-access
 	proc = orig_popen(['cat'], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-	proc.stdin.write(portage._unicode_encode(stdin, portage._encodings['stdio']))
+	proc.stdin.write(stdin.encode(portage._encodings['stdio']))
 	return proc
 
 

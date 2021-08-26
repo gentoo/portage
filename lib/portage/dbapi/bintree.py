@@ -31,6 +31,7 @@ from portage.exception import AlarmSignal, InvalidPackageName, \
 	ParseError, PortageException
 from portage.localization import _
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util import append_suffix
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
 from portage.util.futures.compat_coroutine import coroutine
@@ -41,6 +42,7 @@ from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 
+import os as _os
 import codecs
 import errno
 import io
@@ -54,6 +56,8 @@ import warnings
 from gzip import GzipFile
 from itertools import chain
 from urllib.parse import urlparse
+from pathlib import Path
+from typing import Optional
 
 
 class UseCachedCopyOfRemoteIndex(Exception):
@@ -100,7 +104,7 @@ class bindbapi(fakedbapi):
 		@return: True if PKGDIR is writable or can be created,
 			False otherwise
 		"""
-		return os.access(first_existing(self.bintree.pkgdir), os.W_OK)
+		return _os.access(first_existing(self.bintree.pkgdir), os.W_OK)
 
 	def match(self, *pargs, **kwargs):
 		if self.bintree and not self.bintree.populated:
@@ -147,9 +151,9 @@ class bindbapi(fakedbapi):
 				tbz2_path = self.bintree._pkg_paths[instance_key]
 			except KeyError:
 				raise KeyError(mycpv)
-			tbz2_path = os.path.join(self.bintree.pkgdir, tbz2_path)
+			tbz2_path = self.bintree.pkgdir / tbz2_path
 			try:
-				st = os.lstat(tbz2_path)
+				st = tbz2_path.lstat()
 			except OSError:
 				raise KeyError(mycpv)
 			metadata_bytes = portage.xpak.tbz2(tbz2_path).get_data()
@@ -158,11 +162,11 @@ class bindbapi(fakedbapi):
 					return str(st[stat.ST_MTIME])
 				if k == "SIZE":
 					return str(st.st_size)
-				v = metadata_bytes.get(_unicode_encode(k,
+				v = metadata_bytes.get(k.encode(
 					encoding=_encodings['repo.content'],
 					errors='backslashreplace'))
 				if v is not None:
-					v = _unicode_decode(v,
+					v = v.decode(
 						encoding=_encodings['repo.content'], errors='replace')
 				return v
 		else:
@@ -198,15 +202,15 @@ class bindbapi(fakedbapi):
 				build_id = cpv.build_id
 
 		tbz2path = self.bintree.getname(cpv)
-		if not os.path.exists(tbz2path):
+		if not tbz2path.exists():
 			raise KeyError(cpv)
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 
 		for k, v in values.items():
-			k = _unicode_encode(k,
+			k = bytes(k,
 				encoding=_encodings['repo.content'], errors='backslashreplace')
-			v = _unicode_encode(v,
+			v = bytes(v,
 				encoding=_encodings['repo.content'], errors='backslashreplace')
 			mydata[k] = v
 
@@ -323,7 +327,7 @@ class bindbapi(fakedbapi):
 				raise portage.exception.InvalidSignature(
 					"SIZE: %s" % metadata["SIZE"])
 			else:
-				filesdict[os.path.basename(self.bintree.getname(pkg))] = size
+				filesdict[self.bintree.getname(pkg)] = size
 
 		return filesdict
 
@@ -374,11 +378,10 @@ class binarytree:
 			self.settings = settings
 			self._pkg_paths = {}
 			self._populating = False
-			self._all_directory = os.path.isdir(
-				os.path.join(self.pkgdir, "All"))
+			self._all_directory = _os.path.isdir(self.pkgdir / "All")
 			self._pkgindex_version = 0
 			self._pkgindex_hashes = ["MD5","SHA1"]
-			self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
+			self._pkgindex_file = self.pkgdir / "Packages"
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "SIZE"])
 			self._pkgindex_aux_keys = \
@@ -513,24 +516,22 @@ class binarytree:
 			mydata = mytbz2.get_data()
 			updated_items = update_dbentries([mylist], mydata, parent=mycpv)
 			mydata.update(updated_items)
-			mydata[b'PF'] = \
-				_unicode_encode(mynewpkg + "\n",
+			mydata[b'PF'] = (mynewpkg + "\n").encode(
 				encoding=_encodings['repo.content'])
-			mydata[b'CATEGORY'] = \
-				_unicode_encode(mynewcat + "\n",
+			mydata[b'CATEGORY'] = (mynewcat + "\n").encode(
 				encoding=_encodings['repo.content'])
 			if mynewpkg != myoldpkg:
-				ebuild_data = mydata.pop(_unicode_encode(myoldpkg + '.ebuild',
+				ebuild_data = mydata.pop((myoldpkg + '.ebuild').encode(
 					encoding=_encodings['repo.content']), None)
 				if ebuild_data is not None:
-					mydata[_unicode_encode(mynewpkg + '.ebuild',
+					mydata[(mynewpkg + '.ebuild').encode(
 						encoding=_encodings['repo.content'])] = ebuild_data
 
 			metadata = self.dbapi._aux_cache_slot_dict()
 			for k in self.dbapi._aux_cache_keys:
-				v = mydata.get(_unicode_encode(k))
+				v = mydata.get(k.encode())
 				if v is not None:
-					v = _unicode_decode(v)
+					v = v.decode()
 					metadata[k] = " ".join(v.split())
 
 			# Create a copy of the old version of the package and
@@ -538,8 +539,8 @@ class binarytree:
 			# assuming that it will be deleted by eclean-pkg when its
 			# time comes.
 			mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-			update_path = self.getname(mynewcpv, allocate_new=True) + ".partial"
-			self._ensure_dir(os.path.dirname(update_path))
+			update_path = append_suffix(self.getname(mynewcpv, allocate_new=True), ".partial")
+			self._ensure_dir(update_path.parent)
 			update_path_lock = None
 			try:
 				update_path_lock = lockfile(update_path, wantnewlockfile=True)
@@ -662,7 +663,7 @@ class binarytree:
 
 		self.populated = True
 
-	def _populate_local(self, reindex=True):
+	def _populate_local(self, reindex=True) -> Optional[portage.getbinpkg.PackageIndex]:
 		"""
 		Populates the binarytree with local package metadata.
 
@@ -682,9 +683,10 @@ class binarytree:
 			self._pkg_paths = pkg_paths
 			dir_files = {}
 			if reindex:
-				for parent, dir_names, file_names in os.walk(self.pkgdir):
-					relative_parent = parent[len(self.pkgdir)+1:]
-					dir_files[relative_parent] = file_names
+				for file in self.pkgdir.rglob('*'):
+					if file.is_file():
+						relative_parent = file.parent.relative_to(self.pkgdir)
+						dir_files.setdefault(relative_parent, []).append(file)
 
 			pkgindex = self._load_pkgindex()
 			if not self._pkgindex_version_supported(pkgindex):
@@ -696,12 +698,12 @@ class binarytree:
 					settings=self.settings, db=self.dbapi)
 				d["CPV"] = cpv
 				metadata[_instance_key(cpv)] = d
-				path = d.get("PATH")
+				path = Path(d["PATH"]) if d.get("PATH") else None
 				if not path:
-					path = cpv + ".tbz2"
+					path = Path(cpv + ".tbz2")
 
 				if reindex:
-					basename = os.path.basename(path)
+					basename = path.name
 					basename_index.setdefault(basename, []).append(d)
 				else:
 					instance_key = _instance_key(cpv)
@@ -710,21 +712,9 @@ class binarytree:
 
 			update_pkgindex = False
 			for mydir, file_names in dir_files.items():
-				try:
-					mydir = _unicode_decode(mydir,
-						encoding=_encodings["fs"], errors="strict")
-				except UnicodeDecodeError:
-					continue
-				for myfile in file_names:
-					try:
-						myfile = _unicode_decode(myfile,
-							encoding=_encodings["fs"], errors="strict")
-					except UnicodeDecodeError:
+				for full_path in file_names:
+					if full_path.suffix not in SUPPORTED_XPAK_EXTENSIONS:
 						continue
-					if not myfile.endswith(SUPPORTED_XPAK_EXTENSIONS):
-						continue
-					mypath = os.path.join(mydir, myfile)
-					full_path = os.path.join(self.pkgdir, mypath)
 					s = os.lstat(full_path)
 
 					if not stat.S_ISREG(s.st_mode):
@@ -732,7 +722,8 @@ class binarytree:
 
 					# Validate data from the package index and try to avoid
 					# reading the xpak if possible.
-					possibilities = basename_index.get(myfile)
+					# if basename_index: breakpoint()
+					possibilities = basename_index.get(full_path)
 					if possibilities:
 						match = None
 						for d in possibilities:
@@ -781,7 +772,7 @@ class binarytree:
 					mycat = pkg_metadata.get("CATEGORY", "")
 					mypf = pkg_metadata.get("PF", "")
 					slot = pkg_metadata.get("SLOT", "")
-					mypkg = myfile[:-5]
+					mypkg = full_path.stem
 					if not mycat or not mypf or not slot:
 						#old-style or corrupt package
 						writemsg(_("\n!!! Invalid binary package: '%s'\n") % full_path,
@@ -808,17 +799,17 @@ class binarytree:
 					multi_instance = False
 					invalid_name = False
 					build_id = None
-					if myfile.endswith(".xpak"):
+					if full_path.suffix == ".xpak":
 						multi_instance = True
-						build_id = self._parse_build_id(myfile)
+						build_id = self._parse_build_id(full_path.name)
 						if build_id < 1:
 							invalid_name = True
-						elif myfile != "%s-%s.xpak" % (
+						elif full_path.name != "%s-%s.xpak" % (
 							mypf, build_id):
 							invalid_name = True
 						else:
 							mypkg = mypkg[:-len(str(build_id))-1]
-					elif myfile != mypf + ".tbz2":
+					elif full_path.stem != mypf or full_path.suffix != ".tbz2":
 						invalid_name = True
 
 					if invalid_name:
@@ -842,9 +833,9 @@ class binarytree:
 						name_split = catpkgsplit("%s/%s" %
 							(mycat, mypf))
 						if (name_split is None or
-							tuple(catsplit(mydir)) != name_split[:2]):
+							tuple(catsplit(str(mydir))) != name_split[:2]):
 							continue
-					elif mycat != mydir and mydir != "All":
+					elif mycat != str(mydir) and str(mydir) != "All":
 						continue
 					if mypkg != mypf.strip():
 						continue
@@ -867,7 +858,7 @@ class binarytree:
 					mycpv = _pkg_str(mycpv,
 						metadata=self.dbapi._aux_cache_slot_dict(pkg_metadata),
 						db=self.dbapi)
-					pkg_paths[_instance_key(mycpv)] = mypath
+					pkg_paths[_instance_key(mycpv)] = full_path
 					self.dbapi.cpv_inject(mycpv)
 					update_pkgindex = True
 					d = metadata.get(_instance_key(mycpv),
@@ -900,8 +891,8 @@ class binarytree:
 						del pkg_paths[_instance_key(mycpv)]
 
 					# record location if it's non-default
-					if mypath != mycpv + ".tbz2":
-						d["PATH"] = mypath
+					if full_path.stem != mypkg or full_path.parent.name != mycat or full_path.suffix != ".tbz2":
+						d["PATH"] = full_path
 					else:
 						d.pop("PATH", None)
 					metadata[_instance_key(mycpv)] = d
@@ -1266,11 +1257,11 @@ class binarytree:
 				except OSError:
 					samefile = False
 				if not samefile:
-					self._ensure_dir(os.path.dirname(new_filename))
+					self._ensure_dir(new_filename.parent)
 					_movefile(filename, new_filename, mysettings=self.settings)
 				full_path = new_filename
 
-			basename = os.path.basename(full_path)
+			basename = full_path.name
 			pf = catsplit(cpv)[1]
 			if (build_id is None and not fetched and
 				basename.endswith(".xpak")):
@@ -1285,8 +1276,7 @@ class binarytree:
 					settings=self.settings, db=self.dbapi)
 				binpkg = portage.xpak.tbz2(full_path)
 				binary_data = binpkg.get_data()
-				binary_data[b"BUILD_ID"] = _unicode_encode(
-					metadata["BUILD_ID"])
+				binary_data[b"BUILD_ID"] = metadata["BUILD_ID"].encode()
 				binpkg.recompose_mem(portage.xpak.xpak_mem(binary_data))
 
 			self._file_permissions(full_path)
@@ -1336,18 +1326,18 @@ class binarytree:
 			elif k == "SIZE":
 				metadata[k] = str(st.st_size)
 			else:
-				v = binary_metadata.get(_unicode_encode(k))
+				v = binary_metadata.get(k.encode())
 				if v is None:
 					if k == "EAPI":
 						metadata[k] = "0"
 					else:
 						metadata[k] = ""
 				else:
-					v = _unicode_decode(v)
+					v = v.decode()
 					metadata[k] = " ".join(v.split())
 		return metadata
 
-	def _inject_file(self, pkgindex, cpv, filename):
+	def _inject_file(self, pkgindex, cpv, filename: Path):
 		"""
 		Add a package to internal data structures, and add an
 		entry to the given pkgindex.
@@ -1370,7 +1360,7 @@ class binarytree:
 			self._remotepkgs.pop(instance_key, None)
 
 		self.dbapi.cpv_inject(cpv)
-		self._pkg_paths[instance_key] = filename[len(self.pkgdir)+1:]
+		self._pkg_paths[instance_key] = filename.relative_to(self.pkgdir)
 		d = self._pkgindex_entry(cpv)
 
 		# If found, remove package(s) with duplicate path.
@@ -1430,9 +1420,9 @@ class binarytree:
 		d["_mtime_"] = str(st[stat.ST_MTIME])
 		d["SIZE"] = str(st.st_size)
 
-		rel_path = pkg_path[len(self.pkgdir)+1:]
+		rel_path = pkg_path.relative_to(self.pkgdir)
 		# record location if it's non-default
-		if rel_path != cpv + ".tbz2":
+		if str(rel_path) != cpv + ".tbz2":
 			d["PATH"] = rel_path
 
 		return d
@@ -1617,7 +1607,7 @@ class binarytree:
 			instance_key = self.dbapi._instance_key(cpv)
 			path = self._pkg_paths.get(instance_key)
 			if path is not None:
-				filename = os.path.join(self.pkgdir, path)
+				filename = self.pkgdir / path
 
 		if filename is None and not allocate_new:
 			try:
@@ -1628,7 +1618,7 @@ class binarytree:
 			else:
 				filename = self._pkg_paths.get(instance_key)
 				if filename is not None:
-					filename = os.path.join(self.pkgdir, filename)
+					filename = self.pkgdir / filename
 				elif instance_key in self._additional_pkgs:
 					return None
 
@@ -1678,8 +1668,8 @@ class binarytree:
 		build_id = max_build_id + 1
 
 		while True:
-			filename = "%s-%s.xpak" % (
-				os.path.join(self.pkgdir, cpv.cp, pf), build_id)
+			filename = self.pkgdir / cpv.cp / ("%s-%s.xpak" % (
+				pf, build_id))
 			if os.path.exists(filename):
 				build_id += 1
 			else:

@@ -33,29 +33,29 @@ class lazy_value(ObjectProxy):
 @lazy_value
 def cnf_path():
 	if portage._not_installed:
-		return os.path.join(portage.const.PORTAGE_BASE_PATH, 'cnf')
-	return os.path.join(EPREFIX_ORIG or '/', portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep))
+		return portage.const.PORTAGE_BASE_PATH / 'cnf'
+	return (EPREFIX_ORIG or Path('/')) / portage.const.GLOBAL_CONFIG_PATH
 
 
 @lazy_value
 def cnf_etc_path():
 	if portage._not_installed:
-		return str(cnf_path)
-	return os.path.join(EPREFIX_ORIG or '/', 'etc')
+		return cnf_path
+	return (EPREFIX_ORIG or Path('/')) / 'etc'
 
 
 @lazy_value
 def cnf_bindir():
 	if portage._not_installed:
 		return portage.const.PORTAGE_BIN_PATH
-	return os.path.join(portage.const.EPREFIX or '/', 'usr', 'bin')
+	return (portage.const.EPREFIX or Path('/')) / 'usr' /'bin'
 
 
 @lazy_value
 def cnf_sbindir():
 	if portage._not_installed:
-		return str(cnf_bindir)
-	return os.path.join(portage.const.EPREFIX or '/', 'usr', 'sbin')
+		return cnf_bindir
+	return (portage.const.EPREFIX or Path('/')) / 'usr' / 'sbin'
 
 
 def main():

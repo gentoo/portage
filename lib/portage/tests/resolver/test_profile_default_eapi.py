@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
 
-from portage import os, _encodings
+from portage import _encodings
 from portage.const import USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground

@@ -4,6 +4,7 @@
 import locale
 import logging
 import time
+from pathlib import Path
 
 from portage import os, _unicode_decode
 from portage.exception import PortageException
@@ -52,11 +53,11 @@ def whenago(seconds):
 
 	return "".join(out).strip()
 
-def old_tree_timestamp_warn(portdir, settings):
+def old_tree_timestamp_warn(portdir: Path, settings):
 	unixtime = time.time()
 	default_warnsync = 30
 
-	timestamp_file = os.path.join(portdir, "metadata/timestamp.x")
+	timestamp_file = portdir / "metadata/timestamp.x"
 	try:
 		lastsync = grabfile(timestamp_file)
 	except PortageException:

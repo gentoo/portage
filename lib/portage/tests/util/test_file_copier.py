@@ -6,6 +6,7 @@ import os
 import shutil
 import stat
 import tempfile
+from pathlib import Path
 
 from portage.tests import TestCase
 from portage.util._async.FileCopier import FileCopier
@@ -27,7 +28,8 @@ class FileCopierTestCase(TestCase):
 			with open(src_path, 'wb') as f:
 				f.write(content)
 			os.chmod(src_path, file_mode)
-			copier = FileCopier(src_path=src_path, dest_path=dest_path, scheduler=loop)
+			copier = FileCopier(src_path=Path(src_path),
+					dest_path=Path(dest_path), scheduler=loop)
 			copier.start()
 			loop.run_until_complete(copier.async_wait())
 			self.assertEqual(copier.returncode, 0)
@@ -38,11 +40,11 @@ class FileCopierTestCase(TestCase):
 
 			# failure due to nonexistent src_path
 			src_path = os.path.join(tempdir, 'does-not-exist')
-			copier = FileCopier(src_path=src_path, dest_path=dest_path, scheduler=loop)
+			copier = FileCopier(src_path=Path(src_path), dest_path=Path(dest_path), scheduler=loop)
 			copier.start()
 			loop.run_until_complete(copier.async_wait())
 			self.assertEqual(copier.returncode, 1)
 			self.assertEqual(copier.future.exception().errno, errno.ENOENT)
-			self.assertEqual(copier.future.exception().filename, src_path.encode('utf8'))
+			self.assertEqual(copier.future.exception().filename, src_path)
 		finally:
 			shutil.rmtree(tempdir)

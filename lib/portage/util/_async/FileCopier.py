@@ -23,7 +23,5 @@ class FileCopier(AsyncTaskFuture):
 		super(FileCopier, self)._start()
 
 	def _run(self):
-		src_path = _unicode_encode(self.src_path, encoding=_encodings['fs'], errors='strict')
-		dest_path = _unicode_encode(self.dest_path, encoding=_encodings['fs'], errors='strict')
-		copyfile(src_path, dest_path)
-		apply_stat_permissions(dest_path, _os.stat(src_path))
+		copyfile(self.src_path, self.dest_path)
+		apply_stat_permissions(self.dest_path, self.src_path.stat())

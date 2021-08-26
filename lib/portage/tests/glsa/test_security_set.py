@@ -2,9 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
 
 import portage
-from portage import os, _encodings
+from portage import _encodings
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
 	ResolverPlaygroundTestCase)

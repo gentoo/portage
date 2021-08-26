@@ -38,7 +38,7 @@ class GitSync(NewBase):
 
 	def exists(self, **kwargs):
 		'''Tests whether the repo actually exists'''
-		return os.path.exists(os.path.join(self.repo.location, '.git'))
+		return os.path.exists(self.repo.location / '.git')
 
 
 	def new(self, **kwargs):
@@ -89,7 +89,7 @@ class GitSync(NewBase):
 		writemsg_level(git_cmd + "\n")
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
-				portage._shell_quote(self.repo.location), git_cmd),
+				portage._shell_quote(str(self.repo.location)), git_cmd),
 			**self.spawn_kwargs)
 		if exitcode != os.EX_OK:
 			msg = "!!! git clone error in %s" % self.repo.location
@@ -127,10 +127,9 @@ class GitSync(NewBase):
 			git_cmd_opts += " %s" % self.repo.module_specific_options['sync-git-pull-extra-opts']
 
 		try:
-			remote_branch = portage._unicode_decode(
-				subprocess.check_output([self.bin_command, 'rev-parse',
+			remote_branch = subprocess.check_output([self.bin_command, 'rev-parse',
 				'--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
-				cwd=portage._unicode_encode(self.repo.location))).rstrip('\n')
+				cwd=self.repo.location).decode().rstrip('\n')
 		except subprocess.CalledProcessError as e:
 			msg = "!!! git rev-parse error in %s" % self.repo.location
 			self.logger(self.xterm_titles, msg)
@@ -166,7 +165,7 @@ class GitSync(NewBase):
 			cwd=portage._unicode_encode(self.repo.location))
 
 		exitcode = portage.process.spawn_bash("cd %s ; exec %s" % (
-				portage._shell_quote(self.repo.location), git_cmd),
+				portage._shell_quote(str(self.repo.location)), git_cmd),
 			**self.spawn_kwargs)
 
 		if exitcode != os.EX_OK:
@@ -188,7 +187,7 @@ class GitSync(NewBase):
 		if quiet:
 			merge_cmd.append('--quiet')
 		exitcode = portage.process.spawn(merge_cmd,
-			cwd=portage._unicode_encode(self.repo.location),
+			cwd=self.repo.location,
 			**self.spawn_kwargs)
 
 		if exitcode != os.EX_OK:
@@ -198,7 +197,7 @@ class GitSync(NewBase):
 			return (exitcode, False)
 
 		current_rev = subprocess.check_output(rev_cmd,
-			cwd=portage._unicode_encode(self.repo.location))
+			cwd=self.repo.location)
 
 		return (os.EX_OK, current_rev != previous_rev)
 
@@ -236,7 +235,7 @@ class GitSync(NewBase):
 			try:
 				status = (portage._unicode_decode(
 					subprocess.check_output(rev_cmd,
-						cwd=portage._unicode_encode(self.repo.location),
+						cwd=self.repo.location,
 						env=env))
 					.strip())
 			except subprocess.CalledProcessError:
@@ -279,7 +278,7 @@ class GitSync(NewBase):
 		try:
 			ret = (os.EX_OK,
 				portage._unicode_decode(subprocess.check_output(rev_cmd,
-				cwd=portage._unicode_encode(self.repo.location))))
+				cwd=self.repo.location)))
 		except subprocess.CalledProcessError:
 			ret = (1, False)
 		return ret

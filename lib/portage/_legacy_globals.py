@@ -69,7 +69,7 @@ def _get_legacy_global(name):
 	portage.thirdpartymirrors = settings.thirdpartymirrors()
 	constructed.add('thirdpartymirrors')
 
-	profiledir = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
+	profiledir = settings["PORTAGE_CONFIGROOT"] / PROFILE_PATH
 	if not os.path.isdir(profiledir):
 		profiledir = None
 	portage.profiledir = profiledir

@@ -4,6 +4,7 @@
 __all__ = ['deprecated_profile_check']
 
 import io
+from pathlib import Path
 
 import portage
 from portage import os, _encodings, _unicode_encode
@@ -17,21 +18,20 @@ def deprecated_profile_check(settings=None):
 	eprefix = None
 	deprecated_profile_file = None
 	if settings is not None:
-		config_root = settings["PORTAGE_CONFIGROOT"]
+		config_root = Path(settings["PORTAGE_CONFIGROOT"])
 		eprefix = settings["EPREFIX"]
 		for x in reversed(settings._locations_manager.profiles_complex):
 			if x.show_deprecated_warning:
-				deprecated_profile_file = os.path.join(x.location, "deprecated")
+				deprecated_profile_file = x.location / "deprecated"
 				if os.access(deprecated_profile_file, os.R_OK):
 					break
 		else:
 			deprecated_profile_file = None
 
 	if deprecated_profile_file is None:
-		deprecated_profile_file = os.path.join(config_root or "/",
-			DEPRECATED_PROFILE_FILE)
+		deprecated_profile_file = (config_root or Path("/")) / DEPRECATED_PROFILE_FILE
 		if not os.access(deprecated_profile_file, os.R_OK):
-			deprecated_profile_file = os.path.join(config_root or "/",
+			deprecated_profile_file = (config_root or Path("/")).joinpath(
 				'etc', 'make.profile', 'deprecated')
 			if not os.access(deprecated_profile_file, os.R_OK):
 				return

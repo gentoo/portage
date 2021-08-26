@@ -104,16 +104,15 @@ class Modules:
 		"""
 		module_dir =  self._module_path
 		importables = []
-		names = os.listdir(module_dir)
-		for entry in names:
+		for entry in module_dir.iterdir():
 			# skip any __init__ or __pycache__ files or directories
-			if entry.startswith('__'):
+			if entry.name.startswith('__'):
 				continue
 			try:
 				# test for statinfo to ensure it should a real module
 				# it will bail if it errors
-				os.lstat(os.path.join(module_dir, entry, '__init__.py'))
-				importables.append(entry)
+				(entry / '__init__.py').lstat()
+				importables.append(entry.name)
 			except EnvironmentError:
 				pass
 		kids = {}

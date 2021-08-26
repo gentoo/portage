@@ -4,7 +4,7 @@
 import subprocess
 
 import portage
-from portage import os
+import os
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 

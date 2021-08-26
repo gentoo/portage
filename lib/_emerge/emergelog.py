@@ -17,22 +17,20 @@ from portage.output import xtermTitle
 _disable = True
 _emerge_log_dir = '/var/log'
 
-def emergelog(xterm_titles, mystr, short_msg=None):
+def emergelog(xterm_titles, mystr, short_msg: str =None):
 
 	if _disable:
 		return
 
-	mystr = _unicode_decode(mystr)
-
 	if short_msg is not None:
-		short_msg = _unicode_decode(short_msg)
+		short_msg = short_msg.encode()
 
 	if xterm_titles and short_msg:
 		if "HOSTNAME" in os.environ:
 			short_msg = os.environ["HOSTNAME"]+": "+short_msg
 		xtermTitle(short_msg)
 	try:
-		file_path = os.path.join(_emerge_log_dir, 'emerge.log')
+		file_path = _emerge_log_dir / 'emerge.log'
 		existing_log = os.path.exists(file_path)
 		mylogfile = io.open(_unicode_encode(file_path,
 			encoding=_encodings['fs'], errors='strict'),
@@ -50,4 +48,5 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			portage.locks.unlockfile(mylock)
 	except (IOError,OSError,portage.exception.PortageException) as e:
 		if secpass >= 1:
+			raise e
 			portage.util.writemsg("emergelog(): %s\n" % (e,), noiselevel=-1)

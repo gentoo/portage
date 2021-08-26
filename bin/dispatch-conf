@@ -18,6 +18,11 @@ import subprocess
 import sys
 import termios
 import tty
+import os
+import shlex
+import shutil
+from pathlib import Path
+from typing import Sequence
 
 from stat import ST_GID, ST_MODE, ST_UID
 from random import random
@@ -32,12 +37,11 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
 import portage
 portage._internal_caller = True
-from portage import os, shutil
 from portage import _encodings, _unicode_decode
 from portage.dispatch_conf import (diffstatusoutput, diff_mixed_wrapper,
 	perform_conf_update_hooks, perform_conf_update_session_hooks)
 from portage.process import find_binary, spawn
-from portage.util import writemsg, writemsg_stdout
+from portage.util import writemsg, writemsg_stdout, unroot
 
 FIND_EXTANT_CONFIGS  = "find '%s' %s -name '._cfg????_%s' ! -name '.*~' ! -iname '.*.bak' -print"
 DIFF_CONTENTS        = "diff -Nu '%s' '%s'"
@@ -80,7 +84,7 @@ def cmd_var_is_valid(cmd):
     Return true if the first whitespace-separated token contained
     in cmd is an executable file, false otherwise.
     """
-    cmd = portage.util.shlex_split(cmd)
+    cmd = shlex.split(cmd)
     if not cmd:
         return False
 
@@ -94,13 +98,13 @@ diff = diff_mixed_wrapper(diffstatusoutput, DIFF_CONTENTS)
 class dispatch:
     options = {}
 
-    def grind (self, config_paths):
+    def grind (self, config_paths: Sequence[Path]):
         confs = []
         count = 0
 
         perform_conf_update_session_hooks("pre-session")
 
-        config_root = portage.settings["EPREFIX"] or os.sep
+        config_root = Path(portage.settings["EPREFIX"] or os.sep)
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
@@ -117,7 +121,7 @@ class dispatch:
             if pager is None or not cmd_var_is_valid(pager):
                 pager = "cat"
 
-        pager_basename = os.path.basename(portage.util.shlex_split(pager)[0])
+        pager_basename = os.path.basename(shlex.split(pager)[0])
         if pager_basename == "less":
             less_opts = self.options.get("less-opts")
             if less_opts is not None and less_opts.strip():
@@ -133,8 +137,7 @@ class dispatch:
         #
 
         for path in config_paths:
-            path = portage.normalize_path(
-                 os.path.join(config_root, path.lstrip(os.sep)))
+            path = portage.normalize_path(config_root / unroot(path))
 
             # Protect files that don't exist (bug #523684). If the
             # parent directory doesn't exist, we can safely skip it.
@@ -148,9 +151,9 @@ class dispatch:
                 find_opts = "-maxdepth 1"
 
             try:
-                path_list = _unicode_decode(subprocess.check_output(
-                    portage.util.shlex_split(FIND_EXTANT_CONFIGS %
-                    (path, find_opts, basename))),
+                path_list = subprocess.check_output(
+                    shlex.split(FIND_EXTANT_CONFIGS %
+                    (path, find_opts, basename))).decode(
                     errors='strict').splitlines()
             except subprocess.CalledProcessError:
                 pass
@@ -170,8 +173,8 @@ class dispatch:
         auto_zapped = []
         protect_obj = portage.util.ConfigProtect(
             config_root, config_paths,
-            portage.util.shlex_split(
-            portage.settings.get('CONFIG_PROTECT_MASK', '')),
+            [Path(x) for x in portage.util.shlex_split(
+            portage.settings.get('CONFIG_PROTECT_MASK', ''))],
             case_insensitive=("case-insensitive-fs"
             in portage.settings.features))
 
@@ -526,7 +529,7 @@ d = dispatch ()
 
 if len(sys.argv) > 1:
     # for testing
-    d.grind(sys.argv[1:])
+    d.grind([Path(x) for x in sys.argv[1:]])
 else:
-    d.grind(portage.util.shlex_split(
-        portage.settings.get('CONFIG_PROTECT', '')))
+    d.grind([Path(x) for x in shlex.split(
+        portage.settings.get('CONFIG_PROTECT', ''))])

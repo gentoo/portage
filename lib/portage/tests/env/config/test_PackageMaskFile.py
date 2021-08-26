@@ -2,17 +2,18 @@
 # Copyright 2007-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+import os
 from portage.env.config import PackageMaskFile
 from portage.tests import TestCase, test_cps
 from tempfile import mkstemp
+from pathlib import Path
 
 class PackageMaskFileTestCase(TestCase):
 
 	def testPackageMaskFile(self):
 		self.BuildFile()
 		try:
-			f = PackageMaskFile(self.fname)
+			f = PackageMaskFile(Path(self.fname))
 			f.load()
 			for atom in f:
 				self.assertTrue(atom in test_cps)

@@ -56,12 +56,10 @@ class IndexedPortdb:
 
 		streams = []
 		for repo_path in self._portdb.porttrees:
-			outside_repo = os.path.join(self._portdb.depcachedir,
-				repo_path.lstrip(os.sep))
+			outside_repo = self._portdb.depcachedir / repo_path
 			filenames = []
 			for parent_dir in (repo_path, outside_repo):
-				filenames.append(os.path.join(parent_dir,
-					"metadata", "pkg_desc_index"))
+				filenames.append(parent_dir / "metadata" / "pkg_desc_index")
 
 			repo_name = self._portdb.getRepositoryName(repo_path)
 
@@ -78,7 +76,7 @@ class IndexedPortdb:
 						break
 
 				if f is None:
-					raise FileNotFound(filename)
+					raise FileNotFound(str(filename))
 
 				streams.append(iter(IndexStreamIterator(f,
 					functools.partial(pkg_desc_index_line_read,

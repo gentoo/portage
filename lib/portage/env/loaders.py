@@ -6,6 +6,8 @@ import errno
 import io
 import stat
 import portage
+from pathlib import Path
+import os as _os
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:writemsg',
 )
@@ -33,7 +35,7 @@ class LoaderError(Exception):
 			self.resource, self.error_msg)
 
 
-def RecursiveFileLoader(filename):
+def RecursiveFileLoader(filename: Path):
 	"""
 	If filename is of type file, return a generate that yields filename
 	else if filename is of type directory, return a generator that fields
@@ -48,11 +50,11 @@ def RecursiveFileLoader(filename):
 	"""
 
 	try:
-		st = os.stat(filename)
+		st = filename.stat()
 	except OSError:
 		return
 	if stat.S_ISDIR(st.st_mode):
-		for root, dirs, files in os.walk(filename):
+		for root, dirs, files in _os.walk(filename):
 			for d in list(dirs):
 				if d[:1] == '.' or d == 'CVS':
 					dirs.remove(d)
@@ -125,7 +127,8 @@ class TestTextLoader(DataLoader):
 class FileLoader(DataLoader):
 	""" Class to access data in files """
 
-	def __init__(self, filename, validator):
+	fname: Path
+	def __init__(self, filename: Path, validator):
 		"""
 			Args:
 				filename : Name of file or directory to open
@@ -153,8 +156,7 @@ class FileLoader(DataLoader):
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
 			try:
-				with io.open(_unicode_encode(fn,
-					encoding=_encodings['fs'], errors='strict'), mode='r',
+				with fn.open('r',
 					encoding=_encodings['content'], errors='replace') as f:
 					lines = f.readlines()
 			except EnvironmentError as e:

@@ -25,7 +25,7 @@ class StringFormatTestCase(TestCase):
 		self.assertEqual(_encodings['content'], 'utf_8')
 
 		for arg_unicode in self.unicode_strings:
-			arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings['content'])
+			arg_bytes = arg_unicode.encode(encoding=_encodings['content'])
 			dependency_arg = DependencyArg(arg=arg_unicode)
 
 			formatted_str = "%s" % (dependency_arg,)
@@ -40,7 +40,7 @@ class StringFormatTestCase(TestCase):
 		self.assertEqual(_encodings['content'], 'utf_8')
 
 		for arg_unicode in self.unicode_strings:
-			arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings['content'])
+			arg_bytes = arg_unicode.encode(encoding=_encodings['content'])
 			e = PortageException(arg_unicode)
 
 			formatted_str = "%s" % (e,)

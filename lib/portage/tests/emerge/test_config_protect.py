@@ -8,9 +8,9 @@ import stat
 import subprocess
 import sys
 import time
+import os
 
 import portage
-from portage import os
 from portage import _encodings, _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
@@ -35,7 +35,7 @@ class ConfigProtectTestCase(TestCase):
 		 * directory replaces symlink
 		"""
 
-		debug = False
+		debug = True
 
 		content_A_1 = """
 S="${WORKDIR}"
@@ -203,7 +203,7 @@ src_install() {
 				pythonpath = ""
 			else:
 				pythonpath = ":" + pythonpath
-			pythonpath = PORTAGE_PYM_PATH + pythonpath
+			pythonpath = str(PORTAGE_PYM_PATH) + pythonpath
 
 		env = {
 			"PORTAGE_OVERRIDE_EPREFIX" : eprefix,
@@ -283,7 +283,7 @@ src_install() {
 					proc.stdout.close()
 					if proc.returncode != os.EX_OK:
 						for line in output:
-							sys.stderr.write(_unicode_decode(line))
+							sys.stderr.write(line.decode())
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"emerge failed with args %s" % (args,))

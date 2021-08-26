@@ -37,7 +37,7 @@ class database(flat_hash.database):
 	def __init__(self, location, *args, **config):
 		loc = location
 		super(database, self).__init__(location, *args, **config)
-		self.location = os.path.join(loc, "metadata","cache")
+		self.location = loc / "metadata" / "cache"
 		self.ec = None
 		self.raise_stat_collision = False
 

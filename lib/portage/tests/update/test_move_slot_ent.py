@@ -2,9 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import textwrap
+from pathlib import Path
 
 import portage
-from portage import os
+import os
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.util import ensure_dirs
@@ -93,7 +94,7 @@ class MoveSlotEntTestCase(TestCase):
 
 		settings = playground.settings
 		trees = playground.trees
-		eroot = settings["EROOT"]
+		eroot = Path(settings["EROOT"])
 		test_repo_location = settings.repositories["test_repo"].location
 		portdb = trees[eroot]["porttree"].dbapi
 		vardb = trees[eroot]["vartree"].dbapi

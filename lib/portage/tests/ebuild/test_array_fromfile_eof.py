@@ -16,7 +16,7 @@ class ArrayFromfileEofTestCase(TestCase):
 		#   https://bugs.python.org/issue5334
 
 		input_data = "an arbitrary string"
-		input_bytes = _unicode_encode(input_data,
+		input_bytes = input_data.encode(
 			encoding='utf_8', errors='strict')
 		f = tempfile.TemporaryFile()
 		f.write(input_bytes)
@@ -43,5 +43,5 @@ class ArrayFromfileEofTestCase(TestCase):
 
 		f.close()
 
-		self.assertEqual(input_data, _unicode_decode(b''.join(data),
+		self.assertEqual(input_data, b''.join(data).decode(
 			encoding='utf_8', errors='strict'))

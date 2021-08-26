@@ -23,7 +23,7 @@ class KeywordsManager:
 				global_accept_keywords=""):
 		self._pkeywords_list = []
 		rawpkeywords = [grabdict_package(
-			os.path.join(x.location, "package.keywords"),
+			x.location / "package.keywords",
 			recursive=x.portage1_directories,
 			verify_eapi=True, eapi=x.eapi, eapi_default=None,
 			allow_repo=allow_profile_repo_deps(x),
@@ -41,7 +41,7 @@ class KeywordsManager:
 
 		self._p_accept_keywords = []
 		raw_p_accept_keywords = [grabdict_package(
-			os.path.join(x.location, "package.accept_keywords"),
+			x.location / "package.accept_keywords",
 			recursive=x.portage1_directories,
 			verify_eapi=True, eapi=x.eapi, eapi_default=None,
 			allow_repo=allow_profile_repo_deps(x))
@@ -59,8 +59,8 @@ class KeywordsManager:
 		self.pkeywordsdict = ExtendedAtomDict(dict)
 
 		if user_config:
-			user_accept_kwrds_path = os.path.join(abs_user_config, "package.accept_keywords")
-			user_kwrds_path = os.path.join(abs_user_config, "package.keywords")
+			user_accept_kwrds_path = abs_user_config / "package.accept_keywords"
+			user_kwrds_path = abs_user_config / "package.keywords"
 			pkgdict = grabdict_package(
 				user_kwrds_path,
 				recursive=1, allow_wildcard=True, allow_repo=True,

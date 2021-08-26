@@ -156,7 +156,7 @@ def _parse_color_map(config_root='/', onerror=None):
 	@return: a dictionary mapping color classes to color codes
 	"""
 	global codes, _styles
-	myfile = os.path.join(config_root, COLOR_MAP_FILE)
+	myfile = config_root / COLOR_MAP_FILE
 	ansi_code_pattern = re.compile("^[0-9;]*m$")
 	quotes = '\'"'
 	def strip_quotes(token):
@@ -165,9 +165,7 @@ def _parse_color_map(config_root='/', onerror=None):
 		return token
 
 	try:
-		with io.open(_unicode_encode(myfile,
-			encoding=_encodings['fs'], errors='strict'),
-			mode='r', encoding=_encodings['content'], errors='replace') as f:
+		with myfile.open('r', encoding=_encodings['content'], errors='replace') as f:
 			lines = f.readlines()
 		for lineno, line in enumerate(lines):
 			commenter_pos = line.find("#")
@@ -223,9 +221,9 @@ def _parse_color_map(config_root='/', onerror=None):
 					codes[k] = "".join(code_list)
 	except (IOError, OSError) as e:
 		if e.errno == errno.ENOENT:
-			raise FileNotFound(myfile)
+			raise FileNotFound(str(myfile))
 		elif e.errno == errno.EACCES:
-			raise PermissionDenied(myfile)
+			raise PermissionDenied(str(myfile))
 		raise
 
 def nc_len(mystr):
@@ -236,7 +234,7 @@ _legal_terms_re = re.compile(r'^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm
 _disable_xtermTitle = None
 _max_xtermTitle_len = 253
 
-def xtermTitle(mystr, raw=False):
+def xtermTitle(mystr: str, raw=False):
 	global _disable_xtermTitle
 	if _disable_xtermTitle is None:
 		_disable_xtermTitle = not (sys.__stderr__.isatty() and \
@@ -252,7 +250,7 @@ def xtermTitle(mystr, raw=False):
 			mystr = '\x1b]0;%s\x07' % mystr
 
 		# avoid potential UnicodeEncodeError
-		mystr = _unicode_encode(mystr,
+		mystr = mystr.encode(
 			encoding=_encodings['stdio'], errors='backslashreplace')
 		f = sys.stderr.buffer
 		f.write(mystr)
@@ -327,7 +325,7 @@ def colormap():
 		mycolors.append("%s=$'%s'" % (c, style_to_ansi_code(c)))
 	return "\n".join(mycolors)
 
-def colorize(color_key, text):
+def colorize(color_key, text: str):
 	global havecolor
 	if havecolor:
 		if color_key in codes:
@@ -452,7 +450,7 @@ def get_term_size(fd=None):
 		# stty command not found
 		return (0, 0)
 
-	out = _unicode_decode(proc.communicate()[0])
+	out = proc.communicate()[0].decode()
 	if proc.wait() == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:
@@ -802,12 +800,6 @@ def _init(config_root='/'):
 	_color_map_loaded = True
 	codes = object.__getattribute__(codes, '_attr')
 	_styles = object.__getattribute__(_styles, '_attr')
-
-	for k, v in codes.items():
-		codes[k] = _unicode_decode(v)
-
-	for k, v in _styles.items():
-		_styles[k] = _unicode_decode(v)
 
 	try:
 		_parse_color_map(config_root=config_root,

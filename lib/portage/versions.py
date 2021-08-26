@@ -307,7 +307,7 @@ _cat_re = re.compile('^%s$' % _cat, re.UNICODE)
 _missing_cat = 'null'
 
 @lru_cache(10240)
-def catpkgsplit(mydata, silent=1, eapi=None):
+def catpkgsplit(mydata: str, silent=1, eapi=None):
 	"""
 	Takes a Category/Package-Version-Rev and returns a list of each.
 
@@ -555,7 +555,7 @@ def cpv_sort_key(eapi=None):
 
 	return cmp_sort_key(cmp_cpv)
 
-def catsplit(mydep):
+def catsplit(mydep: str):
 	return mydep.split("/", 1)
 
 def best(mymatches, eapi=None):

@@ -1,6 +1,7 @@
 # Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from pathlib import Path
 from portage import os
 from portage.checksum import perform_multiple_checksums
 from portage.util._async.ForkProcess import ForkProcess
@@ -17,6 +18,8 @@ class FileDigester(ForkProcess):
 	__slots__ = ('file_path', 'digests', 'hash_names',
 		'_digest_pipe_reader', '_digest_pw')
 
+	file_path: Path
+
 	def _start(self):
 		pr, pw = os.pipe()
 		self.fd_pipes = {}
@@ -31,8 +34,11 @@ class FileDigester(ForkProcess):
 		os.close(pw)
 
 	def _run(self):
+		import sys
+		print('MARCO', repr(self.file_path), 'MARCO', sep='\n', file=open('/tmp/tmp.9Ec9ohsplt', 'w'))
 		digests = perform_multiple_checksums(self.file_path,
 			hashes=self.hash_names)
+		print('MARCO', digests, 'MARCO', sep='\n', file=open('/tmp/tmp.9Ec9ohsplt', 'w'))
 
 		buf = "".join("%s=%s\n" % item
 			for item in digests.items()).encode('utf_8')

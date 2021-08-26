@@ -2,8 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import os
+from pathlib import Path
 
-from portage import os, _encodings
+from portage import _encodings
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -102,7 +104,7 @@ class UseExpandIncrementalTestCase(TestCase):
 
 			for p, data in profiles:
 				prof_path = os.path.join(profile_root, p)
-				ensure_dirs(prof_path)
+				ensure_dirs(Path(prof_path))
 				for k, v in data.items():
 					with io.open(os.path.join(prof_path, k), mode="w",
 						encoding=_encodings["repo.content"]) as f:

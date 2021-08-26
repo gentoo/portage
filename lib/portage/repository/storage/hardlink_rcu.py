@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import datetime
+import os as _os
 
 import portage
 from portage import os
@@ -93,12 +94,12 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 		else:
 			self._ttl_days = repo.sync_rcu_ttl_days
 		self._update_location = None
-		self._latest_symlink = os.path.join(self._storage_location, 'latest')
-		self._latest_canonical = os.path.realpath(self._latest_symlink)
+		self._latest_symlink = self._storage_location / 'latest'
+		self._latest_canonical = self._latest_symlink.resolve()
 		if not os.path.exists(self._latest_canonical) or os.path.islink(self._latest_canonical):
 			# It doesn't exist, or it's a broken symlink.
 			self._latest_canonical = None
-		self._snapshots_dir = os.path.join(self._storage_location, 'snapshots')
+		self._snapshots_dir = self._storage_location / 'snapshots'
 
 	async def _check_call(self, cmd, privileged=False):
 		"""
@@ -120,8 +121,8 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 				format(p.returncode, ' '.join(cmd)))
 
 	async def init_update(self):
-		update_location = os.path.join(self._storage_location, 'update')
-		await self._check_call(['rm', '-rf', update_location])
+		update_location = self._storage_location / 'update'
+		await self._check_call(['rm', '-rf', str(update_location)])
 
 		# This assumes normal umask permissions if it doesn't exist yet.
 		portage.util.ensure_dirs(self._storage_location)
@@ -133,7 +134,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			# Use  rsync --link-dest to hardlink a files into update_location,
 			# since cp -l is not portable.
 			await self._check_call(['rsync', '-a', '--link-dest', self._latest_canonical,
-				self._latest_canonical + '/', update_location + '/'])
+				str(self._latest_canonical) + '/', str(update_location) + '/'])
 
 		elif not os.path.islink(self._user_location):
 			await self._migrate(update_location)
@@ -179,7 +180,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 		update_location = self.current_update
 		self._update_location = None
 		try:
-			snapshots = [int(name) for name in os.listdir(self._snapshots_dir)]
+			snapshots = [int(file.name) for file in self._snapshots_dir.iterdir()]
 		except OSError:
 			snapshots = []
 			portage.util.ensure_dirs(self._snapshots_dir)
@@ -189,13 +190,13 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			new_id = max(snapshots) + 1
 		else:
 			new_id = 1
-		os.rename(update_location, os.path.join(self._snapshots_dir, str(new_id)))
-		new_symlink = self._latest_symlink + '.new'
+		os.rename(update_location, self._snapshots_dir / str(new_id))
+		new_symlink = self._latest_symlink.with_suffix('.new')
 		try:
 			os.unlink(new_symlink)
 		except OSError:
 			pass
-		os.symlink('snapshots/{}'.format(new_id), new_symlink)
+		_os.symlink('snapshots/{}'.format(new_id), new_symlink)
 
 		# If SyncManager.pre_sync creates an empty directory where
 		# self._latest_symlink is suppose to be (which is normal if
@@ -215,7 +216,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 			user_location_correct = False
 
 		if not user_location_correct:
-			new_symlink = self._user_location + '.new'
+			new_symlink = self._user_location.with_suffix('.new')
 			try:
 				os.unlink(new_symlink)
 			except OSError:
@@ -231,14 +232,14 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 
 	async def garbage_collection(self):
 		snap_ttl = datetime.timedelta(days=self._ttl_days)
-		snapshots = sorted(int(name) for name in os.listdir(self._snapshots_dir))
+		snapshots = sorted(int(file.name) for file in self._snapshots_dir.iterdir())
 		# always preserve the latest snapshot
 		protect_count = self._spare_snapshots + 1
 		while snapshots and protect_count:
 			protect_count -= 1
 			snapshots.pop()
 		for snap_id in snapshots:
-			snap_path = os.path.join(self._snapshots_dir, str(snap_id))
+			snap_path = self._snapshots_dir / str(snap_id)
 			try:
 				st = os.stat(snap_path)
 			except OSError:

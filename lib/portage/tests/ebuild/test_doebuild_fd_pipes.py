@@ -2,7 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+import os
+from pathlib import Path
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
@@ -68,12 +69,12 @@ class DoebuildFdPipesTestCase(TestCase):
 
 			settings.features.add("noauto")
 			settings.features.add("test")
-			settings['PORTAGE_PYTHON'] = portage._python_interpreter
+			settings['PORTAGE_PYTHON'] = str(portage._python_interpreter)
 			settings['PORTAGE_QUIET'] = "1"
 			settings['PYTHONDONTWRITEBYTECODE'] = os.environ.get("PYTHONDONTWRITEBYTECODE", "")
 
 			fake_bin = os.path.join(settings["EPREFIX"], "bin")
-			portage.util.ensure_dirs(fake_bin)
+			portage.util.ensure_dirs(Path(fake_bin))
 			for x in true_symlinks:
 				os.symlink(true_binary, os.path.join(fake_bin, x))
 
@@ -121,8 +122,7 @@ class DoebuildFdPipesTestCase(TestCase):
 					os.close(pw)
 
 				task_scheduler.wait()
-				output = portage._unicode_decode(
-					consumer.getvalue()).rstrip("\n")
+				output = consumer.getvalue().decode().rstrip("\n")
 
 				if task_scheduler.returncode != os.EX_OK:
 					portage.writemsg(output, noiselevel=-1)

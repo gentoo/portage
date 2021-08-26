@@ -3,9 +3,10 @@
 
 import re
 import textwrap
+import os
+from pathlib import Path
 
 import portage
-from portage import os
 from portage.dep import Atom
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -188,7 +189,7 @@ class UpdateDbentryTestCase(TestCase):
 
 		settings = playground.settings
 		trees = playground.trees
-		eroot = settings["EROOT"]
+		eroot = Path(settings["EROOT"])
 		test_repo_location = settings.repositories["test_repo"].location
 		portdb = trees[eroot]["porttree"].dbapi
 		vardb = trees[eroot]["vartree"].dbapi
@@ -199,15 +200,15 @@ class UpdateDbentryTestCase(TestCase):
 		updates_dir = os.path.join(test_repo_location, "profiles", "updates")
 
 		try:
-			ensure_dirs(updates_dir)
+			ensure_dirs(Path(updates_dir))
 			with open(os.path.join(updates_dir, "1Q-2010"), 'w') as f:
 				f.write(updates)
 
 			# Create an empty updates directory, so that this
 			# repo doesn't inherit updates from the main repo.
-			ensure_dirs(os.path.join(
+			ensure_dirs(Path(os.path.join(
 				portdb.getRepositoryPath("dont_apply_updates"),
-				"profiles", "updates"))
+				"profiles", "updates")))
 
 			global_noiselimit = portage.util.noiselimit
 			portage.util.noiselimit = -2

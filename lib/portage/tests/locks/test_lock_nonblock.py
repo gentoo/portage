@@ -3,10 +3,11 @@
 
 import tempfile
 import traceback
+import os
+import shutil
+from pathlib import Path
 
 import portage
-from portage import os
-from portage import shutil
 from portage.exception import TryAgain
 from portage.tests import TestCase
 
@@ -16,7 +17,7 @@ class LockNonblockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			lock1 = portage.locks.lockfile(path)
+			lock1 = portage.locks.lockfile(Path(path))
 			pid = os.fork()
 			if pid == 0:
 				portage._ForkWatcher.hook(portage._ForkWatcher)
@@ -27,7 +28,7 @@ class LockNonblockTestCase(TestCase):
 				rval = 2
 				try:
 					try:
-						lock2 = portage.locks.lockfile(path, flags=os.O_NONBLOCK)
+						lock2 = portage.locks.lockfile(Path(path), flags=os.O_NONBLOCK)
 					except portage.exception.TryAgain:
 						rval = os.EX_OK
 					else:
@@ -70,8 +71,8 @@ class LockNonblockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			lock = portage.locks.lockfile(path)
-			self.assertRaises(TryAgain, portage.locks.lockfile, path, flags=os.O_NONBLOCK)
+			lock = portage.locks.lockfile(Path(path))
+			self.assertRaises(TryAgain, portage.locks.lockfile, Path(path), flags=os.O_NONBLOCK)
 			portage.locks.unlockfile(lock)
 		finally:
 			shutil.rmtree(tempdir)

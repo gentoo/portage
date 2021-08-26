@@ -138,7 +138,7 @@ class ContentDB:
 		matched_revisions = {}
 
 		for k, v in filename.digests.items():
-			digest_item = (k.upper(), v.lower())
+			digest_item = (k.upper(), str(v).lower())
 			digest_key = "digest:{}:{}".format(*digest_item)
 			try:
 				digest_files = self._shelve[digest_key]

@@ -2,8 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import os
+from typing import Iterator
+from itertools import chain
 
-from portage import os
+from pathlib import Path
 
 def first_existing(path):
 	"""
@@ -20,21 +23,13 @@ def first_existing(path):
 	@rtype: str
 	@return: the element that exists
 	"""
-	existing = False
-	for path in iter_parents(path):
-		try:
-			os.lstat(path)
-			existing = True
-		except OSError as e:
-			if e.errno not in (errno.ENOENT, errno.ESTALE):
-				existing = True
-
-		if existing:
+	for path in chain([path], path.parents):
+		if path.exists():
 			return path
+	# Shouldn't ever get here
+	raise Exception("Broke")
 
-	return os.sep
-
-def iter_parents(path):
+def iter_parents(path: Path) -> Iterator[Path]:
 	"""
 	@param path: a filesystem path
 	@type path: str
@@ -42,9 +37,8 @@ def iter_parents(path):
 	@return: an iterator which yields path and all parents of path,
 		ending with the root directory
 	"""
-	yield path
-	while path != os.sep:
-		path = os.path.dirname(path)
-		if not path:
-			break
-		yield path
+	return iter(path.parents)
+
+
+def unparent(path: Path, level: int = 0) -> Path:
+	return path.relative_to(path.parents[level])

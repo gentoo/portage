@@ -36,7 +36,7 @@ class PackagesSystemSet(PackageSet):
 			writemsg_level("\nPackagesSystemSet: profiles: %s\n" %
 				(self._profiles,), level=logging.DEBUG, noiselevel=-1)
 
-		mylist = [grabfile_package(os.path.join(x.location, "packages"),
+		mylist = [grabfile_package(x.location / "packages",
 			verify_eapi=True, eapi=x.eapi, eapi_default=None,
 			allow_build_id=x.allow_build_id,
 			allow_repo=allow_profile_repo_deps(x))

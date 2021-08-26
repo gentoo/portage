@@ -56,7 +56,7 @@ except OSError:
 	pass
 
 if insert_bin_path:
-	path.insert(0, PORTAGE_BIN_PATH)
+	path.insert(0, str(PORTAGE_BIN_PATH))
 	os.environ["PATH"] = ":".join(path)
 
 if __name__ == "__main__":

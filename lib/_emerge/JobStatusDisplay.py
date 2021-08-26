@@ -81,7 +81,7 @@ class JobStatusDisplay:
 
 	def _write(self, s):
 		# avoid potential UnicodeEncodeError
-		s = _unicode_encode(s,
+		s = s.encode(
 			encoding=_encodings['stdio'], errors='backslashreplace')
 		out = self.out.buffer
 		out.write(s)

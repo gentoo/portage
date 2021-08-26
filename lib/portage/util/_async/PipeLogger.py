@@ -4,6 +4,9 @@
 import fcntl
 import errno
 import gzip
+from pathlib import Path
+from typing import Optional, Union
+from io import IOBase
 
 import portage
 from portage import os, _encodings, _unicode_encode
@@ -25,6 +28,7 @@ class PipeLogger(AbstractPollTask):
 	__slots__ = ("input_fd", "log_file_path", "stdout_fd") + \
 		("_io_loop_task", "_log_file", "_log_file_nb", "_log_file_real")
 
+	log_file_path: Optional[Union[Path, IOBase]]
 	def _start(self):
 
 		log_file_path = self.log_file_path
@@ -41,7 +45,7 @@ class PipeLogger(AbstractPollTask):
 					mode="ab",
 				)
 
-				if log_file_path.endswith(".gz"):
+				if log_file_path.suffix == ".gz":
 					self._log_file_real = self._log_file
 					self._log_file = gzip.GzipFile(
 						filename="", mode="ab", fileobj=self._log_file

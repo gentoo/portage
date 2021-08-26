@@ -3,9 +3,10 @@
 
 import tempfile
 
+from pathlib import Path
+import os
+import shutil
 import portage
-from portage import os
-from portage import shutil
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -76,10 +77,10 @@ class TestFakedbapi(TestCase):
 			# this because tests should be self-contained such that
 			# the "real" value of portage.const.EPREFIX is entirely
 			# irrelevant (see bug #492932).
-			portage.const.EPREFIX = tempdir
+			portage.const.EPREFIX = Path(tempdir)
 
 			fakedb = fakedbapi(settings=config(config_profile_path="",
-				env=env, eprefix=tempdir))
+				env=env, eprefix=Path(tempdir)))
 			for cpv, metadata in packages:
 				fakedb.cpv_inject(cpv, metadata=metadata)
 

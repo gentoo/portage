@@ -5,6 +5,8 @@ import argparse
 import locale
 import platform
 import sys
+from pathlib import Path
+import os as _os
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -649,7 +651,8 @@ def parse_opts(tmpcmdline, silent=False):
 
 		"--quickpkg-direct-root": {
 			"help": "Specify the root to use as the --quickpkg-direct package source",
-			"action" : "store"
+			"action" : "store",
+			"type": Path
 		},
 
 		"--quiet": {
@@ -1262,7 +1265,7 @@ def emerge_main(args=None):
 	# Verify that /dev/null exists and is a device file as a cheap early
 	# filter for obviously broken /dev/s.
 	try:
-		if os.stat(os.devnull).st_rdev == 0:
+		if _os.stat(os.devnull).st_rdev == 0:
 			writemsg_level("Failed to validate a sane '/dev'.\n"
 				  "'/dev/null' is not a device file.\n",
 				  level=logging.ERROR, noiselevel=-1)

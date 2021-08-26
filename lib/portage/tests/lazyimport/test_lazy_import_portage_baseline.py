@@ -3,7 +3,7 @@
 
 import re
 import portage
-from portage import os
+import os
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -44,7 +44,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
 			pythonpath = ''
 		else:
 			pythonpath = ':' + pythonpath
-		pythonpath = PORTAGE_PYM_PATH + pythonpath
+		pythonpath = str(PORTAGE_PYM_PATH) + pythonpath
 		env['PYTHONPATH'] = pythonpath
 
 		# If python is patched to insert the path of the

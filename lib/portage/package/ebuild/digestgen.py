@@ -4,6 +4,7 @@
 __all__ = ['digestgen']
 
 import errno
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -41,7 +42,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 	try:
 		portage._doebuild_manifest_exempt_depend += 1
 		distfiles_map = {}
-		fetchlist_dict = FetchlistDict(mysettings["O"], mysettings, myportdb)
+		fetchlist_dict = FetchlistDict(Path(mysettings["O"]), mysettings, myportdb)
 		for cpv in fetchlist_dict:
 			try:
 				for myfile in fetchlist_dict[cpv]:
@@ -50,7 +51,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
 				del e
 				return 0
-		mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
+		mytree = Path(mysettings["O"]).parents[1]
 		try:
 			mf = mysettings.repositories.get_repo_for_location(mytree)
 		except KeyError:
@@ -61,7 +62,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 		repo_required_hashes = mf.manifest_required_hashes
 		if repo_required_hashes is None:
 			repo_required_hashes = MANIFEST2_HASH_DEFAULTS
-		mf = mf.load_manifest(mysettings["O"], mysettings["DISTDIR"],
+		mf = mf.load_manifest(
+			Path(mysettings["O"]),
+			Path(mysettings["DISTDIR"]),
 			fetchlist_dict=fetchlist_dict)
 
 		if not mf.allow_create:
@@ -90,7 +93,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 			myhashes = dist_hashes.get(myfile)
 			if not myhashes:
 				try:
-					st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+					st = os.stat(Path(mysettings["DISTDIR"], myfile))
 				except OSError:
 					st = None
 				if st is None or st.st_size == 0:
@@ -99,7 +102,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 			size = myhashes.get("size")
 
 			try:
-				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+				st = (mysettings["DISTDIR"] / myfile).stat()
 			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -141,13 +144,12 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 			mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
 
 			try:
-				st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+				st = (mysettings["DISTDIR"] / myfile).stat()
 			except OSError:
 				st = None
 
 			if not fetch({myfile : uris}, mysettings):
-				myebuild = os.path.join(mysettings["O"],
-					catsplit(cpv)[1] + ".ebuild")
+				myebuild = (mysettings["O"] / catsplit(cpv)[1]).with_suffix(".ebuild")
 				spawn_nofetch(myportdb, myebuild)
 				writemsg(_("!!! Fetch failed for %s, can't update Manifest\n")
 					% myfile, noiselevel=-1)
@@ -157,7 +159,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
 					# since fetch may rename the existing file if the
 					# digest does not match.
 					cmd = colorize("INFORM", "ebuild --force %s manifest" %
-						os.path.basename(myebuild))
+						myebuild.name)
 					writemsg((_(
 						"!!! If you would like to forcefully replace the existing Manifest entry\n"
 						"!!! for %s, use the following command:\n") % myfile) +

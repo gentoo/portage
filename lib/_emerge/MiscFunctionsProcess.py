@@ -3,6 +3,7 @@
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
+from portage.util.path import unparent
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.package.ebuild.doebuild:spawn'
 )
@@ -18,10 +19,9 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
 	def _start(self):
 		settings = self.settings
 		portage_bin_path = settings["PORTAGE_BIN_PATH"]
-		misc_sh_binary = os.path.join(portage_bin_path,
-			os.path.basename(portage.const.MISC_SH_BINARY))
+		misc_sh_binary = portage_bin_path / unparent(portage.const.MISC_SH_BINARY)
 
-		self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
+		self.args = [portage._shell_quote(str(misc_sh_binary))] + self.commands
 		if self.logfile is None and \
 			self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
 			self.logfile = settings.get("PORTAGE_LOG_FILE")

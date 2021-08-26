@@ -33,16 +33,16 @@ class database(fs_template.FsBased):
 		if not default_db.startswith("."):
 			default_db = '.' + default_db
 
-		self._db_path = os.path.join(self.location, fs_template.gen_label(self.location, self.label)+default_db)
+		self._db_path = self.location / fs_template.gen_label(self.location, self.label).with_suffix(default_db)
 		self.__db = None
 		mode = "w"
-		if dbm.whichdb(self._db_path) in ("dbm.gnu", "gdbm"):
+		if dbm.whichdb(str(self._db_path)) in ("dbm.gnu", "gdbm"):
 			# Allow multiple concurrent writers (see bug #53607).
 			mode += "u"
 		try:
 			# dbm.open() will not work with bytes in python-3.1:
 			#   TypeError: can't concat bytes to str
-			self.__db = dbm.open(self._db_path,
+			self.__db = dbm.open(str(self._db_path),
 				mode, self._perms)
 		except dbm.error:
 			# XXX handle this at some point
@@ -63,7 +63,7 @@ class database(fs_template.FsBased):
 					else:
 						# Prefer gdbm type if available, since it allows
 						# multiple concurrent writers (see bug #53607).
-						self.__db = gdbm.open(self._db_path,
+						self.__db = gdbm.open(str(self._db_path),
 							"cu", self._perms)
 			except dbm.error as e:
 				raise cache_errors.InitializationError(self.__class__, e)
@@ -76,10 +76,10 @@ class database(fs_template.FsBased):
 
 	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
-		return pickle.loads(self.__db[_unicode_encode(cpv)])
+		return pickle.loads(self.__db[cpv])
 
 	def _setitem(self, cpv, values):
-		self.__db[_unicode_encode(cpv)] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
+		self.__db[cpv] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
 
 	def _delitem(self, cpv):
 		del self.__db[cpv]

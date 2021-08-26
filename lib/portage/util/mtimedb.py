@@ -56,7 +56,7 @@ class MtimeDB(dict):
 		d = None
 		if content:
 			try:
-				d = json.loads(_unicode_decode(content,
+				d = json.loads(content.decode(
 					encoding=_encodings['repo.content'], errors='strict'))
 			except SystemExit:
 				raise
@@ -79,6 +79,7 @@ class MtimeDB(dict):
 			d = {}
 
 		if "old" in d:
+			breakpoint()
 			d["updates"] = d["old"]
 			del d["old"]
 		if "cur" in d:
@@ -113,8 +114,8 @@ class MtimeDB(dict):
 				pass
 			else:
 				if self._json_write:
-					f.write(_unicode_encode(
-						json.dumps(d, **self._json_write_opts),
+					f.write(bytes(
+						json.dumps(d, **self._json_write_opts, default=str),
 						encoding=_encodings['repo.content'], errors='strict'))
 				else:
 					pickle.dump(d, f, protocol=2)

@@ -6,6 +6,7 @@ import errno
 import logging
 import random
 import subprocess
+import os as _os
 
 import portage
 from portage import _encodings, _unicode_encode
@@ -33,7 +34,6 @@ class FetchTask(CompositeTask):
 		'_primaryuri_stack', '_log_path', '_tried_uris')
 
 	def _start(self):
-
 		if self.config.options.fetch_log_dir is not None and \
 			not self.config.options.dry_run:
 			self._log_path = os.path.join(
@@ -63,9 +63,8 @@ class FetchTask(CompositeTask):
 
 		st = None
 		for layout in self.config.layouts:
-			distfile_path = os.path.join(
-				self.config.options.distfiles,
-				layout.get_path(self.distfile))
+			distfile_path = \
+				self.config.options.distfiles / layout.get_path(self.distfile)
 			try:
 				st = os.stat(distfile_path)
 			except OSError as e:
@@ -91,9 +90,8 @@ class FetchTask(CompositeTask):
 				# trigger ENOENT.
 				unlink_success = True
 				for layout in self.config.layouts:
-					unlink_path = os.path.join(
-						self.config.options.distfiles,
-						layout.get_path(self.distfile))
+					unlink_path = \
+						self.config.options.distfiles / layout.get_path(self.distfile)
 					if self._unlink_file(unlink_path, "distfiles"):
 						if st is not None:
 							logging.debug(("delete '%s' with "
@@ -419,7 +417,8 @@ class FetchTask(CompositeTask):
 			self._fetch_tmp_dir_info = 'distfiles'
 			distdir = self.config.options.distfiles
 
-		tmp_basename = self.distfile + '._emirrordist_fetch_.%s' % portage.getpid()
+		tmp_basename = self.distfile.with_name(
+			self.distfile.name + '._emirrordist_fetch_.%s' % portage.getpid())
 
 		variables = {
 			"DISTDIR": distdir,
@@ -427,7 +426,7 @@ class FetchTask(CompositeTask):
 			"FILE":    tmp_basename
 		}
 
-		self._fetch_tmp_file = os.path.join(distdir, tmp_basename)
+		self._fetch_tmp_file = distdir / tmp_basename
 
 		try:
 			os.unlink(self._fetch_tmp_file)
@@ -438,10 +437,10 @@ class FetchTask(CompositeTask):
 		args = [portage.util.varexpand(x, mydict=variables)
 			for x in args]
 
-		args = [_unicode_encode(x,
-			encoding=_encodings['fs'], errors='strict') for x in args]
+		# args = [_unicode_encode(x,
+		# 	encoding=_encodings['fs'], errors='strict') for x in args]
 
-		null_fd = os.open(os.devnull, os.O_RDONLY)
+		null_fd = _os.open(os.devnull, os.O_RDONLY)
 		fetcher = PopenProcess(background=self.background,
 			proc=subprocess.Popen(args, stdin=null_fd,
 			stdout=subprocess.PIPE, stderr=subprocess.STDOUT),
@@ -472,7 +471,6 @@ class FetchTask(CompositeTask):
 			self._try_next_mirror()
 
 	def _fetch_digester_exit(self, digester):
-
 		self._assert_current(digester)
 		if self._was_cancelled():
 			self.wait()
@@ -487,6 +485,7 @@ class FetchTask(CompositeTask):
 		else:
 			bad_digest = self._find_bad_digest(digester.digests)
 			if bad_digest is not None:
+				breakpoint()
 				msg = "%s has bad %s digest: expected %s, got %s" % \
 					(self.distfile, bad_digest,
 					self.digests[bad_digest], digester.digests[bad_digest])
@@ -497,9 +496,9 @@ class FetchTask(CompositeTask):
 				except OSError:
 					pass
 			else:
-				dest = os.path.join(self.config.options.distfiles,
+				dest = self.config.options.distfiles.joinpath(
 						self.config.layouts[0].get_path(self.distfile))
-				ensure_dirs(os.path.dirname(dest))
+				ensure_dirs(dest.parent)
 				try:
 					os.rename(self._fetch_tmp_file, dest)
 				except OSError:
@@ -550,15 +549,15 @@ class FetchTask(CompositeTask):
 		success = True
 		for layout in self.config.layouts[1:]:
 			if dist_path is None:
-				dist_path = os.path.join(self.config.options.distfiles,
+				dist_path = self.config.options.distfiles.joinpath(
 						self.config.layouts[0].get_path(self.distfile))
-			link_path = os.path.join(self.config.options.distfiles,
+			link_path = self.config.options.distfiles.joinpath(
 					layout.get_path(self.distfile))
-			ensure_dirs(os.path.dirname(link_path))
+			ensure_dirs(link_path.parent)
 			src_path = dist_path
 			if self.config.options.symlinks:
 				src_path = os.path.relpath(dist_path,
-						os.path.dirname(link_path))
+						link_path.parent)
 
 			if not self._hardlink_atomic(src_path, link_path,
 					"%s -> %s" % (link_path, src_path),
@@ -624,8 +623,8 @@ class FetchTask(CompositeTask):
 
 	def _hardlink_atomic(self, src, dest, dir_info, symlink=False):
 
-		head, tail = os.path.split(dest)
-		hardlink_tmp = os.path.join(head, ".%s._mirrordist_hardlink_.%s" % \
+		head, tail = dest.parent, dest.name
+		hardlink_tmp = head.joinpath(".%s._mirrordist_hardlink_.%s" % \
 			(tail, portage.getpid()))
 
 		try:

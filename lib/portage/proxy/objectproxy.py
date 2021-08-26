@@ -89,3 +89,6 @@ class ObjectProxy:
 
 	def __int__(self):
 		return int(object.__getattribute__(self, '_get_target')())
+
+	def __fspath__(self):
+		return object.__getattribute__(self, '_get_target')().__fspath__()

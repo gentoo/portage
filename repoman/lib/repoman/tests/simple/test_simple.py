@@ -7,6 +7,7 @@ import sys
 import time
 import types
 
+from pathlib import Path
 from repoman._portage import portage
 from portage import os
 from portage.process import find_binary
@@ -62,7 +63,7 @@ class RepomanRun(types.SimpleNamespace):
 	def _subprocess(args, cwd, env, expected, debug):
 		os.chdir(cwd)
 		os.environ.update(env)
-		portage.const.EPREFIX = env["PORTAGE_OVERRIDE_EPREFIX"]
+		portage.const.EPREFIX = Path(env["PORTAGE_OVERRIDE_EPREFIX"])
 		if debug:
 			args = ["-vvvv"] + args
 		repoman_vars = _repoman_init(["repoman"] + args)

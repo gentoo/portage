@@ -2,9 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
+from pathlib import Path
+import shutil
 
 from portage import os
-from portage import shutil
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config
@@ -46,6 +47,9 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
 	__slots__ = ('ebuild_path', 'fd_pipes', 'portdb', 'settings',
 		'_private_tmpdir')
 
+	_private_tmpdir: Path
+	ebuild_path: Path
+
 	def _start(self):
 		settings = self.settings
 		if settings is None:
@@ -64,12 +68,12 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
 		# We must create our private PORTAGE_TMPDIR before calling
 		# doebuild_environment(), since lots of variables such
 		# as PORTAGE_BUILDDIR refer to paths inside PORTAGE_TMPDIR.
-		portage_tmpdir = settings.get('PORTAGE_TMPDIR')
+		portage_tmpdir = Path(settings.get('PORTAGE_TMPDIR'))
 		if not portage_tmpdir or not os.access(portage_tmpdir, os.W_OK):
 			portage_tmpdir = None
-		private_tmpdir = self._private_tmpdir = tempfile.mkdtemp(
-			dir=portage_tmpdir)
-		settings['PORTAGE_TMPDIR'] = private_tmpdir
+		private_tmpdir = self._private_tmpdir = Path(tempfile.mkdtemp(
+			dir=portage_tmpdir))
+		settings['PORTAGE_TMPDIR'] = str(private_tmpdir)
 		settings.backup_changes('PORTAGE_TMPDIR')
 		# private temp dir was just created, so it's not locked yet
 		settings.pop('PORTAGE_BUILDDIR_LOCKED', None)

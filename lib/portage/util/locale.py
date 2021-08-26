@@ -106,8 +106,7 @@ def check_locale(silent=False, env=None):
 		try:
 			if env is not None:
 				try:
-					locale.setlocale(locale.LC_CTYPE,
-						portage._native_string(mylocale))
+					locale.setlocale(locale.LC_CTYPE, mylocale)
 				except locale.Error:
 					os._exit(2)
 

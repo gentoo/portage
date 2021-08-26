@@ -22,7 +22,7 @@ def ExtractKernelVersion(base_dir):
 
 	"""
 	lines = []
-	pathname = os.path.join(base_dir, 'Makefile')
+	pathname = base_dir / 'Makefile'
 	try:
 		f = io.open(_unicode_encode(pathname,
 			encoding=_encodings['fs'], errors='strict'), mode='r',
@@ -73,7 +73,7 @@ def ExtractKernelVersion(base_dir):
 		version += "".join(" ".join(grabfile(base_dir + "/" + lv)).split())
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
-	loader = KeyValuePairFileLoader(os.path.join(base_dir, ".config"), None)
+	loader = KeyValuePairFileLoader(base_dir / ".config", None)
 	kernelconfig, loader_errors = loader.load()
 	if loader_errors:
 		for file_path, file_errors in loader_errors.items():

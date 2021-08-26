@@ -5,13 +5,12 @@ import errno
 import itertools
 import stat
 import sys
+import os
 
 from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
-from portage import os
 from portage import _encodings
-from portage import _unicode_decode, _unicode_encode
 
 class CompileModulesTestCase(TestCase):
 
@@ -21,11 +20,7 @@ class CompileModulesTestCase(TestCase):
 		iters.append(os.walk(PORTAGE_BIN_PATH))
 
 		for parent, _dirs, files in itertools.chain(*iters):
-			parent = _unicode_decode(parent,
-				encoding=_encodings['fs'], errors='strict')
 			for x in files:
-				x = _unicode_decode(x,
-					encoding=_encodings['fs'], errors='strict')
 				if x[-4:] in ('.pyc', '.pyo'):
 					continue
 				x = os.path.join(parent, x)
@@ -49,9 +44,8 @@ class CompileModulesTestCase(TestCase):
 				else:
 					# Check for python shebang.
 					try:
-						with open(_unicode_encode(x,
-							encoding=_encodings['fs'], errors='strict'), 'rb') as f:
-							line = _unicode_decode(f.readline(),
+						with open(x, 'rb') as f:
+							line = f.readline().decode(
 								encoding=_encodings['content'], errors='replace')
 					except IOError as e:
 						# Some tests create files that are unreadable by the
@@ -62,6 +56,5 @@ class CompileModulesTestCase(TestCase):
 					if line[:2] == '#!' and 'python' in line:
 						do_compile = True
 				if do_compile:
-					with open(_unicode_encode(x,
-						encoding=_encodings['fs'], errors='strict'), 'rb') as f:
+					with open(x, 'rb') as f:
 						compile(f.read(), x, 'exec')

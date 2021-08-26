@@ -9,7 +9,7 @@ from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
 from portage import _unicode_decode
-from portage.util import writemsg
+from portage.util import writemsg, unroot
 from portage.localization import _
 
 
@@ -37,8 +37,7 @@ class database(fs_template.FsBased):
 		self._allowed_keys_set = frozenset(self._allowed_keys)
 		self._allowed_keys = sorted(self._allowed_keys_set)
 
-		self.location = os.path.join(self.location,
-			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
+		self.location = self.location / unroot(self.label)
 
 		if not self.readonly and not os.path.exists(self.location):
 			self._ensure_dirs()
@@ -84,7 +83,7 @@ class database(fs_template.FsBased):
 
 	def _db_init_connection(self):
 		config = self._config
-		self._dbpath = self.location + ".sqlite"
+		self._dbpath = self.location.with_suffix(".sqlite")
 		#if os.path.exists(self._dbpath):
 		#	os.unlink(self._dbpath)
 		connection_kwargs = {}

@@ -4,6 +4,7 @@
 import itertools
 import logging
 import stat
+from pathlib import Path
 
 from portage import os
 from portage.package.ebuild.fetch import DistfileName
@@ -46,7 +47,7 @@ class DeletionIterator:
 			# require at least one successful stat()
 			exceptions = []
 			for layout in reversed(self._config.layouts):
-				path = os.path.join(distdir, layout.get_path(filename))
+				path = distdir / layout.get_path(filename)
 				try:
 					st = os.stat(path)
 				except OSError as e:
@@ -65,7 +66,11 @@ class DeletionIterator:
 						(filename, '; '.join(str(x) for x in exceptions)))
 				continue
 
-			if filename in file_owners:
+			# This is a bit of a wierd one, but
+			# self._config.layouts[0].get_filenames(distdir)
+			# Used to return only the base name of the distfile even if they
+			# were in a subdirectory. What's going on?
+			if Path(filename).name in [str(x) for x in file_owners]:
 				if deletion_db is not None:
 					try:
 						del deletion_db[filename]

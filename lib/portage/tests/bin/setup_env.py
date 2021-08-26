@@ -3,6 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tempfile
+from pathlib import Path
+import os as _os
+import shutil as _shutil
 
 import portage
 from portage import os
@@ -20,30 +23,30 @@ def binTestsCleanup():
 	global basedir
 	if basedir is None:
 		return
-	if os.access(basedir, os.W_OK):
-		shutil.rmtree(basedir)
+	if _os.access(basedir, os.W_OK):
+		_shutil.rmtree(basedir)
 		basedir = None
 
 def binTestsInit():
 	binTestsCleanup()
 	global basedir, env
-	basedir = tempfile.mkdtemp()
+	basedir = Path(tempfile.mkdtemp())
 	env = {}
 	env['EAPI'] = '0'
-	env['D'] = os.path.join(basedir, 'image')
-	env['T'] = os.path.join(basedir, 'temp')
-	env['S'] = os.path.join(basedir, 'workdir')
+	env['D'] = basedir / 'image'
+	env['T'] = basedir / 'temp'
+	env['S'] = basedir / 'workdir'
 	env['PF'] = 'portage-tests-0.09-r1'
-	env['PATH'] = bindir + ':' + os.environ['PATH']
+	env['PATH'] = str(bindir) + ':' + os.environ['PATH']
 	env['PORTAGE_BIN_PATH'] = bindir
 	env['PORTAGE_PYM_PATH'] = PORTAGE_PYM_PATH
 	env['PORTAGE_PYTHON'] = portage._python_interpreter
-	env['PORTAGE_INST_UID'] = str(os.getuid())
-	env['PORTAGE_INST_GID'] = str(os.getgid())
+	env['PORTAGE_INST_UID'] = str(_os.getuid())
+	env['PORTAGE_INST_GID'] = str(_os.getgid())
 	env['DESTTREE'] = '/usr'
-	os.mkdir(env['D'])
-	os.mkdir(env['T'])
-	os.mkdir(env['S'])
+	env['D'].mkdir()
+	env['T'].mkdir()
+	env['S'].mkdir()
 
 class BinTestCase(TestCase):
 	def init(self):
@@ -52,8 +55,8 @@ class BinTestCase(TestCase):
 		binTestsCleanup()
 
 def _exists_in_D(path):
-	# Note: do not use os.path.join() here, we assume D to end in /
-	return os.access(env['D'] + path, os.W_OK)
+	# Note: sometimes path is an absolute path, but really it's relative to D
+	return _os.access(env['D'] / path.lstrip('/'), os.W_OK)
 def exists_in_D(path):
 	if not _exists_in_D(path):
 		raise TestCase.failureException
@@ -68,7 +71,7 @@ def portage_func(func, args, exit_status=0):
 	f = open('/dev/null', 'wb')
 	fd_pipes = {0:0,1:f.fileno(),2:f.fileno()}
 	def pre_exec():
-		os.chdir(env['S'])
+		_os.chdir(env['S'])
 	spawn([func] + args.split(), env=env,
 		fd_pipes=fd_pipes, pre_exec=pre_exec)
 	f.close()
@@ -80,10 +83,9 @@ def create_portage_wrapper(f):
 		return portage_func(*newargs)
 	return derived_func
 
-for f in os.listdir(os.path.join(bindir, 'ebuild-helpers')):
-	if (f.startswith('do') or
-		f.startswith('new') or
-		f.startswith('prep') or
-		f in ('fowners', 'fperms')):
-		globals()[f] = create_portage_wrapper(
-			os.path.join(bindir, 'ebuild-helpers', f))
+for f in (bindir / 'ebuild-helpers').iterdir():
+	if (f.name.startswith('do') or
+		f.name.startswith('new') or
+		f.name.startswith('prep') or
+		f.name in ('fowners', 'fperms')):
+		globals()[f.name] = create_portage_wrapper(f)

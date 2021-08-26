@@ -14,6 +14,7 @@ import textwrap
 import time
 import warnings
 from itertools import chain
+from pathlib import Path
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -100,16 +101,16 @@ def action_build(emerge_config, trees=DeprecationWarning,
 	myaction = emerge_config.action
 	myfiles = emerge_config.args
 
-	if '--usepkgonly' not in myopts:
-		old_tree_timestamp_warn(settings['PORTDIR'], settings)
+	if '--usepkgonly' not in myopts and settings['PORTDIR']:
+		old_tree_timestamp_warn(Path(settings['PORTDIR']), settings)
 
 	# It's best for config updates in /etc/portage to be processed
 	# before we get here, so warn if they're not (bug #267103).
-	chk_updated_cfg_files(settings['EROOT'], ['/etc/portage'])
+	chk_updated_cfg_files(settings['EROOT'], [Path('/etc/portage')])
 
-	quickpkg_root = normalize_path(os.path.abspath(
+	quickpkg_root = normalize_path(
 		emerge_config.opts.get('--quickpkg-direct-root',
-		emerge_config.running_config.settings['ROOT']))).rstrip(os.path.sep) + os.path.sep
+		Path(emerge_config.running_config.settings['ROOT'])).absolute())
 	quickpkg_direct = ("--usepkg" in emerge_config.opts and
 		emerge_config.opts.get('--quickpkg-direct', 'n') == 'y' and
 		emerge_config.target_config.settings['ROOT'] != quickpkg_root)
@@ -757,8 +758,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 
 	debug = '--debug' in myopts
 	xterm_titles = "notitles" not in settings.features
-	root_len = len(settings["ROOT"])
-	eroot = settings['EROOT']
+	eroot = Path(settings['EROOT'])
 	root_config = trees[eroot]["root_config"]
 	psets = root_config.setconfig.psets
 	deselect = myopts.get('--deselect') != 'n'
@@ -2524,7 +2524,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
 	emerge_config.target_config = \
 		emerge_config.trees[target_eroot]['root_config']
 	emerge_config.target_config.mtimedb = portage.MtimeDB(
-		os.path.join(target_eroot, portage.CACHE_PATH, "mtimedb"))
+		target_eroot / portage.CACHE_PATH / "mtimedb")
 	emerge_config.running_config = emerge_config.trees[
 		emerge_config.trees._running_eroot]['root_config']
 	QueryCommand._db = emerge_config.trees
@@ -2610,7 +2610,7 @@ def validate_ebuild_environment(trees):
 	check_locale()
 
 def check_procfs():
-	procfs_path = '/proc'
+	procfs_path = Path('/proc')
 	if platform.system() not in ("Linux",) or \
 		os.path.ismount(procfs_path):
 		return os.EX_OK
@@ -3167,9 +3167,7 @@ def run_action(emerge_config):
 	disable_emergelog = False
 
 	emerge_log_dir = emerge_config.target_config.settings.get("EMERGE_LOG_DIR")
-	default_log_dir = os.path.join(
-		os.sep, portage.const.EPREFIX.lstrip(os.sep), "var", "log"
-	)
+	default_log_dir = portage.const.EPREFIX / "var" / "log"
 	for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
 		if x in emerge_config.opts:
 			if x == "--fetchonly" and "--quiet" in emerge_config.opts:
@@ -3216,10 +3214,6 @@ def run_action(emerge_config):
 	if not "--pretend" in emerge_config.opts:
 		time_fmt = "%b %d, %Y %H:%M:%S"
 		time_str = time.strftime(time_fmt, time.localtime(time.time()))
-		# Avoid potential UnicodeDecodeError in Python 2, since strftime
-		# returns bytes in Python 2, and %b may contain non-ascii chars.
-		time_str = _unicode_decode(time_str,
-			encoding=_encodings['content'], errors='replace')
 		emergelog(xterm_titles, "Started emerge on: %s" % time_str)
 		myelogstr=""
 		if emerge_config.opts:

@@ -7,6 +7,9 @@ __all__ = (
 
 from copy import deepcopy
 
+from pathlib import Path
+from typing import List
+
 from portage import os
 from portage.dep import Atom
 from portage.exception import InvalidAtom
@@ -40,13 +43,13 @@ class VirtualsManager:
 		#We could initialise _treeVirtuals here, but some consumers want to
 		#pass their own vartree.
 
-	def _read_dirVirtuals(self, profiles):
+	def _read_dirVirtuals(self, profiles: List[Path]):
 		"""
 		Read the 'virtuals' file in all profiles.
 		"""
 		virtuals_list = []
 		for x in profiles:
-			virtuals_file = os.path.join(x, "virtuals")
+			virtuals_file = x / "virtuals"
 			virtuals_dict = grabdict(virtuals_file)
 			atoms_dict = {}
 			for k, v in virtuals_dict.items():

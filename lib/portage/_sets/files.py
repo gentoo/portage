@@ -4,6 +4,8 @@
 import errno
 import re
 from itertools import chain
+from pathlib import Path
+import os as _os
 
 from portage import os
 from portage import _encodings
@@ -40,7 +42,7 @@ class StaticFileSet(EditablePackageSet):
 		self.greedy = greedy
 		self.dbapi = dbapi
 
-		metadata = grabfile(self._filename + ".metadata")
+		metadata = grabfile(self._filename.with_suffix(".metadata"))
 		key = None
 		value = []
 		for line in metadata:
@@ -114,63 +116,38 @@ class StaticFileSet(EditablePackageSet):
 
 	def multiBuilder(self, options, settings, trees):
 		rValue = {}
-		directory = options.get("directory",
-			os.path.join(settings["PORTAGE_CONFIGROOT"],
-			USER_CONFIG_PATH, "sets"))
+		directory = Path(options.get("directory",
+			settings["PORTAGE_CONFIGROOT"] / USER_CONFIG_PATH / "sets"))
 		name_pattern = options.get("name_pattern", "${name}")
 		if not "$name" in name_pattern and not "${name}" in name_pattern:
 			raise SetConfigError(_("name_pattern doesn't include ${name} placeholder"))
 		greedy = get_boolean(options, "greedy", False)
 		# look for repository path variables
-		match = self._repopath_match.match(directory)
+		match = self._repopath_match.match(str(directory))
 		if match:
 			try:
-				directory = self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory)
+				directory = Path(self._repopath_sub.sub(trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]], directory))
 			except KeyError:
 				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 
-		try:
-			directory = _unicode_decode(directory,
-				encoding=_encodings['fs'], errors='strict')
-			# Now verify that we can also encode it.
-			_unicode_encode(directory,
-				encoding=_encodings['fs'], errors='strict')
-		except UnicodeError:
-			directory = _unicode_decode(directory,
-				encoding=_encodings['fs'], errors='replace')
-			raise SetConfigError(
-				_("Directory path contains invalid character(s) for encoding '%s': '%s'") \
-				% (_encodings['fs'], directory))
-
-		vcs_dirs = [_unicode_encode(x, encoding=_encodings['fs']) for x in VCS_DIRS]
-		if os.path.isdir(directory):
+		vcs_dirs = [Path(x) for x in VCS_DIRS]
+		if directory.is_dir():
 			directory = normalize_path(directory)
 
-			for parent, dirs, files in os.walk(directory):
-				try:
-					parent = _unicode_decode(parent,
-						encoding=_encodings['fs'], errors='strict')
-				except UnicodeDecodeError:
-					continue
+			for parent, dirs, files in _os.walk(directory):
 				for d in dirs[:]:
 					if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
 						dirs.remove(d)
 				for filename in files:
-					try:
-						filename = _unicode_decode(filename,
-							encoding=_encodings['fs'], errors='strict')
-					except UnicodeDecodeError:
+					filename = Path(filename)
+					if filename.name.startswith(".") or filename.name.endswith("~"):
 						continue
-					if filename.startswith(".") or filename.endswith("~"):
+					if filename.suffix == ".metadata":
 						continue
-					if filename.endswith(".metadata"):
-						continue
-					filename = os.path.join(parent,
-						filename)[1 + len(directory):]
-					myname = name_pattern.replace("$name", filename)
-					myname = myname.replace("${name}", filename)
+					myname = name_pattern.replace("$name", str(filename))
+					myname = myname.replace("${name}", str(filename))
 					rValue[myname] = StaticFileSet(
-						os.path.join(directory, filename),
+						directory / filename,
 						greedy=greedy, dbapi=trees["vartree"].dbapi)
 		return rValue
 	multiBuilder = classmethod(multiBuilder)
@@ -248,7 +225,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
 	def __init__(self, eroot):
 		super(WorldSelectedPackagesSet, self).__init__(allow_repo=True)
 		self._lock = None
-		self._filename = os.path.join(eroot, WORLD_FILE)
+		self._filename = eroot / WORLD_FILE
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 
@@ -341,7 +318,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
 	def __init__(self, eroot):
 		super(WorldSelectedSetsSet, self).__init__(allow_repo=True)
 		self._lock = None
-		self._filename = os.path.join(eroot, WORLD_SETS_FILE)
+		self._filename = eroot / WORLD_SETS_FILE
 		self.loader = ItemFileLoader(self._filename, self._validate)
 		self._mtime = None
 

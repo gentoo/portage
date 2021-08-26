@@ -14,6 +14,8 @@ import subprocess
 import sys
 import traceback
 import os as _os
+from pathlib import Path
+from typing import Optional
 
 from portage import os
 from portage import _encodings
@@ -54,8 +56,8 @@ except AttributeError:
 
 # Prefer /proc/self/fd if available (/dev/fd
 # doesn't work on solaris, see bug #474536).
-for _fd_dir in ("/proc/self/fd", "/dev/fd"):
-	if os.path.isdir(_fd_dir):
+for _fd_dir in (Path("/proc/self/fd"), Path("/dev/fd")):
+	if _fd_dir.is_dir():
 		break
 	else:
 		_fd_dir = None
@@ -66,7 +68,7 @@ if platform.system() in ('FreeBSD',) and _fd_dir == '/dev/fd':
 
 if _fd_dir is not None:
 	def get_open_fds():
-		return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())
+		return (int(fd.name) for fd in _fd_dir.iterdir() if fd.name.isdigit())
 
 	if platform.python_implementation() == 'PyPy':
 		# EAGAIN observed with PyPy 1.8.
@@ -90,11 +92,11 @@ else:
 	def get_open_fds():
 		return range(max_fd_limit)
 
-sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
-                   os.access(SANDBOX_BINARY, os.X_OK))
+sandbox_capable = (SANDBOX_BINARY.is_file() and
+                   _os.access(SANDBOX_BINARY, os.X_OK))
 
-fakeroot_capable = (os.path.isfile(FAKEROOT_BINARY) and
-                    os.access(FAKEROOT_BINARY, os.X_OK))
+fakeroot_capable = (FAKEROOT_BINARY.is_file() and
+                    _os.access(FAKEROOT_BINARY, os.X_OK))
 
 
 def sanitize_fds():
@@ -136,7 +138,7 @@ def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 
 	args = [BASH_BINARY]
 	if not opt_name:
-		opt_name = os.path.basename(mycommand.split()[0])
+		opt_name = _os.path.basename(mycommand.split()[0])
 	if debug:
 		# Print commands and their arguments as they are executed.
 		args.append("-x")
@@ -288,10 +290,10 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
-	binary = mycommand[0]
+	binary = Path(mycommand[0])
 	if binary not in (BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY) and \
-		(not os.path.isabs(binary) or not os.path.isfile(binary)
-	    or not os.access(binary, os.X_OK)):
+		(not binary.is_absolute() or not binary.is_file()
+	    or not _os.access(binary, os.X_OK)):
 		binary = path_lookup and find_binary(binary) or None
 		if not binary:
 			raise CommandNotFound(mycommand[0])
@@ -366,7 +368,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 	parent_pid = portage.getpid()
 	pid = None
 	try:
-		pid = os.fork()
+		pid = _os.fork()
 
 		if pid == 0:
 			portage._ForkWatcher.hook(portage._ForkWatcher)
@@ -395,7 +397,7 @@ def spawn(mycommand, env=None, opt_name=None, fd_pipes=None, returnpid=False,
 			# in the call stack (see bug #345289). This
 			# finally block has to be setup before the fork
 			# in order to avoid a race condition.
-			os._exit(1)
+			_os._exit(1)
 
 	if not isinstance(pid, int):
 		raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
@@ -515,7 +517,7 @@ def _configure_loopback_interface():
 def _exec(binary, mycommand, opt_name, fd_pipes,
 	env, gid, groups, uid, umask, cwd,
 	pre_exec, close_fds, unshare_net, unshare_ipc, unshare_mount, unshare_pid,
-	unshare_flags, cgroup):
+	unshare_flags, cgroup: Optional[Path]):
 
 	"""
 	Execute a given binary with options
@@ -554,7 +556,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	@param unshare_flags: Flags for the unshare(2) function
 	@type unshare_flags: Integer
 	@param cgroup: CGroup path to bind the process to
-	@type cgroup: String
+	@type cgroup: Path
 	@rtype: None
 	@return: Never returns (calls os.execve)
 	"""
@@ -567,15 +569,11 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 			# does not contain the full path of the binary.
 			opt_name = binary
 		else:
-			opt_name = os.path.basename(binary)
+			opt_name = binary.name
 
 	# Set up the command's argument list.
 	myargs = [opt_name]
 	myargs.extend(mycommand[1:])
-
-	# Avoid a potential UnicodeEncodeError from os.execve().
-	myargs = [_unicode_encode(x, encoding=_encodings['fs'],
-		errors='strict') for x in myargs]
 
 	# Use default signal handlers in order to avoid problems
 	# killing subprocesses as reported in bug #353239.
@@ -588,7 +586,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	try:
 		wakeup_fd = signal.set_wakeup_fd(-1)
 		if wakeup_fd > 0:
-			os.close(wakeup_fd)
+			_os.close(wakeup_fd)
 	except (ValueError, OSError):
 		pass
 
@@ -605,7 +603,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	# it's better to do it from the child since we can guarantee
 	# it is done before we start forking children
 	if cgroup:
-		with open(os.path.join(cgroup, 'cgroup.procs'), 'a') as f:
+		with (cgroup / 'cgroup.procs').open('a') as f:
 			f.write('%d\n' % portage.getpid())
 
 	# Unshare (while still uid==0)
@@ -641,7 +639,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 							noiselevel=-1)
 					else:
 						if unshare_pid:
-							main_child_pid = os.fork()
+							main_child_pid = _os.fork()
 							if main_child_pid == 0:
 								# The portage.getpid() cache may need to be updated here,
 								# in case the pre_exec function invokes portage APIs.
@@ -649,8 +647,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 								# pid namespace requires us to become init
 								binary, myargs = portage._python_interpreter, [
 									portage._python_interpreter,
-									os.path.join(portage._bin_path,
-										'pid-ns-init'),
+									portage._bin_path / 'pid-ns-init',
 									_unicode_encode('' if uid is None else str(uid)),
 									_unicode_encode('' if gid is None else str(gid)),
 									_unicode_encode('' if groups is None else ','.join(str(group) for group in groups)),
@@ -670,10 +667,10 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 								# init process.
 								binary, myargs = portage._python_interpreter, [
 									portage._python_interpreter,
-									os.path.join(portage._bin_path,
-									'pid-ns-init'), str(main_child_pid)]
+									portage._bin_path /'pid-ns-init',
+									str(main_child_pid)]
 
-								os.execve(binary, myargs, env)
+								_os.execve(binary, myargs, env)
 
 						if unshare_mount:
 							# mark the whole filesystem as slave to avoid
@@ -694,7 +691,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 								# can't proceed with shared /proc
 								writemsg("Unable to mark /proc slave: %d\n" % (mount_ret,),
 									noiselevel=-1)
-								os._exit(1)
+								_os._exit(1)
 							# mount new /proc for our namespace
 							s = subprocess.Popen(['mount',
 								'-n', '-t', 'proc', 'proc', '/proc'])
@@ -702,7 +699,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 							if mount_ret != 0:
 								writemsg("Unable to mount new /proc: %d\n" % (mount_ret,),
 									noiselevel=-1)
-								os._exit(1)
+								_os._exit(1)
 						if unshare_net:
 							# use 'localhost' to avoid hostname resolution problems
 							try:
@@ -713,7 +710,7 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 								else:
 									if libc.sethostname(new_hostname, len(new_hostname)) != 0:
 										errno_value = ctypes.get_errno()
-										raise OSError(errno_value, os.strerror(errno_value))
+										raise OSError(errno_value, _os.strerror(errno_value))
 							except Exception as e:
 								writemsg("Unable to set hostname: %s (for FEATURES=\"network-sandbox\")\n" % (
 									e,),
@@ -726,21 +723,21 @@ def _exec(binary, mycommand, opt_name, fd_pipes,
 	# Set requested process permissions.
 	if gid:
 		# Cast proxies to int, in case it matters.
-		os.setgid(int(gid))
+		_os.setgid(int(gid))
 	if groups:
-		os.setgroups(groups)
+		_os.setgroups(groups)
 	if uid:
 		# Cast proxies to int, in case it matters.
-		os.setuid(int(uid))
+		_os.setuid(int(uid))
 	if umask:
-		os.umask(umask)
+		_os.umask(umask)
 	if cwd is not None:
-		os.chdir(cwd)
+		_os.chdir(cwd)
 	if pre_exec:
 		pre_exec()
 
 	# And switch to the new process.
-	os.execve(binary, myargs, env)
+	_os.execve(binary, myargs, env)
 
 
 class _unshare_validator:
@@ -902,11 +899,11 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 				# (since all of the keys correspond to open file
 				# descriptors, and os.dup() only allocates a previously
 				# unused file discriptors).
-				backup_fd = os.dup(newfd)
+				backup_fd = _os.dup(newfd)
 				reverse_map[backup_fd] = reverse_map.pop(newfd)
 
 			if oldfd != newfd:
-				os.dup2(oldfd, newfd)
+				_os.dup2(oldfd, newfd)
 				if _set_inheritable is not None:
 					# Don't do this unless _set_inheritable is available,
 					# since it's used below to ensure correct state, and
@@ -936,7 +933,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 			# requested duplicates. This also closes every
 			# backup_fd that may have been created on previous
 			# iterations of this loop.
-			os.close(oldfd)
+			_os.close(oldfd)
 
 	if close_fds:
 		# Then close _all_ fds that haven't been explicitly
@@ -944,11 +941,11 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
 		for fd in get_open_fds():
 			if fd not in fd_pipes:
 				try:
-					os.close(fd)
+					_os.close(fd)
 				except OSError:
 					pass
 
-def find_binary(binary):
+def find_binary(binary: str) -> Optional[Path]:
 	"""
 	Given a binary name, find the binary in PATH
 
@@ -957,16 +954,9 @@ def find_binary(binary):
 	@rtype: None or string
 	@return: full path to binary or None if the binary could not be located.
 	"""
-	paths = os.environ.get("PATH", "")
-	if isinstance(binary, bytes):
-		# return bytes when input is bytes
-		paths = paths.encode(sys.getfilesystemencoding(), 'surrogateescape')
-		paths = paths.split(b':')
-	else:
-		paths = paths.split(':')
-
-	for path in paths:
-		filename = _os.path.join(path, binary)
-		if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
+	paths = _os.environ.get("PATH", "")
+	for path in paths.split(':'):
+		filename = Path(path) / binary
+		if _os.access(filename, os.X_OK) and filename.is_file():
 			return filename
 	return None

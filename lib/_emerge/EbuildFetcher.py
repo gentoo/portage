@@ -265,9 +265,9 @@ class _EbuildFetcherProcess(ForkProcess):
 
 	def _get_manifest(self):
 		if self._manifest is None:
-			pkgdir = os.path.dirname(self._get_ebuild_path())
+			pkgdir = self._get_ebuild_path().parent
 			self._manifest = self.pkg.root_config.settings.repositories.get_repo_for_location(
-				os.path.dirname(os.path.dirname(pkgdir))).load_manifest(pkgdir, None)
+				pkgdir.parents[1]).load_manifest(pkgdir, None)
 		return self._manifest
 
 	def _get_digests(self):
@@ -285,8 +285,8 @@ class _EbuildFetcherProcess(ForkProcess):
 			result.set_result(self._uri_map)
 			return result
 
-		pkgdir = os.path.dirname(self._get_ebuild_path())
-		mytree = os.path.dirname(os.path.dirname(pkgdir))
+		pkgdir = self._get_ebuild_path().parent
+		mytree = pkgdir.parents[1]
 		use = None
 		if not self.fetchall:
 			use = self.pkg.use.enabled

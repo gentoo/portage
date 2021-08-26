@@ -6,6 +6,8 @@ import gzip
 import io
 import sys
 import tempfile
+from pathlib import Path
+from typing import Optional
 
 from _emerge.AsynchronousLock import AsynchronousLock
 from _emerge.BinpkgEnvExtractor import BinpkgEnvExtractor
@@ -78,16 +80,13 @@ class EbuildPhase(CompositeTask):
 		need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
 		if need_builddir:
-			phase_completed_file = os.path.join(
-				self.settings['PORTAGE_BUILDDIR'],
-				".%sed" % self.phase.rstrip('e'))
+			phase_completed_file = Path(self.settings['PORTAGE_BUILDDIR']) / (".%sed" % self.phase.rstrip('e'))
 			if not os.path.exists(phase_completed_file):
 				# If the phase is really going to run then we want
 				# to eliminate any stale elog messages that may
 				# exist from a previous run.
 				try:
-					os.unlink(os.path.join(self.settings['T'],
-						'logging', self.phase))
+					os.unlink(Path(self.settings['T']) / 'logging' / self.phase)
 				except OSError:
 					pass
 			ensure_dirs(os.path.join(self.settings["PORTAGE_BUILDDIR"], "empty"))
@@ -100,10 +99,9 @@ class EbuildPhase(CompositeTask):
 
 			maint_str = ""
 			upstr_str = ""
-			metadata_xml_path = os.path.join(os.path.dirname(self.settings['EBUILD']), "metadata.xml")
+			metadata_xml_path = Path(self.settings['EBUILD']).parent / "metadata.xml"
 			if MetaDataXML is not None and os.path.isfile(metadata_xml_path):
-				herds_path = os.path.join(self.settings['PORTDIR'],
-					'metadata/herds.xml')
+				herds_path = Path(self.settings['PORTDIR'], 'metadata/herds.xml')
 				try:
 					metadata_xml = MetaDataXML(metadata_xml_path, herds_path)
 					maint_str = metadata_xml.format_maintainer_string()
@@ -168,8 +166,8 @@ class EbuildPhase(CompositeTask):
 		if (self.phase in self._locked_phases and
 			"ebuild-locks" in self.settings.features):
 			eroot = self.settings["EROOT"]
-			lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
-			if os.access(os.path.dirname(lock_path), os.W_OK):
+			lock_path = eroot / portage.VDB_PATH.with_name(portage.VDB_PATH.name + "-ebuild")
+			if os.access(lock_path.parent, os.W_OK):
 				self._ebuild_lock = AsynchronousLock(path=lock_path,
 					scheduler=self.scheduler)
 				self._start_task(self._ebuild_lock, self._lock_exit)
@@ -183,14 +181,14 @@ class EbuildPhase(CompositeTask):
 			return
 		self._start_ebuild()
 
-	def _get_log_path(self):
+	def _get_log_path(self) -> Optional[Path]:
 		# Don't open the log file during the clean phase since the
 		# open file can result in an nfs lock on $T/build.log which
 		# prevents the clean phase from removing $T.
 		logfile = None
 		if self.phase not in ("clean", "cleanrm") and \
 			self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
-			logfile = self.settings.get("PORTAGE_LOG_FILE")
+			logfile = Path(self.settings["PORTAGE_LOG_FILE"]) if "PORTAGE_LOG_FILE" in self.settings else None
 		return logfile
 
 	def _start_ebuild(self):
@@ -279,7 +277,7 @@ class EbuildPhase(CompositeTask):
 			# that will interfere with distfiles / WORKDIR timestamp
 			# comparisons as reported in bug #332217. Also, fix
 			# ownership since tar can change that too.
-			os.utime(settings["WORKDIR"], None)
+			os.utime(Path(settings["WORKDIR"]), None)
 			_prepare_workdir(settings)
 		elif self.phase == "install":
 			out = io.StringIO()
@@ -424,7 +422,7 @@ class EbuildPhase(CompositeTask):
 				log_file = None
 				log_path = None
 				if self.settings.get("PORTAGE_BACKGROUND") != "subprocess":
-					log_path = self.settings.get("PORTAGE_LOG_FILE")
+					log_path = Path(self.settings["PORTAGE_LOG_FILE"]) if "PORTAGE_LOG_FILE" in self.settings else None
 				if log_path:
 					build_logger = BuildLogger(env=self.settings.environ(),
 						log_path=log_path,

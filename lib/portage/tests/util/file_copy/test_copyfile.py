@@ -3,8 +3,8 @@
 
 import shutil
 import tempfile
+import os
 
-from portage import os
 from portage.tests import TestCase
 from portage.checksum import perform_md5
 from portage.util.file_copy import copyfile

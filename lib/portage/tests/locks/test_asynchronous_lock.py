@@ -3,14 +3,15 @@
 
 import signal
 import tempfile
+import os
+import shutil
+from pathlib import Path
 
 try:
 	import dummy_threading
 except ImportError:
 	dummy_threading = None
 
-from portage import os
-from portage import shutil
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from _emerge.AsynchronousLock import AsynchronousLock
@@ -25,7 +26,7 @@ class AsynchronousLockTestCase(TestCase):
 			for force_async in (True, False):
 				for force_dummy in ((False,) if dummy_threading is None
 					else (True, False)):
-					async_lock = AsynchronousLock(path=path,
+					async_lock = AsynchronousLock(path=Path(path),
 						scheduler=scheduler, _force_async=force_async,
 						_force_thread=True,
 						_force_dummy=force_dummy)
@@ -34,7 +35,7 @@ class AsynchronousLockTestCase(TestCase):
 					self.assertEqual(async_lock.returncode, os.EX_OK)
 					scheduler.run_until_complete(async_lock.async_unlock())
 
-				async_lock = AsynchronousLock(path=path,
+				async_lock = AsynchronousLock(path=Path(path),
 					scheduler=scheduler, _force_async=force_async,
 					_force_process=True)
 				async_lock.start()
@@ -62,7 +63,7 @@ class AsynchronousLockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
+			lock1 = AsynchronousLock(path=Path(path), scheduler=scheduler)
 			lock1.start()
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
@@ -71,7 +72,7 @@ class AsynchronousLockTestCase(TestCase):
 			# module is not designed to work as intended here if the
 			# same process tries to lock the same file more than
 			# one time concurrently.
-			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
+			lock2 = AsynchronousLock(path=Path(path), scheduler=scheduler,
 				_force_async=True, _force_process=True)
 			lock2.start()
 			# lock2 should be waiting for lock1 to release
@@ -103,11 +104,11 @@ class AsynchronousLockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
+			lock1 = AsynchronousLock(path=Path(path), scheduler=scheduler)
 			lock1.start()
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
-			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
+			lock2 = AsynchronousLock(path=Path(path), scheduler=scheduler,
 				_force_async=True, _force_process=True)
 			lock2.start()
 			# lock2 should be waiting for lock1 to release
@@ -141,11 +142,11 @@ class AsynchronousLockTestCase(TestCase):
 		tempdir = tempfile.mkdtemp()
 		try:
 			path = os.path.join(tempdir, 'lock_me')
-			lock1 = AsynchronousLock(path=path, scheduler=scheduler)
+			lock1 = AsynchronousLock(path=Path(path), scheduler=scheduler)
 			lock1.start()
 			self.assertEqual(lock1.wait(), os.EX_OK)
 			self.assertEqual(lock1.returncode, os.EX_OK)
-			lock2 = AsynchronousLock(path=path, scheduler=scheduler,
+			lock2 = AsynchronousLock(path=Path(path), scheduler=scheduler,
 				_force_async=True, _force_process=True)
 			lock2.start()
 			# lock2 should be waiting for lock1 to release

@@ -3,12 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
+from pathlib import Path
 
 class NormalizePathTestCase(TestCase):
 
 	def testNormalizePath(self):
 
 		from portage.util import normalize_path
-		path = "///foo/bar/baz"
-		good = "/foo/bar/baz"
+		path = Path("///foo/bar/baz")
+		good = Path("/foo/bar/baz")
 		self.assertEqual(normalize_path(path), good)

@@ -11,6 +11,7 @@ import socket
 import sys
 import tempfile
 import time
+from pathlib import Path
 
 from _emerge.UserQuery import UserQuery
 
@@ -66,7 +67,7 @@ class RsyncSync(NewBase):
 			vcs_dirs = ()
 		else:
 			vcs_dirs = frozenset(VCS_DIRS)
-			vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
+			vcs_dirs = vcs_dirs.intersection(self.repo.location.iterdir())
 
 		for vcs_dir in vcs_dirs:
 			writemsg_level(("!!! %s appears to be under revision " + \
@@ -152,8 +153,7 @@ class RsyncSync(NewBase):
 					return (1, False)
 
 			# Real local timestamp file.
-			self.servertimestampfile = os.path.join(
-				self.repo.location, "metadata", "timestamp.chk")
+			self.servertimestampfile = self.repo.location / "metadata" / "timestamp.chk"
 
 			content = portage.util.grabfile(self.servertimestampfile)
 			timestamp = 0
@@ -366,7 +366,7 @@ class RsyncSync(NewBase):
 						# we always verify the Manifest signature, in case
 						# we had to deal with key revocation case
 						m = gemato.recursiveloader.ManifestRecursiveLoader(
-								os.path.join(download_dir, 'Manifest'),
+								download_dir / 'Manifest',
 								verify_openpgp=True,
 								openpgp_env=openpgp_env,
 								max_jobs=self.verify_jobs)
@@ -586,7 +586,7 @@ class RsyncSync(NewBase):
 		# requirement, since that's not necessarily true for the
 		# default directory used by the tempfile module.
 		if self.usersync_uid is not None:
-			tmpdir = os.path.join(self.settings['PORTAGE_TMPDIR'], 'portage')
+			tmpdir = Path(self.settings['PORTAGE_TMPDIR']) / 'portage'
 			ensure_dirs_kwargs = {}
 			if portage.secpass >= 1:
 				ensure_dirs_kwargs['gid'] = portage.portage_gid
@@ -598,6 +598,7 @@ class RsyncSync(NewBase):
 			tmpdir = None
 		fd, tmpservertimestampfile = \
 			tempfile.mkstemp(dir=tmpdir)
+		tmpservertimestampfile = Path(tmpservertimestampfile)
 		os.close(fd)
 		if self.usersync_uid is not None:
 			portage.util.apply_permissions(tmpservertimestampfile,

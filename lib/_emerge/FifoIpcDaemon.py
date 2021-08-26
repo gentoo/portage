@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AbstractPollTask import AbstractPollTask
+from pathlib import Path
 
 from portage import os
 from portage.cache.mappings import slot_dict_class
@@ -9,6 +10,8 @@ from portage.cache.mappings import slot_dict_class
 class FifoIpcDaemon(AbstractPollTask):
 
 	__slots__ = ("input_fifo", "output_fifo", "_files")
+	input_fifo: Path
+	output_fifo: Path
 
 	_file_names = ("pipe_in",)
 	_files_dict = slot_dict_class(_file_names, prefix="")

@@ -54,7 +54,7 @@ class SchedulerInterface(SlotObject):
 	def _return_false():
 		return False
 
-	async def async_output(self, msg, log_file=None, background=None,
+	async def async_output(self, msg: str, log_file=None, background=None,
 		level=0, noiselevel=-1):
 		"""
 		Output a msg to stdio (if not in background) and to a log file
@@ -79,9 +79,9 @@ class SchedulerInterface(SlotObject):
 			writemsg_level(msg, level=level, noiselevel=noiselevel)
 
 		if log_file is not None:
-			await _writer(log_file, _unicode_encode(msg))
+			await _writer(log_file, msg.encode())
 
-	def output(self, msg, log_path=None, background=None,
+	def output(self, msg: str, log_path=None, background=None,
 		level=0, noiselevel=-1):
 		"""
 		Output msg to stdout if not self._is_background(). If log_path
@@ -116,14 +116,14 @@ class SchedulerInterface(SlotObject):
 					writemsg_level(msg, level=level, noiselevel=noiselevel)
 			else:
 
-				if log_path.endswith('.gz'):
+				if log_path.suffix == '.gz':
 					# NOTE: The empty filename argument prevents us from
 					# triggering a bug in python3 which causes GzipFile
 					# to raise AttributeError if fileobj.name is bytes
 					# instead of unicode.
 					f =  gzip.GzipFile(filename='', mode='ab', fileobj=f)
 
-				f.write(_unicode_encode(msg))
+				f.write(msg.encode())
 				f.close()
 				if f_real is not f:
 					f_real.close()

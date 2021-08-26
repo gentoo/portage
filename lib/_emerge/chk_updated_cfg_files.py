@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import logging
+from pathlib import Path
+from typing import List
 
 import portage
 from portage import os
@@ -9,7 +11,7 @@ from portage.localization import _
 from portage.output import bold, colorize, yellow
 from portage.util import writemsg_level
 
-def chk_updated_cfg_files(eroot, config_protect):
+def chk_updated_cfg_files(eroot: Path, config_protect: List[Path]):
 	target_root = eroot
 	result = list(
 		portage.util.find_updated_config_files(target_root, config_protect))

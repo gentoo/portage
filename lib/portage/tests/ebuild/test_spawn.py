@@ -5,7 +5,8 @@ import errno
 import io
 import tempfile
 import portage
-from portage import os
+import os
+from pathlib import Path
 from portage import _encodings
 from portage import _unicode_encode
 from portage.const import BASH_BINARY
@@ -32,12 +33,11 @@ class SpawnTestCase(TestCase):
 					2: null_fd
 				},
 				scheduler=global_event_loop(),
-				logfile=logfile)
+				logfile=Path(logfile))
 			proc.start()
 			os.close(null_fd)
 			self.assertEqual(proc.wait(), os.EX_OK)
-			f = io.open(_unicode_encode(logfile,
-				encoding=_encodings['fs'], errors='strict'),
+			f = io.open(logfile,
 				mode='r', encoding=_encodings['content'], errors='strict')
 			log_content = f.read()
 			f.close()

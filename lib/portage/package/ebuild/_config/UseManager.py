@@ -242,7 +242,7 @@ class UseManager:
 		ret = ExtendedAtomDict(dict)
 		if user_config:
 			pusedict = grabdict_package(
-				os.path.join(location, file_name),
+				location / file_name,
 				recursive=1, newlines=1, allow_wildcard=True,
 				allow_repo=True, verify_eapi=False,
 				allow_build_id=True, allow_use=False)
@@ -269,7 +269,7 @@ class UseManager:
 		ret = {}
 		for repo in repositories.repos_with_profiles():
 			ret[repo.name] = self._parse_file_to_tuple(
-				os.path.join(repo.location, "profiles", file_name),
+				repo.location / "profiles" / file_name,
 				eapi_filter=eapi_filter, eapi_default=repo.eapi)
 		return ret
 
@@ -277,7 +277,7 @@ class UseManager:
 		ret = {}
 		for repo in repositories.repos_with_profiles():
 			ret[repo.name] = self._parse_file_to_dict(
-				os.path.join(repo.location, "profiles", file_name),
+				repo.location / "profiles" / file_name,
 				eapi_filter=eapi_filter, eapi_default=repo.eapi,
 				allow_repo=allow_profile_repo_deps(repo),
 				allow_build_id=("build-id" in repo.profile_formats))
@@ -286,7 +286,7 @@ class UseManager:
 	def _parse_profile_files_to_tuple_of_tuples(self, file_name, locations,
 		eapi_filter=None):
 		return tuple(self._parse_file_to_tuple(
-			os.path.join(profile.location, file_name),
+			profile.location / file_name,
 			recursive=profile.portage1_directories,
 			eapi_filter=eapi_filter, eapi=profile.eapi,
 			eapi_default=None) for profile in locations)
@@ -294,7 +294,7 @@ class UseManager:
 	def _parse_profile_files_to_tuple_of_dicts(self, file_name, locations,
 		juststrings=False, eapi_filter=None):
 		return tuple(self._parse_file_to_dict(
-			os.path.join(profile.location, file_name), juststrings,
+			profile.location / file_name, juststrings,
 			recursive=profile.portage1_directories, eapi_filter=eapi_filter,
 			user_config=profile.user_config, eapi=profile.eapi,
 			eapi_default=None, allow_build_id=profile.allow_build_id,
@@ -304,7 +304,7 @@ class UseManager:
 	def _parse_repository_usealiases(self, repositories):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			file_name = os.path.join(repo.location, "profiles", "use.aliases")
+			file_name = repo.location / "profiles" / "use.aliases"
 			eapi = read_corresponding_eapi_file(
 				file_name, default=repo.eapi)
 			useflag_re = _get_useflag_re(eapi)
@@ -330,7 +330,7 @@ class UseManager:
 	def _parse_repository_packageusealiases(self, repositories):
 		ret = {}
 		for repo in repositories.repos_with_profiles():
-			file_name = os.path.join(repo.location, "profiles", "package.use.aliases")
+			file_name = repo.location / "profiles" / "package.use.aliases"
 			eapi = read_corresponding_eapi_file(
 				file_name, default=repo.eapi)
 			useflag_re = _get_useflag_re(eapi)
