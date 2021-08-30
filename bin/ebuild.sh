@@ -248,8 +248,8 @@ inherit() {
 		# previous inherit call in the call stack.
 		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
 			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
-			eqawarn "For compatibility with <=portage-2.1.6.7, only call EXPORT_FUNCTIONS"
-			eqawarn "after inherit(s)."
+			eqawarn "For compatibility with PMS and to avoid breakage with Pkgcore, only call"
+			eqawarn "EXPORT_FUNCTIONS after inherit(s). Portage behavior may change in future."
 		fi
 	fi
 
