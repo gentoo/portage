@@ -6,7 +6,7 @@ import portage
 
 from portage.output import colorize
 
-def display_preserved_libs(vardb):
+def display_preserved_libs(vardb, verbose=False):
 
 	MAX_DISPLAY = 3
 
@@ -36,7 +36,8 @@ def display_preserved_libs(vardb):
 						consumers.append(c)
 				consumers.sort()
 				consumer_map[f] = consumers
-				search_for_owners.update(consumers[:MAX_DISPLAY+1])
+				max_search = None if verbose else MAX_DISPLAY + 1
+				search_for_owners.update(consumers[:max_search])
 
 		owners = {}
 		for f in search_for_owners:
@@ -75,7 +76,9 @@ def display_preserved_libs(vardb):
 				# they don't need to be rebuilt (see bug #461908).
 				consumers = consumers_non_preserved
 
-			if len(consumers) == MAX_DISPLAY + 1:
+			if verbose:
+				max_display = None
+			elif len(consumers) == MAX_DISPLAY + 1:
 				# Display 1 extra consumer, instead of displaying
 				# "used by 1 other files".
 				max_display = MAX_DISPLAY + 1
@@ -91,6 +94,6 @@ def display_preserved_libs(vardb):
 					owners_desc = ", ".join(x.mycpv for x in owners.get(c, []))
 				print(colorize("WARN", " * ") + "     used by %s (%s)" % \
 					(c, owners_desc))
-			if len(consumers) > max_display:
+			if not verbose and len(consumers) > max_display:
 				print(colorize("WARN", " * ") + "     used by %d other files" %
 					(len(consumers) - max_display))

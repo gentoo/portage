@@ -140,7 +140,7 @@ def post_emerge(myaction, myopts, myfiles,
 		else:
 			print()
 			print(colorize("WARN", "!!!") + " existing preserved libs:")
-			display_preserved_libs(vardbapi)
+			display_preserved_libs(vardbapi, verbose="--verbose" in myopts)
 			print("Use " + colorize("GOOD", "emerge @preserved-rebuild") +
 				" to rebuild packages using these libraries")
 
