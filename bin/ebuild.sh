@@ -402,6 +402,9 @@ inherit() {
 			unset $__export_funcs_var
 
 			has $1 $INHERITED || export INHERITED="$INHERITED $1"
+			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
+				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
+			fi
 		fi
 
 		shift
@@ -648,6 +651,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
 		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset PORTAGE_EXPLICIT_INHERIT
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -757,7 +761,7 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	metadata_keys=(
 		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES IDEPEND
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT
 	)
 
 	if ! ___eapi_has_BDEPEND; then
@@ -766,6 +770,8 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	if ! ___eapi_has_IDEPEND; then
 		unset IDEPEND
 	fi
+
+	INHERIT=${PORTAGE_EXPLICIT_INHERIT}
 
 	# The extra $(echo) commands remove newlines.
 	for f in "${metadata_keys[@]}" ; do
