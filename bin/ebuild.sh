@@ -754,14 +754,6 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	export SANDBOX_ON="0"
 	set -f
 
-	if [ -n "${dbkey}" ] ; then
-		if [ ! -d "${dbkey%/*}" ]; then
-			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
-		fi
-		# Make it group writable. 666&~002==664
-		umask 002
-	fi
-
 	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
 		EAPI PROPERTIES DEFINED_PHASES IDEPEND UNUSED_04
@@ -775,17 +767,10 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	fi
 
 	# The extra $(echo) commands remove newlines.
-	if [ -n "${dbkey}" ] ; then
-		> "${dbkey}"
-		for f in ${auxdbkeys} ; do
-			echo $(echo ${!f}) >> "${dbkey}" || exit $?
-		done
-	else
-		for f in ${auxdbkeys} ; do
-			eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
-		done
-		eval "exec ${PORTAGE_PIPE_FD}>&-"
-	fi
+	for f in ${auxdbkeys} ; do
+		eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
+	done
+	eval "exec ${PORTAGE_PIPE_FD}>&-"
 	set +f
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
