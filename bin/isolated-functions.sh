@@ -364,6 +364,7 @@ __eend() {
 }
 
 eend() {
+	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
 	local retval=${1:-0}
 	shift
 
