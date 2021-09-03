@@ -238,8 +238,7 @@ docstrings['metadata'] = """
 <eroot> <pkgtype> <category/package> [<key>]+
 Returns metadata values for the specified package.
 Available keys: %s
-"""  % ','.join(sorted(x for x in portage.auxdbkeys \
-if not x.startswith('UNUSED_')))
+"""  % ','.join(sorted(x for x in portage.auxdbkeys))
 metadata.__doc__ = docstrings['metadata']
 
 

@@ -79,7 +79,7 @@ class QAData:
 
 		self.missingvars = qadata.get("missingvars", [])
 		logging.debug("QAData: missingvars: %s", self.missingvars)
-		self.allvars = set(x for x in portage.auxdbkeys if not x.startswith("UNUSED_"))
+		self.allvars = set(portage.auxdbkeys)
 		self.allvars.update(Package.metadata_keys)
 		self.allvars = sorted(self.allvars)
 

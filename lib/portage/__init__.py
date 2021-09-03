@@ -519,10 +519,8 @@ auxdbkeys = (
 	'RESTRICT',  'HOMEPAGE',  'LICENSE',   'DESCRIPTION',
 	'KEYWORDS',  'INHERITED', 'IUSE', 'REQUIRED_USE',
 	'PDEPEND',   'BDEPEND', 'EAPI',
-	'PROPERTIES', 'DEFINED_PHASES', 'IDEPEND', 'UNUSED_04',
-	'UNUSED_03', 'UNUSED_02', 'UNUSED_01',
+	'PROPERTIES', 'DEFINED_PHASES', 'IDEPEND',
 )
-auxdbkeylen = len(auxdbkeys)
 
 def portageexit():
 	pass

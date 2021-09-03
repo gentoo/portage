@@ -791,8 +791,7 @@ class Package(Task):
 			pkg = self
 		return pkg
 
-_all_metadata_keys = set(x for x in portage.auxdbkeys \
-	if not x.startswith("UNUSED_"))
+_all_metadata_keys = set(x for x in portage.auxdbkeys)
 _all_metadata_keys.update(Package.metadata_keys)
 _all_metadata_keys = frozenset(_all_metadata_keys)
 

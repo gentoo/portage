@@ -28,8 +28,7 @@ class dbapi:
 	_category_re = re.compile(r'^\w[-.+\w]*$', re.UNICODE)
 	_categories = None
 	_use_mutable = False
-	_known_keys = frozenset(x for x in auxdbkeys
-		if not x.startswith("UNUSED_0"))
+	_known_keys = frozenset(auxdbkeys)
 	_pkg_str_aux_keys = ("EAPI", "KEYWORDS", "SLOT", "repository")
 
 	def __init__(self):
