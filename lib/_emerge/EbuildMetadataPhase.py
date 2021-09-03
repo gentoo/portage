@@ -151,13 +151,16 @@ class EbuildMetadataPhase(SubProcess):
 			metadata_lines = _unicode_decode(b''.join(self._raw_metadata),
 				encoding=_encodings['repo.content'],
 				errors='replace').splitlines()
+			metadata = {}
 			metadata_valid = True
-			if len(portage.auxdbkeys) != len(metadata_lines):
-				# Don't trust bash's returncode if the
-				# number of lines is incorrect.
-				metadata_valid = False
-			else:
-				metadata = dict(zip(portage.auxdbkeys, metadata_lines))
+			for l in metadata_lines:
+				if '=' not in l:
+					metadata_valid = False
+					break
+				key, value = l.split('=', 1)
+				metadata[key] = value
+
+			if metadata_valid:
 				parsed_eapi = self._eapi
 				if parsed_eapi is None:
 					parsed_eapi = "0"

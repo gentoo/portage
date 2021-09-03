@@ -754,10 +754,11 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	export SANDBOX_ON="0"
 	set -f
 
-	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
+	metadata_keys=(
+		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES IDEPEND UNUSED_04
-		UNUSED_03 UNUSED_02 UNUSED_01"
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND
+	)
 
 	if ! ___eapi_has_BDEPEND; then
 		unset BDEPEND
@@ -767,10 +768,10 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	fi
 
 	# The extra $(echo) commands remove newlines.
-	for f in ${auxdbkeys} ; do
-		eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
+	for f in "${metadata_keys[@]}" ; do
+		echo "${f}=$(echo ${!f})" >&${PORTAGE_PIPE_FD} || exit $?
 	done
-	eval "exec ${PORTAGE_PIPE_FD}>&-"
+	exec {PORTAGE_PIPE_FD}>&-
 	set +f
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so
