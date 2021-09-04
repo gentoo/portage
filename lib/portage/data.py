@@ -178,6 +178,15 @@ def _get_global(k):
 				noiselevel=-1)
 			portage_group_warning()
 
+		portage_homedir_ready = os.access(os.path.expanduser("~portage"),
+			os.R_OK | os.W_OK | os.X_OK)
+		if not portage_homedir_ready:
+			writemsg(
+				colorize("BAD",
+				_("portage: unable to utilise 'portage' user home directory."
+					+ " Ensure that it exists with the correct permissions."))
+				+ "\n", noiselevel=-1)
+
 		globals()['portage_gid'] = portage_gid
 		_initialized_globals.add('portage_gid')
 		globals()['portage_uid'] = portage_uid
