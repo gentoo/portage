@@ -1870,7 +1870,7 @@ def _check_build_log(mysettings, out=None):
 
 	# we deduplicate these since they is repeated for every setup.py call
 	setuptools_warn = set()
-	setuptools_warn_re = re.compile(r'.*\/setuptools\/.*: UserWarning: (.*)')
+	setuptools_warn_re = re.compile(r'.*\/setuptools\/.*: .*Warning: (.*)')
 	# skip useless version normalization warnings
 	setuptools_warn_ignore_re = [
 		re.compile(r'Normalizing .*')
