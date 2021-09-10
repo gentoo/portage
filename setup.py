@@ -783,7 +783,7 @@ def get_data_files(regular_files, venv_files):
 
 setup(
 	name = 'portage',
-	version = '3.0.22',
+	version = '3.0.23',
 	url = 'https://wiki.gentoo.org/wiki/Project:Portage',
 	project_urls = {
 		'Release Notes': 'https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES',

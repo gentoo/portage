@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.23
+--------------
+* enable autogroup scheduling with pid-sandbox if possible. This should
+  make the kernel respect niceness better.
+* add support conf-update.d hooks.
+* display all preserved libraries with --verbose.
+* restore QA warnings when EXPORT_FUNCTIONS is called before inherit.
+* catch more setuptools warnings via the respective QA check.
+
 portage-3.0.22
 --------------
 * USE flags are now sorted with respect to numerical segments in emerge
