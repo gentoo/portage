@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'nooffset-check': {
-			'name': "nooffset",
-			'sourcefile': "offset",
-			'class': "NoOffsetWithHelpers",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "nooffset-check": {
+            "name": "nooffset",
+            "sourcefile": "offset",
+            "class": "NoOffsetWithHelpers",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

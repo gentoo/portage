@@ -6,12 +6,15 @@ import io
 import portage
 from portage import os, _encodings
 from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import (ResolverPlayground,
-	ResolverPlaygroundTestCase)
+from portage.tests.resolver.ResolverPlayground import (
+    ResolverPlayground,
+    ResolverPlaygroundTestCase,
+)
+
 
 class SecuritySetTestCase(TestCase):
 
-	glsa_template = """\
+    glsa_template = """\
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet href="/xsl/glsa.xsl" type="text/xsl"?>
 <?xml-stylesheet href="/xsl/guide.xsl" type="text/xsl"?>
@@ -56,87 +59,84 @@ class SecuritySetTestCase(TestCase):
 </glsa>
 """
 
-	def _must_skip(self):
-		try:
-			__import__("xml.etree.ElementTree")
-			__import__("xml.parsers.expat").parsers.expat.ExpatError
-		except (AttributeError, ImportError):
-			return "python is missing xml support"
+    def _must_skip(self):
+        try:
+            __import__("xml.etree.ElementTree")
+            __import__("xml.parsers.expat").parsers.expat.ExpatError
+        except (AttributeError, ImportError):
+            return "python is missing xml support"
 
-	def testSecuritySet(self):
+    def testSecuritySet(self):
 
-		skip_reason = self._must_skip()
-		if skip_reason:
-			self.portage_skip = skip_reason
-			self.assertFalse(True, skip_reason)
-			return
+        skip_reason = self._must_skip()
+        if skip_reason:
+            self.portage_skip = skip_reason
+            self.assertFalse(True, skip_reason)
+            return
 
-		ebuilds = {
-			"cat/A-vulnerable-2.2": {
-				"KEYWORDS": "x86"
-			},
-			"cat/B-not-vulnerable-4.5": {
-				"KEYWORDS": "x86"
-			},
-		}
+        ebuilds = {
+            "cat/A-vulnerable-2.2": {"KEYWORDS": "x86"},
+            "cat/B-not-vulnerable-4.5": {"KEYWORDS": "x86"},
+        }
 
-		installed = {
-			"cat/A-vulnerable-2.1": {
-				"KEYWORDS": "x86"
-			},
-			"cat/B-not-vulnerable-4.4": {
-				"KEYWORDS": "x86"
-			},
-		}
+        installed = {
+            "cat/A-vulnerable-2.1": {"KEYWORDS": "x86"},
+            "cat/B-not-vulnerable-4.4": {"KEYWORDS": "x86"},
+        }
 
-		glsas = (
-			{
-				"glsa_id": "201301-01",
-				"pkgname": "A-vulnerable",
-				"cp": "cat/A-vulnerable",
-				"unaffected_version": "2.2"
-			},
-			{
-				"glsa_id": "201301-02",
-				"pkgname": "B-not-vulnerable",
-				"cp": "cat/B-not-vulnerable",
-				"unaffected_version": "4.4"
-			},
-			{
-				"glsa_id": "201301-03",
-				"pkgname": "NotInstalled",
-				"cp": "cat/NotInstalled",
-				"unaffected_version": "3.5"
-			},
-		)
+        glsas = (
+            {
+                "glsa_id": "201301-01",
+                "pkgname": "A-vulnerable",
+                "cp": "cat/A-vulnerable",
+                "unaffected_version": "2.2",
+            },
+            {
+                "glsa_id": "201301-02",
+                "pkgname": "B-not-vulnerable",
+                "cp": "cat/B-not-vulnerable",
+                "unaffected_version": "4.4",
+            },
+            {
+                "glsa_id": "201301-03",
+                "pkgname": "NotInstalled",
+                "cp": "cat/NotInstalled",
+                "unaffected_version": "3.5",
+            },
+        )
 
-		world = ["cat/A"]
+        world = ["cat/A"]
 
-		test_cases = (
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@security"],
+                options={},
+                success=True,
+                mergelist=["cat/A-vulnerable-2.2"],
+            ),
+        )
 
-			ResolverPlaygroundTestCase(
-				["@security"],
-				options = {},
-				success = True,
-				mergelist = ["cat/A-vulnerable-2.2"]),
-		)
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, world=world, debug=False
+        )
 
-		playground = ResolverPlayground(ebuilds=ebuilds,
-			installed=installed, world=world, debug=False)
+        try:
 
-		try:
+            portdb = playground.trees[playground.eroot]["porttree"].dbapi
+            glsa_dir = os.path.join(
+                portdb.repositories["test_repo"].location, "metadata", "glsa"
+            )
+            portage.util.ensure_dirs(glsa_dir)
+            for glsa in glsas:
+                with io.open(
+                    os.path.join(glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"),
+                    encoding=_encodings["repo.content"],
+                    mode="w",
+                ) as f:
+                    f.write(self.glsa_template % glsa)
 
-			portdb = playground.trees[playground.eroot]["porttree"].dbapi
-			glsa_dir = os.path.join(portdb.repositories['test_repo'].location, 'metadata', 'glsa')
-			portage.util.ensure_dirs(glsa_dir)
-			for glsa in glsas:
-				with io.open(os.path.join(glsa_dir,
-					'glsa-' + glsa["glsa_id"] + '.xml'),
-					encoding=_encodings['repo.content'], mode='w') as f:
-					f.write(self.glsa_template % glsa)
-
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()

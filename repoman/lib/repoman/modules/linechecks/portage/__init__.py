@@ -7,21 +7,21 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'internal-check': {
-			'name': "portageinternal",
-			'sourcefile': "internal",
-			'class': "PortageInternal",
-			'description': doc,
-		},
-		'portageinternalvariableassignment-check': {
-			'name': "portageinternalvariableassignment",
-			'sourcefile': "internal",
-			'class': "PortageInternalVariableAssignment",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "internal-check": {
+            "name": "portageinternal",
+            "sourcefile": "internal",
+            "class": "PortageInternal",
+            "description": doc,
+        },
+        "portageinternalvariableassignment-check": {
+            "name": "portageinternalvariableassignment",
+            "sourcefile": "internal",
+            "class": "PortageInternalVariableAssignment",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

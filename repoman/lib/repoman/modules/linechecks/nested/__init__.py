@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'nesteddie-check': {
-			'name': "nesteddie",
-			'sourcefile': "nested",
-			'class': "EbuildNestedDie",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "nesteddie-check": {
+            "name": "nesteddie",
+            "sourcefile": "nested",
+            "class": "EbuildNestedDie",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

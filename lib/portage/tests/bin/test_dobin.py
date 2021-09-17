@@ -4,13 +4,14 @@
 
 from portage.tests.bin.setup_env import BinTestCase, dobin, xexists_in_D
 
+
 class DoBin(BinTestCase):
-	def testDoBin(self):
-		self.init()
-		try:
-			dobin("does-not-exist", 1)
-			xexists_in_D("does-not-exist")
-			xexists_in_D("/bin/does-not-exist")
-			xexists_in_D("/usr/bin/does-not-exist")
-		finally:
-			self.cleanup()
+    def testDoBin(self):
+        self.init()
+        try:
+            dobin("does-not-exist", 1)
+            xexists_in_D("does-not-exist")
+            xexists_in_D("/bin/does-not-exist")
+            xexists_in_D("/usr/bin/does-not-exist")
+        finally:
+            self.cleanup()

@@ -18,15 +18,17 @@ import os
 from os import path as osp
 import sys
 
-if osp.isfile(osp.abspath(osp.join(osp.dirname(__file__), "../../../../.portage_not_installed"))):
-	sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), "../../../../lib")))
+if osp.isfile(
+    osp.abspath(osp.join(osp.dirname(__file__), "../../../../.portage_not_installed"))
+):
+    sys.path.insert(0, osp.abspath(osp.join(osp.dirname(__file__), "../../../../lib")))
 import portage
 
 # -- Project information -----------------------------------------------------
 
-project = 'portage'
-copyright = '2020, Gentoo Authors' # pylint: disable=redefined-builtin
-author = 'Gentoo Authors'
+project = "portage"
+copyright = "2020, Gentoo Authors"  # pylint: disable=redefined-builtin
+author = "Gentoo Authors"
 
 # The full version, including alpha/beta/rc tags
 release = str(portage.VERSION)
@@ -37,8 +39,8 @@ release = str(portage.VERSION)
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-	'sphinx.ext.autodoc',
-	'sphinx_epytext',
+    "sphinx.ext.autodoc",
+    "sphinx_epytext",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -55,12 +57,14 @@ extensions = [
 # a list of builtin themes.
 #
 html_show_sourcelink = False
-html_theme = 'sphinxdoc'
+html_theme = "sphinxdoc"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = []
 
-autodoc_default_options = dict((opt, True) for opt in
-	filter(None, os.environ.get('SPHINX_APIDOC_OPTIONS', '').split(',')))
+autodoc_default_options = dict(
+    (opt, True)
+    for opt in filter(None, os.environ.get("SPHINX_APIDOC_OPTIONS", "").split(","))
+)

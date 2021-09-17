@@ -5,24 +5,23 @@
 from portage.tests import TestCase
 from portage.dep import dep_getslot
 
+
 class DepGetSlot(TestCase):
-	""" A simple testcase for isvalidatom
-	"""
+    """A simple testcase for isvalidatom"""
 
-	def testDepGetSlot(self):
+    def testDepGetSlot(self):
 
-		slot_char = ":"
-		slots = ("a", "1.2", "1", "IloveVapier", None)
-		cpvs = ["sys-apps/portage"]
-		versions = ["2.1.1", "2.1-r1"]
-		for cpv in cpvs:
-			for version in versions:
-				for slot in slots:
-					mycpv = cpv
-					if version:
-						mycpv = '=' + mycpv + '-' + version
-					if slot is not None:
-						self.assertEqual(dep_getslot(
-							mycpv + slot_char + slot), slot)
-					else:
-						self.assertEqual(dep_getslot(mycpv), slot)
+        slot_char = ":"
+        slots = ("a", "1.2", "1", "IloveVapier", None)
+        cpvs = ["sys-apps/portage"]
+        versions = ["2.1.1", "2.1-r1"]
+        for cpv in cpvs:
+            for version in versions:
+                for slot in slots:
+                    mycpv = cpv
+                    if version:
+                        mycpv = "=" + mycpv + "-" + version
+                    if slot is not None:
+                        self.assertEqual(dep_getslot(mycpv + slot_char + slot), slot)
+                    else:
+                        self.assertEqual(dep_getslot(mycpv), slot)

@@ -19,20 +19,26 @@ ping -c 1 -W 1 ::1 || exit 1
 ping -c 1 -W 1 fd::1 || exit 1
 """
 
+
 class UnshareNetTestCase(TestCase):
+    def testUnshareNet(self):
 
-	def testUnshareNet(self):
+        if platform.system() != "Linux":
+            self.skipTest("not Linux")
+        if portage.process.find_binary("ping") is None:
+            self.skipTest("ping not found")
 
-		if platform.system() != 'Linux':
-			self.skipTest('not Linux')
-		if portage.process.find_binary('ping') is None:
-			self.skipTest('ping not found')
+        errno_value = portage.process._unshare_validate(CLONE_NEWNET)
+        if errno_value != 0:
+            self.skipTest(
+                "Unable to unshare: %s" % (errno.errorcode.get(errno_value, "?"))
+            )
 
-		errno_value = portage.process._unshare_validate(CLONE_NEWNET)
-		if errno_value != 0:
-			self.skipTest("Unable to unshare: %s" % (
-				errno.errorcode.get(errno_value, '?')))
-
-		env = os.environ.copy()
-		env['IPV6'] = '1' if portage.process._has_ipv6() else ''
-		self.assertEqual(portage.process.spawn([BASH_BINARY, '-c', UNSHARE_NET_TEST_SCRIPT], unshare_net=True, env=env), 0)
+        env = os.environ.copy()
+        env["IPV6"] = "1" if portage.process._has_ipv6() else ""
+        self.assertEqual(
+            portage.process.spawn(
+                [BASH_BINARY, "-c", UNSHARE_NET_TEST_SCRIPT], unshare_net=True, env=env
+            ),
+            0,
+        )

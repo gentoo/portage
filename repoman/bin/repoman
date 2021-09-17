@@ -10,30 +10,30 @@ import errno
 
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
+    import signal
 
-	def exithandler(signum, _frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(128 + signum)
+    def exithandler(signum, _frame):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        sys.exit(128 + signum)
 
-	signal.signal(signal.SIGINT, exithandler)
-	signal.signal(signal.SIGTERM, exithandler)
-	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGINT, exithandler)
+    signal.signal(signal.SIGTERM, exithandler)
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+    sys.exit(1)
 
 from os import path as osp
 here = osp.realpath(__file__)
 if osp.isfile(osp.join(osp.dirname(osp.dirname(here)), ".repoman_not_installed")):
-	# Add the repoman subpkg
-	pym_path = osp.join(osp.dirname(osp.dirname(here)), "lib")
-	sys.path.insert(0, pym_path)
-	if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.dirname(here))), ".portage_not_installed")):
-		# Add the base portage pkg
-		pym_path = osp.join(osp.dirname(osp.dirname(osp.dirname(here))), "lib")
-		sys.path.insert(0, pym_path)
+    # Add the repoman subpkg
+    pym_path = osp.join(osp.dirname(osp.dirname(here)), "lib")
+    sys.path.insert(0, pym_path)
+    if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.dirname(here))), ".portage_not_installed")):
+        # Add the base portage pkg
+        pym_path = osp.join(osp.dirname(osp.dirname(osp.dirname(here))), "lib")
+        sys.path.insert(0, pym_path)
 
 import portage
 portage._internal_caller = True
@@ -41,12 +41,12 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 from repoman.main import repoman_main
 
 try:
-	sys.exit(repoman_main(sys.argv))
+    sys.exit(repoman_main(sys.argv))
 except IOError as e:
-	if e.errno == errno.EACCES:
-		print("\nRepoman: Need user access")
-		sys.exit(1)
-	else:
-		raise
+    if e.errno == errno.EACCES:
+        print("\nRepoman: Need user access")
+        sys.exit(1)
+    else:
+        raise
 finally:
-	global_event_loop().close()
+    global_event_loop().close()

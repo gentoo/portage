@@ -3,13 +3,14 @@
 
 from _emerge.Task import Task
 
+
 class Blocker(Task):
 
-	__hash__ = Task.__hash__
-	__slots__ = ("root", "atom", "cp", "eapi", "priority", "satisfied")
+    __hash__ = Task.__hash__
+    __slots__ = ("root", "atom", "cp", "eapi", "priority", "satisfied")
 
-	def __init__(self, **kwargs):
-		Task.__init__(self, **kwargs)
-		self.cp = self.atom.cp
-		self._hash_key = ("blocks", self.root, self.atom, self.eapi)
-		self._hash_value = hash(self._hash_key)
+    def __init__(self, **kwargs):
+        Task.__init__(self, **kwargs)
+        self.cp = self.atom.cp
+        self._hash_key = ("blocks", self.root, self.atom, self.eapi)
+        self._hash_value = hash(self._hash_key)

@@ -3,9 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
-#from portage.util import grabdict
+
+# from portage.util import grabdict
+
 
 class GrabDictTestCase(TestCase):
-
-	def testGrabDictPass(self):
-		pass
+    def testGrabDictPass(self):
+        pass
