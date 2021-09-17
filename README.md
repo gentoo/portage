@@ -1,3 +1,5 @@
+[![CI](https://github.com/gentoo/portage/actions/workflows/ci.yml/badge.svg)](https://github.com/gentoo/portage/actions/workflows/ci.yml)
+
 About Portage
 =============
 
