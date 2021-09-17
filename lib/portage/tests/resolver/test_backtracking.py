@@ -2,178 +2,192 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
-from portage.tests.resolver.ResolverPlayground import ResolverPlayground, ResolverPlaygroundTestCase
+from portage.tests.resolver.ResolverPlayground import (
+    ResolverPlayground,
+    ResolverPlaygroundTestCase,
+)
+
 
 class BacktrackingTestCase(TestCase):
+    def testBacktracking(self):
+        ebuilds = {
+            "dev-libs/A-1": {},
+            "dev-libs/A-2": {},
+            "dev-libs/B-1": {"DEPEND": "dev-libs/A"},
+        }
 
-	def testBacktracking(self):
-		ebuilds = {
-			"dev-libs/A-1": {},
-			"dev-libs/A-2": {},
-			"dev-libs/B-1": { "DEPEND": "dev-libs/A" },
-			}
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["=dev-libs/A-1", "dev-libs/B"],
+                all_permutations=True,
+                mergelist=["dev-libs/A-1", "dev-libs/B-1"],
+                success=True,
+            ),
+        )
 
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["=dev-libs/A-1", "dev-libs/B"],
-					all_permutations = True,
-					mergelist = ["dev-libs/A-1", "dev-libs/B-1"],
-					success = True),
-			)
+        playground = ResolverPlayground(ebuilds=ebuilds)
 
-		playground = ResolverPlayground(ebuilds=ebuilds)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
 
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+    def testBacktrackNotNeeded(self):
+        ebuilds = {
+            "dev-libs/A-1": {},
+            "dev-libs/A-2": {},
+            "dev-libs/B-1": {},
+            "dev-libs/B-2": {},
+            "dev-libs/C-1": {"DEPEND": "dev-libs/A dev-libs/B"},
+            "dev-libs/D-1": {"DEPEND": "=dev-libs/A-1 =dev-libs/B-1"},
+        }
 
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/C", "dev-libs/D"],
+                all_permutations=True,
+                options={"--backtrack": 1},
+                mergelist=[
+                    "dev-libs/A-1",
+                    "dev-libs/B-1",
+                    "dev-libs/C-1",
+                    "dev-libs/D-1",
+                ],
+                ignore_mergelist_order=True,
+                success=True,
+            ),
+        )
 
-	def testBacktrackNotNeeded(self):
-		ebuilds = {
-			"dev-libs/A-1": {},
-			"dev-libs/A-2": {},
-			"dev-libs/B-1": {},
-			"dev-libs/B-2": {},
-			"dev-libs/C-1": { "DEPEND": "dev-libs/A dev-libs/B" },
-			"dev-libs/D-1": { "DEPEND": "=dev-libs/A-1 =dev-libs/B-1" },
-			}
+        playground = ResolverPlayground(ebuilds=ebuilds)
 
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["dev-libs/C", "dev-libs/D"],
-					all_permutations = True,
-					options = { "--backtrack": 1 },
-					mergelist = ["dev-libs/A-1", "dev-libs/B-1", "dev-libs/C-1", "dev-libs/D-1"],
-					ignore_mergelist_order = True,
-					success = True),
-			)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
 
-		playground = ResolverPlayground(ebuilds=ebuilds)
+    def testBacktrackWithoutUpdates(self):
+        """
+        If --update is not given we might have to mask the old installed version later.
+        """
 
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+        ebuilds = {
+            "dev-libs/A-1": {"DEPEND": "dev-libs/Z"},
+            "dev-libs/B-1": {"DEPEND": ">=dev-libs/Z-2"},
+            "dev-libs/Z-1": {},
+            "dev-libs/Z-2": {},
+        }
 
-	def testBacktrackWithoutUpdates(self):
-		"""
-		If --update is not given we might have to mask the old installed version later.
-		"""
+        installed = {
+            "dev-libs/Z-1": {"USE": ""},
+        }
 
-		ebuilds = {
-			"dev-libs/A-1": { "DEPEND": "dev-libs/Z" },
-			"dev-libs/B-1": { "DEPEND": ">=dev-libs/Z-2" },
-			"dev-libs/Z-1": { },
-			"dev-libs/Z-2": { },
-			}
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/B", "dev-libs/A"],
+                all_permutations=True,
+                mergelist=[
+                    "dev-libs/Z-2",
+                    "dev-libs/B-1",
+                    "dev-libs/A-1",
+                ],
+                ignore_mergelist_order=True,
+                success=True,
+            ),
+        )
 
-		installed = {
-			"dev-libs/Z-1": { "USE": "" },
-			}
+        playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
 
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["dev-libs/B", "dev-libs/A"],
-					all_permutations = True,
-					mergelist = ["dev-libs/Z-2", "dev-libs/B-1", "dev-libs/A-1",],
-					ignore_mergelist_order = True,
-					success = True),
-			)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+    def testBacktrackMissedUpdates(self):
+        """
+        An update is missed due to a dependency on an older version.
+        """
 
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+        ebuilds = {
+            "dev-libs/A-1": {},
+            "dev-libs/A-2": {},
+            "dev-libs/B-1": {"RDEPEND": "<=dev-libs/A-1"},
+        }
 
-	def testBacktrackMissedUpdates(self):
-		"""
-		An update is missed due to a dependency on an older version.
-		"""
+        installed = {
+            "dev-libs/A-1": {"USE": ""},
+            "dev-libs/B-1": {"USE": "", "RDEPEND": "<=dev-libs/A-1"},
+        }
 
-		ebuilds = {
-			"dev-libs/A-1": { },
-			"dev-libs/A-2": { },
-			"dev-libs/B-1": { "RDEPEND": "<=dev-libs/A-1" },
-			}
+        options = {"--update": True, "--deep": True, "--selective": True}
 
-		installed = {
-			"dev-libs/A-1": { "USE": "" },
-			"dev-libs/B-1": { "USE": "", "RDEPEND": "<=dev-libs/A-1" },
-			}
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["dev-libs/A", "dev-libs/B"],
+                options=options,
+                all_permutations=True,
+                mergelist=[],
+                success=True,
+            ),
+        )
 
-		options = {'--update' : True, '--deep' : True, '--selective' : True}
+        playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
 
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["dev-libs/A", "dev-libs/B"],
-					options = options,
-					all_permutations = True,
-					mergelist = [],
-					success = True),
-			)
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()
 
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed)
+    def testBacktrackNoWrongRebuilds(self):
+        """
+        Ensure we remove backtrack masks if the reason for the mask gets masked itself.
+        """
 
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+        ebuilds = {
+            "dev-libs/A-1": {},
+            "dev-libs/A-2": {},
+            "dev-libs/B-1": {"RDEPEND": "dev-libs/D"},
+            "dev-libs/C-1": {},
+            "dev-libs/C-2": {"RDEPEND": ">=dev-libs/A-2"},
+            "dev-libs/D-1": {"RDEPEND": "<dev-libs/A-2"},
+        }
 
+        installed = {
+            "dev-libs/A-1": {},
+            "dev-libs/B-1": {"RDEPEND": "dev-libs/D"},
+            "dev-libs/C-1": {},
+            "dev-libs/D-1": {"RDEPEND": "<dev-libs/A-2"},
+        }
 
-	def testBacktrackNoWrongRebuilds(self):
-		"""
-		Ensure we remove backtrack masks if the reason for the mask gets masked itself.
-		"""
+        world = ["dev-libs/B", "dev-libs/C"]
 
-		ebuilds = {
-			"dev-libs/A-1": { },
-			"dev-libs/A-2": { },
-			"dev-libs/B-1": { "RDEPEND": "dev-libs/D"},
-			"dev-libs/C-1": { },
-			"dev-libs/C-2": { "RDEPEND": ">=dev-libs/A-2" },
-			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
-			}
+        options = {
+            "--backtrack": 6,
+            "--deep": True,
+            "--selective": True,
+            "--update": True,
+        }
 
-		installed = {
-			"dev-libs/A-1": { },
-			"dev-libs/B-1": { "RDEPEND": "dev-libs/D" },
-			"dev-libs/C-1": { },
-			"dev-libs/D-1": { "RDEPEND": "<dev-libs/A-2" },
-			}
+        test_cases = (
+            ResolverPlaygroundTestCase(
+                ["@world"], options=options, mergelist=[], success=True
+            ),
+        )
 
-		world = ["dev-libs/B", "dev-libs/C"]
+        playground = ResolverPlayground(
+            ebuilds=ebuilds, installed=installed, world=world
+        )
 
-		options = {
-			'--backtrack': 6,
-			'--deep' : True,
-			'--selective' : True,
-			'--update' : True,
-		}
-
-		test_cases = (
-				ResolverPlaygroundTestCase(
-					["@world"],
-					options = options,
-					mergelist = [],
-					success = True),
-			)
-
-		playground = ResolverPlayground(ebuilds=ebuilds, installed=installed, world=world)
-
-		try:
-			for test_case in test_cases:
-				playground.run_TestCase(test_case)
-				self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-		finally:
-			playground.cleanup()
+        try:
+            for test_case in test_cases:
+                playground.run_TestCase(test_case)
+                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
+        finally:
+            playground.cleanup()

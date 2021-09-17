@@ -6,16 +6,16 @@ __doc__ = doc
 
 
 module_spec = {
-	'name': 'config',
-	'description': doc,
-	'provides':{
-		'module1': {
-			'name': "cleanconfmem",
-			'sourcefile': "config",
-			'class': "CleanConfig",
-			'description': doc,
-			'functions': ['check', 'fix'],
-			'func_desc': {}
-			}
-		}
-	}
+    "name": "config",
+    "description": doc,
+    "provides": {
+        "module1": {
+            "name": "cleanconfmem",
+            "sourcefile": "config",
+            "class": "CleanConfig",
+            "description": doc,
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        }
+    },
+}

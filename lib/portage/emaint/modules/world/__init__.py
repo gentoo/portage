@@ -6,16 +6,16 @@ __doc__ = doc
 
 
 module_spec = {
-	'name': 'world',
-	'description': doc,
-	'provides':{
-		'module1':{
-			'name': "world",
-			'sourcefile': "world",
-			'class': "WorldHandler",
-			'description': doc,
-			'functions': ['check', 'fix'],
-			'func_desc': {}
-			}
-		}
-	}
+    "name": "world",
+    "description": doc,
+    "provides": {
+        "module1": {
+            "name": "world",
+            "sourcefile": "world",
+            "class": "WorldHandler",
+            "description": doc,
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        }
+    },
+}

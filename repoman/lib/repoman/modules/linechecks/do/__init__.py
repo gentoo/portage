@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'nonrelative-check': {
-			'name': "dosym",
-			'sourcefile': "dosym",
-			'class': "EbuildNonRelativeDosym",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "nonrelative-check": {
+            "name": "dosym",
+            "sourcefile": "dosym",
+            "class": "EbuildNonRelativeDosym",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

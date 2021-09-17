@@ -11,14 +11,17 @@ import pwd
 import signal
 import sys
 
-def debug_signal(signum, frame):
-	import pdb
-	pdb.set_trace()
 
-if platform.python_implementation() == 'Jython':
-	debug_signum = signal.SIGUSR2 # bug #424259
+def debug_signal(signum, frame):
+    import pdb
+
+    pdb.set_trace()
+
+
+if platform.python_implementation() == "Jython":
+    debug_signum = signal.SIGUSR2  # bug #424259
 else:
-	debug_signum = signal.SIGUSR1
+    debug_signum = signal.SIGUSR1
 
 signal.signal(debug_signum, debug_signal)
 
@@ -33,34 +36,35 @@ os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(osp.realpath(__file__)))))
 
 import portage
+
 portage._internal_caller = True
 
 # Ensure that we don't instantiate portage.settings, so that tests should
 # work the same regardless of global configuration file state/existence.
 portage._disable_legacy_globals()
 
-if os.environ.get('NOCOLOR') in ('yes', 'true'):
-	portage.output.nocolor()
+if os.environ.get("NOCOLOR") in ("yes", "true"):
+    portage.output.nocolor()
 
 import portage.tests as tests
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.const import PORTAGE_BIN_PATH
+
 path = os.environ.get("PATH", "").split(":")
 path = [x for x in path if x]
 
 insert_bin_path = True
 try:
-	insert_bin_path = not path or \
-		not os.path.samefile(path[0], PORTAGE_BIN_PATH)
+    insert_bin_path = not path or not os.path.samefile(path[0], PORTAGE_BIN_PATH)
 except OSError:
-	pass
+    pass
 
 if insert_bin_path:
-	path.insert(0, PORTAGE_BIN_PATH)
-	os.environ["PATH"] = ":".join(path)
+    path.insert(0, PORTAGE_BIN_PATH)
+    os.environ["PATH"] = ":".join(path)
 
 if __name__ == "__main__":
-	try:
-		sys.exit(tests.main())
-	finally:
-		global_event_loop().close()
+    try:
+        sys.exit(tests.main())
+    finally:
+        global_event_loop().close()

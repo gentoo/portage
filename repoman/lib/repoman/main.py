@@ -23,7 +23,7 @@ from portage.output import create_color_func, nocolor
 from portage.output import ConsoleStyleFile, StyleWriter
 from portage.util import formatter
 from portage.util.futures.extendedfutures import (
-	ExtendedFuture,
+    ExtendedFuture,
 )
 
 # pylint: disable=ungrouped-imports
@@ -46,183 +46,210 @@ os.umask(0o22)
 LOGLEVEL = logging.WARNING
 portage.util.initialize_logger(LOGLEVEL)
 
-VALID_VERSIONS = [1,]
+VALID_VERSIONS = [
+    1,
+]
 
-_repoman_main_vars = collections.namedtuple("_repoman_main_vars", (
-	"can_force",
-	"exitcode",
-	"options",
-	"qadata",
-	"repo_settings",
-	"scanner",
-	"vcs_settings",
-))
+_repoman_main_vars = collections.namedtuple(
+    "_repoman_main_vars",
+    (
+        "can_force",
+        "exitcode",
+        "options",
+        "qadata",
+        "repo_settings",
+        "scanner",
+        "vcs_settings",
+    ),
+)
 
 
 def repoman_main(argv):
-	repoman_vars = _repoman_init(argv)
-	if repoman_vars.exitcode is not None:
-		return repoman_vars.exitcode
-	result = _repoman_scan(*repoman_vars)
-	return _handle_result(*repoman_vars, result)
+    repoman_vars = _repoman_init(argv)
+    if repoman_vars.exitcode is not None:
+        return repoman_vars.exitcode
+    result = _repoman_scan(*repoman_vars)
+    return _handle_result(*repoman_vars, result)
 
 
 def _repoman_init(argv):
-	config_root = os.environ.get("PORTAGE_CONFIGROOT")
-	repoman_settings = portage.config(config_root=config_root, local_config=False)
-	repoman_settings.valid_versions = VALID_VERSIONS
+    config_root = os.environ.get("PORTAGE_CONFIGROOT")
+    repoman_settings = portage.config(config_root=config_root, local_config=False)
+    repoman_settings.valid_versions = VALID_VERSIONS
 
-	if repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true") or \
-		repoman_settings.get('TERM') == 'dumb' or \
-		not sys.stdout.isatty():
-		nocolor()
+    if (
+        repoman_settings.get("NOCOLOR", "").lower() in ("yes", "true")
+        or repoman_settings.get("TERM") == "dumb"
+        or not sys.stdout.isatty()
+    ):
+        nocolor()
 
-	options, arguments = parse_args(
-		argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", ""))
+    options, arguments = parse_args(
+        argv, repoman_settings.get("REPOMAN_DEFAULT_OPTS", "")
+    )
 
-	if options.version:
-		print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
-		return _repoman_main_vars(None, 0, None, None, None, None, None)
+    if options.version:
+        print("Repoman", VERSION, "(portage-%s)" % portage.VERSION)
+        return _repoman_main_vars(None, 0, None, None, None, None, None)
 
-	logger = logging.getLogger()
+    logger = logging.getLogger()
 
-	if options.verbosity > 0:
-		logger.setLevel(LOGLEVEL - 10 * options.verbosity)
-	else:
-		logger.setLevel(LOGLEVEL)
+    if options.verbosity > 0:
+        logger.setLevel(LOGLEVEL - 10 * options.verbosity)
+    else:
+        logger.setLevel(LOGLEVEL)
 
-	# Set this to False when an extraordinary issue (generally
-	# something other than a QA issue) makes it impossible to
-	# commit (like if Manifest generation fails).
-	can_force = ExtendedFuture(True)
-	repo_settings, vcs_settings, scanner, qadata = _create_scanner(options, can_force, config_root, repoman_settings)
-	return _repoman_main_vars(can_force, None, options, qadata, repo_settings, scanner, vcs_settings)
+    # Set this to False when an extraordinary issue (generally
+    # something other than a QA issue) makes it impossible to
+    # commit (like if Manifest generation fails).
+    can_force = ExtendedFuture(True)
+    repo_settings, vcs_settings, scanner, qadata = _create_scanner(
+        options, can_force, config_root, repoman_settings
+    )
+    return _repoman_main_vars(
+        can_force, None, options, qadata, repo_settings, scanner, vcs_settings
+    )
 
 
 def _create_scanner(options, can_force, config_root, repoman_settings):
 
-	portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
-	if portdir is None:
-		return (None, None, None, None)
+    portdir, portdir_overlay, mydir = utilities.FindPortdir(repoman_settings)
+    if portdir is None:
+        return (None, None, None, None)
 
-	myreporoot = os.path.basename(portdir_overlay)
-	myreporoot += mydir[len(portdir_overlay):]
+    myreporoot = os.path.basename(portdir_overlay)
+    myreporoot += mydir[len(portdir_overlay) :]
 
-	# avoid a circular parameter repo_settings
-	vcs_settings = VCSSettings(options, repoman_settings)
-	qadata = QAData()
+    # avoid a circular parameter repo_settings
+    vcs_settings = VCSSettings(options, repoman_settings)
+    qadata = QAData()
 
-	logging.debug("repoman_main: RepoSettings init")
-	repo_settings = RepoSettings(
-		config_root, portdir, portdir_overlay,
-		repoman_settings, vcs_settings, options, qadata)
-	repoman_settings = repo_settings.repoman_settings
-	repoman_settings.valid_versions = VALID_VERSIONS
+    logging.debug("repoman_main: RepoSettings init")
+    repo_settings = RepoSettings(
+        config_root,
+        portdir,
+        portdir_overlay,
+        repoman_settings,
+        vcs_settings,
+        options,
+        qadata,
+    )
+    repoman_settings = repo_settings.repoman_settings
+    repoman_settings.valid_versions = VALID_VERSIONS
 
-	# Now set repo_settings
-	vcs_settings.repo_settings = repo_settings
-	# set QATracker qacats, qawarnings
-	vcs_settings.qatracker.qacats = repo_settings.qadata.qacats
-	vcs_settings.qatracker.qawarnings = repo_settings.qadata.qawarnings
-	logging.debug("repoman_main: vcs_settings done")
-	logging.debug("repoman_main: qadata: %s", repo_settings.qadata)
+    # Now set repo_settings
+    vcs_settings.repo_settings = repo_settings
+    # set QATracker qacats, qawarnings
+    vcs_settings.qatracker.qacats = repo_settings.qadata.qacats
+    vcs_settings.qatracker.qawarnings = repo_settings.qadata.qawarnings
+    logging.debug("repoman_main: vcs_settings done")
+    logging.debug("repoman_main: qadata: %s", repo_settings.qadata)
 
-	if 'digest' in repoman_settings.features and options.digest != 'n':
-		options.digest = 'y'
+    if "digest" in repoman_settings.features and options.digest != "n":
+        options.digest = "y"
 
-	logging.debug("vcs: %s" % (vcs_settings.vcs,))
-	logging.debug("repo config: %s" % (repo_settings.repo_config,))
-	logging.debug("options: %s" % (options,))
+    logging.debug("vcs: %s" % (vcs_settings.vcs,))
+    logging.debug("repo config: %s" % (repo_settings.repo_config,))
+    logging.debug("options: %s" % (options,))
 
-	# It's confusing if these warnings are displayed without the user
-	# being told which profile they come from, so disable them.
-	env = os.environ.copy()
-	env['FEATURES'] = env.get('FEATURES', '') + ' -unknown-features-warn'
+    # It's confusing if these warnings are displayed without the user
+    # being told which profile they come from, so disable them.
+    env = os.environ.copy()
+    env["FEATURES"] = env.get("FEATURES", "") + " -unknown-features-warn"
 
-	# Perform the main checks
-	scanner = Scanner(repo_settings, myreporoot, config_root, options,
-					vcs_settings, mydir, env)
-	return repo_settings, vcs_settings, scanner, qadata
-
-
-def _repoman_scan(can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings):
-	scanner.scan_pkgs(can_force)
-
-	if options.if_modified == "y" and len(scanner.effective_scanlist) < 1:
-		logging.warning("--if-modified is enabled, but no modified packages were found!")
-
-	result = {
-		# fail will be true if we have failed in at least one non-warning category
-		'fail': 0,
-		# warn will be true if we tripped any warnings
-		'warn': 0,
-		# full will be true if we should print a "repoman full" informational message
-		'full': options.mode != 'full',
-	}
-
-	for x in qadata.qacats:
-		if x not in vcs_settings.qatracker.fails:
-			continue
-		result['warn'] = 1
-		if x not in qadata.qawarnings:
-			result['fail'] = 1
-
-	if result['fail'] or \
-		(result['warn'] and not (options.quiet or options.mode == "scan")):
-		result['full'] = 0
-
-	return result
+    # Perform the main checks
+    scanner = Scanner(
+        repo_settings, myreporoot, config_root, options, vcs_settings, mydir, env
+    )
+    return repo_settings, vcs_settings, scanner, qadata
 
 
-def _handle_result(can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings, result):
-	commitmessage = None
-	if options.commitmsg:
-		commitmessage = options.commitmsg
-	elif options.commitmsgfile:
-		# we don't need the actual text of the commit message here
-		# the filename will do for the next code block
-		commitmessage = options.commitmsgfile
+def _repoman_scan(
+    can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings
+):
+    scanner.scan_pkgs(can_force)
 
-	# Save QA output so that it can be conveniently displayed
-	# in $EDITOR while the user creates a commit message.
-	# Otherwise, the user would not be able to see this output
-	# once the editor has taken over the screen.
-	qa_output = io.StringIO()
-	style_file = ConsoleStyleFile(sys.stdout)
-	if options.mode == 'commit' and \
-		(not commitmessage or not commitmessage.strip()):
-		style_file.write_listener = qa_output
-	console_writer = StyleWriter(file=style_file, maxcol=9999)
-	console_writer.style_listener = style_file.new_styles
+    if options.if_modified == "y" and len(scanner.effective_scanlist) < 1:
+        logging.warning(
+            "--if-modified is enabled, but no modified packages were found!"
+        )
 
-	f = formatter.AbstractFormatter(console_writer)
+    result = {
+        # fail will be true if we have failed in at least one non-warning category
+        "fail": 0,
+        # warn will be true if we tripped any warnings
+        "warn": 0,
+        # full will be true if we should print a "repoman full" informational message
+        "full": options.mode != "full",
+    }
 
-	format_outputs = {
-		'column': format_qa_output_column,
-		'default': format_qa_output
-	}
+    for x in qadata.qacats:
+        if x not in vcs_settings.qatracker.fails:
+            continue
+        result["warn"] = 1
+        if x not in qadata.qawarnings:
+            result["fail"] = 1
 
-	format_output = format_outputs.get(
-		options.output_style, format_outputs['default'])
-	format_output(f, vcs_settings.qatracker.fails, result['full'],
-		result['fail'], options, qadata.qawarnings)
+    if result["fail"] or (
+        result["warn"] and not (options.quiet or options.mode == "scan")
+    ):
+        result["full"] = 0
 
-	style_file.flush()
-	del console_writer, f, style_file
+    return result
 
-	# early out for manifest generation
-	if options.mode == "manifest":
-		return 1 if result['fail'] else 0
 
-	qa_output = qa_output.getvalue()
-	qa_output = qa_output.splitlines(True)
+def _handle_result(
+    can_force, exitcode, options, qadata, repo_settings, scanner, vcs_settings, result
+):
+    commitmessage = None
+    if options.commitmsg:
+        commitmessage = options.commitmsg
+    elif options.commitmsgfile:
+        # we don't need the actual text of the commit message here
+        # the filename will do for the next code block
+        commitmessage = options.commitmsgfile
 
-	# output the results
-	actions = Actions(repo_settings, options, scanner, vcs_settings)
-	if actions.inform(can_force.get(), result):
-		# perform any other actions
-		actions.perform(qa_output)
-	elif result['fail']:
-		return 1
+    # Save QA output so that it can be conveniently displayed
+    # in $EDITOR while the user creates a commit message.
+    # Otherwise, the user would not be able to see this output
+    # once the editor has taken over the screen.
+    qa_output = io.StringIO()
+    style_file = ConsoleStyleFile(sys.stdout)
+    if options.mode == "commit" and (not commitmessage or not commitmessage.strip()):
+        style_file.write_listener = qa_output
+    console_writer = StyleWriter(file=style_file, maxcol=9999)
+    console_writer.style_listener = style_file.new_styles
 
-	return 0
+    f = formatter.AbstractFormatter(console_writer)
+
+    format_outputs = {"column": format_qa_output_column, "default": format_qa_output}
+
+    format_output = format_outputs.get(options.output_style, format_outputs["default"])
+    format_output(
+        f,
+        vcs_settings.qatracker.fails,
+        result["full"],
+        result["fail"],
+        options,
+        qadata.qawarnings,
+    )
+
+    style_file.flush()
+    del console_writer, f, style_file
+
+    # early out for manifest generation
+    if options.mode == "manifest":
+        return 1 if result["fail"] else 0
+
+    qa_output = qa_output.getvalue()
+    qa_output = qa_output.splitlines(True)
+
+    # output the results
+    actions = Actions(repo_settings, options, scanner, vcs_settings)
+    if actions.inform(can_force.get(), result):
+        # perform any other actions
+        actions.perform(qa_output)
+    elif result["fail"]:
+        return 1
+
+    return 0

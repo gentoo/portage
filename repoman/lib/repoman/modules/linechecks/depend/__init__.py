@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'depend',
-	'description': doc,
-	'provides':{
-		'implicit-check': {
-			'name': "implicitdepend",
-			'sourcefile': "implicit",
-			'class': "ImplicitRuntimeDeps",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "depend",
+    "description": doc,
+    "provides": {
+        "implicit-check": {
+            "name": "implicitdepend",
+            "sourcefile": "implicit",
+            "class": "ImplicitRuntimeDeps",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

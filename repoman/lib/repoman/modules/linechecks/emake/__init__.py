@@ -7,21 +7,21 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'paralleldisabled-check': {
-			'name': "paralleldisabled",
-			'sourcefile': "emake",
-			'class': "EMakeParallelDisabledViaMAKEOPTS",
-			'description': doc,
-		},
-		'autodefault-check': {
-			'name': "autodefault",
-			'sourcefile': "emake",
-			'class': "WantAutoDefaultValue",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "paralleldisabled-check": {
+            "name": "paralleldisabled",
+            "sourcefile": "emake",
+            "class": "EMakeParallelDisabledViaMAKEOPTS",
+            "description": doc,
+        },
+        "autodefault-check": {
+            "name": "autodefault",
+            "sourcefile": "emake",
+            "class": "WantAutoDefaultValue",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

@@ -10,16 +10,16 @@ from portage.tests import TestCase
 
 
 class WakeupFdSigchldTestCase(TestCase):
-	def testWakeupFdSigchld(self):
-		"""
-		This is expected to trigger a bunch of messages like the following
-		unless the fix for bug 655656 works as intended:
+    def testWakeupFdSigchld(self):
+        """
+        This is expected to trigger a bunch of messages like the following
+        unless the fix for bug 655656 works as intended:
 
-		Exception ignored when trying to write to the signal wakeup fd:
-		BlockingIOError: [Errno 11] Resource temporarily unavailable
-		"""
+        Exception ignored when trying to write to the signal wakeup fd:
+        BlockingIOError: [Errno 11] Resource temporarily unavailable
+        """
 
-		script = """
+        script = """
 import os
 import signal
 import sys
@@ -50,23 +50,29 @@ sys.stdout.write('success')
 sys.exit(os.EX_OK)
 """
 
-		pythonpath = os.environ.get('PYTHONPATH', '').strip().split(':')
-		if not pythonpath or pythonpath[0] != PORTAGE_PYM_PATH:
-			pythonpath = [PORTAGE_PYM_PATH] + pythonpath
-		pythonpath = ':'.join(filter(None, pythonpath))
+        pythonpath = os.environ.get("PYTHONPATH", "").strip().split(":")
+        if not pythonpath or pythonpath[0] != PORTAGE_PYM_PATH:
+            pythonpath = [PORTAGE_PYM_PATH] + pythonpath
+        pythonpath = ":".join(filter(None, pythonpath))
 
-		proc = subprocess.Popen(
-			[portage._python_interpreter, '-c', script],
-			stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-			env=dict(os.environ, PYTHONPATH=pythonpath))
+        proc = subprocess.Popen(
+            [portage._python_interpreter, "-c", script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=dict(os.environ, PYTHONPATH=pythonpath),
+        )
 
-		out, err = proc.communicate()
-		try:
-			self.assertEqual(out[:100], b'success')
-		except Exception:
-			portage.writemsg(''.join('{}\n'.format(line)
-				for line in out.decode(errors='replace').splitlines()[:50]),
-				noiselevel=-1)
-			raise
+        out, err = proc.communicate()
+        try:
+            self.assertEqual(out[:100], b"success")
+        except Exception:
+            portage.writemsg(
+                "".join(
+                    "{}\n".format(line)
+                    for line in out.decode(errors="replace").splitlines()[:50]
+                ),
+                noiselevel=-1,
+            )
+            raise
 
-		self.assertEqual(proc.wait(), os.EX_OK)
+        self.assertEqual(proc.wait(), os.EX_OK)

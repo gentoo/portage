@@ -7,21 +7,21 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'whitespace-check': {
-			'name': "whitespace",
-			'sourcefile': "whitespace",
-			'class': "EbuildWhitespace",
-			'description': doc,
-		},
-		'blankline-check': {
-			'name': "blankline",
-			'sourcefile': "blank",
-			'class': "EbuildBlankLine",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "whitespace-check": {
+            "name": "whitespace",
+            "sourcefile": "whitespace",
+            "class": "EbuildWhitespace",
+            "description": doc,
+        },
+        "blankline-check": {
+            "name": "blankline",
+            "sourcefile": "blank",
+            "class": "EbuildBlankLine",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

@@ -7,21 +7,21 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'quote-check': {
-			'name': "quote",
-			'sourcefile': "quotes",
-			'class': "EbuildQuote",
-			'description': doc,
-		},
-		'quoteda-check': {
-			'name': "quoteda",
-			'sourcefile': "quoteda",
-			'class': "EbuildQuotedA",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "quote-check": {
+            "name": "quote",
+            "sourcefile": "quotes",
+            "class": "EbuildQuote",
+            "description": doc,
+        },
+        "quoteda-check": {
+            "name": "quoteda",
+            "sourcefile": "quoteda",
+            "class": "EbuildQuotedA",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

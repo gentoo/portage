@@ -15,153 +15,153 @@ import termios
 from pathlib import Path
 
 KILL_SIGNALS = (
-	signal.SIGINT,
-	signal.SIGTERM,
-	signal.SIGHUP,
+    signal.SIGINT,
+    signal.SIGTERM,
+    signal.SIGHUP,
 )
 
 SIGTSTP_SIGCONT = (
-	signal.SIGTSTP,
-	signal.SIGCONT,
+    signal.SIGTSTP,
+    signal.SIGCONT,
 )
 
 
 def forward_kill_signal(pid, signum, frame):
-	if pid == 0:
-		# Avoid a signal feedback loop, since signals sent to the
-		# process group are also sent to the current process.
-		signal.signal(signum, signal.SIG_DFL)
-	os.kill(pid, signum)
+    if pid == 0:
+        # Avoid a signal feedback loop, since signals sent to the
+        # process group are also sent to the current process.
+        signal.signal(signum, signal.SIG_DFL)
+    os.kill(pid, signum)
 
 
 def forward_sigtstp_sigcont(pid, signum, frame):
-	handler = None
-	if pid == 0:
-		# Temporarily disable the handler in order to prevent it from
-		# being called recursively, since the signal will also be sent
-		# to the current process.
-		handler = signal.signal(signum, signal.SIG_DFL)
-	os.kill(pid, signum)
-	if handler is not None:
-		signal.signal(signum, handler)
+    handler = None
+    if pid == 0:
+        # Temporarily disable the handler in order to prevent it from
+        # being called recursively, since the signal will also be sent
+        # to the current process.
+        handler = signal.signal(signum, signal.SIG_DFL)
+    os.kill(pid, signum)
+    if handler is not None:
+        signal.signal(signum, handler)
 
 
 def preexec_fn(uid, gid, groups, umask):
-	if gid is not None:
-		os.setgid(gid)
-	if groups is not None:
-		os.setgroups(groups)
-	if uid is not None:
-		os.setuid(uid)
-	if umask is not None:
-		os.umask(umask)
+    if gid is not None:
+        os.setgid(gid)
+    if groups is not None:
+        os.setgroups(groups)
+    if uid is not None:
+        os.setuid(uid)
+    if umask is not None:
+        os.umask(umask)
 
-	# CPython >= 3 subprocess.Popen handles this internally.
-	if platform.python_implementation() != 'CPython':
-		for signum in (
-			signal.SIGHUP,
-			signal.SIGINT,
-			signal.SIGPIPE,
-			signal.SIGQUIT,
-			signal.SIGTERM,
-			):
-			signal.signal(signum, signal.SIG_DFL)
+    # CPython >= 3 subprocess.Popen handles this internally.
+    if platform.python_implementation() != 'CPython':
+        for signum in (
+                signal.SIGHUP,
+                signal.SIGINT,
+                signal.SIGPIPE,
+                signal.SIGQUIT,
+                signal.SIGTERM,
+        ):
+            signal.signal(signum, signal.SIG_DFL)
 
 
 def main(argv):
-	if len(argv) < 2:
-		return 'Usage: {} <main-child-pid> or <uid> <gid> <groups> <umask> <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
+    if len(argv) < 2:
+        return 'Usage: {} <main-child-pid> or <uid> <gid> <groups> <umask> <pass_fds> <binary> <argv0> [arg]..'.format(argv[0])
 
-	if len(argv) == 2:
-		# The child process is init (pid 1) in a child pid namespace, and
-		# the current process supervises from within the global pid namespace
-		# (forwarding signals to init and forwarding exit status to the parent
-		# process).
-		main_child_pid = int(argv[1])
-		setsid = False
-		proc = None
-	else:
-		# The current process is init (pid 1) in a child pid namespace.
-		uid, gid, groups, umask, pass_fds, binary, args = argv[1], argv[2], argv[3], argv[4], tuple(int(fd) for fd in argv[5].split(',')), argv[6], argv[7:]
-		uid = int(uid) if uid else None
-		gid = int(gid) if gid else None
-		groups = tuple(int(group) for group in groups.split(',')) if groups else None
-		umask = int(umask) if umask else None
+    if len(argv) == 2:
+        # The child process is init (pid 1) in a child pid namespace, and
+        # the current process supervises from within the global pid namespace
+        # (forwarding signals to init and forwarding exit status to the parent
+        # process).
+        main_child_pid = int(argv[1])
+        setsid = False
+        proc = None
+    else:
+        # The current process is init (pid 1) in a child pid namespace.
+        uid, gid, groups, umask, pass_fds, binary, args = argv[1], argv[2], argv[3], argv[4], tuple(int(fd) for fd in argv[5].split(',')), argv[6], argv[7:]
+        uid = int(uid) if uid else None
+        gid = int(gid) if gid else None
+        groups = tuple(int(group) for group in groups.split(',')) if groups else None
+        umask = int(umask) if umask else None
 
-		popen_kwargs = {
-			'preexec_fn': functools.partial(preexec_fn, uid, gid, groups, umask),
-			'pass_fds': pass_fds,
-		}
+        popen_kwargs = {
+            'preexec_fn': functools.partial(preexec_fn, uid, gid, groups, umask),
+            'pass_fds': pass_fds,
+        }
 
-		# Obtain the current nice value, which will be potentially be
-		# used as the newly created session's autogroup nice value.
-		nice_value = os.nice(0)
+        # Obtain the current nice value, which will be potentially be
+        # used as the newly created session's autogroup nice value.
+        nice_value = os.nice(0)
 
-		# Isolate parent process from process group SIGSTOP (bug 675870)
-		setsid = True
-		os.setsid()
+        # Isolate parent process from process group SIGSTOP (bug 675870)
+        setsid = True
+        os.setsid()
 
-		# Set the previously obtained autogroup nice value again,
-		# since we created a new session with os.setsid() above.
-		try:
-			Path("/proc/self/autogroup").write_text(str(nice_value))
-		except EnvironmentError as e:
-			# The process is likely not allowed to set the autogroup
-			# value (Linux employs a rate limiting for unprivileged
-			# changes to the autogroup value) or autogroups are not
-			# enabled. Nothing we can do here, so we simply carry on.
-			pass
+        # Set the previously obtained autogroup nice value again,
+        # since we created a new session with os.setsid() above.
+        try:
+            Path("/proc/self/autogroup").write_text(str(nice_value))
+        except EnvironmentError as e:
+            # The process is likely not allowed to set the autogroup
+            # value (Linux employs a rate limiting for unprivileged
+            # changes to the autogroup value) or autogroups are not
+            # enabled. Nothing we can do here, so we simply carry on.
+            pass
 
-		if sys.stdout.isatty():
-			try:
-				fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
-			except EnvironmentError as e:
-				if e.errno == errno.EPERM:
-					# This means that stdout refers to the controlling terminal
-					# of the parent process, and in this case we do not want to
-					# steal it.
-					pass
-				else:
-					raise
-		proc = subprocess.Popen(args, executable=binary, **popen_kwargs)
-		main_child_pid = proc.pid
+        if sys.stdout.isatty():
+            try:
+                fcntl.ioctl(sys.stdout, termios.TIOCSCTTY, 0)
+            except EnvironmentError as e:
+                if e.errno == errno.EPERM:
+                    # This means that stdout refers to the controlling terminal
+                    # of the parent process, and in this case we do not want to
+                    # steal it.
+                    pass
+                else:
+                    raise
+        proc = subprocess.Popen(args, executable=binary, **popen_kwargs)
+        main_child_pid = proc.pid
 
-	# If setsid has been called, use kill(0, signum) to
-	# forward signals to the entire process group.
-	sig_handler = functools.partial(forward_kill_signal, 0 if setsid else main_child_pid)
-	for signum in KILL_SIGNALS:
-		signal.signal(signum, sig_handler)
+    # If setsid has been called, use kill(0, signum) to
+    # forward signals to the entire process group.
+    sig_handler = functools.partial(forward_kill_signal, 0 if setsid else main_child_pid)
+    for signum in KILL_SIGNALS:
+        signal.signal(signum, sig_handler)
 
-	# For correct operation of Ctrl+Z, forward SIGTSTP and SIGCONT.
-	sigtstp_sigcont_handler = functools.partial(forward_sigtstp_sigcont, 0 if setsid else main_child_pid)
-	for signum in SIGTSTP_SIGCONT:
-		signal.signal(signum, sigtstp_sigcont_handler)
+    # For correct operation of Ctrl+Z, forward SIGTSTP and SIGCONT.
+    sigtstp_sigcont_handler = functools.partial(forward_sigtstp_sigcont, 0 if setsid else main_child_pid)
+    for signum in SIGTSTP_SIGCONT:
+        signal.signal(signum, sigtstp_sigcont_handler)
 
-	# wait for child processes
-	while True:
-		try:
-			pid, status = os.wait()
-		except EnvironmentError as e:
-			if e.errno == errno.EINTR:
-				continue
-			raise
-		if pid == main_child_pid:
-			if proc is not None:
-				# Suppress warning messages like this:
-				# ResourceWarning: subprocess 1234 is still running
-				proc.returncode = 0
+    # wait for child processes
+    while True:
+        try:
+            pid, status = os.wait()
+        except EnvironmentError as e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+        if pid == main_child_pid:
+            if proc is not None:
+                # Suppress warning messages like this:
+                # ResourceWarning: subprocess 1234 is still running
+                proc.returncode = 0
 
-			if os.WIFEXITED(status):
-				return os.WEXITSTATUS(status)
-			elif os.WIFSIGNALED(status):
-				signal.signal(os.WTERMSIG(status), signal.SIG_DFL)
-				os.kill(os.getpid(), os.WTERMSIG(status))
-			# go to the unreachable place
-			break
+            if os.WIFEXITED(status):
+                return os.WEXITSTATUS(status)
+            elif os.WIFSIGNALED(status):
+                signal.signal(os.WTERMSIG(status), signal.SIG_DFL)
+                os.kill(os.getpid(), os.WTERMSIG(status))
+            # go to the unreachable place
+            break
 
-	# this should never be reached
-	return 127
+    # this should never be reached
+    return 127
 
 
 if __name__ == '__main__':
-	sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv))

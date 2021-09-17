@@ -1,27 +1,27 @@
 # Copyright 2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+
 class IndexStreamIterator:
+    def __init__(self, f, parser):
 
-	def __init__(self, f, parser):
+        self.parser = parser
+        self._file = f
 
-		self.parser = parser
-		self._file = f
+    def close(self):
 
-	def close(self):
+        if self._file is not None:
+            self._file.close()
+            self._file = None
 
-		if self._file is not None:
-			self._file.close()
-			self._file = None
+    def __iter__(self):
 
-	def __iter__(self):
+        try:
 
-		try:
+            for line in self._file:
+                node = self.parser(line)
+                if node is not None:
+                    yield node
 
-			for line in self._file:
-				node = self.parser(line)
-				if node is not None:
-					yield node
-
-		finally:
-			self.close()
+        finally:
+            self.close()

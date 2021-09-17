@@ -10,30 +10,30 @@ from portage.sync.config_checks import CheckSyncConfig
 from portage.util import writemsg_level
 
 module_spec = {
-	"name": "mercurial",
-	"description": doc,
-	"provides": {
-		"mercurial-module": {
-			"name": "mercurial",
-			"sourcefile": "mercurial",
-			"class": "MercurialSync",
-			"description": doc,
-			"functions": ["sync", "new", "exists", "retrieve_head"],
-			"func_desc": {
-				"sync": "Performs a hg pull on the repository",
-				"new": "Creates the new repository at the specified location",
-				"exists": "Returns a boolean of whether the specified dir "
-				+ "exists and is a valid Mercurial repository",
-				"retrieve_head": "Returns the head commit hash",
-			},
-			"validate_config": CheckSyncConfig,
-			"module_specific_options": (
-				"sync-mercurial-clone-env",
-				"sync-mercurial-clone-extra-opts",
-				"sync-mercurial-env",
-				"sync-mercurial-pull-env",
-				"sync-mercurial-pull-extra-opts",
-			),
-		}
-	},
+    "name": "mercurial",
+    "description": doc,
+    "provides": {
+        "mercurial-module": {
+            "name": "mercurial",
+            "sourcefile": "mercurial",
+            "class": "MercurialSync",
+            "description": doc,
+            "functions": ["sync", "new", "exists", "retrieve_head"],
+            "func_desc": {
+                "sync": "Performs a hg pull on the repository",
+                "new": "Creates the new repository at the specified location",
+                "exists": "Returns a boolean of whether the specified dir "
+                + "exists and is a valid Mercurial repository",
+                "retrieve_head": "Returns the head commit hash",
+            },
+            "validate_config": CheckSyncConfig,
+            "module_specific_options": (
+                "sync-mercurial-clone-env",
+                "sync-mercurial-clone-extra-opts",
+                "sync-mercurial-env",
+                "sync-mercurial-pull-env",
+                "sync-mercurial-pull-extra-opts",
+            ),
+        }
+    },
 }
