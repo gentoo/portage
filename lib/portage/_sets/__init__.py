@@ -136,6 +136,10 @@ class SetConfig:
 		parser.add_section("preserved-rebuild")
 		parser.set("preserved-rebuild", "class", "portage.sets.libs.PreservedLibraryConsumerSet")
 
+		parser.remove_section("unsatisfied-deps")
+		parser.add_section("unsatisfied-deps")
+		parser.set("unsatisfied-deps", "class", "portage.sets.dbapi.UnsatisfiedDepsSet")
+
 		parser.remove_section("x11-module-rebuild")
 		parser.add_section("x11-module-rebuild")
 		parser.set("x11-module-rebuild", "class", "portage.sets.dbapi.OwnerSet")

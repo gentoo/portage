@@ -610,6 +610,13 @@
 			</itemizedlist>
 			</sect3>
 		</sect2>
+		<sect2 id='config-set-classes-UnsatisfiedDepsSet'>
+		<title>portage.sets.dbapi.UnsatisfiedDepsSet</title>
+		<para>
+		Package set which contains all installed packages
+		having one or more unsatisfied runtime dependencies.
+		</para>
+		</sect2>
 	</sect1>
 	
 	<sect1 id='config-set-defaults'>

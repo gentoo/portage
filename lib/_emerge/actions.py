@@ -1000,9 +1000,16 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.extend(textwrap.wrap(
-				"Have you forgotten to do a complete update prior " + \
-				"to depclean? The most comprehensive command for this " + \
+				"Have you forgotten to resolve unsatisfied dependencies prior "
+				"to depclean? The simplest possible command for this "
 				"purpose is as follows:", 65
+			))
+			msg.append("")
+			msg.append("  " + \
+				good("emerge @unsatisfied-deps"))
+			msg.append("")
+			msg.extend(textwrap.wrap(
+				"The most comprehensive possible update command is this:", 65
 			))
 			msg.append("")
 			msg.append("  " + \
@@ -1018,8 +1025,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes,
 			msg.extend(textwrap.wrap(
 				"Also, note that it may be necessary to manually uninstall " + \
 				"packages that no longer exist in the repository, since " + \
-				"it may not be possible to satisfy their dependencies.", 65
+				"it may not be possible to satisfy their dependencies."
+				" The simplest possible command for this purpose is as follows,"
+				" but be careful to examine the resulting package list carefully:", 65
 			))
+			msg.append("")
+			msg.append("  " + \
+				good("emerge --ask --unmerge @unavailable"))
+			msg.append("")
 			if action == "prune":
 				msg.append("")
 				msg.append("If you would like to ignore " + \
