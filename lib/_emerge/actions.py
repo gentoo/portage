@@ -2508,7 +2508,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
 	emerge_config.trees = portage.create_trees(trees=emerge_config.trees,
 				**kwargs)
 
-	for root_trees in emerge_config.trees.values():
+	for tree_key, root_trees in emerge_config.trees.items():
 		settings = root_trees["vartree"].settings
 		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
@@ -2519,6 +2519,10 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
 			root_trees["root_config"].update(root_config)
 		else:
 			root_trees["root_config"] = root_config
+
+		if tree_key == "/":
+			# warn once if portage home dir missing
+			settings._check_portage_homedir()
 
 	target_eroot = emerge_config.trees._target_eroot
 	emerge_config.target_config = \

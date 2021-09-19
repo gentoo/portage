@@ -19,7 +19,10 @@ import warnings
 from _emerge.Package import Package
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.data:_portage_grpname',
+	'portage.data:_portage_username',
 	'portage.data:portage_gid',
+	'portage.data:portage_uid',
 	'portage.dep.soname.SonameAtom:SonameAtom',
 	'portage.dbapi.vartree:vartree',
 	'portage.package.ebuild.doebuild:_phase_func_map',
@@ -1086,6 +1089,24 @@ class config:
 					noiselevel=-1)
 				writemsg("!!! %s\n" % str(e),
 					noiselevel=-1)
+
+	def _check_portage_homedir(self):
+		"""
+		Warn if portage home directory is missing or has incorrect ownership
+		"""
+		try:
+			stat = os.stat(os.path.expanduser(f"~{_portage_username}"))
+			stat_gid = stat.st_gid
+			stat_uid = stat.st_uid
+			assert stat_gid == portage_gid
+			assert stat_uid == portage_uid
+		except (FileNotFoundError, AssertionError):
+			writemsg(
+				colorize("BAD",
+				_(f"!!! '{_portage_username}' user home directory either "
+				+ "does not exist, or is not owned by "
+				+ f"'{_portage_grpname}' group and '{_portage_username}' user."))
+				+ "\n", noiselevel=-1)
 
 	@property
 	def _keywords_manager(self):
