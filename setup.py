@@ -47,7 +47,7 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 ).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
-with open(os.path.join(os.path.dirname(__file__), "README"), "rt") as f:
+with open(os.path.join(os.path.dirname(__file__), "README.md"), "rt") as f:
     long_description = f.read()
 
 # TODO:
@@ -816,7 +816,7 @@ setup(
     description="Portage is the package management and distribution system for Gentoo",
     license="GPLV2",
     long_description=long_description,
-    long_description_content_type="text/plain",
+    long_description_content_type="text/markdown",
     package_dir={"": "lib"},
     packages=list(find_packages()),
     # something to cheat build & install commands
