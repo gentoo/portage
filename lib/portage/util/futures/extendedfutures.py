@@ -10,7 +10,13 @@ __all__ = (
     "InvalidStateError",
 )
 
-from portage.util.futures.futures import Future, InvalidStateError, CancelledError
+import concurrent.futures
+from concurrent.futures import Future, CancelledError
+
+try:
+    from concurrent.futures import InvalidStateError
+except ImportError:
+    from portage.util.futures.futures import InvalidStateError
 
 # Create our one time settable unset constant
 UNSET_CONST = Future()
@@ -62,9 +68,21 @@ class ExtendedFuture(Future):
             default = self.default_result
         if default is not UNSET_CONST.result():
             try:
-                data = super(ExtendedFuture, self).result()
+                data = self.result()
             except InvalidStateError:
                 data = default
         else:
-            data = super(ExtendedFuture, self).result()
+            data = self.result()
         return data
+
+    def exception(self):
+        try:
+            return super(ExtendedFuture, self).exception(timeout=0)
+        except concurrent.futures.TimeoutError:
+            raise InvalidStateError
+
+    def result(self):
+        try:
+            return super(ExtendedFuture, self).result(timeout=0)
+        except concurrent.futures.TimeoutError:
+            raise InvalidStateError
