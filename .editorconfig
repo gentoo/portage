@@ -10,7 +10,7 @@ indent_size = 4
 tab_width = 4
 insert_final_newline = true
 
-[*.{yaml,yml}]
+[*.{py,yaml,yml}]
 indent_style = space
 
 [pylintrc]
