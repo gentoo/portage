@@ -280,10 +280,14 @@ def _safe_loop():
             loop = _thread_weakrefs.loops[thread_key]
         except KeyError:
             try:
-                _real_asyncio.get_event_loop()
+                try:
+                    _loop = _real_asyncio.get_running_loop()
+                except AttributeError:
+                    _loop = _real_asyncio.get_event_loop()
             except RuntimeError:
-                _real_asyncio.set_event_loop(_real_asyncio.new_event_loop())
-            loop = _thread_weakrefs.loops[thread_key] = _AsyncioEventLoop()
+                _loop = _real_asyncio.new_event_loop()
+                _real_asyncio.set_event_loop(_loop)
+            loop = _thread_weakrefs.loops[thread_key] = _AsyncioEventLoop(loop=_loop)
 
     if (
         _thread_weakrefs.mainloop is None
