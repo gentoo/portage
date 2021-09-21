@@ -1,10 +1,9 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from collections import deque
 
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.SlotObject import SlotObject
 
 
@@ -69,8 +68,7 @@ class SequentialTaskQueue(SlotObject):
         for task in list(self.running_tasks):
             task.cancel()
 
-    @coroutine
-    def wait(self, loop=None):
+    async def wait(self, loop=None):
         """
         Wait for the queue to become empty. This method is a coroutine.
         """
@@ -78,9 +76,9 @@ class SequentialTaskQueue(SlotObject):
             task = next(iter(self.running_tasks), None)
             if task is None:
                 # Wait for self.running_tasks to populate.
-                yield asyncio.sleep(0, loop=loop)
+                await asyncio.sleep(0, loop=loop)
             else:
-                yield task.async_wait()
+                await task.async_wait()
 
     def __bool__(self):
         return bool(self._task_queue or self.running_tasks)
