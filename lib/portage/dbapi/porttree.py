@@ -38,7 +38,6 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine, coroutine_return
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
@@ -1244,8 +1243,7 @@ class portdbapi(dbapi):
         loop = self._event_loop
         return loop.run_until_complete(self.async_xmatch(level, origdep, loop=loop))
 
-    @coroutine
-    def async_xmatch(self, level, origdep, loop=None):
+    async def async_xmatch(self, level, origdep, loop=None):
         """
         Asynchronous form of xmatch.
 
@@ -1269,7 +1267,7 @@ class portdbapi(dbapi):
         if self.frozen:
             cache_key = (mydep, mydep.unevaluated_atom)
             try:
-                coroutine_return(self.xcache[level][cache_key][:])
+                return self.xcache[level][cache_key][:]
             except KeyError:
                 pass
 
@@ -1336,7 +1334,7 @@ class portdbapi(dbapi):
                         zip(
                             aux_keys,
                             (
-                                yield self.async_aux_get(
+                                await self.async_aux_get(
                                     cpv, aux_keys, myrepo=cpv.repo, loop=loop
                                 )
                             ),
@@ -1384,7 +1382,7 @@ class portdbapi(dbapi):
                 if not isinstance(myval, _pkg_str):
                     myval = myval[:]
 
-        coroutine_return(myval)
+        return myval
 
     def match(self, mydep, use_cache=1):
         return self.xmatch("match-visible", mydep)
