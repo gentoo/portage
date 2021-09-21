@@ -1,4 +1,4 @@
-# Copyright 2008-2020 Gentoo Authors
+# Copyright 2008-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
@@ -17,7 +17,6 @@ from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 
 
 class SpawnProcess(SubProcess):
@@ -175,13 +174,12 @@ class SpawnProcess(SubProcess):
         )
         self._main_task.add_done_callback(self._main_exit)
 
-    @coroutine
-    def _main(self, build_logger, pipe_logger, loop=None):
+    async def _main(self, build_logger, pipe_logger, loop=None):
         try:
             if pipe_logger.poll() is None:
-                yield pipe_logger.async_wait()
+                await pipe_logger.async_wait()
             if build_logger.poll() is None:
-                yield build_logger.async_wait()
+                await build_logger.async_wait()
         except asyncio.CancelledError:
             self._main_cancel(build_logger, pipe_logger)
             raise
