@@ -3,6 +3,7 @@
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
 
+import glob
 import grp
 import gzip
 import errno
@@ -3079,7 +3080,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
         ) as f:
             f.write(soname_deps.requires)
 
-    if soname_deps.provides is not None:
+    if soname_deps.provides:
         with io.open(
             _unicode_encode(
                 os.path.join(build_info_dir, "PROVIDES"),
@@ -3091,6 +3092,27 @@ def _post_src_install_soname_symlinks(mysettings, out):
             errors="strict",
         ) as f:
             f.write(soname_deps.provides)
+    else:
+        # Let's check if we've got inconsistent results.
+        # If we're installing dynamic libraries (.so files), we should
+        # really have a PROVIDES.
+        # (This is a complementary check at the point of creation for the
+        # ingestion check in Binpkg.py)
+        # Note: we could check a non-empty PROVIDES against the list of .sos,
+        # but this doesn't gain us anything. We're interested in failure
+        # to properly parse the installed files at all, which should really
+        # be a global problem (e.g. bug #811462)
+        installed_dynlibs = glob.glob(image_dir + "/**/*.so", recursive=True)
+
+        if installed_dynlibs:
+            self._writemsg_level(
+                colorize(
+                    "BAD",
+                    "!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
+                ),
+                noiselevel=-1,
+                level=logging.ERROR,
+            )
 
     if unrecognized_elf_files:
         qa_msg = ["QA Notice: Unrecognized ELF file(s):"]
