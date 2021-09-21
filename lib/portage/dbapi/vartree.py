@@ -78,7 +78,6 @@ from portage import _os_merge
 from portage import _selinux_merge
 from portage import _unicode_decode
 from portage import _unicode_encode
-from portage.util.futures.compat_coroutine import coroutine
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
 
@@ -1006,8 +1005,7 @@ class vardbapi(dbapi):
                     pass
         self._bump_mtime(cpv)
 
-    @coroutine
-    def unpack_metadata(self, pkg, dest_dir, loop=None):
+    async def unpack_metadata(self, pkg, dest_dir, loop=None):
         """
         Unpack package metadata to a directory. This method is a coroutine.
 
@@ -1029,10 +1027,9 @@ class vardbapi(dbapi):
                     shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
                 break
 
-        yield loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
+        await loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
 
-    @coroutine
-    def unpack_contents(
+    async def unpack_contents(
         self,
         pkg,
         dest_dir,
@@ -1097,10 +1094,10 @@ class vardbapi(dbapi):
 
         tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
         pr, pw = os.pipe()
-        proc = yield asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
+        proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
         os.close(pr)
         with os.fdopen(pw, "wb", 0) as pw_file:
-            excluded_config_files = yield loop.run_in_executor(
+            excluded_config_files = await loop.run_in_executor(
                 ForkExecutor(loop=loop),
                 functools.partial(
                     self._dblink(cpv).quickpkg,
@@ -1109,7 +1106,7 @@ class vardbapi(dbapi):
                     include_unmodified_config=opts.include_unmodified_config == "y",
                 ),
             )
-        yield proc.wait()
+        await proc.wait()
         if proc.returncode != os.EX_OK:
             raise PortageException("command failed: {}".format(tar_cmd))
 
