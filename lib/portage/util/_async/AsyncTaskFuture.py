@@ -1,10 +1,11 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2021 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 import os
 import signal
 
 from _emerge.AsynchronousTask import AsynchronousTask
+from portage.util.futures import asyncio
 
 
 class AsyncTaskFuture(AsynchronousTask):
@@ -16,6 +17,7 @@ class AsyncTaskFuture(AsynchronousTask):
     __slots__ = ("future",)
 
     def _start(self):
+        self.future = asyncio.ensure_future(self.future, self.scheduler)
         self.future.add_done_callback(self._done_callback)
 
     def _cancel(self):

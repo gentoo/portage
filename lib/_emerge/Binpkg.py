@@ -1,4 +1,4 @@
-# Copyright 1999-2019 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
@@ -15,7 +15,6 @@ from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
-from portage.util.futures.compat_coroutine import coroutine
 import portage
 from portage import os
 from portage import shutil
@@ -305,8 +304,7 @@ class Binpkg(CompositeTask):
             self._unpack_metadata_exit,
         )
 
-    @coroutine
-    def _unpack_metadata(self, loop=None):
+    async def _unpack_metadata(self, loop=None):
 
         dir_path = self.settings["PORTAGE_BUILDDIR"]
 
@@ -327,7 +325,7 @@ class Binpkg(CompositeTask):
         portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
         self._writemsg_level(">>> Extracting info\n")
 
-        yield self._bintree.dbapi.unpack_metadata(
+        await self._bintree.dbapi.unpack_metadata(
             self.settings, infloc, loop=self.scheduler
         )
         check_missing_metadata = ("CATEGORY", "PF")
@@ -378,7 +376,7 @@ class Binpkg(CompositeTask):
             background=self.background, scheduler=self.scheduler, settings=self.settings
         )
         env_extractor.start()
-        yield env_extractor.async_wait()
+        await env_extractor.async_wait()
         if env_extractor.returncode != os.EX_OK:
             raise portage.exception.PortageException(
                 "failed to extract environment for {}".format(self.pkg.cpv)
