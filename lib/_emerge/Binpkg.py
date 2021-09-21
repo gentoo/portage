@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
+import glob
 import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
@@ -13,6 +13,7 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
+from portage.output import colorize
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util.futures.compat_coroutine import coroutine
@@ -426,6 +427,31 @@ class Binpkg(CompositeTask):
             )
             self._async_unlock_builddir(returncode=self.returncode)
             return
+
+        # Before anything else, let's do an integrity check.
+        (provides,) = self._bintree.dbapi.aux_get(self.pkg.cpv, ["PROVIDES"])
+        if not provides:
+            # Let's check if we've got inconsistent results.
+            # If we're installing dynamic libraries (.so files), we should
+            # really have a PROVIDES.
+            # (This is a complementary check at the point of ingestion for the
+            # creation check in doebuild.py)
+            # Note: we could check a non-empty PROVIDES against the list of .sos,
+            # but this doesn't gain us anything. We're interested in failure
+            # to properly parse the installed files at all, which should really
+            # be a global problem (e.g. bug #811462)
+            installed_dynlibs = glob.glob(
+                self.settings["D"] + "/**/*.so", recursive=True
+            )
+            if installed_dynlibs:
+                self._writemsg_level(
+                    colorize(
+                        "BAD",
+                        "!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
+                    ),
+                    noiselevel=-1,
+                    level=logging.ERROR,
+                )
 
         try:
             with io.open(
