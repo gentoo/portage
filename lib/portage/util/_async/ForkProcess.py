@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Gentoo Authors
+# Copyright 2012-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import fcntl
@@ -10,7 +10,6 @@ import sys
 import portage
 from portage import os
 from portage.util.futures import asyncio
-from portage.util.futures.compat_coroutine import coroutine
 from _emerge.SpawnProcess import SpawnProcess
 
 
@@ -73,15 +72,14 @@ class ForkProcess(SpawnProcess):
         if self._proc_join_task is None:
             super(ForkProcess, self)._async_waitpid()
 
-    @coroutine
-    def _proc_join(self, proc, loop=None):
+    async def _proc_join(self, proc, loop=None):
         sentinel_reader = self.scheduler.create_future()
         self.scheduler.add_reader(
             proc.sentinel,
             lambda: sentinel_reader.done() or sentinel_reader.set_result(None),
         )
         try:
-            yield sentinel_reader
+            await sentinel_reader
         finally:
             # If multiprocessing.Process supports the close method, then
             # access to proc.sentinel will raise ValueError if the
@@ -101,7 +99,7 @@ class ForkProcess(SpawnProcess):
             proc.join(0)
             if proc.exitcode is not None:
                 break
-            yield asyncio.sleep(self._proc_join_interval, loop=loop)
+            await asyncio.sleep(self._proc_join_interval, loop=loop)
 
     def _proc_join_done(self, proc, future):
         future.cancelled() or future.result()
