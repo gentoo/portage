@@ -1489,17 +1489,7 @@ class Atom(str):
         def __init__(self, forbid_overlap=False):
             self.overlap = self._overlap(forbid=forbid_overlap)
 
-    def __new__(
-        cls,
-        s,
-        unevaluated_atom=None,
-        allow_wildcard=False,
-        allow_repo=None,
-        _use=None,
-        eapi=None,
-        is_valid_flag=None,
-        allow_build_id=None,
-    ):
+    def __new__(cls, s, *args, **kwargs):
         return str.__new__(cls, s)
 
     def __init__(
