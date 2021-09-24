@@ -270,7 +270,7 @@ def nc_len(mystr):
 
 
 _legal_terms_re = re.compile(
-    r"^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole)"
+    r"^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole|foot)"
 )
 _disable_xtermTitle = None
 _max_xtermTitle_len = 253
