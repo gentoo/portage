@@ -288,25 +288,39 @@ def eapi_has_sysroot(eapi):
 
 _eapi_attrs = collections.namedtuple(
     "_eapi_attrs",
-    "allows_package_provided "
-    "bdepend "
-    "broot "
-    "dots_in_PN dots_in_use_flags "
-    "exports_AA "
-    "exports_EBUILD_PHASE_FUNC "
-    "exports_ECLASSDIR "
-    "exports_KV "
-    "exports_merge_type "
-    "exports_PORTDIR "
-    "exports_replace_vars "
-    "feature_flag_test "
-    "idepend iuse_defaults iuse_effective posixish_locale "
-    "path_variables_end_with_trailing_slash "
-    "prefix "
-    "repo_deps required_use required_use_at_most_one_of "
-    "selective_src_uri_restriction slot_operator slot_deps "
-    "src_uri_arrows strong_blocks use_deps use_dep_defaults "
-    "empty_groups_always_true sysroot",
+    (
+        "allows_package_provided",
+        "bdepend",
+        "broot",
+        "dots_in_PN",
+        "dots_in_use_flags",
+        "exports_AA",
+        "exports_EBUILD_PHASE_FUNC",
+        "exports_ECLASSDIR",
+        "exports_KV",
+        "exports_merge_type",
+        "exports_PORTDIR",
+        "exports_replace_vars",
+        "feature_flag_test",
+        "idepend",
+        "iuse_defaults",
+        "iuse_effective",
+        "posixish_locale",
+        "path_variables_end_with_trailing_slash",
+        "prefix",
+        "repo_deps",
+        "required_use",
+        "required_use_at_most_one_of",
+        "selective_src_uri_restriction",
+        "slot_operator",
+        "slot_deps",
+        "src_uri_arrows",
+        "strong_blocks",
+        "use_deps",
+        "use_dep_defaults",
+        "empty_groups_always_true",
+        "sysroot",
+    ),
 )
 
 
