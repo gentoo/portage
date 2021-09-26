@@ -1,4 +1,4 @@
-# Copyright 2010-2020 Gentoo Authors
+# Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["prepare_build_dirs"]
@@ -27,6 +27,7 @@ from portage.util import (
     normalize_path,
     writemsg,
 )
+from portage.util.file_copy import copyfile
 from portage.util.install_mask import _raise_exc
 
 
@@ -478,16 +479,14 @@ def _ensure_log_subdirs(logdir, subdir):
 
 def _prepare_fake_filesdir(settings):
     real_filesdir = settings["O"] + "/files"
-    symlink_path = settings["FILESDIR"]
+    filesdir = settings["FILESDIR"]
+    portage.util.ensure_dirs(filesdir, mode=0o755)
 
-    try:
-        link_target = os.readlink(symlink_path)
-    except OSError:
-        os.symlink(real_filesdir, symlink_path)
-    else:
-        if link_target != real_filesdir:
-            os.unlink(symlink_path)
-            os.symlink(real_filesdir, symlink_path)
+    # Copy files from real directory to ebuild directory (without metadata).
+    if os.path.isdir(real_filesdir):
+        shutil.copytree(
+            real_filesdir, filesdir, copy_function=copyfile, dirs_exist_ok=True
+        )
 
 
 def _prepare_fake_distdir(settings, alist):
