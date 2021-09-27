@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.24
+==================================
+    - Bug 814857: create a local copy of FILESDIR in order to avoid
+                  leaking xattrs from user's repository
+    - Bug 811462: fix ignoring scanelf(1) exit status when generating
+                  NEEDED* entries
+
 portage-3.0.20
 ==================================
     - Bug 777492: PORTAGE_NICENESS: Consider autogroup scheduling

@@ -1,5 +1,14 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.24
+--------------
+* remove doebuild(dbkey=...) support that was deprecated since 2013.
+* pass metadata internally using key=value format.
+* include INHERIT key md5-cache to match pkgcore.
+* reformat Portage code using black.
+* fix Python 3.10 deprecation warnings.
+* replace compat_coroutine use with modern async.
+
 portage-3.0.23
 --------------
 * enable autogroup scheduling with pid-sandbox if possible. This should
