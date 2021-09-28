@@ -1,6 +1,13 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.25
+==================================
+    - Bug 703520: output a QA notice when eend is called without
+                  an argument
+    - Bug 815196: files copied to shadow FILESDIR are now owned
+                  by portage:portage to fix access issues
+
 portage-3.0.24
 ==================================
     - Bug 814857: create a local copy of FILESDIR in order to avoid

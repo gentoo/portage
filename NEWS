@@ -1,5 +1,9 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.25
+--------------
+* fix Python < 3.8 compatibility of FILESDIR copying code.
+
 portage-3.0.24
 --------------
 * remove doebuild(dbkey=...) support that was deprecated since 2013.
