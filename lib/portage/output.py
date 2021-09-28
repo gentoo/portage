@@ -1,4 +1,4 @@
-# Copyright 1998-2020 Gentoo Authors
+# Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __docformat__ = "epytext"
@@ -378,7 +378,7 @@ def style_to_ansi_code(style):
 def colormap():
     mycolors = []
     for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET", "NORMAL"):
-        mycolors.append("%s=$'%s'" % (c, style_to_ansi_code(c)))
+        mycolors.append("PORTAGE_COLOR_{}=$'{}'".format(c, style_to_ansi_code(c)))
     return "\n".join(mycolors)
 
 

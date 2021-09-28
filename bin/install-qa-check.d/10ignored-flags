@@ -52,7 +52,7 @@ ignored_flag_check() {
 			f=$(<"${T}"/scanelf-ignored-CFLAGS.log)
 			if [[ -n ${f} ]] ; then
 				__vecho -ne '\n'
-				eqawarn "${BAD}QA Notice: Files built without respecting CFLAGS have been detected${NORMAL}"
+				eqawarn "${PORTAGE_COLOR_BAD}QA Notice: Files built without respecting CFLAGS have been detected${PORTAGE_COLOR_NORMAL}"
 				eqawarn " Please include the following list of files in your report:"
 				eqawarn "${f}"
 				__vecho -ne '\n'
@@ -82,7 +82,7 @@ ignored_flag_check() {
 			f=$(<"${T}"/scanelf-ignored-LDFLAGS.log)
 			if [[ -n ${f} ]] ; then
 				__vecho -ne '\n'
-				eqawarn "${BAD}QA Notice: Files built without respecting LDFLAGS have been detected${NORMAL}"
+				eqawarn "${PORTAGE_COLOR_BAD}QA Notice: Files built without respecting LDFLAGS have been detected${PORTAGE_COLOR_NORMAL}"
 				eqawarn " Please include the following list of files in your report:"
 				eqawarn "${f}"
 				__vecho -ne '\n'

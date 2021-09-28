@@ -255,7 +255,7 @@ __elog_base() {
 			shift
 			;;
 		*)
-			__vecho -e " ${BAD}*${NORMAL} Invalid use of internal function __elog_base(), next message will not be logged"
+			__vecho -e " ${PORTAGE_COLOR_BAD}*${PORTAGE_COLOR_NORMAL} Invalid use of internal function __elog_base(), next message will not be logged"
 			return 1
 			;;
 	esac
@@ -270,7 +270,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $WARN*$NORMAL $REPLY" >&2
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -280,7 +280,7 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $GOOD*$NORMAL $REPLY" >&2
+		echo " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -290,7 +290,7 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $GOOD*$NORMAL $REPLY" >&2
+		echo " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -299,7 +299,7 @@ einfo() {
 einfon() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
-	echo -ne " ${GOOD}*${NORMAL} $*" >&2
+	echo -ne " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} $*" >&2
 	LAST_E_CMD="einfon"
 	return 0
 }
@@ -308,7 +308,7 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
+		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
 	done
 	LAST_E_CMD="ewarn"
 	return 0
@@ -318,7 +318,7 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
+		echo " ${PORTAGE_COLOR_BAD}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
 	done
 	LAST_E_CMD="eerror"
 	return 0
@@ -345,12 +345,12 @@ __eend() {
 	shift 2
 
 	if [[ ${retval} == "0" ]] ; then
-		msg="${BRACKET}[ ${GOOD}ok${BRACKET} ]${NORMAL}"
+		msg="${PORTAGE_COLOR_BRACKET}[ ${PORTAGE_COLOR_GOOD}ok${PORTAGE_COLOR_BRACKET} ]${PORTAGE_COLOR_NORMAL}"
 	else
 		if [[ -n $* ]] ; then
 			${efunc} "$*"
 		fi
-		msg="${BRACKET}[ ${BAD}!!${BRACKET} ]${NORMAL}"
+		msg="${PORTAGE_COLOR_BRACKET}[ ${PORTAGE_COLOR_BAD}!!${PORTAGE_COLOR_BRACKET} ]${PORTAGE_COLOR_NORMAL}"
 	fi
 
 	if [[ ${RC_ENDCOL} == "yes" ]] ; then
@@ -378,12 +378,12 @@ __unset_colors() {
 	COLS=80
 	ENDCOL=
 
-	GOOD=
-	WARN=
-	BAD=
-	NORMAL=
-	HILITE=
-	BRACKET=
+	PORTAGE_COLOR_GOOD=
+	PORTAGE_COLOR_WARN=
+	PORTAGE_COLOR_BAD=
+	PORTAGE_COLOR_HILITE=
+	PORTAGE_COLOR_NORMAL=
+	PORTAGE_COLOR_BRACKET=
 }
 
 __set_colors() {
@@ -403,12 +403,12 @@ __set_colors() {
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
-		GOOD=$'\e[32;01m'
-		WARN=$'\e[33;01m'
-		BAD=$'\e[31;01m'
-		HILITE=$'\e[36;01m'
-		BRACKET=$'\e[34;01m'
-		NORMAL=$'\e[0m'
+		PORTAGE_COLOR_GOOD=$'\e[32;01m'
+		PORTAGE_COLOR_WARN=$'\e[33;01m'
+		PORTAGE_COLOR_BAD=$'\e[31;01m'
+		PORTAGE_COLOR_HILITE=$'\e[36;01m'
+		PORTAGE_COLOR_BRACKET=$'\e[34;01m'
+		PORTAGE_COLOR_NORMAL=$'\e[0m'
 	fi
 }
 
