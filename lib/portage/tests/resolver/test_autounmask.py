@@ -320,7 +320,7 @@ class AutounmaskTestCase(TestCase):
             # # required by =app-portage/A-1 (argument)
             # >=app-portage/B-1 foo
             #
-            # !!! The ebuild selected to satisfy "app-portage/B[foo]" has unmet requirements.
+            # !!!! The ebuild selected to satisfy "app-portage/B[foo]" has unmet requirements.
             # - app-portage/B-1::test_repo USE="bar (forced-flag) -foo"
             #
             #   The following REQUIRED_USE flag constraints are unsatisfied:
@@ -337,7 +337,7 @@ class AutounmaskTestCase(TestCase):
             # # required by =app-portage/A-2 (argument)
             # >=app-portage/B-1 foo
             #
-            # !!! The ebuild selected to satisfy "app-portage/B[foo=]" has unmet requirements.
+            # !!!! The ebuild selected to satisfy "app-portage/B[foo=]" has unmet requirements.
             # - app-portage/B-1::test_repo USE="bar (forced-flag) -foo"
             #
             #   The following REQUIRED_USE flag constraints are unsatisfied:
@@ -363,7 +363,7 @@ class AutounmaskTestCase(TestCase):
             # # required by sci-mathematics/octave (argument)
             # >=x11-libs/qscintilla-2.9.4 qt5
             #
-            # !!! The ebuild selected to satisfy ">=x11-libs/qscintilla-2.9.3-r2:=[qt5(+)]" has unmet requirements.
+            # !!!! The ebuild selected to satisfy ">=x11-libs/qscintilla-2.9.3-r2:=[qt5(+)]" has unmet requirements.
             # - x11-libs/qscintilla-2.9.4::test_repo USE="qt4 -qt5"
             #
             #   The following REQUIRED_USE flag constraints are unsatisfied:

@@ -25,20 +25,20 @@ class ManifestProcess(ForkProcess):
             mf.create(assumeDistHashesAlways=True)
         except FileNotFound as e:
             portage.writemsg(
-                _("!!! File %s doesn't exist, can't update " "Manifest\n") % e,
+                _("!!!! File %s doesn't exist, can't update " "Manifest\n") % e,
                 noiselevel=-1,
             )
             return 1
 
         except PortagePackageException as e:
-            portage.writemsg(("!!! %s\n") % (e,), noiselevel=-1)
+            portage.writemsg(("!!!! %s\n") % (e,), noiselevel=-1)
             return 1
 
         try:
             modified = mf.write(sign=False)
         except PermissionDenied as e:
             portage.writemsg(
-                f"!!! {_('Permission Denied')}: {e}\n",
+                f"!!!! {_('Permission Denied')}: {e}\n",
                 noiselevel=-1,
             )
             return 1

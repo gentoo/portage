@@ -85,7 +85,7 @@ def linux_ro_checker(dir_list):
     # filesystems and return.
     except OSError:
         writemsg_level(
-            _("!!! /proc/self/mountinfo cannot be read"),
+            _("!!!! /proc/self/mountinfo cannot be read"),
             level=logging.WARNING,
             noiselevel=-1,
         )
@@ -93,7 +93,7 @@ def linux_ro_checker(dir_list):
 
     for line in invalids:
         writemsg_level(
-            _("!!! /proc/self/mountinfo contains unrecognized line: %s\n")
+            _("!!!! /proc/self/mountinfo contains unrecognized line: %s\n")
             % line.rstrip(),
             level=logging.WARNING,
             noiselevel=-1,

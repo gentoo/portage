@@ -330,7 +330,7 @@ class Binpkg(CompositeTask):
 
         # This initializes PORTAGE_LOG_FILE.
         portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
-        self._writemsg_level(">>> Extracting info\n")
+        self._writemsg_level(">>>> Extracting info\n")
 
         await self._bintree.dbapi.unpack_metadata(
             self.settings, infloc, loop=self.scheduler
@@ -397,7 +397,7 @@ class Binpkg(CompositeTask):
                 self._writemsg_level(
                     colorize(
                         "BAD",
-                        f"!!! Error Extracting '{self._pkg_path}', {e}\n",
+                        f"!!!! Error Extracting '{self._pkg_path}', {e}\n",
                     ),
                     noiselevel=-1,
                     level=logging.ERROR,
@@ -421,7 +421,7 @@ class Binpkg(CompositeTask):
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
-        self._writemsg_level(f">>> Extracting {self.pkg.cpv}\n")
+        self._writemsg_level(f">>>> Extracting {self.pkg.cpv}\n")
         self._start_task(
             AsyncTaskFuture(
                 future=self._bintree.dbapi.unpack_contents(
@@ -439,7 +439,7 @@ class Binpkg(CompositeTask):
                 self._writemsg_level(
                     colorize(
                         "BAD",
-                        f"!!! Error Extracting '{self._pkg_path}', {e}\n",
+                        f"!!!! Error Extracting '{self._pkg_path}', {e}\n",
                     ),
                     noiselevel=-1,
                     level=logging.ERROR,
@@ -453,7 +453,7 @@ class Binpkg(CompositeTask):
             self._writemsg_level(
                 colorize(
                     "BAD",
-                    "!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
+                    "!!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
                 ),
                 noiselevel=-1,
                 level=logging.ERROR,
@@ -495,13 +495,13 @@ class Binpkg(CompositeTask):
             scheduler=self.scheduler,
             logfile=self.settings.get("PORTAGE_LOG_FILE"),
         )
-        self._writemsg_level(f">>> Adjusting Prefix to {self.settings['EPREFIX']}\n")
+        self._writemsg_level(f">>>> Adjusting Prefix to {self.settings['EPREFIX']}\n")
         self._start_task(chpathtool, self._chpathtool_exit)
 
     def _chpathtool_exit(self, chpathtool):
         if self._final_exit(chpathtool) != os.EX_OK:
             self._writemsg_level(
-                f"!!! Error Adjusting Prefix to {self.settings['EPREFIX']}\n",
+                f"!!!! Error Adjusting Prefix to {self.settings['EPREFIX']}\n",
                 noiselevel=-1,
                 level=logging.ERROR,
             )

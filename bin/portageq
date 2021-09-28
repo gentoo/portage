@@ -1395,9 +1395,9 @@ try:
                 arg_group.add_argument(*pargs, **kwargs)
 
     def usage(argv):
-        print(">>> Portage information query tool")
-        print(f">>> {portage.VERSION}")
-        print(">>> Usage: portageq <command> [<option> ...]")
+        print(">>>> Portage information query tool")
+        print(f">>>> {portage.VERSION}")
+        print(">>>> Usage: portageq <command> [<option> ...]")
         print("")
         print("Available commands:")
 

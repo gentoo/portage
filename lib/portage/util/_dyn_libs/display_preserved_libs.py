@@ -20,7 +20,7 @@ def display_preserved_libs(vardb, verbose=False):
         linkmap.rebuild()
     except portage.exception.CommandNotFound as e:
         portage.util.writemsg_level(
-            f"!!! Command Not Found: {e}\n", level=logging.ERROR, noiselevel=-1
+            f"!!!! Command Not Found: {e}\n", level=logging.ERROR, noiselevel=-1
         )
     else:
         search_for_owners = set()
@@ -54,7 +54,7 @@ def display_preserved_libs(vardb, verbose=False):
     all_preserved.update(*plibdata.values())
 
     for cpv in plibdata:
-        print(colorize("WARN", ">>>") + f" package: {cpv}")
+        print(colorize("WARN", ">>>>") + f" package: {cpv}")
         samefile_map = {}
         for f in plibdata[cpv]:
             obj_key = linkmap._obj_key(f)

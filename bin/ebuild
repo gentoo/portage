@@ -381,7 +381,7 @@ try:
                 ) % (tmpsettings["PF"],)
                 msg = textwrap.wrap(msg, 70)
                 for x in msg:
-                    portage.writemsg(f">>> {x}\n")
+                    portage.writemsg(f">>>> {x}\n")
 
                 if ebuild_changed:
                     open(
@@ -418,13 +418,13 @@ try:
             msg = textwrap.wrap(str(e), 70)
             del e
             for x in msg:
-                portage.writemsg(f"!!! {x}\n", noiselevel=-1)
+                portage.writemsg(f"!!!! {x}\n", noiselevel=-1)
             a = 1
         except PortagePackageException as e:
-            portage.writemsg(f"!!! {e}\n", noiselevel=-1)
+            portage.writemsg(f"!!!! {e}\n", noiselevel=-1)
             a = 1
         except PermissionDenied as e:
-            portage.writemsg(f"!!! Permission Denied: {e}\n", noiselevel=-1)
+            portage.writemsg(f"!!!! Permission Denied: {e}\n", noiselevel=-1)
             a = 1
         if a is None:
             print("Could not run the required binary?")

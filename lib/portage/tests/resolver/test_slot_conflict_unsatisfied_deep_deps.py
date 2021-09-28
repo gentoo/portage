@@ -120,12 +120,12 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
             # required by @world (argument)
             # =dev-libs/A-2 ~x86
             #
-            #!!! Problems have been detected with your world file
-            #!!! Please run emaint --check world
+            #!!!! Problems have been detected with your world file
+            #!!!! Please run emaint --check world
             #
             #
-            #!!! Ebuilds for the following packages are either all
-            #!!! masked or don't exist:
+            #!!!! Ebuilds for the following packages are either all
+            #!!!! masked or don't exist:
             # dev-libs/broken
             #
             # emerge: there are no ebuilds to satisfy "dev-libs/initially-unsatisfied".
@@ -133,8 +133,8 @@ class SlotConflictUnsatisfiedDeepDepsTestCase(TestCase):
             # (dependency required by "@selected" [set])
             # (dependency required by "@world" [argument])
             # Without --autounmask-backtrack=y:
-            #!!! Multiple package instances within a single package slot have been pulled
-            #!!! into the dependency graph, resulting in a slot conflict:
+            #!!!! Multiple package instances within a single package slot have been pulled
+            #!!!! into the dependency graph, resulting in a slot conflict:
             #
             # dev-libs/A:0
             #

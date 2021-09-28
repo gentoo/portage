@@ -104,7 +104,7 @@ class GitSync(NewBase):
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
-            msg = f"!!! git clone error in {self.repo.location}"
+            msg = f"!!!! git clone error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -271,7 +271,7 @@ class GitSync(NewBase):
                 )
             ).rstrip("\n")
         except subprocess.CalledProcessError as e:
-            msg = f"!!! git rev-parse error in {self.repo.location}"
+            msg = f"!!!! git rev-parse error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (e.returncode, False)
@@ -289,7 +289,7 @@ class GitSync(NewBase):
                 **self.spawn_kwargs,
             )
             if exitcode != os.EX_OK:
-                msg = f"!!! git gc error in {self.repo.location}"
+                msg = f"!!!! git gc error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -313,7 +313,7 @@ class GitSync(NewBase):
         )
 
         if exitcode != os.EX_OK:
-            msg = f"!!! git fetch error in {self.repo.location}"
+            msg = f"!!!! git fetch error in {self.repo.location}"
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -339,7 +339,7 @@ class GitSync(NewBase):
             )
 
             if exitcode != os.EX_OK:
-                msg = f"!!! git clean error in {self.repo.location}"
+                msg = f"!!!! git clean error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -386,7 +386,7 @@ class GitSync(NewBase):
             )
 
             if exitcode != os.EX_OK:
-                msg = f"!!! git merge error in {self.repo.location}"
+                msg = f"!!!! git merge error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
@@ -405,7 +405,7 @@ class GitSync(NewBase):
 
         if self.repo.sync_openpgp_key_path is not None and gemato is None:
             writemsg_level(
-                "!!! Verifying against specified key requires gemato-14.5+ installed\n",
+                "!!!! Verifying against specified key requires gemato-14.5+ installed\n",
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -424,7 +424,7 @@ class GitSync(NewBase):
                     self._refresh_keys(openpgp_env)
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
-                        f"!!! Verification impossible due to keyring problem:\n{e}\n",
+                        f"!!!! Verification impossible due to keyring problem:\n{e}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )

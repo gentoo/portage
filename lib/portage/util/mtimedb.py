@@ -71,7 +71,7 @@ class MtimeDB(dict):
             if getattr(e, "errno", None) in (errno.ENOENT, errno.EACCES):
                 pass
             else:
-                writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
+                writemsg(_(f"!!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
         finally:
             if f is not None:
                 f.close()
@@ -98,7 +98,9 @@ class MtimeDB(dict):
                 except SystemExit:
                     raise
                 except Exception:
-                    writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
+                    writemsg(
+                        _(f"!!!! Error loading '{filename}': {e}\n"), noiselevel=-1
+                    )
 
         if "old" in d:
             d["updates"] = d["old"]

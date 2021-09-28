@@ -22,7 +22,7 @@ if "--no-ldconfig" in sys.argv:
     sys.argv.pop(sys.argv.index("--no-ldconfig"))
 
 if len(sys.argv) > 1:
-    print("!!! Invalid command line options!\n")
+    print("!!!! Invalid command line options!\n")
     usage(1)
 
 from os import path as osp

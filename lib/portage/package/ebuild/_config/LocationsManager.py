@@ -128,7 +128,7 @@ class LocationsManager:
                     # that can be used for backward compatibility with
                     # old software.
                     writemsg(
-                        "!!! %s\n"
+                        "!!!! %s\n"
                         % _("Found 2 make.profile dirs: " "using '%s', ignoring '%s'")
                         % (self.profile_path, deprecated_profile_path),
                         noiselevel=-1,
@@ -157,10 +157,10 @@ class LocationsManager:
             except ParseError as e:
                 if not portage._sync_mode:
                     writemsg(
-                        _("!!! Unable to parse profile: '%s'\n") % self.profile_path,
+                        _("!!!! Unable to parse profile: '%s'\n") % self.profile_path,
                         noiselevel=-1,
                     )
-                    writemsg(f"!!! ParseError: {str(e)}\n", noiselevel=-1)
+                    writemsg(f"!!!! ParseError: {str(e)}\n", noiselevel=-1)
                 self.profiles = []
                 self.profiles_complex = []
 
@@ -193,7 +193,7 @@ class LocationsManager:
     def _check_var_directory(self, varname, var):
         if not isdir_raise_eaccess(var):
             writemsg(
-                _("!!! Error: %s='%s' is not a directory. " "Please correct this.\n")
+                _("!!!! Error: %s='%s' is not a directory. " "Please correct this.\n")
                 % (varname, var),
                 noiselevel=-1,
             )
@@ -386,7 +386,7 @@ class LocationsManager:
         if self.sysroot != "/" and self.target_root == "/":
             writemsg(
                 _(
-                    "!!! Error: SYSROOT (currently %s) must "
+                    "!!!! Error: SYSROOT (currently %s) must "
                     "be set to / when ROOT is /.\n"
                 )
                 % self.sysroot,

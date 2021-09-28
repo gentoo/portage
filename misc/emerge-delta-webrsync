@@ -597,10 +597,10 @@ verify_md5_file() {
 #--------------------
 
 if ! type -p patcher &> /dev/null; then
-	echo "!!!"
-	echo "!!! cannot find patcher, did you emerge dev-util/diffball?"
-	echo "!!! lack of patcher == have to do full fetch"
-	echo "!!!"
+	echo "!!!!"
+	echo "!!!! cannot find patcher, did you emerge dev-util/diffball?"
+	echo "!!!! lack of patcher == have to do full fetch"
+	echo "!!!!"
 	sleep 10
 	if do_latest_snapshot; then
 		rm -fr "${TMPDIR}"

@@ -69,7 +69,7 @@ class WebRsync(SyncBase):
 
                 if not self.repo.sync_openpgp_key_path:
                     writemsg_level(
-                        "!!! sync-openpgp-key-path is not set\n",
+                        "!!!! sync-openpgp-key-path is not set\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -77,7 +77,7 @@ class WebRsync(SyncBase):
 
                 if not os.path.isfile(self.repo.sync_openpgp_key_path):
                     writemsg_level(
-                        "!!! sync-openpgp-key-path file not found: %s\n"
+                        "!!!! sync-openpgp-key-path file not found: %s\n"
                         % self.repo.sync_openpgp_key_path,
                         level=logging.ERROR,
                         noiselevel=-1,
@@ -86,7 +86,7 @@ class WebRsync(SyncBase):
 
                 if gemato is None:
                     writemsg_level(
-                        "!!! Verifying against specified key requires gemato-14.5+ installed\n",
+                        "!!!! Verifying against specified key requires gemato-14.5+ installed\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -104,7 +104,7 @@ class WebRsync(SyncBase):
                     self.spawn_kwargs["env"]["PORTAGE_TEMP_GPG_DIR"] = openpgp_env.home
                 except (GematoException, asyncio.TimeoutError) as e:
                     writemsg_level(
-                        f"!!! Verification impossible due to keyring problem:\n{e}\n",
+                        f"!!!! Verification impossible due to keyring problem:\n{e}\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -123,7 +123,7 @@ class WebRsync(SyncBase):
 
             exitcode = portage.process.spawn(webrsync_cmd, **self.spawn_kwargs)
             if exitcode != os.EX_OK:
-                msg = f"!!! emerge-webrsync error in {self.repo.location}"
+                msg = f"!!!! emerge-webrsync error in {self.repo.location}"
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)

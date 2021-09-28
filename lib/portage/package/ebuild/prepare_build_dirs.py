@@ -285,19 +285,19 @@ def _prepare_features_dirs(mysettings):
             except DirectoryNotFound as e:
                 failure = True
                 writemsg(
-                    _("\n!!! Directory does not exist: '%s'\n") % (e,), noiselevel=-1
+                    _("\n!!!! Directory does not exist: '%s'\n") % (e,), noiselevel=-1
                 )
-                writemsg(_("!!! Disabled FEATURES='%s'\n") % myfeature, noiselevel=-1)
+                writemsg(_("!!!! Disabled FEATURES='%s'\n") % myfeature, noiselevel=-1)
 
             except PortageException as e:
                 failure = True
-                writemsg(f"\n!!! {str(e)}\n", noiselevel=-1)
+                writemsg(f"\n!!!! {str(e)}\n", noiselevel=-1)
                 writemsg(
-                    _("!!! Failed resetting perms on %s='%s'\n")
+                    _("!!!! Failed resetting perms on %s='%s'\n")
                     % (kwargs["basedir_var"], basedir),
                     noiselevel=-1,
                 )
-                writemsg(_("!!! Disabled FEATURES='%s'\n") % myfeature, noiselevel=-1)
+                writemsg(_("!!!! Disabled FEATURES='%s'\n") % myfeature, noiselevel=-1)
 
             if failure:
                 mysettings.features.remove(myfeature)
@@ -320,13 +320,13 @@ def _prepare_workdir(mysettings):
             workdir_mode = parsed_mode
     except KeyError as e:
         writemsg(
-            _("!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n") % oct(workdir_mode)
+            _("!!!! PORTAGE_WORKDIR_MODE is unset, using %s.\n") % oct(workdir_mode)
         )
     except ValueError as e:
         if len(str(e)) > 0:
             writemsg(f"{e}\n")
         writemsg(
-            _("!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n")
+            _("!!!! Unable to parse PORTAGE_WORKDIR_MODE='%s', using %s.\n")
             % (mysettings["PORTAGE_WORKDIR_MODE"], oct(workdir_mode))
         )
     mysettings["PORTAGE_WORKDIR_MODE"] = oct(workdir_mode).replace("o", "")
@@ -362,13 +362,13 @@ def _prepare_workdir(mysettings):
                     mode=0o2770,
                 )
         except PortageException as e:
-            writemsg(f"!!! {str(e)}\n", noiselevel=-1)
+            writemsg(f"!!!! {str(e)}\n", noiselevel=-1)
             writemsg(
-                _("!!! Permission issues with PORTAGE_LOGDIR='%s'\n")
+                _("!!!! Permission issues with PORTAGE_LOGDIR='%s'\n")
                 % mysettings["PORTAGE_LOGDIR"],
                 noiselevel=-1,
             )
-            writemsg(_("!!! Disabling logging.\n"), noiselevel=-1)
+            writemsg(_("!!!! Disabling logging.\n"), noiselevel=-1)
             while "PORTAGE_LOGDIR" in mysettings:
                 del mysettings["PORTAGE_LOGDIR"]
 
@@ -415,13 +415,13 @@ def _prepare_workdir(mysettings):
             try:
                 _ensure_log_subdirs(logdir, log_subdir)
             except PortageException as e:
-                writemsg(f"!!! {e}\n", noiselevel=-1)
+                writemsg(f"!!!! {e}\n", noiselevel=-1)
 
             if os.access(log_subdir, os.W_OK):
                 logdir_subdir_ok = True
             else:
                 writemsg(
-                    f"!!! {_('Permission Denied')}: {log_subdir}\n",
+                    f"!!!! {_('Permission Denied')}: {log_subdir}\n",
                     noiselevel=-1,
                 )
 

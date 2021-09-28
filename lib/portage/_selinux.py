@@ -98,14 +98,14 @@ def setexec(ctx="\n"):
         if selinux.security_getenforce() == 1:
             raise OSError(msg)
         else:
-            portage.writemsg(f"!!! {msg}\n", noiselevel=-1)
+            portage.writemsg(f"!!!! {msg}\n", noiselevel=-1)
 
     if rc < 0:
         if selinux.security_getenforce() == 1:
             raise OSError(_('Failed setting exec() context "%s".') % ctx)
         else:
             portage.writemsg(
-                "!!! " + _('Failed setting exec() context "%s".') % ctx, noiselevel=-1
+                "!!!! " + _('Failed setting exec() context "%s".') % ctx, noiselevel=-1
             )
 
 

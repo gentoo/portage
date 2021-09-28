@@ -143,12 +143,12 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         try:
             myconfig = getconfig(file_path, expand=False)
         except ParseError as e:
-            writemsg(f"!!! '{str(e)}'\n", noiselevel=-1)
+            writemsg(f"!!!! '{str(e)}'\n", noiselevel=-1)
             del e
             continue
         if myconfig is None:
             # broken symlink or file removed by a concurrent process
-            writemsg(f"!!! File Not Found: '{file_path}'\n", noiselevel=-1)
+            writemsg(f"!!!! File Not Found: '{file_path}'\n", noiselevel=-1)
             continue
 
         config_list.append(myconfig)
@@ -361,12 +361,12 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
             # to overwrite the symlinks we just made. -X means no links. After 'clean'
             # we can safely create links.
             writemsg_level(
-                _(">>> Regenerating %setc/ld.so.cache...\n") % (target_root,)
+                _(">>>> Regenerating %setc/ld.so.cache...\n") % (target_root,)
             )
             os.system(f"cd / ; {ldconfig} -X -r '{target_root}'")
         elif ostype in ("FreeBSD", "DragonFly"):
             writemsg_level(
-                _(">>> Regenerating %svar/run/ld-elf.so.hints...\n") % target_root
+                _(">>>> Regenerating %svar/run/ld-elf.so.hints...\n") % target_root
             )
             os.system(
                 (

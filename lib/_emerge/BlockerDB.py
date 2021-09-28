@@ -71,7 +71,7 @@ class BlockerDB:
                         inst_pkg.root, portage.VDB_PATH, inst_pkg.category, inst_pkg.pf
                     )
                     portage.writemsg(
-                        f"!!! {pkg_location}/*DEPEND: {atoms}\n",
+                        f"!!!! {pkg_location}/*DEPEND: {atoms}\n",
                         noiselevel=-1,
                     )
                     continue

@@ -96,7 +96,7 @@ def install(basename, dirname, options, prefix=""):
     ).rstrip(os.sep)
 
     if not os.path.exists(fullpath):
-        sys.stderr.write(f"!!! dohtml: {fullpath} does not exist\n")
+        sys.stderr.write(f"!!!! dohtml: {fullpath} does not exist\n")
         return False
     elif os.path.isfile(fullpath):
         ext = os.path.splitext(basename)[1][1:]

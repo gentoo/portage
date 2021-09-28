@@ -354,7 +354,7 @@ class dbapi:
                     noiselevel=-1,
                 )
         else:
-            writemsg(f"!!! Invalid db entry: {mypath}\n", noiselevel=-1)
+            writemsg(f"!!!! Invalid db entry: {mypath}\n", noiselevel=-1)
 
     def update_ents(self, updates, onProgress=None, onUpdate=None):
         """

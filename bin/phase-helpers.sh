@@ -274,8 +274,8 @@ use() {
 
 use_with() {
 	if [[ -z "${1}" ]]; then
-		echo "!!! use_with() called without a parameter." >&2
-		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
+		echo "!!!! use_with() called without a parameter." >&2
+		echo "!!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return 1
 	fi
 
@@ -296,8 +296,8 @@ use_with() {
 
 use_enable() {
 	if [[ -z "${1}" ]]; then
-		echo "!!! use_enable() called without a parameter." >&2
-		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
+		echo "!!!! use_enable() called without a parameter." >&2
+		echo "!!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return 1
 	fi
 
@@ -327,7 +327,7 @@ unpack() {
 	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		__vecho ">>> Unpacking ${x} to ${PWD}"
+		__vecho ">>>> Unpacking ${x} to ${PWD}"
 		suffix=${x##*.}
 		suffix_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
@@ -721,8 +721,8 @@ econf() {
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
 			if [[ -s config.log ]]; then
 				echo
-				echo "!!! Please attach the following file when seeking support:"
-				echo "!!! ${PWD}/config.log"
+				echo "!!!! Please attach the following file when seeking support:"
+				echo "!!!! ${PWD}/config.log"
 			fi
 
 			# econf dies unconditionally in EAPIs 0 to 3
@@ -1203,7 +1203,7 @@ if ___eapi_has_eapply_user; then
 				f=${_eapply_user_patches[${f}]}
 				if [[ -s ${f} ]]; then
 					if [[ -z ${applied} ]]; then
-						einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+						einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 6; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
 						einfo "Applying user patches from ${basedir} ..."
 					fi
 
@@ -1218,7 +1218,7 @@ if ___eapi_has_eapply_user; then
 
 		if [[ -n ${applied} ]]; then
 			einfo "User patches applied."
-			einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+			einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 6; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
 		fi
 	}
 fi
@@ -1228,8 +1228,8 @@ if ___eapi_has_in_iuse; then
 		local use=${1}
 
 		if [[ -z "${use}" ]]; then
-			echo "!!! in_iuse() called without a parameter." >&2
-			echo "!!! in_iuse <USEFLAG>" >&2
+			echo "!!!! in_iuse() called without a parameter." >&2
+			echo "!!!! in_iuse <USEFLAG>" >&2
 			die "in_iuse() called without a parameter"
 		fi
 

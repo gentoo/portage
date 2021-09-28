@@ -101,7 +101,7 @@ class PreservedLibsRegistry:
                     raise
                 except Exception:
                     writemsg_level(
-                        _("!!! Error loading '%s': %s\n") % (self._filename, e),
+                        _("!!!! Error loading '%s': %s\n") % (self._filename, e),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -147,7 +147,7 @@ class PreservedLibsRegistry:
         except OSError as e:
             if e.errno != PermissionDenied.errno:
                 writemsg_level(
-                    f"!!! {e} {self._filename}\n",
+                    f"!!!! {e} {self._filename}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

@@ -131,7 +131,7 @@ class BinarytreeTestCase(TestCase):
         ppopulate_remote.assert_not_called()
         pwritemsg.assert_called_once_with(
             _(
-                f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
+                f"!!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
                 ", but use is requested.\n"
             ),
             noiselevel=-1,

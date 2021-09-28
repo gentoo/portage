@@ -73,7 +73,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             decomp_cmd = None
         if decomp_cmd is None:
             self.scheduler.output(
-                "!!! %s\n"
+                "!!!! %s\n"
                 % _("File compression header unrecognized: %s")
                 % self.pkg_path,
                 log_path=self.logfile,
@@ -105,7 +105,7 @@ class BinpkgExtractorAsync(SpawnProcess):
             if find_binary(decompression_binary) is None:
                 missing_package = decomp.get("package")
                 self.scheduler.output(
-                    "!!! %s\n"
+                    "!!!! %s\n"
                     % _(
                         "File compression unsupported %s.\n Command was: %s.\n Maybe missing package: %s"
                     )

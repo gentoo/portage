@@ -629,7 +629,7 @@ def doebuild_environment(
         )
         if binpkg_format not in portage.const.SUPPORTED_GENTOO_BINPKG_FORMATS:
             writemsg(
-                "!!! BINPKG_FORMAT contains invalid or "
+                "!!!! BINPKG_FORMAT contains invalid or "
                 "unsupported format: %s" % binpkg_format,
                 noiselevel=-1,
             )
@@ -856,12 +856,12 @@ def doebuild(
     if mydo not in validcommands:
         validcommands.sort()
         writemsg(
-            f"!!! doebuild: '{mydo}' is not one of the following valid commands:",
+            f"!!!! doebuild: '{mydo}' is not one of the following valid commands:",
             noiselevel=-1,
         )
         for vcount in range(len(validcommands)):
             if vcount % 6 == 0:
-                writemsg("\n!!! ", noiselevel=-1)
+                writemsg("\n!!!! ", noiselevel=-1)
             writemsg(validcommands[vcount].ljust(11), noiselevel=-1)
         writemsg("\n", noiselevel=-1)
         return 1
@@ -883,7 +883,7 @@ def doebuild(
         mydo = "fetch"
 
     if mydo not in clean_phases and not os.path.exists(myebuild):
-        writemsg(f"!!! doebuild: {myebuild} not found for {mydo}\n", noiselevel=-1)
+        writemsg(f"!!!! doebuild: {myebuild} not found for {mydo}\n", noiselevel=-1)
         return 1
 
     global _doebuild_manifest_cache
@@ -1037,7 +1037,7 @@ def doebuild(
 
             if returnpid:
                 writemsg(
-                    "!!! doebuild: %s\n"
+                    "!!!! doebuild: %s\n"
                     % _("returnpid is not supported for phase '%s'\n" % mydo),
                     noiselevel=-1,
                 )
@@ -1073,7 +1073,7 @@ def doebuild(
         if mydo == "unmerge":
             if returnpid:
                 writemsg(
-                    "!!! doebuild: %s\n"
+                    "!!!! doebuild: %s\n"
                     % _("returnpid is not supported for phase '%s'\n" % mydo),
                     noiselevel=-1,
                 )
@@ -1118,12 +1118,12 @@ def doebuild(
                     os.path.join(mysettings["PORTAGE_BUILDDIR"], ".unpacked")
                 ):
                     writemsg_stdout(
-                        _(">>> Not marked as unpacked; recreating WORKDIR...\n")
+                        _(">>>> Not marked as unpacked; recreating WORKDIR...\n")
                     )
                     newstuff = True
                 else:
                     for x in alist:
-                        writemsg_stdout(f">>> Checking {x}'s mtime...\n")
+                        writemsg_stdout(f">>>> Checking {x}'s mtime...\n")
                         try:
                             x_st = os.stat(os.path.join(mysettings["DISTDIR"], x))
                         except OSError:
@@ -1133,7 +1133,7 @@ def doebuild(
                         if x_st is not None and x_st.st_mtime > workdir_st.st_mtime:
                             writemsg_stdout(
                                 _(
-                                    ">>> Timestamp of "
+                                    ">>>> Timestamp of "
                                     "%s has changed; recreating WORKDIR...\n"
                                 )
                                 % x
@@ -1161,7 +1161,7 @@ def doebuild(
                             )
                             builddir_lock = None
                 else:
-                    writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
+                    writemsg_stdout(_(">>>> WORKDIR is up-to-date, keeping...\n"))
                     unpacked = True
 
         # Build directory creation isn't required for any of these.
@@ -1295,8 +1295,8 @@ def doebuild(
                 alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
                 aalist = _parse_uri_map(mysettings.mycpv, metadata)
             except InvalidDependString as e:
-                writemsg(f"!!! {str(e)}\n", noiselevel=-1)
-                writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv, noiselevel=-1)
+                writemsg(f"!!!! {str(e)}\n", noiselevel=-1)
+                writemsg(_("!!!! Invalid SRC_URI for '%s'.\n") % mycpv, noiselevel=-1)
                 del e
                 return 1
 
@@ -1385,7 +1385,7 @@ def doebuild(
                 _doebuild_manifest_cache = None
                 digestgen(mysettings=mysettings, myportdb=mydbapi)
         except PermissionDenied as e:
-            writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
+            writemsg(_("!!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
             if mydo in ("digest", "manifest"):
                 return 1
 
@@ -1494,7 +1494,7 @@ def doebuild(
 
         elif returnpid:
             writemsg(
-                "!!! doebuild: %s\n"
+                "!!!! doebuild: %s\n"
                 % _("returnpid is not supported for phase '%s'\n" % mydo),
                 noiselevel=-1,
             )
@@ -1509,7 +1509,7 @@ def doebuild(
                 os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")
             ):
                 writemsg(
-                    _("!!! mydo=qmerge, but the install phase has not been run\n"),
+                    _("!!!! mydo=qmerge, but the install phase has not been run\n"),
                     noiselevel=-1,
                 )
                 return 1
@@ -1566,7 +1566,7 @@ def doebuild(
                 )
 
         else:
-            writemsg_stdout(_("!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
+            writemsg_stdout(_("!!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
             return 1
 
         return retval
@@ -2179,13 +2179,13 @@ def spawnebuild(
         if os.path.exists(check_file):
             writemsg_stdout(
                 _(
-                    ">>> It appears that "
+                    ">>>> It appears that "
                     "'%(action)s' has already executed for '%(pkg)s'; skipping.\n"
                 )
                 % {"action": mydo, "pkg": mysettings["PF"]}
             )
             writemsg_stdout(
-                _(">>> Remove '%(file)s' to force %(action)s.\n")
+                _(">>>> Remove '%(file)s' to force %(action)s.\n")
                 % {"file": check_file, "action": mydo}
             )
             return os.EX_OK
@@ -2280,7 +2280,7 @@ def _check_build_log(mysettings, out=None):
     )
     command_not_found_exclude_re = re.compile(r"/configure: line ")
     helper_missing_file = []
-    helper_missing_file_re = re.compile(r"^!!! (do|new).*: .* does not exist$")
+    helper_missing_file_re = re.compile(r"^!!!! (do|new).*: .* does not exist$")
 
     configure_opts_warn = []
     configure_opts_warn_re = re.compile(

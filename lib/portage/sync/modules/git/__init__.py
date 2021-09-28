@@ -28,7 +28,7 @@ class CheckGitConfig(CheckSyncConfig):
                 d = int(d)
             except ValueError:
                 writemsg_level(
-                    "!!! %s\n"
+                    "!!!! %s\n"
                     % _("%s value is not a number: '%s'")
                     % (attr.replace("_", "-"), d),
                     level=self.logger.ERROR,
@@ -44,7 +44,7 @@ class CheckGitConfig(CheckSyncConfig):
 
         if v not in ("yes", "no", "true", "false"):
             writemsg_level(
-                "!!! %s\n"
+                "!!!! %s\n"
                 % _("sync-git-verify-commit-signature not one of: %s")
                 % ("{yes, no, true, false}"),
                 level=self.logger.ERROR,
