@@ -63,7 +63,7 @@ def _finalize():
                     "WARN": printer.ewarn,
                     "ERROR": printer.eerror,
                     "LOG": printer.einfo,
-                    "QA": printer.ewarn,
+                    "QA": printer.eqawarn,
                 }
                 if isinstance(msgcontent, str):
                     msgcontent = [msgcontent]

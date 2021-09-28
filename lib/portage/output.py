@@ -143,6 +143,7 @@ codes["darkyellow"] = codes["0xAAAA00"]
 _styles["NORMAL"] = ("normal",)
 _styles["GOOD"] = ("green",)
 _styles["WARN"] = ("yellow",)
+_styles["QAWARN"] = ("brown",)
 _styles["BAD"] = ("red",)
 _styles["HILITE"] = ("teal",)
 _styles["BRACKET"] = ("blue",)
@@ -377,7 +378,7 @@ def style_to_ansi_code(style):
 
 def colormap():
     mycolors = []
-    for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET", "NORMAL"):
+    for c in ("GOOD", "WARN", "QAWARN", "BAD", "HILITE", "BRACKET", "NORMAL"):
         mycolors.append("%s=$'%s'" % (c, style_to_ansi_code(c)))
     return "\n".join(mycolors)
 
@@ -709,6 +710,20 @@ class EOutput:
                 self._write(out, "\n")
             self._write(out, colorize("WARN", " * ") + msg + "\n")
         self.__last_e_cmd = "ewarn"
+
+    def eqawarn(self, msg):
+        """
+        Shows a QA warning.
+
+        @param msg: A very brief (shorter than one line) warning message.
+        @type msg: StringType
+        """
+        out = sys.stderr
+        if not self.quiet:
+            if self.__last_e_cmd == "ebegin":
+                self._write(out, "\n")
+            self._write(out, colorize("QAWARN", " * ") + msg + "\n")
+        self.__last_e_cmd = "eqawarn"
 
     def ewend(self, errno, *msg):
         """

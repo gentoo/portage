@@ -186,7 +186,7 @@ _functions = {
     "einfo": ("INFO", "GOOD"),
     "elog": ("LOG", "GOOD"),
     "ewarn": ("WARN", "WARN"),
-    "eqawarn": ("QA", "WARN"),
+    "eqawarn": ("QA", "QAWARN"),
     "eerror": ("ERROR", "BAD"),
 }
 

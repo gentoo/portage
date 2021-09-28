@@ -270,7 +270,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " $WARN*$NORMAL $REPLY" >&2
+		echo " $QAWARN*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -380,6 +380,7 @@ __unset_colors() {
 
 	GOOD=
 	WARN=
+	QAWARN=
 	BAD=
 	NORMAL=
 	HILITE=
@@ -405,6 +406,7 @@ __set_colors() {
 	else
 		GOOD=$'\e[32;01m'
 		WARN=$'\e[33;01m'
+		QAWARN=$'\e[33m'
 		BAD=$'\e[31;01m'
 		HILITE=$'\e[36;01m'
 		BRACKET=$'\e[34;01m'
