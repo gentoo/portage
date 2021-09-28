@@ -480,7 +480,6 @@ def _ensure_log_subdirs(logdir, subdir):
 def _prepare_fake_filesdir(settings):
     real_filesdir = settings["O"] + "/files"
     filesdir = settings["FILESDIR"]
-    portage.util.ensure_dirs(filesdir, mode=0o755)
 
     # Copy files from real directory to ebuild directory (without metadata).
     if os.path.isdir(real_filesdir):
