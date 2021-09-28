@@ -272,7 +272,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo "${PORTAGE_COLOR_QAWARN}[QA]${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -282,7 +282,7 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo "${PORTAGE_COLOR_LOG}[II]${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -292,7 +292,7 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo "${PORTAGE_COLOR_INFO}[..]${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -301,7 +301,7 @@ einfo() {
 einfon() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
-	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} $*" >&2
+	echo -ne "${PORTAGE_COLOR_INFO}[..]${PORTAGE_COLOR_NORMAL} $*" >&2
 	LAST_E_CMD="einfon"
 	return 0
 }
@@ -310,7 +310,7 @@ ewarn() {
 	__elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
+		echo "${PORTAGE_COLOR_WARN}[WW]${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
 	done
 	LAST_E_CMD="ewarn"
 	return 0
@@ -320,7 +320,7 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
+		echo "${PORTAGE_COLOR_ERR}[EE]${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
 	done
 	LAST_E_CMD="eerror"
 	return 0

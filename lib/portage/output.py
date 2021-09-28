@@ -629,7 +629,7 @@ class EOutput:
             self._write(
                 out,
                 "%*s%s\n"
-                % ((self.term_columns - self.__last_e_len - 7), "", status_brackets),
+                % ((self.term_columns - self.__last_e_len - 8), "", status_brackets),
             )
 
     def ebegin(self, msg):
@@ -643,7 +643,7 @@ class EOutput:
         msg += " ..."
         if not self.quiet:
             self.einfon(msg)
-        self.__last_e_len = len(msg) + 3
+        self.__last_e_len = len(msg) + 4
         self.__last_e_cmd = "ebegin"
 
     def eend(self, errno, *msg):
@@ -673,7 +673,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("ERR", " * ") + msg + "\n")
+            self._write(out, colorize("ERR", "[EE] ") + msg + "\n")
         self.__last_e_cmd = "eerror"
 
     def einfo(self, msg):
@@ -687,7 +687,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("INFO", " * ") + msg + "\n")
+            self._write(out, colorize("INFO", "[..] ") + msg + "\n")
         self.__last_e_cmd = "einfo"
 
     def einfon(self, msg):
@@ -701,7 +701,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("INFO", " * ") + msg)
+            self._write(out, colorize("INFO", "[..] ") + msg)
         self.__last_e_cmd = "einfon"
 
     def eqawarn(self, msg):
@@ -715,7 +715,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("QAWARN", " * ") + msg + "\n")
+            self._write(out, colorize("QAWARN", "[QA] ") + msg + "\n")
         self.__last_e_cmd = "ewarn"
 
     def elog(self, msg):
@@ -729,7 +729,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("LOG", " * ") + msg + "\n")
+            self._write(out, colorize("LOG", "[II] ") + msg + "\n")
         self.__last_e_cmd = "elog"
 
     def ewarn(self, msg):
@@ -743,7 +743,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("WARN", " * ") + msg + "\n")
+            self._write(out, colorize("WARN", "[WW] ") + msg + "\n")
         self.__last_e_cmd = "ewarn"
 
     def ewend(self, errno, *msg):
