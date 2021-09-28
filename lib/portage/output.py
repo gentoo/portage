@@ -140,12 +140,16 @@ codes["darkyellow"] = codes["0xAAAA00"]
 
 
 # Colors from /etc/init.d/functions.sh
-_styles["NORMAL"] = ("normal",)
-_styles["GOOD"] = ("green",)
-_styles["WARN"] = ("yellow",)
 _styles["BAD"] = ("red",)
-_styles["HILITE"] = ("teal",)
 _styles["BRACKET"] = ("blue",)
+_styles["ERR"] = ("red",)
+_styles["GOOD"] = ("green",)
+_styles["HILITE"] = ("teal",)
+_styles["INFO"] = ("darkgreen",)
+_styles["LOG"] = ("green",)
+_styles["NORMAL"] = ("normal",)
+_styles["QAWARN"] = ("brown",)
+_styles["WARN"] = ("yellow",)
 
 # Portage functions
 _styles["INFORM"] = ("darkgreen",)
@@ -377,7 +381,18 @@ def style_to_ansi_code(style):
 
 def colormap():
     mycolors = []
-    for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET", "NORMAL"):
+    for c in (
+        "BAD",
+        "BRACKET",
+        "ERR",
+        "GOOD",
+        "HILITE",
+        "INFO",
+        "LOG",
+        "NORMAL",
+        "QAWARN",
+        "WARN",
+    ):
         mycolors.append("PORTAGE_COLOR_{}=$'{}'".format(c, style_to_ansi_code(c)))
     return "\n".join(mycolors)
 
@@ -665,7 +680,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("BAD", " * ") + msg + "\n")
+            self._write(out, colorize("ERR", " * ") + msg + "\n")
         self.__last_e_cmd = "eerror"
 
     def einfo(self, msg):
@@ -679,7 +694,7 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("GOOD", " * ") + msg + "\n")
+            self._write(out, colorize("INFO", " * ") + msg + "\n")
         self.__last_e_cmd = "einfo"
 
     def einfon(self, msg):
@@ -693,8 +708,36 @@ class EOutput:
         if not self.quiet:
             if self.__last_e_cmd == "ebegin":
                 self._write(out, "\n")
-            self._write(out, colorize("GOOD", " * ") + msg)
+            self._write(out, colorize("INFO", " * ") + msg)
         self.__last_e_cmd = "einfon"
+
+    def eqawarn(self, msg):
+        """
+        Shows a QA warning.
+
+        @param msg: A very brief (shorter than one line) warning message.
+        @type msg: StringType
+        """
+        out = sys.stderr
+        if not self.quiet:
+            if self.__last_e_cmd == "ebegin":
+                self._write(out, "\n")
+            self._write(out, colorize("QAWARN", " * ") + msg + "\n")
+        self.__last_e_cmd = "ewarn"
+
+    def elog(self, msg):
+        """
+        Shows a logged informative message terminated with a newline.
+
+        @param msg: A very brief (shorter than one line) informative message.
+        @type msg: StringType
+        """
+        out = sys.stdout
+        if not self.quiet:
+            if self.__last_e_cmd == "ebegin":
+                self._write(out, "\n")
+            self._write(out, colorize("LOG", " * ") + msg + "\n")
+        self.__last_e_cmd = "elog"
 
     def ewarn(self, msg):
         """

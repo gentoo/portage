@@ -125,7 +125,7 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
         out = sys.stdout
 
     if color is None:
-        color = "GOOD"
+        color = "INFO"
 
     msg = _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
 
@@ -183,11 +183,11 @@ def _reset_buffer():
 
 # creating and exporting the actual messaging functions
 _functions = {
-    "einfo": ("INFO", "GOOD"),
-    "elog": ("LOG", "GOOD"),
+    "einfo": ("INFO", "INFO"),
+    "elog": ("LOG", "LOG"),
     "ewarn": ("WARN", "WARN"),
-    "eqawarn": ("QA", "WARN"),
-    "eerror": ("ERROR", "BAD"),
+    "eqawarn": ("QA", "QAWARN"),
+    "eerror": ("ERROR", "ERR"),
 }
 
 

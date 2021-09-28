@@ -270,7 +270,7 @@ eqawarn() {
 	__elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_WARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo " ${PORTAGE_COLOR_QAWARN}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -280,7 +280,7 @@ elog() {
 	__elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo " ${PORTAGE_COLOR_LOG}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -290,7 +290,7 @@ einfo() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
+		echo " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} ${REPLY}" >&2
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -299,7 +299,7 @@ einfo() {
 einfon() {
 	__elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
-	echo -ne " ${PORTAGE_COLOR_GOOD}*${PORTAGE_COLOR_NORMAL} $*" >&2
+	echo -ne " ${PORTAGE_COLOR_INFO}*${PORTAGE_COLOR_NORMAL} $*" >&2
 	LAST_E_CMD="einfon"
 	return 0
 }
@@ -318,7 +318,7 @@ eerror() {
 	__elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo >&2
 	echo -e "$@" | while read -r ; do
-		echo " ${PORTAGE_COLOR_BAD}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
+		echo " ${PORTAGE_COLOR_ERR}*${PORTAGE_COLOR_NORMAL} ${RC_INDENTATION}${REPLY}" >&2
 	done
 	LAST_E_CMD="eerror"
 	return 0
@@ -378,12 +378,16 @@ __unset_colors() {
 	COLS=80
 	ENDCOL=
 
-	PORTAGE_COLOR_GOOD=
-	PORTAGE_COLOR_WARN=
 	PORTAGE_COLOR_BAD=
-	PORTAGE_COLOR_HILITE=
-	PORTAGE_COLOR_NORMAL=
 	PORTAGE_COLOR_BRACKET=
+	PORTAGE_COLOR_ERR=
+	PORTAGE_COLOR_GOOD=
+	PORTAGE_COLOR_HILITE=
+	PORTAGE_COLOR_INFO=
+	PORTAGE_COLOR_LOG=
+	PORTAGE_COLOR_NORMAL=
+	PORTAGE_COLOR_QAWARN=
+	PORTAGE_COLOR_WARN=
 }
 
 __set_colors() {
@@ -403,12 +407,16 @@ __set_colors() {
 	if [ -n "${PORTAGE_COLORMAP}" ] ; then
 		eval ${PORTAGE_COLORMAP}
 	else
-		PORTAGE_COLOR_GOOD=$'\e[32;01m'
-		PORTAGE_COLOR_WARN=$'\e[33;01m'
 		PORTAGE_COLOR_BAD=$'\e[31;01m'
-		PORTAGE_COLOR_HILITE=$'\e[36;01m'
 		PORTAGE_COLOR_BRACKET=$'\e[34;01m'
+		PORTAGE_COLOR_ERR=$'\e[31;01m'
+		PORTAGE_COLOR_GOOD=$'\e[32;01m'
+		PORTAGE_COLOR_HILITE=$'\e[36;01m'
+		PORTAGE_COLOR_INFO=$'\e[32m'
+		PORTAGE_COLOR_LOG=$'\e[32;01m'
 		PORTAGE_COLOR_NORMAL=$'\e[0m'
+		PORTAGE_COLOR_QAWARN=$'\e[33m'
+		PORTAGE_COLOR_WARN=$'\e[33;01m'
 	fi
 }
 
