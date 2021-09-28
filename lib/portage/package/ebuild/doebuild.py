@@ -852,12 +852,12 @@ def doebuild(
     if mydo not in validcommands:
         validcommands.sort()
         writemsg(
-            "!!! doebuild: '%s' is not one of the following valid commands:" % mydo,
+            "!!!! doebuild: '%s' is not one of the following valid commands:" % mydo,
             noiselevel=-1,
         )
         for vcount in range(len(validcommands)):
             if vcount % 6 == 0:
-                writemsg("\n!!! ", noiselevel=-1)
+                writemsg("\n!!!! ", noiselevel=-1)
             writemsg(validcommands[vcount].ljust(11), noiselevel=-1)
         writemsg("\n", noiselevel=-1)
         return 1
@@ -880,7 +880,7 @@ def doebuild(
 
     if mydo not in clean_phases and not os.path.exists(myebuild):
         writemsg(
-            "!!! doebuild: %s not found for %s\n" % (myebuild, mydo), noiselevel=-1
+            "!!!! doebuild: %s not found for %s\n" % (myebuild, mydo), noiselevel=-1
         )
         return 1
 
@@ -1035,7 +1035,7 @@ def doebuild(
 
             if returnpid:
                 writemsg(
-                    "!!! doebuild: %s\n"
+                    "!!!! doebuild: %s\n"
                     % _("returnpid is not supported for phase '%s'\n" % mydo),
                     noiselevel=-1,
                 )
@@ -1071,7 +1071,7 @@ def doebuild(
         if mydo == "unmerge":
             if returnpid:
                 writemsg(
-                    "!!! doebuild: %s\n"
+                    "!!!! doebuild: %s\n"
                     % _("returnpid is not supported for phase '%s'\n" % mydo),
                     noiselevel=-1,
                 )
@@ -1116,12 +1116,12 @@ def doebuild(
                     os.path.join(mysettings["PORTAGE_BUILDDIR"], ".unpacked")
                 ):
                     writemsg_stdout(
-                        _(">>> Not marked as unpacked; recreating WORKDIR...\n")
+                        _(">>>> Not marked as unpacked; recreating WORKDIR...\n")
                     )
                     newstuff = True
                 else:
                     for x in alist:
-                        writemsg_stdout(">>> Checking %s's mtime...\n" % x)
+                        writemsg_stdout(">>>> Checking %s's mtime...\n" % x)
                         try:
                             x_st = os.stat(os.path.join(mysettings["DISTDIR"], x))
                         except OSError:
@@ -1131,7 +1131,7 @@ def doebuild(
                         if x_st is not None and x_st.st_mtime > workdir_st.st_mtime:
                             writemsg_stdout(
                                 _(
-                                    ">>> Timestamp of "
+                                    ">>>> Timestamp of "
                                     "%s has changed; recreating WORKDIR...\n"
                                 )
                                 % x
@@ -1159,7 +1159,7 @@ def doebuild(
                             )
                             builddir_lock = None
                 else:
-                    writemsg_stdout(_(">>> WORKDIR is up-to-date, keeping...\n"))
+                    writemsg_stdout(_(">>>> WORKDIR is up-to-date, keeping...\n"))
                     unpacked = True
 
         # Build directory creation isn't required for any of these.
@@ -1293,8 +1293,8 @@ def doebuild(
                 alist = _parse_uri_map(mysettings.mycpv, metadata, use=use)
                 aalist = _parse_uri_map(mysettings.mycpv, metadata)
             except InvalidDependString as e:
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
-                writemsg(_("!!! Invalid SRC_URI for '%s'.\n") % mycpv, noiselevel=-1)
+                writemsg("!!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(_("!!!! Invalid SRC_URI for '%s'.\n") % mycpv, noiselevel=-1)
                 del e
                 return 1
 
@@ -1383,7 +1383,7 @@ def doebuild(
                 _doebuild_manifest_cache = None
                 digestgen(mysettings=mysettings, myportdb=mydbapi)
         except PermissionDenied as e:
-            writemsg(_("!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
+            writemsg(_("!!!! Permission Denied: %s\n") % (e,), noiselevel=-1)
             if mydo in ("digest", "manifest"):
                 return 1
 
@@ -1491,7 +1491,7 @@ def doebuild(
 
         elif returnpid:
             writemsg(
-                "!!! doebuild: %s\n"
+                "!!!! doebuild: %s\n"
                 % _("returnpid is not supported for phase '%s'\n" % mydo),
                 noiselevel=-1,
             )
@@ -1506,7 +1506,7 @@ def doebuild(
                 os.path.join(mysettings["PORTAGE_BUILDDIR"], ".installed")
             ):
                 writemsg(
-                    _("!!! mydo=qmerge, but the install phase has not been run\n"),
+                    _("!!!! mydo=qmerge, but the install phase has not been run\n"),
                     noiselevel=-1,
                 )
                 return 1
@@ -1563,7 +1563,7 @@ def doebuild(
                 )
 
         else:
-            writemsg_stdout(_("!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
+            writemsg_stdout(_("!!!! Unknown mydo: %s\n") % mydo, noiselevel=-1)
             return 1
 
         return retval
@@ -2176,13 +2176,13 @@ def spawnebuild(
         if os.path.exists(check_file):
             writemsg_stdout(
                 _(
-                    ">>> It appears that "
+                    ">>>> It appears that "
                     "'%(action)s' has already executed for '%(pkg)s'; skipping.\n"
                 )
                 % {"action": mydo, "pkg": mysettings["PF"]}
             )
             writemsg_stdout(
-                _(">>> Remove '%(file)s' to force %(action)s.\n")
+                _(">>>> Remove '%(file)s' to force %(action)s.\n")
                 % {"file": check_file, "action": mydo}
             )
             return os.EX_OK
@@ -2277,7 +2277,7 @@ def _check_build_log(mysettings, out=None):
     )
     command_not_found_exclude_re = re.compile(r"/configure: line ")
     helper_missing_file = []
-    helper_missing_file_re = re.compile(r"^!!! (do|new).*: .* does not exist$")
+    helper_missing_file_re = re.compile(r"^!!!! (do|new).*: .* does not exist$")
 
     configure_opts_warn = []
     configure_opts_warn_re = re.compile(

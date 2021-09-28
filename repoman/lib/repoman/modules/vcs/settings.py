@@ -35,13 +35,13 @@ class VCSSettings:
             if len(vcses) > 1:
                 print(
                     red(
-                        "*** Ambiguous workdir -- more than one VCS found"
+                        "**** Ambiguous workdir -- more than one VCS found"
                         " at the same depth: %s." % ", ".join(vcses)
                     )
                 )
                 print(
                     red(
-                        "*** Please either clean up your workdir"
+                        "**** Please either clean up your workdir"
                         " or specify --vcs option."
                     )
                 )

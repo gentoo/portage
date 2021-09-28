@@ -158,7 +158,8 @@ class BinhostHandler:
                         bintree._eval_use_flags(cpv, d)
                     except portage.exception.InvalidDependString:
                         writemsg(
-                            "!!! Invalid binary package: '%s'\n" % bintree.getname(cpv),
+                            "!!!! Invalid binary package: '%s'\n"
+                            % bintree.getname(cpv),
                             noiselevel=-1,
                         )
                     else:

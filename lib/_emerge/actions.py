@@ -171,7 +171,9 @@ def action_build(
                 getbinpkgs="--getbinpkg" in emerge_config.opts, **kwargs
             )
         except ParseError as e:
-            writemsg("\n\n!!!%s.\nSee make.conf(5) for more info.\n" % e, noiselevel=-1)
+            writemsg(
+                "\n\n!!!!%s.\nSee make.conf(5) for more info.\n" % e, noiselevel=-1
+            )
             return 1
 
     # validate the state of the resume data
@@ -364,9 +366,9 @@ def action_build(
         if success:
             if dropped_tasks:
                 portage.writemsg(
-                    "!!! One or more packages have been "
+                    "!!!! One or more packages have been "
                     + "dropped due to\n"
-                    + "!!! masking or unsatisfied dependencies:\n\n",
+                    + "!!!! masking or unsatisfied dependencies:\n\n",
                     noiselevel=-1,
                 )
                 for task, atoms in dropped_tasks.items():
@@ -430,7 +432,7 @@ def action_build(
                         )
                     except ParseError as e:
                         writemsg(
-                            "\n\n!!!%s.\nSee make.conf(5) for more info.\n" % e,
+                            "\n\n!!!!%s.\nSee make.conf(5) for more info.\n" % e,
                             noiselevel=-1,
                         )
                         return 1
@@ -577,7 +579,7 @@ def action_build(
             for eroot in eroots:
                 if need_write_vardb and not trees[eroot]["vartree"].dbapi.writable:
                     writemsg_level(
-                        "!!! %s\n"
+                        "!!!! %s\n"
                         % _("Read-only file system: %s")
                         % trees[eroot]["vartree"].dbapi._dbroot,
                         level=logging.ERROR,
@@ -596,7 +598,7 @@ def action_build(
                     and not trees[eroot]["bintree"].dbapi.writable
                 ):
                     writemsg_level(
-                        "!!! %s\n"
+                        "!!!! %s\n"
                         % _("Read-only file system: %s")
                         % trees[eroot]["bintree"].pkgdir,
                         level=logging.ERROR,
@@ -639,7 +641,7 @@ def action_build(
 
             if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
                 if "yes" == settings.get("AUTOCLEAN"):
-                    portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
+                    portage.writemsg_stdout(">>>> Auto-cleaning packages...\n")
                     unmerge(
                         trees[settings["EROOT"]]["root_config"],
                         myopts,
@@ -662,15 +664,15 @@ def action_config(settings, trees, myopts, myfiles):
     enter_invalid = "--ask-enter-invalid" in myopts
     uq = UserQuery(myopts)
     if len(myfiles) != 1:
-        print(red("!!! config can only take a single package atom at this time\n"))
+        print(red("!!!! config can only take a single package atom at this time\n"))
         sys.exit(1)
     if not is_valid_package_atom(myfiles[0], allow_repo=True):
         portage.writemsg(
-            "!!! '%s' is not a valid package atom.\n" % myfiles[0], noiselevel=-1
+            "!!!! '%s' is not a valid package atom.\n" % myfiles[0], noiselevel=-1
         )
-        portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+        portage.writemsg("!!!! Please check ebuild(5) for full details.\n")
         portage.writemsg(
-            "!!! (Did you specify a version but forget to prefix with '='?)\n"
+            "!!!! (Did you specify a version but forget to prefix with '='?)\n"
         )
         sys.exit(1)
     print()
@@ -801,7 +803,7 @@ def action_depclean(
                     noiselevel=-1,
                 )
         if not matched_packages:
-            writemsg_level(">>> No packages selected for removal by %s\n" % action)
+            writemsg_level(">>>> No packages selected for removal by %s\n" % action)
             return 0
 
     # The calculation is done in a separate function so that depgraph
@@ -899,7 +901,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             # A nested set could not be resolved, so ignore nested sets.
             set_atoms[k] = root_config.sets[k].getAtoms()
             writemsg_level(
-                _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
+                _("!!!! The set '%s' " "contains a non-existent set named '%s'.\n")
                 % (k, e),
                 level=logging.ERROR,
                 noiselevel=-1,
@@ -909,12 +911,12 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
     # Support @profile as an alternative to @system.
     if not (set_atoms["system"] or set_atoms["profile"]):
         writemsg_level(
-            _("!!! You have no system list.\n"), level=logging.WARNING, noiselevel=-1
+            _("!!!! You have no system list.\n"), level=logging.WARNING, noiselevel=-1
         )
 
     if not set_atoms["selected"]:
         writemsg_level(
-            _("!!! You have no world file.\n"), level=logging.WARNING, noiselevel=-1
+            _("!!!! You have no world file.\n"), level=logging.WARNING, noiselevel=-1
         )
 
     # Suppress world file warnings unless @world is completely empty,
@@ -923,7 +925,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         world_atoms = bool(root_config.setconfig.getSetAtoms("world"))
     except portage.exception.PackageSetNotFound as e:
         writemsg_level(
-            _("!!! The set '%s' " "contains a non-existent set named '%s'.\n")
+            _("!!!! The set '%s' " "contains a non-existent set named '%s'.\n")
             % ("world", e),
             level=logging.ERROR,
             noiselevel=-1,
@@ -932,20 +934,22 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
     else:
         if not world_atoms:
             writemsg_level(
-                _("!!! Your @world set is empty.\n"), level=logging.ERROR, noiselevel=-1
+                _("!!!! Your @world set is empty.\n"),
+                level=logging.ERROR,
+                noiselevel=-1,
             )
             set_error = True
 
     if set_error:
         writemsg_level(
-            _("!!! Aborting due to set configuration " "errors displayed above.\n"),
+            _("!!!! Aborting due to set configuration " "errors displayed above.\n"),
             level=logging.ERROR,
             noiselevel=-1,
         )
         return _depclean_result(1, [], False, 0, None)
 
     if action == "depclean":
-        emergelog(xterm_titles, " >>> depclean")
+        emergelog(xterm_titles, " >>>> depclean")
 
     writemsg_level("\nCalculating dependencies  ")
     resolver_params = create_depgraph_params(myopts, "remove")
@@ -1285,14 +1289,14 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         show_parents(pkg)
 
         if not pkgs_to_remove:
-            writemsg_level(">>> No packages selected for removal by %s\n" % action)
+            writemsg_level(">>>> No packages selected for removal by %s\n" % action)
             if "--verbose" not in myopts:
                 writemsg_level(
-                    ">>> To see reverse dependencies, use %s\n" % good("--verbose")
+                    ">>>> To see reverse dependencies, use %s\n" % good("--verbose")
                 )
             if action == "prune":
                 writemsg_level(
-                    ">>> To ignore dependencies, use %s\n" % good("--nodeps")
+                    ">>>> To ignore dependencies, use %s\n" % good("--nodeps")
                 )
 
         return pkgs_to_remove
@@ -1324,7 +1328,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
         provider_cache = {}
         consumer_map = {}
 
-        writemsg_level(">>> Checking for lib consumers...\n")
+        writemsg_level(">>>> Checking for lib consumers...\n")
 
         for pkg in cleanlist:
 
@@ -1391,7 +1395,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                         search_files.add(lib_consumer)
                         search_files.update(providers)
 
-            writemsg_level(">>> Assigning files to packages...\n")
+            writemsg_level(">>>> Assigning files to packages...\n")
             file_owners = {}
             for f in search_files:
                 owner_set = set()
@@ -1498,7 +1502,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
 
             # Add lib providers to the graph as children of lib consumers,
             # and also add any dependencies pulled in by the provider.
-            writemsg_level(">>> Adding lib providers to graph...\n")
+            writemsg_level(">>>> Adding lib providers to graph...\n")
 
             for pkg, consumers in consumer_map.items():
                 for consumer_dblink in set(chain(*consumers.values())):
@@ -1538,7 +1542,7 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
             clean_set = set(cleanlist)
 
     if clean_set:
-        writemsg_level(">>> Calculating removal order...\n")
+        writemsg_level(">>>> Calculating removal order...\n")
         # Use a topological sort to create an unmerge order such that
         # each package is unmerged before it's dependencies. This is
         # necessary to avoid breaking things that may need to run
@@ -1747,7 +1751,7 @@ def action_deselect(settings, trees, opts, atoms):
                     filename = "world"
 
                 writemsg_stdout(
-                    '>>> %s %s from "%s" favorites file...\n'
+                    '>>>> %s %s from "%s" favorites file...\n'
                     % (action_desc, colorize("INFORM", str(atom)), filename),
                     noiselevel=-1,
                 )
@@ -1766,7 +1770,7 @@ def action_deselect(settings, trees, opts, atoms):
             if not pretend:
                 world_set.replace(remaining)
         else:
-            print('>>> No matching atoms found in "world" favorites file...')
+            print('>>>> No matching atoms found in "world" favorites file...')
     finally:
         if locked:
             world_set.unlock()
@@ -2263,7 +2267,7 @@ def action_info(settings, trees, myopts, myfiles):
                     continue
 
             writemsg_stdout(
-                ">>> Attempting to run pkg_info() for '%s'\n" % pkg.cpv, noiselevel=-1
+                ">>>> Attempting to run pkg_info() for '%s'\n" % pkg.cpv, noiselevel=-1
             )
 
             if pkg_type == "installed":
@@ -2353,7 +2357,7 @@ def action_search(root_config, myopts, myfiles, spinner):
                 searchinstance.execute(mysearch)
             except re.error as comment:
                 print(
-                    '\n!!! Regular expression error in "%s": %s' % (mysearch, comment)
+                    '\n!!!! Regular expression error in "%s": %s' % (mysearch, comment)
                 )
                 sys.exit(1)
             searchinstance.output()
@@ -2426,7 +2430,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 )
                 for line in textwrap.wrap(msg, 70):
                     writemsg_level(
-                        "!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
+                        "!!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
                     )
                 for i in e.args[0]:
                     writemsg_level(
@@ -2440,7 +2444,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 if atom.use and atom.use.conditional:
                     writemsg_level(
                         (
-                            "\n\n!!! '%s' contains a conditional "
+                            "\n\n!!!! '%s' contains a conditional "
                             + "which is not allowed.\n"
                         )
                         % (x,),
@@ -2448,7 +2452,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                         noiselevel=-1,
                     )
                     writemsg_level(
-                        "!!! Please check ebuild(5) for full details.\n",
+                        "!!!! Please check ebuild(5) for full details.\n",
                         level=logging.ERROR,
                     )
                     return 1
@@ -2457,7 +2461,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         elif x.startswith(os.sep):
             if not x.startswith(eroot):
                 writemsg_level(
-                    ("!!! '%s' does not start with" + " $EROOT.\n") % x,
+                    ("!!!! '%s' does not start with" + " $EROOT.\n") % x,
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2477,7 +2481,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 msg.append("'%s' is not a valid package atom." % (x,))
                 msg.append("Please check ebuild(5) for full details.")
                 writemsg_level(
-                    "".join("!!! %s\n" % line for line in msg),
+                    "".join("!!!! %s\n" % line for line in msg),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -2512,7 +2516,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
             msg.append("'%s' is not a valid package atom." % (x,))
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join("!!!! %s\n" % line for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -2542,7 +2546,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                 valid_atoms.append(portage.dep.Atom(atom))
         else:
             writemsg_level(
-                ("!!! '%s' is not claimed " + "by any package.\n") % lookup_owners[0],
+                ("!!!! '%s' is not claimed " + "by any package.\n") % lookup_owners[0],
                 level=logging.WARNING,
                 noiselevel=-1,
             )
@@ -2657,9 +2661,10 @@ def adjust_config(myopts, settings):
     try:
         CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg("!!!! %s\n" % str(e), noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: CLEAN_DELAY='%s'\n" % settings["CLEAN_DELAY"],
+            "!!!! Unable to parse integer: CLEAN_DELAY='%s'\n"
+            % settings["CLEAN_DELAY"],
             noiselevel=-1,
         )
     settings["CLEAN_DELAY"] = str(CLEAN_DELAY)
@@ -2671,9 +2676,9 @@ def adjust_config(myopts, settings):
             settings.get("EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY))
         )
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg("!!!! %s\n" % str(e), noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n"
+            "!!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n"
             % settings["EMERGE_WARNING_DELAY"],
             noiselevel=-1,
         )
@@ -2705,14 +2710,17 @@ def adjust_config(myopts, settings):
         PORTAGE_DEBUG = int(settings.get("PORTAGE_DEBUG", str(PORTAGE_DEBUG)))
         if PORTAGE_DEBUG not in (0, 1):
             portage.writemsg(
-                "!!! Invalid value: PORTAGE_DEBUG='%i'\n" % PORTAGE_DEBUG, noiselevel=-1
+                "!!!! Invalid value: PORTAGE_DEBUG='%i'\n" % PORTAGE_DEBUG,
+                noiselevel=-1,
             )
-            portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n", noiselevel=-1)
+            portage.writemsg(
+                "!!!! PORTAGE_DEBUG must be either 0 or 1\n", noiselevel=-1
+            )
             PORTAGE_DEBUG = 0
     except ValueError as e:
-        portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
+        portage.writemsg("!!!! %s\n" % str(e), noiselevel=-1)
         portage.writemsg(
-            "!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n"
+            "!!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n"
             % settings["PORTAGE_DEBUG"],
             noiselevel=-1,
         )
@@ -2910,9 +2918,9 @@ def getgccversion(chost=None):
     gcc_ver_prefix = "gcc-"
 
     gcc_not_found_error = red(
-        "!!! No gcc found. You probably need to 'source /etc/profile'\n"
-        + "!!! to update the environment of this terminal and possibly\n"
-        + "!!! other terminals also.\n"
+        "!!!! No gcc found. You probably need to 'source /etc/profile'\n"
+        + "!!!! to update the environment of this terminal and possibly\n"
+        + "!!!! other terminals also.\n"
     )
 
     if chost:
@@ -2992,7 +3000,7 @@ def check_procfs():
         return os.EX_OK
     msg = "It seems that %s is not mounted. You have been warned." % procfs_path
     writemsg_level(
-        "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+        "".join("!!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
         level=logging.ERROR,
         noiselevel=-1,
     )
@@ -3003,7 +3011,7 @@ def config_protect_check(trees):
     for root, root_trees in trees.items():
         settings = root_trees["root_config"].settings
         if not settings.get("CONFIG_PROTECT"):
-            msg = "!!! CONFIG_PROTECT is empty"
+            msg = "!!!! CONFIG_PROTECT is empty"
             if settings["ROOT"] != "/":
                 msg += " for '%s'" % root
             msg += "\n"
@@ -3099,7 +3107,7 @@ def missing_sets_warning(root_config, missing_sets):
         % (os.path.join(global_config_path, "sets/portage.conf"),)
     )
     msg.append("        is missing or corrupt.")
-    msg.append("        Falling back to default world and system set configuration!!!")
+    msg.append("        Falling back to default world and system set configuration!")
     for line in msg:
         writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
 
@@ -3405,7 +3413,7 @@ def run_action(emerge_config):
                 )
             except ParseError as e:
                 writemsg(
-                    "\n\n!!!%s.\nSee make.conf(5) for more info.\n" % (e,),
+                    "\n\n!!!!%s.\nSee make.conf(5) for more info.\n" % (e,),
                     noiselevel=-1,
                 )
                 return 1
@@ -3488,7 +3496,7 @@ def run_action(emerge_config):
             print(
                 colorize(
                     "BAD",
-                    "\n*** emerging by path is broken " "and may not always work!!!\n",
+                    "\n**** emerging by path is broken " "and may not always work!\n",
                 )
             )
             break
@@ -3579,7 +3587,7 @@ def run_action(emerge_config):
     # note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
     if ("--ask" in emerge_config.opts) and (not sys.stdin.isatty()):
         portage.writemsg(
-            '!!! "--ask" should only be used in a terminal. Exiting.\n', noiselevel=-1
+            '!!!! "--ask" should only be used in a terminal. Exiting.\n', noiselevel=-1
         )
         return 1
 
@@ -3708,8 +3716,8 @@ def run_action(emerge_config):
                 portage.util.ensure_dirs(emerge_log_dir)
             except portage.exception.PortageException as e:
                 writemsg_level(
-                    "!!! Error creating directory for "
-                    + "EMERGE_LOG_DIR='%s':\n!!! %s\n" % (emerge_log_dir, e),
+                    "!!!! Error creating directory for "
+                    + "EMERGE_LOG_DIR='%s':\n!!!! %s\n" % (emerge_log_dir, e),
                     noiselevel=-1,
                     level=logging.ERROR,
                 )
@@ -3746,7 +3754,7 @@ def run_action(emerge_config):
             myelogstr += " --" + emerge_config.action
         if oldargs:
             myelogstr += " " + " ".join(oldargs)
-        emergelog(xterm_titles, " *** emerge " + myelogstr)
+        emergelog(xterm_titles, " **** emerge " + myelogstr)
 
     oldargs = None
 
@@ -3760,7 +3768,7 @@ def run_action(emerge_config):
     def emergeexit():
         """This gets out final log message in before we quit."""
         if "--pretend" not in emerge_config.opts:
-            emergelog(xterm_titles, " *** terminating.")
+            emergelog(xterm_titles, " **** terminating.")
         if xterm_titles:
             xtermTitleReset()
 
@@ -3874,7 +3882,7 @@ def run_action(emerge_config):
                     )
                     for line in textwrap.wrap(msg, 70):
                         writemsg_level(
-                            "!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
+                            "!!!! %s\n" % (line,), level=logging.ERROR, noiselevel=-1
                         )
                     for i in e.args[0]:
                         writemsg_level(
@@ -3889,7 +3897,7 @@ def run_action(emerge_config):
             msg.append("'%s' is not a valid package atom." % (x,))
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join("!!!! %s\n" % line for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -3920,7 +3928,7 @@ def run_action(emerge_config):
             msg.append("'%s' is not a valid package atom." % (x,))
             msg.append("Please check ebuild(5) for full details.")
             writemsg_level(
-                "".join("!!! %s\n" % line for line in msg),
+                "".join("!!!! %s\n" % line for line in msg),
                 level=logging.ERROR,
                 noiselevel=-1,
             )

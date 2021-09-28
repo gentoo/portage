@@ -117,7 +117,7 @@ class Actions:
             except (IOError, OSError) as e:
                 if e.errno == errno.ENOENT:
                     portage.writemsg(
-                        "!!! File Not Found:"
+                        "!!!! File Not Found:"
                         " --commitmsgfile='%s'\n" % self.options.commitmsgfile
                     )
                 else:
@@ -379,7 +379,7 @@ the whole commit message to abort.
                     # so it's safe to ignore.
                     del myunadded[x]
                 elif xs[-1] == "files":
-                    print("!!! files dir is not added! Please correct this.")
+                    print("!!!! files dir is not added! Please correct this.")
                     sys.exit(-1)
                 elif xs[-1] == "Manifest":
                     # It's a manifest... auto add
@@ -389,13 +389,13 @@ the whole commit message to abort.
         if myunadded:
             print(
                 red(
-                    "!!! The following files are in your local tree"
+                    "!!!! The following files are in your local tree"
                     " but are not added to the master"
                 )
             )
             print(
                 red(
-                    "!!! tree. Please remove them from the local tree"
+                    "!!!! tree. Please remove them from the local tree"
                     " or add them to the master tree."
                 )
             )
@@ -410,13 +410,13 @@ the whole commit message to abort.
         if self.vcs_settings.changes.has_deleted:
             print(
                 red(
-                    "!!! The following files are removed manually"
+                    "!!!! The following files are removed manually"
                     " from your local tree but are not"
                 )
             )
             print(
                 red(
-                    "!!! removed from the repository."
+                    "!!!! removed from the repository."
                     ' Please remove them, using "%s remove [FILES]".'
                     % self.vcs_settings.vcs
                 )
@@ -608,7 +608,7 @@ the whole commit message to abort.
                 )
                 if new_changelog is None:
                     writemsg_level(
-                        "!!! Updating the ChangeLog failed\n",
+                        "!!!! Updating the ChangeLog failed\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -632,7 +632,7 @@ the whole commit message to abort.
                     broken_changelog_manifests.append(x)
 
         if myautoadd:
-            print(">>> Auto-Adding missing Manifest/ChangeLog file(s)...")
+            print(">>>> Auto-Adding missing Manifest/ChangeLog file(s)...")
             self.vcs_settings.changes.add_items(myautoadd)
             myupdates += myautoadd
         return myupdates, broken_changelog_manifests
@@ -660,7 +660,7 @@ the whole commit message to abort.
             pass
         if retval != os.EX_OK:
             writemsg_level(
-                "!!! Exiting on %s (shell) "
+                "!!!! Exiting on %s (shell) "
                 "error code: %s\n" % (self.vcs_settings.vcs, retval),
                 level=logging.ERROR,
                 noiselevel=-1,
@@ -696,7 +696,7 @@ the whole commit message to abort.
             pass
         if retval != os.EX_OK:
             writemsg_level(
-                "!!! Exiting on %s (shell) "
+                "!!!! Exiting on %s (shell) "
                 "error code: %s\n" % (self.vcs_settings.vcs, retval),
                 level=logging.ERROR,
                 noiselevel=-1,
@@ -720,8 +720,8 @@ the whole commit message to abort.
                     continue
                 gpgsign(manifest_path, self.repoman_settings, self.options)
         except portage.exception.PortageException as e:
-            portage.writemsg("!!! %s\n" % str(e))
-            portage.writemsg("!!! Disabled FEATURES='sign'\n")
+            portage.writemsg("!!!! %s\n" % str(e))
+            portage.writemsg("!!!! Disabled FEATURES='sign'\n")
             self.repo_settings.sign_manifests = False
 
     def msg_prefix(self):

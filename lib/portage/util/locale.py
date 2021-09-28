@@ -90,7 +90,7 @@ def _check_locale(silent):
                 ]
             )
         writemsg_level(
-            "".join(["!!! %s\n" % l for l in msg]), level=logging.ERROR, noiselevel=-1
+            "".join(["!!!! %s\n" % l for l in msg]), level=logging.ERROR, noiselevel=-1
         )
         return False
 

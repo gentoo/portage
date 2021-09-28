@@ -87,7 +87,7 @@ class MercurialSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg clone error in %s" % self.repo.location
+            msg = "!!!! hg clone error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
@@ -144,7 +144,7 @@ class MercurialSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! hg pull error in %s" % self.repo.location
+            msg = "!!!! hg pull error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)

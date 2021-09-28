@@ -54,7 +54,7 @@ class ManifestTask(CompositeTask):
                     self.fetchlist_dict.result()
                 except InvalidDependString as e:
                     writemsg(
-                        _("!!! %s%s%s: SRC_URI: %s\n")
+                        _("!!!! %s%s%s: SRC_URI: %s\n")
                         % (self.cp, _repo_separator, self.repo_config.name, e),
                         noiselevel=-1,
                     )
@@ -212,7 +212,9 @@ class ManifestTask(CompositeTask):
         try:
             os.rename(*rename_args)
         except OSError as e:
-            writemsg("!!! rename('%s', '%s'): %s\n" % rename_args + (e,), noiselevel=-1)
+            writemsg(
+                "!!!! rename('%s', '%s'): %s\n" % rename_args + (e,), noiselevel=-1
+            )
             try:
                 os.unlink(self._manifest_path + ".asc")
             except OSError:

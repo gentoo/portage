@@ -13,27 +13,27 @@ def commit_check(repolevel, reposplit):
     # and the manifest recommit is at least possible.
     if repolevel not in [1, 2, 3]:
         print(
-            red("***")
+            red("****")
             + (
                 " Commit attempts *must* be from within a vcs checkout,"
                 " category, or package directory."
             )
         )
         print(
-            red("***")
+            red("****")
             + (
                 " Attempting to commit from a packages files directory"
                 " will be blocked for instance."
             )
         )
         print(
-            red("***")
+            red("****")
             + (
                 " This is intended behaviour,"
                 " to ensure the manifest is recommitted for a package."
             )
         )
-        print(red("***"))
+        print(red("****"))
         err(
             "Unable to identify level we're commiting from for %s" % "/".join(reposplit)
         )

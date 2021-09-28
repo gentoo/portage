@@ -452,9 +452,9 @@ def update_config_files(
         try:
             write_atomic(updating_file, "".join(file_contents[x]))
         except PortageException as e:
-            writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
+            writemsg("\n!!!! %s\n" % str(e), noiselevel=-1)
             writemsg(
-                _("!!! An error occurred while updating a config file:")
+                _("!!!! An error occurred while updating a config file:")
                 + " '%s'\n" % updating_file,
                 noiselevel=-1,
             )

@@ -28,7 +28,7 @@ def process(mysettings, key, logentries, fulltext):
         errors="replace",
     )
     header = _(
-        ">>> Messages generated for package %(pkg)s by process %(pid)d on %(time)s:\n\n"
+        ">>>> Messages generated for package %(pkg)s by process %(pid)d on %(time)s:\n\n"
     ) % {"pkg": key, "pid": portage.getpid(), "time": time_str}
     config_root = mysettings["PORTAGE_CONFIGROOT"]
 

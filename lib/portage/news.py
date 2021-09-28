@@ -155,7 +155,7 @@ class NewsManager:
                         itemid, encoding=_encodings["fs"], errors="replace"
                     )
                     writemsg_level(
-                        _("!!! Invalid encoding in news item name: '%s'\n") % itemid,
+                        _("!!!! Invalid encoding in news item name: '%s'\n") % itemid,
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -353,7 +353,9 @@ class NewsItem:
             for lineno, line in invalids:
                 msg.append(_("  line %d: %s") % (lineno, line))
             writemsg_level(
-                "".join("!!! %s\n" % x for x in msg), level=logging.ERROR, noiselevel=-1
+                "".join("!!!! %s\n" % x for x in msg),
+                level=logging.ERROR,
+                noiselevel=-1,
             )
 
         self._parsed = True

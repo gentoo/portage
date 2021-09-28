@@ -34,7 +34,7 @@ for x in "$@" ; do
 	if [ -e "$mysrc" ] ; then
 		install ${EXEOPTIONS} "$mysrc" "${ED%/}/${_E_EXEDESTTREE_#/}"
 	else
-		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
+		echo "!!!! ${0##*/}: $mysrc does not exist" 1>&2
 		false
 	fi
 	((ret|=$?))

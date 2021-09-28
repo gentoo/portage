@@ -343,7 +343,7 @@ def _lockfile_iteration(
                                     % lockfilename
                                 )
                             writemsg(
-                                "\n!!! %s: %s\n" % (context_desc, e), noiselevel=-1
+                                "\n!!!! %s: %s\n" % (context_desc, e), noiselevel=-1
                             )
 
                         time.sleep(_HARDLINK_POLL_LATENCY)

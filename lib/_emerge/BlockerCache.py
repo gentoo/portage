@@ -62,7 +62,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 pass
             else:
                 writemsg(
-                    "!!! Error loading '%s': %s\n" % (self._cache_filename, str(e)),
+                    "!!!! Error loading '%s': %s\n" % (self._cache_filename, str(e)),
                     noiselevel=-1,
                 )
             del e

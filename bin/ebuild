@@ -328,7 +328,7 @@ def stale_env_warning():
 				(tmpsettings["PF"], )
 			msg = textwrap.wrap(msg, 70)
 			for x in msg:
-				portage.writemsg(">>> %s\n" % x)
+				portage.writemsg(">>>> %s\n" % x)
 
 			if ebuild_changed:
 				open(os.path.join(tmpsettings['PORTAGE_BUILDDIR'],
@@ -359,13 +359,13 @@ for arg in pargs:
 		msg = textwrap.wrap(str(e), 70)
 		del e
 		for x in msg:
-			portage.writemsg("!!! %s\n" % x, noiselevel=-1)
+			portage.writemsg("!!!! %s\n" % x, noiselevel=-1)
 		a = 1
 	except PortagePackageException as e:
-		portage.writemsg("!!! %s\n" % (e,), noiselevel=-1)
+		portage.writemsg("!!!! %s\n" % (e,), noiselevel=-1)
 		a = 1
 	except PermissionDenied as e:
-		portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
+		portage.writemsg("!!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
 		a = 1
 	if a == None:
 		print("Could not run the required binary?")

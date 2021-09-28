@@ -250,11 +250,11 @@ class slot_conflict_handler:
         msg = self.conflict_msg
         indent = "  "
         msg.append(
-            "\n!!! Multiple package instances within a single "
+            "\n!!!! Multiple package instances within a single "
             + "package slot have been pulled\n"
         )
         msg.append(
-            "!!! into the dependency graph, resulting" + " in a slot conflict:\n\n"
+            "!!!! into the dependency graph, resulting" + " in a slot conflict:\n\n"
         )
 
         for root, slot_atom, pkgs in self.all_conflicts:
@@ -366,7 +366,7 @@ class slot_conflict_handler:
                                         # above findAtomForPackage call to
                                         # return None unexpectedly.
                                         msg = (
-                                            "\n\n!!! BUG: Detected "
+                                            "\n\n!!!! BUG: Detected "
                                             "USE dep match inconsistency:\n"
                                             "\tppkg: %s\n"
                                             "\tviolated_atom: %s\n"
@@ -729,12 +729,12 @@ class slot_conflict_handler:
 
         if need_rebuild:
             msg.append(
-                "\n!!! The slot conflict(s) shown above involve package(s) which may need to\n"
+                "\n!!!! The slot conflict(s) shown above involve package(s) which may need to\n"
             )
             msg.append(
-                "!!! be rebuilt in order to solve the conflict(s). However, the following\n"
+                "!!!! be rebuilt in order to solve the conflict(s). However, the following\n"
             )
-            msg.append("!!! package(s) cannot be rebuilt for the reason(s) shown:\n\n")
+            msg.append("!!!! package(s) cannot be rebuilt for the reason(s) shown:\n\n")
             for ppkg, reason in need_rebuild.items():
                 msg.append("%s%s: %s\n" % (indent, ppkg, reason))
             msg.append("\n")
@@ -750,8 +750,8 @@ class slot_conflict_handler:
         if self.conflict_is_unspecific and not (
             "--newuse" in self.myopts and "--update" in self.myopts
         ):
-            msg += "!!! Enabling --newuse and --update might solve this conflict.\n"
-            msg += "!!! If not, it might help emerge to give a more specific suggestion.\n\n"
+            msg += "!!!! Enabling --newuse and --update might solve this conflict.\n"
+            msg += "!!!! If not, it might help emerge to give a more specific suggestion.\n\n"
             return msg
 
         solutions = self.solutions

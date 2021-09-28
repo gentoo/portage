@@ -599,10 +599,10 @@ class portdbapi(dbapi):
             ebuild_hash.mtime
         except FileNotFound:
             writemsg(
-                _("!!! aux_get(): ebuild for " "'%s' does not exist at:\n") % (cpv,),
+                _("!!!! aux_get(): ebuild for " "'%s' does not exist at:\n") % (cpv,),
                 noiselevel=-1,
             )
-            writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
+            writemsg("!!!!            %s\n" % ebuild_path, noiselevel=-1)
             raise PortageKeyError(cpv)
 
         # Pull pre-generated metadata from the metadata/cache/
@@ -723,7 +723,7 @@ class portdbapi(dbapi):
 
         if not myebuild:
             writemsg(
-                "!!! aux_get(): %s\n" % _("ebuild not found for '%s'") % mycpv,
+                "!!!! aux_get(): %s\n" % _("ebuild not found for '%s'") % mycpv,
                 noiselevel=1,
             )
             future.set_exception(PortageKeyError(mycpv))
@@ -1161,7 +1161,7 @@ class portdbapi(dbapi):
         if invalid_category and mylist:
             writemsg(
                 _(
-                    "\n!!! '%s' has a category that is not listed in "
+                    "\n!!!! '%s' has a category that is not listed in "
                     "%setc/portage/categories\n"
                 )
                 % (mycp, self.settings["PORTAGE_CONFIGROOT"]),
@@ -1436,10 +1436,10 @@ class portdbapi(dbapi):
                     continue
                 except PortageException as e:
                     writemsg(
-                        "!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
+                        "!!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                    writemsg("!!!! %s\n" % (e,), noiselevel=-1)
                     del e
                     continue
 

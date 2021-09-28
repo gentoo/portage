@@ -457,7 +457,7 @@ class config:
 
             if make_conf_count == 2:
                 writemsg(
-                    "!!! %s\n"
+                    "!!!! %s\n"
                     % _("Found 2 make.conf files, using both '%s' and '%s'")
                     % tuple(make_conf_paths),
                     noiselevel=-1,
@@ -525,7 +525,7 @@ class config:
                 # that can be used for backward compatibility with
                 # old software.
                 writemsg(
-                    "!!! %s\n"
+                    "!!!! %s\n"
                     % _(
                         "Found obsolete make.globals file: "
                         "'%s', (using '%s' instead)"
@@ -687,7 +687,7 @@ class config:
                         new_ov.append(portage._shell_quote(ov))
                     else:
                         writemsg(
-                            _("!!! Invalid PORTDIR_OVERLAY" " (not a dir): '%s'\n")
+                            _("!!!! Invalid PORTDIR_OVERLAY" " (not a dir): '%s'\n")
                             % ov,
                             noiselevel=-1,
                         )
@@ -1036,7 +1036,7 @@ class config:
                         # TODO: bail out?
                         writemsg(
                             (
-                                _("!!! package.provided not allowed in EAPI %s: ")
+                                _("!!!! package.provided not allowed in EAPI %s: ")
                                 % x.eapi
                             )
                             + x.location
@@ -1151,7 +1151,7 @@ class config:
                 except ValueError:
                     writemsg(
                         _(
-                            "!!! %s='%s' is not a valid integer.  "
+                            "!!!! %s='%s' is not a valid integer.  "
                             "Falling back to %s.\n"
                         )
                         % (var, self[var], default_val),
@@ -1294,10 +1294,10 @@ class config:
                 ensure_dirs(mydir, gid=gid, mode=mode, mask=modemask)
             except PortageException as e:
                 writemsg(
-                    _("!!! Directory initialization failed: '%s'\n") % mydir,
+                    _("!!!! Directory initialization failed: '%s'\n") % mydir,
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg("!!!! %s\n" % str(e), noiselevel=-1)
 
     @property
     def _keywords_manager(self):
@@ -1390,7 +1390,7 @@ class config:
                     and group not in ("*", "~*", "**")
                 ):
                     writemsg(
-                        _("!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
+                        _("!!!! INVALID ACCEPT_KEYWORDS: %s\n") % str(group),
                         noiselevel=-1,
                     )
 
@@ -1428,26 +1428,26 @@ class config:
 
             writemsg(
                 _(
-                    "\n\n!!! %s is not a symlink and will probably prevent most merges.\n"
+                    "\n\n!!!! %s is not a symlink and will probably prevent most merges.\n"
                 )
                 % abs_profile_path,
                 noiselevel=-1,
             )
             writemsg(
-                _("!!! It should point into a profile within %s/profiles/\n")
+                _("!!!! It should point into a profile within %s/profiles/\n")
                 % self["PORTDIR"]
             )
             writemsg(
                 _(
-                    "!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"
+                    "!!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"
                 )
             )
 
         abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"], USER_VIRTUALS_FILE)
         if os.path.exists(abs_user_virtuals):
-            writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
-            writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
-            writemsg("!!! this new location.\n\n")
+            writemsg("\n!!!! /etc/portage/virtuals is deprecated in favor of\n")
+            writemsg("!!!! /etc/portage/profile/virtuals. Please move it to\n")
+            writemsg("!!!! this new location.\n\n")
 
         if not sandbox_capable and (
             "sandbox" in self.features or "usersandbox" in self.features
@@ -1462,7 +1462,8 @@ class config:
                 # to the user.
                 writemsg(
                     colorize(
-                        "BAD", _("!!! Problem with sandbox" " binary. Disabling...\n\n")
+                        "BAD",
+                        _("!!!! Problem with sandbox" " binary. Disabling...\n\n"),
                     ),
                     noiselevel=-1,
                 )
@@ -1470,7 +1471,7 @@ class config:
         if "fakeroot" in self.features and not fakeroot_capable:
             writemsg(
                 _(
-                    "!!! FEATURES=fakeroot is enabled, but the "
+                    "!!!! FEATURES=fakeroot is enabled, but the "
                     "fakeroot binary is not installed.\n"
                 ),
                 noiselevel=-1,
@@ -1479,7 +1480,7 @@ class config:
         if "webrsync-gpg" in self.features:
             writemsg(
                 _(
-                    "!!! FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page.\n"
+                    "!!!! FEATURES=webrsync-gpg is deprecated, see the make.conf(5) man page.\n"
                 ),
                 noiselevel=-1,
             )
@@ -1490,7 +1491,7 @@ class config:
             if "userpriv" in self.features:
                 writemsg(
                     _(
-                        "!!! FEATURES=userpriv is enabled, but "
+                        "!!!! FEATURES=userpriv is enabled, but "
                         "os.setgroups is not available.\n"
                     ),
                     noiselevel=-1,
@@ -1500,7 +1501,7 @@ class config:
             if "userfetch" in self.features:
                 writemsg(
                     _(
-                        "!!! FEATURES=userfetch is enabled, but "
+                        "!!!! FEATURES=userfetch is enabled, but "
                         "os.setgroups is not available.\n"
                     ),
                     noiselevel=-1,
@@ -1509,7 +1510,7 @@ class config:
 
             if warning_shown and platform.python_implementation() == "PyPy":
                 writemsg(
-                    _("!!! See https://bugs.pypy.org/issue833 for details.\n"),
+                    _("!!!! See https://bugs.pypy.org/issue833 for details.\n"),
                     noiselevel=-1,
                 )
 
@@ -1519,7 +1520,7 @@ class config:
                 compression = _compressors[binpkg_compression]
             except KeyError as e:
                 writemsg(
-                    "!!! BINPKG_COMPRESS contains invalid or "
+                    "!!!! BINPKG_COMPRESS contains invalid or "
                     "unsupported compression method: %s" % e.args[0],
                     noiselevel=-1,
                 )
@@ -1530,7 +1531,7 @@ class config:
                     )[0]
                 except IndexError as e:
                     writemsg(
-                        "!!! BINPKG_COMPRESS contains invalid or "
+                        "!!!! BINPKG_COMPRESS contains invalid or "
                         "unsupported compression method: %s" % e.args[0],
                         noiselevel=-1,
                     )
@@ -1538,7 +1539,7 @@ class config:
                     if portage.process.find_binary(compression_binary) is None:
                         missing_package = compression["package"]
                         writemsg(
-                            "!!! BINPKG_COMPRESS unsupported %s. "
+                            "!!!! BINPKG_COMPRESS unsupported %s. "
                             "Missing package: %s"
                             % (binpkg_compression, missing_package),
                             noiselevel=-1,
@@ -2231,7 +2232,7 @@ class config:
             )
             if penvconfig is None:
                 writemsg(
-                    "!!! %s references non-existent file: %s\n"
+                    "!!!! %s references non-existent file: %s\n"
                     % (os.path.join(abs_user_config, "package.env"), penvfile),
                     noiselevel=-1,
                 )
@@ -2239,7 +2240,7 @@ class config:
                 for k, v in penvconfig.items():
                     if k in protected_keys or k in non_user_variables:
                         writemsg(
-                            "!!! Illegal variable "
+                            "!!!! Illegal variable "
                             + "'%s' assigned in '%s'\n" % (k, penvfile),
                             noiselevel=-1,
                         )
@@ -2611,7 +2612,7 @@ class config:
                     self._accept_chost_re = re.compile(r"^%s$" % accept_chost[0])
                 except re.error as e:
                     writemsg(
-                        _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
+                        _("!!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
                         % (accept_chost[0], e),
                         noiselevel=-1,
                     )
@@ -2623,7 +2624,7 @@ class config:
                     )
                 except re.error as e:
                     writemsg(
-                        _("!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
+                        _("!!!! Invalid ACCEPT_CHOSTS value: '%s': %s\n")
                         % (" ".join(accept_chost), e),
                         noiselevel=-1,
                     )
@@ -3236,7 +3237,7 @@ class config:
                 continue
             if not isinstance(myvalue, str):
                 writemsg(
-                    _("!!! Non-string value in config: %s=%s\n") % (x, myvalue),
+                    _("!!!! Non-string value in config: %s=%s\n") % (x, myvalue),
                     noiselevel=-1,
                 )
                 continue
@@ -3252,7 +3253,7 @@ class config:
                 continue
             mydict[x] = myvalue
         if "HOME" not in mydict and "BUILD_PREFIX" in mydict:
-            writemsg("*** HOME not set. Setting to " + mydict["BUILD_PREFIX"] + "\n")
+            writemsg("**** HOME not set. Setting to " + mydict["BUILD_PREFIX"] + "\n")
             mydict["HOME"] = mydict["BUILD_PREFIX"][:]
 
         if filter_calling_env:
@@ -3337,7 +3338,7 @@ class config:
                     mydict["LC_CTYPE"] = l
                     if check_locale(silent=True, env=mydict):
                         # TODO: output the following only once
-                        # 						writemsg(_("!!! LC_CTYPE unsupported, using %s instead\n")
+                        # 						writemsg(_("!!!! LC_CTYPE unsupported, using %s instead\n")
                         # 								% mydict["LC_CTYPE"])
                         break
                 else:
@@ -3405,7 +3406,7 @@ class config:
                 else:
                     writemsg(
                         _(
-                            "!!! SELinux module not found. Please verify that it was installed.\n"
+                            "!!!! SELinux module not found. Please verify that it was installed.\n"
                         ),
                         noiselevel=-1,
                     )

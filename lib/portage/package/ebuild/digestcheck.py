@@ -66,24 +66,24 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 if mf.allow_missing:
                     continue
                 eout.eend(1)
-                writemsg(_("\n!!! Missing digest for '%s'\n") % (f,), noiselevel=-1)
+                writemsg(_("\n!!!! Missing digest for '%s'\n") % (f,), noiselevel=-1)
                 return 0
             mf.checkFileHashes(ftype, f, hash_filter=hash_filter)
             eout.eend(0)
     except FileNotFound as e:
         eout.eend(1)
         writemsg(
-            _("\n!!! A file listed in the Manifest could not be found: %s\n") % str(e),
+            _("\n!!!! A file listed in the Manifest could not be found: %s\n") % str(e),
             noiselevel=-1,
         )
         return 0
     except DigestException as e:
         eout.eend(1)
-        writemsg(_("\n!!! Digest verification failed:\n"), noiselevel=-1)
-        writemsg("!!! %s\n" % e.value[0], noiselevel=-1)
-        writemsg(_("!!! Reason: %s\n") % e.value[1], noiselevel=-1)
-        writemsg(_("!!! Got: %s\n") % e.value[2], noiselevel=-1)
-        writemsg(_("!!! Expected: %s\n") % e.value[3], noiselevel=-1)
+        writemsg(_("\n!!!! Digest verification failed:\n"), noiselevel=-1)
+        writemsg("!!!! %s\n" % e.value[0], noiselevel=-1)
+        writemsg(_("!!!! Reason: %s\n") % e.value[1], noiselevel=-1)
+        writemsg(_("!!!! Got: %s\n") % e.value[2], noiselevel=-1)
+        writemsg(_("!!!! Expected: %s\n") % e.value[3], noiselevel=-1)
         return 0
     if mf.thin or mf.allow_missing:
         # In this case we ignore any missing digests that
@@ -96,7 +96,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
             pf = f[:-7]
         if pf is not None and not mf.hasFile("EBUILD", f):
             writemsg(
-                _("!!! A file is not listed in the Manifest: '%s'\n")
+                _("!!!! A file is not listed in the Manifest: '%s'\n")
                 % os.path.join(pkgdir, f),
                 noiselevel=-1,
             )
@@ -114,7 +114,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 parent, encoding=_encodings["fs"], errors="replace"
             )
             writemsg(
-                _("!!! Path contains invalid " "character(s) for encoding '%s': '%s'")
+                _("!!!! Path contains invalid " "character(s) for encoding '%s': '%s'")
                 % (_encodings["fs"], parent),
                 noiselevel=-1,
             )
@@ -129,7 +129,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 d = _unicode_decode(d, encoding=_encodings["fs"], errors="replace")
                 writemsg(
                     _(
-                        "!!! Path contains invalid "
+                        "!!!! Path contains invalid "
                         "character(s) for encoding '%s': '%s'"
                     )
                     % (_encodings["fs"], os.path.join(parent, d)),
@@ -151,7 +151,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 f = os.path.join(parent, f)[len(filesdir) + 1 :]
                 writemsg(
                     _(
-                        "!!! File name contains invalid "
+                        "!!!! File name contains invalid "
                         "character(s) for encoding '%s': '%s'"
                     )
                     % (_encodings["fs"], f),
@@ -166,7 +166,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
             file_type = mf.findFile(f)
             if file_type != "AUX" and not f.startswith("digest-"):
                 writemsg(
-                    _("!!! A file is not listed in the Manifest: '%s'\n")
+                    _("!!!! A file is not listed in the Manifest: '%s'\n")
                     % os.path.join(filesdir, f),
                     noiselevel=-1,
                 )

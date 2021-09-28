@@ -39,7 +39,7 @@ class SVNSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! svn checkout error; exiting."
+            msg = "!!!! svn checkout error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
         return (exitcode, False)
@@ -63,7 +63,7 @@ class SVNSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! svn update error; exiting."
+            msg = "!!!! svn update error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
         return (exitcode, False)
@@ -81,7 +81,7 @@ class SVNSync(NewBase):
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
-            msg = "!!! svn upgrade error; exiting."
+            msg = "!!!! svn upgrade error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
         return exitcode

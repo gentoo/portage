@@ -96,8 +96,8 @@ COWSAY_MOO = r"""
 
 
 def multiple_actions(action1, action2):
-    sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
-    sys.stderr.write("!!! '%s' or '%s'\n\n" % (action1, action2))
+    sys.stderr.write("\n!!!! Multiple actions requested... Please choose one only.\n")
+    sys.stderr.write("!!!! '%s' or '%s'\n\n" % (action1, action2))
     sys.exit(1)
 
 
@@ -1170,7 +1170,7 @@ def profile_check(trees, myaction):
             "--help, --info, --search, --sync, and --version."
         )
         writemsg_level(
-            "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+            "".join("!!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
             level=logging.ERROR,
             noiselevel=-1,
         )

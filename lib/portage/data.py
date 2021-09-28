@@ -37,7 +37,7 @@ if not lchown:
 
         def lchown(*_args, **_kwargs):
             writemsg(
-                colorize("BAD", "!!!")
+                colorize("BAD", "!!!!")
                 + _(
                     " It seems that os.lchown does not"
                     " exist.  Please rebuild python.\n"
@@ -82,7 +82,7 @@ def _target_root():
 
 
 def portage_group_warning():
-    warn_prefix = colorize("BAD", "*** WARNING ***  ")
+    warn_prefix = colorize("BAD", "**** WARNING ****  ")
     mylines = [
         "For security reasons, only system administrators should be",
         "allowed in the portage group.  Untrusted users or processes",

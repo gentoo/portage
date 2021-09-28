@@ -10,7 +10,7 @@ if ! ___eapi_has_dosed; then
 fi
 
 if [[ $# -lt 1 ]] ; then
-	echo "!!! ${0##*/}: at least one argument needed" >&2
+	echo "!!!! ${0##*/}: at least one argument needed" >&2
 	exit 1
 fi
 
@@ -39,7 +39,7 @@ for x in "$@" ; do
 done
 
 if [ $file_found = 0 ] ; then
-	echo "!!! ${0##*/}: $y does not exist" 1>&2
+	echo "!!!! ${0##*/}: $y does not exist" 1>&2
 	((ret|=1))
 fi
 

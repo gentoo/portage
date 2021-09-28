@@ -456,7 +456,7 @@ class Scanner:
                             # Do not try to do any more QA checks on this package since missing
                             # metadata leads to false positives for several checks, and false
                             # positives confuse users.
-                            # logging.debug("\t>>> Continuing")
+                            # logging.debug("\t>>>> Continuing")
                             break
 
             logging.debug("Finished ebuild plugin loop, continuing...")
@@ -480,5 +480,5 @@ class Scanner:
                     logging.debug("\tRunning function: %s", func)
                     _continue = func(**self.set_func_kwargs(mod, dynamic_data))
                     if _continue:
-                        # logging.debug("\t>>> Continuing")
+                        # logging.debug("\t>>>> Continuing")
                         break

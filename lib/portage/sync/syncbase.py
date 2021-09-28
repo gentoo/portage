@@ -67,13 +67,13 @@ class SyncBase:
                 % (self.bin_pkg, self._bin_command),
             ]
             for l in msg:
-                writemsg_level("!!! %s\n" % l, level=logging.ERROR, noiselevel=-1)
+                writemsg_level("!!!! %s\n" % l, level=logging.ERROR, noiselevel=-1)
             return False
 
         try:
             self.repo_storage
         except RepoStorageException as e:
-            writemsg_level("!!! %s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+            writemsg_level("!!!! %s\n" % (e,), level=logging.ERROR, noiselevel=-1)
             return False
 
         return True
@@ -240,7 +240,7 @@ class SyncBase:
         if errors:
             lines = []
             lines.append("")
-            lines.append("!!! Retry disabled for openpgp key refresh:")
+            lines.append("!!!! Retry disabled for openpgp key refresh:")
             lines.append("")
             for msg in errors:
                 lines.append("    {}".format(msg))

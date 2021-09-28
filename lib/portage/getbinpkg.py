@@ -29,7 +29,7 @@ from urllib.parse import unquote as urllib_parse_unquote
 try:
     import ftplib
 except ImportError as e:
-    sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT FTPLIB: ") + str(e) + "\n")
+    sys.stderr.write(colorize("BAD", "!!!! CANNOT IMPORT FTPLIB: ") + str(e) + "\n")
 else:
     _all_errors.extend(ftplib.all_errors)
 
@@ -39,7 +39,9 @@ try:
     from http.client import ResponseNotReady as http_client_ResponseNotReady
     from http.client import error as http_client_error
 except ImportError as e:
-    sys.stderr.write(colorize("BAD", "!!! CANNOT IMPORT HTTP.CLIENT: ") + str(e) + "\n")
+    sys.stderr.write(
+        colorize("BAD", "!!!! CANNOT IMPORT HTTP.CLIENT: ") + str(e) + "\n"
+    )
 else:
     _all_errors.append(http_client_error)
 
@@ -635,7 +637,7 @@ def dir_get_metadata(
     except _all_errors as e:
         # ftplib.FTP(host) can raise errors like this:
         #   socket.error: (111, 'Connection refused')
-        sys.stderr.write("!!! %s\n" % (e,))
+        sys.stderr.write("!!!! %s\n" % (e,))
         return {}
 
     out = sys.stdout
@@ -672,8 +674,8 @@ def dir_get_metadata(
         metadata[baseurl]["data"] = {}
 
     if not os.access(cache_path, os.W_OK):
-        sys.stderr.write(_("!!! Unable to write binary metadata to disk!\n"))
-        sys.stderr.write(_("!!! Permission denied: '%s'\n") % cache_path)
+        sys.stderr.write(_("!!!! Unable to write binary metadata to disk!\n"))
+        sys.stderr.write(_("!!!! Permission denied: '%s'\n") % cache_path)
         return metadata[baseurl]["data"]
 
     import portage.exception
@@ -682,9 +684,9 @@ def dir_get_metadata(
         filelist = dir_get_list(baseurl, conn)
     except portage.exception.PortageException as e:
         sys.stderr.write(
-            _("!!! Error connecting to '%s'.\n") % _hide_url_passwd(baseurl)
+            _("!!!! Error connecting to '%s'.\n") % _hide_url_passwd(baseurl)
         )
-        sys.stderr.write("!!! %s\n" % str(e))
+        sys.stderr.write("!!!! %s\n" % str(e))
         del e
         return metadata[baseurl]["data"]
     tbz2list = match_in_array(filelist, suffix=".tbz2")
@@ -728,7 +730,7 @@ def dir_get_metadata(
                         raise
                     except Exception as e:
                         mytempfile.close()
-                        sys.stderr.write(_("!!! Failed to use gzip: ") + str(e) + "\n")
+                        sys.stderr.write(_("!!!! Failed to use gzip: ") + str(e) + "\n")
                         sys.stderr.flush()
                     mytempfile.close()
                 try:
@@ -744,9 +746,9 @@ def dir_get_metadata(
                     raise
                 except Exception as e:
                     sys.stderr.write(
-                        _("!!! Failed to read data from index: ") + str(mfile) + "\n"
+                        _("!!!! Failed to read data from index: ") + str(mfile) + "\n"
                     )
-                    sys.stderr.write("!!! %s" % str(e))
+                    sys.stderr.write("!!!! %s" % str(e))
                     sys.stderr.flush()
             try:
                 metadatafile = open(
@@ -760,8 +762,8 @@ def dir_get_metadata(
             except SystemExit as e:
                 raise
             except Exception as e:
-                sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
-                sys.stderr.write("!!! %s\n" % str(e))
+                sys.stderr.write(_("!!!! Failed to write binary metadata to disk!\n"))
+                sys.stderr.write("!!!! %s\n" % str(e))
                 sys.stderr.flush()
             break
     # We may have metadata... now we run through the tbz2 list and check.
@@ -829,7 +831,7 @@ def dir_get_metadata(
                 metadata[baseurl]["data"][x] = make_metadata_dict(myid)
             elif verbose:
                 sys.stderr.write(
-                    colorize("BAD", _("!!! Failed to retrieve metadata on: "))
+                    colorize("BAD", _("!!!! Failed to retrieve metadata on: "))
                     + str(x)
                     + "\n"
                 )
@@ -871,8 +873,8 @@ def dir_get_metadata(
     except SystemExit as e:
         raise
     except Exception as e:
-        sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
-        sys.stderr.write("!!! " + str(e) + "\n")
+        sys.stderr.write(_("!!!! Failed to write binary metadata to disk!\n"))
+        sys.stderr.write("!!!! " + str(e) + "\n")
         sys.stderr.flush()
 
     if not keepconnection:

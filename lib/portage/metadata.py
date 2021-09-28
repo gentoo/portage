@@ -19,7 +19,7 @@ from portage.util import writemsg_level
 def action_metadata(settings, portdb, myopts, porttrees=None):
     if porttrees is None:
         porttrees = portdb.porttrees
-    portage.writemsg_stdout("\n>>> Updating Portage cache\n")
+    portage.writemsg_stdout("\n>>>> Updating Portage cache\n")
     cachedir = os.path.normpath(settings.depcachedir)
     if cachedir in [
         "/",
@@ -38,12 +38,12 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
         "/var",
     ]:
         print(
-            "!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY "
+            "!!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY "
             + "ROOT DIRECTORY ON YOUR SYSTEM.",
             file=sys.stderr,
         )
         print(
-            "!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir,
+            "!!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir,
             file=sys.stderr,
         )
         sys.exit(73)

@@ -269,8 +269,8 @@ use() {
 
 use_with() {
 	if [ -z "$1" ]; then
-		echo "!!! use_with() called without a parameter." >&2
-		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
+		echo "!!!! use_with() called without a parameter." >&2
+		echo "!!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return 1
 	fi
 
@@ -291,8 +291,8 @@ use_with() {
 
 use_enable() {
 	if [ -z "$1" ]; then
-		echo "!!! use_enable() called without a parameter." >&2
-		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
+		echo "!!!! use_enable() called without a parameter." >&2
+		echo "!!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return 1
 	fi
 
@@ -321,7 +321,7 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		__vecho ">>> Unpacking ${x} to ${PWD}"
+		__vecho ">>>> Unpacking ${x} to ${PWD}"
 		suffix=${x##*.}
 		suffix_insensitive=$(LC_ALL=C tr "[:upper:]" "[:lower:]" <<< "${suffix}")
 		y=${x%.*}
@@ -703,8 +703,8 @@ econf() {
 
 			if [ -s config.log ]; then
 				echo
-				echo "!!! Please attach the following file when seeking support:"
-				echo "!!! ${PWD}/config.log"
+				echo "!!!! Please attach the following file when seeking support:"
+				echo "!!!! ${PWD}/config.log"
 			fi
 			# econf dies unconditionally in EAPIs 0 to 3
 			___eapi_helpers_can_die || die "econf failed"
@@ -1188,8 +1188,8 @@ if ___eapi_has_in_iuse; then
 		local use=${1}
 
 		if [[ -z "${use}" ]]; then
-			echo "!!! in_iuse() called without a parameter." >&2
-			echo "!!! in_iuse <USEFLAG>" >&2
+			echo "!!!! in_iuse() called without a parameter." >&2
+			echo "!!!! in_iuse <USEFLAG>" >&2
 			die "in_iuse() called without a parameter"
 		fi
 

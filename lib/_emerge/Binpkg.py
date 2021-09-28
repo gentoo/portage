@@ -323,7 +323,7 @@ class Binpkg(CompositeTask):
 
         # This initializes PORTAGE_LOG_FILE.
         portage.prepare_build_dirs(self.settings["ROOT"], self.settings, 1)
-        self._writemsg_level(">>> Extracting info\n")
+        self._writemsg_level(">>>> Extracting info\n")
 
         await self._bintree.dbapi.unpack_metadata(
             self.settings, infloc, loop=self.scheduler
@@ -404,7 +404,7 @@ class Binpkg(CompositeTask):
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
-        self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
+        self._writemsg_level(">>>> Extracting %s\n" % self.pkg.cpv)
         self._start_task(
             AsyncTaskFuture(
                 future=self._bintree.dbapi.unpack_contents(
@@ -418,7 +418,7 @@ class Binpkg(CompositeTask):
         if self._default_exit(unpack_contents) != os.EX_OK:
             unpack_contents.future.result()
             self._writemsg_level(
-                "!!! Error Extracting '%s'\n" % self._pkg_path,
+                "!!!! Error Extracting '%s'\n" % self._pkg_path,
                 noiselevel=-1,
                 level=logging.ERROR,
             )
@@ -462,13 +462,13 @@ class Binpkg(CompositeTask):
             scheduler=self.scheduler,
             logfile=self.settings.get("PORTAGE_LOG_FILE"),
         )
-        self._writemsg_level(">>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])
+        self._writemsg_level(">>>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])
         self._start_task(chpathtool, self._chpathtool_exit)
 
     def _chpathtool_exit(self, chpathtool):
         if self._final_exit(chpathtool) != os.EX_OK:
             self._writemsg_level(
-                "!!! Error Adjusting Prefix to %s\n" % (self.settings["EPREFIX"],),
+                "!!!! Error Adjusting Prefix to %s\n" % (self.settings["EPREFIX"],),
                 noiselevel=-1,
                 level=logging.ERROR,
             )

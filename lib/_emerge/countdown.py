@@ -10,8 +10,8 @@ from portage.output import colorize
 def countdown(secs=5, doing="Starting"):
     if secs:
         print(
-            ">>> Waiting %s seconds before starting...\n"
-            ">>> (Control-C to abort)...\n"
+            ">>>> Waiting %s seconds before starting...\n"
+            ">>>> (Control-C to abort)...\n"
             "%s in:" % (secs, doing),
             end="",
         )

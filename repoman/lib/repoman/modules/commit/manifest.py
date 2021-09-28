@@ -48,14 +48,14 @@ class Manifest:
         except portage.exception.PermissionDenied as e:
             self.generated_manifest = False
             writemsg_level(
-                "!!! Permission denied: '%s'\n" % (e,),
+                "!!!! Permission denied: '%s'\n" % (e,),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
 
         if not self.generated_manifest:
             writemsg_level(
-                "!!! Unable to generate manifest for '%s'.\n" % (checkdir,),
+                "!!!! Unable to generate manifest for '%s'.\n" % (checkdir,),
                 level=logging.ERROR,
                 noiselevel=-1,
             )

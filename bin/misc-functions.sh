@@ -255,8 +255,8 @@ install_qa_check() {
 
 __dyn_instprep() {
 	if [[ -e ${PORTAGE_BUILDDIR}/.instprepped ]] ; then
-		__vecho ">>> It appears that '$PF' is already instprepped; skipping."
-		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.instprepped' to force instprep."
+		__vecho ">>>> It appears that '$PF' is already instprepped; skipping."
+		__vecho ">>>> Remove '${PORTAGE_BUILDDIR}/.instprepped' to force instprep."
 		return 0
 	fi
 
@@ -398,11 +398,11 @@ preinst_sfperms() {
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
 			if [ -n "$(find "$i" -perm -2000)" ] ; then
-				ebegin ">>> SetUID and SetGID: [chmod o-r] ${i#${ED%/}}"
+				ebegin ">>>> SetUID and SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			else
-				ebegin ">>> SetUID: [chmod go-r] ${i#${ED%/}}"
+				ebegin ">>>> SetUID: [chmod go-r] ${i#${ED%/}}"
 				chmod go-r "$i"
 				eend $?
 			fi
@@ -414,7 +414,7 @@ preinst_sfperms() {
 				# by the SetUID check above.
 				true
 			else
-				ebegin ">>> SetGID: [chmod o-r] ${i#${ED%/}}"
+				ebegin ">>>> SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
 			fi
@@ -440,19 +440,19 @@ preinst_suid_scan() {
 		# to files outside of the sandbox, but this
 		# can easly be bypassed using the addwrite() function
 		addwrite "${sfconf}"
-		__vecho ">>> Performing suid scan in ${ED}"
+		__vecho ">>>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				install_path=${i#${ED%/}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					__vecho "- ${install_path} is an approved suid file"
 				else
-					__vecho ">>> Removing sbit on non registered ${install_path}"
+					__vecho ">>>> Removing sbit on non registered ${install_path}"
 					LC_ALL=C sleep 1.5
 					ls_ret=$(ls -ldh "${i}")
 					chmod ugo-s "${i}"
 					grep "^#${install_path}$" "${sfconf}" > /dev/null || {
-						__vecho ">>> Appending commented out entry to ${sfconf} for ${PF}"
+						__vecho ">>>> Appending commented out entry to ${sfconf} for ${PF}"
 						echo "## ${ls_ret%${ED%/}*}${install_path}" >> "${sfconf}"
 						echo "#${install_path}" >> "${sfconf}"
 						# no delwrite() eh?
@@ -476,7 +476,7 @@ preinst_selinux_labels() {
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /sys/fs/selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
-			__vecho ">>> Setting SELinux security labels"
+			__vecho ">>>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
 					die "Failed to determine SELinux policy paths.";
@@ -488,7 +488,7 @@ preinst_selinux_labels() {
 		else
 			# nonfatal, since merging can happen outside a SE kernel
 			# like during a recovery situation
-			__vecho "!!! Unable to set SELinux security labels"
+			__vecho "!!!! Unable to set SELinux security labels"
 		fi
 	fi
 }
@@ -534,7 +534,7 @@ __dyn_package() {
 	fi
 	[ -n "${md5_hash}" ] && \
 		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
-	__vecho ">>> Done."
+	__vecho ">>>> Done."
 
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \

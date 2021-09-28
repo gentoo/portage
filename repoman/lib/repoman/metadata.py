@@ -46,7 +46,7 @@ def fetch_metadata_xsd(metadata_xsd, repoman_settings):
         print()
         print(
             "%s the local copy of metadata.xsd "
-            "needs to be refetched, doing that now" % green("***")
+            "needs to be refetched, doing that now" % green("****")
         )
         print()
 

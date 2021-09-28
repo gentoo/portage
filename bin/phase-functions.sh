@@ -219,8 +219,8 @@ __ebuild_phase_with_hooks() {
 
 __dyn_pretend() {
 	if [[ -e $PORTAGE_BUILDDIR/.pretended ]] ; then
-		__vecho ">>> It appears that '$PF' is already pretended; skipping."
-		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
+		__vecho ">>>> It appears that '$PF' is already pretended; skipping."
+		__vecho ">>>> Remove '$PORTAGE_BUILDDIR/.pretended' to force pretend."
 		return 0
 	fi
 	__ebuild_phase pre_pkg_pretend
@@ -232,8 +232,8 @@ __dyn_pretend() {
 
 __dyn_setup() {
 	if [[ -e $PORTAGE_BUILDDIR/.setuped ]] ; then
-		__vecho ">>> It appears that '$PF' is already setup; skipping."
-		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
+		__vecho ">>>> It appears that '$PF' is already setup; skipping."
+		__vecho ">>>> Remove '$PORTAGE_BUILDDIR/.setuped' to force setup."
 		return 0
 	fi
 	__ebuild_phase pre_pkg_setup
@@ -245,7 +245,7 @@ __dyn_setup() {
 
 __dyn_unpack() {
 	if [[ -f ${PORTAGE_BUILDDIR}/.unpacked ]] ; then
-		__vecho ">>> WORKDIR is up-to-date, keeping..."
+		__vecho ">>>> WORKDIR is up-to-date, keeping..."
 		return 0
 	fi
 	if [ ! -d "${WORKDIR}" ]; then
@@ -253,11 +253,11 @@ __dyn_unpack() {
 	fi
 	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
 	__ebuild_phase pre_src_unpack
-	__vecho ">>> Unpacking source..."
+	__vecho ">>>> Unpacking source..."
 	__ebuild_phase src_unpack
 	>> "$PORTAGE_BUILDDIR/.unpacked" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.unpacked"
-	__vecho ">>> Source unpacked in ${WORKDIR}"
+	__vecho ">>>> Source unpacked in ${WORKDIR}"
 	__ebuild_phase post_src_unpack
 }
 
@@ -370,8 +370,8 @@ __has_phase_defined_up_to() {
 __dyn_prepare() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
-		__vecho ">>> It appears that '$PF' is already prepared; skipping."
-		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
+		__vecho ">>>> It appears that '$PF' is already prepared; skipping."
+		__vecho ">>>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
 		return 0
 	fi
 
@@ -388,7 +388,7 @@ __dyn_prepare() {
 	trap __abort_prepare SIGINT SIGQUIT
 
 	__ebuild_phase pre_src_prepare
-	__vecho ">>> Preparing source in $PWD ..."
+	__vecho ">>>> Preparing source in $PWD ..."
 	__ebuild_phase src_prepare
 
 	# keep path in eapply_user in sync!
@@ -398,7 +398,7 @@ __dyn_prepare() {
 
 	>> "$PORTAGE_BUILDDIR/.prepared" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.prepared"
-	__vecho ">>> Source prepared."
+	__vecho ">>>> Source prepared."
 	__ebuild_phase post_src_prepare
 
 	trap - SIGINT SIGQUIT
@@ -407,8 +407,8 @@ __dyn_prepare() {
 __dyn_configure() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
-		__vecho ">>> It appears that '$PF' is already configured; skipping."
-		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
+		__vecho ">>>> It appears that '$PF' is already configured; skipping."
+		__vecho ">>>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
 		return 0
 	fi
 
@@ -426,11 +426,11 @@ __dyn_configure() {
 
 	__ebuild_phase pre_src_configure
 
-	__vecho ">>> Configuring source in $PWD ..."
+	__vecho ">>>> Configuring source in $PWD ..."
 	__ebuild_phase src_configure
 	>> "$PORTAGE_BUILDDIR/.configured" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.configured"
-	__vecho ">>> Source configured."
+	__vecho ">>>> Source configured."
 
 	__ebuild_phase post_src_configure
 
@@ -440,8 +440,8 @@ __dyn_configure() {
 __dyn_compile() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
-		__vecho ">>> It appears that '${PF}' is already compiled; skipping."
-		__vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
+		__vecho ">>>> It appears that '${PF}' is already compiled; skipping."
+		__vecho ">>>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
 	fi
 
@@ -459,11 +459,11 @@ __dyn_compile() {
 
 	__ebuild_phase pre_src_compile
 
-	__vecho ">>> Compiling source in $PWD ..."
+	__vecho ">>>> Compiling source in $PWD ..."
 	__ebuild_phase src_compile
 	>> "$PORTAGE_BUILDDIR/.compiled" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.compiled"
-	__vecho ">>> Source compiled."
+	__vecho ">>>> Source compiled."
 
 	__ebuild_phase post_src_compile
 
@@ -473,8 +473,8 @@ __dyn_compile() {
 __dyn_test() {
 
 	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
-		__vecho ">>> It appears that ${PN} has already been tested; skipping."
-		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
+		__vecho ">>>> It appears that ${PN} has already been tested; skipping."
+		__vecho ">>>> Remove '${PORTAGE_BUILDDIR}/.tested' to force test."
 		return
 	fi
 
@@ -494,20 +494,20 @@ __dyn_test() {
 			! { has test_network ${PORTAGE_PROPERTIES} && has network ${ALLOW_TEST}; }
 	then
 		einfo "Skipping make test/check due to ebuild restriction."
-		__vecho ">>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
+		__vecho ">>>> Test phase [disabled because of RESTRICT=test]: ${CATEGORY}/${PF}"
 
 	# If ${EBUILD_FORCE_TEST} == 1 and FEATURES came from ${T}/environment
 	# then it might not have FEATURES=test like it's supposed to here.
 	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! has test ${FEATURES} ; then
-		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+		__vecho ">>>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
 		__ebuild_phase pre_src_test
 
-		__vecho ">>> Test phase: ${CATEGORY}/${PF}"
+		__vecho ">>>> Test phase: ${CATEGORY}/${PF}"
 		__ebuild_phase src_test
-		__vecho ">>> Completed testing ${CATEGORY}/${PF}"
+		__vecho ">>>> Completed testing ${CATEGORY}/${PF}"
 
 		>> "$PORTAGE_BUILDDIR/.tested" || \
 			die "Failed to create $PORTAGE_BUILDDIR/.tested"
@@ -523,8 +523,8 @@ __dyn_install() {
 	if has noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}/.installed"
 	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
-		__vecho ">>> It appears that '${PF}' is already installed; skipping."
-		__vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
+		__vecho ">>>> It appears that '${PF}' is already installed; skipping."
+		__vecho ">>>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
 	fi
 	trap "__abort_install" SIGINT SIGQUIT
@@ -578,7 +578,7 @@ __dyn_install() {
 	fi
 
 	__vecho
-	__vecho ">>> Install ${CATEGORY}/${PF} into ${D}"
+	__vecho ">>>> Install ${CATEGORY}/${PF} into ${D}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -599,7 +599,7 @@ __dyn_install() {
 	__ebuild_phase src_install
 	>> "$PORTAGE_BUILDDIR/.installed" || \
 		die "Failed to create $PORTAGE_BUILDDIR/.installed"
-	__vecho ">>> Completed installing ${CATEGORY}/${PF} into ${D}"
+	__vecho ">>>> Completed installing ${CATEGORY}/${PF} into ${D}"
 	__vecho
 	__ebuild_phase post_src_install
 
@@ -1031,11 +1031,11 @@ __ebuild_main() {
 			if has noauto $FEATURES && \
 				[[ ! -f $PORTAGE_BUILDDIR/.unpacked ]] ; then
 				echo
-				echo "!!! We apparently haven't unpacked..." \
+				echo "!!!! We apparently haven't unpacked..." \
 					"This is probably not what you"
-				echo "!!! want to be doing... You are using" \
+				echo "!!!! want to be doing... You are using" \
 					"FEATURES=noauto so I'll assume"
-				echo "!!! that you know what you are doing..." \
+				echo "!!!! that you know what you are doing..." \
 					"You have 5 seconds to abort..."
 				echo
 

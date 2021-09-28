@@ -94,11 +94,11 @@ class Status:
                     continue
                 logging.error(
                     red(
-                        "!!! Please fix the following issues reported "
+                        "!!!! Please fix the following issues reported "
                         "from cvs: %s" % green("(U,P,M,A,R,D are ok)")
                     )
                 )
-                logging.error(red("!!! Note: This is a pretend/no-modify pass..."))
+                logging.error(red("!!!! Note: This is a pretend/no-modify pass..."))
                 logging.error(out)
                 sys.exit(1)
             elif line[0] in "UP":
@@ -112,7 +112,7 @@ class Status:
             else:
                 retval = os.system("cvs update " + " ".join(myupdates))
             if retval != os.EX_OK:
-                logging.fatal("!!! cvs exited with an error. Terminating.")
+                logging.fatal("!!!! cvs exited with an error. Terminating.")
                 sys.exit(retval)
         return False
 

@@ -1304,9 +1304,9 @@ def add_pquery_arguments(parser):
 
 
 def usage(argv):
-	print(">>> Portage information query tool")
-	print(">>> %s" % portage.VERSION)
-	print(">>> Usage: portageq <command> [<option> ...]")
+	print(">>>> Portage information query tool")
+	print(">>>> %s" % portage.VERSION)
+	print(">>>> Usage: portageq <command> [<option> ...]")
 	print("")
 	print("Available commands:")
 

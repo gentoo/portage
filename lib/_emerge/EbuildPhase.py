@@ -387,7 +387,7 @@ class EbuildPhase(CompositeTask):
             self._append_temp_log(post_phase.logfile, log_path)
 
         if self._final_exit(post_phase) != os.EX_OK:
-            writemsg("!!! post %s failed; exiting.\n" % self.phase, noiselevel=-1)
+            writemsg("!!!! post %s failed; exiting.\n" % self.phase, noiselevel=-1)
             self._die_hooks()
             return
 

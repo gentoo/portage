@@ -173,7 +173,7 @@ def main(args):
         returncode = copy_xattrs(opts, files)
         if returncode != os.EX_OK:
             portage.util.writemsg(
-                "!!! install: copy_xattrs failed with the "
+                "!!!! install: copy_xattrs failed with the "
                 "following arguments: %s\n"
                 % " ".join(portage._shell_quote(x) for x in args),
                 noiselevel=-1,

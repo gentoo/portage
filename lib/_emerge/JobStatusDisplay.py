@@ -127,7 +127,7 @@ class JobStatusDisplay:
         return True
 
     def _format_msg(self, msg):
-        return ">>> %s" % msg
+        return ">>>> %s" % msg
 
     def _erase(self):
         self._write(self._term_codes["carriage_return"] + self._term_codes["clr_eol"])

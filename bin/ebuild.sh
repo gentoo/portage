@@ -242,7 +242,7 @@ declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
-		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
+		debug-print "**** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 
 		# Since ECLASS_DEPTH > 1, the following variables are locals from the
 		# previous inherit call in the call stack.
@@ -533,7 +533,7 @@ if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -Pf ${BIN})
 		if [ "$?" != "0" ]; then
-			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
+			BODY="echo \"**** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi

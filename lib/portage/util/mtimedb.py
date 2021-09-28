@@ -46,7 +46,7 @@ class MtimeDB(dict):
                 pass
             else:
                 writemsg(
-                    _("!!! Error loading '%s': %s\n") % (filename, e), noiselevel=-1
+                    _("!!!! Error loading '%s': %s\n") % (filename, e), noiselevel=-1
                 )
         finally:
             if f is not None:
@@ -75,7 +75,8 @@ class MtimeDB(dict):
                     raise
                 except Exception:
                     writemsg(
-                        _("!!! Error loading '%s': %s\n") % (filename, e), noiselevel=-1
+                        _("!!!! Error loading '%s': %s\n") % (filename, e),
+                        noiselevel=-1,
                     )
 
         if d is None:

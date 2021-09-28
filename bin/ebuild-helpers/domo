@@ -42,7 +42,7 @@ for x in "$@" ; do
 		fi
 		install -m0644 "${x}" "${mydir}/${MOPREFIX}.mo"
 	else
-		echo "!!! ${0##*/}: $x does not exist" 1>&2
+		echo "!!!! ${0##*/}: $x does not exist" 1>&2
 		false
 	fi
 	((ret|=$?))

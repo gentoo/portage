@@ -82,7 +82,7 @@ def old_tree_timestamp_warn(portdir, settings):
         warnsync = float(settings.get(var_name, default_warnsync))
     except ValueError:
         writemsg_level(
-            "!!! %s contains non-numeric value: %s\n" % (var_name, settings[var_name]),
+            "!!!! %s contains non-numeric value: %s\n" % (var_name, settings[var_name]),
             level=logging.ERROR,
             noiselevel=-1,
         )

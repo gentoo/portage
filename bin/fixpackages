@@ -38,9 +38,9 @@ if mysettings['ROOT'] != "/":
 try:
 	os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
 except (OSError, ValueError) as e:
-	portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
+	portage.writemsg("!!!! Failed to change nice value to '%s'\n" % \
 		mysettings["PORTAGE_NICENESS"])
-	portage.writemsg("!!! %s\n" % str(e))
+	portage.writemsg("!!!! %s\n" % str(e))
 	del e
 
 _global_updates(mytrees, mtimedb["updates"], if_mtime_changed=False)

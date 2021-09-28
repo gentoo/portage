@@ -120,7 +120,7 @@ class Changes(ChangesBase):
             retval = spawn(update_index_cmd, env=os.environ)
             if retval != os.EX_OK:
                 writemsg_level(
-                    "!!! Exiting on %s (shell) "
+                    "!!!! Exiting on %s (shell) "
                     "error code: %s\n" % (self.vcs_settings.vcs, retval),
                     level=logging.ERROR,
                     noiselevel=-1,

@@ -1140,7 +1140,7 @@ class depgraph:
             "\n%s\n\n"
             % colorize(
                 "WARN",
-                "!!! Detected ebuild dependency change(s) without revision bump:",
+                "!!!! Detected ebuild dependency change(s) without revision bump:",
             ),
             noiselevel=-1,
         )
@@ -1223,7 +1223,7 @@ class depgraph:
     def _show_ignored_binaries_respect_use(self, respect_use):
 
         writemsg(
-            "\n!!! The following binary packages have been ignored "
+            "\n!!!! The following binary packages have been ignored "
             + "due to non matching USE:\n\n",
             noiselevel=-1,
         )
@@ -1256,7 +1256,7 @@ class depgraph:
     def _show_ignored_binaries_changed_deps(self, changed_deps):
 
         writemsg(
-            "\n!!! The following binary packages have been "
+            "\n!!!! The following binary packages have been "
             "ignored due to changed dependencies:\n\n",
             noiselevel=-1,
         )
@@ -1364,7 +1364,7 @@ class depgraph:
                 continue
 
             writemsg(
-                "\n!!! The following update has been skipped "
+                "\n!!!! The following update has been skipped "
                 + "due to unsatisfied dependencies:\n\n",
                 noiselevel=-1,
             )
@@ -1393,9 +1393,9 @@ class depgraph:
             # These are shown in abbreviated form, in order to avoid terminal
             # flooding from mask messages as reported in bug #285832.
             writemsg(
-                "\n!!! The following update(s) have been skipped "
+                "\n!!!! The following update(s) have been skipped "
                 + "due to unsatisfied dependencies\n"
-                + "!!! triggered by backtracking:\n\n",
+                + "!!!! triggered by backtracking:\n\n",
                 noiselevel=-1,
             )
             for pkg, parent_atoms in backtrack_masked:
@@ -1554,7 +1554,7 @@ class depgraph:
 
         if debug:
             writemsg_level(
-                "\n!!! Slot conflict handler started.\n",
+                "\n!!!! Slot conflict handler started.\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -1718,7 +1718,7 @@ class depgraph:
 
         if debug:
             writemsg_level(
-                "\n!!! Slot conflict graph:\n", level=logging.DEBUG, noiselevel=-1
+                "\n!!!! Slot conflict graph:\n", level=logging.DEBUG, noiselevel=-1
             )
             conflict_graph.debug_print()
 
@@ -1793,7 +1793,7 @@ class depgraph:
 
         if debug:
             writemsg_level(
-                "\n!!! Slot conflict solution:\n", level=logging.DEBUG, noiselevel=-1
+                "\n!!!! Slot conflict solution:\n", level=logging.DEBUG, noiselevel=-1
             )
             for conflict in conflicts:
                 writemsg_level(
@@ -1920,7 +1920,7 @@ class depgraph:
             ):
                 if debug:
                     writemsg_level(
-                        "!!! backtracking loop detected: %s %s\n"
+                        "!!!! backtracking loop detected: %s %s\n"
                         % (pkg, self._dynamic_config._runtime_pkg_mask[pkg]),
                         level=logging.DEBUG,
                         noiselevel=-1,
@@ -4567,11 +4567,13 @@ class depgraph:
                         x = os.path.join(pkgsettings["PKGDIR"], x)
                     else:
                         writemsg(
-                            "\n\n!!! Binary package '" + str(x) + "' does not exist.\n",
+                            "\n\n!!!! Binary package '"
+                            + str(x)
+                            + "' does not exist.\n",
                             noiselevel=-1,
                         )
                         writemsg(
-                            "!!! Please ensure the tbz2 exists as specified.\n\n",
+                            "!!!! Please ensure the tbz2 exists as specified.\n\n",
                             noiselevel=-1,
                         )
                         return 0, myfavorites
@@ -4588,7 +4590,7 @@ class depgraph:
                     writemsg(
                         colorize(
                             "BAD",
-                            "\n*** Package is missing CATEGORY metadata: %s.\n\n" % x,
+                            "\n**** Package is missing CATEGORY metadata: %s.\n\n" % x,
                         ),
                         noiselevel=-1,
                     )
@@ -4606,7 +4608,7 @@ class depgraph:
                         "\n%s\n\n"
                         % colorize(
                             "BAD",
-                            "*** "
+                            "**** "
                             + _(
                                 "You need to adjust PKGDIR to emerge "
                                 "this package: %s"
@@ -4625,7 +4627,7 @@ class depgraph:
                 tree_root = os.path.dirname(os.path.dirname(pkgdir))
                 cp = pkgdir[len(tree_root) + 1 :]
                 error_msg = (
-                    "\n\n!!! '%s' is not in a valid ebuild repository "
+                    "\n\n!!!! '%s' is not in a valid ebuild repository "
                     "hierarchy or does not exist\n"
                 ) % x
                 if not portage.isvalidatom(cp):
@@ -4644,7 +4646,7 @@ class depgraph:
                         writemsg(
                             colorize(
                                 "BAD",
-                                "\n*** You need to adjust repos.conf to emerge this package.\n\n",
+                                "\n**** You need to adjust repos.conf to emerge this package.\n\n",
                             ),
                             noiselevel=-1,
                         )
@@ -4656,19 +4658,19 @@ class depgraph:
                         writemsg(
                             colorize(
                                 "BAD",
-                                "\n*** You are emerging a masked package. It is MUCH better to use\n",
+                                "\n**** You are emerging a masked package. It is MUCH better to use\n",
                             ),
                             noiselevel=-1,
                         )
                         writemsg(
                             colorize(
                                 "BAD",
-                                "*** /etc/portage/package.* to accomplish this. See portage(5) man\n",
+                                "**** /etc/portage/package.* to accomplish this. See portage(5) man\n",
                             ),
                             noiselevel=-1,
                         )
                         writemsg(
-                            colorize("BAD", "*** page for details.\n"), noiselevel=-1
+                            colorize("BAD", "**** page for details.\n"), noiselevel=-1
                         )
                         countdown(
                             int(self._frozen_config.settings["EMERGE_WARNING_DELAY"]),
@@ -4690,7 +4692,7 @@ class depgraph:
             elif x.startswith(os.path.sep):
                 if not x.startswith(eroot):
                     portage.writemsg(
-                        ("\n\n!!! '%s' does not start with" + " $EROOT.\n") % x,
+                        ("\n\n!!!! '%s' does not start with" + " $EROOT.\n") % x,
                         noiselevel=-1,
                     )
                     self._dynamic_config._skip_restart = True
@@ -4703,7 +4705,7 @@ class depgraph:
                 if not f.startswith(eroot):
                     portage.writemsg(
                         (
-                            "\n\n!!! '%s' (resolved from '%s') does not start with"
+                            "\n\n!!!! '%s' (resolved from '%s') does not start with"
                             + " $EROOT.\n"
                         )
                         % (f, x),
@@ -4768,11 +4770,12 @@ class depgraph:
                     continue
                 if not is_valid_package_atom(x, allow_repo=True):
                     portage.writemsg(
-                        "\n\n!!! '%s' is not a valid package atom.\n" % x, noiselevel=-1
+                        "\n\n!!!! '%s' is not a valid package atom.\n" % x,
+                        noiselevel=-1,
                     )
-                    portage.writemsg("!!! Please check ebuild(5) for full details.\n")
+                    portage.writemsg("!!!! Please check ebuild(5) for full details.\n")
                     portage.writemsg(
-                        "!!! (Did you specify a version but forget to prefix with '='?)\n"
+                        "!!!! (Did you specify a version but forget to prefix with '='?)\n"
                     )
                     self._dynamic_config._skip_restart = True
                     return (0, [])
@@ -4865,13 +4868,13 @@ class depgraph:
                 if atom.use and atom.use.conditional:
                     writemsg(
                         (
-                            "\n\n!!! '%s' contains a conditional "
+                            "\n\n!!!! '%s' contains a conditional "
                             + "which is not allowed.\n"
                         )
                         % (x,),
                         noiselevel=-1,
                     )
-                    writemsg("!!! Please check ebuild(5) for full details.\n")
+                    writemsg("!!!! Please check ebuild(5) for full details.\n")
                     self._dynamic_config._skip_restart = True
                     return (0, [])
 
@@ -4896,7 +4899,7 @@ class depgraph:
 
             if not owners:
                 portage.writemsg(
-                    ("\n\n!!! '%s' is not claimed " + "by any package.\n")
+                    ("\n\n!!!! '%s' is not claimed " + "by any package.\n")
                     % lookup_owners[0],
                     noiselevel=-1,
                 )
@@ -5031,7 +5034,7 @@ class depgraph:
                             if not self.need_restart():
                                 writemsg(
                                     (
-                                        "\n\n!!! Problem "
+                                        "\n\n!!!! Problem "
                                         + "resolving dependencies for %s\n"
                                     )
                                     % arg.arg,
@@ -5132,7 +5135,7 @@ class depgraph:
                         elif isinstance(arg, SetArg):
                             writemsg(
                                 (
-                                    "\n\n!!! Problem resolving "
+                                    "\n\n!!!! Problem resolving "
                                     + "dependencies for %s from %s\n"
                                 )
                                 % (atom, arg.arg),
@@ -5140,7 +5143,10 @@ class depgraph:
                             )
                         else:
                             writemsg(
-                                ("\n\n!!! Problem resolving " + "dependencies for %s\n")
+                                (
+                                    "\n\n!!!! Problem resolving "
+                                    + "dependencies for %s\n"
+                                )
                                 % (atom,),
                                 noiselevel=-1,
                             )
@@ -5150,10 +5156,10 @@ class depgraph:
                     raise  # Needed else can't exit
                 except Exception as e:
                     writemsg(
-                        "\n\n!!! Problem in '%s' dependencies.\n" % atom, noiselevel=-1
+                        "\n\n!!!! Problem in '%s' dependencies.\n" % atom, noiselevel=-1
                     )
                     writemsg(
-                        "!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None)))
+                        "!!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None)))
                     )
                     raise
 
@@ -5674,7 +5680,7 @@ class depgraph:
                 )
             except InvalidDependString as e:
                 writemsg_level(
-                    "!!! Invalid RDEPEND in "
+                    "!!!! Invalid RDEPEND in "
                     + "'%svar/db/pkg/%s/RDEPEND': %s\n" % (pkg.root, pkg.cpv, e),
                     noiselevel=-1,
                     level=logging.ERROR,
@@ -5713,7 +5719,7 @@ class depgraph:
             if not pkg.installed:
                 raise
             writemsg_level(
-                "!!! Invalid RDEPEND in "
+                "!!!! Invalid RDEPEND in "
                 + "'%svar/db/pkg/%s/RDEPEND': %s\n" % (pkg.root, pkg.cpv, e),
                 noiselevel=-1,
                 level=logging.ERROR,
@@ -6403,7 +6409,7 @@ class depgraph:
             pkg = show_req_use
             output_cpv = pkg.cpv + _repo_separator + pkg.repo
             writemsg(
-                "\n!!! "
+                "\n!!!! "
                 + colorize("BAD", "The ebuild selected to satisfy ")
                 + colorize("INFORM", xinfo)
                 + colorize("BAD", " has unmet requirements.")
@@ -6447,7 +6453,7 @@ class depgraph:
                 noiselevel=-1,
             )
             writemsg(
-                "!!! One of the following packages is required to complete your request:\n",
+                "!!!! One of the following packages is required to complete your request:\n",
                 noiselevel=-1,
             )
             for pkg, mreasons in show_missing_use:
@@ -6464,7 +6470,7 @@ class depgraph:
 
         elif masked_packages:
             writemsg(
-                "\n!!! "
+                "\n!!!! "
                 + colorize("BAD", "All ebuilds that could satisfy ")
                 + colorize("INFORM", xinfo)
                 + colorize("BAD", " have been masked.")
@@ -6472,7 +6478,7 @@ class depgraph:
                 noiselevel=-1,
             )
             writemsg(
-                "!!! One of the following masked packages is required to complete your request:\n",
+                "!!!! One of the following masked packages is required to complete your request:\n",
                 noiselevel=-1,
             )
             have_eapi_mask = show_masked_packages(masked_packages)
@@ -8978,7 +8984,7 @@ class depgraph:
                 )
             except portage.exception.InvalidDependString as e:
                 portage.writemsg(
-                    "!!! Invalid RDEPEND in "
+                    "!!!! Invalid RDEPEND in "
                     + "'%svar/db/pkg/%s/RDEPEND': %s\n"
                     % (running_root, running_portage.cpv, e),
                     noiselevel=-1,
@@ -9385,7 +9391,7 @@ class depgraph:
                             )
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
-                                "!!! Invalid PROVIDE in "
+                                "!!!! Invalid PROVIDE in "
                                 + "'%svar/db/pkg/%s/PROVIDE': %s\n"
                                 % (task.root, task.cpv, e),
                                 noiselevel=-1,
@@ -9423,7 +9429,7 @@ class depgraph:
                                 skip = True
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
-                                "!!! Invalid PROVIDE in "
+                                "!!!! Invalid PROVIDE in "
                                 + "'%svar/db/pkg/%s/PROVIDE': %s\n"
                                 % (task.root, task.cpv, e),
                                 noiselevel=-1,
@@ -9465,7 +9471,7 @@ class depgraph:
                                     break
                         except portage.exception.InvalidDependString as e:
                             portage.writemsg(
-                                "!!! Invalid PROVIDE in "
+                                "!!!! Invalid PROVIDE in "
                                 + "'%svar/db/pkg/%s/PROVIDE': %s\n"
                                 % (task.root, task.cpv, e),
                                 noiselevel=-1,
@@ -10276,7 +10282,7 @@ class depgraph:
             for (abs_user_config, f), path in file_to_write_to.items():
                 if path is None:
                     problems.append(
-                        "!!! No file to write for '%s'\n"
+                        "!!!! No file to write for '%s'\n"
                         % os.path.join(abs_user_config, f)
                     )
 
@@ -10353,7 +10359,7 @@ class depgraph:
                     file_contents = []
                 else:
                     problems.append(
-                        "!!! Failed to read '%s': %s\n" % (file_to_write_to, e)
+                        "!!!! Failed to read '%s': %s\n" % (file_to_write_to, e)
                     )
             if file_contents is not None:
                 file_contents.extend(changes)
@@ -10370,7 +10376,7 @@ class depgraph:
                 try:
                     write_atomic(file_to_write_to, "".join(file_contents))
                 except PortageException:
-                    problems.append("!!! Failed to write '%s'\n" % file_to_write_to)
+                    problems.append("!!!! Failed to write '%s'\n" % file_to_write_to)
 
         if not quiet and (p_mask_change_msg or masked_by_missing_keywords):
             msg = [
@@ -10522,23 +10528,23 @@ class depgraph:
 
             if world_problems:
                 writemsg(
-                    "\n!!! Problems have been " + "detected with your world file\n",
+                    "\n!!!! Problems have been " + "detected with your world file\n",
                     noiselevel=-1,
                 )
                 writemsg(
-                    "!!! Please run " + green("emaint --check world") + "\n\n",
+                    "!!!! Please run " + green("emaint --check world") + "\n\n",
                     noiselevel=-1,
                 )
 
         if self._dynamic_config._missing_args:
             writemsg(
                 "\n"
-                + colorize("BAD", "!!!")
+                + colorize("BAD", "!!!!")
                 + " Ebuilds for the following packages are either all\n",
                 noiselevel=-1,
             )
             writemsg(
-                colorize("BAD", "!!!") + " masked or don't exist:\n", noiselevel=-1
+                colorize("BAD", "!!!!") + " masked or don't exist:\n", noiselevel=-1
             )
             writemsg(
                 " ".join(str(atom) for arg, atom in self._dynamic_config._missing_args)
@@ -10604,7 +10610,7 @@ class depgraph:
         if masked_packages:
             writemsg(
                 "\n"
-                + colorize("BAD", "!!!")
+                + colorize("BAD", "!!!!")
                 + " The following updates are masked by LICENSE changes:\n",
                 noiselevel=-1,
             )
@@ -10625,7 +10631,7 @@ class depgraph:
         if masked_packages:
             writemsg(
                 "\n"
-                + colorize("BAD", "!!!")
+                + colorize("BAD", "!!!!")
                 + " The following installed packages are masked:\n",
                 noiselevel=-1,
             )
@@ -10639,25 +10645,27 @@ class depgraph:
         if self._dynamic_config._buildpkgonly_deps_unsatisfied:
             self._show_merge_list()
             writemsg(
-                "\n!!! --buildpkgonly requires all " "dependencies to be merged.\n",
+                "\n!!!! --buildpkgonly requires all " "dependencies to be merged.\n",
                 noiselevel=-1,
             )
             writemsg(
-                "!!! Cannot merge requested packages. " "Merge deps and try again.\n\n",
+                "!!!! Cannot merge requested packages. "
+                "Merge deps and try again.\n\n",
                 noiselevel=-1,
             )
 
         if self._dynamic_config._quickpkg_direct_deps_unsatisfied:
             self._show_merge_list()
             writemsg(
-                "\n!!! --quickpkg-direct requires all "
+                "\n!!!! --quickpkg-direct requires all "
                 "dependencies to be merged for root '{}'.\n".format(
                     self._frozen_config._running_root.root
                 ),
                 noiselevel=-1,
             )
             writemsg(
-                "!!! Cannot merge requested packages. " "Merge deps and try again.\n\n",
+                "!!!! Cannot merge requested packages. "
+                "Merge deps and try again.\n\n",
                 noiselevel=-1,
             )
 
@@ -10704,10 +10712,11 @@ class depgraph:
                     added_favorites.add(myfavkey)
             except portage.exception.InvalidDependString as e:
                 writemsg(
-                    "\n\n!!! '%s' has invalid PROVIDE: %s\n" % (x.cpv, e), noiselevel=-1
+                    "\n\n!!!! '%s' has invalid PROVIDE: %s\n" % (x.cpv, e),
+                    noiselevel=-1,
                 )
                 writemsg(
-                    "!!! see '%s'\n\n"
+                    "!!!! see '%s'\n\n"
                     % os.path.join(x.root, portage.VDB_PATH, x.cpv, "PROVIDE"),
                     noiselevel=-1,
                 )
@@ -10753,7 +10762,7 @@ class depgraph:
                     else:
                         filename = "world"
                     writemsg_stdout(
-                        '>>> Recording %s in "%s" favorites file...\n'
+                        '>>>> Recording %s in "%s" favorites file...\n'
                         % (colorize("INFORM", str(a)), filename),
                         noiselevel=-1,
                     )
@@ -11386,11 +11395,11 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
     if "--quiet" in myopts:
         writemsg(
-            '!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
+            '!!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
             noiselevel=-1,
         )
         writemsg(
-            "!!! one of the following fully-qualified ebuild names instead:\n\n",
+            "!!!! one of the following fully-qualified ebuild names instead:\n\n",
             noiselevel=-1,
         )
         for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
@@ -11413,11 +11422,11 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
         s.addCP(cp)
     s.output()
     writemsg(
-        '!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
+        '!!!! The short ebuild name "%s" is ambiguous. Please specify\n' % arg,
         noiselevel=-1,
     )
     writemsg(
-        "!!! one of the above fully-qualified ebuild names instead.\n\n", noiselevel=-1
+        "!!!! one of the above fully-qualified ebuild names instead.\n\n", noiselevel=-1
     )
 
 

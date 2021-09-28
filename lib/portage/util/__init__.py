@@ -220,19 +220,19 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
     Returns a single dict. Higher index in lists is preferenced.
 
     Example usage:
-       >>> from portage.util import stack_dictlist
-            >>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
-            >>> {'a':'b','x':'y'}
-            >>> print stack_dictlist( [{'a':'b'},{'a':'c'}], incremental = True )
-            >>> {'a':['b','c'] }
-            >>> a = {'KEYWORDS':['x86','alpha']}
-            >>> b = {'KEYWORDS':['-x86']}
-            >>> print stack_dictlist( [a,b] )
-            >>> { 'KEYWORDS':['x86','alpha','-x86']}
-            >>> print stack_dictlist( [a,b], incremental=True)
-            >>> { 'KEYWORDS':['alpha'] }
-            >>> print stack_dictlist( [a,b], incrementals=['KEYWORDS'])
-            >>> { 'KEYWORDS':['alpha'] }
+       >>>> from portage.util import stack_dictlist
+            >>>> print stack_dictlist( [{'a':'b'},{'x':'y'}])
+            >>>> {'a':'b','x':'y'}
+            >>>> print stack_dictlist( [{'a':'b'},{'a':'c'}], incremental = True )
+            >>>> {'a':['b','c'] }
+            >>>> a = {'KEYWORDS':['x86','alpha']}
+            >>>> b = {'KEYWORDS':['-x86']}
+            >>>> print stack_dictlist( [a,b] )
+            >>>> { 'KEYWORDS':['x86','alpha','-x86']}
+            >>>> print stack_dictlist( [a,b], incremental=True)
+            >>>> { 'KEYWORDS':['alpha'] }
+            >>>> print stack_dictlist( [a,b], incrementals=['KEYWORDS'])
+            >>>> { 'KEYWORDS':['alpha'] }
 
     @param original_dicts a list of (dictionary objects or None)
     @type list
@@ -827,7 +827,7 @@ def getconfig(
     if portage._native_string("\r") in content:
         writemsg(
             (
-                "!!! "
+                "!!!! "
                 + _(
                     "Please use dos2unix to convert line endings "
                     + "in config file: '%s'"
@@ -1071,7 +1071,7 @@ def pickle_read(filename, default=None, debug=0):
     except SystemExit as e:
         raise
     except Exception as e:
-        writemsg(_("!!! Failed to load pickle: ") + str(e) + "\n", 1)
+        writemsg(_("!!!! Failed to load pickle: ") + str(e) + "\n", 1)
         data = default
     return data
 

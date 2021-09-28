@@ -57,7 +57,7 @@ def gpgsign(filename, repoman_settings, options):
             os.rename(filename + ".asc", filename)
         else:
             raise portage.exception.PortageException(
-                "!!! gpg exited with '" + str(rValue) + "' status"
+                "!!!! gpg exited with '" + str(rValue) + "' status"
             )
 
 
