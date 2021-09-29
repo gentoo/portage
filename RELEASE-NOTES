@@ -1,7 +1,7 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
-portage-3.0.25
+portage-3.0.25 (yanked)
 ==================================
     - Bug 703520: output a QA notice when eend is called without
                   an argument

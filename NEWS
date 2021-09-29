@@ -1,7 +1,11 @@
 News (mainly features/major bug fixes)
 
-portage-3.0.25
+portage-3.0.26
 --------------
+* fix broken FILESDIR copying logic.
+
+portage-3.0.25 (yanked)
+-----------------------
 * fix Python < 3.8 compatibility of FILESDIR copying code.
 
 portage-3.0.24
