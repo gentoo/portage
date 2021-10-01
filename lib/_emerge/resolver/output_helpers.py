@@ -163,6 +163,8 @@ class _PackageCounters:
                 myoutput.append(
                     bad(" (%s unsatisfied)") % (self.blocks - self.blocks_satisfied)
                 )
+            else:
+                myoutput.append(" (all satisfied)")
         return "".join(myoutput)
 
 
