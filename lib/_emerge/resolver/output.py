@@ -108,7 +108,7 @@ class Display:
         if blocker.atom.blocker.overlap.forbid:
             blocking_desc = "hard blocking"
         else:
-            blocking_desc = "blocking"
+            blocking_desc = "soft blocking"
         if self.resolved != blocker.atom:
             addl += colorize(
                 self.blocker_style,
