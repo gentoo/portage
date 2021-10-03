@@ -477,13 +477,21 @@ def _ensure_log_subdirs(logdir, subdir):
         ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
 
 
+def _copytree(src, dst, **kwargs):
+    try:
+        shutil.copytree(src, dst, **kwargs)
+    except FileExistsError:
+        shutil.rmtree(dst)
+        shutil.copytree(src, dst, **kwargs)
+
+
 def _prepare_fake_filesdir(settings):
     real_filesdir = settings["O"] + "/files"
     filesdir = settings["FILESDIR"]
 
     # Copy files from real directory to ebuild directory (without metadata).
     if os.path.isdir(real_filesdir):
-        shutil.copytree(real_filesdir, filesdir, copy_function=copyfile)
+        _copytree(real_filesdir, filesdir, copy_function=copyfile)
         apply_recursive_permissions(
             filesdir,
             uid=portage_uid,
