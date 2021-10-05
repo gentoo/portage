@@ -1,6 +1,10 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.28
+==================================
+    - Bug 816291: revert FILESDIR to symlink to fix SELinux regression.
+
 portage-3.0.27
 ==================================
     - Bug 815871: fix creating FILESDIR when FEATURES=keepwork is used
