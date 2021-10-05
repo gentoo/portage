@@ -1,4 +1,4 @@
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 __all__ = ["prepare_build_dirs"]
@@ -27,7 +27,6 @@ from portage.util import (
     normalize_path,
     writemsg,
 )
-from portage.util.file_copy import copyfile
 from portage.util.install_mask import _raise_exc
 
 
@@ -477,30 +476,18 @@ def _ensure_log_subdirs(logdir, subdir):
         ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
 
 
-def _copytree(src, dst, **kwargs):
-    try:
-        shutil.copytree(src, dst, **kwargs)
-    except FileExistsError:
-        shutil.rmtree(dst)
-        shutil.copytree(src, dst, **kwargs)
-
-
 def _prepare_fake_filesdir(settings):
     real_filesdir = settings["O"] + "/files"
-    filesdir = settings["FILESDIR"]
+    symlink_path = settings["FILESDIR"]
 
-    # Copy files from real directory to ebuild directory (without metadata).
-    if os.path.isdir(real_filesdir):
-        _copytree(real_filesdir, filesdir, copy_function=copyfile)
-        apply_recursive_permissions(
-            filesdir,
-            uid=portage_uid,
-            gid=portage_gid,
-            dirmode=0o750,
-            dirmask=0,
-            filemode=0o640,
-            filemask=0,
-        )
+    try:
+        link_target = os.readlink(symlink_path)
+    except OSError:
+        os.symlink(real_filesdir, symlink_path)
+    else:
+        if link_target != real_filesdir:
+            os.unlink(symlink_path)
+            os.symlink(real_filesdir, symlink_path)
 
 
 def _prepare_fake_distdir(settings, alist):
