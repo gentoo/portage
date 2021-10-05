@@ -1,5 +1,11 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.27
+--------------
+* improve blocker output to make it clear which blockers
+  are not satisfied.
+* use distinct colors for einfo/elog and ewarn/eqawarn.
+
 portage-3.0.26
 --------------
 * fix broken FILESDIR copying logic.

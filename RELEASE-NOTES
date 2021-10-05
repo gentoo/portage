@@ -1,6 +1,10 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.27
+==================================
+    - Bug 815871: fix creating FILESDIR when FEATURES=keepwork is used
+
 portage-3.0.25 (yanked)
 ==================================
     - Bug 703520: output a QA notice when eend is called without
