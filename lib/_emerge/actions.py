@@ -2986,17 +2986,26 @@ def validate_ebuild_environment(trees):
     check_locale()
 
 
-def check_procfs():
-    procfs_path = "/proc"
-    if platform.system() not in ("Linux",) or os.path.ismount(procfs_path):
-        return os.EX_OK
-    msg = "It seems that %s is not mounted. You have been warned." % procfs_path
-    writemsg_level(
-        "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
-        level=logging.ERROR,
-        noiselevel=-1,
-    )
-    return 1
+def check_mounted_fs():
+    paths = {"/proc": False, "/run": False}
+
+    for path in paths.keys():
+        if platform.system() not in ("Linux",) or os.path.ismount(path):
+            paths[path] = True
+            continue
+
+        msg = "It seems that %s is not mounted. You have been warned." % path
+        writemsg_level(
+            "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+
+    # Were any of the mounts we were looking for missing?
+    if False in paths.values():
+        return 1
+
+    return os.EX_OK
 
 
 def config_protect_check(trees):
@@ -3474,7 +3483,8 @@ def run_action(emerge_config):
         repo_name_check(emerge_config.trees)
         repo_name_duplicate_check(emerge_config.trees)
         config_protect_check(emerge_config.trees)
-    check_procfs()
+
+    check_mounted_fs()
 
     for mytrees in emerge_config.trees.values():
         mydb = mytrees["porttree"].dbapi
