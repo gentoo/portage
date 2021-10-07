@@ -2986,17 +2986,25 @@ def validate_ebuild_environment(trees):
     check_locale()
 
 
-def check_procfs():
-    procfs_path = "/proc"
-    if platform.system() not in ("Linux",) or os.path.ismount(procfs_path):
-        return os.EX_OK
-    msg = "It seems that %s is not mounted. You have been warned." % procfs_path
-    writemsg_level(
-        "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
-        level=logging.ERROR,
-        noiselevel=-1,
-    )
-    return 1
+def check_mounted_fs():
+    """We need /proc for finding CPU counts and finding other system information.
+    We need /run for e.g. lock files in ebuilds."""
+    paths = {"/proc": False, "/run": False}
+
+    for path in paths.keys():
+        if platform.system() not in ("Linux",) or os.path.ismount(path):
+            paths[path] = True
+            continue
+
+        msg = "It seems %s is not mounted. Process management may malfunction." % path
+        writemsg_level(
+            "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+            level=logging.ERROR,
+            noiselevel=-1,
+        )
+
+    # Were all of the mounts we were looking for available?
+    return all(paths.values())
 
 
 def config_protect_check(trees):
@@ -3474,7 +3482,8 @@ def run_action(emerge_config):
         repo_name_check(emerge_config.trees)
         repo_name_duplicate_check(emerge_config.trees)
         config_protect_check(emerge_config.trees)
-    check_procfs()
+
+    check_mounted_fs()
 
     for mytrees in emerge_config.trees.values():
         mydb = mytrees["porttree"].dbapi
