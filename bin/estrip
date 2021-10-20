@@ -172,7 +172,7 @@ save_elf_sources() {
 		if ! ${debugedit_warned} ; then
 			debugedit_warned=true
 			ewarn "FEATURES=installsources is enabled but the debugedit binary could not be"
-			ewarn "found. This feature will not work unless debugedit or rpm is installed!"
+			ewarn "found. This feature will not work unless debugedit is installed!"
 		fi
 		return 0
 	fi
