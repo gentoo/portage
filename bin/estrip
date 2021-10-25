@@ -189,7 +189,7 @@ save_elf_sources() {
 		"${x}")
 }
 
-# Usage: save_elf_debug <elf> [splitdebug file]
+# Usage: save_elf_debug <src> <inode_debug> [splitdebug]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
 	${PORTAGE_RESTRICT_splitdebug} && return 0
@@ -198,49 +198,67 @@ save_elf_debug() {
 	# ${EPREFIX}/usr/lib/debug/${EPREFIX} (note that ${EPREFIX} occurs
 	# twice in this path) in order for gdb's debug-file-directory
 	# lookup to work correctly.
-	local x=$1
-	local inode_debug=$2
-	local splitdebug=$3
-	local d_noslash=${D%/}
-	local y=${ED%/}/usr/lib/debug/${x:${#d_noslash}}.debug
+	local src=$1         # File from which we extract symbols.
+	local inode_debug=$2 # Temp path for hard link tracking
+	local splitdebug=$3  # Existing debug file optionally created by eu-strip in parent function
+
+	# Source paths
+	local src_basename=${src##*/}
+	local src_dirname=${src%/*}
+
+	# Destination paths
+	local dst_dirname=${ED%/}/usr/lib/debug/${src_dirname#${D%/}/}
+	local dst_basename dst
 
 	# dont save debug info twice
-	[[ ${x} == *".debug" ]] && return 0
+	[[ ${src} == *".debug" ]] && return 0
 
-	mkdir -p "${y%/*}"
+	mkdir -p "${dst_dirname}" || die
 
-	if [ -f "${inode_debug}" ] ; then
-		ln "${inode_debug}" "${y}" || die "ln failed unexpectedly"
+	if [[ -L ${inode_debug} ]] ; then
+		# We already created a debug file for this inode.
+		# Read back the file name, and create another hard link if necessary.
+		dst_basename=$(readlink "${inode_debug}") || die
+		dst_basename=${dst_basename##*/}
+		dst=${dst_dirname}/${dst_basename}
+		if [[ ! -e ${dst} ]]; then
+			ln -L "${inode_debug}" "${dst}" || die
+		fi
 	else
+		dst_basename=${src_basename}.debug
+		dst=${dst_dirname}/${dst_basename}
 		if [[ -n ${splitdebug} ]] ; then
-			mv "${splitdebug}" "${y}"
+			mv "${splitdebug}" "${dst}"
 		else
 			local objcopy_flags="--only-keep-debug"
 			${FEATURES_compressdebug} && objcopy_flags+=" --compress-debug-sections"
-			${OBJCOPY} ${objcopy_flags} "${x}" "${y}"
-			${OBJCOPY} --add-gnu-debuglink="${y}" "${x}"
+			${OBJCOPY} ${objcopy_flags} "${src}" "${dst}" &&
+			${OBJCOPY} --add-gnu-debuglink="${dst}" "${src}"
 		fi
 		# Only do the following if the debug file was
 		# successfully created (see bug #446774).
-		if [ $? -eq 0 ] ; then
+		if [[ $? -eq 0 ]] ; then
 			local args="a-x,o-w"
-			[[ -g ${x} || -u ${x} ]] && args+=",go-r"
-			chmod ${args} "${y}"
-			ln "${y}" "${inode_debug}" || die "ln failed unexpectedly"
+			[[ -g ${src} || -u ${src} ]] && args+=",go-r"
+			chmod ${args} "${dst}"
+			# symlink so we can read the name back.
+			ln -s "${dst}" "${inode_debug}" || die
 		fi
 	fi
 
 	# if we don't already have build-id from debugedit, look it up
 	if [[ -z ${buildid} ]] ; then
 		# convert the readelf output to something useful
-		buildid=$(${READELF} -n "${x}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
+		buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
 	fi
 	if [[ -n ${buildid} ]] ; then
 		local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
 		local buildid_file="${buildid_dir}/${buildid:2}"
+		local src_buildid_rel="../../../../../${src#${ED%/}/}"
+		local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
 		mkdir -p "${buildid_dir}"
-		[ -L "${buildid_file}".debug ] || ln -s "../../${x:$((${#d_noslash} + 1))}.debug" "${buildid_file}.debug"
-		[ -L "${buildid_file}" ] || ln -s "/${x:$((${#d_noslash} + 1))}" "${buildid_file}"
+		[[ -L "${buildid_file}".debug ]] || ln -s "${dst_buildid_rel}" "${buildid_file}.debug"
+		[[ -L "${buildid_file}" ]] || ln -s "${src_buildid_rel}" "${buildid_file}"
 	fi
 }
 
