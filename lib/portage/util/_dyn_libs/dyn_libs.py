@@ -3,8 +3,6 @@
 
 import glob
 
-from portage.output import colorize
-
 
 def check_dyn_libs_inconsistent(directory, provides):
     """Checks directory for whether any dynamic libraries were installed and
