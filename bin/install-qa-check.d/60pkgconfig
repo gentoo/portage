@@ -16,6 +16,16 @@ pkgconfig_check() {
 		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
 		eqawarn "${f//${D}}"
 	fi
+
+	# Validate using pkgconfig
+	# Some less common implementations may not support this?
+	# seems like f.d.o, OpenBSD, and of course pkgconf do though.
+	# Need --maximum-traverse-depth=1 to avoid checking deps and giving
+	# unrelated warnings/errors.
+	if ! pkg-config --maximum-traverse-depth=1 --validate "${files[@]}" ; then
+		eqawarn "QA Notice: pkg-config files which fail validation found!"
+		eqawarn "Run 'pkg-config --validate ...' for more information"
+	fi
 }
 
 pkgconfig_check
