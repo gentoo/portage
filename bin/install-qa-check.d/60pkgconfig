@@ -43,6 +43,34 @@ pkgconfig_check() {
 			done
 		done
 	fi
+
+	# TODO: Generalise for non-lib64 libdir? Not that this is very common now
+	# that riscv chose a more standard layout.
+	#
+	# If we're installing to ${ED}/usr/lib/pkgconfig, let's make sure
+	# we're not referencing lib64.
+	#
+	# e.g. https://bugs.gentoo.org/729642
+	for f in "${files[@]}" ; do
+		# In ${ED}/usr/lib, we shouldn't reference lib64
+		if [[ ${f} == *lib/pkgconfig* ]] ; then
+			if [[ -d "${ED}"/usr/lib && -L "${ED}"/usr/lib ]] ; then
+				# (Don't bother if /usr/lib is a symlink to /usr/lib64)
+				continue
+			fi
+
+			if egrep -q "/lib64" ${f} ; then
+				eqawarn "QA Notice: pkg-config files not respecting libdir found"
+				eqawarn "${f} contains reference to 'lib64'"
+			fi
+		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
+			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/
+			if grep -qP '/lib(?![[:digit:]])' ${f} ; then
+				eqawarn "QA Notice: pkg-config files not respecting libdir found"
+				eqawarn "${f} contains reference to 'lib' in lib64"
+			fi
+		fi
+	done
 }
 
 pkgconfig_check
