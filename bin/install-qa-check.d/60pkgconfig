@@ -26,6 +26,23 @@ pkgconfig_check() {
 		eqawarn "QA Notice: pkg-config files which fail validation found!"
 		eqawarn "Run 'pkg-config --validate ...' for more information"
 	fi
+
+	# Check for unexpected paths
+	# e.g. https://gitweb.gentoo.org/repo/gentoo.git/commit/?id=c90ab38e3577aae61fac2341b34ad593948de1cd
+	if [[ -n ${EPREFIX} ]] ; then
+		for f in "${files[@]}" ; do
+			local key
+			for key in prefix exec_prefix libdir includedir ; do
+				local value=$(pkg-config --variable="${key}" "${f}")
+
+				if [[ ${value} != "${EPREFIX}"* ]] ; then
+					eqawarn "QA Notice: pkg-config files not respecting EPREFIX found"
+					eqawarn "${f}'s key=${key} does not respect EPREFIX:"
+					eqawarn "${key}=${value}"
+				fi
+			done
+		done
+	fi
 }
 
 pkgconfig_check
