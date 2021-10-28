@@ -1,8 +1,17 @@
 # Check for pkg-config file issues
 
 pkgconfig_check() {
+	local files=()
+	# Make a list of .pc files and bail out if there aren't any
+	mapfile -d '' files < <(
+		find "${ED}"/usr/{lib*,share}/pkgconfig -maxdepth 1 -type f -name '*.pc' -print0 2>/dev/null
+	)
+	[[ -z "${files[@]}" ]] && return
+
+	local f
+
 	# Look for leaking LDFLAGS into pkg-config files
-	local f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
+	f=$(egrep -zsH '^Libs.*-Wl,(-O[012]|--hash-style)' "${files[@]}")
 	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
 		eqawarn "${f//${D}}"
