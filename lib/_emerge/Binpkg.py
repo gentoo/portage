@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import functools
-
 import _emerge.emergelog
 from _emerge.EbuildPhase import EbuildPhase
 from _emerge.BinpkgFetcher import BinpkgFetcher
@@ -13,8 +12,10 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
+from portage.output import colorize
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
+from portage.util._dyn_libs.dyn_libs import check_dyn_libs_inconsistent
 import portage
 from portage import os
 from portage import shutil
@@ -424,6 +425,18 @@ class Binpkg(CompositeTask):
             )
             self._async_unlock_builddir(returncode=self.returncode)
             return
+
+        # Before anything else, let's do an integrity check.
+        (provides,) = self._bintree.dbapi.aux_get(self.pkg.cpv, ["PROVIDES"])
+        if check_dyn_libs_inconsistent(self.settings["D"], provides):
+            self._writemsg_level(
+                colorize(
+                    "BAD",
+                    "!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
+                ),
+                noiselevel=-1,
+                level=logging.ERROR,
+            )
 
         try:
             with io.open(
