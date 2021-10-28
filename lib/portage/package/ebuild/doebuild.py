@@ -3,7 +3,6 @@
 
 __all__ = ["doebuild", "doebuild_environment", "spawn", "spawnebuild"]
 
-import glob
 import grp
 import gzip
 import errno
