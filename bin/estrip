@@ -243,23 +243,24 @@ save_elf_debug() {
 			chmod ${args} "${dst}"
 			# symlink so we can read the name back.
 			ln -s "${dst}" "${inode_debug}" || die
+
+			# if we don't already have build-id from debugedit, look it up
+			if [[ -z ${buildid} ]] ; then
+				# convert the readelf output to something useful
+				buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
+			fi
+			if [[ -n ${buildid} ]] ; then
+				local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
+				local buildid_file="${buildid_dir}/${buildid:2}"
+				local src_buildid_rel="../../../../../${src#${ED%/}/}"
+				local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
+				mkdir -p "${buildid_dir}" || die
+				[[ -L "${buildid_file}".debug ]] || ln -s "${dst_buildid_rel}" "${buildid_file}.debug" || die
+				[[ -L "${buildid_file}" ]] || ln -s "${src_buildid_rel}" "${buildid_file}" || die
+			fi
 		fi
 	fi
 
-	# if we don't already have build-id from debugedit, look it up
-	if [[ -z ${buildid} ]] ; then
-		# convert the readelf output to something useful
-		buildid=$(${READELF} -n "${src}" 2>/dev/null | awk '/Build ID:/{ print $NF; exit }')
-	fi
-	if [[ -n ${buildid} ]] ; then
-		local buildid_dir="${ED%/}/usr/lib/debug/.build-id/${buildid:0:2}"
-		local buildid_file="${buildid_dir}/${buildid:2}"
-		local src_buildid_rel="../../../../../${src#${ED%/}/}"
-		local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
-		mkdir -p "${buildid_dir}"
-		[[ -L "${buildid_file}".debug ]] || ln -s "${dst_buildid_rel}" "${buildid_file}.debug"
-		[[ -L "${buildid_file}" ]] || ln -s "${src_buildid_rel}" "${buildid_file}"
-	fi
 }
 
 # Usage: process_elf <elf>
