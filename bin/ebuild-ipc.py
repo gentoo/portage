@@ -158,7 +158,16 @@ class EbuildIpc:
         # Make locks quiet since unintended locking messages displayed on
         # stdout could corrupt the intended output of this program.
         portage.locks._quiet = True
-        lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
+        # Acquire lock with PermissionDenied retry for bug #468990.
+        for _ in range(1000):
+            try:
+                lock_obj = portage.locks.lockfile(self.ipc_lock_file, unlinkfile=True)
+            except portage.exception.PermissionDenied:
+                time.sleep(0.1)
+            else:
+                break
+        else:
+            raise portage.exception.PermissionDenied(self.ipc_lock_file)
 
         try:
             return self._communicate(args)
