@@ -833,12 +833,12 @@ setup(
             ["$portage_setsdir", ["cnf/sets/portage.conf"]],
             ["$docdir", ["NEWS", "RELEASE-NOTES"]],
             ["$portage_base/bin", ["bin/deprecated-path"]],
-            ["$sysconfdir/portage/repo.postsync.d", ["cnf/repo.postsync.d/example"]],
+            ["$portage_confdir/repo.postsync.d", ["cnf/repo.postsync.d/example"]],
         ],
         [
             ("etc", "cnf", ("etc-update.conf", "dispatch-conf.conf")),
             ("etc/logrotate.d", "cnf/logrotate.d", ("elog-save-summary",)),
-            ("etc/portage/repo.postsync.d", "cnf/repo.postsync.d", ("example",)),
+            ("share/portage/config/repo.postsync.d", "cnf/repo.postsync.d", ("example",)),
             (
                 "share/portage/config",
                 "cnf",
