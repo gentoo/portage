@@ -1485,10 +1485,11 @@ def fetch(
                             except EnvironmentError:
                                 pass
                     elif not orig_digests:
-                        # We don't have a digest, but the file exists.  We must
-                        # assume that it is fully downloaded.
+                        # We don't have a digest, and the temporary file exists.
                         if not force:
-                            continue
+                            # Try to resume this download when full
+                            # download has not been explicitly forced.
+                            fetched = 1
                     else:
                         if (
                             mydigests[myfile].get("size") is not None
