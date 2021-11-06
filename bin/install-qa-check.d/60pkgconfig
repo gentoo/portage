@@ -14,7 +14,7 @@ pkgconfig_check() {
 	f=$(egrep -zsH '^Libs.*-Wl,(-O[012]|--hash-style)' "${files[@]}")
 	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
-		eqawarn "${f//${D}}"
+		eqatag -v pkgconfig.bad-ldlags "${f//${D}}"
 	fi
 
 	# Validate using pkgconfig
@@ -39,6 +39,7 @@ pkgconfig_check() {
 					eqawarn "QA Notice: pkg-config files not respecting EPREFIX found"
 					eqawarn "${f}'s key=${key} does not respect EPREFIX:"
 					eqawarn "${key}=${value}"
+					eqatag -v pkgconfig.bad-paths "${f}"
 				fi
 			done
 		done
@@ -51,6 +52,7 @@ pkgconfig_check() {
 	# we're not referencing lib64.
 	#
 	# e.g. https://bugs.gentoo.org/729642
+	local bad_libdir=()
 	for f in "${files[@]}" ; do
 		# In ${ED}/usr/lib, we shouldn't reference lib64
 		if [[ ${f} == *lib/pkgconfig* ]] ; then
@@ -60,17 +62,22 @@ pkgconfig_check() {
 			fi
 
 			if egrep -q "/lib64" ${f} ; then
-				eqawarn "QA Notice: pkg-config files not respecting libdir found"
-				eqawarn "${f} contains reference to 'lib64'"
+				bad_libdir+=( ${f} )
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/
 			if grep -qP '/lib(?![[:digit:]])' ${f} ; then
-				eqawarn "QA Notice: pkg-config files not respecting libdir found"
-				eqawarn "${f} contains reference to 'lib' in lib64"
+				bad_libdir+=( ${f} )
 			fi
 		fi
 	done
+
+	if [[ -n "${bad_libdir[@]}" ]] ; then
+		eqawarn "QA Notice: pkg-config files not respecting libdir found"
+		eqawarn "(contains reference to either lib or lib64 in wrong directory)"
+		eqatag -v pkgconfig.bad-libdir "${bad_libdir[@]}"
+	fi
+
 }
 
 pkgconfig_check
