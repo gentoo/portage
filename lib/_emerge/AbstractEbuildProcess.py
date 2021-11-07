@@ -249,8 +249,8 @@ class AbstractEbuildProcess(SpawnProcess):
 
     def _init_ipc_fifos(self):
 
-        input_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc_in")
-        output_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc_out")
+        input_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc", "in")
+        output_fifo = os.path.join(self.settings["PORTAGE_BUILDDIR"], ".ipc", "out")
 
         for p in (input_fifo, output_fifo):
 

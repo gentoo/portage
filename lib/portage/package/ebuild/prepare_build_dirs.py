@@ -102,6 +102,15 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
             apply_secpass_permissions(
                 mysettings[dir_key], uid=portage_uid, gid=portage_gid
             )
+        # The setgid bit prevents a lockfile group permission race for bug #468990.
+        ipc_kwargs = {}
+        if portage.data.secpass >= 1:
+            ipc_kwargs["gid"] = portage_gid
+            ipc_kwargs["mode"] = 0o2770
+        ensure_dirs(
+            os.path.join(mysettings["PORTAGE_BUILDDIR"], ".ipc"),
+            **ipc_kwargs,
+        )
     except PermissionDenied as e:
         writemsg(_("Permission Denied: %s\n") % str(e), noiselevel=-1)
         return 1

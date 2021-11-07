@@ -138,9 +138,9 @@ class EbuildIpc:
 
     def __init__(self):
         self.fifo_dir = os.environ["PORTAGE_BUILDDIR"]
-        self.ipc_in_fifo = os.path.join(self.fifo_dir, ".ipc_in")
-        self.ipc_out_fifo = os.path.join(self.fifo_dir, ".ipc_out")
-        self.ipc_lock_file = os.path.join(self.fifo_dir, ".ipc_lock")
+        self.ipc_in_fifo = os.path.join(self.fifo_dir, ".ipc", "in")
+        self.ipc_out_fifo = os.path.join(self.fifo_dir, ".ipc", "out")
+        self.ipc_lock_file = os.path.join(self.fifo_dir, ".ipc", "lock")
 
     def _daemon_is_alive(self):
         try:
