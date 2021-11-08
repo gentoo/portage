@@ -838,7 +838,11 @@ setup(
         [
             ("etc", "cnf", ("etc-update.conf", "dispatch-conf.conf")),
             ("etc/logrotate.d", "cnf/logrotate.d", ("elog-save-summary",)),
-            ("share/portage/config/repo.postsync.d", "cnf/repo.postsync.d", ("example",)),
+            (
+                "share/portage/config/repo.postsync.d",
+                "cnf/repo.postsync.d",
+                ("example",),
+            ),
             (
                 "share/portage/config",
                 "cnf",
