@@ -65,8 +65,8 @@ pkgconfig_check() {
 				bad_libdir+=( ${f} )
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
-			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/
-			if grep -qP '/lib(?![[:digit:]])' ${f} ; then
+			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
+			if grep -qP '/lib\b' ${f} ; then
 				bad_libdir+=( ${f} )
 			fi
 		fi
