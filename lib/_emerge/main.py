@@ -179,6 +179,7 @@ def insert_optional_args(args):
         "--use-ebuild-visibility": y_or_n,
         "--usepkg": y_or_n,
         "--usepkgonly": y_or_n,
+        "--usepkg-exclude-live": y_or_n,
         "--verbose": y_or_n,
         "--verbose-slot-rebuilds": y_or_n,
         "--with-test-deps": y_or_n,
@@ -720,6 +721,10 @@ def parse_opts(tmpcmdline, silent=False):
             "help": "use only binary packages",
             "choices": true_y_or_n,
         },
+        "--usepkg-exclude-live": {
+            "help": "do not install from binary packages for live ebuilds",
+            "choices": true_y_or_n,
+        },
         "--verbose": {
             "shortopt": "-v",
             "help": "verbose output",
@@ -1114,6 +1119,11 @@ def parse_opts(tmpcmdline, silent=False):
         myoptions.usepkgonly = True
     else:
         myoptions.usepkgonly = None
+
+    if myoptions.usepkg_exclude_live in true_y:
+        myoptions.usepkg_exclude_live = True
+    else:
+        myoptions.usepkg_exclude_live = None
 
     if myoptions.verbose in true_y:
         myoptions.verbose = True

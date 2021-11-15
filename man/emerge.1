@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2021" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Nov 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -1063,6 +1063,9 @@ Tells emerge to only use binary packages (from $PKGDIR).  All the binary
 packages must be available at the time of dependency calculation or emerge
 will simply abort.  Portage does not use ebuild repositories when calculating
 dependency information so all masking information is ignored.
+.TP
+.BR "\-\-usepkg\-exclude\-live [ y | n ]"
+Tells emerge to not install from binary packages for live ebuilds.
 .TP
 .BR "\-\-verbose [ y | n ]" ", " \-v
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print
