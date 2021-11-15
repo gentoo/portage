@@ -7303,6 +7303,7 @@ class depgraph:
         rebuilt_binaries = "rebuilt_binaries" in self._dynamic_config.myparams
         usepkg = "--usepkg" in self._frozen_config.myopts
         usepkgonly = "--usepkgonly" in self._frozen_config.myopts
+        usepkg_exclude_live = "--usepkg-exclude-live" in self._frozen_config.myopts
         empty = "empty" in self._dynamic_config.myparams
         selective = "selective" in self._dynamic_config.myparams
         reinstall = False
@@ -7370,11 +7371,23 @@ class depgraph:
                     ):
                         continue
 
+                    # We can choose not to install a live package from using binary
+                    # cache by disabling it with option --usepkg-exclude-live in the
+                    # emerge call.
+
+                    live_ebuild = False
+
+                    if "live" in pkg._metadata.get("PROPERTIES", "").split():
+                        live_ebuild = True
+
                     if (
                         built
                         and not installed
-                        and usepkg_exclude.findAtomForPackage(
-                            pkg, modified_use=self._pkg_use_enabled(pkg)
+                        and (
+                            usepkg_exclude.findAtomForPackage(
+                                pkg, modified_use=self._pkg_use_enabled(pkg)
+                            )
+                            or (usepkg_exclude_live and live_ebuild)
                         )
                     ):
                         break
