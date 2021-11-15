@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "Jun 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -322,6 +322,11 @@ This feature is enabled by default.
 Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and
 \fB\-\-buildpkgonly\fR options.
+.TP
+.B buildpkg\-live
+When this option is enabled (the default), \fBbuildpkg\fR will exhibit
+the default behavior of building binary cache for all packages. When
+it is disabled, binary packages will not be created for live ebuilds.
 .TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
