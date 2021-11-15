@@ -2359,7 +2359,10 @@ def _check_build_log(mysettings, out=None):
     setuptools_warn = set()
     setuptools_warn_re = re.compile(r".*\/setuptools\/.*: .*Warning: (.*)")
     # skip useless version normalization warnings
-    setuptools_warn_ignore_re = [re.compile(r"Normalizing .*")]
+    setuptools_warn_ignore_re = [
+        re.compile(r"Normalizing .*"),
+        re.compile(r"setup.py install is deprecated"),
+    ]
 
     def _eerror(lines):
         for line in lines:
