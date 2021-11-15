@@ -343,9 +343,32 @@ class EbuildBuild(CompositeTask):
             and opts.buildpkg != "n"
         )
 
+        # Do not build binary cache for packages from volatile sources.
+        # For volatile sources (eg., git), the PROPERTIES parameter in
+        # the ebuild is set to 'live'.
+
+        # The default behavior is to build binary cache for all pkgs.
+        # "buildpkg-live" is a FEATURE that is enabled by default.
+        # To not build binary cache for live pkgs, we disable it by
+        # specifying FEATURES="-buildpkg-live"
+
+        buildpkg_live = True
+
+        if not "buildpkg-live" in features:
+            buildpkg_live = False
+
+        live_ebuild = False
+
+        if "live" in self.settings.get("PROPERTIES", "").split():
+            live_ebuild = True
+
+        binpkg_live_disabled = live_ebuild and not buildpkg_live
+
         if (
-            "buildpkg" in features or self._issyspkg
-        ) and not self.opts.buildpkg_exclude.findAtomForPackage(pkg):
+            ("buildpkg" in features or self._issyspkg)
+            and not binpkg_live_disabled
+            and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
+        ):
 
             self._buildpkg = True
 

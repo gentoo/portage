@@ -323,6 +323,11 @@ Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and
 \fB\-\-buildpkgonly\fR options.
 .TP
+.B buildpkg\-live
+This option is enabled (the default), to exhibit the default behavior of 
+building binary cache for all packages. When it is disabled, binary packages
+will not be created for live ebuilds. 
+.TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
 .TP

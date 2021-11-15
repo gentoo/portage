@@ -131,6 +131,7 @@ SUPPORTED_FEATURES = frozenset(
         "binpkg-logs",
         "binpkg-multi-instance",
         "buildpkg",
+        "buildpkg-live",
         "buildsyspkg",
         "candy",
         "case-insensitive-fs",
