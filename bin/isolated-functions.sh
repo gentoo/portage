@@ -609,4 +609,43 @@ else
 	}
 fi
 
+# debug-print() gets called from many places with verbose status information useful
+# for tracking down problems. The output is in $T/eclass-debug.log.
+# You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
+# The special "on" setting echoes the information, mixing it with the rest of the
+# emerge output.
+# You can override the setting by exporting a new one from the console, or you can
+# set a new default in make.*. Here the default is "" or unset.
+
+# in the future might use e* from /etc/init.d/functions.sh if i feel like it
+debug-print() {
+	# if $T isn't defined, we're in dep calculation mode and
+	# shouldn't do anything
+	[[ $EBUILD_PHASE = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
+
+	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
+		printf 'debug: %s\n' "${@}" >&2
+	elif [[ -n ${ECLASS_DEBUG_OUTPUT} ]]; then
+		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
+	fi
+
+	if [[ -w $T ]] ; then
+		# default target
+		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
+		# let the portage user own/write to this file
+		chgrp "${PORTAGE_GRPNAME:-portage}" "${T}/eclass-debug.log"
+		chmod g+w "${T}/eclass-debug.log"
+	fi
+}
+
+# The following 2 functions are debug-print() wrappers
+
+debug-print-function() {
+	debug-print "${1}: entering function, parameters: ${*:2}"
+}
+
+debug-print-section() {
+	debug-print "now in section ${*}"
+}
+
 true
