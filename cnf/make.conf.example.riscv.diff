@@ -1,0 +1,61 @@
+--- make.conf.example
++++ make.conf.example
+@@ -22,6 +22,15 @@
+ # Example:
+ #USE="X gtk gnome -alsa"
+ 
++# Host Setting
++# ===========
++#
++# All RV64 systems should use this host setting:
++CHOST="riscv64-unknown-linux-gnu"
++
++# whereas all RV32 ones should use:
++#CHOST="riscv32-unknown-linux-gnu"
++
+ # Host and optimization settings
+ # ==============================
+ #
+@@ -39,9 +48,31 @@
+ # -frecord-gcc-switches, since otherwise the check could result in false
+ # positive results.
+ #
+-# Please refer to the GCC manual for a list of possible values.
++# -mcpu=<cpu-type> tells the compiler to take full advantage of the ABI and
++# instructions available on a certain CPU. This will produce code which may
++# not run on other RISC-V CPUs, even if they support the same ISA.
++#
++# -mtune=<cpu-type-or-series> results in code optimised for a specific CPU
++# (e.g. SiFive U74) or family (e.g. the SiFive 7 series) without breaking
++# compatibility with other RISC-V CPUs supporting the same ISA.
++#
++# -march=<isa-string> specifies the exact ISA for which to generate code.
++# This is normally not needed if you set -mcpu but might be useful for CPUs
++# not explicitly supported by gcc yet. Should that be the case and you aren't
++# sure what ISA string to use, the output of /proc/cpuinfo might give you a hint.
++#
++# -mabi=<abi-string> specifies the integer and floating-point calling convention
++# to use. Again, this is normally not needed if you set -mcpu. Care should be
++# taken while setting both -march and -mabi, as some calling conventions are
++# impossible to implement on some ISAs.
++#
++# Please refer to the section "RISC-V Options" of the GCC manual for a list
++# of possible ABI, architecture, CPU and feature values.
++#
++# Decent examples:
+ #
+-#CFLAGS="-O2 -pipe"
++#CFLAGS="-mcpu=sifive-u74 -O2 -pipe"
++#CFLAGS="-mtune=sifive-7-series -O2 -pipe"
+ #
+ # If you set a CFLAGS above, then this line will set your default C++ flags to
+ # the same settings.
+@@ -76,7 +107,7 @@
+ # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+ # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+ #
+-#ACCEPT_KEYWORDS="~arch"
++#ACCEPT_KEYWORDS="~riscv"
+ 
+ # ACCEPT_LICENSE is used to mask packages based on licensing restrictions.
+ # It may contain both license and group names, where group names are
