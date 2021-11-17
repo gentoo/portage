@@ -2,7 +2,7 @@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-source "${PORTAGE_BIN_PATH}"/helper-functions.sh || exit 1
+source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 # avoid multiple calls to `has`.  this creates things like:
 #   FEATURES_foo=false
@@ -157,8 +157,6 @@ fi
 [[ ${debugedit} ]] && debugedit_found=true || debugedit_found=false
 debugedit_warned=false
 
-__multijob_init
-
 # Setup $T filesystem layout that we care about.
 tmpdir="${T}/prepstrip"
 rm -rf "${tmpdir}"
@@ -271,20 +269,8 @@ process_elf() {
 	local x=$1 inode_link=$2 strip_flags=${*:3}
 	local ed_noslash=${ED%/}
 	local already_stripped xt_data
-	local lockfile=${inode_link}_lockfile
-	local locktries=100
 
 	__vecho "   ${x:${#ed_noslash}}"
-
-	# If two processes try to debugedit or strip the same hardlink at the
-	# same time, it may corrupt files or cause loss of splitdebug info.
-	# So, use a lockfile to prevent interference (easily observed with
-	# dev-vcs/git which creates ~111 hardlinks to one file in
-	# /usr/libexec/git-core).
-	while ! ln "${inode_link}" "${lockfile}" 2>/dev/null; do
-		(( --locktries > 0 )) || die "failed to acquire lock '${lockfile}'"
-		sleep 1
-	done
 
 	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
 
@@ -323,8 +309,6 @@ process_elf() {
 			restore_xattrs <<< "${xt_data}"
 		fi
 	fi
-
-	[[ -n ${lockfile} ]] && rm -f "${lockfile}"
 }
 
 # Usage: process_ar <ar archive>
@@ -354,8 +338,6 @@ if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	# parallel though.
 	log=${tmpdir}/scanelf-already-stripped.log
 	scanelf -yqRBF '#k%F' -k '!.symtab' "$@" | sed -e "s#^${ED%/}/##" > "${log}"
-	(
-	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
 	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
@@ -376,8 +358,6 @@ if ! ${PORTAGE_RESTRICT_binchecks} ; then
 	else
 		rm -f "${log}"
 	fi
-	) &
-	__multijob_post_fork
 fi
 
 # Since strip creates a new inode, we need to know the initial set of
@@ -418,10 +398,8 @@ do
 		banner=true
 	fi
 
-	(
-	__multijob_child_init
-	f=$(file "${x}") || exit 0
-	[[ -z ${f} ]] && exit 0
+	f=$(file "${x}") || continue
+	[[ -z ${f} ]] && continue
 
 	if ${SKIP_STRIP} ; then
 		strip_this=false
@@ -467,15 +445,9 @@ do
 	if ${was_not_writable} ; then
 		chmod u-w "${x}"
 	fi
-	) &
-	__multijob_post_fork
 
 done < "${inode_link}"
 done
-
-# With a bit more work, we could run the rsync processes below in
-# parallel, but not sure that'd be an overall improvement.
-__multijob_finish
 
 cd "${tmpdir}"/sources/ && cat * > "${tmpdir}/debug.sources" 2>/dev/null
 if [[ -s ${tmpdir}/debug.sources ]] && \
