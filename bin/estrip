@@ -270,7 +270,9 @@ save_elf_debug() {
 process_elf() {
 	local x=$1 inode_link=$2 strip_flags=${*:3}
 	local ed_noslash=${ED%/}
-	local already_stripped lockfile xt_data
+	local already_stripped xt_data
+	local lockfile=${inode_link}_lockfile
+	local locktries=100
 
 	__vecho "   ${x:${#ed_noslash}}"
 
@@ -279,13 +281,10 @@ process_elf() {
 	# So, use a lockfile to prevent interference (easily observed with
 	# dev-vcs/git which creates ~111 hardlinks to one file in
 	# /usr/libexec/git-core).
-	lockfile=${inode_link}_lockfile
-	if ! ln "${inode_link}" "${lockfile}" 2>/dev/null ; then
-		while [[ -f ${lockfile} ]] ; do
-			sleep 1
-		done
-		unset lockfile
-	fi
+	while ! ln "${inode_link}" "${lockfile}" 2>/dev/null; do
+		(( --locktries > 0 )) || die "failed to acquire lock '${lockfile}'"
+		sleep 1
+	done
 
 	[ -f "${inode_link}_stripped" ] && already_stripped=true || already_stripped=false
 
