@@ -1139,6 +1139,10 @@ if ___eapi_has_eapply_user; then
 
 		local basedir=${PORTAGE_CONFIGROOT%/}/etc/portage/patches
 
+		local columns=${COLUMNS:-0}
+		[[ ${columns} == 0 ]] && columns=$(set -- $( ( stty size </dev/tty ) 2>/dev/null || echo 24 80 ) ; echo $2)
+		(( columns > 0 )) || (( columns = 80 ))
+
 		local applied d f
 		local -A _eapply_user_patches
 		local prev_shopt=$(shopt -p nullglob)
@@ -1170,6 +1174,11 @@ if ___eapi_has_eapply_user; then
 			while read -r -d '' f; do
 				f=${_eapply_user_patches[${f}]}
 				if [[ -s ${f} ]]; then
+					if [[ -z ${applied} ]]; then
+						einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+						einfo "Applying user patches from ${basedir} ..."
+					fi
+
 					eapply "${f}"
 					applied=1
 				fi
@@ -1179,7 +1188,10 @@ if ___eapi_has_eapply_user; then
 
 		${prev_shopt}
 
-		[[ -n ${applied} ]] && ewarn "User patches applied."
+		if [[ -n ${applied} ]]; then
+			einfo "User patches applied."
+			einfo "${PORTAGE_COLOR_INFO}$(for ((column = 0; column < ${columns} - 3; column++)); do echo -n =; done)${PORTAGE_COLOR_NORMAL}"
+		fi
 	}
 fi
 
