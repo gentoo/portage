@@ -1,7 +1,15 @@
 # Copyright 2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-import glob
+import os
+
+
+def installed_dynlibs(directory):
+    for _dirpath, _dirnames, filenames in os.walk(directory):
+        for filename in filenames:
+            if filename.endswith(".so"):
+                return True
+    return False
 
 
 def check_dyn_libs_inconsistent(directory, provides):
@@ -17,5 +25,4 @@ def check_dyn_libs_inconsistent(directory, provides):
     # but this doesn't gain us anything. We're interested in failure
     # to properly parse the installed files at all, which should really
     # be a global problem (e.g. bug #811462)
-    installed_dynlibs = glob.glob(directory + "/**/*.so", recursive=True)
-    return installed_dynlibs and not provides
+    return not provides and installed_dynlibs(directory)
