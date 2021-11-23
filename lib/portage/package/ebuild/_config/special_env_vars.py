@@ -191,7 +191,7 @@ environ_whitelist += [
 # user config variables
 environ_whitelist += ["DOC_SYMLINKS_DIR", "INSTALL_MASK", "PKG_INSTALL_MASK"]
 
-environ_whitelist += ["A", "AA", "CATEGORY", "P", "PF", "PN", "PR", "PV", "PVR"]
+environ_whitelist += ["CATEGORY", "P", "PF", "PN", "PR", "PV", "PVR"]
 
 # misc variables inherited from the calling environment
 environ_whitelist += [
@@ -247,6 +247,13 @@ environ_whitelist = frozenset(environ_whitelist)
 
 environ_whitelist_re = re.compile(r"^(CCACHE_|DISTCC_).*")
 
+environ_unexported = frozenset(
+    [
+        "A",
+        "AA",
+    ]
+)
+
 # Filter selected variables in the config.environ() method so that
 # they don't needlessly propagate down into the ebuild environment.
 environ_filter = []
@@ -254,6 +261,7 @@ environ_filter = []
 # Exclude anything that could be extremely long here (like SRC_URI)
 # since that could cause execve() calls to fail with E2BIG errors. For
 # example, see bug #262647.
+environ_filter.extend(environ_unexported)
 environ_filter += [
     "DEPEND",
     "RDEPEND",

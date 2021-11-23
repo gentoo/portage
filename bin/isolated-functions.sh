@@ -107,6 +107,39 @@ __bashpid() {
 	sh -c 'echo ${PPID}'
 }
 
+# @FUNCTION: ___eapi_vars_export
+# @DESCRIPTION:
+# Export variables for the current EAPI. Calls to this function should
+# be delayed until the last moment, since exporting these variables
+# may trigger E2BIG errors suring attempts to execute subprocesses.
+___eapi_vars_export() {
+	source "${T}/environment.unexported" || die
+
+	if ___eapi_exports_A; then
+		export A
+	fi
+
+	if ___eapi_exports_AA; then
+		export AA
+	fi
+}
+
+# @FUNCTION: ___eapi_vars_unexport
+# @DESCRIPTION:
+# Unexport variables that were exported for the current EAPI. This
+# function should be called after an ebuild phase, in order to unexport
+# variables that may trigger E2BIG errors during attempts to execute
+# subprocesses.
+___eapi_vars_unexport() {
+	if ___eapi_exports_A; then
+		export -n A
+	fi
+
+	if ___eapi_exports_AA; then
+		export -n AA
+	fi
+}
+
 __helpers_die() {
 	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
@@ -122,6 +155,7 @@ die() {
 
 	set +x # tracing only produces useless noise here
 	local IFS=$' \t\n'
+	___eapi_vars_unexport
 
 	if ___eapi_die_can_respect_nonfatal && [[ $1 == -n ]]; then
 		shift

@@ -26,6 +26,15 @@ ___eapi_has_S_WORKDIR_fallback() {
 
 # VARIABLES
 
+___eapi_exports_A() {
+	# https://bugs.gentoo.org/721088
+	true
+}
+
+___eapi_exports_AA() {
+	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3)$ ]]
+}
+
 ___eapi_has_prefix_variables() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2)$ || " ${FEATURES} " == *" force-prefix "* ]]
 }
