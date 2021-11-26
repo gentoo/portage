@@ -1877,11 +1877,10 @@ class binarytree:
         suffixlen = len(".xpak")
         hyphen = filename.rfind("-", 0, -(suffixlen + 1))
         if hyphen != -1:
-            build_id = filename[hyphen + 1 : -suffixlen]
-        try:
-            build_id = int(build_id)
-        except ValueError:
-            pass
+            try:
+                build_id = int(filename[hyphen + 1 : -suffixlen])
+            except ValueError:
+                pass
         return build_id
 
     def isremote(self, pkgname):
