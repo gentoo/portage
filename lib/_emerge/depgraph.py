@@ -4806,21 +4806,6 @@ class depgraph:
                     if len(non_virtual_cps) == 1:
                         installed_cp_set = non_virtual_cps
 
-                if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
-                    installed_cp = next(iter(installed_cp_set))
-                    for atom in expanded_atoms:
-                        if atom.cp == installed_cp:
-                            available = False
-                            for pkg in self._iter_match_pkgs_any(
-                                root_config, atom.without_use, onlydeps=onlydeps
-                            ):
-                                if not pkg.installed:
-                                    available = True
-                                    break
-                            if available:
-                                expanded_atoms = [atom]
-                                break
-
                 # If a non-virtual package and one or more virtual packages
                 # are in expanded_atoms, use the non-virtual package.
                 if len(expanded_atoms) > 1:
