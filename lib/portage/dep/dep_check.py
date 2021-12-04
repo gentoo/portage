@@ -376,6 +376,7 @@ def dep_zapdeps(
     # c) contains masked installed packages
     # d) is the first item
 
+    no_new_slots = []
     preferred_in_graph = []
     preferred_installed = preferred_in_graph
     preferred_any_slot = preferred_in_graph
@@ -391,6 +392,7 @@ def dep_zapdeps(
     # unsat_use_* must come after preferred_non_installed
     # for correct ordering in cases like || ( foo[a] foo[b] ).
     choice_bins = (
+        no_new_slots,
         preferred_in_graph,
         preferred_non_installed,
         unsat_use_in_graph,
@@ -689,7 +691,9 @@ def dep_zapdeps(
                     other.append(this_choice)
                 else:
                     if all_use_satisfied:
-                        if all_in_graph:
+                        if new_slot_count == 0 and not want_update:
+                            no_new_slots.append(this_choice)
+                        elif all_in_graph:
                             preferred_in_graph.append(this_choice)
                         elif all_installed:
                             if all_installed_slots:
