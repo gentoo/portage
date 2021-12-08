@@ -23,7 +23,6 @@ if hasattr(os, "set_blocking"):
     def _set_nonblocking(fd):
         os.set_blocking(fd, False)
 
-
 else:
 
     def _set_nonblocking(fd):

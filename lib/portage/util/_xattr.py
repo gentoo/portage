@@ -169,7 +169,6 @@ if hasattr(os, "getxattr"):
         def list(item, nofollow=False, namespace=None):
             return os.listxattr(item, follow_symlinks=not nofollow)
 
-
 else:
     try:
         # Maybe we have the xattr module.

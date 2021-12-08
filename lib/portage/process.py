@@ -84,7 +84,6 @@ if _fd_dir is not None:
                     raise
                 return range(max_fd_limit)
 
-
 elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
     # In order for this function to work in forked subprocesses,
     # os.getpid() must be called from inside the function.
@@ -94,7 +93,6 @@ elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
             for fd in os.listdir("/proc/%s/fd" % portage.getpid())
             if fd.isdigit()
         )
-
 
 else:
 
