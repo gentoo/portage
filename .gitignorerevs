@@ -1,2 +1,4 @@
 # Run entire repository through black. Also, change tabs to spaces
 3812225ace5db8c691cbe027d234a3e223972199
+# black 21.12b0 reformatting
+a5092f11f31b6a9d54a34423088a7bb8e70bc1c6
