@@ -237,6 +237,12 @@ Publish the results (no going back now):
 	- Push the new git tag
 	- Upload the tarball
 	- Commit the new ebuild version
-	- Upload the new version to pypi
+
+Create the release for pypi and upload it there:
+	- python -m venv .venv
+	- . .venv/bin/activate
+	- pip install wheel twine
+	- python setup.py bdist_wheel sdist
+	- twine upload dist/<filenames>
 
 Close the bugs blocking the tracker bug for this release.
