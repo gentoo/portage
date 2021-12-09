@@ -1,6 +1,11 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+portage-3.0.29
+==================================
+    - Bug 811462: fixes to detect package (and binpkg) corruption due to broken
+                  scanelf.
+
 portage-3.0.28
 ==================================
     - Bug 816291: revert FILESDIR to symlink to fix SELinux regression.

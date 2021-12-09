@@ -1,5 +1,15 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.29
+--------------
+* check for inconsistent/missing PROVIDES during package (and binpkg)
+  installation. See bug 811462.
+* avoid pulling in newer slots for upgrades in some cases. See bug 828136.
+* enable SONAME dependencies for binpkgs by default. See bug 687956.
+* add new options to allow avoiding building/using binpkgs for live ebuilds:
+  FEATURES="binpkg-live" and --usepkg-exclude-live.
+* add emphasis in output to user patches being applied.
+
 portage-3.0.27
 --------------
 * improve blocker output to make it clear which blockers
