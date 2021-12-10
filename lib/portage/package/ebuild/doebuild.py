@@ -3096,7 +3096,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
             f.write(soname_deps.provides)
     else:
         if check_dyn_libs_inconsistent(image_dir, soname_deps.provides):
-            self._writemsg_level(
+            portage.util._writemsg_level(
                 colorize(
                     "BAD",
                     "!!! Error! Installing dynamic libraries (.so) with blank PROVIDES!",
