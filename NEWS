@@ -1,5 +1,10 @@
 News (mainly features/major bug fixes)
 
+portage-3.0.30
+--------------
+* fix warning/crash on bad PROVIDES in package. See bug 828966.
+* avoid infinite loop in _optimized_copyfile. See bug 828844.
+
 portage-3.0.29
 --------------
 * check for inconsistent/missing PROVIDES during package (and binpkg)
