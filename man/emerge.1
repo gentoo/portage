@@ -639,10 +639,9 @@ supported beginning with \fBEAPI 5\fR.
 .TP
 .BR "\-\-ignore\-soname\-deps < y | n >"
 Ignore the soname dependencies of binary and installed packages. This
-option may be useful when working with binary or installed packages
-that lack appropriate soname dependency metadata because they were built
-with a package manager that does not support soname dependencies (perhaps
-an older version of portage). Soname
+option is enabled by default, since soname dependencies are relatively
+new, and the required metadata is not guaranteed to exist for binary and
+installed packages built with older versions of portage. Also, soname
 dependencies will be automatically ignored for dependency calculations
 that can pull unbuilt ebuilds into the dependency graph, since unbuilt
 ebuilds do not have any soname dependency metadata, making it impossible
