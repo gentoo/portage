@@ -472,6 +472,7 @@ def parse_opts(tmpcmdline, silent=False):
             "choices": y_or_n,
         },
         "--exclude": {
+            "shortopt": "-X",
             "help": "A space separated list of package names or slot atoms. "
             + "Emerge won't  install any ebuild or binary package that "
             + "matches any of the given package atoms.",
