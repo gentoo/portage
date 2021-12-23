@@ -40,6 +40,7 @@ class JobStatusDisplay:
         object.__setattr__(self, "xterm_titles", xterm_titles)
         object.__setattr__(self, "maxval", 0)
         object.__setattr__(self, "merges", 0)
+        object.__setattr__(self, "_pkg", "")
         object.__setattr__(self, "_changed", False)
         object.__setattr__(self, "_displayed", False)
         object.__setattr__(self, "_last_display_time", 0)
@@ -222,16 +223,26 @@ class JobStatusDisplay:
 
         self._last_display_time = current_time
         self._changed = False
-        self._display_status()
+
+        # Provide information on current running package
+        # if job is taking longer than 1 second
+        if time_delta > 1:
+            self._display_status(printpkg=True)
+        else:
+            self._display_status()
+
         return True
 
-    def _display_status(self):
+    def _display_status(self, printpkg=False):
         # Don't use len(self._completed_tasks) here since that also
         # can include uninstall tasks.
-        curval_str = "%s" % (self.curval,)
-        maxval_str = "%s" % (self.maxval,)
-        running_str = "%s" % (self.running,)
-        failed_str = "%s" % (self.failed,)
+        curval_str = f"{self.curval}"
+        maxval_str = f"{self.maxval}"
+        if printpkg:
+            running_str = f"{self._pkg} - {self.running}"
+        else:
+            running_str = f"{self.running}"
+        failed_str = f"{self.failed}"
         load_avg_str = self._load_avg_str()
 
         color_output = io.StringIO()
@@ -294,3 +305,7 @@ class JobStatusDisplay:
             if hostname is not None:
                 title_str = "%s: %s" % (hostname, title_str)
             xtermTitle(title_str)
+
+    def _set_pkgname(self, pkg):
+        # set pkgname for --jobs output
+        self._pkg = pkg.cpv.split('/')[1].split('-')[0][:15]

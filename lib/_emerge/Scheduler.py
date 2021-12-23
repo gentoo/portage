@@ -1927,6 +1927,7 @@ class Scheduler(PollScheduler):
                 self._pkg_count.curval += 1
 
             task = self._task(pkg)
+            self._status_display._set_pkgname(pkg)
 
             if pkg.installed:
                 merge = PackageMerge(merge=task, scheduler=self._sched_iface)
