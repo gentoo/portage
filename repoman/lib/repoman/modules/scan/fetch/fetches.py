@@ -126,10 +126,16 @@ class FetchChecks(ScanBase):
                 # Current policy is no files over 20 KiB, these are the checks.
                 # File size over 20 KiB causes an error.
                 elif mystat.st_size > 20480:
-                    self.qatracker.add_error(
-                        "file.size",
-                        "(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y),
-                    )
+                    if self.repo_settings.repo_config.name == "gentoo":
+                        self.qatracker.add_error(
+                            "file.size",
+                            "(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y),
+                        )
+                    else:
+                        self.qatracker.add_warning(
+                            "file.size",
+                            "(%d KiB) %s/files/%s" % (mystat.st_size // 1024, xpkg, y),
+                        )
                 elif mystat.st_size == 0:
                     self.qatracker.add_error("file.empty", "%s/files/%s" % (xpkg, y))
 
