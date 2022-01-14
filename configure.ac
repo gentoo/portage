@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(portage-prefix, @version@, prefix@gentoo.org)
+AC_INIT([portage-prefix],[@version@],[prefix@gentoo.org])
 
-AC_PREREQ([2.61])
+AC_PREREQ([2.71])
 
 case "${prefix}" in
 	'') 	AC_MSG_ERROR([bad value ${prefix} for --prefix, must not be empty]) ;;
@@ -46,7 +46,7 @@ GENTOO_PATH_GNUPROG(PORTAGE_XARGS, [xargs])
 GENTOO_PATH_GNUPROG(PORTAGE_GREP, [grep])
 
 AC_ARG_WITH(portage-user,
-AC_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
+AS_HELP_STRING([--with-portage-user=myuser],[use user 'myuser' as portage owner (default portage)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-user);;
   *) portageuser="${withval}";;
@@ -54,7 +54,7 @@ esac],
 [portageuser="portage"])
 
 AC_ARG_WITH(portage-group,
-AC_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage users group (default portage)]),
+AS_HELP_STRING([--with-portage-group=mygroup],[use group 'mygroup' as portage users group (default portage)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-portage-group);;
   *) portagegroup="${withval}";;
@@ -62,7 +62,7 @@ esac],
 [portagegroup="portage"])
 
 AC_ARG_WITH(root-user,
-AC_HELP_STRING([--with-root-user=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
+AS_HELP_STRING([--with-root-user=myuser],[uses 'myuser' as owner of installed files (default is portage-user)]),
 [case "${withval}" in
   ""|yes) AC_MSG_ERROR(bad value ${withval} for --with-root-user);;
   *) rootuser="${withval}";;
@@ -88,8 +88,7 @@ else
 fi
 
 AC_ARG_WITH(offset-prefix, 
-AC_HELP_STRING([--with-offset-prefix],
-			   [specify the installation prefix for all packages, defaults to an empty string]),
+AS_HELP_STRING([--with-offset-prefix],[specify the installation prefix for all packages, defaults to an empty string]),
 			   [PORTAGE_EPREFIX=$withval],
 			   [PORTAGE_EPREFIX=''])
 
@@ -99,7 +98,7 @@ then
 fi
 
 AC_ARG_WITH(extra-path, 
-AC_HELP_STRING([--with-extra-path], [specify additional PATHs available to the portage build environment (use with care)]),
+AS_HELP_STRING([--with-extra-path],[specify additional PATHs available to the portage build environment (use with care)]),
 [EXTRA_PATH="$withval"],
 [EXTRA_PATH=""])
 
