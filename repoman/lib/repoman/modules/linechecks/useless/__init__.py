@@ -7,21 +7,21 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'uselesscds-check': {
-			'name': "uselesscds",
-			'sourcefile': "cd",
-			'class': "EbuildUselessCdS",
-			'description': doc,
-		},
-		'uselessdodoc-check': {
-			'name': "uselessdodoc",
-			'sourcefile': "dodoc",
-			'class': "EbuildUselessDodoc",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "uselesscds-check": {
+            "name": "uselesscds",
+            "sourcefile": "cd",
+            "class": "EbuildUselessCdS",
+            "description": doc,
+        },
+        "uselessdodoc-check": {
+            "name": "uselessdodoc",
+            "sourcefile": "dodoc",
+            "class": "EbuildUselessDodoc",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

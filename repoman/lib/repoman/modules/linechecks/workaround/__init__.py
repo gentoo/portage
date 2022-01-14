@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'noasneeded-check': {
-			'name': "noasneeded",
-			'sourcefile': "workarounds",
-			'class': "NoAsNeeded",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "noasneeded-check": {
+            "name": "noasneeded",
+            "sourcefile": "workarounds",
+            "class": "NoAsNeeded",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

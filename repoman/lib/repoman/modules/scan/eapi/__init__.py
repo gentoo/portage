@@ -7,24 +7,22 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'eapi',
-	'description': doc,
-	'provides':{
-		'live-module': {
-			'name': "eapi",
-			'sourcefile': "eapi",
-			'class': "EAPIChecks",
-			'description': doc,
-			'functions': ['check'],
-			'func_kwargs': {
-			},
-			'mod_kwargs': ['qatracker', 'repo_settings'
-			],
-			'func_kwargs': {
-				'ebuild': (None, None),
-			},
-			'module_runsIn': ['ebuilds'],
-		},
-	},
-	'version': 1,
+    "name": "eapi",
+    "description": doc,
+    "provides": {
+        "live-module": {
+            "name": "eapi",
+            "sourcefile": "eapi",
+            "class": "EAPIChecks",
+            "description": doc,
+            "functions": ["check"],
+            "func_kwargs": {},
+            "mod_kwargs": ["qatracker", "repo_settings"],
+            "func_kwargs": {
+                "ebuild": (None, None),
+            },
+            "module_runsIn": ["ebuilds"],
+        },
+    },
+    "version": 1,
 }

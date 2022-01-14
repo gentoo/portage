@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'httpsuri-check': {
-			'name': "httpsuri",
-			'sourcefile': "uri",
-			'class': "UriUseHttps",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "httpsuri-check": {
+            "name": "httpsuri",
+            "sourcefile": "uri",
+            "class": "UriUseHttps",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

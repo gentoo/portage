@@ -7,28 +7,26 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'None',
-	'description': doc,
-	'provides':{
-		'None-module': {
-			'name': "None_status",
-			'sourcefile': "status",
-			'class': "Status",
-			'description': doc,
-			'functions': ['check', 'supports_gpg_sign', 'detect_conflicts'],
-			'func_desc': {
-			},
-			'vcs_preserves_mtime': False,
-			'needs_keyword_expansion': False,
-		},
-		'None-changes': {
-			'name': "None_changes",
-			'sourcefile': "changes",
-			'class': "Changes",
-			'description': doc,
-			'functions': ['scan'],
-			'func_desc': {
-			},
-		},
-	}
+    "name": "None",
+    "description": doc,
+    "provides": {
+        "None-module": {
+            "name": "None_status",
+            "sourcefile": "status",
+            "class": "Status",
+            "description": doc,
+            "functions": ["check", "supports_gpg_sign", "detect_conflicts"],
+            "func_desc": {},
+            "vcs_preserves_mtime": False,
+            "needs_keyword_expansion": False,
+        },
+        "None-changes": {
+            "name": "None_changes",
+            "sourcefile": "changes",
+            "class": "Changes",
+            "description": doc,
+            "functions": ["scan"],
+            "func_desc": {},
+        },
+    },
 }

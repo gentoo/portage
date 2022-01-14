@@ -198,51 +198,20 @@ fi
 #(not secretive, but not stupid)
 umask 022
 
-# debug-print() gets called from many places with verbose status information useful
-# for tracking down problems. The output is in $T/eclass-debug.log.
-# You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
-# The special "on" setting echoes the information, mixing it with the rest of the
-# emerge output.
-# You can override the setting by exporting a new one from the console, or you can
-# set a new default in make.*. Here the default is "" or unset.
-
-# in the future might use e* from /etc/init.d/functions.sh if i feel like it
-debug-print() {
-	# if $T isn't defined, we're in dep calculation mode and
-	# shouldn't do anything
-	[[ $EBUILD_PHASE = depend || ! -d ${T} || ${#} -eq 0 ]] && return 0
-
-	if [[ ${ECLASS_DEBUG_OUTPUT} == on ]]; then
-		printf 'debug: %s\n' "${@}" >&2
-	elif [[ -n ${ECLASS_DEBUG_OUTPUT} ]]; then
-		printf 'debug: %s\n' "${@}" >> "${ECLASS_DEBUG_OUTPUT}"
-	fi
-
-	if [[ -w $T ]] ; then
-		# default target
-		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
-		# let the portage user own/write to this file
-		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "${T}/eclass-debug.log"
-		chmod g+w "${T}/eclass-debug.log"
-	fi
-}
-
-# The following 2 functions are debug-print() wrappers
-
-debug-print-function() {
-	debug-print "${1}: entering function, parameters: ${*:2}"
-}
-
-debug-print-section() {
-	debug-print "now in section ${*}"
-}
-
 # Sources all eclasses in parameters
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
 	if [[ ${ECLASS_DEPTH} -gt 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
+
+		# Since ECLASS_DEPTH > 1, the following variables are locals from the
+		# previous inherit call in the call stack.
+		if [[ -n ${ECLASS} && -n ${!__export_funcs_var} ]] ; then
+			eqawarn "QA Notice: EXPORT_FUNCTIONS is called before inherit in ${ECLASS}.eclass."
+			eqawarn "For compatibility with PMS and to avoid breakage with Pkgcore, only call"
+			eqawarn "EXPORT_FUNCTIONS after inherit(s). Portage behavior may change in future."
+		fi
 	fi
 
 	local -x ECLASS
@@ -394,6 +363,9 @@ inherit() {
 			unset $__export_funcs_var
 
 			has $1 $INHERITED || export INHERITED="$INHERITED $1"
+			if [[ ${ECLASS_DEPTH} -eq 1 ]]; then
+				export PORTAGE_EXPLICIT_INHERIT="${PORTAGE_EXPLICIT_INHERIT} $1"
+			fi
 		fi
 
 		shift
@@ -640,6 +612,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		unset INHERITED IUSE REQUIRED_USE ECLASS E_IUSE E_REQUIRED_USE
 		unset E_DEPEND E_RDEPEND E_PDEPEND E_BDEPEND E_IDEPEND E_PROPERTIES
 		unset E_RESTRICT PROVIDES_EXCLUDE REQUIRES_EXCLUDE
+		unset PORTAGE_EXPLICIT_INHERIT
 
 		if [[ $PORTAGE_DEBUG != 1 || ${-/x/} != $- ]] ; then
 			source "$EBUILD" || die "error sourcing ebuild"
@@ -746,18 +719,11 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 	export SANDBOX_ON="0"
 	set -f
 
-	if [ -n "${dbkey}" ] ; then
-		if [ ! -d "${dbkey%/*}" ]; then
-			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
-		fi
-		# Make it group writable. 666&~002==664
-		umask 002
-	fi
-
-	auxdbkeys="DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
+	metadata_keys=(
+		DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE
 		DESCRIPTION KEYWORDS INHERITED IUSE REQUIRED_USE PDEPEND BDEPEND
-		EAPI PROPERTIES DEFINED_PHASES IDEPEND UNUSED_04
-		UNUSED_03 UNUSED_02 UNUSED_01"
+		EAPI PROPERTIES DEFINED_PHASES IDEPEND INHERIT
+	)
 
 	if ! ___eapi_has_BDEPEND; then
 		unset BDEPEND
@@ -766,18 +732,13 @@ if [[ $EBUILD_PHASE = depend ]] ; then
 		unset IDEPEND
 	fi
 
+	INHERIT=${PORTAGE_EXPLICIT_INHERIT}
+
 	# The extra $(echo) commands remove newlines.
-	if [ -n "${dbkey}" ] ; then
-		> "${dbkey}"
-		for f in ${auxdbkeys} ; do
-			echo $(echo ${!f}) >> "${dbkey}" || exit $?
-		done
-	else
-		for f in ${auxdbkeys} ; do
-			eval "echo \$(echo \${!f}) 1>&${PORTAGE_PIPE_FD}" || exit $?
-		done
-		eval "exec ${PORTAGE_PIPE_FD}>&-"
-	fi
+	for f in "${metadata_keys[@]}" ; do
+		echo "${f}=$(echo ${!f})" >&${PORTAGE_PIPE_FD} || exit $?
+	done
+	exec {PORTAGE_PIPE_FD}>&-
 	set +f
 else
 	# Note: readonly variables interfere with __preprocess_ebuild_env(), so

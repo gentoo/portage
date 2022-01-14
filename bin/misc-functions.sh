@@ -216,25 +216,61 @@ install_qa_check_elf() {
 	if type -P scanelf > /dev/null ; then
 		# Save NEEDED information after removing self-contained providers
 		rm -f "$PORTAGE_BUILDDIR"/build-info/NEEDED{,.ELF.2}
+
 		# We don't use scanelf -q, since that would omit libraries like
 		# musl's /usr/lib/libc.so which do not have any DT_NEEDED or
 		# DT_SONAME settings. Since we don't use scanelf -q, we have to
 		# handle the special rpath value "  -  " below.
-		scanelf -yRBF '%a;%p;%S;%r;%n' "${D%/}/" | { while IFS= read -r l; do
-			arch=${l%%;*}; l=${l#*;}
-			obj="/${l%%;*}"; l=${l#*;}
-			soname=${l%%;*}; l=${l#*;}
-			rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
-			needed=${l%%;*}; l=${l#*;}
+		scanelf_output=$(scanelf -yRBF '%a;%p;%S;%r;%n' "${D%/}/")
 
-			# Infer implicit soname from basename (bug 715162).
-			if [[ -z ${soname} && $(file "${D%/}${obj}") == *"SB shared object"* ]]; then
-				soname=${obj##*/}
-			fi
+		case $? in
+			0)
+				# Proceed
+				;;
+			159)
+				# Unknown syscall
+				eerror "Failed to run scanelf (unknown syscall)"
 
-			echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
-			echo "${arch#EM_};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
-		done }
+				if [[ -z ${PORTAGE_NO_SCANELF_CHECK} ]]; then
+					# Abort only if the special recovery variable isn't set
+					eerror "Please upgrade pax-utils with:"
+					eerror " PORTAGE_NO_SCANELF_CHECK=1 emerge -v1 app-misc/pax-utils"
+					eerror "Aborting to avoid corrupting metadata"
+					die "${0##*/}: Failed to run scanelf! Update pax-utils?"
+				fi
+				;;
+			*)
+				# Failed in another way
+				eerror "Failed to run scanelf (returned: $?)!"
+
+				if [[ -z ${PORTAGE_NO_SCANELF_CHECK} ]]; then
+					# Abort only if the special recovery variable isn't set
+					eerror "Please report this bug at https://bugs.gentoo.org/!"
+					eerror "It may be possible to re-emerge pax-utils with:"
+					eerror " PORTAGE_NO_SCANELF_CHECK=1 emerge -v1 app-misc/pax-utils"
+					eerror "Aborting to avoid corrupting metadata"
+					die "${0##*/}: Failed to run scanelf!"
+				fi
+				;;
+		esac
+
+		if [[ -n ${scanelf_output} ]]; then
+			while IFS= read -r l; do
+				arch=${l%%;*}; l=${l#*;}
+				obj="/${l%%;*}"; l=${l#*;}
+				soname=${l%%;*}; l=${l#*;}
+				rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
+				needed=${l%%;*}; l=${l#*;}
+
+				# Infer implicit soname from basename (bug 715162).
+				if [[ -z ${soname} && $(file "${D%/}${obj}") == *"SB shared object"* ]]; then
+					soname=${obj##*/}
+				fi
+
+				echo "${obj} ${needed}"	>> "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+				echo "${arch#EM_};${obj};${soname};${rpath};${needed}" >> "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2
+			done <<< ${scanelf_output}
+		fi
 
 		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
 			echo "${QA_SONAME_NO_SYMLINK}" > \

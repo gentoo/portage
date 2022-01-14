@@ -7,28 +7,31 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'fetches',
-	'description': doc,
-	'provides':{
-		'fetches-module': {
-			'name': "fetches",
-			'sourcefile': "fetches",
-			'class': "FetchChecks",
-			'description': doc,
-			'functions': ['check'],
-			'func_desc': {
-			},
-			'mod_kwargs': ['portdb', 'qatracker', 'repo_settings', 'vcs_settings',
-			],
-			'func_kwargs': {
-				'changed': (None, None),
-				'checkdir': (None, None),
-				'checkdir_relative': (None, None),
-				'ebuild': (None, None),
-				'xpkg': (None, None),
-			},
-			'module_runsIn': ['pkgs', 'ebuilds'],
-		},
-	},
-	'version': 1,
+    "name": "fetches",
+    "description": doc,
+    "provides": {
+        "fetches-module": {
+            "name": "fetches",
+            "sourcefile": "fetches",
+            "class": "FetchChecks",
+            "description": doc,
+            "functions": ["check"],
+            "func_desc": {},
+            "mod_kwargs": [
+                "portdb",
+                "qatracker",
+                "repo_settings",
+                "vcs_settings",
+            ],
+            "func_kwargs": {
+                "changed": (None, None),
+                "checkdir": (None, None),
+                "checkdir_relative": (None, None),
+                "ebuild": (None, None),
+                "xpkg": (None, None),
+            },
+            "module_runsIn": ["pkgs", "ebuilds"],
+        },
+    },
+    "version": 1,
 }

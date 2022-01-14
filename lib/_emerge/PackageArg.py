@@ -7,13 +7,13 @@ import portage
 from portage._sets.base import InternalPackageSet
 from portage.dep import _repo_separator
 
+
 class PackageArg(DependencyArg):
-	def __init__(self, package=None, **kwargs):
-		DependencyArg.__init__(self, **kwargs)
-		self.package = package
-		atom = "=" + package.cpv
-		if package.repo != Package.UNKNOWN_REPO:
-			atom += _repo_separator + package.repo
-		self.atom = portage.dep.Atom(atom, allow_repo=True)
-		self.pset = InternalPackageSet(initial_atoms=(self.atom,),
-			allow_repo=True)
+    def __init__(self, package=None, **kwargs):
+        DependencyArg.__init__(self, **kwargs)
+        self.package = package
+        atom = "=" + package.cpv
+        if package.repo != Package.UNKNOWN_REPO:
+            atom += _repo_separator + package.repo
+        self.atom = portage.dep.Atom(atom, allow_repo=True)
+        self.pset = InternalPackageSet(initial_atoms=(self.atom,), allow_repo=True)

@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'header-check': {
-			'name': "gentooheader",
-			'sourcefile': "header",
-			'class': "EbuildHeader",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "header-check": {
+            "name": "gentooheader",
+            "sourcefile": "header",
+            "class": "EbuildHeader",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

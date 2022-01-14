@@ -6,16 +6,16 @@ __doc__ = doc
 
 
 module_spec = {
-	'name': 'binhost',
-	'description': doc,
-	'provides':{
-		'module1': {
-			'name': "binhost",
-			'sourcefile': "binhost",
-			'class': "BinhostHandler",
-			'description': doc,
-			'functions': ['check', 'fix'],
-			'func_desc': {}
-			}
-		}
-	}
+    "name": "binhost",
+    "description": doc,
+    "provides": {
+        "module1": {
+            "name": "binhost",
+            "sourcefile": "binhost",
+            "class": "BinhostHandler",
+            "description": doc,
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        }
+    },
+}

@@ -34,7 +34,8 @@ import portage
 portage._internal_caller = True
 from portage import os, shutil
 from portage import _encodings, _unicode_decode
-from portage.dispatch_conf import diffstatusoutput, diff_mixed_wrapper
+from portage.dispatch_conf import (diffstatusoutput, diff_mixed_wrapper,
+	perform_conf_update_hooks, perform_conf_update_session_hooks)
 from portage.process import find_binary, spawn
 from portage.util import writemsg, writemsg_stdout
 
@@ -96,6 +97,8 @@ class dispatch:
     def grind (self, config_paths):
         confs = []
         count = 0
+
+        perform_conf_update_session_hooks("pre-session")
 
         config_root = portage.settings["EPREFIX"] or os.sep
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
@@ -317,6 +320,7 @@ class dispatch:
                         break
 
                 if c == 'q':
+                    perform_conf_update_session_hooks("post-session")
                     sys.exit (0)
                 if c == 'h':
                     self.do_help ()
@@ -378,6 +382,8 @@ class dispatch:
                 writemsg_stdout("  * '%s'\n" % frozen, noiselevel=-1)
             print()
 
+        perform_conf_update_session_hooks("post-session")
+
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
         the diff of what changed into the configured log file."""
@@ -387,11 +393,16 @@ class dispatch:
                 encoding=_encodings["stdio"]) as f:
                 f.write(output + "\n")
 
+        perform_conf_update_hooks("pre-update", curconf)
+
         try:
             os.rename(newconf, curconf)
         except (IOError, os.error) as why:
             writemsg('dispatch-conf: Error renaming %s to %s: %s; fatal\n' % \
                   (newconf, curconf, str(why)), noiselevel=-1)
+            return
+
+        perform_conf_update_hooks("post-update", curconf)
 
 
     def post_process(self, curconf):

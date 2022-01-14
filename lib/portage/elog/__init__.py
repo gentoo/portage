@@ -5,8 +5,10 @@
 import sys
 
 import portage
-portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.util:writemsg',
+
+portage.proxy.lazyimport.lazyimport(
+    globals(),
+    "portage.util:writemsg",
 )
 
 from portage.const import EBUILD_PHASES
@@ -17,171 +19,189 @@ from portage.elog.filtering import filter_loglevels
 from portage.localization import _
 from portage import os
 
+
 def _preload_elog_modules(settings):
-	logsystems = settings.get("PORTAGE_ELOG_SYSTEM", "").split()
-	for s in logsystems:
-		# allow per module overrides of PORTAGE_ELOG_CLASSES
-		if ":" in s:
-			s, levels = s.split(":", 1)
-			levels = levels.split(",")
-		# - is nicer than _ for module names, so allow people to use it.
-		s = s.replace("-", "_")
-		try:
-			_load_mod("portage.elog.mod_" + s)
-		except ImportError:
-			pass
+    logsystems = settings.get("PORTAGE_ELOG_SYSTEM", "").split()
+    for s in logsystems:
+        # allow per module overrides of PORTAGE_ELOG_CLASSES
+        if ":" in s:
+            s, levels = s.split(":", 1)
+            levels = levels.split(",")
+        # - is nicer than _ for module names, so allow people to use it.
+        s = s.replace("-", "_")
+        try:
+            _load_mod("portage.elog.mod_" + s)
+        except ImportError:
+            pass
+
 
 def _merge_logentries(a, b):
-	rValue = {}
-	phases = set(a)
-	phases.update(b)
-	for p in phases:
-		merged_msgs = []
-		rValue[p] = merged_msgs
-		for d in a, b:
-			msgs = d.get(p)
-			if msgs:
-				merged_msgs.extend(msgs)
-	return rValue
+    rValue = {}
+    phases = set(a)
+    phases.update(b)
+    for p in phases:
+        merged_msgs = []
+        rValue[p] = merged_msgs
+        for d in a, b:
+            msgs = d.get(p)
+            if msgs:
+                merged_msgs.extend(msgs)
+    return rValue
+
 
 def _combine_logentries(logentries):
-	# generate a single string with all log messages
-	rValue = []
-	for phase in EBUILD_PHASES:
-		if not phase in logentries:
-			continue
-		previous_type = None
-		for msgtype, msgcontent in logentries[phase]:
-			if previous_type != msgtype:
-				previous_type = msgtype
-				rValue.append("%s: %s" % (msgtype, phase))
-			if isinstance(msgcontent, str):
-				rValue.append(msgcontent.rstrip("\n"))
-			else:
-				for line in msgcontent:
-					rValue.append(line.rstrip("\n"))
-	if rValue:
-		rValue.append("")
-	return "\n".join(rValue)
+    # generate a single string with all log messages
+    rValue = []
+    for phase in EBUILD_PHASES:
+        if not phase in logentries:
+            continue
+        previous_type = None
+        for msgtype, msgcontent in logentries[phase]:
+            if previous_type != msgtype:
+                previous_type = msgtype
+                rValue.append("%s: %s" % (msgtype, phase))
+            if isinstance(msgcontent, str):
+                rValue.append(msgcontent.rstrip("\n"))
+            else:
+                for line in msgcontent:
+                    rValue.append(line.rstrip("\n"))
+    if rValue:
+        rValue.append("")
+    return "\n".join(rValue)
+
 
 _elog_mod_imports = {}
+
+
 def _load_mod(name):
-	global _elog_mod_imports
-	m = _elog_mod_imports.get(name)
-	if m is None:
-		m = __import__(name)
-		for comp in name.split(".")[1:]:
-			m = getattr(m, comp)
-		_elog_mod_imports[name] = m
-	return m
+    global _elog_mod_imports
+    m = _elog_mod_imports.get(name)
+    if m is None:
+        m = __import__(name)
+        for comp in name.split(".")[1:]:
+            m = getattr(m, comp)
+        _elog_mod_imports[name] = m
+    return m
+
 
 _elog_listeners = []
+
+
 def add_listener(listener):
-	'''
-	Listeners should accept four arguments: settings, key, logentries and logtext
-	'''
-	_elog_listeners.append(listener)
+    """
+    Listeners should accept four arguments: settings, key, logentries and logtext
+    """
+    _elog_listeners.append(listener)
+
 
 def remove_listener(listener):
-	'''
-	Remove previously added listener
-	'''
-	_elog_listeners.remove(listener)
+    """
+    Remove previously added listener
+    """
+    _elog_listeners.remove(listener)
+
 
 _elog_atexit_handlers = []
 
+
 def elog_process(cpv, mysettings, phasefilter=None):
-	global _elog_atexit_handlers
+    global _elog_atexit_handlers
 
-	logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM","").split()
-	for s in logsystems:
-		# allow per module overrides of PORTAGE_ELOG_CLASSES
-		if ":" in s:
-			s, levels = s.split(":", 1)
-			levels = levels.split(",")
-		# - is nicer than _ for module names, so allow people to use it.
-		s = s.replace("-", "_")
-		try:
-			_load_mod("portage.elog.mod_" + s)
-		except ImportError:
-			pass
+    logsystems = mysettings.get("PORTAGE_ELOG_SYSTEM", "").split()
+    for s in logsystems:
+        # allow per module overrides of PORTAGE_ELOG_CLASSES
+        if ":" in s:
+            s, levels = s.split(":", 1)
+            levels = levels.split(",")
+        # - is nicer than _ for module names, so allow people to use it.
+        s = s.replace("-", "_")
+        try:
+            _load_mod("portage.elog.mod_" + s)
+        except ImportError:
+            pass
 
-	if "T" in mysettings:
-		ebuild_logentries = collect_ebuild_messages(
-			os.path.join(mysettings["T"], "logging"))
-	else:
-		# A build dir isn't necessarily required since the messages.e*
-		# functions allow messages to be generated in-memory.
-		ebuild_logentries = {}
-	all_logentries = collect_messages(key=cpv, phasefilter=phasefilter)
-	if cpv in all_logentries:
-		# Messages generated by the python elog implementation are assumed
-		# to come first. For example, this ensures correct order for einfo
-		# messages that are generated prior to the setup phase.
-		all_logentries[cpv] = \
-			_merge_logentries(all_logentries[cpv], ebuild_logentries)
-	else:
-		all_logentries[cpv] = ebuild_logentries
+    if "T" in mysettings:
+        ebuild_logentries = collect_ebuild_messages(
+            os.path.join(mysettings["T"], "logging")
+        )
+    else:
+        # A build dir isn't necessarily required since the messages.e*
+        # functions allow messages to be generated in-memory.
+        ebuild_logentries = {}
+    all_logentries = collect_messages(key=cpv, phasefilter=phasefilter)
+    if cpv in all_logentries:
+        # Messages generated by the python elog implementation are assumed
+        # to come first. For example, this ensures correct order for einfo
+        # messages that are generated prior to the setup phase.
+        all_logentries[cpv] = _merge_logentries(all_logentries[cpv], ebuild_logentries)
+    else:
+        all_logentries[cpv] = ebuild_logentries
 
-	my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
-	logsystems = {}
-	for token in mysettings.get("PORTAGE_ELOG_SYSTEM", "").split():
-		if ":" in token:
-			s, levels = token.split(":", 1)
-			levels = levels.split(",")
-		else:
-			s = token
-			levels = ()
-		levels_set = logsystems.get(s)
-		if levels_set is None:
-			levels_set = set()
-			logsystems[s] = levels_set
-		levels_set.update(levels)
+    my_elog_classes = set(mysettings.get("PORTAGE_ELOG_CLASSES", "").split())
+    logsystems = {}
+    for token in mysettings.get("PORTAGE_ELOG_SYSTEM", "").split():
+        if ":" in token:
+            s, levels = token.split(":", 1)
+            levels = levels.split(",")
+        else:
+            s = token
+            levels = ()
+        levels_set = logsystems.get(s)
+        if levels_set is None:
+            levels_set = set()
+            logsystems[s] = levels_set
+        levels_set.update(levels)
 
-	for key in all_logentries:
-		default_logentries = filter_loglevels(all_logentries[key], my_elog_classes)
+    for key in all_logentries:
+        default_logentries = filter_loglevels(all_logentries[key], my_elog_classes)
 
-		# in case the filters matched all messages and no module overrides exist
-		if len(default_logentries) == 0 and (not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")):
-			continue
+        # in case the filters matched all messages and no module overrides exist
+        if len(default_logentries) == 0 and (
+            not ":" in mysettings.get("PORTAGE_ELOG_SYSTEM", "")
+        ):
+            continue
 
-		default_fulllog = _combine_logentries(default_logentries)
+        default_fulllog = _combine_logentries(default_logentries)
 
-		# call listeners
-		for listener in _elog_listeners:
-			listener(mysettings, str(key), default_logentries, default_fulllog)
+        # call listeners
+        for listener in _elog_listeners:
+            listener(mysettings, str(key), default_logentries, default_fulllog)
 
-		# pass the processing to the individual modules
-		for s, levels in logsystems.items():
-			# allow per module overrides of PORTAGE_ELOG_CLASSES
-			if levels:
-				mod_logentries = filter_loglevels(all_logentries[key], levels)
-				mod_fulllog = _combine_logentries(mod_logentries)
-			else:
-				mod_logentries = default_logentries
-				mod_fulllog = default_fulllog
-			if len(mod_logentries) == 0:
-				continue
-			# - is nicer than _ for module names, so allow people to use it.
-			s = s.replace("-", "_")
-			try:
-				m = _load_mod("portage.elog.mod_" + s)
-				# Timeout after one minute (in case something like the mail
-				# module gets hung).
-				try:
-					AlarmSignal.register(60)
-					m.process(mysettings, str(key), mod_logentries, mod_fulllog)
-				finally:
-					AlarmSignal.unregister()
-				if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
-					_elog_atexit_handlers.append(m.finalize)
-					atexit_register(m.finalize)
-			except (ImportError, AttributeError) as e:
-				writemsg(_("!!! Error while importing logging modules "
-					"while loading \"mod_%s\":\n") % str(s))
-				writemsg("%s\n" % str(e), noiselevel=-1)
-			except AlarmSignal:
-				writemsg("Timeout in elog_process for system '%s'\n" % s,
-					noiselevel=-1)
-			except PortageException as e:
-				writemsg("%s\n" % str(e), noiselevel=-1)
+        # pass the processing to the individual modules
+        for s, levels in logsystems.items():
+            # allow per module overrides of PORTAGE_ELOG_CLASSES
+            if levels:
+                mod_logentries = filter_loglevels(all_logentries[key], levels)
+                mod_fulllog = _combine_logentries(mod_logentries)
+            else:
+                mod_logentries = default_logentries
+                mod_fulllog = default_fulllog
+            if len(mod_logentries) == 0:
+                continue
+            # - is nicer than _ for module names, so allow people to use it.
+            s = s.replace("-", "_")
+            try:
+                m = _load_mod("portage.elog.mod_" + s)
+                # Timeout after one minute (in case something like the mail
+                # module gets hung).
+                try:
+                    AlarmSignal.register(60)
+                    m.process(mysettings, str(key), mod_logentries, mod_fulllog)
+                finally:
+                    AlarmSignal.unregister()
+                if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
+                    _elog_atexit_handlers.append(m.finalize)
+                    atexit_register(m.finalize)
+            except (ImportError, AttributeError) as e:
+                writemsg(
+                    _(
+                        "!!! Error while importing logging modules "
+                        'while loading "mod_%s":\n'
+                    )
+                    % str(s)
+                )
+                writemsg("%s\n" % str(e), noiselevel=-1)
+            except AlarmSignal:
+                writemsg("Timeout in elog_process for system '%s'\n" % s, noiselevel=-1)
+            except PortageException as e:
+                writemsg("%s\n" % str(e), noiselevel=-1)

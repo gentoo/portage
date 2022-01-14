@@ -13,43 +13,43 @@ from portage.sync.config_checks import CheckSyncConfig
 
 
 DEFAULT_CLASS = "WebRsync"
-AVAILABLE_CLASSES = [ "WebRsync",  "PyWebsync"]
+AVAILABLE_CLASSES = ["WebRsync", "PyWebsync"]
 options = {"1": "WebRsync", "2": "PyWebsync"}
 
 
 config_class = DEFAULT_CLASS
 try:
-	test_param = os.environ["TESTIT"]
-	if test_param in options:
-		config_class = options[test_param]
+    test_param = os.environ["TESTIT"]
+    if test_param in options:
+        config_class = options[test_param]
 except KeyError:
-	pass
+    pass
 
 
 module_spec = {
-	'name': 'webrsync',
-	'description': doc,
-	'provides':{
-		'webrsync-module': {
-			'name': "webrsync",
-			'sourcefile': "webrsync",
-			'class': config_class,
-			'description': doc,
-			'functions': ['sync', 'new', 'exists'],
-			'func_desc': {
-				'sync': 'Performs an archived http download of the ' +
-					'repository, then unpacks it.  Optionally it performs a ' +
-					'gpg verification of the downloaded file(s)',
-				'new': 'Creates the new repository at the specified location',
-				'exists': 'Returns a boolean of whether the specified dir ' +
-					'exists and is a valid repository',
-			},
-			'validate_config': CheckSyncConfig,
-			'module_specific_options': (
-				'sync-webrsync-delta',
-				'sync-webrsync-keep-snapshots',
-				'sync-webrsync-verify-signature',
-			),
-		},
-	}
+    "name": "webrsync",
+    "description": doc,
+    "provides": {
+        "webrsync-module": {
+            "name": "webrsync",
+            "sourcefile": "webrsync",
+            "class": config_class,
+            "description": doc,
+            "functions": ["sync", "new", "exists"],
+            "func_desc": {
+                "sync": "Performs an archived http download of the "
+                + "repository, then unpacks it.  Optionally it performs a "
+                + "gpg verification of the downloaded file(s)",
+                "new": "Creates the new repository at the specified location",
+                "exists": "Returns a boolean of whether the specified dir "
+                + "exists and is a valid repository",
+            },
+            "validate_config": CheckSyncConfig,
+            "module_specific_options": (
+                "sync-webrsync-delta",
+                "sync-webrsync-keep-snapshots",
+                "sync-webrsync-verify-signature",
+            ),
+        },
+    },
 }

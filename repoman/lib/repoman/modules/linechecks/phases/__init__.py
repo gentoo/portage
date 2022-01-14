@@ -8,33 +8,33 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'emakeparallel-check': {
-			'name': "emakeparallel",
-			'sourcefile': "phase",
-			'class': "EMakeParallelDisabled",
-			'description': doc,
-		},
-		'srccompileeconf-check': {
-			'name': "srccompileeconf",
-			'sourcefile': "phase",
-			'class': "SrcCompileEconf",
-			'description': doc,
-		},
-		'srcunpackpatches-check': {
-			'name': "srcunpackpatches",
-			'sourcefile': "phase",
-			'class': "SrcUnpackPatches",
-			'description': doc,
-		},
-		'pmsvariablerefphasescope-check': {
-			'name': "pmsvariablerefphasescope",
-			'sourcefile': "phase",
-			'class': "PMSVariableReference",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "emakeparallel-check": {
+            "name": "emakeparallel",
+            "sourcefile": "phase",
+            "class": "EMakeParallelDisabled",
+            "description": doc,
+        },
+        "srccompileeconf-check": {
+            "name": "srccompileeconf",
+            "sourcefile": "phase",
+            "class": "SrcCompileEconf",
+            "description": doc,
+        },
+        "srcunpackpatches-check": {
+            "name": "srcunpackpatches",
+            "sourcefile": "phase",
+            "class": "SrcUnpackPatches",
+            "description": doc,
+        },
+        "pmsvariablerefphasescope-check": {
+            "name": "pmsvariablerefphasescope",
+            "sourcefile": "phase",
+            "class": "PMSVariableReference",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

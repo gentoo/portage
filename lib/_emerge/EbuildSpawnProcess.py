@@ -3,20 +3,21 @@
 
 from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 
+
 class EbuildSpawnProcess(AbstractEbuildProcess):
-	"""
-	Used by doebuild.spawn() to manage the spawned process.
-	"""
-	_spawn_kwarg_names = AbstractEbuildProcess._spawn_kwarg_names + \
-		('fakeroot_state',)
+    """
+    Used by doebuild.spawn() to manage the spawned process.
+    """
 
-	__slots__ = ('fakeroot_state', 'spawn_func')
+    _spawn_kwarg_names = AbstractEbuildProcess._spawn_kwarg_names + ("fakeroot_state",)
 
-	def _spawn(self, args, **kwargs):
+    __slots__ = ("fakeroot_state", "spawn_func")
 
-		env = self.settings.environ()
+    def _spawn(self, args, **kwargs):
 
-		if self._dummy_pipe_fd is not None:
-			env["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)
+        env = self.settings.environ()
 
-		return self.spawn_func(args, env=env, **kwargs)
+        if self._dummy_pipe_fd is not None:
+            env["PORTAGE_PIPE_FD"] = str(self._dummy_pipe_fd)
+
+        return self.spawn_func(args, env=env, **kwargs)

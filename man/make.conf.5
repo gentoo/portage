@@ -1,4 +1,4 @@
-.TH "MAKE.CONF" "5" "May 2021" "Portage VERSION" "Portage"
+.TH "MAKE.CONF" "5" "Nov 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 make.conf \- custom settings for Portage
 .SH "SYNOPSIS"
@@ -326,6 +326,11 @@ Binary packages will be created for all packages that are merged. Also see
 \fBquickpkg\fR(1) and \fBemerge\fR(1) \fB\-\-buildpkg\fR and
 \fB\-\-buildpkgonly\fR options.
 .TP
+.B buildpkg\-live
+When this option is enabled (the default), \fBbuildpkg\fR will exhibit
+the default behavior of building binary cache for all packages. When
+it is disabled, binary packages will not be created for live ebuilds.
+.TP
 .B buildsyspkg
 Build binary packages for just packages in the system set.
 .TP
@@ -381,8 +386,7 @@ redundant on\-the\-fly compression.  The resulting file will be called
 .TP
 .B compressdebug
 Compress the debug sections in the split debug files with zlib to save
-space.  Make sure you have built both binutils and gdb with USE=zlib
-support for this to work.  See \fBsplitdebug\fR for general split debug
+space.  See \fBsplitdebug\fR for general split debug
 information (upon which this feature depends).
 .TP
 .B config\-protect\-if\-modified
@@ -822,7 +826,7 @@ INSTALL_MASK="/usr/share/doc/*/*.pdf"
 
 # Watch out! This will be interpreted as two patterns, and
 # prevent both "README" AND all PDF files from being installed.
-INSTALL_MASK="README\\ *.pdf"
+INSTALL_MASK="README.md\\ *.pdf"
 .fi
 .TP
 .B LDFLAGS
@@ -1000,6 +1004,9 @@ string should contain a \\${PID} place-holder that will be substituted
 with an integer pid. For example, a value of "ionice \-c 3 \-p \\${PID}"
 will set idle io priority. For more information about ionice, see
 \fBionice\fR(1). This variable is unset by default.
+.br
+Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
+FEATURES="pid\-sandbox" is enabled.
 .TP
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a

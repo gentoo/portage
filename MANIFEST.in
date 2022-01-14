@@ -1,3 +1,5 @@
+include setup.py
+
 # docs
 include DEVELOPING
 include LICENSE

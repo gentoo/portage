@@ -10,35 +10,38 @@ from portage._sets import SetConfigError
 
 __all__ = ["CommandOutputSet"]
 
+
 class CommandOutputSet(PackageSet):
-	"""This class creates a PackageSet from the output of a shell command.
-	   The shell command should produce one atom per line, that is:
+    """This class creates a PackageSet from the output of a shell command.
+    The shell command should produce one atom per line, that is:
 
-	   >>> atom1
-	       atom2
-	       ...
-	       atomN
+    >>> atom1
+        atom2
+        ...
+        atomN
 
-	   Args:
-	     name: A string that identifies the set.
-	     command: A string or sequence identifying the command to run
-	     (see the subprocess.Popen documentaion for the format)
-	"""
-	_operations = ["merge", "unmerge"]
+    Args:
+      name: A string that identifies the set.
+      command: A string or sequence identifying the command to run
+      (see the subprocess.Popen documentaion for the format)
+    """
 
-	def __init__(self, command):
-		super(CommandOutputSet, self).__init__()
-		self._command = command
-		self.description = "Package set generated from output of '%s'" % self._command
+    _operations = ["merge", "unmerge"]
 
-	def load(self):
-		pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
-		stdout, stderr = pipe.communicate()
-		if pipe.wait() == os.EX_OK:
-			self._setAtoms(_unicode_decode(stdout).splitlines())
+    def __init__(self, command):
+        super(CommandOutputSet, self).__init__()
+        self._command = command
+        self.description = "Package set generated from output of '%s'" % self._command
 
-	def singleBuilder(self, options, settings, trees):
-		if not "command" in options:
-			raise SetConfigError("no command specified")
-		return CommandOutputSet(options["command"])
-	singleBuilder = classmethod(singleBuilder)
+    def load(self):
+        pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
+        stdout, stderr = pipe.communicate()
+        if pipe.wait() == os.EX_OK:
+            self._setAtoms(_unicode_decode(stdout).splitlines())
+
+    def singleBuilder(self, options, settings, trees):
+        if not "command" in options:
+            raise SetConfigError("no command specified")
+        return CommandOutputSet(options["command"])
+
+    singleBuilder = classmethod(singleBuilder)

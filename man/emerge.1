@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Mar 2021" "Portage VERSION" "Portage"
+.TH "EMERGE" "1" "Dec 2021" "Portage VERSION" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -588,7 +588,7 @@ dependency tree, as though no packages are currently
 installed. You should run this with \fB\-\-pretend\fR
 first to make sure the result is what you expect.
 .TP
-.BR "\-\-exclude " ATOMS
+.BR "\-\-exclude, \-X ATOMS"
 A space separated list of package names or slot atoms.
 Emerge won't install any ebuild or binary package that
 matches any of the given package atoms.
@@ -1064,6 +1064,9 @@ packages must be available at the time of dependency calculation or emerge
 will simply abort.  Portage does not use ebuild repositories when calculating
 dependency information so all masking information is ignored.
 .TP
+.BR "\-\-usepkg\-exclude\-live [ y | n ]"
+Tells emerge to not install from binary packages for live ebuilds.
+.TP
 .BR "\-\-verbose [ y | n ]" ", " \-v
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print
 out GNU info errors, if any, and to show the USE flags that will be used for
@@ -1095,7 +1098,7 @@ The default is set to "y" (on).
 In dependency calculations, pull in build time dependencies
 that are not strictly required. This option is automatically enabled for
 installation actions, meaning they will be installed, and defaults to
-\(aqy\(aq for the \fB\-\-depclean\fR action, meaning they will not be
+"y" for the \fB\-\-depclean\fR action, meaning they will not be
 removed. In order to prevent the \fB\-\-with\-bdeps\fR option from being
 automatically enabled for installation actions, specify
 \fB\-\-with\-bdeps\-auto=n\fR in either the command line or

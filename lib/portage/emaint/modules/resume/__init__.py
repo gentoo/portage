@@ -6,16 +6,16 @@ __doc__ = doc
 
 
 module_spec = {
-	'name': 'resume',
-	'description': doc,
-	'provides':{
-		'module1': {
-			'name': "cleanresume",
-			'sourcefile': "resume",
-			'class': "CleanResume",
-			'description':  "Discard emerge --resume merge lists",
-			'functions': ['check', 'fix'],
-			'func_desc': {}
-			}
-		}
-	}
+    "name": "resume",
+    "description": doc,
+    "provides": {
+        "module1": {
+            "name": "cleanresume",
+            "sourcefile": "resume",
+            "class": "CleanResume",
+            "description": "Discard emerge --resume merge lists",
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        }
+    },
+}

@@ -224,20 +224,25 @@ Releases
 First update the NEWS and RELEASE-NOTES files and commit.
 
 Second create a git tag for this release:
-	git tag v2.2.8
+	git tag portage-2.2.8
 
-Then create the tarball and run the tests:
-	./mkrelease.sh --changelog-rev v2.2.7 --tag --runtests 2.2.8
-Make sure you have all supported python versions installed first
+Create the tarball and run the tests: ./runtests
 (see PYTHON_SUPPORTED_VERSIONS in runtests).
 
-Version bump the ebuild and verify it can re-install itself:
-	emerge portage
-	emerge portage
+Version bump the ebuild locally (don't push) and verify it can re-install itself:
+	emerge --oneshot portage
+	emerge --oneshot portage # this is using the new Portage
 
 Publish the results (no going back now):
 	- Push the new git tag
 	- Upload the tarball
 	- Commit the new ebuild version
+
+Create the release for pypi and upload it there:
+	- python -m venv .venv
+	- . .venv/bin/activate
+	- pip install wheel twine
+	- python setup.py bdist_wheel sdist
+	- twine upload dist/<filenames>
 
 Close the bugs blocking the tracker bug for this release.

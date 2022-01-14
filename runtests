@@ -21,65 +21,65 @@ import tempfile
 
 # These are the versions we fully support and require to pass tests.
 PYTHON_SUPPORTED_VERSIONS = [
-	'3.6',
-	'3.7',
-	'3.8',
-	'3.9'
+    '3.6',
+    '3.7',
+    '3.8',
+    '3.9'
 ]
 # The rest are just "nice to have".
 PYTHON_NICE_VERSIONS = [
-	'pypy3',
-	'3.10'
+    'pypy3',
+    '3.10'
 ]
 
 EPREFIX = os.environ.get('PORTAGE_OVERRIDE_EPREFIX', '/')
 
 
 class Colors:
-	"""Simple object holding color constants."""
+    """Simple object holding color constants."""
 
-	_COLORS_YES = ('y', 'yes', 'true')
-	_COLORS_NO = ('n', 'no', 'false')
+    _COLORS_YES = ('y', 'yes', 'true')
+    _COLORS_NO = ('n', 'no', 'false')
 
-	WARN = GOOD = BAD = NORMAL = ''
+    WARN = GOOD = BAD = NORMAL = ''
 
-	def __init__(self, colorize=None):
-		if colorize is None:
-			nocolors = os.environ.get('NOCOLOR', 'false')
-			# Ugh, look away, for here we invert the world!
-			if nocolors in self._COLORS_YES:
-				colorize = False
-			elif nocolors in self._COLORS_NO:
-				colorize = True
-			else:
-				raise ValueError('$NOCOLORS is invalid: %s' % nocolors)
-		else:
-			if colorize in self._COLORS_YES:
-				colorize = True
-			elif colorize in self._COLORS_NO:
-				colorize = False
-			else:
-				raise ValueError('--colors is invalid: %s' % colorize)
+    def __init__(self, colorize=None):
+        if colorize is None:
+            nocolors = os.environ.get('NOCOLOR', 'false')
+            # Ugh, look away, for here we invert the world!
+            if nocolors in self._COLORS_YES:
+                colorize = False
+            elif nocolors in self._COLORS_NO:
+                colorize = True
+            else:
+                raise ValueError('$NOCOLORS is invalid: %s' % nocolors)
+        else:
+            if colorize in self._COLORS_YES:
+                colorize = True
+            elif colorize in self._COLORS_NO:
+                colorize = False
+            else:
+                raise ValueError('--colors is invalid: %s' % colorize)
 
-		if colorize:
-			self.WARN = '\033[1;33m'
-			self.GOOD = '\033[1;32m'
-			self.BAD = '\033[1;31m'
-			self.NORMAL = '\033[0m'
+        if colorize:
+            self.WARN = '\033[1;33m'
+            self.GOOD = '\033[1;32m'
+            self.BAD = '\033[1;31m'
+            self.NORMAL = '\033[0m'
 
 
 def get_python_executable(ver):
-	"""Find the right python executable for |ver|"""
-	if ver in ('pypy', 'pypy3'):
-		prog = ver
-	else:
-		prog = 'python' + ver
-	return os.path.join(EPREFIX, 'usr', 'bin', prog)
+    """Find the right python executable for |ver|"""
+    if ver in ('pypy', 'pypy3'):
+        prog = ver
+    else:
+        prog = 'python' + ver
+    return os.path.join(EPREFIX, 'usr', 'bin', prog)
 
 
 def get_parser():
-	"""Return a argument parser for this module"""
-	epilog = """Examples:
+    """Return a argument parser for this module"""
+    epilog = """Examples:
 List all the available unittests.
 $ %(prog)s --list
 
@@ -89,91 +89,91 @@ $ %(prog)s --python-versions '2.7 3.3'
 Run just one unittest.
 $ %(prog)s lib/portage/tests/xpak/test_decodeint.py
 """
-	parser = argparse.ArgumentParser(
-		description=__doc__,
-		formatter_class=argparse.RawDescriptionHelpFormatter,
-		epilog=epilog)
-	parser.add_argument('--keep-temp', default=False, action='store_true',
-		help='Do not delete the temporary directory when exiting')
-	parser.add_argument('--color', type=str, default=None,
-		help='Whether to use colorized output (default is auto)')
-	parser.add_argument('--python-versions', action='append',
-		help='Versions of python to test (default is test available)')
-	return parser
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=epilog)
+    parser.add_argument('--keep-temp', default=False, action='store_true',
+                        help='Do not delete the temporary directory when exiting')
+    parser.add_argument('--color', type=str, default=None,
+                        help='Whether to use colorized output (default is auto)')
+    parser.add_argument('--python-versions', action='append',
+                        help='Versions of python to test (default is test available)')
+    return parser
 
 
 def main(argv):
-	parser = get_parser()
-	opts, args = parser.parse_known_args(argv)
-	colors = Colors(colorize=opts.color)
+    parser = get_parser()
+    opts, args = parser.parse_known_args(argv)
+    colors = Colors(colorize=opts.color)
 
-	# Figure out all the versions we want to test.
-	if opts.python_versions is None:
-		ignore_missing = True
-		pyversions = PYTHON_SUPPORTED_VERSIONS + PYTHON_NICE_VERSIONS
-	else:
-		ignore_missing = False
-		pyversions = []
-		for ver in opts.python_versions:
-			if ver == 'supported':
-				pyversions.extend(PYTHON_SUPPORTED_VERSIONS)
-			else:
-				pyversions.extend(ver.split())
+    # Figure out all the versions we want to test.
+    if opts.python_versions is None:
+        ignore_missing = True
+        pyversions = PYTHON_SUPPORTED_VERSIONS + PYTHON_NICE_VERSIONS
+    else:
+        ignore_missing = False
+        pyversions = []
+        for ver in opts.python_versions:
+            if ver == 'supported':
+                pyversions.extend(PYTHON_SUPPORTED_VERSIONS)
+            else:
+                pyversions.extend(ver.split())
 
-	tempdir = None
-	try:
-		# Set up a single tempdir for all the tests to use.
-		# This way we know the tests won't leak things on us.
-		tempdir = tempfile.mkdtemp(prefix='portage.runtests.')
-		os.environ['TMPDIR'] = tempdir
+    tempdir = None
+    try:
+        # Set up a single tempdir for all the tests to use.
+        # This way we know the tests won't leak things on us.
+        tempdir = tempfile.mkdtemp(prefix='portage.runtests.')
+        os.environ['TMPDIR'] = tempdir
 
-		# Actually test those versions now.
-		statuses = []
-		for ver in pyversions:
-			prog = get_python_executable(ver)
-			cmd = [prog, '-b', '-Wd', 'lib/portage/tests/runTests.py'] + args
-			if os.access(prog, os.X_OK):
-				print('%sTesting with Python %s...%s' %
-					(colors.GOOD, ver, colors.NORMAL))
-				statuses.append((ver, subprocess.call(cmd)))
-			elif not ignore_missing:
-				print('%sCould not find requested Python %s%s' %
-					(colors.BAD, ver, colors.NORMAL))
-				statuses.append((ver, 1))
-			else:
-				print('%sSkip Python %s...%s' %
-					(colors.WARN, ver, colors.NORMAL))
-			print()
-	finally:
-		if tempdir is not None:
-			if opts.keep_temp:
-				print('Temporary directory left behind:\n%s' % tempdir)
-			else:
-				# Nuke our tempdir and anything that might be under it.
-				shutil.rmtree(tempdir, True)
+        # Actually test those versions now.
+        statuses = []
+        for ver in pyversions:
+            prog = get_python_executable(ver)
+            cmd = [prog, '-b', '-Wd', 'lib/portage/tests/runTests.py'] + args
+            if os.access(prog, os.X_OK):
+                print('%sTesting with Python %s...%s' %
+                      (colors.GOOD, ver, colors.NORMAL))
+                statuses.append((ver, subprocess.call(cmd)))
+            elif not ignore_missing:
+                print('%sCould not find requested Python %s%s' %
+                      (colors.BAD, ver, colors.NORMAL))
+                statuses.append((ver, 1))
+            else:
+                print('%sSkip Python %s...%s' %
+                      (colors.WARN, ver, colors.NORMAL))
+            print()
+    finally:
+        if tempdir is not None:
+            if opts.keep_temp:
+                print('Temporary directory left behind:\n%s' % tempdir)
+            else:
+                # Nuke our tempdir and anything that might be under it.
+                shutil.rmtree(tempdir, True)
 
-	# Then summarize it all.
-	print('\nSummary:\n')
-	width = 10
-	header = '| %-*s | %s' % (width, 'Version', 'Status')
-	print('%s\n|%s' % (header, '-' * (len(header) - 1)))
-	exit_status = 0
-	for ver, status in statuses:
-		exit_status += status
-		if status:
-			color = colors.BAD
-			msg = 'FAIL'
-		else:
-			color = colors.GOOD
-			msg = 'PASS'
-		print('| %s%-*s%s | %s%s%s' %
-			(color, width, ver, colors.NORMAL, color, msg, colors.NORMAL))
-	exit(exit_status)
+    # Then summarize it all.
+    print('\nSummary:\n')
+    width = 10
+    header = '| %-*s | %s' % (width, 'Version', 'Status')
+    print('%s\n|%s' % (header, '-' * (len(header) - 1)))
+    exit_status = 0
+    for ver, status in statuses:
+        exit_status += status
+        if status:
+            color = colors.BAD
+            msg = 'FAIL'
+        else:
+            color = colors.GOOD
+            msg = 'PASS'
+        print('| %s%-*s%s | %s%s%s' %
+              (color, width, ver, colors.NORMAL, color, msg, colors.NORMAL))
+    exit(exit_status)
 
 
 if __name__ == '__main__':
-	try:
-		main(sys.argv[1:])
-	except KeyboardInterrupt:
-		print('interrupted ...', file=sys.stderr)
-		exit(1)
+    try:
+        main(sys.argv[1:])
+    except KeyboardInterrupt:
+        print('interrupted ...', file=sys.stderr)
+        exit(1)

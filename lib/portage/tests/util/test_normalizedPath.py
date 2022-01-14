@@ -4,11 +4,12 @@
 
 from portage.tests import TestCase
 
+
 class NormalizePathTestCase(TestCase):
+    def testNormalizePath(self):
 
-	def testNormalizePath(self):
+        from portage.util import normalize_path
 
-		from portage.util import normalize_path
-		path = "///foo/bar/baz"
-		good = "/foo/bar/baz"
-		self.assertEqual(normalize_path(path), good)
+        path = "///foo/bar/baz"
+        good = "/foo/bar/baz"
+        self.assertEqual(normalize_path(path), good)

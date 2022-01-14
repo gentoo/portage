@@ -6,27 +6,25 @@ __doc__ = doc
 
 
 module_spec = {
-	'name': 'move',
-	'description': doc,
-	'provides':{
-		'module1': {
-			'name': "moveinst",
-			'sourcefile': "move",
-			'class': "MoveInstalled",
-			'description': doc,
-			'options': ['check', 'fix'],
-			'functions': ['check', 'fix'],
-			'func_desc': {
-				}
-			},
-		'module2':{
-			'name': "movebin",
-			'sourcefile': "move",
-			'class': "MoveBinary",
-			'description': "Perform package move updates for binary packages",
-			'functions': ['check', 'fix'],
-			'func_desc': {
-				}
-			}
-		}
-	}
+    "name": "move",
+    "description": doc,
+    "provides": {
+        "module1": {
+            "name": "moveinst",
+            "sourcefile": "move",
+            "class": "MoveInstalled",
+            "description": doc,
+            "options": ["check", "fix"],
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        },
+        "module2": {
+            "name": "movebin",
+            "sourcefile": "move",
+            "class": "MoveBinary",
+            "description": "Perform package move updates for binary packages",
+            "functions": ["check", "fix"],
+            "func_desc": {},
+        },
+    },
+}

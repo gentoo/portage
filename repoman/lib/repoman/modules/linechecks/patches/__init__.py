@@ -7,15 +7,15 @@ __doc__ = doc[:]
 
 
 module_spec = {
-	'name': 'do',
-	'description': doc,
-	'provides':{
-		'patches-check': {
-			'name': "patches",
-			'sourcefile': "patches",
-			'class': "EbuildPatches",
-			'description': doc,
-		},
-	},
-	'version': 1,
+    "name": "do",
+    "description": doc,
+    "provides": {
+        "patches-check": {
+            "name": "patches",
+            "sourcefile": "patches",
+            "class": "EbuildPatches",
+            "description": doc,
+        },
+    },
+    "version": 1,
 }

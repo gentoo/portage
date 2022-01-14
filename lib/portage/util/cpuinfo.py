@@ -1,7 +1,7 @@
 # Copyright 2015-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-__all__ = ['get_cpu_count']
+__all__ = ["get_cpu_count"]
 
 # Before you set out to change this function, figure out what you're really
 # asking:
@@ -25,23 +25,26 @@ __all__ = ['get_cpu_count']
 # As a further warning, the results returned by this function can differ
 # between runs, if altered by the scheduler or other external factors.
 
+
 def get_cpu_count():
-	"""
-	Try to obtain the number of CPUs available to this process.
+    """
+    Try to obtain the number of CPUs available to this process.
 
-	@return: Number of CPUs or None if unable to obtain.
-	"""
-	try:
-		import os
-		# This was introduced in Python 3.3 only, but exists in Linux
-		# all the way back to the 2.5.8 kernel.
-		# This NOT available in FreeBSD!
-		return len(os.sched_getaffinity(0))
-	except (ImportError, NotImplementedError, AttributeError):
-		pass
+    @return: Number of CPUs or None if unable to obtain.
+    """
+    try:
+        import os
 
-	try:
-		import multiprocessing
-		return multiprocessing.cpu_count()
-	except (ImportError, NotImplementedError):
-		return None
+        # This was introduced in Python 3.3 only, but exists in Linux
+        # all the way back to the 2.5.8 kernel.
+        # This NOT available in FreeBSD!
+        return len(os.sched_getaffinity(0))
+    except (ImportError, NotImplementedError, AttributeError):
+        pass
+
+    try:
+        import multiprocessing
+
+        return multiprocessing.cpu_count()
+    except (ImportError, NotImplementedError):
+        return None

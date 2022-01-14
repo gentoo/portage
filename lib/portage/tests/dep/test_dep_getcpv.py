@@ -5,33 +5,31 @@
 from portage.tests import TestCase
 from portage.dep import dep_getcpv
 
+
 class DepGetCPV(TestCase):
-	""" A simple testcase for isvalidatom
-	"""
+    """A simple testcase for isvalidatom"""
 
-	def testDepGetCPV(self):
+    def testDepGetCPV(self):
 
-		prefix_ops = [
-			"<", ">", "=", "~", "<=",
-			">=", "!=", "!<", "!>", "!~"
-		]
+        prefix_ops = ["<", ">", "=", "~", "<=", ">=", "!=", "!<", "!>", "!~"]
 
-		bad_prefix_ops = [">~", "<~", "~>", "~<"]
-		postfix_ops = [("=", "*"),]
+        bad_prefix_ops = [">~", "<~", "~>", "~<"]
+        postfix_ops = [
+            ("=", "*"),
+        ]
 
-		cpvs = ["sys-apps/portage-2.1", "sys-apps/portage-2.1",
-				"sys-apps/portage-2.1"]
-		slots = [None, ":foo", ":2"]
-		for cpv in cpvs:
-			for slot in slots:
-				for prefix in prefix_ops:
-					mycpv = prefix + cpv
-					if slot:
-						mycpv += slot
-					self.assertEqual(dep_getcpv(mycpv), cpv)
+        cpvs = ["sys-apps/portage-2.1", "sys-apps/portage-2.1", "sys-apps/portage-2.1"]
+        slots = [None, ":foo", ":2"]
+        for cpv in cpvs:
+            for slot in slots:
+                for prefix in prefix_ops:
+                    mycpv = prefix + cpv
+                    if slot:
+                        mycpv += slot
+                    self.assertEqual(dep_getcpv(mycpv), cpv)
 
-				for prefix, postfix in postfix_ops:
-					mycpv = prefix + cpv + postfix
-					if slot:
-						mycpv += slot
-					self.assertEqual(dep_getcpv(mycpv), cpv)
+                for prefix, postfix in postfix_ops:
+                    mycpv = prefix + cpv + postfix
+                    if slot:
+                        mycpv += slot
+                    self.assertEqual(dep_getcpv(mycpv), cpv)
