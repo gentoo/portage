@@ -1115,7 +1115,8 @@ class config:
             }
 
             eroot_or_parent = first_existing(eroot)
-            unprivileged = False
+            # PREFIX LOCAL
+            unprivileged = portage.const.EPREFIX != ''
             try:
                 # PREFIX LOCAL: inventing UID/GID based on a path is a very
                 # bad idea, it breaks almost everything since group ids
