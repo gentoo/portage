@@ -28,7 +28,7 @@ fi
 
 install -d -m0755 ${DEST}
 rsync -a --exclude='.git' --exclude='.hg' --exclude="repoman/" . ${DEST}
-sed -i -e '/^VERSION\s*=/s/^.*$/VERSION = "'${V}-prefix'"/' \
+sed -i -e '/^VERSION\s*=/s/^.*$/VERSION = "'${V}_prefix'"/' \
 	${DEST}/lib/portage/__init__.py
 sed -i -e "/version = /s/'[^']\+'/'${V}-prefix'/" ${DEST}/setup.py
 sed -i -e "1s/VERSION/${V}-prefix/" ${DEST}/man/{,ru/}*.[15]

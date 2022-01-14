@@ -12,8 +12,8 @@ try:
     import asyncio
     import sys
     import errno
-	# PREFIX LOCAL
-	import multiprocessing
+    # PREFIX LOCAL
+    import multiprocessing
 
     if not hasattr(errno, "ESTALE"):
         # ESTALE may not be defined on some systems, such as interix.
@@ -58,9 +58,9 @@ except ImportError as e:
 # the latter causing issues because all kinds of things can't be
 # pickled, so force fork mode for now
 try:
-	multiprocessing.set_start_method('fork')
+    multiprocessing.set_start_method('fork')
 except RuntimeError:
-	pass
+    pass
 # END PREFIX LOCAL
 
 try:

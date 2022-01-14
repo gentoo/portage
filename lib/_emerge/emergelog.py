@@ -17,7 +17,6 @@ from portage.const import EPREFIX
 # unless it's really called via emerge.
 _disable = True
 _emerge_log_dir = EPREFIX + '/var/log'
-_emerge_log_dir = "/var/log"
 
 
 def emergelog(xterm_titles, mystr, short_msg=None):

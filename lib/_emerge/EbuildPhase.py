@@ -603,22 +603,22 @@ class _PostPhaseCommands(CompositeTask):
             os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info"), all_provides
         )
 
-		# BEGIN PREFIX LOCAL
-		if EPREFIX != "" and unresolved:
-			# in prefix, consider the host libs for any unresolved libs,
-			# so we kill warnings about missing libc.so.1, etc.
-			for obj, libs in list(unresolved):
-				unresolved.remove((obj, libs))
-				libs=list(libs)
-				for lib in list(libs):
-					for path in ['/lib64', '/lib/64', '/lib', \
-							'/usr/lib64', '/usr/lib/64', '/usr/lib']:
-						if os.path.exists(os.path.join(path, lib)):
-							libs.remove(lib)
-							break
-				if len(libs) > 0:
-					unresolved.append((obj, tuple(libs)))
-		# END PREFIX LOCAL
+        # BEGIN PREFIX LOCAL
+        if EPREFIX != "" and unresolved:
+            # in prefix, consider the host libs for any unresolved libs,
+            # so we kill warnings about missing libc.so.1, etc.
+            for obj, libs in list(unresolved):
+                unresolved.remove((obj, libs))
+                libs=list(libs)
+                for lib in list(libs):
+                    for path in ['/lib64', '/lib/64', '/lib', \
+                            '/usr/lib64', '/usr/lib/64', '/usr/lib']:
+                        if os.path.exists(os.path.join(path, lib)):
+                            libs.remove(lib)
+                            break
+                if len(libs) > 0:
+                    unresolved.append((obj, tuple(libs)))
+        # END PREFIX LOCAL
 
         if unresolved:
             unresolved.sort()
