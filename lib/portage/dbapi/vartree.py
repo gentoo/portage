@@ -3729,7 +3729,7 @@ class dblink:
                     node = LinkageMapPeCoff._LibGraphNode(linkmap._obj_key(path))
                 elif chost.find('aix') >= 0:
                     node = LinkageMapXCoff._LibGraphNode(linkmap._obj_key(path))
-                else
+                else:
                     node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
                 alt_path_node = lib_graph.get(node)
                 if alt_path_node is not None:
