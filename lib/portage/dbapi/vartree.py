@@ -38,6 +38,11 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._xattr:xattr",
     "portage.util._dyn_libs.PreservedLibsRegistry:PreservedLibsRegistry",
     "portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap",
+    # BEGIN PREFIX LOCAL
+    'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
+    'portage.util._dyn_libs.LinkageMapPeCoff:LinkageMapPeCoff',
+    'portage.util._dyn_libs.LinkageMapXCoff:LinkageMapXCoff',
+    # END PREFIX LOCAL
     "portage.util._dyn_libs.NeededEntry:NeededEntry",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._eventloop.global_event_loop:global_event_loop",
