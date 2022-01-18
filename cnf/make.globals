@@ -20,8 +20,10 @@ FFLAGS=""
 FCFLAGS=""
 
 # Default distfiles mirrors. This rotation has multiple hosts and is reliable.
+# https and http enabled; http as backup, since the non-CDN rotation
+# does not provide SSL.
 # Approved by the mirror-admin team.
-GENTOO_MIRRORS="http://distfiles.gentoo.org"
+GENTOO_MIRRORS="https://distfiles.gentoo.org http://distfiles.gentoo.org"
 
 ACCEPT_PROPERTIES="*"
 ACCEPT_RESTRICT="*"
