@@ -42,9 +42,9 @@ import re
 import subprocess
 import sys
 
-autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.basename(
-    os.path.dirname(__file__)
-).startswith("pip-")
+autodetect_pip = os.path.basename(
+    os.environ.get("_", "")) == "pip" or os.path.basename(
+        os.path.dirname(__file__)).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
 with open(os.path.join(os.path.dirname(__file__), "README.md"), "rt") as f:
@@ -88,18 +88,15 @@ x_c_helpers = {
 }
 
 if platform.system() == "Linux":
-    x_c_helpers.update(
-        {
-            "portage.util.file_copy.reflink_linux": [
-                "src/portage_util_file_copy_reflink_linux.c",
-            ],
-        }
-    )
+    x_c_helpers.update({
+        "portage.util.file_copy.reflink_linux": [
+            "src/portage_util_file_copy_reflink_linux.c",
+        ],
+    })
 
 
 class x_build(build):
     """Build command with extra build_man call."""
-
     def run(self):
         build.run(self)
         self.run_command("build_man")
@@ -132,7 +129,8 @@ class build_man(Command):
 
                 with codecs.open(source, "r", "utf8") as f:
                     data = f.readlines()
-                data[0] = data[0].replace("VERSION", self.distribution.get_version())
+                data[0] = data[0].replace("VERSION",
+                                          self.distribution.get_version())
                 with codecs.open(target, "w", "utf8") as f:
                     f.writelines(data)
 
@@ -161,13 +159,15 @@ class docbook(Command):
         with open("doc/fragment/date", "w"):
             pass
         with open("doc/fragment/version", "w") as f:
-            f.write("<releaseinfo>%s</releaseinfo>" % self.distribution.get_version())
+            f.write("<releaseinfo>%s</releaseinfo>" %
+                    self.distribution.get_version())
 
         for f in self.doc_formats:
             print("Building docs in %s format..." % f)
-            subprocess.check_call(
-                ["xmlto", "-o", "doc", "-m", "doc/custom.xsl", f, "doc/portage.docbook"]
-            )
+            subprocess.check_call([
+                "xmlto", "-o", "doc", "-m", "doc/custom.xsl", f,
+                "doc/portage.docbook"
+            ])
 
 
 class apidoc(Command):
@@ -194,7 +194,8 @@ class apidoc(Command):
             pass
         process_env["PYTHONPATH"] = pythonpath
 
-        subprocess.check_call(["make", "-C", "doc/api", "html"], env=process_env)
+        subprocess.check_call(["make", "-C", "doc/api", "html"],
+                              env=process_env)
 
 
 class install_docbook(install_data):
@@ -242,8 +243,8 @@ class install_apidoc(install_data):
         self.data_files = [
             (
                 os.path.join(self.htmldir, "api"),
-                glob.glob("doc/api/build/html/*.html")
-                + glob.glob("doc/api/build/html/*.js"),
+                glob.glob("doc/api/build/html/*.html") +
+                glob.glob("doc/api/build/html/*.js"),
             ),
             (
                 os.path.join(self.htmldir, "api/_static"),
@@ -270,7 +271,7 @@ class x_build_scripts_custom(build_scripts):
         # group scripts by subdirectory
         split_scripts = collections.defaultdict(list)
         for f in self.scripts:
-            dir_name = os.path.dirname(f[len("bin/") :])
+            dir_name = os.path.dirname(f[len("bin/"):])
             split_scripts[dir_name].append(f)
 
         base_dir = self.build_dir
@@ -312,7 +313,6 @@ class x_build_scripts(build_scripts):
 
 class x_clean(clean):
     """clean extended for doc & post-test cleaning"""
-
     @staticmethod
     def clean_docs():
         def get_doc_outfiles():
@@ -390,7 +390,8 @@ class x_install(install):
             "Install directory for Portage internal-use executables",
         ),
         ("portage-datadir=", None, "Install directory for data files"),
-        ("sbindir=", None, "Install directory for superuser-intended executables"),
+        ("sbindir=", None,
+         "Install directory for superuser-intended executables"),
         ("sysconfdir=", None, "System configuration path"),
     ]
 
@@ -567,12 +568,10 @@ class x_install_lib(install_lib):
                 ),
             )
         else:
-            val_dict.update(
-                {
-                    "PORTAGE_BASE_PATH": self.portage_base,
-                    "PORTAGE_BIN_PATH": self.portage_bindir,
-                }
-            )
+            val_dict.update({
+                "PORTAGE_BASE_PATH": self.portage_base,
+                "PORTAGE_BIN_PATH": self.portage_bindir,
+            })
         rewrite_file("portage/const.py", val_dict)
 
         return ret
@@ -584,9 +583,8 @@ class x_install_scripts_custom(install_scripts):
         self.root = None
 
     def finalize_options(self):
-        self.set_undefined_options(
-            "install", ("root", "root"), (self.var_name, "install_dir")
-        )
+        self.set_undefined_options("install", ("root", "root"),
+                                   (self.var_name, "install_dir"))
         install_scripts.finalize_options(self)
         self.build_dir = os.path.join(self.build_dir, self.dir_name)
 
@@ -629,7 +627,6 @@ class x_install_scripts(install_scripts):
 
 class x_sdist(sdist):
     """sdist defaulting to .tar.bz2 format, and archive files owned by root"""
-
     def finalize_options(self):
         if self.owner is None:
             self.owner = "root"
@@ -641,7 +638,6 @@ class x_sdist(sdist):
 
 class build_tests(x_build_scripts_custom):
     """Prepare build dir for running tests."""
-
     def initialize_options(self):
         x_build_scripts_custom.initialize_options(self)
         self.build_base = None
@@ -649,9 +645,8 @@ class build_tests(x_build_scripts_custom):
 
     def finalize_options(self):
         x_build_scripts_custom.finalize_options(self)
-        self.set_undefined_options(
-            "build", ("build_base", "build_base"), ("build_lib", "build_lib")
-        )
+        self.set_undefined_options("build", ("build_base", "build_base"),
+                                   ("build_lib", "build_lib"))
 
         # since we will be writing to $build_lib/.., it is important
         # that we do not leave $build_base
@@ -674,8 +669,8 @@ class build_tests(x_build_scripts_custom):
         if os.path.exists(conf_dir):
             if not os.path.islink(conf_dir):
                 raise SystemError(
-                    "%s exists and is not a symlink (collision)" % repr(conf_dir)
-                )
+                    "%s exists and is not a symlink (collision)" %
+                    repr(conf_dir))
             os.unlink(conf_dir)
         conf_src = os.path.relpath("cnf", self.top_dir)
         print("Symlinking %s -> %s" % (conf_dir, conf_src))
@@ -700,13 +695,11 @@ class test(Command):
 
     def run(self):
         self.run_command("build_tests")
-        subprocess.check_call(
-            [
-                sys.executable,
-                "-bWd",
-                os.path.join(self.build_lib, "portage/tests/runTests.py"),
-            ]
-        )
+        subprocess.check_call([
+            sys.executable,
+            "-bWd",
+            os.path.join(self.build_lib, "portage/tests/runTests.py"),
+        ])
 
 
 def find_packages():
@@ -733,7 +726,7 @@ def get_manpages():
             _fn, suffix = f.rsplit(".", 1)
             groups[suffix].append(os.path.join(dirpath, f))
 
-        topdir = dirpath[len("man/") :]
+        topdir = dirpath[len("man/"):]
         if not topdir or linguas is None or topdir in linguas:
             for g, mans in groups.items():
                 yield [os.path.join("$mandir", topdir, "man%s" % g), mans]
@@ -776,15 +769,14 @@ def venv_data_files(locations):
         abs_source_path = os.path.abspath(source_path)
         for root, dirs, files in os.walk(abs_source_path):
 
-            root_offset = root[len(abs_source_path) :].lstrip("/")
+            root_offset = root[len(abs_source_path):].lstrip("/")
             dest_path = os.path.join(dest_prefix, root_offset)
 
             if specific_files:
                 matched_files = list(
                     itertools.chain.from_iterable(
-                        glob.glob(os.path.join(root, x)) for x in specific_files
-                    )
-                )
+                        glob.glob(os.path.join(root, x))
+                        for x in specific_files))
             else:
                 matched_files = [os.path.join(root, x) for x in files]
 
@@ -808,12 +800,15 @@ setup(
     version="3.0.30",
     url="https://wiki.gentoo.org/wiki/Project:Portage",
     project_urls={
-        "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES",
-        "Documentation": "https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage",
+        "Release Notes":
+        "https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES",
+        "Documentation":
+        "https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage",
     },
     author="Gentoo Portage Development Team",
     author_email="dev-portage@gentoo.org",
-    description="Portage is the package management and distribution system for Gentoo",
+    description=
+    "Portage is the package management and distribution system for Gentoo",
     license="GPLV2",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -822,53 +817,53 @@ setup(
     # something to cheat build & install commands
     scripts=list(find_scripts()),
     data_files=get_data_files(
-        list(get_manpages())
-        + [
+        list(get_manpages()) + [
             ["$sysconfdir", ["cnf/etc-update.conf", "cnf/dispatch-conf.conf"]],
             ["$logrotatedir", ["cnf/logrotate.d/elog-save-summary"]],
             [
                 "$portage_confdir",
-                ["cnf/make.conf.example", "cnf/make.globals", "cnf/repos.conf"],
+                [
+                    "cnf/make.conf.example", "cnf/make.globals",
+                    "cnf/repos.conf"
+                ],
             ],
             ["$portage_setsdir", ["cnf/sets/portage.conf"]],
             ["$docdir", ["NEWS", "RELEASE-NOTES"]],
             ["$portage_base/bin", ["bin/deprecated-path"]],
-            ["$portage_confdir/repo.postsync.d", ["cnf/repo.postsync.d/example"]],
+            [
+                "$portage_confdir/repo.postsync.d",
+                ["cnf/repo.postsync.d/example"]
+            ],
         ],
         [
             ("etc", "cnf", ("etc-update.conf", "dispatch-conf.conf")),
-            ("etc/logrotate.d", "cnf/logrotate.d", ("elog-save-summary",)),
+            ("etc/logrotate.d", "cnf/logrotate.d", ("elog-save-summary", )),
             (
                 "share/portage/config/repo.postsync.d",
                 "cnf/repo.postsync.d",
-                ("example",),
+                ("example", ),
             ),
             (
                 "share/portage/config",
                 "cnf",
                 ("make.conf.example", "make.globals", "repos.conf"),
             ),
-            ("share/portage/config/sets", "cnf/sets", ("*.conf",)),
-            ("share/man/man1", "man", ("*.1",)),
-            ("share/man/man5", "man", ("*.5",)),
+            ("share/portage/config/sets", "cnf/sets", ("*.conf", )),
+            ("share/man/man1", "man", ("*.1", )),
+            ("share/man/man5", "man", ("*.5", )),
             ("share/portage/doc", "", ("NEWS", "RELEASE-NOTES")),
-            ("lib/portage/bin", "bin", ("-m0755",)),
+            ("lib/portage/bin", "bin", ("-m0755", )),
         ],
     ),
     entry_points={
         "console_scripts": [
             "{}=portage.util.bin_entry_point:bin_entry_point".format(
-                os.path.basename(path)
-            )
+                os.path.basename(path))
             for path in itertools.chain.from_iterable(x_scripts.values())
         ],
-    }
-    if create_entry_points
-    else {},
+    } if create_entry_points else {},
     # create_entry_points disables ext_modules, for pure python
-    ext_modules=[]
-    if create_entry_points
-    else [
+    ext_modules=[] if create_entry_points else [
         Extension(
             name=n,
             sources=m,
@@ -877,8 +872,7 @@ setup(
                 "-D_LARGEFILE_SOURCE",
                 "-D_LARGEFILE64_SOURCE",
             ],
-        )
-        for n, m in x_c_helpers.items()
+        ) for n, m in x_c_helpers.items()
     ],
     cmdclass={
         "build": x_build,
