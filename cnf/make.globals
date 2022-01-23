@@ -38,6 +38,27 @@ PORTAGE_TMPDIR="/var/tmp"
 # existing installs where bzip2 is used for backward compatibility.
 BINPKG_COMPRESS="zstd"
 
+# The format used for binary packages. The default is use old "xpak" format.
+# Set to "gpkg" to use new gentoo binary package format.
+BINPKG_FORMAT="xpak"
+
+# The binary package default GPG signing command.
+# flock is used to avoid a racing condition of gnupg
+BINPKG_GPG_SIGNING_BASE_COMMAND="/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg --sign --armor [PORTAGE_CONFIG]"
+
+# The default binary package GPG digests algorithm.
+BINPKG_GPG_SIGNING_DIGEST="SHA512"
+
+# The binary package default GPG verify command.
+BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"
+
+# The binary package default GPG home directory for verify
+BINPKG_GPG_VERIFY_GPG_HOME="/etc/portage/gnupg"
+
+# The user and group will be used when drop root privileges during GPG verify
+GPG_VERIFY_USER_DROP="nobody"
+GPG_VERIFY_GROUP_DROP="nogroup"
+
 # Fetching command (3 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND="wget -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 RESUMECOMMAND="wget -c -t 3 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""

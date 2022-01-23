@@ -41,7 +41,7 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
-from portage.exception import InvalidAtom, InvalidData, ParseError
+from portage.exception import InvalidAtom, InvalidData, ParseError, GPGException
 from portage.output import (
     colorize,
     create_color_func,
@@ -77,6 +77,8 @@ from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.localization import _
 from portage.metadata import action_metadata
 from portage.emaint.main import print_results
+from portage.gpg import GPG
+from portage.binpkg import get_binpkg_format
 
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
@@ -603,6 +605,28 @@ def action_build(
                         noiselevel=-1,
                     )
                     return 1
+
+                # unlock GPG if needed
+                if (
+                    need_write_bindb
+                    and (eroot in ebuild_eroots)
+                    and (
+                        "binpkg-signing"
+                        in trees[eroot]["root_config"].settings.features
+                    )
+                ):
+                    portage.writemsg_stdout(">>> Unlocking GPG... ")
+                    sys.stdout.flush()
+                    gpg = GPG(trees[eroot]["root_config"].settings)
+                    try:
+                        gpg.unlock()
+                    except GPGException as e:
+                        writemsg_level(
+                            colorize("BAD", "!!! %s\n" % e),
+                            level=logging.ERROR,
+                            noiselevel=-1,
+                        )
+                        return 1
 
         if "--resume" in myopts:
             favorites = mtimedb["resume"]["favorites"]
@@ -2271,11 +2295,21 @@ def action_info(settings, trees, myopts, myfiles):
             elif pkg_type == "ebuild":
                 ebuildpath = portdb.findname(pkg.cpv, myrepo=pkg.repo)
             elif pkg_type == "binary":
-                tbz2_file = bindb.bintree.getname(pkg.cpv)
+                binpkg_file = bindb.bintree.getname(pkg.cpv)
                 ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
-                ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(
-                    ebuild_file_name
-                )
+                binpkg_format = pkg.cpv._metadata.get("BINPKG_FORMAT", None)
+                if not binpkg_format:
+                    binpkg_format = get_binpkg_format(binpkg_file)
+                if binpkg_format == "xpak":
+                    ebuild_file_contents = portage.xpak.tbz2(binpkg_file).getfile(
+                        ebuild_file_name
+                    )
+                elif binpkg_format == "gpkg":
+                    ebuild_file_contents = portage.gpkg.gpkg(
+                        settings, pkg.cpv, binpkg_file
+                    ).get_metadata(ebuild_file_name)
+                else:
+                    continue
                 tmpdir = tempfile.mkdtemp()
                 ebuildpath = os.path.join(tmpdir, ebuild_file_name)
                 file = open(ebuildpath, "w")

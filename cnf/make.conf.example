@@ -183,6 +183,42 @@
 # This ftp connection is active ftp.
 #PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site:21*/pub/grp/i686/athlon-xp/"
 
+# Binary packages GPG commands
+# ============================
+#
+# Only works with GPKG format.
+# "binpkg-signing" needed to be set in FEATURES if need signing packages.
+# "binpkg-request-signature" needed to be set in FEATURES if you want all
+# binpkgs must have signature.
+# You need uncomment related commands and set "USER" and "SIGN_KEY" to yours.
+#
+# Binary package GPG singing base command
+# Basic command for all signature operations.
+# You need change this if you want to use other configurations,
+# Note that some configurations are configured separately below,
+# please do not add duplicate configurations
+#BINPKG_GPG_SIGNING_BASE_COMMAND="/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg --sign --armor [PORTAGE_CONFIG]"
+
+# Binary package GPG signature digests algorithm.
+#BINPKG_GPG_SIGNING_DIGEST="SHA512"
+
+# gnupg home directory used for signing.
+#BINPKG_GPG_SIGNING_GPG_HOME="/root/.gnupg"
+
+# GPG key ID used for signing.
+#BINPKG_GPG_SIGNING_KEY="0x1234567890ABCD!"
+
+# Binary package GPG verify base command.
+# Basic command for all verify operations.
+#BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"
+
+# GPG home directory where store all trust binary package public keys.
+#BINPKG_GPG_VERIFY_GPG_HOME="/etc/portage/gnupg"
+
+# The user and group will be used when drop root privileges during GPG verify
+#GPG_VERIFY_USER_DROP="nobody"
+#GPG_VERIFY_GROUP_DROP="nogroup"
+
 # Synchronizing Portage
 # =====================
 #

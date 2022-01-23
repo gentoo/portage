@@ -11,6 +11,8 @@ import stat
 import sys
 import portage
 from portage import os
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.exception import FileNotFound, InvalidBinaryPackageFormat
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
@@ -21,8 +23,23 @@ class BinpkgFetcher(CompositeTask):
 
     def __init__(self, **kwargs):
         CompositeTask.__init__(self, **kwargs)
+
         pkg = self.pkg
-        self.pkg_path = pkg.root_config.trees["bintree"].getname(pkg.cpv) + ".partial"
+        bintree = pkg.root_config.trees["bintree"]
+        binpkg_path = None
+
+        if bintree._remote_has_index:
+            instance_key = bintree.dbapi._instance_key(pkg.cpv)
+            binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
+            if binpkg_path:
+                self.pkg_path = binpkg_path + ".partial"
+            else:
+                self.pkg_path = (
+                    pkg.root_config.trees["bintree"].getname(pkg.cpv, allocate_new=True)
+                    + ".partial"
+                )
+        else:
+            raise FileNotFound("Binary packages index not found")
 
     def _start(self):
         fetcher = _BinpkgFetcherProcess(
@@ -106,15 +123,23 @@ class _BinpkgFetcherProcess(SpawnProcess):
         resumecommand = None
         if bintree._remote_has_index:
             remote_metadata = bintree._remotepkgs[bintree.dbapi._instance_key(pkg.cpv)]
+            binpkg_format = remote_metadata.get(
+                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+            )
+            if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
+                raise InvalidBinaryPackageFormat(binpkg_format)
             rel_uri = remote_metadata.get("PATH")
             if not rel_uri:
-                rel_uri = pkg.cpv + ".tbz2"
+                if binpkg_format == "xpak":
+                    rel_uri = pkg.cpv + ".tbz2"
+                elif binpkg_format == "gpkg":
+                    rel_uri = pkg.cpv + ".gpkg.tar"
             remote_base_uri = remote_metadata["BASE_URI"]
             uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
             fetchcommand = remote_metadata.get("FETCHCOMMAND")
             resumecommand = remote_metadata.get("RESUMECOMMAND")
         else:
-            uri = settings["PORTAGE_BINHOST"].rstrip("/") + "/" + pkg.pf + ".tbz2"
+            raise FileNotFound("Binary packages index not found")
 
         if pretend:
             portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)

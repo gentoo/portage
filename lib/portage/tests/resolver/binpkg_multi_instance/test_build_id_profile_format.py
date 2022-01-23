@@ -1,11 +1,16 @@
 # Copyright 2015-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+import sys
+
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
 )
+from portage.output import colorize
 
 
 class BuildIdProfileFormatTestCase(TestCase):
@@ -139,21 +144,30 @@ class BuildIdProfileFormatTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(
-            debug=False,
-            binpkgs=binpkgs,
-            ebuilds=ebuilds,
-            installed=installed,
-            repo_configs=repo_configs,
-            profile=profile,
-            user_config=user_config,
-            world=world,
-        )
-        try:
-            for test_case in test_cases:
-                playground.run_TestCase(test_case)
-                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-        finally:
-            # Disable debug so that cleanup works.
-            # playground.debug = False
-            playground.cleanup()
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                _user_config = user_config.copy()
+                _user_config["make.conf"] += ('BINPKG_FORMAT="%s"' % binpkg_format,)
+                playground = ResolverPlayground(
+                    debug=False,
+                    binpkgs=binpkgs,
+                    ebuilds=ebuilds,
+                    installed=installed,
+                    repo_configs=repo_configs,
+                    profile=profile,
+                    user_config=_user_config,
+                    world=world,
+                )
+
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    # Disable debug so that cleanup works.
+                    # playground.debug = False
+                    playground.cleanup()

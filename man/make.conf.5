@@ -137,6 +137,55 @@ Defaults to "".
 BINPKG_COMPRESS_FLAGS="-9"
 .fi
 .TP
+\fBBINPKG_GPG_SIGNING_BASE_COMMAND\fR = \fI"GPG command and arguments \
+[PORTAGE_CONFIG]"\fR
+The base command will be used for all signing operations.
+Portage will replace \fB[PORTAGE_CONFIG]\fR under different operations.
+Please do not add arguments that can be configured independently.
+.br
+Defaults to "/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg \
+--sign --armor [PORTAGE_CONFIG]".
+.br
+.TP
+\fBBINPKG_GPG_SIGNING_DIGEST=\fR = \fI"GPG supported digest"\fR
+The digest that will be used for signature.
+.br
+Defaults to "SHA512"
+.br
+.TP
+\fBBINPKG_GPG_SIGNING_GPG_HOME\fR = \fI[path]\fR
+The GPG home where the signing private key located.
+.br
+Defaults to "/root/.gnupg"
+.br
+.TP
+\fBBINPKG_GPG_SIGNING_KEY\fR = \fI"GPG key ID"\fR
+GPG key ID used to sign binary packages, must exists in \
+\fBBINPKG_GPG_SIGNING_GPG_HOME\fR.
+.br
+Defaults to ""
+.br
+Example: "0x40DCF18E97150795!"
+.br
+.TP
+\fBBINPKG_GPG_VERIFY_BASE_COMMAND=\fR = \fI"GPG command and arguments"\fR
+The base command will be used for all verify operations.
+Portage will replace \fB[PORTAGE_CONFIG]\fR and \fB[SIGNATURE]\fR under \
+different operations.
+Please do not add arguments that can be configured independently.
+.br
+Defaults to "/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb \
+--status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"
+.br
+.TP
+\fBBINPKG_GPG_VERIFY_GPG_HOME\fR = \fI[path]\fR
+The GPG home where the trusted keys located. Please make sure the target \
+directory is globally readable, as the user will be dropped to \fBnobody\fR \
+during verification.
+.br
+Defaults to "/etc/portage/gnupg"
+.br
+.TP
 .B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined.  Do not set this yourself
@@ -286,6 +335,11 @@ strips (or splits) them before installing.
 
 \fBbinpkg\-dostrip\fR must be enabled for \fBinstallsources\fR to work.
 .TP
+.B binpkg-ignore-signature
+This will disable GPG signature check for all binary packages. Enable this
+could be dangerous if you get binary packages from remote site or use third
+party packages.
+.TP
 .B binpkg\-logs
 Keep logs from successful binary package merges. This is relevant only when
 \fBPORTAGE_LOGDIR\fR is set.
@@ -317,6 +371,16 @@ The \fBeclean\-pkg\fR command can be used to prune old builds from PKGDIR.
 It is also possible to remove packages manually, and then run
 \(aqemaint \-\-fix binhost' to update the ${PKGDIR}/Packages index.
 This feature is enabled by default.
+.TP
+.B binpkg-request-signature
+Binary packages are requested to be signed by trusted GPG signature.
+Portage will reject to process any binary package without a valid GPG
+signature. The verify command is defined in 
+\fBBINPKG_GPG_VERIFY_COMMAND\fR variable.
+.TP
+.B binpkg-signing
+Binary packages will be signed by given GPG command. The signing command 
+is defined in \fBBINPKG_GPG_SIGNING_COMMAND\fR variable.
 .TP
 .B buildpkg
 Binary packages will be created for all packages that are merged. Also see
@@ -450,6 +514,10 @@ for all EAPIs (for obvious reasons).
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See
 \fBmake.conf\fR(5) for more information.
+.TP
+.B gpg-keepalive
+Run GPG unlock command every 5 mins to avoid the passphrase expired.
+If your GPG is auto unlocked on login, you do not need this.
 .TP
 .B icecream
 Enable portage support for the icecream package.
@@ -780,6 +848,18 @@ locations are used to download files before the ones listed in
 the \fIebuild scripts\fR. Merging 'mirrorselect' can help.  Entries in this
 variable that have no protocol and simply start with a '/' path separator may
 be used to specify mounted filesystem mirrors.
+.TP
+\fBGPG_VERIFY_GROUP_DROP\fR = \fI[group]\fR
+The group name used to drop root privileges during verification.
+.br
+Defaults to "nogroup"
+.br
+.TP
+\fBGPG_VERIFY_USER_DROP\fR = \fI[user]\fR
+The user name used to drop root privileges during verification.
+.br
+Defaults to "nobody"
+.br
 .TP
 \fBhttp_proxy ftp_proxy RSYNC_PROXY\fR = \fI[protocol://host:port]\fR
 These variables are used by network clients such as \fBwget\fR(1) and

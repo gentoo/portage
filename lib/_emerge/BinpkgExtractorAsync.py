@@ -15,6 +15,8 @@ from portage.util import (
     shlex_split,
     varexpand,
 )
+from portage.exception import InvalidBinaryPackageFormat
+from portage.binpkg import get_binpkg_format
 import signal
 import subprocess
 import tarfile
@@ -27,6 +29,13 @@ class BinpkgExtractorAsync(SpawnProcess):
     _shell_binary = portage.const.BASH_BINARY
 
     def _start(self):
+        binpkg_format = get_binpkg_format(self.pkg_path)
+        if binpkg_format == "xpak":
+            self._xpak_start()
+        else:
+            raise InvalidBinaryPackageFormat(self.pkg_path)
+
+    def _xpak_start(self):
         tar_options = ""
         if "xattr" in self.features:
             process = subprocess.Popen(

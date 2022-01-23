@@ -15,7 +15,12 @@ from itertools import chain
 import portage
 from portage import os
 from portage import _unicode_decode, _unicode_encode, _encodings
-from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
+from portage.const import (
+    PORTAGE_PACKAGE_ATOM,
+    USER_CONFIG_PATH,
+    VCS_DIRS,
+    SUPPORTED_GPKG_EXTENSIONS,
+)
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.DummyTree import DummyTree
@@ -55,6 +60,7 @@ from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import _pkg_str, catpkgsplit
+from portage.binpkg import get_binpkg_format
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -4558,8 +4564,7 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         lookup_owners = []
         for x in myfiles:
-            ext = os.path.splitext(x)[1]
-            if ext == ".tbz2":
+            if x.endswith(".tbz2") or x.endswith(SUPPORTED_GPKG_EXTENSIONS):
                 if not os.path.exists(x):
                     if os.path.exists(os.path.join(pkgsettings["PKGDIR"], "All", x)):
                         x = os.path.join(pkgsettings["PKGDIR"], "All", x)
@@ -4571,13 +4576,22 @@ class depgraph:
                             noiselevel=-1,
                         )
                         writemsg(
-                            "!!! Please ensure the tbz2 exists as specified.\n\n",
+                            "!!! Please ensure the binpkg exists as specified.\n\n",
                             noiselevel=-1,
                         )
                         return 0, myfavorites
-                mytbz2 = portage.xpak.tbz2(x)
-                mykey = None
-                cat = mytbz2.getfile("CATEGORY")
+                binpkg_format = get_binpkg_format(x)
+                if binpkg_format == "xpak":
+                    mytbz2 = portage.xpak.tbz2(x)
+                    mykey = None
+                    cat = mytbz2.getfile("CATEGORY")
+                elif binpkg_format == "gpkg":
+                    mygpkg = portage.gpkg.gpkg(self.frozen_config, None, x)
+                    mykey = None
+                    cat = mygpkg.get_metadata("CATEGORY")
+                else:
+                    raise InvalidBinaryPackageFormat(x)
+
                 if cat is not None:
                     cat = _unicode_decode(
                         cat.strip(), encoding=_encodings["repo.content"]
@@ -4619,7 +4633,7 @@ class depgraph:
                     return 0, myfavorites
 
                 args.append(PackageArg(arg=x, package=pkg, root_config=root_config))
-            elif ext == ".ebuild":
+            elif x.endswith(".ebuild"):
                 ebuild_path = portage.util.normalize_path(os.path.abspath(x))
                 pkgdir = os.path.dirname(ebuild_path)
                 tree_root = os.path.dirname(os.path.dirname(pkgdir))

@@ -15,17 +15,20 @@ if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".porta
 import portage
 portage._internal_caller = True
 from portage import os
-from portage import xpak
+from portage import xpak, gpkg
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, use_reduce
 from portage.exception import (AmbiguousPackageName, InvalidAtom, InvalidData,
-	InvalidDependString, PackageSetNotFound, PermissionDenied)
+	InvalidBinaryPackageFormat, InvalidDependString, PackageSetNotFound,
+	PermissionDenied)
 from portage.util import ensure_dirs, shlex_split, varexpand, _xattr
 xattr = _xattr.xattr
 from portage._sets import load_default_config, SETPREFIX
 from portage.process import find_binary
 from portage.util.compression_probe import _compressors
 from portage.util._eventloop.global_event_loop import global_event_loop
+from portage.gpg import GPG
 
 
 def quickpkg_atom(options, infos, arg, eout):
@@ -109,52 +112,66 @@ def quickpkg_atom(options, infos, arg, eout):
 					update_metadata[k] = v
 			if update_metadata:
 				vardb.aux_update(cpv, update_metadata)
-			xpdata = xpak.xpak(dblnk.dbdir)
-			binpkg_tmpfile = os.path.join(bintree.pkgdir,
-				cpv + ".tbz2." + str(portage.getpid()))
-			ensure_dirs(os.path.dirname(binpkg_tmpfile))
-			binpkg_compression = settings.get("BINPKG_COMPRESS", "bzip2")
-			try:
-				compression = _compressors[binpkg_compression]
-			except KeyError as e:
-				if binpkg_compression:
+
+			binpkg_format = settings.get("BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0])
+			if binpkg_format == "xpak":
+				xpdata = xpak.xpak(dblnk.dbdir)
+				binpkg_tmpfile = os.path.join(bintree.pkgdir,
+					cpv + ".tbz2." + str(portage.getpid()))
+				ensure_dirs(os.path.dirname(binpkg_tmpfile))
+				binpkg_compression = settings.get("BINPKG_COMPRESS", "bzip2")
+				try:
+					compression = _compressors[binpkg_compression]
+				except KeyError as e:
+					if binpkg_compression:
+						eout.eerror("Invalid or unsupported compression method: %s" % e.args[0])
+						return 1
+					# Empty BINPKG_COMPRESS disables compression.
+					binpkg_compression = 'none'
+					compression = {
+						'compress': 'cat',
+						'package': 'sys-apps/coreutils',
+					}
+				try:
+					compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
+				except IndexError as e:
 					eout.eerror("Invalid or unsupported compression method: %s" % e.args[0])
 					return 1
-				# Empty BINPKG_COMPRESS disables compression.
-				binpkg_compression = 'none'
-				compression = {
-					'compress': 'cat',
-					'package': 'sys-apps/coreutils',
-				}
-			try:
-				compression_binary = shlex_split(varexpand(compression["compress"], mydict=settings))[0]
-			except IndexError as e:
-				eout.eerror("Invalid or unsupported compression method: %s" % e.args[0])
-				return 1
-			if find_binary(compression_binary) is None:
-				missing_package = compression["package"]
-				eout.eerror("File compression unsupported %s. Missing package: %s" % (binpkg_compression, missing_package))
-				return 1
-			cmd = shlex_split(varexpand(compression["compress"], mydict=settings))
-			# Filter empty elements that make Popen fail
-			cmd = [x for x in cmd if x != ""]
-			with open(binpkg_tmpfile, "wb") as fobj:
-				proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=fobj)
-				excluded_config_files = dblnk.quickpkg(proc.stdin,
+				if find_binary(compression_binary) is None:
+					missing_package = compression["package"]
+					eout.eerror("File compression unsupported %s. Missing package: %s" % (binpkg_compression, missing_package))
+					return 1
+				cmd = [varexpand(x, mydict=settings) for x in shlex_split(compression["compress"])]
+				# Filter empty elements that make Popen fail
+				cmd = [x for x in cmd if x != ""]
+				with open(binpkg_tmpfile, "wb") as fobj:
+					proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=fobj)
+					excluded_config_files = dblnk.quickpkg(proc.stdin,
+						include_config=include_config,
+						include_unmodified_config=include_unmodified_config)
+					proc.stdin.close()
+					if proc.wait() != os.EX_OK:
+						eout.eend(1)
+						eout.eerror("Compressor failed for package %s" % cpv)
+						retval |= 1
+						try:
+							os.unlink(binpkg_tmpfile)
+						except OSError as e:
+							if e.errno not in (errno.ENOENT, errno.ESTALE):
+								raise
+						continue
+				xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
+			elif binpkg_format == "gpkg":
+				metadata = gpkg.gpkg(settings)._generate_metadata_from_dir(dblnk.dbdir)
+				binpkg_tmpfile = os.path.join(bintree.pkgdir,
+					cpv + ".gpkg.tar." + str(os.getpid()))
+				ensure_dirs(os.path.dirname(binpkg_tmpfile))
+				excluded_config_files = dblnk.quickpkg(binpkg_tmpfile,
+					metadata,
 					include_config=include_config,
 					include_unmodified_config=include_unmodified_config)
-				proc.stdin.close()
-				if proc.wait() != os.EX_OK:
-					eout.eend(1)
-					eout.eerror("Compressor failed for package %s" % cpv)
-					retval |= 1
-					try:
-						os.unlink(binpkg_tmpfile)
-					except OSError as e:
-						if e.errno not in (errno.ENOENT, errno.ESTALE):
-							raise
-					continue
-			xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
+			else:
+				raise InvalidBinaryPackageFormat(binpkg_format)
 		finally:
 			if have_lock:
 				dblnk.unlockdb()
@@ -267,6 +284,9 @@ def quickpkg_main(options, args, eout):
 		portage.settings.unlock()
 		portage.settings.features.remove('xattr')
 		portage.settings.lock()
+
+	gpg = GPG(portage.settings)
+	gpg.unlock()
 
 	infos = {}
 	infos["successes"] = []
