@@ -503,38 +503,53 @@ __dyn_package() {
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}" || die
 
-	local tar_options=""
-	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
-	has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
+	[[ -z "${PORTAGE_BINPKG_TMPFILE}" ]] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	[ -z "${PORTAGE_COMPRESSION_COMMAND}" ] && \
-        die "PORTAGE_COMPRESSION_COMMAND is unset"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
-		$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
-	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
-	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
-		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
-	if [ $? -ne 0 ]; then
-		rm -f "${PORTAGE_BINPKG_TMPFILE}"
-		die "Failed to append metadata to the tbz2 file"
+
+	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
+		local tar_options=""
+		[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
+		has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
+		[[ -z "${PORTAGE_COMPRESSION_COMMAND}" ]] && \
+			die "PORTAGE_COMPRESSION_COMMAND is unset"
+		tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
+			$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
+		assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
+			"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
+		if [[ $? -ne 0 ]]; then
+			rm -f "${PORTAGE_BINPKG_TMPFILE}"
+			die "Failed to append metadata to the tbz2 file"
+		fi
+		local md5_hash=""
+		if type md5sum &>/dev/null ; then
+			md5_hash=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
+			md5_hash=${md5_hash%% *}
+		elif type md5 &>/dev/null ; then
+			md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
+			md5_hash=${md5_hash##* }
+		fi
+		[[ -n "${md5_hash}" ]] && \
+			echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
+		__vecho ">>> Done."
+	
+	elif [[ "${BINPKG_FORMAT}" == "gpkg" ]]; then
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/gpkg-helper.py compress \
+			"${CATEGORY}/${PF}" "$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info" "${D}"
+		if [[ $? -ne 0 ]]; then
+			rm -f "${PORTAGE_BINPKG_TMPFILE}"
+			die "Failed to create binpkg file"
+		fi
+		__vecho ">>> Done."
+	else
+		die "Unknown BINPKG_FORMAT ${BINPKG_FORMAT}"
 	fi
-	local md5_hash=""
-	if type md5sum &>/dev/null ; then
-		md5_hash=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
-		md5_hash=${md5_hash%% *}
-	elif type md5 &>/dev/null ; then
-		md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
-		md5_hash=${md5_hash##* }
-	fi
-	[ -n "${md5_hash}" ] && \
-		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
-	__vecho ">>> Done."
 
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \

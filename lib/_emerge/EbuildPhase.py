@@ -29,6 +29,8 @@ from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
+from portage.exception import InvalidBinaryPackageFormat
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 
 try:
     from portage.xml.metadata import MetaDataXML
@@ -157,14 +159,31 @@ class EbuildPhase(CompositeTask):
 
         if self.phase == "package":
             if "PORTAGE_BINPKG_TMPFILE" not in self.settings:
-                self.settings["PORTAGE_BINPKG_TMPFILE"] = (
-                    os.path.join(
-                        self.settings["PKGDIR"],
-                        self.settings["CATEGORY"],
-                        self.settings["PF"],
-                    )
-                    + ".tbz2"
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
                 )
+                if binpkg_format == "xpak":
+                    self.settings["BINPKG_FORMAT"] = "xpak"
+                    self.settings["PORTAGE_BINPKG_TMPFILE"] = (
+                        os.path.join(
+                            self.settings["PKGDIR"],
+                            self.settings["CATEGORY"],
+                            self.settings["PF"],
+                        )
+                        + ".tbz2"
+                    )
+                elif binpkg_format == "gpkg":
+                    self.settings["BINPKG_FORMAT"] = "gpkg"
+                    self.settings["PORTAGE_BINPKG_TMPFILE"] = (
+                        os.path.join(
+                            self.settings["PKGDIR"],
+                            self.settings["CATEGORY"],
+                            self.settings["PF"],
+                        )
+                        + ".gpkg.tar"
+                    )
+                else:
+                    raise InvalidBinaryPackageFormat(binpkg_format)
 
     def _async_start_exit(self, task):
         task.future.cancelled() or task.future.result()

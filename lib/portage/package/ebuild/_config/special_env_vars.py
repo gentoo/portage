@@ -86,6 +86,7 @@ environ_whitelist += [
     "ACCEPT_LICENSE",
     "BASH_ENV",
     "BASH_FUNC____in_portage_iuse%%",
+    "BINPKG_FORMAT",
     "BROOT",
     "BUILD_PREFIX",
     "COLUMNS",

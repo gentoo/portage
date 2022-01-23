@@ -41,6 +41,7 @@ from portage.const import (
     PORTAGE_BASE_PATH,
     PRIVATE_PATH,
     PROFILE_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
     USER_CONFIG_PATH,
     USER_VIRTUALS_FILE,
 )
@@ -1510,6 +1511,15 @@ class config:
             if warning_shown and platform.python_implementation() == "PyPy":
                 writemsg(
                     _("!!! See https://bugs.pypy.org/issue833 for details.\n"),
+                    noiselevel=-1,
+                )
+
+        binpkg_format = self.get("BINPKG_FORMAT")
+        if binpkg_format:
+            if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
+                writemsg(
+                    "!!! BINPKG_FORMAT contains invalid or "
+                    "unsupported format: %s" % binpkg_fotmat,
                     noiselevel=-1,
                 )
 

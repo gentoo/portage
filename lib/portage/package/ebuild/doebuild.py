@@ -66,6 +66,7 @@ from portage.const import (
     INVALID_ENV_FILE,
     MISC_SH_BINARY,
     PORTAGE_PYM_PACKAGES,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
 )
 from portage.data import portage_gid, portage_uid, secpass, uid, userpriv_groups
 from portage.dbapi.porttree import _parse_uri_map
@@ -648,6 +649,18 @@ def doebuild_environment(
             else:
                 mysettings["KV"] = ""
             mysettings.backup_changes("KV")
+
+        binpkg_format = mysettings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        )
+        if binpkg_format not in portage.const.SUPPORTED_GENTOO_BINPKG_FORMATS:
+            writemsg(
+                "!!! BINPKG_FORMAT contains invalid or "
+                "unsupported format: %s" % binpkg_fotmat,
+                noiselevel=-1,
+            )
+            binpkg_format = "xpak"
+        mysettings["BINPKG_FORMAT"] = binpkg_format
 
         binpkg_compression = mysettings.get("BINPKG_COMPRESS", "bzip2")
         try:

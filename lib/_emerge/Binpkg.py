@@ -12,6 +12,7 @@ from _emerge.EbuildMerge import EbuildMerge
 from _emerge.EbuildBuildDir import EbuildBuildDir
 from _emerge.SpawnProcess import SpawnProcess
 from portage.eapi import eapi_exports_replace_vars
+from portage.exception import PortageException
 from portage.output import colorize
 from portage.util import ensure_dirs
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
@@ -417,9 +418,17 @@ class Binpkg(CompositeTask):
 
     def _unpack_contents_exit(self, unpack_contents):
         if self._default_exit(unpack_contents) != os.EX_OK:
-            unpack_contents.future.result()
+            try:
+                unpack_contents.future.result()
+                err = ""
+            except PortageException as e:
+                err = e
+
             self._writemsg_level(
-                "!!! Error Extracting '%s'\n" % self._pkg_path,
+                colorize(
+                    "BAD",
+                    f"!!! Error Extracting '{self._pkg_path}', {err}\n",
+                ),
                 noiselevel=-1,
                 level=logging.ERROR,
             )

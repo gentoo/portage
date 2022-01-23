@@ -26,7 +26,7 @@ def have_pep_476():
     return hasattr(__import__("ssl"), "_create_unverified_context")
 
 
-def urlopen(url, if_modified_since=None, proxies=None):
+def urlopen(url, if_modified_since=None, headers={}, proxies=None):
     parse_result = urllib_parse.urlparse(url)
     if parse_result.scheme not in ("http", "https"):
         return _urlopen(url)
@@ -45,6 +45,8 @@ def urlopen(url, if_modified_since=None, proxies=None):
     password_manager = urllib_request.HTTPPasswordMgrWithDefaultRealm()
     request = urllib_request.Request(url)
     request.add_header("User-Agent", "Gentoo Portage")
+    for key in headers:
+        request.add_header(key, headers[key])
     if if_modified_since:
         request.add_header("If-Modified-Since", _timestamp_to_http(if_modified_since))
     if parse_result.username is not None:

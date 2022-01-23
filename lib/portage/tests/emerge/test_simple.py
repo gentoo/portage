@@ -3,6 +3,7 @@
 
 import argparse
 import subprocess
+import sys
 
 import portage
 from portage import shutil, os
@@ -11,6 +12,7 @@ from portage.const import (
     BINREPOS_CONF_FILE,
     PORTAGE_PYM_PATH,
     USER_CONFIG_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
 )
 from portage.cache.mappings import Mapping
 from portage.process import find_binary
@@ -19,6 +21,7 @@ from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.tests.util.test_socks5 import AsyncHTTPServer
 from portage.util import ensure_dirs, find_updated_config_files, shlex_split
 from portage.util.futures import asyncio
+from portage.output import colorize
 
 
 class BinhostContentMap(Mapping):
@@ -223,17 +226,28 @@ call_has_and_best_version() {
             ),
         )
 
-        playground = ResolverPlayground(
-            ebuilds=ebuilds, installed=installed, debug=debug
-        )
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    ebuilds=ebuilds,
+                    installed=installed,
+                    debug=debug,
+                    user_config={
+                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                    },
+                )
 
-        loop = asyncio._wrap_loop()
-        loop.run_until_complete(
-            asyncio.ensure_future(
-                self._async_test_simple(playground, metadata_xml_files, loop=loop),
-                loop=loop,
-            )
-        )
+                loop = asyncio._wrap_loop()
+                loop.run_until_complete(
+                    asyncio.ensure_future(
+                        self._async_test_simple(
+                            playground, metadata_xml_files, loop=loop
+                        ),
+                        loop=loop,
+                    )
+                )
 
     async def _async_test_simple(self, playground, metadata_xml_files, loop):
 
@@ -327,6 +341,15 @@ call_has_and_best_version() {
             path=binhost_remote_path,
         )
 
+        binpkg_format = settings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        )
+        self.assertIn(binpkg_format, ("xpak", "gpkg"))
+        if binpkg_format == "xpak":
+            foo_filename = "foo-0-1.xpak"
+        elif binpkg_format == "gpkg":
+            foo_filename = "foo-0-1.gpkg.tar"
+
         test_commands = ()
 
         if hasattr(argparse.ArgumentParser, "parse_intermixed_args"):
@@ -387,13 +410,13 @@ call_has_and_best_version() {
             rm_cmd + ("-rf", cachedir),
             emerge_cmd + ("--oneshot", "virtual/foo"),
             lambda: self.assertFalse(
-                os.path.exists(os.path.join(pkgdir, "virtual", "foo", "foo-0-1.xpak"))
+                os.path.exists(os.path.join(pkgdir, "virtual", "foo", foo_filename))
             ),
             ({"FEATURES": "unmerge-backup"},)
             + emerge_cmd
             + ("--unmerge", "virtual/foo"),
             lambda: self.assertTrue(
-                os.path.exists(os.path.join(pkgdir, "virtual", "foo", "foo-0-1.xpak"))
+                os.path.exists(os.path.join(pkgdir, "virtual", "foo", foo_filename))
             ),
             emerge_cmd + ("--pretend", "dev-libs/A"),
             ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),

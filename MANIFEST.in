@@ -25,3 +25,6 @@ include misc/*
 
 # extensions
 include src/*
+
+# GPG test keys
+recursive-include lib/portage/tests/.gnupg *

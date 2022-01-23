@@ -6,6 +6,8 @@ from _emerge.EbuildPhase import EbuildPhase
 
 import portage
 from portage import os
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.exception import InvalidBinaryPackageFormat
 
 
 class EbuildBinpkg(CompositeTask):
@@ -19,9 +21,19 @@ class EbuildBinpkg(CompositeTask):
         pkg = self.pkg
         root_config = pkg.root_config
         bintree = root_config.trees["bintree"]
-        binpkg_tmpfile = os.path.join(
-            bintree.pkgdir, pkg.cpv + ".tbz2." + str(portage.getpid())
+        binpkg_format = self.settings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
         )
+        if binpkg_format == "xpak":
+            binpkg_tmpfile = os.path.join(
+                bintree.pkgdir, pkg.cpv + ".tbz2." + str(portage.getpid())
+            )
+        elif binpkg_format == "gpkg":
+            binpkg_tmpfile = os.path.join(
+                bintree.pkgdir, pkg.cpv + ".gpkg.tar." + str(portage.getpid())
+            )
+        else:
+            raise InvalidBinaryPackageFormat(binpkg_format)
         bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
 
         self._binpkg_tmpfile = binpkg_tmpfile

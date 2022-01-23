@@ -10,6 +10,8 @@ import grp
 import platform
 import pwd
 import signal
+import tempfile
+from distutils.dir_util import copy_tree
 
 
 def debug_signal(signum, frame):
@@ -67,6 +69,14 @@ except OSError:
 if insert_bin_path:
     path.insert(0, PORTAGE_BIN_PATH)
     os.environ["PATH"] = ":".join(path)
+
+# Copy GPG test keys to temporary directory
+gpg_path = tempfile.mkdtemp(prefix="gpg_")
+
+copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"), gpg_path)
+
+os.chmod(gpg_path, 0o700)
+os.environ["PORTAGE_GNUPGHOME"] = gpg_path
 
 if __name__ == "__main__":
     try:
