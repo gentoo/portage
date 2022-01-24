@@ -285,8 +285,9 @@ def quickpkg_main(options, args, eout):
 		portage.settings.features.remove('xattr')
 		portage.settings.lock()
 
-	gpg = GPG(portage.settings)
-	gpg.unlock()
+	if portage.settings.get("BINPKG_GPG_SIGNING_KEY", None):
+		gpg = GPG(portage.settings)
+		gpg.unlock()
 
 	infos = {}
 	infos["successes"] = []
