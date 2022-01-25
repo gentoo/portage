@@ -127,7 +127,7 @@ class PkgMetadata(ScanBase, USEFlagChecks):
             )
         else:
             doctype_system = _metadata_xml.docinfo.system_url
-            if doctype_system.replace("http://", "https://") != metadata_dtd_uri:
+            if doctype_system != metadata_dtd_uri:
                 if doctype_system is None:
                     system_problem = "but it is undefined"
                 else:
