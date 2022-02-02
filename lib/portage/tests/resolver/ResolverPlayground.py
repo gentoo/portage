@@ -587,8 +587,7 @@ class ResolverPlayground:
             "CLEAN_DELAY": "0",
             "DISTDIR": self.distdir,
             "EMERGE_WARNING_DELAY": "0",
-            "FEATURES": "${FEATURES} binpkg-signing binpkg-request-signature "
-            "gpg-keepalive",
+            "FEATURES": "${FEATURES} binpkg-signing gpg-keepalive",
             "PKGDIR": self.pkgdir,
             "PORTAGE_INST_GID": str(portage.data.portage_gid),
             "PORTAGE_INST_UID": str(portage.data.portage_uid),
@@ -611,6 +610,10 @@ class ResolverPlayground:
 
         if "make.conf" in user_config:
             make_conf_lines.extend(user_config["make.conf"])
+            if "BINPKG_FORMAT=gpkg" in user_config["make.conf"]:
+                make_conf_lines.append(
+                    'FEATURES="${FEATURES} binpkg-request-signature"'
+                )
 
         if not portage.process.sandbox_capable or os.environ.get("SANDBOX_ON") == "1":
             # avoid problems from nested sandbox instances

@@ -42,8 +42,10 @@ from portage.exception import (
     ParseError,
     PortageException,
     PortagePackageException,
+    SignatureException,
 )
 from portage.localization import _
+from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
@@ -887,6 +889,14 @@ class binarytree:
         # the Packages file will not be needlessly re-written due to
         # missing digests.
         minimum_keys = self._pkgindex_keys.difference(self._pkgindex_hashes)
+
+        if "binpkg-request-signature" in self.settings.features:
+            gpkg_only = True
+        else:
+            gpkg_only = False
+
+        gpkg_only_warned = False
+
         if True:
             pkg_paths = {}
             self._pkg_paths = pkg_paths
@@ -911,6 +921,17 @@ class binarytree:
                 if not path:
                     binpkg_format = d["BINPKG_FORMAT"]
                     if binpkg_format == "xpak":
+                        if gpkg_only:
+                            if not gpkg_only_warned:
+                                writemsg(
+                                    colorize(
+                                        "WARN",
+                                        "Local XPAK packages are ignored due to 'binpkg-request-signature'.\n",
+                                    ),
+                                    noiselevel=-1,
+                                )
+                                gpkg_only_warned = True
+                            continue
                         path = cpv + ".tbz2"
                     elif binpkg_format == "gpkg":
                         path = cpv + ".gpkg.tar"
@@ -944,6 +965,19 @@ class binarytree:
                         SUPPORTED_XPAK_EXTENSIONS + SUPPORTED_GPKG_EXTENSIONS
                     ):
                         continue
+
+                    if myfile.endswith(SUPPORTED_XPAK_EXTENSIONS) and gpkg_only:
+                        if not gpkg_only_warned:
+                            writemsg(
+                                colorize(
+                                    "WARN",
+                                    "Local XPAK packages are ignored due to 'binpkg-request-signature'.\n",
+                                ),
+                                noiselevel=-1,
+                            )
+                            gpkg_only_warned = True
+                        continue
+
                     mypath = os.path.join(mydir, myfile)
                     full_path = os.path.join(self.pkgdir, mypath)
                     s = os.lstat(full_path)
@@ -1004,6 +1038,22 @@ class binarytree:
                     binpkg_format = None
                     if match:
                         binpkg_format = match.get("BINPKG_FORMAT", None)
+
+                    if gpkg_only:
+                        if binpkg_format != "gpkg":
+                            if not gpkg_only_warned:
+                                writemsg(
+                                    colorize(
+                                        "WARN",
+                                        "Local XPAK packages are ignored due to 'binpkg-request-signature'.\n",
+                                    ),
+                                    noiselevel=-1,
+                                )
+                                gpkg_only_warned = True
+                            continue
+                        else:
+                            binpkg_format = "gpkg"
+
                     try:
                         pkg_metadata = self._read_metadata(
                             full_path,
@@ -1011,7 +1061,7 @@ class binarytree:
                             keys=chain(self.dbapi._aux_cache_keys, ("PF", "CATEGORY")),
                             binpkg_format=binpkg_format,
                         )
-                    except PortagePackageException as e:
+                    except (PortagePackageException, SignatureException) as e:
                         writemsg(
                             f"!!! Invalid binary package: '{full_path}', {e}\n",
                             noiselevel=-1,
@@ -1202,6 +1252,12 @@ class binarytree:
 
         self._remote_has_index = False
         self._remotepkgs = {}
+
+        if "binpkg-request-signature" in self.settings.features:
+            gpkg_only = True
+        else:
+            gpkg_only = False
+
         # Order by descending priority.
         for repo in reversed(list(self._binrepos_conf.values())):
             base_url = repo.sync_uri
@@ -1211,6 +1267,8 @@ class binarytree:
             user = None
             passwd = None
             user_passwd = ""
+            gpkg_only_warned = False
+
             if "@" in host:
                 user, host = host.split("@", 1)
                 user_passwd = user + "@"
@@ -1480,6 +1538,20 @@ class binarytree:
                     if self.dbapi.cpv_exists(cpv):
                         continue
 
+                    if gpkg_only:
+                        binpkg_format = d.get("BINPKG_FORMAT", "xpak")
+                        if binpkg_format != "gpkg":
+                            if not gpkg_only_warned:
+                                writemsg(
+                                    colorize(
+                                        "WARN",
+                                        f"Remote XPAK packages in '{remote_base_uri}' are ignored due to 'binpkg-request-signature'.\n",
+                                    ),
+                                    noiselevel=-1,
+                                )
+                                gpkg_only_warned = True
+                            continue
+
                     d["CPV"] = cpv
                     d["BASE_URI"] = remote_base_uri
                     d["PKGINDEX_URI"] = url
@@ -1542,7 +1614,14 @@ class binarytree:
             )
             return
 
-        metadata = self._read_metadata(full_path, s)
+        try:
+            metadata = self._read_metadata(full_path, s)
+        except (PortagePackageException, SignatureException) as e:
+            writemsg(
+                f"!!! Invalid binary package: '{full_path}', {e}\n",
+                noiselevel=-1,
+            )
+            return
         binpkg_format = metadata["BINPKG_FORMAT"]
 
         invalid_depend = False

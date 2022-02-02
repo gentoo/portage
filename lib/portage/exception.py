@@ -224,16 +224,16 @@ class UnsupportedAPIException(PortagePackageException):
         return _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
 
 
-class GPGException(PortageException):
-    """GPG operation failed"""
-
-
 class SignatureException(PortageException):
     """Signature was not present in the checked file"""
 
 
 class DigestException(SignatureException):
     """A problem exists in the digest"""
+
+
+class GPGException(SignatureException):
+    """GPG operation failed"""
 
 
 class MissingSignature(SignatureException):
