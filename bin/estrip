@@ -189,6 +189,19 @@ save_elf_sources() {
 		"${x}")
 }
 
+# Try to create a symlink.
+# Return success if it already exists.
+__try_symlink() {
+	local target=$1
+	local name=$2
+	# Check for an existing link before and after in case we are racing against
+	# another process.
+	[[ -L ${name} ]] ||
+		ln -s "${target}" "${name}" ||
+		[[ -L ${name} ]] ||
+		die "failed to create symlink '${name}'"
+}
+
 # Usage: save_elf_debug <src> <inode_debug> [splitdebug]
 save_elf_debug() {
 	${FEATURES_splitdebug} || return 0
@@ -245,7 +258,7 @@ save_elf_debug() {
 			[[ -g ${src} || -u ${src} ]] && args+=",go-r"
 			chmod ${args} "${dst}"
 			# symlink so we can read the name back.
-			ln -s "${dst}" "${inode_debug}" || die "failed to create symlink '${inode_debug}'"
+			__try_symlink "${dst}" "${inode_debug}"
 
 			# if we don't already have build-id from debugedit, look it up
 			if [[ -z ${buildid} ]] ; then
@@ -258,8 +271,8 @@ save_elf_debug() {
 				local src_buildid_rel="../../../../../${src#${ED%/}/}"
 				local dst_buildid_rel="../../${dst#${ED%/}/usr/lib/debug/}"
 				mkdir -p "${buildid_dir}" || die
-				[[ -L "${buildid_file}".debug ]] || ln -s "${dst_buildid_rel}" "${buildid_file}.debug" || die "failed to create symlink '${buildid_file}.debug'"
-				[[ -L "${buildid_file}" ]] || ln -s "${src_buildid_rel}" "${buildid_file}" || die "failed to create symlink '${buildid_file}'"
+				__try_symlink "${dst_buildid_rel}" "${buildid_file}.debug"
+				__try_symlink "${src_buildid_rel}" "${buildid_file}"
 			fi
 		fi
 	fi
