@@ -14,71 +14,81 @@ import sys
 global_event_loop = None
 try:
 
-	def exithandler(signum, _frame):
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(128 + signum)
+    def exithandler(signum, _frame):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        sys.exit(128 + signum)
 
-	signal.signal(signal.SIGTERM, exithandler)
-	# Prevent "[Errno 32] Broken pipe" exceptions when
-	# writing to a pipe.
-	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, exithandler)
+    # Prevent "[Errno 32] Broken pipe" exceptions when
+    # writing to a pipe.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-	def debug_signal(_signum, _frame):
-		import pdb
-		pdb.set_trace()
+    def debug_signal(_signum, _frame):
+        import pdb
 
-	if platform.python_implementation() == 'Jython':
-		debug_signum = signal.SIGUSR2 # bug #424259
-	else:
-		debug_signum = signal.SIGUSR1
+        pdb.set_trace()
 
-	signal.signal(debug_signum, debug_signal)
+    if platform.python_implementation() == "Jython":
+        debug_signum = signal.SIGUSR2  # bug #424259
+    else:
+        debug_signum = signal.SIGUSR1
 
-	from os import path as osp
-	if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-		sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
-	import portage
-	portage._internal_caller = True
-	portage._disable_legacy_globals()
-	from portage.elog import mod_echo
-	from portage.exception import IsADirectory, ParseError, PermissionDenied
-	from portage.util._eventloop.global_event_loop import global_event_loop
-	from _emerge.main import emerge_main
+    signal.signal(debug_signum, debug_signal)
 
-	if __name__ == "__main__":
-		portage.process.sanitize_fds()
-		try:
-			retval = emerge_main()
-		except PermissionDenied as e:
-			sys.stderr.write("Permission denied: '%s'\n" % str(e))
-			sys.exit(e.errno)
-		except IsADirectory as e:
-			sys.stderr.write("'%s' is a directory, but should be a file!\n"
-					"See portage man page for information on "
-					"which files may be directories.\n" %
-					str(e))
-			sys.exit(e.errno)
-		except ParseError as e:
-			sys.stderr.write("%s\n" % str(e))
-			sys.exit(1)
-		except (KeyboardInterrupt, SystemExit):
-			raise
-		except Exception:
-			# If an unexpected exception occurs then we don't want the
-			# mod_echo output to obscure the traceback, so dump the
-			# mod_echo output before showing the traceback.
-			import traceback
-			tb_str = traceback.format_exc()
-			mod_echo.finalize()
-			sys.stderr.write(tb_str)
-			sys.exit(1)
-		sys.exit(retval)
+    from os import path as osp
+
+    if osp.isfile(
+        osp.join(
+            osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed"
+        )
+    ):
+        sys.path.insert(
+            0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+        )
+    import portage
+
+    portage._internal_caller = True
+    portage._disable_legacy_globals()
+    from portage.elog import mod_echo
+    from portage.exception import IsADirectory, ParseError, PermissionDenied
+    from portage.util._eventloop.global_event_loop import global_event_loop
+    from _emerge.main import emerge_main
+
+    if __name__ == "__main__":
+        portage.process.sanitize_fds()
+        try:
+            retval = emerge_main()
+        except PermissionDenied as e:
+            sys.stderr.write("Permission denied: '%s'\n" % str(e))
+            sys.exit(e.errno)
+        except IsADirectory as e:
+            sys.stderr.write(
+                "'%s' is a directory, but should be a file!\n"
+                "See portage man page for information on "
+                "which files may be directories.\n" % str(e)
+            )
+            sys.exit(e.errno)
+        except ParseError as e:
+            sys.stderr.write("%s\n" % str(e))
+            sys.exit(1)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:
+            # If an unexpected exception occurs then we don't want the
+            # mod_echo output to obscure the traceback, so dump the
+            # mod_echo output before showing the traceback.
+            import traceback
+
+            tb_str = traceback.format_exc()
+            mod_echo.finalize()
+            sys.stderr.write(tb_str)
+            sys.exit(1)
+        sys.exit(retval)
 
 except KeyboardInterrupt:
-	sys.stderr.write("\n\nExiting on signal %(signal)s\n" %
-		{"signal": signal.SIGINT})
-	sys.stderr.flush()
-	sys.exit(128 + signal.SIGINT)
+    sys.stderr.write("\n\nExiting on signal %(signal)s\n" % {"signal": signal.SIGINT})
+    sys.stderr.flush()
+    sys.exit(128 + signal.SIGINT)
 finally:
-	if global_event_loop is not None:
-		global_event_loop().close()
+    if global_event_loop is not None:
+        global_event_loop().close()

@@ -7,37 +7,44 @@
 
 import sys
 import errno
+
 # This block ensures that ^C interrupts are handled quietly.
 try:
-	import signal
+    import signal
 
-	def exithandler(signum, _frame):
-		signal.signal(signal.SIGINT, signal.SIG_IGN)
-		signal.signal(signal.SIGTERM, signal.SIG_IGN)
-		sys.exit(128 + signum)
+    def exithandler(signum, _frame):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        sys.exit(128 + signum)
 
-	signal.signal(signal.SIGINT, exithandler)
-	signal.signal(signal.SIGTERM, exithandler)
-	signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGINT, exithandler)
+    signal.signal(signal.SIGTERM, exithandler)
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 except KeyboardInterrupt:
-	sys.exit(1)
+    sys.exit(1)
 
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
 import portage
+
 portage._internal_caller = True
 from portage.emaint.main import emaint_main
 from portage.util._eventloop.global_event_loop import global_event_loop
 
 try:
-	emaint_main(sys.argv[1:])
+    emaint_main(sys.argv[1:])
 except IOError as e:
-	if e.errno == errno.EACCES:
-		print("\nemaint: Need superuser access")
-		sys.exit(1)
-	else:
-		raise
+    if e.errno == errno.EACCES:
+        print("\nemaint: Need superuser access")
+        sys.exit(1)
+    else:
+        raise
 finally:
-	global_event_loop().close()
+    global_event_loop().close()
