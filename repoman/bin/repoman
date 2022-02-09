@@ -25,17 +25,21 @@ except KeyboardInterrupt:
     sys.exit(1)
 
 from os import path as osp
+
 here = osp.realpath(__file__)
 if osp.isfile(osp.join(osp.dirname(osp.dirname(here)), ".repoman_not_installed")):
     # Add the repoman subpkg
     pym_path = osp.join(osp.dirname(osp.dirname(here)), "lib")
     sys.path.insert(0, pym_path)
-    if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.dirname(here))), ".portage_not_installed")):
+    if osp.isfile(
+        osp.join(osp.dirname(osp.dirname(osp.dirname(here))), ".portage_not_installed")
+    ):
         # Add the base portage pkg
         pym_path = osp.join(osp.dirname(osp.dirname(osp.dirname(here))), "lib")
         sys.path.insert(0, pym_path)
 
 import portage
+
 portage._internal_caller = True
 from portage.util._eventloop.global_event_loop import global_event_loop
 from repoman.main import repoman_main

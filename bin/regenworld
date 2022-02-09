@@ -4,9 +4,15 @@
 
 import sys
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
 import portage
+
 portage._internal_caller = True
 from portage import os
 from portage._sets.files import StaticFileSet, WorldSelectedPackagesSet
@@ -16,129 +22,138 @@ import tempfile
 import textwrap
 
 __candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
-__noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)")
+__noncandidatematcher__ = re.compile(
+    " sync( |$)| clean( |$)| search( |$)|--oneshot|--fetchonly| unmerge( |$)"
+)
+
 
 def issyspkg(pkgline):
-	return pkgline[0] == "*"
+    return pkgline[0] == "*"
+
 
 def iscandidate(logline):
-	return (__candidatematcher__.match(logline)
-				and not __noncandidatematcher__.search(logline))
+    return __candidatematcher__.match(logline) and not __noncandidatematcher__.search(
+        logline
+    )
+
 
 def getpkginfo(logline):
-	logline = re.sub("^[0-9]+: \\*\\*\\* emerge ", "", logline)
-	logline = logline.strip()
-	logline = re.sub("(\\S+\\.(ebuild|tbz2))|(--\\S+)|inject ", "", logline)
-	return logline.strip()
+    logline = re.sub("^[0-9]+: \\*\\*\\* emerge ", "", logline)
+    logline = logline.strip()
+    logline = re.sub("(\\S+\\.(ebuild|tbz2))|(--\\S+)|inject ", "", logline)
+    return logline.strip()
+
 
 __uniqlist__ = []
-def isunwanted(pkgline):
-	if pkgline in ["world", "system", "depclean", "info", "regen", ""]:
-		return False
-	elif pkgline in __uniqlist__:
-		return False
-	elif not re.search("^[a-zA-Z<>=~]", pkgline):
-		return False
-	else:
-		__uniqlist__.append(pkgline)
-		return True
 
-eroot = portage.settings['EROOT']
+
+def isunwanted(pkgline):
+    if pkgline in ["world", "system", "depclean", "info", "regen", ""]:
+        return False
+    elif pkgline in __uniqlist__:
+        return False
+    elif not re.search("^[a-zA-Z<>=~]", pkgline):
+        return False
+    else:
+        __uniqlist__.append(pkgline)
+        return True
+
+
+eroot = portage.settings["EROOT"]
 world_file = os.path.join(eroot, portage.WORLD_FILE)
 
 # show a little description if we have arguments
 if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
-	print("This script regenerates the portage world file by checking the portage")
-	print("logfile for all actions that you've done in the past. It ignores any")
-	print("arguments except --help. It is recommended that you make a backup of")
-	print("your existing world file (%s) before using this tool." % world_file)
-	sys.exit(0)
+    print("This script regenerates the portage world file by checking the portage")
+    print("logfile for all actions that you've done in the past. It ignores any")
+    print("arguments except --help. It is recommended that you make a backup of")
+    print("your existing world file (%s) before using this tool." % world_file)
+    sys.exit(0)
 
 worldlist = portage.grabfile(world_file)
 syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
 if portage.settings.get("EMERGE_LOG_DIR"):
-	logfile = portage.grabfile(
-		os.path.join(portage.settings["EMERGE_LOG_DIR"], "emerge.log")
-	)
+    logfile = portage.grabfile(
+        os.path.join(portage.settings["EMERGE_LOG_DIR"], "emerge.log")
+    )
 else:
-	logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
+    logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
 biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:
-	tmplist += l.split()
+    tmplist += l.split()
 biglist = [x for x in tmplist if isunwanted(x)]
-#for p in biglist:
-#	print(p)
-#sys.exit(0)
+# for p in biglist:
+# 	print(p)
+# sys.exit(0)
 
 # resolving virtuals
 realsyslist = []
 for mykey in syslist:
-	# drop the asterix
-	mykey = mykey[1:]
-	#print("candidate:",mykey)
-	mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
-	if mylist:
-		mykey=portage.cpv_getkey(mylist[0])
-		if mykey not in realsyslist:
-			realsyslist.append(mykey)
+    # drop the asterix
+    mykey = mykey[1:]
+    # print("candidate:",mykey)
+    mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
+    if mylist:
+        mykey = portage.cpv_getkey(mylist[0])
+        if mykey not in realsyslist:
+            realsyslist.append(mykey)
 
 for mykey in biglist:
-	#print("checking:",mykey)
-	try:
-		mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
-	except (portage.exception.InvalidAtom, KeyError):
-		if "--debug" in sys.argv:
-			print("* ignoring broken log entry for %s (likely injected)" % mykey)
-	except ValueError as e:
-		try:
-			print("* %s is an ambiguous package name, candidates are:\n%s" % (mykey, e))
-		except AttributeError:
-			# FIXME: Find out what causes this (bug #344845).
-			print("* %s is an ambiguous package name" % (mykey,))
-		continue
-	if mylist:
-		#print "mylist:",mylist
-		myfavkey=portage.cpv_getkey(mylist[0])
-		if (myfavkey not in realsyslist) and (myfavkey not in worldlist):
-			print("add to world:",myfavkey)
-			worldlist.append(myfavkey)
+    # print("checking:",mykey)
+    try:
+        mylist = portage.db[eroot]["vartree"].dbapi.match(mykey)
+    except (portage.exception.InvalidAtom, KeyError):
+        if "--debug" in sys.argv:
+            print("* ignoring broken log entry for %s (likely injected)" % mykey)
+    except ValueError as e:
+        try:
+            print("* %s is an ambiguous package name, candidates are:\n%s" % (mykey, e))
+        except AttributeError:
+            # FIXME: Find out what causes this (bug #344845).
+            print("* %s is an ambiguous package name" % (mykey,))
+        continue
+    if mylist:
+        # print "mylist:",mylist
+        myfavkey = portage.cpv_getkey(mylist[0])
+        if (myfavkey not in realsyslist) and (myfavkey not in worldlist):
+            print("add to world:", myfavkey)
+            worldlist.append(myfavkey)
 
 if not worldlist:
-	pass
+    pass
 else:
-	existing_set = WorldSelectedPackagesSet(eroot)
-	existing_set.load()
+    existing_set = WorldSelectedPackagesSet(eroot)
+    existing_set.load()
 
-	if not existing_set:
-		existing_set.replace(worldlist)
-	else:
-		old_world = existing_set._filename
-		fd, tmp_filename = tempfile.mkstemp(suffix=".tmp",
-			prefix=os.path.basename(old_world) + ".",
-			dir=os.path.dirname(old_world))
-		os.close(fd)
+    if not existing_set:
+        existing_set.replace(worldlist)
+    else:
+        old_world = existing_set._filename
+        fd, tmp_filename = tempfile.mkstemp(
+            suffix=".tmp",
+            prefix=os.path.basename(old_world) + ".",
+            dir=os.path.dirname(old_world),
+        )
+        os.close(fd)
 
-		new_set = StaticFileSet(tmp_filename)
-		new_set.update(worldlist)
+        new_set = StaticFileSet(tmp_filename)
+        new_set.update(worldlist)
 
-		if existing_set.getAtoms() == new_set.getAtoms():
-			os.unlink(tmp_filename)
-		else:
-			new_set.write()
+        if existing_set.getAtoms() == new_set.getAtoms():
+            os.unlink(tmp_filename)
+        else:
+            new_set.write()
 
-			msg = "Please review differences between old and new files, " + \
-				"and replace the old file if desired."
+            msg = (
+                "Please review differences between old and new files, "
+                + "and replace the old file if desired."
+            )
 
-			portage.util.writemsg_stdout("\n",
-				noiselevel=-1)
-			for line in textwrap.wrap(msg, 65):
-				portage.util.writemsg_stdout("%s\n" % line,
-					noiselevel=-1)
-			portage.util.writemsg_stdout("\n",
-				noiselevel=-1)
-			portage.util.writemsg_stdout("  old: %s\n\n" % old_world,
-				noiselevel=-1)
-			portage.util.writemsg_stdout("  new: %s\n\n" % tmp_filename,
-				noiselevel=-1)
+            portage.util.writemsg_stdout("\n", noiselevel=-1)
+            for line in textwrap.wrap(msg, 65):
+                portage.util.writemsg_stdout("%s\n" % line, noiselevel=-1)
+            portage.util.writemsg_stdout("\n", noiselevel=-1)
+            portage.util.writemsg_stdout("  old: %s\n\n" % old_world, noiselevel=-1)
+            portage.util.writemsg_stdout("  new: %s\n\n" % tmp_filename, noiselevel=-1)

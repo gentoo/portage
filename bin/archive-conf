@@ -12,18 +12,25 @@
 import sys
 
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
 import portage
+
 portage._internal_caller = True
 
 import portage.dispatch_conf
 from portage import os
 from portage.checksum import perform_md5
 
-FIND_EXTANT_CONTENTS  = "find %s -name CONTENTS"
+FIND_EXTANT_CONTENTS = "find %s -name CONTENTS"
 
-MANDATORY_OPTS  = [ 'archive-dir' ]
+MANDATORY_OPTS = ["archive-dir"]
+
 
 def archive_conf():
     args = []
@@ -35,12 +42,15 @@ def archive_conf():
     for conf in sys.argv[1:]:
         if not os.path.isabs(conf):
             conf = os.path.abspath(conf)
-        args += [ conf ]
-        md5_match_hash[conf] = ''
+        args += [conf]
+        md5_match_hash[conf] = ""
 
     # Find all the CONTENT files in VDB_PATH.
-    with os.popen(FIND_EXTANT_CONTENTS % (os.path.join(portage.settings['EROOT'], portage.VDB_PATH))) as f:
-	    content_files += f.readlines()
+    with os.popen(
+        FIND_EXTANT_CONTENTS
+        % (os.path.join(portage.settings["EROOT"], portage.VDB_PATH))
+    ) as f:
+        content_files += f.readlines()
 
     # Search for the saved md5 checksum of all the specified config files
     # and see if the current file is unmodified or not.
@@ -51,12 +61,15 @@ def archive_conf():
             try:
                 contents = open(filename, "r")
             except IOError as e:
-                print('archive-conf: Unable to open %s: %s' % (filename, e), file=sys.stderr)
+                print(
+                    "archive-conf: Unable to open %s: %s" % (filename, e),
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             lines = contents.readlines()
             for line in lines:
                 items = line.split()
-                if items[0] == 'obj':
+                if items[0] == "obj":
                     for conf in args:
                         if items[1] == conf:
                             stored = items[2].lower()
@@ -70,18 +83,19 @@ def archive_conf():
         pass
 
     for conf in args:
-        archive = os.path.join(options['archive-dir'], conf.lstrip('/'))
-        if options['use-rcs'] == 'yes':
-            portage.dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], '')
+        archive = os.path.join(options["archive-dir"], conf.lstrip("/"))
+        if options["use-rcs"] == "yes":
+            portage.dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], "")
             if md5_match_hash[conf]:
                 portage.dispatch_conf.rcs_archive_post_process(archive)
         else:
-            portage.dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], '')
+            portage.dispatch_conf.file_archive(archive, conf, md5_match_hash[conf], "")
             if md5_match_hash[conf]:
                 portage.dispatch_conf.file_archive_post_process(archive)
+
 
 # run
 if len(sys.argv) > 1:
     archive_conf()
 else:
-    print('Usage: archive-conf /CONFIG/FILE [/CONFIG/FILE...]', file=sys.stderr)
+    print("Usage: archive-conf /CONFIG/FILE [/CONFIG/FILE...]", file=sys.stderr)
