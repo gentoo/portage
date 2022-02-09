@@ -30,8 +30,9 @@ editor integration. Something like this:
 black --check --diff .
 ```
 
-To ignore commit 1bb64ff452 - which is a massive commit that simply formatted
-the code base using black - you can do the following:
+To ignore commit 1bb64ff452 (and other reformatting commits) which is a
+massive commit that simply formatted the code base using black - you can do
+the following:
 
 ```sh
 git config blame.ignoreRevsFile .gitignorerevs
