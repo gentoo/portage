@@ -3317,16 +3317,12 @@ class config:
             mydict.pop("EROOT", None)
             mydict.pop("ESYSROOT", None)
 
-        if (
-            phase
-            not in (
-                "pretend",
-                "setup",
-                "preinst",
-                "postinst",
-            )
-            or not eapi_exports_replace_vars(eapi)
-        ):
+        if phase not in (
+            "pretend",
+            "setup",
+            "preinst",
+            "postinst",
+        ) or not eapi_exports_replace_vars(eapi):
             mydict.pop("REPLACING_VERSIONS", None)
 
         if phase not in ("prerm", "postrm") or not eapi_exports_replace_vars(eapi):

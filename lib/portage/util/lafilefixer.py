@@ -40,8 +40,8 @@ inh_link_flags_re = re.compile(b"inherited_linker_flags='(?P<value>[^']*)'$")
 # replace 'X11R6/lib' and 'local/lib' with 'lib', no idea what's this about.
 X11_local_sub = re.compile(b"X11R6/lib|local/lib")
 # get rid of the '..'
-pkgconfig_sub1 = re.compile(br"usr/lib[^/]*/pkgconfig/\.\./\.\.")
-pkgconfig_sub2 = re.compile(br"(?P<usrlib>usr/lib[^/]*)/pkgconfig/\.\.")
+pkgconfig_sub1 = re.compile(rb"usr/lib[^/]*/pkgconfig/\.\./\.\.")
+pkgconfig_sub2 = re.compile(rb"(?P<usrlib>usr/lib[^/]*)/pkgconfig/\.\.")
 
 # detect flags that should go into inherited_linker_flags instead of dependency_libs
 flag_re = re.compile(
@@ -135,7 +135,7 @@ def rewrite_lafile(contents):
 
             ladir = X11_local_sub.sub(b"lib", ladir)
             ladir = pkgconfig_sub1.sub(b"usr", ladir)
-            ladir = pkgconfig_sub2.sub(br"\g<usrlib>", ladir)
+            ladir = pkgconfig_sub2.sub(rb"\g<usrlib>", ladir)
 
             if ladir not in libladir:
                 libladir.append(ladir)

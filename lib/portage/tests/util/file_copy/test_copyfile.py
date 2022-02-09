@@ -43,13 +43,13 @@ class CopyFileSparseTestCase(TestCase):
             # sparse files.
             with open(src_path, "wb") as f:
                 f.write(content)
-                f.seek(2 ** 17, 1)
+                f.seek(2**17, 1)
                 f.write(content)
-                f.seek(2 ** 18, 1)
+                f.seek(2**18, 1)
                 f.write(content)
                 # Test that sparse blocks are handled correctly at
                 # the end of the file (involves seek and truncate).
-                f.seek(2 ** 17, 1)
+                f.seek(2**17, 1)
 
             copyfile(src_path, dest_path)
 

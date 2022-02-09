@@ -181,7 +181,7 @@ class SetConfig:
             import random
 
             while setname in parser.sections():
-                setname = "%08d" % random.randint(0, 10 ** 10)
+                setname = "%08d" % random.randint(0, 10**10)
 
             parser.add_section(setname)
             for k, v in options.items():

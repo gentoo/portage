@@ -40,7 +40,7 @@ class ExponentialBackoff:
         @rtype: int
         """
         try:
-            return min(self._limit, self._multiplier * (self._base ** tries))
+            return min(self._limit, self._multiplier * (self._base**tries))
         except OverflowError:
             return self._limit
 

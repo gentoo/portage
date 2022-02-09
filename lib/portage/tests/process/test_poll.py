@@ -95,7 +95,7 @@ class PipeReaderTestCase(TestCase):
         return consumer.getvalue().decode("ascii", "replace")
 
     def _do_test(self, make_pipes):
-        for x in (1, 2, 5, 6, 7, 8, 2 ** 5, 2 ** 10, 2 ** 12, 2 ** 13, 2 ** 14):
+        for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
             test_string = x * "a"
             (read_end, write_end), cleanup = make_pipes()
             try:

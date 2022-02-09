@@ -15,10 +15,10 @@ from portage import util
 
 
 _copyright_re1 = re.compile(
-    br"^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo (Foundation|Authors))\b"
+    rb"^(# Copyright \d\d\d\d)-\d\d\d\d( Gentoo (Foundation|Authors))\b"
 )
 _copyright_re2 = re.compile(
-    br"^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b"
+    rb"^(# Copyright )(\d\d\d\d)( Gentoo (Foundation|Authors))\b"
 )
 
 
@@ -58,7 +58,7 @@ def update_copyright_year(year, line):
     year = _unicode_encode(year)
     line = _unicode_encode(line)
 
-    line = _copyright_re1.sub(br"\1-" + year + b" Gentoo Authors", line)
+    line = _copyright_re1.sub(rb"\1-" + year + b" Gentoo Authors", line)
     line = _copyright_re2.sub(_copyright_repl(year), line)
     if not is_bytes:
         line = _unicode_decode(line)

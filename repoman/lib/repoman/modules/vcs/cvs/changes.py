@@ -61,7 +61,7 @@ class Changes(ChangesBase):
 
         @param headers: file headers
         """
-        cvs_header_re = re.compile(br"^#\s*\$Header.*\$$")
+        cvs_header_re = re.compile(rb"^#\s*\$Header.*\$$")
         attic_str = b"/Attic/"
         attic_replace = b"/"
         for x in headers:

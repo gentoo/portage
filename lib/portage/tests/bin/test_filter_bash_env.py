@@ -16,7 +16,7 @@ class TestFilterBashEnv(TestCase):
         test_cases = (
             (
                 "RDEPEND BASH.* _EPATCH_ECLASS",
-                br"""declare -ir BASHPID="28997"
+                rb"""declare -ir BASHPID="28997"
 declare -rx A="portage-2.3.24.tar.bz2"
 declare -- DESKTOP_DATABASE_DIR="/usr/share/applications"
 declare PDEPEND="
@@ -53,7 +53,7 @@ use_if_iuse ()
     use $1
 }
 """,
-                br"""declare -x A="portage-2.3.24.tar.bz2"
+                rb"""declare -x A="portage-2.3.24.tar.bz2"
 declare -- DESKTOP_DATABASE_DIR="/usr/share/applications"
 declare PDEPEND="
         !build? (

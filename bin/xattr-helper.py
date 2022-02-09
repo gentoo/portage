@@ -22,7 +22,7 @@ import sys
 from portage.util._xattr import xattr
 
 
-_UNQUOTE_RE = re.compile(br"\\[0-7]{3}")
+_UNQUOTE_RE = re.compile(rb"\\[0-7]{3}")
 _FS_ENCODING = sys.getfilesystemencoding()
 
 

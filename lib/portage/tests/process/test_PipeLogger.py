@@ -59,13 +59,13 @@ class PipeLoggerTestCase(TestCase):
             6,
             7,
             8,
-            2 ** 5,
-            2 ** 10,
-            2 ** 12,
-            2 ** 13,
-            2 ** 14,
-            2 ** 17,
-            2 ** 17 + 1,
+            2**5,
+            2**10,
+            2**12,
+            2**13,
+            2**14,
+            2**17,
+            2**17 + 1,
         ):
             test_string = x * "a"
             output = loop.run_until_complete(
