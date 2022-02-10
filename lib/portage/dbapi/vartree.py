@@ -4474,8 +4474,7 @@ class dblink:
             return 1
 
         is_binpkg = self.settings.get("EMERGE_FROM") == "binary"
-        slot = ""
-        for var_name in ("CHOST", "SLOT"):
+        for var_name in ("CHOST",):
             try:
                 with open(
                     os.path.join(inforoot, var_name),
@@ -4488,20 +4487,6 @@ class dblink:
                     raise
                 del e
                 val = ""
-
-            if var_name == "SLOT":
-                slot = val
-
-                if not slot.strip():
-                    slot = self.settings.get(var_name, "")
-                    if not slot.strip():
-                        showMessage(
-                            _("!!! SLOT is undefined\n"),
-                            level=logging.ERROR,
-                            noiselevel=-1,
-                        )
-                        return 1
-                    write_atomic(os.path.join(inforoot, var_name), slot + "\n")
 
             # This check only applies when built from source, since
             # inforoot values are written just after src_install.
@@ -4529,12 +4514,8 @@ class dblink:
         if not os.path.exists(self.dbcatdir):
             ensure_dirs(self.dbcatdir)
 
-        # NOTE: We use SLOT obtained from the inforoot
-        # 	directory, in order to support USE=multislot.
-        # Use _pkg_str discard the sub-slot part if necessary.
-        slot = _pkg_str(self.mycpv, slot=slot).slot
         cp = self.mysplit[0]
-        slot_atom = f"{cp}:{slot}"
+        slot_atom = f"{cp}:{self.mycpv.slot}"
 
         self.lockdb()
         try:
@@ -5279,7 +5260,7 @@ class dblink:
                 if preserve_paths:
                     # keep track of the libs we preserved
                     plib_registry.register(
-                        self.mycpv, slot, counter, sorted(preserve_paths)
+                        self.mycpv, self.mycpv.slot, counter, sorted(preserve_paths)
                     )
 
                 # Unregister any preserved libs that this package has overwritten
@@ -5331,7 +5312,7 @@ class dblink:
                             continue
 
                     remaining = [f for f in plib_dict[cpv] if f not in paths]
-                    plib_registry.register(cpv, slot, counter, remaining)
+                    plib_registry.register(cpv, cpv.slot, counter, remaining)
 
                 plib_registry.store()
             finally:
