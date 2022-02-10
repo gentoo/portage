@@ -57,6 +57,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
             matched_slots = set()
             if before_install:
                 matched_slots.add(pkg.slot)
+
             for cpv in matches:
                 for repo in repos:
                     try:
@@ -74,6 +75,7 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
     if new_world_atom == sets["selected"].findAtomForPackage(pkg):
         # Both atoms would be identical, so there's nothing to add.
         return None
+
     if not slotted and not arg_atom.repo:
         # Don't exclude slotted atoms for system packages from world, since
         # a user might want to select multiple slots of a slotted package like
@@ -82,10 +84,12 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
         if system_atom:
             if system_atom.category != "virtual":
                 return None
+
             # System virtuals aren't safe to exclude from world since they can
             # match multiple old-style virtuals but only one of them will be
             # pulled in by update or depclean.
             providers = portdb.settings.getvirtuals().get(system_atom.cp)
             if providers and len(providers) == 1 and providers[0].cp == arg_atom.cp:
                 return None
+
     return new_world_atom
