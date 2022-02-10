@@ -1,4 +1,4 @@
-#!/usr/bin/python -b
+#!/usr/bin/env python -b
 
 import sys
 import tabnanny
