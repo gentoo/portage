@@ -42,9 +42,13 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
             except (KeyError, InvalidData):
                 pass
 
+    # If there's only one slot but it's not the de-facto default "0", let's
+    # record it anyway given that it's a hint there may be future versions
+    # with another slot. But it is indeed a heuristic.
     slotted = len(available_slots) > 1 or (
         len(available_slots) == 1 and "0" not in available_slots
     )
+
     if slotted and arg_atom.without_repo != cp:
         # If the user gave a specific atom, store it as a
         # slot atom in the world file.
