@@ -233,7 +233,9 @@ die() {
 	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
 
 	# subshell die support
-	[[ ${BASHPID:-$(__bashpid)} == ${EBUILD_MASTER_PID} ]] || kill -s SIGTERM ${EBUILD_MASTER_PID}
+	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID:-$(__bashpid)} != ${EBUILD_MASTER_PID} ]] ; then
+		kill -s SIGTERM ${EBUILD_MASTER_PID}
+	fi
 	exit 1
 }
 
