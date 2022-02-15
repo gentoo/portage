@@ -32,7 +32,7 @@ __check_bash_version() {
 	# Make sure the active bash is sane.
 	if [[ ${BASH_VERSINFO[0]} -lt ${maj} ]] ||
 	   [[ ${BASH_VERSINFO[0]} -eq ${maj} && ${BASH_VERSINFO[1]} -lt ${min} ]] ; then
-		die ">=bash-${maj}.${min} is required"
+		die "EAPI=\"${EAPI}\" requires >=bash-${maj}.${min}, but bash-${BASH_VERSION} found"
 	fi
 
 	# Set the compat level in case things change with newer ones.  We must not
