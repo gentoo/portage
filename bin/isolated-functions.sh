@@ -227,7 +227,7 @@ die() {
 		eerror "The ebuild environment file is located at '${T}/die.env'."
 	fi
 	eerror "Working directory: '$(pwd)'"
-	eerror "S: '${S}'"
+	[[ -n ${S} ]] && eerror "S: '${S}'"
 
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
 	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
