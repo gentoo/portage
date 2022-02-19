@@ -144,34 +144,6 @@ ___eapi_has_useq() {
 	[[ ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-slot-abi|5|6|7)$ ]]
 }
 
-___eapi_has_master_repositories() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_repository_path() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_available_eclasses() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_eclass_path() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_license_path() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_package_manager_build_user() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
-___eapi_has_package_manager_build_group() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
-}
-
 # HELPERS BEHAVIOR
 
 ___eapi_best_version_and_has_version_support_--host-root() {
@@ -294,10 +266,6 @@ ___eapi_doinitd_respects_exeopts() {
 
 ___eapi_enables_failglob_in_global_scope() {
 	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-slot-abi|5)$ ]]
-}
-
-___eapi_enables_globstar() {
-	[[ ${1-${EAPI-0}} =~ ^$ ]]
 }
 
 ___eapi_bash_3_2() {

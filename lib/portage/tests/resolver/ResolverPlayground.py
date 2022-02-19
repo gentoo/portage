@@ -69,7 +69,6 @@ class ResolverPlayground:
             "package.use.stable.force",
             "package.use.stable.mask",
             "soname.provided",
-            "unpack_dependencies",
             "use.aliases",
             "use.force",
             "use.mask",

@@ -77,10 +77,6 @@ def eapi_exports_ECLASSDIR(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).exports_ECLASSDIR
 
 
-def eapi_exports_REPOSITORY(eapi: str) -> bool:
-    return False
-
-
 def eapi_has_pkg_pretend(eapi: str) -> bool:
     return eapi not in ("0", "1", "2", "3")
 
@@ -113,28 +109,12 @@ def eapi_has_repo_deps(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).repo_deps
 
 
-def eapi_allows_dots_in_PN(eapi: str) -> bool:
-    return _get_eapi_attrs(eapi).dots_in_PN
-
-
-def eapi_allows_dots_in_use_flags(eapi: str) -> bool:
-    return _get_eapi_attrs(eapi).dots_in_use_flags
-
-
 def eapi_supports_stable_use_forcing_and_masking(eapi: str) -> bool:
     return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi")
 
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi: str) -> bool:
     return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi", "5", "6")
-
-
-def eapi_has_use_aliases(eapi: str) -> bool:
-    return False
-
-
-def eapi_has_automatic_unpack_dependencies(eapi: str) -> bool:
-    return False
 
 
 def eapi_allows_package_provided(eapi: str) -> bool:
@@ -171,8 +151,6 @@ _eapi_attrs = collections.namedtuple(
         "allows_package_provided",
         "bdepend",
         "broot",
-        "dots_in_PN",
-        "dots_in_use_flags",
         "exports_AA",
         "exports_EBUILD_PHASE_FUNC",
         "exports_ECLASSDIR",
@@ -247,8 +225,6 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             allows_package_provided=True,
             bdepend=False,
             broot=True,
-            dots_in_PN=True,
-            dots_in_use_flags=True,
             empty_groups_always_true=False,
             exports_AA=False,
             exports_EBUILD_PHASE_FUNC=True,
@@ -282,8 +258,6 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             allows_package_provided=eapi <= Eapi("6"),
             bdepend=eapi >= Eapi("7"),
             broot=eapi >= Eapi("7"),
-            dots_in_PN=False,
-            dots_in_use_flags=False,
             empty_groups_always_true=eapi <= Eapi("6"),
             exports_AA=eapi <= Eapi("3"),
             exports_EBUILD_PHASE_FUNC=eapi >= Eapi("5"),

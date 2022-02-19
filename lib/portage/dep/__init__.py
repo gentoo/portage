@@ -106,23 +106,18 @@ def _match_slot(atom, pkg):
     return False
 
 
-_atom_re_cache = {}
+_atom_re = None
 
 
 def _get_atom_re(eapi_attrs):
-    cache_key = eapi_attrs.dots_in_PN
-    atom_re = _atom_re_cache.get(cache_key)
-    if atom_re is not None:
-        return atom_re
+    global _atom_re
+    if _atom_re is not None:
+        return _atom_re
 
-    if eapi_attrs.dots_in_PN:
-        cp_re = _cp["dots_allowed_in_PN"]
-        cpv_re = _cpv["dots_allowed_in_PN"]
-    else:
-        cp_re = _cp["dots_disallowed_in_PN"]
-        cpv_re = _cpv["dots_disallowed_in_PN"]
+    cp_re = _cp
+    cpv_re = _cpv
 
-    atom_re = re.compile(
+    _atom_re = re.compile(
         "^(?P<without_use>(?:"
         + "(?P<op>"
         + _op
@@ -144,26 +139,20 @@ def _get_atom_re(eapi_attrs):
         + ")?$",
         re.VERBOSE | re.UNICODE,
     )
-
-    _atom_re_cache[cache_key] = atom_re
-    return atom_re
+    return _atom_re
 
 
-_atom_wildcard_re_cache = {}
+_atom_wildcard_re = None
 
 
 def _get_atom_wildcard_re(eapi_attrs):
-    cache_key = eapi_attrs.dots_in_PN
-    atom_re = _atom_wildcard_re_cache.get(cache_key)
-    if atom_re is not None:
-        return atom_re
+    global _atom_wildcard_re
+    if _atom_wildcard_re is not None:
+        return _atom_wildcard_re
 
-    if eapi_attrs.dots_in_PN:
-        pkg_re = r"[\w+*][\w+.*-]*?"
-    else:
-        pkg_re = r"[\w+*][\w+*-]*?"
+    pkg_re = r"[\w+*][\w+*-]*?"
 
-    atom_re = re.compile(
+    _atom_wildcard_re = re.compile(
         r"((?P<simple>("
         + _extended_cat
         + r")/("
@@ -185,12 +174,10 @@ def _get_atom_wildcard_re(eapi_attrs):
         + r"))?$",
         re.UNICODE,
     )
-
-    _atom_wildcard_re_cache[cache_key] = atom_re
-    return atom_re
+    return _atom_wildcard_re
 
 
-_usedep_re_cache = {}
+_usedep_re = None
 
 
 def _get_usedep_re(eapi_attrs):
@@ -201,27 +188,19 @@ def _get_usedep_re(eapi_attrs):
     @return: A regular expression object that matches valid USE deps for the
             given eapi.
     """
-    cache_key = eapi_attrs.dots_in_use_flags
-    usedep_re = _usedep_re_cache.get(cache_key)
-    if usedep_re is not None:
-        return usedep_re
+    global _usedep_re
+    if _usedep_re is not None:
+        return _usedep_re
 
-    if eapi_attrs.dots_in_use_flags:
-        _flag_re = r"[A-Za-z0-9][A-Za-z0-9+_@.-]*"
-    else:
-        _flag_re = r"[A-Za-z0-9][A-Za-z0-9+_@-]*"
-
-    usedep_re = re.compile(
+    _usedep_re = re.compile(
         r"^(?P<prefix>[!-]?)(?P<flag>"
-        + _flag_re
+        + r"[A-Za-z0-9][A-Za-z0-9+_@-]*"
         + r")(?P<default>(\(\+\)|\(\-\))?)(?P<suffix>[?=]?)$"
     )
-
-    _usedep_re_cache[cache_key] = usedep_re
-    return usedep_re
+    return _usedep_re
 
 
-_useflag_re_cache = {}
+_useflag_re = None
 
 
 def _get_useflag_re(eapi):
@@ -234,21 +213,12 @@ def _get_useflag_re(eapi):
     @return: A regular expression object that matches valid USE flags for the
             given eapi.
     """
-    eapi_attrs = _get_eapi_attrs(eapi)
-    cache_key = eapi_attrs.dots_in_use_flags
-    useflag_re = _useflag_re_cache.get(cache_key)
-    if useflag_re is not None:
-        return useflag_re
+    global _useflag_re
+    if _useflag_re is not None:
+        return _useflag_re
 
-    if eapi_attrs.dots_in_use_flags:
-        flag_re = r"[A-Za-z0-9][A-Za-z0-9+_@.-]*"
-    else:
-        flag_re = r"[A-Za-z0-9][A-Za-z0-9+_@-]*"
-
-    useflag_re = re.compile(r"^" + flag_re + r"$")
-
-    _useflag_re_cache[cache_key] = useflag_re
-    return useflag_re
+    _useflag_re = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+_@-]*$")
+    return _useflag_re
 
 
 def cpvequal(cpv1, cpv2):
@@ -3229,53 +3199,3 @@ def extract_affecting_use(mystr, atom, eapi=None):
         raise InvalidDependString(_("malformed syntax: '%s'") % mystr)
 
     return affecting_use
-
-
-def extract_unpack_dependencies(src_uri, unpackers):
-    """
-    Return unpack dependencies string for given SRC_URI string.
-
-    @param src_uri: SRC_URI string
-    @type src_uri: String
-    @param unpackers: Dictionary mapping archive suffixes to dependency strings
-    @type unpackers: Dictionary
-    @rtype: String
-    @return: Dependency string specifying packages required to unpack archives.
-    """
-    src_uri = src_uri.split()
-
-    depend = []
-    for i in range(len(src_uri)):
-        if src_uri[i][-1] == "?" or src_uri[i] in ("(", ")"):
-            depend.append(src_uri[i])
-        elif (i + 1 < len(src_uri) and src_uri[i + 1] == "->") or src_uri[i] == "->":
-            continue
-        else:
-            for suffix in sorted(unpackers, key=lambda x: len(x), reverse=True):
-                suffix = suffix.lower()
-                if src_uri[i].lower().endswith(suffix):
-                    depend.append(unpackers[suffix])
-                    break
-
-    while True:
-        cleaned_depend = depend[:]
-        for i in range(len(cleaned_depend)):
-            if cleaned_depend[i] is None:
-                continue
-            elif cleaned_depend[i] == "(" and cleaned_depend[i + 1] == ")":
-                cleaned_depend[i] = None
-                cleaned_depend[i + 1] = None
-            elif (
-                cleaned_depend[i][-1] == "?"
-                and cleaned_depend[i + 1] == "("
-                and cleaned_depend[i + 2] == ")"
-            ):
-                cleaned_depend[i] = None
-                cleaned_depend[i + 1] = None
-                cleaned_depend[i + 2] = None
-        if depend == cleaned_depend:
-            break
-        else:
-            depend = [x for x in cleaned_depend if x is not None]
-
-    return " ".join(depend)

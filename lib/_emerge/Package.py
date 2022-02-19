@@ -17,7 +17,7 @@ from portage.dep import (
 )
 from portage.dep.soname.parse import parse_soname_deps
 from portage.versions import _pkg_str, _unknown_repo
-from portage.eapi import _get_eapi_attrs, eapi_has_use_aliases
+from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData, InvalidDependString
 from portage.localization import _
 from _emerge.Task import Task
@@ -628,9 +628,6 @@ class Package(Task):
             self._expand_hidden = None
             self._force = None
             self._mask = None
-            if eapi_has_use_aliases(pkg.eapi):
-                for enabled_flag in enabled_flags:
-                    enabled_flags.extend(pkg.iuse.alias_mapping.get(enabled_flag, []))
             self.enabled = frozenset(enabled_flags)
             if pkg.built:
                 # Use IUSE to validate USE settings for built packages,
@@ -756,25 +753,15 @@ class Package(Task):
             enabled_aliases = []
             disabled_aliases = []
             other_aliases = []
-            aliases_supported = eapi_has_use_aliases(eapi)
             self.alias_mapping = {}
             for x in tokens:
                 prefix = x[:1]
                 if prefix == "+":
                     enabled.append(x[1:])
-                    if aliases_supported:
-                        self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
-                        enabled_aliases.extend(self.alias_mapping[x[1:]])
                 elif prefix == "-":
                     disabled.append(x[1:])
-                    if aliases_supported:
-                        self.alias_mapping[x[1:]] = aliases.get(x[1:], [])
-                        disabled_aliases.extend(self.alias_mapping[x[1:]])
                 else:
                     other.append(x)
-                    if aliases_supported:
-                        self.alias_mapping[x] = aliases.get(x, [])
-                        other_aliases.extend(self.alias_mapping[x])
             self.enabled = frozenset(chain(enabled, enabled_aliases))
             self.disabled = frozenset(chain(disabled, disabled_aliases))
             self.all = frozenset(chain(enabled, disabled, other))

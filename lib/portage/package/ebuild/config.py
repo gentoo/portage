@@ -105,9 +105,6 @@ from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
     prune_incremental,
 )
-from portage.package.ebuild._config.unpack_dependencies import (
-    load_unpack_dependencies_configuration,
-)
 
 
 _feature_flags_cache = {}
@@ -335,7 +332,6 @@ class config:
             self.profiles = clone.profiles
             self.packages = clone.packages
             self.repositories = clone.repositories
-            self.unpack_dependencies = clone.unpack_dependencies
             self._default_features_use = clone._default_features_use
             self._iuse_effective = clone._iuse_effective
             self._iuse_implicit_match = clone._iuse_implicit_match
@@ -729,10 +725,6 @@ class config:
                 if not isinstance(x, Atom):
                     x = Atom(x.lstrip("*"))
                 self.prevmaskdict.setdefault(x.cp, []).append(x)
-
-            self.unpack_dependencies = load_unpack_dependencies_configuration(
-                self.repositories
-            )
 
             mygcfg = {}
             if profiles_complex:

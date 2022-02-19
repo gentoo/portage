@@ -73,11 +73,6 @@ else
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
-	___eapi_has_master_repositories && funcs+=" master_repositories"
-	___eapi_has_repository_path && funcs+=" repository_path"
-	___eapi_has_available_eclasses && funcs+=" available_eclasses"
-	___eapi_has_eclass_path && funcs+=" eclass_path"
-	___eapi_has_license_path && funcs+=" license_path"
 	for x in ${funcs} ; do
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
@@ -571,10 +566,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	[[ -n $EAPI ]] || EAPI=0
-fi
-
-if ___eapi_enables_globstar; then
-	shopt -s globstar
 fi
 
 # Convert quoted paths to array.

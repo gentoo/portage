@@ -81,13 +81,6 @@ __save_ebuild_env() {
 		${QA_INTERCEPTORS}
 
 	___eapi_has_usex && unset -f usex
-	___eapi_has_master_repositories && unset -f master_repositories
-	___eapi_has_repository_path && unset -f repository_path
-	___eapi_has_available_eclasses && unset -f available_eclasses
-	___eapi_has_eclass_path && unset -f eclass_path
-	___eapi_has_license_path && unset -f license_path
-	___eapi_has_package_manager_build_user && unset -f package_manager_build_user
-	___eapi_has_package_manager_build_group && unset -f package_manager_build_group
 
 	# Clear out the triple underscore namespace as it is reserved by the PM.
 	unset -f $(compgen -A function ___)

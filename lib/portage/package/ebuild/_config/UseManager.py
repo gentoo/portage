@@ -15,7 +15,6 @@ from portage.dep import (
     _repo_separator,
 )
 from portage.eapi import (
-    eapi_has_use_aliases,
     eapi_supports_stable_use_forcing_and_masking,
 )
 from portage.exception import InvalidAtom
@@ -651,7 +650,7 @@ class UseManager:
         return frozenset(stack_lists(useforce, incremental=True))
 
     def getUseAliases(self, pkg):
-        if hasattr(pkg, "eapi") and not eapi_has_use_aliases(pkg.eapi):
+        if hasattr(pkg, "eapi"):
             return {}
 
         cp = getattr(pkg, "cp", None)
