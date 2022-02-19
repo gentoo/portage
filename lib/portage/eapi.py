@@ -78,7 +78,7 @@ def eapi_exports_ECLASSDIR(eapi: str) -> bool:
 
 
 def eapi_exports_REPOSITORY(eapi: str) -> bool:
-    return eapi in ("4-python", "5-progress")
+    return False
 
 
 def eapi_has_pkg_pretend(eapi: str) -> bool:
@@ -122,7 +122,7 @@ def eapi_allows_dots_in_use_flags(eapi: str) -> bool:
 
 
 def eapi_supports_stable_use_forcing_and_masking(eapi: str) -> bool:
-    return eapi not in ("0", "1", "2", "3", "4", "4-python", "4-slot-abi")
+    return eapi not in ("0", "1", "2", "3", "4", "4-slot-abi")
 
 
 def eapi_allows_directories_on_profile_level_and_repository_level(eapi: str) -> bool:
@@ -130,11 +130,11 @@ def eapi_allows_directories_on_profile_level_and_repository_level(eapi: str) -> 
 
 
 def eapi_has_use_aliases(eapi: str) -> bool:
-    return eapi in ("4-python", "5-progress")
+    return False
 
 
 def eapi_has_automatic_unpack_dependencies(eapi: str) -> bool:
-    return eapi in ("5-progress",)
+    return False
 
 
 def eapi_allows_package_provided(eapi: str) -> bool:
@@ -210,10 +210,8 @@ class Eapi:
         "2",
         "3",
         "4",
-        "4-python",
         "4-slot-abi",
         "5",
-        "5-progress",
         "6",
         "7",
         "8",
@@ -279,14 +277,13 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             use_dep_defaults=True,
         )
     else:
-        eapi_special = ("4-python", "5-progress")
         eapi = Eapi(eapi_str)
         return _eapi_attrs(
             allows_package_provided=eapi <= Eapi("6"),
             bdepend=eapi >= Eapi("7"),
             broot=eapi >= Eapi("7"),
-            dots_in_PN=eapi_str in eapi_special,
-            dots_in_use_flags=eapi_str in eapi_special,
+            dots_in_PN=False,
+            dots_in_use_flags=False,
             empty_groups_always_true=eapi <= Eapi("6"),
             exports_AA=eapi <= Eapi("3"),
             exports_EBUILD_PHASE_FUNC=eapi >= Eapi("5"),
@@ -302,7 +299,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
             path_variables_end_with_trailing_slash=eapi <= Eapi("6"),
             posixish_locale=eapi >= Eapi("6"),
             prefix=eapi >= Eapi("3"),
-            repo_deps=eapi_str in eapi_special,
+            repo_deps=False,
             required_use=eapi >= Eapi("4"),
             required_use_at_most_one_of=eapi >= Eapi("5"),
             selective_src_uri_restriction=eapi >= Eapi("8"),

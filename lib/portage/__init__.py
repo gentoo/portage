@@ -540,11 +540,9 @@ _deprecated_eapis = frozenset(
         "3_pre1",
         "3_pre2",
         "4_pre1",
-        "4-python",
         "4-slot-abi",
         "5_pre1",
         "5_pre2",
-        "5-progress",
         "6_pre1",
         "7_pre1",
     ]

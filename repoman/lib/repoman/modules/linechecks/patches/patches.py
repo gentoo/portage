@@ -17,8 +17,6 @@ class EbuildPatches(LineCheck):
             "2",
             "3",
             "4",
-            "4-python",
             "4-slot-abi",
             "5",
-            "5-progress",
         )

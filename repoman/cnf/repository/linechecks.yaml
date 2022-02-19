@@ -236,7 +236,6 @@ usex_supported_eapis:
     - "2"
     - "3"
     - "4"
-    - "4-python"
     - "4-slot-abi"
 
 in_iuse_supported_eapis:
@@ -245,7 +244,5 @@ in_iuse_supported_eapis:
     - "2"
     - "3"
     - "4"
-    - "4-python"
     - "4-slot-abi"
     - "5"
-    - "5-progress"
