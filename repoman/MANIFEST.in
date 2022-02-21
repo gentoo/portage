@@ -1,4 +1,0 @@
-
-# for the tests
-include cnf/metadata.xsd
-include .repoman_not_installed

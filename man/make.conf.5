@@ -457,9 +457,9 @@ enabled by default.
 .TP
 .B digest
 Autogenerate digests for packages when running the
-\fBemerge\fR(1), \fBebuild\fR(1), or \fBrepoman\fR(1) commands. If
-the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests
-will be reused whenever they are available.
+\fBemerge\fR(1) or \fBebuild\fR(1) commands. If the
+\fIassume\-digests\fR feature is also enabled then existing SRC_URI
+digests will be reused whenever they are available.
 .TP
 .B distcc
 Enable portage support for the distcc package.
@@ -1051,7 +1051,7 @@ when \fBsign\fR is in \fBFEATURES\fR. In order to sign commits with
 to be configured by \fI`git config user.signingkey key_id`\fR.
 .TP
 .B PORTAGE_GPG_SIGNING_COMMAND
-The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is
+The command used by \fBegencache\fR(1) to sign manifests when \fBsign\fR is
 in \fBFEATURES\fR.
 .TP
 \fBPORTAGE_GRPNAME\fR = \fI[group]\fR
