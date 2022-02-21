@@ -255,9 +255,6 @@ of \fBemerge\fR(1) for more information.
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
-.B DCO_SIGNED_OFF_BY
-See \fISIGNED_OFF_BY\fR below.  Deprecated.
-.TP
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository. After packages
 are built, it is safe to remove any and all files from this directory since
@@ -1279,14 +1276,6 @@ Defaults to /.
 Defines the location where created RPM packages will be stored.
 .br
 Defaults to /var/cache/rpm.
-.TP
-.B SIGNED_OFF_BY
-This variable may contain a name and email address which will be used by
-\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
-The meaning of a signoff depends on the project.  Typically, it certifies
-that the committer has the rights to submit the work under a free license
-and agrees to a Certificate of Origin.  (For example, see GLEP 76 for the
-Gentoo Linux policy: \fIhttps://www.gentoo.org/glep/glep-0076.html\fR.)
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server

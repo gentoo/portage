@@ -200,7 +200,6 @@ class config:
     _deprecated_keys = {
         "PORTAGE_LOGDIR": "PORT_LOGDIR",
         "PORTAGE_LOGDIR_CLEAN": "PORT_LOGDIR_CLEAN",
-        "SIGNED_OFF_BY": "DCO_SIGNED_OFF_BY",
     }
 
     _setcpv_aux_keys = (
