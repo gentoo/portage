@@ -219,18 +219,6 @@ class dbapi:
 
             yield cpv
 
-    def _repoman_iuse_implicit_cnstr(self, pkg, metadata):
-        """
-        In repoman's version of _iuse_implicit_cnstr, account for modifications
-        of the self.settings reference between calls.
-        """
-        eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
-        if eapi_attrs.iuse_effective:
-            iuse_implicit_match = lambda flag: self.settings._iuse_effective_match(flag)
-        else:
-            iuse_implicit_match = lambda flag: self.settings._iuse_implicit_match(flag)
-        return iuse_implicit_match
-
     def _iuse_implicit_cnstr(self, pkg, metadata):
         """
         Construct a callable that checks if a given USE flag should
