@@ -4,3 +4,5 @@
 a5092f11f31b6a9d54a34423088a7bb8e70bc1c6
 # black 22.1.0 reformatting
 baf79da44e543cc0fd12f64a2c99b49b66727f39
+# Blacken previously missed Python files
+9fe091668c8a1d988c02c849ac1bece6eb764d0b
