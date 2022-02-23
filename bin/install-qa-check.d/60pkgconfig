@@ -78,6 +78,32 @@ pkgconfig_check() {
 		eqatag -v pkgconfig.bad-libdir "${bad_libdir[@]}"
 	fi
 
+	# Check for mismatched Version field vs ${PV}
+	# To be safe, let's make sure _all_ installed .pcs have a bad Version
+	# before warning, as this should catch the general cases we're worried
+	# about, while avoiding any pathological cases e.g. multiple libraries
+	# with different versioning within one package.
+	# Example bugs: bug #833895, bug #833887.
+	local all_bad=yes
+	# Record the last bad file matched
+	local bad_file
+	for f in "${files[@]}" ; do
+		if [[ ${PV} == $(pkg-config --modversion "${f}") ]] ; then
+			all_bad=no
+			break
+		fi
+
+		bad_file=f
+	done
+
+	# Skip result reporting if *_p* because for both _pN and _preN, we
+	# don't generally expect the versions to be exactly accurate, and
+	# we want to avoid false positives.
+	if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
+		eqawarn "QA Notice: pkg-config files with mismatched Version found!"
+		eqawarn "At least ${bad_file}'s Version field does not match ${PV}"
+		eqawarn "Please check all .pc files installed by this package."
+	fi
 }
 
 pkgconfig_check
