@@ -17,6 +17,11 @@ pkgconfig_check() {
 		eqatag -v pkgconfig.bad-ldlags "${f//${D}}"
 	fi
 
+	# Bail out now so we can rely on pkgconfig in subsequent checks if we want.
+	if ! type -P pkg-config >/dev/null ; then
+		return
+	fi
+
 	# Validate using pkgconfig
 	# Some less common implementations may not support this?
 	# seems like f.d.o, OpenBSD, and of course pkgconf do though.
