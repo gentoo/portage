@@ -42,9 +42,12 @@ pkgconfig_check() {
 
 				if [[ ${value} != "${EPREFIX}"* ]] ; then
 					eqawarn "QA Notice: pkg-config files not respecting EPREFIX found"
-					eqawarn "${f}'s key=${key} does not respect EPREFIX:"
+					eqawarn "key=${key} does not respect EPREFIX:"
 					eqawarn "${key}=${value}"
-					eqatag -v pkgconfig.bad-paths "${f}"
+					eqatag -v pkgconfig.bad-paths ${key}="${value}" "${f//${D}}"
+
+					# Don't bother repeating for every variable in the same file
+					break
 				fi
 			done
 		done
@@ -67,12 +70,12 @@ pkgconfig_check() {
 			fi
 
 			if egrep -q "/lib64" ${f} ; then
-				bad_libdir+=( ${f} )
+				bad_libdir+=( "${f//${D}}" )
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
 			if grep -qP '/lib\b' ${f} ; then
-				bad_libdir+=( ${f} )
+				bad_libdir+=( "${f//${D}}" )
 			fi
 		fi
 	done
@@ -98,7 +101,7 @@ pkgconfig_check() {
 			break
 		fi
 
-		bad_file=f
+		bad_file="${f//${D}}"
 	done
 
 	# Skip result reporting if *_p* because for both _pN and _preN, we
