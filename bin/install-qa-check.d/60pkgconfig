@@ -42,9 +42,12 @@ pkgconfig_check() {
 
 				if [[ ${value} != "${EPREFIX}"* ]] ; then
 					eqawarn "QA Notice: pkg-config files not respecting EPREFIX found"
-					eqawarn "${f//${D}}'s key=${key} does not respect EPREFIX:"
+					eqawarn "key=${key} does not respect EPREFIX:"
 					eqawarn "${key}=${value}"
-					eqatag -v pkgconfig.bad-paths "${f//${D}}"
+					eqatag -v pkgconfig.bad-paths ${key}="${value}" "${f//${D}}"
+
+					# Don't bother repeating for every variable in the same file
+					break
 				fi
 			done
 		done
