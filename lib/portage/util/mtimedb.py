@@ -13,6 +13,7 @@ except ImportError:
 import errno
 import io
 import json
+import time
 
 import portage
 from portage import _encodings
@@ -30,10 +31,18 @@ class MtimeDB(dict):
 
     _json_write_opts = {"ensure_ascii": False, "indent": "\t", "sort_keys": True}
 
+    _LAST_UPDATED_KEY = "last_updated_unixtime"
+
     def __init__(self, filename):
         dict.__init__(self)
         self.filename = filename
         self._load(filename)
+
+    def lastUpdated(self):
+        try:
+            return self[MtimeDB._LAST_UPDATED_KEY]
+        except KeyError:
+            return -1
 
     def _load(self, filename):
         f = None
@@ -101,6 +110,7 @@ class MtimeDB(dict):
                 "starttime",
                 "updates",
                 "version",
+                "last_updated_unixtime",
             )
         )
 
@@ -119,6 +129,7 @@ class MtimeDB(dict):
         # Only commit if the internal state has changed.
         if d != self._clean_data:
             d["version"] = str(portage.VERSION)
+            d[MtimeDB._LAST_UPDATED_KEY] = time.time()
             try:
                 f = atomic_ofstream(self.filename, mode="wb")
             except EnvironmentError:

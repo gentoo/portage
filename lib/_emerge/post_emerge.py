@@ -1,8 +1,10 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import datetime
 import logging
 import textwrap
+import time
 
 import portage
 from portage import os
@@ -56,7 +58,6 @@ def show_depclean_suggestion():
     for line in textwrap.wrap(msg, 72):
         out.ewarn(line)
 
-
 def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     """
     Misc. things to run at the end of a merge session.
@@ -87,6 +88,16 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     vardbapi = trees[target_root]["vartree"].dbapi
     settings = vardbapi.settings
     info_mtimes = mtimedb["info"]
+
+    # Do not update the mtimedb if we updated it recently.
+    if time.time() - mtimedb.lastUpdated() > 60 * 5:
+        portage.util.writemsg_level(
+            'Skipping post_emerge update due to 5 minute cache. Last updated: %s'.format(
+                datetime.datetime.fromtimestamp(mtimedb.lastUpdated()).isoformat()),
+            level=logging.INFO,
+            noiselevel=-1,
+        )
+        return
 
     # Load the most current variables from ${ROOT}/etc/profile.env
     settings.unlock()
