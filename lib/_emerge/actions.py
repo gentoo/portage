@@ -672,12 +672,6 @@ def action_build(
                         ldpath_mtimes,
                         autoclean=1,
                     )
-                else:
-                    portage.writemsg_stdout(
-                        colorize("WARN", "WARNING:")
-                        + " AUTOCLEAN is disabled.  This can cause serious"
-                        + " problems due to overlapping packages.\n"
-                    )
 
         return retval
 
@@ -775,6 +769,15 @@ def action_depclean(
     # that should have been pulled into the graph. On the other hand, it's
     # relatively safe to ignore missing deps when only asked to remove
     # specific packages.
+
+    # Force autoclean for depcleans (but not purges), as it was changed
+    # to default off to not run it on every unmerge.
+    # bug #792195
+    if action == "depclean":
+        settings.unlock()
+        settings["AUTOCLEAN"] = "yes"
+        settings.backup_changes("AUTOCLEAN")
+        settings.lock()
 
     msg = []
     if (
@@ -3385,6 +3388,13 @@ def run_action(emerge_config):
         emerge_config.target_config.mtimedb.commit()
         # Reload the whole config from scratch.
         load_emerge_config(emerge_config=emerge_config)
+
+        # Let's autoclean if we applied updates, rather than always doing it
+        # bug #792195
+        emerge_config.target_config.settings.unlock()
+        emerge_config.target_config.settings["AUTOCLEAN"] = "yes"
+        emerge_config.target_config.settings.backup_changes("AUTOCLEAN")
+        emerge_config.target_config.settings.lock()
 
     xterm_titles = "notitles" not in emerge_config.target_config.settings.features
     if xterm_titles:
