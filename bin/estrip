@@ -410,8 +410,9 @@ while read -r x ; do
 done < <(
 	# Use sort -u to eliminate duplicates for bug #445336.
 	(
-		scanelf -yqRBF '#k%F' -k '.symtab' "$@"
 		find "$@" -type f ! -type l -name '*.a'
+		cut -d ' ' -f1 < "${PORTAGE_BUILDDIR}"/build-info/NEEDED \
+			| sed -e "s:^:${ED}:"
 	) | LC_ALL=C sort -u
 )
 else

@@ -151,20 +151,6 @@ install_qa_check() {
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
 	fi
 
-	# If binpkg-dostrip is enabled, apply stripping before creating
-	# the binary package.
-	# Note: disabling it won't help with packages calling prepstrip directly.
-	if has binpkg-dostrip ${FEATURES}; then
-		export STRIP_MASK
-		if ___eapi_has_dostrip; then
-			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
-			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
-			"${PORTAGE_BIN_PATH}"/estrip --dequeue
-		else
-			prepallstrip
-		fi
-	fi
-
 	if has chflags $FEATURES ; then
 		# Restore all the file flags that were saved earlier on.
 		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
@@ -246,6 +232,21 @@ install_qa_check() {
 				eqawarn "QA Notice: RESTRICT=binchecks prevented checks on these ELF files:"
 				eqawarn "$(while read -r x; do x=${x#*;} ; x=${x%%;*} ; echo "${x#${EPREFIX}}" ; done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED.ELF.2)"
 			fi
+		fi
+	fi
+
+	# If binpkg-dostrip is enabled, apply stripping before creating
+	# the binary package.
+	# Note: disabling it won't help with packages calling prepstrip directly.
+	# We do this after the scanelf bits so that we can reuse the data. bug #749624.
+	if has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
 		fi
 	fi
 
