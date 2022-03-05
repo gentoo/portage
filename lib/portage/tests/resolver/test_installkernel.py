@@ -58,7 +58,7 @@ class InstallKernelTestCase(TestCase):
                     ),
                 ],
             ),
-            # Demonstrate bug 833014, where the calculation fails unless
+            # Test bug 833014, where the calculation failed unless
             # --update and --deep are specified.
             ResolverPlaygroundTestCase(
                 [
@@ -66,25 +66,7 @@ class InstallKernelTestCase(TestCase):
                     "sys-kernel/gentoo-kernel-bin",
                 ],
                 ambiguous_merge_order=True,
-                success=False,
-                mergelist=[
-                    "sys-kernel/installkernel-systemd-boot-1",
-                    "sys-kernel/gentoo-kernel-bin-5.15.23",
-                    "virtual/dist-kernel-5.15.23",
-                    (
-                        "!sys-kernel/installkernel-gentoo",
-                        "!sys-kernel/installkernel-systemd-boot",
-                    ),
-                ],
-            ),
-            ResolverPlaygroundTestCase(
-                [
-                    "sys-kernel/installkernel-systemd-boot",
-                    "sys-kernel/gentoo-kernel-bin",
-                ],
-                ambiguous_merge_order=True,
                 success=True,
-                options={"--deep": True, "--update": True},
                 mergelist=[
                     "virtual/dist-kernel-5.15.23",
                     "sys-kernel/installkernel-systemd-boot-1",

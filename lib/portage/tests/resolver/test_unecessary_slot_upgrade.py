@@ -31,21 +31,10 @@ class UnnecessarySlotrUpgradeTestCase(TestCase):
                     "app-misc/a",
                 ],
                 success=True,
-                mergelist=("app-misc/a-1",),
-            ),
-            ResolverPlaygroundTestCase(
-                [
-                    "app-misc/a",
-                ],
-                success=True,
                 mergelist=(
                     "dev-lang/python-3.10",
                     "app-misc/a-1",
                 ),
-                options={
-                    "--deep": True,
-                    "--update": True,
-                },
             ),
         )
 
