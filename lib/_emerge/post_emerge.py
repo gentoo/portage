@@ -58,6 +58,7 @@ def show_depclean_suggestion():
     for line in textwrap.wrap(msg, 72):
         out.ewarn(line)
 
+
 def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     """
     Misc. things to run at the end of a merge session.
@@ -92,8 +93,9 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     # Do not update the mtimedb if we updated it recently.
     if time.time() - mtimedb.lastUpdated() > 60 * 5:
         portage.util.writemsg_level(
-            'Skipping post_emerge update due to 5 minute cache. Last updated: %s'.format(
-                datetime.datetime.fromtimestamp(mtimedb.lastUpdated()).isoformat()),
+            "Skipping post_emerge update due to 5 minute cache. Last updated: %s".format(
+                datetime.datetime.fromtimestamp(mtimedb.lastUpdated()).isoformat()
+            ),
             level=logging.INFO,
             noiselevel=-1,
         )
@@ -172,11 +174,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
         hook_retval = portage.process.spawn([postemerge], env=settings.environ())
         if hook_retval != os.EX_OK:
             portage.util.writemsg_level(
-                " %s spawn failed of %s\n"
-                % (
-                    colorize("BAD", "*"),
-                    postemerge,
-                ),
+                " %s spawn failed of %s\n" % (colorize("BAD", "*"), postemerge),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
