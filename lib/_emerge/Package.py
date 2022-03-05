@@ -210,7 +210,7 @@ class Package(Task):
     @property
     def invalid(self):
         if self._invalid is None:
-            self._validate_deps()
+            self._validate_deps(True)
             if self._invalid is None:
                 self._invalid = False
         return self._invalid
@@ -235,7 +235,7 @@ class Package(Task):
         atoms left unevaluated.
         """
         if self._validated_atoms is None:
-            self._validate_deps()
+            self._validate_deps(True)
         return self._validated_atoms
 
     @property
@@ -305,7 +305,7 @@ class Package(Task):
 
         return tuple(elements)
 
-    def _validate_deps(self):
+    def _validate_deps(self, force=False):
         """
         Validate deps. This does not trigger USE calculation since that
         is expensive for ebuilds and therefore we want to avoid doing
@@ -314,6 +314,10 @@ class Package(Task):
         eapi = self.eapi
         dep_eapi = eapi
         dep_valid_flag = self.iuse.is_valid_flag
+
+        if not force and not self.root_config.settings.repositories[self.repo].volatile:
+            return
+
         if self.installed:
             # Ignore EAPI.incompatible and conditionals missing
             # from IUSE for installed packages since these issues
