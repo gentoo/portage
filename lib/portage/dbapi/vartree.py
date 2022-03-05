@@ -5086,21 +5086,18 @@ class dblink:
 
         emerge_log = self._emerge_log
 
-        # If we have any preserved libraries then autoclean
-        # is forced so that preserve-libs logic doesn't have
+        # We always autoclean now for the current package-case for simplicity.
+        # If it were conditional, we'd always need to do it when any preserved-libs,
+        # so that preserve-libs logic doesn't have
         # to account for the additional complexity of the
         # AUTOCLEAN=no mode.
-        autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes" or preserve_paths
-
-        if autoclean:
-            emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
+        emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
 
         others_in_slot.append(self)  # self has just been merged
         for dblnk in list(others_in_slot):
             if dblnk is self:
                 continue
-            if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
-                continue
+
             showMessage(_(">>> Safely unmerging already-installed instance...\n"))
             emerge_log(_(" === Unmerging... (%s)") % (dblnk.mycpv,))
             others_in_slot.remove(dblnk)  # dblnk will unmerge itself now
@@ -5129,17 +5126,6 @@ class dblink:
             finally:
                 self.unlockdb()
             showMessage(_(">>> Original instance of package unmerged safely.\n"))
-
-        if len(others_in_slot) > 1:
-            showMessage(
-                colorize("WARN", _("WARNING:"))
-                + _(
-                    " AUTOCLEAN is disabled.  This can cause serious"
-                    " problems due to overlapping packages.\n"
-                ),
-                level=logging.WARN,
-                noiselevel=-1,
-            )
 
         # We hold both directory locks.
         self.dbdir = self.dbpkgdir

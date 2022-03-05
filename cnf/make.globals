@@ -101,7 +101,7 @@ EMERGE_WARNING_DELAY="10"
 
 # Automatically clean installed packages after they are updated.
 # This option will be removed and forced to yes.
-AUTOCLEAN="yes"
+AUTOCLEAN="no"
 
 PORTAGE_BZIP2_COMMAND="bzip2"
 
