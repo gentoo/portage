@@ -2164,7 +2164,7 @@ class Scheduler(PollScheduler):
             if not atoms:
                 msg += " dropped because it is masked or unavailable"
             else:
-                msg += " dropped because it requires %s" % ", ".join(atoms)
+                msg += " dropped because it requires %s" % ", ".join(set(atoms))
             for line in textwrap.wrap(msg, msg_width):
                 eerror(line, phase="other", key=pkg.cpv)
             settings = self.pkgsettings[pkg.root]
