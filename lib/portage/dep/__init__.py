@@ -1464,6 +1464,9 @@ class _use_dep:
         )
 
 
+_atom_cache = {}
+
+
 class Atom(str):
 
     """
@@ -1500,6 +1503,25 @@ class Atom(str):
         is_valid_flag=None,
         allow_build_id=None,
     ):
+        if (
+            unevaluated_atom is None
+            and allow_wildcard == False
+            and (allow_repo is None)
+            or (allow_repo == False)
+            and _use is None
+            and eapi is None
+            and is_valid_flag is None
+            and allow_build_id is None
+        ):
+
+            if s in _atom_cache.keys():
+                cached = _atom_cache[s]
+
+                if isinstance(cached, Atom):
+                    return cached
+                else:
+                    raise cached
+
         return str.__new__(cls, s)
 
     def __init__(
@@ -1513,6 +1535,22 @@ class Atom(str):
         is_valid_flag=None,
         allow_build_id=None,
     ):
+        global _atom_cache
+
+        if (
+            unevaluated_atom is None
+            and allow_wildcard == False
+            and (allow_repo is None)
+            or (allow_repo == False)
+            and _use is None
+            and eapi is None
+            and is_valid_flag is None
+            and allow_build_id is None
+        ):
+
+            if s in _atom_cache.keys():
+                return
+
         if isinstance(s, Atom):
             # This is an efficiency assertion, to ensure that the Atom
             # constructor is not called redundantly.
@@ -1562,6 +1600,7 @@ class Atom(str):
                 atom_re = _get_atom_wildcard_re(eapi_attrs)
                 m = atom_re.match(s)
                 if m is None:
+                    _atom_cache[s] = InvalidAtom(self)
                     raise InvalidAtom(self)
                 m_group = m.group
                 if m_group("star") is not None:
@@ -1574,14 +1613,17 @@ class Atom(str):
                     op = None
                     cpv = cp = m_group("simple")
                     if m_group(atom_re.groupindex["simple"] + 3) is not None:
+                        _atom_cache[s] = InvalidAtom(self)
                         raise InvalidAtom(self)
                 if cpv.find("**") != -1:
+                    _atom_cache[s] = InvalidAtom(self)
                     raise InvalidAtom(self)
                 slot = m_group("slot")
                 repo = m_group("repo")
                 use_str = None
                 extended_syntax = True
             else:
+                _atom_cache[s] = InvalidAtom(self)
                 raise InvalidAtom(self)
         elif m.group("op") is not None:
             m_group = m.group
@@ -1601,12 +1643,15 @@ class Atom(str):
                     build_id = cpv_build_id[len(cpv) + 1 :]
                     if len(build_id) > 1 and build_id[:1] == "0":
                         # Leading zeros are not allowed.
+                        _atom_cache[s] = InvalidAtom(self)
                         raise InvalidAtom(self)
                     try:
                         build_id = int(build_id)
                     except ValueError:
+                        _atom_cache[s] = InvalidAtom(self)
                         raise InvalidAtom(self)
                 else:
+                    _atom_cache[s] = InvalidAtom(self)
                     raise InvalidAtom(self)
         elif m.group("star") is not None:
             base = atom_re.groupindex["star"]
@@ -1618,6 +1663,7 @@ class Atom(str):
             repo = m_group(atom_re.groups - 1)
             use_str = m_group(atom_re.groups)
             if m_group(base + 3) is not None:
+                _atom_cache[s] = InvalidAtom(self)
                 raise InvalidAtom(self)
         elif m.group("simple") is not None:
             op = None
@@ -1627,9 +1673,13 @@ class Atom(str):
             repo = m_group(atom_re.groups - 1)
             use_str = m_group(atom_re.groups)
             if m_group(atom_re.groupindex["simple"] + 2) is not None:
+                _atom_cache[s] = InvalidAtom(self)
                 raise InvalidAtom(self)
 
         else:
+            _atom_cache[s] = AssertionError(
+                _("required group not found in atom: '%s'") % self
+            )
             raise AssertionError(_("required group not found in atom: '%s'") % self)
         self.__dict__["cp"] = cp
         try:
@@ -1648,6 +1698,7 @@ class Atom(str):
             slot_re = _get_slot_dep_re(eapi_attrs)
             slot_match = slot_re.match(slot)
             if slot_match is None:
+                _atom_cache[s] = InvalidAtom(self)
                 raise InvalidAtom(self)
             if eapi_attrs.slot_operator:
                 self.__dict__["slot"] = slot_match.group(1)
@@ -1665,6 +1716,7 @@ class Atom(str):
                     self.__dict__["sub_slot"] = sub_slot
                     self.__dict__["slot_operator"] = slot_operator
                 if self.slot is not None and self.slot_operator == "*":
+                    _atom_cache[s] = InvalidAtom(self)
                     raise InvalidAtom(self)
             else:
                 self.__dict__["slot"] = slot
@@ -1675,6 +1727,7 @@ class Atom(str):
         self.__dict__["build_id"] = build_id
 
         if not (repo is None or allow_repo):
+            _atom_cache[s] = InvalidAtom(self)
             raise InvalidAtom(self)
 
         if use_str is not None:
@@ -1709,7 +1762,7 @@ class Atom(str):
 
         if eapi is not None:
             if not isinstance(eapi, str):
-                raise TypeError(
+                err = TypeError(
                     "expected eapi argument of "
                     + "%s, got %s: %s"
                     % (
@@ -1718,6 +1771,8 @@ class Atom(str):
                         eapi,
                     )
                 )
+                _atom_cache[s] = err
+                raise err
             if self.slot and not eapi_attrs.slot_deps:
                 raise InvalidAtom(
                     _("Slot deps are not allowed in EAPI %s: '%s'") % (eapi, self),
@@ -1725,18 +1780,22 @@ class Atom(str):
                 )
             if self.use:
                 if not eapi_attrs.use_deps:
-                    raise InvalidAtom(
+                    err = InvalidAtom(
                         _("Use deps are not allowed in EAPI %s: '%s'") % (eapi, self),
                         category="EAPI.incompatible",
                     )
+                    _atom_cache[s] = err
+                    raise err
                 elif not eapi_attrs.use_dep_defaults and (
                     self.use.missing_enabled or self.use.missing_disabled
                 ):
-                    raise InvalidAtom(
+                    err = InvalidAtom(
                         _("Use dep defaults are not allowed in EAPI %s: '%s'")
                         % (eapi, self),
                         category="EAPI.incompatible",
                     )
+                    _atom_cache[s] = err
+                    raise err
                 if is_valid_flag is not None and self.use.conditional:
                     invalid_flag = None
                     try:
@@ -1744,6 +1803,7 @@ class Atom(str):
                             for flag in flags:
                                 if not is_valid_flag(flag):
                                     invalid_flag = (conditional_type, flag)
+                                    _atom_cache[s] = StopIteration()
                                     raise StopIteration()
                     except StopIteration:
                         pass
@@ -1756,16 +1816,20 @@ class Atom(str):
                             "USE flag '%s' referenced in "
                             + "conditional '%s' in atom '%s' is not in IUSE"
                         ) % (flag, conditional_str % flag, self)
+                        _atom_cache[s] = InvalidAtom(msg, category="IUSE.missing")
                         raise InvalidAtom(msg, category="IUSE.missing")
             if (
                 self.blocker
                 and self.blocker.overlap.forbid
                 and not eapi_attrs.strong_blocks
             ):
-                raise InvalidAtom(
+                err = InvalidAtom(
                     _("Strong blocks are not allowed in EAPI %s: '%s'") % (eapi, self),
                     category="EAPI.incompatible",
                 )
+                _atom_cache[s] = err
+                raise err
+        _atom_cache[s] = self
 
     @property
     def slot_operator_built(self):
