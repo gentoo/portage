@@ -62,19 +62,19 @@ pkgconfig_check() {
 	# e.g. https://bugs.gentoo.org/729642
 	local bad_libdir=()
 	for f in "${files[@]}" ; do
-		# In ${ED}/usr/lib, we shouldn't reference lib64
 		if [[ ${f} == *lib/pkgconfig* ]] ; then
 			if [[ -d "${ED}"/usr/lib && -L "${ED}"/usr/lib ]] ; then
 				# (Don't bother if /usr/lib is a symlink to /usr/lib64)
 				continue
 			fi
 
-			if egrep -q "/lib64" ${f} ; then
+			# In ${ED}/usr/lib, we shouldn't reference lib64
+			if egrep -q "=(/usr)?/lib64" ${f} ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
 			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
-			if grep -qP '/lib\b' ${f} ; then
+			if grep -qP '=(/usr)?/lib\b' ${f} ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		fi
