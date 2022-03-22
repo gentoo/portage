@@ -83,12 +83,12 @@ def _target_root():
 
 def portage_group_warning():
     warn_prefix = colorize("BAD", "*** WARNING ***  ")
-    mylines = [
+    mylines = (
         "For security reasons, only system administrators should be",
         "allowed in the portage group.  Untrusted users or processes",
         "can potentially exploit the portage group for attacks such as",
         "local privilege escalation.",
-    ]
+    )
     for x in mylines:
         writemsg(warn_prefix, noiselevel=-1)
         writemsg(x, noiselevel=-1)
