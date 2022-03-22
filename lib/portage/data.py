@@ -78,7 +78,7 @@ def _target_root():
         # Handle either empty or unset ROOT.
         root = os.sep
     root = portage.util.normalize_path(root)
-    return root.rstrip(os.sep) + os.sep
+    return f"{root.rstrip(os.sep)}{os.sep}"
 
 
 def portage_group_warning():

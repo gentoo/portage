@@ -47,7 +47,7 @@ class hashed_path:
         return val
 
     def __repr__(self):
-        return "<portage.eclass_cache.hashed_path('%s')>" % (self.location,)
+        return f"<portage.eclass_cache.hashed_path('{self.location}')>"
 
 
 class cache:
@@ -98,7 +98,7 @@ class cache:
         that have the same name.
         """
         if not isinstance(other, self.__class__):
-            raise TypeError("expected type %s, got %s" % (self.__class__, type(other)))
+            raise TypeError(f"expected type {self.__class__}, got {type(other)}")
         self.porttrees = self.porttrees + other.porttrees
         self.eclasses.update(other.eclasses)
         self._eclass_locations.update(other._eclass_locations)

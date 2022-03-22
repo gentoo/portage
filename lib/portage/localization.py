@@ -28,10 +28,7 @@ def localization_example():
     a_value = "value.of.a"
     b_value = 123
     c_value = [1, 2, 3, 4]
-    print(
-        _("A: %(a)s -- B: %(b)s -- C: %(c)s")
-        % {"a": a_value, "b": b_value, "c": c_value}
-    )
+    print(_(f"A: {a_value} -- B: {b_value} -- C: {c_value}"))
 
 
 def localized_size(num_bytes):
@@ -47,4 +44,5 @@ def localized_size(num_bytes):
     except UnicodeDecodeError:
         # failure to decode locale data
         formatted_num = str(num_kib)
-    return _unicode_decode(formatted_num, encoding=_encodings["stdio"]) + " KiB"
+    unicode_num = _unicode_decode(formatted_num, encoding=_encodings["stdio"])
+    return f"{unicode_num} KiB"

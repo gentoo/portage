@@ -44,7 +44,7 @@ def _open_file(filename):
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
         )
     except IOError as e:
-        func_call = "open('%s')" % _unicode_decode(filename)
+        func_call = f"open('{_unicode_decode(filename)}')"
         if e.errno == errno.EPERM:
             raise portage.exception.OperationNotPermitted(func_call)
         elif e.errno == errno.EACCES:
@@ -525,12 +525,11 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
             if mydict[x] != myhash:
                 if strict:
                     raise portage.exception.DigestException(
-                        ("Failed to verify '$(file)s' on " + "checksum type '%(type)s'")
-                        % {"file": filename, "type": x}
+                        f"Failed to verify '{filename}' on checksum type '{x}'"
                     )
                 else:
                     file_is_ok = False
-                    reason = (("Failed on %s verification" % x), myhash, mydict[x])
+                    reason = (f"Failed on {x} verification", myhash, mydict[x])
                     break
 
     return file_is_ok, reason
@@ -578,8 +577,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
         try:
             if hashname not in hashfunc_keys:
                 raise portage.exception.DigestException(
-                    hashname
-                    + " hash function not available (needs dev-python/pycrypto)"
+                    f"{hashname} hash function not available (needs dev-python/pycrypto)"
                 )
             myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
         except (OSError, IOError) as e:
@@ -618,8 +616,7 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
     for x in hashes:
         if x not in hashfunc_keys:
             raise portage.exception.DigestException(
-                x
-                + " hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)"
+                f"{x} hash function not available (needs dev-python/pycrypto)"
             )
         rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
     return rVal
@@ -638,6 +635,6 @@ def checksum_str(data, hashname="MD5"):
     """
     if hashname not in hashfunc_keys:
         raise portage.exception.DigestException(
-            hashname + " hash function not available (needs dev-python/pycrypto)"
+            f"{hashname} hash function not available (needs dev-python/pycrypto)"
         )
     return hashfunc_map[hashname].checksum_str(data)

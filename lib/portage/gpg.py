@@ -58,13 +58,13 @@ class GPG:
                 # When run with no input/output tty, this will fail.
                 # However, if the password is given by command,
                 # GPG does not need to ask password, so can be ignored.
-                writemsg(colorize("WARN", str(e)) + "\n")
+                writemsg(f"{colorize('WARN', str(e))}\n")
 
             cmd = shlex_split(varexpand(self.GPG_unlock_command, mydict=self.settings))
             return_code = subprocess.Popen(cmd).wait()
 
             if return_code == os.EX_OK:
-                writemsg_stdout(colorize("GOOD", "unlocked") + "\n")
+                writemsg_stdout(f"{colorize('GOOD', 'unlocked')}\n")
                 sys.stdout.flush()
             else:
                 raise GPGException("GPG unlock failed")

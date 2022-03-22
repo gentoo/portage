@@ -427,7 +427,7 @@ class tar_stream_reader:
                     if not self.proc.stderr.closed:
                         stderr = self.proc.stderr.read().decode()
                     if not self.killed:
-                        writemsg(colorize("BAD", "!!!" + "\n" + stderr))
+                        writemsg(colorize("BAD", f"!!!\n{stderr}"))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
@@ -610,7 +610,7 @@ class checksum_helper:
                 trust_signature = True
 
         if (not good_signature) or (not trust_signature):
-            writemsg(colorize("BAD", "!!!" + "\n" + self.gpg_result.decode()))
+            writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
             raise InvalidSignature("GPG verify failed")
 
     def _drop_privileges(self):
@@ -673,7 +673,7 @@ class checksum_helper:
                 if self.gpg_operation == checksum_helper.VERIFY:
                     self._check_gpg_status(self.gpg_result.decode())
             else:
-                writemsg(colorize("BAD", "!!!" + "\n" + self.gpg_result.decode()))
+                writemsg(colorize("BAD", f"!!!\n{self.gpg_result.decode()}"))
                 if self.gpg_operation == checksum_helper.SIGNING:
                     writemsg(colorize("BAD", self.gpg_output.decode()))
                     raise GPGException("GPG signing failed")
@@ -913,9 +913,7 @@ class gpkg:
                 container_file.write(
                     urlopen(
                         url,
-                        headers={
-                            "Range": "bytes=" + str(init_size + 1) + "-" + str(end_size)
-                        },
+                        headers={"Range": f"bytes={init_size + 1}-{end_size}"},
                     ).read()
                 )
 
@@ -1057,7 +1055,7 @@ class gpkg:
                         image_safe = tar_safe_extract(image, "image")
                         image_safe.extractall(decompress_dir)
                     except Exception as ex:
-                        writemsg(colorize("BAD", "!!!" + "Extract failed."))
+                        writemsg(colorize("BAD", "!!!Extract failed."))
                         raise
                     finally:
                         image_tar.kill()
@@ -1079,7 +1077,7 @@ class gpkg:
                 raise InvalidBinaryPackageFormat("Cannot identify tar format")
 
         # container
-        tmp_gpkg_file_name = self.gpkg_file + "." + str(os.getpid())
+        tmp_gpkg_file_name = f"{self.gpkg_file}.{os.getpid()}"
         with tarfile.TarFile(
             name=tmp_gpkg_file_name, mode="w", format=container_tar_format
         ) as container:
@@ -1178,7 +1176,7 @@ class gpkg:
         """
 
         protect_file = io.BytesIO(
-            b"# empty file because --include-config=n " + b"when `quickpkg` was used\n"
+            b"# empty file because --include-config=n when `quickpkg` was used\n"
         )
         protect_file.seek(0, io.SEEK_END)
         protect_file_size = protect_file.tell()
@@ -1412,7 +1410,7 @@ class gpkg:
             raise GPGException("GPG signature is not exists")
 
         signature = io.BytesIO(checksum_info.gpg_output)
-        signature_tarinfo = tarfile.TarInfo(tarinfo.name + ".sig")
+        signature_tarinfo = tarfile.TarInfo(f"{tarinfo.name}.sig")
         signature_tarinfo.size = len(signature.getvalue())
         signature_tarinfo.mtime = datetime.utcnow().timestamp()
         container.addfile(signature_tarinfo, signature)

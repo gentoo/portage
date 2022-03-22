@@ -118,14 +118,14 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 myupd.extend(valid_updates)
                 if not quiet:
                     writemsg_stdout(bold(mykey))
-                    writemsg_stdout(len(valid_updates) * "." + "\n")
+                    writemsg_stdout(f"{len(valid_updates) * '.'}\n")
                 if len(errors) == 0:
                     # Update our internal mtime since we
                     # processed all of our directives.
                     timestamps[mykey] = mystat[stat.ST_MTIME]
                 else:
                     for msg in errors:
-                        writemsg("%s\n" % msg, noiselevel=-1)
+                        writemsg(f"{msg}\n", noiselevel=-1)
             if myupd:
                 retupd = True
 

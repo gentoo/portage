@@ -217,10 +217,10 @@ class UnsupportedAPIException(PortagePackageException):
             eapi = str(eapi)
         eapi = eapi.lstrip("-")
         msg = _(
-            "Unable to do any operations on '%(cpv)s', since "
+            f"Unable to do any operations on '{self.cpv}', since "
             "its EAPI is higher than this portage version's. Please upgrade"
-            " to a portage version that supports EAPI '%(eapi)s'."
-        ) % {"cpv": self.cpv, "eapi": eapi}
+            f" to a portage version that supports EAPI '{eapi}'."
+        )
         return _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
 
 
