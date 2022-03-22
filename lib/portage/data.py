@@ -229,27 +229,30 @@ def _get_global(k):
             # Get a list of group IDs for the portage user. Do not use
             # grp.getgrall() since it is known to trigger spurious
             # SIGPIPE problems with nss_ldap.
-            cmd = ["id", "-G", _portage_username]
-
             encoding = portage._encodings["content"]
-            cmd = [
+            cmd = (
                 portage._unicode_encode(x, encoding=encoding, errors="strict")
-                for x in cmd
-            ]
+                for x in ("id", "-G", _portage_username)
+            )
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
             myoutput = proc.communicate()[0]
             status = proc.wait()
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                for x in portage._unicode_decode(
-                    myoutput, encoding=encoding, errors="strict"
-                ).split():
+
+                def check(x):
                     try:
-                        v.append(int(x))
+                        return int(x)
                     except ValueError:
-                        pass
-                v = sorted(set(v))
+                        return None
+
+                unicode_decode = portage._unicode_decode(
+                    myoutput, encoding=encoding, errors="strict"
+                )
+                checked_v = (check(x) for x in unicode_decode.split())
+                filtered_v = (x for x in checked_v if x)
+                v = sorted(set(filtered_v))
 
     # Avoid instantiating portage.settings when the desired
     # variable is set in os.environ.

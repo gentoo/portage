@@ -110,7 +110,7 @@ class cache:
         master_eclasses = {}
         eclass_len = len(".eclass")
         ignored_listdir_errnos = (errno.ENOENT, errno.ENOTDIR)
-        for x in [normalize_path(os.path.join(y, "eclass")) for y in self.porttrees]:
+        for x in (normalize_path(os.path.join(y, "eclass")) for y in self.porttrees):
             try:
                 eclass_filenames = os.listdir(x)
             except OSError as e:

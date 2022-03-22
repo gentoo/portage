@@ -112,10 +112,12 @@ class ParseLinks(html_parser_HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if tag == "a":
-            for x in attrs:
-                if x[0] == "href":
-                    if x[1] not in self.PL_anchors:
-                        self.PL_anchors.append(urllib_parse_unquote(x[1]))
+            myarchors = (
+                urllib_parse_unquote(x[1])
+                for x in attrs
+                if x[0] == "href" and x[1] not in self.PL_anchors
+            )
+            self.PL_anchors.extend(myarchors)
 
 
 def create_conn(baseurl, conn=None):
@@ -533,8 +535,7 @@ def file_get(
     from portage.util import varexpand
     from portage.process import spawn
 
-    myfetch = portage.util.shlex_split(fcmd)
-    myfetch = [varexpand(x, mydict=variables) for x in myfetch]
+    myfetch = (varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd))
     fd_pipes = {
         0: portage._get_stdin().fileno(),
         1: sys.__stdout__.fileno(),
@@ -986,5 +987,5 @@ class PackageIndex:
             keys = list(metadata)
             keys.sort()
             self._writepkgindex(
-                pkgfile, [(k, metadata[k]) for k in keys if metadata[k]]
+                pkgfile, ((k, metadata[k]) for k in keys if metadata[k])
             )

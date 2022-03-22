@@ -555,10 +555,15 @@ _deprecated_eapis = frozenset(
         "7_pre1",
     ]
 )
+
+from itertools import chain
+
 _supported_eapis = frozenset(
-    [str(x) for x in range(portage.const.EAPI + 1)]
-    + list(_testing_eapis)
-    + list(_deprecated_eapis)
+    chain(
+        (str(x) for x in range(portage.const.EAPI + 1)),
+        _testing_eapis,
+        _deprecated_eapis,
+    )
 )
 
 
@@ -672,8 +677,7 @@ def create_trees(
         # When ROOT != "/" we only want overrides from the calling
         # environment to apply to the config that's associated
         # with ROOT != "/", so pass a nearly empty dict for the env parameter.
-        clean_env = {}
-        for k in (
+        env_sequence = (
             "PATH",
             "PORTAGE_GRPNAME",
             "PORTAGE_REPOSITORIES",
@@ -687,10 +691,10 @@ def create_trees(
             "https_proxy",
             "no_proxy",
             "__PORTAGE_TEST_HARDLINK_LOCKS",
-        ):
-            v = settings.get(k)
-            if v is not None:
-                clean_env[k] = v
+        )
+        env = ((k, settings.get(k)) for k in env_sequence)
+        clean_env = {k: v for k, v in env if v is not None}
+
         if depcachedir is not None:
             clean_env["PORTAGE_DEPCACHEDIR"] = depcachedir
         settings = config(
