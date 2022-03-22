@@ -152,7 +152,7 @@ def getListElements(listnode):
     @rtype:		List of Strings
     @return:	a list that contains the value of the <li> elements
     """
-    if not listnode.nodeName in ["ul", "ol"]:
+    if not listnode.nodeName in ("ul", "ol"):
         raise GlsaFormatException("Invalid function call: listnode is not <ul> or <ol>")
     rValue = [
         getText(li, format="strip")
@@ -191,8 +191,8 @@ def getText(node, format, textfd=None):  # pylint: disable=redefined-builtin
         returnNone = False
     else:
         returnNone = True
-    if format in ["strip", "keep"]:
-        if node.nodeName in ["uri", "mail"]:
+    if format in ("strip", "keep"):
+        if node.nodeName in ("uri", "mail"):
             textfd.write(f"{node.childNodes[0].data}:{node.getAttribute('link')}")
         else:
             for subnode in node.childNodes:
@@ -206,7 +206,7 @@ def getText(node, format, textfd=None):  # pylint: disable=redefined-builtin
                 for p_subnode in subnode.childNodes:
                     if p_subnode.nodeName == "#text":
                         textfd.write(p_subnode.data.strip())
-                    elif p_subnode.nodeName in ["uri", "mail"]:
+                    elif p_subnode.nodeName in ("uri", "mail"):
                         textfd.write(p_subnode.childNodes[0].data)
                         textfd.write(" ( " + p_subnode.getAttribute("link") + " )")
                 textfd.write(NEWLINE_ESCAPE)

@@ -125,7 +125,7 @@ EBUILD_PHASES = (
     "other",
 )
 SUPPORTED_FEATURES = frozenset(
-    [
+    (
         "assume-digests",
         "binpkg-docompress",
         "binpkg-dostrip",
@@ -217,14 +217,14 @@ SUPPORTED_FEATURES = frozenset(
         "usersync",
         "webrsync-gpg",
         "xattr",
-    ]
+    )
 )
 
 EAPI = 8
 
 HASHING_BLOCKSIZE = 32768
 
-MANIFEST2_HASH_DEFAULTS = frozenset(["BLAKE2B", "SHA512"])
+MANIFEST2_HASH_DEFAULTS = frozenset(("BLAKE2B", "SHA512"))
 MANIFEST2_HASH_DEFAULT = "BLAKE2B"
 
 MANIFEST2_IDENTIFIERS = ("AUX", "MISC", "DIST", "EBUILD")
@@ -248,7 +248,7 @@ VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
 # List of known live eclasses. Keep it in sync with cnf/sets/portage.conf
 LIVE_ECLASSES = frozenset(
-    [
+    (
         "bzr",
         "cvs",
         "darcs",
@@ -257,7 +257,7 @@ LIVE_ECLASSES = frozenset(
         "golang-vcs",
         "mercurial",
         "subversion",
-    ]
+    )
 )
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
