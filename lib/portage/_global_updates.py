@@ -97,21 +97,18 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                     )
                     if not quiet:
                         writemsg_stdout(
-                            _(
-                                "  %s='update pass'  %s='binary update'  "
-                                "%s='/var/db update'  %s='/var/db move'\n"
-                                "  %s='/var/db SLOT move'  %s='binary move'  "
-                                "%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n"
-                            )
-                            % (
-                                bold("."),
-                                bold("*"),
-                                bold("#"),
-                                bold("@"),
-                                bold("s"),
-                                bold("%"),
-                                bold("S"),
-                                bold("p"),
+                            "  ".join(
+                                (
+                                    "",
+                                    f"{bold('.')}='update pass'",
+                                    f"{bold('*')}='binary update'",
+                                    f"{bold('#')}='/var/db update'",
+                                    f"{bold('@')}='/var/db move'\n",
+                                    f"{bold('s')}='/var/db SLOT move'",
+                                    f"{bold('%')}='binary move'"
+                                    f"{bold('S')}='binary SLOT move'\n",
+                                    f"{bold('p')}='update /etc/portage/package.*'\n",
+                                )
                             )
                         )
                 valid_updates, errors = parse_updates(mycontent)
