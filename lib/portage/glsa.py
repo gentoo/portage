@@ -126,14 +126,20 @@ def get_glsa_list(myconfig):
         return []
     dirlist = os.listdir(repository)
     prefix = "glsa-"
+    prefix_size = len(prefix)
     suffix = ".xml"
+    suffix_size = len(suffix)
 
-    for f in dirlist:
+    def check(value):
         try:
-            if f[: len(prefix)] == prefix and f[-1 * len(suffix) :] == suffix:
-                rValue.append(f[len(prefix) : -1 * len(suffix)])
+            if value[:prefix_size] == prefix and value[-suffix_size:] == suffix:
+                return value[prefix_size:-suffix_size]
         except IndexError:
-            pass
+            return None
+        return None
+
+    checked_dirlist = (check(f) for f in dirlist)
+    rValue = [f for f in checked_dirlist if f]
     return rValue
 
 
