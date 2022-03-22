@@ -367,9 +367,7 @@ def _perform_md5_merge(x, **kwargs):
 
 
 def perform_all(x, calc_prelink=0):
-    mydict = {}
-    for k in hashfunc_keys:
-        mydict[k] = perform_checksum(x, k, calc_prelink)[0]
+    mydict = {k: perform_checksum(x, k, calc_prelink)[0] for k in hashfunc_keys}
     return mydict
 
 
@@ -458,11 +456,11 @@ def _apply_hash_filter(digests, hash_filter):
                     break
 
     if modified:
-        digests = dict(
-            (k, v)
+        digests = {
+            k: v
             for (k, v) in digests.items()
             if k == "size" or k in verifiable_hash_types
-        )
+        }
 
     return digests
 
