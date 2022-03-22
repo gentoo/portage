@@ -238,13 +238,17 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
         _archive_copy(mystat, newconf, archive)
 
-        if has_branch:
-            if mrgconf and os.path.isfile(archive) and os.path.isfile(mrgconf):
-                # This puts the results of the merge into mrgconf.
-                ret = os.system(f"rcsmerge -p -r{RCS_BRANCH} '{archive}' > '{mrgconf}'")
-                os.chmod(mrgconf, mystat.st_mode)
-                os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
-        os.rename(archive, archive + ".dist.new")
+        if (
+            has_branch
+            and mrgconf
+            and os.path.isfile(archive)
+            and os.path.isfile(mrgconf)
+        ):
+            # This puts the results of the merge into mrgconf.
+            ret = os.system(f"rcsmerge -p -r{RCS_BRANCH} '{archive}' > '{mrgconf}'")
+            os.chmod(mrgconf, mystat.st_mode)
+            os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
+        os.rename(archive, f"{archive}.dist.new")
 
     return ret
 

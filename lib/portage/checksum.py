@@ -427,9 +427,8 @@ class _hash_filter:
         for token in self._tokens:
             if token in matches:
                 return True
-            if token[:1] == "-":
-                if token[1:] in matches:
-                    return False
+            if token[:1] == "-" and token[1:] in matches:
+                return False
         return False
 
 
