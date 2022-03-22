@@ -158,15 +158,12 @@ def _get_global(k):
                 unprivileged = _unprivileged_mode(eroot_or_parent, eroot_st)
 
         v = 0
-        if uid == 0:
-            v = 2
-        elif unprivileged:
+        if uid == 0 or unprivileged:
             v = 2
         elif _get_global("portage_gid") in os.getgroups():
             v = 1
 
     elif k in ("portage_gid", "portage_uid"):
-
         # Discover the uid and gid of the portage user/group
         keyerror = False
         try:
@@ -357,9 +354,7 @@ def _init(settings):
 
     if "secpass" not in _initialized_globals:
         v = 0
-        if uid == 0:
-            v = 2
-        elif "unprivileged" in settings.features:
+        if uid == 0 or "unprivileged" in settings.features:
             v = 2
         elif portage_gid in os.getgroups():
             v = 1
