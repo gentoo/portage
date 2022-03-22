@@ -169,10 +169,7 @@ class cache:
         return d
 
     def get_eclass_data(self, inherits):
-        ec_dict = {}
-        for x in inherits:
-            ec_dict[x] = self.eclasses[x]
-
+        ec_dict = {x: self.eclasses[x] for x in inherits}
         return ec_dict
 
     @property

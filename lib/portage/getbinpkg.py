@@ -55,20 +55,24 @@ def make_metadata_dict(data):
     )
 
     myid, _myglob = data
-
-    mydict = {}
-    for k_bytes in portage.xpak.getindex_mem(myid):
-        k = _unicode_decode(
-            k_bytes, encoding=_encodings["repo.content"], errors="replace"
+    metadata = (
+        (
+            k_bytes,
+            _unicode_decode(
+                k_bytes, encoding=_encodings["repo.content"], errors="replace"
+            ),
         )
-        if k not in _all_metadata_keys and k != "CATEGORY":
-            continue
-        v = _unicode_decode(
+        for k_bytes in portage.xpak.getindex_mem(myid)
+    )
+    mydict = {
+        k: _unicode_decode(
             portage.xpak.getitem(data, k_bytes),
             encoding=_encodings["repo.content"],
             errors="replace",
         )
-        mydict[k] = v
+        for k_bytes, k in metadata
+        if k in _all_metadata_keys or k == "CATEGORY"
+    }
 
     return mydict
 
