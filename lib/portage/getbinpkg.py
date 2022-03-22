@@ -172,12 +172,10 @@ def create_conn(baseurl, conn=None):
         except AttributeError:
             # Python 2
             encodebytes = base64.encodestring
-        http_headers = {
-            b"Authorization": "Basic %s"
-            % encodebytes(_unicode_encode("%s:%s" % (username, password))).replace(
-                b"\012", b""
-            ),
-        }
+        unicode_bytes = encodebytes(_unicode_encode(f"{username}:{password}")).replace(
+            b"\012", b""
+        )
+        http_headers = {b"Authorization": f"Basic {unicode_bytes}"}
 
     if not conn:
         if protocol == "https":
@@ -204,9 +202,10 @@ def create_conn(baseurl, conn=None):
                 conn.login(username, password)
             else:
                 sys.stderr.write(
-                    colorize("WARN", _(" * No password provided for username"))
-                    + " '%s'" % (username,)
-                    + "\n\n"
+                    colorize(
+                        "WARN",
+                        _(f" * No password provided for username '{username}'\n\n"),
+                    )
                 )
                 conn.login(username)
             conn.set_pasv(passive)
@@ -245,15 +244,12 @@ def make_ftp_request(conn, address, rest=None, dest=None):
         conn.voidcmd("TYPE I")
         fsize = conn.size(address)
 
-        if (rest != None) and (rest < 0):
+        retr_address = f"RETR {address}"
+        if rest and rest < 0:
             rest = fsize + int(rest)
-        if rest < 0:
-            rest = 0
-
-        if rest != None:
-            mysocket = conn.transfercmd("RETR %s" % str(address), rest)
+            mysocket = conn.transfercmd(retr_address, rest)
         else:
-            mysocket = conn.transfercmd("RETR %s" % str(address))
+            mysocket = conn.transfercmd(retr_address)
 
         mydata = ""
         while 1:
@@ -262,7 +258,7 @@ def make_ftp_request(conn, address, rest=None, dest=None):
                 if dest:
                     dest.write(somedata)
                 else:
-                    mydata = mydata + somedata
+                    mydata = f"{mydata}{somedata}"
             else:
                 break
 
@@ -302,7 +298,7 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
         except SystemExit as e:
             raise
         except Exception as e:
-            return None, None, "Server request failed: %s" % str(e)
+            return None, None, f"Server request failed: {e}"
         response = conn.getresponse()
         rc = response.status
 
@@ -315,15 +311,11 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
                 if parts[0] == "Location":
                     if rc == 301:
                         sys.stderr.write(
-                            colorize("BAD", _("Location has moved: "))
-                            + str(parts[1])
-                            + "\n"
+                            f"{colorize('BAD', _('Location has moved: '))}{parts[1]}\n"
                         )
                     if rc == 302:
                         sys.stderr.write(
-                            colorize("BAD", _("Location has temporarily moved: "))
-                            + str(parts[1])
-                            + "\n"
+                            f"{colorize('BAD', _('Location has temporarily moved: '))}{parts[1]}\n"
                         )
                     address = parts[1]
                     break
@@ -332,8 +324,7 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
         return (
             None,
             rc,
-            "Server did not respond successfully (%s: %s)"
-            % (str(response.status), str(response.reason)),
+            f"Server did not respond successfully ({response.status}: {response.reason})",
         )
 
     if dest:
@@ -408,7 +399,7 @@ def dir_get_list(baseurl, conn=None):
         if not address.endswith("/"):
             # http servers can return a 400 error here
             # if the address doesn't end with a slash.
-            address += "/"
+            address = f"{address}/"
         page, rc, msg = make_http_request(conn, address, params, headers)
 
         if page:
@@ -461,7 +452,7 @@ def file_get_metadata(baseurl, conn=None, chunk_size=3000):
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
     if protocol in ["http", "https"]:
-        headers["Range"] = "bytes=-%s" % str(chunk_size)
+        headers["Range"] = f"bytes=-{chunk_size}"
         data, _x, _x = make_http_request(conn, address, params, headers)
     elif protocol in ["ftp"]:
         data, _x, _x = make_ftp_request(conn, address, -chunk_size)
@@ -473,7 +464,7 @@ def file_get_metadata(baseurl, conn=None, chunk_size=3000):
         finally:
             f.close()
     else:
-        raise TypeError(_("Unknown protocol. '%s'") % protocol)
+        raise TypeError(_(f"Unknown protocol. '{protocol}'"))
 
     if data:
         xpaksize = portage.xpak.decodeint(data[-8:-4])
@@ -523,14 +514,14 @@ def file_get(
     if "DISTDIR" not in variables:
         if dest is None:
             raise portage.exception.MissingParameter(
-                _("%s is missing required '%s' key") % ("fcmd_vars", "DISTDIR")
+                _("fcmd_vars is missing required 'DISTDIR' key")
             )
         variables["DISTDIR"] = dest
 
     if "URI" not in variables:
         if baseurl is None:
             raise portage.exception.MissingParameter(
-                _("%s is missing required '%s' key") % ("fcmd_vars", "URI")
+                _("fcmd_vars is missing required 'URI' key")
             )
         variables["URI"] = baseurl
 
@@ -576,7 +567,7 @@ def file_get_lib(baseurl, dest, conn=None):
 
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
-    sys.stderr.write("Fetching '" + str(os.path.basename(address)) + "'\n")
+    sys.stderr.write(f"Fetching '{os.path.basename(address)}'\n")
     if protocol in ["http", "https"]:
         data, rc, _msg = make_http_request(conn, address, params, headers, dest=dest)
     elif protocol in ["ftp"]:
@@ -673,7 +664,7 @@ def dir_get_metadata(
 
     if not os.access(cache_path, os.W_OK):
         sys.stderr.write(_("!!! Unable to write binary metadata to disk!\n"))
-        sys.stderr.write(_("!!! Permission denied: '%s'\n") % cache_path)
+        sys.stderr.write(_(f"!!! Permission denied: '{cache_path}'\n"))
         return metadata[baseurl]["data"]
 
     import portage.exception
@@ -681,10 +672,8 @@ def dir_get_metadata(
     try:
         filelist = dir_get_list(baseurl, conn)
     except portage.exception.PortageException as e:
-        sys.stderr.write(
-            _("!!! Error connecting to '%s'.\n") % _hide_url_passwd(baseurl)
-        )
-        sys.stderr.write("!!! %s\n" % str(e))
+        sys.stderr.write(_(f"!!! Error connecting to '{_hide_url_passwd(baseurl)}'.\n"))
+        sys.stderr.write(f"!!! {e}\n")
         del e
         return metadata[baseurl]["data"]
     tbz2list = match_in_array(filelist, suffix=".tbz2")
@@ -743,10 +732,8 @@ def dir_get_metadata(
                 except SystemExit as e:
                     raise
                 except Exception as e:
-                    sys.stderr.write(
-                        _("!!! Failed to read data from index: ") + str(mfile) + "\n"
-                    )
-                    sys.stderr.write("!!! %s" % str(e))
+                    sys.stderr.write(f"!!! Failed to read data from index: {mfile}\n")
+                    sys.stderr.write(f"!!! {e}")
                     sys.stderr.flush()
             try:
                 metadatafile = open(
@@ -761,7 +748,7 @@ def dir_get_metadata(
                 raise
             except Exception as e:
                 sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
-                sys.stderr.write("!!! %s\n" % str(e))
+                sys.stderr.write(f"!!! {e}\n")
                 sys.stderr.flush()
             break
     # We may have metadata... now we run through the tbz2 list and check.
@@ -784,10 +771,14 @@ def dir_get_metadata(
 
         def display(self):
             self.out.write(
-                "\r"
-                + colorize("WARN", _("cache miss: '") + str(self.misses) + "'")
-                + " --- "
-                + colorize("GOOD", _("cache hit: '") + str(self.hits) + "'")
+                "".join(
+                    (
+                        "\r",
+                        colorize("WARN", _(f"cache miss: '{self.misses}'")),
+                        " --- ",
+                        colorize("GOOD", _(f"cache hit: '{self.hits}'")),
+                    )
+                )
             )
             self.out.flush()
 
@@ -829,9 +820,7 @@ def dir_get_metadata(
                 metadata[baseurl]["data"][x] = make_metadata_dict(myid)
             elif verbose:
                 sys.stderr.write(
-                    colorize("BAD", _("!!! Failed to retrieve metadata on: "))
-                    + str(x)
-                    + "\n"
+                    f"{colorize('BAD', _('!!! Failed to retrieve metadata on: '))}{x}\n"
                 )
                 sys.stderr.flush()
         else:
@@ -946,7 +935,7 @@ class PackageIndex:
 
     def _writepkgindex(self, pkgfile, items):
         for k, v in items:
-            pkgfile.write("%s: %s\n" % (self._write_translation_map.get(k, k), v))
+            pkgfile.write(f"{self._write_translation_map.get(k, k)}: {v}\n")
         pkgfile.write("\n")
 
     def read(self, pkgfile):

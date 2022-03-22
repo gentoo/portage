@@ -48,7 +48,7 @@ except ImportError as e:
     sys.stderr.write(
         "!!! gone wrong. Here is the information we got for this exception:\n"
     )
-    sys.stderr.write("    " + str(e) + "\n\n")
+    sys.stderr.write(f"    {e}\n\n")
     raise
 
 try:
@@ -93,7 +93,7 @@ try:
         + "doebuild_environment,spawn,spawnebuild",
         "portage.package.ebuild.config:autouse,best_from_dict,"
         + "check_config_instance,config",
-        "portage.package.ebuild.deprecated_profile_check:" + "deprecated_profile_check",
+        "portage.package.ebuild.deprecated_profile_check:deprecated_profile_check",
         "portage.package.ebuild.digestcheck:digestcheck",
         "portage.package.ebuild.digestgen:digestgen",
         "portage.package.ebuild.fetch:fetch",
@@ -184,7 +184,7 @@ except ImportError as e:
         "!!! There is a README.RESCUE file that details the steps required to perform\n"
     )
     sys.stderr.write("!!! a recovery of portage.\n")
-    sys.stderr.write("    " + str(e) + "\n\n")
+    sys.stderr.write(f"    {e}\n\n")
     raise
 
 
@@ -409,7 +409,7 @@ try:
     _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_encodings["merge"])
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
-        sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
+        sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
     selinux = None
@@ -482,10 +482,10 @@ def _shell_quote(s):
     """
     if _shell_quote_re.search(s) is None:
         return s
-    for letter in '\\"$`':
+    for letter in r"\"$`":
         if letter in s:
-            s = s.replace(letter, "\\" + letter)
-    return '"%s"' % s
+            s = s.replace(letter, rf"\{letter}")
+    return f'"{s}"'
 
 
 bsd_chflags = None
@@ -534,7 +534,7 @@ def abssymlink(symlink, target=None):
         mylink = os.readlink(symlink)
     if mylink[0] != "/":
         mydir = os.path.dirname(symlink)
-        mylink = mydir + "/" + mylink
+        mylink = f"{mydir}/{mylink}"
     return os.path.normpath(mylink)
 
 
@@ -597,7 +597,7 @@ def _parse_eapi_ebuild_head(f):
 def _movefile(src, dest, **kwargs):
     """Calls movefile and raises a PortageException if an error occurs."""
     if movefile(src, dest, **kwargs) is None:
-        raise portage.exception.PortageException("mv '%s' '%s'" % (src, dest))
+        raise portage.exception.PortageException(f"mv '{src}' '{dest}'")
 
 
 auxdbkeys = (
@@ -726,12 +726,11 @@ if VERSION == "HEAD":
                     BASH_BINARY,
                     "-c",
                     (
-                        "cd %s ; git describe --match 'portage-*' || exit $? ; "
-                        + 'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
-                        + "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
-                        + "exit 0"
-                    )
-                    % _shell_quote(PORTAGE_BASE_PATH),
+                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --match 'portage-*' || exit $? ; "
+                        'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
+                        "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
+                        "exit 0"
+                    ),
                 ]
                 cmd = [
                     _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
@@ -750,7 +749,7 @@ if VERSION == "HEAD":
                             patchlevel = False
                             if len(version_split) > 2:
                                 patchlevel = True
-                                VERSION = "%s_p%s" % (VERSION, version_split[2])
+                                VERSION = f"{VERSION}_p{version_split[2]}"
                             if len(output_lines) > 1 and output_lines[1] == "modified":
                                 head_timestamp = None
                                 if len(output_lines) > 3:
@@ -765,8 +764,8 @@ if VERSION == "HEAD":
                                 ):
                                     timestamp = timestamp - head_timestamp
                                 if not patchlevel:
-                                    VERSION = "%s_p0" % (VERSION,)
-                                VERSION = "%s_p%d" % (VERSION, timestamp)
+                                    VERSION = f"{VERSION}_p0"
+                                VERSION = f"{VERSION}_p{timestamp}"
                             return VERSION
             VERSION = "HEAD"
             return VERSION
