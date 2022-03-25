@@ -876,52 +876,23 @@ def parse_opts(tmpcmdline, silent=False):
     if myoptions.depclean_lib_check in true_y:
         myoptions.depclean_lib_check = True
 
-    if myoptions.exclude:
-        bad_atoms = _find_bad_atoms(myoptions.exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
+    candidate_bad_options = (
+        (myoptions.exclude, "exclude"),
+        (myoptions.reinstall_atoms, "reinstall-atoms"),
+        (myoptions.rebuild_exclude, "rebuild-exclude"),
+        (myoptions.rebuild_ignore, "rebuild-ignore"),
+        (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
+    )
+    bad_options = (
+        (_find_bad_atoms(atoms), flag) for atoms, flag in candidate_bad_options if atoms
+    )
 
-    if myoptions.reinstall_atoms:
-        bad_atoms = _find_bad_atoms(myoptions.reinstall_atoms)
+    for bad_atoms, flag in bad_options:
         if bad_atoms and not silent:
+            invalid_atoms = ",".join(bad_atoms)
             parser.error(
-                "Invalid Atom(s) in --reinstall-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.rebuild_exclude:
-        bad_atoms = _find_bad_atoms(myoptions.rebuild_exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --rebuild-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.rebuild_ignore:
-        bad_atoms = _find_bad_atoms(myoptions.rebuild_ignore)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --rebuild-ignore parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.usepkg_exclude:
-        bad_atoms = _find_bad_atoms(myoptions.usepkg_exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --usepkg-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.useoldpkg_atoms:
-        bad_atoms = _find_bad_atoms(myoptions.useoldpkg_atoms)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --useoldpkg-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
+                f"Invalid Atom(s) in --{flag} parameter: '{invalid_atoms}' (only package names and slot atoms (with wildcards) allowed)\n"
             )
 
     if myoptions.fail_clean in true_y:
