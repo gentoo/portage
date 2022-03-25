@@ -8,6 +8,7 @@ import platform
 import pwd
 
 import portage
+from portage.localization import _
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -16,14 +17,11 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.path:first_existing",
     "subprocess",
 )
-from portage.localization import _
 
 ostype = platform.system()
-userland = None
+userland = "GNU"
 if ostype == "DragonFly" or ostype.endswith("BSD"):
     userland = "BSD"
-else:
-    userland = "GNU"
 
 lchown = getattr(os, "lchown", None)
 
@@ -140,7 +138,6 @@ def _get_global(k):
         return globals()[k]
 
     if k == "secpass":
-
         unprivileged = False
         if hasattr(portage, "settings"):
             unprivileged = "unprivileged" in portage.settings.features
@@ -254,11 +251,10 @@ def _get_global(k):
     # Avoid instantiating portage.settings when the desired
     # variable is set in os.environ.
     elif k in ("_portage_grpname", "_portage_username"):
-        v = None
+        v = "portage"
+        env_key = "PORTAGE_USERNAME"
         if k == "_portage_grpname":
             env_key = "PORTAGE_GRPNAME"
-        else:
-            env_key = "PORTAGE_USERNAME"
 
         if env_key in os.environ:
             v = os.environ[env_key]
@@ -290,9 +286,6 @@ def _get_global(k):
                             pass
                         else:
                             v = pwd_struct.pw_name
-
-        if v is None:
-            v = "portage"
     else:
         raise AssertionError("unknown name: %s" % k)
 
@@ -302,7 +295,6 @@ def _get_global(k):
 
 
 class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_name",)
 
     def __init__(self, name):
@@ -340,17 +332,15 @@ def _init(settings):
         # from grp.getgrnam() with PyPy
         native_string = platform.python_implementation() == "PyPy"
 
-        v = settings.get("PORTAGE_GRPNAME", "portage")
         if native_string:
-            v = portage._native_string(v)
-        globals()["_portage_grpname"] = v
-        _initialized_globals.add("_portage_grpname")
-
-        v = settings.get("PORTAGE_USERNAME", "portage")
-        if native_string:
-            v = portage._native_string(v)
-        globals()["_portage_username"] = v
-        _initialized_globals.add("_portage_username")
+            grpname = settings.get("PORTAGE_GRPNAME", "portage")
+            grpname = portage._native_string(grpname)
+            globals()["_portage_grpname"] = grpname
+            _initialized_globals.add("_portage_grpname")
+            username = settings.get("PORTAGE_USERNAME", "portage")
+            username = portage._native_string(username)
+            globals()["_portage_username"] = username
+            _initialized_globals.add("_portage_username")
 
     if "secpass" not in _initialized_globals:
         v = 0

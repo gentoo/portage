@@ -21,10 +21,10 @@ import tempfile
 import base64
 import warnings
 
-_all_errors = [NotImplementedError, ValueError, socket.error]
-
 from html.parser import HTMLParser as html_parser_HTMLParser
 from urllib.parse import unquote as urllib_parse_unquote
+
+_all_errors = [NotImplementedError, ValueError, socket.error]
 
 try:
     import ftplib
@@ -47,7 +47,6 @@ _all_errors = tuple(_all_errors)
 
 
 def make_metadata_dict(data):
-
     warnings.warn(
         "portage.getbinpkg.make_metadata_dict() is deprecated",
         DeprecationWarning,
@@ -82,7 +81,6 @@ class ParseLinks(html_parser_HTMLParser):
     page and provide suffix and prefix limitors"""
 
     def __init__(self):
-
         warnings.warn(
             "portage.getbinpkg.ParseLinks is deprecated",
             DeprecationWarning,
@@ -96,19 +94,15 @@ class ParseLinks(html_parser_HTMLParser):
         return self.PL_anchors
 
     def get_anchors_by_prefix(self, prefix):
-        newlist = []
-        for x in self.PL_anchors:
-            if x.startswith(prefix):
-                if x not in newlist:
-                    newlist.append(x[:])
+        newlist = [
+            x for x in self.PL_anchors if x.startswith(prefix) and x not in newlist
+        ]
         return newlist
 
     def get_anchors_by_suffix(self, suffix):
-        newlist = []
-        for x in self.PL_anchors:
-            if x.endswith(suffix):
-                if x not in newlist:
-                    newlist.append(x[:])
+        newlist = [
+            x for x in self.PL_anchors if x.endswith(suffix) and x not in newlist
+        ]
         return newlist
 
     def handle_endtag(self, tag):
@@ -140,16 +134,13 @@ def create_conn(baseurl, conn=None):
         raise ValueError(
             _("Provided URI does not " "contain protocol identifier. '%s'") % baseurl
         )
-    protocol, url_parts = parts
+    protocol, url = parts
     del parts
 
-    url_parts = url_parts.split("/")
-    host = url_parts[0]
-    if len(url_parts) < 2:
-        address = "/"
-    else:
-        address = "/" + "/".join(url_parts[1:])
-    del url_parts
+    url_split = url.split("/", 1)
+    host = url_split[0]
+    address = f"/{url_split[1]}"
+    del url, url_split
 
     userpass_host = host.split("@", 1)
     if len(userpass_host) == 1:
@@ -160,13 +151,14 @@ def create_conn(baseurl, conn=None):
         userpass = userpass_host[0].split(":")
     del userpass_host
 
-    if len(userpass) > 2:
+    userpass_size = len(userpass)
+    if userpass_size > 2:
         raise ValueError(_("Unable to interpret username/password provided."))
-    elif len(userpass) == 2:
-        username = userpass[0]
+
+    username = userpass[0]
+    if userpass_size == 2:
         password = userpass[1]
-    elif len(userpass) == 1:
-        username = userpass[0]
+    elif userpass_size == 1:
         password = None
     del userpass
 
@@ -243,7 +235,6 @@ def make_ftp_request(conn, address, rest=None, dest=None):
     )
 
     try:
-
         if dest:
             fstart_pos = dest.tell()
 
@@ -268,10 +259,9 @@ def make_ftp_request(conn, address, rest=None, dest=None):
             else:
                 break
 
+        data_size = len(mydata)
         if dest:
             data_size = fstart_pos - dest.tell()
-        else:
-            data_size = len(mydata)
 
         mysocket.close()
         conn.voidresp()
@@ -296,7 +286,7 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
 
     rc = 0
     response = None
-    while (rc == 0) or (rc == 301) or (rc == 302):
+    while rc in (0, 301, 302):
         try:
             if rc != 0:
                 conn = create_conn(address)[0]
@@ -309,9 +299,9 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
         rc = response.status
 
         # 301 means that the page address is wrong.
-        if (rc == 301) or (rc == 302):
-            ignored_data = response.read()
-            del ignored_data
+        if rc in (301, 302):
+            # This response reading is ignored on purpose.
+            _ = response.read()
             for x in str(response.msg).split("\n"):
                 parts = x.split(": ", 1)
                 if parts[0] == "Location":
@@ -326,7 +316,7 @@ def make_http_request(conn, address, _params={}, headers={}, dest=None):
                     address = parts[1]
                     break
 
-    if (rc != 200) and (rc != 206):
+    if rc not in (200, 206):
         return (
             None,
             rc,
@@ -355,26 +345,28 @@ def match_in_array(array, prefix="", suffix="", match_both=1, allow_overlap=0):
 
     for x in array:
         add_p = 0
-        if prefix and (len(x) >= len(prefix)) and (x[: len(prefix)] == prefix):
+        x_size = len(x)
+        prefix_size = len(prefix)
+        if prefix and x_size >= prefix_size and x[:prefix_size] == prefix:
             add_p = 1
 
         if match_both:
             if prefix and not add_p:  # Require both, but don't have first one.
                 continue
-        else:
-            if add_p:  # Only need one, and we have it.
-                myarray.append(x[:])
-                continue
+        elif add_p:  # Only need one, and we have it.
+            myarray.append(x[:])
+            continue
 
+        suffix_size = len(suffix)
         if not allow_overlap:  # Not allow to overlap prefix and suffix
-            if len(x) >= (len(prefix) + len(suffix)):
+            if x_size >= (prefix_size + suffix_size):
                 pass
             else:
                 continue  # Too short to match.
         else:
             pass  # Do whatever... We're overlapping.
 
-        if suffix and (len(x) >= len(suffix)) and (x[-len(suffix) :] == suffix):
+        if suffix and x_size >= suffix_size and x[-len(suffix) :] == suffix:
             myarray.append(x)  # It matches
         else:
             continue  # Doesn't match.
@@ -393,9 +385,8 @@ def dir_get_list(baseurl, conn=None):
         stacklevel=2,
     )
 
-    if not conn:
-        keepconnection = 0
-    else:
+    keepconnection = 0
+    if conn:
         keepconnection = 1
 
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
@@ -419,7 +410,7 @@ def dir_get_list(baseurl, conn=None):
             raise portage.exception.PortageException(
                 _("Unable to get listing: %s %s") % (rc, msg)
             )
-    elif protocol in ["ftp"]:
+    elif protocol == "ftp":
         if address[-1] == "/":
             olddir = conn.pwd()
             conn.cwd(address)
@@ -450,10 +441,9 @@ def file_get_metadata(baseurl, conn=None, chunk_size=3000):
         stacklevel=2,
     )
 
-    if not conn:
+    keepconnection = 1
+    if conn:
         keepconnection = 0
-    else:
-        keepconnection = 1
 
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
@@ -532,7 +522,7 @@ def file_get(
         variables["URI"] = baseurl
 
     if "FILE" not in variables:
-        if filename is None:
+        if not filename:
             filename = os.path.basename(variables["URI"])
         variables["FILE"] = filename
 
@@ -565,9 +555,8 @@ def file_get_lib(baseurl, dest, conn=None):
         stacklevel=2,
     )
 
-    if not conn:
-        keepconnection = 0
-    else:
+    keepconnection = 0
+    if conn:
         keepconnection = 1
 
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
@@ -608,22 +597,20 @@ def file_get_lib(baseurl, dest, conn=None):
 def dir_get_metadata(
     baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=1, makepickle=None
 ):
-
     warnings.warn(
         "portage.getbinpkg.dir_get_metadata() is deprecated",
         DeprecationWarning,
         stacklevel=2,
     )
 
-    if not conn:
+    keepconnection = 1
+    if conn:
         keepconnection = 0
-    else:
-        keepconnection = 1
 
     cache_path = "/var/cache/edb"
     metadatafilename = os.path.join(cache_path, "remote_metadata.pickle")
 
-    if makepickle is None:
+    if not makepickle:
         makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
     try:
@@ -896,7 +883,7 @@ class PackageIndex:
     ):
 
         self._pkg_slot_dict = None
-        if allowed_pkg_keys is not None:
+        if allowed_pkg_keys:
             self._pkg_slot_dict = slot_dict_class(allowed_pkg_keys)
 
         self._default_header_data = default_header_data
@@ -914,11 +901,9 @@ class PackageIndex:
         self.modified = True
 
     def _readpkgindex(self, pkgfile, pkg_entry=True):
-
+        d = {}
         allowed_keys = None
-        if self._pkg_slot_dict is None or not pkg_entry:
-            d = {}
-        else:
+        if self._pkg_slot_dict and pkg_entry:
             d = self._pkg_slot_dict()
             allowed_keys = d.allowed_keys
 
@@ -964,7 +949,7 @@ class PackageIndex:
             if self._inherited_keys:
                 for k in self._inherited_keys:
                     v = self.header.get(k)
-                    if v is not None:
+                    if v:
                         d.setdefault(k, v)
             self.packages.append(d)
 
@@ -982,7 +967,7 @@ class PackageIndex:
             if self._inherited_keys:
                 for k in self._inherited_keys:
                     v = self.header.get(k)
-                    if v is not None and v == metadata.get(k):
+                    if v and v == metadata.get(k):
                         del metadata[k]
             if self._default_pkg_data:
                 for k, v in self._default_pkg_data.items():

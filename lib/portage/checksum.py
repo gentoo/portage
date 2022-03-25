@@ -344,11 +344,8 @@ if os.path.exists(PRELINK_BINARY):
 
 
 def is_prelinkable_elf(filename):
-    f = _open_file(filename)
-    try:
+    with _open_file(filename) as f:
         magic = f.read(17)
-    finally:
-        f.close()
     return (
         len(magic) == 17
         and magic.startswith(b"\x7fELF")
@@ -444,11 +441,11 @@ def _apply_hash_filter(digests, hash_filter):
     @type hash_filter: callable
     """
 
-    verifiable_hash_types = set(digests).intersection(hashfunc_keys)
-    verifiable_hash_types.discard("size")
+    verifiable_hash_types = frozenset(digests).intersection(hashfunc_keys)
     modified = False
     if len(verifiable_hash_types) > 1:
-        for k in list(verifiable_hash_types):
+        verifiable_hash_types.discard("size")
+        for k in verifiable_hash_types:
             if not hash_filter(k):
                 modified = True
                 verifiable_hash_types.remove(k)
@@ -456,11 +453,7 @@ def _apply_hash_filter(digests, hash_filter):
                     break
 
     if modified:
-        digests = {
-            k: v
-            for (k, v) in digests.items()
-            if k == "size" or k in verifiable_hash_types
-        }
+        digests = {k: v for k, v in digests.items() if k in verifiable_hash_types}
 
     return digests
 
