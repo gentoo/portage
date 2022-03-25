@@ -260,7 +260,6 @@ class _unicode_func_wrapper:
         self._encoding = encoding
 
     def _process_args(self, args, kwargs):
-
         encoding = self._encoding
         wrapped_args = [
             _unicode_encode(x, encoding=encoding, errors="strict") for x in args
@@ -276,7 +275,6 @@ class _unicode_func_wrapper:
         return (wrapped_args, wrapped_kwargs)
 
     def __call__(self, *args, **kwargs):
-
         encoding = self._encoding
         wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
@@ -360,7 +358,6 @@ class _eintr_func_wrapper:
         self._func = func
 
     def __call__(self, *args, **kwargs):
-
         while True:
             try:
                 rval = self._func(*args, **kwargs)
@@ -383,10 +380,7 @@ _os_overrides = {
 }
 
 
-try:
-    _os_overrides[id(_os.mkfifo)] = _os.mkfifo
-except AttributeError:
-    pass  # Jython
+_os_overrides[id(_os.mkfifo)] = _os.mkfifo
 
 if hasattr(_os, "statvfs"):
     _os_overrides[id(_os.statvfs)] = _os.statvfs
@@ -498,9 +492,9 @@ if platform.system() in ("FreeBSD",):
 
 
 def load_mod(name):
-    modname = ".".join(name.split(".")[:-1])
-    mod = __import__(modname)
     components = name.split(".")
+    modname = ".".join(components[:-1])
+    mod = __import__(modname)
     for comp in components[1:]:
         mod = getattr(mod, comp)
     return mod
@@ -573,7 +567,6 @@ def _eapi_is_deprecated(eapi):
 
 def eapi_is_supported(eapi):
     eapi = str(eapi).strip()
-
     return eapi in _supported_eapis
 
 
@@ -794,7 +787,6 @@ _legacy_global_var_names = (
 
 
 def _reset_legacy_globals():
-
     global _legacy_globals_constructed
     _legacy_globals_constructed = set()
     for k in _legacy_global_var_names:

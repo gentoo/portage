@@ -1235,12 +1235,10 @@ def emerge_main(args=None):
             1: dev_null.fileno(),
             2: dev_null.fileno(),
         }
-        if (
-            portage.process.spawn_bash(
-                "[[ $(< <(echo foo) ) == foo ]]", fd_pipes=fd_pipes
-            )
-            != 0
-        ):
+        exit_code = portage.process.spawn_bash(
+            "[[ $(< <(echo foo) ) == foo ]]", fd_pipes=fd_pipes
+        )
+        if exit_code != 0:
             writemsg_level(
                 "Failed to validate a sane '/dev'.\n"
                 "bash process substitution doesn't work; this may be an "

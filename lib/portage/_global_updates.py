@@ -89,7 +89,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 if not update_notice_printed:
                     update_notice_printed = True
                     writemsg_stdout("\n")
-                    writemsg_stdout(colorize("GOOD", _("Performing Global Updates\n")))
+                    writemsg_stdout(colorize("GOOD", "Performing Global Updates\n"))
                     writemsg_stdout(
                         _(
                             "(Could take a couple of minutes if you have a lot of binary packages.)\n"
@@ -236,38 +236,32 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
             # until after _all_ of the above updates have
             # been processed because the mtimedb will
             # automatically commit when killed by ctrl C.
-            for mykey, mtime in timestamps.items():
-                prev_mtimes[mykey] = mtime
+            prev_mtimes.update(timestamps)
 
-        do_upgrade_packagesmessage = False
         # We gotta do the brute force updates for these now.
-        if True:
+        def onUpdate(_maxval, curval):
+            if curval > 0:
+                writemsg_stdout("#")
+
+        if quiet:
+            onUpdate = None
+
+        vardb.update_ents(repo_map, onUpdate=onUpdate)
+
+        if bindb:
 
             def onUpdate(_maxval, curval):
                 if curval > 0:
-                    writemsg_stdout("#")
+                    writemsg_stdout("*")
 
-            if quiet:
-                onUpdate = None
-            vardb.update_ents(repo_map, onUpdate=onUpdate)
-            if bindb:
-
-                def onUpdate(_maxval, curval):
-                    if curval > 0:
-                        writemsg_stdout("*")
-
-                if quiet:
-                    onUpdate = None
-                bindb.update_ents(repo_map, onUpdate=onUpdate)
-        else:
-            do_upgrade_packagesmessage = 1
+            bindb.update_ents(repo_map, onUpdate=onUpdate)
 
         # Update progress above is indicated by characters written to stdout so
         # we print a couple new lines here to separate the progress output from
         # what follows.
         writemsg_stdout("\n\n")
 
-        if do_upgrade_packagesmessage and bindb and bindb.cpv_all():
+        if bindb and bindb.cpv_all():
             writemsg_stdout(
                 _(
                     " ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"

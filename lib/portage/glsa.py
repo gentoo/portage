@@ -115,12 +115,10 @@ def get_glsa_list(myconfig):
     @rtype:		List of Strings
     @return:	a list of GLSA IDs in this repository
     """
-    rValue = []
 
+    repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
     if "GLSA_DIR" in myconfig:
         repository = myconfig["GLSA_DIR"]
-    else:
-        repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
 
     if not os.access(repository, os.R_OK):
         return []
