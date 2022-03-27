@@ -75,7 +75,7 @@ class PackageTracker:
     and there is already a to-be-installed package added that has the same root, catpkg and slot. These cannot co-exist.
 
     A cpv conflict is a situation where a to-be-installed package is added to the package tracker via ``add_pkg()``, and
-    there is already a to-be-installed package add that has the same root, catpkg, and version+revision. These cannot
+    there is already a to-be-installed package added that has the same root, catpkg, and version+revision. These cannot
     co-exist.
 
     The package tracker does not prevent slot and cpv conflicts from occurring. Instead, it allows them to be recorded
@@ -225,7 +225,7 @@ class PackageTracker:
     def discard_pkg(self, pkg):
         """
         Removes the package from the tracker.
-        Does not raises KeyError if it is not present.
+        Does not raise KeyError if it is not present.
         """
         try:
             self.remove_pkg(pkg)
@@ -263,7 +263,7 @@ class PackageTracker:
 
     def conflicts(self):
         """
-        Iterates over the curently existing conflicts.
+        Iterates over the currently existing conflicts.
         """
         if self._conflicts_cache is None:
             self._conflicts_cache = []
@@ -369,7 +369,7 @@ class PackageTracker:
 
 class PackageTrackerDbapiWrapper:
     """
-    A wrpper class that provides parts of the legacy
+    A wrapper class that provides parts of the legacy
     dbapi interface. Remove it once all consumers have
     died.
     """
