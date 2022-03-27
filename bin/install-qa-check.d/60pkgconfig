@@ -107,7 +107,7 @@ pkgconfig_check() {
 	# Skip result reporting if *_p* because for both _pN and _preN, we
 	# don't generally expect the versions to be exactly accurate, and
 	# we want to avoid false positives.
-	if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] ; then
+	if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
 		eqawarn "QA Notice: pkg-config files with mismatched Version found!"
 		eqawarn "At least ${bad_file}'s Version field does not match ${PV}"
 		eqawarn "Please check all .pc files installed by this package."
