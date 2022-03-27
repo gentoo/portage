@@ -46,7 +46,7 @@ from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 
 
 class Display:
-    """Formats and outputs the depgrah supplied it for merge/re-merge, etc.
+    """Formats and outputs the depgraph supplied it for merge/re-merge, etc.
 
     __call__()
     @param depgraph: list
