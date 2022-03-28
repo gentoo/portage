@@ -332,15 +332,17 @@ def _init(settings):
         # from grp.getgrnam() with PyPy
         native_string = platform.python_implementation() == "PyPy"
 
+        v = settings.get("PORTAGE_GRPNAME", "portage")
         if native_string:
-            grpname = settings.get("PORTAGE_GRPNAME", "portage")
-            grpname = portage._native_string(grpname)
-            globals()["_portage_grpname"] = grpname
-            _initialized_globals.add("_portage_grpname")
-            username = settings.get("PORTAGE_USERNAME", "portage")
-            username = portage._native_string(username)
-            globals()["_portage_username"] = username
-            _initialized_globals.add("_portage_username")
+            v = portage._native_string(v)
+        globals()["_portage_grpname"] = v
+        _initialized_globals.add("_portage_grpname")
+
+        v = settings.get("PORTAGE_USERNAME", "portage")
+        if native_string:
+            v = portage._native_string(v)
+        globals()["_portage_username"] = v
+        _initialized_globals.add("_portage_username")
 
     if "secpass" not in _initialized_globals:
         v = 0
