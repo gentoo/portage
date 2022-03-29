@@ -5148,14 +5148,17 @@ class dblink:
         self._clear_contents_cache()
         contents = self.getcontents()
         destroot_len = len(destroot) - 1
-        self.lockdb()
-        try:
-            for blocker in blockers:
-                self.vartree.dbapi.removeFromContents(
-                    blocker, iter(contents), relative_paths=False
-                )
-        finally:
-            self.unlockdb()
+
+        # Avoid lock contention if we aren't going to do any work.
+        if blockers:
+            self.lockdb()
+            try:
+                for blocker in blockers:
+                    self.vartree.dbapi.removeFromContents(
+                        blocker, iter(contents), relative_paths=False
+                    )
+            finally:
+                self.unlockdb()
 
         plib_registry = self.vartree.dbapi._plib_registry
         if plib_registry:
