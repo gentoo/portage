@@ -146,7 +146,7 @@ class cache:
                 self.eclasses[ys] = obj
                 self._eclass_locations[ys] = x
 
-    def validate_and_rewrite_cache(self, ec_dict, chf_type, stores_paths):
+    def validate_and_rewrite_cache(self, ec_dict: Dict, chf_type, stores_paths):
         """
         This will return an empty dict if the ec_dict parameter happens
         to be empty, therefore callers must take care to distinguish

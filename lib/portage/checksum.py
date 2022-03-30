@@ -11,6 +11,8 @@ import stat
 import subprocess
 import tempfile
 
+from typing import Buffer, Callable, Dict, IO, List, Optional, Tuple
+
 from portage import _encodings, _unicode_decode, _unicode_encode
 from portage import os
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
@@ -38,7 +40,7 @@ hashfunc_map = {}
 hashorigin_map = {}
 
 
-def _open_file(filename):
+def _open_file(filename: str) -> IO:
     try:
         return open(
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
@@ -64,7 +66,7 @@ class _generate_hash_function:
         hashfunc_map[hashtype] = self
         hashorigin_map[hashtype] = origin
 
-    def checksum_str(self, data):
+    def checksum_str(self, data: Buffer) -> str:
         """
         Obtain a checksum of a byte-string.
 
@@ -76,7 +78,7 @@ class _generate_hash_function:
         checksum.update(data)
         return checksum.hexdigest()
 
-    def checksum_file(self, filename):
+    def checksum_file(self, filename: str) -> Tuple[str, int]:
         """
         Run a checksum against a file.
 
@@ -318,7 +320,7 @@ if "WHIRLPOOL" not in hashfunc_map:
 
 # There is only one implementation for size
 class SizeHash:
-    def checksum_file(self, filename):
+    def checksum_file(self, filename) -> Tuple[int, int]:
         size = os.stat(filename).st_size
         return (size, size)
 
@@ -343,7 +345,7 @@ if os.path.exists(PRELINK_BINARY):
     del cmd, proc, status
 
 
-def is_prelinkable_elf(filename):
+def is_prelinkable_elf(filename: str) -> bool:
     with _open_file(filename) as f:
         magic = f.read(17)
     return (
@@ -363,7 +365,7 @@ def _perform_md5_merge(x, **kwargs):
     )
 
 
-def perform_all(x, calc_prelink=0):
+def perform_all(x: str, calc_prelink: int = 0):
     mydict = {k: perform_checksum(x, k, calc_prelink)[0] for k in hashfunc_keys}
     return mydict
 
@@ -372,13 +374,13 @@ def get_valid_checksum_keys():
     return hashfunc_keys
 
 
-def get_hash_origin(hashtype):
+def get_hash_origin(hashtype) -> Optional:
     if hashtype not in hashfunc_keys:
         raise KeyError(hashtype)
     return hashorigin_map.get(hashtype, "unknown")
 
 
-def _filter_unaccelarated_hashes(digests):
+def _filter_unaccelarated_hashes(digests: List[str]) -> List[str]:
     """
     If multiple digests are available and some are unaccelerated,
     then return a new dict that omits the unaccelerated ones. This
@@ -407,7 +409,7 @@ class _hash_filter:
         "_tokens",
     )
 
-    def __init__(self, filter_str):
+    def __init__(self, filter_str: str):
         tokens = filter_str.upper().split()
         if not tokens or tokens[-1] == "*":
             del tokens[:]
@@ -415,7 +417,7 @@ class _hash_filter:
         tokens.reverse()
         self._tokens = tuple(tokens)
 
-    def __call__(self, hash_name):
+    def __call__(self, hash_name: str) -> bool:
         if self.transparent:
             return True
         matches = ("*", hash_name)
@@ -427,7 +429,7 @@ class _hash_filter:
         return False
 
 
-def _apply_hash_filter(digests, hash_filter):
+def _apply_hash_filter(digests: Dict[str, str], hash_filter: Callable[str]):
     """
     Return a new dict containing the filtered digests, or the same
     dict if no changes are necessary. This will always preserve at
@@ -587,7 +589,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
                 del e
 
 
-def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
+def perform_multiple_checksums(filename, hashes: List[str] = ["MD5"], calc_prelink=0):
     """
     Run a group of checksums against a file.
 
@@ -612,7 +614,7 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
     return rVal
 
 
-def checksum_str(data, hashname="MD5"):
+def checksum_str(data, hashname: str = "MD5"):
     """
     Run a specific checksum against a byte string.
 

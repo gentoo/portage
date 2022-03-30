@@ -4,10 +4,16 @@
 from collections import OrderedDict
 from collections.abc import Mapping
 from hashlib import md5
+from typing import Iterable
+
+import _hashlib
 
 from portage.localization import _
 from portage.util import _recursive_file_list, writemsg
 from portage.util.configparser import SafeConfigParser, ConfigParserError, read_configs
+
+# Type alias
+Hash = _hashlib.HASH
 
 
 class BinRepoConfig:
@@ -113,15 +119,15 @@ class BinRepoConfigLoader(Mapping):
         )
 
     @staticmethod
-    def _digest_uri(uri):
+    def _digest_uri(uri: str) -> Hash:
         return md5(uri.encode("utf_8")).hexdigest()
 
     @staticmethod
-    def _normalize_uri(uri):
+    def _normalize_uri(uri: str) -> str:
         return uri.rstrip("/")
 
     @staticmethod
-    def _parse(paths, defaults):
+    def _parse(paths: Iterable, defaults):
         parser = SafeConfigParser(defaults=defaults)
         recursive_paths = []
         for p in paths:

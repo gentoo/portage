@@ -2,12 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import tarfile
+
+from typing import Optional
+
 from portage.const import SUPPORTED_XPAK_EXTENSIONS, SUPPORTED_GPKG_EXTENSIONS
 from portage.output import colorize
 from portage.util import writemsg
 
 
-def get_binpkg_format(binpkg_path):
+def get_binpkg_format(binpkg_path: str) -> Optional[str]:
     if binpkg_path.endswith(SUPPORTED_XPAK_EXTENSIONS):
         file_ext_format = "xpak"
     elif binpkg_path.endswith(SUPPORTED_GPKG_EXTENSIONS):

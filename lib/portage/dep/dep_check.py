@@ -7,6 +7,7 @@ import collections
 import itertools
 import logging
 import operator
+from typing import Any, Dict, List, Optional
 
 import portage
 from portage.dep import Atom, match_from_list, use_reduce
@@ -23,11 +24,11 @@ from portage.versions import vercmp
 
 
 def _expand_new_virtuals(
-    mysplit,
+    mysplit: List[str],
     edebug,
     mydbapi,
     mysettings,
-    myroot="/",
+    myroot: Optional[str] = "/",
     trees=None,
     use_mask=None,
     use_force=None,
@@ -298,7 +299,7 @@ def _expand_new_virtuals(
     return newsplit
 
 
-def dep_eval(deplist):
+def dep_eval(deplist: List[str]) -> int:
     if not deplist:
         return 1
     if deplist[0] == "||":
@@ -338,8 +339,13 @@ class _dep_choice(SlotObject):
 
 
 def dep_zapdeps(
-    unreduced, reduced, myroot, use_binaries=0, trees=None, minimize_slots=False
-):
+    unreduced: List[str],
+    reduced: List[str],
+    myroot: str,
+    use_binaries: int = 0,
+    trees: Optional[Dict[str, Dict[str, Any]]] = None,
+    minimize_slots: bool = False,
+) -> List:
     """
     Takes an unreduced and reduced deplist and removes satisfied dependencies.
     Returned deplist contains steps that must be taken to satisfy dependencies.
@@ -816,15 +822,15 @@ def dep_zapdeps(
 
 
 def dep_check(
-    depstring,
+    depstring: str,
     mydbapi,
     mysettings,
-    use="yes",
-    mode=None,
-    myuse=None,
-    use_cache=1,
-    use_binaries=0,
-    myroot=None,
+    use: str = "yes",
+    mode: Optional[str] = None,
+    myuse: Optional[str] = None,
+    use_cache: int = 1,
+    use_binaries: int = 0,
+    myroot: Optional[str] = None,
     trees=None,
 ):
     """
@@ -1043,7 +1049,9 @@ def _iter_flatten(dep_struct):
             yield x
 
 
-def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, use_cache=1):
+def dep_wordreduce(
+    mydeplist: List[bool], mysettings, mydbapi, mode: Optional[str], use_cache: int = 1
+):
     "Reduces the deplist to ones and zeros"
     deplist = mydeplist[:]
     for mypos, token in enumerate(deplist):

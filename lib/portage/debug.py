@@ -13,7 +13,7 @@ import portage.const
 from portage.util import writemsg
 
 
-def set_trace(on=True):
+def set_trace(on: bool = True):
     if on:
         t = trace_handler()
         threading.settrace(t.event_handler)
@@ -50,7 +50,7 @@ class trace_handler:
                 self.trace_event(*args)
                 return self.event_handler
 
-    def trace_event(self, frame, event, arg):
+    def trace_event(self, frame, event: str, arg):
         writemsg(
             "%s line=%d name=%s event=%s %slocals=%s\n"
             % (
@@ -63,7 +63,7 @@ class trace_handler:
             )
         )
 
-    def arg_repr(self, _frame, event, arg):
+    def arg_repr(self, _frame, event: str, arg):
         my_repr = None
         if "return" == event:
             my_repr = repr(arg)
@@ -78,20 +78,20 @@ class trace_handler:
 
         return ""
 
-    def trace_line(self, frame, _event, _arg):
+    def trace_line(self, frame, _event: str, _arg):
         writemsg(
             "%s line=%d\n"
             % (self.trim_filename(frame.f_code.co_filename), frame.f_lineno)
         )
 
-    def ignore_filename(self, filename):
+    def ignore_filename(self, filename: str) -> bool:
         if filename:
             for x in self.ignore_prefixes:
                 if filename.startswith(x):
                     return True
         return False
 
-    def locals_repr(self, frame, _event, _arg):
+    def locals_repr(self, frame, _event: str, _arg):
         """Create a representation of the locals dict that is suitable for
         tracing output."""
 
@@ -118,7 +118,7 @@ class prefix_trimmer:
         self.previous = None
         self.previous_trimmed = None
 
-    def trim(self, s):
+    def trim(self, s: str) -> str:
         """Remove a prefix from the string and return the result.
         The previous result is automatically cached."""
         if s == self.previous:

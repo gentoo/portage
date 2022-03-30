@@ -6,6 +6,7 @@ import grp
 import os
 import platform
 import pwd
+from typing import Optional
 
 import portage
 from portage.localization import _
@@ -48,7 +49,7 @@ if not lchown:
 lchown = portage._unicode_func_wrapper(lchown)
 
 
-def _target_eprefix():
+def _target_eprefix() -> str:
     """
     Calculate the target EPREFIX, which may be different from
     portage.const.EPREFIX due to cross-prefix support. The result
@@ -63,7 +64,7 @@ def _target_eprefix():
     return eprefix
 
 
-def _target_root():
+def _target_root() -> str:
     """
     Calculate the target ROOT. The result is equivalent to
     portage.settings["ROOT"], but the calculation
@@ -112,7 +113,7 @@ def portage_group_warning():
 # PORTAGE_USERNAME, and PORTAGE_GRPNAME settings.
 
 
-def _unprivileged_mode(eroot, eroot_st):
+def _unprivileged_mode(eroot, eroot_st) -> bool:
     return (
         os.getuid() != 0 and os.access(eroot, os.W_OK) and not eroot_st.st_mode & 0o0002
     )
@@ -133,7 +134,7 @@ except KeyError:
 _initialized_globals = set()
 
 
-def _get_global(k):
+def _get_global(k: str) -> Optional[int]:
     if k in _initialized_globals:
         return globals()[k]
 

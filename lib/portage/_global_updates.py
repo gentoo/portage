@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import stat
+from typing import Any, Dict
 
 from portage import best, os
 from portage.const import WORLD_FILE
@@ -18,7 +19,12 @@ from portage.update import (
 from portage.util import grabfile, shlex_split, writemsg, writemsg_stdout, write_atomic
 
 
-def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
+def _global_updates(
+    trees: Dict[str, Dict[str, Any]],
+    prev_mtimes: Dict[str, int],
+    quiet: bool = False,
+    if_mtime_changed: bool = True,
+):
     """
     Perform new global updates if they exist in 'profiles/updates/'
     subdirectories of all active repositories (PORTDIR + PORTDIR_OVERLAY).
@@ -43,7 +49,12 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     )
 
 
-def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
+def _do_global_updates(
+    trees: Dict[str, Dict[str, Any]],
+    prev_mtimes: Dict[str, int],
+    quiet: bool = False,
+    if_mtime_changed: bool = True,
+):
     root = trees._running_eroot
     mysettings = trees[root]["vartree"].settings
     portdb = trees[root]["porttree"].dbapi

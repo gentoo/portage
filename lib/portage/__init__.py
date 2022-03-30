@@ -218,7 +218,7 @@ _encodings = {
 }
 
 
-def _decode_argv(argv):
+def _decode_argv(argv: List[str]):
     # With Python 3, the surrogateescape encoding error handler makes it
     # possible to access the original argv bytes, which can be useful
     # if their actual encoding does no match the filesystem encoding.
@@ -226,13 +226,15 @@ def _decode_argv(argv):
     return [_unicode_decode(x.encode(fs_encoding, "surrogateescape")) for x in argv]
 
 
-def _unicode_encode(s, encoding=_encodings["content"], errors="backslashreplace"):
+def _unicode_encode(
+    s: str, encoding=_encodings["content"], errors: str = "backslashreplace"
+):
     if isinstance(s, str):
         s = s.encode(encoding, errors)
     return s
 
 
-def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
+def _unicode_decode(s: str, encoding=_encodings["content"], errors: str = "replace"):
     if isinstance(s, bytes):
         s = str(s, encoding=encoding, errors=errors)
     return s
@@ -491,7 +493,7 @@ if platform.system() in ("FreeBSD",):
         lchflags = os.lchflags
 
 
-def load_mod(name):
+def load_mod(name: str):
     components = name.split(".")
     modname = ".".join(components[:-1])
     mod = __import__(modname)
