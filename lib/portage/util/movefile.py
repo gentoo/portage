@@ -171,7 +171,7 @@ def movefile(
             bsd_chflags.chflags(os.path.dirname(dest), 0)
 
     if destexists:
-        if stat.S_ISLNK(dstat[stat.ST_MODE]):
+        if not stat.S_ISLNK(sstat[stat.ST_MODE]) and stat.S_ISLNK(dstat[stat.ST_MODE]):
             try:
                 os.unlink(dest)
                 destexists = 0
@@ -185,8 +185,18 @@ def movefile(
             target = os.readlink(src)
             if mysettings and "D" in mysettings and target.startswith(mysettings["D"]):
                 target = target[len(mysettings["D"]) - 1 :]
-            if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
-                os.unlink(dest)
+            # Atomically update the path if it exists.
+            try:
+                os.rename(src, dest)
+                return sstat.st_mtime_ns
+            except OSError:
+                # If it failed due to cross-link device, fallthru below.
+                # Clear the target first so we can create it.
+                try:
+                    os.unlink(dest)
+                except FileNotFoundError:
+                    pass
+
             try:
                 if selinux_enabled:
                     selinux.symlink(target, dest, src)
