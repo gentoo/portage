@@ -28,14 +28,15 @@ RCS_GET = "co"
 _ARCHIVE_ROTATE_MAX = 9
 
 
-def diffstatusoutput(cmd, file1, file2):
+def diffstatusoutput(file1, file2):
     """
     Execute the string cmd in a shell with getstatusoutput() and return a
     2-tuple (status, output).
     """
     # Use Popen to emulate getstatusoutput(), since getstatusoutput() may
     # raise a UnicodeDecodeError which makes the output inaccessible.
-    args = shlex_split(cmd % (file1, file2))
+    cmd = f"diff -aq '{file1}' '{file2}'"
+    args = shlex_split(cmd)
 
     args = (portage._unicode_encode(x, errors="strict") for x in args)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -340,7 +341,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
     # Archive the current config file if it isn't already saved
     if (
         os.path.lexists(archive)
-        and len(diffstatusoutput_mixed(f"diff -aq '{curconf}' '{archive}'")[1]) != 0
+        and len(diffstatusoutput_mixed(curconf, archive)[1]) != 0
     ):
         _file_archive_rotate(archive)
 
