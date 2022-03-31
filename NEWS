@@ -10,6 +10,9 @@ Features:
   methods. General BINPKG_COMPRESS_FLAGS will be ignored if current method had
   specified BINPKG_COMPRESS_FLAGS_[format] (bug #871573).
 
+* sync: git: git will sync with --depth=1 unless otherwise specified in repos.conf
+  (bug #824782).
+
 * install-qa-check.d: 90gcc-warnings: Add additional code quality warnings
   which are indicative of problems with LTO in particular:
   * -Wlto-type-mismatch

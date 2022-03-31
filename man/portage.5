@@ -979,7 +979,8 @@ yes, true.
 .TP
 .B clone\-depth
 Specifies clone depth to use for DVCS repositories. Defaults to 1 (only
-the newest commit). If set to 0, the depth is unlimited.
+the newest commit). If set to 0, the depth is unlimited, because Git is
+not executed with "--depth #".
 .TP
 .B eclass\-overrides
 Makes given repository inherit eclasses from specified repositories.
@@ -1032,8 +1033,9 @@ overlay filesystems. Defaults to yes, true.
 Specifies CVS repository.
 .TP
 .B sync\-depth
-Specifies sync depth to use for DVCS repositories. If set to 0, the
-depth is unlimited. Defaults to 0.
+Specifies sync depth to use for DVCS repositories. Defaults to 1 (only
+the newest commit). If set to 0, the depth is unlimited, because Git is
+not executed with "--depth #".
 .TP
 .B sync\-git\-clone\-env
 Set environment variables for git when cloning repository (git clone).
