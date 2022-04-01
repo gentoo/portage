@@ -84,9 +84,6 @@ class GitSync(NewBase):
         if self.repo.clone_depth is not None:
             if self.repo.clone_depth != 0:
                 git_cmd_opts += " --depth %d" % self.repo.clone_depth
-        elif self.repo.sync_depth is not None:
-            if self.repo.sync_depth != 0:
-                git_cmd_opts += " --depth %d" % self.repo.sync_depth
         else:
             # default
             git_cmd_opts += " --depth 1"
@@ -147,6 +144,13 @@ class GitSync(NewBase):
 
         if self.settings.get("PORTAGE_QUIET") == "1":
             git_cmd_opts += " --quiet"
+        if self.repo.sync_depth is not None:
+            if self.repo.sync_depth != 0:
+                git_cmd_opts += " --depth %d" % self.repo.sync_depth
+        else:
+            # default
+            git_cmd_opts += " --depth 1"
+
         if self.repo.module_specific_options.get("sync-git-pull-extra-opts"):
             git_cmd_opts += (
                 " %s" % self.repo.module_specific_options["sync-git-pull-extra-opts"]
@@ -171,10 +175,8 @@ class GitSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (e.returncode, False)
 
-        shallow = self.repo.sync_depth is not None and self.repo.sync_depth != 0
+        shallow = self.repo.sync_depth is None or self.repo.sync_depth != 0
         if shallow:
-            git_cmd_opts += " --depth %d" % self.repo.sync_depth
-
             # For shallow fetch, unreachable objects may need to be pruned
             # manually, in order to prevent automatic git gc calls from
             # eventually failing (see bug 599008).
