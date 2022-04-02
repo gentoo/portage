@@ -718,63 +718,72 @@ class Manifest:
         total_bytes = sum(int(self.fhashdict["DIST"][f]["size"]) for f in fetchlist)
         return total_bytes
 
-    def updateFileHashes(
-        self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False
+    def updateAllFileHashes(
+        self, ftype, fnames, checkExisting=True, ignoreMissing=True, reuseExisting=False
     ):
-        """Regenerate hashes for the given file"""
-        if checkExisting:
-            self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
-        if not ignoreMissing and fname not in self.fhashdict[ftype]:
-            raise FileNotInManifestException(fname)
-        if fname not in self.fhashdict[ftype]:
-            self.fhashdict[ftype][fname] = {}
-        myhashkeys = list(self.hashes)
-        if reuseExisting:
-            for k in [h for h in self.fhashdict[ftype][fname] if h in myhashkeys]:
-                myhashkeys.remove(k)
-        myhashes = perform_multiple_checksums(
-            self._getAbsname(ftype, fname), myhashkeys
-        )
-        self.fhashdict[ftype][fname].update(myhashes)
+        """Regenerate hashes from a list of files"""
+        for fname in fnames:
+            if checkExisting:
+                self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
+            if not ignoreMissing and fname not in self.fhashdict[ftype]:
+                raise FileNotInManifestException(fname)
+            if fname not in self.fhashdict[ftype]:
+                self.fhashdict[ftype][fname] = {}
+            myhashkeys = self.hashes
+            if reuseExisting:
+                myhashkeys = myhashkeys.difference(self.fhashdict[ftype][fname])
+            myhashes = perform_multiple_checksums(
+                self._getAbsname(ftype, fname), myhashkeys
+            )
+            self.fhashdict[ftype][fname].update(myhashes)
 
-    def updateTypeHashes(self, idtype, checkExisting=False, ignoreMissingFiles=True):
-        """Regenerate all hashes for all files of the given type"""
-        for fname in self.fhashdict[idtype]:
-            self.updateFileHashes(idtype, fname, checkExisting)
+    def updateAllTypeHashes(
+        self, idtypes, checkExisting=False, ignoreMissingFiles=True
+    ):
+        """Regenerate all hashes for all files from a list of types"""
+        for idtype in idtypes:
+            self.updateAllFileHashes(
+                ftype=idtype, fnames=self.fhashdict[idtype], checkExisting=checkExisting
+            )
 
     def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
         """Regenerate all hashes for all files in this Manifest."""
-        for idtype in MANIFEST2_IDENTIFIERS:
-            self.updateTypeHashes(
-                idtype,
-                checkExisting=checkExisting,
-                ignoreMissingFiles=ignoreMissingFiles,
-            )
+        self.updateTypeHashes(
+            idtypes=MANIFEST2_IDENTIFIERS,
+            checkExisting=checkExisting,
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
 
     def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
         """Regenerate all hashes associated to the given cpv (includes all AUX and MISC
         files)."""
-        self.updateTypeHashes("AUX", ignoreMissingFiles=ignoreMissingFiles)
-        self.updateTypeHashes("MISC", ignoreMissingFiles=ignoreMissingFiles)
-        ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
-        self.updateFileHashes(
-            "EBUILD", ebuildname, ignoreMissingFiles=ignoreMissingFiles
+        self.updateAllTypeHashes(
+            idtypes=("AUX", "MISC"),
+            ignoreMissingFiles=ignoreMissingFiles,
         )
-        for f in self._getCpvDistfiles(cpv):
-            self.updateFileHashes("DIST", f, ignoreMissingFiles=ignoreMissingFiles)
+        self.updateAllFileHashes(
+            ftype="EBUILD",
+            fnames=(f"{self._catsplit(cpv)[1]}.ebuild",),
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
+        self.updateAllFileHashes(
+            ftype="DIST",
+            fnames=self._getCpvDistfiles(cpv),
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
 
     def updateHashesGuessType(self, fname, *args, **kwargs):
         """Regenerate hashes for the given file (guesses the type and then
         calls updateFileHashes)."""
         mytype = self.guessType(fname)
-        if mytype == "AUX":
-            fname = fname[len("files" + os.sep) :]
-        elif mytype is None:
+        if mytype is None:
             return
+        elif mytype == "AUX":
+            fname = fname[len(f"files{os.sep}") :]
         myrealtype = self.findFile(fname)
         if myrealtype is not None:
             mytype = myrealtype
-        return self.updateFileHashes(mytype, fname, *args, **kwargs)
+        return self.updateAllFileHashes(ftype=mytype, fnames=(fname,), *args, **kwargs)
 
     def getFileData(self, ftype, fname, key):
         """Return the value of a specific (type,filename,key) triple, mainly useful
