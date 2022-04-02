@@ -75,8 +75,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
             eclass_db.update_eclasses()
             porttrees_data.append(TreeData(portdb.auxdb[path], eclass_db, path, src_db))
 
-    porttrees = [tree_data.path for tree_data in porttrees_data]
-
     quiet = (
         settings.get("TERM") == "dumb" or "--quiet" in myopts or not sys.stdout.isatty()
     )
@@ -100,7 +98,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
     # Temporarily override portdb.porttrees so portdb.cp_all()
     # will only return the relevant subset.
     portdb_porttrees = portdb.porttrees
-    portdb.porttrees = porttrees
+    portdb.porttrees = (tree_data.path for tree_data in porttrees_data)
     try:
         cp_all = portdb.cp_all()
     finally:
@@ -119,7 +117,6 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
     for cp in cp_all:
         for tree_data in porttrees_data:
-
             src_chf = tree_data.src_db.validation_chf
             dest_chf = tree_data.dest_db.validation_chf
             dest_chf_key = f"_{dest_chf}_"
@@ -190,11 +187,11 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
                         # We don't want to skip the write unless we're really
                         # sure that the existing cache is identical, so don't
                         # trust _mtime_ and _eclasses_ alone.
-                        for k in auxdbkeys:
-                            if dest.get(k, "") != src.get(k, ""):
-                                dest = None
-                                break
-
+                        cache_is_identical = (
+                            True for k in auxdbkeys if dest.get(k, "") != src.get(k, "")
+                        )
+                        if any(cache_is_identical):
+                            dest = None
                 if dest is not None:
                     # The existing data is valid and identical,
                     # so there's no need to overwrite it.

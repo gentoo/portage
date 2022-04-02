@@ -110,19 +110,27 @@ class Modules:
         @rtype: dictionary of module_plugins
         """
         module_dir = self._module_path
-        importables = []
         names = os.listdir(module_dir)
-        for entry in names:
-            # skip any __init__ or __pycache__ files or directories
-            if entry.startswith("__"):
-                continue
+
+        def _a_real_module(entry):
             try:
                 # test for statinfo to ensure it should a real module
                 # it will bail if it errors
                 os.lstat(os.path.join(module_dir, entry, "__init__.py"))
-                importables.append(entry)
             except EnvironmentError:
-                pass
+                return False
+            return True
+
+        # The importables list cannot be a generator.
+        # If it was a generator, it would be consumed by self.parents.extend()
+        # and the following for loop wouldn't have anything to iterate with.
+        importables = [
+            entry
+            for entry in names
+            if not entry.startswith("__") and _a_real_module(entry)
+        ]
+        self.parents.extend(importables)
+
         kids = {}
         for entry in importables:
             new_module = Module(entry, self._namepath)
@@ -131,7 +139,6 @@ class Modules:
                 kid = new_module.kids[module_name]
                 kid["parent"] = new_module
                 kids[kid["name"]] = kid
-            self.parents.append(entry)
         return kids
 
     def get_module_names(self):
