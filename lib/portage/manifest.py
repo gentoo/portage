@@ -395,30 +395,30 @@ class Manifest:
         # it always rounds down. Note that stat_result.st_mtime will round
         # up from 0.999999999 to 1.0 when precision is lost during conversion
         # from nanosecond resolution to float.
-        max_mtime = None
-        _update_max = (
-            lambda st: max_mtime
-            if max_mtime is not None and max_mtime > st[stat.ST_MTIME]
-            else st[stat.ST_MTIME]
-        )
-        _stat = (
-            lambda path: preserved_stats[path]
-            if path in preserved_stats
-            else os.stat(path)
-        )
 
+        def _update_max(max_mtime, st):
+            stat_mtime = st[stat.ST_MTIME]
+            if max_mtime:
+                return max(max_mtime, stat_mtime)
+
+        def _stat(path):
+            if path in preserved_stats:
+                return preserved_stats[path]
+            else:
+                return os.stat(path)
+
+        max_mtime = None
         for stat_result in preserved_stats.values():
-            max_mtime = _update_max(stat_result)
+            max_mtime = _update_max(max_mtime, stat_result)
 
         for entry in entries:
             if entry.type == "DIST":
                 continue
-            abs_path = (
-                os.path.join(self.pkgdir, "files", entry.name)
-                if entry.type == "AUX"
-                else os.path.join(self.pkgdir, entry.name)
-            )
-            max_mtime = _update_max(_stat(abs_path))
+            files = ""
+            if entry.type == "AUX":
+                files = "files"
+            abs_path = os.path.join(self.pkgdir, files, entry.name)
+            max_mtime = _update_max(max_mtime, _stat(abs_path))
 
         if not self.thin:
             # Account for changes to all relevant nested directories.
@@ -435,7 +435,7 @@ class Manifest:
                     # report such problems).
                     pass
                 else:
-                    max_mtime = _update_max(_stat(parent_dir))
+                    max_mtime = _update_max(max_mtime, _stat(parent_dir))
 
         if max_mtime is not None:
             for path in preserved_stats:
