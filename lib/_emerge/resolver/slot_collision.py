@@ -228,14 +228,14 @@ class slot_conflict_handler:
         new_change = {}
         for pkg in solution:
             for flag, state in solution[pkg].items():
-                real_flag = pkg.iuse.get_real_flag(flag)
-                if real_flag is None:
+                flag = pkg.iuse.get_flag(flag)
+                if flag is None:
                     # Triggered by use-dep defaults.
                     continue
                 if state == "enabled" and flag not in _pkg_use_enabled(pkg):
-                    new_change.setdefault(pkg, {})[real_flag] = True
+                    new_change.setdefault(pkg, {})[flag] = True
                 elif state == "disabled" and flag in _pkg_use_enabled(pkg):
-                    new_change.setdefault(pkg, {})[real_flag] = False
+                    new_change.setdefault(pkg, {})[flag] = False
         return new_change
 
     def _prepare_conflict_msg_and_check_for_specificity(self):

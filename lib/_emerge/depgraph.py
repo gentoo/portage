@@ -7182,21 +7182,21 @@ class depgraph:
             new_changes = {}
 
         for flag, state in target_use.items():
-            real_flag = pkg.iuse.get_real_flag(flag)
-            if real_flag is None:
+            flag = pkg.iuse.get_flag(flag)
+            if flag is None:
                 # Triggered by use-dep defaults.
                 continue
             if state:
-                if real_flag not in old_use:
-                    if new_changes.get(real_flag) == False:
+                if flag not in old_use:
+                    if new_changes.get(flag) == False:
                         return old_use
-                    new_changes[real_flag] = True
+                    new_changes[flag] = True
                 new_use.add(flag)
             else:
-                if real_flag in old_use:
-                    if new_changes.get(real_flag) == True:
+                if flag in old_use:
+                    if new_changes.get(flag) == True:
                         return old_use
-                    new_changes[real_flag] = False
+                    new_changes[flag] = False
         new_use |= old_use.difference(target_use)
 
         def want_restart_for_use_change(pkg, new_use):

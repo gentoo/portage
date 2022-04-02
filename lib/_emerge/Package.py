@@ -140,9 +140,8 @@ class Package(Task):
             implicit_match = db._iuse_implicit_cnstr(self.cpv, self._metadata)
         else:
             implicit_match = db._repoman_iuse_implicit_cnstr(self.cpv, self._metadata)
-        usealiases = self.root_config.settings._use_manager.getUseAliases(self)
         self.iuse = self._iuse(
-            self, self._metadata["IUSE"].split(), implicit_match, usealiases, self.eapi
+            self, self._metadata["IUSE"].split(), implicit_match, self.eapi
         )
 
         if (self.iuse.enabled or self.iuse.disabled) and not eapi_attrs.iuse_defaults:
@@ -735,25 +734,19 @@ class Package(Task):
             "__weakref__",
             "_iuse_implicit_match",
             "_pkg",
-            "alias_mapping",
             "all",
-            "all_aliases",
             "enabled",
             "disabled",
             "tokens",
         )
 
-        def __init__(self, pkg, tokens, iuse_implicit_match, aliases, eapi):
+        def __init__(self, pkg, tokens, iuse_implicit_match, eapi):
             self._pkg = pkg
             self.tokens = tuple(tokens)
             self._iuse_implicit_match = iuse_implicit_match
             enabled = []
             disabled = []
             other = []
-            enabled_aliases = []
-            disabled_aliases = []
-            other_aliases = []
-            self.alias_mapping = {}
             for x in tokens:
                 prefix = x[:1]
                 if prefix == "+":
@@ -762,12 +755,9 @@ class Package(Task):
                     disabled.append(x[1:])
                 else:
                     other.append(x)
-            self.enabled = frozenset(chain(enabled, enabled_aliases))
-            self.disabled = frozenset(chain(disabled, disabled_aliases))
+            self.enabled = frozenset(enabled)
+            self.disabled = frozenset(disabled)
             self.all = frozenset(chain(enabled, disabled, other))
-            self.all_aliases = frozenset(
-                chain(enabled_aliases, disabled_aliases, other_aliases)
-            )
 
         def is_valid_flag(self, flags):
             """
@@ -778,11 +768,7 @@ class Package(Task):
                 flags = [flags]
 
             for flag in flags:
-                if (
-                    not flag in self.all
-                    and not flag in self.all_aliases
-                    and not self._iuse_implicit_match(flag)
-                ):
+                if self.get_flag(flag) is None:
                     return False
             return True
 
@@ -794,26 +780,17 @@ class Package(Task):
                 flags = [flags]
             missing_iuse = []
             for flag in flags:
-                if (
-                    not flag in self.all
-                    and not flag in self.all_aliases
-                    and not self._iuse_implicit_match(flag)
-                ):
+                if self.get_flag(flag) is None:
                     missing_iuse.append(flag)
             return missing_iuse
 
-        def get_real_flag(self, flag):
+        def get_flag(self, flag):
             """
             Returns the flag's name within the scope of this package
-            (accounting for aliases), or None if the flag is unknown.
+            or None if the flag is unknown.
             """
             if flag in self.all:
                 return flag
-
-            if flag in self.all_aliases:
-                for k, v in self.alias_mapping.items():
-                    if flag in v:
-                        return k
 
             if self._iuse_implicit_match(flag):
                 return flag
