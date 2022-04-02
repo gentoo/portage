@@ -3,6 +3,7 @@
 
 import errno
 import io
+import itertools
 import logging
 import re
 import stat
@@ -107,9 +108,8 @@ class Manifest2Entry(ManifestEntry):
         myhashkeys = list(self.hashes)
         myhashkeys.remove("size")
         myhashkeys.sort()
-        for h in myhashkeys:
-            myline += " " + h + " " + str(self.hashes[h])
-        return myline
+        with_hashes = " ".join(f"{h} {self.hashes[h]}" for h in myhashkeys)
+        return f"{myline} {with_hashes}"
 
     def __eq__(self, other):
         if (
@@ -162,7 +162,6 @@ class Manifest:
             find_invalid_path_char = _find_invalid_path_char
         self._find_invalid_path_char = find_invalid_path_char
         self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
-        self.fhashdict = {}
         self.hashes = set()
         self.required_hashes = set()
 
@@ -182,8 +181,8 @@ class Manifest:
         self.required_hashes.update(required_hashes)
         self.required_hashes.intersection_update(self.hashes)
 
-        for t in MANIFEST2_IDENTIFIERS:
-            self.fhashdict[t] = {}
+        self.fhashdict = {t: {} for t in MANIFEST2_IDENTIFIERS}
+
         if not from_scratch:
             self._read()
         if fetchlist_dict != None:
@@ -206,9 +205,9 @@ class Manifest:
 
     def getDigests(self):
         """Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue}"""
-        rval = {}
-        for t in MANIFEST2_IDENTIFIERS:
-            rval.update(self.fhashdict[t])
+        rval = {
+            k: v for t in MANIFEST2_IDENTIFIERS for k, v in self.fhashdict[t].items()
+        }
         return rval
 
     def getTypeDigests(self, ftype):
@@ -269,18 +268,16 @@ class Manifest:
 
     def _getDigestData(self, distlist):
         """create a hash dict for a specific list of files"""
-        myhashdict = {}
-        for myname in distlist:
-            for mytype in self.fhashdict:
-                if myname in self.fhashdict[mytype]:
-                    myhashdict.setdefault(mytype, {})
-                    myhashdict[mytype].setdefault(myname, {})
-                    myhashdict[mytype][myname].update(self.fhashdict[mytype][myname])
+        myhashdict = {
+            mytype: {myname: self.fhashdict[mytype][myname]}
+            for myname in distlist
+            for mytype in self.fhashdict
+            if myname in self.fhashdict[mytype]
+        }
         return myhashdict
 
     def _createManifestEntries(self):
-        valid_hashes = set(get_valid_checksum_keys())
-        valid_hashes.add("size")
+        valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size")))
         mytypes = list(self.fhashdict)
         mytypes.sort()
         for t in mytypes:
@@ -296,13 +293,22 @@ class Manifest:
                 yield myentry
 
     def checkIntegrity(self):
-        for t in self.fhashdict:
-            for f in self.fhashdict[t]:
-                diff = self.required_hashes.difference(set(self.fhashdict[t][f]))
-                if diff:
-                    raise MissingParameter(
-                        _("Missing %s checksum(s): %s %s") % (" ".join(diff), t, f)
+        manifest_data = (
+            (
+                self.required_hashes.difference(set(self.fhashdict[mytype][myfile])),
+                mytype,
+                myfile,
+            )
+            for mytype in self.fhashdict
+            for myfile in self.fhashdict[mytype]
+        )
+        for needed_hashes, its_type, its_file in manifest_data:
+            if needed_hashes:
+                raise MissingParameter(
+                    _(
+                        f"Missing {' '.join(needed_hashes)} checksum(s): {its_type} {its_file}"
                     )
+                )
 
     def write(self, sign=False, force=False):
         """Write Manifest instance to disk, optionally signing it. Returns
@@ -488,10 +494,8 @@ class Manifest:
 
     def findFile(self, fname):
         """Return entrytype of the given file if present in Manifest or None if not present"""
-        for t in MANIFEST2_IDENTIFIERS:
-            if fname in self.fhashdict[t]:
-                return t
-        return None
+        found_entries = (t for t in MANIFEST2_IDENTIFIERS if fname in self.fhashdict[t])
+        return next(found_entries, None)
 
     def create(
         self,
@@ -529,18 +533,19 @@ class Manifest:
             find_invalid_path_char=self._find_invalid_path_char,
             strict_misc_digests=self.strict_misc_digests,
         )
-        pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
-        cat = self._pkgdir_category()
 
-        pkgdir = self.pkgdir
+        update_pkgdir = self._update_thick_pkgdir
         if self.thin:
-            cpvlist = self._update_thin_pkgdir(cat, pn, pkgdir)
-        else:
-            cpvlist = self._update_thick_pkgdir(cat, pn, pkgdir)
+            update_pkgdir = self._update_thin_pkgdir
 
-        distlist = set()
-        for cpv in cpvlist:
-            distlist.update(self._getCpvDistfiles(cpv))
+        cpvlist = update_pkgdir(
+            self._pkgdir_category(),
+            os.path.basename(self.pkgdir.rstrip(os.path.sep)),
+            self.pkgdir,
+        )
+        distlist = set(
+            distfile for cpv in cpvlist for distfile in self._getCpvDistfiles(cpv)
+        )
 
         if requiredDistfiles is None:
             # This allows us to force removal of stale digests for the
@@ -550,9 +555,7 @@ class Manifest:
             # repoman passes in an empty list, which implies that all distfiles
             # are required.
             requiredDistfiles = distlist.copy()
-        required_hash_types = set()
-        required_hash_types.add("size")
-        required_hash_types.update(self.required_hashes)
+        required_hash_types = set(itertools.chain(self.required_hashes, ("size")))
         for f in distlist:
             fname = os.path.join(self.distdir, f)
             mystat = None
@@ -599,25 +602,28 @@ class Manifest:
         return cpv
 
     def _update_thin_pkgdir(self, cat, pn, pkgdir):
-        for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-            break
-        cpvlist = []
-        for f in pkgdir_files:
+        _, _, pkgdir_files = next(os.walk(pkgdir), (None, None, None))
+
+        def _process_for_cpv(filename):
             try:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                filename = _unicode_decode(
+                    filename, encoding=_encodings["fs"], errors="strict"
+                )
             except UnicodeDecodeError:
-                continue
-            if f[:1] == ".":
-                continue
-            pf = self._is_cpv(cat, pn, f)
+                return None
+            if filename.startswith("."):
+                return None
+            pf = self._is_cpv(cat, pn, filename)
             if pf is not None:
-                cpvlist.append(pf)
+                return pf
+
+        processed = (_process_for_cpv(filename) for filename in pkgdir_files)
+        cpvlist = [pf for pf in processed if pf]
         return cpvlist
 
     def _update_thick_pkgdir(self, cat, pn, pkgdir):
+        _, _, pkgdir_files = next(os.walk(pkgdir), (None, None, None))
         cpvlist = []
-        for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-            break
         for f in pkgdir_files:
             try:
                 f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
@@ -714,9 +720,7 @@ class Manifest:
         return self.fetchlist_dict[cpv]
 
     def getDistfilesSize(self, fetchlist):
-        total_bytes = 0
-        for f in fetchlist:
-            total_bytes += int(self.fhashdict["DIST"][f]["size"])
+        total_bytes = sum(int(self.fhashdict["DIST"][f]["size"]) for f in fetchlist)
         return total_bytes
 
     def updateFileHashes(
@@ -784,28 +788,26 @@ class Manifest:
 
     def getVersions(self):
         """Returns a list of manifest versions present in the manifest file."""
-        rVal = []
         mfname = self.getFullname()
         if not os.path.exists(mfname):
-            return rVal
-        myfile = io.open(
+            return []
+        with io.open(
             _unicode_encode(mfname, encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
-        )
-        lines = myfile.readlines()
-        myfile.close()
-        for l in lines:
-            mysplit = l.split()
-            if (
-                len(mysplit) > 4
-                and mysplit[0] in MANIFEST2_IDENTIFIERS
-                and ((len(mysplit) - 3) % 2) == 0
-                and not 2 in rVal
-            ):
-                rVal.append(2)
-        return rVal
+        ) as myfile:
+            line_splits = (line.split() for line in myfile.readlines())
+            validation = (
+                True
+                for line_split in line_splits
+                if len(line_split) > 4
+                and line_split[0] in MANIFEST2_IDENTIFIERS
+                and (len(line_split) - 3) % 2 == 0
+            )
+            if any(validation):
+                return [2]
+        return []
 
     def _catsplit(self, pkg_key):
         """Split a category and package, returning a list of [cat, pkg].

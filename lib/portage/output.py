@@ -5,6 +5,7 @@ __docformat__ = "epytext"
 
 import errno
 import io
+import itertools
 import re
 import subprocess
 import sys
@@ -74,16 +75,12 @@ codes["bg_darkyellow"] = codes["bg_brown"]
 
 
 def color(fg, bg="default", attr=["normal"]):
-    mystr = codes[fg]
-    for x in [bg] + attr:
-        mystr += codes[x]
-    return mystr
+    myansicodechain = itertools.chain((codes[fg]), (codes[x] for x in [bg, *attr]))
+    return "".join(myansicodechain)
 
 
-ansi_codes = []
-for x in range(30, 38):
-    ansi_codes.append("%im" % x)
-    ansi_codes.append("%i;01m" % x)
+ansi_codes = [y for x in range(30, 38) for y in (f"{x}m", f"{x};01m")]
+
 
 rgb_ansi_colors = [
     "0x000000",
