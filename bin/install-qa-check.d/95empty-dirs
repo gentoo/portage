@@ -33,7 +33,7 @@ find_empty_dirs() {
 		done
 		eqawarn
 		eqawarn "If those directories need to be preserved, please make sure to create"
-		eqawarn "or mark them for keeping using 'keepdir'. Future versions of Portage"
+		eqawarn "or mark them for keeping using 'keepdir'. Portage for >= EAPI 8 ebuilds"
 		eqawarn "will strip empty directories from installation image."
 	fi
 }
