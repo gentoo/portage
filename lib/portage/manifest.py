@@ -317,8 +317,7 @@ class Manifest:
         try:
             myentries = list(self._createManifestEntries())
             update_manifest = True
-            preserved_stats = {}
-            preserved_stats[self.pkgdir.rstrip(os.sep)] = os.stat(self.pkgdir)
+            preserved_stats = {self.pkgdir.rstrip(os.sep): os.stat(self.pkgdir)}
             if myentries and not force:
                 try:
                     f = io.open(
