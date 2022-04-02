@@ -382,13 +382,12 @@ class DisplayProfileRestriction(DisplayRestriction):
         self.format = news_format
 
     def isValid(self):
-        if fnmatch.fnmatch(self.format, "1.*") and "*" in self.profile:
-            return False
-        if fnmatch.fnmatch(self.format, "2.*") and not _valid_profile_RE.match(
-            self.profile
-        ):
-            return False
-        return True
+        return (
+            not fnmatch.fnmatch(self.format, "1.*")
+            or "*" not in self.profile
+            and not fnmatch.fnmatch(self.format, "2.*")
+            or _valid_profile_RE.match(self.profile)
+        )
 
     def checkRestriction(self, **kwargs):
         if fnmatch.fnmatch(self.format, "2.*") and self.profile.endswith("/*"):
@@ -407,9 +406,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
         self.format = news_format
 
     def checkRestriction(self, **kwargs):
-        if kwargs["config"].get("ARCH", "") == self.keyword:
-            return True
-        return False
+        return kwargs["config"].get("ARCH", "") == self.keyword
 
 
 class DisplayInstalledRestriction(DisplayRestriction):
@@ -430,10 +427,7 @@ class DisplayInstalledRestriction(DisplayRestriction):
         return isvalidatom(self.atom)
 
     def checkRestriction(self, **kwargs):
-        vdb = kwargs["vardb"]
-        if vdb.match(self.atom):
-            return True
-        return False
+        return kwargs["vardb"].match(self.atom)
 
 
 def count_unread_news(portdb, vardb, repos=None, update=True):
