@@ -35,8 +35,8 @@ from portage.localization import _
 havecolor = 1
 dotitles = 1
 
-_styles = {}
 """Maps style class to tuple of attribute names."""
+_styles = {}
 
 """Maps attribute name to ansi code."""
 

@@ -80,7 +80,7 @@ class NewsManager:
         portdir = portdb.repositories.mainRepoLocation()
         profiles_base = None
         if portdir is not None:
-            profiles_base = os.path.join(portdir, "profiles") + os.path.sep
+            profiles_base = os.path.join(portdir, "profiles", os.path.sep)
         profile_path = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
@@ -295,14 +295,13 @@ class NewsItem:
         return self._valid
 
     def parse(self):
-        f = io.open(
+        with io.open(
             _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",
-        )
-        lines = f.readlines()
-        f.close()
+        ) as f:
+            lines = f.readlines()
         self.restrictions = {}
         invalids = []
         news_format = None
