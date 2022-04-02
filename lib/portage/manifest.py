@@ -182,11 +182,16 @@ class Manifest:
         self.fhashdict = {t: {} for t in MANIFEST2_IDENTIFIERS}
 
         if not from_scratch:
-            self._read()
-        if fetchlist_dict != None:
-            self.fetchlist_dict = fetchlist_dict
-        else:
-            self.fetchlist_dict = {}
+            # Parse Manifest file for this instance
+            try:
+                self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
+            except FileNotFound:
+                pass
+
+        self.fetchlist_dict = {}
+        if fetchlist_dict:
+            self.fetchlist_dict.update(fetchlist_dict)
+
         self.distdir = distdir
         self.thin = thin
         if thin:
@@ -231,13 +236,6 @@ class Manifest:
                 raise FileNotFound(file_path)
             else:
                 raise
-
-    def _read(self):
-        """Parse Manifest file for this instance"""
-        try:
-            self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
-        except FileNotFound:
-            pass
 
     def _parseManifestLines(self, mylines):
         """Parse manifest lines and return a list of manifest entries."""
