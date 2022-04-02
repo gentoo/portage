@@ -83,13 +83,13 @@ def parseManifest2(line):
     if not isinstance(line, str):
         line = " ".join(line)
     myentry = None
-    match = _manifest_re.match(line)
-    if match is not None:
-        tokens = match.group(3).split()
+    matched = _manifest_re.match(line)
+    if matched:
+        tokens = matched.group(3).split()
         hashes = dict(zip(tokens[1::2], tokens[2::2]))
         hashes["size"] = int(tokens[0])
         myentry = Manifest2Entry(
-            type=match.group(1), name=match.group(2), hashes=hashes
+            type=matched.group(1), name=matched.group(2), hashes=hashes
         )
     return myentry
 
@@ -274,19 +274,21 @@ class Manifest:
 
     def _createManifestEntries(self):
         valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size")))
-        mytypes = list(self.fhashdict)
-        mytypes.sort()
-        for t in mytypes:
-            myfiles = list(self.fhashdict[t])
-            myfiles.sort()
-            for f in myfiles:
-                myentry = Manifest2Entry(
-                    type=t, name=f, hashes=self.fhashdict[t][f].copy()
+        mytypes = sorted(self.fhashdict)
+        for mytype in mytypes:
+            myfiles = sorted(self.fhashdict[mytype])
+            for myfile in myfiles:
+                remainings = set(self.fhashdict[mytype][myfile]).intersection(
+                    valid_hashes
                 )
-                for h in list(myentry.hashes):
-                    if h not in valid_hashes:
-                        del myentry.hashes[h]
-                yield myentry
+                yield Manifest2Entry(
+                    type=mytype,
+                    name=myfile,
+                    hashes={
+                        remaining: self.fhashdict[mytype][myfile][remaining]
+                        for remaining in remainings
+                    },
+                )
 
     def checkIntegrity(self):
         manifest_data = (
@@ -320,7 +322,7 @@ class Manifest:
             preserved_stats = {self.pkgdir.rstrip(os.sep): os.stat(self.pkgdir)}
             if myentries and not force:
                 try:
-                    f = io.open(
+                    with io.open(
                         _unicode_encode(
                             self.getFullname(),
                             encoding=_encodings["fs"],
@@ -329,16 +331,15 @@ class Manifest:
                         mode="r",
                         encoding=_encodings["repo.content"],
                         errors="replace",
-                    )
-                    oldentries = list(self._parseManifestLines(f))
-                    preserved_stats[self.getFullname()] = os.fstat(f.fileno())
-                    f.close()
-                    if len(oldentries) == len(myentries):
-                        update_manifest = False
-                        for i in range(len(oldentries)):
-                            if oldentries[i] != myentries[i]:
-                                update_manifest = True
-                                break
+                    ) as f:
+                        oldentries = list(self._parseManifestLines(f))
+                        preserved_stats[self.getFullname()] = os.fstat(f.fileno())
+                        if len(oldentries) == len(myentries):
+                            update_manifest = False
+                            for oldentry, myentry in zip(oldentries, myentries):
+                                if oldentry != myentry:
+                                    update_manifest = True
+                                    break
                 except (IOError, OSError) as e:
                     if e.errno == errno.ENOENT:
                         pass
@@ -463,16 +464,17 @@ class Manifest:
 
     def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
         """Add entry to Manifest optionally using hashdict to avoid recalculation of hashes"""
-        if ftype == "AUX" and not fname.startswith("files/"):
-            fname = os.path.join("files", fname)
-        if not os.path.exists(self.pkgdir + fname) and not ignoreMissing:
+        if ftype == "AUX":
+            if not fname.startswith("files/"):
+                fname = os.path.join("files", fname)
+            if fname.startswith("files"):
+                fname = fname[6:]
+        if not os.path.exists(f"{self.pkgdir}{fname}") and not ignoreMissing:
             raise FileNotFound(fname)
-        if not ftype in MANIFEST2_IDENTIFIERS:
+        if ftype not in MANIFEST2_IDENTIFIERS:
             raise InvalidDataType(ftype)
-        if ftype == "AUX" and fname.startswith("files"):
-            fname = fname[6:]
         self.fhashdict[ftype][fname] = {}
-        if hashdict != None:
+        if hashdict is not None:
             self.fhashdict[ftype][fname].update(hashdict)
         if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
             self.updateFileHashes(
@@ -497,7 +499,7 @@ class Manifest:
         checkExisting=False,
         assumeDistHashesSometimes=False,
         assumeDistHashesAlways=False,
-        requiredDistfiles=[],
+        requiredDistfiles=None,
     ):
         """Recreate this Manifest from scratch.  This will not use any
         existing checksums unless assumeDistHashesSometimes or
@@ -511,10 +513,9 @@ class Manifest:
             return
         if checkExisting:
             self.checkAllHashes()
+        distfilehashes = {}
         if assumeDistHashesSometimes or assumeDistHashesAlways:
-            distfilehashes = self.fhashdict["DIST"]
-        else:
-            distfilehashes = {}
+            distfilehashes.update(self.fhashdict["DIST"])
         self.__init__(
             self.pkgdir,
             distdir=self.distdir,
@@ -624,7 +625,7 @@ class Manifest:
                 f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 continue
-            if f[:1] == ".":
+            if f.startswith("."):
                 continue
             pf = self._is_cpv(cat, pn, f)
             if pf is not None:
@@ -640,7 +641,7 @@ class Manifest:
         recursive_files = []
 
         pkgdir = self.pkgdir
-        cut_len = len(os.path.join(pkgdir, "files") + os.sep)
+        cut_len = len(os.path.join(pkgdir, "files", os.sep))
         for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
             for f in files:
                 try:
@@ -662,12 +663,12 @@ class Manifest:
 
     def _getAbsname(self, ftype, fname):
         if ftype == "DIST":
-            absname = os.path.join(self.distdir, fname)
+            abspath = (self.distdir, fname)
         elif ftype == "AUX":
-            absname = os.path.join(self.pkgdir, "files", fname)
+            abspath = (self.pkgdir, "files", fname)
         else:
-            absname = os.path.join(self.pkgdir, fname)
-        return absname
+            abspath = (self.pkgdir, fname)
+        return os.path.join(*abspath)
 
     def checkAllHashes(self, ignoreMissingFiles=False):
         for t in MANIFEST2_IDENTIFIERS:
