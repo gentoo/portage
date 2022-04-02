@@ -352,7 +352,7 @@ class Manifest:
                     # non-empty for all currently known use cases.
                     write_atomic(
                         self.getFullname(),
-                        "".join("%s\n" % str(myentry) for myentry in myentries),
+                        "".join(f"{myentry}\n" for myentry in myentries),
                     )
                     self._apply_max_mtime(preserved_stats, myentries)
                     rval = True
@@ -447,8 +447,7 @@ class Manifest:
                     # unless this repo is being prepared for distribution
                     # via rsync.
                     writemsg_level(
-                        "!!! utime('%s', (%s, %s)): %s\n"
-                        % (path, max_mtime, max_mtime, e),
+                        f"!!! utime('{path}', ({max_mtime}, {max_mtime})): {e}\n",
                         level=logging.WARNING,
                         noiselevel=-1,
                     )
@@ -590,12 +589,12 @@ class Manifest:
             return None
         pf = filename[:-7]
         ps = portage.versions._pkgsplit(pf)
-        cpv = "%s/%s" % (cat, pf)
+        cpv = f"{cat}/{pf}"
         if not ps:
-            raise PortagePackageException(_("Invalid package name: '%s'") % cpv)
+            raise PortagePackageException(_(f"Invalid package name: '{cpv}'"))
         if ps[0] != pn:
             raise PortagePackageException(
-                _("Package name does not " "match directory name: '%s'") % cpv
+                _(f"Package name does not match directory name: '{cpv}'")
             )
         return cpv
 
@@ -635,7 +634,7 @@ class Manifest:
             else:
                 continue
             self.fhashdict[mytype][f] = perform_multiple_checksums(
-                self.pkgdir + f, self.hashes
+                f"{self.pkgdir}{f}", self.hashes
             )
         recursive_files = []
 
@@ -693,7 +692,7 @@ class Manifest:
         except FileNotFound as e:
             if not ignoreMissing:
                 raise
-            return False, _("File Not Found: '%s'") % str(e)
+            return False, _(f"File Not Found: '{e}'")
 
     def checkCpvHashes(
         self, cpv, checkDistfiles=True, onlyDistfiles=False, checkMiscfiles=False
@@ -704,7 +703,7 @@ class Manifest:
             self.checkTypeHashes("AUX", ignoreMissingFiles=False)
             if checkMiscfiles:
                 self.checkTypeHashes("MISC", ignoreMissingFiles=False)
-            ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
+            ebuildname = f"{self._catsplit(cpv)[1]}.ebuild"
             self.checkFileHashes("EBUILD", ebuildname, ignoreMissing=False)
         if checkDistfiles or onlyDistfiles:
             for f in self._getCpvDistfiles(cpv):

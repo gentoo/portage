@@ -53,12 +53,13 @@ class Module:
                 kid["module_name"] = ".".join([mod_name, kid["sourcefile"]])
             except KeyError:
                 kid["module_name"] = ".".join([mod_name, self.name])
-                msg = (
-                    "%s module's module_spec is old, missing attribute: "
-                    "'sourcefile'.  Backward compatibility may be "
-                    "removed in the future.\nFile: %s\n"
+                writemsg(
+                    _(
+                        f"{self.name} module's module_spec is old, missing attribute: "
+                        "'sourcefile'.  Backward compatibility may be "
+                        f"removed in the future.\nFile: {self._module.__file__}\n"
+                    )
                 )
-                writemsg(_(msg) % (self.name, self._module.__file__))
             kid["is_imported"] = False
             self.kids[kidname] = kid
             self.kids_names.append(kidname)
@@ -67,8 +68,10 @@ class Module:
     def get_class(self, name):
         if not name or name not in self.kids_names:
             raise InvalidModuleName(
-                "Module name '%s' is invalid or not" % name
-                + "part of the module '%s'" % self.name
+                (
+                    f"Module name '{name}' is invalid or not"
+                    f"part of the module '{self.name}'"
+                )
             )
         kid = self.kids[name]
         if kid["is_imported"]:
@@ -149,9 +152,7 @@ class Modules:
         if modname and modname in self.module_names:
             mod = self._modules[modname]["parent"].get_class(modname)
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not" % modname + "found"
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return mod
 
     def get_description(self, modname):
@@ -165,9 +166,7 @@ class Modules:
         if modname and modname in self.module_names:
             mod = self._modules[modname]["description"]
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not" % modname + "found"
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return mod
 
     def get_functions(self, modname):
@@ -181,9 +180,7 @@ class Modules:
         if modname and modname in self.module_names:
             mod = self._modules[modname]["functions"]
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not" % modname + "found"
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return mod
 
     def get_func_descriptions(self, modname):
@@ -197,9 +194,7 @@ class Modules:
         if modname and modname in self.module_names:
             desc = self._modules[modname]["func_desc"]
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not" % modname + "found"
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return desc
 
     def get_opt_descriptions(self, modname):
@@ -213,9 +208,7 @@ class Modules:
         if modname and modname in self.module_names:
             desc = self._modules[modname].get("opt_desc")
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not found" % modname
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return desc
 
     def get_spec(self, modname, var):
@@ -231,22 +224,16 @@ class Modules:
         if modname and modname in self.module_names:
             value = self._modules[modname].get(var, None)
         else:
-            raise InvalidModuleName(
-                "Module name '%s' is invalid or not found" % modname
-            )
+            raise InvalidModuleName(f"Module name '{modname}' is invalid or not found")
         return value
 
     def _check_compat(self, module):
         if self.compat_versions:
             if not module.module_spec["version"] in self.compat_versions:
                 raise ModuleVersionError(
-                    "Error loading '%s' plugin module: %s, version: %s\n"
-                    "Module is not compatible with the current application version\n"
-                    "Compatible module API versions are: %s"
-                    % (
-                        self._namepath,
-                        module.module_spec["name"],
-                        module.module_spec["version"],
-                        self.compat_versions,
+                    (
+                        f"Error loading '{self._namepath}' plugin module: {module.module_spec['name']}, version: {module.module_spec['version']}\n"
+                        "Module is not compatible with the current application version\n"
+                        f"Compatible module API versions are: {self.compat_versions}"
                     )
                 )
