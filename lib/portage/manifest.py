@@ -112,14 +112,12 @@ class Manifest2Entry(ManifestEntry):
         return f"{myline} {with_hashes}"
 
     def __eq__(self, other):
-        if (
-            not isinstance(other, Manifest2Entry)
-            or self.type != other.type
-            or self.name != other.name
-            or self.hashes != other.hashes
-        ):
-            return False
-        return True
+        return (
+            isinstance(other, Manifest2Entry)
+            and self.type == other.type
+            and self.name == other.name
+            and self.hashes == other.hashes
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
