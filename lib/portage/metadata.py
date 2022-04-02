@@ -38,12 +38,11 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
         "/var",
     ]:
         print(
-            "!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY "
-            + "ROOT DIRECTORY ON YOUR SYSTEM.",
-            file=sys.stderr,
-        )
-        print(
-            "!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir,
+            (
+                "!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY "
+                "ROOT DIRECTORY ON YOUR SYSTEM.\n"
+                f"!!! This is ALMOST CERTAINLY NOT what you want: '{cachedir}'",
+            ),
             file=sys.stderr,
         )
         sys.exit(73)
@@ -123,7 +122,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
             src_chf = tree_data.src_db.validation_chf
             dest_chf = tree_data.dest_db.validation_chf
-            dest_chf_key = "_%s_" % dest_chf
+            dest_chf_key = f"_{dest_chf}_"
             dest_chf_getter = operator.attrgetter(dest_chf)
 
             for cpv in portdb.cp_list(cp, mytree=tree_data.path):
@@ -219,8 +218,10 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
             dead_nodes = set(tree_data.dest_db)
         except CacheError as e:
             writemsg_level(
-                "Error listing cache entries for "
-                + "'%s': %s, continuing...\n" % (tree_data.path, e),
+                (
+                    "Error listing cache entries for "
+                    f"'{tree_data.path}': {e}, continuing...\n"
+                ),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
