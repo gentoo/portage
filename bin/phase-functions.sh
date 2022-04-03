@@ -501,8 +501,6 @@ __dyn_test() {
 	elif [[ ${EBUILD_FORCE_TEST} != 1 ]] && ! has test ${FEATURES} ; then
 		__vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	else
-		local save_sp=${SANDBOX_PREDICT}
-		addpredict /
 		__ebuild_phase pre_src_test
 
 		__vecho ">>> Test phase: ${CATEGORY}/${PF}"
@@ -512,7 +510,6 @@ __dyn_test() {
 		>> "$PORTAGE_BUILDDIR/.tested" || \
 			die "Failed to create $PORTAGE_BUILDDIR/.tested"
 		__ebuild_phase post_src_test
-		SANDBOX_PREDICT=${save_sp}
 	fi
 
 	trap - SIGINT SIGQUIT
