@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import CACHE_PATH, PROFILE_PATH
 
 
@@ -17,7 +17,7 @@ def _get_legacy_global(name):
         return getattr(portage, name)
 
     if name in ("mtimedb", "mtimedbfile"):
-        portage.mtimedbfile = os.path.join(
+        portage.mtimedbfile = os_unicode_fs.path.join(
             portage.settings["EROOT"], CACHE_PATH, "mtimedb"
         )
         constructed.add("mtimedbfile")
@@ -26,7 +26,7 @@ def _get_legacy_global(name):
         return getattr(portage, name)
 
     # Portage needs to ensure a sane umask for the files it creates.
-    os.umask(0o22)
+    os_unicode_fs.umask(0o22)
 
     kwargs = {}
     for k, envvar in (
@@ -35,7 +35,7 @@ def _get_legacy_global(name):
         ("sysroot", "SYSROOT"),
         ("eprefix", "EPREFIX"),
     ):
-        kwargs[k] = os.environ.get(envvar)
+        kwargs[k] = os_unicode_fs.environ.get(envvar)
 
     portage._initializing_globals = True
     portage.db = portage.create_trees(**kwargs)
@@ -74,8 +74,8 @@ def _get_legacy_global(name):
     portage.thirdpartymirrors = settings.thirdpartymirrors()
     constructed.add("thirdpartymirrors")
 
-    profiledir = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
-    if not os.path.isdir(profiledir):
+    profiledir = os_unicode_fs.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
+    if not os_unicode_fs.path.isdir(profiledir):
         profiledir = None
     portage.profiledir = profiledir
     constructed.add("profiledir")

@@ -5,7 +5,7 @@ import io
 import tempfile
 
 import portage
-from portage import os, shutil, _encodings
+from portage import os_unicode_fs, shutil_unicode_fs, _encodings
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
 from portage.package.ebuild.config import config
@@ -101,11 +101,11 @@ class ConfigTestCase(TestCase):
             portage.util.noiselimit = -2
 
             license_group_locations = (
-                os.path.join(
+                os_unicode_fs.path.join(
                     playground.settings.repositories["test_repo"].location, "profiles"
                 ),
             )
-            pkg_license = os.path.join(playground.eroot, "etc", "portage")
+            pkg_license = os_unicode_fs.path.join(playground.eroot, "etc", "portage")
 
             lic_man = LicenseManager(license_group_locations, pkg_license)
 
@@ -317,26 +317,26 @@ class ConfigTestCase(TestCase):
             new_repo_config.thin_manifest, True, "new_repo_config.thin_manifest != True"
         )
 
-        new_manifest_file = os.path.join(
+        new_manifest_file = os_unicode_fs.path.join(
             new_repo_config.location, "dev-libs", "A", "Manifest"
         )
         self.assertNotExists(new_manifest_file)
 
-        new_manifest_file = os.path.join(
+        new_manifest_file = os_unicode_fs.path.join(
             new_repo_config.location, "dev-libs", "B", "Manifest"
         )
         f = open(new_manifest_file)
         self.assertEqual(len(list(f)), 1)
         f.close()
 
-        new_manifest_file = os.path.join(
+        new_manifest_file = os_unicode_fs.path.join(
             new_repo_config.location, "dev-libs", "C", "Manifest"
         )
         f = open(new_manifest_file)
         self.assertEqual(len(list(f)), 2)
         f.close()
 
-        old_manifest_file = os.path.join(
+        old_manifest_file = os_unicode_fs.path.join(
             old_repo_config.location, "dev-libs", "A", "Manifest"
         )
         f = open(old_manifest_file)
@@ -367,22 +367,24 @@ class ConfigTestCase(TestCase):
         eprefix = normalize_path(tempfile.mkdtemp())
         playground = None
         try:
-            user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
-            os.makedirs(user_config_dir)
+            user_config_dir = os_unicode_fs.path.join(eprefix, USER_CONFIG_PATH)
+            os_unicode_fs.makedirs(user_config_dir)
 
             with io.open(
-                os.path.join(user_config_dir, "package.env"),
+                os_unicode_fs.path.join(user_config_dir, "package.env"),
                 mode="w",
                 encoding=_encodings["content"],
             ) as f:
                 for line in package_env:
                     f.write(line + "\n")
 
-            env_dir = os.path.join(user_config_dir, "env")
-            os.makedirs(env_dir)
+            env_dir = os_unicode_fs.path.join(user_config_dir, "env")
+            os_unicode_fs.makedirs(env_dir)
             for k, v in env_files.items():
                 with io.open(
-                    os.path.join(env_dir, k), mode="w", encoding=_encodings["content"]
+                    os_unicode_fs.path.join(env_dir, k),
+                    mode="w",
+                    encoding=_encodings["content"],
                 ) as f:
                     for line in v:
                         f.write(line + "\n")
@@ -407,6 +409,6 @@ class ConfigTestCase(TestCase):
 
         finally:
             if playground is None:
-                shutil.rmtree(eprefix)
+                shutil_unicode_fs.rmtree(eprefix)
             else:
                 playground.cleanup()

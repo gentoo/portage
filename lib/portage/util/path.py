@@ -3,7 +3,7 @@
 
 import errno
 
-from portage import os
+from portage import os_unicode_fs
 
 
 def first_existing(path):
@@ -24,7 +24,7 @@ def first_existing(path):
     existing = False
     for path in iter_parents(path):
         try:
-            os.lstat(path)
+            os_unicode_fs.lstat(path)
             existing = True
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
@@ -33,7 +33,7 @@ def first_existing(path):
         if existing:
             return path
 
-    return os.sep
+    return os_unicode_fs.sep
 
 
 def iter_parents(path):
@@ -45,8 +45,8 @@ def iter_parents(path):
             ending with the root directory
     """
     yield path
-    while path != os.sep:
-        path = os.path.dirname(path)
+    while path != os_unicode_fs.sep:
+        path = os_unicode_fs.path.dirname(path)
         if not path:
             break
         yield path

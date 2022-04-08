@@ -1,7 +1,7 @@
 # Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.PollScheduler import PollScheduler
 
@@ -32,7 +32,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
             if self._error_count > 0:
                 self.returncode = 1
             else:
-                self.returncode = os.EX_OK
+                self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
         return self.returncode
 
@@ -76,7 +76,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
 
     def _task_exit(self, task):
         self._running_tasks.discard(task)
-        if task.returncode != os.EX_OK:
+        if task.returncode != os_unicode_fs.EX_OK:
             self._error_count += 1
         self._schedule()
 

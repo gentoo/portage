@@ -4,7 +4,7 @@
 import subprocess
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
@@ -15,7 +15,7 @@ from _emerge.PipeReader import PipeReader
 class PopenPipeTestCase(TestCase):
     """
     Test PopenProcess, which can be useful for Jython support, since it
-    uses the subprocess.Popen instead of os.fork().
+    uses the subprocess.Popen instead of os_unicode_fs.fork().
     """
 
     _echo_cmd = "echo -n '%s'"
@@ -43,8 +43,8 @@ class PopenPipeTestCase(TestCase):
         producer.start()
         producer.wait()
 
-        self.assertEqual(producer.returncode, os.EX_OK)
-        self.assertEqual(consumer.returncode, os.EX_OK)
+        self.assertEqual(producer.returncode, os_unicode_fs.EX_OK)
+        self.assertEqual(consumer.returncode, os_unicode_fs.EX_OK)
 
         return consumer.getvalue().decode("ascii", "replace")
 
@@ -73,15 +73,15 @@ class PopenPipeTestCase(TestCase):
             producer.start()
             producer.wait()
 
-            self.assertEqual(producer.returncode, os.EX_OK)
-            self.assertEqual(consumer.returncode, os.EX_OK)
+            self.assertEqual(producer.returncode, os_unicode_fs.EX_OK)
+            self.assertEqual(consumer.returncode, os_unicode_fs.EX_OK)
 
             with open(log_file_path, "rb") as f:
                 content = f.read()
 
         finally:
-            os.close(fd)
-            os.unlink(log_file_path)
+            os_unicode_fs.close(fd)
+            os_unicode_fs.unlink(log_file_path)
 
         return content.decode("ascii", "replace")
 

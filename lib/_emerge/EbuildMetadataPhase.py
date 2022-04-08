@@ -10,7 +10,7 @@ portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.package.ebuild._metadata_invalid:eapi_invalid",
 )
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -70,7 +70,7 @@ class EbuildMetadataPhase(SubProcess):
         self.eapi_supported = portage.eapi_is_supported(parsed_eapi)
         if not self.eapi_supported:
             self.metadata = {"EAPI": parsed_eapi}
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -103,12 +103,12 @@ class EbuildMetadataPhase(SubProcess):
         self._files = self._files_dict()
         files = self._files
 
-        master_fd, slave_fd = os.pipe()
+        master_fd, slave_fd = os_unicode_fs.pipe()
 
         fcntl.fcntl(
             master_fd,
             fcntl.F_SETFL,
-            fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK,
+            fcntl.fcntl(master_fd, fcntl.F_GETFL) | os_unicode_fs.O_NONBLOCK,
         )
 
         fd_pipes[slave_fd] = slave_fd
@@ -131,7 +131,7 @@ class EbuildMetadataPhase(SubProcess):
         )
         settings.pop("PORTAGE_PIPE_FD", None)
 
-        os.close(slave_fd)
+        os_unicode_fs.close(slave_fd)
         null_input.close()
 
         if isinstance(retval, int):
@@ -170,7 +170,7 @@ class EbuildMetadataPhase(SubProcess):
         SubProcess._async_waitpid_cb(self, *args, **kwargs)
         # self._raw_metadata is None when _start returns
         # early due to an unsupported EAPI
-        if self.returncode == os.EX_OK and self._raw_metadata is not None:
+        if self.returncode == os_unicode_fs.EX_OK and self._raw_metadata is not None:
             metadata_lines = _unicode_decode(
                 b"".join(self._raw_metadata),
                 encoding=_encodings["repo.content"],

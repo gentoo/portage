@@ -8,9 +8,7 @@ import stat
 from operator import attrgetter
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
@@ -54,7 +52,7 @@ class database(flat_hash.database):
     def __init__(self, location, *args, **config):
         loc = location
         super(database, self).__init__(location, *args, **config)
-        self.location = os.path.join(loc, "metadata", "cache")
+        self.location = os_unicode_fs.path.join(loc, "metadata", "cache")
         self.ec = None
         self.raise_stat_collision = False
 
@@ -114,7 +112,7 @@ class database(flat_hash.database):
             new_content, _encodings["repo.content"], errors="backslashreplace"
         )
 
-        new_fp = os.path.join(self.location, cpv)
+        new_fp = os_unicode_fs.path.join(self.location, cpv)
         try:
             f = open(
                 _unicode_encode(new_fp, encoding=_encodings["fs"], errors="strict"),
@@ -125,7 +123,7 @@ class database(flat_hash.database):
         else:
             try:
                 try:
-                    existing_st = os.fstat(f.fileno())
+                    existing_st = os_unicode_fs.fstat(f.fileno())
                     existing_content = f.read()
                 finally:
                     f.close()
@@ -149,7 +147,7 @@ class database(flat_hash.database):
                     )
 
         s = cpv.rfind("/")
-        fp = os.path.join(
+        fp = os_unicode_fs.path.join(
             self.location, cpv[:s], ".update.%i.%s" % (portage.getpid(), cpv[s + 1 :])
         )
         try:
@@ -176,10 +174,10 @@ class database(flat_hash.database):
         self._ensure_access(fp, mtime=values["_mtime_"])
 
         try:
-            os.rename(fp, new_fp)
+            os_unicode_fs.rename(fp, new_fp)
         except EnvironmentError as e:
             try:
-                os.unlink(fp)
+                os_unicode_fs.unlink(fp)
             except EnvironmentError:
                 pass
             raise cache_errors.CacheCorruption(cpv, e)

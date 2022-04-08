@@ -1,7 +1,7 @@
 # Copyright 2020-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util.futures import asyncio
@@ -18,20 +18,20 @@ class PipeLoggerTestCase(TestCase):
         process (requires non-blocking write).
         """
 
-        input_fd, writer_pipe = os.pipe()
+        input_fd, writer_pipe = os_unicode_fs.pipe()
         _set_nonblocking(writer_pipe)
-        writer_pipe = os.fdopen(writer_pipe, "wb", 0)
+        writer_pipe = os_unicode_fs.fdopen(writer_pipe, "wb", 0)
         writer = asyncio.ensure_future(
             _writer(writer_pipe, test_string.encode("ascii"))
         )
         writer.add_done_callback(lambda writer: writer_pipe.close())
 
-        pr, pw = os.pipe()
+        pr, pw = os_unicode_fs.pipe()
 
         consumer = PipeLogger(
             background=True,
             input_fd=input_fd,
-            log_file_path=os.fdopen(pw, "wb", 0),
+            log_file_path=os_unicode_fs.fdopen(pw, "wb", 0),
             scheduler=loop,
         )
         consumer.start()
@@ -45,7 +45,7 @@ class PipeLoggerTestCase(TestCase):
         content = await reader
         await consumer.async_wait()
 
-        self.assertEqual(consumer.returncode, os.EX_OK)
+        self.assertEqual(consumer.returncode, os_unicode_fs.EX_OK)
 
         return content.decode("ascii", "replace")
 

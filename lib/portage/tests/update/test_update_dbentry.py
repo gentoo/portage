@@ -7,7 +7,7 @@ import re
 import textwrap
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dep import Atom
 from portage.tests import TestCase
@@ -251,17 +251,21 @@ class UpdateDbentryTestCase(TestCase):
                 setconfig = trees[eroot]["root_config"].setconfig
                 selected_set = setconfig.getSets()["selected"]
 
-                updates_dir = os.path.join(test_repo_location, "profiles", "updates")
+                updates_dir = os_unicode_fs.path.join(
+                    test_repo_location, "profiles", "updates"
+                )
 
                 try:
                     ensure_dirs(updates_dir)
-                    with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
+                    with open(
+                        os_unicode_fs.path.join(updates_dir, "1Q-2010"), "w"
+                    ) as f:
                         f.write(updates)
 
                     # Create an empty updates directory, so that this
                     # repo doesn't inherit updates from the main repo.
                     ensure_dirs(
-                        os.path.join(
+                        os_unicode_fs.path.join(
                             portdb.getRepositoryPath("dont_apply_updates"),
                             "profiles",
                             "updates",

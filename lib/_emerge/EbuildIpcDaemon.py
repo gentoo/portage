@@ -4,7 +4,7 @@
 import errno
 import logging
 import pickle
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
@@ -81,9 +81,13 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             # write something to the pipe just before we close it, and in that
             # case the write will be lost. Therefore, try for a non-blocking
             # lock, and only re-open the pipe if the lock is acquired.
-            lock_filename = os.path.join(os.path.dirname(self.input_fifo), "lock")
+            lock_filename = os_unicode_fs.path.join(
+                os_unicode_fs.path.dirname(self.input_fifo), "lock"
+            )
             try:
-                lock_obj = lockfile(lock_filename, unlinkfile=True, flags=os.O_NONBLOCK)
+                lock_obj = lockfile(
+                    lock_filename, unlinkfile=True, flags=os_unicode_fs.O_NONBLOCK
+                )
             except TryAgain:
                 # We'll try again when another IO_HUP event arrives.
                 pass
@@ -102,11 +106,13 @@ class EbuildIpcDaemon(FifoIpcDaemon):
         # we'd have a race condition with this open call raising
         # ENXIO if the client hasn't opened the fifo yet.
         try:
-            output_fd = os.open(self.output_fifo, os.O_WRONLY | os.O_NONBLOCK)
+            output_fd = os_unicode_fs.open(
+                self.output_fifo, os_unicode_fs.O_WRONLY | os_unicode_fs.O_NONBLOCK
+            )
             try:
-                os.write(output_fd, pickle.dumps(reply))
+                os_unicode_fs.write(output_fd, pickle.dumps(reply))
             finally:
-                os.close(output_fd)
+                os_unicode_fs.close(output_fd)
         except OSError as e:
             # This probably means that the client has been killed,
             # which causes open to fail with ENXIO.

@@ -5,7 +5,7 @@ __all__ = ("MaskManager",)
 
 import warnings
 
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import ExtendedAtomDict, match_from_list
 from portage.localization import _
 from portage.repository.config import allow_profile_repo_deps
@@ -41,7 +41,7 @@ class MaskManager:
 
         def grab_pmask(loc, repo_config):
             if loc not in pmask_cache:
-                path = os.path.join(loc, "profiles", "package.mask")
+                path = os_unicode_fs.path.join(loc, "profiles", "package.mask")
                 pmask_cache[loc] = grabfile_package(
                     path,
                     recursive=repo_config.portage1_profiles,
@@ -51,7 +51,9 @@ class MaskManager:
                     allow_repo=allow_profile_repo_deps(repo_config),
                     allow_build_id=("build-id" in repo_config.profile_formats),
                 )
-                if repo_config.portage1_profiles_compat and os.path.isdir(path):
+                if repo_config.portage1_profiles_compat and os_unicode_fs.path.isdir(
+                    path
+                ):
                     warnings.warn(
                         _(
                             "Repository '%(repo_name)s' is implicitly using "
@@ -100,7 +102,7 @@ class MaskManager:
             if repo.masters:
                 unmatched_removals = removals.difference(matched_removals)
                 if unmatched_removals and not user_config:
-                    source_file = os.path.join(
+                    source_file = os_unicode_fs.path.join(
                         repo.location, "profiles", "package.mask"
                     )
                     unmatched_removals = list(unmatched_removals)
@@ -143,7 +145,7 @@ class MaskManager:
             if not repo.portage1_profiles:
                 continue
             repo_lines = grabfile_package(
-                os.path.join(repo.location, "profiles", "package.unmask"),
+                os_unicode_fs.path.join(repo.location, "profiles", "package.unmask"),
                 recursive=1,
                 remember_source_file=True,
                 verify_eapi=True,
@@ -169,7 +171,7 @@ class MaskManager:
         for x in profiles:
             profile_pkgmasklines.append(
                 grabfile_package(
-                    os.path.join(x.location, "package.mask"),
+                    os_unicode_fs.path.join(x.location, "package.mask"),
                     recursive=x.portage1_directories,
                     remember_source_file=True,
                     verify_eapi=True,
@@ -182,7 +184,7 @@ class MaskManager:
             if x.portage1_directories:
                 profile_pkgunmasklines.append(
                     grabfile_package(
-                        os.path.join(x.location, "package.unmask"),
+                        os_unicode_fs.path.join(x.location, "package.unmask"),
                         recursive=x.portage1_directories,
                         remember_source_file=True,
                         verify_eapi=True,
@@ -213,7 +215,7 @@ class MaskManager:
         user_pkgunmasklines = []
         if user_config:
             user_pkgmasklines = grabfile_package(
-                os.path.join(abs_user_config, "package.mask"),
+                os_unicode_fs.path.join(abs_user_config, "package.mask"),
                 recursive=1,
                 allow_wildcard=True,
                 allow_repo=True,
@@ -222,7 +224,7 @@ class MaskManager:
                 allow_build_id=True,
             )
             user_pkgunmasklines = grabfile_package(
-                os.path.join(abs_user_config, "package.unmask"),
+                os_unicode_fs.path.join(abs_user_config, "package.unmask"),
                 recursive=1,
                 allow_wildcard=True,
                 allow_repo=True,

@@ -8,8 +8,7 @@ import tarfile
 from os import urandom
 
 import portage.gpkg
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.exception import CompressorOperationFailed
 
@@ -72,7 +71,7 @@ class test_gpkg_stream_case(TestCase):
 
         tmpdir = tempfile.mkdtemp()
         try:
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             data = urandom(1048576)
             with tarfile.open(gpkg_file_loc, "w") as test_tar:
                 test_tarinfo = tarfile.TarInfo("test")
@@ -86,7 +85,7 @@ class test_gpkg_stream_case(TestCase):
                 data2 = test_tar.extractfile(test_tarinfo).read()
                 self.assertEqual(data, data2)
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
 
     def test_gpkg_stream_writer_without_cmd(self):
         if sys.version_info.major < 3:
@@ -95,7 +94,7 @@ class test_gpkg_stream_case(TestCase):
         tmpdir = tempfile.mkdtemp()
 
         try:
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             data = urandom(1048576)
             with tarfile.open(gpkg_file_loc, "w") as test_tar:
                 test_tarinfo = tarfile.TarInfo("test")
@@ -109,4 +108,4 @@ class test_gpkg_stream_case(TestCase):
                 data2 = test_tar.extractfile(test_tarinfo).read()
                 self.assertEqual(data, data2)
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)

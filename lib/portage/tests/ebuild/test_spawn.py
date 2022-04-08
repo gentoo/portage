@@ -5,9 +5,7 @@ import errno
 import io
 import tempfile
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -19,8 +17,8 @@ class SpawnTestCase(TestCase):
         logfile = None
         try:
             fd, logfile = tempfile.mkstemp()
-            os.close(fd)
-            null_fd = os.open("/dev/null", os.O_RDWR)
+            os_unicode_fs.close(fd)
+            null_fd = os_unicode_fs.open("/dev/null", os_unicode_fs.O_RDWR)
             test_string = 2 * "blah blah blah\n"
             proc = SpawnProcess(
                 args=[BASH_BINARY, "-c", "echo -n '%s'" % test_string],
@@ -30,8 +28,8 @@ class SpawnTestCase(TestCase):
                 logfile=logfile,
             )
             proc.start()
-            os.close(null_fd)
-            self.assertEqual(proc.wait(), os.EX_OK)
+            os_unicode_fs.close(null_fd)
+            self.assertEqual(proc.wait(), os_unicode_fs.EX_OK)
             f = io.open(
                 _unicode_encode(logfile, encoding=_encodings["fs"], errors="strict"),
                 mode="r",
@@ -48,7 +46,7 @@ class SpawnTestCase(TestCase):
         finally:
             if logfile:
                 try:
-                    os.unlink(logfile)
+                    os_unicode_fs.unlink(logfile)
                 except EnvironmentError as e:
                     if e.errno != errno.ENOENT:
                         raise

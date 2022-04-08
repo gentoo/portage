@@ -1,7 +1,7 @@
 # Copyright 2018-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.repository.storage.interface import (
     RepoStorageException,
     RepoStorageInterface,
@@ -46,13 +46,13 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
             args=cmd, scheduler=asyncio.get_event_loop(), **self._spawn_kwargs
         )
         p.start()
-        if await p.async_wait() != os.EX_OK:
+        if await p.async_wait() != os_unicode_fs.EX_OK:
             raise RepoStorageException(
                 "command exited with status {}: {}".format(p.returncode, " ".join(cmd))
             )
 
     async def init_update(self):
-        update_location = os.path.join(
+        update_location = os_unicode_fs.path.join(
             self._user_location, ".tmp-unverified-download-quarantine"
         )
         await self._check_call(["rm", "-rf", update_location])
@@ -70,7 +70,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
                 "--exclude=/lost+found",
                 "--exclude=/packages",
                 "--exclude",
-                "/{}".format(os.path.basename(update_location)),
+                "/{}".format(os_unicode_fs.path.basename(update_location)),
                 self._user_location + "/",
                 update_location + "/",
             ]
@@ -99,7 +99,7 @@ class HardlinkQuarantineRepoStorage(RepoStorageInterface):
                 "--exclude=/lost+found",
                 "--exclude=/packages",
                 "--exclude",
-                "/{}".format(os.path.basename(update_location)),
+                "/{}".format(os_unicode_fs.path.basename(update_location)),
                 update_location + "/",
                 self._user_location + "/",
             ]

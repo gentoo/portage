@@ -5,7 +5,7 @@ import errno
 import stat
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg
 from portage.versions import _pkg_str
 
@@ -40,7 +40,7 @@ class BinhostHandler:
 
         pkg_path = self._bintree.getname(cpv)
         try:
-            s = os.lstat(pkg_path)
+            s = os_unicode_fs.lstat(pkg_path)
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise

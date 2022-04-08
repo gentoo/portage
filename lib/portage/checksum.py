@@ -11,8 +11,7 @@ import stat
 import subprocess
 import tempfile
 
-from portage import _encodings, _unicode_decode, _unicode_encode
-from portage import os
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
 
@@ -319,7 +318,7 @@ if "WHIRLPOOL" not in hashfunc_map:
 # There is only one implementation for size
 class SizeHash:
     def checksum_file(self, filename):
-        size = os.stat(filename).st_size
+        size = os_unicode_fs.stat(filename).st_size
         return (size, size)
 
 
@@ -332,13 +331,16 @@ hashfunc_keys = frozenset(hashfunc_map)
 
 
 prelink_capable = False
-if os.path.exists(PRELINK_BINARY):
+if os_unicode_fs.path.exists(PRELINK_BINARY):
     cmd = [PRELINK_BINARY, "--version"]
     cmd = [_unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in cmd]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     proc.communicate()
     status = proc.wait()
-    if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+    if (
+        os_unicode_fs.WIFEXITED(status)
+        and os_unicode_fs.WEXITSTATUS(status) == os_unicode_fs.EX_OK
+    ):
         prelink_capable = 1
     del cmd, proc, status
 
@@ -480,7 +482,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
     file_is_ok = True
     reason = "Reason unknown"
     try:
-        mysize = os.stat(filename)[stat.ST_SIZE]
+        mysize = os_unicode_fs.stat(filename)[stat.ST_SIZE]
         if mydict.get("size") is not None and mydict["size"] != mysize:
             return False, (
                 _("Filesize does not match recorded size"),
@@ -558,8 +560,8 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
                         [PRELINK_BINARY, "--verify", filename], fd_pipes={1: tmpfile_fd}
                     )
                 finally:
-                    os.close(tmpfile_fd)
-                if retval == os.EX_OK:
+                    os_unicode_fs.close(tmpfile_fd)
+                if retval == os_unicode_fs.EX_OK:
                     myfilename = prelink_tmpfile
             except portage.exception.CommandNotFound:
                 # This happens during uninstallation of prelink.
@@ -580,7 +582,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
     finally:
         if prelink_tmpfile:
             try:
-                os.unlink(prelink_tmpfile)
+                os_unicode_fs.unlink(prelink_tmpfile)
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise

@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.package.ebuild._spawn_nofetch:spawn_nofetch",
 )
 
-from portage import os
+from portage import os_unicode_fs
 from portage.const import MANIFEST2_HASH_DEFAULTS
 from portage.dbapi.porttree import FetchlistDict
 from portage.dep import use_reduce
@@ -59,12 +59,12 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                 writemsg("!!! %s\n" % str(e), noiselevel=-1)
                 del e
                 return 0
-        mytree = os.path.dirname(os.path.dirname(mysettings["O"]))
+        mytree = os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(mysettings["O"]))
         try:
             mf = mysettings.repositories.get_repo_for_location(mytree)
         except KeyError:
             # backward compatibility
-            mytree = os.path.realpath(mytree)
+            mytree = os_unicode_fs.path.realpath(mytree)
             mf = mysettings.repositories.get_repo_for_location(mytree)
 
         repo_required_hashes = mf.manifest_required_hashes
@@ -105,7 +105,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
             myhashes = dist_hashes.get(myfile)
             if not myhashes:
                 try:
-                    st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+                    st = os_unicode_fs.stat(
+                        os_unicode_fs.path.join(mysettings["DISTDIR"], myfile)
+                    )
                 except OSError:
                     st = None
                 if st is None or st.st_size == 0:
@@ -114,7 +116,9 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
             size = myhashes.get("size")
 
             try:
-                st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+                st = os_unicode_fs.stat(
+                    os_unicode_fs.path.join(mysettings["DISTDIR"], myfile)
+                )
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -154,12 +158,16 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
             mysettings["PORTAGE_RESTRICT"] = " ".join(all_restrict)
 
             try:
-                st = os.stat(os.path.join(mysettings["DISTDIR"], myfile))
+                st = os_unicode_fs.stat(
+                    os_unicode_fs.path.join(mysettings["DISTDIR"], myfile)
+                )
             except OSError:
                 st = None
 
             if not fetch({myfile: uris}, mysettings):
-                myebuild = os.path.join(mysettings["O"], catsplit(cpv)[1] + ".ebuild")
+                myebuild = os_unicode_fs.path.join(
+                    mysettings["O"], catsplit(cpv)[1] + ".ebuild"
+                )
                 spawn_nofetch(myportdb, myebuild)
                 writemsg(
                     _("!!! Fetch failed for %s, can't update Manifest\n") % myfile,
@@ -171,7 +179,8 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                     # digest does not match.
                     cmd = colorize(
                         "INFORM",
-                        "ebuild --force %s manifest" % os.path.basename(myebuild),
+                        "ebuild --force %s manifest"
+                        % os_unicode_fs.path.basename(myebuild),
                     )
                     writemsg(
                         (
@@ -211,10 +220,14 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
             distlist.sort()
             auto_assumed = []
             for filename in distlist:
-                if not os.path.exists(os.path.join(mysettings["DISTDIR"], filename)):
+                if not os_unicode_fs.path.exists(
+                    os_unicode_fs.path.join(mysettings["DISTDIR"], filename)
+                ):
                     auto_assumed.append(filename)
             if auto_assumed:
-                cp = os.path.sep.join(mysettings["O"].split(os.path.sep)[-2:])
+                cp = os_unicode_fs.path.sep.join(
+                    mysettings["O"].split(os_unicode_fs.path.sep)[-2:]
+                )
                 pkgs = myportdb.cp_list(cp, mytree=mytree)
                 pkgs.sort()
                 writemsg_stdout(

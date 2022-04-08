@@ -7,8 +7,7 @@ import tarfile
 import tempfile
 from os import urandom
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.gpkg import gpkg
@@ -36,33 +35,39 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name != binpkg_1.gpkg_version:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
                 InvalidBinaryPackageFormat,
                 binpkg_2.decompress,
-                os.path.join(tmpdir, "test"),
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_missing_manifest(self):
@@ -81,31 +86,39 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name != "Manifest":
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                MissingSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                MissingSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_missing_files(self):
@@ -124,35 +137,43 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data2"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data2"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if "image.tar" not in f.name:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                DigestException, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                DigestException,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_extra_files(self):
@@ -171,19 +192,23 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         tar_2.addfile(f, tar_1.extractfile(f))
@@ -193,13 +218,17 @@ class test_gpkg_checksum_case(TestCase):
                     tar_2.addfile(data_tarinfo, data2)
                     data2.close()
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                DigestException, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                DigestException,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_incorrect_checksum(self):
@@ -218,19 +247,23 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest":
@@ -243,13 +276,17 @@ class test_gpkg_checksum_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                DigestException, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                DigestException,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_duplicate_files(self):
@@ -268,33 +305,39 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(100)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         tar_2.addfile(f, tar_1.extractfile(f))
                         tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
                 InvalidBinaryPackageFormat,
                 binpkg_2.decompress,
-                os.path.join(tmpdir, "test"),
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_manifest_duplicate_files(self):
@@ -313,19 +356,23 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(100)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest":
@@ -341,13 +388,17 @@ class test_gpkg_checksum_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                DigestException, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                DigestException,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_different_size_file(self):
@@ -366,31 +417,37 @@ class test_gpkg_checksum_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(100)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         tar_2.addfile(f, tar_1.extractfile(f))
                         tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
                 InvalidBinaryPackageFormat,
                 binpkg_2.decompress,
-                os.path.join(tmpdir, "test"),
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

@@ -8,7 +8,7 @@ import signal
 import sys
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util.futures import asyncio
 from _emerge.SpawnProcess import SpawnProcess
 
@@ -36,7 +36,7 @@ class ForkProcess(SpawnProcess):
         try:
             stdin_fd = fd_pipes.get(0)
             if stdin_fd is not None and stdin_fd == portage._get_stdin().fileno():
-                stdin_dup = os.dup(stdin_fd)
+                stdin_dup = os_unicode_fs.dup(stdin_fd)
                 fcntl.fcntl(
                     stdin_dup, fcntl.F_SETFD, fcntl.fcntl(stdin_fd, fcntl.F_GETFD)
                 )
@@ -47,7 +47,7 @@ class ForkProcess(SpawnProcess):
             self._proc.start()
         finally:
             if stdin_dup is not None:
-                os.close(stdin_dup)
+                os_unicode_fs.close(stdin_dup)
 
         self._proc_join_task = asyncio.ensure_future(
             self._proc_join(self._proc, loop=self.scheduler), loop=self.scheduler
@@ -135,7 +135,7 @@ class ForkProcess(SpawnProcess):
         try:
             wakeup_fd = signal.set_wakeup_fd(-1)
             if wakeup_fd > 0:
-                os.close(wakeup_fd)
+                os_unicode_fs.close(wakeup_fd)
         except (ValueError, OSError):
             pass
 
@@ -145,7 +145,7 @@ class ForkProcess(SpawnProcess):
         portage.process._setup_pipes(fd_pipes, close_fds=False)
 
         # Since multiprocessing.Process closes sys.__stdin__ and
-        # makes sys.stdin refer to os.devnull, restore it when
+        # makes sys.stdin refer to os_unicode_fs.devnull, restore it when
         # appropriate.
         if 0 in fd_pipes:
             # It's possible that sys.stdin.fileno() is already 0,
@@ -154,7 +154,7 @@ class ForkProcess(SpawnProcess):
             # perform the dup2 call now, and also copy the file
             # descriptor flags.
             if sys.stdin.fileno() != 0:
-                os.dup2(0, sys.stdin.fileno())
+                os_unicode_fs.dup2(0, sys.stdin.fileno())
                 fcntl.fcntl(
                     sys.stdin.fileno(), fcntl.F_SETFD, fcntl.fcntl(0, fcntl.F_GETFD)
                 )

@@ -4,7 +4,7 @@
 import re
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_BINPKG_COMPRESS = "bzip2"
@@ -29,8 +29,10 @@ def main():
         portage.settings.get("BINPKG_COMPRESS", COMPAT_BINPKG_COMPRESS)
         == COMPAT_BINPKG_COMPRESS
     ):
-        config_path = os.path.join(
-            os.environ["ED"], GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
+        config_path = os_unicode_fs.path.join(
+            os_unicode_fs.environ["ED"],
+            GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep),
+            "make.globals",
         )
         with open(config_path) as f:
             content = f.read()

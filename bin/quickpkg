@@ -20,8 +20,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
-from portage import xpak, gpkg
+from portage import os_unicode_fs, xpak, gpkg
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, use_reduce
@@ -132,10 +131,10 @@ def quickpkg_atom(options, infos, arg, eout):
             )
             if binpkg_format == "xpak":
                 xpdata = xpak.xpak(dblnk.dbdir)
-                binpkg_tmpfile = os.path.join(
+                binpkg_tmpfile = os_unicode_fs.path.join(
                     bintree.pkgdir, cpv + ".tbz2." + str(portage.getpid())
                 )
-                ensure_dirs(os.path.dirname(binpkg_tmpfile))
+                ensure_dirs(os_unicode_fs.path.dirname(binpkg_tmpfile))
                 binpkg_compression = settings.get("BINPKG_COMPRESS", "bzip2")
                 try:
                     compression = _compressors[binpkg_compression]
@@ -181,12 +180,12 @@ def quickpkg_atom(options, infos, arg, eout):
                         include_unmodified_config=include_unmodified_config,
                     )
                     proc.stdin.close()
-                    if proc.wait() != os.EX_OK:
+                    if proc.wait() != os_unicode_fs.EX_OK:
                         eout.eend(1)
                         eout.eerror("Compressor failed for package %s" % cpv)
                         retval |= 1
                         try:
-                            os.unlink(binpkg_tmpfile)
+                            os_unicode_fs.unlink(binpkg_tmpfile)
                         except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
                                 raise
@@ -194,10 +193,10 @@ def quickpkg_atom(options, infos, arg, eout):
                 xpak.tbz2(binpkg_tmpfile).recompose_mem(xpdata)
             elif binpkg_format == "gpkg":
                 metadata = gpkg.gpkg(settings)._generate_metadata_from_dir(dblnk.dbdir)
-                binpkg_tmpfile = os.path.join(
-                    bintree.pkgdir, cpv + ".gpkg.tar." + str(os.getpid())
+                binpkg_tmpfile = os_unicode_fs.path.join(
+                    bintree.pkgdir, cpv + ".gpkg.tar." + str(os_unicode_fs.getpid())
                 )
-                ensure_dirs(os.path.dirname(binpkg_tmpfile))
+                ensure_dirs(os_unicode_fs.path.dirname(binpkg_tmpfile))
                 excluded_config_files = dblnk.quickpkg(
                     binpkg_tmpfile,
                     metadata,
@@ -216,7 +215,7 @@ def quickpkg_atom(options, infos, arg, eout):
         # returned None due to some kind of failure.
         binpkg_path = bintree.getname(pkg_info or cpv)
         try:
-            s = os.stat(binpkg_path)
+            s = os_unicode_fs.stat(binpkg_path)
         except OSError:
             s = None
 
@@ -263,7 +262,7 @@ def quickpkg_set(options, infos, arg, eout):
         )
         infos["missing"].append(arg)
         return 1
-    retval = os.EX_OK
+    retval = os_unicode_fs.EX_OK
     for atom in atoms:
         retval |= quickpkg_atom(options, infos, atom, eout)
     return retval
@@ -310,7 +309,7 @@ def quickpkg_main(options, args, eout):
         ensure_dirs(bintree.pkgdir)
     except portage.exception.PortageException:
         pass
-    if not os.access(bintree.pkgdir, os.W_OK):
+    if not os_unicode_fs.access(bintree.pkgdir, os_unicode_fs.W_OK):
         eout.eerror("No write access to '%s'" % bintree.pkgdir)
         return errno.EACCES
 
@@ -378,7 +377,7 @@ def quickpkg_main(options, args, eout):
         eout.ewarn("The following packages could not be found:")
         eout.ewarn(" ".join(infos["missing"]))
         return 2
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 if __name__ == "__main__":
@@ -419,7 +418,7 @@ if __name__ == "__main__":
     except ValueError:
         parser.error("invalid umask: %s" % options.umask)
     # We need to ensure a sane umask for the packages that will be created.
-    old_umask = os.umask(umask)
+    old_umask = os_unicode_fs.umask(umask)
     eout = portage.output.EOutput()
 
     def sigwinch_handler(signum, frame):
@@ -429,7 +428,7 @@ if __name__ == "__main__":
     try:
         retval = quickpkg_main(options, args, eout)
     finally:
-        os.umask(old_umask)
+        os_unicode_fs.umask(old_umask)
         signal.signal(signal.SIGWINCH, signal.SIG_DFL)
         global_event_loop().close()
     sys.exit(retval)

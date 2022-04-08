@@ -3,7 +3,7 @@
 
 import re
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -45,7 +45,7 @@ sys.stdout.write(" ".join(k for k in sys.modules
         Check what modules are imported by a baseline module import.
         """
 
-        env = os.environ.copy()
+        env = os_unicode_fs.environ.copy()
         pythonpath = env.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
@@ -62,9 +62,9 @@ sys.stdout.write(" ".join(k for k in sys.modules
         env["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 
         scheduler = global_event_loop()
-        master_fd, slave_fd = os.pipe()
-        master_file = os.fdopen(master_fd, "rb", 0)
-        slave_file = os.fdopen(slave_fd, "wb")
+        master_fd, slave_fd = os_unicode_fs.pipe()
+        master_file = os_unicode_fs.fdopen(master_fd, "rb", 0)
+        slave_file = os_unicode_fs.fdopen(slave_fd, "wb")
         producer = SpawnProcess(
             args=self._baseline_import_cmd,
             env=env,
@@ -80,8 +80,8 @@ sys.stdout.write(" ".join(k for k in sys.modules
 
         consumer.start()
         consumer.wait()
-        self.assertEqual(producer.wait(), os.EX_OK)
-        self.assertEqual(consumer.wait(), os.EX_OK)
+        self.assertEqual(producer.wait(), os_unicode_fs.EX_OK)
+        self.assertEqual(consumer.wait(), os_unicode_fs.EX_OK)
 
         output = consumer.getvalue().decode("ascii", "replace").split()
 

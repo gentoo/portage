@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(
     "_emerge.help:emerge_help",
     "_emerge.is_valid_package_atom:insert_category_into_atom",
 )
-from portage import os
+from portage import os_unicode_fs
 from portage.sync import _SUBMODULE_PATH_MAP
 
 
@@ -1132,7 +1132,7 @@ def parse_opts(tmpcmdline, silent=False):
 
 def profile_check(trees, myaction):
     if myaction in ("help", "info", "search", "sync", "version"):
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     for root_trees in trees.values():
         if (
             root_trees["root_config"].settings.profiles
@@ -1153,7 +1153,7 @@ def profile_check(trees, myaction):
             noiselevel=-1,
         )
         return 1
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 def emerge_main(args=None):
@@ -1182,27 +1182,27 @@ def emerge_main(args=None):
     # the value of --config-root).
     myaction, myopts, myfiles = parse_opts(args, silent=True)
     if "--debug" in myopts:
-        os.environ["PORTAGE_DEBUG"] = "1"
+        os_unicode_fs.environ["PORTAGE_DEBUG"] = "1"
     if "--config-root" in myopts:
-        os.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
+        os_unicode_fs.environ["PORTAGE_CONFIGROOT"] = myopts["--config-root"]
     if "--sysroot" in myopts:
-        os.environ["SYSROOT"] = myopts["--sysroot"]
+        os_unicode_fs.environ["SYSROOT"] = myopts["--sysroot"]
     if "--root" in myopts:
-        os.environ["ROOT"] = myopts["--root"]
+        os_unicode_fs.environ["ROOT"] = myopts["--root"]
     if "--prefix" in myopts:
-        os.environ["EPREFIX"] = myopts["--prefix"]
+        os_unicode_fs.environ["EPREFIX"] = myopts["--prefix"]
     if "--accept-properties" in myopts:
-        os.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
+        os_unicode_fs.environ["ACCEPT_PROPERTIES"] = myopts["--accept-properties"]
     if "--accept-restrict" in myopts:
-        os.environ["ACCEPT_RESTRICT"] = myopts["--accept-restrict"]
+        os_unicode_fs.environ["ACCEPT_RESTRICT"] = myopts["--accept-restrict"]
 
     # optimize --help (no need to load config / EMERGE_DEFAULT_OPTS)
     if myaction == "help":
         emerge_help()
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     if myaction == "moo":
         print(COWSAY_MOO.format(platform.system()))
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     if myaction == "sync":
         # need to set this to True now in order for the repository config
         # loading to allow new repos with non-existent directories
@@ -1211,7 +1211,7 @@ def emerge_main(args=None):
     # Verify that /dev/null exists and is a device file as a cheap early
     # filter for obviously broken /dev/s.
     try:
-        if os.stat(os.devnull).st_rdev == 0:
+        if os_unicode_fs.stat(os_unicode_fs.devnull).st_rdev == 0:
             writemsg_level(
                 "Failed to validate a sane '/dev'.\n"
                 "'/dev/null' is not a device file.\n",
@@ -1229,7 +1229,7 @@ def emerge_main(args=None):
 
     # Verify that BASH process substitution works as another cheap early
     # filter. Process substitution uses '/dev/fd'.
-    with open(os.devnull, "r+b") as dev_null:
+    with open(os_unicode_fs.devnull, "r+b") as dev_null:
         fd_pipes = {
             0: dev_null.fileno(),
             1: dev_null.fileno(),
@@ -1249,7 +1249,7 @@ def emerge_main(args=None):
             return 1
 
     # Portage needs to ensure a sane umask for the files it creates.
-    os.umask(0o22)
+    os_unicode_fs.umask(0o22)
     emerge_config = load_emerge_config(action=myaction, args=myfiles, opts=myopts)
 
     # Make locale variables from configuration files (make.defaults, make.conf) affect locale of emerge process.
@@ -1272,7 +1272,7 @@ def emerge_main(args=None):
     ):
         locale_var_value = emerge_config.running_config.settings.get(locale_var_name)
         if locale_var_value is not None:
-            os.environ.setdefault(locale_var_name, locale_var_value)
+            os_unicode_fs.environ.setdefault(locale_var_name, locale_var_value)
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:

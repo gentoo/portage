@@ -4,7 +4,7 @@
 import subprocess
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import PORTAGE_PYM_PATH
 from portage.tests import TestCase
 
@@ -17,7 +17,7 @@ class WhirlpoolTestCase(TestCase):
                 portage._python_interpreter,
                 "-b",
                 "-Wd",
-                os.path.join(PORTAGE_PYM_PATH, "portage/util/whirlpool.py"),
+                os_unicode_fs.path.join(PORTAGE_PYM_PATH, "portage/util/whirlpool.py"),
             ]
         )
-        self.assertEqual(retval, os.EX_OK)
+        self.assertEqual(retval, os_unicode_fs.EX_OK)

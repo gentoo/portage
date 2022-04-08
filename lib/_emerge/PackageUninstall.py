@@ -4,7 +4,7 @@
 import functools
 import logging
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.exception import UnsupportedAPIException
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
@@ -38,16 +38,16 @@ class PackageUninstall(CompositeTask):
 
         vardb = self.pkg.root_config.trees["vartree"].dbapi
         dbdir = vardb.getpath(self.pkg.cpv)
-        if not os.path.exists(dbdir):
+        if not os_unicode_fs.path.exists(dbdir):
             # Apparently the package got uninstalled
             # already, so we can safely return early.
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
         self.settings.setcpv(self.pkg)
         cat, pf = portage.catsplit(self.pkg.cpv)
-        myebuildpath = os.path.join(dbdir, pf + ".ebuild")
+        myebuildpath = os_unicode_fs.path.join(dbdir, pf + ".ebuild")
 
         try:
             portage.doebuild_environment(
@@ -89,7 +89,7 @@ class PackageUninstall(CompositeTask):
             writemsg_level=self._writemsg_level,
         )
 
-        if retval != os.EX_OK:
+        if retval != os_unicode_fs.EX_OK:
             self._async_unlock_builddir(returncode=retval)
             return
 
@@ -114,7 +114,7 @@ class PackageUninstall(CompositeTask):
         self._start_task(unmerge_task, self._unmerge_exit)
 
     def _unmerge_exit(self, unmerge_task):
-        if self._final_exit(unmerge_task) != os.EX_OK:
+        if self._final_exit(unmerge_task) != os_unicode_fs.EX_OK:
             self._emergelog(" !!! unmerge FAILURE: %s" % (self.pkg.cpv,))
         else:
             self._emergelog(" >>> unmerge success: %s" % (self.pkg.cpv,))

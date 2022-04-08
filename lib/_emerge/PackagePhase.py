@@ -8,7 +8,7 @@ from _emerge.EbuildProcess import EbuildProcess
 from _emerge.SpawnProcess import SpawnProcess
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -35,7 +35,7 @@ class PackagePhase(CompositeTask):
         try:
             with io.open(
                 _unicode_encode(
-                    os.path.join(
+                    os_unicode_fs.path.join(
                         self.settings["PORTAGE_BUILDDIR"],
                         "build-info",
                         "PKG_INSTALL_MASK",
@@ -51,7 +51,7 @@ class PackagePhase(CompositeTask):
         except EnvironmentError:
             self._pkg_install_mask = None
         if self._pkg_install_mask:
-            self._proot = os.path.join(self.settings["T"], "packaging")
+            self._proot = os_unicode_fs.path.join(self.settings["T"], "packaging")
             self._start_task(
                 SpawnProcess(
                     args=[
@@ -76,15 +76,16 @@ class PackagePhase(CompositeTask):
             self._start_package_phase()
 
     def _copy_proot_exit(self, proc):
-        if self._default_exit(proc) != os.EX_OK:
+        if self._default_exit(proc) != os_unicode_fs.EX_OK:
             self.wait()
         else:
             self._start_task(
                 AsyncFunction(
                     target=install_mask_dir,
                     args=(
-                        os.path.join(
-                            self._proot, self.settings["EPREFIX"].lstrip(os.sep)
+                        os_unicode_fs.path.join(
+                            self._proot,
+                            self.settings["EPREFIX"].lstrip(os_unicode_fs.sep),
                         ),
                         self._pkg_install_mask,
                     ),
@@ -93,7 +94,7 @@ class PackagePhase(CompositeTask):
             )
 
     def _pkg_install_mask_exit(self, proc):
-        if self._default_exit(proc) != os.EX_OK:
+        if self._default_exit(proc) != os_unicode_fs.EX_OK:
             self.wait()
         else:
             self._start_package_phase()
@@ -120,7 +121,7 @@ class PackagePhase(CompositeTask):
             self._start_task(ebuild_process, self._default_final_exit)
 
     def _pkg_install_mask_cleanup(self, proc):
-        if self._default_exit(proc) != os.EX_OK:
+        if self._default_exit(proc) != os_unicode_fs.EX_OK:
             self.wait()
         else:
             self._start_task(

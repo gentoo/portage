@@ -4,7 +4,7 @@
 import glob
 import time
 
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import PortageKeyError
 from portage.versions import best, catsplit, vercmp
 from portage.dep import Atom, use_reduce
@@ -89,7 +89,9 @@ class OwnerSet(PackageSet):
         for p in paths:
             expanded_paths.extend(
                 expanded_p[len(eroot) - 1 :]
-                for expanded_p in glob.iglob(os.path.join(eroot, p.lstrip(os.sep)))
+                for expanded_p in glob.iglob(
+                    os_unicode_fs.path.join(eroot, p.lstrip(os_unicode_fs.sep))
+                )
             )
         paths = expanded_paths
 
@@ -97,7 +99,9 @@ class OwnerSet(PackageSet):
         for p in exclude_paths or ():
             expanded_exclude_paths.extend(
                 expanded_exc_p[len(eroot) - 1 :]
-                for expanded_exc_p in glob.iglob(os.path.join(eroot, p.lstrip(os.sep)))
+                for expanded_exc_p in glob.iglob(
+                    os_unicode_fs.path.join(eroot, p.lstrip(os_unicode_fs.sep))
+                )
             )
         exclude_paths = expanded_exclude_paths
 
@@ -542,7 +546,7 @@ class DateSet(EverythingSet):
         elif setformat == "filestamp":
             filestamp = options.get("filestamp")
             try:
-                date = int(os.stat(filestamp).st_mtime)
+                date = int(os_unicode_fs.stat(filestamp).st_mtime)
             except (OSError, ValueError):
                 raise SetConfigError(
                     _("cannot determine 'filestamp' of '%s'") % filestamp

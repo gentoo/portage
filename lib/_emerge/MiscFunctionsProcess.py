@@ -5,7 +5,7 @@ from _emerge.AbstractEbuildProcess import AbstractEbuildProcess
 import portage
 
 portage.proxy.lazyimport.lazyimport(globals(), "portage.package.ebuild.doebuild:spawn")
-from portage import os
+from portage import os_unicode_fs
 
 
 class MiscFunctionsProcess(AbstractEbuildProcess):
@@ -18,8 +18,8 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
     def _start(self):
         settings = self.settings
         portage_bin_path = settings["PORTAGE_BIN_PATH"]
-        misc_sh_binary = os.path.join(
-            portage_bin_path, os.path.basename(portage.const.MISC_SH_BINARY)
+        misc_sh_binary = os_unicode_fs.path.join(
+            portage_bin_path, os_unicode_fs.path.basename(portage.const.MISC_SH_BINARY)
         )
 
         self.args = [portage._shell_quote(misc_sh_binary)] + self.commands
@@ -52,7 +52,7 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
         # Use a separate sandbox log file to avoid clobbering the real one.
         sandbox_log = self.settings.pop("SANDBOX_LOG", None)
         if sandbox_log is not None:
-            self.settings["SANDBOX_LOG"] = os.path.join(
+            self.settings["SANDBOX_LOG"] = os_unicode_fs.path.join(
                 self.settings["T"], "sandbox-misc.log"
             )
 

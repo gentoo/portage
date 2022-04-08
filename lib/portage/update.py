@@ -8,11 +8,8 @@ import stat
 import sys
 import warnings
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
 import portage
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -155,8 +152,10 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
     )
 
     mydata = {}
-    for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
-        file_path = os.path.join(dbdir, myfile)
+    for myfile in [
+        f for f in os_unicode_fs.listdir(dbdir) if f not in ignored_dbentries
+    ]:
+        file_path = os_unicode_fs.path.join(dbdir, myfile)
         with io.open(
             _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
             mode="r",
@@ -166,7 +165,7 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
             mydata[myfile] = f.read()
     updated_items = update_dbentries(update_iter, mydata, eapi=eapi, parent=parent)
     for myfile, mycontent in updated_items.items():
-        file_path = os.path.join(dbdir, myfile)
+        file_path = os_unicode_fs.path.join(dbdir, myfile)
         write_atomic(file_path, mycontent, encoding=_encodings["repo.content"])
     return len(updated_items) > 0
 
@@ -183,7 +182,7 @@ def grab_updates(updpath, prev_mtimes=None):
     sequence of files.
     """
     try:
-        mylist = os.listdir(updpath)
+        mylist = os_unicode_fs.listdir(updpath)
     except OSError as oe:
         if oe.errno == errno.ENOENT:
             raise DirectoryNotFound(updpath)
@@ -195,8 +194,8 @@ def grab_updates(updpath, prev_mtimes=None):
     for myfile in mylist:
         if myfile.startswith("."):
             continue
-        file_path = os.path.join(updpath, myfile)
-        mystat = os.stat(file_path)
+        file_path = os_unicode_fs.path.join(updpath, myfile)
+        mystat = os_unicode_fs.stat(file_path)
         if not stat.S_ISREG(mystat.st_mode):
             continue
         if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
@@ -328,7 +327,7 @@ def update_config_files(
         "sets",
     ]
     myxfiles += [
-        os.path.join("profile", x)
+        os_unicode_fs.path.join("profile", x)
         for x in (
             "packages",
             "package.accept_keywords",
@@ -342,12 +341,12 @@ def update_config_files(
             "package.use.stable.mask",
         )
     ]
-    abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
+    abs_user_config = os_unicode_fs.path.join(config_root, USER_CONFIG_PATH)
     recursivefiles = []
     for x in myxfiles:
-        config_file = os.path.join(abs_user_config, x)
-        if os.path.isdir(config_file):
-            for parent, dirs, files in os.walk(config_file):
+        config_file = os_unicode_fs.path.join(abs_user_config, x)
+        if os_unicode_fs.path.isdir(config_file):
+            for parent, dirs, files in os_unicode_fs.walk(config_file):
                 try:
                     parent = _unicode_decode(
                         parent, encoding=_encodings["fs"], errors="strict"
@@ -374,7 +373,7 @@ def update_config_files(
                     if y.startswith("."):
                         continue
                     recursivefiles.append(
-                        os.path.join(parent, y)[len(abs_user_config) + 1 :]
+                        os_unicode_fs.path.join(parent, y)[len(abs_user_config) + 1 :]
                     )
         else:
             recursivefiles.append(x)
@@ -384,7 +383,7 @@ def update_config_files(
         try:
             f = io.open(
                 _unicode_encode(
-                    os.path.join(abs_user_config, x),
+                    os_unicode_fs.path.join(abs_user_config, x),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -446,7 +445,7 @@ def update_config_files(
         config_root, protect, protect_mask, case_insensitive=case_insensitive
     )
     for x in update_files:
-        updating_file = os.path.join(abs_user_config, x)
+        updating_file = os_unicode_fs.path.join(abs_user_config, x)
         if protect_obj.isprotected(updating_file):
             updating_file = new_protect_filename(updating_file)
         try:

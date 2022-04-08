@@ -6,10 +6,7 @@ import errno
 import io
 import time
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.data import portage_gid, portage_uid
 from portage.localization import _
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
@@ -20,11 +17,15 @@ def process(mysettings, key, logentries, fulltext):
     if mysettings.get("PORTAGE_LOGDIR"):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
     else:
-        logdir = os.path.join(
-            os.sep, mysettings["EPREFIX"].lstrip(os.sep), "var", "log", "portage"
+        logdir = os_unicode_fs.path.join(
+            os_unicode_fs.sep,
+            mysettings["EPREFIX"].lstrip(os_unicode_fs.sep),
+            "var",
+            "log",
+            "portage",
         )
 
-    if not os.path.isdir(logdir):
+    if not os_unicode_fs.path.isdir(logdir):
         # Only initialize group/mode if the directory doesn't
         # exist, so that we don't override permissions if they
         # were previously set by the administrator.
@@ -35,7 +36,7 @@ def process(mysettings, key, logentries, fulltext):
             logdir_uid = portage_uid
         ensure_dirs(logdir, uid=logdir_uid, gid=portage_gid, mode=0o2770)
 
-    elogdir = os.path.join(logdir, "elog")
+    elogdir = os_unicode_fs.path.join(logdir, "elog")
     _ensure_log_subdirs(logdir, elogdir)
 
     # TODO: Locking
@@ -59,7 +60,7 @@ def process(mysettings, key, logentries, fulltext):
             raise
 
     # Copy group permission bits from parent directory.
-    elogdir_st = os.stat(elogdir)
+    elogdir_st = os_unicode_fs.stat(elogdir)
     elogdir_gid = elogdir_st.st_gid
     elogdir_grp_mode = 0o060 & elogdir_st.st_mode
 

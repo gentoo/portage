@@ -6,10 +6,7 @@ from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
@@ -523,7 +520,7 @@ def file_get(
 
     if "FILE" not in variables:
         if not filename:
-            filename = os.path.basename(variables["URI"])
+            filename = os_unicode_fs.path.basename(variables["URI"])
         variables["FILE"] = filename
 
     from portage.util import varexpand
@@ -537,8 +534,8 @@ def file_get(
     }
     sys.__stdout__.flush()
     sys.__stderr__.flush()
-    retval = spawn(myfetch, env=os.environ.copy(), fd_pipes=fd_pipes)
-    if retval != os.EX_OK:
+    retval = spawn(myfetch, env=os_unicode_fs.environ.copy(), fd_pipes=fd_pipes)
+    if retval != os_unicode_fs.EX_OK:
         sys.stderr.write(_("Fetcher exited with a failure condition.\n"))
         return 0
     return 1
@@ -561,7 +558,7 @@ def file_get_lib(baseurl, dest, conn=None):
 
     conn, protocol, address, params, headers = create_conn(baseurl, conn)
 
-    sys.stderr.write(f"Fetching '{os.path.basename(address)}'\n")
+    sys.stderr.write(f"Fetching '{os_unicode_fs.path.basename(address)}'\n")
     if protocol in ["http", "https"]:
         data, rc, _msg = make_http_request(conn, address, params, headers, dest=dest)
     elif protocol in ["ftp"]:
@@ -608,7 +605,7 @@ def dir_get_metadata(
         keepconnection = 0
 
     cache_path = "/var/cache/edb"
-    metadatafilename = os.path.join(cache_path, "remote_metadata.pickle")
+    metadatafilename = os_unicode_fs.path.join(cache_path, "remote_metadata.pickle")
 
     if not makepickle:
         makepickle = "/var/cache/edb/metadata.idx.most_recent"
@@ -654,7 +651,7 @@ def dir_get_metadata(
     if "data" not in metadata[baseurl]:
         metadata[baseurl]["data"] = {}
 
-    if not os.access(cache_path, os.W_OK):
+    if not os_unicode_fs.access(cache_path, os_unicode_fs.W_OK):
         sys.stderr.write(_("!!! Unable to write binary metadata to disk!\n"))
         sys.stderr.write(_(f"!!! Permission denied: '{cache_path}'\n"))
         return metadata[baseurl]["data"]
@@ -775,12 +772,12 @@ def dir_get_metadata(
             self.out.flush()
 
     cache_stats = CacheStats(out)
-    have_tty = os.environ.get("TERM") != "dumb" and out.isatty()
+    have_tty = os_unicode_fs.environ.get("TERM") != "dumb" and out.isatty()
     if have_tty:
         cache_stats.display()
     binpkg_filenames = set()
     for x in tbz2list:
-        x = os.path.basename(x)
+        x = os_unicode_fs.path.basename(x)
         binpkg_filenames.add(x)
         if x not in metadata[baseurl]["data"]:
             cache_stats.misses += 1

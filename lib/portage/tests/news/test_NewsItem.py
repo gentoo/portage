@@ -2,7 +2,7 @@
 # Copyright 2007-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.news import NewsItem
 from portage.dbapi.virtual import testdbapi
@@ -67,7 +67,7 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
                 msg="Expected %s to be relevant, but it was not!" % tmpItem,
             )
         finally:
-            os.unlink(item.path)
+            os_unicode_fs.unlink(item.path)
 
     def testDisplayIfInstalled(self):
         tmpItem = self.fakeItem[:].replace(
@@ -81,7 +81,7 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
                 msg="Expected %s to be relevant, but it was not!" % tmpItem,
             )
         finally:
-            os.unlink(item.path)
+            os_unicode_fs.unlink(item.path)
 
     def testDisplayIfKeyword(self):
         tmpItem = self.fakeItem[:].replace(
@@ -95,12 +95,12 @@ The revdep-rebuild tool is provided by app-portage/gentoolkit.
                 msg="Expected %s to be relevant, but it was not!" % tmpItem,
             )
         finally:
-            os.unlink(item.path)
+            os_unicode_fs.unlink(item.path)
 
     def _processItem(self, item):
         filename = None
         fd, filename = mkstemp()
-        f = os.fdopen(fd, "w")
+        f = os_unicode_fs.fdopen(fd, "w")
         f.write(item)
         f.close()
         try:

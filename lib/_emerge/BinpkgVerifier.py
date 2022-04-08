@@ -7,7 +7,7 @@ import sys
 
 from _emerge.CompositeTask import CompositeTask
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.checksum import (
     _apply_hash_filter,
     _filter_unaccelarated_hashes,
@@ -26,7 +26,7 @@ class BinpkgVerifier(CompositeTask):
         bintree = self.pkg.root_config.trees["bintree"]
         digests = bintree._get_digests(self.pkg)
         if "size" not in digests:
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -38,7 +38,7 @@ class BinpkgVerifier(CompositeTask):
         self._digests = digests
 
         try:
-            size = os.stat(self._pkg_path).st_size
+            size = os_unicode_fs.stat(self._pkg_path).st_size
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
                 raise
@@ -70,7 +70,7 @@ class BinpkgVerifier(CompositeTask):
 
     def _digester_exit(self, digester):
 
-        if self._default_exit(digester) != os.EX_OK:
+        if self._default_exit(digester) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
@@ -86,7 +86,7 @@ class BinpkgVerifier(CompositeTask):
         if self.pkg.root_config.settings.get("PORTAGE_QUIET") != "1":
             self._display_success()
 
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self.wait()
 
     def _display_success(self):
@@ -105,7 +105,8 @@ class BinpkgVerifier(CompositeTask):
                 path = path[: -len(".partial")]
             eout = EOutput()
             eout.ebegin(
-                "%s %s ;-)" % (os.path.basename(path), " ".join(sorted(self._digests)))
+                "%s %s ;-)"
+                % (os_unicode_fs.path.basename(path), " ".join(sorted(self._digests)))
             )
             eout.eend(0)
 
@@ -120,7 +121,7 @@ class BinpkgVerifier(CompositeTask):
 
     def _digest_exception(self, name, value, expected):
 
-        head, tail = os.path.split(self._pkg_path)
+        head, tail = os_unicode_fs.path.split(self._pkg_path)
         temp_filename = _checksum_failure_temp_file(
             self.pkg.root_config.settings, head, tail
         )

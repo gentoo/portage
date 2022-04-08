@@ -20,10 +20,7 @@ import io
 import logging
 import os as _os
 import re
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.const import NEWS_LIB_PATH
 from portage.util import (
     apply_secpass_permissions,
@@ -80,27 +77,29 @@ class NewsManager:
         portdir = portdb.repositories.mainRepoLocation()
         profiles_base = None
         if portdir is not None:
-            profiles_base = os.path.join(portdir, "profiles", os.path.sep)
+            profiles_base = os_unicode_fs.path.join(
+                portdir, "profiles", os_unicode_fs.path.sep
+            )
         profile_path = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
-                os.path.realpath(portdb.settings.profile_path)
+                os_unicode_fs.path.realpath(portdb.settings.profile_path)
             )
             if profile_path.startswith(profiles_base):
                 profile_path = profile_path[len(profiles_base) :]
         self._profile_path = profile_path
 
     def _unread_filename(self, repoid):
-        return os.path.join(self.unread_path, f"news-{repoid}.unread")
+        return os_unicode_fs.path.join(self.unread_path, f"news-{repoid}.unread")
 
     def _skip_filename(self, repoid):
-        return os.path.join(self.unread_path, f"news-{repoid}.skip")
+        return os_unicode_fs.path.join(self.unread_path, f"news-{repoid}.skip")
 
     def _news_dir(self, repoid):
         repo_path = self.portdb.getRepositoryPath(repoid)
         if repo_path is None:
             raise AssertionError(_(f"Invalid repoID: {repoid}"))
-        return os.path.join(repo_path, self.news_path)
+        return os_unicode_fs.path.join(repo_path, self.news_path)
 
     def updateItems(self, repoid):
         """
@@ -122,7 +121,7 @@ class NewsManager:
         except (OperationNotPermitted, PermissionDenied):
             return
 
-        if not os.access(self.unread_path, os.W_OK):
+        if not os_unicode_fs.access(self.unread_path, os_unicode_fs.W_OK):
             return
 
         news_dir = self._news_dir(repoid)
@@ -163,10 +162,10 @@ class NewsManager:
 
                 if itemid in skip:
                     continue
-                filename = os.path.join(
+                filename = os_unicode_fs.path.join(
                     news_dir, itemid, f"{itemid}.{self.language_id}.txt"
                 )
-                if not os.path.isfile(filename):
+                if not os_unicode_fs.path.isfile(filename):
                     continue
                 item = NewsItem(filename, itemid)
                 if not item.isValid():
@@ -447,8 +446,10 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
     @return: dictionary mapping repos to integer counts of unread news items
     """
 
-    NEWS_PATH = os.path.join("metadata", "news")
-    UNREAD_PATH = os.path.join(vardb.settings["EROOT"], NEWS_LIB_PATH, "news")
+    NEWS_PATH = os_unicode_fs.path.join("metadata", "news")
+    UNREAD_PATH = os_unicode_fs.path.join(
+        vardb.settings["EROOT"], NEWS_LIB_PATH, "news"
+    )
     news_counts = OrderedDict()
     if repos is None:
         repos = portdb.getRepositories()

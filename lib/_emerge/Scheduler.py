@@ -14,9 +14,7 @@ import weakref
 import zlib
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, red
@@ -239,7 +237,7 @@ class Scheduler(PollScheduler):
         for root in self.trees:
             self._config_pool[root] = []
 
-        self._fetch_log = os.path.join(
+        self._fetch_log = os_unicode_fs.path.join(
             _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
         )
         fetch_iface = self._fetch_iface_class(
@@ -342,7 +340,7 @@ class Scheduler(PollScheduler):
     def _handle_self_update(self):
 
         if self._opts_no_self_update.intersection(self.myopts):
-            return os.EX_OK
+            return os_unicode_fs.EX_OK
 
         for x in self._mergelist:
             if not isinstance(x, Package):
@@ -354,12 +352,12 @@ class Scheduler(PollScheduler):
             if not portage.dep.match_from_list(portage.const.PORTAGE_PACKAGE_ATOM, [x]):
                 continue
             rval = _check_temp_dir(self.settings)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 return rval
             _prepare_self_update(self.settings)
             break
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _terminate_tasks(self):
         self._status_display.quiet = True
@@ -709,7 +707,7 @@ class Scheduler(PollScheduler):
                     break
 
         if not digest:
-            return os.EX_OK
+            return os_unicode_fs.EX_OK
 
         for x in self._mergelist:
             if (
@@ -729,7 +727,7 @@ class Scheduler(PollScheduler):
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
                 raise AssertionError("ebuild not found for '%s'" % x.cpv)
-            pkgsettings["O"] = os.path.dirname(ebuild_path)
+            pkgsettings["O"] = os_unicode_fs.path.dirname(ebuild_path)
             if not digestgen(mysettings=pkgsettings, myportdb=portdb):
                 writemsg_level(
                     "!!! Unable to generate manifest for '%s'.\n" % x.cpv,
@@ -738,7 +736,7 @@ class Scheduler(PollScheduler):
                 )
                 return FAILURE
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _check_manifests(self):
         # Verify all the manifests now so that the user is notified of failure
@@ -748,7 +746,7 @@ class Scheduler(PollScheduler):
             or "--fetchonly" in self.myopts
             or "--fetch-all-uri" in self.myopts
         ):
-            return os.EX_OK
+            return os_unicode_fs.EX_OK
 
         shown_verifying_msg = False
         quiet_settings = {}
@@ -778,13 +776,13 @@ class Scheduler(PollScheduler):
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
                 raise AssertionError("ebuild not found for '%s'" % x.cpv)
-            quiet_config["O"] = os.path.dirname(ebuild_path)
+            quiet_config["O"] = os_unicode_fs.path.dirname(ebuild_path)
             if not digestcheck([], quiet_config, strict=True):
                 failures |= 1
 
         if failures:
             return FAILURE
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _add_prefetchers(self):
 
@@ -889,19 +887,19 @@ class Scheduler(PollScheduler):
             # setcpv/package.env allows for per-package PORTAGE_TMPDIR so we
             # have to validate it for each package
             rval = _check_temp_dir(settings)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 failures += 1
                 self._record_pkg_failure(x, settings, FAILURE)
                 self._deallocate_config(settings)
                 continue
 
-            build_dir_path = os.path.join(
-                os.path.realpath(settings["PORTAGE_TMPDIR"]),
+            build_dir_path = os_unicode_fs.path.join(
+                os_unicode_fs.path.realpath(settings["PORTAGE_TMPDIR"]),
                 "portage",
                 x.category,
                 x.pf,
             )
-            existing_builddir = os.path.isdir(build_dir_path)
+            existing_builddir = os_unicode_fs.path.isdir(build_dir_path)
             settings["PORTAGE_BUILDDIR"] = build_dir_path
             build_dir = EbuildBuildDir(scheduler=sched_iface, settings=settings)
             await build_dir.async_lock()
@@ -914,8 +912,8 @@ class Scheduler(PollScheduler):
                 if existing_builddir:
                     if x.built:
                         tree = "bintree"
-                        infloc = os.path.join(build_dir_path, "build-info")
-                        ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+                        infloc = os_unicode_fs.path.join(build_dir_path, "build-info")
+                        ebuild_path = os_unicode_fs.path.join(infloc, x.pf + ".ebuild")
                     else:
                         tree = "porttree"
                         portdb = root_config.trees["porttree"].dbapi
@@ -955,7 +953,7 @@ class Scheduler(PollScheduler):
                             # handles fetch, verification, and the
                             # bintree.inject call which moves the file.
                             fetched = fetcher.pkg_path
-                        if await fetcher.async_wait() != os.EX_OK:
+                        if await fetcher.async_wait() != os_unicode_fs.EX_OK:
                             failures += 1
                             self._record_pkg_failure(x, settings, fetcher.returncode)
                             continue
@@ -969,7 +967,7 @@ class Scheduler(PollScheduler):
                     )
                     current_task = verifier
                     verifier.start()
-                    if await verifier.async_wait() != os.EX_OK:
+                    if await verifier.async_wait() != os_unicode_fs.EX_OK:
                         failures += 1
                         self._record_pkg_failure(x, settings, verifier.returncode)
                         continue
@@ -977,10 +975,10 @@ class Scheduler(PollScheduler):
                     if fetched:
                         bintree.inject(x.cpv, filename=fetched)
 
-                    infloc = os.path.join(build_dir_path, "build-info")
+                    infloc = os_unicode_fs.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
                     await bintree.dbapi.unpack_metadata(settings, infloc, loop=loop)
-                    ebuild_path = os.path.join(infloc, x.pf + ".ebuild")
+                    ebuild_path = os_unicode_fs.path.join(infloc, x.pf + ".ebuild")
                     settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
                     settings.configdict["pkg"]["MERGE_TYPE"] = "binary"
 
@@ -1019,7 +1017,7 @@ class Scheduler(PollScheduler):
                 current_task = pretend_phase
                 pretend_phase.start()
                 ret = await pretend_phase.async_wait()
-                if ret != os.EX_OK:
+                if ret != os_unicode_fs.EX_OK:
                     failures += 1
                     self._record_pkg_failure(x, settings, ret)
                 portage.elog.elog_process(x.cpv, settings)
@@ -1028,7 +1026,7 @@ class Scheduler(PollScheduler):
                 if current_task is not None:
                     if current_task.isAlive():
                         current_task.cancel()
-                    if current_task.returncode == os.EX_OK:
+                    if current_task.returncode == os_unicode_fs.EX_OK:
                         clean_phase = EbuildPhase(
                             background=False,
                             phase="clean",
@@ -1043,7 +1041,7 @@ class Scheduler(PollScheduler):
 
         if failures:
             return FAILURE
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _record_pkg_failure(self, pkg, settings, ret):
         """Record a package failure. This eliminates the package
@@ -1077,7 +1075,7 @@ class Scheduler(PollScheduler):
             return FAILURE
 
         rval = self._handle_self_update()
-        if rval != os.EX_OK:
+        if rval != os_unicode_fs.EX_OK:
             return rval
 
         for root in self.trees:
@@ -1087,7 +1085,7 @@ class Scheduler(PollScheduler):
             # since it might spawn pkg_nofetch which requires PORTAGE_BUILDDIR
             # for ensuring sane $PWD (bug #239560) and storing elog messages.
             tmpdir = root_config.settings.get("PORTAGE_TMPDIR", "")
-            if not tmpdir or not os.path.isdir(tmpdir):
+            if not tmpdir or not os_unicode_fs.path.isdir(tmpdir):
                 msg = (
                     "The directory specified in your PORTAGE_TMPDIR variable does not exist:",
                     tmpdir,
@@ -1112,13 +1110,13 @@ class Scheduler(PollScheduler):
         failed_pkgs = self._failed_pkgs
 
         rval = self._generate_digests()
-        if rval != os.EX_OK:
+        if rval != os_unicode_fs.EX_OK:
             return rval
 
         # TODO: Immediately recalculate deps here if --keep-going
         #       is enabled and corrupt manifests are detected.
         rval = self._check_manifests()
-        if rval != os.EX_OK and not keep_going:
+        if rval != os_unicode_fs.EX_OK and not keep_going:
             return rval
 
         while True:
@@ -1162,7 +1160,7 @@ class Scheduler(PollScheduler):
             if received_signal:
                 sys.exit(received_signal[0])
 
-            if rval == os.EX_OK or fetchonly or not keep_going:
+            if rval == os_unicode_fs.EX_OK or fetchonly or not keep_going:
                 break
             if "resume" not in mtimedb:
                 break
@@ -1320,7 +1318,7 @@ class Scheduler(PollScheduler):
 
         if self._failed_pkgs_all:
             return FAILURE
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _elog_listener(self, mysettings, key, logentries, fulltext):
         errors = portage.elog.filter_loglevels(logentries, ["ERROR"])
@@ -1336,7 +1334,7 @@ class Scheduler(PollScheduler):
                 continue
 
             try:
-                log_size = os.stat(log_path).st_size
+                log_size = os_unicode_fs.stat(log_path).st_size
             except OSError:
                 continue
 
@@ -1409,14 +1407,14 @@ class Scheduler(PollScheduler):
         self._running_tasks.pop(id(merge), None)
         self._do_merge_exit(merge)
         self._deallocate_config(merge.merge.settings)
-        if merge.returncode == os.EX_OK and not merge.merge.pkg.installed:
+        if merge.returncode == os_unicode_fs.EX_OK and not merge.merge.pkg.installed:
             self._status_display.curval += 1
         self._status_display.merges = len(self._task_queues.merge)
         self._schedule()
 
     def _do_merge_exit(self, merge):
         pkg = merge.merge.pkg
-        if merge.returncode != os.EX_OK:
+        if merge.returncode != os_unicode_fs.EX_OK:
             settings = merge.merge.settings
             build_dir = settings.get("PORTAGE_BUILDDIR")
             build_log = settings.get("PORTAGE_LOG_FILE")
@@ -1477,12 +1475,12 @@ class Scheduler(PollScheduler):
 
     def _build_exit(self, build):
         self._running_tasks.pop(id(build), None)
-        if build.returncode == os.EX_OK and self._terminated_tasks:
+        if build.returncode == os_unicode_fs.EX_OK and self._terminated_tasks:
             # We've been interrupted, so we won't
             # add this to the merge queue.
             self.curval += 1
             self._deallocate_config(build.settings)
-        elif build.returncode == os.EX_OK:
+        elif build.returncode == os_unicode_fs.EX_OK:
             self.curval += 1
             merge = PackageMerge(merge=build, scheduler=self._sched_iface)
             self._running_tasks[id(merge)] = merge
@@ -1565,7 +1563,7 @@ class Scheduler(PollScheduler):
 
         if self._status_display._isatty and not self._status_display.quiet:
             display_callback()
-        rval = os.EX_OK
+        rval = os_unicode_fs.EX_OK
 
         try:
             self._add_prefetchers()
@@ -1588,7 +1586,7 @@ class Scheduler(PollScheduler):
                 self._termination_check()
                 if self._terminated_tasks:
                     rval = 128 + signal.SIGINT
-                if rval != os.EX_OK:
+                if rval != os_unicode_fs.EX_OK:
                     return rval
 
             self._add_packages()

@@ -7,9 +7,7 @@ import re
 import stat
 import time
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 
 
 # [D]/Name/Version/Date/Flags/Tags
@@ -44,13 +42,13 @@ def isadded(entries, path):
         if "cvs" in mytarget["status"]:
             return 1
 
-    basedir = os.path.dirname(path)
-    filename = os.path.basename(path)
+    basedir = os_unicode_fs.path.dirname(path)
+    filename = os_unicode_fs.path.basename(path)
 
     try:
         myfile = io.open(
             _unicode_encode(
-                os.path.join(basedir, "CVS", "Entries"),
+                os_unicode_fs.path.join(basedir, "CVS", "Entries"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -232,7 +230,7 @@ def getentries(mydir, recursive=0):
     myfn = mydir + "/CVS/Entries"
     # entries=[dirs, files]
     entries = {"dirs": {}, "files": {}}
-    if not os.path.exists(mydir):
+    if not os_unicode_fs.path.exists(mydir):
         return entries
     try:
         myfile = io.open(
@@ -262,7 +260,7 @@ def getentries(mydir, recursive=0):
         if mysplit[0] == "D":
             entries["dirs"][mysplit[1]] = {"dirs": {}, "files": {}, "status": []}
             entries["dirs"][mysplit[1]]["status"] = ["cvs"]
-            if os.path.isdir(mydir + "/" + mysplit[1]):
+            if os_unicode_fs.path.isdir(mydir + "/" + mysplit[1]):
                 entries["dirs"][mysplit[1]]["status"] += ["exists"]
                 entries["dirs"][mysplit[1]]["flags"] = mysplit[2:]
                 if recursive:
@@ -280,10 +278,10 @@ def getentries(mydir, recursive=0):
             if entries["files"][mysplit[1]]["revision"][0] == "-":
                 entries["files"][mysplit[1]]["status"] += ["removed"]
 
-    for file in os.listdir(mydir):
+    for file in os_unicode_fs.listdir(mydir):
         if file == "CVS":
             continue
-        if os.path.isdir(mydir + "/" + file):
+        if os_unicode_fs.path.isdir(mydir + "/" + file):
             if file not in entries["dirs"]:
                 if ignore_list.match(file) is not None:
                     continue
@@ -298,7 +296,7 @@ def getentries(mydir, recursive=0):
                     entries["dirs"][file]["status"] += ["exists"]
             else:
                 entries["dirs"][file]["status"] = ["exists"]
-        elif os.path.isfile(mydir + "/" + file):
+        elif os_unicode_fs.path.isfile(mydir + "/" + file):
             if file not in entries["files"]:
                 if ignore_list.match(file) is not None:
                     continue
@@ -314,7 +312,7 @@ def getentries(mydir, recursive=0):
             else:
                 entries["files"][file]["status"] = ["exists"]
             try:
-                mystat = os.stat(mydir + "/" + file)
+                mystat = os_unicode_fs.stat(mydir + "/" + file)
                 mytime = time.asctime(time.gmtime(mystat[stat.ST_MTIME]))
                 if "status" not in entries["files"][file]:
                     entries["files"][file]["status"] = []

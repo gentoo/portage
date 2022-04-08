@@ -54,7 +54,7 @@ del pym_paths
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 from portage.eapi import eapi_has_repo_deps
 from portage.util import writemsg, writemsg_stdout
 
@@ -73,8 +73,8 @@ portage.proxy.lazyimport.lazyimport(
 
 
 def eval_atom_use(atom):
-    if "USE" in os.environ:
-        use = frozenset(os.environ["USE"].split())
+    if "USE" in os_unicode_fs.environ:
+        use = frozenset(os_unicode_fs.environ["USE"].split())
         atom = atom.evaluate_conditionals(use)
     return atom
 
@@ -310,7 +310,7 @@ def owners(argv):
 
     cwd = None
     try:
-        cwd = os.getcwd()
+        cwd = os_unicode_fs.getcwd()
     except OSError:
         pass
 
@@ -319,13 +319,13 @@ def owners(argv):
     orphan_basenames = set()
     for f in argv[1:]:
         f = portage.normalize_path(f)
-        is_basename = os.sep not in f
-        if not is_basename and f[:1] != os.sep:
+        is_basename = os_unicode_fs.sep not in f
+        if not is_basename and f[:1] != os_unicode_fs.sep:
             if cwd is None:
                 sys.stderr.write("ERROR: cwd does not exist!\n")
                 sys.stderr.flush()
                 return 2
-            f = os.path.join(cwd, f)
+            f = os_unicode_fs.path.join(cwd, f)
             f = portage.normalize_path(f)
         if not is_basename and not f.startswith(eroot):
             sys.stderr.write("ERROR: file paths must begin with <eroot>!\n")
@@ -345,11 +345,11 @@ def owners(argv):
         cpv = pkg.mycpv
         msg.append("%s\n" % cpv)
         for f in sorted(owned_files):
-            f_abs = os.path.join(root, f.lstrip(os.path.sep))
+            f_abs = os_unicode_fs.path.join(root, f.lstrip(os_unicode_fs.path.sep))
             msg.append("\t%s\n" % (f_abs,))
             orphan_abs_paths.discard(f_abs)
             if orphan_basenames:
-                orphan_basenames.discard(os.path.basename(f_abs))
+                orphan_basenames.discard(os_unicode_fs.path.basename(f_abs))
 
     writemsg_stdout("".join(msg), noiselevel=-1)
 
@@ -394,17 +394,17 @@ def is_protected(argv):
     err = sys.stderr
     cwd = None
     try:
-        cwd = os.getcwd()
+        cwd = os_unicode_fs.getcwd()
     except OSError:
         pass
 
     f = portage.normalize_path(filename)
-    if not f.startswith(os.path.sep):
+    if not f.startswith(os_unicode_fs.path.sep):
         if cwd is None:
             err.write("ERROR: cwd does not exist!\n")
             err.flush()
             return 2
-        f = os.path.join(cwd, f)
+        f = os_unicode_fs.path.join(cwd, f)
         f = portage.normalize_path(f)
 
     if not f.startswith(root):
@@ -449,7 +449,7 @@ def filter_protected(argv):
     err = sys.stderr
     cwd = None
     try:
-        cwd = os.getcwd()
+        cwd = os_unicode_fs.getcwd()
     except OSError:
         pass
 
@@ -470,13 +470,13 @@ def filter_protected(argv):
     for line in sys.stdin:
         filename = line.rstrip("\n")
         f = portage.normalize_path(filename)
-        if not f.startswith(os.path.sep):
+        if not f.startswith(os_unicode_fs.path.sep):
             if cwd is None:
                 err.write("ERROR: cwd does not exist!\n")
                 err.flush()
                 errors += 1
                 continue
-            f = os.path.join(cwd, f)
+            f = os_unicode_fs.path.join(cwd, f)
             f = portage.normalize_path(f)
 
         if not f.startswith(root):
@@ -577,7 +577,7 @@ def best_visible(argv):
 
                 if pkg.visible:
                     writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
-                    return os.EX_OK
+                    return os_unicode_fs.EX_OK
 
     # No package found, write out an empty line.
     writemsg_stdout("\n", noiselevel=-1)
@@ -719,7 +719,7 @@ def expand_virtual(argv):
         if not x.blocker:
             writemsg_stdout("%s\n" % (x,))
 
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 docstrings[
@@ -740,9 +740,11 @@ expand_virtual.__doc__ = docstrings["expand_virtual"]
 
 def vdb_path(_argv):
     out = sys.stdout
-    out.write(os.path.join(portage.settings["EROOT"], portage.VDB_PATH) + "\n")
+    out.write(
+        os_unicode_fs.path.join(portage.settings["EROOT"], portage.VDB_PATH) + "\n"
+    )
     out.flush()
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 docstrings[
@@ -1107,12 +1109,12 @@ def license_path(argv):
             eclass_path = ""
             paths = reversed(
                 [
-                    os.path.join(x.location, "licenses", arg)
+                    os_unicode_fs.path.join(x.location, "licenses", arg)
                     for x in list(repo.masters) + [repo]
                 ]
             )
             for path in paths:
-                if os.path.exists(path):
+                if os_unicode_fs.path.exists(path):
                     eclass_path = path
                     break
             if eclass_path == "":
@@ -1287,7 +1289,9 @@ def pquery(parser, opts, args):
             for repo in repos:
                 match = True
                 if xml_matchers:
-                    metadata_xml_path = os.path.join(repo.location, cp, "metadata.xml")
+                    metadata_xml_path = os_unicode_fs.path.join(
+                        repo.location, cp, "metadata.xml"
+                    )
                     try:
                         metadata_xml = MetaDataXML(metadata_xml_path, None)
                     except (EnvironmentError, SyntaxError):
@@ -1351,7 +1355,7 @@ def pquery(parser, opts, args):
                 for cpv in matches:
                     writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
 
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 docstrings[
@@ -1502,13 +1506,16 @@ def usage(argv):
         print("\nRun portageq with --help for info")
 
 
-atom_validate_strict = "EBUILD_PHASE" in os.environ
+atom_validate_strict = "EBUILD_PHASE" in os_unicode_fs.environ
 eapi = None
 if atom_validate_strict:
-    eapi = os.environ.get("EAPI")
+    eapi = os_unicode_fs.environ.get("EAPI")
 
     def elog(elog_funcname, lines):
-        cmd = "source '%s/isolated-functions.sh' ; " % os.environ["PORTAGE_BIN_PATH"]
+        cmd = (
+            "source '%s/isolated-functions.sh' ; "
+            % os_unicode_fs.environ["PORTAGE_BIN_PATH"]
+        )
         for line in lines:
             cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
         subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
@@ -1523,7 +1530,7 @@ def main(argv):
 
     argv = portage._decode_argv(argv)
 
-    nocolor = os.environ.get("NOCOLOR")
+    nocolor = os_unicode_fs.environ.get("NOCOLOR")
     if nocolor in ("yes", "true"):
         portage.output.nocolor()
 
@@ -1542,10 +1549,10 @@ def main(argv):
 
     if opts.help:
         usage(argv)
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     elif opts.version:
         print("Portage", portage.VERSION)
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     cmd = None
     if args and args[0] in commands:
@@ -1571,7 +1578,7 @@ def main(argv):
     function = globals()[cmd]
     uses_eroot = getattr(function, "uses_eroot", False) and len(argv) > 2
     if uses_eroot:
-        if not os.path.isdir(argv[2]):
+        if not os_unicode_fs.path.isdir(argv[2]):
             sys.stderr.write("Not a directory: '%s'\n" % argv[2])
             sys.stderr.write("Run portageq with --help for info\n")
             sys.stderr.flush()
@@ -1598,10 +1605,10 @@ def main(argv):
         else:
             root = eroot
 
-        os.environ["ROOT"] = root
+        os_unicode_fs.environ["ROOT"] = root
 
         if getattr(function, "uses_configroot", False):
-            os.environ["PORTAGE_CONFIGROOT"] = eroot
+            os_unicode_fs.environ["PORTAGE_CONFIGROOT"] = eroot
             # Disable RepoConfigLoader location validation, allowing raw
             # configuration to pass through, since repo locations are not
             # necessarily expected to exist if the configuration comes

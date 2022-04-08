@@ -5,7 +5,7 @@ import tempfile
 import tarfile
 import sys
 
-from portage import os, shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.gpkg import gpkg
@@ -26,27 +26,38 @@ class test_gpkg_large_size_case(TestCase):
         try:
             settings = playground.settings
 
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
             # Check if filesystem support sparse file
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.truncate(1048576)
 
-            if os.stat(os.path.join(orig_full_path, "test")).st_blocks != 0:
+            if (
+                os_unicode_fs.stat(
+                    os_unicode_fs.path.join(orig_full_path, "test")
+                ).st_blocks
+                != 0
+            ):
                 self.skipTest("Filesystem does not support sparse file")
 
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.truncate(10737418240)
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (0, 4, 0, 10737418240, 10737418240))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
 
             with open(gpkg_file_loc, "rb") as container:
                 # container
@@ -54,5 +65,5 @@ class test_gpkg_large_size_case(TestCase):
                     test_gpkg._get_tar_format(container), tarfile.GNU_FORMAT
                 )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

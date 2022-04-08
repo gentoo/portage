@@ -7,8 +7,7 @@ import tarfile
 import tempfile
 from os import urandom
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.gpkg import gpkg
@@ -35,19 +34,23 @@ class test_gpkg_gpg_case(TestCase):
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest":
@@ -66,13 +69,17 @@ class test_gpkg_gpg_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
 
             self.assertRaises(
-                InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                InvalidSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_missing_signature(self):
@@ -93,19 +100,23 @@ class test_gpkg_gpg_case(TestCase):
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name.endswith(".sig"):
@@ -113,13 +124,17 @@ class test_gpkg_gpg_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
             self.assertRaises(
-                MissingSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                MissingSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
 
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_ignore_signature(self):
@@ -140,19 +155,23 @@ class test_gpkg_gpg_case(TestCase):
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest.sig":
@@ -160,10 +179,12 @@ class test_gpkg_gpg_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
-            binpkg_2.decompress(os.path.join(tmpdir, "test"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
+            binpkg_2.decompress(os_unicode_fs.path.join(tmpdir, "test"))
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_auto_use_signature(self):
@@ -185,19 +206,23 @@ class test_gpkg_gpg_case(TestCase):
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name.endswith(".sig"):
@@ -205,12 +230,16 @@ class test_gpkg_gpg_case(TestCase):
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
             self.assertRaises(
-                MissingSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                MissingSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_invalid_signature(self):
@@ -231,19 +260,23 @@ class test_gpkg_gpg_case(TestCase):
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest":
@@ -277,19 +310,23 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
             self.assertRaises(
-                InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                InvalidSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_untrusted_signature(self):
         if sys.version_info.major < 3:
             self.skipTest("Not support Python 2")
 
-        gpg_test_path = os.environ["PORTAGE_GNUPGHOME"]
+        gpg_test_path = os_unicode_fs.environ["PORTAGE_GNUPGHOME"]
 
         playground = ResolverPlayground(
             user_config={
@@ -311,23 +348,29 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             self.assertRaises(
-                InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                InvalidSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
 
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_unknown_signature(self):
@@ -348,19 +391,23 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             settings = playground.settings
             gpg = GPG(settings)
             gpg.unlock()
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
             data = urandom(1048576)
-            with open(os.path.join(orig_full_path, "data"), "wb") as f:
+            with open(os_unicode_fs.path.join(orig_full_path, "data"), "wb") as f:
                 f.write(data)
 
-            binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
+            binpkg_1 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
+            )
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "Manifest":
@@ -388,11 +435,15 @@ EP1pgSXXGtlUnv6akg/wueFJKEr9KQs=
                         else:
                             tar_2.addfile(f, tar_1.extractfile(f))
 
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(
+                settings, "test", os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar")
+            )
             self.assertRaises(
-                InvalidSignature, binpkg_2.decompress, os.path.join(tmpdir, "test")
+                InvalidSignature,
+                binpkg_2.decompress,
+                os_unicode_fs.path.join(tmpdir, "test"),
             )
 
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

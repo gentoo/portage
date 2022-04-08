@@ -1,7 +1,7 @@
 # Copyright 2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.util._ctypes import find_library, LoadLibrary
 from portage.util._async.ForkProcess import ForkProcess
 
@@ -38,7 +38,7 @@ class SyncfsProcess(ForkProcess):
         if syncfs is not None:
             for path in self.paths:
                 try:
-                    fd = os.open(path, os.O_RDONLY)
+                    fd = os_unicode_fs.open(path, os_unicode_fs.O_RDONLY)
                 except OSError:
                     pass
                 else:
@@ -47,8 +47,8 @@ class SyncfsProcess(ForkProcess):
                             # Happens with PyPy (bug #446610)
                             syncfs_failed = True
                     finally:
-                        os.close(fd)
+                        os_unicode_fs.close(fd)
 
         if syncfs is None or syncfs_failed:
             return 1
-        return os.EX_OK
+        return os_unicode_fs.EX_OK

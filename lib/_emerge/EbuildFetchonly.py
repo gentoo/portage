@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.elog.messages import eerror
 from portage.util.SlotObject import SlotObject
 
@@ -36,7 +36,7 @@ class EbuildFetchonly(SlotObject):
         # For pretend mode, this error message is suppressed,
         # and the unsuccessful return value is used to trigger
         # a call to the pkg_nofetch phase.
-        if rval != os.EX_OK and not self.pretend:
+        if rval != os_unicode_fs.EX_OK and not self.pretend:
             msg = "Fetch failed for '%s'" % (pkg.cpv,)
             eerror(msg, phase="unpack", key=pkg.cpv)
 

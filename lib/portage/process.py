@@ -15,7 +15,7 @@ import sys
 import traceback
 import os as _os
 
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 import portage
@@ -58,7 +58,7 @@ except AttributeError:
 # Prefer /proc/self/fd if available (/dev/fd
 # doesn't work on solaris, see bug #474536).
 for _fd_dir in ("/proc/self/fd", "/dev/fd"):
-    if os.path.isdir(_fd_dir):
+    if os_unicode_fs.path.isdir(_fd_dir):
         break
     else:
         _fd_dir = None
@@ -70,7 +70,7 @@ if platform.system() in ("FreeBSD",) and _fd_dir == "/dev/fd":
 if _fd_dir is not None:
 
     def get_open_fds():
-        return (int(fd) for fd in os.listdir(_fd_dir) if fd.isdigit())
+        return (int(fd) for fd in os_unicode_fs.listdir(_fd_dir) if fd.isdigit())
 
     if platform.python_implementation() == "PyPy":
         # EAGAIN observed with PyPy 1.8.
@@ -84,13 +84,13 @@ if _fd_dir is not None:
                     raise
                 return range(max_fd_limit)
 
-elif os.path.isdir("/proc/%s/fd" % portage.getpid()):
+elif os_unicode_fs.path.isdir("/proc/%s/fd" % portage.getpid()):
     # In order for this function to work in forked subprocesses,
-    # os.getpid() must be called from inside the function.
+    # os_unicode_fs.getpid() must be called from inside the function.
     def get_open_fds():
         return (
             int(fd)
-            for fd in os.listdir("/proc/%s/fd" % portage.getpid())
+            for fd in os_unicode_fs.listdir("/proc/%s/fd" % portage.getpid())
             if fd.isdigit()
         )
 
@@ -100,10 +100,12 @@ else:
         return range(max_fd_limit)
 
 
-sandbox_capable = os.path.isfile(SANDBOX_BINARY) and os.access(SANDBOX_BINARY, os.X_OK)
+sandbox_capable = os_unicode_fs.path.isfile(SANDBOX_BINARY) and os_unicode_fs.access(
+    SANDBOX_BINARY, os_unicode_fs.X_OK
+)
 
-fakeroot_capable = os.path.isfile(FAKEROOT_BINARY) and os.access(
-    FAKEROOT_BINARY, os.X_OK
+fakeroot_capable = os_unicode_fs.path.isfile(FAKEROOT_BINARY) and os_unicode_fs.access(
+    FAKEROOT_BINARY, os_unicode_fs.X_OK
 )
 
 
@@ -148,7 +150,7 @@ def spawn_bash(mycommand, debug=False, opt_name=None, **keywords):
 
     args = [BASH_BINARY]
     if not opt_name:
-        opt_name = os.path.basename(mycommand.split()[0])
+        opt_name = os_unicode_fs.path.basename(mycommand.split()[0])
     if debug:
         # Print commands and their arguments as they are executed.
         args.append("-x")
@@ -162,7 +164,7 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
         return spawn_bash(mycommand, opt_name=opt_name, **keywords)
     args = [SANDBOX_BINARY]
     if not opt_name:
-        opt_name = os.path.basename(mycommand.split()[0])
+        opt_name = os_unicode_fs.path.basename(mycommand.split()[0])
     args.append(mycommand)
     return spawn(args, opt_name=opt_name, **keywords)
 
@@ -170,7 +172,7 @@ def spawn_sandbox(mycommand, opt_name=None, **keywords):
 def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
     args = [FAKEROOT_BINARY]
     if not opt_name:
-        opt_name = os.path.basename(mycommand.split()[0])
+        opt_name = os_unicode_fs.path.basename(mycommand.split()[0])
     if fakeroot_state:
         open(fakeroot_state, "a").close()
         args.append("-s")
@@ -190,7 +192,7 @@ _exithandlers = []
 def atexit_register(func, *args, **kargs):
     """Wrapper around atexit.register that is needed in order to track
     what is registered.  For example, when portage restarts itself via
-    os.execv, the atexit module does not work so we have to do it
+    os_unicode_fs.execv, the atexit module does not work so we have to do it
     manually by calling the run_exitfuncs() function in this module."""
     _exithandlers.append((func, args, kargs))
 
@@ -198,7 +200,7 @@ def atexit_register(func, *args, **kargs):
 def run_exitfuncs():
     """This should behave identically to the routine performed by
     the atexit module at exit time.  It's only necessary to call this
-    function when atexit will not work (because of os.execv, for
+    function when atexit will not work (because of os_unicode_fs.execv, for
     example)."""
 
     # This function is a copy of the private atexit._run_exitfuncs()
@@ -323,15 +325,15 @@ def spawn(
     if isinstance(mycommand, str):
         mycommand = mycommand.split()
 
-    env = os.environ if env is None else env
+    env = os_unicode_fs.environ if env is None else env
 
     # If an absolute path to an executable file isn't given
     # search for it unless we've been told not to.
     binary = mycommand[0]
     if binary not in (BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY) and (
-        not os.path.isabs(binary)
-        or not os.path.isfile(binary)
-        or not os.access(binary, os.X_OK)
+        not os_unicode_fs.path.isabs(binary)
+        or not os_unicode_fs.path.isfile(binary)
+        or not os_unicode_fs.access(binary, os_unicode_fs.X_OK)
     ):
         binary = path_lookup and find_binary(binary) or None
         if not binary:
@@ -356,7 +358,7 @@ def spawn(
             raise ValueError(fd_pipes)
 
         # Create a pipe
-        (pr, pw) = os.pipe()
+        (pr, pw) = os_unicode_fs.pipe()
 
         # Create a tee process, giving it our stdout and stderr
         # as well as the read end of the pipe.
@@ -369,7 +371,7 @@ def spawn(
         )
 
         # We don't need the read end of the pipe, so close it.
-        os.close(pr)
+        os_unicode_fs.close(pr)
 
         # Assign the write end of the pipe to our stdout and stderr.
         fd_pipes[1] = pw
@@ -411,7 +413,7 @@ def spawn(
     parent_pid = portage.getpid()
     pid = None
     try:
-        pid = os.fork()
+        pid = os_unicode_fs.fork()
 
         if pid == 0:
             portage._ForkWatcher.hook(portage._ForkWatcher)
@@ -441,7 +443,7 @@ def spawn(
             except Exception as e:
                 # We need to catch _any_ exception so that it doesn't
                 # propagate out of this function and cause exiting
-                # with anything other than os._exit()
+                # with anything other than os_unicode_fs._exit()
                 writemsg("%s:\n   %s\n" % (e, " ".join(mycommand)), noiselevel=-1)
                 traceback.print_exc()
                 sys.stderr.flush()
@@ -450,12 +452,12 @@ def spawn(
         # Don't used portage.getpid() here, due to a race with the above
         # portage._ForkWatcher cache update.
         if pid == 0 or (pid is None and _os.getpid() != parent_pid):
-            # Call os._exit() from a finally block in order
+            # Call os_unicode_fs._exit() from a finally block in order
             # to suppress any finally blocks from earlier
             # in the call stack (see bug #345289). This
             # finally block has to be setup before the fork
             # in order to avoid a race condition.
-            os._exit(1)
+            os_unicode_fs._exit(1)
 
     if not isinstance(pid, int):
         raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
@@ -466,7 +468,7 @@ def spawn(
     # If we started a tee process the write side of the pipe is no
     # longer needed, so close it.
     if logfile:
-        os.close(pw)
+        os_unicode_fs.close(pw)
 
     # If the caller wants to handle cleaning up the processes, we tell
     # it about all processes that were created.
@@ -482,7 +484,7 @@ def spawn(
         pid = mypids.pop(0)
 
         # and wait for it.
-        retval = os.waitpid(pid, 0)[1]
+        retval = os_unicode_fs.waitpid(pid, 0)[1]
 
         if retval:
             # If it failed, kill off anything else that
@@ -491,9 +493,9 @@ def spawn(
                 # With waitpid and WNOHANG, only check the
                 # first element of the tuple since the second
                 # element may vary (bug #337465).
-                if os.waitpid(pid, os.WNOHANG)[0] == 0:
-                    os.kill(pid, signal.SIGTERM)
-                    os.waitpid(pid, 0)
+                if os_unicode_fs.waitpid(pid, os_unicode_fs.WNOHANG)[0] == 0:
+                    os_unicode_fs.kill(pid, signal.SIGTERM)
+                    os_unicode_fs.waitpid(pid, 0)
 
             # If it got a signal, return the signal that was sent.
             if retval & 0xFF:
@@ -637,7 +639,7 @@ def _exec(
     @param cgroup: CGroup path to bind the process to
     @type cgroup: String
     @rtype: None
-    @return: Never returns (calls os.execve)
+    @return: Never returns (calls os_unicode_fs.execve)
     """
 
     # If the process we're creating hasn't been given a name
@@ -648,13 +650,13 @@ def _exec(
             # does not contain the full path of the binary.
             opt_name = binary
         else:
-            opt_name = os.path.basename(binary)
+            opt_name = os_unicode_fs.path.basename(binary)
 
     # Set up the command's argument list.
     myargs = [opt_name]
     myargs.extend(mycommand[1:])
 
-    # Avoid a potential UnicodeEncodeError from os.execve().
+    # Avoid a potential UnicodeEncodeError from os_unicode_fs.execve().
     myargs = [
         _unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in myargs
     ]
@@ -670,7 +672,7 @@ def _exec(
     try:
         wakeup_fd = signal.set_wakeup_fd(-1)
         if wakeup_fd > 0:
-            os.close(wakeup_fd)
+            os_unicode_fs.close(wakeup_fd)
     except (ValueError, OSError):
         pass
 
@@ -728,7 +730,7 @@ def _exec(
                         )
                     else:
                         if unshare_pid:
-                            main_child_pid = os.fork()
+                            main_child_pid = os_unicode_fs.fork()
                             if main_child_pid == 0:
                                 # The portage.getpid() cache may need to be updated here,
                                 # in case the pre_exec function invokes portage APIs.
@@ -738,7 +740,9 @@ def _exec(
                                     portage._python_interpreter,
                                     [
                                         portage._python_interpreter,
-                                        os.path.join(portage._bin_path, "pid-ns-init"),
+                                        os_unicode_fs.path.join(
+                                            portage._bin_path, "pid-ns-init"
+                                        ),
                                         _unicode_encode(
                                             "" if uid is None else str(uid)
                                         ),
@@ -775,11 +779,13 @@ def _exec(
                                 # init process.
                                 binary, myargs = portage._python_interpreter, [
                                     portage._python_interpreter,
-                                    os.path.join(portage._bin_path, "pid-ns-init"),
+                                    os_unicode_fs.path.join(
+                                        portage._bin_path, "pid-ns-init"
+                                    ),
                                     str(main_child_pid),
                                 ]
 
-                                os.execve(binary, myargs, env)
+                                os_unicode_fs.execve(binary, myargs, env)
 
                         if unshare_mount:
                             # mark the whole filesystem as slave to avoid
@@ -802,7 +808,7 @@ def _exec(
                                     "Unable to mark /proc slave: %d\n" % (mount_ret,),
                                     noiselevel=-1,
                                 )
-                                os._exit(1)
+                                os_unicode_fs._exit(1)
                             # mount new /proc for our namespace
                             s = subprocess.Popen(
                                 ["mount", "-n", "-t", "proc", "proc", "/proc"]
@@ -813,7 +819,7 @@ def _exec(
                                     "Unable to mount new /proc: %d\n" % (mount_ret,),
                                     noiselevel=-1,
                                 )
-                                os._exit(1)
+                                os_unicode_fs._exit(1)
                         if unshare_net:
                             # use 'localhost' to avoid hostname resolution problems
                             try:
@@ -830,7 +836,8 @@ def _exec(
                                     ):
                                         errno_value = ctypes.get_errno()
                                         raise OSError(
-                                            errno_value, os.strerror(errno_value)
+                                            errno_value,
+                                            os_unicode_fs.strerror(errno_value),
                                         )
                             except Exception as e:
                                 writemsg(
@@ -846,21 +853,21 @@ def _exec(
     # Set requested process permissions.
     if gid:
         # Cast proxies to int, in case it matters.
-        os.setgid(int(gid))
+        os_unicode_fs.setgid(int(gid))
     if groups:
-        os.setgroups(groups)
+        os_unicode_fs.setgroups(groups)
     if uid:
         # Cast proxies to int, in case it matters.
-        os.setuid(int(uid))
+        os_unicode_fs.setuid(int(uid))
     if umask:
-        os.umask(umask)
+        os_unicode_fs.umask(umask)
     if cwd is not None:
-        os.chdir(cwd)
+        os_unicode_fs.chdir(cwd)
     if pre_exec:
         pre_exec()
 
     # And switch to the new process.
-    os.execve(binary, myargs, env)
+    os_unicode_fs.execve(binary, myargs, env)
 
 
 class _unshare_validator:
@@ -986,7 +993,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     It's possible to avoid such interference by using allocated
     file descriptors as the keys in fd_pipes. For example:
 
-            pr, pw = os.pipe()
+            pr, pw = os_unicode_fs.pipe()
             fd_pipes[pw] = pw
 
     By using the allocated pw file descriptor as the key in fd_pipes,
@@ -999,7 +1006,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
     # To protect from cases where direct assignment could
     # clobber needed fds ({1:2, 2:1}) we create a reverse map
     # in order to know when it's necessary to create temporary
-    # backup copies with os.dup().
+    # backup copies with os_unicode_fs.dup().
     for newfd, oldfd in fd_pipes.items():
         newfds = reverse_map.get(oldfd)
         if newfds is None:
@@ -1021,13 +1028,13 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
                 # Make a temporary backup before re-assignment, assuming
                 # that backup_fd won't collide with a key in reverse_map
                 # (since all of the keys correspond to open file
-                # descriptors, and os.dup() only allocates a previously
+                # descriptors, and os_unicode_fs.dup() only allocates a previously
                 # unused file discriptors).
-                backup_fd = os.dup(newfd)
+                backup_fd = os_unicode_fs.dup(newfd)
                 reverse_map[backup_fd] = reverse_map.pop(newfd)
 
             if oldfd != newfd:
-                os.dup2(oldfd, newfd)
+                os_unicode_fs.dup2(oldfd, newfd)
                 if _set_inheritable is not None:
                     # Don't do this unless _set_inheritable is available,
                     # since it's used below to ensure correct state, and
@@ -1057,7 +1064,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
             # requested duplicates. This also closes every
             # backup_fd that may have been created on previous
             # iterations of this loop.
-            os.close(oldfd)
+            os_unicode_fs.close(oldfd)
 
     if close_fds:
         # Then close _all_ fds that haven't been explicitly
@@ -1065,7 +1072,7 @@ def _setup_pipes(fd_pipes, close_fds=True, inheritable=None):
         for fd in get_open_fds():
             if fd not in fd_pipes:
                 try:
-                    os.close(fd)
+                    os_unicode_fs.close(fd)
                 except OSError:
                     pass
 
@@ -1079,7 +1086,7 @@ def find_binary(binary):
     @rtype: None or string
     @return: full path to binary or None if the binary could not be located.
     """
-    paths = os.environ.get("PATH", "")
+    paths = os_unicode_fs.environ.get("PATH", "")
     if isinstance(binary, bytes):
         # return bytes when input is bytes
         paths = paths.encode(sys.getfilesystemencoding(), "surrogateescape")
@@ -1089,6 +1096,6 @@ def find_binary(binary):
 
     for path in paths:
         filename = _os.path.join(path, binary)
-        if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
+        if _os.access(filename, os_unicode_fs.X_OK) and _os.path.isfile(filename):
             return filename
     return None

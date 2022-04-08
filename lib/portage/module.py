@@ -1,7 +1,7 @@
 # Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import PortageException
 from portage.cache.mappings import ProtectedDict
 from portage.localization import _
@@ -110,13 +110,15 @@ class Modules:
         @rtype: dictionary of module_plugins
         """
         module_dir = self._module_path
-        names = os.listdir(module_dir)
+        names = os_unicode_fs.listdir(module_dir)
 
         def _a_real_module(entry):
             try:
                 # test for statinfo to ensure it should a real module
                 # it will bail if it errors
-                os.lstat(os.path.join(module_dir, entry, "__init__.py"))
+                os_unicode_fs.lstat(
+                    os_unicode_fs.path.join(module_dir, entry, "__init__.py")
+                )
             except EnvironmentError:
                 return False
             return True

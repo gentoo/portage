@@ -3,13 +3,13 @@
 
 import stat
 
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import PermissionDenied
 
 
 def exists_raise_eaccess(path):
     try:
-        os.stat(path)
+        os_unicode_fs.stat(path)
     except OSError as e:
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied("stat('%s')" % path)
@@ -20,7 +20,7 @@ def exists_raise_eaccess(path):
 
 def isdir_raise_eaccess(path):
     try:
-        st = os.stat(path)
+        st = os_unicode_fs.stat(path)
     except OSError as e:
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied("stat('%s')" % path)

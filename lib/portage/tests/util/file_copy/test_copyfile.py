@@ -4,7 +4,7 @@
 import shutil
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.checksum import perform_md5
 from portage.util.file_copy import copyfile
@@ -15,8 +15,8 @@ class CopyFileTestCase(TestCase):
 
         tempdir = tempfile.mkdtemp()
         try:
-            src_path = os.path.join(tempdir, "src")
-            dest_path = os.path.join(tempdir, "dest")
+            src_path = os_unicode_fs.path.join(tempdir, "src")
+            dest_path = os_unicode_fs.path.join(tempdir, "dest")
             content = b"foo"
 
             with open(src_path, "wb") as f:
@@ -34,8 +34,8 @@ class CopyFileSparseTestCase(TestCase):
 
         tempdir = tempfile.mkdtemp()
         try:
-            src_path = os.path.join(tempdir, "src")
-            dest_path = os.path.join(tempdir, "dest")
+            src_path = os_unicode_fs.path.join(tempdir, "src")
+            dest_path = os_unicode_fs.path.join(tempdir, "dest")
             content = b"foo"
 
             # Use seek to create some sparse blocks. Don't make these
@@ -62,6 +62,9 @@ class CopyFileSparseTestCase(TestCase):
 
             # If sparse blocks were preserved, then both files should
             # consume the same number of blocks.
-            self.assertEqual(os.stat(src_path).st_blocks, os.stat(dest_path).st_blocks)
+            self.assertEqual(
+                os_unicode_fs.stat(src_path).st_blocks,
+                os_unicode_fs.stat(dest_path).st_blocks,
+            )
         finally:
             shutil.rmtree(tempdir)

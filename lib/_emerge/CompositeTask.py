@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from _emerge.AsynchronousTask import AsynchronousTask
-from portage import os
+from portage import os_unicode_fs
 
 
 class CompositeTask(AsynchronousTask):
@@ -59,7 +59,7 @@ class CompositeTask(AsynchronousTask):
     def _default_exit(self, task):
         """
         Calls _assert_current() on the given task and then sets the
-        composite returncode attribute if task.returncode != os.EX_OK.
+        composite returncode attribute if task.returncode != os_unicode_fs.EX_OK.
         If the task failed then self._current_task will be set to None.
         Subclasses can use this as a generic task exit callback.
 
@@ -67,7 +67,7 @@ class CompositeTask(AsynchronousTask):
         @return: The task.returncode attribute.
         """
         self._assert_current(task)
-        if task.returncode != os.EX_OK:
+        if task.returncode != os_unicode_fs.EX_OK:
             self.returncode = task.returncode
             self.cancelled = task.cancelled
             self._current_task = None

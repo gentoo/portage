@@ -10,7 +10,7 @@ import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import FileNotFound, PermissionDenied
-from portage import os
+from portage import os_unicode_fs
 from portage import checksum
 from portage import _shell_quote
 
@@ -28,7 +28,7 @@ class hashed_path:
             # thus use the defacto python compatibility work around;
             # access via index, which guarantees you get the raw int.
             try:
-                self.mtime = obj = os.stat(self.location)[stat.ST_MTIME]
+                self.mtime = obj = os_unicode_fs.stat(self.location)[stat.ST_MTIME]
             except OSError as e:
                 if e.errno in (errno.ENOENT, errno.ESTALE):
                     raise FileNotFound(self.location)
@@ -72,7 +72,9 @@ class cache:
         if porttree_root:
             self.porttree_root = porttree_root
             self.porttrees = (normalize_path(self.porttree_root),)
-            self._master_eclass_root = os.path.join(self.porttrees[0], "eclass")
+            self._master_eclass_root = os_unicode_fs.path.join(
+                self.porttrees[0], "eclass"
+            )
             self.update_eclasses()
         else:
             self.porttree_root = None
@@ -110,9 +112,11 @@ class cache:
         master_eclasses = {}
         eclass_len = len(".eclass")
         ignored_listdir_errnos = (errno.ENOENT, errno.ENOTDIR)
-        for x in (normalize_path(os.path.join(y, "eclass")) for y in self.porttrees):
+        for x in (
+            normalize_path(os_unicode_fs.path.join(y, "eclass")) for y in self.porttrees
+        ):
             try:
-                eclass_filenames = os.listdir(x)
+                eclass_filenames = os_unicode_fs.listdir(x)
             except OSError as e:
                 if e.errno in ignored_listdir_errnos:
                     del e
@@ -123,7 +127,7 @@ class cache:
             for y in eclass_filenames:
                 if not y.endswith(".eclass"):
                     continue
-                obj = hashed_path(os.path.join(x, y))
+                obj = hashed_path(os_unicode_fs.path.join(x, y))
                 obj.eclass_dir = x
                 try:
                     mtime = obj.mtime

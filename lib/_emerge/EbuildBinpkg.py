@@ -5,7 +5,7 @@ from _emerge.CompositeTask import CompositeTask
 from _emerge.EbuildPhase import EbuildPhase
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import InvalidBinaryPackageFormat
 
@@ -25,16 +25,16 @@ class EbuildBinpkg(CompositeTask):
             "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
         )
         if binpkg_format == "xpak":
-            binpkg_tmpfile = os.path.join(
+            binpkg_tmpfile = os_unicode_fs.path.join(
                 bintree.pkgdir, pkg.cpv + ".tbz2." + str(portage.getpid())
             )
         elif binpkg_format == "gpkg":
-            binpkg_tmpfile = os.path.join(
+            binpkg_tmpfile = os_unicode_fs.path.join(
                 bintree.pkgdir, pkg.cpv + ".gpkg.tar." + str(portage.getpid())
             )
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
-        bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
+        bintree._ensure_dir(os_unicode_fs.path.dirname(binpkg_tmpfile))
 
         self._binpkg_tmpfile = binpkg_tmpfile
         self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
@@ -51,9 +51,9 @@ class EbuildBinpkg(CompositeTask):
     def _package_phase_exit(self, package_phase):
 
         self.settings.pop("PORTAGE_BINPKG_TMPFILE", None)
-        if self._default_exit(package_phase) != os.EX_OK:
+        if self._default_exit(package_phase) != os_unicode_fs.EX_OK:
             try:
-                os.unlink(self._binpkg_tmpfile)
+                os_unicode_fs.unlink(self._binpkg_tmpfile)
             except OSError:
                 pass
             self.wait()
@@ -64,7 +64,7 @@ class EbuildBinpkg(CompositeTask):
         self._binpkg_info = bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
 
         self._current_task = None
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self.wait()
 
     def get_binpkg_info(self):

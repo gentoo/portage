@@ -18,7 +18,7 @@ portage.proxy.lazyimport.lazyimport(
 )
 import portage.util.formatter as formatter
 
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 from portage import _unicode_decode
@@ -178,7 +178,7 @@ def _parse_color_map(config_root="/", onerror=None):
     @return: a dictionary mapping color classes to color codes
     """
     global codes, _styles
-    myfile = os.path.join(config_root, COLOR_MAP_FILE)
+    myfile = os_unicode_fs.path.join(config_root, COLOR_MAP_FILE)
     ansi_code_pattern = re.compile("^[0-9;]*m$")
     quotes = "'\""
 
@@ -276,8 +276,8 @@ def xtermTitle(mystr, raw=False):
     if _disable_xtermTitle is None:
         _disable_xtermTitle = not (
             sys.__stderr__.isatty()
-            and "TERM" in os.environ
-            and _legal_terms_re.match(os.environ["TERM"]) is not None
+            and "TERM" in os_unicode_fs.environ
+            and _legal_terms_re.match(os_unicode_fs.environ["TERM"]) is not None
         )
 
     if dotitles and not _disable_xtermTitle:
@@ -303,25 +303,25 @@ default_xterm_title = None
 def xtermTitleReset():
     global default_xterm_title
     if default_xterm_title is None:
-        prompt_command = os.environ.get("PROMPT_COMMAND")
+        prompt_command = os_unicode_fs.environ.get("PROMPT_COMMAND")
         if prompt_command == "":
             default_xterm_title = ""
         elif prompt_command is not None:
             if (
                 dotitles
-                and "TERM" in os.environ
-                and _legal_terms_re.match(os.environ["TERM"]) is not None
+                and "TERM" in os_unicode_fs.environ
+                and _legal_terms_re.match(os_unicode_fs.environ["TERM"]) is not None
                 and sys.__stderr__.isatty()
             ):
                 from portage.process import find_binary, spawn
 
-                shell = os.environ.get("SHELL")
-                if not shell or not os.access(shell, os.EX_OK):
+                shell = os_unicode_fs.environ.get("SHELL")
+                if not shell or not os_unicode_fs.access(shell, os_unicode_fs.EX_OK):
                     shell = find_binary("sh")
                 if shell:
                     spawn(
                         [shell, "-c", prompt_command],
-                        env=os.environ,
+                        env=os_unicode_fs.environ,
                         fd_pipes={
                             0: portage._get_stdin().fileno(),
                             1: sys.__stderr__.fileno(),
@@ -329,16 +329,16 @@ def xtermTitleReset():
                         },
                     )
                 else:
-                    os.system(prompt_command)
+                    os_unicode_fs.system(prompt_command)
             return
         else:
-            pwd = os.environ.get("PWD", "")
-            home = os.environ.get("HOME", "")
+            pwd = os_unicode_fs.environ.get("PWD", "")
+            home = os_unicode_fs.environ.get("HOME", "")
             if home != "" and pwd.startswith(home):
                 pwd = "~" + pwd[len(home) :]
             default_xterm_title = "\x1b]0;%s@%s:%s\x07" % (
-                os.environ.get("LOGNAME", ""),
-                os.environ.get("HOSTNAME", "").split(".", 1)[0],
+                os_unicode_fs.environ.get("LOGNAME", ""),
+                os_unicode_fs.environ.get("HOSTNAME", "").split(".", 1)[0],
                 pwd,
             )
     xtermTitle(default_xterm_title, raw=True)
@@ -525,7 +525,9 @@ def get_term_size(fd=None):
         import curses
 
         try:
-            curses.setupterm(term=os.environ.get("TERM", "unknown"), fd=fd.fileno())
+            curses.setupterm(
+                term=os_unicode_fs.environ.get("TERM", "unknown"), fd=fd.fileno()
+            )
             return curses.tigetnum("lines"), curses.tigetnum("cols")
         except curses.error:
             pass
@@ -541,7 +543,7 @@ def get_term_size(fd=None):
         return (0, 0)
 
     out = _unicode_decode(proc.communicate()[0])
-    if proc.wait() == os.EX_OK:
+    if proc.wait() == os_unicode_fs.EX_OK:
         out = out.split()
         if len(out) == 2:
             try:
@@ -563,7 +565,7 @@ def set_term_size(lines, columns, fd):
 
     cmd = ["stty", "rows", str(lines), "columns", str(columns)]
     try:
-        spawn(cmd, env=os.environ, fd_pipes={0: fd})
+        spawn(cmd, env=os_unicode_fs.environ, fd_pipes={0: fd})
     except CommandNotFound:
         writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
 

@@ -6,7 +6,7 @@ import signal
 import sys
 import textwrap
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.localization import _
 from portage.output import bold, colorize, darkgreen, green
@@ -32,7 +32,7 @@ def _unmerge_display(
 ):
     """
     Returns a tuple of (returncode, pkgmap) where returncode is
-    os.EX_OK if no errors occur, and 1 otherwise.
+    os_unicode_fs.EX_OK if no errors occur, and 1 otherwise.
     """
 
     quiet = "--quiet" in myopts
@@ -60,7 +60,7 @@ def _unmerge_display(
             pkg_cache[cpv] = pkg
         return pkg
 
-    vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
+    vdb_path = os_unicode_fs.path.join(settings["EROOT"], portage.VDB_PATH)
     try:
         # At least the parent needs to exist for the lock file.
         portage.util.ensure_dirs(vdb_path)
@@ -68,7 +68,7 @@ def _unmerge_display(
         pass
     vdb_lock = None
     try:
-        if os.access(vdb_path, os.W_OK):
+        if os_unicode_fs.access(vdb_path, os_unicode_fs.W_OK):
             vartree.dbapi.lock()
             vdb_lock = True
 
@@ -136,11 +136,11 @@ def _unmerge_display(
                 else:
                     # it appears that the user is specifying an installed
                     # ebuild and we're in "unmerge" mode, so it's ok.
-                    if not os.path.exists(x):
+                    if not os_unicode_fs.path.exists(x):
                         print("\n!!! The path '" + x + "' doesn't exist.\n")
                         return 1, {}
 
-                    absx = os.path.abspath(x)
+                    absx = os_unicode_fs.path.abspath(x)
                     sp_absx = absx.split("/")
                     if sp_absx[-1][-7:] == ".ebuild":
                         del sp_absx[-1]
@@ -148,12 +148,14 @@ def _unmerge_display(
 
                     sp_absx_len = len(sp_absx)
 
-                    vdb_path = os.path.join(settings["EROOT"], portage.VDB_PATH)
+                    vdb_path = os_unicode_fs.path.join(
+                        settings["EROOT"], portage.VDB_PATH
+                    )
 
                     sp_vdb = vdb_path.split("/")
                     sp_vdb_len = len(sp_vdb)
 
-                    if not os.path.exists(absx + "/CONTENTS"):
+                    if not os_unicode_fs.path.exists(absx + "/CONTENTS"):
                         print("!!! Not a valid db dir: " + str(absx))
                         return 1, {}
 
@@ -573,7 +575,7 @@ def _unmerge_display(
         + " packages will not be removed.\n\n"
     )
 
-    return os.EX_OK, pkgmap
+    return os_unicode_fs.EX_OK, pkgmap
 
 
 def unmerge(
@@ -591,7 +593,7 @@ def unmerge(
     writemsg_level=portage.util.writemsg_level,
 ):
     """
-    Returns os.EX_OK if no errors occur, 1 if an error occurs, and
+    Returns os_unicode_fs.EX_OK if no errors occur, 1 if an error occurs, and
     130 if interrupted due to a 'no' answer for --ask.
     """
 
@@ -608,7 +610,7 @@ def unmerge(
         writemsg_level=writemsg_level,
     )
 
-    if rval != os.EX_OK:
+    if rval != os_unicode_fs.EX_OK:
         return rval
 
     enter_invalid = "--ask-enter-invalid" in myopts
@@ -620,7 +622,7 @@ def unmerge(
 
     if "--pretend" in myopts:
         # we're done... return
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     if "--ask" in myopts:
         uq = UserQuery(myopts)
         if uq.query("Would you like to unmerge these packages?", enter_invalid) == "No":
@@ -672,7 +674,7 @@ def unmerge(
                 scheduler=scheduler,
             )
 
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 emergelog(xterm_titles, " !!! unmerge FAILURE: " + y)
                 if raise_on_error:
                     raise UninstallFailure(retval)
@@ -701,4 +703,4 @@ def unmerge(
             sets["selected"].remove(SETPREFIX + s)
         sets["selected"].unlock()
 
-    return os.EX_OK
+    return os_unicode_fs.EX_OK

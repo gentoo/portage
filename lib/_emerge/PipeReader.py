@@ -3,7 +3,7 @@
 
 import fcntl
 
-from portage import os
+from portage import os_unicode_fs
 from _emerge.AbstractPollTask import AbstractPollTask
 
 
@@ -24,7 +24,9 @@ class PipeReader(AbstractPollTask):
         for f in self.input_files.values():
             fd = f if isinstance(f, int) else f.fileno()
             fcntl.fcntl(
-                fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK
+                fd,
+                fcntl.F_SETFL,
+                fcntl.fcntl(fd, fcntl.F_GETFL) | os_unicode_fs.O_NONBLOCK,
             )
 
             if self._use_array:
@@ -57,7 +59,7 @@ class PipeReader(AbstractPollTask):
                 self._read_data.append(data)
             else:
                 self._unregister()
-                self.returncode = self.returncode or os.EX_OK
+                self.returncode = self.returncode or os_unicode_fs.EX_OK
                 self._async_wait()
                 break
 
@@ -71,7 +73,7 @@ class PipeReader(AbstractPollTask):
                 self._read_data.append(data)
             else:
                 self._unregister()
-                self.returncode = self.returncode or os.EX_OK
+                self.returncode = self.returncode or os_unicode_fs.EX_OK
                 self._async_wait()
                 break
 
@@ -88,7 +90,7 @@ class PipeReader(AbstractPollTask):
             for f in self.input_files.values():
                 if isinstance(f, int):
                     self.scheduler.remove_reader(f)
-                    os.close(f)
+                    os_unicode_fs.close(f)
                 else:
                     self.scheduler.remove_reader(f.fileno())
                     f.close()

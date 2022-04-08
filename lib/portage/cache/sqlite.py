@@ -5,12 +5,11 @@ import collections
 import re
 
 import portage
+from portage import os_unicode_fs, _unicode_decode
 from portage.cache import fs_template
 from portage.cache import cache_errors
-from portage import os
-from portage import _unicode_decode
-from portage.util import writemsg
 from portage.localization import _
+from portage.util import writemsg
 
 
 class database(fs_template.FsBased):
@@ -38,11 +37,12 @@ class database(fs_template.FsBased):
         self._allowed_keys_set = frozenset(self._allowed_keys)
         self._allowed_keys = sorted(self._allowed_keys_set)
 
-        self.location = os.path.join(
-            self.location, self.label.lstrip(os.path.sep).rstrip(os.path.sep)
+        self.location = os_unicode_fs.path.join(
+            self.location,
+            self.label.lstrip(os_unicode_fs.path.sep).rstrip(os_unicode_fs.path.sep),
         )
 
-        if not self.readonly and not os.path.exists(self.location):
+        if not self.readonly and not os_unicode_fs.path.exists(self.location):
             self._ensure_dirs()
 
         config.setdefault("autocommit", self.autocommits)
@@ -93,8 +93,8 @@ class database(fs_template.FsBased):
     def _db_init_connection(self):
         config = self._config
         self._dbpath = self.location + ".sqlite"
-        # if os.path.exists(self._dbpath):
-        # 	os.unlink(self._dbpath)
+        # if os_unicode_fs.path.exists(self._dbpath):
+        # 	os_unicode_fs.unlink(self._dbpath)
         connection_kwargs = {}
         connection_kwargs["timeout"] = config["timeout"]
         try:

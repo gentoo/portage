@@ -5,8 +5,7 @@ import errno
 import re
 import subprocess
 
-from portage import os
-from portage import _unicode_encode, _encodings
+from portage import os_unicode_fs, _unicode_encode, _encodings
 from portage.const import MANIFEST2_IDENTIFIERS
 from portage.dep import _repo_separator
 from portage.exception import InvalidDependString
@@ -39,7 +38,7 @@ class ManifestTask(CompositeTask):
     _gpg_key_id_lengths = (8, 16, 24, 32, 40)
 
     def _start(self):
-        self._manifest_path = os.path.join(
+        self._manifest_path = os_unicode_fs.path.join(
             self.repo_config.location, self.cp, "Manifest"
         )
 
@@ -48,7 +47,7 @@ class ManifestTask(CompositeTask):
         )
 
     def _start_with_fetchlist(self, fetchlist_task):
-        if self._default_exit(fetchlist_task) != os.EX_OK:
+        if self._default_exit(fetchlist_task) != os_unicode_fs.EX_OK:
             if not self.fetchlist_dict.cancelled():
                 try:
                     self.fetchlist_dict.result()
@@ -72,7 +71,10 @@ class ManifestTask(CompositeTask):
 
     def _manifest_proc_exit(self, manifest_proc):
         self._assert_current(manifest_proc)
-        if manifest_proc.returncode not in (os.EX_OK, manifest_proc.MODIFIED):
+        if manifest_proc.returncode not in (
+            os_unicode_fs.EX_OK,
+            manifest_proc.MODIFIED,
+        ):
             self.returncode = manifest_proc.returncode
             self._current_task = None
             self.wait()
@@ -86,13 +88,13 @@ class ManifestTask(CompositeTask):
             if (
                 not sign
                 and self.force_sign_key is not None
-                and os.path.exists(self._manifest_path)
+                and os_unicode_fs.path.exists(self._manifest_path)
             ):
                 self._check_sig_key()
                 return
 
-        if not sign or not os.path.exists(self._manifest_path):
-            self.returncode = os.EX_OK
+        if not sign or not os_unicode_fs.path.exists(self._manifest_path):
+            self.returncode = os_unicode_fs.EX_OK
             self._current_task = None
             self.wait()
             return
@@ -100,7 +102,7 @@ class ManifestTask(CompositeTask):
         self._start_gpg_proc()
 
     def _check_sig_key(self):
-        null_fd = os.open("/dev/null", os.O_RDONLY)
+        null_fd = os_unicode_fs.open("/dev/null", os_unicode_fs.O_RDONLY)
         popen_proc = PopenProcess(
             proc=subprocess.Popen(
                 ["gpg", "--verify", self._manifest_path],
@@ -110,7 +112,7 @@ class ManifestTask(CompositeTask):
             ),
             pipe_reader=PipeReader(),
         )
-        os.close(null_fd)
+        os_unicode_fs.close(null_fd)
         popen_proc.pipe_reader.input_files = {"producer": popen_proc.proc.stdout}
         self._start_task(popen_proc, self._check_sig_key_exit)
 
@@ -149,7 +151,7 @@ class ManifestTask(CompositeTask):
         if parsed_key is not None and self._normalize_gpg_key(
             parsed_key
         ) == self._normalize_gpg_key(self.force_sign_key):
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._current_task = None
             self.wait()
             return
@@ -204,22 +206,22 @@ class ManifestTask(CompositeTask):
         self._start_task(gpg_proc, self._gpg_proc_exit)
 
     def _gpg_proc_exit(self, gpg_proc):
-        if self._default_exit(gpg_proc) != os.EX_OK:
+        if self._default_exit(gpg_proc) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
         rename_args = (self._manifest_path + ".asc", self._manifest_path)
         try:
-            os.rename(*rename_args)
+            os_unicode_fs.rename(*rename_args)
         except OSError as e:
             writemsg("!!! rename('%s', '%s'): %s\n" % rename_args + (e,), noiselevel=-1)
             try:
-                os.unlink(self._manifest_path + ".asc")
+                os_unicode_fs.unlink(self._manifest_path + ".asc")
             except OSError:
                 pass
             self.returncode = 1
         else:
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
 
         self._current_task = None
         self.wait()

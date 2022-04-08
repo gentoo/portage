@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import shlex_split, varexpand
 
 # default clean command from make.globals
@@ -79,14 +79,14 @@ class CleanLogs:
     @staticmethod
     def _clean_logs(clean_cmd, settings):
         logdir = settings.get("PORTAGE_LOGDIR")
-        if logdir is None or not os.path.isdir(logdir):
+        if logdir is None or not os_unicode_fs.path.isdir(logdir):
             return 78
 
         variables = {"PORTAGE_LOGDIR": logdir}
         cmd = [varexpand(x, mydict=variables) for x in clean_cmd]
 
         try:
-            rval = portage.process.spawn(cmd, env=os.environ)
+            rval = portage.process.spawn(cmd, env=os_unicode_fs.environ)
         except portage.exception.CommandNotFound:
             rval = 127
         return rval
@@ -94,7 +94,7 @@ class CleanLogs:
     @staticmethod
     def _convert_errors(rval):
         msg = []
-        if rval != os.EX_OK:
+        if rval != os_unicode_fs.EX_OK:
             if rval in ERROR_MESSAGES:
                 msg.append(ERROR_MESSAGES[rval])
             else:

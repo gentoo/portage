@@ -52,10 +52,7 @@ from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.binpkg import get_binpkg_format
 from portage import _movefile
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 
 import codecs
 import errno
@@ -144,7 +141,9 @@ class bindbapi(fakedbapi):
         @return: True if PKGDIR is writable or can be created,
                 False otherwise
         """
-        return os.access(first_existing(self.bintree.pkgdir), os.W_OK)
+        return os_unicode_fs.access(
+            first_existing(self.bintree.pkgdir), os_unicode_fs.W_OK
+        )
 
     def match(self, *pargs, **kwargs):
         if self.bintree and not self.bintree.populated:
@@ -187,9 +186,9 @@ class bindbapi(fakedbapi):
                 binpkg_path = self.bintree._pkg_paths[instance_key]
             except KeyError:
                 raise KeyError(mycpv)
-            binpkg_path = os.path.join(self.bintree.pkgdir, binpkg_path)
+            binpkg_path = os_unicode_fs.path.join(self.bintree.pkgdir, binpkg_path)
             try:
-                st = os.lstat(binpkg_path)
+                st = os_unicode_fs.lstat(binpkg_path)
             except OSError:
                 raise KeyError(mycpv)
             binpkg_format = self.cpvdict[instance_key]["BINPKG_FORMAT"]
@@ -262,7 +261,7 @@ class bindbapi(fakedbapi):
                 build_id = cpv.build_id
 
         binpkg_path = self.bintree.getname(cpv)
-        if not os.path.exists(binpkg_path):
+        if not os_unicode_fs.path.exists(binpkg_path):
             raise KeyError(cpv)
 
         binpkg_format = cpv.binpkg_format
@@ -376,7 +375,7 @@ class bindbapi(fakedbapi):
 
                 extractor.start()
                 await extractor.async_wait()
-                if extractor.returncode != os.EX_OK:
+                if extractor.returncode != os_unicode_fs.EX_OK:
                     raise PortageException("Error Extracting '{}'".format(pkg_path))
             elif binpkg_format == "gpkg":
                 await loop.run_in_executor(
@@ -431,7 +430,7 @@ class bindbapi(fakedbapi):
             except ValueError:
                 raise portage.exception.InvalidSignature("SIZE: %s" % metadata["SIZE"])
             else:
-                filesdict[os.path.basename(self.bintree.getname(pkg))] = size
+                filesdict[os_unicode_fs.path.basename(self.bintree.getname(pkg))] = size
 
         return filesdict
 
@@ -493,10 +492,12 @@ class binarytree:
             self.settings = settings
             self._pkg_paths = {}
             self._populating = False
-            self._all_directory = os.path.isdir(os.path.join(self.pkgdir, "All"))
+            self._all_directory = os_unicode_fs.path.isdir(
+                os_unicode_fs.path.join(self.pkgdir, "All")
+            )
             self._pkgindex_version = 0
             self._pkgindex_hashes = ["MD5", "SHA1"]
-            self._pkgindex_file = os.path.join(self.pkgdir, "Packages")
+            self._pkgindex_file = os_unicode_fs.path.join(self.pkgdir, "Packages")
             self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
             self._pkgindex_keys.update(["CPV", "SIZE"])
             self._pkgindex_aux_keys = [
@@ -672,7 +673,9 @@ class binarytree:
                 continue
 
             binpkg_path = self.getname(mycpv)
-            if os.path.exists(binpkg_path) and not os.access(binpkg_path, os.W_OK):
+            if os_unicode_fs.path.exists(binpkg_path) and not os_unicode_fs.access(
+                binpkg_path, os_unicode_fs.W_OK
+            ):
                 writemsg(
                     _("!!! Cannot update readonly binary: %s\n") % mycpv, noiselevel=-1
                 )
@@ -734,7 +737,7 @@ class binarytree:
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
             update_path = self.getname(mynewcpv, allocate_new=True) + ".partial"
-            self._ensure_dir(os.path.dirname(update_path))
+            self._ensure_dir(os_unicode_fs.path.dirname(update_path))
             update_path_lock = None
             try:
                 update_path_lock = lockfile(update_path, wantnewlockfile=True)
@@ -751,7 +754,7 @@ class binarytree:
             finally:
                 if update_path_lock is not None:
                     try:
-                        os.unlink(update_path)
+                        os_unicode_fs.unlink(update_path)
                     except OSError:
                         pass
                     unlockfile(update_path_lock)
@@ -775,7 +778,7 @@ class binarytree:
         @type cat_dir: String
         """
         try:
-            pkgdir_st = os.stat(self.pkgdir)
+            pkgdir_st = os_unicode_fs.stat(self.pkgdir)
         except OSError:
             ensure_dirs(path)
             return
@@ -784,12 +787,12 @@ class binarytree:
         try:
             ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
         except PortageException:
-            if not os.path.isdir(path):
+            if not os_unicode_fs.path.isdir(path):
                 raise
 
     def _file_permissions(self, path):
         try:
-            pkgdir_st = os.stat(self.pkgdir)
+            pkgdir_st = os_unicode_fs.stat(self.pkgdir)
         except OSError:
             pass
         else:
@@ -818,7 +821,7 @@ class binarytree:
         if self._populating:
             return
 
-        if not os.path.isdir(self.pkgdir) and not (getbinpkgs or add_repos):
+        if not os_unicode_fs.path.isdir(self.pkgdir) and not (getbinpkgs or add_repos):
             self.populated = True
             return
 
@@ -854,7 +857,7 @@ class binarytree:
                 self._populate_additional(add_repos)
 
             if getbinpkgs:
-                config_path = os.path.join(
+                config_path = os_unicode_fs.path.join(
                     self.settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
                 )
                 self._binrepos_conf = BinRepoConfigLoader((config_path,), self.settings)
@@ -902,7 +905,7 @@ class binarytree:
             self._pkg_paths = pkg_paths
             dir_files = {}
             if reindex:
-                for parent, dir_names, file_names in os.walk(self.pkgdir):
+                for parent, dir_names, file_names in os_unicode_fs.walk(self.pkgdir):
                     relative_parent = parent[len(self.pkgdir) + 1 :]
                     dir_files[relative_parent] = file_names
 
@@ -939,7 +942,7 @@ class binarytree:
                         continue
 
                 if reindex:
-                    basename = os.path.basename(path)
+                    basename = os_unicode_fs.path.basename(path)
                     basename_index.setdefault(basename, []).append(d)
                 else:
                     instance_key = _instance_key(cpv)
@@ -978,9 +981,9 @@ class binarytree:
                             gpkg_only_warned = True
                         continue
 
-                    mypath = os.path.join(mydir, myfile)
-                    full_path = os.path.join(self.pkgdir, mypath)
-                    s = os.lstat(full_path)
+                    mypath = os_unicode_fs.path.join(mydir, myfile)
+                    full_path = os_unicode_fs.path.join(self.pkgdir, mypath)
+                    s = os_unicode_fs.lstat(full_path)
 
                     if not stat.S_ISREG(s.st_mode):
                         continue
@@ -1026,7 +1029,7 @@ class binarytree:
                                     update_pkgindex = True
                             self.dbapi.cpv_inject(mycpv)
                             continue
-                    if not os.access(full_path, os.R_OK):
+                    if not os_unicode_fs.access(full_path, os_unicode_fs.R_OK):
                         writemsg(
                             _("!!! Permission denied to read " "binary package: '%s'\n")
                             % full_path,
@@ -1279,7 +1282,7 @@ class binarytree:
                 port_str = ":%s" % (port,)
                 if host.endswith(port_str):
                     host = host[: -len(port_str)]
-            pkgindex_file = os.path.join(
+            pkgindex_file = os_unicode_fs.path.join(
                 self.settings["EROOT"],
                 CACHE_PATH,
                 "binhost",
@@ -1408,8 +1411,10 @@ class binarytree:
                             fcmd = repo.fetchcommand
 
                         fd, tmp_filename = tempfile.mkstemp()
-                        tmp_dirname, tmp_basename = os.path.split(tmp_filename)
-                        os.close(fd)
+                        tmp_dirname, tmp_basename = os_unicode_fs.path.split(
+                            tmp_filename
+                        )
+                        os_unicode_fs.close(fd)
 
                         fcmd_vars = {
                             "DISTDIR": tmp_dirname,
@@ -1511,19 +1516,21 @@ class binarytree:
                 proc = None
             if tmp_filename is not None:
                 try:
-                    os.unlink(tmp_filename)
+                    os_unicode_fs.unlink(tmp_filename)
                 except OSError:
                     pass
             if pkgindex is rmt_idx:
                 pkgindex.modified = False  # don't update the header
                 pkgindex.header["DOWNLOAD_TIMESTAMP"] = "%d" % time.time()
                 try:
-                    ensure_dirs(os.path.dirname(pkgindex_file))
+                    ensure_dirs(os_unicode_fs.path.dirname(pkgindex_file))
                     f = atomic_ofstream(pkgindex_file)
                     pkgindex.write(f)
                     f.close()
                 except (IOError, PortageException):
-                    if os.access(os.path.dirname(pkgindex_file), os.W_OK):
+                    if os_unicode_fs.access(
+                        os_unicode_fs.path.dirname(pkgindex_file), os_unicode_fs.W_OK
+                    ):
                         raise
                     # The current user doesn't have permission to cache the
                     # file, but that's alright.
@@ -1603,7 +1610,7 @@ class binarytree:
         else:
             full_path = filename
         try:
-            s = os.stat(full_path)
+            s = os_unicode_fs.stat(full_path)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -1656,20 +1663,20 @@ class binarytree:
         # process) and then updated it, all while holding a lock.
         pkgindex_lock = None
         try:
-            os.makedirs(self.pkgdir, exist_ok=True)
+            os_unicode_fs.makedirs(self.pkgdir, exist_ok=True)
             pkgindex_lock = lockfile(self._pkgindex_file, wantnewlockfile=1)
             if filename is not None:
                 new_filename = self.getname(cpv, allocate_new=True)
                 try:
-                    samefile = os.path.samefile(filename, new_filename)
+                    samefile = os_unicode_fs.path.samefile(filename, new_filename)
                 except OSError:
                     samefile = False
                 if not samefile:
-                    self._ensure_dir(os.path.dirname(new_filename))
+                    self._ensure_dir(os_unicode_fs.path.dirname(new_filename))
                     _movefile(filename, new_filename, mysettings=self.settings)
                 full_path = new_filename
 
-            basename = os.path.basename(full_path)
+            basename = os_unicode_fs.path.basename(full_path)
             pf = catsplit(cpv)[1]
             if (build_id is None) and (not fetched) and binpkg_format:
                 # Apply the newly assigned BUILD_ID. This is intended
@@ -1730,7 +1737,7 @@ class binarytree:
         @param filename: File path of the binary package
         @type filename: string
         @param st: stat result for the binary package
-        @type st: os.stat_result
+        @type st: os_unicode_fs.stat_result
         @param keys: optional list of specific metadata keys to retrieve
         @type keys: iterable
         @rtype: dict
@@ -1851,7 +1858,7 @@ class binarytree:
                 f_close.close()
             self._file_permissions(fname)
             # some seconds might have elapsed since TIMESTAMP
-            os.utime(fname, (atime, mtime))
+            os_unicode_fs.utime(fname, (atime, mtime))
 
     def _pkgindex_entry(self, cpv):
         """
@@ -1871,7 +1878,7 @@ class binarytree:
         d.update(perform_multiple_checksums(pkg_path, hashes=self._pkgindex_hashes))
 
         d["CPV"] = cpv
-        st = os.lstat(pkg_path)
+        st = os_unicode_fs.lstat(pkg_path)
         d["_mtime_"] = str(st[stat.ST_MTIME])
         d["SIZE"] = str(st.st_size)
         d["BINPKG_FORMAT"] = binpkg_format
@@ -1963,10 +1970,14 @@ class binarytree:
             header.setdefault("VERSION", str(self._pkgindex_version))
             return
 
-        portdir = normalize_path(os.path.realpath(self.settings["PORTDIR"]))
-        profiles_base = os.path.join(portdir, "profiles") + os.path.sep
+        portdir = normalize_path(os_unicode_fs.path.realpath(self.settings["PORTDIR"]))
+        profiles_base = (
+            os_unicode_fs.path.join(portdir, "profiles") + os_unicode_fs.path.sep
+        )
         if self.settings.profile_path:
-            profile_path = normalize_path(os.path.realpath(self.settings.profile_path))
+            profile_path = normalize_path(
+                os_unicode_fs.path.realpath(self.settings.profile_path)
+            )
             if profile_path.startswith(profiles_base):
                 profile_path = profile_path[len(profiles_base) :]
             header["PROFILE"] = profile_path
@@ -2072,7 +2083,7 @@ class binarytree:
             instance_key = self.dbapi._instance_key(cpv)
             path = self._pkg_paths.get(instance_key)
             if path is not None:
-                filename = os.path.join(self.pkgdir, path)
+                filename = os_unicode_fs.path.join(self.pkgdir, path)
 
         if filename is None and not allocate_new:
             try:
@@ -2082,7 +2093,7 @@ class binarytree:
             else:
                 filename = self._pkg_paths.get(instance_key)
                 if filename is not None:
-                    filename = os.path.join(self.pkgdir, filename)
+                    filename = os_unicode_fs.path.join(self.pkgdir, filename)
                 elif instance_key in self._additional_pkgs:
                     return None
 
@@ -2110,20 +2121,20 @@ class binarytree:
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
                     filename = "%s-%s.xpak" % (
-                        os.path.join(self.pkgdir, cpv.cp, pf),
+                        os_unicode_fs.path.join(self.pkgdir, cpv.cp, pf),
                         "1",
                     )
                 else:
-                    filename = os.path.join(self.pkgdir, cpv + ".tbz2")
+                    filename = os_unicode_fs.path.join(self.pkgdir, cpv + ".tbz2")
             elif binpkg_format == "gpkg":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
                     filename = "%s-%s.gpkg.tar" % (
-                        os.path.join(self.pkgdir, cpv.cp, pf),
+                        os_unicode_fs.path.join(self.pkgdir, cpv.cp, pf),
                         "1",
                     )
                 else:
-                    filename = os.path.join(self.pkgdir, cpv + ".gpkg.tar")
+                    filename = os_unicode_fs.path.join(self.pkgdir, cpv + ".gpkg.tar")
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
 
@@ -2157,9 +2168,9 @@ class binarytree:
             )
 
         if binpkg_format == "xpak":
-            return os.path.join(self.pkgdir, cpv + ".tbz2")
+            return os_unicode_fs.path.join(self.pkgdir, cpv + ".tbz2")
         elif binpkg_format == "gpkg":
-            return os.path.join(self.pkgdir, cpv + ".gpkg.tar")
+            return os_unicode_fs.path.join(self.pkgdir, cpv + ".gpkg.tar")
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
@@ -2191,10 +2202,10 @@ class binarytree:
 
         while True:
             filename = filename_format % (
-                os.path.join(self.pkgdir, cpv.cp, pf),
+                os_unicode_fs.path.join(self.pkgdir, cpv.cp, pf),
                 build_id,
             )
-            if os.path.exists(filename):
+            if os_unicode_fs.path.exists(filename):
                 build_id += 1
             else:
                 return filename
@@ -2243,9 +2254,9 @@ class binarytree:
         resume if the file appears to be partially downloaded."""
         instance_key = self.dbapi._instance_key(pkgname)
         tbz2_path = self.getname(pkgname)
-        tbz2name = os.path.basename(tbz2_path)
+        tbz2name = os_unicode_fs.path.basename(tbz2_path)
         resume = False
-        if os.path.exists(tbz2_path):
+        if os_unicode_fs.path.exists(tbz2_path):
             if tbz2name[:-5] not in self.invalids:
                 return
 
@@ -2257,7 +2268,7 @@ class binarytree:
                 noiselevel=-1,
             )
 
-        mydest = os.path.dirname(self.getname(pkgname))
+        mydest = os_unicode_fs.path.dirname(self.getname(pkgname))
         self._ensure_dir(mydest)
         # urljoin doesn't work correctly with unrecognized protocols like sftp
         if self._remote_has_index:
@@ -2278,7 +2289,7 @@ class binarytree:
         success = portage.getbinpkg.file_get(url, mydest, fcmd=fcmd)
         if not success:
             try:
-                os.unlink(self.getname(pkgname))
+                os_unicode_fs.unlink(self.getname(pkgname))
             except OSError:
                 pass
             raise portage.exception.FileNotFound(mydest)

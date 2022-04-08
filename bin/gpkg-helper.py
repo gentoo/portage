@@ -7,7 +7,7 @@ import sys
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 
 
 def command_compose(args):
@@ -21,12 +21,12 @@ def command_compose(args):
 
     cpv, binpkg_path, metadata_dir, image_dir = args
 
-    if not os.path.isdir(metadata_dir):
+    if not os_unicode_fs.path.isdir(metadata_dir):
         sys.stderr.write(usage)
         sys.stderr.write("Argument 3 is not a directory: '%s'\n" % metadata_dir)
         return 1
 
-    if not os.path.isdir(image_dir):
+    if not os_unicode_fs.path.isdir(image_dir):
         sys.stderr.write(usage)
         sys.stderr.write("Argument 4 is not a directory: '%s'\n" % image_dir)
         return 1
@@ -34,7 +34,7 @@ def command_compose(args):
     gpkg_file = portage.gpkg.gpkg(portage.settings, cpv, binpkg_path)
     metadata = gpkg_file._generate_metadata_from_dir(metadata_dir)
     gpkg_file.compress(image_dir, metadata)
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 def main(argv):
@@ -45,7 +45,7 @@ def main(argv):
 
     valid_commands = ("compress",)
     description = "Perform metadata operations on a binary package."
-    usage = "usage: %s COMMAND [args]" % os.path.basename(argv[0])
+    usage = "usage: %s COMMAND [args]" % os_unicode_fs.path.basename(argv[0])
 
     parser = argparse.ArgumentParser(description=description, usage=usage)
     options, args = parser.parse_known_args(argv[1:])

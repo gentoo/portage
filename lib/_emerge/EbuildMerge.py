@@ -4,7 +4,7 @@
 import functools
 
 from _emerge.CompositeTask import CompositeTask
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi._MergeProcess import MergeProcess
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 
@@ -32,7 +32,7 @@ class EbuildMerge(CompositeTask):
         mycat = settings["CATEGORY"]
         mypkg = settings["PF"]
         pkgloc = settings["D"]
-        infloc = os.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
+        infloc = os_unicode_fs.path.join(settings["PORTAGE_BUILDDIR"], "build-info")
         myebuild = settings["EBUILD"]
         mydbapi = root_config.trees[self.tree].dbapi
         vartree = root_config.trees["vartree"]
@@ -59,7 +59,7 @@ class EbuildMerge(CompositeTask):
         self._start_task(merge_task, self._merge_exit)
 
     def _merge_exit(self, merge_task):
-        if self._final_exit(merge_task) != os.EX_OK:
+        if self._final_exit(merge_task) != os_unicode_fs.EX_OK:
             self._start_exit_hook(self.returncode)
             return
 

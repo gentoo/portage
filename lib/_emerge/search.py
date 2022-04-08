@@ -4,7 +4,7 @@
 import difflib
 import re
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
@@ -466,9 +466,9 @@ class search:
                         root_config=self.root_config,
                         type_name="ebuild",
                     )
-                    pkgdir = os.path.dirname(myebuild)
+                    pkgdir = os_unicode_fs.path.dirname(myebuild)
                     mf = self.settings.repositories.get_repo_for_location(
-                        os.path.dirname(os.path.dirname(pkgdir))
+                        os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
                     )
                     mf = mf.load_manifest(pkgdir, self.settings["DISTDIR"])
                     try:
@@ -492,7 +492,7 @@ class search:
                         if not myebuild and hasattr(db, "bintree"):
                             myebuild = db.bintree.getname(mycpv)
                             try:
-                                mysum[0] = os.stat(myebuild).st_size
+                                mysum[0] = os_unicode_fs.stat(myebuild).st_size
                             except OSError:
                                 myebuild = None
                         break

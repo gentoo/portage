@@ -3,7 +3,7 @@
 
 import stat
 
-from portage import best, os
+from portage import best, os_unicode_fs
 from portage.const import WORLD_FILE
 from portage.data import secpass
 from portage.exception import DirectoryNotFound
@@ -35,7 +35,7 @@ def _global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     """
     # only do this if we're root and not running repoman/ebuild digest
 
-    if secpass < 2 or "SANDBOX_ACTIVE" in os.environ or len(trees) != 1:
+    if secpass < 2 or "SANDBOX_ACTIVE" in os_unicode_fs.environ or len(trees) != 1:
         return False
 
     return _do_global_updates(
@@ -50,7 +50,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     vardb = trees[root]["vartree"].dbapi
     bindb = trees[root]["bintree"].dbapi
 
-    world_file = os.path.join(mysettings["EROOT"], WORLD_FILE)
+    world_file = os_unicode_fs.path.join(mysettings["EROOT"], WORLD_FILE)
     world_list = grabfile(world_file)
     world_modified = False
     world_warnings = set()
@@ -66,8 +66,8 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
     update_notice_printed = False
     for repo_name in portdb.getRepositories():
         repo = portdb.getRepositoryPath(repo_name)
-        updpath = os.path.join(repo, "profiles", "updates")
-        if not os.path.isdir(updpath):
+        updpath = os_unicode_fs.path.join(repo, "profiles", "updates")
+        if not os_unicode_fs.path.isdir(updpath):
             continue
 
         if updpath in updpath_map:
@@ -127,7 +127,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 retupd = True
 
     if retupd:
-        if os.access(bindb.bintree.pkgdir, os.W_OK):
+        if os_unicode_fs.access(bindb.bintree.pkgdir, os_unicode_fs.W_OK):
             # Call binarytree.populate(), since we want to make sure it's
             # only populated with local packages here (getbinpkgs=0).
             bindb.bintree.populate()

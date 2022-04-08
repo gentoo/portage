@@ -16,7 +16,7 @@ except ImportError:
     threading = dummy_threading
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import TryAgain
 from portage.localization import _
 from portage.locks import lockfile, unlockfile
@@ -53,12 +53,12 @@ class AsynchronousLock(AsynchronousTask):
         if not self._force_async:
             try:
                 self._imp = lockfile(
-                    self.path, wantnewlockfile=True, flags=os.O_NONBLOCK
+                    self.path, wantnewlockfile=True, flags=os_unicode_fs.O_NONBLOCK
                 )
             except TryAgain:
                 pass
             else:
-                self.returncode = os.EX_OK
+                self.returncode = os_unicode_fs.EX_OK
                 self._async_wait()
                 return
 
@@ -141,7 +141,7 @@ class _LockThread(AbstractPollTask):
 
     def _run_lock_cb(self):
         self._unregister()
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._async_wait()
 
     def _cancel(self):
@@ -196,14 +196,16 @@ class _LockProcess(AbstractPollTask):
     )
 
     def _start(self):
-        in_pr, in_pw = os.pipe()
-        out_pr, out_pw = os.pipe()
+        in_pr, in_pw = os_unicode_fs.pipe()
+        out_pr, out_pw = os_unicode_fs.pipe()
         self._files = {}
         self._files["pipe_in"] = in_pr
         self._files["pipe_out"] = out_pw
 
         fcntl.fcntl(
-            in_pr, fcntl.F_SETFL, fcntl.fcntl(in_pr, fcntl.F_GETFL) | os.O_NONBLOCK
+            in_pr,
+            fcntl.F_SETFL,
+            fcntl.fcntl(in_pr, fcntl.F_GETFL) | os_unicode_fs.O_NONBLOCK,
         )
 
         self.scheduler.add_reader(in_pr, self._output_handler)
@@ -211,17 +213,17 @@ class _LockProcess(AbstractPollTask):
         self._proc = SpawnProcess(
             args=[
                 portage._python_interpreter,
-                os.path.join(portage._bin_path, "lock-helper.py"),
+                os_unicode_fs.path.join(portage._bin_path, "lock-helper.py"),
                 self.path,
             ],
-            env=dict(os.environ, PORTAGE_PYM_PATH=portage._pym_path),
+            env=dict(os_unicode_fs.environ, PORTAGE_PYM_PATH=portage._pym_path),
             fd_pipes={0: out_pr, 1: in_pw, 2: sys.__stderr__.fileno()},
             scheduler=self.scheduler,
         )
         self._proc.addExitListener(self._proc_exit)
         self._proc.start()
-        os.close(out_pr)
-        os.close(in_pw)
+        os_unicode_fs.close(out_pr)
+        os_unicode_fs.close(in_pw)
 
     def _proc_exit(self, proc):
 
@@ -234,9 +236,9 @@ class _LockProcess(AbstractPollTask):
             except KeyError:
                 pass
             else:
-                os.close(pipe_out)
+                os_unicode_fs.close(pipe_out)
 
-        if proc.returncode != os.EX_OK:
+        if proc.returncode != os_unicode_fs.EX_OK:
             # Typically, this will happen due to the
             # process being killed by a signal.
 
@@ -282,7 +284,7 @@ class _LockProcess(AbstractPollTask):
         if buf:
             self._acquired = True
             self._unregister()
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
 
         return True
@@ -297,22 +299,22 @@ class _LockProcess(AbstractPollTask):
                 pass
             else:
                 self.scheduler.remove_reader(pipe_in)
-                os.close(pipe_in)
+                os_unicode_fs.close(pipe_in)
 
     def _unlock(self):
         if self._proc is None:
             raise AssertionError("not locked")
         if not self._acquired:
             raise AssertionError("lock not acquired yet")
-        if self.returncode != os.EX_OK:
+        if self.returncode != os_unicode_fs.EX_OK:
             raise AssertionError(
                 "lock process failed with returncode %s" % (self.returncode,)
             )
         if self._unlock_future is not None:
             raise AssertionError("already unlocked")
         self._unlock_future = self.scheduler.create_future()
-        os.write(self._files["pipe_out"], b"\0")
-        os.close(self._files["pipe_out"])
+        os_unicode_fs.write(self._files["pipe_out"], b"\0")
+        os_unicode_fs.close(self._files["pipe_out"])
         self._files = None
 
     def async_unlock(self):

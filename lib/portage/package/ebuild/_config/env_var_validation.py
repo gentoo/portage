@@ -1,7 +1,7 @@
 # Copyright 2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.process import find_binary
 from portage.util import shlex_split
 
@@ -17,8 +17,8 @@ def validate_cmd_var(v):
     v_split = shlex_split(v)
     if not v_split:
         invalid = True
-    elif os.path.isabs(v_split[0]):
-        invalid = not os.access(v_split[0], os.EX_OK)
+    elif os_unicode_fs.path.isabs(v_split[0]):
+        invalid = not os_unicode_fs.access(v_split[0], os_unicode_fs.EX_OK)
     elif find_binary(v_split[0]) is None:
         invalid = True
     return (not invalid, v_split)

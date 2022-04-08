@@ -3,7 +3,7 @@
 
 __all__ = ("LicenseManager",)
 
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import ExtendedAtomDict, use_reduce
 from portage.exception import InvalidDependString
 from portage.localization import _
@@ -32,7 +32,7 @@ class LicenseManager:
 
     def _read_user_config(self, abs_user_config):
         licdict = grabdict_package(
-            os.path.join(abs_user_config, "package.license"),
+            os_unicode_fs.path.join(abs_user_config, "package.license"),
             recursive=1,
             allow_wildcard=True,
             allow_repo=True,
@@ -43,7 +43,9 @@ class LicenseManager:
 
     def _read_license_groups(self, locations):
         for loc in locations:
-            for k, v in grabdict(os.path.join(loc, "license_groups")).items():
+            for k, v in grabdict(
+                os_unicode_fs.path.join(loc, "license_groups")
+            ).items():
                 self._license_groups.setdefault(k, []).extend(v)
 
         for k, v in self._license_groups.items():

@@ -4,7 +4,7 @@
 
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase, test_cps
 from portage._sets.files import StaticFileSet
 
@@ -16,12 +16,12 @@ class StaticFileSetTestCase(TestCase):
         fd, self.testfile = tempfile.mkstemp(
             suffix=".testdata", prefix=self.__class__.__name__, text=True
         )
-        f = os.fdopen(fd, "w")
+        f = os_unicode_fs.fdopen(fd, "w")
         f.write("\n".join(test_cps))
         f.close()
 
     def tearDown(self):
-        os.unlink(self.testfile)
+        os_unicode_fs.unlink(self.testfile)
 
     def testSampleStaticFileSet(self):
         s = StaticFileSet(self.testfile)

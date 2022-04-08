@@ -11,8 +11,7 @@ except ImportError:
 
 import pickle
 
-from portage import _unicode_encode
-from portage import os
+from portage import os_unicode_fs, _unicode_encode
 from portage.cache import fs_template
 from portage.cache import cache_errors
 
@@ -33,7 +32,7 @@ class database(fs_template.FsBased):
         if not default_db.startswith("."):
             default_db = "." + default_db
 
-        self._db_path = os.path.join(
+        self._db_path = os_unicode_fs.path.join(
             self.location, fs_template.gen_label(self.location, self.label) + default_db
         )
         self.__db = None

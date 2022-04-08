@@ -14,7 +14,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 from portage._sets.files import StaticFileSet, WorldSelectedPackagesSet
 
 import re
@@ -60,7 +60,7 @@ def isunwanted(pkgline):
 
 
 eroot = portage.settings["EROOT"]
-world_file = os.path.join(eroot, portage.WORLD_FILE)
+world_file = os_unicode_fs.path.join(eroot, portage.WORLD_FILE)
 
 # show a little description if we have arguments
 if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
@@ -75,10 +75,10 @@ syslist = [x for x in portage.settings.packages if issyspkg(x)]
 
 if portage.settings.get("EMERGE_LOG_DIR"):
     logfile = portage.grabfile(
-        os.path.join(portage.settings["EMERGE_LOG_DIR"], "emerge.log")
+        os_unicode_fs.path.join(portage.settings["EMERGE_LOG_DIR"], "emerge.log")
     )
 else:
-    logfile = portage.grabfile(os.path.join(eroot, "var/log/emerge.log"))
+    logfile = portage.grabfile(os_unicode_fs.path.join(eroot, "var/log/emerge.log"))
 biglist = [getpkginfo(x) for x in logfile if iscandidate(x)]
 tmplist = []
 for l in biglist:
@@ -133,16 +133,16 @@ else:
         old_world = existing_set._filename
         fd, tmp_filename = tempfile.mkstemp(
             suffix=".tmp",
-            prefix=os.path.basename(old_world) + ".",
-            dir=os.path.dirname(old_world),
+            prefix=os_unicode_fs.path.basename(old_world) + ".",
+            dir=os_unicode_fs.path.dirname(old_world),
         )
-        os.close(fd)
+        os_unicode_fs.close(fd)
 
         new_set = StaticFileSet(tmp_filename)
         new_set.update(worldlist)
 
         if existing_set.getAtoms() == new_set.getAtoms():
-            os.unlink(tmp_filename)
+            os_unicode_fs.unlink(tmp_filename)
         else:
             new_set.write()
 

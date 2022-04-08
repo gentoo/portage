@@ -5,7 +5,7 @@ __all__ = ["digestcheck"]
 
 import warnings
 
-from portage import os, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
@@ -38,7 +38,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
         hash_filter = None
     if mf is None:
         mf = mysettings.repositories.get_repo_for_location(
-            os.path.dirname(os.path.dirname(pkgdir))
+            os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
         )
         mf = mf.load_manifest(pkgdir, mysettings["DISTDIR"])
     eout = EOutput()
@@ -90,23 +90,23 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
         # would otherwise be detected below.
         return 1
     # Make sure that all of the ebuilds are actually listed in the Manifest.
-    for f in os.listdir(pkgdir):
+    for f in os_unicode_fs.listdir(pkgdir):
         pf = None
         if f[-7:] == ".ebuild":
             pf = f[:-7]
         if pf is not None and not mf.hasFile("EBUILD", f):
             writemsg(
                 _("!!! A file is not listed in the Manifest: '%s'\n")
-                % os.path.join(pkgdir, f),
+                % os_unicode_fs.path.join(pkgdir, f),
                 noiselevel=-1,
             )
             if strict:
                 return 0
     # epatch will just grab all the patches out of a directory, so we have to
     # make sure there aren't any foreign files that it might grab.
-    filesdir = os.path.join(pkgdir, "files")
+    filesdir = os_unicode_fs.path.join(pkgdir, "files")
 
-    for parent, dirs, files in os.walk(filesdir):
+    for parent, dirs, files in os_unicode_fs.walk(filesdir):
         try:
             parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
         except UnicodeDecodeError:
@@ -132,7 +132,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                         "!!! Path contains invalid "
                         "character(s) for encoding '%s': '%s'"
                     )
-                    % (_encodings["fs"], os.path.join(parent, d)),
+                    % (_encodings["fs"], os_unicode_fs.path.join(parent, d)),
                     noiselevel=-1,
                 )
                 if strict:
@@ -148,7 +148,7 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 f = _unicode_decode(f, encoding=_encodings["fs"], errors="replace")
                 if f.startswith("."):
                     continue
-                f = os.path.join(parent, f)[len(filesdir) + 1 :]
+                f = os_unicode_fs.path.join(parent, f)[len(filesdir) + 1 :]
                 writemsg(
                     _(
                         "!!! File name contains invalid "
@@ -162,12 +162,12 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 continue
             if f.startswith("."):
                 continue
-            f = os.path.join(parent, f)[len(filesdir) + 1 :]
+            f = os_unicode_fs.path.join(parent, f)[len(filesdir) + 1 :]
             file_type = mf.findFile(f)
             if file_type != "AUX" and not f.startswith("digest-"):
                 writemsg(
                     _("!!! A file is not listed in the Manifest: '%s'\n")
-                    % os.path.join(filesdir, f),
+                    % os_unicode_fs.path.join(filesdir, f),
                     noiselevel=-1,
                 )
                 if strict:

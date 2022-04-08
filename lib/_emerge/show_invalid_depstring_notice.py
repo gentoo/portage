@@ -4,7 +4,7 @@
 import logging
 import textwrap
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level
 
 
@@ -19,7 +19,7 @@ def show_invalid_depstring_notice(parent_node, error_msg):
     msg = []
     if p_status == "nomerge":
         category, pf = portage.catsplit(p_key)
-        pkg_location = os.path.join(
+        pkg_location = os_unicode_fs.path.join(
             parent_node.root_config.settings["EROOT"], portage.VDB_PATH, category, pf
         )
         msg.append("Portage is unable to process the dependencies of the ")

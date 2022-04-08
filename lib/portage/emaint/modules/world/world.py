@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 
 
 class WorldHandler:
@@ -26,8 +26,8 @@ class WorldHandler:
 
     def _check_world(self, onProgress):
         eroot = portage.settings["EROOT"]
-        self.world_file = os.path.join(eroot, portage.const.WORLD_FILE)
-        self.found = os.access(self.world_file, os.R_OK)
+        self.world_file = os_unicode_fs.path.join(eroot, portage.const.WORLD_FILE)
+        self.found = os_unicode_fs.access(self.world_file, os_unicode_fs.R_OK)
         vardb = portage.db[eroot]["vartree"].dbapi
 
         from portage._sets import SETPREFIX

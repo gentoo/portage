@@ -3,8 +3,7 @@
 
 import tempfile
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.const import EBUILD_PHASES
 from portage.elog import elog_process
 from portage.package.ebuild.config import config
@@ -54,7 +53,7 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
 
         if "PORTAGE_PARALLEL_FETCHONLY" in settings:
             # parallel-fetch mode
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -66,7 +65,9 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
         # doebuild_environment(), since lots of variables such
         # as PORTAGE_BUILDDIR refer to paths inside PORTAGE_TMPDIR.
         portage_tmpdir = settings.get("PORTAGE_TMPDIR")
-        if not portage_tmpdir or not os.access(portage_tmpdir, os.W_OK):
+        if not portage_tmpdir or not os_unicode_fs.access(
+            portage_tmpdir, os_unicode_fs.W_OK
+        ):
             portage_tmpdir = None
         private_tmpdir = self._private_tmpdir = tempfile.mkdtemp(dir=portage_tmpdir)
         settings["PORTAGE_TMPDIR"] = private_tmpdir
@@ -85,7 +86,7 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
             defined_phases = EBUILD_PHASES
 
         if "fetch" not in restrict and "nofetch" not in defined_phases:
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -104,7 +105,7 @@ class SpawnNofetchWithoutBuilddir(CompositeTask):
     def _nofetch_exit(self, ebuild_phase):
         self._final_exit(ebuild_phase)
         elog_process(self.settings.mycpv, self.settings)
-        shutil.rmtree(self._private_tmpdir)
+        shutil_unicode_fs.rmtree(self._private_tmpdir)
         self._async_wait()
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.runner import TextTestResult as _TextTestResult
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
 from portage.output import colorize
@@ -36,9 +36,9 @@ class lazy_value(ObjectProxy):
 @lazy_value
 def cnf_path():
     if portage._not_installed:
-        return os.path.join(portage.const.PORTAGE_BASE_PATH, "cnf")
-    return os.path.join(
-        EPREFIX_ORIG or "/", portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep)
+        return os_unicode_fs.path.join(portage.const.PORTAGE_BASE_PATH, "cnf")
+    return os_unicode_fs.path.join(
+        EPREFIX_ORIG or "/", portage.const.GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep)
     )
 
 
@@ -46,21 +46,21 @@ def cnf_path():
 def cnf_etc_path():
     if portage._not_installed:
         return str(cnf_path)
-    return os.path.join(EPREFIX_ORIG or "/", "etc")
+    return os_unicode_fs.path.join(EPREFIX_ORIG or "/", "etc")
 
 
 @lazy_value
 def cnf_bindir():
     if portage._not_installed:
         return portage.const.PORTAGE_BIN_PATH
-    return os.path.join(portage.const.EPREFIX or "/", "usr", "bin")
+    return os_unicode_fs.path.join(portage.const.EPREFIX or "/", "usr", "bin")
 
 
 @lazy_value
 def cnf_sbindir():
     if portage._not_installed:
         return str(cnf_bindir)
-    return os.path.join(portage.const.EPREFIX or "/", "usr", "sbin")
+    return os_unicode_fs.path.join(portage.const.EPREFIX or "/", "usr", "sbin")
 
 
 def main():
@@ -78,8 +78,8 @@ def main():
     options = parser.parse_args(args=sys.argv)
 
     if (
-        os.environ.get("NOCOLOR") in ("yes", "true")
-        or os.environ.get("TERM") == "dumb"
+        os_unicode_fs.environ.get("NOCOLOR") in ("yes", "true")
+        or os_unicode_fs.environ.get("TERM") == "dumb"
         or not sys.stdout.isatty()
     ):
         portage.output.nocolor()
@@ -90,7 +90,7 @@ def main():
             testsubdir = mydir.name
             for name in getTestNames(mydir):
                 print("%s/%s/%s.py" % (testdir, testsubdir, name))
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     if len(options.tests) > 1:
         suite.addTests(getTestFromCommandLine(options.tests[1:], basedir))
@@ -101,7 +101,7 @@ def main():
     result = TextTestRunner(verbosity=2).run(suite)
     if not result.wasSuccessful():
         return 1
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 def my_import(name):

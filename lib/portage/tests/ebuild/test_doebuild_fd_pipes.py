@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
@@ -64,15 +64,15 @@ class DoebuildFdPipesTestCase(TestCase):
         true_binary = portage.process.find_binary("true")
         self.assertEqual(true_binary is None, False, "true command not found")
 
-        dev_null = open(os.devnull, "wb")
+        dev_null = open(os_unicode_fs.devnull, "wb")
         playground = ResolverPlayground(ebuilds=ebuilds)
         try:
             QueryCommand._db = playground.trees
             root_config = playground.trees[playground.eroot]["root_config"]
             portdb = root_config.trees["porttree"].dbapi
             settings = portage.config(clone=playground.settings)
-            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-                settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+                settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                     "__PORTAGE_TEST_HARDLINK_LOCKS"
                 ]
                 settings.backup_changes("__PORTAGE_TEST_HARDLINK_LOCKS")
@@ -81,14 +81,14 @@ class DoebuildFdPipesTestCase(TestCase):
             settings.features.add("test")
             settings["PORTAGE_PYTHON"] = portage._python_interpreter
             settings["PORTAGE_QUIET"] = "1"
-            settings["PYTHONDONTWRITEBYTECODE"] = os.environ.get(
+            settings["PYTHONDONTWRITEBYTECODE"] = os_unicode_fs.environ.get(
                 "PYTHONDONTWRITEBYTECODE", ""
             )
 
-            fake_bin = os.path.join(settings["EPREFIX"], "bin")
+            fake_bin = os_unicode_fs.path.join(settings["EPREFIX"], "bin")
             portage.util.ensure_dirs(fake_bin)
             for x in true_symlinks:
-                os.symlink(true_binary, os.path.join(fake_bin, x))
+                os_unicode_fs.symlink(true_binary, os_unicode_fs.path.join(fake_bin, x))
 
             settings["__PORTAGE_TEST_PATH_OVERRIDE"] = fake_bin
             settings.backup_changes("__PORTAGE_TEST_PATH_OVERRIDE")
@@ -126,7 +126,7 @@ class DoebuildFdPipesTestCase(TestCase):
                 "merge",
             ):
 
-                pr, pw = os.pipe()
+                pr, pw = os_unicode_fs.pipe()
 
                 producer = DoebuildProcess(
                     doebuild_pargs=(ebuildpath, phase),
@@ -152,15 +152,15 @@ class DoebuildFdPipesTestCase(TestCase):
                     task_scheduler.start()
                 finally:
                     # PipeReader closes pr
-                    os.close(pw)
+                    os_unicode_fs.close(pw)
 
                 task_scheduler.wait()
                 output = portage._unicode_decode(consumer.getvalue()).rstrip("\n")
 
-                if task_scheduler.returncode != os.EX_OK:
+                if task_scheduler.returncode != os_unicode_fs.EX_OK:
                     portage.writemsg(output, noiselevel=-1)
 
-                self.assertEqual(task_scheduler.returncode, os.EX_OK)
+                self.assertEqual(task_scheduler.returncode, os_unicode_fs.EX_OK)
 
                 if phase not in ("clean", "merge", "qmerge"):
                     self.assertEqual(phase, output)

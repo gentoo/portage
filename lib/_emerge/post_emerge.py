@@ -5,7 +5,7 @@ import logging
 import textwrap
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.emaint.modules.logs.logs import CleanLogs
 from portage.news import count_unread_news, display_news_notifications
 from portage.output import colorize
@@ -23,7 +23,7 @@ def clean_logs(settings):
         return
 
     logdir = settings.get("PORTAGE_LOGDIR")
-    if logdir is None or not os.path.isdir(logdir):
+    if logdir is None or not os_unicode_fs.path.isdir(logdir):
         return
 
     cleanlogs = CleanLogs()
@@ -99,9 +99,9 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
         "INFODIR", ""
     ).split(":")
 
-    os.chdir("/")
+    os_unicode_fs.chdir("/")
 
-    if retval == os.EX_OK:
+    if retval == os_unicode_fs.EX_OK:
         exit_msg = " *** exiting successfully."
     else:
         exit_msg = " *** exiting unsuccessfully with status '%s'." % retval
@@ -116,10 +116,10 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
         # If vdb state has not changed then there's nothing else to do.
         return
 
-    vdb_path = os.path.join(root_config.settings["EROOT"], portage.VDB_PATH)
+    vdb_path = os_unicode_fs.path.join(root_config.settings["EROOT"], portage.VDB_PATH)
     portage.util.ensure_dirs(vdb_path)
     vdb_lock = None
-    if os.access(vdb_path, os.W_OK) and not "--pretend" in myopts:
+    if os_unicode_fs.access(vdb_path, os_unicode_fs.W_OK) and not "--pretend" in myopts:
         vardbapi.lock()
         vdb_lock = True
 
@@ -154,12 +154,12 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
 
     display_news_notification(root_config, myopts)
 
-    postemerge = os.path.join(
+    postemerge = os_unicode_fs.path.join(
         settings["PORTAGE_CONFIGROOT"], portage.USER_CONFIG_PATH, "bin", "post_emerge"
     )
-    if os.access(postemerge, os.X_OK):
+    if os_unicode_fs.access(postemerge, os_unicode_fs.X_OK):
         hook_retval = portage.process.spawn([postemerge], env=settings.environ())
-        if hook_retval != os.EX_OK:
+        if hook_retval != os_unicode_fs.EX_OK:
             portage.util.writemsg_level(
                 " %s spawn failed of %s\n"
                 % (

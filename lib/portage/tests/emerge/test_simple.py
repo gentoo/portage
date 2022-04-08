@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import portage
-from portage import shutil, os
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.const import (
     BASH_BINARY,
     BINREPOS_CONF_FILE,
@@ -30,10 +30,10 @@ class BinhostContentMap(Mapping):
         self._local_path = local_path
 
     def __getitem__(self, request_path):
-        safe_path = os.path.normpath(request_path)
+        safe_path = os_unicode_fs.path.normpath(request_path)
         if not safe_path.startswith(self._remote_path + "/"):
             raise KeyError(request_path)
-        local_path = os.path.join(
+        local_path = os_unicode_fs.path.join(
             self._local_path, safe_path[len(self._remote_path) + 1 :]
         )
         try:
@@ -258,60 +258,80 @@ call_has_and_best_version() {
         trees = playground.trees
         portdb = trees[eroot]["porttree"].dbapi
         test_repo_location = settings.repositories["test_repo"].location
-        var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
-        cachedir = os.path.join(var_cache_edb, "dep")
-        cachedir_pregen = os.path.join(test_repo_location, "metadata", "md5-cache")
+        var_cache_edb = os_unicode_fs.path.join(eprefix, "var", "cache", "edb")
+        cachedir = os_unicode_fs.path.join(var_cache_edb, "dep")
+        cachedir_pregen = os_unicode_fs.path.join(
+            test_repo_location, "metadata", "md5-cache"
+        )
 
         portage_python = portage._python_interpreter
         dispatch_conf_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "dispatch-conf"),
+            os_unicode_fs.path.join(self.sbindir, "dispatch-conf"),
         )
-        ebuild_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "ebuild"))
+        ebuild_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.bindir, "ebuild"),
+        )
         egencache_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "egencache"),
+            os_unicode_fs.path.join(self.bindir, "egencache"),
             "--repo",
             "test_repo",
             "--repositories-configuration",
             settings.repositories.config_string(),
         )
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
-        emaint_cmd = (portage_python, "-b", "-Wd", os.path.join(self.sbindir, "emaint"))
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.bindir, "emerge"),
+        )
+        emaint_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.sbindir, "emaint"),
+        )
         env_update_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "env-update"),
+            os_unicode_fs.path.join(self.sbindir, "env-update"),
         )
-        etc_update_cmd = (BASH_BINARY, os.path.join(self.sbindir, "etc-update"))
+        etc_update_cmd = (
+            BASH_BINARY,
+            os_unicode_fs.path.join(self.sbindir, "etc-update"),
+        )
         fixpackages_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "fixpackages"),
+            os_unicode_fs.path.join(self.sbindir, "fixpackages"),
         )
         portageq_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "portageq"),
+            os_unicode_fs.path.join(self.bindir, "portageq"),
         )
         quickpkg_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "quickpkg"),
+            os_unicode_fs.path.join(self.bindir, "quickpkg"),
         )
         regenworld_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "regenworld"),
+            os_unicode_fs.path.join(self.sbindir, "regenworld"),
         )
 
         rm_binary = find_binary("rm")
@@ -325,11 +345,13 @@ call_has_and_best_version() {
         test_ebuild = portdb.findname("dev-libs/A-1")
         self.assertFalse(test_ebuild is None)
 
-        cross_prefix = os.path.join(eprefix, "cross_prefix")
-        cross_root = os.path.join(eprefix, "cross_root")
-        cross_eroot = os.path.join(cross_root, eprefix.lstrip(os.sep))
+        cross_prefix = os_unicode_fs.path.join(eprefix, "cross_prefix")
+        cross_root = os_unicode_fs.path.join(eprefix, "cross_root")
+        cross_eroot = os_unicode_fs.path.join(
+            cross_root, eprefix.lstrip(os_unicode_fs.sep)
+        )
 
-        binhost_dir = os.path.join(eprefix, "binhost")
+        binhost_dir = os_unicode_fs.path.join(eprefix, "binhost")
         binhost_address = "127.0.0.1"
         binhost_remote_path = "/binhost"
         binhost_server = AsyncHTTPServer(
@@ -410,13 +432,17 @@ call_has_and_best_version() {
             rm_cmd + ("-rf", cachedir),
             emerge_cmd + ("--oneshot", "virtual/foo"),
             lambda: self.assertFalse(
-                os.path.exists(os.path.join(pkgdir, "virtual", "foo", foo_filename))
+                os_unicode_fs.path.exists(
+                    os_unicode_fs.path.join(pkgdir, "virtual", "foo", foo_filename)
+                )
             ),
             ({"FEATURES": "unmerge-backup"},)
             + emerge_cmd
             + ("--unmerge", "virtual/foo"),
             lambda: self.assertTrue(
-                os.path.exists(os.path.join(pkgdir, "virtual", "foo", foo_filename))
+                os_unicode_fs.path.exists(
+                    os_unicode_fs.path.join(pkgdir, "virtual", "foo", foo_filename)
+                )
             ),
             emerge_cmd + ("--pretend", "dev-libs/A"),
             ebuild_cmd + (test_ebuild, "manifest", "clean", "package", "merge"),
@@ -478,7 +504,9 @@ call_has_and_best_version() {
                     )
                 ),
             ),
-            lambda: os.unlink(os.path.join(eprefix, "etc", "A-0")),
+            lambda: os_unicode_fs.unlink(
+                os_unicode_fs.path.join(eprefix, "etc", "A-0")
+            ),
             emerge_cmd + ("--usepkgonly", "dev-libs/A"),
             lambda: self.assertEqual(
                 1,
@@ -563,7 +591,9 @@ call_has_and_best_version() {
         )
 
         # Test binhost support if FETCHCOMMAND is available.
-        binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
+        binrepos_conf_file = os_unicode_fs.path.join(
+            os_unicode_fs.sep, eprefix, BINREPOS_CONF_FILE
+        )
         with open(binrepos_conf_file, "wt") as f:
             f.write("[test-binhost]\n")
             f.write("sync-uri = {}\n".format(binhost_uri))
@@ -571,28 +601,30 @@ call_has_and_best_version() {
         fetch_bin = portage.process.find_binary(fetchcommand[0])
         if fetch_bin is not None:
             test_commands = test_commands + (
-                lambda: os.rename(pkgdir, binhost_dir),
+                lambda: os_unicode_fs.rename(pkgdir, binhost_dir),
                 emerge_cmd + ("-e", "--getbinpkgonly", "dev-libs/A"),
-                lambda: shutil.rmtree(pkgdir),
-                lambda: os.rename(binhost_dir, pkgdir),
+                lambda: shutil_unicode_fs.rmtree(pkgdir),
+                lambda: os_unicode_fs.rename(binhost_dir, pkgdir),
                 # Remove binrepos.conf and test PORTAGE_BINHOST.
-                lambda: os.unlink(binrepos_conf_file),
-                lambda: os.rename(pkgdir, binhost_dir),
+                lambda: os_unicode_fs.unlink(binrepos_conf_file),
+                lambda: os_unicode_fs.rename(pkgdir, binhost_dir),
                 ({"PORTAGE_BINHOST": binhost_uri},)
                 + emerge_cmd
                 + ("-fe", "--getbinpkgonly", "dev-libs/A"),
-                lambda: shutil.rmtree(pkgdir),
-                lambda: os.rename(binhost_dir, pkgdir),
+                lambda: shutil_unicode_fs.rmtree(pkgdir),
+                lambda: os_unicode_fs.rename(binhost_dir, pkgdir),
             )
 
         distdir = playground.distdir
         pkgdir = playground.pkgdir
-        fake_bin = os.path.join(eprefix, "bin")
-        portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
+        fake_bin = os_unicode_fs.path.join(eprefix, "bin")
+        portage_tmpdir = os_unicode_fs.path.join(eprefix, "var", "tmp", "portage")
         profile_path = settings.profile_path
-        user_config_dir = os.path.join(os.sep, eprefix, USER_CONFIG_PATH)
+        user_config_dir = os_unicode_fs.path.join(
+            os_unicode_fs.sep, eprefix, USER_CONFIG_PATH
+        )
 
-        path = os.environ.get("PATH")
+        path = os_unicode_fs.environ.get("PATH")
         if path is not None and not path.strip():
             path = None
         if path is None:
@@ -601,7 +633,7 @@ call_has_and_best_version() {
             path = ":" + path
         path = fake_bin + path
 
-        pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath = os_unicode_fs.environ.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
         if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
@@ -628,17 +660,19 @@ call_has_and_best_version() {
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PORTAGE_TMPDIR": portage_tmpdir,
             "PORTAGE_LOGDIR": portage_tmpdir,
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
+            "PYTHONDONTWRITEBYTECODE": os_unicode_fs.environ.get(
+                "PYTHONDONTWRITEBYTECODE", ""
+            ),
             "PYTHONPATH": pythonpath,
             "__PORTAGE_TEST_PATH_OVERRIDE": fake_bin,
         }
 
-        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                 "__PORTAGE_TEST_HARDLINK_LOCKS"
             ]
 
-        updates_dir = os.path.join(test_repo_location, "profiles", "updates")
+        updates_dir = os_unicode_fs.path.join(test_repo_location, "profiles", "updates")
         dirs = [
             cachedir,
             cachedir_pregen,
@@ -662,22 +696,23 @@ call_has_and_best_version() {
             for d in dirs:
                 ensure_dirs(d)
             for x in true_symlinks:
-                os.symlink(true_binary, os.path.join(fake_bin, x))
+                os_unicode_fs.symlink(true_binary, os_unicode_fs.path.join(fake_bin, x))
             for x in etc_symlinks:
-                os.symlink(
-                    os.path.join(self.cnf_etc_path, x), os.path.join(eprefix, "etc", x)
+                os_unicode_fs.symlink(
+                    os_unicode_fs.path.join(self.cnf_etc_path, x),
+                    os_unicode_fs.path.join(eprefix, "etc", x),
                 )
-            with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
+            with open(os_unicode_fs.path.join(var_cache_edb, "counter"), "wb") as f:
                 f.write(b"100")
             # non-empty system set keeps --depclean quiet
-            with open(os.path.join(profile_path, "packages"), "w") as f:
+            with open(os_unicode_fs.path.join(profile_path, "packages"), "w") as f:
                 f.write("*dev-libs/token-system-pkg")
             for cp, xml_data in metadata_xml_files:
                 with open(
-                    os.path.join(test_repo_location, cp, "metadata.xml"), "w"
+                    os_unicode_fs.path.join(test_repo_location, cp, "metadata.xml"), "w"
                 ) as f:
                     f.write(playground.metadata_xml_template % xml_data)
-            with open(os.path.join(updates_dir, "1Q-2010"), "w") as f:
+            with open(os_unicode_fs.path.join(updates_dir, "1Q-2010"), "w") as f:
                 f.write(
                     """
 slotmove =app-doc/pms-3 2 3
@@ -716,11 +751,13 @@ move dev-util/git dev-vcs/git
                 else:
                     output, _err = await proc.communicate()
                     await proc.wait()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != os_unicode_fs.EX_OK:
                         portage.writemsg(output)
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os_unicode_fs.EX_OK,
+                    proc.returncode,
+                    "emerge failed with args %s" % (args,),
                 )
         finally:
             binhost_server.__exit__(None, None, None)

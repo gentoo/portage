@@ -139,11 +139,13 @@ def movefile(
         _rename = _os.rename
 
     lchown = _unicode_func_wrapper(portage.data.lchown, encoding=encoding)
-    os = _unicode_module_wrapper(_os, encoding=encoding, overrides=_os_overrides)
+    os_unicode = _unicode_module_wrapper(
+        _os, encoding=encoding, overrides=_os_overrides
+    )
 
     try:
         if not sstat:
-            sstat = os.lstat(src)
+            sstat = os_unicode.lstat(src)
 
     except SystemExit as e:
         raise
@@ -156,9 +158,9 @@ def movefile(
 
     destexists = 1
     try:
-        dstat = os.lstat(dest)
+        dstat = os_unicode.lstat(dest)
     except (OSError, IOError):
-        dstat = os.lstat(os.path.dirname(dest))
+        dstat = os_unicode.lstat(os_unicode.path.dirname(dest))
         destexists = 0
 
     if bsd_chflags:
@@ -166,14 +168,14 @@ def movefile(
             bsd_chflags.lchflags(dest, 0)
         # Use normal stat/chflags for the parent since we want to
         # follow any symlinks to the real parent directory.
-        pflags = os.stat(os.path.dirname(dest)).st_flags
+        pflags = os_unicode.stat(os_unicode.path.dirname(dest)).st_flags
         if pflags != 0:
-            bsd_chflags.chflags(os.path.dirname(dest), 0)
+            bsd_chflags.chflags(os_unicode.path.dirname(dest), 0)
 
     if destexists:
         if not stat.S_ISLNK(sstat[stat.ST_MODE]) and stat.S_ISLNK(dstat[stat.ST_MODE]):
             try:
-                os.unlink(dest)
+                os_unicode.unlink(dest)
                 destexists = 0
             except SystemExit as e:
                 raise
@@ -182,18 +184,18 @@ def movefile(
 
     if stat.S_ISLNK(sstat[stat.ST_MODE]):
         try:
-            target = os.readlink(src)
+            target = os_unicode.readlink(src)
             if mysettings and "D" in mysettings and target.startswith(mysettings["D"]):
                 target = target[len(mysettings["D"]) - 1 :]
             # Atomically update the path if it exists.
             try:
-                os.rename(src, dest)
+                os_unicode.rename(src, dest)
                 return sstat.st_mtime_ns
             except OSError:
                 # If it failed due to cross-link device, fallthru below.
                 # Clear the target first so we can create it.
                 try:
-                    os.unlink(dest)
+                    os_unicode.unlink(dest)
                 except FileNotFoundError:
                     pass
 
@@ -201,15 +203,16 @@ def movefile(
                 if selinux_enabled:
                     selinux.symlink(target, dest, src)
                 else:
-                    os.symlink(target, dest)
+                    os_unicode.symlink(target, dest)
             except OSError as e:
                 # Some programs will create symlinks automatically, so we have
                 # to tolerate these links being recreated during the merge
                 # process. In any case, if the link is pointing at the right
                 # place, we're in good shape.
-                if e.errno not in (errno.ENOENT, errno.EEXIST) or target != os.readlink(
-                    dest
-                ):
+                if e.errno not in (
+                    errno.ENOENT,
+                    errno.EEXIST,
+                ) or target != os_unicode.readlink(dest):
                     raise
             lchown(dest, sstat[stat.ST_UID], sstat[stat.ST_GID])
 
@@ -219,14 +222,14 @@ def movefile(
                 pass
 
             try:
-                os.utime(
+                os_unicode.utime(
                     dest,
                     ns=(sstat.st_mtime_ns, sstat.st_mtime_ns),
                     follow_symlinks=False,
                 )
             except NotImplementedError:
                 # utimensat() and lutimes() missing in libc.
-                return os.stat(dest, follow_symlinks=False).st_mtime_ns
+                return os_unicode.stat(dest, follow_symlinks=False).st_mtime_ns
             else:
                 return sstat.st_mtime_ns
         except SystemExit as e:
@@ -241,16 +244,16 @@ def movefile(
 
     hardlinked = False
     # Since identical files might be merged to multiple filesystems,
-    # so os.link() calls might fail for some paths, so try them all.
+    # so os_unicode.link() calls might fail for some paths, so try them all.
     # For atomic replacement, first create the link as a temp file
-    # and them use os.rename() to replace the destination.
+    # and them use os_unicode.rename() to replace the destination.
     if hardlink_candidates:
-        head, tail = os.path.split(dest)
-        hardlink_tmp = os.path.join(
+        head, tail = os_unicode.path.split(dest)
+        hardlink_tmp = os_unicode.path.join(
             head, ".%s._portage_merge_.%s" % (tail, portage.getpid())
         )
         try:
-            os.unlink(hardlink_tmp)
+            os_unicode.unlink(hardlink_tmp)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 writemsg(
@@ -263,12 +266,12 @@ def movefile(
             del e
         for hardlink_src in hardlink_candidates:
             try:
-                os.link(hardlink_src, hardlink_tmp)
+                os_unicode.link(hardlink_src, hardlink_tmp)
             except OSError:
                 continue
             else:
                 try:
-                    os.rename(hardlink_tmp, dest)
+                    os_unicode.rename(hardlink_tmp, dest)
                 except OSError as e:
                     writemsg(
                         _("!!! Failed to rename %s to %s\n") % (hardlink_tmp, dest),
@@ -291,7 +294,7 @@ def movefile(
             if selinux_enabled:
                 selinux.rename(src, dest)
             else:
-                os.rename(src, dest)
+                os_unicode.rename(src, dest)
             renamefailed = 0
         except OSError as e:
             if e.errno != errno.EXDEV:
@@ -354,8 +357,8 @@ def movefile(
                         pass
         else:
             # we don't yet handle special, so we need to fall back to /bin/mv
-            a = spawn([MOVE_BINARY, "-f", src, dest], env=os.environ)
-            if a != os.EX_OK:
+            a = spawn([MOVE_BINARY, "-f", src, dest], env=os_unicode.environ)
+            if a != os_unicode.EX_OK:
                 writemsg(_("!!! Failed to move special file:\n"), noiselevel=-1)
                 writemsg(
                     _("!!! '%(src)s' to '%(dest)s'\n")
@@ -373,13 +376,13 @@ def movefile(
     # if the nanosecond part of the timestamp is 999999881 ns or greater.
     try:
         if hardlinked:
-            newmtime = os.stat(dest).st_mtime_ns
+            newmtime = os_unicode.stat(dest).st_mtime_ns
         else:
             # Note: It is not possible to preserve nanosecond precision
             # (supported in POSIX.1-2008 via utimensat) with the IEEE 754
             # double precision float which only has a 53 bit significand.
             if newmtime is not None:
-                os.utime(dest, ns=(newmtime, newmtime))
+                os_unicode.utime(dest, ns=(newmtime, newmtime))
             else:
                 newmtime = sstat.st_mtime_ns
                 if renamefailed:
@@ -387,12 +390,12 @@ def movefile(
                     # preserved with complete precision because the source
                     # and destination inodes are the same. Otherwise, manually
                     # update timestamps with nanosecond precision.
-                    os.utime(dest, ns=(newmtime, newmtime))
+                    os_unicode.utime(dest, ns=(newmtime, newmtime))
     except OSError:
         # The utime can fail here with EPERM even though the move succeeded.
         # Instead of failing, use stat to return the mtime if possible.
         try:
-            newmtime = os.stat(dest).st_mtime_ns
+            newmtime = os_unicode.stat(dest).st_mtime_ns
         except OSError as e:
             writemsg(_("!!! Failed to stat in movefile()\n"), noiselevel=-1)
             writemsg("!!! %s\n" % dest, noiselevel=-1)
@@ -402,6 +405,6 @@ def movefile(
     if bsd_chflags:
         # Restore the flags we saved before moving
         if pflags:
-            bsd_chflags.chflags(os.path.dirname(dest), pflags)
+            bsd_chflags.chflags(os_unicode.path.dirname(dest), pflags)
 
     return newmtime

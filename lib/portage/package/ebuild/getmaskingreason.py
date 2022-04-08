@@ -4,7 +4,7 @@
 __all__ = ["getmaskingreason"]
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom, match_from_list
 from portage.exception import InvalidAtom
@@ -72,13 +72,15 @@ def getmaskingreason(
         for repo in settings.repositories[pkg.repo].masters + (
             settings.repositories[pkg.repo],
         ):
-            locations.append(os.path.join(repo.location, "profiles"))
+            locations.append(os_unicode_fs.path.join(repo.location, "profiles"))
     locations.extend(settings.profiles)
-    locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH))
+    locations.append(
+        os_unicode_fs.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+    )
     locations.reverse()
     pmasklists = []
     for profile in locations:
-        pmask_filename = os.path.join(profile, "package.mask")
+        pmask_filename = os_unicode_fs.path.join(profile, "package.mask")
         node = None
         for l, recursive_filename in grablines(
             pmask_filename, recursive=1, remember_source_file=True

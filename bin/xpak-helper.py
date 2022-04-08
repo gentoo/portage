@@ -7,7 +7,7 @@ import sys
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 
 
 def command_recompose(args):
@@ -21,19 +21,19 @@ def command_recompose(args):
 
     binpkg_path, metadata_dir = args
 
-    if not os.path.isfile(binpkg_path):
+    if not os_unicode_fs.path.isfile(binpkg_path):
         sys.stderr.write(usage)
         sys.stderr.write("Argument 1 is not a regular file: '%s'\n" % binpkg_path)
         return 1
 
-    if not os.path.isdir(metadata_dir):
+    if not os_unicode_fs.path.isdir(metadata_dir):
         sys.stderr.write(usage)
         sys.stderr.write("Argument 2 is not a directory: '%s'\n" % metadata_dir)
         return 1
 
     t = portage.xpak.tbz2(binpkg_path)
     t.recompose(metadata_dir)
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 def main(argv):
@@ -44,7 +44,7 @@ def main(argv):
 
     valid_commands = ("recompose",)
     description = "Perform metadata operations on a binary package."
-    usage = "usage: %s COMMAND [args]" % os.path.basename(argv[0])
+    usage = "usage: %s COMMAND [args]" % os_unicode_fs.path.basename(argv[0])
 
     parser = argparse.ArgumentParser(description=description, usage=usage)
     options, args = parser.parse_known_args(argv[1:])

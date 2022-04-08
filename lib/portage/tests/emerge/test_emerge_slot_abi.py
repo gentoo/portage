@@ -5,8 +5,7 @@ import subprocess
 import sys
 
 import portage
-from portage import os
-from portage import _unicode_decode
+from portage import os_unicode_fs, _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -50,13 +49,23 @@ class SlotAbiEmergeTestCase(TestCase):
         trees = playground.trees
         portdb = trees[eroot]["porttree"].dbapi
         vardb = trees[eroot]["vartree"].dbapi
-        var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
-        user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
-        package_mask_path = os.path.join(user_config_dir, "package.mask")
+        var_cache_edb = os_unicode_fs.path.join(eprefix, "var", "cache", "edb")
+        user_config_dir = os_unicode_fs.path.join(eprefix, USER_CONFIG_PATH)
+        package_mask_path = os_unicode_fs.path.join(user_config_dir, "package.mask")
 
         portage_python = portage._python_interpreter
-        ebuild_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "ebuild"))
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
+        ebuild_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.bindir, "ebuild"),
+        )
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.bindir, "emerge"),
+        )
 
         test_ebuild = portdb.findname("dev-libs/dbus-glib-0.98")
         self.assertFalse(test_ebuild is None)
@@ -98,11 +107,11 @@ class SlotAbiEmergeTestCase(TestCase):
 
         distdir = playground.distdir
         pkgdir = playground.pkgdir
-        fake_bin = os.path.join(eprefix, "bin")
-        portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
+        fake_bin = os_unicode_fs.path.join(eprefix, "bin")
+        portage_tmpdir = os_unicode_fs.path.join(eprefix, "var", "tmp", "portage")
         profile_path = settings.profile_path
 
-        path = os.environ.get("PATH")
+        path = os_unicode_fs.environ.get("PATH")
         if path is not None and not path.strip():
             path = None
         if path is None:
@@ -111,7 +120,7 @@ class SlotAbiEmergeTestCase(TestCase):
             path = ":" + path
         path = fake_bin + path
 
-        pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath = os_unicode_fs.environ.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
         if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
@@ -128,12 +137,14 @@ class SlotAbiEmergeTestCase(TestCase):
             "PATH": path,
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
+            "PYTHONDONTWRITEBYTECODE": os_unicode_fs.environ.get(
+                "PYTHONDONTWRITEBYTECODE", ""
+            ),
             "PYTHONPATH": pythonpath,
         }
 
-        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                 "__PORTAGE_TEST_HARDLINK_LOCKS"
             ]
 
@@ -145,11 +156,11 @@ class SlotAbiEmergeTestCase(TestCase):
             for d in dirs:
                 ensure_dirs(d)
             for x in true_symlinks:
-                os.symlink(true_binary, os.path.join(fake_bin, x))
-            with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
+                os_unicode_fs.symlink(true_binary, os_unicode_fs.path.join(fake_bin, x))
+            with open(os_unicode_fs.path.join(var_cache_edb, "counter"), "wb") as f:
                 f.write(b"100")
             # non-empty system set keeps --depclean quiet
-            with open(os.path.join(profile_path, "packages"), "w") as f:
+            with open(os_unicode_fs.path.join(profile_path, "packages"), "w") as f:
                 f.write("*dev-libs/token-system-pkg")
 
             if debug:
@@ -175,12 +186,14 @@ class SlotAbiEmergeTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os_unicode_fs.EX_OK,
+                    proc.returncode,
+                    "emerge failed with args %s" % (args,),
                 )
         finally:
             playground.cleanup()

@@ -4,7 +4,7 @@
 import logging
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.localization import _
 from portage.output import bold, colorize, yellow
 from portage.util import writemsg_level
@@ -28,9 +28,9 @@ def chk_updated_cfg_files(eroot, config_protect):
             )
         else:  # it's a protected dir
             if len(x[1]) == 1:
-                head, tail = os.path.split(x[1][0])
+                head, tail = os_unicode_fs.path.split(x[1][0])
                 tail = tail[len("._cfg0000_") :]
-                fpath = os.path.join(head, tail)
+                fpath = os_unicode_fs.path.join(head, tail)
                 writemsg_level(
                     _("config file '%s' needs updating.\n") % fpath,
                     level=logging.INFO,

@@ -373,6 +373,7 @@ import os as _os
 
 _os_overrides = {
     id(_os.fdopen): _os.fdopen,
+    id(_os.mkfifo): _os.mkfifo,
     id(_os.popen): _os.popen,
     id(_os.read): _os.read,
     id(_os.system): _os.system,
@@ -380,34 +381,36 @@ _os_overrides = {
 }
 
 
-_os_overrides[id(_os.mkfifo)] = _os.mkfifo
-
 if hasattr(_os, "statvfs"):
     _os_overrides[id(_os.statvfs)] = _os.statvfs
 
-os = _unicode_module_wrapper(_os, overrides=_os_overrides, encoding=_encodings["fs"])
-_os_merge = _unicode_module_wrapper(
+os_unicode_fs = _unicode_module_wrapper(
+    _os, overrides=_os_overrides, encoding=_encodings["fs"]
+)
+os_unicode_merge = _unicode_module_wrapper(
     _os, encoding=_encodings["merge"], overrides=_os_overrides
 )
 
 import shutil as _shutil
 
-shutil = _unicode_module_wrapper(_shutil, encoding=_encodings["fs"])
+shutil_unicode_fs = _unicode_module_wrapper(_shutil, encoding=_encodings["fs"])
 
 # Imports below this point rely on the above unicode wrapper definitions.
 try:
     __import__("selinux")
     import portage._selinux
 
-    selinux = _unicode_module_wrapper(_selinux, encoding=_encodings["fs"])
-    _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_encodings["merge"])
+    selinux_unicode_fs = _unicode_module_wrapper(_selinux, encoding=_encodings["fs"])
+    selinux_unicode_merge = _unicode_module_wrapper(
+        _selinux, encoding=_encodings["merge"]
+    )
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
         sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
-    selinux = None
-    _selinux_merge = None
+    selinux_unicode_fs = None
+    selinux_unicode_merge = None
 
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
@@ -415,13 +418,13 @@ except (ImportError, OSError) as e:
 
 _python_interpreter = (
     sys.executable
-    if os.environ.get("VIRTUAL_ENV")
-    else os.path.realpath(sys.executable)
+    if os_unicode_fs.environ.get("VIRTUAL_ENV")
+    else os_unicode_fs.path.realpath(sys.executable)
 )
 _bin_path = PORTAGE_BIN_PATH
 _pym_path = PORTAGE_PYM_PATH
-_not_installed = os.path.isfile(
-    os.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
+_not_installed = os_unicode_fs.path.isfile(
+    os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".portage_not_installed")
 )
 
 # Api consumers included in portage should set this to True.
@@ -487,8 +490,8 @@ bsd_chflags = None
 if platform.system() in ("FreeBSD",):
     # TODO: remove this class?
     class bsd_chflags:
-        chflags = os.chflags
-        lchflags = os.lchflags
+        chflags = os_unicode_fs.chflags
+        lchflags = os_unicode_fs.lchflags
 
 
 def load_mod(name):
@@ -503,9 +506,9 @@ def load_mod(name):
 def getcwd():
     "this fixes situations where the current directory doesn't exist"
     try:
-        return os.getcwd()
+        return os_unicode_fs.getcwd()
     except OSError:  # dir doesn't exist
-        os.chdir("/")
+        os_unicode_fs.chdir("/")
         return "/"
 
 
@@ -525,11 +528,11 @@ def abssymlink(symlink, target=None):
     if target is not None:
         mylink = target
     else:
-        mylink = os.readlink(symlink)
+        mylink = os_unicode_fs.readlink(symlink)
     if mylink[0] != "/":
-        mydir = os.path.dirname(symlink)
+        mydir = os_unicode_fs.path.dirname(symlink)
         mylink = f"{mydir}/{mylink}"
-    return os.path.normpath(mylink)
+    return os_unicode_fs.path.normpath(mylink)
 
 
 _doebuild_manifest_exempt_depend = 0
@@ -647,7 +650,7 @@ def create_trees(
         trees = _trees_dict(trees)
 
     if env is None:
-        env = os.environ
+        env = os_unicode_fs.environ
 
     settings = config(
         config_root=config_root,
@@ -715,7 +718,9 @@ if VERSION == "HEAD":
             global VERSION
             if VERSION is not self:
                 return VERSION
-            if os.path.isdir(os.path.join(PORTAGE_BASE_PATH, ".git")):
+            if os_unicode_fs.path.isdir(
+                os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".git")
+            ):
                 encoding = _encodings["fs"]
                 cmd = [
                     BASH_BINARY,
@@ -735,7 +740,10 @@ if VERSION == "HEAD":
                 )
                 output = _unicode_decode(proc.communicate()[0], encoding=encoding)
                 status = proc.wait()
-                if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+                if (
+                    os_unicode_fs.WIFEXITED(status)
+                    and os_unicode_fs.WEXITSTATUS(status) == os_unicode_fs.EX_OK
+                ):
                     output_lines = output.splitlines()
                     if output_lines:
                         version_split = output_lines[0].split("-")

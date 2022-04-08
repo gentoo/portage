@@ -6,7 +6,7 @@ import logging
 import sys
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util import normalize_path, _recursive_file_list
 from portage.util._async.run_main_scheduler import run_main_scheduler
@@ -245,7 +245,7 @@ def emirrordist_main(args):
 
     if options.version:
         sys.stdout.write("Portage %s\n" % portage.VERSION)
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     config_root = options.config_root
 
@@ -284,20 +284,34 @@ def emirrordist_main(args):
         options.load_average = float(options.load_average)
 
     if options.failure_log is not None:
-        options.failure_log = normalize_path(os.path.abspath(options.failure_log))
+        options.failure_log = normalize_path(
+            os_unicode_fs.path.abspath(options.failure_log)
+        )
 
-        parent_dir = os.path.dirname(options.failure_log)
-        if not (os.path.isdir(parent_dir) and os.access(parent_dir, os.W_OK | os.X_OK)):
+        parent_dir = os_unicode_fs.path.dirname(options.failure_log)
+        if not (
+            os_unicode_fs.path.isdir(parent_dir)
+            and os_unicode_fs.access(
+                parent_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
+        ):
             parser.error(
                 ("--failure-log '%s' parent is not a " "writable directory")
                 % options.failure_log
             )
 
     if options.success_log is not None:
-        options.success_log = normalize_path(os.path.abspath(options.success_log))
+        options.success_log = normalize_path(
+            os_unicode_fs.path.abspath(options.success_log)
+        )
 
-        parent_dir = os.path.dirname(options.success_log)
-        if not (os.path.isdir(parent_dir) and os.access(parent_dir, os.W_OK | os.X_OK)):
+        parent_dir = os_unicode_fs.path.dirname(options.success_log)
+        if not (
+            os_unicode_fs.path.isdir(parent_dir)
+            and os_unicode_fs.access(
+                parent_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
+        ):
             parser.error(
                 ("--success-log '%s' parent is not a " "writable directory")
                 % options.success_log
@@ -305,11 +319,16 @@ def emirrordist_main(args):
 
     if options.scheduled_deletion_log is not None:
         options.scheduled_deletion_log = normalize_path(
-            os.path.abspath(options.scheduled_deletion_log)
+            os_unicode_fs.path.abspath(options.scheduled_deletion_log)
         )
 
-        parent_dir = os.path.dirname(options.scheduled_deletion_log)
-        if not (os.path.isdir(parent_dir) and os.access(parent_dir, os.W_OK | os.X_OK)):
+        parent_dir = os_unicode_fs.path.dirname(options.scheduled_deletion_log)
+        if not (
+            os_unicode_fs.path.isdir(parent_dir)
+            and os_unicode_fs.access(
+                parent_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
+        ):
             parser.error(
                 ("--scheduled-deletion-log '%s' parent is not a " "writable directory")
                 % options.scheduled_deletion_log
@@ -326,25 +345,33 @@ def emirrordist_main(args):
     if options.deletion_db is not None:
         if options.deletion_delay is None:
             parser.error("--deletion-db requires --deletion-delay")
-        options.deletion_db = normalize_path(os.path.abspath(options.deletion_db))
+        options.deletion_db = normalize_path(
+            os_unicode_fs.path.abspath(options.deletion_db)
+        )
 
     if options.temp_dir is not None:
-        options.temp_dir = normalize_path(os.path.abspath(options.temp_dir))
+        options.temp_dir = normalize_path(os_unicode_fs.path.abspath(options.temp_dir))
 
         if not (
-            os.path.isdir(options.temp_dir)
-            and os.access(options.temp_dir, os.W_OK | os.X_OK)
+            os_unicode_fs.path.isdir(options.temp_dir)
+            and os_unicode_fs.access(
+                options.temp_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
         ):
             parser.error(
                 ("--temp-dir '%s' is not a " "writable directory") % options.temp_dir
             )
 
     if options.distfiles is not None:
-        options.distfiles = normalize_path(os.path.abspath(options.distfiles))
+        options.distfiles = normalize_path(
+            os_unicode_fs.path.abspath(options.distfiles)
+        )
 
         if not (
-            os.path.isdir(options.distfiles)
-            and os.access(options.distfiles, os.W_OK | os.X_OK)
+            os_unicode_fs.path.isdir(options.distfiles)
+            and os_unicode_fs.access(
+                options.distfiles, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
         ):
             parser.error(
                 ("--distfiles '%s' is not a " "writable directory") % options.distfiles
@@ -354,12 +381,12 @@ def emirrordist_main(args):
 
     if options.mirror_overrides is not None:
         options.mirror_overrides = normalize_path(
-            os.path.abspath(options.mirror_overrides)
+            os_unicode_fs.path.abspath(options.mirror_overrides)
         )
 
         if not (
-            os.access(options.mirror_overrides, os.R_OK)
-            and os.path.isfile(options.mirror_overrides)
+            os_unicode_fs.access(options.mirror_overrides, os_unicode_fs.R_OK)
+            and os_unicode_fs.path.isfile(options.mirror_overrides)
         ):
             parser.error(
                 "--mirror-overrides-file '%s' is not a readable file"
@@ -368,12 +395,14 @@ def emirrordist_main(args):
 
     if options.distfiles_local is not None:
         options.distfiles_local = normalize_path(
-            os.path.abspath(options.distfiles_local)
+            os_unicode_fs.path.abspath(options.distfiles_local)
         )
 
         if not (
-            os.path.isdir(options.distfiles_local)
-            and os.access(options.distfiles_local, os.W_OK | os.X_OK)
+            os_unicode_fs.path.isdir(options.distfiles_local)
+            and os_unicode_fs.access(
+                options.distfiles_local, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
         ):
             parser.error(
                 ("--distfiles-local '%s' is not a " "writable directory")
@@ -381,16 +410,22 @@ def emirrordist_main(args):
             )
 
     if options.distfiles_db is not None:
-        options.distfiles_db = normalize_path(os.path.abspath(options.distfiles_db))
+        options.distfiles_db = normalize_path(
+            os_unicode_fs.path.abspath(options.distfiles_db)
+        )
 
     if options.tries is not None:
         options.tries = int(options.tries)
 
     if options.recycle_dir is not None:
-        options.recycle_dir = normalize_path(os.path.abspath(options.recycle_dir))
+        options.recycle_dir = normalize_path(
+            os_unicode_fs.path.abspath(options.recycle_dir)
+        )
         if not (
-            os.path.isdir(options.recycle_dir)
-            and os.access(options.recycle_dir, os.W_OK | os.X_OK)
+            os_unicode_fs.path.isdir(options.recycle_dir)
+            and os_unicode_fs.access(
+                options.recycle_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
         ):
             parser.error(
                 ("--recycle-dir '%s' is not a " "writable directory")
@@ -400,17 +435,23 @@ def emirrordist_main(args):
     if options.recycle_db is not None:
         if options.recycle_dir is None:
             parser.error("--recycle-db requires " "--recycle-dir to be specified")
-        options.recycle_db = normalize_path(os.path.abspath(options.recycle_db))
+        options.recycle_db = normalize_path(
+            os_unicode_fs.path.abspath(options.recycle_db)
+        )
 
     if options.recycle_deletion_delay is not None:
         options.recycle_deletion_delay = int(options.recycle_deletion_delay)
 
     if options.fetch_log_dir is not None:
-        options.fetch_log_dir = normalize_path(os.path.abspath(options.fetch_log_dir))
+        options.fetch_log_dir = normalize_path(
+            os_unicode_fs.path.abspath(options.fetch_log_dir)
+        )
 
         if not (
-            os.path.isdir(options.fetch_log_dir)
-            and os.access(options.fetch_log_dir, os.W_OK | os.X_OK)
+            os_unicode_fs.path.isdir(options.fetch_log_dir)
+            and os_unicode_fs.access(
+                options.fetch_log_dir, os_unicode_fs.W_OK | os_unicode_fs.X_OK
+            )
         ):
             parser.error(
                 ("--fetch-log-dir '%s' is not a " "writable directory")
@@ -420,14 +461,14 @@ def emirrordist_main(args):
     if options.whitelist_from:
         normalized_paths = []
         for x in options.whitelist_from:
-            path = normalize_path(os.path.abspath(x))
-            if not os.access(path, os.R_OK):
+            path = normalize_path(os_unicode_fs.path.abspath(x))
+            if not os_unicode_fs.access(path, os_unicode_fs.R_OK):
                 parser.error("--whitelist-from '%s' is not readable" % x)
-            if os.path.isfile(path):
+            if os_unicode_fs.path.isfile(path):
                 normalized_paths.append(path)
-            elif os.path.isdir(path):
+            elif os_unicode_fs.path.isdir(path):
                 for file in _recursive_file_list(path):
-                    if not os.access(file, os.R_OK):
+                    if not os_unicode_fs.access(file, os_unicode_fs.R_OK):
                         parser.error(
                             "--whitelist-from '%s' directory contains not readable file '%s'"
                             % (x, file)
@@ -470,7 +511,7 @@ def emirrordist_main(args):
                         "content-hash layout requires " "--content-db to be specified"
                     )
 
-        returncode = os.EX_OK
+        returncode = os_unicode_fs.EX_OK
 
         if options.mirror:
             signum = run_main_scheduler(MirrorDistTask(config))

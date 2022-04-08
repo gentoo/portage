@@ -2,11 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
+import pickle
+
+import portage
+from portage import os_unicode_fs
 from portage.util import writemsg
 from portage.data import secpass
-import portage
-from portage import os
-import pickle
 
 
 class BlockerCache(portage.cache.mappings.MutableMapping):
@@ -32,7 +33,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
     def __init__(self, myroot, vardb):
         """myroot is ignored in favour of EROOT"""
         self._vardb = vardb
-        self._cache_filename = os.path.join(
+        self._cache_filename = os_unicode_fs.path.join(
             vardb.settings["EROOT"], portage.CACHE_PATH, "vdb_blockers.pickle"
         )
         self._cache_version = "1"

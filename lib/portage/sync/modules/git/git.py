@@ -6,7 +6,7 @@ import logging
 import subprocess
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level, shlex_split
 from portage.util.futures import asyncio
 from portage.output import create_color_func, EOutput
@@ -37,7 +37,9 @@ class GitSync(NewBase):
 
     def exists(self, **kwargs):
         """Tests whether the repo actually exists"""
-        return os.path.exists(os.path.join(self.repo.location, ".git"))
+        return os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(self.repo.location, ".git")
+        )
 
     def new(self, **kwargs):
         """Do the initial clone of the repository"""
@@ -46,8 +48,8 @@ class GitSync(NewBase):
         if not self.has_bin:
             return (1, False)
         try:
-            if not os.path.exists(self.repo.location):
-                os.makedirs(self.repo.location)
+            if not os_unicode_fs.path.exists(self.repo.location):
+                os_unicode_fs.makedirs(self.repo.location)
                 self.logger(
                     self.xterm_titles, "Created new directory %s" % self.repo.location
                 )
@@ -106,14 +108,14 @@ class GitSync(NewBase):
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! git clone error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
         if not self.verify_head():
             return (1, False)
-        return (os.EX_OK, True)
+        return (os_unicode_fs.EX_OK, True)
 
     def update(self):
         """Update existing git repository, and ignore the syncuri. We are
@@ -186,7 +188,7 @@ class GitSync(NewBase):
                 cwd=portage._unicode_encode(self.repo.location),
                 **self.spawn_kwargs
             )
-            if exitcode != os.EX_OK:
+            if exitcode != os_unicode_fs.EX_OK:
                 msg = "!!! git gc error in %s" % self.repo.location
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
@@ -210,7 +212,7 @@ class GitSync(NewBase):
             **self.spawn_kwargs
         )
 
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! git fetch error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
@@ -234,7 +236,7 @@ class GitSync(NewBase):
             **self.spawn_kwargs
         )
 
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! git merge error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
@@ -244,7 +246,7 @@ class GitSync(NewBase):
             rev_cmd, cwd=portage._unicode_encode(self.repo.location)
         )
 
-        return (os.EX_OK, current_rev != previous_rev)
+        return (os_unicode_fs.EX_OK, current_rev != previous_rev)
 
     def verify_head(self, revision="-1"):
         if self.repo.module_specific_options.get(
@@ -280,7 +282,7 @@ class GitSync(NewBase):
                     )
                     return False
 
-                env = os.environ.copy()
+                env = os_unicode_fs.environ.copy()
                 env["GNUPGHOME"] = openpgp_env.home
 
             rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
@@ -331,7 +333,7 @@ class GitSync(NewBase):
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
         try:
             ret = (
-                os.EX_OK,
+                os_unicode_fs.EX_OK,
                 portage._unicode_decode(
                     subprocess.check_output(
                         rev_cmd, cwd=portage._unicode_encode(self.repo.location)

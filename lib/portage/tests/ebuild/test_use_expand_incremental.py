@@ -3,7 +3,7 @@
 
 import io
 
-from portage import os, _encodings
+from portage import os_unicode_fs, _encodings
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -13,7 +13,6 @@ from portage.util import ensure_dirs
 
 class UseExpandIncrementalTestCase(TestCase):
     def testUseExpandIncremental(self):
-
         profiles = (
             (
                 "base",
@@ -94,14 +93,14 @@ class UseExpandIncrementalTestCase(TestCase):
             repo_dir = playground.settings.repositories.get_location_for_name(
                 "test_repo"
             )
-            profile_root = os.path.join(repo_dir, "profiles")
+            profile_root = os_unicode_fs.path.join(repo_dir, "profiles")
 
             for p, data in profiles:
-                prof_path = os.path.join(profile_root, p)
+                prof_path = os_unicode_fs.path.join(profile_root, p)
                 ensure_dirs(prof_path)
                 for k, v in data.items():
                     with io.open(
-                        os.path.join(prof_path, k),
+                        os_unicode_fs.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],
                     ) as f:

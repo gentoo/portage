@@ -8,7 +8,7 @@ import errno
 import fnmatch
 import operator
 
-from portage import os, _unicode_decode
+from portage import os_unicode_fs, _unicode_decode
 from portage.exception import (
     FileNotFound,
     IsADirectory,
@@ -125,7 +125,7 @@ class InstallMask:
                     ret = is_inclusive
             # filename
             else:
-                if fnmatch.fnmatch(os.path.basename(path), pattern):
+                if fnmatch.fnmatch(os_unicode_fs.path.basename(path), pattern):
                     ret = is_inclusive
         return ret
 
@@ -180,7 +180,7 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
             continue
 
         dir_stack.append(parent)
-        for entry in os.scandir(parent):
+        for entry in os_unicode_fs.scandir(parent):
             try:
                 abs_path = _unicode_decode(entry.path, errors="strict")
             except UnicodeDecodeError:
@@ -190,7 +190,7 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
                 todo.append(entry.path)
             elif install_mask.match(abs_path[base_dir_len:]):
                 try:
-                    os.unlink(entry.path)
+                    os_unicode_fs.unlink(entry.path)
                 except OSError as e:
                     onerror(e)
 
@@ -203,6 +203,6 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
 
         if install_mask.match(dir_path[base_dir_len:] + "/"):
             try:
-                os.rmdir(dir_path)
+                os_unicode_fs.rmdir(dir_path)
             except OSError:
                 pass

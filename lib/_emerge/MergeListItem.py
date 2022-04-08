@@ -1,7 +1,7 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import _repo_separator
 from portage.output import colorize
 
@@ -44,7 +44,7 @@ class MergeListItem(CompositeTask):
 
         if pkg.installed:
             # uninstall,  executed by self.merge()
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 

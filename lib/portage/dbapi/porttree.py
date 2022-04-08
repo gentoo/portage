@@ -34,7 +34,7 @@ from portage.exception import (
 from portage.localization import _
 
 from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 from portage.util.futures import asyncio
@@ -106,7 +106,7 @@ class _dummy_list(list):
 class _better_cache:
 
     """
-    The purpose of better_cache is to locate catpkgs in repositories using ``os.listdir()`` as much as possible, which
+    The purpose of better_cache is to locate catpkgs in repositories using ``os_unicode_fs.listdir()`` as much as possible, which
     is less expensive IO-wise than exhaustively doing a stat on each repo for a particular catpkg. better_cache stores a
     list of repos in which particular catpkgs appear. Various dbapi methods use better_cache to locate repositories of
     interest related to particular catpkg rather than performing an exhaustive scan of all repos/overlays.
@@ -154,7 +154,7 @@ class _better_cache:
         for repo in self._repo_list:
             cat_dir = repo.location + "/" + cat
             try:
-                pkg_list = os.listdir(cat_dir)
+                pkg_list = os_unicode_fs.listdir(cat_dir)
             except OSError as e:
                 if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
                     raise
@@ -238,15 +238,17 @@ class portdbapi(dbapi):
         # this purpose because doebuild makes many changes to the config
         # instance that is passed in.
         self.doebuild_settings = config(clone=self.settings)
-        self.depcachedir = os.path.realpath(self.settings.depcachedir)
+        self.depcachedir = os_unicode_fs.path.realpath(self.settings.depcachedir)
 
-        if os.environ.get("SANDBOX_ON") == "1":
+        if os_unicode_fs.environ.get("SANDBOX_ON") == "1":
             # Make api consumers exempt from sandbox violations
             # when doing metadata cache updates.
-            sandbox_write = os.environ.get("SANDBOX_WRITE", "").split(":")
+            sandbox_write = os_unicode_fs.environ.get("SANDBOX_WRITE", "").split(":")
             if self.depcachedir not in sandbox_write:
                 sandbox_write.append(self.depcachedir)
-                os.environ["SANDBOX_WRITE"] = ":".join(filter(None, sandbox_write))
+                os_unicode_fs.environ["SANDBOX_WRITE"] = ":".join(
+                    filter(None, sandbox_write)
+                )
 
         self.porttrees = list(self.settings.repositories.repoLocationList())
 
@@ -254,8 +256,10 @@ class portdbapi(dbapi):
         # root eclass dir, we assume that PORTDIR is invalid or
         # missing. This check allows aux_get() to detect a missing
         # repository and return early by raising a KeyError.
-        self._have_root_eclass_dir = os.path.isdir(
-            os.path.join(self.settings.repositories.mainRepoLocation(), "eclass")
+        self._have_root_eclass_dir = os_unicode_fs.path.isdir(
+            os_unicode_fs.path.join(
+                self.settings.repositories.mainRepoLocation(), "eclass"
+            )
         )
 
         # if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
@@ -273,8 +277,10 @@ class portdbapi(dbapi):
         self._ro_auxdb = {}
         self._init_cache_dirs()
         try:
-            depcachedir_st = os.stat(self.depcachedir)
-            depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
+            depcachedir_st = os_unicode_fs.stat(self.depcachedir)
+            depcachedir_w_ok = os_unicode_fs.access(
+                self.depcachedir, os_unicode_fs.W_OK
+            )
         except OSError:
             depcachedir_st = None
             depcachedir_w_ok = False
@@ -286,8 +292,8 @@ class portdbapi(dbapi):
             portage.data.secpass < 1
             and depcachedir_w_ok
             and depcachedir_st is not None
-            and os.getuid() == depcachedir_st.st_uid
-            and os.getgid() == depcachedir_st.st_gid
+            and os_unicode_fs.getuid() == depcachedir_st.st_uid
+            and os_unicode_fs.getgid() == depcachedir_st.st_gid
         ):
             # If this user owns depcachedir and is not in the
             # portage group, then don't bother to set permissions
@@ -432,8 +438,8 @@ class portdbapi(dbapi):
 
     def findLicensePath(self, license_name):
         for x in reversed(self.porttrees):
-            license_path = os.path.join(x, "licenses", license_name)
-            if os.access(license_path, os.R_OK):
+            license_path = os_unicode_fs.path.join(x, "licenses", license_name)
+            if os_unicode_fs.access(license_path, os_unicode_fs.R_OK):
                 return license_path
         return None
 
@@ -452,7 +458,7 @@ class portdbapi(dbapi):
         """
         This is the inverse of getRepositoryPath().
         @param canonical_repo_path: the canonical path of a repository, as
-                resolved by os.path.realpath()
+                resolved by os_unicode_fs.path.realpath()
         @type canonical_repo_path: String
         @return: The repo_name for the corresponding repository, or None
                 if the path does not correspond a known repository
@@ -795,7 +801,7 @@ class portdbapi(dbapi):
         if future.cancelled():
             return
         if proc is not None:
-            if proc.returncode != os.EX_OK:
+            if proc.returncode != os_unicode_fs.EX_OK:
                 self._broken_ebuilds.add(myebuild)
                 future.set_exception(PortageKeyError(mycpv))
                 return
@@ -916,9 +922,9 @@ class portdbapi(dbapi):
         myebuild, mytree = self.findname2(mypkg, myrepo=myrepo)
         if myebuild is None:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)
-        pkgdir = os.path.dirname(myebuild)
+        pkgdir = os_unicode_fs.path.dirname(myebuild)
         mf = self.repositories.get_repo_for_location(
-            os.path.dirname(os.path.dirname(pkgdir))
+            os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
         ).load_manifest(pkgdir, self.settings["DISTDIR"])
         checksums = mf.getDigests()
         if not checksums:
@@ -939,10 +945,10 @@ class portdbapi(dbapi):
                         % {"file": myfile, "pkg": mypkg}
                     )
                 continue
-            file_path = os.path.join(self.settings["DISTDIR"], myfile)
+            file_path = os_unicode_fs.path.join(self.settings["DISTDIR"], myfile)
             mystat = None
             try:
-                mystat = os.stat(file_path)
+                mystat = os_unicode_fs.stat(file_path)
             except OSError:
                 pass
             else:
@@ -952,7 +958,7 @@ class portdbapi(dbapi):
 
             if mystat is None:
                 try:
-                    mystat = os.stat(file_path + _download_suffix)
+                    mystat = os_unicode_fs.stat(file_path + _download_suffix)
                 except OSError:
                     pass
 
@@ -962,7 +968,7 @@ class portdbapi(dbapi):
                 if ro_distdirs is not None:
                     for x in shlex_split(ro_distdirs):
                         try:
-                            mystat = os.stat(
+                            mystat = os_unicode_fs.stat(
                                 portage.package.ebuild.fetch.get_mirror_url(
                                     x, myfile, self.settings
                                 )
@@ -1006,9 +1012,9 @@ class portdbapi(dbapi):
         myebuild = self.findname(mypkg, myrepo=myrepo)
         if myebuild is None:
             raise AssertionError(_("ebuild not found for '%s'") % mypkg)
-        pkgdir = os.path.dirname(myebuild)
+        pkgdir = os_unicode_fs.path.dirname(myebuild)
         mf = self.repositories.get_repo_for_location(
-            os.path.dirname(os.path.dirname(pkgdir))
+            os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
         )
         mf = mf.load_manifest(pkgdir, self.settings["DISTDIR"])
         mysums = mf.getDigests()
@@ -1021,7 +1027,7 @@ class portdbapi(dbapi):
             else:
                 try:
                     ok, reason = portage.checksum.verify_all(
-                        os.path.join(self.settings["DISTDIR"], x), mysums[x]
+                        os_unicode_fs.path.join(self.settings["DISTDIR"], x), mysums[x]
                     )
                 except FileNotFound as e:
                     ok = False
@@ -1123,7 +1129,7 @@ class portdbapi(dbapi):
         for repo in repos:
             oroot = repo.location
             try:
-                file_list = os.listdir(os.path.join(oroot, mycp))
+                file_list = os_unicode_fs.listdir(os_unicode_fs.path.join(oroot, mycp))
             except OSError:
                 continue
             for x in file_list:
@@ -1136,14 +1142,14 @@ class portdbapi(dbapi):
                     if not ps:
                         writemsg(
                             _("\nInvalid ebuild name: %s\n")
-                            % os.path.join(oroot, mycp, x),
+                            % os_unicode_fs.path.join(oroot, mycp, x),
                             noiselevel=-1,
                         )
                         continue
                     if ps[0] != mysplit[1]:
                         writemsg(
                             _("\nInvalid ebuild name: %s\n")
-                            % os.path.join(oroot, mycp, x),
+                            % os_unicode_fs.path.join(oroot, mycp, x),
                             noiselevel=-1,
                         )
                         continue
@@ -1151,7 +1157,7 @@ class portdbapi(dbapi):
                     if ver_match is None or not ver_match.groups():
                         writemsg(
                             _("\nInvalid ebuild version: %s\n")
-                            % os.path.join(oroot, mycp, x),
+                            % os_unicode_fs.path.join(oroot, mycp, x),
                             noiselevel=-1,
                         )
                         continue
@@ -1619,9 +1625,11 @@ class FetchlistDict(Mapping):
         """pkgdir is a directory containing ebuilds and settings is passed into
         portdbapi.getfetchlist for __getitem__ calls."""
         self.pkgdir = pkgdir
-        self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
+        self.cp = os_unicode_fs.sep.join(pkgdir.split(os_unicode_fs.sep)[-2:])
         self.settings = settings
-        self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
+        self.mytree = os_unicode_fs.path.realpath(
+            os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
+        )
         self.portdb = mydbapi
 
     def __getitem__(self, pkg_key):
@@ -1752,7 +1760,7 @@ def _parse_uri_map(cpv, metadata, use=None):
             myuris.pop()
             distfile = myuris.pop()
         else:
-            distfile = os.path.basename(uri)
+            distfile = os_unicode_fs.path.basename(uri)
             if not distfile:
                 raise portage.exception.InvalidDependString(
                     ("getFetchMap(): '%s' SRC_URI has no file " + "name: '%s'")

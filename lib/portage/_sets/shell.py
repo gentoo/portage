@@ -3,8 +3,7 @@
 
 import subprocess
 
-from portage import os
-from portage import _unicode_decode
+from portage import os_unicode_fs, _unicode_decode
 from portage._sets.base import PackageSet
 from portage._sets import SetConfigError
 
@@ -36,7 +35,7 @@ class CommandOutputSet(PackageSet):
     def load(self):
         pipe = subprocess.Popen(self._command, stdout=subprocess.PIPE, shell=True)
         stdout, stderr = pipe.communicate()
-        if pipe.wait() == os.EX_OK:
+        if pipe.wait() == os_unicode_fs.EX_OK:
             self._setAtoms(_unicode_decode(stdout).splitlines())
 
     def singleBuilder(self, options, settings, trees):

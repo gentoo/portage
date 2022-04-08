@@ -6,7 +6,7 @@ __all__ = ["deprecated_profile_check"]
 import io
 
 import portage
-from portage import os, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.const import DEPRECATED_PROFILE_FILE
 from portage.localization import _
 from portage.output import colorize
@@ -22,21 +22,23 @@ def deprecated_profile_check(settings=None):
         eprefix = settings["EPREFIX"]
         for x in reversed(settings._locations_manager.profiles_complex):
             if x.show_deprecated_warning:
-                deprecated_profile_file = os.path.join(x.location, "deprecated")
-                if os.access(deprecated_profile_file, os.R_OK):
+                deprecated_profile_file = os_unicode_fs.path.join(
+                    x.location, "deprecated"
+                )
+                if os_unicode_fs.access(deprecated_profile_file, os_unicode_fs.R_OK):
                     break
         else:
             deprecated_profile_file = None
 
     if deprecated_profile_file is None:
-        deprecated_profile_file = os.path.join(
+        deprecated_profile_file = os_unicode_fs.path.join(
             config_root or "/", DEPRECATED_PROFILE_FILE
         )
-        if not os.access(deprecated_profile_file, os.R_OK):
-            deprecated_profile_file = os.path.join(
+        if not os_unicode_fs.access(deprecated_profile_file, os_unicode_fs.R_OK):
+            deprecated_profile_file = os_unicode_fs.path.join(
                 config_root or "/", "etc", "make.profile", "deprecated"
             )
-            if not os.access(deprecated_profile_file, os.R_OK):
+            if not os_unicode_fs.access(deprecated_profile_file, os_unicode_fs.R_OK):
                 return
 
     with io.open(
@@ -90,11 +92,11 @@ def deprecated_profile_check(settings=None):
 
     if settings is not None:
         main_repo_loc = settings.repositories.mainRepoLocation()
-        new_profile_path = os.path.join(
+        new_profile_path = os_unicode_fs.path.join(
             main_repo_loc, "profiles", newprofile.rstrip("\n")
         )
 
-        if os.path.isdir(new_profile_path):
+        if os_unicode_fs.path.isdir(new_profile_path):
             new_config = portage.config(
                 config_root=config_root,
                 config_profile_path=new_profile_path,

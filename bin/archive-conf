@@ -24,7 +24,7 @@ import portage
 portage._internal_caller = True
 
 import portage.dispatch_conf
-from portage import os
+from portage import os_unicode_fs
 from portage.checksum import perform_md5
 
 FIND_EXTANT_CONTENTS = "find %s -name CONTENTS"
@@ -40,15 +40,15 @@ def archive_conf():
     options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
     for conf in sys.argv[1:]:
-        if not os.path.isabs(conf):
-            conf = os.path.abspath(conf)
+        if not os_unicode_fs.path.isabs(conf):
+            conf = os_unicode_fs.path.abspath(conf)
         args += [conf]
         md5_match_hash[conf] = ""
 
     # Find all the CONTENT files in VDB_PATH.
-    with os.popen(
+    with os_unicode_fs.popen(
         FIND_EXTANT_CONTENTS
-        % (os.path.join(portage.settings["EROOT"], portage.VDB_PATH))
+        % (os_unicode_fs.path.join(portage.settings["EROOT"], portage.VDB_PATH))
     ) as f:
         content_files += f.readlines()
 
@@ -83,7 +83,7 @@ def archive_conf():
         pass
 
     for conf in args:
-        archive = os.path.join(options["archive-dir"], conf.lstrip("/"))
+        archive = os_unicode_fs.path.join(options["archive-dir"], conf.lstrip("/"))
         if options["use-rcs"] == "yes":
             portage.dispatch_conf.rcs_archive(archive, conf, md5_match_hash[conf], "")
             if md5_match_hash[conf]:

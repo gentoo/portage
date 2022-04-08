@@ -4,7 +4,7 @@
 import pickle
 import traceback
 
-from portage import os
+from portage import os_unicode_fs
 from portage.util._async.ForkProcess import ForkProcess
 from _emerge.PipeReader import PipeReader
 
@@ -28,7 +28,7 @@ class AsyncFunction(ForkProcess):
     )
 
     def _start(self):
-        pr, pw = os.pipe()
+        pr, pw = os_unicode_fs.pipe()
         self.fd_pipes = {} if self.fd_pipes is None else self.fd_pipes
         self.fd_pipes[pw] = pw
         self._async_func_reader_pw = pw
@@ -38,17 +38,17 @@ class AsyncFunction(ForkProcess):
         self._async_func_reader.addExitListener(self._async_func_reader_exit)
         self._async_func_reader.start()
         ForkProcess._start(self)
-        os.close(pw)
+        os_unicode_fs.close(pw)
 
     def _run(self):
         try:
             result = self.target(*(self.args or []), **(self.kwargs or {}))
-            os.write(self._async_func_reader_pw, pickle.dumps(result))
+            os_unicode_fs.write(self._async_func_reader_pw, pickle.dumps(result))
         except Exception:
             traceback.print_exc()
             return 1
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _async_waitpid(self):
         # Ignore this event, since we want to ensure that we exit

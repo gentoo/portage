@@ -13,8 +13,7 @@ from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os
-from portage import _unicode_decode, _unicode_encode, _encodings
+from portage import os_unicode_fs, _unicode_decode, _unicode_encode, _encodings
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -768,7 +767,7 @@ class depgraph:
 
         def __call__(self, proc):
             metadata = None
-            if proc.returncode == os.EX_OK:
+            if proc.returncode == os_unicode_fs.EX_OK:
                 metadata = proc.metadata
             self._fake_vartree.dynamic_deps_preload(self._pkg, metadata)
 
@@ -4565,11 +4564,15 @@ class depgraph:
         lookup_owners = []
         for x in myfiles:
             if x.endswith(".tbz2") or x.endswith(SUPPORTED_GPKG_EXTENSIONS):
-                if not os.path.exists(x):
-                    if os.path.exists(os.path.join(pkgsettings["PKGDIR"], "All", x)):
-                        x = os.path.join(pkgsettings["PKGDIR"], "All", x)
-                    elif os.path.exists(os.path.join(pkgsettings["PKGDIR"], x)):
-                        x = os.path.join(pkgsettings["PKGDIR"], x)
+                if not os_unicode_fs.path.exists(x):
+                    if os_unicode_fs.path.exists(
+                        os_unicode_fs.path.join(pkgsettings["PKGDIR"], "All", x)
+                    ):
+                        x = os_unicode_fs.path.join(pkgsettings["PKGDIR"], "All", x)
+                    elif os_unicode_fs.path.exists(
+                        os_unicode_fs.path.join(pkgsettings["PKGDIR"], x)
+                    ):
+                        x = os_unicode_fs.path.join(pkgsettings["PKGDIR"], x)
                     else:
                         writemsg(
                             "\n\n!!! Binary package '" + str(x) + "' does not exist.\n",
@@ -4596,7 +4599,7 @@ class depgraph:
                     cat = _unicode_decode(
                         cat.strip(), encoding=_encodings["repo.content"]
                     )
-                    mykey = cat + "/" + os.path.basename(x)[:-5]
+                    mykey = cat + "/" + os_unicode_fs.path.basename(x)[:-5]
 
                 if mykey is None:
                     writemsg(
@@ -4609,11 +4612,11 @@ class depgraph:
                     self._dynamic_config._skip_restart = True
                     return 0, myfavorites
 
-                x = os.path.realpath(x)
+                x = os_unicode_fs.path.realpath(x)
                 for pkg in self._iter_match_pkgs(
                     root_config, "binary", Atom("=%s" % mykey)
                 ):
-                    if x == os.path.realpath(bindb.bintree.getname(pkg.cpv)):
+                    if x == os_unicode_fs.path.realpath(bindb.bintree.getname(pkg.cpv)):
                         break
                 else:
                     writemsg(
@@ -4634,9 +4637,11 @@ class depgraph:
 
                 args.append(PackageArg(arg=x, package=pkg, root_config=root_config))
             elif x.endswith(".ebuild"):
-                ebuild_path = portage.util.normalize_path(os.path.abspath(x))
-                pkgdir = os.path.dirname(ebuild_path)
-                tree_root = os.path.dirname(os.path.dirname(pkgdir))
+                ebuild_path = portage.util.normalize_path(os_unicode_fs.path.abspath(x))
+                pkgdir = os_unicode_fs.path.dirname(ebuild_path)
+                tree_root = os_unicode_fs.path.dirname(
+                    os_unicode_fs.path.dirname(pkgdir)
+                )
                 cp = pkgdir[len(tree_root) + 1 :]
                 error_msg = (
                     "\n\n!!! '%s' is not in a valid ebuild repository "
@@ -4646,14 +4651,16 @@ class depgraph:
                     writemsg(error_msg, noiselevel=-1)
                     return 0, myfavorites
                 cat = portage.catsplit(cp)[0]
-                mykey = cat + "/" + os.path.basename(ebuild_path[:-7])
+                mykey = cat + "/" + os_unicode_fs.path.basename(ebuild_path[:-7])
                 if not portage.isvalidatom("=" + mykey):
                     writemsg(error_msg, noiselevel=-1)
                     return 0, myfavorites
                 ebuild_path = portdb.findname(mykey)
                 if ebuild_path:
-                    if ebuild_path != os.path.join(
-                        os.path.realpath(tree_root), cp, os.path.basename(ebuild_path)
+                    if ebuild_path != os_unicode_fs.path.join(
+                        os_unicode_fs.path.realpath(tree_root),
+                        cp,
+                        os_unicode_fs.path.basename(ebuild_path),
                     ):
                         writemsg(
                             colorize(
@@ -4697,11 +4704,15 @@ class depgraph:
                     root_config,
                     onlydeps=onlydeps,
                     myrepo=portdb.getRepositoryName(
-                        os.path.dirname(os.path.dirname(os.path.dirname(ebuild_path)))
+                        os_unicode_fs.path.dirname(
+                            os_unicode_fs.path.dirname(
+                                os_unicode_fs.path.dirname(ebuild_path)
+                            )
+                        )
                     ),
                 )
                 args.append(PackageArg(arg=x, package=pkg, root_config=root_config))
-            elif x.startswith(os.path.sep):
+            elif x.startswith(os_unicode_fs.path.sep):
                 if not x.startswith(eroot):
                     portage.writemsg(
                         ("\n\n!!! '%s' does not start with" + " $EROOT.\n") % x,
@@ -4712,8 +4723,10 @@ class depgraph:
                 # Queue these up since it's most efficient to handle
                 # multiple files in a single iter_owners() call.
                 lookup_owners.append(x)
-            elif x.startswith("." + os.sep) or x.startswith(".." + os.sep):
-                f = os.path.abspath(x)
+            elif x.startswith("." + os_unicode_fs.sep) or x.startswith(
+                ".." + os_unicode_fs.sep
+            ):
+                f = os_unicode_fs.path.abspath(x)
                 if not f.startswith(eroot):
                     portage.writemsg(
                         (
@@ -4883,7 +4896,7 @@ class depgraph:
                 search_for_multiple = True
 
             for x in lookup_owners:
-                if not search_for_multiple and os.path.isdir(x):
+                if not search_for_multiple and os_unicode_fs.path.isdir(x):
                     search_for_multiple = True
                 relative_paths.append(x[len(root) - 1 :])
 
@@ -5239,14 +5252,14 @@ class depgraph:
         # for --quickpkg-direct-root.
         quickpkg_root = (
             normalize_path(
-                os.path.abspath(
+                os_unicode_fs.path.abspath(
                     self._frozen_config.myopts.get(
                         "--quickpkg-direct-root",
                         self._frozen_config._running_root.settings["ROOT"],
                     )
                 )
-            ).rstrip(os.path.sep)
-            + os.path.sep
+            ).rstrip(os_unicode_fs.path.sep)
+            + os_unicode_fs.path.sep
         )
         if (
             self._frozen_config.myopts.get("--quickpkg-direct", "n") == "y"
@@ -10201,10 +10214,10 @@ class depgraph:
             return value - String. Absolute path of file to write to. None if
             no suitable file exists.
             """
-            file_path = os.path.join(abs_user_config, file_name)
+            file_path = os_unicode_fs.path.join(abs_user_config, file_name)
 
             try:
-                os.lstat(file_path)
+                os_unicode_fs.lstat(file_path)
             except OSError as e:
                 if e.errno == errno.ENOENT:
                     # The file doesn't exist, so we'll
@@ -10219,17 +10232,17 @@ class depgraph:
             while stack:
                 p = stack.pop()
                 try:
-                    st = os.stat(p)
+                    st = os_unicode_fs.stat(p)
                 except OSError:
                     pass
                 else:
                     if stat.S_ISREG(st.st_mode):
                         last_file_path = p
                     elif stat.S_ISDIR(st.st_mode):
-                        if os.path.basename(p) in VCS_DIRS:
+                        if os_unicode_fs.path.basename(p) in VCS_DIRS:
                             continue
                         try:
-                            contents = os.listdir(p)
+                            contents = os_unicode_fs.listdir(p)
                         except OSError:
                             pass
                         else:
@@ -10237,11 +10250,13 @@ class depgraph:
                             for child in contents:
                                 if child.startswith(".") or child.endswith("~"):
                                     continue
-                                stack.append(os.path.join(p, child))
+                                stack.append(os_unicode_fs.path.join(p, child))
             # If the directory is empty add a file with name
             # pattern file_name.default
             if last_file_path is None:
-                last_file_path = os.path.join(file_path, file_path, "zz-autounmask")
+                last_file_path = os_unicode_fs.path.join(
+                    file_path, file_path, "zz-autounmask"
+                )
                 with open(last_file_path, "a+") as default:
                     default.write("# " + file_name)
 
@@ -10254,13 +10269,13 @@ class depgraph:
         if write_to_file:
             for root in roots:
                 settings = self._frozen_config.roots[root].settings
-                abs_user_config = os.path.join(
+                abs_user_config = os_unicode_fs.path.join(
                     settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH
                 )
 
                 if root in unstable_keyword_msg:
-                    if not os.path.exists(
-                        os.path.join(abs_user_config, "package.keywords")
+                    if not os_unicode_fs.path.exists(
+                        os_unicode_fs.path.join(abs_user_config, "package.keywords")
                     ):
                         filename = "package.accept_keywords"
                     else:
@@ -10288,7 +10303,7 @@ class depgraph:
                 if path is None:
                     problems.append(
                         "!!! No file to write for '%s'\n"
-                        % os.path.join(abs_user_config, f)
+                        % os_unicode_fs.path.join(abs_user_config, f)
                     )
 
             write_to_file = not problems
@@ -10303,7 +10318,7 @@ class depgraph:
 
         for root in roots:
             settings = self._frozen_config.roots[root].settings
-            abs_user_config = os.path.join(
+            abs_user_config = os_unicode_fs.path.join(
                 settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH
             )
 
@@ -10402,7 +10417,7 @@ class depgraph:
         if write_to_file and file_to_write_to:
             for root in roots:
                 settings = self._frozen_config.roots[root].settings
-                abs_user_config = os.path.join(
+                abs_user_config = os_unicode_fs.path.join(
                     settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH
                 )
                 ensure_dirs(abs_user_config)
@@ -10446,7 +10461,9 @@ class depgraph:
             if autounmask_continue:
                 return True
             for root in roots:
-                chk_updated_cfg_files(root, [os.path.join(os.sep, USER_CONFIG_PATH)])
+                chk_updated_cfg_files(
+                    root, [os_unicode_fs.path.join(os_unicode_fs.sep, USER_CONFIG_PATH)]
+                )
         elif not pretend and not autounmask_write and roots:
             writemsg(
                 "\nUse --autounmask-write to write changes to config files (honoring\n"
@@ -10719,7 +10736,9 @@ class depgraph:
                 )
                 writemsg(
                     "!!! see '%s'\n\n"
-                    % os.path.join(x.root, portage.VDB_PATH, x.cpv, "PROVIDE"),
+                    % os_unicode_fs.path.join(
+                        x.root, portage.VDB_PATH, x.cpv, "PROVIDE"
+                    ),
                     noiselevel=-1,
                 )
                 del e

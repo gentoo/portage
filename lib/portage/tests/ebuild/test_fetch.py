@@ -7,7 +7,7 @@ import tempfile
 import types
 
 import portage
-from portage import shutil, os
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.checksum import checksum_str
 from portage.const import BASH_BINARY, MANIFEST2_HASH_DEFAULTS, PORTAGE_PYM_PATH
 from portage.tests import TestCase
@@ -98,7 +98,7 @@ class EbuildFetchTestCase(TestCase):
                     ro_distdir,
                 )
             finally:
-                shutil.rmtree(ro_distdir)
+                shutil_unicode_fs.rmtree(ro_distdir)
                 playground.cleanup()
 
     def _testEbuildFetch(
@@ -137,8 +137,11 @@ class EbuildFetchTestCase(TestCase):
             self.skipTest(
                 "FETCHCOMMAND not found: {}".format(playground.settings["FETCHCOMMAND"])
             )
-        eubin = os.path.join(playground.eprefix, "usr", "bin")
-        os.symlink(fetch_bin, os.path.join(eubin, os.path.basename(fetch_bin)))
+        eubin = os_unicode_fs.path.join(playground.eprefix, "usr", "bin")
+        os_unicode_fs.symlink(
+            fetch_bin,
+            os_unicode_fs.path.join(eubin, os_unicode_fs.path.basename(fetch_bin)),
+        )
         resumecommand = portage.util.shlex_split(playground.settings["RESUMECOMMAND"])
         resume_bin = portage.process.find_binary(resumecommand[0])
         if resume_bin is None:
@@ -148,7 +151,10 @@ class EbuildFetchTestCase(TestCase):
                 )
             )
         if resume_bin != fetch_bin:
-            os.symlink(resume_bin, os.path.join(eubin, os.path.basename(resume_bin)))
+            os_unicode_fs.symlink(
+                resume_bin,
+                os_unicode_fs.path.join(eubin, os_unicode_fs.path.basename(resume_bin)),
+            )
         root_config = playground.trees[playground.eroot]["root_config"]
         portdb = root_config.trees["porttree"].dbapi
 
@@ -184,18 +190,22 @@ class EbuildFetchTestCase(TestCase):
                 # upstream path
                 content["/distfiles/{}.txt".format(k)] = v
 
-            shutil.rmtree(settings["DISTDIR"])
-            os.makedirs(settings["DISTDIR"])
-            with open(os.path.join(settings["DISTDIR"], "layout.conf"), "wt") as f:
+            shutil_unicode_fs.rmtree(settings["DISTDIR"])
+            os_unicode_fs.makedirs(settings["DISTDIR"])
+            with open(
+                os_unicode_fs.path.join(settings["DISTDIR"], "layout.conf"), "wt"
+            ) as f:
                 f.write(layout_data)
 
             if any(isinstance(layout, ContentHashLayout) for layout in layouts):
-                content_db = os.path.join(
+                content_db = os_unicode_fs.path.join(
                     playground.eprefix, "var/db/emirrordist/content.db"
                 )
-                os.makedirs(os.path.dirname(content_db), exist_ok=True)
+                os_unicode_fs.makedirs(
+                    os_unicode_fs.path.dirname(content_db), exist_ok=True
+                )
                 try:
-                    os.unlink(content_db)
+                    os_unicode_fs.unlink(content_db)
                 except OSError:
                     pass
             else:
@@ -209,7 +219,7 @@ class EbuildFetchTestCase(TestCase):
                     ),
                 )
             }
-            foo_path = os.path.join(settings["DISTDIR"], "foo")
+            foo_path = os_unicode_fs.path.join(settings["DISTDIR"], "foo")
             foo_stale_content = b"stale content\n"
             with open(foo_path, "wb") as f:
                 f.write(b"stale content\n")
@@ -238,8 +248,8 @@ class EbuildFetchTestCase(TestCase):
             with open(foo_path, "wb") as f:
                 f.write(b"stale content\n")
             orig_fetchcommand = settings["FETCHCOMMAND"]
-            orig_distdir_mode = os.stat(settings["DISTDIR"]).st_mode
-            temp_fetchcommand = os.path.join(eubin, "fetchcommand")
+            orig_distdir_mode = os_unicode_fs.stat(settings["DISTDIR"]).st_mode
+            temp_fetchcommand = os_unicode_fs.path.join(eubin, "fetchcommand")
             with open(temp_fetchcommand, "w") as f:
                 f.write(
                     """
@@ -260,7 +270,7 @@ class EbuildFetchTestCase(TestCase):
             )
             settings.features.add("skiprocheck")
             settings.features.remove("distlocks")
-            os.chmod(settings["DISTDIR"], 0o555)
+            os_unicode_fs.chmod(settings["DISTDIR"], 0o555)
             try:
                 self.assertTrue(
                     bool(
@@ -271,10 +281,10 @@ class EbuildFetchTestCase(TestCase):
                 )
             finally:
                 settings["FETCHCOMMAND"] = orig_fetchcommand
-                os.chmod(settings["DISTDIR"], orig_distdir_mode)
+                os_unicode_fs.chmod(settings["DISTDIR"], orig_distdir_mode)
                 settings.features.remove("skiprocheck")
                 settings.features.add("distlocks")
-                os.unlink(temp_fetchcommand)
+                os_unicode_fs.unlink(temp_fetchcommand)
 
             with open(foo_path, "rb") as f:
                 self.assertEqual(f.read(), distfiles["foo"])
@@ -284,7 +294,7 @@ class EbuildFetchTestCase(TestCase):
                 portage._python_interpreter,
                 "-b",
                 "-Wd",
-                os.path.join(self.bindir, "emirrordist"),
+                os_unicode_fs.path.join(self.bindir, "emirrordist"),
                 "--distfiles",
                 settings["DISTDIR"],
                 "--config-root",
@@ -307,13 +317,16 @@ class EbuildFetchTestCase(TestCase):
             env["PYTHONPATH"] = ":".join(
                 filter(
                     None,
-                    [PORTAGE_PYM_PATH] + os.environ.get("PYTHONPATH", "").split(":"),
+                    [PORTAGE_PYM_PATH]
+                    + os_unicode_fs.environ.get("PYTHONPATH", "").split(":"),
                 )
             )
 
             for k in distfiles:
                 try:
-                    os.unlink(os.path.join(settings["DISTDIR"], k))
+                    os_unicode_fs.unlink(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k)
+                    )
                 except OSError:
                     pass
 
@@ -324,7 +337,10 @@ class EbuildFetchTestCase(TestCase):
 
             for k in distfiles:
                 with open(
-                    os.path.join(settings["DISTDIR"], layouts[0].get_path(k)), "rb"
+                    os_unicode_fs.path.join(
+                        settings["DISTDIR"], layouts[0].get_path(k)
+                    ),
+                    "rb",
                 ) as f:
                     self.assertEqual(f.read(), distfiles[k])
 
@@ -389,18 +405,26 @@ class EbuildFetchTestCase(TestCase):
 
                 # Test good files in DISTDIR
                 for k in settings["AA"].split():
-                    os.stat(os.path.join(settings["DISTDIR"], k))
+                    os_unicode_fs.stat(os_unicode_fs.path.join(settings["DISTDIR"], k))
                 self.assertEqual(
                     loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                 )
                 for k in settings["AA"].split():
-                    with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                    with open(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                    ) as f:
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test digestgen with fetch
-                os.unlink(os.path.join(os.path.dirname(ebuild_path), "Manifest"))
+                os_unicode_fs.unlink(
+                    os_unicode_fs.path.join(
+                        os_unicode_fs.path.dirname(ebuild_path), "Manifest"
+                    )
+                )
                 for k in settings["AA"].split():
-                    os.unlink(os.path.join(settings["DISTDIR"], k))
+                    os_unicode_fs.unlink(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k)
+                    )
                 with ForkExecutor(loop=loop) as executor:
                     self.assertTrue(
                         bool(
@@ -415,43 +439,55 @@ class EbuildFetchTestCase(TestCase):
                         )
                     )
                 for k in settings["AA"].split():
-                    with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                    with open(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                    ) as f:
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test missing files in DISTDIR
                 for k in settings["AA"].split():
-                    os.unlink(os.path.join(settings["DISTDIR"], k))
+                    os_unicode_fs.unlink(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k)
+                    )
                 self.assertEqual(
                     loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                 )
                 for k in settings["AA"].split():
-                    with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                    with open(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                    ) as f:
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test empty files in DISTDIR
                 for k in settings["AA"].split():
-                    file_path = os.path.join(settings["DISTDIR"], k)
+                    file_path = os_unicode_fs.path.join(settings["DISTDIR"], k)
                     with open(file_path, "wb") as f:
                         pass
-                    self.assertEqual(os.stat(file_path).st_size, 0)
+                    self.assertEqual(os_unicode_fs.stat(file_path).st_size, 0)
                 self.assertEqual(
                     loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                 )
                 for k in settings["AA"].split():
-                    with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                    with open(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                    ) as f:
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test non-empty files containing null bytes in DISTDIR
                 for k in settings["AA"].split():
-                    file_path = os.path.join(settings["DISTDIR"], k)
+                    file_path = os_unicode_fs.path.join(settings["DISTDIR"], k)
                     with open(file_path, "wb") as f:
                         f.write(len(distfiles[k]) * b"\0")
-                    self.assertEqual(os.stat(file_path).st_size, len(distfiles[k]))
+                    self.assertEqual(
+                        os_unicode_fs.stat(file_path).st_size, len(distfiles[k])
+                    )
                 self.assertEqual(
                     loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                 )
                 for k in settings["AA"].split():
-                    with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                    with open(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                    ) as f:
                         self.assertEqual(f.read(), distfiles[k])
 
                 # Test PORTAGE_RO_DISTDIRS
@@ -461,17 +497,19 @@ class EbuildFetchTestCase(TestCase):
                 try:
                     settings["FETCHCOMMAND"] = settings["RESUMECOMMAND"] = ""
                     for k in settings["AA"].split():
-                        file_path = os.path.join(settings["DISTDIR"], k)
-                        os.rename(file_path, os.path.join(ro_distdir, k))
+                        file_path = os_unicode_fs.path.join(settings["DISTDIR"], k)
+                        os_unicode_fs.rename(
+                            file_path, os_unicode_fs.path.join(ro_distdir, k)
+                        )
                     self.assertEqual(
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        file_path = os.path.join(settings["DISTDIR"], k)
-                        self.assertTrue(os.path.islink(file_path))
+                        file_path = os_unicode_fs.path.join(settings["DISTDIR"], k)
+                        self.assertTrue(os_unicode_fs.path.islink(file_path))
                         with open(file_path, "rb") as f:
                             self.assertEqual(f.read(), distfiles[k])
-                        os.unlink(file_path)
+                        os_unicode_fs.unlink(file_path)
                 finally:
                     settings.pop("PORTAGE_RO_DISTDIRS")
                     settings["FETCHCOMMAND"] = orig_fetchcommand
@@ -487,7 +525,9 @@ class EbuildFetchTestCase(TestCase):
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                        with open(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                        ) as f:
                             self.assertEqual(f.read(), distfiles[k])
                 finally:
                     settings["GENTOO_MIRRORS"] = orig_mirrors
@@ -495,17 +535,19 @@ class EbuildFetchTestCase(TestCase):
                     settings["RESUMECOMMAND"] = orig_resumecommand
 
                 # Test readonly DISTDIR
-                orig_distdir_mode = os.stat(settings["DISTDIR"]).st_mode
+                orig_distdir_mode = os_unicode_fs.stat(settings["DISTDIR"]).st_mode
                 try:
-                    os.chmod(settings["DISTDIR"], 0o555)
+                    os_unicode_fs.chmod(settings["DISTDIR"], 0o555)
                     self.assertEqual(
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                        with open(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                        ) as f:
                             self.assertEqual(f.read(), distfiles[k])
                 finally:
-                    os.chmod(settings["DISTDIR"], orig_distdir_mode)
+                    os_unicode_fs.chmod(settings["DISTDIR"], orig_distdir_mode)
 
                 # Test parallel-fetch mode
                 settings["PORTAGE_PARALLEL_FETCHONLY"] = "1"
@@ -514,15 +556,21 @@ class EbuildFetchTestCase(TestCase):
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                        with open(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                        ) as f:
                             self.assertEqual(f.read(), distfiles[k])
                     for k in settings["AA"].split():
-                        os.unlink(os.path.join(settings["DISTDIR"], k))
+                        os_unicode_fs.unlink(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k)
+                        )
                     self.assertEqual(
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                        with open(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                        ) as f:
                             self.assertEqual(f.read(), distfiles[k])
                 finally:
                     settings.pop("PORTAGE_PARALLEL_FETCHONLY")
@@ -532,26 +580,30 @@ class EbuildFetchTestCase(TestCase):
                 try:
                     settings["PORTAGE_FETCH_RESUME_MIN_SIZE"] = "2"
                     for k in settings["AA"].split():
-                        file_path = os.path.join(settings["DISTDIR"], k)
-                        os.unlink(file_path)
+                        file_path = os_unicode_fs.path.join(settings["DISTDIR"], k)
+                        os_unicode_fs.unlink(file_path)
                         with open(file_path + _download_suffix, "wb") as f:
                             f.write(distfiles[k][:2])
                     self.assertEqual(
                         loop.run_until_complete(async_fetch(pkg, ebuild_path)), 0
                     )
                     for k in settings["AA"].split():
-                        with open(os.path.join(settings["DISTDIR"], k), "rb") as f:
+                        with open(
+                            os_unicode_fs.path.join(settings["DISTDIR"], k), "rb"
+                        ) as f:
                             self.assertEqual(f.read(), distfiles[k])
                 finally:
                     settings["PORTAGE_FETCH_RESUME_MIN_SIZE"] = orig_resume_min_size
 
                 # Test readonly DISTDIR + skiprocheck, with FETCHCOMMAND set to temporarily chmod DISTDIR
                 orig_fetchcommand = settings["FETCHCOMMAND"]
-                orig_distdir_mode = os.stat(settings["DISTDIR"]).st_mode
+                orig_distdir_mode = os_unicode_fs.stat(settings["DISTDIR"]).st_mode
                 for k in settings["AA"].split():
-                    os.unlink(os.path.join(settings["DISTDIR"], k))
+                    os_unicode_fs.unlink(
+                        os_unicode_fs.path.join(settings["DISTDIR"], k)
+                    )
                 try:
-                    os.chmod(settings["DISTDIR"], 0o555)
+                    os_unicode_fs.chmod(settings["DISTDIR"], 0o555)
                     settings["FETCHCOMMAND"] = (
                         '"%s" -c "chmod ug+w \\"${DISTDIR}\\"; %s; status=\\$?; chmod a-w \\"${DISTDIR}\\"; exit \\$status"'
                         % (BASH_BINARY, orig_fetchcommand.replace('"', '\\"'))
@@ -563,7 +615,7 @@ class EbuildFetchTestCase(TestCase):
                     )
                 finally:
                     settings["FETCHCOMMAND"] = orig_fetchcommand
-                    os.chmod(settings["DISTDIR"], orig_distdir_mode)
+                    os_unicode_fs.chmod(settings["DISTDIR"], orig_distdir_mode)
                     settings.features.remove("skiprocheck")
                     settings.features.add("distlocks")
 
@@ -606,7 +658,7 @@ class EbuildFetchTestCase(TestCase):
 
         for k in distfiles:
             try:
-                os.unlink(os.path.join(settings["DISTDIR"], k))
+                os_unicode_fs.unlink(os_unicode_fs.path.join(settings["DISTDIR"], k))
             except OSError:
                 pass
 
@@ -615,7 +667,8 @@ class EbuildFetchTestCase(TestCase):
 
         for k in distfiles:
             with open(
-                os.path.join(settings["DISTDIR"], layouts[0].get_path(k)), "rb"
+                os_unicode_fs.path.join(settings["DISTDIR"], layouts[0].get_path(k)),
+                "rb",
             ) as f:
                 self.assertEqual(f.read(), distfiles[k])
 
@@ -868,9 +921,9 @@ class EbuildFetchTestCase(TestCase):
         for layout in layouts:
             distdir = tempfile.mkdtemp()
             try:
-                path = os.path.join(distdir, layout.get_path(filename))
+                path = os_unicode_fs.path.join(distdir, layout.get_path(filename))
                 try:
-                    os.makedirs(os.path.dirname(path))
+                    os_unicode_fs.makedirs(os_unicode_fs.path.dirname(path))
                 except OSError:
                     pass
 
@@ -885,4 +938,4 @@ class EbuildFetchTestCase(TestCase):
                     else:
                         self.assertEqual(filename_result, str(filename))
             finally:
-                shutil.rmtree(distdir)
+                shutil_unicode_fs.rmtree(distdir)

@@ -6,7 +6,7 @@ import io
 from portage import (
     _encodings,
     _unicode_encode,
-    os,
+    os_unicode_fs,
 )
 from portage.dep.soname.parse import parse_soname_deps
 from portage.util._dyn_libs.NeededEntry import NeededEntry
@@ -62,7 +62,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
     try:
         with io.open(
             _unicode_encode(
-                os.path.join(metadata_dir, "REQUIRES"),
+                os_unicode_fs.path.join(metadata_dir, "REQUIRES"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -81,7 +81,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
                 atom.soname
             )
 
-    needed_filename = os.path.join(metadata_dir, "NEEDED.ELF.2")
+    needed_filename = os_unicode_fs.path.join(metadata_dir, "NEEDED.ELF.2")
     with io.open(
         _unicode_encode(needed_filename, encoding=_encodings["fs"], errors="strict"),
         mode="rt",

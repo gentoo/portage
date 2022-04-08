@@ -3,7 +3,7 @@
 
 import io
 
-from portage import os, _encodings
+from portage import os_unicode_fs, _encodings
 from portage.const import USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -94,13 +94,15 @@ class ProfileDefaultEAPITestCase(TestCase):
             repo_dir = playground.settings.repositories.get_location_for_name(
                 "test_repo"
             )
-            profile_root = os.path.join(repo_dir, "profiles")
+            profile_root = os_unicode_fs.path.join(repo_dir, "profiles")
             profile_info = [
-                (os.path.join(profile_root, p), data) for p, data in profiles
+                (os_unicode_fs.path.join(profile_root, p), data) for p, data in profiles
             ]
             profile_info.append(
                 (
-                    os.path.join(playground.eroot, USER_CONFIG_PATH, "profile"),
+                    os_unicode_fs.path.join(
+                        playground.eroot, USER_CONFIG_PATH, "profile"
+                    ),
                     user_profile,
                 )
             )
@@ -109,7 +111,7 @@ class ProfileDefaultEAPITestCase(TestCase):
                 ensure_dirs(prof_path)
                 for k, v in data.items():
                     with io.open(
-                        os.path.join(prof_path, k),
+                        os_unicode_fs.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],
                     ) as f:

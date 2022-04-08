@@ -4,7 +4,7 @@
 import errno
 import logging
 
-from portage import os
+from portage import os_unicode_fs
 from portage.package.ebuild.fetch import ContentHashLayout
 from portage.util._async.FileCopier import FileCopier
 from _emerge.CompositeTask import CompositeTask
@@ -16,7 +16,9 @@ class DeletionTask(CompositeTask):
 
     def _start(self):
         if self.config.options.recycle_dir is not None:
-            recycle_path = os.path.join(self.config.options.recycle_dir, self.distfile)
+            recycle_path = os_unicode_fs.path.join(
+                self.config.options.recycle_dir, self.distfile
+            )
             if self.config.options.dry_run:
                 logging.info(
                     ("dry-run: move '%s' from " "distfiles to recycle") % self.distfile
@@ -27,7 +29,9 @@ class DeletionTask(CompositeTask):
                 )
                 try:
                     # note: distfile_path can be a symlink here
-                    os.rename(os.path.realpath(self.distfile_path), recycle_path)
+                    os_unicode_fs.rename(
+                        os_unicode_fs.path.realpath(self.distfile_path), recycle_path
+                    )
                 except OSError as e:
                     if e.errno != errno.EXDEV:
                         logging.error(
@@ -56,7 +60,7 @@ class DeletionTask(CompositeTask):
         else:
             logging.debug(("delete '%s' from " "distfiles") % self.distfile)
             try:
-                os.unlink(self.distfile_path)
+                os_unicode_fs.unlink(self.distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     logging.error(
@@ -79,10 +83,10 @@ class DeletionTask(CompositeTask):
             return
 
         success = True
-        if copier.returncode == os.EX_OK:
+        if copier.returncode == os_unicode_fs.EX_OK:
 
             try:
-                os.unlink(copier.src_path)
+                os_unicode_fs.unlink(copier.src_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     logging.error(
@@ -111,11 +115,11 @@ class DeletionTask(CompositeTask):
             if isinstance(layout, ContentHashLayout) and not self.distfile.digests:
                 logging.debug(("_delete_links: '%s' has " "no digests") % self.distfile)
                 continue
-            distfile_path = os.path.join(
+            distfile_path = os_unicode_fs.path.join(
                 self.config.options.distfiles, layout.get_path(self.distfile)
             )
             try:
-                os.unlink(distfile_path)
+                os_unicode_fs.unlink(distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     logging.error(
@@ -125,7 +129,7 @@ class DeletionTask(CompositeTask):
 
         if success:
             self._success()
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
         else:
             self.returncode = 1
 

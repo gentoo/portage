@@ -10,7 +10,7 @@ from _emerge.ProgressHandler import ProgressHandler
 
 import portage
 from portage import eapi_is_supported
-from portage import os
+from portage import os_unicode_fs
 from portage.cache.cache_errors import CacheError
 from portage.eclass_cache import hashed_path
 from portage.util import writemsg_level
@@ -20,7 +20,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
     if porttrees is None:
         porttrees = portdb.porttrees
     portage.writemsg_stdout("\n>>> Updating Portage cache\n")
-    cachedir = os.path.normpath(settings.depcachedir)
+    cachedir = os_unicode_fs.path.normpath(settings.depcachedir)
     if cachedir in [
         "/",
         "/bin",
@@ -46,8 +46,8 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
             file=sys.stderr,
         )
         sys.exit(73)
-    if not os.path.exists(cachedir):
-        os.makedirs(cachedir)
+    if not os_unicode_fs.path.exists(cachedir):
+        os_unicode_fs.makedirs(cachedir)
 
     auxdbkeys = portdb._known_keys
 

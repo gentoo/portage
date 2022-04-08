@@ -4,7 +4,7 @@
 import datetime
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.repository.storage.interface import (
     RepoStorageException,
     RepoStorageInterface,
@@ -99,14 +99,16 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         else:
             self._ttl_days = repo.sync_rcu_ttl_days
         self._update_location = None
-        self._latest_symlink = os.path.join(self._storage_location, "latest")
-        self._latest_canonical = os.path.realpath(self._latest_symlink)
-        if not os.path.exists(self._latest_canonical) or os.path.islink(
+        self._latest_symlink = os_unicode_fs.path.join(self._storage_location, "latest")
+        self._latest_canonical = os_unicode_fs.path.realpath(self._latest_symlink)
+        if not os_unicode_fs.path.exists(
             self._latest_canonical
-        ):
+        ) or os_unicode_fs.path.islink(self._latest_canonical):
             # It doesn't exist, or it's a broken symlink.
             self._latest_canonical = None
-        self._snapshots_dir = os.path.join(self._storage_location, "snapshots")
+        self._snapshots_dir = os_unicode_fs.path.join(
+            self._storage_location, "snapshots"
+        )
 
     async def _check_call(self, cmd, privileged=False):
         """
@@ -123,13 +125,13 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
             kwargs = self._spawn_kwargs
         p = SpawnProcess(args=cmd, scheduler=asyncio.get_event_loop(), **kwargs)
         p.start()
-        if await p.async_wait() != os.EX_OK:
+        if await p.async_wait() != os_unicode_fs.EX_OK:
             raise RepoStorageException(
                 "command exited with status {}: {}".format(p.returncode, " ".join(cmd))
             )
 
     async def init_update(self):
-        update_location = os.path.join(self._storage_location, "update")
+        update_location = os_unicode_fs.path.join(self._storage_location, "update")
         await self._check_call(["rm", "-rf", update_location])
 
         # This assumes normal umask permissions if it doesn't exist yet.
@@ -138,7 +140,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         if self._latest_canonical is not None:
             portage.util.ensure_dirs(update_location)
             portage.util.apply_stat_permissions(
-                update_location, os.stat(self._user_location)
+                update_location, os_unicode_fs.stat(self._user_location)
             )
             # Use  rsync --link-dest to hardlink a files into update_location,
             # since cp -l is not portable.
@@ -153,7 +155,7 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
                 ]
             )
 
-        elif not os.path.islink(self._user_location):
+        elif not os_unicode_fs.path.islink(self._user_location):
             await self._migrate(update_location)
             update_location = await self.init_update()
 
@@ -168,11 +170,11 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         commit the content as the latest snapshot.
         """
         try:
-            os.rename(self._user_location, update_location)
+            os_unicode_fs.rename(self._user_location, update_location)
         except OSError:
             portage.util.ensure_dirs(update_location)
             portage.util.apply_stat_permissions(
-                update_location, os.stat(self._user_location)
+                update_location, os_unicode_fs.stat(self._user_location)
             )
             # It's probably on a different device, so copy it.
             await self._check_call(
@@ -199,24 +201,28 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         update_location = self.current_update
         self._update_location = None
         try:
-            snapshots = [int(name) for name in os.listdir(self._snapshots_dir)]
+            snapshots = [
+                int(name) for name in os_unicode_fs.listdir(self._snapshots_dir)
+            ]
         except OSError:
             snapshots = []
             portage.util.ensure_dirs(self._snapshots_dir)
             portage.util.apply_stat_permissions(
-                self._snapshots_dir, os.stat(self._storage_location)
+                self._snapshots_dir, os_unicode_fs.stat(self._storage_location)
             )
         if snapshots:
             new_id = max(snapshots) + 1
         else:
             new_id = 1
-        os.rename(update_location, os.path.join(self._snapshots_dir, str(new_id)))
+        os_unicode_fs.rename(
+            update_location, os_unicode_fs.path.join(self._snapshots_dir, str(new_id))
+        )
         new_symlink = self._latest_symlink + ".new"
         try:
-            os.unlink(new_symlink)
+            os_unicode_fs.unlink(new_symlink)
         except OSError:
             pass
-        os.symlink("snapshots/{}".format(new_id), new_symlink)
+        os_unicode_fs.symlink("snapshots/{}".format(new_id), new_symlink)
 
         # If SyncManager.pre_sync creates an empty directory where
         # self._latest_symlink is suppose to be (which is normal if
@@ -224,14 +230,14 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         # the directory or else rename will raise IsADirectoryError
         # when we try to replace the directory with a symlink.
         try:
-            os.rmdir(self._latest_symlink)
+            os_unicode_fs.rmdir(self._latest_symlink)
         except OSError:
             pass
 
-        os.rename(new_symlink, self._latest_symlink)
+        os_unicode_fs.rename(new_symlink, self._latest_symlink)
 
         try:
-            user_location_correct = os.path.samefile(
+            user_location_correct = os_unicode_fs.path.samefile(
                 self._user_location, self._latest_symlink
             )
         except OSError:
@@ -240,11 +246,11 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
         if not user_location_correct:
             new_symlink = self._user_location + ".new"
             try:
-                os.unlink(new_symlink)
+                os_unicode_fs.unlink(new_symlink)
             except OSError:
                 pass
-            os.symlink(self._latest_symlink, new_symlink)
-            os.rename(new_symlink, self._user_location)
+            os_unicode_fs.symlink(self._latest_symlink, new_symlink)
+            os_unicode_fs.rename(new_symlink, self._user_location)
 
     async def abort_update(self):
         if self._update_location is not None:
@@ -254,16 +260,18 @@ class HardlinkRcuRepoStorage(RepoStorageInterface):
 
     async def garbage_collection(self):
         snap_ttl = datetime.timedelta(days=self._ttl_days)
-        snapshots = sorted(int(name) for name in os.listdir(self._snapshots_dir))
+        snapshots = sorted(
+            int(name) for name in os_unicode_fs.listdir(self._snapshots_dir)
+        )
         # always preserve the latest snapshot
         protect_count = self._spare_snapshots + 1
         while snapshots and protect_count:
             protect_count -= 1
             snapshots.pop()
         for snap_id in snapshots:
-            snap_path = os.path.join(self._snapshots_dir, str(snap_id))
+            snap_path = os_unicode_fs.path.join(self._snapshots_dir, str(snap_id))
             try:
-                st = os.stat(snap_path)
+                st = os_unicode_fs.stat(snap_path)
             except OSError:
                 continue
             snap_timestamp = datetime.datetime.utcfromtimestamp(st.st_mtime)

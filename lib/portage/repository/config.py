@@ -9,7 +9,14 @@ import re
 import typing
 
 import portage
-from portage import eclass_cache, os
+from portage import (
+    eclass_cache,
+    os_unicode_fs,
+    _unicode_decode,
+    _unicode_encode,
+    _encodings,
+    manifest,
+)
 from portage.checksum import get_valid_checksum_keys
 from portage.const import PORTAGE_BASE_PATH, REPO_NAME_LOC, USER_CONFIG_PATH
 from portage.eapi import (
@@ -30,10 +37,6 @@ from portage.util.configparser import SafeConfigParser, ConfigParserError, read_
 from portage.util._path import isdir_raise_eaccess
 from portage.util.path import first_existing
 from portage.localization import _
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _encodings
-from portage import manifest
 import portage.sync
 
 _profile_node = collections.namedtuple(
@@ -308,12 +311,12 @@ class RepoConfig:
         self.user_location = None
         location = repo_opts.get("location")
         if location is not None and location.strip():
-            if os.path.isdir(location) or portage._sync_mode:
+            if os_unicode_fs.path.isdir(location) or portage._sync_mode:
                 # The user_location is required for sync-rcu support,
                 # since it manages a symlink which resides at that
                 # location (and realpath is irreversible).
                 self.user_location = location
-                location = os.path.realpath(location)
+                location = os_unicode_fs.path.realpath(location)
         else:
             location = None
         self.location = location
@@ -402,7 +405,7 @@ class RepoConfig:
             self.eapi = layout_data.get("profile_eapi_when_unspecified", "0")
 
             eapi = read_corresponding_eapi_file(
-                os.path.join(self.location, REPO_NAME_LOC), default=self.eapi
+                os_unicode_fs.path.join(self.location, REPO_NAME_LOC), default=self.eapi
             )
 
             self.portage1_profiles = (
@@ -505,7 +508,7 @@ class RepoConfig:
         @return: True if self.location is writable or can be created,
                 False otherwise
         """
-        return os.access(first_existing(self.location), os.W_OK)
+        return os_unicode_fs.access(first_existing(self.location), os_unicode_fs.W_OK)
 
     @staticmethod
     def _read_valid_repo_name(repo_path):
@@ -516,7 +519,7 @@ class RepoConfig:
         name = _gen_valid_repo(name)
         if not name:
             # name only contains invalid characters
-            name = "x-" + os.path.basename(repo_path)
+            name = "x-" + os_unicode_fs.path.basename(repo_path)
             name = _gen_valid_repo(name)
             # If basename only contains whitespace then the
             # end result is name = 'x-'.
@@ -528,7 +531,7 @@ class RepoConfig:
         Read repo_name from repo_path.
         Returns repo_name, missing.
         """
-        repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
+        repo_name_path = os_unicode_fs.path.join(repo_path, REPO_NAME_LOC)
         f = None
         try:
             f = io.open(
@@ -541,7 +544,7 @@ class RepoConfig:
             )
             return f.readline().strip(), False
         except EnvironmentError:
-            return "x-" + os.path.basename(repo_path), True
+            return "x-" + os_unicode_fs.path.basename(repo_path), True
         finally:
             if f is not None:
                 f.close()
@@ -813,8 +816,10 @@ class RepoConfigLoader:
 
         repo_locations = frozenset(repo.location for repo in prepos.values())
         for repo_location in ("var/db/repos/gentoo", "usr/portage"):
-            default_portdir = os.path.join(
-                os.sep, settings["EPREFIX"].lstrip(os.sep), repo_location
+            default_portdir = os_unicode_fs.path.join(
+                os_unicode_fs.sep,
+                settings["EPREFIX"].lstrip(os_unicode_fs.sep),
+                repo_location,
             )
             if default_portdir in repo_locations:
                 break
@@ -830,7 +835,7 @@ class RepoConfigLoader:
             default_portdir,
         )
         if portdir and portdir.strip():
-            portdir = os.path.realpath(portdir)
+            portdir = os_unicode_fs.path.realpath(portdir)
 
         ignored_repos = tuple(
             (repo_name, tuple(paths)) for repo_name, paths in ignored_map.items()
@@ -889,7 +894,10 @@ class RepoConfigLoader:
                                 "Section '%s' in repos.conf refers to repository "
                                 "without repository name set in '%s'"
                             )
-                            % (repo_name, os.path.join(repo.location, REPO_NAME_LOC)),
+                            % (
+                                repo_name,
+                                os_unicode_fs.path.join(repo.location, REPO_NAME_LOC),
+                            ),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -1017,7 +1025,7 @@ class RepoConfigLoader:
                 master_repos = []
                 for master_name in repo.masters:
                     if master_name not in prepos:
-                        layout_filename = os.path.join(
+                        layout_filename = os_unicode_fs.path.join(
                             repo.location, "metadata", "layout.conf"
                         )
                         writemsg_level(
@@ -1101,7 +1109,9 @@ class RepoConfigLoader:
                     % _("Repository '%s' is missing masters attribute in '%s'")
                     % (
                         repo.name,
-                        os.path.join(repo.location, "metadata", "layout.conf"),
+                        os_unicode_fs.path.join(
+                            repo.location, "metadata", "layout.conf"
+                        ),
                     )
                     + "!!! %s\n"
                     % _("Set 'masters = %s' in this file for future compatibility")
@@ -1300,13 +1310,17 @@ def load_repository_config(settings, extra_files=None):
         repoconfigpaths.append(io.StringIO(settings["PORTAGE_REPOSITORIES"]))
     else:
         if portage._not_installed:
-            repoconfigpaths.append(os.path.join(PORTAGE_BASE_PATH, "cnf", "repos.conf"))
+            repoconfigpaths.append(
+                os_unicode_fs.path.join(PORTAGE_BASE_PATH, "cnf", "repos.conf")
+            )
         else:
             repoconfigpaths.append(
-                os.path.join(settings.global_config_path, "repos.conf")
+                os_unicode_fs.path.join(settings.global_config_path, "repos.conf")
             )
         repoconfigpaths.append(
-            os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "repos.conf")
+            os_unicode_fs.path.join(
+                settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "repos.conf"
+            )
         )
     if extra_files:
         repoconfigpaths.extend(extra_files)
@@ -1323,9 +1337,11 @@ def _get_repo_name(repo_location, cached=None):
 
 
 def parse_layout_conf(repo_location, repo_name=None):
-    eapi = read_corresponding_eapi_file(os.path.join(repo_location, REPO_NAME_LOC))
+    eapi = read_corresponding_eapi_file(
+        os_unicode_fs.path.join(repo_location, REPO_NAME_LOC)
+    )
 
-    layout_filename = os.path.join(repo_location, "metadata", "layout.conf")
+    layout_filename = os_unicode_fs.path.join(repo_location, "metadata", "layout.conf")
     layout_file = KeyValuePairFileLoader(layout_filename, None, None)
     layout_data, layout_errors = layout_file.load()
 
@@ -1379,9 +1395,13 @@ def parse_layout_conf(repo_location, repo_name=None):
         # will NOT recognize md5-dict format unless it is explicitly
         # listed in layout.conf.
         cache_formats = []
-        if os.path.isdir(os.path.join(repo_location, "metadata", "md5-cache")):
+        if os_unicode_fs.path.isdir(
+            os_unicode_fs.path.join(repo_location, "metadata", "md5-cache")
+        ):
             cache_formats.append("md5-dict")
-        if os.path.isdir(os.path.join(repo_location, "metadata", "cache")):
+        if os_unicode_fs.path.isdir(
+            os_unicode_fs.path.join(repo_location, "metadata", "cache")
+        ):
             cache_formats.append("pms")
     data["cache-formats"] = tuple(cache_formats)
 

@@ -3,9 +3,7 @@
 
 import tempfile
 import time
-from portage import os
-from portage import shutil
-from portage import _python_interpreter
+from portage import os_unicode_fs, shutil_unicode_fs, _python_interpreter
 from portage.tests import TestCase
 from portage.const import PORTAGE_BIN_PATH
 from portage.const import PORTAGE_PYM_PATH
@@ -46,32 +44,34 @@ class IpcDaemonTestCase(TestCase):
 
             # Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
             # need to be inherited by ebuild subprocesses.
-            if "PORTAGE_USERNAME" in os.environ:
-                env["PORTAGE_USERNAME"] = os.environ["PORTAGE_USERNAME"]
-            if "PORTAGE_GRPNAME" in os.environ:
-                env["PORTAGE_GRPNAME"] = os.environ["PORTAGE_GRPNAME"]
+            if "PORTAGE_USERNAME" in os_unicode_fs.environ:
+                env["PORTAGE_USERNAME"] = os_unicode_fs.environ["PORTAGE_USERNAME"]
+            if "PORTAGE_GRPNAME" in os_unicode_fs.environ:
+                env["PORTAGE_GRPNAME"] = os_unicode_fs.environ["PORTAGE_GRPNAME"]
 
             env["PORTAGE_PYTHON"] = _python_interpreter
             env["PORTAGE_BIN_PATH"] = PORTAGE_BIN_PATH
             env["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
-            env["PORTAGE_BUILDDIR"] = os.path.join(tmpdir, "cat", "pkg-1")
-            env["PYTHONDONTWRITEBYTECODE"] = os.environ.get(
+            env["PORTAGE_BUILDDIR"] = os_unicode_fs.path.join(tmpdir, "cat", "pkg-1")
+            env["PYTHONDONTWRITEBYTECODE"] = os_unicode_fs.environ.get(
                 "PYTHONDONTWRITEBYTECODE", ""
             )
 
-            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-                env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+                env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                     "__PORTAGE_TEST_HARDLINK_LOCKS"
                 ]
 
             build_dir = EbuildBuildDir(scheduler=event_loop, settings=env)
             event_loop.run_until_complete(build_dir.async_lock())
-            ensure_dirs(os.path.join(env["PORTAGE_BUILDDIR"], ".ipc"))
+            ensure_dirs(os_unicode_fs.path.join(env["PORTAGE_BUILDDIR"], ".ipc"))
 
-            input_fifo = os.path.join(env["PORTAGE_BUILDDIR"], ".ipc", "in")
-            output_fifo = os.path.join(env["PORTAGE_BUILDDIR"], ".ipc", "out")
-            os.mkfifo(input_fifo)
-            os.mkfifo(output_fifo)
+            input_fifo = os_unicode_fs.path.join(env["PORTAGE_BUILDDIR"], ".ipc", "in")
+            output_fifo = os_unicode_fs.path.join(
+                env["PORTAGE_BUILDDIR"], ".ipc", "out"
+            )
+            os_unicode_fs.mkfifo(input_fifo)
+            os_unicode_fs.mkfifo(output_fifo)
 
             for exitcode in (0, 1, 2):
                 exit_command = ExitCommand()
@@ -149,12 +149,12 @@ class IpcDaemonTestCase(TestCase):
                 )
                 self.assertEqual(proc.isAlive(), False)
                 self.assertEqual(daemon.isAlive(), False)
-                self.assertEqual(proc.returncode == os.EX_OK, False)
+                self.assertEqual(proc.returncode == os_unicode_fs.EX_OK, False)
 
         finally:
             if build_dir is not None:
                 event_loop.run_until_complete(build_dir.async_unlock())
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
 
     def _timeout_callback(self, task_scheduler):
         task_scheduler.cancel()

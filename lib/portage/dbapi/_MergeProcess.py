@@ -7,7 +7,7 @@ import platform
 
 import fcntl
 import portage
-from portage import os, _unicode_decode
+from portage import os_unicode_fs, _unicode_decode
 from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
@@ -111,7 +111,7 @@ class MergeProcess(ForkProcess):
 
         elif output is not None:  # EIO/POLLHUP
             self.scheduler.remove_reader(self._elog_reader_fd)
-            os.close(self._elog_reader_fd)
+            os_unicode_fs.close(self._elog_reader_fd)
             self._elog_reader_fd = None
             return False
 
@@ -134,12 +134,12 @@ class MergeProcess(ForkProcess):
         post-fork actions.
         """
 
-        elog_reader_fd, elog_writer_fd = os.pipe()
+        elog_reader_fd, elog_writer_fd = os_unicode_fs.pipe()
 
         fcntl.fcntl(
             elog_reader_fd,
             fcntl.F_SETFL,
-            fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK,
+            fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os_unicode_fs.O_NONBLOCK,
         )
 
         mtime_reader, mtime_writer = multiprocessing.Pipe(duplex=False)
@@ -180,7 +180,7 @@ class MergeProcess(ForkProcess):
         self._dblink = mylink
         self._elog_reader_fd = elog_reader_fd
         pids = super(MergeProcess, self)._spawn(args, fd_pipes, **kwargs)
-        os.close(elog_writer_fd)
+        os_unicode_fs.close(elog_writer_fd)
         mtime_writer.close()
         self._buf = ""
         self._elog_keys = set()
@@ -197,7 +197,7 @@ class MergeProcess(ForkProcess):
         return pids
 
     def _run(self):
-        os.close(self._elog_reader_fd)
+        os_unicode_fs.close(self._elog_reader_fd)
         counter = self._counter
         mylink = self._dblink
 
@@ -225,14 +225,14 @@ class MergeProcess(ForkProcess):
         rval = 1
         if self.unmerge:
             if not mylink.exists():
-                rval = os.EX_OK
-            elif mylink.unmerge(ldpath_mtimes=self.prev_mtimes) == os.EX_OK:
+                rval = os_unicode_fs.EX_OK
+            elif mylink.unmerge(ldpath_mtimes=self.prev_mtimes) == os_unicode_fs.EX_OK:
                 mylink.lockdb()
                 try:
                     mylink.delete()
                 finally:
                     mylink.unlockdb()
-                rval = os.EX_OK
+                rval = os_unicode_fs.EX_OK
         else:
             rval = mylink.merge(
                 self.pkgloc,
@@ -253,7 +253,7 @@ class MergeProcess(ForkProcess):
             and proc.exitcode == portage.const.RETURNCODE_POSTINST_FAILURE
         ):
             self.postinst_failure = True
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
         super(MergeProcess, self)._proc_join_done(proc, future)
 
     def _unregister(self):
@@ -272,7 +272,7 @@ class MergeProcess(ForkProcess):
         self._unlock_vdb()
         if self._elog_reader_fd is not None:
             self.scheduler.remove_reader(self._elog_reader_fd)
-            os.close(self._elog_reader_fd)
+            os_unicode_fs.close(self._elog_reader_fd)
             self._elog_reader_fd = None
         if self._elog_keys is not None:
             for key in self._elog_keys:

@@ -6,7 +6,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.module import Modules
 from portage.progress import ProgressBar
 from portage.emaint.defaults import DEFAULT_OPTIONS
@@ -110,7 +110,9 @@ class TaskHandler:
         self.verbose = verbose
         self.callback = callback
         self.module_output = module_output
-        self.isatty = os.environ.get("TERM") != "dumb" and sys.stdout.isatty()
+        self.isatty = (
+            os_unicode_fs.environ.get("TERM") != "dumb" and sys.stdout.isatty()
+        )
         self.progress_bar = ProgressBar(self.isatty, title="Emaint", max_desc_length=27)
 
     def run_tasks(self, tasks, func, status=None, verbose=True, options=None):
@@ -162,9 +164,11 @@ def emaint_main(myargv):
 
     # Similar to emerge, emaint needs a default umask so that created
     # files (such as the world file) have sane permissions.
-    os.umask(0o22)
+    os_unicode_fs.umask(0o22)
 
-    module_path = os.path.join((os.path.dirname(os.path.realpath(__file__))), "modules")
+    module_path = os_unicode_fs.path.join(
+        (os_unicode_fs.path.dirname(os_unicode_fs.path.realpath(__file__))), "modules"
+    )
     module_controller = Modules(path=module_path, namepath="portage.emaint.modules")
     module_names = module_controller.module_names[:]
     module_names.insert(0, "all")
@@ -190,7 +194,7 @@ def emaint_main(myargv):
 
     if options.version:
         print(portage.VERSION)
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     if len(args) != 1:
         parser.error("Incorrect number of arguments")

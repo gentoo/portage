@@ -5,9 +5,7 @@ from itertools import chain
 
 from portage.const import PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 
 class ImportModulesTestCase(TestCase):
@@ -15,7 +13,7 @@ class ImportModulesTestCase(TestCase):
         expected_failures = frozenset(())
 
         iters = (
-            self._iter_modules(os.path.join(PORTAGE_PYM_PATH, x))
+            self._iter_modules(os_unicode_fs.path.join(PORTAGE_PYM_PATH, x))
             for x in PORTAGE_PYM_PACKAGES
         )
         for mod in chain(*iters):
@@ -27,7 +25,7 @@ class ImportModulesTestCase(TestCase):
                 del e
 
     def _iter_modules(self, base_dir):
-        for parent, dirs, files in os.walk(base_dir):
+        for parent, dirs, files in os_unicode_fs.walk(base_dir):
             parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
             parent_mod = parent[len(PORTAGE_PYM_PATH) + 1 :]
             parent_mod = parent_mod.replace("/", ".")

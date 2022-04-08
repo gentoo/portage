@@ -52,7 +52,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _shell_quote
 from portage import _unicode_encode
@@ -108,7 +108,7 @@ def err(txt):
 
 if opts.version:
     print("Portage", portage.VERSION)
-    sys.exit(os.EX_OK)
+    sys.exit(os_unicode_fs.EX_OK)
 
 if len(pargs) < 2:
     parser.error("missing required args")
@@ -125,7 +125,7 @@ force = opts.force
 if debug:
     # Ensure that all config instances have this setting,
     # including the one that's used by portdbapi for aux_get.
-    os.environ["PORTAGE_DEBUG"] = "1"
+    os_unicode_fs.environ["PORTAGE_DEBUG"] = "1"
     portage._reset_legacy_globals()
 
 # do this _after_ 'import portage' to prevent unnecessary tracing
@@ -150,33 +150,41 @@ ebuild = pargs.pop(0)
 
 pf = None
 if ebuild.endswith(".ebuild"):
-    pf = os.path.basename(ebuild)[:-7]
+    pf = os_unicode_fs.path.basename(ebuild)[:-7]
 
 if pf is None:
     err("%s: does not end with '.ebuild'" % (ebuild,))
 
-if not os.path.isabs(ebuild):
-    mycwd = os.getcwd()
+if not os_unicode_fs.path.isabs(ebuild):
+    mycwd = os_unicode_fs.getcwd()
     # Try to get the non-canonical path from the PWD evironment variable, since
-    # the canonical path returned from os.getcwd() may may be unusable in
+    # the canonical path returned from os_unicode_fs.getcwd() may may be unusable in
     # cases where the directory stucture is built from symlinks.
-    pwd = os.environ.get("PWD", "")
-    if pwd and pwd != mycwd and os.path.realpath(pwd) == mycwd:
+    pwd = os_unicode_fs.environ.get("PWD", "")
+    if pwd and pwd != mycwd and os_unicode_fs.path.realpath(pwd) == mycwd:
         mycwd = portage.normalize_path(pwd)
-    ebuild = os.path.join(mycwd, ebuild)
+    ebuild = os_unicode_fs.path.join(mycwd, ebuild)
 ebuild = portage.normalize_path(ebuild)
 # portdbapi uses the canonical path for the base of the ebuild repository, but
 # subdirectories of the base can be built from symlinks (like crossdev does).
-ebuild_portdir = os.path.realpath(
-    os.path.dirname(os.path.dirname(os.path.dirname(ebuild)))
+ebuild_portdir = os_unicode_fs.path.realpath(
+    os_unicode_fs.path.dirname(
+        os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(ebuild))
+    )
 )
-ebuild = os.path.join(ebuild_portdir, *ebuild.split(os.path.sep)[-3:])
-vdb_path = os.path.realpath(os.path.join(portage.settings["EROOT"], VDB_PATH))
+ebuild = os_unicode_fs.path.join(
+    ebuild_portdir, *ebuild.split(os_unicode_fs.path.sep)[-3:]
+)
+vdb_path = os_unicode_fs.path.realpath(
+    os_unicode_fs.path.join(portage.settings["EROOT"], VDB_PATH)
+)
 
 # Make sure that portdb.findname() returns the correct ebuild.
 if ebuild_portdir != vdb_path and ebuild_portdir not in portage.portdb.porttrees:
     portdir_overlay = portage.settings.get("PORTDIR_OVERLAY", "")
-    os.environ["PORTDIR_OVERLAY"] = portdir_overlay + " " + _shell_quote(ebuild_portdir)
+    os_unicode_fs.environ["PORTDIR_OVERLAY"] = (
+        portdir_overlay + " " + _shell_quote(ebuild_portdir)
+    )
 
     print("Appending %s to PORTDIR_OVERLAY..." % ebuild_portdir)
     portage._reset_legacy_globals()
@@ -185,7 +193,7 @@ myrepo = None
 if ebuild_portdir != vdb_path:
     myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
-if not os.path.exists(ebuild):
+if not os_unicode_fs.path.exists(ebuild):
     err("%s: does not exist" % (ebuild,))
 
 ebuild_split = ebuild.split("/")
@@ -209,7 +217,7 @@ if ebuild.startswith(vdb_path):
 
     portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
-    if os.path.realpath(portage_ebuild) != ebuild:
+    if os_unicode_fs.path.realpath(portage_ebuild) != ebuild:
         err("Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
 
 else:
@@ -235,10 +243,10 @@ def discard_digests(myebuild, mysettings, mydbapi):
     order to ensure correct results."""
     try:
         portage._doebuild_manifest_exempt_depend += 1
-        pkgdir = os.path.dirname(myebuild)
+        pkgdir = os_unicode_fs.path.dirname(myebuild)
         fetchlist_dict = portage.FetchlistDict(pkgdir, mysettings, mydbapi)
         mf = mysettings.repositories.get_repo_for_location(
-            os.path.dirname(os.path.dirname(pkgdir))
+            os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
         )
         mf = mf.load_manifest(
             pkgdir, mysettings["DISTDIR"], fetchlist_dict=fetchlist_dict
@@ -380,8 +388,8 @@ def stale_env_warning():
         portage.doebuild_environment(
             ebuild, "setup", portage.root, tmpsettings, debug, 1, portage.portdb
         )
-        env_filename = os.path.join(tmpsettings["T"], "environment")
-        if os.path.exists(env_filename):
+        env_filename = os_unicode_fs.path.join(tmpsettings["T"], "environment")
+        if os_unicode_fs.path.exists(env_filename):
             msg = (
                 "Existing ${T}/environment for '%s' will be sourced. "
                 + "Run 'clean' to start with a fresh environment."
@@ -392,7 +400,9 @@ def stale_env_warning():
 
             if ebuild_changed:
                 open(
-                    os.path.join(tmpsettings["PORTAGE_BUILDDIR"], ".ebuild_changed"),
+                    os_unicode_fs.path.join(
+                        tmpsettings["PORTAGE_BUILDDIR"], ".ebuild_changed"
+                    ),
                     "w",
                 ).close()
 

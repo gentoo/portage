@@ -13,8 +13,7 @@
 import socket
 import sys
 
-from portage import os
-from portage import _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _unicode_decode, _unicode_encode
 from portage.localization import _
 import portage
 
@@ -116,8 +115,8 @@ def send_mail(mysettings, message):
     myfrom = message.get("From")
 
     # user wants to use a sendmail binary instead of smtp
-    if mymailhost[0] == os.sep and os.path.exists(mymailhost):
-        fd = os.popen(f"{mymailhost } -f {myfrom} {myrecipient}", "w")
+    if mymailhost[0] == os_unicode_fs.sep and os_unicode_fs.path.exists(mymailhost):
+        fd = os_unicode_fs.popen(f"{mymailhost } -f {myfrom} {myrecipient}", "w")
         fd.write(_force_ascii_if_necessary(message.as_string()))
         if fd.close() is not None:
             sys.stderr.write(

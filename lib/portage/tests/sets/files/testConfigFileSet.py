@@ -4,7 +4,7 @@
 
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase, test_cps
 from portage._sets.files import ConfigFileSet
 
@@ -16,7 +16,7 @@ class ConfigFileSetTestCase(TestCase):
         fd, self.testfile = tempfile.mkstemp(
             suffix=".testdata", prefix=self.__class__.__name__, text=True
         )
-        f = os.fdopen(fd, "w")
+        f = os_unicode_fs.fdopen(fd, "w")
         for i in range(0, len(test_cps)):
             atom = test_cps[i]
             if i % 2 == 0:
@@ -26,7 +26,7 @@ class ConfigFileSetTestCase(TestCase):
         f.close()
 
     def tearDown(self):
-        os.unlink(self.testfile)
+        os_unicode_fs.unlink(self.testfile)
 
     def testConfigStaticFileSet(self):
         s = ConfigFileSet(self.testfile)

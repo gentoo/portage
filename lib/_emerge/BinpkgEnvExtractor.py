@@ -5,7 +5,7 @@ import errno
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-from portage import os, _shell_quote, _unicode_encode
+from portage import os_unicode_fs, _shell_quote, _unicode_encode
 from portage.const import BASH_BINARY
 
 
@@ -17,16 +17,18 @@ class BinpkgEnvExtractor(CompositeTask):
     __slots__ = ("settings",)
 
     def saved_env_exists(self):
-        return os.path.exists(self._get_saved_env_path())
+        return os_unicode_fs.path.exists(self._get_saved_env_path())
 
     def dest_env_exists(self):
-        return os.path.exists(self._get_dest_env_path())
+        return os_unicode_fs.path.exists(self._get_dest_env_path())
 
     def _get_saved_env_path(self):
-        return os.path.join(os.path.dirname(self.settings["EBUILD"]), "environment.bz2")
+        return os_unicode_fs.path.join(
+            os_unicode_fs.path.dirname(self.settings["EBUILD"]), "environment.bz2"
+        )
 
     def _get_dest_env_path(self):
-        return os.path.join(self.settings["T"], "environment")
+        return os_unicode_fs.path.join(self.settings["T"], "environment")
 
     def _start(self):
         saved_env_path = self._get_saved_env_path()
@@ -52,14 +54,14 @@ class BinpkgEnvExtractor(CompositeTask):
 
     def _remove_dest_env(self):
         try:
-            os.unlink(self._get_dest_env_path())
+            os_unicode_fs.unlink(self._get_dest_env_path())
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
 
     def _extractor_exit(self, extractor_proc):
 
-        if self._default_exit(extractor_proc) != os.EX_OK:
+        if self._default_exit(extractor_proc) != os_unicode_fs.EX_OK:
             self._remove_dest_env()
             self.wait()
             return
@@ -70,5 +72,5 @@ class BinpkgEnvExtractor(CompositeTask):
         open(_unicode_encode(self._get_dest_env_path() + ".raw"), "wb").close()
 
         self._current_task = None
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self.wait()

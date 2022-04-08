@@ -4,7 +4,7 @@
 
 import os as _os
 from portage.cache import template
-from portage import os
+from portage import os_unicode_fs
 
 from portage.proxy.lazyimport import lazyimport
 
@@ -31,9 +31,11 @@ class FsBased(template.database):
                 setattr(self, "_" + x, y)
         super(FsBased, self).__init__(*args, **config)
 
-        if self.label.startswith(os.path.sep):
+        if self.label.startswith(os_unicode_fs.path.sep):
             # normpath.
-            self.label = os.path.sep + os.path.normpath(self.label).lstrip(os.path.sep)
+            self.label = os_unicode_fs.path.sep + os_unicode_fs.path.normpath(
+                self.label
+            ).lstrip(os_unicode_fs.path.sep)
 
     def _ensure_access(self, path, mtime=-1):
         """returns true or false if it's able to ensure that path is properly chmod'd and chowned.
@@ -42,7 +44,7 @@ class FsBased(template.database):
             apply_permissions(path, gid=self._gid, mode=self._perms)
             if mtime != -1:
                 mtime = int(mtime)
-                os.utime(path, (mtime, mtime))
+                os_unicode_fs.utime(path, (mtime, mtime))
         except (PortageException, EnvironmentError):
             return False
         return True
@@ -50,14 +52,18 @@ class FsBased(template.database):
     def _ensure_dirs(self, path=None):
         """with path!=None, ensure beyond self.location.  otherwise, ensure self.location"""
         if path:
-            path = os.path.dirname(path)
+            path = os_unicode_fs.path.dirname(path)
             base = self.location
         else:
             path = self.location
             base = "/"
 
-        for d in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
-            base = os.path.join(base, d)
+        for d in (
+            path.lstrip(os_unicode_fs.path.sep)
+            .rstrip(os_unicode_fs.path.sep)
+            .split(os_unicode_fs.path.sep)
+        ):
+            base = os_unicode_fs.path.join(base, d)
             if ensure_dirs(base):
                 # We only call apply_permissions if ensure_dirs created
                 # a new directory, so as not to interfere with
@@ -70,7 +76,7 @@ class FsBased(template.database):
 
     def _prune_empty_dirs(self):
         all_dirs = []
-        for parent, dirs, files in os.walk(self.location):
+        for parent, dirs, files in os_unicode_fs.walk(self.location):
             for x in dirs:
                 all_dirs.append(_os.path.join(parent, x))
         while all_dirs:
@@ -82,9 +88,11 @@ class FsBased(template.database):
 
 def gen_label(base, label):
     """if supplied label is a path, generate a unique label based upon label, and supplied base path"""
-    if label.find(os.path.sep) == -1:
+    if label.find(os_unicode_fs.path.sep) == -1:
         return label
     label = label.strip('"').strip("'")
-    label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
-    tail = os.path.split(label)[1]
+    label = os_unicode_fs.path.join(
+        *(label.rstrip(os_unicode_fs.path.sep).split(os_unicode_fs.path.sep))
+    )
+    tail = os_unicode_fs.path.split(label)[1]
     return "%s-%X" % (tail, abs(label.__hash__()))

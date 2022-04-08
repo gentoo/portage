@@ -5,10 +5,7 @@ import errno
 import re
 from itertools import chain
 
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -83,7 +80,7 @@ class StaticFileSet(EditablePackageSet):
 
     def load(self):
         try:
-            mtime = os.stat(self._filename).st_mtime
+            mtime = os_unicode_fs.stat(self._filename).st_mtime
         except (OSError, IOError):
             mtime = None
         if not self._loaded or self._mtime != mtime:
@@ -137,7 +134,9 @@ class StaticFileSet(EditablePackageSet):
         rValue = {}
         directory = options.get(
             "directory",
-            os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets"),
+            os_unicode_fs.path.join(
+                settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets"
+            ),
         )
         name_pattern = options.get("name_pattern", "${name}")
         if not "$name" in name_pattern and not "${name}" in name_pattern:
@@ -174,10 +173,10 @@ class StaticFileSet(EditablePackageSet):
             )
 
         vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
-        if os.path.isdir(directory):
+        if os_unicode_fs.path.isdir(directory):
             directory = normalize_path(directory)
 
-            for parent, dirs, files in os.walk(directory):
+            for parent, dirs, files in os_unicode_fs.walk(directory):
                 try:
                     parent = _unicode_decode(
                         parent, encoding=_encodings["fs"], errors="strict"
@@ -198,11 +197,13 @@ class StaticFileSet(EditablePackageSet):
                         continue
                     if filename.endswith(".metadata"):
                         continue
-                    filename = os.path.join(parent, filename)[1 + len(directory) :]
+                    filename = os_unicode_fs.path.join(parent, filename)[
+                        1 + len(directory) :
+                    ]
                     myname = name_pattern.replace("$name", filename)
                     myname = myname.replace("${name}", filename)
                     rValue[myname] = StaticFileSet(
-                        os.path.join(directory, filename),
+                        os_unicode_fs.path.join(directory, filename),
                         greedy=greedy,
                         dbapi=trees["vartree"].dbapi,
                     )
@@ -232,7 +233,8 @@ class ConfigFileSet(PackageSet):
     def multiBuilder(self, options, settings, trees):
         rValue = {}
         directory = options.get(
-            "directory", os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+            "directory",
+            os_unicode_fs.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH),
         )
         name_pattern = options.get("name_pattern", "sets/package_$suffix")
         if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
@@ -240,7 +242,9 @@ class ConfigFileSet(PackageSet):
         for suffix in ["keywords", "use", "mask", "unmask"]:
             myname = name_pattern.replace("$suffix", suffix)
             myname = myname.replace("${suffix}", suffix)
-            rValue[myname] = ConfigFileSet(os.path.join(directory, "package." + suffix))
+            rValue[myname] = ConfigFileSet(
+                os_unicode_fs.path.join(directory, "package." + suffix)
+            )
         return rValue
 
     multiBuilder = classmethod(multiBuilder)
@@ -290,7 +294,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
     def __init__(self, eroot):
         super(WorldSelectedPackagesSet, self).__init__(allow_repo=True)
         self._lock = None
-        self._filename = os.path.join(eroot, WORLD_FILE)
+        self._filename = os_unicode_fs.path.join(eroot, WORLD_FILE)
         self.loader = ItemFileLoader(self._filename, self._validate)
         self._mtime = None
 
@@ -304,7 +308,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         atoms = []
         atoms_changed = False
         try:
-            mtime = os.stat(self._filename).st_mtime
+            mtime = os_unicode_fs.stat(self._filename).st_mtime
         except (OSError, IOError):
             mtime = None
         if not self._loaded or self._mtime != mtime:
@@ -329,7 +333,10 @@ class WorldSelectedPackagesSet(EditablePackageSet):
 
     def _ensure_dirs(self):
         ensure_dirs(
-            os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2
+            os_unicode_fs.path.dirname(self._filename),
+            gid=portage_gid,
+            mode=0o2750,
+            mask=0o2,
         )
 
     def lock(self):
@@ -386,7 +393,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
     def __init__(self, eroot):
         super(WorldSelectedSetsSet, self).__init__(allow_repo=True)
         self._lock = None
-        self._filename = os.path.join(eroot, WORLD_SETS_FILE)
+        self._filename = os_unicode_fs.path.join(eroot, WORLD_SETS_FILE)
         self.loader = ItemFileLoader(self._filename, self._validate)
         self._mtime = None
 
@@ -401,7 +408,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
     def load(self):
         atoms_changed = False
         try:
-            mtime = os.stat(self._filename).st_mtime
+            mtime = os_unicode_fs.stat(self._filename).st_mtime
         except (OSError, IOError):
             mtime = None
         if not self._loaded or self._mtime != mtime:

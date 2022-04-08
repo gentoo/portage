@@ -4,7 +4,7 @@
 from _emerge.BinpkgFetcher import BinpkgFetcher
 from _emerge.CompositeTask import CompositeTask
 from _emerge.BinpkgVerifier import BinpkgVerifier
-from portage import os
+from portage import os_unicode_fs
 
 
 class BinpkgPrefetcher(CompositeTask):
@@ -27,7 +27,7 @@ class BinpkgPrefetcher(CompositeTask):
 
     def _fetcher_exit(self, fetcher):
 
-        if self._default_exit(fetcher) != os.EX_OK:
+        if self._default_exit(fetcher) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
@@ -41,12 +41,12 @@ class BinpkgPrefetcher(CompositeTask):
         self._start_task(verifier, self._verifier_exit)
 
     def _verifier_exit(self, verifier):
-        if self._default_exit(verifier) != os.EX_OK:
+        if self._default_exit(verifier) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
         self._bintree.inject(self.pkg.cpv, filename=self.pkg_path)
 
         self._current_task = None
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self.wait()

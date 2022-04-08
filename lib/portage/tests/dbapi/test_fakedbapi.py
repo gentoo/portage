@@ -4,8 +4,7 @@
 import tempfile
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.dbapi.virtual import fakedbapi
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -74,9 +73,13 @@ class TestFakedbapi(TestCase):
 
         tempdir = tempfile.mkdtemp()
         try:
-            test_repo = os.path.join(tempdir, "var", "repositories", "test_repo")
-            os.makedirs(os.path.join(test_repo, "profiles"))
-            with open(os.path.join(test_repo, "profiles", "repo_name"), "w") as f:
+            test_repo = os_unicode_fs.path.join(
+                tempdir, "var", "repositories", "test_repo"
+            )
+            os_unicode_fs.makedirs(os_unicode_fs.path.join(test_repo, "profiles"))
+            with open(
+                os_unicode_fs.path.join(test_repo, "profiles", "repo_name"), "w"
+            ) as f:
                 f.write("test_repo")
             env = {
                 "PORTAGE_REPOSITORIES": "[DEFAULT]\nmain-repo = test_repo\n[test_repo]\nlocation = %s"
@@ -104,4 +107,4 @@ class TestFakedbapi(TestCase):
                     "fakedb.match('%s') = %s != %s" % (atom, result, expected_result),
                 )
         finally:
-            shutil.rmtree(tempdir)
+            shutil_unicode_fs.rmtree(tempdir)

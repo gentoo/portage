@@ -6,7 +6,7 @@ import subprocess
 
 from _emerge.AsynchronousTask import AsynchronousTask
 
-from portage import os
+from portage import os_unicode_fs
 from portage.util import shlex_split
 from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
@@ -46,8 +46,8 @@ class BuildLogger(AsynchronousTask):
                 split_value = shlex_split(log_filter_file)
                 log_filter_file = split_value if split_value else None
             if log_filter_file:
-                filter_input, stdin = os.pipe()
-                log_input, filter_output = os.pipe()
+                filter_input, stdin = os_unicode_fs.pipe()
+                log_input, filter_output = os_unicode_fs.pipe()
                 try:
                     filter_proc = PopenProcess(
                         proc=subprocess.Popen(
@@ -62,21 +62,21 @@ class BuildLogger(AsynchronousTask):
                     filter_proc.start()
                 except EnvironmentError:
                     # Maybe the command is missing or broken somehow...
-                    os.close(filter_input)
-                    os.close(stdin)
-                    os.close(log_input)
-                    os.close(filter_output)
+                    os_unicode_fs.close(filter_input)
+                    os_unicode_fs.close(stdin)
+                    os_unicode_fs.close(log_input)
+                    os_unicode_fs.close(filter_output)
                 else:
-                    self._stdin = os.fdopen(stdin, "wb", 0)
-                    os.close(filter_input)
-                    os.close(filter_output)
+                    self._stdin = os_unicode_fs.fdopen(stdin, "wb", 0)
+                    os_unicode_fs.close(filter_input)
+                    os_unicode_fs.close(filter_output)
 
         if self._stdin is None:
             # Since log_filter_file is unspecified or refers to a file
             # that is missing or broken somehow, create a pipe that
             # logs directly to pipe_logger.
-            log_input, stdin = os.pipe()
-            self._stdin = os.fdopen(stdin, "wb", 0)
+            log_input, stdin = os_unicode_fs.pipe()
+            self._stdin = os_unicode_fs.fdopen(stdin, "wb", 0)
 
         # Set background=True so that pipe_logger does not log to stdout.
         pipe_logger = PipeLogger(

@@ -74,13 +74,15 @@ from portage.util.futures import asyncio
 from portage import abssymlink, _movefile, bsd_chflags
 
 # This is a special version of the os module, wrapped for unicode support.
-from portage import os
-from portage import shutil
-from portage import _encodings
-from portage import _os_merge
-from portage import _selinux_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import (
+    os_unicode_fs,
+    os_unicode_merge,
+    shutil_unicode_fs,
+    _encodings,
+    selinux_unicode_merge,
+    _unicode_decode,
+    _unicode_encode,
+)
 from portage.util.futures.executor.fork import ForkExecutor
 from ._VdbMetadataDelta import VdbMetadataDelta
 
@@ -219,18 +221,20 @@ class vardbapi(dbapi):
             ]
         )
         self._aux_cache_obj = None
-        self._aux_cache_filename = os.path.join(
+        self._aux_cache_filename = os_unicode_fs.path.join(
             self._eroot, CACHE_PATH, "vdb_metadata.pickle"
         )
-        self._cache_delta_filename = os.path.join(
+        self._cache_delta_filename = os_unicode_fs.path.join(
             self._eroot, CACHE_PATH, "vdb_metadata_delta.json"
         )
         self._cache_delta = VdbMetadataDelta(self)
-        self._counter_path = os.path.join(self._eroot, CACHE_PATH, "counter")
+        self._counter_path = os_unicode_fs.path.join(self._eroot, CACHE_PATH, "counter")
 
         self._plib_registry = PreservedLibsRegistry(
             settings["ROOT"],
-            os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"),
+            os_unicode_fs.path.join(
+                self._eroot, PRIVATE_PATH, "preserved_libs_registry"
+            ),
         )
         self._linkmap = LinkageMap(self)
         self._owners = self._owners_db(self)
@@ -246,7 +250,7 @@ class vardbapi(dbapi):
         @return: True if var/db/pkg is writable or can be created,
                 False otherwise
         """
-        return os.access(first_existing(self._dbroot), os.W_OK)
+        return os_unicode_fs.access(first_existing(self._dbroot), os_unicode_fs.W_OK)
 
     @property
     def root(self):
@@ -262,7 +266,7 @@ class vardbapi(dbapi):
 
     def getpath(self, mykey, filename=None):
         # This is an optimized hotspot, so don't use unicode-wrapped
-        # os module and don't use os.path.join().
+        # os module and don't use os_unicode_fs.path.join().
         rValue = self._eroot + VDB_PATH + _os.sep + mykey
         if filename is not None:
             # If filename is always relative, we can do just
@@ -342,7 +346,7 @@ class vardbapi(dbapi):
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
             lock_path = self.getpath("%s:%s" % (slot_atom.cp, slot_atom.slot))
-            ensure_dirs(os.path.dirname(lock_path))
+            ensure_dirs(os_unicode_fs.path.dirname(lock_path))
             lock = lockfile(lock_path, wantnewlockfile=True)
         self._slot_locks[slot_atom] = (lock, counter + 1)
 
@@ -372,13 +376,13 @@ class vardbapi(dbapi):
         t = (t, t)
         try:
             for x in (catdir, base):
-                os.utime(x, t)
+                os_unicode_fs.utime(x, t)
         except OSError:
             ensure_dirs(catdir)
 
     def cpv_exists(self, mykey, myrepo=None):
         "Tells us whether an actual ebuild exists on disk (no masking)"
-        return os.path.exists(self.getpath(mykey))
+        return os_unicode_fs.path.exists(self.getpath(mykey))
 
     def cpv_counter(self, mycpv):
         "This method will grab the COUNTER. Returns a counter value."
@@ -403,9 +407,9 @@ class vardbapi(dbapi):
 
     def isInjected(self, mycpv):
         if self.cpv_exists(mycpv):
-            if os.path.exists(self.getpath(mycpv, filename="INJECTED")):
+            if os_unicode_fs.path.exists(self.getpath(mycpv, filename="INJECTED")):
                 return True
-            if not os.path.exists(self.getpath(mycpv, filename="CONTENTS")):
+            if not os_unicode_fs.path.exists(self.getpath(mycpv, filename="CONTENTS")):
                 return True
         return False
 
@@ -437,14 +441,14 @@ class vardbapi(dbapi):
             mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
             mynewcat = catsplit(newcp)[0]
             origpath = self.getpath(mycpv)
-            if not os.path.exists(origpath):
+            if not os_unicode_fs.path.exists(origpath):
                 continue
             moves += 1
-            if not os.path.exists(self.getpath(mynewcat)):
+            if not os_unicode_fs.path.exists(self.getpath(mynewcat)):
                 # create the directory
                 ensure_dirs(self.getpath(mynewcat))
             newpath = self.getpath(mynewcpv)
-            if os.path.exists(newpath):
+            if os_unicode_fs.path.exists(newpath):
                 # dest already exists; keep this puppy where it is.
                 continue
             _movefile(origpath, newpath, mysettings=self.settings)
@@ -456,16 +460,16 @@ class vardbapi(dbapi):
             new_pf = catsplit(mynewcpv)[1]
             if new_pf != old_pf:
                 try:
-                    os.rename(
-                        os.path.join(newpath, old_pf + ".ebuild"),
-                        os.path.join(newpath, new_pf + ".ebuild"),
+                    os_unicode_fs.rename(
+                        os_unicode_fs.path.join(newpath, old_pf + ".ebuild"),
+                        os_unicode_fs.path.join(newpath, new_pf + ".ebuild"),
                     )
                 except EnvironmentError as e:
                     if e.errno != errno.ENOENT:
                         raise
                     del e
-            write_atomic(os.path.join(newpath, "PF"), new_pf + "\n")
-            write_atomic(os.path.join(newpath, "CATEGORY"), mynewcat + "\n")
+            write_atomic(os_unicode_fs.path.join(newpath, "PF"), new_pf + "\n")
+            write_atomic(os_unicode_fs.path.join(newpath, "CATEGORY"), mynewcat + "\n")
 
         return moves
 
@@ -474,7 +478,7 @@ class vardbapi(dbapi):
         if mysplit[0] == "*":
             mysplit[0] = mysplit[0][1:]
         try:
-            mystat = os.stat(self.getpath(mysplit[0])).st_mtime_ns
+            mystat = os_unicode_fs.stat(self.getpath(mysplit[0])).st_mtime_ns
         except OSError:
             mystat = 0
         if use_cache and mycp in self.cpcache:
@@ -483,7 +487,7 @@ class vardbapi(dbapi):
                 return cpc[1][:]
         cat_dir = self.getpath(mysplit[0])
         try:
-            dir_list = os.listdir(cat_dir)
+            dir_list = os_unicode_fs.listdir(cat_dir)
         except EnvironmentError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(cat_dir)
@@ -496,7 +500,7 @@ class vardbapi(dbapi):
                 continue
             ps = pkgsplit(x)
             if not ps:
-                self.invalidentry(os.path.join(self.getpath(mysplit[0]), x))
+                self.invalidentry(os_unicode_fs.path.join(self.getpath(mysplit[0]), x))
                 continue
             if len(mysplit) > 1:
                 if ps[0] == mysplit[1]:
@@ -530,7 +534,9 @@ class vardbapi(dbapi):
 
     def _iter_cpv_all(self, use_cache=True, sort=False):
         returnme = []
-        basepath = os.path.join(self._eroot, VDB_PATH) + os.path.sep
+        basepath = (
+            os_unicode_fs.path.join(self._eroot, VDB_PATH) + os_unicode_fs.path.sep
+        )
 
         if use_cache:
             from portage import listdir
@@ -539,7 +545,9 @@ class vardbapi(dbapi):
             def listdir(p, **kwargs):
                 try:
                     return [
-                        x for x in os.listdir(p) if os.path.isdir(os.path.join(p, x))
+                        x
+                        for x in os_unicode_fs.listdir(p)
+                        if os_unicode_fs.path.isdir(os_unicode_fs.path.join(p, x))
                     ]
                 except EnvironmentError as e:
                     if e.errno == PermissionDenied.errno:
@@ -633,7 +641,9 @@ class vardbapi(dbapi):
                 self._iter_match(mydep, self.cp_list(mydep.cp, use_cache=use_cache))
             )
         try:
-            curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
+            curmtime = os_unicode_fs.stat(
+                os_unicode_fs.path.join(self._eroot, VDB_PATH, mycat)
+            ).st_mtime_ns
         except (IOError, OSError):
             curmtime = 0
 
@@ -665,11 +675,11 @@ class vardbapi(dbapi):
             and secpass >= 2
             and (
                 len(self._aux_cache["modified"]) >= self._aux_cache_threshold
-                or not os.path.exists(self._cache_delta_filename)
+                or not os_unicode_fs.path.exists(self._cache_delta_filename)
             )
         ):
 
-            ensure_dirs(os.path.dirname(self._aux_cache_filename))
+            ensure_dirs(os_unicode_fs.path.dirname(self._aux_cache_filename))
 
             self._owners.populate()  # index any unindexed contents
             valid_nodes = set(self.cpv_all())
@@ -786,7 +796,7 @@ class vardbapi(dbapi):
         mydir = self.getpath(mycpv)
         mydir_stat = None
         try:
-            mydir_stat = os.stat(mydir)
+            mydir_stat = os_unicode_fs.stat(mydir)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -859,7 +869,7 @@ class vardbapi(dbapi):
         mydir = self.getpath(mycpv)
         if st is None:
             try:
-                st = os.stat(mydir)
+                st = os_unicode_fs.stat(mydir)
             except OSError as e:
                 if e.errno == errno.ENOENT:
                     raise KeyError(mycpv)
@@ -878,7 +888,7 @@ class vardbapi(dbapi):
             try:
                 with io.open(
                     _unicode_encode(
-                        os.path.join(mydir, x),
+                        os_unicode_fs.path.join(mydir, x),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
@@ -928,7 +938,7 @@ class vardbapi(dbapi):
         in environment.bz2 (see bug #395463).
         """
         env_file = self.getpath(cpv, filename="environment.bz2")
-        if not os.path.isfile(env_file):
+        if not os_unicode_fs.path.isfile(env_file):
             return {}
         bunzip2_cmd = portage.util.shlex_split(
             self.settings.get("PORTAGE_BUNZIP2_COMMAND", "")
@@ -1003,7 +1013,7 @@ class vardbapi(dbapi):
                 mylink.setfile(k, v)
             else:
                 try:
-                    os.unlink(os.path.join(self.getpath(cpv), k))
+                    os_unicode_fs.unlink(os_unicode_fs.path.join(self.getpath(cpv), k))
                 except EnvironmentError:
                     pass
         self._bump_mtime(cpv)
@@ -1025,9 +1035,12 @@ class vardbapi(dbapi):
         dbdir = self.getpath(cpv)
 
         def async_copy():
-            for parent, dirs, files in os.walk(dbdir, onerror=_raise_exc):
+            for parent, dirs, files in os_unicode_fs.walk(dbdir, onerror=_raise_exc):
                 for key in files:
-                    shutil.copy(os.path.join(parent, key), os.path.join(dest_dir, key))
+                    shutil_unicode_fs.copy(
+                        os_unicode_fs.path.join(parent, key),
+                        os_unicode_fs.path.join(dest_dir, key),
+                    )
                 break
 
         await loop.run_in_executor(ForkExecutor(loop=loop), async_copy)
@@ -1099,10 +1112,10 @@ class vardbapi(dbapi):
         )
         if binpkg_format == "xpak":
             tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
-            pr, pw = os.pipe()
+            pr, pw = os_unicode_fs.pipe()
             proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
-            os.close(pr)
-            with os.fdopen(pw, "wb", 0) as pw_file:
+            os_unicode_fs.close(pr)
+            with os_unicode_fs.fdopen(pw, "wb", 0) as pw_file:
                 excluded_config_files = await loop.run_in_executor(
                     ForkExecutor(loop=loop),
                     functools.partial(
@@ -1113,11 +1126,11 @@ class vardbapi(dbapi):
                     ),
                 )
             await proc.wait()
-            if proc.returncode != os.EX_OK:
+            if proc.returncode != os_unicode_fs.EX_OK:
                 raise PortageException("command failed: {}".format(tar_cmd))
         elif binpkg_format == "gpkg":
             gpkg_tmp_fd, gpkg_tmp = tempfile.mkstemp(suffix=".gpkg.tar")
-            os.close(gpkg_tmp_fd)
+            os_unicode_fs.close(gpkg_tmp_fd)
             excluded_config_files = await loop.run_in_executor(
                 ForkExecutor(loop=loop),
                 functools.partial(
@@ -1128,7 +1141,7 @@ class vardbapi(dbapi):
                 ),
             )
             portage.gpkg.gpkg(settings, cpv, gpkg_tmp).decompress(dest_dir)
-            os.remove(gpkg_tmp)
+            os_unicode_fs.remove(gpkg_tmp)
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
@@ -1310,7 +1323,9 @@ class vardbapi(dbapi):
         if removed:
             # Also remove corresponding NEEDED lines, so that they do
             # no corrupt LinkageMap data for preserve-libs.
-            needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
+            needed_filename = os_unicode_fs.path.join(
+                pkg.dbdir, LinkageMap._needed_aux_key
+            )
             new_needed = None
             try:
                 with io.open(
@@ -1339,7 +1354,9 @@ class vardbapi(dbapi):
                         )
                         continue
 
-                    filename = os.path.join(root, entry.filename.lstrip(os.sep))
+                    filename = os_unicode_fs.path.join(
+                        root, entry.filename.lstrip(os_unicode_fs.sep)
+                    )
                     if filename in new_contents:
                         new_needed.append(entry)
 
@@ -1358,11 +1375,13 @@ class vardbapi(dbapi):
         root = self.settings["ROOT"]
         self._bump_mtime(pkg.mycpv)
         if new_needed is not None:
-            f = atomic_ofstream(os.path.join(pkg.dbdir, LinkageMap._needed_aux_key))
+            f = atomic_ofstream(
+                os_unicode_fs.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
+            )
             for entry in new_needed:
                 f.write(str(entry))
             f.close()
-        f = atomic_ofstream(os.path.join(pkg.dbdir, "CONTENTS"))
+        f = atomic_ofstream(os_unicode_fs.path.join(pkg.dbdir, "CONTENTS"))
         write_contents(new_contents, root, f)
         f.close()
         self._bump_mtime(pkg.mycpv)
@@ -1401,7 +1420,7 @@ class vardbapi(dbapi):
             Empty path is a code that represents empty contents.
             """
             if path:
-                name = os.path.basename(path.rstrip(os.path.sep))
+                name = os_unicode_fs.path.basename(path.rstrip(os_unicode_fs.path.sep))
                 if not name:
                     return
             else:
@@ -1542,11 +1561,13 @@ class vardbapi(dbapi):
                 path = path_iter.pop()
                 if case_insensitive:
                     path = path.lower()
-                is_basename = os.sep != path[:1]
+                is_basename = os_unicode_fs.sep != path[:1]
                 if is_basename:
                     name = path
                 else:
-                    name = os.path.basename(path.rstrip(os.path.sep))
+                    name = os_unicode_fs.path.basename(
+                        path.rstrip(os_unicode_fs.path.sep)
+                    )
 
                 if not name:
                     continue
@@ -1575,7 +1596,7 @@ class vardbapi(dbapi):
 
                             if is_basename:
                                 for p in dblink(cpv)._contents.keys():
-                                    if os.path.basename(p) == name:
+                                    if os_unicode_fs.path.basename(p) == name:
                                         owners.append(
                                             (
                                                 cpv,
@@ -1617,11 +1638,13 @@ class vardbapi(dbapi):
             for path in path_list:
                 if case_insensitive:
                     path = path.lower()
-                is_basename = os.sep != path[:1]
+                is_basename = os_unicode_fs.sep != path[:1]
                 if is_basename:
                     name = path
                 else:
-                    name = os.path.basename(path.rstrip(os.path.sep))
+                    name = os_unicode_fs.path.basename(
+                        path.rstrip(os_unicode_fs.path.sep)
+                    )
                 path_info_list.append((path, name, is_basename))
 
             # Do work via the global event loop, so that it can be used
@@ -1635,7 +1658,7 @@ class vardbapi(dbapi):
                 for path, name, is_basename in path_info_list:
                     if is_basename:
                         for p in dblnk._contents.keys():
-                            if os.path.basename(p) == name:
+                            if os_unicode_fs.path.basename(p) == name:
                                 results.append(
                                     (dblnk, dblnk._contents.unmap_key(p)[len(root) :])
                                 )
@@ -1846,7 +1869,7 @@ class dblink:
         self.vartree = vartree
         self._blockers = blockers
         self._scheduler = scheduler
-        self.dbroot = normalize_path(os.path.join(self._eroot, VDB_PATH))
+        self.dbroot = normalize_path(os_unicode_fs.path.join(self._eroot, VDB_PATH))
         self.dbcatdir = self.dbroot + "/" + cat
         self.dbpkgdir = self.dbcatdir + "/" + pkg
         self.dbtmpdir = self.dbcatdir + "/" + MERGING_IDENTIFIER + pkg
@@ -1962,14 +1985,14 @@ class dblink:
 
     def exists(self):
         "does the db entry exist?  boolean."
-        return os.path.exists(self.dbdir)
+        return os_unicode_fs.path.exists(self.dbdir)
 
     def delete(self):
         """
         Remove this entry from the database
         """
         try:
-            os.lstat(self.dbdir)
+            os_unicode_fs.lstat(self.dbdir)
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ENOTDIR, errno.ESTALE):
                 raise
@@ -1989,17 +2012,17 @@ class dblink:
                 "remove", self.mycpv, self.settings["SLOT"].split("/")[0], counter
             )
 
-        shutil.rmtree(self.dbdir)
+        shutil_unicode_fs.rmtree(self.dbdir)
         # If empty, remove parent category directory.
         try:
-            os.rmdir(os.path.dirname(self.dbdir))
+            os_unicode_fs.rmdir(os_unicode_fs.path.dirname(self.dbdir))
         except OSError:
             pass
         self.vartree.dbapi._remove(self)
 
         # Use self.dbroot since we need an existing path for syncfs.
         try:
-            self._merged_path(self.dbroot, os.lstat(self.dbroot))
+            self._merged_path(self.dbroot, os_unicode_fs.lstat(self.dbroot))
         except OSError:
             pass
 
@@ -2011,8 +2034,8 @@ class dblink:
         """
         self.lockdb()
         try:
-            if os.path.exists(self.dbdir + "/CONTENTS"):
-                os.unlink(self.dbdir + "/CONTENTS")
+            if os_unicode_fs.path.exists(self.dbdir + "/CONTENTS"):
+                os_unicode_fs.unlink(self.dbdir + "/CONTENTS")
         finally:
             self.unlockdb()
 
@@ -2028,7 +2051,7 @@ class dblink:
         """
         if self.contentscache is not None:
             return self.contentscache
-        contents_file = os.path.join(self.dbdir, "CONTENTS")
+        contents_file = os_unicode_fs.path.join(self.dbdir, "CONTENTS")
         pkgfiles = {}
         try:
             with io.open(
@@ -2058,11 +2081,11 @@ class dblink:
         oldsym_index = contents_re.groupindex["oldsym"]
         # CONTENTS files already contain EPREFIX
         myroot = self.settings["ROOT"]
-        if myroot == os.path.sep:
+        if myroot == os_unicode_fs.path.sep:
             myroot = None
         # used to generate parent dir entries
         dir_entry = ("dir",)
-        eroot_split_len = len(self.settings["EROOT"].split(os.sep)) - 1
+        eroot_split_len = len(self.settings["EROOT"].split(os_unicode_fs.sep)) - 1
         pos = 0
         errors = []
         for pos, line in enumerate(mylines):
@@ -2102,20 +2125,22 @@ class dblink:
             path = m.group(base + 2)
             if normalize_needed.search(path) is not None:
                 path = normalize_path(path)
-                if not path.startswith(os.path.sep):
-                    path = os.path.sep + path
+                if not path.startswith(os_unicode_fs.path.sep):
+                    path = os_unicode_fs.path.sep + path
 
             if myroot is not None:
-                path = os.path.join(myroot, path.lstrip(os.path.sep))
+                path = os_unicode_fs.path.join(
+                    myroot, path.lstrip(os_unicode_fs.path.sep)
+                )
 
             # Implicitly add parent directories, since we can't necessarily
             # assume that they are explicitly listed in CONTENTS, and it's
             # useful for callers if they can rely on parent directory entries
             # being generated here (crucial for things like dblink.isowner()).
-            path_split = path.split(os.sep)
+            path_split = path.split(os_unicode_fs.sep)
             path_split.pop()
             while len(path_split) > eroot_split_len:
-                parent = os.sep.join(path_split)
+                parent = os_unicode_fs.sep.join(path_split)
                 if parent in pkgfiles:
                     break
                 pkgfiles[parent] = dir_entry
@@ -2313,7 +2338,7 @@ class dblink:
         @type preserve_paths: set
         @rtype: Integer
         @return:
-        1. os.EX_OK if everything went well.
+        1. os_unicode_fs.EX_OK if everything went well.
         2. return code of the failed phase (for prerm, postrm, cleanrm)
         """
 
@@ -2382,17 +2407,21 @@ class dblink:
         contents = self.getcontents()
         # Now, don't assume that the name of the ebuild is the same as the
         # name of the dir; the package may have been moved.
-        myebuildpath = os.path.join(self.dbdir, self.pkg + ".ebuild")
+        myebuildpath = os_unicode_fs.path.join(self.dbdir, self.pkg + ".ebuild")
         failures = 0
         ebuild_phase = "prerm"
-        mystuff = os.listdir(self.dbdir)
+        mystuff = os_unicode_fs.listdir(self.dbdir)
         for x in mystuff:
             if x.endswith(".ebuild"):
                 if x[:-7] != self.pkg:
                     # Clean up after vardbapi.move_ent() breakage in
                     # portage versions before 2.1.2
-                    os.rename(os.path.join(self.dbdir, x), myebuildpath)
-                    write_atomic(os.path.join(self.dbdir, "PF"), self.pkg + "\n")
+                    os_unicode_fs.rename(
+                        os_unicode_fs.path.join(self.dbdir, x), myebuildpath
+                    )
+                    write_atomic(
+                        os_unicode_fs.path.join(self.dbdir, "PF"), self.pkg + "\n"
+                    )
                 break
 
         if (
@@ -2419,7 +2448,7 @@ class dblink:
 
         builddir_lock = None
         scheduler = self._scheduler
-        retval = os.EX_OK
+        retval = os_unicode_fs.EX_OK
         try:
             # Only create builddir_lock if the caller
             # has not already acquired the lock.
@@ -2436,7 +2465,7 @@ class dblink:
             # may want to backup those libraries first.
             if not caller_handles_backup:
                 retval = self._pre_unmerge_backup(background)
-                if retval != os.EX_OK:
+                if retval != os_unicode_fs.EX_OK:
                     showMessage(
                         _("!!! FAILED prerm: quickpkg: %s\n") % retval,
                         level=logging.ERROR,
@@ -2454,14 +2483,15 @@ class dblink:
                 # Sometimes this happens due to corruption of the EAPI file.
                 failures += 1
                 showMessage(
-                    _("!!! FAILED prerm: %s\n") % os.path.join(self.dbdir, "EAPI"),
+                    _("!!! FAILED prerm: %s\n")
+                    % os_unicode_fs.path.join(self.dbdir, "EAPI"),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
                 showMessage(
                     "%s\n" % (eapi_unsupported,), level=logging.ERROR, noiselevel=-1
                 )
-            elif os.path.isfile(myebuildpath):
+            elif os_unicode_fs.path.isfile(myebuildpath):
                 phase = EbuildPhase(
                     background=background,
                     phase=ebuild_phase,
@@ -2472,7 +2502,7 @@ class dblink:
                 retval = phase.wait()
 
                 # XXX: Decide how to handle failures here.
-                if retval != os.EX_OK:
+                if retval != os_unicode_fs.EX_OK:
                     failures += 1
                     showMessage(
                         _("!!! FAILED prerm: %s\n") % retval,
@@ -2487,7 +2517,7 @@ class dblink:
                 self.vartree.dbapi._fs_unlock()
             self._clear_contents_cache()
 
-            if not eapi_unsupported and os.path.isfile(myebuildpath):
+            if not eapi_unsupported and os_unicode_fs.path.isfile(myebuildpath):
                 ebuild_phase = "postrm"
                 phase = EbuildPhase(
                     background=background,
@@ -2499,7 +2529,7 @@ class dblink:
                 retval = phase.wait()
 
                 # XXX: Decide how to handle failures here.
-                if retval != os.EX_OK:
+                if retval != os_unicode_fs.EX_OK:
                     failures += 1
                     showMessage(
                         _("!!! FAILED postrm: %s\n") % retval,
@@ -2510,8 +2540,8 @@ class dblink:
         finally:
             self.vartree.dbapi._bump_mtime(self.mycpv)
             try:
-                if not eapi_unsupported and os.path.isfile(myebuildpath):
-                    if retval != os.EX_OK:
+                if not eapi_unsupported and os_unicode_fs.path.isfile(myebuildpath):
+                    if retval != os_unicode_fs.EX_OK:
                         msg_lines = []
                         msg = _(
                             "The '%(ebuild_phase)s' "
@@ -2527,8 +2557,8 @@ class dblink:
                         msg_lines.extend(wrap(msg, 72))
                         msg_lines.append("")
 
-                        ebuild_name = os.path.basename(myebuildpath)
-                        ebuild_dir = os.path.dirname(myebuildpath)
+                        ebuild_name = os_unicode_fs.path.basename(myebuildpath)
+                        ebuild_dir = os_unicode_fs.path.dirname(myebuildpath)
                         msg = _(
                             "The problem occurred while executing "
                             "the ebuild file named '%(ebuild_name)s' "
@@ -2559,7 +2589,7 @@ class dblink:
 
                 self._elog_process(phasefilter=("prerm", "postrm"))
 
-                if retval == os.EX_OK:
+                if retval == os_unicode_fs.EX_OK:
                     try:
                         doebuild_environment(
                             myebuildpath,
@@ -2585,22 +2615,22 @@ class dblink:
 
             if not failures and "unmerge-logs" not in self.settings.features:
                 try:
-                    os.unlink(log_path)
+                    os_unicode_fs.unlink(log_path)
                 except OSError:
                     pass
 
             try:
-                st = os.stat(log_path)
+                st = os_unicode_fs.stat(log_path)
             except OSError:
                 pass
             else:
                 if st.st_size == 0:
                     try:
-                        os.unlink(log_path)
+                        os_unicode_fs.unlink(log_path)
                     except OSError:
                         pass
 
-        if log_path is not None and os.path.exists(log_path):
+        if log_path is not None and os_unicode_fs.path.exists(log_path):
             # Restore this since it gets lost somewhere above and it
             # needs to be set for _display_merge() to be able to log.
             # Note that the log isn't necessarily supposed to exist
@@ -2631,7 +2661,7 @@ class dblink:
             # is intended to be used _prior_ to unmerge, not after.
             self._prune_plib_registry()
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _display_merge(self, msg, level=0, noiselevel=0):
         if not self._verbose and noiselevel >= 0 and level < logging.WARN:
@@ -2674,7 +2704,7 @@ class dblink:
         @rtype: None
         """
 
-        os = _os_merge
+        os = os_unicode_merge
         perf_md5 = perform_md5
         showMessage = self._display_merge
         show_unmerge = self._show_unmerge
@@ -2729,18 +2759,18 @@ class dblink:
                 if bsd_chflags:
                     if lstatobj.st_flags != 0:
                         bsd_chflags.lchflags(file_name, 0)
-                    parent_name = os.path.dirname(file_name)
+                    parent_name = os_unicode_fs.path.dirname(file_name)
                     # Use normal stat/chflags for the parent since we want to
                     # follow any symlinks to the real parent directory.
-                    pflags = os.stat(parent_name).st_flags
+                    pflags = os_unicode_fs.stat(parent_name).st_flags
                     if pflags != 0:
                         bsd_chflags.chflags(parent_name, 0)
                 try:
                     if not stat.S_ISLNK(lstatobj.st_mode):
                         # Remove permissions to ensure that any hardlinks to
                         # suid/sgid files are rendered harmless.
-                        os.chmod(file_name, 0)
-                    os.unlink(file_name)
+                        os_unicode_fs.chmod(file_name, 0)
+                    os_unicode_fs.unlink(file_name)
                 except OSError as ose:
                     # If the chmod or unlink fails, you are in trouble.
                     # With Prefix this can be because the file is owned
@@ -2794,9 +2824,11 @@ class dblink:
             )
             infodirs_inodes = set()
             for infodir in infodirs:
-                infodir = os.path.join(real_root, infodir.lstrip(os.sep))
+                infodir = os_unicode_fs.path.join(
+                    real_root, infodir.lstrip(os_unicode_fs.sep)
+                )
                 try:
-                    statobj = os.stat(infodir)
+                    statobj = os_unicode_fs.stat(infodir)
                 except OSError:
                     pass
                 else:
@@ -2805,7 +2837,7 @@ class dblink:
             for i, objkey in enumerate(mykeys):
 
                 obj = normalize_path(objkey)
-                if os is _os_merge:
+                if os is os_unicode_merge:
                     try:
                         _unicode_encode(
                             obj, encoding=_encodings["merge"], errors="strict"
@@ -2834,12 +2866,12 @@ class dblink:
 
                 statobj = None
                 try:
-                    statobj = os.stat(obj)
+                    statobj = os_unicode_fs.stat(obj)
                 except OSError:
                     pass
                 lstatobj = None
                 try:
-                    lstatobj = os.lstat(obj)
+                    lstatobj = os_unicode_fs.lstat(obj)
                 except (OSError, AttributeError):
                     pass
                 islink = lstatobj is not None and stat.S_ISLNK(lstatobj.st_mode)
@@ -2958,7 +2990,7 @@ class dblink:
 
                         relative_path = obj[real_root_len:]
                         try:
-                            target_dir_contents = os.listdir(obj)
+                            target_dir_contents = os_unicode_fs.listdir(obj)
                         except OSError:
                             pass
                         else:
@@ -2968,14 +3000,17 @@ class dblink:
                                 # safe to unmerge.
                                 all_owned = True
                                 for child in target_dir_contents:
-                                    child = os.path.join(relative_path, child)
+                                    child = os_unicode_fs.path.join(
+                                        relative_path, child
+                                    )
                                     if not self.isowner(child):
                                         all_owned = False
                                         break
                                     try:
-                                        child_lstat = os.lstat(
-                                            os.path.join(
-                                                real_root, child.lstrip(os.sep)
+                                        child_lstat = os_unicode_fs.lstat(
+                                            os_unicode_fs.path.join(
+                                                real_root,
+                                                child.lstrip(os_unicode_fs.sep),
                                             )
                                         )
                                     except OSError:
@@ -3076,7 +3111,10 @@ class dblink:
             flat_list.update(*protected_symlinks.values())
             flat_list = sorted(flat_list)
             for f in flat_list:
-                lines.append("\t%s" % (os.path.join(real_root, f.lstrip(os.sep))))
+                lines.append(
+                    "\t%s"
+                    % (os_unicode_fs.path.join(real_root, f.lstrip(os_unicode_fs.sep)))
+                )
             lines.append("")
             self._elog("elog", "postrm", lines)
 
@@ -3121,7 +3159,10 @@ class dblink:
         msg.append("")
 
         for f in flat_list:
-            msg.append("\t%s" % os.path.join(real_root, f.lstrip(os.path.sep)))
+            msg.append(
+                "\t%s"
+                % os_unicode_fs.path.join(real_root, f.lstrip(os_unicode_fs.path.sep))
+            )
 
         msg.append("")
         msg.append("Use the UNINSTALL_IGNORE variable to exempt specific symlinks")
@@ -3160,18 +3201,20 @@ class dblink:
             dirs = set()
             for unmerge_syms in protected_symlinks.values():
                 for relative_path in unmerge_syms:
-                    obj = os.path.join(real_root, relative_path.lstrip(os.sep))
-                    parent = os.path.dirname(obj)
+                    obj = os_unicode_fs.path.join(
+                        real_root, relative_path.lstrip(os_unicode_fs.sep)
+                    )
+                    parent = os_unicode_fs.path.dirname(obj)
                     while len(parent) > len(self._eroot):
                         try:
-                            lstatobj = os.lstat(parent)
+                            lstatobj = os_unicode_fs.lstat(parent)
                         except OSError:
                             break
                         else:
                             dirs.add((parent, (lstatobj.st_dev, lstatobj.st_ino)))
-                            parent = os.path.dirname(parent)
+                            parent = os_unicode_fs.path.dirname(parent)
                     try:
-                        unlink(obj, os.lstat(obj))
+                        unlink(obj, os_unicode_fs.lstat(obj))
                         show_unmerge("<<<", "", "sym", obj)
                     except (OSError, IOError) as e:
                         if e.errno not in ignored_unlink_errnos:
@@ -3206,9 +3249,12 @@ class dblink:
             # Treat any directory named "info" as a candidate here,
             # since it might have been in INFOPATH previously even
             # though it may not be there now.
-            if inode_key in infodirs_inodes or os.path.basename(obj) == "info":
+            if (
+                inode_key in infodirs_inodes
+                or os_unicode_fs.path.basename(obj) == "info"
+            ):
                 try:
-                    remaining = os.listdir(obj)
+                    remaining = os_unicode_fs.listdir(obj)
                 except OSError:
                     pass
                 else:
@@ -3218,9 +3264,9 @@ class dblink:
                             cleanup_info_dir = remaining
 
                     for child in cleanup_info_dir:
-                        child = os.path.join(obj, child)
+                        child = os_unicode_fs.path.join(obj, child)
                         try:
-                            lstatobj = os.lstat(child)
+                            lstatobj = os_unicode_fs.lstat(child)
                             if stat.S_ISREG(lstatobj.st_mode):
                                 unlink(child, lstatobj)
                                 show_unmerge("<<<", "", "obj", child)
@@ -3231,11 +3277,11 @@ class dblink:
                             show_unmerge("!!!", "", "obj", child)
 
             try:
-                parent_name = os.path.dirname(obj)
-                parent_stat = os.stat(parent_name)
+                parent_name = os_unicode_fs.path.dirname(obj)
+                parent_stat = os_unicode_fs.stat(parent_name)
 
                 if bsd_chflags:
-                    lstatobj = os.lstat(obj)
+                    lstatobj = os_unicode_fs.lstat(obj)
                     if lstatobj.st_flags != 0:
                         bsd_chflags.lchflags(obj, 0)
 
@@ -3245,7 +3291,7 @@ class dblink:
                     if pflags != 0:
                         bsd_chflags.chflags(parent_name, 0)
                 try:
-                    os.rmdir(obj)
+                    os_unicode_fs.rmdir(obj)
                 finally:
                     if bsd_chflags and pflags != 0:
                         # Restore the parent flags we saved before unlinking
@@ -3255,7 +3301,7 @@ class dblink:
                 # Note that we use a realpath and a regular stat here, since
                 # we want to follow any symlinks back to the real device where
                 # the real parent directory resides.
-                self._merged_path(os.path.realpath(parent_name), parent_stat)
+                self._merged_path(os_unicode_fs.path.realpath(parent_name), parent_stat)
 
                 show_unmerge("<<<", "", "dir", obj)
             except EnvironmentError as e:
@@ -3272,12 +3318,12 @@ class dblink:
                 # we want to follow any symlinks back to the real device where
                 # the real directory resides.
                 try:
-                    dir_stat = os.stat(obj)
+                    dir_stat = os_unicode_fs.stat(obj)
                 except OSError:
                     pass
                 else:
                     if dir_stat.st_dev in self._device_path_map:
-                        self._merged_path(os.path.realpath(obj), dir_stat)
+                        self._merged_path(os_unicode_fs.path.realpath(obj), dir_stat)
 
             else:
                 # When a directory is successfully removed, there's
@@ -3286,9 +3332,11 @@ class dblink:
                 if unmerge_syms is not None:
                     parents = []
                     for relative_path in unmerge_syms:
-                        obj = os.path.join(real_root, relative_path.lstrip(os.sep))
+                        obj = os_unicode_fs.path.join(
+                            real_root, relative_path.lstrip(os_unicode_fs.sep)
+                        )
                         try:
-                            unlink(obj, os.lstat(obj))
+                            unlink(obj, os_unicode_fs.lstat(obj))
                             show_unmerge("<<<", "", "sym", obj)
                         except (OSError, IOError) as e:
                             if e.errno not in ignored_unlink_errnos:
@@ -3296,7 +3344,7 @@ class dblink:
                             del e
                             show_unmerge("!!!", "", "sym", obj)
                         else:
-                            parents.append(os.path.dirname(obj))
+                            parents.append(os_unicode_fs.path.dirname(obj))
 
                     if parents:
                         # Revisit parents recursively (bug 640058).
@@ -3304,7 +3352,7 @@ class dblink:
                         for parent in set(parents):
                             while parent in revisit:
                                 recursive_parents.append(parent)
-                                parent = os.path.dirname(parent)
+                                parent = os_unicode_fs.path.dirname(parent)
                                 if parent == "/":
                                     break
 
@@ -3376,8 +3424,8 @@ class dblink:
         # modules for each. The basename is more likely to contain non-ascii
         # characters than the directory path, so use os_filename_arg for all
         # operations involving the basename of the filename arg.
-        os_filename_arg = _os_merge
-        os = _os_merge
+        os_filename_arg = os_unicode_merge
+        os = os_unicode_merge
 
         try:
             _unicode_encode(filename, encoding=_encodings["merge"], errors="strict")
@@ -3428,7 +3476,7 @@ class dblink:
                         os = portage.os
 
                 self._contents_basenames = set(
-                    os.path.basename(x) for x in self._contents.keys()
+                    os_unicode_fs.path.basename(x) for x in self._contents.keys()
                 )
             if basename not in self._contents_basenames:
                 # This is a shortcut that, in most cases, allows us to
@@ -3448,7 +3496,7 @@ class dblink:
                 return False
             if self._contents_inodes is None:
 
-                if os is _os_merge:
+                if os is os_unicode_merge:
                     try:
                         for x in self._contents.keys():
                             _unicode_encode(
@@ -3471,12 +3519,12 @@ class dblink:
                 self._contents_inodes = {}
                 parent_paths = set()
                 for x in self._contents.keys():
-                    p_path = os.path.dirname(x)
+                    p_path = os_unicode_fs.path.dirname(x)
                     if p_path in parent_paths:
                         continue
                     parent_paths.add(p_path)
                     try:
-                        s = os.stat(p_path)
+                        s = os_unicode_fs.stat(p_path)
                     except OSError:
                         pass
                     else:
@@ -3547,7 +3595,7 @@ class dblink:
         ):
             return set()
 
-        os = _os_merge
+        os = os_unicode_merge
         linkmap = self.vartree.dbapi._linkmap
         if unmerge:
             installed_instance = self
@@ -3575,7 +3623,7 @@ class dblink:
         # Create provider nodes and add them to the graph.
         for f_abs in old_contents:
 
-            if os is _os_merge:
+            if os is os_unicode_merge:
                 try:
                     _unicode_encode(
                         f_abs, encoding=_encodings["merge"], errors="strict"
@@ -3647,15 +3695,15 @@ class dblink:
             have_replacement_soname_link = False
             have_replacement_hardlink = False
             for f in preserve_node.alt_paths:
-                f_abs = os.path.join(root, f.lstrip(os.sep))
+                f_abs = os_unicode_fs.path.join(root, f.lstrip(os_unicode_fs.sep))
                 try:
-                    if stat.S_ISREG(os.lstat(f_abs).st_mode):
+                    if stat.S_ISREG(os_unicode_fs.lstat(f_abs).st_mode):
                         hardlinks.add(f)
                         if not unmerge and self.isowner(f):
                             have_replacement_hardlink = True
-                            if os.path.basename(f) == soname:
+                            if os_unicode_fs.path.basename(f) == soname:
                                 have_replacement_soname_link = True
-                    elif os.path.basename(f) == soname:
+                    elif os_unicode_fs.path.basename(f) == soname:
                         soname_symlinks.add(f)
                         if not unmerge and self.isowner(f):
                             have_replacement_soname_link = True
@@ -3679,7 +3727,7 @@ class dblink:
         if not preserve_paths:
             return
 
-        os = _os_merge
+        os = os_unicode_merge
         showMessage = self._display_merge
         root = self.settings["ROOT"]
 
@@ -3688,7 +3736,7 @@ class dblink:
         old_contents = self._installed_instance.getcontents()
         for f in sorted(preserve_paths):
             f = _unicode_decode(f, encoding=_encodings["content"], errors="strict")
-            f_abs = os.path.join(root, f.lstrip(os.sep))
+            f_abs = os_unicode_fs.path.join(root, f.lstrip(os_unicode_fs.sep))
             contents_entry = old_contents.get(f_abs)
             if contents_entry is None:
                 # This will probably never happen, but it might if one of the
@@ -3711,14 +3759,14 @@ class dblink:
             obj_type = contents_entry[0]
             showMessage(_(">>> needed    %s %s\n") % (obj_type, f_abs), noiselevel=-1)
             # Add parent directories to contents if necessary.
-            parent_dir = os.path.dirname(f_abs)
+            parent_dir = os_unicode_fs.path.dirname(f_abs)
             while len(parent_dir) > len(root):
                 new_contents[parent_dir] = ["dir"]
                 prev = parent_dir
-                parent_dir = os.path.dirname(parent_dir)
+                parent_dir = os_unicode_fs.path.dirname(parent_dir)
                 if prev == parent_dir:
                     break
-        outfile = atomic_ofstream(os.path.join(self.dbtmpdir, "CONTENTS"))
+        outfile = atomic_ofstream(os_unicode_fs.path.join(self.dbtmpdir, "CONTENTS"))
         write_contents(new_contents, root, outfile)
         outfile.close()
         self._clear_contents_cache()
@@ -3856,7 +3904,7 @@ class dblink:
         Remove files returned from _find_unused_preserved_libs().
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         files_to_remove = set()
         for files in cpv_lib_map.values():
@@ -3867,14 +3915,14 @@ class dblink:
 
         parent_dirs = set()
         for obj in files_to_remove:
-            obj = os.path.join(root, obj.lstrip(os.sep))
-            parent_dirs.add(os.path.dirname(obj))
-            if os.path.islink(obj):
+            obj = os_unicode_fs.path.join(root, obj.lstrip(os_unicode_fs.sep))
+            parent_dirs.add(os_unicode_fs.path.dirname(obj))
+            if os_unicode_fs.path.islink(obj):
                 obj_type = _("sym")
             else:
                 obj_type = _("obj")
             try:
-                os.unlink(obj)
+                os_unicode_fs.unlink(obj)
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -3887,11 +3935,11 @@ class dblink:
             x = parent_dirs.pop()
             while True:
                 try:
-                    os.rmdir(x)
+                    os_unicode_fs.rmdir(x)
                 except OSError:
                     break
                 prev = x
-                x = os.path.dirname(x)
+                x = os_unicode_fs.path.dirname(x)
                 if x == prev:
                     break
 
@@ -3899,13 +3947,15 @@ class dblink:
 
     def _collision_protect(self, srcroot, destroot, mypkglist, file_list, symlink_list):
 
-        os = _os_merge
+        os = os_unicode_merge
 
         real_relative_paths = {}
 
         collision_ignore = []
         for x in portage.util.shlex_split(self.settings.get("COLLISION_IGNORE", "")):
-            if os.path.isdir(os.path.join(self._eroot, x.lstrip(os.sep))):
+            if os_unicode_fs.path.isdir(
+                os_unicode_fs.path.join(self._eroot, x.lstrip(os_unicode_fs.sep))
+            ):
                 x = normalize_path(x)
                 x += "/*"
             collision_ignore.append(x)
@@ -3957,31 +4007,33 @@ class dblink:
                 previous = current
                 progress_shown = True
 
-            dest_path = normalize_path(os.path.join(destroot, f.lstrip(os.path.sep)))
+            dest_path = normalize_path(
+                os_unicode_fs.path.join(destroot, f.lstrip(os_unicode_fs.path.sep))
+            )
 
             # Relative path with symbolic links resolved only in parent directories
-            real_relative_path = os.path.join(
-                os.path.realpath(os.path.dirname(dest_path)),
-                os.path.basename(dest_path),
+            real_relative_path = os_unicode_fs.path.join(
+                os_unicode_fs.path.realpath(os_unicode_fs.path.dirname(dest_path)),
+                os_unicode_fs.path.basename(dest_path),
             )[len(destroot) :]
 
             real_relative_paths.setdefault(real_relative_path, []).append(
-                f.lstrip(os.path.sep)
+                f.lstrip(os_unicode_fs.path.sep)
             )
 
-            parent = os.path.dirname(dest_path)
+            parent = os_unicode_fs.path.dirname(dest_path)
             if parent not in dirs:
                 for x in iter_parents(parent):
                     if x in dirs:
                         break
                     dirs.add(x)
-                    if os.path.isdir(x):
-                        if not os.access(x, os.W_OK):
+                    if os_unicode_fs.path.isdir(x):
+                        if not os_unicode_fs.access(x, os_unicode_fs.W_OK):
                             dirs_ro.add(x)
                         break
 
             try:
-                dest_lstat = os.lstat(dest_path)
+                dest_lstat = os_unicode_fs.lstat(dest_path)
             except EnvironmentError as e:
                 if e.errno == errno.ENOENT:
                     del e
@@ -3993,9 +4045,9 @@ class dblink:
                     dest_lstat = None
                     parent_path = dest_path
                     while len(parent_path) > len(destroot):
-                        parent_path = os.path.dirname(parent_path)
+                        parent_path = os_unicode_fs.path.dirname(parent_path)
                         try:
-                            dest_lstat = os.lstat(parent_path)
+                            dest_lstat = os_unicode_fs.lstat(parent_path)
                             break
                         except EnvironmentError as e:
                             if e.errno != errno.ENOTDIR:
@@ -4007,7 +4059,7 @@ class dblink:
                             + "parent for '%s'" % dest_path
                         )
                     dest_path = parent_path
-                    f = os.path.sep + dest_path[len(destroot) :]
+                    f = os_unicode_fs.path.sep + dest_path[len(destroot) :]
                     if f in collisions:
                         continue
                 else:
@@ -4038,7 +4090,9 @@ class dblink:
                 continue
 
             isowned = False
-            full_path = os.path.join(destroot, f.lstrip(os.path.sep))
+            full_path = os_unicode_fs.path.join(
+                destroot, f.lstrip(os_unicode_fs.path.sep)
+            )
             for ver in mypkglist:
                 if ver.isowner(f):
                     isowned = True
@@ -4061,8 +4115,10 @@ class dblink:
             if len(files) >= 2:
                 files.sort()
                 for i in range(len(files) - 1):
-                    file1 = normalize_path(os.path.join(srcroot, files[i]))
-                    file2 = normalize_path(os.path.join(srcroot, files[i + 1]))
+                    file1 = normalize_path(os_unicode_fs.path.join(srcroot, files[i]))
+                    file2 = normalize_path(
+                        os_unicode_fs.path.join(srcroot, files[i + 1])
+                    )
                     # Compare files, ignoring differences in times.
                     differences = compare_files(
                         file1, file2, skipped_types=("atime", "mtime", "ctime")
@@ -4091,14 +4147,14 @@ class dblink:
         All lstat() calls are relative to self.myroot.
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         root = self.settings["ROOT"]
         inode_map = {}
         for f in path_iter:
-            path = os.path.join(root, f.lstrip(os.sep))
+            path = os_unicode_fs.path.join(root, f.lstrip(os_unicode_fs.sep))
             try:
-                st = os.lstat(path)
+                st = os_unicode_fs.lstat(path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ENOTDIR):
                     raise
@@ -4116,7 +4172,7 @@ class dblink:
         if not installed_instances:
             return 0
 
-        os = _os_merge
+        os = os_unicode_merge
 
         showMessage = self._display_merge
 
@@ -4127,7 +4183,7 @@ class dblink:
         real_paths = set()
         for i, path in enumerate(file_paths):
 
-            if os is _os_merge:
+            if os is os_unicode_merge:
                 try:
                     _unicode_encode(path, encoding=_encodings["merge"], errors="strict")
                 except UnicodeEncodeError:
@@ -4144,7 +4200,7 @@ class dblink:
                         os = portage.os
 
             try:
-                s = os.lstat(path)
+                s = os_unicode_fs.lstat(path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ENOTDIR):
                     raise
@@ -4152,7 +4208,7 @@ class dblink:
                 continue
             if not stat.S_ISREG(s.st_mode):
                 continue
-            path = os.path.realpath(path)
+            path = os_unicode_fs.path.realpath(path)
             if path in real_paths:
                 continue
             real_paths.add(path)
@@ -4211,7 +4267,7 @@ class dblink:
         if self._pipe is None:
             elog_process(cpv, self.settings, phasefilter=phasefilter)
         else:
-            logdir = os.path.join(self.settings["T"], "logging")
+            logdir = os_unicode_fs.path.join(self.settings["T"], "logging")
             ebuild_logentries = collect_ebuild_messages(logdir)
             # phasefilter is irrelevant for the above collect_ebuild_messages
             # call, since this package instance has a private logdir. However,
@@ -4241,7 +4297,9 @@ class dblink:
             if str_buffer:
                 str_buffer = _unicode_encode("".join(str_buffer))
                 while str_buffer:
-                    str_buffer = str_buffer[os.write(self._pipe, str_buffer) :]
+                    str_buffer = str_buffer[
+                        os_unicode_fs.write(self._pipe, str_buffer) :
+                    ]
 
     def _emerge_log(self, msg):
         emergelog(False, msg)
@@ -4299,7 +4357,7 @@ class dblink:
         not existing; we will merge these symlinks at a later time.
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         srcroot = _unicode_decode(
             srcroot, encoding=_encodings["content"], errors="strict"
@@ -4313,9 +4371,12 @@ class dblink:
         )
 
         showMessage = self._display_merge
-        srcroot = normalize_path(srcroot).rstrip(os.path.sep) + os.path.sep
+        srcroot = (
+            normalize_path(srcroot).rstrip(os_unicode_fs.path.sep)
+            + os_unicode_fs.path.sep
+        )
 
-        if not os.path.isdir(srcroot):
+        if not os_unicode_fs.path.isdir(srcroot):
             showMessage(
                 _("!!! Directory Not Found: D='%s'\n") % srcroot,
                 level=logging.ERROR,
@@ -4332,7 +4393,7 @@ class dblink:
             settings=self.settings,
         )
         phase.start()
-        if phase.wait() != os.EX_OK:
+        if phase.wait() != os_unicode_fs.EX_OK:
             showMessage(_("!!! instprep failed\n"), level=logging.ERROR, noiselevel=-1)
             return 1
 
@@ -4342,7 +4403,7 @@ class dblink:
             try:
                 with io.open(
                     _unicode_encode(
-                        os.path.join(inforoot, var_name),
+                        os_unicode_fs.path.join(inforoot, var_name),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
@@ -4369,7 +4430,9 @@ class dblink:
                             noiselevel=-1,
                         )
                         return 1
-                    write_atomic(os.path.join(inforoot, var_name), slot + "\n")
+                    write_atomic(
+                        os_unicode_fs.path.join(inforoot, var_name), slot + "\n"
+                    )
 
             # This check only applies when built from source, since
             # inforoot values are written just after src_install.
@@ -4391,7 +4454,7 @@ class dblink:
         def eerror(lines):
             self._eerror("preinst", lines)
 
-        if not os.path.exists(self.dbcatdir):
+        if not os_unicode_fs.path.exists(self.dbcatdir):
             ensure_dirs(self.dbcatdir)
 
         # NOTE: We use SLOT obtained from the inforoot
@@ -4482,7 +4545,7 @@ class dblink:
         try:
             with io.open(
                 _unicode_encode(
-                    os.path.join(inforoot, "INSTALL_MASK"),
+                    os_unicode_fs.path.join(inforoot, "INSTALL_MASK"),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -4498,13 +4561,15 @@ class dblink:
             install_mask_dir(self.settings["ED"], install_mask)
             if any(x in self.settings.features for x in ("nodoc", "noman", "noinfo")):
                 try:
-                    os.rmdir(os.path.join(self.settings["ED"], "usr", "share"))
+                    os_unicode_fs.rmdir(
+                        os_unicode_fs.path.join(self.settings["ED"], "usr", "share")
+                    )
                 except OSError:
                     pass
 
         # We check for unicode encoding issues after src_install. However,
         # the check must be repeated here for binary packages (it's
-        # inexpensive since we call os.walk() here anyway).
+        # inexpensive since we call os_unicode_fs.walk() here anyway).
         unicode_errors = []
         line_ending_re = re.compile("[\n\r]")
         srcroot_len = len(srcroot)
@@ -4523,7 +4588,7 @@ class dblink:
             def onerror(e):
                 raise
 
-            walk_iter = os.walk(srcroot, onerror=onerror)
+            walk_iter = os_unicode_fs.walk(srcroot, onerror=onerror)
             while True:
                 try:
                     parent, dirs, files = next(walk_iter)
@@ -4550,7 +4615,7 @@ class dblink:
                     new_parent = _unicode_decode(
                         new_parent, encoding=_encodings["merge"], errors="replace"
                     )
-                    os.rename(parent, new_parent)
+                    os_unicode_fs.rename(parent, new_parent)
                     unicode_error = True
                     unicode_errors.append(new_parent[ed_len:])
                     break
@@ -4573,25 +4638,25 @@ class dblink:
                         new_fname = _unicode_decode(
                             new_fname, encoding=_encodings["merge"], errors="replace"
                         )
-                        new_fpath = os.path.join(parent, new_fname)
-                        os.rename(fpath, new_fpath)
+                        new_fpath = os_unicode_fs.path.join(parent, new_fname)
+                        os_unicode_fs.rename(fpath, new_fpath)
                         unicode_error = True
                         unicode_errors.append(new_fpath[ed_len:])
                         fname = new_fname
                         fpath = new_fpath
                     else:
-                        fpath = os.path.join(parent, fname)
+                        fpath = os_unicode_fs.path.join(parent, fname)
 
                     relative_path = fpath[srcroot_len:]
 
                     if line_ending_re.search(relative_path) is not None:
                         paths_with_newlines.append(relative_path)
 
-                    file_mode = os.lstat(fpath).st_mode
+                    file_mode = os_unicode_fs.lstat(fpath).st_mode
                     if stat.S_ISREG(file_mode):
                         filelist.append(relative_path)
                     elif stat.S_ISLNK(file_mode):
-                        # Note: os.walk puts symlinks to directories in the "dirs"
+                        # Note: os_unicode_fs.walk puts symlinks to directories in the "dirs"
                         # list and it does not traverse them since that could lead
                         # to an infinite recursion loop.
                         linklist.append(relative_path)
@@ -4688,7 +4753,7 @@ class dblink:
         # Make sure the ebuild environment is initialized and that ${T}/elog
         # exists for logging of collision-protect eerror messages.
         if myebuild is None:
-            myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+            myebuild = os_unicode_fs.path.join(inforoot, self.pkg + ".ebuild")
         doebuild_environment(myebuild, "preinst", settings=self.settings, db=mydbapi)
         self.settings["REPLACING_VERSIONS"] = " ".join(
             [portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot]
@@ -4757,13 +4822,24 @@ class dblink:
             msg = textwrap.wrap(msg, 70)
             msg.append("")
             for k, v in sorted(internal_collisions.items(), key=operator.itemgetter(0)):
-                msg.append("\t%s" % os.path.join(destroot, k.lstrip(os.path.sep)))
+                msg.append(
+                    "\t%s"
+                    % os_unicode_fs.path.join(
+                        destroot, k.lstrip(os_unicode_fs.path.sep)
+                    )
+                )
                 for (file1, file2), differences in sorted(v.items()):
                     msg.append(
-                        "\t\t%s" % os.path.join(destroot, file1.lstrip(os.path.sep))
+                        "\t\t%s"
+                        % os_unicode_fs.path.join(
+                            destroot, file1.lstrip(os_unicode_fs.path.sep)
+                        )
                     )
                     msg.append(
-                        "\t\t%s" % os.path.join(destroot, file2.lstrip(os.path.sep))
+                        "\t\t%s"
+                        % os_unicode_fs.path.join(
+                            destroot, file2.lstrip(os_unicode_fs.path.sep)
+                        )
                     )
                     msg.append("\t\t\tDifferences: %s" % ", ".join(differences))
                     msg.append("")
@@ -4794,7 +4870,12 @@ class dblink:
             msg = textwrap.wrap(msg, 70)
             msg.append("")
             for f in symlink_collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
+                msg.append(
+                    "\t%s"
+                    % os_unicode_fs.path.join(
+                        destroot, f.lstrip(os_unicode_fs.path.sep)
+                    )
+                )
             msg.append("")
             self._elog("eerror", "preinst", msg)
 
@@ -4847,7 +4928,12 @@ class dblink:
             msg.append("")
 
             for f in collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
+                msg.append(
+                    "\t%s"
+                    % os_unicode_fs.path.join(
+                        destroot, f.lstrip(os_unicode_fs.path.sep)
+                    )
+                )
 
             eerror(msg)
 
@@ -4889,7 +4975,10 @@ class dblink:
                     msg.append(pkg_info_strs[pkg.mycpv])
                     for f in sorted(owned_files):
                         msg.append(
-                            "\t%s" % os.path.join(destroot, f.lstrip(os.path.sep))
+                            "\t%s"
+                            % os_unicode_fs.path.join(
+                                destroot, f.lstrip(os_unicode_fs.path.sep)
+                            )
                         )
                     msg.append("")
                     eerror(msg)
@@ -4943,8 +5032,10 @@ class dblink:
         # The merge process may move files out of the image directory,
         # which causes invalidation of the .installed flag.
         try:
-            os.unlink(
-                os.path.join(os.path.dirname(normalize_path(srcroot)), ".installed")
+            os_unicode_fs.unlink(
+                os_unicode_fs.path.join(
+                    os_unicode_fs.path.dirname(normalize_path(srcroot)), ".installed"
+                )
             )
         except OSError as e:
             if e.errno != errno.ENOENT:
@@ -4964,7 +5055,7 @@ class dblink:
 
         if self._installed_instance is not None:
             rval = self._pre_merge_backup(self._installed_instance, downgrade)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 showMessage(
                     _("!!! FAILED preinst: ") + "quickpkg: %s\n" % rval,
                     level=logging.ERROR,
@@ -4987,7 +5078,7 @@ class dblink:
         a = phase.wait()
 
         # XXX: Decide how to handle failures here.
-        if a != os.EX_OK:
+        if a != os_unicode_fs.EX_OK:
             showMessage(
                 _("!!! FAILED preinst: ") + str(a) + "\n",
                 level=logging.ERROR,
@@ -4996,7 +5087,7 @@ class dblink:
             return a
 
         # copy "info" files (like SLOT, CFLAGS, etc.) into the database
-        for x in os.listdir(inforoot):
+        for x in os_unicode_fs.listdir(inforoot):
             self.copyfile(inforoot + "/" + x)
 
         # write local package counter for recording
@@ -5004,7 +5095,7 @@ class dblink:
             counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbtmpdir, "COUNTER"),
+                os_unicode_fs.path.join(self.dbtmpdir, "COUNTER"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -5043,7 +5134,7 @@ class dblink:
                 cfgfiledict["IGNORE"] = 0
 
             rval = self._merge_contents(srcroot, destroot, cfgfiledict)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 return rval
         finally:
             self.vartree.dbapi._fs_unlock()
@@ -5072,7 +5163,7 @@ class dblink:
             plib_registry.lock()
             try:
                 plib_registry.load()
-                needed = os.path.join(inforoot, linkmap._needed_aux_key)
+                needed = os_unicode_fs.path.join(inforoot, linkmap._needed_aux_key)
                 self._linkmap_rebuild(include_file=needed)
 
                 # Preserve old libs if they are still in use
@@ -5125,7 +5216,7 @@ class dblink:
             )
             dblnk.settings.pop("REPLACED_BY_VERSION", None)
 
-            if unmerge_rval == os.EX_OK:
+            if unmerge_rval == os_unicode_fs.EX_OK:
                 emerge_log(_(" >>> unmerge success: %s") % (dblnk.mycpv,))
             else:
                 emerge_log(_(" !!! unmerge FAILURE: %s") % (dblnk.mycpv,))
@@ -5144,7 +5235,7 @@ class dblink:
         try:
             self.delete()
             _movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
-            self._merged_path(self.dbpkgdir, os.lstat(self.dbpkgdir))
+            self._merged_path(self.dbpkgdir, os_unicode_fs.lstat(self.dbpkgdir))
             self.vartree.dbapi._cache_delta.recordEvent(
                 "add", self.mycpv, slot, counter
             )
@@ -5242,7 +5333,7 @@ class dblink:
         contents = self.getcontents()
 
         # do postinst script
-        self.settings["PORTAGE_UPDATE_ENV"] = os.path.join(
+        self.settings["PORTAGE_UPDATE_ENV"] = os_unicode_fs.path.join(
             self.dbpkgdir, "environment.bz2"
         )
         self.settings.backup_changes("PORTAGE_UPDATE_ENV")
@@ -5255,12 +5346,12 @@ class dblink:
             )
             phase.start()
             a = phase.wait()
-            if a == os.EX_OK:
+            if a == os_unicode_fs.EX_OK:
                 showMessage(_(">>> %s merged.\n") % self.mycpv)
         finally:
             self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
-        if a != os.EX_OK:
+        if a != os_unicode_fs.EX_OK:
             # It's stupid to bail out here, so keep going regardless of
             # phase return code.
             self._postinst_failure = True
@@ -5290,7 +5381,7 @@ class dblink:
         self._prune_plib_registry()
         self._post_merge_sync()
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _new_backup_path(self, p):
         """
@@ -5299,14 +5390,14 @@ class dblink:
         The returned filename is of the form p + '.backup.' + x, where
         x guarantees that the returned path does not exist yet.
         """
-        os = _os_merge
+        os = os_unicode_merge
 
         x = -1
         while True:
             x += 1
             backup_p = "%s.backup.%04d" % (p, x)
             try:
-                os.lstat(backup_p)
+                os_unicode_fs.lstat(backup_p)
             except OSError:
                 break
 
@@ -5322,7 +5413,7 @@ class dblink:
         # to TextIOWrapper with python2.
         outfile = atomic_ofstream(
             _unicode_encode(
-                os.path.join(self.dbtmpdir, "CONTENTS"),
+                os_unicode_fs.path.join(self.dbtmpdir, "CONTENTS"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -5338,7 +5429,7 @@ class dblink:
         mymtime = None
 
         # set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
-        prevmask = os.umask(0)
+        prevmask = os_unicode_fs.umask(0)
         secondhand = []
 
         # we do a first merge; this will recurse through all files in our srcroot but also build up a
@@ -5348,7 +5439,7 @@ class dblink:
             destroot,
             outfile,
             secondhand,
-            self.settings["EPREFIX"].lstrip(os.sep),
+            self.settings["EPREFIX"].lstrip(os_unicode_fs.sep),
             cfgfiledict,
             mymtime,
         ):
@@ -5383,7 +5474,7 @@ class dblink:
                 return 1
 
         # restore umask
-        os.umask(prevmask)
+        os_unicode_fs.umask(prevmask)
 
         # if we opened it, close it
         outfile.flush()
@@ -5398,7 +5489,7 @@ class dblink:
                 self.settings._init_dirs()
                 writedict(cfgfiledict, self.vartree.dbapi._conf_mem_file)
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def mergeme(
         self,
@@ -5441,9 +5532,9 @@ class dblink:
         showMessage = self._display_merge
         writemsg = self._display_merge
 
-        os = _os_merge
-        sep = os.sep
-        join = os.path.join
+        os = os_unicode_merge
+        sep = os_unicode_fs.sep
+        join = os_unicode_fs.path.join
         srcroot = normalize_path(srcroot).rstrip(sep) + sep
         destroot = normalize_path(destroot).rstrip(sep) + sep
         calc_prelink = "prelink-checksums" in self.settings.features
@@ -5458,7 +5549,7 @@ class dblink:
             # A directory is specified.  Figure out protection paths, listdir() it and process it.
             mergelist = [
                 join(stufftomerge, child)
-                for child in os.listdir(join(srcroot, stufftomerge))
+                for child in os_unicode_fs.listdir(join(srcroot, stufftomerge))
             ]
         else:
             mergelist = stufftomerge[:]
@@ -5471,7 +5562,7 @@ class dblink:
             # myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
             myrealdest = join(sep, relative_path)
             # stat file once, test using S_* macros many times (faster that way)
-            mystat = os.lstat(mysrc)
+            mystat = os_unicode_fs.lstat(mysrc)
             mymode = mystat[stat.ST_MODE]
             mymd5 = None
             myto = None
@@ -5504,8 +5595,8 @@ class dblink:
                     myto = _unicode_decode(
                         myto, encoding=_encodings["merge"], errors="replace"
                     )
-                    os.unlink(mysrc)
-                    os.symlink(myto, mysrc)
+                    os_unicode_fs.unlink(mysrc)
+                    os_unicode_fs.symlink(myto, mysrc)
 
                 mymd5 = md5(_unicode_encode(myto)).hexdigest()
 
@@ -5516,7 +5607,7 @@ class dblink:
                 if (
                     stat.S_ISREG(mymode)
                     and mystat.st_size == 0
-                    and os.path.basename(mydest).startswith(".keep")
+                    and os_unicode_fs.path.basename(mydest).startswith(".keep")
                 ):
                     protected = False
 
@@ -5525,7 +5616,7 @@ class dblink:
             # handy variables; mydest is the target object on the live filesystems;
             # mysrc is the source object in the temporary install dir
             try:
-                mydstat = os.lstat(mydest)
+                mydstat = os_unicode_fs.lstat(mydest)
                 mydmode = mydstat.st_mode
                 if protected:
                     if stat.S_ISLNK(mydmode):
@@ -5579,7 +5670,7 @@ class dblink:
             if stat.S_ISLNK(mymode):
                 # we are merging a symbolic link
                 # Pass in the symlink target in order to bypass the
-                # os.readlink() call inside abssymlink(), since that
+                # os_unicode_fs.readlink() call inside abssymlink(), since that
                 # call is unsafe if the merge encoding is not ascii
                 # or utf_8 (see bug #382021).
                 myabsto = abssymlink(mysrc, target=myto)
@@ -5592,7 +5683,7 @@ class dblink:
                         myto = myto[len(self.settings["D"]) - 1 :]
                 # myrealto contains the path of the real file to which this symlink points.
                 # we can simply test for existence of this file to see if the target has been merged yet
-                myrealto = normalize_path(os.path.join(destroot, myabsto))
+                myrealto = normalize_path(os_unicode_fs.path.join(destroot, myabsto))
                 if mydmode is not None and stat.S_ISDIR(mydmode):
                     if not protected:
                         # we can't merge a symlink over a directory
@@ -5612,7 +5703,9 @@ class dblink:
                         mydest = newdest
 
                 # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
-                if (secondhand is not None) and (not os.path.exists(myrealto)):
+                if (secondhand is not None) and (
+                    not os_unicode_fs.path.exists(myrealto)
+                ):
                     # either the target directory doesn't exist yet or the target file doesn't exist -- or
                     # the target is a broken symlink.  We will add this file to our "second hand" and merge
                     # it later.
@@ -5631,7 +5724,7 @@ class dblink:
                     )
 
                 try:
-                    self._merged_path(mydest, os.lstat(mydest))
+                    self._merged_path(mydest, os_unicode_fs.lstat(mydest))
                 except OSError:
                     pass
 
@@ -5639,8 +5732,8 @@ class dblink:
                     # Use lexists, since if the target happens to be a broken
                     # symlink then that should trigger an independent warning.
                     if not (
-                        os.path.lexists(myrealto)
-                        or os.path.lexists(join(srcroot, myabsto))
+                        os_unicode_fs.path.lexists(myrealto)
+                        or os_unicode_fs.path.lexists(join(srcroot, myabsto))
                     ):
                         self._eqawarn(
                             "preinst",
@@ -5684,7 +5777,9 @@ class dblink:
                         if dflags != 0:
                             bsd_chflags.lchflags(mydest, 0)
 
-                    if not stat.S_ISLNK(mydmode) and not os.access(mydest, os.W_OK):
+                    if not stat.S_ISLNK(mydmode) and not os_unicode_fs.access(
+                        mydest, os_unicode_fs.W_OK
+                    ):
                         pkgstuff = pkgsplit(self.pkg)
                         writemsg(
                             _("\n!!! Cannot write to '%s'.\n") % mydest, noiselevel=-1
@@ -5714,7 +5809,7 @@ class dblink:
                         return 1
 
                     if stat.S_ISDIR(mydmode) or (
-                        stat.S_ISLNK(mydmode) and os.path.isdir(mydest)
+                        stat.S_ISLNK(mydmode) and os_unicode_fs.path.isdir(mydest)
                     ):
                         # a symlink to an existing directory will work for us; keep it:
                         showMessage("--- %s/\n" % mydest)
@@ -5751,16 +5846,16 @@ class dblink:
                         # now create our directory
                         try:
                             if self.settings.selinux_enabled():
-                                _selinux_merge.mkdir(mydest, mysrc)
+                                selinux_unicode_merge.mkdir(mydest, mysrc)
                             else:
-                                os.mkdir(mydest)
+                                os_unicode_fs.mkdir(mydest)
                         except OSError as e:
                             # Error handling should be equivalent to
                             # portage.util.ensure_dirs() for cases
                             # like bug #187518.
                             if e.errno in (errno.EEXIST,):
                                 pass
-                            elif os.path.isdir(mydest):
+                            elif os_unicode_fs.path.isdir(mydest):
                                 pass
                             else:
                                 raise
@@ -5768,33 +5863,33 @@ class dblink:
 
                         if bsd_chflags:
                             bsd_chflags.lchflags(mydest, dflags)
-                        os.chmod(mydest, mystat[0])
-                        os.chown(mydest, mystat[4], mystat[5])
+                        os_unicode_fs.chmod(mydest, mystat[0])
+                        os_unicode_fs.chown(mydest, mystat[4], mystat[5])
                         showMessage(">>> %s/\n" % mydest)
                 else:
                     try:
                         # destination doesn't exist
                         if self.settings.selinux_enabled():
-                            _selinux_merge.mkdir(mydest, mysrc)
+                            selinux_unicode_merge.mkdir(mydest, mysrc)
                         else:
-                            os.mkdir(mydest)
+                            os_unicode_fs.mkdir(mydest)
                     except OSError as e:
                         # Error handling should be equivalent to
                         # portage.util.ensure_dirs() for cases
                         # like bug #187518.
                         if e.errno in (errno.EEXIST,):
                             pass
-                        elif os.path.isdir(mydest):
+                        elif os_unicode_fs.path.isdir(mydest):
                             pass
                         else:
                             raise
                         del e
-                    os.chmod(mydest, mystat[0])
-                    os.chown(mydest, mystat[4], mystat[5])
+                    os_unicode_fs.chmod(mydest, mystat[0])
+                    os_unicode_fs.chown(mydest, mystat[4], mystat[5])
                     showMessage(">>> %s/\n" % mydest)
 
                 try:
-                    self._merged_path(mydest, os.lstat(mydest))
+                    self._merged_path(mydest, os_unicode_fs.lstat(mydest))
                 except OSError:
                     pass
 
@@ -5804,7 +5899,7 @@ class dblink:
                 # recurse and merge this directory
                 mergelist.extend(
                     join(relative_path, child)
-                    for child in os.listdir(join(srcroot, relative_path))
+                    for child in os_unicode_fs.listdir(join(srcroot, relative_path))
                 )
 
             elif stat.S_ISREG(mymode):
@@ -5851,7 +5946,7 @@ class dblink:
                     zing = ">>>"
 
                     try:
-                        self._merged_path(mydest, os.lstat(mydest))
+                        self._merged_path(mydest, os_unicode_fs.lstat(mydest))
                     except OSError:
                         pass
 
@@ -5884,7 +5979,7 @@ class dblink:
                         zing = ">>>"
 
                         try:
-                            self._merged_path(mydest, os.lstat(mydest))
+                            self._merged_path(mydest, os_unicode_fs.lstat(mydest))
                         except OSError:
                             pass
 
@@ -6022,7 +6117,7 @@ class dblink:
             proc.start()
             returncode = proc.wait()
 
-        if returncode is None or returncode != os.EX_OK:
+        if returncode is None or returncode != os_unicode_fs.EX_OK:
             try:
                 proc = subprocess.Popen(["sync"])
             except EnvironmentError:
@@ -6068,9 +6163,9 @@ class dblink:
             # If PORTAGE_BUILDDIR doesn't exist, then it probably means
             # fail-clean is enabled, and the success/die hooks have
             # already been called by EbuildPhase.
-            if os.path.isdir(self.settings["PORTAGE_BUILDDIR"]):
+            if os_unicode_fs.path.isdir(self.settings["PORTAGE_BUILDDIR"]):
 
-                if retval == os.EX_OK:
+                if retval == os_unicode_fs.EX_OK:
                     phase = "success_hooks"
                 else:
                     phase = "die_hooks"
@@ -6086,10 +6181,13 @@ class dblink:
                 self._elog_process()
 
                 if "noclean" not in self.settings.features and (
-                    retval == os.EX_OK or "fail-clean" in self.settings.features
+                    retval == os_unicode_fs.EX_OK
+                    or "fail-clean" in self.settings.features
                 ):
                     if myebuild is None:
-                        myebuild = os.path.join(inforoot, self.pkg + ".ebuild")
+                        myebuild = os_unicode_fs.path.join(
+                            inforoot, self.pkg + ".ebuild"
+                        )
 
                     doebuild_environment(
                         myebuild, "clean", settings=self.settings, db=mydbapi
@@ -6113,18 +6211,18 @@ class dblink:
             if not parallel_install:
                 self.unlockdb()
 
-        if retval == os.EX_OK and self._postinst_failure:
+        if retval == os_unicode_fs.EX_OK and self._postinst_failure:
             retval = portage.const.RETURNCODE_POSTINST_FAILURE
 
         return retval
 
     def getstring(self, name):
         "returns contents of a file with whitespace converted to spaces"
-        if not os.path.exists(self.dbdir + "/" + name):
+        if not os_unicode_fs.path.exists(self.dbdir + "/" + name):
             return ""
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, name),
+                os_unicode_fs.path.join(self.dbdir, name),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -6136,14 +6234,16 @@ class dblink:
         return " ".join(mydata)
 
     def copyfile(self, fname):
-        shutil.copyfile(fname, self.dbdir + "/" + os.path.basename(fname))
+        shutil_unicode_fs.copyfile(
+            fname, self.dbdir + "/" + os_unicode_fs.path.basename(fname)
+        )
 
     def getfile(self, fname):
-        if not os.path.exists(self.dbdir + "/" + fname):
+        if not os_unicode_fs.path.exists(self.dbdir + "/" + fname):
             return ""
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, fname),
+                os_unicode_fs.path.join(self.dbdir, fname),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -6160,14 +6260,14 @@ class dblink:
         else:
             kwargs["mode"] = "w"
             kwargs["encoding"] = _encodings["repo.content"]
-        write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+        write_atomic(os_unicode_fs.path.join(self.dbdir, fname), data, **kwargs)
 
     def getelements(self, ename):
-        if not os.path.exists(self.dbdir + "/" + ename):
+        if not os_unicode_fs.path.exists(self.dbdir + "/" + ename):
             return []
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, ename),
+                os_unicode_fs.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -6185,7 +6285,7 @@ class dblink:
     def setelements(self, mylist, ename):
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, ename),
+                os_unicode_fs.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -6198,7 +6298,9 @@ class dblink:
 
     def isregular(self):
         "Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
-        return os.path.exists(os.path.join(self.dbdir, "CATEGORY"))
+        return os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(self.dbdir, "CATEGORY")
+        )
 
     def _pre_merge_backup(self, backup_dblink, downgrade):
 
@@ -6207,7 +6309,7 @@ class dblink:
         ):
             return self._quickpkg_dblink(backup_dblink, False, None)
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _pre_unmerge_backup(self, background):
 
@@ -6217,7 +6319,7 @@ class dblink:
                 logfile = self.settings.get("PORTAGE_LOG_FILE")
             return self._quickpkg_dblink(self, background, logfile)
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _quickpkg_dblink(self, backup_dblink, background, logfile):
 
@@ -6232,21 +6334,21 @@ class dblink:
 
         for binpkg in reversed(bintree.dbapi.match("={}".format(backup_dblink.mycpv))):
             if binpkg.build_time == build_time:
-                return os.EX_OK
+                return os_unicode_fs.EX_OK
 
         self.lockdb()
         try:
 
             if not backup_dblink.exists():
                 # It got unmerged by a concurrent process.
-                return os.EX_OK
+                return os_unicode_fs.EX_OK
 
             # Call quickpkg for support of QUICKPKG_DEFAULT_OPTS and stuff.
-            quickpkg_binary = os.path.join(
+            quickpkg_binary = os_unicode_fs.path.join(
                 self.settings["PORTAGE_BIN_PATH"], "quickpkg"
             )
 
-            if not os.access(quickpkg_binary, os.X_OK):
+            if not os_unicode_fs.access(quickpkg_binary, os_unicode_fs.X_OK):
                 # If not running from the source tree, use PATH.
                 quickpkg_binary = find_binary("quickpkg")
                 if quickpkg_binary is None:
@@ -6262,7 +6364,9 @@ class dblink:
             env["__PORTAGE_INHERIT_VARDB_LOCK"] = "1"
 
             pythonpath = [x for x in env.get("PYTHONPATH", "").split(":") if x]
-            if not pythonpath or not os.path.samefile(pythonpath[0], portage._pym_path):
+            if not pythonpath or not os_unicode_fs.path.samefile(
+                pythonpath[0], portage._pym_path
+            ):
                 pythonpath.insert(0, portage._pym_path)
             env["PYTHONPATH"] = ":".join(pythonpath)
 
@@ -6307,7 +6411,7 @@ def merge(
     myroot = None
     if settings is None:
         raise TypeError("settings argument is required")
-    if not os.access(settings["EROOT"], os.W_OK):
+    if not os_unicode_fs.access(settings["EROOT"], os_unicode_fs.W_OK):
         writemsg(
             _("Permission denied: access('%s', W_OK)\n") % settings["EROOT"],
             noiselevel=-1,
@@ -6368,14 +6472,14 @@ def unmerge(
     try:
         if mylink.exists():
             retval = mylink.unmerge(ldpath_mtimes=ldpath_mtimes)
-            if retval == os.EX_OK:
+            if retval == os_unicode_fs.EX_OK:
                 mylink.lockdb()
                 try:
                     mylink.delete()
                 finally:
                     mylink.unlockdb()
             return retval
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     finally:
         if vartree.dbapi._linkmap is None:
             # preserve-libs is entirely disabled
@@ -6407,7 +6511,7 @@ def write_contents(contents, root, f):
 
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=False):
-    os = _os_merge
+    os = os_unicode_merge
     encoding = _encodings["merge"]
 
     try:
@@ -6427,7 +6531,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
             encoding = _encodings["fs"]
 
     tar.encoding = encoding
-    root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
+    root = normalize_path(root).rstrip(os_unicode_fs.path.sep) + os_unicode_fs.path.sep
     id_strings = {}
     maxval = len(contents)
     curval = 0
@@ -6438,7 +6542,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
     for path in paths:
         curval += 1
         try:
-            lst = os.lstat(path)
+            lst = os_unicode_fs.lstat(path)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -6455,16 +6559,16 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
         if (
             "dir" == contents_type
             and not stat.S_ISDIR(lst.st_mode)
-            and os.path.isdir(live_path)
+            and os_unicode_fs.path.isdir(live_path)
         ):
             # Even though this was a directory in the original ${D}, it exists
             # as a symlink to a directory in the live filesystem.  It must be
             # recorded as a real directory in the tar file to ensure that tar
             # can properly extract it's children.
-            live_path = os.path.realpath(live_path)
-            lst = os.lstat(live_path)
+            live_path = os_unicode_fs.path.realpath(live_path)
+            lst = os_unicode_fs.lstat(live_path)
 
-        # Since os.lstat() inside TarFile.gettarinfo() can trigger a
+        # Since os_unicode_fs.lstat() inside TarFile.gettarinfo() can trigger a
         # UnicodeEncodeError when python has something other than utf_8
         # return from sys.getfilesystemencoding() (as in bug #388773),
         # we implement the needed functionality here, using the result
@@ -6498,7 +6602,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
             tarinfo.type = tarfile.DIRTYPE
         elif stat.S_ISLNK(lst.st_mode):
             tarinfo.type = tarfile.SYMTYPE
-            tarinfo.linkname = os.readlink(live_path)
+            tarinfo.linkname = os_unicode_fs.readlink(live_path)
         else:
             continue
         try:
@@ -6523,7 +6627,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 )
                 f.flush()
                 f.seek(0)
-                tarinfo.size = os.fstat(f.fileno()).st_size
+                tarinfo.size = os_unicode_fs.fstat(f.fileno()).st_size
                 tar.addfile(tarinfo, f)
                 f.close()
             else:

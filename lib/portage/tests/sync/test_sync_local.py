@@ -7,7 +7,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os, shutil, _shell_quote
+from portage import os_unicode_fs, shutil_unicode_fs, _shell_quote
 from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, TIMESTAMP_FORMAT
 from portage.process import find_binary
@@ -79,17 +79,19 @@ class SyncLocalTestCase(TestCase):
         settings = playground.settings
         eprefix = settings["EPREFIX"]
         eroot = settings["EROOT"]
-        homedir = os.path.join(eroot, "home")
-        distdir = os.path.join(eprefix, "distdir")
+        homedir = os_unicode_fs.path.join(eroot, "home")
+        distdir = os_unicode_fs.path.join(eprefix, "distdir")
         repo = settings.repositories["test_repo"]
-        metadata_dir = os.path.join(repo.location, "metadata")
-        rcu_store_dir = os.path.join(eprefix, "var/repositories/test_repo_rcu_storedir")
+        metadata_dir = os_unicode_fs.path.join(repo.location, "metadata")
+        rcu_store_dir = os_unicode_fs.path.join(
+            eprefix, "var/repositories/test_repo_rcu_storedir"
+        )
 
         cmds = {}
         for cmd in ("emerge", "emaint"):
             for bindir in (self.bindir, self.sbindir):
-                path = os.path.join(bindir, cmd)
-                if os.path.exists(path):
+                path = os_unicode_fs.path.join(bindir, cmd)
+                if os_unicode_fs.path.exists(path):
                     cmds[cmd] = (portage._python_interpreter, "-b", "-Wd", path)
                     break
             else:
@@ -126,7 +128,9 @@ class SyncLocalTestCase(TestCase):
 
         def alter_ebuild():
             with open(
-                os.path.join(repo.location + "_sync", "dev-libs", "A", "A-0.ebuild"),
+                os_unicode_fs.path.join(
+                    repo.location + "_sync", "dev-libs", "A", "A-0.ebuild"
+                ),
                 "a",
             ) as f:
                 f.write("\n")
@@ -135,7 +139,10 @@ class SyncLocalTestCase(TestCase):
         def bump_timestamp():
             bump_timestamp.timestamp += datetime.timedelta(seconds=1)
             with open(
-                os.path.join(repo.location + "_sync", "metadata", "timestamp.chk"), "w"
+                os_unicode_fs.path.join(
+                    repo.location + "_sync", "metadata", "timestamp.chk"
+                ),
+                "w",
             ) as f:
                 f.write(
                     bump_timestamp.timestamp.strftime(
@@ -152,7 +159,9 @@ class SyncLocalTestCase(TestCase):
             (
                 homedir,
                 lambda: self.assertTrue(
-                    os.path.exists(os.path.join(repo.location, "dev-libs", "A")),
+                    os_unicode_fs.path.exists(
+                        os_unicode_fs.path.join(repo.location, "dev-libs", "A")
+                    ),
                     "dev-libs/A expected, but missing",
                 ),
             ),
@@ -165,7 +174,9 @@ class SyncLocalTestCase(TestCase):
             (
                 homedir,
                 lambda: self.assertFalse(
-                    os.path.exists(os.path.join(repo.location, "dev-libs", "A")),
+                    os_unicode_fs.path.exists(
+                        os_unicode_fs.path.join(repo.location, "dev-libs", "A")
+                    ),
                     "dev-libs/A found, expected missing",
                 ),
             ),
@@ -173,7 +184,10 @@ class SyncLocalTestCase(TestCase):
         )
 
         rename_repo = (
-            (homedir, lambda: os.rename(repo.location, repo.location + "_sync")),
+            (
+                homedir,
+                lambda: os_unicode_fs.rename(repo.location, repo.location + "_sync"),
+            ),
         )
 
         rsync_opts_repos = (
@@ -188,8 +202,13 @@ class SyncLocalTestCase(TestCase):
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
-            (homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
-            (homedir, lambda: shutil.rmtree(repo.location + "_back")),
+            (
+                homedir,
+                lambda: self.assertTrue(
+                    os_unicode_fs.path.exists(repo.location + "_back")
+                ),
+            ),
+            (homedir, lambda: shutil_unicode_fs.rmtree(repo.location + "_back")),
             (homedir, lambda: repos_set_conf("rsync")),
         )
 
@@ -204,8 +223,13 @@ class SyncLocalTestCase(TestCase):
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
-            (homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
-            (homedir, lambda: shutil.rmtree(repo.location + "_back")),
+            (
+                homedir,
+                lambda: self.assertTrue(
+                    os_unicode_fs.path.exists(repo.location + "_back")
+                ),
+            ),
+            (homedir, lambda: shutil_unicode_fs.rmtree(repo.location + "_back")),
             (homedir, lambda: repos_set_conf("rsync")),
         )
 
@@ -222,8 +246,13 @@ class SyncLocalTestCase(TestCase):
                 ),
             ),
             (homedir, cmds["emerge"] + ("--sync",)),
-            (homedir, lambda: self.assertTrue(os.path.exists(repo.location + "_back"))),
-            (homedir, lambda: shutil.rmtree(repo.location + "_back")),
+            (
+                homedir,
+                lambda: self.assertTrue(
+                    os_unicode_fs.path.exists(repo.location + "_back")
+                ),
+            ),
+            (homedir, lambda: shutil_unicode_fs.rmtree(repo.location + "_back")),
             (homedir, lambda: repos_set_conf("rsync")),
         )
 
@@ -241,31 +270,41 @@ class SyncLocalTestCase(TestCase):
             (homedir, cmds["emerge"] + ("--sync",)),
             (
                 homedir,
-                lambda: self.assertFalse(os.path.exists(repo.location + "_back")),
+                lambda: self.assertFalse(
+                    os_unicode_fs.path.exists(repo.location + "_back")
+                ),
             ),
             (homedir, lambda: repos_set_conf("rsync")),
         )
 
         delete_repo_location = (
-            (homedir, lambda: shutil.rmtree(repo.user_location)),
-            (homedir, lambda: os.mkdir(repo.user_location)),
+            (homedir, lambda: shutil_unicode_fs.rmtree(repo.user_location)),
+            (homedir, lambda: os_unicode_fs.mkdir(repo.user_location)),
         )
 
-        delete_rcu_store_dir = ((homedir, lambda: shutil.rmtree(rcu_store_dir)),)
+        delete_rcu_store_dir = (
+            (homedir, lambda: shutil_unicode_fs.rmtree(rcu_store_dir)),
+        )
 
         revert_rcu_layout = (
             (
                 homedir,
-                lambda: os.rename(repo.user_location, repo.user_location + ".bak"),
+                lambda: os_unicode_fs.rename(
+                    repo.user_location, repo.user_location + ".bak"
+                ),
             ),
             (
                 homedir,
-                lambda: os.rename(
-                    os.path.realpath(repo.user_location + ".bak"), repo.user_location
+                lambda: os_unicode_fs.rename(
+                    os_unicode_fs.path.realpath(repo.user_location + ".bak"),
+                    repo.user_location,
                 ),
             ),
-            (homedir, lambda: os.unlink(repo.user_location + ".bak")),
-            (homedir, lambda: shutil.rmtree(repo.user_location + "_rcu_storedir")),
+            (homedir, lambda: os_unicode_fs.unlink(repo.user_location + ".bak")),
+            (
+                homedir,
+                lambda: shutil_unicode_fs.rmtree(repo.user_location + "_rcu_storedir"),
+            ),
         )
 
         upstream_git_commit = (
@@ -279,7 +318,9 @@ class SyncLocalTestCase(TestCase):
             ),
         )
 
-        delete_sync_repo = ((homedir, lambda: shutil.rmtree(repo.location + "_sync")),)
+        delete_sync_repo = (
+            (homedir, lambda: shutil_unicode_fs.rmtree(repo.location + "_sync")),
+        )
 
         git_repo_create = (
             (
@@ -316,11 +357,16 @@ class SyncLocalTestCase(TestCase):
         sync_rsync_rcu = ((homedir, lambda: repos_set_conf("rsync", sync_rcu=True)),)
 
         delete_git_dir = (
-            (homedir, lambda: shutil.rmtree(os.path.join(repo.location, ".git"))),
+            (
+                homedir,
+                lambda: shutil_unicode_fs.rmtree(
+                    os_unicode_fs.path.join(repo.location, ".git")
+                ),
+            ),
         )
 
         def hg_init_global_config():
-            with open(os.path.join(homedir, ".hgrc"), "wt") as f:
+            with open(os_unicode_fs.path.join(homedir, ".hgrc"), "wt") as f:
                 f.write(
                     "[ui]\nusername = {} <{}>\n".format(committer_name, committer_email)
                 )
@@ -342,7 +388,9 @@ class SyncLocalTestCase(TestCase):
             (
                 repo.location + "_sync",
                 lambda: append_newline(
-                    os.path.join(repo.location + "_sync", "metadata/layout.conf")
+                    os_unicode_fs.path.join(
+                        repo.location + "_sync", "metadata/layout.conf"
+                    )
                 ),
             ),
             (
@@ -352,7 +400,9 @@ class SyncLocalTestCase(TestCase):
             (
                 repo.location + "_sync",
                 lambda: append_newline(
-                    os.path.join(repo.location + "_sync", "metadata/layout.conf")
+                    os_unicode_fs.path.join(
+                        repo.location + "_sync", "metadata/layout.conf"
+                    )
                 ),
             ),
             (
@@ -376,7 +426,7 @@ class SyncLocalTestCase(TestCase):
                 + sync_cmds
             )
 
-        pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath = os_unicode_fs.environ.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
         if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
@@ -394,15 +444,17 @@ class SyncLocalTestCase(TestCase):
             "GENTOO_COMMITTER_NAME": committer_name,
             "GENTOO_COMMITTER_EMAIL": committer_email,
             "HOME": homedir,
-            "PATH": os.environ["PATH"],
-            "PORTAGE_GRPNAME": os.environ["PORTAGE_GRPNAME"],
-            "PORTAGE_USERNAME": os.environ["PORTAGE_USERNAME"],
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
+            "PATH": os_unicode_fs.environ["PATH"],
+            "PORTAGE_GRPNAME": os_unicode_fs.environ["PORTAGE_GRPNAME"],
+            "PORTAGE_USERNAME": os_unicode_fs.environ["PORTAGE_USERNAME"],
+            "PYTHONDONTWRITEBYTECODE": os_unicode_fs.environ.get(
+                "PYTHONDONTWRITEBYTECODE", ""
+            ),
             "PYTHONPATH": pythonpath,
         }
         repos_set_conf("rsync")
 
-        if os.environ.get("SANDBOX_ON") == "1":
+        if os_unicode_fs.environ.get("SANDBOX_ON") == "1":
             # avoid problems from nested sandbox instances
             env["FEATURES"] = "-sandbox -usersandbox"
 
@@ -411,7 +463,7 @@ class SyncLocalTestCase(TestCase):
             for d in dirs:
                 ensure_dirs(d)
 
-            timestamp_path = os.path.join(metadata_dir, "timestamp.chk")
+            timestamp_path = os_unicode_fs.path.join(metadata_dir, "timestamp.chk")
             with open(timestamp_path, "w") as f:
                 f.write(
                     bump_timestamp.timestamp.strftime(
@@ -465,7 +517,7 @@ class SyncLocalTestCase(TestCase):
                     cmd()
                     continue
 
-                abs_cwd = os.path.join(repo.location, cwd)
+                abs_cwd = os_unicode_fs.path.join(repo.location, cwd)
                 proc = subprocess.Popen(cmd, cwd=abs_cwd, env=env, stdout=stdout)
 
                 if debug:
@@ -474,12 +526,12 @@ class SyncLocalTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK,
+                    os_unicode_fs.EX_OK,
                     proc.returncode,
                     "%s failed in %s"
                     % (

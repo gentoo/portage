@@ -12,10 +12,7 @@ portage.proxy.lazyimport.lazyimport(
 
 from portage.const import EBUILD_PHASES
 from portage.localization import _
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-from portage import _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
 
 import io
 import sys
@@ -37,7 +34,7 @@ def collect_ebuild_messages(path):
     """
     mylogfiles = None
     try:
-        mylogfiles = os.listdir(path)
+        mylogfiles = os_unicode_fs.listdir(path)
     except OSError:
         pass
     # shortcut for packages without any messages
@@ -47,7 +44,7 @@ def collect_ebuild_messages(path):
     mylogfiles.reverse()
     logentries = {}
     for msgfunction in mylogfiles:
-        filename = os.path.join(path, msgfunction)
+        filename = os_unicode_fs.path.join(path, msgfunction)
         if msgfunction not in EBUILD_PHASES:
             writemsg(
                 _("!!! can't process invalid log file: %s\n") % filename, noiselevel=-1
@@ -96,7 +93,7 @@ def collect_ebuild_messages(path):
     # clean logfiles to avoid repetitions
     for f in mylogfiles:
         try:
-            os.unlink(os.path.join(path, f))
+            os_unicode_fs.unlink(os_unicode_fs.path.join(path, f))
         except OSError:
             pass
     return logentries

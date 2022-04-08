@@ -55,7 +55,7 @@ portage.proxy.lazyimport.lazyimport(
     + "_preinst_bsdflags",
     "portage.util.futures.unix_events:_set_nonblocking",
 )
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 
@@ -99,18 +99,24 @@ class EbuildPhase(CompositeTask):
         need_builddir = self.phase not in EbuildProcess._phases_without_builddir
 
         if need_builddir:
-            phase_completed_file = os.path.join(
+            phase_completed_file = os_unicode_fs.path.join(
                 self.settings["PORTAGE_BUILDDIR"], ".%sed" % self.phase.rstrip("e")
             )
-            if not os.path.exists(phase_completed_file):
+            if not os_unicode_fs.path.exists(phase_completed_file):
                 # If the phase is really going to run then we want
                 # to eliminate any stale elog messages that may
                 # exist from a previous run.
                 try:
-                    os.unlink(os.path.join(self.settings["T"], "logging", self.phase))
+                    os_unicode_fs.unlink(
+                        os_unicode_fs.path.join(
+                            self.settings["T"], "logging", self.phase
+                        )
+                    )
                 except OSError:
                     pass
-            ensure_dirs(os.path.join(self.settings["PORTAGE_BUILDDIR"], "empty"))
+            ensure_dirs(
+                os_unicode_fs.path.join(self.settings["PORTAGE_BUILDDIR"], "empty")
+            )
 
         if self.phase in ("nofetch", "pretend", "setup"):
 
@@ -120,11 +126,11 @@ class EbuildPhase(CompositeTask):
 
             maint_str = ""
             upstr_str = ""
-            metadata_xml_path = os.path.join(
-                os.path.dirname(self.settings["EBUILD"]), "metadata.xml"
+            metadata_xml_path = os_unicode_fs.path.join(
+                os_unicode_fs.path.dirname(self.settings["EBUILD"]), "metadata.xml"
             )
-            if MetaDataXML is not None and os.path.isfile(metadata_xml_path):
-                herds_path = os.path.join(
+            if MetaDataXML is not None and os_unicode_fs.path.isfile(metadata_xml_path):
+                herds_path = os_unicode_fs.path.join(
                     self.settings["PORTDIR"], "metadata/herds.xml"
                 )
                 try:
@@ -165,7 +171,7 @@ class EbuildPhase(CompositeTask):
                 if binpkg_format == "xpak":
                     self.settings["BINPKG_FORMAT"] = "xpak"
                     self.settings["PORTAGE_BINPKG_TMPFILE"] = (
-                        os.path.join(
+                        os_unicode_fs.path.join(
                             self.settings["PKGDIR"],
                             self.settings["CATEGORY"],
                             self.settings["PF"],
@@ -175,7 +181,7 @@ class EbuildPhase(CompositeTask):
                 elif binpkg_format == "gpkg":
                     self.settings["BINPKG_FORMAT"] = "gpkg"
                     self.settings["PORTAGE_BINPKG_TMPFILE"] = (
-                        os.path.join(
+                        os_unicode_fs.path.join(
                             self.settings["PKGDIR"],
                             self.settings["CATEGORY"],
                             self.settings["PF"],
@@ -187,7 +193,7 @@ class EbuildPhase(CompositeTask):
 
     def _async_start_exit(self, task):
         task.future.cancelled() or task.future.result()
-        if self._default_exit(task) != os.EX_OK:
+        if self._default_exit(task) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
@@ -206,7 +212,7 @@ class EbuildPhase(CompositeTask):
         self._start_lock()
 
     def _env_extractor_exit(self, env_extractor):
-        if self._default_exit(env_extractor) != os.EX_OK:
+        if self._default_exit(env_extractor) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
@@ -218,8 +224,10 @@ class EbuildPhase(CompositeTask):
             and "ebuild-locks" in self.settings.features
         ):
             eroot = self.settings["EROOT"]
-            lock_path = os.path.join(eroot, portage.VDB_PATH + "-ebuild")
-            if os.access(os.path.dirname(lock_path), os.W_OK):
+            lock_path = os_unicode_fs.path.join(eroot, portage.VDB_PATH + "-ebuild")
+            if os_unicode_fs.access(
+                os_unicode_fs.path.dirname(lock_path), os_unicode_fs.W_OK
+            ):
                 self._ebuild_lock = AsynchronousLock(
                     path=lock_path, scheduler=self.scheduler
                 )
@@ -229,7 +237,7 @@ class EbuildPhase(CompositeTask):
         self._start_ebuild()
 
     def _lock_exit(self, ebuild_lock):
-        if self._default_exit(ebuild_lock) != os.EX_OK:
+        if self._default_exit(ebuild_lock) != os_unicode_fs.EX_OK:
             self.wait()
             return
         self._start_ebuild()
@@ -306,14 +314,16 @@ class EbuildPhase(CompositeTask):
             unlock_task.future.result()
 
         fail = False
-        if ebuild_process.returncode != os.EX_OK:
+        if ebuild_process.returncode != os_unicode_fs.EX_OK:
             self.returncode = ebuild_process.returncode
             if self.phase == "test" and "test-fail-continue" in self.settings.features:
                 # mark test phase as complete (bug #452030)
                 try:
                     open(
                         _unicode_encode(
-                            os.path.join(self.settings["PORTAGE_BUILDDIR"], ".tested"),
+                            os_unicode_fs.path.join(
+                                self.settings["PORTAGE_BUILDDIR"], ".tested"
+                            ),
                             encoding=_encodings["fs"],
                             errors="strict",
                         ),
@@ -348,7 +358,7 @@ class EbuildPhase(CompositeTask):
             # that will interfere with distfiles / WORKDIR timestamp
             # comparisons as reported in bug #332217. Also, fix
             # ownership since tar can change that too.
-            os.utime(settings["WORKDIR"], None)
+            os_unicode_fs.utime(settings["WORKDIR"], None)
             _prepare_workdir(settings)
         elif self.phase == "install":
             out = io.StringIO()
@@ -370,7 +380,7 @@ class EbuildPhase(CompositeTask):
                 # avoid annoying "gzip: unexpected end of file" messages
                 # when FEATURES=compress-build-logs is enabled.
                 fd, logfile = tempfile.mkstemp()
-                os.close(fd)
+                os_unicode_fs.close(fd)
             post_phase = _PostPhaseCommands(
                 background=self.background,
                 commands=post_phase_cmds,
@@ -388,7 +398,7 @@ class EbuildPhase(CompositeTask):
         # we returned for die_hooks above, so returncode must
         # indicate success (especially if ebuild_process.returncode
         # is unsuccessful and test-fail-continue came into play)
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._current_task = None
         self.wait()
 
@@ -405,7 +415,7 @@ class EbuildPhase(CompositeTask):
             # temp file to main log and remove temp file.
             self._append_temp_log(post_phase.logfile, log_path)
 
-        if self._final_exit(post_phase) != os.EX_OK:
+        if self._final_exit(post_phase) != os_unicode_fs.EX_OK:
             writemsg("!!! post %s failed; exiting.\n" % self.phase, noiselevel=-1)
             self._die_hooks()
             return
@@ -429,7 +439,7 @@ class EbuildPhase(CompositeTask):
         log_file.close()
         if log_file_real is not log_file:
             log_file_real.close()
-        os.unlink(temp_log)
+        os_unicode_fs.unlink(temp_log)
 
     def _open_log(self, log_path):
 
@@ -578,7 +588,7 @@ class _PostPhaseCommands(CompositeTask):
 
     def _commands_exit(self, task):
 
-        if self._default_exit(task) != os.EX_OK:
+        if self._default_exit(task) != os_unicode_fs.EX_OK:
             self._async_wait()
             return
 
@@ -617,7 +627,8 @@ class _PostPhaseCommands(CompositeTask):
         )
 
         unresolved = _get_unresolved_soname_deps(
-            os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info"), all_provides
+            os_unicode_fs.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info"),
+            all_provides,
         )
 
         if unresolved:

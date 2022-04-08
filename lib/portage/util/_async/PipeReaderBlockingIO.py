@@ -7,7 +7,7 @@ except ImportError:
     # dummy_threading will not suffice
     threading = None
 
-from portage import os
+from portage import os_unicode_fs
 from _emerge.AbstractPollTask import AbstractPollTask
 
 
@@ -62,7 +62,7 @@ class PipeReaderBlockingIO(AbstractPollTask):
     def _eof(self):
         self._registered = False
         if self.returncode is None:
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
         self._async_wait()
 
     def _cancel(self):

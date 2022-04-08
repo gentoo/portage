@@ -4,7 +4,7 @@
 import logging
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level
 from portage.sync.syncbase import NewBase
 
@@ -23,7 +23,9 @@ class CVSSync(NewBase):
 
     def exists(self, **kwargs):
         """Tests whether the repo is checked out"""
-        return os.path.exists(os.path.join(self.repo.location, "CVS"))
+        return os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(self.repo.location, "CVS")
+        )
 
     def new(self, **kwargs):
         if kwargs:
@@ -34,16 +36,20 @@ class CVSSync(NewBase):
             portage.process.spawn_bash(
                 "cd %s; exec cvs -z0 -d %s co -P -d %s %s"
                 % (
-                    portage._shell_quote(os.path.dirname(self.repo.location)),
+                    portage._shell_quote(
+                        os_unicode_fs.path.dirname(self.repo.location)
+                    ),
                     portage._shell_quote(cvs_root),
-                    portage._shell_quote(os.path.basename(self.repo.location)),
+                    portage._shell_quote(
+                        os_unicode_fs.path.basename(self.repo.location)
+                    ),
                     portage._shell_quote(
                         self.repo.module_specific_options["sync-cvs-repo"]
                     ),
                 ),
                 **self.spawn_kwargs
             )
-            != os.EX_OK
+            != os_unicode_fs.EX_OK
         ):
             msg = "!!! cvs checkout error; exiting."
             self.logger(self.xterm_titles, msg)
@@ -66,7 +72,7 @@ class CVSSync(NewBase):
             % (portage._shell_quote(self.repo.location),),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! cvs update error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)

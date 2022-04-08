@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import PRIVATE_PATH
 from portage.util import grabdict, writedict
 
@@ -17,7 +17,9 @@ class CleanConfig:
 
     def __init__(self):
         self._root = portage.settings["ROOT"]
-        self.target = os.path.join(portage.settings["EROOT"], PRIVATE_PATH, "config")
+        self.target = os_unicode_fs.path.join(
+            portage.settings["EROOT"], PRIVATE_PATH, "config"
+        )
 
     def load_configlist(self):
         return grabdict(self.target)
@@ -32,7 +34,7 @@ class CleanConfig:
             i = 0
         keys = sorted(configs)
         for config in keys:
-            if not os.path.exists(config):
+            if not os_unicode_fs.path.exists(config):
                 messages.append("  %s" % config)
             if onProgress:
                 onProgress(maxval, i + 1)
@@ -57,8 +59,10 @@ class CleanConfig:
             if root is None:
                 full_path = config
             else:
-                full_path = os.path.join(root, config.lstrip(os.sep))
-            if not os.path.exists(full_path):
+                full_path = os_unicode_fs.path.join(
+                    root, config.lstrip(os_unicode_fs.sep)
+                )
+            if not os_unicode_fs.path.exists(full_path):
                 modified = True
                 configs.pop(config)
                 messages.append("  %s" % config)

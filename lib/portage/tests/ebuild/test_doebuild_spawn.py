@@ -3,9 +3,7 @@
 
 import textwrap
 
-from portage import os
-from portage import _python_interpreter
-from portage import _shell_quote
+from portage import os_unicode_fs, _python_interpreter, _shell_quote
 from portage.const import EBUILD_SH_BINARY
 from portage.package.ebuild.config import config
 from portage.package.ebuild.doebuild import spawn as doebuild_spawn
@@ -52,8 +50,8 @@ class DoebuildSpawnTestCase(TestCase):
             root_config = playground.trees[playground.eroot]["root_config"]
             portdb = root_config.trees["porttree"].dbapi
             settings = config(clone=playground.settings)
-            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-                settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+            if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+                settings["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                     "__PORTAGE_TEST_HARDLINK_LOCKS"
                 ]
                 settings.backup_changes("__PORTAGE_TEST_HARDLINK_LOCKS")
@@ -73,18 +71,26 @@ class DoebuildSpawnTestCase(TestCase):
             )
             settings.setcpv(pkg)
             settings["PORTAGE_PYTHON"] = _python_interpreter
-            settings["PORTAGE_BUILDDIR"] = os.path.join(settings["PORTAGE_TMPDIR"], cpv)
-            settings["PYTHONDONTWRITEBYTECODE"] = os.environ.get(
+            settings["PORTAGE_BUILDDIR"] = os_unicode_fs.path.join(
+                settings["PORTAGE_TMPDIR"], cpv
+            )
+            settings["PYTHONDONTWRITEBYTECODE"] = os_unicode_fs.environ.get(
                 "PYTHONDONTWRITEBYTECODE", ""
             )
-            settings["HOME"] = os.path.join(settings["PORTAGE_BUILDDIR"], "homedir")
-            settings["T"] = os.path.join(settings["PORTAGE_BUILDDIR"], "temp")
+            settings["HOME"] = os_unicode_fs.path.join(
+                settings["PORTAGE_BUILDDIR"], "homedir"
+            )
+            settings["T"] = os_unicode_fs.path.join(
+                settings["PORTAGE_BUILDDIR"], "temp"
+            )
             for x in ("PORTAGE_BUILDDIR", "HOME", "T"):
-                os.makedirs(settings[x])
-            os.makedirs(os.path.join(settings["PORTAGE_BUILDDIR"], ".ipc"))
+                os_unicode_fs.makedirs(settings[x])
+            os_unicode_fs.makedirs(
+                os_unicode_fs.path.join(settings["PORTAGE_BUILDDIR"], ".ipc")
+            )
             # Create a fake environment, to pretend as if the ebuild
             # has been sourced already.
-            open(os.path.join(settings["T"], "environment"), "wb").close()
+            open(os_unicode_fs.path.join(settings["T"], "environment"), "wb").close()
 
             scheduler = SchedulerInterface(global_event_loop())
             for phase in ("_internal_test",):
@@ -97,9 +103,9 @@ class DoebuildSpawnTestCase(TestCase):
                     "%s %s"
                     % (
                         _shell_quote(
-                            os.path.join(
+                            os_unicode_fs.path.join(
                                 settings["PORTAGE_BIN_PATH"],
-                                os.path.basename(EBUILD_SH_BINARY),
+                                os_unicode_fs.path.basename(EBUILD_SH_BINARY),
                             )
                         ),
                         phase,
@@ -107,7 +113,7 @@ class DoebuildSpawnTestCase(TestCase):
                     settings,
                     free=1,
                 )
-                self.assertEqual(rval, os.EX_OK)
+                self.assertEqual(rval, os_unicode_fs.EX_OK)
 
                 ebuild_phase = EbuildPhase(
                     background=False,
@@ -117,7 +123,7 @@ class DoebuildSpawnTestCase(TestCase):
                 )
                 ebuild_phase.start()
                 ebuild_phase.wait()
-                self.assertEqual(ebuild_phase.returncode, os.EX_OK)
+                self.assertEqual(ebuild_phase.returncode, os_unicode_fs.EX_OK)
 
             ebuild_phase = MiscFunctionsProcess(
                 background=False,
@@ -127,7 +133,7 @@ class DoebuildSpawnTestCase(TestCase):
             )
             ebuild_phase.start()
             ebuild_phase.wait()
-            self.assertEqual(ebuild_phase.returncode, os.EX_OK)
+            self.assertEqual(ebuild_phase.returncode, os_unicode_fs.EX_OK)
 
             spawn_nofetch(portdb, portdb.findname(cpv), settings=settings)
         finally:

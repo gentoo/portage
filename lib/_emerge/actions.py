@@ -31,9 +31,7 @@ portage.proxy.lazyimport.lazyimport(
     "_emerge.stdout_spinner:stdout_spinner",
 )
 
-from portage import os
-from portage import shutil
-from portage import _encodings, _unicode_decode
+from portage import os_unicode_fs, shutil_unicode_fs, _encodings, _unicode_decode
 from portage.binrepo.config import BinRepoConfigLoader
 from portage.const import BINREPOS_CONF_FILE, _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
@@ -136,14 +134,14 @@ def action_build(
 
     quickpkg_root = (
         normalize_path(
-            os.path.abspath(
+            os_unicode_fs.path.abspath(
                 emerge_config.opts.get(
                     "--quickpkg-direct-root",
                     emerge_config.running_config.settings["ROOT"],
                 )
             )
-        ).rstrip(os.path.sep)
-        + os.path.sep
+        ).rstrip(os_unicode_fs.path.sep)
+        + os_unicode_fs.path.sep
     )
     quickpkg_direct = (
         "--usepkg" in emerge_config.opts
@@ -398,7 +396,7 @@ def action_build(
     else:
         if "--resume" in myopts:
             print(darkgreen("emerge: It seems we have nothing to resume..."))
-            return os.EX_OK
+            return os_unicode_fs.EX_OK
 
         try:
             success, mydepgraph, favorites = backtrack_depgraph(
@@ -457,19 +455,19 @@ def action_build(
                 print(
                     colorize("INFORM", "emerge: It seems we have nothing to resume...")
                 )
-                return os.EX_OK
+                return os_unicode_fs.EX_OK
             favorites = mtimedb["resume"]["favorites"]
             retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
             mydepgraph.display_problems()
             mergelist_shown = True
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 return retval
             prompt = "Would you like to resume merging these packages?"
         else:
             retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
             mydepgraph.display_problems()
             mergelist_shown = True
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 return retval
             mergecount = 0
             for x in mydepgraph.altlist():
@@ -500,7 +498,7 @@ def action_build(
                     print()
                     print("Nothing to merge; quitting.")
                     print()
-                    return os.EX_OK
+                    return os_unicode_fs.EX_OK
             elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
                 prompt = "Would you like to fetch the source files for these packages?"
             else:
@@ -529,18 +527,18 @@ def action_build(
                 print(
                     colorize("INFORM", "emerge: It seems we have nothing to resume...")
                 )
-                return os.EX_OK
+                return os_unicode_fs.EX_OK
             favorites = mtimedb["resume"]["favorites"]
             retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
             mydepgraph.display_problems()
             mergelist_shown = True
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 return retval
         else:
             retval = mydepgraph.display(mydepgraph.altlist(), favorites=favorites)
             mydepgraph.display_problems()
             mergelist_shown = True
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 return retval
 
     else:
@@ -644,7 +642,7 @@ def action_build(
             mydepgraph.saveNomergeFavorites()
 
         if mergecount == 0:
-            retval = os.EX_OK
+            retval = os_unicode_fs.EX_OK
         else:
             mergetask = Scheduler(
                 settings,
@@ -661,7 +659,9 @@ def action_build(
 
             retval = mergetask.merge()
 
-            if retval == os.EX_OK and not (buildpkgonly or fetchonly or pretend):
+            if retval == os_unicode_fs.EX_OK and not (
+                buildpkgonly or fetchonly or pretend
+            ):
                 if "yes" == settings.get("AUTOCLEAN"):
                     portage.writemsg_stdout(">>> Auto-cleaning packages...\n")
                     unmerge(
@@ -744,7 +744,7 @@ def action_config(settings, trees, myopts, myfiles):
         mydbapi=trees[settings["EROOT"]]["vartree"].dbapi,
         tree="vartree",
     )
-    if retval == os.EX_OK:
+    if retval == os_unicode_fs.EX_OK:
         portage.doebuild(
             ebuildpath,
             "clean",
@@ -840,7 +840,7 @@ def action_depclean(
 
     clear_caches(trees)
 
-    if rval != os.EX_OK:
+    if rval != os_unicode_fs.EX_OK:
         return rval
 
     if cleanlist:
@@ -1797,7 +1797,7 @@ def action_deselect(settings, trees, opts, atoms):
     finally:
         if locked:
             world_set.unlock()
-    return os.EX_OK
+    return os_unicode_fs.EX_OK
 
 
 class _info_pkgs_ver:
@@ -1944,7 +1944,7 @@ def action_info(settings, trees, myopts, myfiles):
 
     for repo in repos:
         last_sync = portage.grabfile(
-            os.path.join(repo.location, "metadata", "timestamp.chk")
+            os_unicode_fs.path.join(repo.location, "metadata", "timestamp.chk")
         )
         head_commit = None
         if last_sync:
@@ -1956,7 +1956,7 @@ def action_info(settings, trees, myopts, myfiles):
                 head_commit = sync.retrieve_head(options=options)
             except NotImplementedError:
                 head_commit = (1, False)
-        if head_commit and head_commit[0] == os.EX_OK:
+        if head_commit and head_commit[0] == os_unicode_fs.EX_OK:
             append("Head commit of repository %s: %s" % (repo.name, head_commit[1]))
 
     # Searching contents for the /bin/sh provider is somewhat
@@ -1969,8 +1969,12 @@ def action_info(settings, trees, myopts, myfiles):
     # such as /bin/sh -> bb -> busybox. Note that we do not parse
     # the output of "/bin/sh --version" because many shells
     # do not have a --version option.
-    basename = os.path.basename(
-        os.path.realpath(os.path.join(os.sep, portage.const.EPREFIX, "bin", "sh"))
+    basename = os_unicode_fs.path.basename(
+        os_unicode_fs.path.realpath(
+            os_unicode_fs.path.join(
+                os_unicode_fs.sep, portage.const.EPREFIX, "bin", "sh"
+            )
+        )
     )
     try:
         Atom("null/%s" % basename)
@@ -2015,7 +2019,7 @@ def action_info(settings, trees, myopts, myfiles):
         else:
             output = _unicode_decode(proc.communicate()[0]).splitlines()
             proc.wait()
-            if proc.wait() == os.EX_OK and output:
+            if proc.wait() == os_unicode_fs.EX_OK and output:
                 append("ld %s" % (output[0]))
                 break
 
@@ -2028,7 +2032,7 @@ def action_info(settings, trees, myopts, myfiles):
     else:
         output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
         output = (proc.wait(), output)
-    if output[0] == os.EX_OK:
+    if output[0] == os_unicode_fs.EX_OK:
         distcc_str = output[1].split("\n", 1)[0]
         if "distcc" in settings.features:
             distcc_str += " [enabled]"
@@ -2045,7 +2049,7 @@ def action_info(settings, trees, myopts, myfiles):
     else:
         output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
         output = (proc.wait(), output)
-    if output[0] == os.EX_OK:
+    if output[0] == os_unicode_fs.EX_OK:
         ccache_str = output[1].split("\n", 1)[0]
         if "ccache" in settings.features:
             ccache_str += " [enabled]"
@@ -2117,7 +2121,7 @@ def action_info(settings, trees, myopts, myfiles):
     for repo in repos:
         append(repo.info_string())
 
-    binrepos_conf_path = os.path.join(
+    binrepos_conf_path = os_unicode_fs.path.join(
         settings["PORTAGE_CONFIGROOT"], BINREPOS_CONF_FILE
     )
     binrepos_conf = BinRepoConfigLoader((binrepos_conf_path,), settings)
@@ -2314,12 +2318,12 @@ def action_info(settings, trees, myopts, myfiles):
                 else:
                     continue
                 tmpdir = tempfile.mkdtemp()
-                ebuildpath = os.path.join(tmpdir, ebuild_file_name)
+                ebuildpath = os_unicode_fs.path.join(tmpdir, ebuild_file_name)
                 file = open(ebuildpath, "w")
                 file.write(ebuild_file_contents)
                 file.close()
 
-            if not ebuildpath or not os.path.exists(ebuildpath):
+            if not ebuildpath or not os_unicode_fs.path.exists(ebuildpath):
                 out.ewarn("No ebuild found for '%s'" % pkg.cpv)
                 continue
 
@@ -2350,7 +2354,7 @@ def action_info(settings, trees, myopts, myfiles):
                     mydbapi=trees[settings["EROOT"]]["bintree"].dbapi,
                     tree="bintree",
                 )
-                shutil.rmtree(tmpdir)
+                shutil_unicode_fs.rmtree(tmpdir)
 
 
 def action_regen(settings, portdb, max_jobs, max_load):
@@ -2432,7 +2436,7 @@ def action_sync(
             noiselevel=-1,
         )
 
-    return os.EX_OK if success else 1
+    return os_unicode_fs.EX_OK if success else 1
 
 
 def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinner):
@@ -2491,7 +2495,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
                     return 1
                 valid_atoms.append(atom)
 
-        elif x.startswith(os.sep):
+        elif x.startswith(os_unicode_fs.sep):
             if not x.startswith(eroot):
                 writemsg_level(
                     ("!!! '%s' does not start with" + " $EROOT.\n") % x,
@@ -2562,7 +2566,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
             search_for_multiple = True
 
         for x in lookup_owners:
-            if not search_for_multiple and os.path.isdir(x):
+            if not search_for_multiple and os_unicode_fs.path.isdir(x):
                 search_for_multiple = True
             relative_paths.append(x[len(root) - 1 :])
 
@@ -2799,8 +2803,8 @@ def display_missing_pkg_set(root_config, set_name):
 
 
 def relative_profile_path(portdir, abs_profile):
-    realpath = os.path.realpath(abs_profile)
-    basepath = os.path.realpath(os.path.join(portdir, "profiles"))
+    realpath = os_unicode_fs.path.realpath(abs_profile)
+    basepath = os_unicode_fs.path.realpath(os_unicode_fs.path.join(portdir, "profiles"))
     if realpath.startswith(basepath):
         profilever = realpath[1 + len(basepath) :]
     else:
@@ -2816,9 +2820,11 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
         profilever = relative_profile_path(portdir, profile)
         if profilever is None:
             try:
-                for parent in portage.grabfile(os.path.join(profile, "parent")):
+                for parent in portage.grabfile(
+                    os_unicode_fs.path.join(profile, "parent")
+                ):
                     profilever = relative_profile_path(
-                        portdir, os.path.join(profile, parent)
+                        portdir, os_unicode_fs.path.join(profile, parent)
                     )
                     if profilever is not None:
                         break
@@ -2832,7 +2838,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
                         else:
                             profilever = relative_profile_path(
                                 p_repo_loc,
-                                os.path.join(
+                                os_unicode_fs.path.join(
                                     p_repo_loc, "profiles", parent[colon + 1 :]
                                 ),
                             )
@@ -2843,7 +2849,7 @@ def getportageversion(portdir, _unused, profile, chost, vardb):
 
             if profilever is None:
                 try:
-                    profilever = "!" + os.readlink(profile)
+                    profilever = "!" + os_unicode_fs.readlink(profile)
                 except OSError:
                     pass
 
@@ -2899,7 +2905,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
     if emerge_config is None:
         emerge_config = _emerge_config(**kargs)
 
-    env = os.environ if env is None else env
+    env = os_unicode_fs.environ if env is None else env
     kwargs = {"env": env}
     for k, envvar in (
         ("config_root", "PORTAGE_CONFIGROOT"),
@@ -2927,7 +2933,7 @@ def load_emerge_config(emerge_config=None, env=None, **kargs):
     target_eroot = emerge_config.trees._target_eroot
     emerge_config.target_config = emerge_config.trees[target_eroot]["root_config"]
     emerge_config.target_config.mtimedb = portage.MtimeDB(
-        os.path.join(target_eroot, portage.CACHE_PATH, "mtimedb")
+        os_unicode_fs.path.join(target_eroot, portage.CACHE_PATH, "mtimedb")
     )
     emerge_config.running_config = emerge_config.trees[
         emerge_config.trees._running_eroot
@@ -2963,7 +2969,7 @@ def getgccversion(chost=None):
         else:
             myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
             mystatus = proc.wait()
-        if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
+        if mystatus == os_unicode_fs.EX_OK and myoutput.startswith(chost + "-"):
             return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
         try:
@@ -2978,7 +2984,7 @@ def getgccversion(chost=None):
         else:
             myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
             mystatus = proc.wait()
-        if mystatus == os.EX_OK:
+        if mystatus == os_unicode_fs.EX_OK:
             return gcc_ver_prefix + myoutput
 
     try:
@@ -2991,7 +2997,7 @@ def getgccversion(chost=None):
     else:
         myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
         mystatus = proc.wait()
-    if mystatus == os.EX_OK:
+    if mystatus == os_unicode_fs.EX_OK:
         return gcc_ver_prefix + myoutput
 
     portage.writemsg(gcc_not_found_error, noiselevel=-1)
@@ -3025,8 +3031,8 @@ def validate_ebuild_environment(trees):
 
 def check_procfs():
     procfs_path = "/proc"
-    if platform.system() not in ("Linux",) or os.path.ismount(procfs_path):
-        return os.EX_OK
+    if platform.system() not in ("Linux",) or os_unicode_fs.path.ismount(procfs_path):
+        return os_unicode_fs.EX_OK
     msg = "It seems that %s is not mounted. You have been warned." % procfs_path
     writemsg_level(
         "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
@@ -3054,7 +3060,7 @@ def apply_priorities(settings):
 
 def nice(settings):
     try:
-        os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
+        os_unicode_fs.nice(int(settings.get("PORTAGE_NICENESS", "0")))
     except (OSError, ValueError) as e:
         out = portage.output.EOutput()
         out.eerror(
@@ -3076,13 +3082,13 @@ def ionice(settings):
     cmd = [varexpand(x, mydict=variables) for x in ionice_cmd]
 
     try:
-        rval = portage.process.spawn(cmd, env=os.environ)
+        rval = portage.process.spawn(cmd, env=os_unicode_fs.environ)
     except portage.exception.CommandNotFound:
         # The OS kernel probably doesn't support ionice,
         # so return silently.
         return
 
-    if rval != os.EX_OK:
+    if rval != os_unicode_fs.EX_OK:
         out = portage.output.EOutput()
         out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
         out.eerror(
@@ -3128,12 +3134,13 @@ def missing_sets_warning(root_config, missing_sets):
         msg.append("        sets defined: %s" % ", ".join(root_config.sets))
     global_config_path = portage.const.GLOBAL_CONFIG_PATH
     if portage.const.EPREFIX:
-        global_config_path = os.path.join(
-            portage.const.EPREFIX, portage.const.GLOBAL_CONFIG_PATH.lstrip(os.sep)
+        global_config_path = os_unicode_fs.path.join(
+            portage.const.EPREFIX,
+            portage.const.GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep),
         )
     msg.append(
         "        This usually means that '%s'"
-        % (os.path.join(global_config_path, "sets/portage.conf"),)
+        % (os_unicode_fs.path.join(global_config_path, "sets/portage.conf"),)
     )
     msg.append("        is missing or corrupt.")
     msg.append("        Falling back to default world and system set configuration!!!")
@@ -3153,7 +3160,7 @@ def ensure_required_sets(trees):
 
 
 def expand_set_arguments(myfiles, myaction, root_config):
-    retval = os.EX_OK
+    retval = os_unicode_fs.EX_OK
     setconfig = root_config.setconfig
 
     sets = setconfig.getSets()
@@ -3401,7 +3408,9 @@ def run_action(emerge_config):
         xtermTitle("emerge")
 
     if "--digest" in emerge_config.opts:
-        os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " digest"
+        os_unicode_fs.environ["FEATURES"] = (
+            os_unicode_fs.environ.get("FEATURES", "") + " digest"
+        )
         # Reload the whole config from scratch so that the portdbapi internal
         # config is updated with new FEATURES.
         load_emerge_config(emerge_config=emerge_config)
@@ -3456,7 +3465,7 @@ def run_action(emerge_config):
 
     adjust_configs(emerge_config.opts, emerge_config.trees)
 
-    if profile_check(emerge_config.trees, emerge_config.action) != os.EX_OK:
+    if profile_check(emerge_config.trees, emerge_config.action) != os_unicode_fs.EX_OK:
         return 1
 
     apply_priorities(emerge_config.target_config.settings)
@@ -3528,7 +3537,9 @@ def run_action(emerge_config):
     del mytrees, mydb
 
     for x in emerge_config.args:
-        if x.endswith((".ebuild", ".tbz2")) and os.path.exists(os.path.abspath(x)):
+        if x.endswith((".ebuild", ".tbz2")) and os_unicode_fs.path.exists(
+            os_unicode_fs.path.abspath(x)
+        ):
             print(
                 colorize(
                     "BAD",
@@ -3541,7 +3552,7 @@ def run_action(emerge_config):
         writemsg_stdout(
             "".join("%s\n" % s for s in sorted(emerge_config.target_config.sets))
         )
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
     if emerge_config.action == "check-news":
         news_counts = count_unread_news(
             emerge_config.target_config.trees["porttree"].dbapi,
@@ -3551,7 +3562,7 @@ def run_action(emerge_config):
             display_news_notifications(news_counts)
         elif "--quiet" not in emerge_config.opts:
             print("", colorize("GOOD", "*"), "No news items were found.")
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     ensure_required_sets(emerge_config.trees)
 
@@ -3582,7 +3593,7 @@ def run_action(emerge_config):
         newargs, retval = expand_set_arguments(
             emerge_config.args, emerge_config.action, emerge_config.target_config
         )
-        if retval != os.EX_OK:
+        if retval != os_unicode_fs.EX_OK:
             return retval
 
         # Need to handle empty sets specially, otherwise emerge will react
@@ -3715,8 +3726,8 @@ def run_action(emerge_config):
     disable_emergelog = False
 
     emerge_log_dir = emerge_config.target_config.settings.get("EMERGE_LOG_DIR")
-    default_log_dir = os.path.join(
-        os.sep, portage.const.EPREFIX.lstrip(os.sep), "var", "log"
+    default_log_dir = os_unicode_fs.path.join(
+        os_unicode_fs.sep, portage.const.EPREFIX.lstrip(os_unicode_fs.sep), "var", "log"
     )
     for x in ("--pretend", "--fetchonly", "--fetch-all-uri"):
         if x in emerge_config.opts:
@@ -3724,9 +3735,9 @@ def run_action(emerge_config):
                 # Log will be used to store fetch progress
                 log_dir = emerge_log_dir if emerge_log_dir else default_log_dir
                 disable_emergelog = not all(
-                    os.access(logfile, os.W_OK)
+                    os_unicode_fs.access(logfile, os_unicode_fs.W_OK)
                     for logfile in set(
-                        first_existing(os.path.join(log_dir, logfile))
+                        first_existing(os_unicode_fs.path.join(log_dir, logfile))
                         for logfile in ("emerge.log", "emerge-fetch.log")
                     )
                 )
@@ -3953,10 +3964,10 @@ def run_action(emerge_config):
         for x in emerge_config.args:
             if x.startswith(SETPREFIX) or is_valid_package_atom(x, allow_repo=True):
                 continue
-            if x[:1] == os.sep:
+            if x[:1] == os_unicode_fs.sep:
                 continue
             try:
-                os.lstat(x)
+                os_unicode_fs.lstat(x)
                 continue
             except OSError:
                 pass

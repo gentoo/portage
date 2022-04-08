@@ -10,8 +10,7 @@ import sys
 import time
 
 import portage
-from portage import os
-from portage import _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -106,17 +105,25 @@ src_install() {
         settings = playground.settings
         eprefix = settings["EPREFIX"]
         eroot = settings["EROOT"]
-        var_cache_edb = os.path.join(eprefix, "var", "cache", "edb")
+        var_cache_edb = os_unicode_fs.path.join(eprefix, "var", "cache", "edb")
 
         portage_python = portage._python_interpreter
         dispatch_conf_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.sbindir, "dispatch-conf"),
+            os_unicode_fs.path.join(self.sbindir, "dispatch-conf"),
         )
-        emerge_cmd = (portage_python, "-b", "-Wd", os.path.join(self.bindir, "emerge"))
-        etc_update_cmd = (BASH_BINARY, os.path.join(self.sbindir, "etc-update"))
+        emerge_cmd = (
+            portage_python,
+            "-b",
+            "-Wd",
+            os_unicode_fs.path.join(self.bindir, "emerge"),
+        )
+        etc_update_cmd = (
+            BASH_BINARY,
+            os_unicode_fs.path.join(self.sbindir, "etc-update"),
+        )
         etc_update_auto = etc_update_cmd + (
             "--automode",
             "-5",
@@ -125,16 +132,18 @@ src_install() {
         config_protect = "/etc"
 
         def modify_files(dir_path):
-            for name in os.listdir(dir_path):
-                path = os.path.join(dir_path, name)
-                st = os.lstat(path)
+            for name in os_unicode_fs.listdir(dir_path):
+                path = os_unicode_fs.path.join(dir_path, name)
+                st = os_unicode_fs.lstat(path)
                 if stat.S_ISREG(st.st_mode):
                     with io.open(path, mode="a", encoding=_encodings["stdio"]) as f:
                         f.write("modified at %d\n" % time.time())
                 elif stat.S_ISLNK(st.st_mode):
-                    old_dest = os.readlink(path)
-                    os.unlink(path)
-                    os.symlink(old_dest + " modified at %d" % time.time(), path)
+                    old_dest = os_unicode_fs.readlink(path)
+                    os_unicode_fs.unlink(path)
+                    os_unicode_fs.symlink(
+                        old_dest + " modified at %d" % time.time(), path
+                    )
 
         def updated_config_files(count):
             self.assertEqual(
@@ -161,14 +170,14 @@ src_install() {
             # Test bug #523684, where a file renamed or removed by the
             # admin forces replacement files to be merged with config
             # protection.
-            partial(shutil.rmtree, os.path.join(eprefix, "etc", "A")),
+            partial(shutil.rmtree, os_unicode_fs.path.join(eprefix, "etc", "A")),
             emerge_cmd + ("-1", "=dev-libs/A-2"),
             partial(updated_config_files, 8),
             etc_update_auto,
             partial(updated_config_files, 0),
             # Modify some config files, and verify that it triggers
             # config protection.
-            partial(modify_files, os.path.join(eroot, "etc", "A")),
+            partial(modify_files, os_unicode_fs.path.join(eroot, "etc", "A")),
             emerge_cmd + ("-1", "=dev-libs/A-2"),
             partial(updated_config_files, 6),
             etc_update_auto,
@@ -176,7 +185,7 @@ src_install() {
             # Modify some config files, downgrade to A-1, and verify
             # that config protection works properly when the file
             # types are changing.
-            partial(modify_files, os.path.join(eroot, "etc", "A")),
+            partial(modify_files, os_unicode_fs.path.join(eroot, "etc", "A")),
             emerge_cmd + ("-1", "--noconfmem", "=dev-libs/A-1"),
             partial(updated_config_files, 6),
             etc_update_auto,
@@ -184,10 +193,10 @@ src_install() {
         )
 
         distdir = playground.distdir
-        fake_bin = os.path.join(eprefix, "bin")
-        portage_tmpdir = os.path.join(eprefix, "var", "tmp", "portage")
+        fake_bin = os_unicode_fs.path.join(eprefix, "bin")
+        portage_tmpdir = os_unicode_fs.path.join(eprefix, "var", "tmp", "portage")
 
-        path = os.environ.get("PATH")
+        path = os_unicode_fs.environ.get("PATH")
         if path is not None and not path.strip():
             path = None
         if path is None:
@@ -196,7 +205,7 @@ src_install() {
             path = ":" + path
         path = fake_bin + path
 
-        pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath = os_unicode_fs.environ.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
         if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
@@ -223,13 +232,15 @@ src_install() {
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
             "PORTAGE_TMPDIR": portage_tmpdir,
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
+            "PYTHONDONTWRITEBYTECODE": os_unicode_fs.environ.get(
+                "PYTHONDONTWRITEBYTECODE", ""
+            ),
             "PYTHONPATH": pythonpath,
             "__PORTAGE_TEST_PATH_OVERRIDE": fake_bin,
         }
 
-        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                 "__PORTAGE_TEST_HARDLINK_LOCKS"
             ]
 
@@ -245,12 +256,13 @@ src_install() {
             for d in dirs:
                 ensure_dirs(d)
             for x in true_symlinks:
-                os.symlink(true_binary, os.path.join(fake_bin, x))
+                os_unicode_fs.symlink(true_binary, os_unicode_fs.path.join(fake_bin, x))
             for x in etc_symlinks:
-                os.symlink(
-                    os.path.join(self.cnf_etc_path, x), os.path.join(eprefix, "etc", x)
+                os_unicode_fs.symlink(
+                    os_unicode_fs.path.join(self.cnf_etc_path, x),
+                    os_unicode_fs.path.join(eprefix, "etc", x),
                 )
-            with open(os.path.join(var_cache_edb, "counter"), "wb") as f:
+            with open(os_unicode_fs.path.join(var_cache_edb, "counter"), "wb") as f:
                 f.write(b"100")
 
             if debug:
@@ -283,12 +295,14 @@ src_install() {
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os_unicode_fs.EX_OK,
+                    proc.returncode,
+                    "emerge failed with args %s" % (args,),
                 )
         finally:
             playground.cleanup()

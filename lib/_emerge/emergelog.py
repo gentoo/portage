@@ -4,10 +4,7 @@
 import io
 import time
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.data import secpass
 from portage.output import xtermTitle
 
@@ -29,12 +26,12 @@ def emergelog(xterm_titles, mystr, short_msg=None):
         short_msg = _unicode_decode(short_msg)
 
     if xterm_titles and short_msg:
-        if "HOSTNAME" in os.environ:
-            short_msg = os.environ["HOSTNAME"] + ": " + short_msg
+        if "HOSTNAME" in os_unicode_fs.environ:
+            short_msg = os_unicode_fs.environ["HOSTNAME"] + ": " + short_msg
         xtermTitle(short_msg)
     try:
-        file_path = os.path.join(_emerge_log_dir, "emerge.log")
-        existing_log = os.path.exists(file_path)
+        file_path = os_unicode_fs.path.join(_emerge_log_dir, "emerge.log")
+        existing_log = os_unicode_fs.path.exists(file_path)
         mylogfile = io.open(
             _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
             mode="a",

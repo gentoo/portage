@@ -8,8 +8,7 @@ import io
 import sys
 from os import urandom
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.util._compare_files import compare_files
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -34,20 +33,24 @@ class test_gpkg_path_case(TestCase):
                 "aaaabbbb/ccccdddd/eeeeffff/gggghhhh/iiiijjjj/kkkkllll/"
                 "mmmmnnnn/oooopppp/qqqqrrrr/sssstttt/"
             )
-            orig_full_path = os.path.join(tmpdir, "orig/" + path_name)
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/" + path_name)
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (95, 4, 0, 1048576, 1048576))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -65,15 +68,15 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.USTAR_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig/" + path_name + "test"),
-                os.path.join(tmpdir, "test/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "orig/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "test/" + path_name + "test"),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_long_path(self):
@@ -98,20 +101,24 @@ class test_gpkg_path_case(TestCase):
                 "mmmmnnnn/oooopppp/qqqqrrrr/sssstttt/uuuuvvvv/wwwwxxxx/"
                 "yyyyzzzz/00001111/22223333/44445555/66667777/88889999/"
             )
-            orig_full_path = os.path.join(tmpdir, "orig/" + path_name)
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/" + path_name)
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (329, 4, 0, 1048576, 1048576))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -129,15 +136,15 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.GNU_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig/" + path_name + "test"),
-                os.path.join(tmpdir, "test/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "orig/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "test/" + path_name + "test"),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_non_ascii_path(self):
@@ -155,20 +162,24 @@ class test_gpkg_path_case(TestCase):
             settings = playground.settings
 
             path_name = "中文测试/日本語テスト/한국어시험/"
-            orig_full_path = os.path.join(tmpdir, "orig/" + path_name)
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/" + path_name)
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (53, 4, 0, 1048576, 1048576))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -186,15 +197,15 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.USTAR_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig/" + path_name + "test"),
-                os.path.join(tmpdir, "test/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "orig/" + path_name + "test"),
+                os_unicode_fs.path.join(tmpdir, "test/" + path_name + "test"),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_symlink_path(self):
@@ -211,24 +222,26 @@ class test_gpkg_path_case(TestCase):
         try:
             settings = playground.settings
 
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
-            os.symlink(
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
+            os_unicode_fs.symlink(
                 "aaaabbbb/ccccdddd/eeeeffff/gggghhhh/iiiijjjj/kkkkllll/"
                 "mmmmnnnn/oooopppp/qqqqrrrr/sssstttt/uuuuvvvv/wwwwxxxx/"
                 "yyyyzzzz/00001111/22223333/44445555/66667777/88889999/test",
-                os.path.join(orig_full_path, "a_long_symlink"),
+                os_unicode_fs.path.join(orig_full_path, "a_long_symlink"),
             )
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (0, 14, 166, 0, 0))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -246,15 +259,15 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.GNU_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig/", "a_long_symlink"),
-                os.path.join(tmpdir, "test/", "a_long_symlink"),
+                os_unicode_fs.path.join(tmpdir, "orig/", "a_long_symlink"),
+                os_unicode_fs.path.join(tmpdir, "test/", "a_long_symlink"),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_long_hardlink_path(self):
@@ -280,25 +293,29 @@ class test_gpkg_path_case(TestCase):
                 "A-B-C-D-E-F-G-H-I-J-K-L-M-N-O-P-Q-R-S-T-U-V-W-X-Y-Z"
                 "A-B-C-D-E-F-G-H-I-J-K-L-M-N-O-P-Q-R-S-T-U-V-W-X-Y-Z"
             )
-            orig_full_path = os.path.join(tmpdir, "orig", path_name)
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig", path_name)
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            os.link(
-                os.path.join(orig_full_path, "test"),
-                os.path.join(orig_full_path, file_name),
+            os_unicode_fs.link(
+                os_unicode_fs.path.join(orig_full_path, "test"),
+                os_unicode_fs.path.join(orig_full_path, file_name),
             )
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (113, 158, 272, 1048576, 2097152))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -316,15 +333,15 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.GNU_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig", path_name, file_name),
-                os.path.join(tmpdir, "test", path_name, file_name),
+                os_unicode_fs.path.join(tmpdir, "orig", path_name, file_name),
+                os_unicode_fs.path.join(tmpdir, "test", path_name, file_name),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
 
     def test_gpkg_long_filename(self):
         if sys.version_info.major < 3:
@@ -347,20 +364,24 @@ class test_gpkg_path_case(TestCase):
                 "A-B-C-D-E-F-G-H-I-J-K-L-M-N-O-P-Q-R-S-T-U-V-W-X-Y-Z"
             )
 
-            orig_full_path = os.path.join(tmpdir, "orig/" + path_name)
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, file_name), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/" + path_name)
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, file_name), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             check_result = test_gpkg._check_pre_image_files(
-                os.path.join(tmpdir, "orig")
+                os_unicode_fs.path.join(tmpdir, "orig")
             )
             self.assertEqual(check_result, (59, 167, 0, 1048576, 1048576))
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), {"meta": "test"})
+            test_gpkg.compress(
+                os_unicode_fs.path.join(tmpdir, "orig"), {"meta": "test"}
+            )
             with open(gpkg_file_loc, "rb") as container:
                 # container
                 self.assertEqual(
@@ -378,13 +399,13 @@ class test_gpkg_path_case(TestCase):
                 self.assertEqual(test_gpkg._get_tar_format(image), tarfile.GNU_FORMAT)
                 image.close()
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig", path_name, file_name),
-                os.path.join(tmpdir, "test", path_name, file_name),
+                os_unicode_fs.path.join(tmpdir, "orig", path_name, file_name),
+                os_unicode_fs.path.join(tmpdir, "test", path_name, file_name),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

@@ -15,8 +15,7 @@ import time
 from _emerge.UserQuery import UserQuery
 
 import portage
-from portage import _unicode_decode
-from portage import os
+from portage import os_unicode_fs, _unicode_decode
 from portage.const import VCS_DIRS, TIMESTAMP_FORMAT, RSYNC_PACKAGE_ATOM
 from portage.output import create_color_func, yellow, blue, bold
 from portage.sync.getaddrinfo_validate import getaddrinfo_validate
@@ -66,7 +65,7 @@ class RsyncSync(NewBase):
             vcs_dirs = ()
         else:
             vcs_dirs = frozenset(VCS_DIRS)
-            vcs_dirs = vcs_dirs.intersection(os.listdir(self.repo.location))
+            vcs_dirs = vcs_dirs.intersection(os_unicode_fs.listdir(self.repo.location))
 
         for vcs_dir in vcs_dirs:
             writemsg_level(
@@ -174,7 +173,7 @@ class RsyncSync(NewBase):
                     return (1, False)
 
             # Real local timestamp file.
-            self.servertimestampfile = os.path.join(
+            self.servertimestampfile = os_unicode_fs.path.join(
                 self.repo.location, "metadata", "timestamp.chk"
             )
 
@@ -421,7 +420,7 @@ class RsyncSync(NewBase):
                         # we always verify the Manifest signature, in case
                         # we had to deal with key revocation case
                         m = gemato.recursiveloader.ManifestRecursiveLoader(
-                            os.path.join(download_dir, "Manifest"),
+                            os_unicode_fs.path.join(download_dir, "Manifest"),
                             verify_openpgp=True,
                             openpgp_env=openpgp_env,
                             max_jobs=self.verify_jobs,
@@ -542,8 +541,8 @@ class RsyncSync(NewBase):
         if kwargs:
             self._kwargs(kwargs)
         try:
-            if not os.path.exists(self.repo.location):
-                os.makedirs(self.repo.location)
+            if not os_unicode_fs.path.exists(self.repo.location):
+                os_unicode_fs.makedirs(self.repo.location)
                 self.logger(
                     self.self.xterm_titles,
                     "Created New Directory %s " % self.repo.location,
@@ -557,12 +556,12 @@ class RsyncSync(NewBase):
         if kwargs:
             self._kwargs(kwargs)
         last_sync = portage.grabfile(
-            os.path.join(self.repo.location, "metadata", "timestamp.commit")
+            os_unicode_fs.path.join(self.repo.location, "metadata", "timestamp.commit")
         )
         ret = (1, False)
         if last_sync:
             try:
-                ret = (os.EX_OK, last_sync[0].split()[0])
+                ret = (os_unicode_fs.EX_OK, last_sync[0].split()[0])
             except IndexError:
                 pass
         return ret
@@ -668,7 +667,7 @@ class RsyncSync(NewBase):
             print(rsynccommand)
 
         local_state_unchanged = False
-        exitcode = os.EX_OK
+        exitcode = os_unicode_fs.EX_OK
         servertimestamp = 0
         # Even if there's no timestamp available locally, fetch the
         # timestamp anyway as an initial probe to verify that the server is
@@ -684,7 +683,7 @@ class RsyncSync(NewBase):
         # requirement, since that's not necessarily true for the
         # default directory used by the tempfile module.
         if self.usersync_uid is not None:
-            tmpdir = os.path.join(self.settings["PORTAGE_TMPDIR"], "portage")
+            tmpdir = os_unicode_fs.path.join(self.settings["PORTAGE_TMPDIR"], "portage")
             ensure_dirs_kwargs = {}
             if portage.secpass >= 1:
                 ensure_dirs_kwargs["gid"] = portage.portage_gid
@@ -695,7 +694,7 @@ class RsyncSync(NewBase):
             # use default dir from tempfile module
             tmpdir = None
         fd, tmpservertimestampfile = tempfile.mkstemp(dir=tmpdir)
-        os.close(fd)
+        os_unicode_fs.close(fd)
         if self.usersync_uid is not None:
             portage.util.apply_permissions(
                 tmpservertimestampfile, uid=self.usersync_uid
@@ -717,17 +716,17 @@ class RsyncSync(NewBase):
                 pids.extend(
                     portage.process.spawn(command, returnpid=True, **self.spawn_kwargs)
                 )
-                exitcode = os.waitpid(pids[0], 0)[1]
+                exitcode = os_unicode_fs.waitpid(pids[0], 0)[1]
                 if self.usersync_uid is not None:
                     portage.util.apply_permissions(
-                        tmpservertimestampfile, uid=os.getuid()
+                        tmpservertimestampfile, uid=os_unicode_fs.getuid()
                     )
                 content = portage.grabfile(tmpservertimestampfile)
             finally:
                 if self.rsync_initial_timeout:
                     portage.exception.AlarmSignal.unregister()
                 try:
-                    os.unlink(tmpservertimestampfile)
+                    os_unicode_fs.unlink(tmpservertimestampfile)
                 except OSError:
                     pass
         except portage.exception.AlarmSignal:
@@ -736,13 +735,13 @@ class RsyncSync(NewBase):
             # With waitpid and WNOHANG, only check the
             # first element of the tuple since the second
             # element may vary (bug #337465).
-            if pids and os.waitpid(pids[0], os.WNOHANG)[0] == 0:
-                os.kill(pids[0], signal.SIGTERM)
-                os.waitpid(pids[0], 0)
+            if pids and os_unicode_fs.waitpid(pids[0], os_unicode_fs.WNOHANG)[0] == 0:
+                os_unicode_fs.kill(pids[0], signal.SIGTERM)
+                os_unicode_fs.waitpid(pids[0], 0)
             # This is the same code rsync uses for timeout.
             exitcode = 30
         else:
-            if exitcode != os.EX_OK:
+            if exitcode != os_unicode_fs.EX_OK:
                 if exitcode & 0xFF:
                     exitcode = (exitcode & 0xFF) << 8
                 else:
@@ -757,7 +756,7 @@ class RsyncSync(NewBase):
                 pass
         del command, pids, content
 
-        if exitcode == os.EX_OK:
+        if exitcode == os_unicode_fs.EX_OK:
             if (servertimestamp != 0) and (servertimestamp == timestamp):
                 local_state_unchanged = True
                 is_synced = True
@@ -832,7 +831,7 @@ class RsyncSync(NewBase):
                         # trusted.
                         timestamp = 0
                         try:
-                            os.unlink(self.servertimestampfile)
+                            os_unicode_fs.unlink(self.servertimestampfile)
                         except OSError:
                             pass
                     else:

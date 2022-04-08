@@ -7,7 +7,7 @@ import shutil
 import socket
 import tempfile
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
 from portage.util.futures import asyncio
@@ -21,7 +21,7 @@ class PipeReaderTestCase(TestCase):
 
     def test_pipe(self):
         def make_pipes():
-            return os.pipe(), None
+            return os_unicode_fs.pipe(), None
 
         self._do_test(make_pipes)
 
@@ -44,12 +44,16 @@ class PipeReaderTestCase(TestCase):
     def test_named_pipe(self):
         def make_pipes():
             tempdir = tempfile.mkdtemp()
-            fifo_path = os.path.join(tempdir, "fifo")
-            os.mkfifo(fifo_path)
+            fifo_path = os_unicode_fs.path.join(tempdir, "fifo")
+            os_unicode_fs.mkfifo(fifo_path)
             return (
                 (
-                    os.open(fifo_path, os.O_NONBLOCK | os.O_RDONLY),
-                    os.open(fifo_path, os.O_NONBLOCK | os.O_WRONLY),
+                    os_unicode_fs.open(
+                        fifo_path, os_unicode_fs.O_NONBLOCK | os_unicode_fs.O_RDONLY
+                    ),
+                    os_unicode_fs.open(
+                        fifo_path, os_unicode_fs.O_NONBLOCK | os_unicode_fs.O_WRONLY
+                    ),
                 ),
                 functools.partial(shutil.rmtree, tempdir),
             )
@@ -65,7 +69,7 @@ class PipeReaderTestCase(TestCase):
 
         # WARNING: It is very important to use unbuffered mode here,
         # in order to avoid issue 5380 with python3.
-        master_file = os.fdopen(master_fd, "rb", 0)
+        master_file = os_unicode_fs.fdopen(master_fd, "rb", 0)
         scheduler = global_event_loop()
 
         consumer = PipeReader(
@@ -85,12 +89,12 @@ class PipeReaderTestCase(TestCase):
             )
         )
 
-        os.close(slave_fd)
+        os_unicode_fs.close(slave_fd)
         scheduler.run_until_complete(producer.wait())
         scheduler.run_until_complete(consumer.async_wait())
 
-        self.assertEqual(producer.returncode, os.EX_OK)
-        self.assertEqual(consumer.returncode, os.EX_OK)
+        self.assertEqual(producer.returncode, os_unicode_fs.EX_OK)
+        self.assertEqual(consumer.returncode, os_unicode_fs.EX_OK)
 
         return consumer.getvalue().decode("ascii", "replace")
 

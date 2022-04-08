@@ -14,13 +14,15 @@ import tempfile
 from copy import copy
 from datetime import datetime
 
-from portage import checksum
-from portage import os
-from portage import shutil
-from portage import normalize_path
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import (
+    checksum,
+    os_unicode_fs,
+    shutil_unicode_fs,
+    normalize_path,
+    _encodings,
+    _unicode_decode,
+    _unicode_encode,
+)
 from portage.exception import (
     FileNotFound,
     InvalidBinaryPackageFormat,
@@ -152,7 +154,7 @@ class tar_stream_writer:
     def _drop_privileges(self):
         if self.uid:
             try:
-                os.setuid(self.uid)
+                os_unicode_fs.setuid(self.uid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -163,7 +165,7 @@ class tar_stream_writer:
 
         if self.gid:
             try:
-                os.setgid(self.gid)
+                os_unicode_fs.setgid(self.gid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -231,7 +233,7 @@ class tar_stream_writer:
         # Wait compressor exit
         if self.proc is not None:
             self.proc.stdin.close()
-            if self.proc.wait() != os.EX_OK:
+            if self.proc.wait() != os_unicode_fs.EX_OK:
                 raise CompressorOperationFailed("compression failed")
             if self.read_thread.is_alive():
                 self.read_thread.join()
@@ -372,7 +374,7 @@ class tar_stream_reader:
     def _drop_privileges(self):
         if self.uid:
             try:
-                os.setuid(self.uid)
+                os_unicode_fs.setuid(self.uid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -383,7 +385,7 @@ class tar_stream_reader:
 
         if self.gid:
             try:
-                os.setgid(self.gid)
+                os_unicode_fs.setgid(self.gid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -423,7 +425,7 @@ class tar_stream_reader:
         if self.proc is not None:
             self.thread.join()
             try:
-                if self.proc.wait() != os.EX_OK:
+                if self.proc.wait() != os_unicode_fs.EX_OK:
                     if not self.proc.stderr.closed:
                         stderr = self.proc.stderr.read().decode()
                     if not self.killed:
@@ -456,7 +458,7 @@ class checksum_helper:
         self.finished = False
         self.sign_file_path = None
 
-        if (gpg_operation == checksum_helper.VERIFY) and (os.getuid() == 0):
+        if (gpg_operation == checksum_helper.VERIFY) and (os_unicode_fs.getuid() == 0):
             try:
                 drop_user = self.settings.get("GPG_VERIFY_USER_DROP", "nobody")
                 if drop_user == "":
@@ -515,7 +517,7 @@ class checksum_helper:
                 )
                 gpg_signing_command = [x for x in gpg_signing_command if x != ""]
                 try:
-                    env["GPG_TTY"] = os.ttyname(sys.stdout.fileno())
+                    env["GPG_TTY"] = os_unicode_fs.ttyname(sys.stdout.fileno())
                 except OSError:
                     pass
             else:
@@ -557,7 +559,7 @@ class checksum_helper:
                 # Create signature file and allow everyone read
                 with open(self.sign_file_fd, "wb") as sign:
                     sign.write(signature)
-                os.chmod(self.sign_file_path, 0o644)
+                os_unicode_fs.chmod(self.sign_file_path, 0o644)
             else:
                 gpg_verify_command = gpg_verify_command.replace(
                     "[SIGNATURE]", "--output - -"
@@ -616,7 +618,7 @@ class checksum_helper:
     def _drop_privileges(self):
         if self.uid:
             try:
-                os.setuid(self.uid)
+                os_unicode_fs.setuid(self.uid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -627,7 +629,7 @@ class checksum_helper:
 
         if self.gid:
             try:
-                os.setgid(self.gid)
+                os_unicode_fs.setgid(self.gid)
             except PermissionError:
                 writemsg(
                     colorize(
@@ -660,7 +662,7 @@ class checksum_helper:
             return_code = self.gpg_proc.wait()
 
             if self.sign_file_path:
-                os.remove(self.sign_file_path)
+                os_unicode_fs.remove(self.sign_file_path)
 
             self.finished = True
 
@@ -669,7 +671,7 @@ class checksum_helper:
             self.gpg_proc.stdout.close()
             self.gpg_proc.stderr.close()
 
-            if return_code == os.EX_OK:
+            if return_code == os_unicode_fs.EX_OK:
                 if self.gpg_operation == checksum_helper.VERIFY:
                     self._check_gpg_status(self.gpg_result.decode())
             else:
@@ -712,7 +714,7 @@ class tar_safe_extract:
                 if member is None:
                     break
                 if (member.name in self.file_list) or (
-                    os.path.join(".", member.name) in self.file_list
+                    os_unicode_fs.path.join(".", member.name) in self.file_list
                 ):
                     writemsg(
                         colorize(
@@ -750,9 +752,12 @@ class tar_safe_extract:
                 self.file_list.append(member.name)
                 self.tar.extract(member, path=temp_dir.name)
 
-            data_dir = os.path.join(temp_dir.name, self.prefix)
-            for file in os.listdir(data_dir):
-                shutil.move(os.path.join(data_dir, file), os.path.join(dest_dir, file))
+            data_dir = os_unicode_fs.path.join(temp_dir.name, self.prefix)
+            for file in os_unicode_fs.listdir(data_dir):
+                shutil_unicode_fs.move(
+                    os_unicode_fs.path.join(data_dir, file),
+                    os_unicode_fs.path.join(dest_dir, file),
+                )
         finally:
             temp_dir.cleanup()
             self.closed = True
@@ -843,9 +848,9 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_tar) as metadata:
                 if dest_dir is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
-                            k
-                        ).read()
+                        os_unicode_fs.path.relpath(
+                            k.name, "metadata"
+                        ): metadata.extractfile(k).read()
                         for k in metadata.getmembers()
                     }
                 else:
@@ -951,16 +956,16 @@ class gpkg:
             with tarfile.open(mode="r:", fileobj=metadata_file) as metadata:
                 if want is None:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
-                            k
-                        ).read()
+                        os_unicode_fs.path.relpath(
+                            k.name, "metadata"
+                        ): metadata.extractfile(k).read()
                         for k in metadata.getmembers()
                     }
                 else:
                     metadata_ = {
-                        os.path.relpath(k.name, "metadata"): metadata.extractfile(
-                            k
-                        ).read()
+                        os_unicode_fs.path.relpath(
+                            k.name, "metadata"
+                        ): metadata.extractfile(k).read()
                         for k in metadata.getmembers()
                         if k in want
                     }
@@ -1040,7 +1045,7 @@ class gpkg:
         )
 
         self._verify_binpkg()
-        os.makedirs(decompress_dir, mode=0o755, exist_ok=True)
+        os_unicode_fs.makedirs(decompress_dir, mode=0o755, exist_ok=True)
 
         with tarfile.open(self.gpkg_file, "r") as container:
             image_tarinfo, image_comp = self._get_inner_tarinfo(container, "image")
@@ -1077,7 +1082,7 @@ class gpkg:
                 raise InvalidBinaryPackageFormat("Cannot identify tar format")
 
         # container
-        tmp_gpkg_file_name = f"{self.gpkg_file}.{os.getpid()}"
+        tmp_gpkg_file_name = f"{self.gpkg_file}.{os_unicode_fs.getpid()}"
         with tarfile.TarFile(
             name=tmp_gpkg_file_name, mode="w", format=container_tar_format
         ) as container:
@@ -1102,7 +1107,9 @@ class gpkg:
 
                 for m in manifest_old:
                     file_name_old = m[1]
-                    if os.path.basename(file_name_old).startswith("metadata"):
+                    if os_unicode_fs.path.basename(file_name_old).startswith(
+                        "metadata"
+                    ):
                         continue
                     old_data_tarinfo = container_old.getmember(file_name_old)
                     new_data_tarinfo = copy(old_data_tarinfo)
@@ -1118,7 +1125,7 @@ class gpkg:
 
             self._add_manifest(container)
 
-        shutil.move(tmp_gpkg_file_name, self.gpkg_file)
+        shutil_unicode_fs.move(tmp_gpkg_file_name, self.gpkg_file)
 
     def _add_metadata(self, container, metadata, compression_cmd):
         """
@@ -1148,7 +1155,7 @@ class gpkg:
             ) as metadata_tar:
 
                 for m in metadata:
-                    m_info = tarfile.TarInfo(os.path.join("metadata", m))
+                    m_info = tarfile.TarInfo(os_unicode_fs.path.join("metadata", m))
                     m_info.mtime = datetime.utcnow().timestamp()
 
                     if isinstance(metadata[m], bytes):
@@ -1235,7 +1242,7 @@ class gpkg:
 
                 for path in paths:
                     try:
-                        lst = os.lstat(path)
+                        lst = os_unicode_fs.lstat(path)
                     except OSError as e:
                         if e.errno != errno.ENOENT:
                             raise
@@ -1250,16 +1257,16 @@ class gpkg:
                     if (
                         "dir" == contents_type
                         and not stat.S_ISDIR(lst.st_mode)
-                        and os.path.isdir(live_path)
+                        and os_unicode_fs.path.isdir(live_path)
                     ):
                         # Even though this was a directory in the original ${D}, it exists
                         # as a symlink to a directory in the live filesystem.  It must be
                         # recorded as a real directory in the tar file to ensure that tar
                         # can properly extract it's children.
-                        live_path = os.path.realpath(live_path)
-                        lst = os.lstat(live_path)
+                        live_path = os_unicode_fs.path.realpath(live_path)
+                        lst = os_unicode_fs.lstat(live_path)
 
-                    # Since os.lstat() inside TarFile.gettarinfo() can trigger a
+                    # Since os_unicode_fs.lstat() inside TarFile.gettarinfo() can trigger a
                     # UnicodeEncodeError when python has something other than utf_8
                     # return from sys.getfilesystemencoding() (as in bug #388773),
                     # we implement the needed functionality here, using the result
@@ -1292,7 +1299,7 @@ class gpkg:
                         tarinfo.type = tarfile.DIRTYPE
                     elif stat.S_ISLNK(lst.st_mode):
                         tarinfo.type = tarfile.SYMTYPE
-                        tarinfo.linkname = os.readlink(live_path)
+                        tarinfo.linkname = os_unicode_fs.readlink(live_path)
                     else:
                         continue
                     try:
@@ -1433,7 +1440,7 @@ class gpkg:
             raise FileNotFound("no gpkg file provided")
 
         # Check if is file
-        if not os.path.isfile(self.gpkg_file):
+        if not os_unicode_fs.path.isfile(self.gpkg_file):
             raise FileNotFound(f"File not found {self.gpkg_file}")
 
         # Check if is tar file
@@ -1534,7 +1541,7 @@ class gpkg:
                     )
 
                 # Ignore image file and signature if not needed
-                if os.path.basename(f).startswith("image") and metadata_only:
+                if os_unicode_fs.path.basename(f).startswith("image") and metadata_only:
                     unverified_files.remove(f)
                     unverified_manifest.remove(manifest_record)
                     continue
@@ -1622,13 +1629,13 @@ class gpkg:
         metadata_dir = normalize_path(
             _unicode_decode(metadata_dir, encoding=_encodings["fs"], errors="strict")
         )
-        for parent, dirs, files in os.walk(metadata_dir):
+        for parent, dirs, files in os_unicode_fs.walk(metadata_dir):
             for f in files:
                 try:
                     f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
-                with open(os.path.join(parent, f), "rb") as metafile:
+                with open(os_unicode_fs.path.join(parent, f), "rb") as metafile:
                     metadata[f] = metafile.read()
         return metadata
 
@@ -1749,7 +1756,7 @@ class gpkg:
         path length, largest single file size, and total files size.
         """
         image_prefix_length = len(image_prefix) + 1
-        root_dir = os.path.join(
+        root_dir = os_unicode_fs.path.join(
             normalize_path(
                 _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
             ),
@@ -1765,7 +1772,7 @@ class gpkg:
         image_max_file_size = 0
         image_total_size = 0
 
-        for parent, dirs, files in os.walk(root_dir):
+        for parent, dirs, files in os_unicode_fs.walk(root_dir):
             parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
             for d in dirs:
                 try:
@@ -1774,15 +1781,15 @@ class gpkg:
                     writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
                     raise
 
-                d = os.path.join(parent, d)
+                d = os_unicode_fs.path.join(parent, d)
                 prefix_length = (
                     len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
 
-                if os.path.islink(d):
-                    path_link = os.readlink(d)
+                if os_unicode_fs.path.islink(d):
+                    path_link = os_unicode_fs.readlink(d)
                     path_link_length = len(
                         _unicode_encode(
                             path_link, encoding=_encodings["fs"], errors="strict"
@@ -1804,17 +1811,17 @@ class gpkg:
                 )
                 image_max_name_length = max(image_max_name_length, filename_length)
 
-                f = os.path.join(parent, f)
+                f = os_unicode_fs.path.join(parent, f)
                 path_length = (
                     len(_unicode_encode(f, encoding=_encodings["fs"], errors="strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
 
-                file_stat = os.lstat(f)
+                file_stat = os_unicode_fs.lstat(f)
 
-                if os.path.islink(f):
-                    path_link = os.readlink(f)
+                if os_unicode_fs.path.islink(f):
+                    path_link = os_unicode_fs.readlink(f)
                     path_link_length = len(
                         _unicode_encode(
                             path_link, encoding=_encodings["fs"], errors="strict"
@@ -1829,10 +1836,10 @@ class gpkg:
                 image_max_link_length = max(image_max_link_length, path_link_length)
 
                 try:
-                    file_size = os.path.getsize(f)
+                    file_size = os_unicode_fs.path.getsize(f)
                 except FileNotFoundError:
                     # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(f):
+                    if os_unicode_fs.path.islink(f):
                         continue
                     else:
                         raise
@@ -1852,7 +1859,7 @@ class gpkg:
         Check the pre quickpkg files size and path, return the longest
         path length, largest single file size, and total files size.
         """
-        root_dir = os.path.join(
+        root_dir = os_unicode_fs.path.join(
             normalize_path(
                 _unicode_decode(root, encoding=_encodings["fs"], errors="strict")
             ),
@@ -1876,7 +1883,7 @@ class gpkg:
                 writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
                 raise
 
-            d, f = os.path.split(path)
+            d, f = os_unicode_fs.path.split(path)
 
             prefix_length = (
                 len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
@@ -1894,10 +1901,10 @@ class gpkg:
                 - root_dir_length
             )
 
-            file_stat = os.lstat(path)
+            file_stat = os_unicode_fs.lstat(path)
 
-            if os.path.islink(path):
-                path_link = os.readlink(path)
+            if os_unicode_fs.path.islink(path):
+                path_link = os_unicode_fs.readlink(path)
                 path_link_length = len(
                     _unicode_encode(
                         path_link, encoding=_encodings["fs"], errors="strict"
@@ -1911,12 +1918,12 @@ class gpkg:
 
             image_max_link_length = max(image_max_link_length, path_link_length)
 
-            if os.path.isfile(path):
+            if os_unicode_fs.path.isfile(path):
                 try:
-                    file_size = os.path.getsize(path)
+                    file_size = os_unicode_fs.path.getsize(path)
                 except FileNotFoundError:
                     # Ignore file not found if symlink to non-existing file
-                    if os.path.islink(path):
+                    if os_unicode_fs.path.islink(path):
                         continue
                     else:
                         raise
@@ -1944,7 +1951,7 @@ class gpkg:
             raise InvalidCompressionMethod(self.compression)
 
         data_tarinfo = tarfile.TarInfo(
-            os.path.join(self.base_name, file_name + ".tar" + ext)
+            os_unicode_fs.path.join(self.base_name, file_name + ".tar" + ext)
         )
         return data_tarinfo
 
@@ -1952,7 +1959,7 @@ class gpkg:
         """
         Extract the file basename and compression method
         """
-        file_name = os.path.basename(file_name)
+        file_name = os_unicode_fs.path.basename(file_name)
         if file_name.endswith(".tar"):
             return file_name[:-4], None
 
@@ -1983,7 +1990,7 @@ class gpkg:
             base_name = self.base_name
         all_files = tar.getmembers()
         for f in all_files:
-            if os.path.dirname(f.name) == base_name:
+            if os_unicode_fs.path.dirname(f.name) == base_name:
                 try:
                     f_name, f_comp = self._extract_filename_compression(f.name)
                 except InvalidCompressionMethod:
@@ -2006,7 +2013,7 @@ class gpkg:
                                 "WARN", "Package basename mismatched, using " + f.name
                             )
                         )
-                    self.base_name_alt = os.path.dirname(f.name)
+                    self.base_name_alt = os_unicode_fs.path.dirname(f.name)
                     return f, f_comp
 
         # Not found

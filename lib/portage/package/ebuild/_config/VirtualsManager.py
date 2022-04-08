@@ -5,7 +5,7 @@ __all__ = ("VirtualsManager",)
 
 from copy import deepcopy
 
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import Atom
 from portage.exception import InvalidAtom
 from portage.localization import _
@@ -46,7 +46,7 @@ class VirtualsManager:
         """
         virtuals_list = []
         for x in profiles:
-            virtuals_file = os.path.join(x, "virtuals")
+            virtuals_file = os_unicode_fs.path.join(x, "virtuals")
             virtuals_dict = grabdict(virtuals_file)
             atoms_dict = {}
             for k, v in virtuals_dict.items():

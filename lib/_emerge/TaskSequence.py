@@ -3,7 +3,7 @@
 
 from collections import deque
 
-from portage import os
+from portage import os_unicode_fs
 from _emerge.CompositeTask import CompositeTask
 from _emerge.AsynchronousTask import AsynchronousTask
 
@@ -36,14 +36,14 @@ class TaskSequence(CompositeTask):
             task = self._task_queue.popleft()
         except IndexError:
             self._current_task = None
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self.wait()
             return
 
         self._start_task(task, self._task_exit_handler)
 
     def _task_exit_handler(self, task):
-        if self._default_exit(task) != os.EX_OK:
+        if self._default_exit(task) != os_unicode_fs.EX_OK:
             self.wait()
         elif self._task_queue:
             self._start_next_task()

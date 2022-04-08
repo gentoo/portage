@@ -61,11 +61,13 @@ portage.proxy.lazyimport.lazyimport(
     "subprocess",
 )
 
-from portage import os
-from portage import _encodings
-from portage import _os_merge
-from portage import _unicode_encode
-from portage import _unicode_decode
+from portage import (
+    os_unicode_fs,
+    os_unicode_merge,
+    _encodings,
+    _unicode_encode,
+    _unicode_decode,
+)
 from portage.const import VCS_DIRS
 from portage.exception import (
     InvalidAtom,
@@ -144,19 +146,19 @@ def writemsg_level(msg, level=0, noiselevel=0):
 
 def normalize_path(mypath):
     """
-    os.path.normpath("//foo") returns "//foo" instead of "/foo"
+    os_unicode_fs.path.normpath("//foo") returns "//foo" instead of "/foo"
     We dislike this behavior so we create our own normpath func
     to fix it.
     """
     if isinstance(mypath, bytes):
-        path_sep = os.path.sep.encode()
+        path_sep = os_unicode_fs.path.sep.encode()
     else:
-        path_sep = os.path.sep
+        path_sep = os_unicode_fs.path.sep
 
     if mypath.startswith(path_sep):
         # posixpath.normpath collapses 3 or more leading slashes to just 1.
-        return os.path.normpath(2 * path_sep + mypath)
-    return os.path.normpath(mypath)
+        return os_unicode_fs.path.normpath(2 * path_sep + mypath)
+    return os_unicode_fs.path.normpath(mypath)
 
 
 def grabfile(myfilename, compat_level=0, recursive=0, remember_source_file=False):
@@ -460,7 +462,7 @@ def read_corresponding_eapi_file(filename, default="0"):
     Read the 'eapi' file from the directory 'filename' is in.
     Returns "0" if the file is not present or invalid.
     """
-    eapi_file = os.path.join(os.path.dirname(filename), "eapi")
+    eapi_file = os_unicode_fs.path.join(os_unicode_fs.path.dirname(filename), "eapi")
     try:
         eapi = _eapi_cache[eapi_file]
     except KeyError:
@@ -582,7 +584,7 @@ def grabfile_package(
         return pkgs
     if verify_eapi and eapi is None:
         eapi = read_corresponding_eapi_file(myfilename, default=eapi_default)
-    mybasename = os.path.basename(myfilename)
+    mybasename = os_unicode_fs.path.basename(myfilename)
     is_packages_file = mybasename == "packages"
     atoms = []
     for pkg, source_file in pkgs:
@@ -637,14 +639,14 @@ def _recursive_file_list(path):
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied(path)
 
-    stack = [os.path.split(path)]
+    stack = [os_unicode_fs.path.split(path)]
 
     while stack:
         parent, fname = stack.pop()
-        fullpath = os.path.join(parent, fname)
+        fullpath = os_unicode_fs.path.join(parent, fname)
 
         try:
-            st = os.stat(fullpath)
+            st = os_unicode_fs.stat(fullpath)
         except OSError as e:
             onerror(e)
             continue
@@ -653,7 +655,7 @@ def _recursive_file_list(path):
             if fname in VCS_DIRS or not _recursive_basename_filter(fname):
                 continue
             try:
-                children = os.listdir(fullpath)
+                children = os_unicode_fs.listdir(fullpath)
             except OSError as e:
                 onerror(e)
                 continue
@@ -1055,7 +1057,7 @@ pickle_write = None
 
 
 def pickle_read(filename, default=None, debug=0):
-    if not os.access(filename, os.R_OK):
+    if not os_unicode_fs.access(filename, os_unicode_fs.R_OK):
         writemsg(_("pickle_read(): File not readable. '") + filename + "'\n", 1)
         return default
     data = None
@@ -1192,8 +1194,8 @@ def unique_everseen(iterable, key=None):
 def _do_stat(filename, follow_links=True):
     try:
         if follow_links:
-            return os.stat(filename)
-        return os.lstat(filename)
+            return os_unicode_fs.stat(filename)
+        return os_unicode_fs.lstat(filename)
     except OSError as oe:
         func_call = "stat('%s')" % filename
         if oe.errno == errno.EPERM:
@@ -1230,7 +1232,7 @@ def apply_permissions(
     ):
         try:
             if follow_links:
-                os.chown(filename, uid, gid)
+                os_unicode_fs.chown(filename, uid, gid)
             else:
                 portage.data.lchown(filename, uid, gid)
             modified = True
@@ -1287,7 +1289,7 @@ def apply_permissions(
 
     if new_mode != -1:
         try:
-            os.chmod(filename, new_mode)
+            os_unicode_fs.chmod(filename, new_mode)
             modified = True
         except OSError as oe:
             func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
@@ -1367,14 +1369,14 @@ def apply_recursive_permissions(
         all_applied = False
         onerror(e)
 
-    for dirpath, dirnames, filenames in os.walk(top):
+    for dirpath, dirnames, filenames in os_unicode_fs.walk(top):
         for name, mode, mask in chain(
             ((x, filemode, filemask) for x in filenames),
             ((x, dirmode, dirmask) for x in dirnames),
         ):
             try:
                 applied = apply_secpass_permissions(
-                    os.path.join(dirpath, name),
+                    os_unicode_fs.path.join(dirpath, name),
                     uid=uid,
                     gid=gid,
                     mode=mode,
@@ -1417,7 +1419,11 @@ def apply_secpass_permissions(
             all_applied = False
             uid = -1
 
-        if gid != -1 and gid != stat_cached.st_gid and gid not in os.getgroups():
+        if (
+            gid != -1
+            and gid != stat_cached.st_gid
+            and gid not in os_unicode_fs.getgroups()
+        ):
             all_applied = False
             gid = -1
 
@@ -1434,7 +1440,7 @@ def apply_secpass_permissions(
 
 
 class atomic_ofstream(AbstractContextManager, ObjectProxy):
-    """Write a file atomically via os.rename().  Atomic replacement prevents
+    """Write a file atomically via os_unicode_fs.rename().  Atomic replacement prevents
     interprocess interference and prevents corruption of the target
     file when the write is interrupted (for example, when an 'out of space'
     error occurs)."""
@@ -1451,7 +1457,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
             kargs.setdefault("errors", "backslashreplace")
 
         if follow_links:
-            canonical_path = os.path.realpath(filename)
+            canonical_path = os_unicode_fs.path.realpath(filename)
             object.__setattr__(self, "_real_name", canonical_path)
             tmp_name = "%s.%i" % (canonical_path, portage.getpid())
             try:
@@ -1502,7 +1508,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
 
     def close(self):
         """Closes the temporary file, copies permissions (if possible),
-        and performs the atomic replacement via os.rename().  If the abort()
+        and performs the atomic replacement via os_unicode_fs.rename().  If the abort()
         method has been called, then the temp file is closed and removed."""
         f = object.__getattribute__(self, "_file")
         real_name = object.__getattribute__(self, "_real_name")
@@ -1511,22 +1517,22 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                 f.close()
                 if not object.__getattribute__(self, "_aborted"):
                     try:
-                        apply_stat_permissions(f.name, os.stat(real_name))
+                        apply_stat_permissions(f.name, os_unicode_fs.stat(real_name))
                     except OperationNotPermitted:
                         pass
                     except FileNotFound:
                         pass
-                    except OSError as oe:  # from the above os.stat call
+                    except OSError as oe:  # from the above os_unicode_fs.stat call
                         if oe.errno in (errno.ENOENT, errno.EPERM):
                             pass
                         else:
                             raise
-                    os.rename(f.name, real_name)
+                    os_unicode_fs.rename(f.name, real_name)
             finally:
                 # Make sure we cleanup the temp file
                 # even if an exception is raised.
                 try:
-                    os.unlink(f.name)
+                    os_unicode_fs.unlink(f.name)
                 except OSError as oe:
                     pass
 
@@ -1589,14 +1595,14 @@ def ensure_dirs(dir_path, **kwargs):
     created_dir = False
 
     try:
-        os.makedirs(dir_path)
+        os_unicode_fs.makedirs(dir_path)
         created_dir = True
     except OSError as oe:
         func_call = "makedirs('%s')" % dir_path
         if oe.errno in (errno.EEXIST,):
             pass
         else:
-            if os.path.isdir(dir_path):
+            if os_unicode_fs.path.isdir(dir_path):
                 # NOTE: DragonFly raises EPERM for makedir('/')
                 # and that is supposed to be ignored here.
                 # Also, sometimes mkdir raises EISDIR on FreeBSD
@@ -1777,35 +1783,39 @@ class ConfigProtect:
         """Update internal state for isprotected() calls.  Nonexistent paths
         are ignored."""
 
-        os = _os_merge
+        os = os_unicode_merge
 
         self.protect = []
         self._dirs = set()
         for x in self.protect_list:
-            ppath = normalize_path(os.path.join(self.myroot, x.lstrip(os.path.sep)))
+            ppath = normalize_path(
+                os_unicode_fs.path.join(self.myroot, x.lstrip(os_unicode_fs.path.sep))
+            )
             # Protect files that don't exist (bug #523684). If the
             # parent directory doesn't exist, we can safely skip it.
-            if os.path.isdir(os.path.dirname(ppath)):
+            if os_unicode_fs.path.isdir(os_unicode_fs.path.dirname(ppath)):
                 self.protect.append(ppath)
             try:
-                if stat.S_ISDIR(os.stat(ppath).st_mode):
+                if stat.S_ISDIR(os_unicode_fs.stat(ppath).st_mode):
                     self._dirs.add(ppath)
             except OSError:
                 pass
 
         self.protectmask = []
         for x in self.mask_list:
-            ppath = normalize_path(os.path.join(self.myroot, x.lstrip(os.path.sep)))
+            ppath = normalize_path(
+                os_unicode_fs.path.join(self.myroot, x.lstrip(os_unicode_fs.path.sep))
+            )
             if self.case_insensitive:
                 ppath = ppath.lower()
             try:
                 """Use lstat so that anything, even a broken symlink can be
                 protected."""
-                if stat.S_ISDIR(os.lstat(ppath).st_mode):
+                if stat.S_ISDIR(os_unicode_fs.lstat(ppath).st_mode):
                     self._dirs.add(ppath)
                 self.protectmask.append(ppath)
                 """Now use stat in case this is a symlink to a directory."""
-                if stat.S_ISDIR(os.stat(ppath).st_mode):
+                if stat.S_ISDIR(os_unicode_fs.stat(ppath).st_mode):
                     self._dirs.add(ppath)
             except OSError:
                 # If it doesn't exist, there's no need to mask it.
@@ -1817,7 +1827,7 @@ class ConfigProtect:
         slash is optional for directories."""
         masked = 0
         protected = 0
-        sep = os.path.sep
+        sep = os_unicode_fs.path.sep
         if self.case_insensitive:
             obj = obj.lower()
         for ppath in self.protect:
@@ -1860,17 +1870,17 @@ def new_protect_filename(mydest, newmd5=None, force=False):
     # ._cfg0000_foo
     # 0123456789012
 
-    os = _os_merge
+    os = os_unicode_merge
 
     prot_num = -1
     last_pfile = ""
 
-    if not force and not os.path.exists(mydest):
+    if not force and not os_unicode_fs.path.exists(mydest):
         return mydest
 
-    real_filename = os.path.basename(mydest)
-    real_dirname = os.path.dirname(mydest)
-    for pfile in os.listdir(real_dirname):
+    real_filename = os_unicode_fs.path.basename(mydest)
+    real_dirname = os_unicode_fs.path.dirname(mydest)
+    for pfile in os_unicode_fs.listdir(real_dirname):
         if pfile[0:5] != "._cfg":
             continue
         if pfile[10:] != real_filename:
@@ -1885,14 +1895,14 @@ def new_protect_filename(mydest, newmd5=None, force=False):
     prot_num = prot_num + 1
 
     new_pfile = normalize_path(
-        os.path.join(
+        os_unicode_fs.path.join(
             real_dirname, "._cfg" + str(prot_num).zfill(4) + "_" + real_filename
         )
     )
-    old_pfile = normalize_path(os.path.join(real_dirname, last_pfile))
+    old_pfile = normalize_path(os_unicode_fs.path.join(real_dirname, last_pfile))
     if last_pfile and newmd5:
         try:
-            old_pfile_st = os.lstat(old_pfile)
+            old_pfile_st = os_unicode_fs.lstat(old_pfile)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
@@ -1901,7 +1911,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                 try:
                     # Read symlink target as bytes, in case the
                     # target path has a bad encoding.
-                    pfile_link = os.readlink(
+                    pfile_link = os_unicode_fs.readlink(
                         _unicode_encode(
                             old_pfile, encoding=_encodings["merge"], errors="strict"
                         )
@@ -1945,11 +1955,11 @@ def find_updated_config_files(target_root, config_protect):
         for x in config_protect:
             files = []
 
-            x = os.path.join(target_root, x.lstrip(os.path.sep))
-            if not os.access(x, os.W_OK):
+            x = os_unicode_fs.path.join(target_root, x.lstrip(os_unicode_fs.path.sep))
+            if not os_unicode_fs.access(x, os_unicode_fs.W_OK):
                 continue
             try:
-                mymode = os.lstat(x).st_mode
+                mymode = os_unicode_fs.lstat(x).st_mode
             except OSError:
                 continue
 
@@ -1957,7 +1967,7 @@ def find_updated_config_files(target_root, config_protect):
                 # We want to treat it like a directory if it
                 # is a symlink to an existing directory.
                 try:
-                    real_mode = os.stat(x).st_mode
+                    real_mode = os_unicode_fs.stat(x).st_mode
                     if stat.S_ISDIR(real_mode):
                         mymode = real_mode
                 except OSError:
@@ -1970,7 +1980,7 @@ def find_updated_config_files(target_root, config_protect):
             else:
                 mycommand = (
                     "find '%s' -maxdepth 1 -name '._cfg????_%s'"
-                    % os.path.split(x.rstrip(os.path.sep))
+                    % os_unicode_fs.path.split(x.rstrip(os_unicode_fs.path.sep))
                 )
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
             cmd = shlex_split(mycommand)
@@ -1983,7 +1993,10 @@ def find_updated_config_files(target_root, config_protect):
             )
             output = _unicode_decode(proc.communicate()[0], encoding=encoding)
             status = proc.wait()
-            if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
+            if (
+                os_unicode_fs.WIFEXITED(status)
+                and os_unicode_fs.WEXITSTATUS(status) == os_unicode_fs.EX_OK
+            ):
                 files = output.split("\0")
                 # split always produces an empty string as the last element
                 if files and not files[-1]:
@@ -2003,7 +2016,9 @@ def getlibpaths(root, env=None):
         for l in grabfile(path):
             include_match = _ld_so_include_re.match(l)
             if include_match is not None:
-                subpath = os.path.join(os.path.dirname(path), include_match.group(1))
+                subpath = os_unicode_fs.path.join(
+                    os_unicode_fs.path.dirname(path), include_match.group(1)
+                )
                 for p in glob.glob(subpath):
                     for r in read_ld_so_conf(p):
                         yield r
@@ -2012,10 +2027,10 @@ def getlibpaths(root, env=None):
 
     """ Return a list of paths that are used for library lookups """
     if env is None:
-        env = os.environ
+        env = os_unicode_fs.environ
     # the following is based on the information from ld.so(8)
     rval = env.get("LD_LIBRARY_PATH", "").split(":")
-    rval.extend(read_ld_so_conf(os.path.join(root, "etc", "ld.so.conf")))
+    rval.extend(read_ld_so_conf(os_unicode_fs.path.join(root, "etc", "ld.so.conf")))
     rval.append("/usr/lib")
     rval.append("/lib")
 

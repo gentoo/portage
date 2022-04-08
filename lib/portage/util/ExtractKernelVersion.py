@@ -6,7 +6,7 @@ __all__ = ["ExtractKernelVersion"]
 import io
 import logging
 
-from portage import os, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import grabfile, shlex_split, writemsg_level
 
@@ -23,7 +23,7 @@ def ExtractKernelVersion(base_dir):
 
     """
     lines = []
-    pathname = os.path.join(base_dir, "Makefile")
+    pathname = os_unicode_fs.path.join(base_dir, "Makefile")
     try:
         f = io.open(
             _unicode_encode(pathname, encoding=_encodings["fs"], errors="strict"),
@@ -64,7 +64,7 @@ def ExtractKernelVersion(base_dir):
             version += items[1]
 
     # Grab a list of files named localversion* and sort them
-    localversions = os.listdir(base_dir)
+    localversions = os_unicode_fs.listdir(base_dir)
     for x in range(len(localversions) - 1, -1, -1):
         if localversions[x][:12] != "localversion":
             del localversions[x]
@@ -75,7 +75,7 @@ def ExtractKernelVersion(base_dir):
         version += "".join(" ".join(grabfile(base_dir + "/" + lv)).split())
 
     # Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
-    loader = KeyValuePairFileLoader(os.path.join(base_dir, ".config"), None)
+    loader = KeyValuePairFileLoader(os_unicode_fs.path.join(base_dir, ".config"), None)
     kernelconfig, loader_errors = loader.load()
     if loader_errors:
         for file_path, file_errors in loader_errors.items():

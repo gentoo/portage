@@ -7,7 +7,7 @@ import time
 
 import portage
 import portage.util.formatter as formatter
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_encode
 from portage.output import xtermTitle
@@ -47,7 +47,7 @@ class JobStatusDisplay:
         self.reset()
 
         isatty = (
-            os.environ.get("TERM") != "dumb"
+            os_unicode_fs.environ.get("TERM") != "dumb"
             and hasattr(self.out, "isatty")
             and self.out.isatty()
         )
@@ -97,7 +97,7 @@ class JobStatusDisplay:
                 False otherwise.
         """
 
-        term_type = os.environ.get("TERM", "").strip()
+        term_type = os_unicode_fs.environ.get("TERM", "").strip()
         if not term_type:
             return False
         tigetstr = None
@@ -290,7 +290,7 @@ class JobStatusDisplay:
             # in the xterm title, just like emergelog() does.
             # See bug #390699.
             title_str = " ".join(plain_output.split())
-            hostname = os.environ.get("HOSTNAME")
+            hostname = os_unicode_fs.environ.get("HOSTNAME")
             if hostname is not None:
                 title_str = "%s: %s" % (hostname, title_str)
             xtermTitle(title_str)

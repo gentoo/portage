@@ -4,7 +4,7 @@
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.cache.cache_errors import CacheError
 from portage.dep import _repo_separator
 from portage.util._async.AsyncScheduler import AsyncScheduler
@@ -143,7 +143,7 @@ class MetadataRegen(AsyncScheduler):
 
     def _task_exit(self, metadata_process):
 
-        if metadata_process.returncode != os.EX_OK:
+        if metadata_process.returncode != os_unicode_fs.EX_OK:
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:
                 portage.writemsg(

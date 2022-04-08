@@ -3,9 +3,7 @@
 
 import tempfile
 
-from portage import os
-from portage import shutil
-from portage import _unicode_encode
+from portage import os_unicode_fs, shutil_unicode_fs, _unicode_encode
 from portage.tests import TestCase
 from portage.util import getconfig
 from portage.exception import ParseError
@@ -26,7 +24,7 @@ class GetConfigTestCase(TestCase):
     }
 
     def testGetConfig(self):
-        make_globals_file = os.path.join(self.cnf_path, "make.globals")
+        make_globals_file = os_unicode_fs.path.join(self.cnf_path, "make.globals")
         d = getconfig(make_globals_file)
         for k, v in self._cases.items():
             self.assertEqual(d[k], v)
@@ -34,10 +32,10 @@ class GetConfigTestCase(TestCase):
     def testGetConfigSourceLex(self):
         try:
             tempdir = tempfile.mkdtemp()
-            make_conf_file = os.path.join(tempdir, "make.conf")
+            make_conf_file = os_unicode_fs.path.join(tempdir, "make.conf")
             with open(make_conf_file, "w") as f:
                 f.write('source "${DIR}/sourced_file"\n')
-            sourced_file = os.path.join(tempdir, "sourced_file")
+            sourced_file = os_unicode_fs.path.join(tempdir, "sourced_file")
             with open(sourced_file, "w") as f:
                 f.write('PASSES_SOURCING_TEST="True"\n')
 
@@ -58,7 +56,7 @@ class GetConfigTestCase(TestCase):
                 expand={},
             )
         finally:
-            shutil.rmtree(tempdir)
+            shutil_unicode_fs.rmtree(tempdir)
 
     def testGetConfigProfileEnv(self):
         # Test the mode which is used to parse /etc/env.d and /etc/profile.env.

@@ -3,7 +3,7 @@
 
 from _emerge.AbstractPollTask import AbstractPollTask
 
-from portage import os
+from portage import os_unicode_fs
 from portage.cache.mappings import slot_dict_class
 
 
@@ -19,7 +19,9 @@ class FifoIpcDaemon(AbstractPollTask):
 
         # File streams are in unbuffered mode since we do atomic
         # read and write of whole pickles.
-        self._files.pipe_in = os.open(self.input_fifo, os.O_RDONLY | os.O_NONBLOCK)
+        self._files.pipe_in = os_unicode_fs.open(
+            self.input_fifo, os_unicode_fs.O_RDONLY | os_unicode_fs.O_NONBLOCK
+        )
 
         self.scheduler.add_reader(self._files.pipe_in, self._input_handler)
 
@@ -31,8 +33,10 @@ class FifoIpcDaemon(AbstractPollTask):
         POLLHUP events (bug #339976).
         """
         self.scheduler.remove_reader(self._files.pipe_in)
-        os.close(self._files.pipe_in)
-        self._files.pipe_in = os.open(self.input_fifo, os.O_RDONLY | os.O_NONBLOCK)
+        os_unicode_fs.close(self._files.pipe_in)
+        self._files.pipe_in = os_unicode_fs.open(
+            self.input_fifo, os_unicode_fs.O_RDONLY | os_unicode_fs.O_NONBLOCK
+        )
 
         self.scheduler.add_reader(self._files.pipe_in, self._input_handler)
 
@@ -56,5 +60,5 @@ class FifoIpcDaemon(AbstractPollTask):
         if self._files is not None:
             for f in self._files.values():
                 self.scheduler.remove_reader(f)
-                os.close(f)
+                os_unicode_fs.close(f)
             self._files = None

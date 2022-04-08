@@ -9,7 +9,7 @@ import sys
 
 from _emerge.SubProcess import SubProcess
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import BASH_BINARY
 from portage.localization import _
 from portage.output import EOutput
@@ -86,7 +86,7 @@ class SpawnProcess(SubProcess):
             # access to stdin. Until then, use /dev/null so that any
             # attempts to read from stdin will immediately return EOF
             # instead of blocking indefinitely.
-            null_input = os.open("/dev/null", os.O_RDWR)
+            null_input = os_unicode_fs.open("/dev/null", os_unicode_fs.O_RDWR)
             fd_pipes[0] = null_input
 
         fd_pipes.setdefault(0, portage._get_stdin().fileno())
@@ -130,9 +130,9 @@ class SpawnProcess(SubProcess):
 
         retval = self._spawn(self.args, **kwargs)
 
-        os.close(slave_fd)
+        os_unicode_fs.close(slave_fd)
         if null_input is not None:
-            os.close(null_input)
+            os_unicode_fs.close(null_input)
 
         if isinstance(retval, int):
             # spawn failed
@@ -144,7 +144,7 @@ class SpawnProcess(SubProcess):
 
         stdout_fd = None
         if can_log and not self.background:
-            stdout_fd = os.dup(fd_pipes_orig[1])
+            stdout_fd = os_unicode_fs.dup(fd_pipes_orig[1])
 
         build_logger = BuildLogger(
             env=self.env,
@@ -217,7 +217,7 @@ class SpawnProcess(SubProcess):
         @type fd_pipes: dict
         @param fd_pipes: pipes from which to copy terminal size if desired.
         """
-        return os.pipe()
+        return os_unicode_fs.pipe()
 
     def _spawn(self, args, **kwargs):
         spawn_func = portage.process.spawn
@@ -253,7 +253,9 @@ class SpawnProcess(SubProcess):
 
             def get_pids(cgroup):
                 try:
-                    with open(os.path.join(cgroup, "cgroup.procs"), "r") as f:
+                    with open(
+                        os_unicode_fs.path.join(cgroup, "cgroup.procs"), "r"
+                    ) as f:
                         return [int(p) for p in f.read().split()]
                 except EnvironmentError:
                     # removed by cgroup-release-agent
@@ -262,7 +264,7 @@ class SpawnProcess(SubProcess):
             def kill_all(pids, sig):
                 for p in pids:
                     try:
-                        os.kill(p, sig)
+                        os_unicode_fs.kill(p, sig)
                     except OSError as e:
                         if e.errno == errno.EPERM:
                             # Reported with hardened kernel (bug #358211).
@@ -289,7 +291,7 @@ class SpawnProcess(SubProcess):
                 msg.append(
                     _("Failed to kill pid(s) in '%(cgroup)s': %(pids)s")
                     % dict(
-                        cgroup=os.path.join(self.cgroup, "cgroup.procs"),
+                        cgroup=os_unicode_fs.path.join(self.cgroup, "cgroup.procs"),
                         pids=" ".join(str(pid) for pid in pids),
                     )
                 )
@@ -298,7 +300,7 @@ class SpawnProcess(SubProcess):
 
             # step 2: remove the cgroup
             try:
-                os.rmdir(self.cgroup)
+                os_unicode_fs.rmdir(self.cgroup)
             except OSError:
                 # it may be removed already, or busy
                 # we can't do anything good about it

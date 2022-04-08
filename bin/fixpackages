@@ -17,7 +17,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 from portage.output import EOutput
 from textwrap import wrap
 from portage._global_updates import _global_updates
@@ -45,7 +45,7 @@ if mysettings["ROOT"] != "/":
     sys.exit(1)
 
 try:
-    os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
+    os_unicode_fs.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
 except (OSError, ValueError) as e:
     portage.writemsg(
         "!!! Failed to change nice value to '%s'\n" % mysettings["PORTAGE_NICENESS"]

@@ -5,7 +5,7 @@ import logging
 import subprocess
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level, shlex_split
 
 from portage.sync.syncbase import NewBase
@@ -25,15 +25,17 @@ class MercurialSync(NewBase):
 
     def exists(self, **kwargs):
         """Tests whether the repo actually exists"""
-        return os.path.exists(os.path.join(self.repo.location, ".hg"))
+        return os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(self.repo.location, ".hg")
+        )
 
     def new(self, **kwargs):
         """Do the initial clone of the repository"""
         if kwargs:
             self._kwargs(kwargs)
         try:
-            if not os.path.exists(self.repo.location):
-                os.makedirs(self.repo.location)
+            if not os_unicode_fs.path.exists(self.repo.location):
+                os_unicode_fs.makedirs(self.repo.location)
                 self.logger(
                     self.xterm_titles, "Created new directory %s" % self.repo.location
                 )
@@ -86,12 +88,12 @@ class MercurialSync(NewBase):
             cwd=portage._unicode_encode(self.repo.location),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! hg clone error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
-        return (os.EX_OK, True)
+        return (os_unicode_fs.EX_OK, True)
 
     def update(self):
         """Update existing mercurial repository, and ignore the syncuri. We are
@@ -143,7 +145,7 @@ class MercurialSync(NewBase):
             cwd=portage._unicode_encode(self.repo.location),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! hg pull error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
@@ -153,7 +155,7 @@ class MercurialSync(NewBase):
             rev_cmd, cwd=portage._unicode_encode(self.repo.location)
         )
 
-        return (os.EX_OK, current_rev != previous_rev)
+        return (os_unicode_fs.EX_OK, current_rev != previous_rev)
 
     def retrieve_head(self, **kwargs):
         """Get information about the head commit"""
@@ -162,7 +164,7 @@ class MercurialSync(NewBase):
         rev_cmd = [self.bin_command, "id", "--id", "--rev", "tip"]
         try:
             ret = (
-                os.EX_OK,
+                os_unicode_fs.EX_OK,
                 portage._unicode_decode(
                     subprocess.check_output(
                         rev_cmd, cwd=portage._unicode_encode(self.repo.location)

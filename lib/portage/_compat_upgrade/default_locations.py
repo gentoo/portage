@@ -4,7 +4,7 @@
 import re
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import GLOBAL_CONFIG_PATH
 
 COMPAT_DISTDIR = "usr/portage/distfiles"
@@ -35,35 +35,41 @@ def main():
     out = portage.output.EOutput()
     config = portage.settings
 
-    compat_distdir = os.path.join(portage.const.EPREFIX or "/", COMPAT_DISTDIR)
+    compat_distdir = os_unicode_fs.path.join(
+        portage.const.EPREFIX or "/", COMPAT_DISTDIR
+    )
     try:
-        do_distdir = os.path.samefile(config["DISTDIR"], compat_distdir)
+        do_distdir = os_unicode_fs.path.samefile(config["DISTDIR"], compat_distdir)
     except OSError:
         do_distdir = False
 
-    compat_pkgdir = os.path.join(portage.const.EPREFIX or "/", COMPAT_PKGDIR)
+    compat_pkgdir = os_unicode_fs.path.join(portage.const.EPREFIX or "/", COMPAT_PKGDIR)
     try:
-        do_pkgdir = os.path.samefile(config["PKGDIR"], compat_pkgdir)
+        do_pkgdir = os_unicode_fs.path.samefile(config["PKGDIR"], compat_pkgdir)
     except OSError:
         do_pkgdir = False
 
-    compat_rpmdir = os.path.join(portage.const.EPREFIX or "/", COMPAT_RPMDIR)
+    compat_rpmdir = os_unicode_fs.path.join(portage.const.EPREFIX or "/", COMPAT_RPMDIR)
     try:
-        do_rpmdir = os.path.samefile(config["RPMDIR"], compat_rpmdir)
+        do_rpmdir = os_unicode_fs.path.samefile(config["RPMDIR"], compat_rpmdir)
     except OSError:
         do_rpmdir = False
 
-    compat_main_repo = os.path.join(portage.const.EPREFIX or "/", COMPAT_MAIN_REPO)
+    compat_main_repo = os_unicode_fs.path.join(
+        portage.const.EPREFIX or "/", COMPAT_MAIN_REPO
+    )
     try:
-        do_main_repo = os.path.samefile(
+        do_main_repo = os_unicode_fs.path.samefile(
             config.repositories.mainRepoLocation(), compat_main_repo
         )
     except OSError:
         do_main_repo = False
 
     if do_distdir or do_pkgdir or do_rpmdir:
-        config_path = os.path.join(
-            os.environ["ED"], GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
+        config_path = os_unicode_fs.path.join(
+            os_unicode_fs.environ["ED"],
+            GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep),
+            "make.globals",
         )
         with open(config_path) as f:
             content = f.read()
@@ -101,8 +107,10 @@ def main():
             f.write(content)
 
     if do_main_repo:
-        config_path = os.path.join(
-            os.environ["ED"], GLOBAL_CONFIG_PATH.lstrip(os.sep), "repos.conf"
+        config_path = os_unicode_fs.path.join(
+            os_unicode_fs.environ["ED"],
+            GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep),
+            "repos.conf",
         )
         with open(config_path) as f:
             content = f.read()

@@ -4,7 +4,7 @@
 import io
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import Atom, _repo_name_re
 from portage.eapi import eapi_has_repo_deps
 from portage.elog import messages as elog_messages
@@ -51,7 +51,10 @@ class QueryCommand(IpcCommand):
         db = self.get_db()
         eapi = self.settings.get("EAPI")
 
-        root = normalize_path(root or os.sep).rstrip(os.sep) + os.sep
+        root = (
+            normalize_path(root or os_unicode_fs.sep).rstrip(os_unicode_fs.sep)
+            + os_unicode_fs.sep
+        )
         if root not in db:
             return ("", "%s: Invalid ROOT: %s\n" % (cmd, root), 3)
 
@@ -127,12 +130,12 @@ class QueryCommand(IpcCommand):
             if cmd == "license_path":
                 paths = reversed(
                     [
-                        os.path.join(x.location, "licenses", args[1])
+                        os_unicode_fs.path.join(x.location, "licenses", args[1])
                         for x in list(repo.masters) + [repo]
                     ]
                 )
                 for path in paths:
-                    if os.path.exists(path):
+                    if os_unicode_fs.path.exists(path):
                         return ("%s\n" % path, warnings_str, 0)
                 return ("", warnings_str, 1)
         return ("", "Invalid command: %s\n" % cmd, 3)

@@ -7,7 +7,7 @@ import logging
 import shelve
 import time
 
-from portage import os
+from portage import os_unicode_fs
 from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
 from .ContentDB import ContentDB
@@ -82,7 +82,7 @@ class Config:
 
         self.layout_conf = MirrorLayoutConfig()
         if getattr(options, "layout_conf", None) is None:
-            options.layout_conf = os.path.join(self.distfiles, "layout.conf")
+            options.layout_conf = os_unicode_fs.path.join(self.distfiles, "layout.conf")
         self.layout_conf.read_from_file(options.layout_conf)
         self.layouts = self.layout_conf.get_all_layouts()
 
@@ -121,7 +121,7 @@ class Config:
         else:
             open_flag = "c"
 
-        if dry_run and not os.path.exists(db_file):
+        if dry_run and not os_unicode_fs.path.exists(db_file):
             db = {}
         else:
             try:

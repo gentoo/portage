@@ -11,7 +11,7 @@ except ImportError:
     import dummy_threading as threading
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util._async.TaskScheduler import TaskScheduler
 from _emerge.CompositeTask import CompositeTask
 from .FetchIterator import FetchIterator
@@ -77,7 +77,7 @@ class MirrorDistTask(CompositeTask):
 
         self._summary()
 
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._current_task = None
         self._async_wait()
 
@@ -91,12 +91,12 @@ class MirrorDistTask(CompositeTask):
         # Use a dict optimize access.
         recycle_db_cache = dict(recycle_db.items())
 
-        for filename in os.listdir(recycle_dir):
+        for filename in os_unicode_fs.listdir(recycle_dir):
 
-            recycle_file = os.path.join(recycle_dir, filename)
+            recycle_file = os_unicode_fs.path.join(recycle_dir, filename)
 
             try:
-                st = os.stat(recycle_file)
+                st = os_unicode_fs.stat(recycle_file)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     logging.error(
@@ -120,7 +120,7 @@ class MirrorDistTask(CompositeTask):
                         logging.info(("drop '%s' from " "recycle db") % filename)
                     else:
                         try:
-                            os.unlink(recycle_file)
+                            os_unicode_fs.unlink(recycle_file)
                         except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
                                 logging.error(

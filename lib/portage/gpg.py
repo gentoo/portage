@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 
-from portage import os
+from portage import os_unicode_fs
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import GPGException
 from portage.output import colorize
@@ -53,7 +53,9 @@ class GPG:
             == "gpkg"
         ):
             try:
-                os.environ["GPG_TTY"] = os.ttyname(sys.stdout.fileno())
+                os_unicode_fs.environ["GPG_TTY"] = os_unicode_fs.ttyname(
+                    sys.stdout.fileno()
+                )
             except OSError as e:
                 # When run with no input/output tty, this will fail.
                 # However, if the password is given by command,
@@ -63,7 +65,7 @@ class GPG:
             cmd = shlex_split(varexpand(self.GPG_unlock_command, mydict=self.settings))
             return_code = subprocess.Popen(cmd).wait()
 
-            if return_code == os.EX_OK:
+            if return_code == os_unicode_fs.EX_OK:
                 writemsg_stdout(f"{colorize('GOOD', 'unlocked')}\n")
                 sys.stdout.flush()
             else:
@@ -102,5 +104,5 @@ class GPG:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT,
             )
-            if proc.wait() != os.EX_OK:
+            if proc.wait() != os_unicode_fs.EX_OK:
                 raise GPGException("GPG keepalive failed")

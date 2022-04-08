@@ -7,8 +7,8 @@ import tempfile
 import portage
 
 from itertools import permutations
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs
+from portage import shutil_unicode_fs
 from portage.const import (
     GLOBAL_CONFIG_PATH,
     PORTAGE_BIN_PATH,
@@ -133,15 +133,21 @@ class ResolverPlayground:
             self.eprefix = normalize_path(tempfile.mkdtemp())
 
             # EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
-            eubin = os.path.join(self.eprefix, "usr", "bin")
+            eubin = os_unicode_fs.path.join(self.eprefix, "usr", "bin")
             ensure_dirs(eubin)
             for x in self.portage_bin:
-                os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eubin, x))
+                os_unicode_fs.symlink(
+                    os_unicode_fs.path.join(PORTAGE_BIN_PATH, x),
+                    os_unicode_fs.path.join(eubin, x),
+                )
 
-            eusbin = os.path.join(self.eprefix, "usr", "sbin")
+            eusbin = os_unicode_fs.path.join(self.eprefix, "usr", "sbin")
             ensure_dirs(eusbin)
             for x in self.portage_sbin:
-                os.symlink(os.path.join(PORTAGE_BIN_PATH, x), os.path.join(eusbin, x))
+                os_unicode_fs.symlink(
+                    os_unicode_fs.path.join(PORTAGE_BIN_PATH, x),
+                    os_unicode_fs.path.join(eusbin, x),
+                )
 
             essential_binaries = (
                 "awk",
@@ -177,20 +183,20 @@ class ResolverPlayground:
                 "zstd",
             )
             # Exclude internal wrappers from PATH lookup.
-            orig_path = os.environ["PATH"]
+            orig_path = os_unicode_fs.environ["PATH"]
             included_paths = []
             for path in orig_path.split(":"):
                 if path and not fnmatch.fnmatch(path, "*/portage/*/ebuild-helpers*"):
                     included_paths.append(path)
             try:
-                os.environ["PATH"] = ":".join(included_paths)
+                os_unicode_fs.environ["PATH"] = ":".join(included_paths)
                 for x in essential_binaries:
                     path = find_binary(x)
                     if path is None:
                         raise portage.exception.CommandNotFound(x)
-                    os.symlink(path, os.path.join(eubin, x))
+                    os_unicode_fs.symlink(path, os_unicode_fs.path.join(eubin, x))
             finally:
-                os.environ["PATH"] = orig_path
+                os_unicode_fs.environ["PATH"] = orig_path
         else:
             self.eprefix = normalize_path(eprefix)
 
@@ -200,17 +206,19 @@ class ResolverPlayground:
         # the "real" value of portage.const.EPREFIX is entirely
         # irrelevant (see bug #492932).
         self._orig_eprefix = portage.const.EPREFIX
-        portage.const.EPREFIX = self.eprefix.rstrip(os.sep)
+        portage.const.EPREFIX = self.eprefix.rstrip(os_unicode_fs.sep)
 
-        self.eroot = self.eprefix + os.sep
+        self.eroot = self.eprefix + os_unicode_fs.sep
         if targetroot:
-            self.target_root = os.path.join(self.eroot, "target_root")
+            self.target_root = os_unicode_fs.path.join(self.eroot, "target_root")
         else:
-            self.target_root = os.sep
-        self.distdir = os.path.join(self.eroot, "var", "portage", "distfiles")
-        self.pkgdir = os.path.join(self.eprefix, "pkgdir")
-        self.vdbdir = os.path.join(self.eroot, "var/db/pkg")
-        os.makedirs(self.vdbdir)
+            self.target_root = os_unicode_fs.sep
+        self.distdir = os_unicode_fs.path.join(
+            self.eroot, "var", "portage", "distfiles"
+        )
+        self.pkgdir = os_unicode_fs.path.join(self.eprefix, "pkgdir")
+        self.vdbdir = os_unicode_fs.path.join(self.eroot, "var/db/pkg")
+        os_unicode_fs.makedirs(self.vdbdir)
 
         if not debug:
             portage.util.noiselimit = -2
@@ -253,25 +261,25 @@ class ResolverPlayground:
             if repo == "test_repo":
                 self._repositories["DEFAULT"] = {"main-repo": repo}
 
-            repo_path = os.path.join(self.eroot, "var", "repositories", repo)
+            repo_path = os_unicode_fs.path.join(self.eroot, "var", "repositories", repo)
             self._repositories[repo] = {"location": repo_path}
-            profile_path = os.path.join(repo_path, "profiles")
+            profile_path = os_unicode_fs.path.join(repo_path, "profiles")
 
             try:
-                os.makedirs(profile_path)
-            except os.error:
+                os_unicode_fs.makedirs(profile_path)
+            except os_unicode_fs.error:
                 pass
 
-            repo_name_file = os.path.join(profile_path, "repo_name")
+            repo_name_file = os_unicode_fs.path.join(profile_path, "repo_name")
             with open(repo_name_file, "w") as f:
                 f.write("%s\n" % repo)
 
         return self._repositories[repo]["location"]
 
     def _create_distfiles(self, distfiles):
-        os.makedirs(self.distdir)
+        os_unicode_fs.makedirs(self.distdir)
         for k, v in distfiles.items():
-            with open(os.path.join(self.distdir, k), "wb") as f:
+            with open(os_unicode_fs.path.join(self.distdir, k), "wb") as f:
                 f.write(v)
 
     def _create_ebuilds(self, ebuilds):
@@ -298,11 +306,13 @@ class ResolverPlayground:
                 )
 
             repo_dir = self._get_repo_dir(repo)
-            ebuild_dir = os.path.join(repo_dir, a.cp)
-            ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
+            ebuild_dir = os_unicode_fs.path.join(repo_dir, a.cp)
+            ebuild_path = os_unicode_fs.path.join(
+                ebuild_dir, a.cpv.split("/")[1] + ".ebuild"
+            )
             try:
-                os.makedirs(ebuild_dir)
-            except os.error:
+                os_unicode_fs.makedirs(ebuild_dir)
+            except os_unicode_fs.error:
                 pass
 
             with open(ebuild_path, "w") as f:
@@ -324,8 +334,10 @@ class ResolverPlayground:
                 repo = "test_repo"
 
             repo_dir = self._get_repo_dir(repo)
-            ebuild_dir = os.path.join(repo_dir, a.cp)
-            ebuild_path = os.path.join(ebuild_dir, a.cpv.split("/")[1] + ".ebuild")
+            ebuild_dir = os_unicode_fs.path.join(repo_dir, a.cp)
+            ebuild_path = os_unicode_fs.path.join(
+                ebuild_dir, a.cpv.split("/")[1] + ".ebuild"
+            )
 
             portdb = self.trees[self.eroot]["porttree"].dbapi
             tmpsettings["O"] = ebuild_dir
@@ -363,33 +375,35 @@ class ResolverPlayground:
             metadata["BINPKG_FORMAT"] = binpkg_format
 
             repo_dir = self.pkgdir
-            category_dir = os.path.join(repo_dir, cat)
+            category_dir = os_unicode_fs.path.join(repo_dir, cat)
             if "BUILD_ID" in metadata:
                 if binpkg_format == "xpak":
-                    binpkg_path = os.path.join(
+                    binpkg_path = os_unicode_fs.path.join(
                         category_dir, pn, "%s-%s.xpak" % (pf, metadata["BUILD_ID"])
                     )
                 elif binpkg_format == "gpkg":
-                    binpkg_path = os.path.join(
+                    binpkg_path = os_unicode_fs.path.join(
                         category_dir, pn, "%s-%s.gpkg.tar" % (pf, metadata["BUILD_ID"])
                     )
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
             else:
                 if binpkg_format == "xpak":
-                    binpkg_path = os.path.join(category_dir, pf + ".tbz2")
+                    binpkg_path = os_unicode_fs.path.join(category_dir, pf + ".tbz2")
                 elif binpkg_format == "gpkg":
-                    binpkg_path = os.path.join(category_dir, pf + ".gpkg.tar")
+                    binpkg_path = os_unicode_fs.path.join(
+                        category_dir, pf + ".gpkg.tar"
+                    )
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
 
-            ensure_dirs(os.path.dirname(binpkg_path))
+            ensure_dirs(os_unicode_fs.path.dirname(binpkg_path))
             if binpkg_format == "xpak":
                 t = portage.xpak.tbz2(binpkg_path)
                 t.recompose_mem(portage.xpak.xpak_mem(metadata))
             elif binpkg_format == "gpkg":
                 t = portage.gpkg.gpkg(self.settings, a.cpv, binpkg_path)
-                t.compress(os.path.dirname(binpkg_path), metadata)
+                t.compress(os_unicode_fs.path.dirname(binpkg_path), metadata)
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
 
@@ -400,10 +414,10 @@ class ResolverPlayground:
             if repo is None:
                 repo = "test_repo"
 
-            vdb_pkg_dir = os.path.join(self.vdbdir, a.cpv)
+            vdb_pkg_dir = os_unicode_fs.path.join(self.vdbdir, a.cpv)
             try:
-                os.makedirs(vdb_pkg_dir)
-            except os.error:
+                os_unicode_fs.makedirs(vdb_pkg_dir)
+            except os_unicode_fs.error:
                 pass
 
             metadata = installed[cpv].copy()
@@ -428,16 +442,18 @@ class ResolverPlayground:
 
             metadata["repository"] = repo
             for k, v in metadata.items():
-                with open(os.path.join(vdb_pkg_dir, k), "w") as f:
+                with open(os_unicode_fs.path.join(vdb_pkg_dir, k), "w") as f:
                     f.write("%s\n" % v)
 
-            ebuild_path = os.path.join(vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild")
+            ebuild_path = os_unicode_fs.path.join(
+                vdb_pkg_dir, a.cpv.split("/")[1] + ".ebuild"
+            )
             with open(ebuild_path, "w") as f:
                 f.write('EAPI="%s"\n' % metadata.pop("EAPI", "0"))
                 for k, v in metadata.items():
                     f.write('%s="%s"\n' % (k, v))
 
-            env_path = os.path.join(vdb_pkg_dir, "environment.bz2")
+            env_path = os_unicode_fs.path.join(vdb_pkg_dir, "environment.bz2")
             with bz2.BZ2File(env_path, mode="w") as f:
                 with open(ebuild_path, "rb") as inputfile:
                     f.write(inputfile.read())
@@ -446,11 +462,11 @@ class ResolverPlayground:
         self, ebuilds, eclasses, installed, profile, repo_configs, user_config, sets
     ):
 
-        user_config_dir = os.path.join(self.eroot, USER_CONFIG_PATH)
+        user_config_dir = os_unicode_fs.path.join(self.eroot, USER_CONFIG_PATH)
 
         try:
-            os.makedirs(user_config_dir)
-        except os.error:
+            os_unicode_fs.makedirs(user_config_dir)
+        except os_unicode_fs.error:
             pass
 
         for repo in self._repositories:
@@ -458,9 +474,9 @@ class ResolverPlayground:
                 continue
 
             repo_dir = self._get_repo_dir(repo)
-            profile_dir = os.path.join(repo_dir, "profiles")
-            metadata_dir = os.path.join(repo_dir, "metadata")
-            os.makedirs(metadata_dir)
+            profile_dir = os_unicode_fs.path.join(repo_dir, "profiles")
+            metadata_dir = os_unicode_fs.path.join(repo_dir, "metadata")
+            os_unicode_fs.makedirs(metadata_dir)
 
             # Create $REPO/profiles/categories
             categories = set()
@@ -471,13 +487,13 @@ class ResolverPlayground:
                 if ebuilds_repo == repo:
                     categories.add(catsplit(cpv)[0])
 
-            categories_file = os.path.join(profile_dir, "categories")
+            categories_file = os_unicode_fs.path.join(profile_dir, "categories")
             with open(categories_file, "w") as f:
                 for cat in categories:
                     f.write(cat + "\n")
 
             # Create $REPO/profiles/license_groups
-            license_file = os.path.join(profile_dir, "license_groups")
+            license_file = os_unicode_fs.path.join(profile_dir, "license_groups")
             with open(license_file, "w") as f:
                 f.write("EULA TEST\n")
 
@@ -485,19 +501,23 @@ class ResolverPlayground:
             if repo_config:
                 for config_file, lines in repo_config.items():
                     if config_file not in self.config_files and not any(
-                        fnmatch.fnmatch(config_file, os.path.join(x, "*"))
+                        fnmatch.fnmatch(config_file, os_unicode_fs.path.join(x, "*"))
                         for x in self.config_files
                     ):
                         raise ValueError("Unknown config file: '%s'" % config_file)
 
                     if config_file in ("layout.conf",):
-                        file_name = os.path.join(repo_dir, "metadata", config_file)
+                        file_name = os_unicode_fs.path.join(
+                            repo_dir, "metadata", config_file
+                        )
                     else:
-                        file_name = os.path.join(profile_dir, config_file)
-                        if "/" in config_file and not os.path.isdir(
-                            os.path.dirname(file_name)
+                        file_name = os_unicode_fs.path.join(profile_dir, config_file)
+                        if "/" in config_file and not os_unicode_fs.path.isdir(
+                            os_unicode_fs.path.dirname(file_name)
                         ):
-                            os.makedirs(os.path.dirname(file_name))
+                            os_unicode_fs.makedirs(
+                                os_unicode_fs.path.dirname(file_name)
+                            )
                     with open(file_name, "w") as f:
                         for line in lines:
                             f.write("%s\n" % line)
@@ -510,12 +530,15 @@ class ResolverPlayground:
                             f.write("masters =\n")
 
             # Create $profile_dir/eclass (we fail to digest the ebuilds if it's not there)
-            eclass_dir = os.path.join(repo_dir, "eclass")
-            os.makedirs(eclass_dir)
+            eclass_dir = os_unicode_fs.path.join(repo_dir, "eclass")
+            os_unicode_fs.makedirs(eclass_dir)
 
             for eclass_name, eclass_content in eclasses.items():
                 with open(
-                    os.path.join(eclass_dir, "{}.eclass".format(eclass_name)), "wt"
+                    os_unicode_fs.path.join(
+                        eclass_dir, "{}.eclass".format(eclass_name)
+                    ),
+                    "wt",
                 ) as f:
                     if isinstance(eclass_content, str):
                         eclass_content = [eclass_content]
@@ -524,32 +547,36 @@ class ResolverPlayground:
 
             # Temporarily write empty value of masters until it becomes default.
             if not repo_config or "layout.conf" not in repo_config:
-                layout_conf_path = os.path.join(repo_dir, "metadata", "layout.conf")
+                layout_conf_path = os_unicode_fs.path.join(
+                    repo_dir, "metadata", "layout.conf"
+                )
                 with open(layout_conf_path, "w") as f:
                     f.write("masters =\n")
 
             if repo == "test_repo":
                 # Create a minimal profile in /var/db/repos/gentoo
-                sub_profile_dir = os.path.join(
+                sub_profile_dir = os_unicode_fs.path.join(
                     profile_dir, "default", "linux", "x86", "test_profile"
                 )
-                os.makedirs(sub_profile_dir)
+                os_unicode_fs.makedirs(sub_profile_dir)
 
                 if not (profile and "eapi" in profile):
-                    eapi_file = os.path.join(sub_profile_dir, "eapi")
+                    eapi_file = os_unicode_fs.path.join(sub_profile_dir, "eapi")
                     with open(eapi_file, "w") as f:
                         f.write("0\n")
 
-                make_defaults_file = os.path.join(sub_profile_dir, "make.defaults")
+                make_defaults_file = os_unicode_fs.path.join(
+                    sub_profile_dir, "make.defaults"
+                )
                 with open(make_defaults_file, "w") as f:
                     f.write('ARCH="x86"\n')
                     f.write('ACCEPT_KEYWORDS="x86"\n')
 
-                use_force_file = os.path.join(sub_profile_dir, "use.force")
+                use_force_file = os_unicode_fs.path.join(sub_profile_dir, "use.force")
                 with open(use_force_file, "w") as f:
                     f.write("x86\n")
 
-                parent_file = os.path.join(sub_profile_dir, "parent")
+                parent_file = os_unicode_fs.path.join(sub_profile_dir, "parent")
                 with open(parent_file, "w") as f:
                     f.write("..\n")
 
@@ -558,17 +585,20 @@ class ResolverPlayground:
                         if config_file not in self.config_files:
                             raise ValueError("Unknown config file: '%s'" % config_file)
 
-                        file_name = os.path.join(sub_profile_dir, config_file)
+                        file_name = os_unicode_fs.path.join(
+                            sub_profile_dir, config_file
+                        )
                         with open(file_name, "w") as f:
                             for line in lines:
                                 f.write("%s\n" % line)
 
                 # Create profile symlink
-                os.symlink(
-                    sub_profile_dir, os.path.join(user_config_dir, "make.profile")
+                os_unicode_fs.symlink(
+                    sub_profile_dir,
+                    os_unicode_fs.path.join(user_config_dir, "make.profile"),
                 )
 
-        gpg_test_path = os.environ["PORTAGE_GNUPGHOME"]
+        gpg_test_path = os_unicode_fs.environ["PORTAGE_GNUPGHOME"]
 
         make_conf = {
             "ACCEPT_KEYWORDS": "x86",
@@ -583,18 +613,18 @@ class ResolverPlayground:
             "PKGDIR": self.pkgdir,
             "PORTAGE_INST_GID": str(portage.data.portage_gid),
             "PORTAGE_INST_UID": str(portage.data.portage_uid),
-            "PORTAGE_TMPDIR": os.path.join(self.eroot, "var/tmp"),
+            "PORTAGE_TMPDIR": os_unicode_fs.path.join(self.eroot, "var/tmp"),
         }
 
-        if os.environ.get("NOCOLOR"):
-            make_conf["NOCOLOR"] = os.environ["NOCOLOR"]
+        if os_unicode_fs.environ.get("NOCOLOR"):
+            make_conf["NOCOLOR"] = os_unicode_fs.environ["NOCOLOR"]
 
         # Pass along PORTAGE_USERNAME and PORTAGE_GRPNAME since they
         # need to be inherited by ebuild subprocesses.
-        if "PORTAGE_USERNAME" in os.environ:
-            make_conf["PORTAGE_USERNAME"] = os.environ["PORTAGE_USERNAME"]
-        if "PORTAGE_GRPNAME" in os.environ:
-            make_conf["PORTAGE_GRPNAME"] = os.environ["PORTAGE_GRPNAME"]
+        if "PORTAGE_USERNAME" in os_unicode_fs.environ:
+            make_conf["PORTAGE_USERNAME"] = os_unicode_fs.environ["PORTAGE_USERNAME"]
+        if "PORTAGE_GRPNAME" in os_unicode_fs.environ:
+            make_conf["PORTAGE_GRPNAME"] = os_unicode_fs.environ["PORTAGE_GRPNAME"]
 
         make_conf_lines = []
         for k_v in make_conf.items():
@@ -607,7 +637,10 @@ class ResolverPlayground:
                     'FEATURES="${FEATURES} binpkg-request-signature"'
                 )
 
-        if not portage.process.sandbox_capable or os.environ.get("SANDBOX_ON") == "1":
+        if (
+            not portage.process.sandbox_capable
+            or os_unicode_fs.environ.get("SANDBOX_ON") == "1"
+        ):
             # avoid problems from nested sandbox instances
             make_conf_lines.append('FEATURES="${FEATURES} -sandbox -usersandbox"')
 
@@ -618,54 +651,58 @@ class ResolverPlayground:
             if config_file not in self.config_files:
                 raise ValueError("Unknown config file: '%s'" % config_file)
 
-            file_name = os.path.join(user_config_dir, config_file)
+            file_name = os_unicode_fs.path.join(user_config_dir, config_file)
             with open(file_name, "w") as f:
                 for line in lines:
                     f.write("%s\n" % line)
 
         # Create /usr/share/portage/config/make.globals
-        make_globals_path = os.path.join(
-            self.eroot, GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
+        make_globals_path = os_unicode_fs.path.join(
+            self.eroot, GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep), "make.globals"
         )
-        ensure_dirs(os.path.dirname(make_globals_path))
-        os.symlink(os.path.join(cnf_path, "make.globals"), make_globals_path)
+        ensure_dirs(os_unicode_fs.path.dirname(make_globals_path))
+        os_unicode_fs.symlink(
+            os_unicode_fs.path.join(cnf_path, "make.globals"), make_globals_path
+        )
 
         # Create /usr/share/portage/config/sets/portage.conf
-        default_sets_conf_dir = os.path.join(
+        default_sets_conf_dir = os_unicode_fs.path.join(
             self.eroot, "usr/share/portage/config/sets"
         )
 
         try:
-            os.makedirs(default_sets_conf_dir)
-        except os.error:
+            os_unicode_fs.makedirs(default_sets_conf_dir)
+        except os_unicode_fs.error:
             pass
 
-        provided_sets_portage_conf = os.path.join(cnf_path, "sets", "portage.conf")
-        os.symlink(
+        provided_sets_portage_conf = os_unicode_fs.path.join(
+            cnf_path, "sets", "portage.conf"
+        )
+        os_unicode_fs.symlink(
             provided_sets_portage_conf,
-            os.path.join(default_sets_conf_dir, "portage.conf"),
+            os_unicode_fs.path.join(default_sets_conf_dir, "portage.conf"),
         )
 
-        set_config_dir = os.path.join(user_config_dir, "sets")
+        set_config_dir = os_unicode_fs.path.join(user_config_dir, "sets")
 
         try:
-            os.makedirs(set_config_dir)
-        except os.error:
+            os_unicode_fs.makedirs(set_config_dir)
+        except os_unicode_fs.error:
             pass
 
         for sets_file, lines in sets.items():
-            file_name = os.path.join(set_config_dir, sets_file)
+            file_name = os_unicode_fs.path.join(set_config_dir, sets_file)
             with open(file_name, "w") as f:
                 for line in lines:
                     f.write("%s\n" % line)
 
     def _create_world(self, world, world_sets):
         # Create /var/lib/portage/world
-        var_lib_portage = os.path.join(self.eroot, "var", "lib", "portage")
-        os.makedirs(var_lib_portage)
+        var_lib_portage = os_unicode_fs.path.join(self.eroot, "var", "lib", "portage")
+        os_unicode_fs.makedirs(var_lib_portage)
 
-        world_file = os.path.join(var_lib_portage, "world")
-        world_set_file = os.path.join(var_lib_portage, "world_sets")
+        world_file = os_unicode_fs.path.join(var_lib_portage, "world")
+        world_set_file = os_unicode_fs.path.join(var_lib_portage, "world_sets")
 
         with open(world_file, "w") as f:
             for atom in world:
@@ -678,7 +715,7 @@ class ResolverPlayground:
     def _load_config(self):
 
         create_trees_kwargs = {}
-        if self.target_root != os.sep:
+        if self.target_root != os_unicode_fs.sep:
             create_trees_kwargs["target_root"] = self.target_root
 
         env = {
@@ -779,7 +816,7 @@ class ResolverPlayground:
         if self.debug:
             print("\nEROOT=%s" % self.eroot)
         else:
-            shutil.rmtree(self.eroot)
+            shutil_unicode_fs.rmtree(self.eroot)
         if hasattr(self, "_orig_eprefix"):
             portage.const.EPREFIX = self._orig_eprefix
 

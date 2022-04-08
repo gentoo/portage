@@ -4,7 +4,7 @@
 import io
 
 import portage
-from portage import os, _encodings
+from portage import os_unicode_fs, _encodings
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -123,13 +123,15 @@ class SecuritySetTestCase(TestCase):
         try:
 
             portdb = playground.trees[playground.eroot]["porttree"].dbapi
-            glsa_dir = os.path.join(
+            glsa_dir = os_unicode_fs.path.join(
                 portdb.repositories["test_repo"].location, "metadata", "glsa"
             )
             portage.util.ensure_dirs(glsa_dir)
             for glsa in glsas:
                 with io.open(
-                    os.path.join(glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"),
+                    os_unicode_fs.path.join(
+                        glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"
+                    ),
                     encoding=_encodings["repo.content"],
                     mode="w",
                 ) as f:

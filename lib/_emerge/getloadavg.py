@@ -1,14 +1,14 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 
-getloadavg = getattr(os, "getloadavg", None)
+getloadavg = getattr(os_unicode_fs, "getloadavg", None)
 if getloadavg is None:
 
     def getloadavg():
         """
-        Uses /proc/loadavg to emulate os.getloadavg().
+        Uses /proc/loadavg to emulate os_unicode_fs.getloadavg().
         Raises OSError if the load average was unobtainable.
         """
         try:

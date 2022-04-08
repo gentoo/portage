@@ -9,9 +9,7 @@ import io
 import stat
 import tempfile
 import os as _os
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
@@ -22,18 +20,19 @@ class database(fs_template.FsBased):
 
     def __init__(self, *args, **config):
         super(database, self).__init__(*args, **config)
-        self.location = os.path.join(
-            self.location, self.label.lstrip(os.path.sep).rstrip(os.path.sep)
+        self.location = os_unicode_fs.path.join(
+            self.location,
+            self.label.lstrip(os_unicode_fs.path.sep).rstrip(os_unicode_fs.path.sep),
         )
         write_keys = set(self._known_keys)
         write_keys.add("_eclasses_")
         write_keys.add("_%s_" % (self.validation_chf,))
         self._write_keys = sorted(write_keys)
-        if not self.readonly and not os.path.exists(self.location):
+        if not self.readonly and not os_unicode_fs.path.exists(self.location):
             self._ensure_dirs()
 
     def _getitem(self, cpv):
-        # Don't use os.path.join, for better performance.
+        # Don't use os_unicode_fs.path.join, for better performance.
         fp = self.location + _os.sep + cpv
         try:
             with io.open(
@@ -82,16 +81,16 @@ class database(fs_template.FsBased):
 
         # update written.  now we move it.
 
-        new_fp = os.path.join(self.location, cpv)
+        new_fp = os_unicode_fs.path.join(self.location, cpv)
         try:
-            os.rename(fp, new_fp)
+            os_unicode_fs.rename(fp, new_fp)
         except EnvironmentError as e:
             success = False
             try:
                 if errno.ENOENT == e.errno:
                     try:
                         self._ensure_dirs(cpv)
-                        os.rename(fp, new_fp)
+                        os_unicode_fs.rename(fp, new_fp)
                         success = True
                     except EnvironmentError as e:
                         raise cache_errors.CacheCorruption(cpv, e)
@@ -99,12 +98,12 @@ class database(fs_template.FsBased):
                     raise cache_errors.CacheCorruption(cpv, e)
             finally:
                 if not success:
-                    os.remove(fp)
+                    os_unicode_fs.remove(fp)
 
     def _delitem(self, cpv):
         # 		import pdb;pdb.set_trace()
         try:
-            os.remove(os.path.join(self.location, cpv))
+            os_unicode_fs.remove(os_unicode_fs.path.join(self.location, cpv))
         except OSError as e:
             if errno.ENOENT == e.errno:
                 raise KeyError(cpv)
@@ -112,7 +111,7 @@ class database(fs_template.FsBased):
                 raise cache_errors.CacheCorruption(cpv, e)
 
     def __contains__(self, cpv):
-        return os.path.exists(os.path.join(self.location, cpv))
+        return os_unicode_fs.path.exists(os_unicode_fs.path.join(self.location, cpv))
 
     def __iter__(self):
         """generator for walking the dir struct"""
@@ -121,16 +120,16 @@ class database(fs_template.FsBased):
         while dirs:
             depth, dir_path = dirs.pop()
             try:
-                dir_list = os.listdir(dir_path)
+                dir_list = os_unicode_fs.listdir(dir_path)
             except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
                 continue
             for l in dir_list:
-                p = os.path.join(dir_path, l)
+                p = os_unicode_fs.path.join(dir_path, l)
                 try:
-                    st = os.lstat(p)
+                    st = os_unicode_fs.lstat(p)
                 except OSError:
                     # Cache entry disappeared.
                     continue

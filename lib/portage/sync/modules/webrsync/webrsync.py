@@ -4,7 +4,7 @@ import io
 import logging
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from portage.output import create_color_func
@@ -76,7 +76,7 @@ class WebRsync(SyncBase):
                     )
                     return (1, False)
 
-                if not os.path.isfile(self.repo.sync_openpgp_key_path):
+                if not os_unicode_fs.path.isfile(self.repo.sync_openpgp_key_path):
                     writemsg_level(
                         "!!! sync-openpgp-key-path file not found: %s\n"
                         % self.repo.sync_openpgp_key_path,
@@ -124,7 +124,7 @@ class WebRsync(SyncBase):
                 webrsync_cmd.append("-k")
 
             exitcode = portage.process.spawn(webrsync_cmd, **self.spawn_kwargs)
-            if exitcode != os.EX_OK:
+            if exitcode != os_unicode_fs.EX_OK:
                 msg = "!!! emerge-webrsync error in %s" % self.repo.location
                 self.logger(self.xterm_titles, msg)
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)

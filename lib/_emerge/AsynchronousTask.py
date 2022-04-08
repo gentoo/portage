@@ -3,7 +3,7 @@
 
 import signal
 
-from portage import os
+from portage import os_unicode_fs
 from portage.util.futures import asyncio
 from portage.util.SlotObject import SlotObject
 
@@ -59,7 +59,7 @@ class AsynchronousTask(SlotObject):
         return waiter
 
     def _start(self):
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._async_wait()
 
     def isAlive(self):

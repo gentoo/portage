@@ -11,7 +11,7 @@ portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.util:writemsg",
 )
-from portage import os
+from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
@@ -52,11 +52,11 @@ def RecursiveFileLoader(filename):
     """
 
     try:
-        st = os.stat(filename)
+        st = os_unicode_fs.stat(filename)
     except OSError:
         return
     if stat.S_ISDIR(st.st_mode):
-        for root, dirs, files in os.walk(filename):
+        for root, dirs, files in os_unicode_fs.walk(filename):
             for d in list(dirs):
                 if d[:1] == "." or d == "CVS":
                     dirs.remove(d)
@@ -67,7 +67,7 @@ def RecursiveFileLoader(filename):
                     continue
                 if f[:1] == "." or f[-1:] == "~":
                     continue
-                yield os.path.join(root, f)
+                yield os_unicode_fs.path.join(root, f)
     else:
         yield filename
 
@@ -98,7 +98,7 @@ class EnvLoader(DataLoader):
         DataLoader.__init__(self, validator)
 
     def load(self):
-        return os.environ
+        return os_unicode_fs.environ
 
 
 class TestTextLoader(DataLoader):

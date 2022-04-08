@@ -20,7 +20,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os
+from portage import os_unicode_fs
 from portage.glsa import match
 from portage.output import green, red, nocolor, white
 
@@ -164,7 +164,7 @@ elif mode != "list" and not params:
     sys.stderr.write('(specify "all" as parameter)\n\n')
     parser.print_help()
     sys.exit(1)
-elif mode in ["fix", "inject"] and os.geteuid() != 0:
+elif mode in ["fix", "inject"] and os_unicode_fs.geteuid() != 0:
     # we need root privileges for write access
     sys.stderr.write(
         "\nThis tool needs root access to " + options.mode + " this GLSA\n\n"
@@ -220,7 +220,7 @@ if "affected" in params:
 
 # remove invalid parameters
 for p in params[:]:
-    if not (p in completelist or os.path.exists(p)):
+    if not (p in completelist or os_unicode_fs.path.exists(p)):
         sys.stderr.write(
             (
                 "(removing %s from parameter list as it isn't a valid GLSA specification)\n"
@@ -352,7 +352,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
                     )
                     if verbose:
                         sys.stderr.write(emergecmd + "\n")
-                    exitcode = os.system(emergecmd)
+                    exitcode = os_unicode_fs.system(emergecmd)
                     # system() returns the exitcode in the high byte of a 16bit integer
                     if exitcode >= 1 << 8:
                         exitcode >>= 8

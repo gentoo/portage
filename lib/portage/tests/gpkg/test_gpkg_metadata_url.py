@@ -10,8 +10,7 @@ from functools import partial
 from os import urandom
 
 from portage.gpkg import gpkg
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
 from portage.exception import InvalidSignature
@@ -70,13 +69,15 @@ class test_gpkg_metadata_url_case(TestCase):
                     continue
                 break
 
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             meta = {
@@ -84,7 +85,7 @@ class test_gpkg_metadata_url_case(TestCase):
                 "test2": urandom(102400),
             }
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
+            test_gpkg.compress(os_unicode_fs.path.join(tmpdir, "orig"), meta)
 
             meta_from_url = test_gpkg.get_metadata_url(
                 "http://127.0.0.1:" + str(port) + "/test.gpkg.tar"
@@ -92,7 +93,7 @@ class test_gpkg_metadata_url_case(TestCase):
 
             self.assertEqual(meta, meta_from_url)
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()
 
     def test_gpkg_get_metadata_url_unknown_signature(self):
@@ -124,13 +125,15 @@ class test_gpkg_metadata_url_case(TestCase):
                     continue
                 break
 
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
 
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test-1.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             meta = {
@@ -138,11 +141,13 @@ class test_gpkg_metadata_url_case(TestCase):
                 "test2": urandom(102400),
             }
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
+            test_gpkg.compress(os_unicode_fs.path.join(tmpdir, "orig"), meta)
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
+            with tarfile.open(
+                os_unicode_fs.path.join(tmpdir, "test-1.gpkg.tar"), "r"
+            ) as tar_1:
                 with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
+                    os_unicode_fs.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
                         if f.name == "test/metadata.tar.gz":
@@ -169,5 +174,5 @@ IkCfAP49AOYjzuQPP0n5P0SGCINnAVEXN7QLQ4PurY/lt7cT2gEAq01stXjFhrz5
                 "http://127.0.0.1:" + str(port) + "/test-2.gpkg.tar",
             )
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

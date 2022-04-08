@@ -9,7 +9,13 @@ import stat
 import time
 
 import portage
-from portage import os, shutil, _encodings, _unicode_encode, _unicode_decode
+from portage import (
+    os_unicode_fs,
+    shutil_unicode_fs,
+    _encodings,
+    _unicode_encode,
+    _unicode_decode,
+)
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import (
     DirectoryNotFound,
@@ -49,7 +55,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 
     for clean_dir in clean_dirs:
         try:
-            shutil.rmtree(clean_dir)
+            shutil_unicode_fs.rmtree(clean_dir)
         except OSError as oe:
             if errno.ENOENT == oe.errno:
                 pass
@@ -67,7 +73,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 
     def makedirs(dir_path):
         try:
-            os.makedirs(dir_path)
+            os_unicode_fs.makedirs(dir_path)
         except OSError as oe:
             if errno.EEXIST == oe.errno:
                 pass
@@ -82,10 +88,10 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
                 raise
         return True
 
-    mysettings["PKG_LOGDIR"] = os.path.join(mysettings["T"], "logging")
+    mysettings["PKG_LOGDIR"] = os_unicode_fs.path.join(mysettings["T"], "logging")
 
-    mydirs = [os.path.dirname(mysettings["PORTAGE_BUILDDIR"])]
-    mydirs.append(os.path.dirname(mydirs[-1]))
+    mydirs = [os_unicode_fs.path.dirname(mysettings["PORTAGE_BUILDDIR"])]
+    mydirs.append(os_unicode_fs.path.dirname(mydirs[-1]))
 
     try:
         for mydir in mydirs:
@@ -95,7 +101,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
                     mydir, gid=portage_gid, uid=portage_uid, mode=0o700, mask=0
                 )
             except PortageException:
-                if not os.path.isdir(mydir):
+                if not os_unicode_fs.path.isdir(mydir):
                     raise
         for dir_key in ("HOME", "PKG_LOGDIR", "T"):
             ensure_dirs(mysettings[dir_key], mode=0o755)
@@ -108,7 +114,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
             ipc_kwargs["gid"] = portage_gid
             ipc_kwargs["mode"] = 0o2770
         ensure_dirs(
-            os.path.join(mysettings["PORTAGE_BUILDDIR"], ".ipc"),
+            os_unicode_fs.path.join(mysettings["PORTAGE_BUILDDIR"], ".ipc"),
             **ipc_kwargs,
         )
     except PermissionDenied as e:
@@ -124,7 +130,9 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
     # Reset state for things like noauto and keepwork in FEATURES.
     for x in (".die_hooks",):
         try:
-            os.unlink(os.path.join(mysettings["PORTAGE_BUILDDIR"], x))
+            os_unicode_fs.unlink(
+                os_unicode_fs.path.join(mysettings["PORTAGE_BUILDDIR"], x)
+            )
         except OSError:
             pass
 
@@ -186,12 +194,16 @@ def _prepare_features_dirs(mysettings):
     features_dirs = {
         "ccache": {
             "basedir_var": "CCACHE_DIR",
-            "default_dir": os.path.join(mysettings["PORTAGE_TMPDIR"], "ccache"),
+            "default_dir": os_unicode_fs.path.join(
+                mysettings["PORTAGE_TMPDIR"], "ccache"
+            ),
             "always_recurse": False,
         },
         "distcc": {
             "basedir_var": "DISTCC_DIR",
-            "default_dir": os.path.join(mysettings["BUILD_PREFIX"], ".distcc"),
+            "default_dir": os_unicode_fs.path.join(
+                mysettings["BUILD_PREFIX"], ".distcc"
+            ),
             "subdirs": ("lock", "state"),
             "always_recurse": True,
         },
@@ -216,7 +228,7 @@ def _prepare_features_dirs(mysettings):
                 mydirs = [mysettings[kwargs["basedir_var"]]]
                 if "subdirs" in kwargs:
                     for subdir in kwargs["subdirs"]:
-                        mydirs.append(os.path.join(basedir, subdir))
+                        mydirs.append(os_unicode_fs.path.join(basedir, subdir))
                 for mydir in mydirs:
                     modified = ensure_dirs(mydir)
                     # Generally, we only want to apply permissions for
@@ -224,16 +236,18 @@ def _prepare_features_dirs(mysettings):
                     # permissions the user wants, so should leave them as-is.
                     droppriv_fix = False
                     if droppriv:
-                        st = os.stat(mydir)
+                        st = os_unicode_fs.stat(mydir)
                         if st.st_gid != portage_gid or not dirmode == (
                             stat.S_IMODE(st.st_mode) & dirmode
                         ):
                             droppriv_fix = True
                         if not droppriv_fix:
                             # Check permissions of files in the directory.
-                            for filename in os.listdir(mydir):
+                            for filename in os_unicode_fs.listdir(mydir):
                                 try:
-                                    subdir_st = os.lstat(os.path.join(mydir, filename))
+                                    subdir_st = os_unicode_fs.lstat(
+                                        os_unicode_fs.path.join(mydir, filename)
+                                    )
                                 except OSError:
                                     continue
                                 if subdir_st.st_gid != portage_gid or (
@@ -379,28 +393,32 @@ def _prepare_workdir(mysettings):
         compress_log_ext = ".gz"
 
     logdir_subdir_ok = False
-    if "PORTAGE_LOGDIR" in mysettings and os.access(
-        mysettings["PORTAGE_LOGDIR"], os.W_OK
+    if "PORTAGE_LOGDIR" in mysettings and os_unicode_fs.access(
+        mysettings["PORTAGE_LOGDIR"], os_unicode_fs.W_OK
     ):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
-        logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
-        if not os.path.exists(logid_path):
+        logid_path = os_unicode_fs.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
+        if not os_unicode_fs.path.exists(logid_path):
             open(_unicode_encode(logid_path), "w").close()
         logid_time = _unicode_decode(
-            time.strftime("%Y%m%d-%H%M%S", time.gmtime(os.stat(logid_path).st_mtime)),
+            time.strftime(
+                "%Y%m%d-%H%M%S", time.gmtime(os_unicode_fs.stat(logid_path).st_mtime)
+            ),
             encoding=_encodings["content"],
             errors="replace",
         )
 
         if "split-log" in mysettings.features:
-            log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
-            mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+            log_subdir = os_unicode_fs.path.join(
+                logdir, "build", mysettings["CATEGORY"]
+            )
+            mysettings["PORTAGE_LOG_FILE"] = os_unicode_fs.path.join(
                 log_subdir,
                 "%s:%s.log%s" % (mysettings["PF"], logid_time, compress_log_ext),
             )
         else:
             log_subdir = logdir
-            mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+            mysettings["PORTAGE_LOG_FILE"] = os_unicode_fs.path.join(
                 logdir,
                 "%s:%s:%s.log%s"
                 % (
@@ -419,14 +437,16 @@ def _prepare_workdir(mysettings):
             except PortageException as e:
                 writemsg("!!! %s\n" % (e,), noiselevel=-1)
 
-            if os.access(log_subdir, os.W_OK):
+            if os_unicode_fs.access(log_subdir, os_unicode_fs.W_OK):
                 logdir_subdir_ok = True
             else:
                 writemsg(
                     "!!! %s: %s\n" % (_("Permission Denied"), log_subdir), noiselevel=-1
                 )
 
-    tmpdir_log_path = os.path.join(mysettings["T"], "build.log%s" % compress_log_ext)
+    tmpdir_log_path = os_unicode_fs.path.join(
+        mysettings["T"], "build.log%s" % compress_log_ext
+    )
     if not logdir_subdir_ok:
         # NOTE: When sesandbox is enabled, the local SELinux security policies
         # may not allow output to be piped out of the sesandbox domain. The
@@ -438,7 +458,7 @@ def _prepare_workdir(mysettings):
         # requested in bug #412865.
         make_new_symlink = False
         try:
-            target = os.readlink(tmpdir_log_path)
+            target = os_unicode_fs.readlink(tmpdir_log_path)
         except OSError:
             make_new_symlink = True
         else:
@@ -446,10 +466,10 @@ def _prepare_workdir(mysettings):
                 make_new_symlink = True
         if make_new_symlink:
             try:
-                os.unlink(tmpdir_log_path)
+                os_unicode_fs.unlink(tmpdir_log_path)
             except OSError:
                 pass
-            os.symlink(mysettings["PORTAGE_LOG_FILE"], tmpdir_log_path)
+            os_unicode_fs.symlink(mysettings["PORTAGE_LOG_FILE"], tmpdir_log_path)
 
 
 def _ensure_log_subdirs(logdir, subdir):
@@ -459,7 +479,7 @@ def _ensure_log_subdirs(logdir, subdir):
     subdirectories, along with 0x2070 mode bits if present. Both logdir
     and subdir are assumed to be normalized absolute paths.
     """
-    st = os.stat(logdir)
+    st = os_unicode_fs.stat(logdir)
     uid = -1
     gid = st.st_gid
     grp_mode = 0o2070 & st.st_mode
@@ -476,12 +496,12 @@ def _ensure_log_subdirs(logdir, subdir):
         if st.st_uid != portage_uid:
             ensure_dirs(logdir, uid=uid)
 
-    logdir_split_len = len(logdir.split(os.sep))
-    subdir_split = subdir.split(os.sep)[logdir_split_len:]
+    logdir_split_len = len(logdir.split(os_unicode_fs.sep))
+    subdir_split = subdir.split(os_unicode_fs.sep)[logdir_split_len:]
     subdir_split.reverse()
     current = logdir
     while subdir_split:
-        current = os.path.join(current, subdir_split.pop())
+        current = os_unicode_fs.path.join(current, subdir_split.pop())
         ensure_dirs(current, uid=uid, gid=gid, mode=grp_mode, mask=0)
 
 
@@ -490,40 +510,40 @@ def _prepare_fake_filesdir(settings):
     symlink_path = settings["FILESDIR"]
 
     try:
-        link_target = os.readlink(symlink_path)
+        link_target = os_unicode_fs.readlink(symlink_path)
     except OSError:
-        os.symlink(real_filesdir, symlink_path)
+        os_unicode_fs.symlink(real_filesdir, symlink_path)
     else:
         if link_target != real_filesdir:
-            os.unlink(symlink_path)
-            os.symlink(real_filesdir, symlink_path)
+            os_unicode_fs.unlink(symlink_path)
+            os_unicode_fs.symlink(real_filesdir, symlink_path)
 
 
 def _prepare_fake_distdir(settings, alist):
     orig_distdir = settings["DISTDIR"]
-    edpath = os.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
+    edpath = os_unicode_fs.path.join(settings["PORTAGE_BUILDDIR"], "distdir")
     portage.util.ensure_dirs(edpath, gid=portage_gid, mode=0o755)
 
     # Remove any unexpected files or directories.
-    for x in os.listdir(edpath):
-        symlink_path = os.path.join(edpath, x)
-        st = os.lstat(symlink_path)
+    for x in os_unicode_fs.listdir(edpath):
+        symlink_path = os_unicode_fs.path.join(edpath, x)
+        st = os_unicode_fs.lstat(symlink_path)
         if x in alist and stat.S_ISLNK(st.st_mode):
             continue
         if stat.S_ISDIR(st.st_mode):
-            shutil.rmtree(symlink_path)
+            shutil_unicode_fs.rmtree(symlink_path)
         else:
-            os.unlink(symlink_path)
+            os_unicode_fs.unlink(symlink_path)
 
     # Check for existing symlinks and recreate if necessary.
     for x in alist:
-        symlink_path = os.path.join(edpath, x)
-        target = os.path.join(orig_distdir, x)
+        symlink_path = os_unicode_fs.path.join(edpath, x)
+        target = os_unicode_fs.path.join(orig_distdir, x)
         try:
-            link_target = os.readlink(symlink_path)
+            link_target = os_unicode_fs.readlink(symlink_path)
         except OSError:
-            os.symlink(target, symlink_path)
+            os_unicode_fs.symlink(target, symlink_path)
         else:
             if link_target != target:
-                os.unlink(symlink_path)
-                os.symlink(target, symlink_path)
+                os_unicode_fs.unlink(symlink_path)
+                os_unicode_fs.symlink(target, symlink_path)

@@ -4,7 +4,7 @@
 from _emerge.Package import Package
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
@@ -26,8 +26,8 @@ class MoveHandler:
 
         for repo_name in self._portdb.getRepositories():
             repo = self._portdb.getRepositoryPath(repo_name)
-            updpath = os.path.join(repo, "profiles", "updates")
-            if not os.path.isdir(updpath):
+            updpath = os_unicode_fs.path.join(repo, "profiles", "updates")
+            if not os_unicode_fs.path.isdir(updpath):
                 continue
 
             try:

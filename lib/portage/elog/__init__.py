@@ -11,13 +11,13 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util:writemsg",
 )
 
+from portage import os_unicode_fs
 from portage.const import EBUILD_PHASES
 from portage.exception import AlarmSignal, PortageException
 from portage.process import atexit_register
 from portage.elog.messages import collect_ebuild_messages, collect_messages
 from portage.elog.filtering import filter_loglevels
 from portage.localization import _
-from portage import os
 
 
 def _preload_elog_modules(settings):
@@ -122,7 +122,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 
     if "T" in mysettings:
         ebuild_logentries = collect_ebuild_messages(
-            os.path.join(mysettings["T"], "logging")
+            os_unicode_fs.path.join(mysettings["T"], "logging")
         )
     else:
         # A build dir isn't necessarily required since the messages.e*

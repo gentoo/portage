@@ -1,7 +1,7 @@
 # Copyright 2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.checksum import perform_multiple_checksums
 from portage.util._async.ForkProcess import ForkProcess
 from _emerge.PipeReader import PipeReader
@@ -24,7 +24,7 @@ class FileDigester(ForkProcess):
     )
 
     def _start(self):
-        pr, pw = os.pipe()
+        pr, pw = os_unicode_fs.pipe()
         self.fd_pipes = {}
         self.fd_pipes[pw] = pw
         self._digest_pw = pw
@@ -34,7 +34,7 @@ class FileDigester(ForkProcess):
         self._digest_pipe_reader.addExitListener(self._digest_pipe_reader_exit)
         self._digest_pipe_reader.start()
         ForkProcess._start(self)
-        os.close(pw)
+        os_unicode_fs.close(pw)
 
     def _run(self):
         digests = perform_multiple_checksums(self.file_path, hashes=self.hash_names)
@@ -42,9 +42,9 @@ class FileDigester(ForkProcess):
         buf = "".join("%s=%s\n" % item for item in digests.items()).encode("utf_8")
 
         while buf:
-            buf = buf[os.write(self._digest_pw, buf) :]
+            buf = buf[os_unicode_fs.write(self._digest_pw, buf) :]
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
     def _parse_digests(self, data):
 

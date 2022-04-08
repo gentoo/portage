@@ -9,7 +9,7 @@ __all__ = ()
 
 import re
 
-from portage import os
+from portage import os_unicode_fs
 from portage._sets.base import InternalPackageSet
 from portage.exception import PackageSetNotFound
 from portage.localization import localized_size
@@ -43,7 +43,7 @@ class _RepoDisplay:
         repo_paths = list(repo_paths)
         self._repo_paths = repo_paths
         self._repo_paths_real = [
-            os.path.realpath(repo_path) for repo_path in repo_paths
+            os_unicode_fs.path.realpath(repo_path) for repo_path in repo_paths
         ]
 
     def repoStr(self, repo_path_real):

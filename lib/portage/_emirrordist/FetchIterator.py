@@ -3,7 +3,7 @@
 
 import threading
 
-from portage import os
+from portage import os_unicode_fs
 from portage.checksum import (
     _apply_hash_filter,
     _filter_unaccelarated_hashes,
@@ -96,7 +96,7 @@ class _EbuildFetchTasks(CompositeTask):
         )
 
     def _start_fetch_tasks(self, task):
-        if self._default_exit(task) != os.EX_OK:
+        if self._default_exit(task) != os_unicode_fs.EX_OK:
             self._async_wait()
             return
 
@@ -233,7 +233,7 @@ def _async_fetch_tasks(config, hash_filter, repo_config, digests_future, cpv, lo
                 digests = digests_future.result()
             else:
                 digests = repo_config.load_manifest(
-                    os.path.join(repo_config.location, cpv.cp)
+                    os_unicode_fs.path.join(repo_config.location, cpv.cp)
                 ).getTypeDigests("DIST")
         except (EnvironmentError, PortageException) as e:
             digests_future.done() or digests_future.set_exception(e)

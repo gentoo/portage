@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import portage
-from portage import _encodings, os, shutil
+from portage import os_unicode_fs, shutil_unicode_fs, _encodings
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
@@ -50,10 +50,10 @@ def diff_mixed(func, file1, file2):
     tempdir = None
     try:
         if (
-            os.path.islink(file1)
-            and not os.path.islink(file2)
-            and os.path.isfile(file1)
-            and os.path.isfile(file2)
+            os_unicode_fs.path.islink(file1)
+            and not os_unicode_fs.path.islink(file2)
+            and os_unicode_fs.path.isfile(file1)
+            and os_unicode_fs.path.isfile(file2)
         ):
             # If a regular file replaces a symlink to a regular
             # file, then show the diff between the regular files
@@ -64,7 +64,7 @@ def diff_mixed(func, file1, file2):
             diff_files = [file1, file2]
             for i in range(len(diff_files)):
                 try:
-                    st = os.lstat(diff_files[i])
+                    st = os_unicode_fs.lstat(diff_files[i])
                 except OSError:
                     st = None
                 if st is not None and stat.S_ISREG(st.st_mode):
@@ -72,11 +72,11 @@ def diff_mixed(func, file1, file2):
 
                 if tempdir is None:
                     tempdir = tempfile.mkdtemp()
-                diff_files[i] = os.path.join(tempdir, f"{i}")
+                diff_files[i] = os_unicode_fs.path.join(tempdir, f"{i}")
                 if st is None:
                     content = "/dev/null\n"
                 elif stat.S_ISLNK(st.st_mode):
-                    link_dest = os.readlink(files[i])
+                    link_dest = os_unicode_fs.readlink(files[i])
                     content = f"SYM: {file1} -> {link_dest}\n"
                 elif stat.S_ISDIR(st.st_mode):
                     content = f"DIR: {file1}\n"
@@ -93,7 +93,7 @@ def diff_mixed(func, file1, file2):
 
     finally:
         if tempdir is not None:
-            shutil.rmtree(tempdir)
+            shutil_unicode_fs.rmtree(tempdir)
 
 
 class diff_mixed_wrapper:
@@ -113,11 +113,13 @@ diffstatusoutput_mixed = diff_mixed_wrapper(diffstatusoutput)
 def read_config(mandatory_opts):
     eprefix = portage.settings["EPREFIX"]
     if portage._not_installed:
-        config_path = os.path.join(
+        config_path = os_unicode_fs.path.join(
             portage.PORTAGE_BASE_PATH, "cnf", "dispatch-conf.conf"
         )
     else:
-        config_path = os.path.join(eprefix or os.sep, "etc/dispatch-conf.conf")
+        config_path = os_unicode_fs.path.join(
+            eprefix or os_unicode_fs.sep, "etc/dispatch-conf.conf"
+        )
     loader = KeyValuePairFileLoader(config_path, None)
     opts, _errors = loader.load()
     if not opts:
@@ -146,12 +148,12 @@ def read_config(mandatory_opts):
     variables = {"EPREFIX": eprefix}
     opts["archive-dir"] = varexpand(opts["archive-dir"], mydict=variables)
 
-    if not os.path.exists(opts["archive-dir"]):
-        os.mkdir(opts["archive-dir"])
+    if not os_unicode_fs.path.exists(opts["archive-dir"]):
+        os_unicode_fs.mkdir(opts["archive-dir"])
         # Use restrictive permissions by default, in order to protect
         # against vulnerabilities (like bug #315603 involving rcs).
-        os.chmod(opts["archive-dir"], 0o700)
-    elif not os.path.isdir(opts["archive-dir"]):
+        os_unicode_fs.chmod(opts["archive-dir"], 0o700)
+    elif not os_unicode_fs.path.isdir(opts["archive-dir"]):
         print(
             _(
                 rf"""dispatch-conf: Config archive dir [{opts["archive-dir"]}] must exist; fatal"""
@@ -179,14 +181,14 @@ def _archive_copy(src_st, src_path, dest_path):
     # Remove destination file in order to ensure that the following
     # symlink or copy2 call won't fail (see bug #535850).
     try:
-        os.unlink(dest_path)
+        os_unicode_fs.unlink(dest_path)
     except OSError:
         pass
     try:
         if stat.S_ISLNK(src_st.st_mode):
-            os.symlink(os.readlink(src_path), dest_path)
+            os_unicode_fs.symlink(os_unicode_fs.readlink(src_path), dest_path)
         else:
-            shutil.copy2(src_path, dest_path)
+            shutil_unicode_fs.copy2(src_path, dest_path)
     except EnvironmentError as e:
         portage.util.writemsg(
             f"dispatch-conf: Error copying {src_path} to {dest_path}: {e}\n",
@@ -202,12 +204,12 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
     suffix along with the last 1.1.1 branch version with a .dist suffix."""
 
     try:
-        os.makedirs(os.path.dirname(archive))
+        os_unicode_fs.makedirs(os_unicode_fs.path.dirname(archive))
     except OSError:
         pass
 
     try:
-        curconf_st = os.lstat(curconf)
+        curconf_st = os_unicode_fs.lstat(curconf)
     except OSError:
         curconf_st = None
 
@@ -216,39 +218,41 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
     ):
         _archive_copy(curconf_st, curconf, archive)
 
-    if os.path.lexists(f"{archive},v"):
-        os.system(f"{RCS_LOCK} {archive}")
-    os.system(f"{RCS_PUT} {archive}")
+    if os_unicode_fs.path.lexists(f"{archive},v"):
+        os_unicode_fs.system(f"{RCS_LOCK} {archive}")
+    os_unicode_fs.system(f"{RCS_PUT} {archive}")
 
     ret = 0
     mystat = None
     if newconf:
         try:
-            mystat = os.lstat(newconf)
+            mystat = os_unicode_fs.lstat(newconf)
         except OSError:
             pass
 
     if mystat is not None and (
         stat.S_ISREG(mystat.st_mode) or stat.S_ISLNK(mystat.st_mode)
     ):
-        os.system(f"{RCS_GET} -r{RCS_BRANCH} {archive}")
-        has_branch = os.path.lexists(archive)
+        os_unicode_fs.system(f"{RCS_GET} -r{RCS_BRANCH} {archive}")
+        has_branch = os_unicode_fs.path.lexists(archive)
         if has_branch:
-            os.rename(archive, f"{archive}.dist")
+            os_unicode_fs.rename(archive, f"{archive}.dist")
 
         _archive_copy(mystat, newconf, archive)
 
         if (
             has_branch
             and mrgconf
-            and os.path.isfile(archive)
-            and os.path.isfile(mrgconf)
+            and os_unicode_fs.path.isfile(archive)
+            and os_unicode_fs.path.isfile(mrgconf)
         ):
             # This puts the results of the merge into mrgconf.
-            ret = os.system(f"rcsmerge -p -r{RCS_BRANCH} '{archive}' > '{mrgconf}'")
-            os.chmod(mrgconf, mystat.st_mode)
-            os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
-        os.rename(archive, f"{archive}.dist.new")
+            ret = os_unicode_fs.system(
+                f"rcsmerge -p -r{RCS_BRANCH} '{archive}' > '{mrgconf}'"
+            )
+            os_unicode_fs.chmod(mrgconf, mystat.st_mode)
+            os_unicode_fs.chown(mrgconf, mystat.st_uid, mystat.st_gid)
+        os_unicode_fs.rename(archive, f"{archive}.dist.new")
 
     return ret
 
@@ -265,7 +269,7 @@ def _file_archive_rotate(archive):
     max_suf = 0
     try:
         for max_suf, max_st, max_path in (
-            (suf, os.lstat(path), path)
+            (suf, os_unicode_fs.lstat(path), path)
             for suf, path in (
                 (suf, f"{archive}.{suf}") for suf in range(1, _ARCHIVE_ROTATE_MAX + 1)
             )
@@ -282,20 +286,20 @@ def _file_archive_rotate(archive):
         if stat.S_ISDIR(max_st.st_mode):
             # Removing a directory might destroy something important,
             # so rename it instead.
-            head, tail = os.path.split(archive)
+            head, tail = os_unicode_fs.path.split(archive)
             placeholder = tempfile.NamedTemporaryFile(prefix=f"{tail}.", dir=head)
             placeholder.close()
-            os.rename(max_path, placeholder.name)
+            os_unicode_fs.rename(max_path, placeholder.name)
         else:
-            os.unlink(max_path)
+            os_unicode_fs.unlink(max_path)
 
         # The max suffix is now unused.
         max_suf -= 1
 
     for suf in range(max_suf + 1, 1, -1):
-        os.rename(f"{archive}.{suf - 1}", f"{archive}.{suf}")
+        os_unicode_fs.rename(f"{archive}.{suf - 1}", f"{archive}.{suf}")
 
-    os.rename(archive, f"{archive}.1")
+    os_unicode_fs.rename(archive, f"{archive}.1")
 
 
 def _file_archive_ensure_dir(parent_dir):
@@ -313,7 +317,7 @@ def _file_archive_ensure_dir(parent_dir):
         # to a directory outside of the config archive, making
         # it an unsuitable parent.
         try:
-            parent_st = os.lstat(parent)
+            parent_st = os_unicode_fs.lstat(parent)
         except OSError:
             pass
         else:
@@ -322,7 +326,7 @@ def _file_archive_ensure_dir(parent_dir):
             break
 
     try:
-        os.makedirs(parent_dir)
+        os_unicode_fs.makedirs(parent_dir)
     except OSError:
         pass
 
@@ -335,17 +339,17 @@ def file_archive(archive, curconf, newconf, mrgconf):
     if newconf was specified, archive it as a .dist.new version (which
     gets moved to the .dist version at the end of the processing)."""
 
-    _file_archive_ensure_dir(os.path.dirname(archive))
+    _file_archive_ensure_dir(os_unicode_fs.path.dirname(archive))
 
     # Archive the current config file if it isn't already saved
     if (
-        os.path.lexists(archive)
+        os_unicode_fs.path.lexists(archive)
         and len(diffstatusoutput_mixed("diff -aq '%s' '%s'", curconf, archive)[1]) != 0
     ):
         _file_archive_rotate(archive)
 
     try:
-        curconf_st = os.lstat(curconf)
+        curconf_st = os_unicode_fs.lstat(curconf)
     except OSError:
         curconf_st = None
 
@@ -357,7 +361,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
     mystat = None
     if newconf:
         try:
-            mystat = os.lstat(newconf)
+            mystat = os_unicode_fs.lstat(newconf)
         except OSError:
             pass
 
@@ -366,23 +370,25 @@ def file_archive(archive, curconf, newconf, mrgconf):
     ):
         # Save off new config file in the archive dir with .dist.new suffix
         newconf_archive = f"{archive}.dist.new"
-        if os.path.isdir(newconf_archive) and not os.path.islink(newconf_archive):
+        if os_unicode_fs.path.isdir(newconf_archive) and not os_unicode_fs.path.islink(
+            newconf_archive
+        ):
             _file_archive_rotate(newconf_archive)
         _archive_copy(mystat, newconf, newconf_archive)
 
         ret = 0
         if (
             mrgconf
-            and os.path.isfile(curconf)
-            and os.path.isfile(newconf)
-            and os.path.isfile(f"{archive}.dist")
+            and os_unicode_fs.path.isfile(curconf)
+            and os_unicode_fs.path.isfile(newconf)
+            and os_unicode_fs.path.isfile(f"{archive}.dist")
         ):
             # This puts the results of the merge into mrgconf.
-            ret = os.system(
+            ret = os_unicode_fs.system(
                 f"diff3 -mE '{curconf}' '{archive}.dist' '{newconf}' > '{mrgconf}'"
             )
-            os.chmod(mrgconf, mystat.st_mode)
-            os.chown(mrgconf, mystat.st_uid, mystat.st_gid)
+            os_unicode_fs.chmod(mrgconf, mystat.st_mode)
+            os_unicode_fs.chown(mrgconf, mystat.st_uid, mystat.st_gid)
 
         return ret
 
@@ -390,24 +396,24 @@ def file_archive(archive, curconf, newconf, mrgconf):
 def rcs_archive_post_process(archive):
     """Check in the archive file with the .dist.new suffix on the branch
     and remove the one with the .dist suffix."""
-    os.rename(f"{archive}.dist.new", archive)
-    if os.path.lexists(f"{archive}.dist"):
+    os_unicode_fs.rename(f"{archive}.dist.new", archive)
+    if os_unicode_fs.path.lexists(f"{archive}.dist"):
         # Commit the last-distributed version onto the branch.
-        os.system(f"{RCS_LOCK}{RCS_BRANCH} {archive}")
-        os.system(f"{RCS_PUT} -r{RCS_BRANCH} {archive}")
-        os.unlink(f"{archive}.dist")
+        os_unicode_fs.system(f"{RCS_LOCK}{RCS_BRANCH} {archive}")
+        os_unicode_fs.system(f"{RCS_PUT} -r{RCS_BRANCH} {archive}")
+        os_unicode_fs.unlink(f"{archive}.dist")
     else:
         # Forcefully commit the last-distributed version onto the branch.
-        os.system(f"{RCS_PUT} -f -r{RCS_BRANCH} {archive}")
+        os_unicode_fs.system(f"{RCS_PUT} -f -r{RCS_BRANCH} {archive}")
 
 
 def file_archive_post_process(archive):
     """Rename the archive file with the .dist.new suffix to a .dist suffix"""
-    if os.path.lexists(f"{archive}.dist.new"):
+    if os_unicode_fs.path.lexists(f"{archive}.dist.new"):
         dest = f"{archive}.dist"
-        if os.path.isdir(dest) and not os.path.islink(dest):
+        if os_unicode_fs.path.isdir(dest) and not os_unicode_fs.path.islink(dest):
             _file_archive_rotate(dest)
-        os.rename(f"{archive}.dist.new", dest)
+        os_unicode_fs.rename(f"{archive}.dist.new", dest)
 
 
 def perform_conf_update_hooks(kind, conf):

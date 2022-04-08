@@ -5,8 +5,7 @@ import tempfile
 import sys
 from os import urandom
 
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.util._compare_files import compare_files
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -26,17 +25,19 @@ class test_gpkg_metadata_case(TestCase):
 
         try:
             settings = playground.settings
-            orig_full_path = os.path.join(tmpdir, "orig/")
-            os.makedirs(orig_full_path)
-            with open(os.path.join(orig_full_path, "test"), "wb") as test_file:
+            orig_full_path = os_unicode_fs.path.join(tmpdir, "orig/")
+            os_unicode_fs.makedirs(orig_full_path)
+            with open(
+                os_unicode_fs.path.join(orig_full_path, "test"), "wb"
+            ) as test_file:
                 test_file.write(urandom(1048576))
 
-            gpkg_file_loc = os.path.join(tmpdir, "test.gpkg.tar")
+            gpkg_file_loc = os_unicode_fs.path.join(tmpdir, "test.gpkg.tar")
             test_gpkg = gpkg(settings, "test", gpkg_file_loc)
 
             meta = {"test1": b"1234567890", "test2": b"abcdef"}
 
-            test_gpkg.compress(os.path.join(tmpdir, "orig"), meta)
+            test_gpkg.compress(os_unicode_fs.path.join(tmpdir, "orig"), meta)
 
             meta_result = test_gpkg.get_metadata()
             self.assertEqual(meta, meta_result)
@@ -47,13 +48,13 @@ class test_gpkg_metadata_case(TestCase):
             meta_result = test_gpkg.get_metadata()
             self.assertEqual(meta_new, meta_result)
 
-            test_gpkg.decompress(os.path.join(tmpdir, "test"))
+            test_gpkg.decompress(os_unicode_fs.path.join(tmpdir, "test"))
             r = compare_files(
-                os.path.join(tmpdir, "orig/" + "test"),
-                os.path.join(tmpdir, "test/" + "test"),
+                os_unicode_fs.path.join(tmpdir, "orig/" + "test"),
+                os_unicode_fs.path.join(tmpdir, "test/" + "test"),
                 skipped_types=("atime", "mtime", "ctime"),
             )
             self.assertEqual(r, ())
         finally:
-            shutil.rmtree(tmpdir)
+            shutil_unicode_fs.rmtree(tmpdir)
             playground.cleanup()

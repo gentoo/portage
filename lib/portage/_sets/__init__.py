@@ -13,11 +13,13 @@ import io
 import logging
 import sys
 import portage
-from portage import os
-from portage import load_mod
-from portage import _unicode_decode
-from portage import _unicode_encode
-from portage import _encodings
+from portage import (
+    os_unicode_fs,
+    load_mod,
+    _unicode_decode,
+    _unicode_encode,
+    _encodings,
+)
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.const import VCS_DIRS
 from portage.const import _ENABLE_SET_CONFIG
@@ -348,26 +350,28 @@ def load_default_config(settings, trees):
 
     global_config_path = GLOBAL_CONFIG_PATH
     if portage.const.EPREFIX:
-        global_config_path = os.path.join(
-            portage.const.EPREFIX, GLOBAL_CONFIG_PATH.lstrip(os.sep)
+        global_config_path = os_unicode_fs.path.join(
+            portage.const.EPREFIX, GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep)
         )
     vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
 
     def _getfiles():
-        for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
+        for path, dirs, files in os_unicode_fs.walk(
+            os_unicode_fs.path.join(global_config_path, "sets")
+        ):
             for d in dirs:
                 if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
                     dirs.remove(d)
             for f in files:
                 if not f.startswith(b".") and not f.endswith(b"~"):
-                    yield os.path.join(path, f)
+                    yield os_unicode_fs.path.join(path, f)
 
         dbapi = trees["porttree"].dbapi
         for repo in dbapi.getRepositories():
             path = dbapi.getRepositoryPath(repo)
-            yield os.path.join(path, "sets.conf")
+            yield os_unicode_fs.path.join(path, "sets.conf")
 
-        yield os.path.join(
+        yield os_unicode_fs.path.join(
             settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"
         )
 

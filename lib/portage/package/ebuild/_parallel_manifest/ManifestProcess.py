@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.exception import FileNotFound, PermissionDenied, PortagePackageException
 from portage.localization import _
 from portage.util._async.ForkProcess import ForkProcess
@@ -16,7 +16,7 @@ class ManifestProcess(ForkProcess):
 
     def _run(self):
         mf = self.repo_config.load_manifest(
-            os.path.join(self.repo_config.location, self.cp),
+            os_unicode_fs.path.join(self.repo_config.location, self.cp),
             self.distdir,
             fetchlist_dict=self.fetchlist_dict,
         )
@@ -49,4 +49,4 @@ class ManifestProcess(ForkProcess):
         else:
             if modified:
                 return self.MODIFIED
-            return os.EX_OK
+            return os_unicode_fs.EX_OK

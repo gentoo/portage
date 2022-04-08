@@ -6,10 +6,7 @@ import io
 import sys
 
 import portage
-from portage import os
-from portage import _encodings
-from portage import _unicode_encode
-from portage import _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -149,7 +146,7 @@ class _EbuildFetcherProcess(ForkProcess):
             # Use stat rather than lstat since fetch() creates
             # symlinks when PORTAGE_RO_DISTDIRS is used.
             try:
-                st = os.stat(os.path.join(distdir, filename))
+                st = os_unicode_fs.stat(os_unicode_fs.path.join(distdir, filename))
             except OSError:
                 return False
             if st.st_size == 0:
@@ -184,7 +181,7 @@ class _EbuildFetcherProcess(ForkProcess):
                         break
                     continue
                 ok, st = _check_distfile(
-                    os.path.join(distdir, filename),
+                    os_unicode_fs.path.join(distdir, filename),
                     mydigests,
                     eout,
                     show_errors=False,
@@ -221,7 +218,7 @@ class _EbuildFetcherProcess(ForkProcess):
 
         if not uri_map:
             # Nothing to fetch.
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -232,7 +229,7 @@ class _EbuildFetcherProcess(ForkProcess):
 
         if self.prefetch and self._prefetch_size_ok(uri_map, settings, ebuild_path):
             self.config_pool.deallocate(settings)
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -278,7 +275,7 @@ class _EbuildFetcherProcess(ForkProcess):
             digests=copy.deepcopy(self._get_digests()),
             allow_missing_digests=allow_missing,
         ):
-            rval = os.EX_OK
+            rval = os_unicode_fs.EX_OK
         return rval
 
     def _get_ebuild_path(self):
@@ -292,10 +289,10 @@ class _EbuildFetcherProcess(ForkProcess):
 
     def _get_manifest(self):
         if self._manifest is None:
-            pkgdir = os.path.dirname(self._get_ebuild_path())
+            pkgdir = os_unicode_fs.path.dirname(self._get_ebuild_path())
             self._manifest = (
                 self.pkg.root_config.settings.repositories.get_repo_for_location(
-                    os.path.dirname(os.path.dirname(pkgdir))
+                    os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
                 ).load_manifest(pkgdir, None)
             )
         return self._manifest
@@ -315,8 +312,8 @@ class _EbuildFetcherProcess(ForkProcess):
             result.set_result(self._uri_map)
             return result
 
-        pkgdir = os.path.dirname(self._get_ebuild_path())
-        mytree = os.path.dirname(os.path.dirname(pkgdir))
+        pkgdir = os_unicode_fs.path.dirname(self._get_ebuild_path())
+        mytree = os_unicode_fs.path.dirname(os_unicode_fs.path.dirname(pkgdir))
         use = None
         if not self.fetchall:
             use = self.pkg.use.enabled
@@ -343,7 +340,7 @@ class _EbuildFetcherProcess(ForkProcess):
             # Use stat rather than lstat since portage.fetch() creates
             # symlinks when PORTAGE_RO_DISTDIRS is used.
             try:
-                st = os.stat(os.path.join(distdir, filename))
+                st = os_unicode_fs.stat(os_unicode_fs.path.join(distdir, filename))
             except OSError:
                 return False
             if st.st_size == 0:
@@ -386,7 +383,7 @@ class _EbuildFetcherProcess(ForkProcess):
         if self.background or not sys.stdout.isatty():
             # When the output only goes to a log file,
             # there's no point in creating a pty.
-            return os.pipe()
+            return os_unicode_fs.pipe()
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
@@ -405,7 +402,11 @@ class _EbuildFetcherProcess(ForkProcess):
         """
         Extend _proc_join_done to emit an eerror message for fetch failure.
         """
-        if not self.prefetch and not future.cancelled() and proc.exitcode != os.EX_OK:
+        if (
+            not self.prefetch
+            and not future.cancelled()
+            and proc.exitcode != os_unicode_fs.EX_OK
+        ):
             msg_lines = []
             msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
             if self.logfile is not None:

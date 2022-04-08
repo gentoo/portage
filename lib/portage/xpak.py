@@ -37,12 +37,14 @@ import array
 import errno
 
 import portage
-from portage import os
-from portage import shutil
-from portage import normalize_path
-from portage import _encodings
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import (
+    os_unicode_fs,
+    shutil_unicode_fs,
+    normalize_path,
+    _encodings,
+    _unicode_decode,
+    _unicode_encode,
+)
 from portage.util.file_copy import copyfile
 
 
@@ -52,11 +54,11 @@ def addtolist(mylist, curdir):
     curdir = normalize_path(
         _unicode_decode(curdir, encoding=_encodings["fs"], errors="strict")
     )
-    for parent, dirs, files in os.walk(curdir):
+    for parent, dirs, files in os_unicode_fs.walk(curdir):
 
         parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
         if parent != curdir:
-            mylist.append(parent[len(curdir) + 1 :] + os.sep)
+            mylist.append(parent[len(curdir) + 1 :] + os_unicode_fs.sep)
 
         for x in dirs:
             try:
@@ -69,7 +71,7 @@ def addtolist(mylist, curdir):
                 x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 continue
-            mylist.append(os.path.join(parent, x)[len(curdir) + 1 :])
+            mylist.append(os_unicode_fs.path.join(parent, x)[len(curdir) + 1 :])
 
 
 def encodeint(myint):
@@ -113,7 +115,7 @@ def xpak(rootdir, outfile=None):
             # CONTENTS is generated during the merge process.
             continue
         x = _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
-        with open(os.path.join(rootdir, x), "rb") as f:
+        with open(os_unicode_fs.path.join(rootdir, x), "rb") as f:
             mydata[x] = f.read()
 
     xpak_segment = xpak_mem(mydata)
@@ -292,7 +294,7 @@ def getitem(myid, myitem):
 
 
 def xpand(myid, mydest):
-    mydest = normalize_path(mydest) + os.sep
+    mydest = normalize_path(mydest) + os_unicode_fs.sep
     myindex = myid[0]
     mydata = myid[1]
     myindexlen = len(myindex)
@@ -305,15 +307,15 @@ def xpand(myid, mydest):
         myname = _unicode_decode(
             myname, encoding=_encodings["repo.content"], errors="replace"
         )
-        filename = os.path.join(mydest, myname.lstrip(os.sep))
+        filename = os_unicode_fs.path.join(mydest, myname.lstrip(os_unicode_fs.sep))
         filename = normalize_path(filename)
         if not filename.startswith(mydest):
             # myname contains invalid ../ component(s)
             continue
-        dirname = os.path.dirname(filename)
+        dirname = os_unicode_fs.path.dirname(filename)
         if dirname:
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
+            if not os_unicode_fs.path.exists(dirname):
+                os_unicode_fs.makedirs(dirname)
         mydat = open(
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "wb"
         )
@@ -343,8 +345,8 @@ class tbz2:
             raise IOError
         if cleanup:
             self.cleanup(datadir)
-        if not os.path.exists(datadir):
-            os.makedirs(datadir)
+        if not os_unicode_fs.path.exists(datadir):
+            os_unicode_fs.makedirs(datadir)
         return self.unpackinfo(datadir)
 
     def compose(self, datadir, cleanup=0):
@@ -381,7 +383,7 @@ class tbz2:
                 portage.util.apply_stat_permissions(self.file, self.filestat)
             except portage.exception.OperationNotPermitted:
                 pass
-            os.rename(tmp_fname, self.file)
+            os_unicode_fs.rename(tmp_fname, self.file)
 
         myfile = open(
             _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"),
@@ -397,12 +399,12 @@ class tbz2:
         return 1
 
     def cleanup(self, datadir):
-        datadir_split = os.path.split(datadir)
+        datadir_split = os_unicode_fs.path.split(datadir)
         if len(datadir_split) >= 2 and len(datadir_split[1]) > 0:
             # This is potentially dangerous,
             # thus the above sanity check.
             try:
-                shutil.rmtree(datadir)
+                shutil_unicode_fs.rmtree(datadir)
             except OSError as oe:
                 if oe.errno == errno.ENOENT:
                     pass
@@ -414,7 +416,7 @@ class tbz2:
         This function is called by relevant functions already."""
         a = None
         try:
-            mystat = os.stat(self.file)
+            mystat = os_unicode_fs.stat(self.file)
             if self.filestat:
                 changed = 0
                 if (
@@ -490,12 +492,12 @@ class tbz2:
         """Unpacks all the files from the dataSegment into 'mydest'."""
         if not self.scan():
             return 0
-        mydest = normalize_path(mydest) + os.sep
+        mydest = normalize_path(mydest) + os_unicode_fs.sep
         a = open(
             _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
         )
-        if not os.path.exists(mydest):
-            os.makedirs(mydest)
+        if not os_unicode_fs.path.exists(mydest):
+            os_unicode_fs.makedirs(mydest)
         startpos = 0
         while (startpos + 8) < self.indexsize:
             namelen = decodeint(self.index[startpos : startpos + 4])
@@ -509,15 +511,15 @@ class tbz2:
             myname = _unicode_decode(
                 myname, encoding=_encodings["repo.content"], errors="replace"
             )
-            filename = os.path.join(mydest, myname.lstrip(os.sep))
+            filename = os_unicode_fs.path.join(mydest, myname.lstrip(os_unicode_fs.sep))
             filename = normalize_path(filename)
             if not filename.startswith(mydest):
                 # myname contains invalid ../ component(s)
                 continue
-            dirname = os.path.dirname(filename)
+            dirname = os_unicode_fs.path.dirname(filename)
             if dirname:
-                if not os.path.exists(dirname):
-                    os.makedirs(dirname)
+                if not os_unicode_fs.path.exists(dirname):
+                    os_unicode_fs.makedirs(dirname)
             mydat = open(
                 _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"),
                 "wb",

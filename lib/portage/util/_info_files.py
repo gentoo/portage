@@ -8,22 +8,23 @@ import stat
 import subprocess
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 
 
 def chk_updated_info_files(root, infodirs, prev_mtimes):
-
-    if os.path.exists("/usr/bin/install-info"):
+    if os_unicode_fs.path.exists("/usr/bin/install-info"):
         out = portage.output.EOutput()
         regen_infodirs = []
         for z in infodirs:
             if z == "":
                 continue
             inforoot = portage.util.normalize_path(root + z)
-            if os.path.isdir(inforoot) and not [
-                x for x in os.listdir(inforoot) if x.startswith(".keepinfodir")
+            if os_unicode_fs.path.isdir(inforoot) and not [
+                x
+                for x in os_unicode_fs.listdir(inforoot)
+                if x.startswith(".keepinfodir")
             ]:
-                infomtime = os.stat(inforoot)[stat.ST_MTIME]
+                infomtime = os_unicode_fs.stat(inforoot)[stat.ST_MTIME]
                 if inforoot not in prev_mtimes or prev_mtimes[inforoot] != infomtime:
                     regen_infodirs.append(inforoot)
 
@@ -44,16 +45,20 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                 if inforoot == "":
                     continue
 
-                if not os.path.isdir(inforoot) or not os.access(inforoot, os.W_OK):
+                if not os_unicode_fs.path.isdir(inforoot) or not os_unicode_fs.access(
+                    inforoot, os_unicode_fs.W_OK
+                ):
                     continue
 
-                file_list = os.listdir(inforoot)
+                file_list = os_unicode_fs.listdir(inforoot)
                 file_list.sort()
-                dir_file = os.path.join(inforoot, "dir")
+                dir_file = os_unicode_fs.path.join(inforoot, "dir")
                 moved_old_dir = False
                 processed_count = 0
                 for x in file_list:
-                    if x.startswith(".") or os.path.isdir(os.path.join(inforoot, x)):
+                    if x.startswith(".") or os_unicode_fs.path.isdir(
+                        os_unicode_fs.path.join(inforoot, x)
+                    ):
                         continue
                     if x.startswith("dir"):
                         skip = False
@@ -66,7 +71,9 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                     if processed_count == 0:
                         for ext in dir_extensions:
                             try:
-                                os.rename(dir_file + ext, dir_file + ext + ".old")
+                                os_unicode_fs.rename(
+                                    dir_file + ext, dir_file + ext + ".old"
+                                )
                                 moved_old_dir = True
                             except EnvironmentError as e:
                                 if e.errno != errno.ENOENT:
@@ -77,10 +84,11 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                         proc = subprocess.Popen(
                             [
                                 "/usr/bin/install-info",
-                                "--dir-file=%s" % os.path.join(inforoot, "dir"),
-                                os.path.join(inforoot, x),
+                                "--dir-file=%s"
+                                % os_unicode_fs.path.join(inforoot, "dir"),
+                                os_unicode_fs.path.join(inforoot, x),
                             ],
-                            env=dict(os.environ, LANG="C", LANGUAGE="C"),
+                            env=dict(os_unicode_fs.environ, LANG="C", LANGUAGE="C"),
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
                         )
@@ -108,12 +116,14 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                             errmsg += myso + "\n"
                     icount += 1
 
-                if moved_old_dir and not os.path.exists(dir_file):
+                if moved_old_dir and not os_unicode_fs.path.exists(dir_file):
                     # We didn't generate a new dir file, so put the old file
                     # back where it was originally found.
                     for ext in dir_extensions:
                         try:
-                            os.rename(dir_file + ext + ".old", dir_file + ext)
+                            os_unicode_fs.rename(
+                                dir_file + ext + ".old", dir_file + ext
+                            )
                         except EnvironmentError as e:
                             if e.errno != errno.ENOENT:
                                 raise
@@ -123,14 +133,14 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                 # unmerge of otherwise empty directories.
                 for ext in dir_extensions:
                     try:
-                        os.unlink(dir_file + ext + ".old")
+                        os_unicode_fs.unlink(dir_file + ext + ".old")
                     except EnvironmentError as e:
                         if e.errno != errno.ENOENT:
                             raise
                         del e
 
                 # update mtime so we can potentially avoid regenerating.
-                prev_mtimes[inforoot] = os.stat(inforoot)[stat.ST_MTIME]
+                prev_mtimes[inforoot] = os_unicode_fs.stat(inforoot)[stat.ST_MTIME]
 
             if badcount:
                 out.eerror("Processed %d info files; %d errors." % (icount, badcount))

@@ -2,7 +2,7 @@
 # Copyright 2006-2011 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.util import unique_array
 
@@ -14,7 +14,10 @@ class UniqueArrayTestCase(TestCase):
         """
 
         tests = [
-            (["a", "a", "a", os, os, [], [], []], ["a", os, []]),
+            (
+                ["a", "a", "a", os_unicode_fs, os_unicode_fs, [], [], []],
+                ["a", os_unicode_fs, []],
+            ),
             ([1, 1, 1, 2, 3, 4, 4], [1, 2, 3, 4]),
         ]
 

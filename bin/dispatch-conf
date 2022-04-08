@@ -38,8 +38,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os, shutil
-from portage import _encodings, _unicode_decode
+from portage import os_unicode_fs, shutil_unicode_fs, _encodings, _unicode_decode
 from portage.dispatch_conf import (
     diffstatusoutput,
     diff_mixed_wrapper,
@@ -58,7 +57,7 @@ if "case-insensitive-fs" in portage.settings.features:
     FIND_EXTANT_CONFIGS = FIND_EXTANT_CONFIGS.replace("-name '._cfg", "-iname '._cfg")
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
-oldmask = os.umask(0o077)
+oldmask = os_unicode_fs.umask(0o077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
@@ -70,18 +69,18 @@ while SCRATCH_DIR is None:
                 mydir += chr(int(97 + random() * 26.0))
             else:
                 mydir += chr(int(48 + random() * 10.0))
-        if os.path.exists(mydir):
+        if os_unicode_fs.path.exists(mydir):
             continue
-        os.mkdir(mydir)
+        os_unicode_fs.mkdir(mydir)
         SCRATCH_DIR = mydir
     except OSError as e:
         if e.errno != 17:
             raise
-os.umask(oldmask)
+os_unicode_fs.umask(oldmask)
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
-    shutil.rmtree(mydir)
+    shutil_unicode_fs.rmtree(mydir)
 
 
 atexit.register(cleanup)
@@ -98,8 +97,8 @@ def cmd_var_is_valid(cmd):
     if not cmd:
         return False
 
-    if os.path.isabs(cmd[0]):
-        return os.access(cmd[0], os.EX_OK)
+    if os_unicode_fs.path.isabs(cmd[0]):
+        return os_unicode_fs.access(cmd[0], os_unicode_fs.EX_OK)
 
     return find_binary(cmd[0]) is not None
 
@@ -116,25 +115,27 @@ class dispatch:
 
         perform_conf_update_session_hooks("pre-session")
 
-        config_root = portage.settings["EPREFIX"] or os.sep
+        config_root = portage.settings["EPREFIX"] or os_unicode_fs.sep
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:
-            if os.path.isfile(self.options["log-file"]):
-                shutil.copy(self.options["log-file"], self.options["log-file"] + ".old")
-            if os.path.isfile(self.options["log-file"]) or not os.path.exists(
+            if os_unicode_fs.path.isfile(self.options["log-file"]):
+                shutil_unicode_fs.copy(
+                    self.options["log-file"], self.options["log-file"] + ".old"
+                )
+            if os_unicode_fs.path.isfile(
                 self.options["log-file"]
-            ):
+            ) or not os_unicode_fs.path.exists(self.options["log-file"]):
                 open(self.options["log-file"], "w").close()  # Truncate it
-                os.chmod(self.options["log-file"], 0o600)
+                os_unicode_fs.chmod(self.options["log-file"], 0o600)
 
         pager = self.options.get("pager")
         if pager is None or not cmd_var_is_valid(pager):
-            pager = os.environ.get("PAGER")
+            pager = os_unicode_fs.environ.get("PAGER")
             if pager is None or not cmd_var_is_valid(pager):
                 pager = "cat"
 
-        pager_basename = os.path.basename(portage.util.shlex_split(pager)[0])
+        pager_basename = os_unicode_fs.path.basename(portage.util.shlex_split(pager)[0])
         if pager_basename == "less":
             less_opts = self.options.get("less-opts")
             if less_opts is not None and less_opts.strip():
@@ -151,18 +152,18 @@ class dispatch:
 
         for path in config_paths:
             path = portage.normalize_path(
-                os.path.join(config_root, path.lstrip(os.sep))
+                os_unicode_fs.path.join(config_root, path.lstrip(os_unicode_fs.sep))
             )
 
             # Protect files that don't exist (bug #523684). If the
             # parent directory doesn't exist, we can safely skip it.
-            if not os.path.isdir(os.path.dirname(path)):
+            if not os_unicode_fs.path.isdir(os_unicode_fs.path.dirname(path)):
                 continue
 
             basename = "*"
             find_opts = "-name '.*' -type d -prune -o"
-            if not os.path.isdir(path):
-                path, basename = os.path.split(path)
+            if not os_unicode_fs.path.isdir(path):
+                path, basename = os_unicode_fs.path.split(path)
                 find_opts = "-maxdepth 1"
 
             try:
@@ -209,7 +210,7 @@ class dispatch:
 
         def f(conf):
             mrgconf = re.sub(r"\._cfg", "._mrg", conf["new"])
-            archive = os.path.join(
+            archive = os_unicode_fs.path.join(
                 self.options["archive-dir"], conf["current"].lstrip("/")
             )
             if self.options["use-rcs"] == "yes":
@@ -220,13 +221,13 @@ class dispatch:
                 mrgfail = portage.dispatch_conf.file_archive(
                     archive, conf["current"], conf["new"], mrgconf
                 )
-            if os.path.lexists(archive + ".dist"):
+            if os_unicode_fs.path.lexists(archive + ".dist"):
                 unmodified = len(diff(conf["current"], archive + ".dist")[1]) == 0
             else:
                 unmodified = 0
-            if os.path.exists(mrgconf):
+            if os_unicode_fs.path.exists(mrgconf):
                 if mrgfail or len(diff(conf["new"], mrgconf)[1]) == 0:
-                    os.unlink(mrgconf)
+                    os_unicode_fs.unlink(mrgconf)
                     newconf = conf["new"]
                 else:
                     newconf = mrgconf
@@ -236,12 +237,12 @@ class dispatch:
             if (
                 newconf == mrgconf
                 and self.options.get("ignore-previously-merged") != "yes"
-                and os.path.lexists(archive + ".dist")
+                and os_unicode_fs.path.lexists(archive + ".dist")
                 and len(diff(archive + ".dist", conf["new"])[1]) == 0
             ):
                 # The current update is identical to the archived .dist
                 # version that has previously been merged.
-                os.unlink(mrgconf)
+                os_unicode_fs.unlink(mrgconf)
                 newconf = conf["new"]
 
             mystatus, myoutput = diff(conf["current"], newconf)
@@ -273,10 +274,10 @@ class dispatch:
             unmodified = unmodified and self.options["replace-unmodified"] == "yes"
 
             if same_file:
-                os.unlink(conf["new"])
+                os_unicode_fs.unlink(conf["new"])
                 self.post_process(conf["current"])
-                if os.path.exists(mrgconf):
-                    os.unlink(mrgconf)
+                if os_unicode_fs.path.exists(mrgconf):
+                    os_unicode_fs.unlink(mrgconf)
                 return False
             elif conf["current"] in frozen_files:
                 """Frozen files are automatically zapped. The new config has
@@ -284,9 +285,9 @@ class dispatch:
                 left with the .new suffix (post_process is skipped), since it
                 hasn't been merged into the current config."""
                 auto_zapped.append(conf["current"])
-                os.unlink(conf["new"])
+                os_unicode_fs.unlink(conf["new"])
                 try:
-                    os.unlink(mrgconf)
+                    os_unicode_fs.unlink(mrgconf)
                 except OSError:
                     pass
                 return False
@@ -299,9 +300,9 @@ class dispatch:
                 self.replace(newconf, conf["current"])
                 self.post_process(conf["current"])
                 if newconf == mrgconf:
-                    os.unlink(conf["new"])
-                elif os.path.exists(mrgconf):
-                    os.unlink(mrgconf)
+                    os_unicode_fs.unlink(conf["new"])
+                elif os_unicode_fs.path.exists(mrgconf):
+                    os_unicode_fs.unlink(mrgconf)
                 return False
             else:
                 return True
@@ -326,7 +327,7 @@ class dispatch:
 
             newconf = conf["new"]
             mrgconf = re.sub(r"\._cfg", "._mrg", newconf)
-            if os.path.exists(mrgconf):
+            if os_unicode_fs.path.exists(mrgconf):
                 newconf = mrgconf
             show_new_diff = 0
 
@@ -370,50 +371,54 @@ class dispatch:
                 elif c == "t":
                     if newconf == mrgconf:
                         newconf = conf["new"]
-                    elif os.path.exists(mrgconf):
+                    elif os_unicode_fs.path.exists(mrgconf):
                         newconf = mrgconf
                     continue
                 elif c == "n":
                     break
                 elif c == "m":
-                    merged = SCRATCH_DIR + "/" + os.path.basename(conf["current"])
+                    merged = (
+                        SCRATCH_DIR + "/" + os_unicode_fs.path.basename(conf["current"])
+                    )
                     print()
-                    ret = os.system(
+                    ret = os_unicode_fs.system(
                         self.options["merge"] % (merged, conf["current"], newconf)
                     )
-                    ret = os.WEXITSTATUS(ret)
+                    ret = os_unicode_fs.WEXITSTATUS(ret)
                     if ret < 2:
                         ret = 0
                     if ret:
                         print("Failure running 'merge' command")
                         continue
-                    shutil.copyfile(merged, mrgconf)
-                    os.remove(merged)
-                    mystat = os.lstat(conf["new"])
-                    os.chmod(mrgconf, mystat[ST_MODE])
-                    os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+                    shutil_unicode_fs.copyfile(merged, mrgconf)
+                    os_unicode_fs.remove(merged)
+                    mystat = os_unicode_fs.lstat(conf["new"])
+                    os_unicode_fs.chmod(mrgconf, mystat[ST_MODE])
+                    os_unicode_fs.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
                     newconf = mrgconf
                     continue
                 elif c == "l":
                     show_new_diff = 1
                     continue
                 elif c == "e":
-                    if "EDITOR" not in os.environ:
-                        os.environ["EDITOR"] = "nano"
-                    os.system(os.environ["EDITOR"] + " " + newconf)
+                    if "EDITOR" not in os_unicode_fs.environ:
+                        os_unicode_fs.environ["EDITOR"] = "nano"
+                    os_unicode_fs.system(
+                        os_unicode_fs.environ["EDITOR"] + " " + newconf
+                    )
                     continue
                 elif c == "z":
-                    os.unlink(conf["new"])
-                    if os.path.exists(mrgconf):
-                        os.unlink(mrgconf)
+                    os_unicode_fs.unlink(conf["new"])
+                    if os_unicode_fs.path.exists(mrgconf):
+                        os_unicode_fs.unlink(mrgconf)
                     break
                 elif c == "u":
                     self.replace(newconf, conf["current"])
                     self.post_process(conf["current"])
                     if newconf == mrgconf:
-                        os.unlink(conf["new"])
-                    elif os.path.exists(mrgconf):
-                        os.unlink(mrgconf)
+                        os_unicode_fs.unlink(conf["new"])
+                    elif os_unicode_fs.path.exists(mrgconf):
+                        os_unicode_fs.unlink(mrgconf)
                     break
                 else:
                     raise AssertionError("Invalid Input: %s" % c)
@@ -441,8 +446,8 @@ class dispatch:
         perform_conf_update_hooks("pre-update", curconf)
 
         try:
-            os.rename(newconf, curconf)
-        except (IOError, os.error) as why:
+            os_unicode_fs.rename(newconf, curconf)
+        except (IOError, os_unicode_fs.error) as why:
             writemsg(
                 "dispatch-conf: Error renaming %s to %s: %s; fatal\n"
                 % (newconf, curconf, str(why)),
@@ -453,7 +458,9 @@ class dispatch:
         perform_conf_update_hooks("post-update", curconf)
 
     def post_process(self, curconf):
-        archive = os.path.join(self.options["archive-dir"], curconf.lstrip("/"))
+        archive = os_unicode_fs.path.join(
+            self.options["archive-dir"], curconf.lstrip("/")
+        )
         if self.options["use-rcs"] == "yes":
             portage.dispatch_conf.rcs_archive_post_process(archive)
         else:
@@ -476,7 +483,7 @@ class dispatch:
             # and portage only merges files with valid UTF-8 encoding.
             nconf = _unicode_decode(nconf, errors="strict").rstrip()
             conf = re.sub(r"\._cfg\d+_", "", nconf)
-            dirname = os.path.dirname(nconf)
+            dirname = os_unicode_fs.path.dirname(nconf)
             conf_map = {
                 "current": conf,
                 "dir": dirname,
@@ -485,9 +492,9 @@ class dispatch:
 
             if conf in h:
                 mrgconf = re.sub(r"\._cfg", "._mrg", h[conf]["new"])
-                if os.path.exists(mrgconf):
-                    os.unlink(mrgconf)
-                os.unlink(h[conf]["new"])
+                if os_unicode_fs.path.exists(mrgconf):
+                    os_unicode_fs.unlink(mrgconf)
+                os_unicode_fs.unlink(h[conf]["new"])
                 h[conf].update(conf_map)
             else:
                 h[conf] = conf_map
@@ -538,11 +545,11 @@ def clear_screen():
             return
         except curses.error:
             pass
-    os.system("clear 2>/dev/null")
+    os_unicode_fs.system("clear 2>/dev/null")
 
 
-shell = os.environ.get("SHELL")
-if not shell or not os.access(shell, os.EX_OK):
+shell = os_unicode_fs.environ.get("SHELL")
+if not shell or not os_unicode_fs.access(shell, os_unicode_fs.EX_OK):
     shell = find_binary("sh")
 
 
@@ -552,7 +559,7 @@ def spawn_shell(cmd):
         sys.__stderr__.flush()
         spawn(
             [shell, "-c", cmd],
-            env=os.environ,
+            env=os_unicode_fs.environ,
             fd_pipes={
                 0: portage._get_stdin().fileno(),
                 1: sys.__stdout__.fileno(),
@@ -560,14 +567,14 @@ def spawn_shell(cmd):
             },
         )
     else:
-        os.system(cmd)
+        os_unicode_fs.system(cmd)
 
 
 def usage(argv):
     print("dispatch-conf: sane configuration file update\n")
     print("Usage: dispatch-conf [config dirs]\n")
     print("See the dispatch-conf(1) man page for more details")
-    sys.exit(os.EX_OK)
+    sys.exit(os_unicode_fs.EX_OK)
 
 
 for x in sys.argv:
@@ -575,7 +582,7 @@ for x in sys.argv:
         usage(sys.argv)
     elif x in ("--version",):
         print("Portage", portage.VERSION)
-        sys.exit(os.EX_OK)
+        sys.exit(os_unicode_fs.EX_OK)
 
 # run
 d = dispatch()

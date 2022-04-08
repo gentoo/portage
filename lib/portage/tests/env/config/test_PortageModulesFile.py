@@ -1,7 +1,7 @@
 # Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.env.config import PortageModulesFile
 from tempfile import mkstemp
@@ -30,10 +30,10 @@ class PortageModulesFileTestCase(TestCase):
 
     def BuildFile(self):
         fd, self.fname = mkstemp()
-        f = os.fdopen(fd, "w")
+        f = os_unicode_fs.fdopen(fd, "w")
         for k, v in self.items.items():
             f.write("%s=%s\n" % (k, v))
         f.close()
 
     def NukeFile(self):
-        os.unlink(self.fname)
+        os_unicode_fs.unlink(self.fname)

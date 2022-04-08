@@ -7,7 +7,7 @@ import errno
 import stat
 
 
-from portage import os
+from portage import os_unicode_fs
 from portage.const import VCS_DIRS
 from portage.exception import DirectoryNotFound, PermissionDenied, PortageException
 from portage.util import normalize_path
@@ -26,7 +26,7 @@ def cacheddir(
 ):
     mypath = normalize_path(my_original_path)
     try:
-        pathstat = os.stat(mypath)
+        pathstat = os_unicode_fs.stat(mypath)
         if not stat.S_ISDIR(pathstat.st_mode):
             raise DirectoryNotFound(mypath)
     except EnvironmentError as e:
@@ -38,7 +38,7 @@ def cacheddir(
         return [], []
     else:
         try:
-            fpaths = os.listdir(mypath)
+            fpaths = os_unicode_fs.listdir(mypath)
         except EnvironmentError as e:
             if e.errno != errno.EACCES:
                 raise
@@ -48,9 +48,9 @@ def cacheddir(
         for x in fpaths:
             try:
                 if followSymlinks:
-                    pathstat = os.stat(mypath + "/" + x)
+                    pathstat = os_unicode_fs.stat(mypath + "/" + x)
                 else:
-                    pathstat = os.lstat(mypath + "/" + x)
+                    pathstat = os_unicode_fs.lstat(mypath + "/" + x)
 
                 if stat.S_ISREG(pathstat[stat.ST_MODE]):
                     ftype.append(0)
@@ -93,7 +93,7 @@ def listdir(
     dirsonly=False,
 ):
     """
-    Portage-specific implementation of os.listdir
+    Portage-specific implementation of os_unicode_fs.listdir
 
     @param mypath: Path whose contents you wish to list
     @type mypath: String
@@ -137,14 +137,14 @@ def listdir(
             ftype.append(file_type)
             if file_type == 1:
                 subdir_list, subdir_types = cacheddir(
-                    os.path.join(mypath, file_path),
+                    os_unicode_fs.path.join(mypath, file_path),
                     ignorecvs,
                     ignorelist,
                     EmptyOnError,
                     followSymlinks,
                 )
                 stack.extend(
-                    (os.path.join(file_path, x), x_type)
+                    (os_unicode_fs.path.join(file_path, x), x_type)
                     for x, x_type in zip(subdir_list, subdir_types)
                 )
 

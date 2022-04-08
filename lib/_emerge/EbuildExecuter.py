@@ -5,7 +5,7 @@ from _emerge.EbuildPhase import EbuildPhase
 from _emerge.TaskSequence import TaskSequence
 from _emerge.CompositeTask import CompositeTask
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.eapi import (
     eapi_has_src_prepare_and_src_configure,
     eapi_exports_replace_vars,
@@ -47,7 +47,7 @@ class EbuildExecuter(CompositeTask):
 
     def _setup_exit(self, setup_phase):
 
-        if self._default_exit(setup_phase) != os.EX_OK:
+        if self._default_exit(setup_phase) != os_unicode_fs.EX_OK:
             self.wait()
             return
 
@@ -71,7 +71,7 @@ class EbuildExecuter(CompositeTask):
 
     def _unpack_exit(self, unpack_phase):
 
-        if self._default_exit(unpack_phase) != os.EX_OK:
+        if self._default_exit(unpack_phase) != os_unicode_fs.EX_OK:
             self.wait()
             return
 

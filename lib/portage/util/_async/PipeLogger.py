@@ -6,7 +6,7 @@ import errno
 import gzip
 
 import portage
-from portage import os, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio.streams import _writer
 from portage.util.futures.unix_events import _set_nonblocking
@@ -65,11 +65,13 @@ class PipeLogger(AbstractPollTask):
                 raise
 
         if isinstance(self.input_fd, int):
-            self.input_fd = os.fdopen(self.input_fd, "rb", 0)
+            self.input_fd = os_unicode_fs.fdopen(self.input_fd, "rb", 0)
 
         fd = self.input_fd.fileno()
 
-        fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+        fcntl.fcntl(
+            fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os_unicode_fs.O_NONBLOCK
+        )
 
         self._io_loop_task = asyncio.ensure_future(
             self._io_loop(self.input_fd), loop=self.scheduler
@@ -117,7 +119,9 @@ class PipeLogger(AbstractPollTask):
                 stdout_buf = buf
                 while stdout_buf:
                     try:
-                        stdout_buf = stdout_buf[os.write(stdout_fd, stdout_buf) :]
+                        stdout_buf = stdout_buf[
+                            os_unicode_fs.write(stdout_fd, stdout_buf) :
+                        ]
                     except OSError as e:
                         if e.errno != errno.EAGAIN:
                             raise
@@ -143,12 +147,13 @@ class PipeLogger(AbstractPollTask):
                         fcntl.fcntl(
                             stdout_fd,
                             fcntl.F_SETFL,
-                            fcntl.fcntl(stdout_fd, fcntl.F_GETFL) ^ os.O_NONBLOCK,
+                            fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+                            ^ os_unicode_fs.O_NONBLOCK,
                         )
 
             if log_file is not None:
                 if self._log_file_nb:
-                    # Use the _writer function which uses os.write, since the
+                    # Use the _writer function which uses os_unicode_fs.write, since the
                     # log_file.write method looses data when an EAGAIN occurs.
                     await _writer(log_file, buf)
                 else:
@@ -164,13 +169,13 @@ class PipeLogger(AbstractPollTask):
         except asyncio.CancelledError:
             self.cancel()
             self._was_cancelled()
-        self.returncode = self.returncode or os.EX_OK
+        self.returncode = self.returncode or os_unicode_fs.EX_OK
         self._async_wait()
 
     def _unregister(self):
         if self.input_fd is not None:
             if isinstance(self.input_fd, int):
-                os.close(self.input_fd)
+                os_unicode_fs.close(self.input_fd)
             elif not self.input_fd.closed:
                 self.scheduler.remove_reader(self.input_fd.fileno())
                 self.input_fd.close()
@@ -182,7 +187,7 @@ class PipeLogger(AbstractPollTask):
             self._io_loop_task = None
 
         if self.stdout_fd is not None:
-            os.close(self.stdout_fd)
+            os_unicode_fs.close(self.stdout_fd)
             self.stdout_fd = None
 
         if self._log_file is not None:

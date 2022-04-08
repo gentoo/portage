@@ -4,7 +4,7 @@
 __all__ = ("UseManager",)
 
 from _emerge.Package import Package
-from portage import os
+from portage import os_unicode_fs
 from portage.dep import (
     dep_getrepo,
     dep_getslot,
@@ -183,7 +183,7 @@ class UseManager:
             if lines:
                 writemsg(
                     _("--- EAPI '%s' does not support '%s': '%s'\n")
-                    % (eapi, os.path.basename(file_name), file_name),
+                    % (eapi, os_unicode_fs.path.basename(file_name), file_name),
                     noiselevel=-1,
                 )
             return ()
@@ -268,7 +268,7 @@ class UseManager:
             if file_dict:
                 writemsg(
                     _("--- EAPI '%s' does not support '%s': '%s'\n")
-                    % (eapi, os.path.basename(file_name), file_name),
+                    % (eapi, os_unicode_fs.path.basename(file_name), file_name),
                     noiselevel=-1,
                 )
             return ret
@@ -311,7 +311,7 @@ class UseManager:
         ret = ExtendedAtomDict(dict)
         if user_config:
             pusedict = grabdict_package(
-                os.path.join(location, file_name),
+                os_unicode_fs.path.join(location, file_name),
                 recursive=1,
                 newlines=1,
                 allow_wildcard=True,
@@ -345,7 +345,7 @@ class UseManager:
         ret = {}
         for repo in repositories.repos_with_profiles():
             ret[repo.name] = self._parse_file_to_tuple(
-                os.path.join(repo.location, "profiles", file_name),
+                os_unicode_fs.path.join(repo.location, "profiles", file_name),
                 eapi_filter=eapi_filter,
                 eapi_default=repo.eapi,
             )
@@ -357,7 +357,7 @@ class UseManager:
         ret = {}
         for repo in repositories.repos_with_profiles():
             ret[repo.name] = self._parse_file_to_dict(
-                os.path.join(repo.location, "profiles", file_name),
+                os_unicode_fs.path.join(repo.location, "profiles", file_name),
                 eapi_filter=eapi_filter,
                 eapi_default=repo.eapi,
                 allow_repo=allow_profile_repo_deps(repo),
@@ -370,7 +370,7 @@ class UseManager:
     ):
         return tuple(
             self._parse_file_to_tuple(
-                os.path.join(profile.location, file_name),
+                os_unicode_fs.path.join(profile.location, file_name),
                 recursive=profile.portage1_directories,
                 eapi_filter=eapi_filter,
                 eapi=profile.eapi,
@@ -384,7 +384,7 @@ class UseManager:
     ):
         return tuple(
             self._parse_file_to_dict(
-                os.path.join(profile.location, file_name),
+                os_unicode_fs.path.join(profile.location, file_name),
                 juststrings,
                 recursive=profile.portage1_directories,
                 eapi_filter=eapi_filter,

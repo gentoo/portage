@@ -55,7 +55,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os, _encodings, _unicode_encode, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.cache.index.pkg_desc_index import (
     pkg_desc_index_line_format,
@@ -260,13 +260,15 @@ def parse_args(args):
         options.load_average = None
 
     options.config_root = options.portage_configroot
-    if options.config_root is not None and not os.path.isdir(options.config_root):
+    if options.config_root is not None and not os_unicode_fs.path.isdir(
+        options.config_root
+    ):
         parser.error("Not a directory: --config-root='%s'" % (options.config_root,))
 
     if options.cache_dir is not None:
-        if not os.path.isdir(options.cache_dir):
+        if not os_unicode_fs.path.isdir(options.cache_dir):
             parser.error("Not a directory: --cache-dir='%s'" % (options.cache_dir,))
-        if not os.access(options.cache_dir, os.W_OK):
+        if not os_unicode_fs.access(options.cache_dir, os_unicode_fs.W_OK):
             parser.error("Write access denied: --cache-dir='%s'" % (options.cache_dir,))
 
     for atom in args:
@@ -329,7 +331,7 @@ class GenCache:
             write_auxdb=write_auxdb,
             main=True,
         )
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         conf = portdb.repositories.get_repo_for_location(tree)
         if external_cache_only:
             self._trg_caches = ()
@@ -417,7 +419,7 @@ class GenCache:
                     max_mtime += 1
                 max_mtime = int(max_mtime)
                 try:
-                    os.utime(ebuild_hash.location, (max_mtime, max_mtime))
+                    os_unicode_fs.utime(ebuild_hash.location, (max_mtime, max_mtime))
                 except OSError as e:
                     self.returncode |= 1
                     writemsg_level(
@@ -540,7 +542,7 @@ class GenCache:
 
 class GenPkgDescIndex:
     def __init__(self, repo_config, portdb, output_file, verbose=False):
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._repo_config = repo_config
         self._portdb = portdb
         self._output_file = output_file
@@ -562,7 +564,7 @@ class GenPkgDescIndex:
             except FileNotFoundError:
                 pass
 
-        portage.util.ensure_dirs(os.path.dirname(self._output_file))
+        portage.util.ensure_dirs(os_unicode_fs.path.dirname(self._output_file))
         f = portage.util.atomic_ofstream(
             self._output_file, encoding=_encodings["repo.content"]
         )
@@ -633,7 +635,7 @@ class GenPkgDescIndex:
 
 class GenUseLocalDesc:
     def __init__(self, portdb, output=None, preserve_comments=False):
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._portdb = portdb
         self._output = output
         self._preserve_comments = preserve_comments
@@ -646,10 +648,10 @@ class GenUseLocalDesc:
 
         if self._output is None or self._output != "-":
             if self._output is None:
-                prof_path = os.path.join(repo_path, "profiles")
-                desc_path = os.path.join(prof_path, "use.local.desc")
+                prof_path = os_unicode_fs.path.join(repo_path, "profiles")
+                desc_path = os_unicode_fs.path.join(prof_path, "use.local.desc")
                 try:
-                    os.mkdir(prof_path)
+                    os_unicode_fs.mkdir(prof_path)
                 except OSError:
                     pass
             else:
@@ -657,7 +659,7 @@ class GenUseLocalDesc:
 
             try:
                 prev_md5 = portage.checksum.perform_md5(desc_path)
-                prev_mtime = os.stat(desc_path)[stat.ST_MTIME]
+                prev_mtime = os_unicode_fs.stat(desc_path)[stat.ST_MTIME]
             except (portage.exception.FileNotFound, OSError):
                 pass
 
@@ -681,7 +683,7 @@ class GenUseLocalDesc:
                         errors="backslashreplace",
                     )
             except IOError as e:
-                if not self._preserve_comments or os.path.isfile(desc_path):
+                if not self._preserve_comments or os_unicode_fs.path.isfile(desc_path):
                     writemsg_level(
                         "ERROR: failed to open output file %s: %s\n" % (desc_path, e),
                         level=logging.ERROR,
@@ -775,7 +777,7 @@ class GenUseLocalDesc:
                 pass
 
         for cp in self._portdb.cp_all():
-            metadata_path = os.path.join(repo_path, cp, "metadata.xml")
+            metadata_path = os_unicode_fs.path.join(repo_path, cp, "metadata.xml")
             try:
                 metadata = ElementTree.parse(
                     _unicode_encode(
@@ -859,14 +861,14 @@ class GenUseLocalDesc:
             # code, set mtime to an exact integer value.
             mtime = int(time.time())
 
-        os.utime(desc_path, (mtime, mtime))
+        os_unicode_fs.utime(desc_path, (mtime, mtime))
 
 
 class GenChangeLogs:
     def __init__(
         self, portdb, changelog_output, changelog_reversed, max_jobs=None, max_load=None
     ):
-        self.returncode = os.EX_OK
+        self.returncode = os_unicode_fs.EX_OK
         self._portdb = portdb
         self._wrapper = textwrap.TextWrapper(
             width=78, initial_indent="  ", subsequent_indent="  "
@@ -895,7 +897,7 @@ class GenChangeLogs:
 
     def generate_changelog(self, cp):
 
-        os.chdir(os.path.join(self._repo_path, cp))
+        os_unicode_fs.chdir(os_unicode_fs.path.join(self._repo_path, cp))
         # Determine whether ChangeLog is up-to-date by comparing
         # the newest commit timestamp with the ChangeLog timestamp.
         lmod = self.grab(["git", self._work_tree, "log", "--format=%ct", "-1", "."])
@@ -906,7 +908,7 @@ class GenChangeLogs:
         lmod = int(lmod)
 
         try:
-            cmod = os.stat("ChangeLog")[stat.ST_MTIME]
+            cmod = os_unicode_fs.stat("ChangeLog")[stat.ST_MTIME]
         except OSError:
             cmod = 0
 
@@ -1070,11 +1072,13 @@ class GenChangeLogs:
             output.write("\n%s\n\n" % "\n".join(self._wrapper.fill(x) for x in body))
 
         output.close()
-        os.utime(self._changelog_output, (lmod, lmod))
+        os_unicode_fs.utime(self._changelog_output, (lmod, lmod))
 
     def _task_iter(self):
-        if not os.path.isdir(
-            os.environ.get("GIT_DIR", os.path.join(self._repo_path, ".git"))
+        if not os_unicode_fs.path.isdir(
+            os_unicode_fs.environ.get(
+                "GIT_DIR", os_unicode_fs.path.join(self._repo_path, ".git")
+            )
         ):
             writemsg_level(
                 "ERROR: --update-changelogs supported only in git repos\n",
@@ -1104,7 +1108,7 @@ def egencache_main(args):
     # completely controlled by commandline arguments.
     env = {}
 
-    if not sys.stdout.isatty() or os.environ.get("NOCOLOR", "").lower() in (
+    if not sys.stdout.isatty() or os_unicode_fs.environ.get("NOCOLOR", "").lower() in (
         "yes",
         "true",
     ):
@@ -1196,7 +1200,9 @@ def egencache_main(args):
             # has had an opportunity to create it. This ensures that
             # we don't use the cache in the "volatile" mode which is
             # undesirable for egencache.
-            if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
+            if not os_unicode_fs.access(
+                settings["PORTAGE_DEPCACHEDIR"], os_unicode_fs.W_OK
+            ):
                 writemsg_level(
                     "ecachegen: error: "
                     + "write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
@@ -1245,10 +1251,10 @@ def egencache_main(args):
                 if options.gpg_dir is not None:
                     gpg_dir = options.gpg_dir
                 elif "PORTAGE_GPG_DIR" not in settings:
-                    gpg_dir = os.path.expanduser("~/.gnupg")
+                    gpg_dir = os_unicode_fs.path.expanduser("~/.gnupg")
                 else:
-                    gpg_dir = os.path.expanduser(settings["PORTAGE_GPG_DIR"])
-                if not os.access(gpg_dir, os.X_OK):
+                    gpg_dir = os_unicode_fs.path.expanduser(settings["PORTAGE_GPG_DIR"])
+                if not os_unicode_fs.access(gpg_dir, os_unicode_fs.X_OK):
                     writemsg_level(
                         (
                             "egencache: error: "
@@ -1287,7 +1293,7 @@ def egencache_main(args):
 
             force_sign_key = gpg_vars.get("PORTAGE_GPG_KEY")
 
-    ret = [os.EX_OK]
+    ret = [os_unicode_fs.EX_OK]
 
     if options.update:
         cp_iter = None
@@ -1304,7 +1310,7 @@ def egencache_main(args):
         )
         gen_cache.run()
         if options.tolerant:
-            ret.append(os.EX_OK)
+            ret.append(os_unicode_fs.EX_OK)
         else:
             ret.append(gen_cache.returncode)
 
@@ -1312,8 +1318,8 @@ def egencache_main(args):
         if not options.external_cache_only and repo_config.writable:
             writable_location = repo_config.location
         else:
-            writable_location = os.path.join(
-                portdb.depcachedir, repo_config.location.lstrip(os.sep)
+            writable_location = os_unicode_fs.path.join(
+                portdb.depcachedir, repo_config.location.lstrip(os_unicode_fs.sep)
             )
             if not options.external_cache_only:
                 msg = [
@@ -1326,7 +1332,7 @@ def egencache_main(args):
         gen_index = GenPkgDescIndex(
             repo_config,
             portdb,
-            os.path.join(writable_location, "metadata", "pkg_desc_index"),
+            os_unicode_fs.path.join(writable_location, "metadata", "pkg_desc_index"),
             verbose=options.verbose,
         )
         gen_index.run()
@@ -1377,20 +1383,20 @@ def egencache_main(args):
             sys.exit(128 + signum)
 
         if options.tolerant:
-            ret.append(os.EX_OK)
+            ret.append(os_unicode_fs.EX_OK)
         else:
             ret.append(scheduler.returncode)
 
     if options.write_timestamp:
-        timestamp_path = os.path.join(repo_path, "metadata", "timestamp.chk")
+        timestamp_path = os_unicode_fs.path.join(repo_path, "metadata", "timestamp.chk")
         try:
             portage.util.write_atomic(
                 timestamp_path, time.strftime("%s\n" % TIMESTAMP_FORMAT, time.gmtime())
             )
         except (EnvironmentError, portage.exception.PortageException):
-            ret.append(os.EX_IOERR)
+            ret.append(os_unicode_fs.EX_IOERR)
         else:
-            ret.append(os.EX_OK)
+            ret.append(os_unicode_fs.EX_OK)
 
     return max(ret)
 

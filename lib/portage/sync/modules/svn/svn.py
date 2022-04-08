@@ -4,7 +4,7 @@
 import logging
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level
 from portage.sync.syncbase import NewBase
 
@@ -23,7 +23,9 @@ class SVNSync(NewBase):
 
     def exists(self, **kwargs):
         """Tests whether the repo actually exists"""
-        return os.path.exists(os.path.join(self.repo.location, ".svn"))
+        return os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(self.repo.location, ".svn")
+        )
 
     def new(self, **kwargs):
         if kwargs:
@@ -38,7 +40,7 @@ class SVNSync(NewBase):
             ),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! svn checkout error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
@@ -54,7 +56,7 @@ class SVNSync(NewBase):
         """
 
         exitcode = self._svn_upgrade()
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             return (exitcode, False)
 
         # svn update
@@ -62,7 +64,7 @@ class SVNSync(NewBase):
             "cd %s; exec svn update" % (portage._shell_quote(self.repo.location),),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! svn update error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)
@@ -80,7 +82,7 @@ class SVNSync(NewBase):
             "cd %s; exec svn upgrade" % (portage._shell_quote(self.repo.location),),
             **self.spawn_kwargs
         )
-        if exitcode != os.EX_OK:
+        if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! svn upgrade error; exiting."
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", noiselevel=-1, level=logging.ERROR)

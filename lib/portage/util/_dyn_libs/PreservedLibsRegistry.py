@@ -8,11 +8,13 @@ import pickle
 import stat
 
 from portage import abssymlink
-from portage import os
-from portage import _encodings
-from portage import _os_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import (
+    os_unicode_fs,
+    _encodings,
+    os_unicode_merge,
+    _unicode_decode,
+    _unicode_encode,
+)
 from portage.exception import PermissionDenied
 from portage.localization import _
 from portage.util import atomic_ofstream
@@ -129,7 +131,10 @@ class PreservedLibsRegistry:
         it is important not to call this method until the current lock
         is ready to be immediately released.
         """
-        if os.environ.get("SANDBOX_ON") == "1" or self._data == self._data_orig:
+        if (
+            os_unicode_fs.environ.get("SANDBOX_ON") == "1"
+            or self._data == self._data_orig
+        ):
             return
         try:
             f = atomic_ofstream(self._filename, "wb")
@@ -206,8 +211,6 @@ class PreservedLibsRegistry:
     def pruneNonExisting(self):
         """Remove all records for objects that no longer exist on the filesystem."""
 
-        os = _os_merge
-
         for cps in list(self._data):
             cpv, counter, _paths = self._data[cps]
 
@@ -215,14 +218,16 @@ class PreservedLibsRegistry:
             hardlinks = set()
             symlinks = {}
             for f in _paths:
-                f_abs = os.path.join(self._root, f.lstrip(os.sep))
+                f_abs = os_unicode_merge.path.join(
+                    self._root, f.lstrip(os_unicode_merge.sep)
+                )
                 try:
-                    lst = os.lstat(f_abs)
+                    lst = os_unicode_merge.lstat(f_abs)
                 except OSError:
                     continue
                 if stat.S_ISLNK(lst.st_mode):
                     try:
-                        symlinks[f] = os.readlink(f_abs)
+                        symlinks[f] = os_unicode_merge.readlink(f_abs)
                     except OSError:
                         continue
                 elif stat.S_ISREG(lst.st_mode):

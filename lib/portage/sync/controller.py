@@ -8,7 +8,7 @@ import pwd
 import warnings
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.progress import ProgressBar
 
 # from portage.emaint.defaults import DEFAULT_OPTIONS
@@ -33,7 +33,9 @@ class TaskHandler:
         self.show_progress_bar = show_progress_bar
         self.verbose = verbose
         self.callback = callback
-        self.isatty = os.environ.get("TERM") != "dumb" and sys.stdout.isatty()
+        self.isatty = (
+            os_unicode_fs.environ.get("TERM") != "dumb" and sys.stdout.isatty()
+        )
         self.progress_bar = ProgressBar(
             self.isatty, title="Portage-Sync", max_desc_length=27
         )
@@ -87,7 +89,7 @@ class SyncManager:
         self.logger = logger
         # Similar to emerge, sync needs a default umask so that created
         # files have sane permissions.
-        os.umask(0o22)
+        os_unicode_fs.umask(0o22)
 
         self.module_controller = portage.sync.module_controller
         self.module_names = self.module_controller.module_names
@@ -144,7 +146,7 @@ class SyncManager:
             return self.exitcode, msg, self.updatecache_flg, hooks_enabled
 
         rval = self.pre_sync(repo)
-        if rval != os.EX_OK:
+        if rval != os_unicode_fs.EX_OK:
             return rval, None, self.updatecache_flg, hooks_enabled
 
         # need to pass the kwargs dict to the modules
@@ -183,7 +185,7 @@ class SyncManager:
             self.callback(exitcode, updatecache_flg)
 
     def perform_post_sync_hook(self, reponame, dosyncuri="", repolocation=""):
-        succeeded = os.EX_OK
+        succeeded = os_unicode_fs.EX_OK
         if reponame:
             _hooks = self.hooks["repo.postsync.d"]
         else:
@@ -201,7 +203,7 @@ class SyncManager:
                 )
             else:
                 retval = portage.process.spawn([filepath], env=self.settings.environ())
-            if retval != os.EX_OK:
+            if retval != os_unicode_fs.EX_OK:
                 writemsg_level(
                     " %s Spawn failed for: %s, %s\n"
                     % (bad("*"), _unicode_decode(_hooks[filepath]), filepath),
@@ -216,7 +218,7 @@ class SyncManager:
         self.logger(self.xterm_titles, msg)
         writemsg_level(msg + "\n")
         try:
-            st = os.stat(repo.location)
+            st = os_unicode_fs.stat(repo.location)
         except OSError:
             st = None
 
@@ -299,16 +301,16 @@ class SyncManager:
                 perms["gid"] = spawn_kwargs["gid"]
 
             portage.util.ensure_dirs(repo.location, **perms)
-            st = os.stat(repo.location)
+            st = os_unicode_fs.stat(repo.location)
 
         if (
             repo.sync_user is None
             and "usersync" in self.settings.features
             and portage.data.secpass >= 2
             and (
-                st.st_uid != os.getuid()
+                st.st_uid != os_unicode_fs.getuid()
                 and st.st_mode & 0o700
-                or st.st_gid != os.getgid()
+                or st.st_gid != os_unicode_fs.getgid()
                 and st.st_mode & 0o070
             )
         ):
@@ -339,11 +341,11 @@ class SyncManager:
             # PORTAGE_TMPDIR is used below, so validate it and
             # bail out if necessary.
             rval = _check_temp_dir(self.settings)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 return rval
 
-        os.umask(0o022)
-        return os.EX_OK
+        os_unicode_fs.umask(0o022)
+        return os_unicode_fs.EX_OK
 
     def _sync_callback(self, proc):
         """
@@ -355,14 +357,14 @@ class SyncManager:
         repo = proc.kwargs["repo"]
         exitcode = proc.returncode
         updatecache_flg = False
-        if proc.returncode == os.EX_OK:
+        if proc.returncode == os_unicode_fs.EX_OK:
             exitcode, message, updatecache_flg, hooks_enabled = proc.result
 
         if updatecache_flg and "metadata-transfer" not in self.settings.features:
             updatecache_flg = False
 
-        if updatecache_flg and os.path.exists(
-            os.path.join(repo.location, "metadata", "md5-cache")
+        if updatecache_flg and os_unicode_fs.path.exists(
+            os_unicode_fs.path.join(repo.location, "metadata", "md5-cache")
         ):
 
             # Only update cache for repo.location since that's

@@ -8,7 +8,7 @@ from _emerge.PackageVirtualDbapi import PackageVirtualDbapi
 from _emerge.resolver.DbapiProvidesIndex import PackageDbapiProvidesIndex
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import VDB_PATH
 from portage.dbapi.vartree import vartree
 from portage.dep._slot_operator import find_built_slot_operator_atoms
@@ -28,9 +28,9 @@ class FakeVardbGetPath:
         self.settings = vardb.settings
 
     def __call__(self, cpv, filename=None):
-        path = os.path.join(self.settings["EROOT"], VDB_PATH, cpv)
+        path = os_unicode_fs.path.join(self.settings["EROOT"], VDB_PATH, cpv)
         if filename is not None:
-            path = os.path.join(path, filename)
+            path = os_unicode_fs.path.join(path, filename)
         return path
 
 
@@ -215,7 +215,9 @@ class FakeVartree(vartree):
         """
         locked = False
         try:
-            if acquire_lock and os.access(self._real_vardb._dbroot, os.W_OK):
+            if acquire_lock and os_unicode_fs.access(
+                self._real_vardb._dbroot, os_unicode_fs.W_OK
+            ):
                 self._real_vardb.lock()
                 locked = True
             self._sync()
@@ -304,8 +306,8 @@ def grab_global_updates(portdb):
 
     for repo_name in portdb.getRepositories():
         repo = portdb.getRepositoryPath(repo_name)
-        updpath = os.path.join(repo, "profiles", "updates")
-        if not os.path.isdir(updpath):
+        updpath = os_unicode_fs.path.join(repo, "profiles", "updates")
+        if not os_unicode_fs.path.isdir(updpath):
             continue
 
         try:

@@ -7,12 +7,9 @@ __all__ = ["database"]
 
 import errno
 
+from portage import cpv_getkey, os_unicode_fs, _encodings, _unicode_decode
 from portage.cache import fs_template
 from portage.versions import catsplit
-from portage import cpv_getkey
-from portage import os
-from portage import _encodings
-from portage import _unicode_decode
 from portage.util._xattr import xattr
 
 
@@ -35,7 +32,7 @@ class database(fs_template.FsBased):
         self.max_len = self.__get_max()
 
     def __get_max(self):
-        path = os.path.join(self.portdir, "profiles/repo_name")
+        path = os_unicode_fs.path.join(self.portdir, "profiles/repo_name")
         try:
             return int(self.__get(path, "value_max_len"))
         except NoValueException as e:
@@ -75,7 +72,9 @@ class database(fs_template.FsBased):
 
     def __get_path(self, cpv):
         cat, pn = catsplit(cpv_getkey(cpv))
-        return os.path.join(self.portdir, cat, pn, os.path.basename(cpv) + ".ebuild")
+        return os_unicode_fs.path.join(
+            self.portdir, cat, pn, os_unicode_fs.path.basename(cpv) + ".ebuild"
+        )
 
     def __has_cache(self, path):
         try:
@@ -149,11 +148,11 @@ class database(fs_template.FsBased):
         pass  # Will be gone with the ebuild
 
     def __contains__(self, cpv):
-        return os.path.exists(self.__get_path(cpv))
+        return os_unicode_fs.path.exists(self.__get_path(cpv))
 
     def __iter__(self):
 
-        for root, dirs, files in os.walk(self.portdir):
+        for root, dirs, files in os_unicode_fs.walk(self.portdir):
             for file in files:
                 try:
                     file = _unicode_decode(
@@ -162,8 +161,12 @@ class database(fs_template.FsBased):
                 except UnicodeDecodeError:
                     continue
                 if file[-7:] == ".ebuild":
-                    cat = os.path.basename(os.path.dirname(root))
+                    cat = os_unicode_fs.path.basename(os_unicode_fs.path.dirname(root))
                     pn_pv = file[:-7]
-                    path = os.path.join(root, file)
+                    path = os_unicode_fs.path.join(root, file)
                     if self.__has_cache(path):
-                        yield "%s/%s/%s" % (cat, os.path.basename(root), file[:-7])
+                        yield "%s/%s/%s" % (
+                            cat,
+                            os_unicode_fs.path.basename(root),
+                            file[:-7],
+                        )

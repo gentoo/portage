@@ -10,7 +10,7 @@ from urllib.parse import urlparse as urllib_parse_urlparse
 import stat
 import sys
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.exception import FileNotFound, InvalidBinaryPackageFormat
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
@@ -52,7 +52,7 @@ class BinpkgFetcher(CompositeTask):
         )
 
         if not self.pretend:
-            portage.util.ensure_dirs(os.path.dirname(self.pkg_path))
+            portage.util.ensure_dirs(os_unicode_fs.path.dirname(self.pkg_path))
             if "distlocks" in self.pkg.root_config.settings.features:
                 self._start_task(
                     AsyncTaskFuture(future=fetcher.async_lock()),
@@ -73,7 +73,7 @@ class BinpkgFetcher(CompositeTask):
 
     def _fetcher_exit(self, fetcher):
         self._assert_current(fetcher)
-        if not self.pretend and fetcher.returncode == os.EX_OK:
+        if not self.pretend and fetcher.returncode == os_unicode_fs.EX_OK:
             fetcher.sync_timestamp()
         if fetcher.locked:
             self._start_task(
@@ -108,12 +108,12 @@ class _BinpkgFetcherProcess(SpawnProcess):
         settings = bintree.settings
         pkg_path = self.pkg_path
 
-        exists = os.path.exists(pkg_path)
-        resume = exists and os.path.basename(pkg_path) in bintree.invalids
+        exists = os_unicode_fs.path.exists(pkg_path)
+        resume = exists and os_unicode_fs.path.basename(pkg_path) in bintree.invalids
         if not (pretend or resume):
             # Remove existing file or broken symlink.
             try:
-                os.unlink(pkg_path)
+                os_unicode_fs.unlink(pkg_path)
             except OSError:
                 pass
 
@@ -143,7 +143,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
 
         if pretend:
             portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
-            self.returncode = os.EX_OK
+            self.returncode = os_unicode_fs.EX_OK
             self._async_wait()
             return
 
@@ -162,9 +162,9 @@ class _BinpkgFetcherProcess(SpawnProcess):
                 fcmd = settings.get(fcmd_prefix)
 
         fcmd_vars = {
-            "DISTDIR": os.path.dirname(pkg_path),
+            "DISTDIR": os_unicode_fs.path.dirname(pkg_path),
             "URI": uri,
-            "FILE": os.path.basename(pkg_path),
+            "FILE": os_unicode_fs.path.basename(pkg_path),
         }
 
         for k in ("PORTAGE_SSH_OPTS",):
@@ -202,7 +202,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
         if self.background or not sys.__stdout__.isatty():
             # When the output only goes to a log file,
             # there's no point in creating a pty.
-            return os.pipe()
+            return os_unicode_fs.pipe()
         stdout_pipe = None
         if not self.background:
             stdout_pipe = fd_pipes.get(1)
@@ -224,13 +224,15 @@ class _BinpkgFetcherProcess(SpawnProcess):
                     pass
                 else:
                     try:
-                        local_mtime = os.stat(self.pkg_path)[stat.ST_MTIME]
+                        local_mtime = os_unicode_fs.stat(self.pkg_path)[stat.ST_MTIME]
                     except OSError:
                         pass
                     else:
                         if remote_mtime != local_mtime:
                             try:
-                                os.utime(self.pkg_path, (remote_mtime, remote_mtime))
+                                os_unicode_fs.utime(
+                                    self.pkg_path, (remote_mtime, remote_mtime)
+                                )
                             except OSError:
                                 pass
 
@@ -247,7 +249,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
         result = self.scheduler.create_future()
 
         def acquired_lock(async_lock):
-            if async_lock.wait() == os.EX_OK:
+            if async_lock.wait() == os_unicode_fs.EX_OK:
                 self.locked = True
                 result.set_result(None)
             else:

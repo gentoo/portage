@@ -7,11 +7,13 @@ import itertools
 import logging
 import subprocess
 
-import portage
-from portage import _encodings
-from portage import _os_merge
-from portage import _unicode_decode
-from portage import _unicode_encode
+from portage import (
+    os_unicode_fs,
+    os_unicode_merge,
+    _encodings,
+    _unicode_decode,
+    _unicode_encode,
+)
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
 from portage.dep.soname.multilib_category import compute_multilib_category
@@ -144,7 +146,7 @@ class LinkageMapELF:
 
             """
 
-            os = _os_merge
+            os = os_unicode_merge
 
             try:
                 _unicode_encode(obj, encoding=_encodings["merge"], errors="strict")
@@ -157,7 +159,7 @@ class LinkageMapELF:
                 except UnicodeEncodeError:
                     pass
                 else:
-                    os = portage.os
+                    os = os_unicode_fs
 
             abs_path = os.path.join(root, obj.lstrip(os.sep))
             try:
@@ -219,7 +221,7 @@ class LinkageMapELF:
         @type preserve_paths: set
         """
 
-        os = _os_merge
+        os = os_unicode_merge
         root = self._root
         root_len = len(root) - 1
         self._clear_cache()
@@ -515,7 +517,7 @@ class LinkageMapELF:
 
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         class _LibraryCache:
 
@@ -716,7 +718,7 @@ class LinkageMapELF:
                 2. False if obj is not a master link
 
         """
-        os = _os_merge
+        os = os_unicode_merge
         obj_key = self._obj_key(obj)
         if obj_key not in self._obj_properties:
             raise KeyError("%s (%s) not in object list" % (obj_key, obj))
@@ -820,7 +822,7 @@ class LinkageMapELF:
 
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         rValue = {}
 
@@ -901,7 +903,7 @@ class LinkageMapELF:
 
         """
 
-        os = _os_merge
+        os = os_unicode_merge
 
         if not self._libs:
             self.rebuild()

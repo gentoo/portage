@@ -5,7 +5,7 @@ import itertools
 import logging
 import stat
 
-from portage import os
+from portage import os_unicode_fs
 from portage.package.ebuild.fetch import DistfileName
 from .DeletionTask import DeletionTask
 
@@ -46,14 +46,14 @@ class DeletionIterator:
             # require at least one successful stat()
             exceptions = []
             for layout in reversed(self._config.layouts):
-                path = os.path.join(distdir, layout.get_path(filename))
+                path = os_unicode_fs.path.join(distdir, layout.get_path(filename))
                 try:
-                    st = os.stat(path)
+                    st = os_unicode_fs.stat(path)
                 except OSError as e:
                     # is it a dangling symlink?
                     try:
-                        if os.path.islink(path):
-                            os.unlink(path)
+                        if os_unicode_fs.path.islink(path):
+                            os_unicode_fs.unlink(path)
                     except OSError as e:
                         exceptions.append(e)
                 else:
@@ -79,8 +79,8 @@ class DeletionIterator:
                         del deletion_db[filename]
                     except KeyError:
                         pass
-            elif distfiles_local is not None and os.path.exists(
-                os.path.join(distfiles_local, filename)
+            elif distfiles_local is not None and os_unicode_fs.path.exists(
+                os_unicode_fs.path.join(distfiles_local, filename)
             ):
                 if deletion_db is not None:
                     try:

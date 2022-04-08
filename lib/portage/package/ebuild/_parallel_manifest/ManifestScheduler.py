@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi.porttree import _async_manifest_fetchlist
 from portage.dep import _repo_separator
 from portage.localization import _
@@ -95,7 +95,7 @@ class ManifestScheduler(AsyncScheduler):
 
     def _task_exit(self, task):
 
-        if task.returncode != os.EX_OK:
+        if task.returncode != os_unicode_fs.EX_OK:
             if not self._terminated_tasks:
                 portage.writemsg(
                     "Error processing %s%s%s, continuing...\n"

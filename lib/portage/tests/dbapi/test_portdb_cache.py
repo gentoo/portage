@@ -6,8 +6,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os
-from portage import _unicode_decode
+from portage import os_unicode_fs, _unicode_decode
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -29,18 +28,18 @@ class PortdbCacheTestCase(TestCase):
         settings = playground.settings
         eprefix = settings["EPREFIX"]
         test_repo_location = settings.repositories["test_repo"].location
-        user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
-        metadata_dir = os.path.join(test_repo_location, "metadata")
-        md5_cache_dir = os.path.join(metadata_dir, "md5-cache")
-        pms_cache_dir = os.path.join(metadata_dir, "cache")
-        layout_conf_path = os.path.join(metadata_dir, "layout.conf")
+        user_config_dir = os_unicode_fs.path.join(eprefix, USER_CONFIG_PATH)
+        metadata_dir = os_unicode_fs.path.join(test_repo_location, "metadata")
+        md5_cache_dir = os_unicode_fs.path.join(metadata_dir, "md5-cache")
+        pms_cache_dir = os_unicode_fs.path.join(metadata_dir, "cache")
+        layout_conf_path = os_unicode_fs.path.join(metadata_dir, "layout.conf")
 
         portage_python = portage._python_interpreter
         egencache_cmd = (
             portage_python,
             "-b",
             "-Wd",
-            os.path.join(self.bindir, "egencache"),
+            os_unicode_fs.path.join(self.bindir, "egencache"),
             "--update-manifests",
             "--sign-manifests=n",
             "--repo",
@@ -51,8 +50,8 @@ class PortdbCacheTestCase(TestCase):
         python_cmd = (portage_python, "-b", "-Wd", "-c")
 
         test_commands = (
-            (lambda: not os.path.exists(pms_cache_dir),),
-            (lambda: not os.path.exists(md5_cache_dir),),
+            (lambda: not os_unicode_fs.path.exists(pms_cache_dir),),
+            (lambda: not os_unicode_fs.path.exists(md5_cache_dir),),
             python_cmd
             + (
                 textwrap.dedent(
@@ -64,8 +63,8 @@ class PortdbCacheTestCase(TestCase):
                 ),
             ),
             egencache_cmd + ("--update",),
-            (lambda: not os.path.exists(pms_cache_dir),),
-            (lambda: os.path.exists(md5_cache_dir),),
+            (lambda: not os_unicode_fs.path.exists(pms_cache_dir),),
+            (lambda: os_unicode_fs.path.exists(md5_cache_dir),),
             python_cmd
             + (
                 textwrap.dedent(
@@ -102,7 +101,7 @@ class PortdbCacheTestCase(TestCase):
                 ),
             ),
             egencache_cmd + ("--update",),
-            (lambda: os.path.exists(md5_cache_dir),),
+            (lambda: os_unicode_fs.path.exists(md5_cache_dir),),
             python_cmd
             + (
                 textwrap.dedent(
@@ -187,7 +186,7 @@ class PortdbCacheTestCase(TestCase):
             ),
         )
 
-        pythonpath = os.environ.get("PYTHONPATH")
+        pythonpath = os_unicode_fs.environ.get("PYTHONPATH")
         if pythonpath is not None and not pythonpath.strip():
             pythonpath = None
         if pythonpath is not None and pythonpath.split(":")[0] == PORTAGE_PYM_PATH:
@@ -200,16 +199,18 @@ class PortdbCacheTestCase(TestCase):
             pythonpath = PORTAGE_PYM_PATH + pythonpath
 
         env = {
-            "PATH": os.environ.get("PATH", ""),
+            "PATH": os_unicode_fs.environ.get("PATH", ""),
             "PORTAGE_OVERRIDE_EPREFIX": eprefix,
             "PORTAGE_PYTHON": portage_python,
             "PORTAGE_REPOSITORIES": settings.repositories.config_string(),
-            "PYTHONDONTWRITEBYTECODE": os.environ.get("PYTHONDONTWRITEBYTECODE", ""),
+            "PYTHONDONTWRITEBYTECODE": os_unicode_fs.environ.get(
+                "PYTHONDONTWRITEBYTECODE", ""
+            ),
             "PYTHONPATH": pythonpath,
         }
 
-        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os.environ[
+        if "__PORTAGE_TEST_HARDLINK_LOCKS" in os_unicode_fs.environ:
+            env["__PORTAGE_TEST_HARDLINK_LOCKS"] = os_unicode_fs.environ[
                 "__PORTAGE_TEST_HARDLINK_LOCKS"
             ]
 
@@ -242,12 +243,12 @@ class PortdbCacheTestCase(TestCase):
                     output = proc.stdout.readlines()
                     proc.wait()
                     proc.stdout.close()
-                    if proc.returncode != os.EX_OK:
+                    if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK,
+                    os_unicode_fs.EX_OK,
                     proc.returncode,
                     "command %d failed with args %s"
                     % (

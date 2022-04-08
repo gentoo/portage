@@ -3,8 +3,7 @@
 
 
 import portage
-from portage import os
-from portage import digraph
+from portage import os_unicode_fs, digraph
 from portage._sets.base import InternalPackageSet
 from portage.dep import Atom
 
@@ -67,7 +66,7 @@ class BlockerDB:
                     myroot=inst_pkg.root,
                 )
                 if not success:
-                    pkg_location = os.path.join(
+                    pkg_location = os_unicode_fs.path.join(
                         inst_pkg.root, portage.VDB_PATH, inst_pkg.category, inst_pkg.pf
                     )
                     portage.writemsg(

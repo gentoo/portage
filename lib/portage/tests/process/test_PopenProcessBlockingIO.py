@@ -9,7 +9,7 @@ except ImportError:
     # dummy_threading will not suffice
     threading = None
 
-from portage import os
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.util._async.PopenProcess import PopenProcess
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -19,7 +19,7 @@ from portage.util._async.PipeReaderBlockingIO import PipeReaderBlockingIO
 class PopenPipeBlockingIOTestCase(TestCase):
     """
     Test PopenProcess, which can be useful for Jython support:
-            * use subprocess.Popen since Jython does not support os.fork()
+            * use subprocess.Popen since Jython does not support os_unicode_fs.fork()
             * use blocking IO with threads, since Jython does not support
               fcntl non-blocking IO)
     """
@@ -49,8 +49,8 @@ class PopenPipeBlockingIOTestCase(TestCase):
         producer.start()
         producer.wait()
 
-        self.assertEqual(producer.returncode, os.EX_OK)
-        self.assertEqual(consumer.returncode, os.EX_OK)
+        self.assertEqual(producer.returncode, os_unicode_fs.EX_OK)
+        self.assertEqual(consumer.returncode, os_unicode_fs.EX_OK)
 
         return consumer.getvalue().decode("ascii", "replace")
 

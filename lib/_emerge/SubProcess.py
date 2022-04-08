@@ -3,7 +3,7 @@
 
 import logging
 
-from portage import os
+from portage import os_unicode_fs
 from portage.util import writemsg_level
 from portage.util.futures import asyncio
 from _emerge.AbstractPollTask import AbstractPollTask
@@ -26,7 +26,7 @@ class SubProcess(AbstractPollTask):
     def _cancel(self):
         if self.isAlive() and self.pid is not None:
             try:
-                os.kill(self.pid, signal.SIGTERM)
+                os_unicode_fs.kill(self.pid, signal.SIGTERM)
             except OSError as e:
                 if e.errno == errno.EPERM:
                     # Reported with hardened kernel (bug #358211).
@@ -87,7 +87,7 @@ class SubProcess(AbstractPollTask):
         if self._files is not None:
             for f in self._files.values():
                 if isinstance(f, int):
-                    os.close(f)
+                    os_unicode_fs.close(f)
                 else:
                     f.close()
             self._files = None

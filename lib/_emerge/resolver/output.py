@@ -9,7 +9,7 @@ __all__ = (
     "format_unmatched_atom",
 )
 
-from portage import os
+from portage import os_unicode_fs
 from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom, cpvequal, _repo_separator, _slot_separator
 from portage.eapi import _get_eapi_attrs
@@ -663,8 +663,10 @@ class Display:
             )
             if pkg_info.ebuild_path is None:
                 raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
-            pkg_info.repo_path_real = os.path.dirname(
-                os.path.dirname(os.path.dirname(pkg_info.ebuild_path))
+            pkg_info.repo_path_real = os_unicode_fs.path.dirname(
+                os_unicode_fs.path.dirname(
+                    os_unicode_fs.path.dirname(pkg_info.ebuild_path)
+                )
             )
         else:
             pkg_info.repo_path_real = self.portdb.getRepositoryPath(pkg.repo)
@@ -933,7 +935,7 @@ class Display:
                 self.conf.trees[pkg.root]["porttree"].dbapi, pkg_info.ebuild_path
             )
 
-        return os.EX_OK
+        return os_unicode_fs.EX_OK
 
 
 def format_unmatched_atom(pkg, atom, pkg_use_enabled):

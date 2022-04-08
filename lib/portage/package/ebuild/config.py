@@ -31,7 +31,13 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.compression_probe:_compressors",
     "portage.util.locale:check_locale,split_LC_ALL",
 )
-from portage import bsd_chflags, load_mod, os, selinux, _unicode_decode
+from portage import (
+    bsd_chflags,
+    load_mod,
+    os_unicode_fs,
+    selinux_unicode_fs,
+    _unicode_decode,
+)
 from portage.const import (
     CACHE_PATH,
     DEPCACHE_PATH,
@@ -275,7 +281,7 @@ class config:
         ignore local config (keywording and unmasking)
         @type local_config: Boolean
         @param env: The calling environment which is used to override settings.
-                Defaults to os.environ if unspecified.
+                Defaults to os_unicode_fs.environ if unspecified.
         @type env: dict
         @param _unmatched_removal: Enabled by repoman when the
                 --unmatched-removal option is given.
@@ -428,11 +434,11 @@ class config:
             broot = locations_manager.broot
             abs_user_config = locations_manager.abs_user_config
             make_conf_paths = [
-                os.path.join(config_root, "etc", "make.conf"),
-                os.path.join(config_root, MAKE_CONF_FILE),
+                os_unicode_fs.path.join(config_root, "etc", "make.conf"),
+                os_unicode_fs.path.join(config_root, MAKE_CONF_FILE),
             ]
             try:
-                if os.path.samefile(*make_conf_paths):
+                if os_unicode_fs.path.samefile(*make_conf_paths):
                     make_conf_paths.pop()
             except OSError:
                 pass
@@ -487,7 +493,7 @@ class config:
 
             env_d = (
                 getconfig(
-                    os.path.join(eroot, "etc", "profile.env"),
+                    os_unicode_fs.path.join(eroot, "etc", "profile.env"),
                     tolerant=tolerant,
                     expand=False,
                 )
@@ -506,17 +512,19 @@ class config:
             expand_map["SYSROOT"] = sysroot
 
             if portage._not_installed:
-                make_globals_path = os.path.join(
+                make_globals_path = os_unicode_fs.path.join(
                     PORTAGE_BASE_PATH, "cnf", "make.globals"
                 )
             else:
-                make_globals_path = os.path.join(
+                make_globals_path = os_unicode_fs.path.join(
                     self.global_config_path, "make.globals"
                 )
-            old_make_globals = os.path.join(config_root, "etc", "make.globals")
-            if os.path.isfile(old_make_globals) and not os.path.samefile(
-                make_globals_path, old_make_globals
-            ):
+            old_make_globals = os_unicode_fs.path.join(
+                config_root, "etc", "make.globals"
+            )
+            if os_unicode_fs.path.isfile(
+                old_make_globals
+            ) and not os_unicode_fs.path.samefile(make_globals_path, old_make_globals):
                 # Don't warn if they refer to the same path, since
                 # that can be used for backward compatibility with
                 # old software.
@@ -548,7 +556,7 @@ class config:
 
             self.module_priority = ("user", "default")
             self.modules = {}
-            modules_file = os.path.join(config_root, MODULES_FILE_PATH)
+            modules_file = os_unicode_fs.path.join(config_root, MODULES_FILE_PATH)
             modules_loader = KeyValuePairFileLoader(modules_file, None, None)
             modules_dict, modules_errors = modules_loader.load()
             self.modules["user"] = modules_dict
@@ -591,7 +599,7 @@ class config:
 
             # backupenv is used for calculating incremental variables.
             if env is None:
-                env = os.environ
+                env = os_unicode_fs.environ
 
             # Avoid potential UnicodeDecodeError exceptions later.
             env_unicode = dict(
@@ -703,7 +711,7 @@ class config:
             try:
                 packages_list = [
                     grabfile_package(
-                        os.path.join(x.location, "packages"),
+                        os_unicode_fs.path.join(x.location, "packages"),
                         verify_eapi=True,
                         eapi=x.eapi,
                         eapi_default=None,
@@ -739,7 +747,7 @@ class config:
                     expand_map.pop("USE", None)
                     mygcfg_dlists.append(
                         getconfig(
-                            os.path.join(x.location, "make.defaults"),
+                            os_unicode_fs.path.join(x.location, "make.defaults"),
                             tolerant=tolerant,
                             expand=expand_map,
                             recursive=x.portage1_directories,
@@ -849,7 +857,9 @@ class config:
             for repo in self.repositories.repos_with_profiles():
                 d = (
                     getconfig(
-                        os.path.join(repo.location, "profiles", "make.defaults"),
+                        os_unicode_fs.path.join(
+                            repo.location, "profiles", "make.defaults"
+                        ),
                         tolerant=tolerant,
                         expand=self.configdict["globals"].copy(),
                         recursive=repo.portage1_profiles,
@@ -897,14 +907,16 @@ class config:
 
             # profile.bashrc
             self._profile_bashrc = tuple(
-                os.path.isfile(os.path.join(profile.location, "profile.bashrc"))
+                os_unicode_fs.path.isfile(
+                    os_unicode_fs.path.join(profile.location, "profile.bashrc")
+                )
                 for profile in profiles_complex
             )
 
             if local_config:
                 # package.properties
                 propdict = grabdict_package(
-                    os.path.join(abs_user_config, "package.properties"),
+                    os_unicode_fs.path.join(abs_user_config, "package.properties"),
                     recursive=1,
                     allow_wildcard=True,
                     allow_repo=True,
@@ -924,7 +936,7 @@ class config:
 
                 # package.accept_restrict
                 d = grabdict_package(
-                    os.path.join(abs_user_config, "package.accept_restrict"),
+                    os_unicode_fs.path.join(abs_user_config, "package.accept_restrict"),
                     recursive=True,
                     allow_wildcard=True,
                     allow_repo=True,
@@ -942,7 +954,7 @@ class config:
 
                 # package.env
                 penvdict = grabdict_package(
-                    os.path.join(abs_user_config, "package.env"),
+                    os_unicode_fs.path.join(abs_user_config, "package.env"),
                     recursive=1,
                     allow_wildcard=True,
                     allow_repo=True,
@@ -974,7 +986,7 @@ class config:
                         continue
                     self._pbashrcdict[profile] = portage.dep.ExtendedAtomDict(dict)
                     bashrc = grabdict_package(
-                        os.path.join(profile.location, "package.bashrc"),
+                        os_unicode_fs.path.join(profile.location, "package.bashrc"),
                         recursive=1,
                         allow_wildcard=True,
                         allow_repo=allow_profile_repo_deps(profile),
@@ -988,7 +1000,7 @@ class config:
 
                     for k, v in bashrc.items():
                         envfiles = [
-                            os.path.join(profile.location, "bashrc", envname)
+                            os_unicode_fs.path.join(profile.location, "bashrc", envname)
                             for envname in v
                         ]
                         self._pbashrcdict[profile].setdefault(k.cp, {}).setdefault(
@@ -997,7 +1009,7 @@ class config:
 
             # getting categories from an external file now
             self.categories = [
-                grabfile(os.path.join(x, "categories"))
+                grabfile(os_unicode_fs.path.join(x, "categories"))
                 for x in locations_manager.profile_and_user_locations
             ]
             category_re = dbapi._category_re
@@ -1010,7 +1022,7 @@ class config:
             )
 
             archlist = [
-                grabfile(os.path.join(x, "arch.list"))
+                grabfile(os_unicode_fs.path.join(x, "arch.list"))
                 for x in locations_manager.profile_and_user_locations
             ]
             archlist = sorted(stack_lists(archlist, incremental=1))
@@ -1018,8 +1030,8 @@ class config:
 
             pkgprovidedlines = []
             for x in profiles_complex:
-                provpath = os.path.join(x.location, "package.provided")
-                if os.path.exists(provpath):
+                provpath = os_unicode_fs.path.join(x.location, "package.provided")
+                if os_unicode_fs.path.exists(provpath):
                     if _get_eapi_attrs(x.eapi).allows_package_provided:
                         pkgprovidedlines.append(
                             grabfile(provpath, recursive=x.portage1_directories)
@@ -1108,7 +1120,7 @@ class config:
             eroot_or_parent = first_existing(eroot)
             unprivileged = False
             try:
-                eroot_st = os.stat(eroot_or_parent)
+                eroot_st = os_unicode_fs.stat(eroot_or_parent)
             except OSError:
                 pass
             else:
@@ -1154,16 +1166,20 @@ class config:
 
             self.depcachedir = self.get("PORTAGE_DEPCACHEDIR")
             if self.depcachedir is None:
-                self.depcachedir = os.path.join(
-                    os.sep, portage.const.EPREFIX, DEPCACHE_PATH.lstrip(os.sep)
+                self.depcachedir = os_unicode_fs.path.join(
+                    os_unicode_fs.sep,
+                    portage.const.EPREFIX,
+                    DEPCACHE_PATH.lstrip(os_unicode_fs.sep),
                 )
-                if unprivileged and target_root != os.sep:
+                if unprivileged and target_root != os_unicode_fs.sep:
                     # In unprivileged mode, automatically make
                     # depcachedir relative to target_root if the
                     # default depcachedir is not writable.
-                    if not os.access(first_existing(self.depcachedir), os.W_OK):
-                        self.depcachedir = os.path.join(
-                            eroot, DEPCACHE_PATH.lstrip(os.sep)
+                    if not os_unicode_fs.access(
+                        first_existing(self.depcachedir), os_unicode_fs.W_OK
+                    ):
+                        self.depcachedir = os_unicode_fs.path.join(
+                            eroot, DEPCACHE_PATH.lstrip(os_unicode_fs.sep)
                         )
 
             self["PORTAGE_DEPCACHEDIR"] = self.depcachedir
@@ -1264,7 +1280,7 @@ class config:
         """
         Create a few directories that are critical to portage operation
         """
-        if not os.access(self["EROOT"], os.W_OK):
+        if not os_unicode_fs.access(self["EROOT"], os_unicode_fs.W_OK):
             return
 
         #                                gid, mode, mask, preserve_perms
@@ -1276,8 +1292,8 @@ class config:
         }
 
         for mypath, (gid, mode, modemask, preserve_perms) in dir_mode_map.items():
-            mydir = os.path.join(self["EROOT"], mypath)
-            if preserve_perms and os.path.isdir(mydir):
+            mydir = os_unicode_fs.path.join(self["EROOT"], mypath)
+            if preserve_perms and os_unicode_fs.path.isdir(mydir):
                 # Only adjust permissions on some directories if
                 # they don't exist yet. This gives freedom to the
                 # user to adjust permissions to suit their taste.
@@ -1342,7 +1358,9 @@ class config:
         if self._soname_provided is None:
             d = stack_dictlist(
                 (
-                    grabdict(os.path.join(x, "soname.provided"), recursive=True)
+                    grabdict(
+                        os_unicode_fs.path.join(x, "soname.provided"), recursive=True
+                    )
                     for x in self.profiles
                 ),
                 incremental=True,
@@ -1396,7 +1414,7 @@ class config:
             # If any one of these files exists, then
             # the profile is considered valid.
             for x in ("make.defaults", "parent", "packages", "use.force", "use.mask"):
-                if exists_raise_eaccess(os.path.join(self.profile_path, x)):
+                if exists_raise_eaccess(os_unicode_fs.path.join(self.profile_path, x)):
                     break
             else:
                 profile_broken = True
@@ -1404,9 +1422,9 @@ class config:
         if profile_broken and not portage._sync_mode:
             abs_profile_path = None
             for x in (PROFILE_PATH, "etc/make.profile"):
-                x = os.path.join(self["PORTAGE_CONFIGROOT"], x)
+                x = os_unicode_fs.path.join(self["PORTAGE_CONFIGROOT"], x)
                 try:
-                    os.lstat(x)
+                    os_unicode_fs.lstat(x)
                 except OSError:
                     pass
                 else:
@@ -1414,7 +1432,7 @@ class config:
                     break
 
             if abs_profile_path is None:
-                abs_profile_path = os.path.join(
+                abs_profile_path = os_unicode_fs.path.join(
                     self["PORTAGE_CONFIGROOT"], PROFILE_PATH
                 )
 
@@ -1435,8 +1453,10 @@ class config:
                 )
             )
 
-        abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"], USER_VIRTUALS_FILE)
-        if os.path.exists(abs_user_virtuals):
+        abs_user_virtuals = os_unicode_fs.path.join(
+            self["PORTAGE_CONFIGROOT"], USER_VIRTUALS_FILE
+        )
+        if os_unicode_fs.path.exists(abs_user_virtuals):
             writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
             writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
             writemsg("!!! this new location.\n\n")
@@ -1444,10 +1464,10 @@ class config:
         if not sandbox_capable and (
             "sandbox" in self.features or "usersandbox" in self.features
         ):
-            if self.profile_path is not None and os.path.realpath(
+            if self.profile_path is not None and os_unicode_fs.path.realpath(
                 self.profile_path
-            ) == os.path.realpath(
-                os.path.join(self["PORTAGE_CONFIGROOT"], PROFILE_PATH)
+            ) == os_unicode_fs.path.realpath(
+                os_unicode_fs.path.join(self["PORTAGE_CONFIGROOT"], PROFILE_PATH)
             ):
                 # Don't show this warning when running repoman and the
                 # sandbox feature came from a profile that doesn't belong
@@ -1476,14 +1496,14 @@ class config:
                 noiselevel=-1,
             )
 
-        if os.getuid() == 0 and not hasattr(os, "setgroups"):
+        if os_unicode_fs.getuid() == 0 and not hasattr(os_unicode_fs, "setgroups"):
             warning_shown = False
 
             if "userpriv" in self.features:
                 writemsg(
                     _(
                         "!!! FEATURES=userpriv is enabled, but "
-                        "os.setgroups is not available.\n"
+                        "os_unicode_fs.setgroups is not available.\n"
                     ),
                     noiselevel=-1,
                 )
@@ -1493,7 +1513,7 @@ class config:
                 writemsg(
                     _(
                         "!!! FEATURES=userfetch is enabled, but "
-                        "os.setgroups is not available.\n"
+                        "os_unicode_fs.setgroups is not available.\n"
                     ),
                     noiselevel=-1,
                 )
@@ -1949,7 +1969,9 @@ class config:
             self._locations_manager.profiles_complex, self._profile_bashrc
         ):
             if profile_bashrc:
-                bashrc_files.append(os.path.join(profile.location, "profile.bashrc"))
+                bashrc_files.append(
+                    os_unicode_fs.path.join(profile.location, "profile.bashrc")
+                )
             if profile in self._pbashrcdict:
                 cpdict = self._pbashrcdict[profile].get(cp)
                 if cpdict:
@@ -2216,14 +2238,16 @@ class config:
     def _grab_pkg_env(self, penv, container, protected_keys=None):
         if protected_keys is None:
             protected_keys = ()
-        abs_user_config = os.path.join(self["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH)
+        abs_user_config = os_unicode_fs.path.join(
+            self["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH
+        )
         non_user_variables = self._non_user_variables
         # Make a copy since we don't want per-package settings
         # to pollute the global expand_map.
         expand_map = self._expand_map.copy()
         incrementals = self.incrementals
         for envname in penv:
-            penvfile = os.path.join(abs_user_config, "env", envname)
+            penvfile = os_unicode_fs.path.join(abs_user_config, "env", envname)
             penvconfig = getconfig(
                 penvfile,
                 tolerant=self._tolerant,
@@ -2233,7 +2257,10 @@ class config:
             if penvconfig is None:
                 writemsg(
                     "!!! %s references non-existent file: %s\n"
-                    % (os.path.join(abs_user_config, "package.env"), penvfile),
+                    % (
+                        os_unicode_fs.path.join(abs_user_config, "package.env"),
+                        penvfile,
+                    ),
                     noiselevel=-1,
                 )
             else:
@@ -2640,7 +2667,7 @@ class config:
 
     def reload(self):
         """Reload things like /etc/profile.env that can change during runtime."""
-        env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
+        env_d_filename = os_unicode_fs.path.join(self["EROOT"], "etc", "profile.env")
         self.configdict["env.d"].clear()
         env_d = getconfig(env_d_filename, tolerant=self._tolerant, expand=False)
         if env_d:
@@ -3115,7 +3142,7 @@ class config:
                 need_pym_path = True
                 if value:
                     try:
-                        need_pym_path = not os.path.samefile(
+                        need_pym_path = not os_unicode_fs.path.samefile(
                             value[0], portage._pym_path
                         )
                     except OSError:
@@ -3226,8 +3253,8 @@ class config:
             and phase not in ("clean", "cleanrm", "depend", "fetch")
         ):
             temp_dir = self.get("T")
-            if temp_dir is not None and os.path.exists(
-                os.path.join(temp_dir, "environment")
+            if temp_dir is not None and os_unicode_fs.path.exists(
+                os_unicode_fs.path.join(temp_dir, "environment")
             ):
                 filter_calling_env = True
 
@@ -3348,13 +3375,13 @@ class config:
         if not eapi_attrs.path_variables_end_with_trailing_slash:
             for v in ("D", "ED", "ROOT", "EROOT", "ESYSROOT", "BROOT"):
                 if v in mydict:
-                    mydict[v] = mydict[v].rstrip(os.path.sep)
+                    mydict[v] = mydict[v].rstrip(os_unicode_fs.path.sep)
 
         # Since SYSROOT=/ interacts badly with autotools.eclass (bug 654600),
         # and no EAPI expects SYSROOT to have a trailing slash, always strip
         # the trailing slash from SYSROOT.
         if "SYSROOT" in mydict:
-            mydict["SYSROOT"] = mydict["SYSROOT"].rstrip(os.sep)
+            mydict["SYSROOT"] = mydict["SYSROOT"].rstrip(os_unicode_fs.sep)
 
         try:
             builddir = mydict["PORTAGE_BUILDDIR"]
@@ -3363,7 +3390,7 @@ class config:
             pass
         else:
             mydict["PORTAGE_ACTUAL_DISTDIR"] = distdir
-            mydict["DISTDIR"] = os.path.join(builddir, "distdir")
+            mydict["DISTDIR"] = os_unicode_fs.path.join(builddir, "distdir")
 
         return mydict
 
@@ -3373,7 +3400,7 @@ class config:
             for repo_name in reversed(self.repositories.prepos_order):
                 thirdparty_lists.append(
                     grabdict(
-                        os.path.join(
+                        os_unicode_fs.path.join(
                             self.repositories[repo_name].location,
                             "profiles",
                             "thirdpartymirrors",
@@ -3395,7 +3422,7 @@ class config:
             self._selinux_enabled = 0
             if "selinux" in self["USE"].split():
                 if selinux:
-                    if selinux.is_selinux_enabled() == 1:
+                    if selinux_unicode_fs.is_selinux_enabled() == 1:
                         self._selinux_enabled = 1
                     else:
                         self._selinux_enabled = 0

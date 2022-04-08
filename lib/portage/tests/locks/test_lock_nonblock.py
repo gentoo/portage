@@ -5,8 +5,7 @@ import tempfile
 import traceback
 
 import portage
-from portage import os
-from portage import shutil
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.exception import TryAgain
 from portage.tests import TestCase
 
@@ -15,9 +14,9 @@ class LockNonblockTestCase(TestCase):
     def _testLockNonblock(self):
         tempdir = tempfile.mkdtemp()
         try:
-            path = os.path.join(tempdir, "lock_me")
+            path = os_unicode_fs.path.join(tempdir, "lock_me")
             lock1 = portage.locks.lockfile(path)
-            pid = os.fork()
+            pid = os_unicode_fs.fork()
             if pid == 0:
                 portage._ForkWatcher.hook(portage._ForkWatcher)
                 portage.locks._close_fds()
@@ -27,9 +26,11 @@ class LockNonblockTestCase(TestCase):
                 rval = 2
                 try:
                     try:
-                        lock2 = portage.locks.lockfile(path, flags=os.O_NONBLOCK)
+                        lock2 = portage.locks.lockfile(
+                            path, flags=os_unicode_fs.O_NONBLOCK
+                        )
                     except portage.exception.TryAgain:
-                        rval = os.EX_OK
+                        rval = os_unicode_fs.EX_OK
                     else:
                         rval = 1
                         portage.locks.unlockfile(lock2)
@@ -38,29 +39,29 @@ class LockNonblockTestCase(TestCase):
                 except:
                     traceback.print_exc()
                 finally:
-                    os._exit(rval)
+                    os_unicode_fs._exit(rval)
 
             self.assertEqual(pid > 0, True)
-            pid, status = os.waitpid(pid, 0)
-            self.assertEqual(os.WIFEXITED(status), True)
-            self.assertEqual(os.WEXITSTATUS(status), os.EX_OK)
+            pid, status = os_unicode_fs.waitpid(pid, 0)
+            self.assertEqual(os_unicode_fs.WIFEXITED(status), True)
+            self.assertEqual(os_unicode_fs.WEXITSTATUS(status), os_unicode_fs.EX_OK)
 
             portage.locks.unlockfile(lock1)
         finally:
-            shutil.rmtree(tempdir)
+            shutil_unicode_fs.rmtree(tempdir)
 
     def testLockNonblock(self):
         self._testLockNonblock()
 
     def testLockNonblockHardlink(self):
-        prev_state = os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
-        os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
+        prev_state = os_unicode_fs.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+        os_unicode_fs.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = "1"
         try:
             self._testLockNonblock()
         finally:
-            os.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
+            os_unicode_fs.environ.pop("__PORTAGE_TEST_HARDLINK_LOCKS", None)
             if prev_state is not None:
-                os.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
+                os_unicode_fs.environ["__PORTAGE_TEST_HARDLINK_LOCKS"] = prev_state
 
     def test_competition_with_same_process(self):
         """
@@ -69,11 +70,11 @@ class LockNonblockTestCase(TestCase):
         """
         tempdir = tempfile.mkdtemp()
         try:
-            path = os.path.join(tempdir, "lock_me")
+            path = os_unicode_fs.path.join(tempdir, "lock_me")
             lock = portage.locks.lockfile(path)
             self.assertRaises(
-                TryAgain, portage.locks.lockfile, path, flags=os.O_NONBLOCK
+                TryAgain, portage.locks.lockfile, path, flags=os_unicode_fs.O_NONBLOCK
             )
             portage.locks.unlockfile(lock)
         finally:
-            shutil.rmtree(tempdir)
+            shutil_unicode_fs.rmtree(tempdir)

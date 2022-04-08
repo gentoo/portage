@@ -18,7 +18,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.TaskSequence import TaskSequence
 
 import portage
-from portage import _encodings, _unicode_encode, os
+from portage import os_unicode_fs, _encodings, _unicode_encode
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
@@ -45,7 +45,7 @@ class EbuildBuild(CompositeTask):
     def _start(self):
         if not self.opts.fetchonly:
             rval = _check_temp_dir(self.settings)
-            if rval != os.EX_OK:
+            if rval != os_unicode_fs.EX_OK:
                 self.returncode = rval
                 self._current_task = None
                 self._async_wait()
@@ -103,7 +103,7 @@ class EbuildBuild(CompositeTask):
         elif prefetcher.isAlive() and prefetcher.poll() is None:
 
             if not self.background:
-                fetch_log = os.path.join(
+                fetch_log = os_unicode_fs.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
                 )
                 msg = (
@@ -126,7 +126,7 @@ class EbuildBuild(CompositeTask):
 
         settings = self.settings
         if "strict" in settings.features and "digest" not in settings.features:
-            settings["O"] = os.path.dirname(self._ebuild_path)
+            settings["O"] = os_unicode_fs.path.dirname(self._ebuild_path)
             quiet_setting = settings.get("PORTAGE_QUIET")
             settings["PORTAGE_QUIET"] = "1"
             try:
@@ -158,9 +158,9 @@ class EbuildBuild(CompositeTask):
                     settings=settings,
                 )
                 retval = fetcher.execute()
-                if retval == os.EX_OK:
+                if retval == os_unicode_fs.EX_OK:
                     self._current_task = None
-                    self.returncode = os.EX_OK
+                    self.returncode = os_unicode_fs.EX_OK
                     self._async_wait()
                 else:
                     # For pretend mode, the convention it to execute
@@ -181,10 +181,12 @@ class EbuildBuild(CompositeTask):
             fetch_log = None
             logwrite_access = False
             if quiet_setting:
-                fetch_log = os.path.join(
+                fetch_log = os_unicode_fs.path.join(
                     _emerge.emergelog._emerge_log_dir, "emerge-fetch.log"
                 )
-                logwrite_access = os.access(first_existing(fetch_log), os.W_OK)
+                logwrite_access = os_unicode_fs.access(
+                    first_existing(fetch_log), os_unicode_fs.W_OK
+                )
 
             fetcher = EbuildFetcher(
                 config_pool=self.config_pool,
@@ -242,7 +244,7 @@ class EbuildBuild(CompositeTask):
 
     def _fetchonly_exit(self, fetcher):
         self._final_exit(fetcher)
-        if self.returncode != os.EX_OK:
+        if self.returncode != os_unicode_fs.EX_OK:
             self.returncode = None
             portdb = self.pkg.root_config.trees[self._tree].dbapi
             self._start_task(
@@ -265,7 +267,7 @@ class EbuildBuild(CompositeTask):
         self.wait()
 
     def _pre_clean_exit(self, pre_clean_phase):
-        if self._default_exit(pre_clean_phase) != os.EX_OK:
+        if self._default_exit(pre_clean_phase) != os_unicode_fs.EX_OK:
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
@@ -319,7 +321,7 @@ class EbuildBuild(CompositeTask):
 
     def _fetch_exit(self, fetcher):
 
-        if fetcher is not None and self._default_exit(fetcher) != os.EX_OK:
+        if fetcher is not None and self._default_exit(fetcher) != os_unicode_fs.EX_OK:
             self._fetch_failed()
             return
 
@@ -450,7 +452,7 @@ class EbuildBuild(CompositeTask):
             self._async_wait()
 
     def _build_exit(self, build):
-        if self._default_exit(build) != os.EX_OK:
+        if self._default_exit(build) != os_unicode_fs.EX_OK:
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
@@ -526,7 +528,7 @@ class EbuildBuild(CompositeTask):
         be released when merge() is called.
         """
 
-        if self._default_exit(packager) != os.EX_OK:
+        if self._default_exit(packager) != os_unicode_fs.EX_OK:
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
@@ -549,14 +551,16 @@ class EbuildBuild(CompositeTask):
         self.wait()
 
     def _record_binpkg_info(self, task):
-        if task.returncode != os.EX_OK:
+        if task.returncode != os_unicode_fs.EX_OK:
             return
 
         # Save info about the created binary package, so that
         # identifying information can be passed to the install
         # task, to be recorded in the installed package database.
         pkg = task.get_binpkg_info()
-        infoloc = os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info")
+        infoloc = os_unicode_fs.path.join(
+            self.settings["PORTAGE_BUILDDIR"], "build-info"
+        )
         info = {
             "BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
         }
@@ -565,7 +569,9 @@ class EbuildBuild(CompositeTask):
         for k, v in info.items():
             with io.open(
                 _unicode_encode(
-                    os.path.join(infoloc, k), encoding=_encodings["fs"], errors="strict"
+                    os_unicode_fs.path.join(infoloc, k),
+                    encoding=_encodings["fs"],
+                    errors="strict",
                 ),
                 mode="w",
                 encoding=_encodings["repo.content"],
@@ -588,7 +594,10 @@ class EbuildBuild(CompositeTask):
         self._start_task(clean_phase, self._clean_exit)
 
     def _clean_exit(self, clean_phase):
-        if self._final_exit(clean_phase) != os.EX_OK or self.opts.buildpkgonly:
+        if (
+            self._final_exit(clean_phase) != os_unicode_fs.EX_OK
+            or self.opts.buildpkgonly
+        ):
             self._async_unlock_builddir(returncode=self.returncode)
         else:
             self.wait()
@@ -646,7 +655,7 @@ class EbuildBuild(CompositeTask):
         self._async_unlock_builddir()
         if self._current_task is None:
             result = self.scheduler.create_future()
-            self.scheduler.call_soon(result.set_result, os.EX_OK)
+            self.scheduler.call_soon(result.set_result, os_unicode_fs.EX_OK)
         else:
             result = self._current_task.async_wait()
         return result

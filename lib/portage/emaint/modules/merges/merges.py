@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os, _unicode_encode
+from portage import os_unicode_fs, _unicode_encode
 from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
 from portage.dep import isvalidatom
 
@@ -59,12 +59,12 @@ class TrackingFile:
         @rtype: bool
         @return: true if tracking file exists, false otherwise
         """
-        return os.path.exists(self._tracking_path)
+        return os_unicode_fs.path.exists(self._tracking_path)
 
     def purge(self):
         """Delete previously saved tracking file if one exists."""
         if self.exists():
-            os.remove(self._tracking_path)
+            os_unicode_fs.remove(self._tracking_path)
 
     def __iter__(self):
         """
@@ -87,9 +87,9 @@ class MergesHandler:
     def __init__(self):
         """Create MergesHandler object."""
         eroot = portage.settings["EROOT"]
-        tracking_path = os.path.join(eroot, PRIVATE_PATH, "failed-merges")
+        tracking_path = os_unicode_fs.path.join(eroot, PRIVATE_PATH, "failed-merges")
         self._tracking_file = TrackingFile(tracking_path)
-        self._vardb_path = os.path.join(eroot, VDB_PATH)
+        self._vardb_path = os_unicode_fs.path.join(eroot, VDB_PATH)
 
     def can_progressbar(self, func):
         return func == "check"
@@ -104,18 +104,22 @@ class MergesHandler:
         @return: dictionary of packages that failed to merges
         """
         failed_pkgs = {}
-        for cat in os.listdir(self._vardb_path):
-            pkgs_path = os.path.join(self._vardb_path, cat)
-            if not os.path.isdir(pkgs_path):
+        for cat in os_unicode_fs.listdir(self._vardb_path):
+            pkgs_path = os_unicode_fs.path.join(self._vardb_path, cat)
+            if not os_unicode_fs.path.isdir(pkgs_path):
                 continue
-            pkgs = os.listdir(pkgs_path)
+            pkgs = os_unicode_fs.listdir(pkgs_path)
             maxval = len(pkgs)
             for i, pkg in enumerate(pkgs):
                 if onProgress:
                     onProgress(maxval, i + 1)
                 if MERGING_IDENTIFIER in pkg:
-                    mtime = int(os.stat(os.path.join(pkgs_path, pkg)).st_mtime)
-                    pkg = os.path.join(cat, pkg)
+                    mtime = int(
+                        os_unicode_fs.stat(
+                            os_unicode_fs.path.join(pkgs_path, pkg)
+                        ).st_mtime
+                    )
+                    pkg = os_unicode_fs.path.join(cat, pkg)
                     failed_pkgs[pkg] = mtime
         return failed_pkgs
 
@@ -140,10 +144,10 @@ class MergesHandler:
         @type failed_pkg: dict
         """
         for failed_pkg in failed_pkgs:
-            pkg_path = os.path.join(self._vardb_path, failed_pkg)
+            pkg_path = os_unicode_fs.path.join(self._vardb_path, failed_pkg)
             # delete failed merge directory if it exists (it might not exist
             # if loaded from tracking file)
-            if os.path.exists(pkg_path):
+            if os_unicode_fs.path.exists(pkg_path):
                 shutil.rmtree(pkg_path)
             # TODO: try removing package CONTENTS to prevent orphaned
             # files
@@ -190,12 +194,12 @@ class MergesHandler:
         # TODO: rewrite code to use portage's APIs instead of a subprocess
         env = {
             "FEATURES": "-collision-protect -protect-owned",
-            "PATH": os.environ["PATH"],
+            "PATH": os_unicode_fs.environ["PATH"],
         }
         emerge_cmd = (
             portage._python_interpreter,
             "-b",
-            os.path.join(EPREFIX or "/", "usr", "bin", "emerge"),
+            os_unicode_fs.path.join(EPREFIX or "/", "usr", "bin", "emerge"),
             "--ask=n" if yes else "--ask",
             "--quiet",
             "--oneshot",
@@ -217,7 +221,7 @@ class MergesHandler:
         output = proc.communicate()[0]
         if output:
             results.append(output)
-        if proc.returncode != os.EX_OK:
+        if proc.returncode != os_unicode_fs.EX_OK:
             emerge_status = "Failed to emerge '%s'" % (" ".join(pkg_atoms))
         else:
             emerge_status = "Successfully emerged '%s'" % (" ".join(pkg_atoms))

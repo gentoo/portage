@@ -13,8 +13,7 @@ from functools import reduce
 import io
 from io import StringIO
 
-from portage import _encodings, _unicode_decode, _unicode_encode
-from portage import os
+from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
 from portage.const import PRIVATE_PATH
 from portage.dep import _slot_separator
 from portage.localization import _
@@ -49,7 +48,9 @@ def get_applied_glsas(settings):
     @rtype:		list
     @return:	list of glsa IDs
     """
-    return grabfile(os.path.join(settings["EROOT"], PRIVATE_PATH, "glsa_injected"))
+    return grabfile(
+        os_unicode_fs.path.join(settings["EROOT"], PRIVATE_PATH, "glsa_injected")
+    )
 
 
 # TODO: use the textwrap module instead
@@ -116,13 +117,13 @@ def get_glsa_list(myconfig):
     @return:	a list of GLSA IDs in this repository
     """
 
-    repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
+    repository = os_unicode_fs.path.join(myconfig["PORTDIR"], "metadata", "glsa")
     if "GLSA_DIR" in myconfig:
         repository = myconfig["GLSA_DIR"]
 
-    if not os.access(repository, os.R_OK):
+    if not os_unicode_fs.access(repository, os_unicode_fs.R_OK):
         return []
-    dirlist = os.listdir(repository)
+    dirlist = os_unicode_fs.listdir(repository)
     prefix = "glsa-"
     prefix_size = len(prefix)
     suffix = ".xml"
@@ -507,7 +508,7 @@ class Glsa:
         myid = _unicode_decode(myid, encoding=_encodings["content"], errors="strict")
         if re.match(r"\d{6}-\d{2}", myid):
             self.type = "id"
-        elif os.path.exists(myid):
+        elif os_unicode_fs.path.exists(myid):
             self.type = "file"
         else:
             raise GlsaArgumentException(
@@ -762,8 +763,11 @@ class Glsa:
         @rtype:		Boolean
         @returns:	True if the GLSA is in the inject file, False if not
         """
-        if not os.access(
-            os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected"), os.R_OK
+        if not os_unicode_fs.access(
+            os_unicode_fs.path.join(
+                self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
+            ),
+            os_unicode_fs.R_OK,
         ):
             return False
         return self.nr in get_applied_glsas(self.config)
@@ -780,7 +784,9 @@ class Glsa:
         if not self.isInjected():
             checkfile = io.open(
                 _unicode_encode(
-                    os.path.join(self.config["EROOT"], PRIVATE_PATH, "glsa_injected"),
+                    os_unicode_fs.path.join(
+                        self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
+                    ),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
