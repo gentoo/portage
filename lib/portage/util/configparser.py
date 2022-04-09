@@ -25,7 +25,6 @@ from configparser import (
 from configparser import ConfigParser as SafeConfigParser
 
 from portage import _encodings
-from portage import _unicode_encode
 
 
 def read_configs(parser, paths):
@@ -51,7 +50,7 @@ def read_configs(parser, paths):
             f = None
             try:
                 f = io.open(
-                    _unicode_encode(p, encoding=_encodings["fs"], errors="strict"),
+                    p.encode(encoding=_encodings["fs"], errors="strict"),
                     mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",

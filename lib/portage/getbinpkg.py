@@ -6,7 +6,7 @@ from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
@@ -167,9 +167,7 @@ def create_conn(baseurl, conn=None):
         except AttributeError:
             # Python 2
             encodebytes = base64.encodestring
-        unicode_bytes = encodebytes(_unicode_encode(f"{username}:{password}")).replace(
-            b"\012", b""
-        )
+        unicode_bytes = encodebytes(f"{username}:{password}").replace(b"\012", b"")
         http_headers = {b"Authorization": f"Basic {unicode_bytes}"}
 
     if not conn:
@@ -621,9 +619,7 @@ def dir_get_metadata(
     out = sys.stdout
     try:
         metadatafile = open(
-            _unicode_encode(
-                metadatafilename, encoding=_encodings["fs"], errors="strict"
-            ),
+            metadatafilename.encode(encoding=_encodings["fs"], errors="strict"),
             "rb",
         )
         mypickle = pickle.Unpickler(metadatafile)
@@ -726,9 +722,7 @@ def dir_get_metadata(
                     sys.stderr.flush()
             try:
                 metadatafile = open(
-                    _unicode_encode(
-                        metadatafilename, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    metadatafilename.encode(encoding=_encodings["fs"], errors="strict"),
                     "wb",
                 )
                 pickle.dump(metadata, metadatafile, protocol=2)
@@ -832,16 +826,14 @@ def dir_get_metadata(
         if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
             metadata[baseurl]["timestamp"] = int(time.time())
             metadatafile = open(
-                _unicode_encode(
-                    metadatafilename, encoding=_encodings["fs"], errors="strict"
-                ),
+                metadatafilename.encode(encoding=_encodings["fs"], errors="strict"),
                 "wb",
             )
             pickle.dump(metadata, metadatafile, protocol=2)
             metadatafile.close()
         if makepickle:
             metadatafile = open(
-                _unicode_encode(makepickle, encoding=_encodings["fs"], errors="strict"),
+                makepickle.encode(encoding=_encodings["fs"], errors="strict"),
                 "wb",
             )
             pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)

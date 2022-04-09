@@ -52,7 +52,7 @@ from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.binpkg import get_binpkg_format
 from portage import _movefile
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 import codecs
 import errno
@@ -215,8 +215,7 @@ class bindbapi(fakedbapi):
                         v = metadata_bytes.get(k)
                     else:
                         v = metadata_bytes.get(
-                            _unicode_encode(
-                                k,
+                            k.encode(
                                 encoding=_encodings["repo.content"],
                                 errors="backslashreplace",
                             )
@@ -280,12 +279,10 @@ class bindbapi(fakedbapi):
 
         for k, v in values.items():
             if encoding_key:
-                k = _unicode_encode(
-                    k, encoding=_encodings["repo.content"], errors="backslashreplace"
+                k = k.encode(
+                    encoding=_encodings["repo.content"], errors="backslashreplace"
                 )
-            v = _unicode_encode(
-                v, encoding=_encodings["repo.content"], errors="backslashreplace"
-            )
+            v = v.encode(encoding=_encodings["repo.content"], errors="backslashreplace")
             mydata[k] = v
 
         for k, v in list(mydata.items()):
@@ -697,36 +694,38 @@ class binarytree:
             updated_items = update_dbentries([mylist], mydata, parent=mycpv)
             mydata.update(updated_items)
             if decode_metadata_name:
-                mydata["PF"] = _unicode_encode(
-                    mynewpkg + "\n", encoding=_encodings["repo.content"]
+                mydata["PF"] = f"{mynewpkg}\n".encode(
+                    encoding=_encodings["repo.content"]
                 )
-                mydata["CATEGORY"] = _unicode_encode(
-                    mynewcat + "\n", encoding=_encodings["repo.content"]
+                mydata["CATEGORY"] = f"{mynewcat}\n".encode(
+                    encoding=_encodings["repo.content"]
                 )
             else:
-                mydata[b"PF"] = _unicode_encode(
-                    mynewpkg + "\n", encoding=_encodings["repo.content"]
+                mydata[b"PF"] = f"{mynewpkg}\n".encode(
+                    encoding=_encodings["repo.content"]
                 )
-                mydata[b"CATEGORY"] = _unicode_encode(
-                    mynewcat + "\n", encoding=_encodings["repo.content"]
+                mydata[b"CATEGORY"] = f"{mynewcat}\n".encode(
+                    encoding=_encodings["repo.content"]
                 )
             if mynewpkg != myoldpkg:
                 ebuild_data = mydata.pop(
-                    _unicode_encode(
-                        myoldpkg + ".ebuild", encoding=_encodings["repo.content"]
-                    ),
+                    f"{myoldpkg}.ebuild".encode(encoding=_encodings["repo.content"]),
                     None,
                 )
                 if ebuild_data is not None:
                     mydata[
-                        _unicode_encode(
-                            mynewpkg + ".ebuild", encoding=_encodings["repo.content"]
-                        )
+                        f"{mynewpkg}.ebuild".encode(encoding=_encodings["repo.content"])
                     ] = ebuild_data
 
             metadata = self.dbapi._aux_cache_slot_dict()
             for k in self.dbapi._aux_cache_keys:
-                v = mydata.get(k if decode_metadata_name else _unicode_encode(k))
+                v = mydata.get(
+                    k
+                    if decode_metadata_name
+                    else k.encode(
+                        encoding=_encodings["content"], errors="backslashreplace"
+                    )
+                )
                 if v is not None:
                     v = _unicode_decode(v)
                     metadata[k] = " ".join(v.split())
@@ -1293,9 +1292,7 @@ class binarytree:
             pkgindex = self._new_pkgindex()
             try:
                 f = io.open(
-                    _unicode_encode(
-                        pkgindex_file, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    pkgindex_file.encode(encoding=_encodings["fs"], errors="strict"),
                     mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
@@ -1694,15 +1691,16 @@ class binarytree:
                         if basename.endswith(".xpak"):
                             binpkg = portage.xpak.tbz2(full_path)
                             binary_data = binpkg.get_data()
-                            binary_data[b"BUILD_ID"] = _unicode_encode(
-                                metadata["BUILD_ID"]
+                            binary_data[b"BUILD_ID"] = metadata["BUILD_ID"].encode(
+                                encoding=_encodings["content"],
+                                errors="backslashreplace",
                             )
                             binpkg.recompose_mem(portage.xpak.xpak_mem(binary_data))
                     elif binpkg_format == "gpkg":
                         binpkg = portage.gpkg.gpkg(self.settings, cpv, full_path)
                         binpkg_metadata = binpkg.get_metadata()
-                        binpkg_metadata["BUILD_ID"] = _unicode_encode(
-                            metadata["BUILD_ID"]
+                        binpkg_metadata["BUILD_ID"] = metadata["BUILD_ID"].encode(
+                            encoding=_encodings["content"], errors="backslashreplace"
                         )
                         binpkg.update_metadata(binpkg_metadata)
                     else:
@@ -1773,7 +1771,11 @@ class binarytree:
                 metadata[k] = str(st.st_size)
             else:
                 if decode_metadata_name:
-                    v = binpkg_metadata.get(_unicode_encode(k))
+                    v = binpkg_metadata.get(
+                        k.encode(
+                            encoding=_encodings["content"], errors="backslashreplace"
+                        )
+                    )
                 else:
                     # check gpkg
                     v = binpkg_metadata.get(k)
@@ -2299,9 +2301,7 @@ class binarytree:
         pkgindex = self._new_pkgindex()
         try:
             f = io.open(
-                _unicode_encode(
-                    self._pkgindex_file, encoding=_encodings["fs"], errors="strict"
-                ),
+                self._pkgindex_file.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",

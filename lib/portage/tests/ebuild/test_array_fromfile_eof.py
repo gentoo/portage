@@ -5,7 +5,6 @@ import array
 import tempfile
 
 from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.tests import TestCase
 
 
@@ -16,7 +15,7 @@ class ArrayFromfileEofTestCase(TestCase):
         #   https://bugs.python.org/issue5334
 
         input_data = "an arbitrary string"
-        input_bytes = _unicode_encode(input_data, encoding="utf_8", errors="strict")
+        input_bytes = input_data.encode(encoding="utf_8", errors="strict")
         f = tempfile.TemporaryFile()
         f.write(input_bytes)
 

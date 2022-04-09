@@ -14,7 +14,6 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.localization import _
 
 
@@ -160,7 +159,7 @@ class FileLoader(DataLoader):
         for fn in RecursiveFileLoader(self.fname):
             try:
                 with io.open(
-                    _unicode_encode(fn, encoding=_encodings["fs"], errors="strict"),
+                    fn.encode(encoding=_encodings["fs"], errors="strict"),
                     mode="r",
                     encoding=_encodings["content"],
                     errors="replace",

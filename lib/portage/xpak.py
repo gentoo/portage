@@ -43,7 +43,6 @@ from portage import (
     normalize_path,
     _encodings,
     _unicode_decode,
-    _unicode_encode,
 )
 from portage.util.file_copy import copyfile
 
@@ -114,15 +113,13 @@ def xpak(rootdir, outfile=None):
         if x == "CONTENTS":
             # CONTENTS is generated during the merge process.
             continue
-        x = _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+        x = x.encode(encoding=_encodings["fs"], errors="strict")
         with open(os_unicode_fs.path.join(rootdir, x), "rb") as f:
             mydata[x] = f.read()
 
     xpak_segment = xpak_mem(mydata)
     if outfile:
-        outf = open(
-            _unicode_encode(outfile, encoding=_encodings["fs"], errors="strict"), "wb"
-        )
+        outf = open(outfile.encode(encoding=_encodings["fs"], errors="strict"), "wb")
         outf.write(xpak_segment)
         outf.close()
     else:
@@ -132,23 +129,18 @@ def xpak(rootdir, outfile=None):
 def xpak_mem(mydata):
     """Create an xpack segment from a map object."""
 
-    mydata_encoded = {}
-    for k, v in mydata.items():
-        k = _unicode_encode(
-            k, encoding=_encodings["repo.content"], errors="backslashreplace"
-        )
-        v = _unicode_encode(
-            v, encoding=_encodings["repo.content"], errors="backslashreplace"
-        )
-        mydata_encoded[k] = v
-    mydata = mydata_encoded
-    del mydata_encoded
+    def _local_encoding_coercion(s):
+        if isinstance(s, str):
+            s = s.encode(encoding=_encodings["repo.content"], errors="backslashreplace")
+        return s
 
     indexglob = b""
     indexpos = 0
     dataglob = b""
     datapos = 0
     for x, newglob in mydata.items():
+        x = _local_encoding_coercion(x)
+        newglob = _local_encoding_coercion(newglob)
         mydatasize = len(newglob)
         indexglob = (
             indexglob
@@ -175,9 +167,7 @@ def xsplit(infile):
     'infile.index' contains the index segment.
     'infile.dat' contails the data segment."""
     infile = _unicode_decode(infile, encoding=_encodings["fs"], errors="strict")
-    myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
-    )
+    myfile = open(infile.encode(encoding=_encodings["fs"], errors="strict"), "rb")
     mydat = myfile.read()
     myfile.close()
 
@@ -186,13 +176,13 @@ def xsplit(infile):
         return False
 
     myfile = open(
-        _unicode_encode(infile + ".index", encoding=_encodings["fs"], errors="strict"),
+        f"{infile}.index".encode(encoding=_encodings["fs"], errors="strict"),
         "wb",
     )
     myfile.write(splits[0])
     myfile.close()
     myfile = open(
-        _unicode_encode(infile + ".dat", encoding=_encodings["fs"], errors="strict"),
+        f"{infile}.dat".encode(encoding=_encodings["fs"], errors="strict"),
         "wb",
     )
     myfile.write(splits[1])
@@ -211,9 +201,7 @@ def xsplit_mem(mydat):
 
 def getindex(infile):
     """(infile) -- grabs the index segment from the infile and returns it."""
-    myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
-    )
+    myfile = open(infile.encode(encoding=_encodings["fs"], errors="strict"), "rb")
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
         myfile.close()
@@ -227,9 +215,7 @@ def getindex(infile):
 def getboth(infile):
     """(infile) -- grabs the index and data segments from the infile.
     Returns an array [indexSegment, dataSegment]"""
-    myfile = open(
-        _unicode_encode(infile, encoding=_encodings["fs"], errors="strict"), "rb"
-    )
+    myfile = open(infile.encode(encoding=_encodings["fs"], errors="strict"), "rb")
     myheader = myfile.read(16)
     if myheader[0:8] != b"XPAKPACK":
         myfile.close()
@@ -263,8 +249,8 @@ def getindex_mem(myindex):
 def searchindex(myindex, myitem):
     """(index, item) -- Finds the offset and length of the file 'item' in the
     datasegment via the index 'index' provided."""
-    myitem = _unicode_encode(
-        myitem, encoding=_encodings["repo.content"], errors="backslashreplace"
+    myitem = myitem.encode(
+        encoding=_encodings["repo.content"], errors="backslashreplace"
     )
     mylen = len(myitem)
     myindexlen = len(myindex)
@@ -316,9 +302,7 @@ def xpand(myid, mydest):
         if dirname:
             if not os_unicode_fs.path.exists(dirname):
                 os_unicode_fs.makedirs(dirname)
-        mydat = open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "wb"
-        )
+        mydat = open(filename.encode(encoding=_encodings["fs"], errors="strict"), "wb")
         mydat.write(mydata[datapos : datapos + datalen])
         mydat.close()
         startpos = startpos + namelen + 12
@@ -386,7 +370,7 @@ class tbz2:
             os_unicode_fs.rename(tmp_fname, self.file)
 
         myfile = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"),
+            self.file.encode(encoding=_encodings["fs"], errors="strict"),
             "ab+",
         )
         if not myfile:
@@ -429,7 +413,7 @@ class tbz2:
                     return 1
             self.filestat = mystat
             a = open(
-                _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"),
+                self.file.encode(encoding=_encodings["fs"], errors="strict"),
                 "rb",
             )
             a.seek(-16, 2)
@@ -473,9 +457,7 @@ class tbz2:
         myresult = searchindex(self.index, myfile)
         if not myresult:
             return mydefault
-        a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        a = open(self.file.encode(encoding=_encodings["fs"], errors="strict"), "rb")
         a.seek(self.datapos + myresult[0], 0)
         myreturn = a.read(myresult[1])
         a.close()
@@ -493,9 +475,7 @@ class tbz2:
         if not self.scan():
             return 0
         mydest = normalize_path(mydest) + os_unicode_fs.sep
-        a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        a = open(self.file.encode(encoding=_encodings["fs"], errors="strict"), "rb")
         if not os_unicode_fs.path.exists(mydest):
             os_unicode_fs.makedirs(mydest)
         startpos = 0
@@ -521,7 +501,7 @@ class tbz2:
                 if not os_unicode_fs.path.exists(dirname):
                     os_unicode_fs.makedirs(dirname)
             mydat = open(
-                _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"),
+                filename.encode(encoding=_encodings["fs"], errors="strict"),
                 "wb",
             )
             a.seek(self.datapos + datapos)
@@ -535,9 +515,7 @@ class tbz2:
         """Returns all the files from the dataSegment as a map object."""
         if not self.scan():
             return {}
-        a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        a = open(self.file.encode(encoding=_encodings["fs"], errors="strict"), "rb")
         mydata = {}
         startpos = 0
         while (startpos + 8) < self.indexsize:
@@ -560,9 +538,7 @@ class tbz2:
         if not self.scan():
             return None
 
-        a = open(
-            _unicode_encode(self.file, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        a = open(self.file.encode(encoding=_encodings["fs"], errors="strict"), "rb")
         a.seek(self.datapos)
         mydata = a.read(self.datasize)
         a.close()

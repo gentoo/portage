@@ -18,7 +18,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.TaskSequence import TaskSequence
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
@@ -568,8 +568,7 @@ class EbuildBuild(CompositeTask):
             info["BUILD_ID"] = "%s\n" % pkg.build_id
         for k, v in info.items():
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(infoloc, k),
+                os_unicode_fs.path.join(infoloc, k).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),

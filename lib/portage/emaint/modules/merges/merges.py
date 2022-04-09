@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import portage
-from portage import os_unicode_fs, _unicode_encode
+from portage import os_unicode_fs
 from portage.const import MERGING_IDENTIFIER, EPREFIX, PRIVATE_PATH, VDB_PATH
 from portage.dep import isvalidatom
 
@@ -22,7 +22,7 @@ class TrackingFile:
         @param tracking_path: file path used to keep track of failed merges
         @type tracking_path: String
         """
-        self._tracking_path = _unicode_encode(tracking_path)
+        self._tracking_path = tracking_path.encode()
 
     def save(self, failed_pkgs):
         """

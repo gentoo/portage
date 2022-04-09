@@ -9,7 +9,7 @@ import sys
 from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 
 class CompileModulesTestCase(TestCase):
@@ -49,9 +49,7 @@ class CompileModulesTestCase(TestCase):
                     # Check for python shebang.
                     try:
                         with open(
-                            _unicode_encode(
-                                x, encoding=_encodings["fs"], errors="strict"
-                            ),
+                            x.encode(encoding=_encodings["fs"], errors="strict"),
                             "rb",
                         ) as f:
                             line = _unicode_decode(
@@ -69,7 +67,7 @@ class CompileModulesTestCase(TestCase):
                         do_compile = True
                 if do_compile:
                     with open(
-                        _unicode_encode(x, encoding=_encodings["fs"], errors="strict"),
+                        x.encode(encoding=_encodings["fs"], errors="strict"),
                         "rb",
                     ) as f:
                         compile(f.read(), x, "exec")

@@ -57,7 +57,6 @@ from portage import (
     _encodings,
     _shell_quote,
     _unicode_decode,
-    _unicode_encode,
 )
 from portage.const import (
     EBUILD_SH_ENV_FILE,
@@ -1501,8 +1500,7 @@ def doebuild(
                             build_info["BUILD_ID"] = "%s\n" % pkg.build_id
                         for k, v in build_info.items():
                             with io.open(
-                                _unicode_encode(
-                                    os_unicode_fs.path.join(infoloc, k),
+                                os_unicode_fs.path.join(infoloc, k).encode(
                                     encoding=_encodings["fs"],
                                     errors="strict",
                                 ),
@@ -2298,7 +2296,7 @@ def _check_build_log(mysettings, out=None):
         return
     try:
         f = open(
-            _unicode_encode(logfile, encoding=_encodings["fs"], errors="strict"),
+            logfile.encode(encoding=_encodings["fs"], errors="strict"),
             mode="rb",
         )
     except EnvironmentError:
@@ -2326,10 +2324,9 @@ def _check_build_log(mysettings, out=None):
     qa_configure_opts = ""
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(
-                    mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
-                ),
+            os_unicode_fs.path.join(
+                mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_CONFIGURE_OPTIONS"
+            ).encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -2354,12 +2351,11 @@ def _check_build_log(mysettings, out=None):
     qa_am_maintainer_mode = []
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(
-                    mysettings["PORTAGE_BUILDDIR"],
-                    "build-info",
-                    "QA_AM_MAINTAINER_MODE",
-                ),
+            os_unicode_fs.path.join(
+                mysettings["PORTAGE_BUILDDIR"],
+                "build-info",
+                "QA_AM_MAINTAINER_MODE",
+            ).encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -2548,8 +2544,7 @@ def _post_src_install_write_metadata(settings):
             write_atomic(os_unicode_fs.path.join(build_info_dir, k), v + "\n")
 
     with io.open(
-        _unicode_encode(
-            os_unicode_fs.path.join(build_info_dir, "BUILD_TIME"),
+        os_unicode_fs.path.join(build_info_dir, "BUILD_TIME").encode(
             encoding=_encodings["fs"],
             errors="strict",
         ),
@@ -2586,8 +2581,7 @@ def _post_src_install_write_metadata(settings):
                 pass
             continue
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(build_info_dir, k),
+            os_unicode_fs.path.join(build_info_dir, k).encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -2608,8 +2602,7 @@ def _post_src_install_write_metadata(settings):
                     pass
                 continue
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(build_info_dir, k),
+                os_unicode_fs.path.join(build_info_dir, k).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -2688,10 +2681,9 @@ def _post_src_install_uid_fix(mysettings, out):
     qa_desktop_file = ""
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_merge.path.join(
-                    mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
-                ),
+            os_unicode_merge.path.join(
+                mysettings["PORTAGE_BUILDDIR"], "build-info", "QA_DESKTOP_FILE"
+            ).encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -2731,8 +2723,8 @@ def _post_src_install_uid_fix(mysettings, out):
                 new_parent = _unicode_decode(
                     parent, encoding=_encodings["merge"], errors="replace"
                 )
-                new_parent = _unicode_encode(
-                    new_parent, encoding="ascii", errors="backslashreplace"
+                new_parent = new_parent.encode(
+                    encoding="ascii", errors="backslashreplace"
                 )
                 new_parent = _unicode_decode(
                     new_parent, encoding=_encodings["merge"], errors="replace"
@@ -2752,8 +2744,8 @@ def _post_src_install_uid_fix(mysettings, out):
                     new_fname = _unicode_decode(
                         fname, encoding=_encodings["merge"], errors="replace"
                     )
-                    new_fname = _unicode_encode(
-                        new_fname, encoding="ascii", errors="backslashreplace"
+                    new_fname = new_fname.encode(
+                        encoding="ascii", errors="backslashreplace"
                     )
                     new_fname = _unicode_decode(
                         new_fname, encoding=_encodings["merge"], errors="replace"
@@ -2792,9 +2784,7 @@ def _post_src_install_uid_fix(mysettings, out):
                     and os_unicode_merge.path.isfile(fpath)
                 ):
                     f = open(
-                        _unicode_encode(
-                            fpath, encoding=_encodings["merge"], errors="strict"
-                        ),
+                        fpath.encode(encoding=_encodings["merge"], errors="strict"),
                         mode="rb",
                     )
                     has_lafile_header = b".la - a libtool library file" in f.readline()
@@ -2834,9 +2824,7 @@ def _post_src_install_uid_fix(mysettings, out):
                         # a normal write might fail due to file permission
                         # settings on some operating systems such as HP-UX
                         write_atomic(
-                            _unicode_encode(
-                                fpath, encoding=_encodings["merge"], errors="strict"
-                            ),
+                            fpath.encode(encoding=_encodings["merge"], errors="strict"),
                             new_contents,
                             mode="wb",
                         )
@@ -2854,7 +2842,7 @@ def _post_src_install_uid_fix(mysettings, out):
                 if mystat.st_gid == portage_gid:
                     mygid = inst_gid
                 apply_secpass_permissions(
-                    _unicode_encode(fpath, encoding=_encodings["merge"]),
+                    fpath.encode(encoding=_encodings["merge"]),
                     uid=myuid,
                     gid=mygid,
                     mode=mystat.st_mode,
@@ -2882,8 +2870,7 @@ def _post_src_install_uid_fix(mysettings, out):
     )
 
     f = io.open(
-        _unicode_encode(
-            os_unicode_merge.path.join(build_info_dir, "SIZE"),
+        os_unicode_merge.path.join(build_info_dir, "SIZE").encode(
             encoding=_encodings["fs"],
             errors="strict",
         ),
@@ -2929,9 +2916,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     f = None
     try:
         f = io.open(
-            _unicode_encode(
-                needed_filename, encoding=_encodings["fs"], errors="strict"
-            ),
+            needed_filename.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
@@ -2949,10 +2934,9 @@ def _post_src_install_soname_symlinks(mysettings, out):
     for k in ("QA_PREBUILT", "QA_SONAME_NO_SYMLINK"):
         try:
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(
-                        mysettings["PORTAGE_BUILDDIR"], "build-info", k
-                    ),
+                os_unicode_fs.path.join(
+                    mysettings["PORTAGE_BUILDDIR"], "build-info", k
+                ).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -3029,8 +3013,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
     )
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(build_info_dir, "PROVIDES_EXCLUDE"),
+            os_unicode_fs.path.join(build_info_dir, "PROVIDES_EXCLUDE").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -3046,8 +3029,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(build_info_dir, "REQUIRES_EXCLUDE"),
+            os_unicode_fs.path.join(build_info_dir, "REQUIRES_EXCLUDE").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -3087,7 +3069,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
             image_dir, entry.filename.lstrip(os_unicode_fs.sep)
         )
         with open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
+            filename.encode(encoding=_encodings["fs"], errors="strict"), "rb"
         ) as f:
             elf_header = ELFHeader.read(f)
 
@@ -3142,8 +3124,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     if soname_deps.requires is not None:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(build_info_dir, "REQUIRES"),
+            os_unicode_fs.path.join(build_info_dir, "REQUIRES").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -3155,8 +3136,7 @@ def _post_src_install_soname_symlinks(mysettings, out):
 
     if soname_deps.provides is not None:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(build_info_dir, "PROVIDES"),
+            os_unicode_fs.path.join(build_info_dir, "PROVIDES").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),

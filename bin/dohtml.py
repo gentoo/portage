@@ -31,7 +31,7 @@
 import os as _os
 import sys
 
-from portage import _unicode_encode, _unicode_decode, os, shutil
+from portage import _unicode_decode, os, shutil
 from portage.util import normalize_path, writemsg
 
 # Change back to original cwd _after_ all imports (bug #469338).
@@ -114,7 +114,7 @@ def install(basename, dirname, options, prefix=""):
         and os.path.isdir(fullpath)
         and basename not in options.disallowed_dirs
     ):
-        for i in _os.listdir(_unicode_encode(fullpath)):
+        for i in _os.listdir(fullpath.encode()):
             try:
                 i = _unicode_decode(i, errors="strict")
             except UnicodeDecodeError:

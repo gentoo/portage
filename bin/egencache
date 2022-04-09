@@ -55,7 +55,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.cache.index.pkg_desc_index import (
     pkg_desc_index_line_format,
@@ -668,16 +668,12 @@ class GenUseLocalDesc:
                     # Probe in binary mode, in order to avoid
                     # potential character encoding issues.
                     output = open(
-                        _unicode_encode(
-                            desc_path, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
                         "r+b",
                     )
                 else:
                     output = io.open(
-                        _unicode_encode(
-                            desc_path, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
                         mode="w",
                         encoding=_encodings["repo.content"],
                         errors="backslashreplace",
@@ -704,9 +700,7 @@ class GenUseLocalDesc:
                 self._preserve_comments = False
                 try:
                     output = io.open(
-                        _unicode_encode(
-                            desc_path, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
                         mode="w",
                         encoding=_encodings["repo.content"],
                         errors="backslashreplace",
@@ -734,7 +728,7 @@ class GenUseLocalDesc:
             # Finished probing comments in binary mode, now append
             # in text mode.
             output = io.open(
-                _unicode_encode(desc_path, encoding=_encodings["fs"], errors="strict"),
+                desc_path.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="a",
                 encoding=_encodings["repo.content"],
                 errors="backslashreplace",
@@ -780,9 +774,7 @@ class GenUseLocalDesc:
             metadata_path = os_unicode_fs.path.join(repo_path, cp, "metadata.xml")
             try:
                 metadata = ElementTree.parse(
-                    _unicode_encode(
-                        metadata_path, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    metadata_path.encode(encoding=_encodings["fs"], errors="strict"),
                     parser=ElementTree.XMLParser(target=_MetadataTreeBuilder()),
                 )
             except IOError:

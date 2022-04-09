@@ -13,7 +13,6 @@ from portage import (
     _encodings,
     os_unicode_merge,
     _unicode_decode,
-    _unicode_encode,
 )
 from portage.exception import PermissionDenied
 from portage.localization import _
@@ -67,9 +66,7 @@ class PreservedLibsRegistry:
         content = None
         try:
             f = open(
-                _unicode_encode(
-                    self._filename, encoding=_encodings["fs"], errors="strict"
-                ),
+                self._filename.encode(encoding=_encodings["fs"], errors="strict"),
                 "rb",
             )
             content = f.read()
@@ -140,8 +137,7 @@ class PreservedLibsRegistry:
             f = atomic_ofstream(self._filename, "wb")
             if self._json_write:
                 f.write(
-                    _unicode_encode(
-                        json.dumps(self._data, **self._json_write_opts),
+                    json.dumps(self._data, **self._json_write_opts).encode(
                         encoding=_encodings["repo.content"],
                         errors="strict",
                     )

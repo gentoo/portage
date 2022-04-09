@@ -4,7 +4,7 @@
 import io
 import time
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.data import secpass
 from portage.output import xtermTitle
 
@@ -33,7 +33,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
         file_path = os_unicode_fs.path.join(_emerge_log_dir, "emerge.log")
         existing_log = os_unicode_fs.path.exists(file_path)
         mylogfile = io.open(
-            _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
+            file_path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="a",
             encoding=_encodings["content"],
             errors="backslashreplace",

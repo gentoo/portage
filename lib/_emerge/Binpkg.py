@@ -23,7 +23,6 @@ from portage import (
     shutil_unicode_fs,
     _encodings,
     _unicode_decode,
-    _unicode_encode,
 )
 import io
 import logging
@@ -347,8 +346,7 @@ class Binpkg(CompositeTask):
                 continue
 
             f = io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(infloc, k),
+                os_unicode_fs.path.join(infloc, k).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -367,8 +365,7 @@ class Binpkg(CompositeTask):
             if not md5sum:
                 md5sum = portage.checksum.perform_md5(pkg_path)
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(infloc, "BINPKGMD5"),
+                os_unicode_fs.path.join(infloc, "BINPKGMD5").encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -453,8 +450,7 @@ class Binpkg(CompositeTask):
 
         try:
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(self._infloc, "EPREFIX"),
+                os_unicode_fs.path.join(self._infloc, "EPREFIX").encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
@@ -505,8 +501,7 @@ class Binpkg(CompositeTask):
 
         # We want to install in "our" prefix, not the binary one
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(self._infloc, "EPREFIX"),
+            os_unicode_fs.path.join(self._infloc, "EPREFIX").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),

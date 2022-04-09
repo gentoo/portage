@@ -14,7 +14,7 @@ import weakref
 import zlib
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, red
@@ -1226,9 +1226,7 @@ class Scheduler(PollScheduler):
             if log_path is not None:
                 try:
                     log_file = open(
-                        _unicode_encode(
-                            log_path, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        log_path.encode(encoding=_encodings["fs"], errors="strict"),
                         mode="rb",
                     )
                 except IOError:

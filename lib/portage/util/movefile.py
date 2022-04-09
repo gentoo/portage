@@ -16,7 +16,6 @@ from portage import (
     _os_overrides,
     _selinux,
     _unicode_decode,
-    _unicode_encode,
     _unicode_func_wrapper,
     _unicode_module_wrapper,
 )
@@ -126,8 +125,8 @@ def movefile(
     if mysettings is None:
         mysettings = portage.settings
 
-    src_bytes = _unicode_encode(src, encoding=encoding, errors="strict")
-    dest_bytes = _unicode_encode(dest, encoding=encoding, errors="strict")
+    src_bytes = src.encode(encoding=encoding, errors="strict")
+    dest_bytes = dest.encode(encoding=encoding, errors="strict")
     xattr_enabled = "xattr" in mysettings.features
     selinux_enabled = mysettings.selinux_enabled()
     if selinux_enabled:
@@ -311,9 +310,7 @@ def movefile(
     if renamefailed:
         if stat.S_ISREG(sstat[stat.ST_MODE]):
             dest_tmp = dest + "#new"
-            dest_tmp_bytes = _unicode_encode(
-                dest_tmp, encoding=encoding, errors="strict"
-            )
+            dest_tmp_bytes = dest_tmp.encode(encoding=encoding, errors="strict")
             success = False
             try:  # For safety copy then move it over.
                 _copyfile(src_bytes, dest_tmp_bytes)

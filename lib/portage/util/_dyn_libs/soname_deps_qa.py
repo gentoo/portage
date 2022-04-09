@@ -5,7 +5,6 @@ import io
 
 from portage import (
     _encodings,
-    _unicode_encode,
     os_unicode_fs,
 )
 from portage.dep.soname.parse import parse_soname_deps
@@ -61,8 +60,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
     """
     try:
         with io.open(
-            _unicode_encode(
-                os_unicode_fs.path.join(metadata_dir, "REQUIRES"),
+            os_unicode_fs.path.join(metadata_dir, "REQUIRES").encode(
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -83,7 +81,7 @@ def _get_unresolved_soname_deps(metadata_dir, all_provides):
 
     needed_filename = os_unicode_fs.path.join(metadata_dir, "NEEDED.ELF.2")
     with io.open(
-        _unicode_encode(needed_filename, encoding=_encodings["fs"], errors="strict"),
+        needed_filename.encode(encoding=_encodings["fs"], errors="strict"),
         mode="rt",
         encoding=_encodings["repo.content"],
         errors="strict",

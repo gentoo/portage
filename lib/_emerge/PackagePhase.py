@@ -10,7 +10,6 @@ from _emerge.SpawnProcess import SpawnProcess
 import portage
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_encode
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.install_mask import install_mask_dir, InstallMask
 
@@ -34,12 +33,11 @@ class PackagePhase(CompositeTask):
     def _start(self):
         try:
             with io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(
-                        self.settings["PORTAGE_BUILDDIR"],
-                        "build-info",
-                        "PKG_INSTALL_MASK",
-                    ),
+                os_unicode_fs.path.join(
+                    self.settings["PORTAGE_BUILDDIR"],
+                    "build-info",
+                    "PKG_INSTALL_MASK",
+                ).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),

@@ -41,7 +41,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util:cmp_sort_key,writemsg",
 )
 
-from portage import _encodings, _unicode_decode, _unicode_encode
+from portage import _encodings, _unicode_decode
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _

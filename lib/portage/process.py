@@ -17,7 +17,6 @@ import os as _os
 
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_encode
 import portage
 
 portage.proxy.lazyimport.lazyimport(
@@ -653,13 +652,10 @@ def _exec(
             opt_name = os_unicode_fs.path.basename(binary)
 
     # Set up the command's argument list.
-    myargs = [opt_name]
-    myargs.extend(mycommand[1:])
+    myargs = [opt_name, *mycommand[1:]]
 
     # Avoid a potential UnicodeEncodeError from os_unicode_fs.execve().
-    myargs = [
-        _unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in myargs
-    ]
+    myargs = [x.encode(encoding=_encodings["fs"], errors="strict") for x in myargs]
 
     # Use default signal handlers in order to avoid problems
     # killing subprocesses as reported in bug #353239.
@@ -743,25 +739,17 @@ def _exec(
                                         os_unicode_fs.path.join(
                                             portage._bin_path, "pid-ns-init"
                                         ),
-                                        _unicode_encode(
-                                            "" if uid is None else str(uid)
-                                        ),
-                                        _unicode_encode(
-                                            "" if gid is None else str(gid)
-                                        ),
-                                        _unicode_encode(
+                                        ("" if uid is None else str(uid)).encode(),
+                                        ("" if gid is None else str(gid)).encode(),
+                                        (
                                             ""
                                             if groups is None
                                             else ",".join(
                                                 str(group) for group in groups
                                             )
-                                        ),
-                                        _unicode_encode(
-                                            "" if umask is None else str(umask)
-                                        ),
-                                        _unicode_encode(
-                                            ",".join(str(fd) for fd in fd_pipes)
-                                        ),
+                                        ).encode(),
+                                        ("" if umask is None else str(umask)).encode(),
+                                        (",".join(str(fd) for fd in fd_pipes)).encode(),
                                         binary,
                                     ]
                                     + myargs,

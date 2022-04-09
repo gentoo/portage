@@ -13,7 +13,7 @@ from functools import reduce
 import io
 from io import StringIO
 
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.const import PRIVATE_PATH
 from portage.dep import _slot_separator
 from portage.localization import _
@@ -783,10 +783,9 @@ class Glsa:
         """
         if not self.isInjected():
             checkfile = io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(
-                        self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
-                    ),
+                os_unicode_fs.path.join(
+                    self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
+                ).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),

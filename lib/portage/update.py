@@ -9,7 +9,7 @@ import sys
 import warnings
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -133,8 +133,7 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
                 )
             if mycontent != orig_content:
                 if is_encoded:
-                    mycontent = _unicode_encode(
-                        mycontent,
+                    mycontent = mycontent.encode(
                         encoding=_encodings["repo.content"],
                         errors="backslashreplace",
                     )
@@ -157,7 +156,7 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
     ]:
         file_path = os_unicode_fs.path.join(dbdir, myfile)
         with io.open(
-            _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
+            file_path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
@@ -200,7 +199,7 @@ def grab_updates(updpath, prev_mtimes=None):
             continue
         if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
             f = io.open(
-                _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
+                file_path.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
@@ -382,8 +381,7 @@ def update_config_files(
         f = None
         try:
             f = io.open(
-                _unicode_encode(
-                    os_unicode_fs.path.join(abs_user_config, x),
+                os_unicode_fs.path.join(abs_user_config, x).encode(
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),

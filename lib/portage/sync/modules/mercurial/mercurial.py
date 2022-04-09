@@ -84,9 +84,7 @@ class MercurialSync(NewBase):
         writemsg_level(hg_cmd + "\n")
 
         exitcode = portage.process.spawn(
-            shlex_split(hg_cmd),
-            cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            shlex_split(hg_cmd), cwd=self.repo.location.encode(), **self.spawn_kwargs
         )
         if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! hg clone error in %s" % self.repo.location
@@ -136,14 +134,10 @@ class MercurialSync(NewBase):
         writemsg_level(hg_cmd + "\n")
 
         rev_cmd = [self.bin_command, "id", "--id", "--rev", "tip"]
-        previous_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-        )
+        previous_rev = subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
 
         exitcode = portage.process.spawn(
-            shlex_split(hg_cmd),
-            cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            shlex_split(hg_cmd), cwd=self.repo.location.encode(), **self.spawn_kwargs
         )
         if exitcode != os_unicode_fs.EX_OK:
             msg = "!!! hg pull error in %s" % self.repo.location
@@ -151,9 +145,7 @@ class MercurialSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
 
-        current_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-        )
+        current_rev = subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
 
         return (os_unicode_fs.EX_OK, current_rev != previous_rev)
 
@@ -166,9 +158,7 @@ class MercurialSync(NewBase):
             ret = (
                 os_unicode_fs.EX_OK,
                 portage._unicode_decode(
-                    subprocess.check_output(
-                        rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-                    )
+                    subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
                 ),
             )
         except subprocess.CalledProcessError:

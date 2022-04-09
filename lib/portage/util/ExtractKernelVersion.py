@@ -6,7 +6,7 @@ __all__ = ["ExtractKernelVersion"]
 import io
 import logging
 
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.util import grabfile, shlex_split, writemsg_level
 
@@ -26,7 +26,7 @@ def ExtractKernelVersion(base_dir):
     pathname = os_unicode_fs.path.join(base_dir, "Makefile")
     try:
         f = io.open(
-            _unicode_encode(pathname, encoding=_encodings["fs"], errors="strict"),
+            pathname.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",

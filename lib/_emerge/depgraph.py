@@ -13,7 +13,7 @@ from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os_unicode_fs, _unicode_decode, _unicode_encode, _encodings
+from portage import os_unicode_fs, _unicode_decode, _encodings
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -10366,9 +10366,7 @@ class depgraph:
             file_contents = None
             try:
                 with io.open(
-                    _unicode_encode(
-                        file_to_write_to, encoding=_encodings["fs"], errors="strict"
-                    ),
+                    file_to_write_to.encode(encoding=_encodings["fs"], errors="strict"),
                     mode="r",
                     encoding=_encodings["content"],
                     errors="replace",

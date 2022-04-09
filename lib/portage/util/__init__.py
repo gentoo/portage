@@ -65,7 +65,6 @@ from portage import (
     os_unicode_fs,
     os_unicode_merge,
     _encodings,
-    _unicode_encode,
     _unicode_decode,
 )
 from portage.const import VCS_DIRS
@@ -109,8 +108,8 @@ def writemsg(mystr, noiselevel=0, fd=None):
                 mystr, encoding=_encodings["content"], errors="replace"
             )
         else:
-            mystr = _unicode_encode(
-                mystr, encoding=_encodings["stdio"], errors="backslashreplace"
+            mystr = mystr.encode(
+                encoding=_encodings["stdio"], errors="backslashreplace"
             )
             if fd in (sys.stdout, sys.stderr):
                 fd = fd.buffer
@@ -475,7 +474,7 @@ def read_corresponding_eapi_file(filename, default="0"):
     eapi = None
     try:
         with io.open(
-            _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
+            eapi_file.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
@@ -682,7 +681,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
     else:
         try:
             with io.open(
-                _unicode_encode(myfilename, encoding=_encodings["fs"], errors="strict"),
+                myfilename.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["content"],
                 errors="replace",
@@ -796,7 +795,7 @@ def getconfig(
     f = None
     try:
         f = open(
-            _unicode_encode(mycfg, encoding=_encodings["fs"], errors="strict"),
+            mycfg.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",
@@ -1062,9 +1061,7 @@ def pickle_read(filename, default=None, debug=0):
         return default
     data = None
     try:
-        myf = open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        myf = open(filename.encode(encoding=_encodings["fs"], errors="strict"), "rb")
         mypickle = pickle.Unpickler(myf)
         data = mypickle.load()
         myf.close()
@@ -1465,9 +1462,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                     self,
                     "_file",
                     open_func(
-                        _unicode_encode(
-                            tmp_name, encoding=_encodings["fs"], errors="strict"
-                        ),
+                        tmp_name.encode(encoding=_encodings["fs"], errors="strict"),
                         mode=mode,
                         **kargs
                     ),
@@ -1486,7 +1481,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
             self,
             "_file",
             open_func(
-                _unicode_encode(tmp_name, encoding=_encodings["fs"], errors="strict"),
+                tmp_name.encode(encoding=_encodings["fs"], errors="strict"),
                 mode=mode,
                 **kargs
             ),
@@ -1912,9 +1907,7 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                     # Read symlink target as bytes, in case the
                     # target path has a bad encoding.
                     pfile_link = os_unicode_fs.readlink(
-                        _unicode_encode(
-                            old_pfile, encoding=_encodings["merge"], errors="strict"
-                        )
+                        old_pfile.encode(encoding=_encodings["merge"], errors="strict")
                     )
                 except OSError:
                     if e.errno != errno.ENOENT:
@@ -1983,10 +1976,9 @@ def find_updated_config_files(target_root, config_protect):
                     % os_unicode_fs.path.split(x.rstrip(os_unicode_fs.path.sep))
                 )
             mycommand += " ! -name '.*~' ! -iname '.*.bak' -print0"
-            cmd = shlex_split(mycommand)
-
             cmd = [
-                _unicode_encode(arg, encoding=encoding, errors="strict") for arg in cmd
+                arg.encode(encoding=encoding, errors="strict")
+                for arg in shlex_split(mycommand)
             ]
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT

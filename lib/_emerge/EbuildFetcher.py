@@ -6,7 +6,7 @@ import io
 import sys
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -360,9 +360,7 @@ class _EbuildFetcherProcess(ForkProcess):
         # output here.
         if self.logfile is not None:
             f = io.open(
-                _unicode_encode(
-                    self.logfile, encoding=_encodings["fs"], errors="strict"
-                ),
+                self.logfile.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="a",
                 encoding=_encodings["content"],
                 errors="backslashreplace",

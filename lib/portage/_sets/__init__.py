@@ -17,7 +17,6 @@ from portage import (
     os_unicode_fs,
     load_mod,
     _unicode_decode,
-    _unicode_encode,
     _encodings,
 )
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
@@ -344,7 +343,6 @@ class SetConfig:
 
 
 def load_default_config(settings, trees):
-
     if not _ENABLE_SET_CONFIG:
         return SetConfig(None, settings, trees)
 
@@ -353,7 +351,7 @@ def load_default_config(settings, trees):
         global_config_path = os_unicode_fs.path.join(
             portage.const.EPREFIX, GLOBAL_CONFIG_PATH.lstrip(os_unicode_fs.sep)
         )
-    vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
+    vcs_dirs = [x.encode(encoding=_encodings["fs"]) for x in VCS_DIRS]
 
     def _getfiles():
         for path, dirs, files in os_unicode_fs.walk(

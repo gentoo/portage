@@ -226,12 +226,6 @@ def _decode_argv(argv):
     return [_unicode_decode(x.encode(fs_encoding, "surrogateescape")) for x in argv]
 
 
-def _unicode_encode(s, encoding=_encodings["content"], errors="backslashreplace"):
-    if isinstance(s, str):
-        s = s.encode(encoding, errors)
-    return s
-
-
 def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
     if isinstance(s, bytes):
         s = str(s, encoding=encoding, errors=errors)
@@ -261,14 +255,15 @@ class _unicode_func_wrapper:
 
     def _process_args(self, args, kwargs):
         encoding = self._encoding
-        wrapped_args = [
-            _unicode_encode(x, encoding=encoding, errors="strict") for x in args
-        ]
+
+        def _local_encoding_coercion(s):
+            if isinstance(s, str):
+                s = s.encode(encoding, errors="strict")
+            return s
+
+        wrapped_args = [_local_encoding_coercion(x) for x in args]
         if kwargs:
-            wrapped_kwargs = dict(
-                (k, _unicode_encode(v, encoding=encoding, errors="strict"))
-                for k, v in kwargs.items()
-            )
+            wrapped_kwargs = {k: _local_encoding_coercion(v) for k, v in kwargs.items()}
         else:
             wrapped_kwargs = {}
 
@@ -722,6 +717,12 @@ if VERSION == "HEAD":
                 os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".git")
             ):
                 encoding = _encodings["fs"]
+
+                def _local_encoding_coercion(s):
+                    if isinstance(s, str):
+                        s = s.encode(encoding, errors="strict")
+                    return s
+
                 cmd = [
                     BASH_BINARY,
                     "-c",
@@ -732,9 +733,7 @@ if VERSION == "HEAD":
                         "exit 0"
                     ),
                 ]
-                cmd = [
-                    _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
-                ]
+                cmd = (_local_encoding_coercion(x) for x in cmd)
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                 )

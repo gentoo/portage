@@ -36,7 +36,6 @@ from portage.localization import _
 from portage import eclass_cache, eapi_is_supported, _eapi_is_deprecated
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_encode
 from portage.util.futures import asyncio
 from portage.util.futures.iter_completed import iter_gather
 from _emerge.EbuildMetadataPhase import EbuildMetadataPhase
@@ -571,9 +570,7 @@ class portdbapi(dbapi):
 
         for x in mytrees:
             filename = x + _os.sep + relative_path
-            if _os.access(
-                _unicode_encode(filename, encoding=encoding, errors=errors), _os.R_OK
-            ):
+            if _os.access(filename.encode(encoding=encoding, errors=errors), _os.R_OK):
                 return (filename, x)
         return (None, 0)
 

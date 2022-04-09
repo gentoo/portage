@@ -22,7 +22,6 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
-from portage import _unicode_encode
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -224,7 +223,7 @@ class Manifest:
         Otherwise, a new dict will be created and returned."""
         try:
             with io.open(
-                _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
+                file_path.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
@@ -327,8 +326,7 @@ class Manifest:
             if myentries and not force:
                 try:
                     with io.open(
-                        _unicode_encode(
-                            self.getFullname(),
+                        self.getFullname().encode(
                             encoding=_encodings["fs"],
                             errors="strict",
                         ),
@@ -810,7 +808,7 @@ class Manifest:
         if not os_unicode_fs.path.exists(mfname):
             return []
         with io.open(
-            _unicode_encode(mfname, encoding=_encodings["fs"], errors="strict"),
+            mfname.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",

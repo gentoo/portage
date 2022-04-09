@@ -21,7 +21,6 @@ from portage import (
     normalize_path,
     _encodings,
     _unicode_decode,
-    _unicode_encode,
 )
 from portage.exception import (
     FileNotFound,
@@ -1317,8 +1316,8 @@ class gpkg:
                             tarinfo.size = protect_file_size
                             image_tar.addfile(tarinfo, protect_file)
                         else:
-                            path_bytes = _unicode_encode(
-                                path, encoding=_encodings["fs"], errors="strict"
+                            path_bytes = path.encode(
+                                encoding=_encodings["fs"], errors="strict"
                             )
 
                             with open(path_bytes, "rb") as f:
@@ -1763,7 +1762,7 @@ class gpkg:
             "",
         )
         root_dir_length = len(
-            _unicode_encode(root_dir, encoding=_encodings["fs"], errors="strict")
+            root_dir.encode(encoding=_encodings["fs"], errors="strict")
         )
 
         image_max_prefix_length = 0
@@ -1783,7 +1782,7 @@ class gpkg:
 
                 d = os_unicode_fs.path.join(parent, d)
                 prefix_length = (
-                    len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
+                    len(d.encode(encoding=_encodings["fs"], errors="strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
@@ -1791,9 +1790,7 @@ class gpkg:
                 if os_unicode_fs.path.islink(d):
                     path_link = os_unicode_fs.readlink(d)
                     path_link_length = len(
-                        _unicode_encode(
-                            path_link, encoding=_encodings["fs"], errors="strict"
-                        )
+                        path_link.encode(encoding=_encodings["fs"], errors="strict")
                     )
                     image_max_link_length = max(image_max_link_length, path_link_length)
 
@@ -1807,13 +1804,13 @@ class gpkg:
                     raise
 
                 filename_length = len(
-                    _unicode_encode(f, encoding=_encodings["fs"], errors="strict")
+                    f.encode(encoding=_encodings["fs"], errors="strict")
                 )
                 image_max_name_length = max(image_max_name_length, filename_length)
 
                 f = os_unicode_fs.path.join(parent, f)
                 path_length = (
-                    len(_unicode_encode(f, encoding=_encodings["fs"], errors="strict"))
+                    len(f.encode(encoding=_encodings["fs"], errors="strict"))
                     - root_dir_length
                     + image_prefix_length
                 )
@@ -1823,9 +1820,7 @@ class gpkg:
                 if os_unicode_fs.path.islink(f):
                     path_link = os_unicode_fs.readlink(f)
                     path_link_length = len(
-                        _unicode_encode(
-                            path_link, encoding=_encodings["fs"], errors="strict"
-                        )
+                        path_link.encode(encoding=_encodings["fs"], errors="strict")
                     )
                 elif file_stat.st_nlink > 1:
                     # Hardlink exists
@@ -1866,7 +1861,7 @@ class gpkg:
             "",
         )
         root_dir_length = len(
-            _unicode_encode(root_dir, encoding=_encodings["fs"], errors="strict")
+            root_dir.encode(encoding=_encodings["fs"], errors="strict")
         )
 
         image_max_prefix_length = 0
@@ -1886,18 +1881,16 @@ class gpkg:
             d, f = os_unicode_fs.path.split(path)
 
             prefix_length = (
-                len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
+                len(d.encode(encoding=_encodings["fs"], errors="strict"))
                 - root_dir_length
             )
             image_max_prefix_length = max(image_max_prefix_length, prefix_length)
 
-            filename_length = len(
-                _unicode_encode(f, encoding=_encodings["fs"], errors="strict")
-            )
+            filename_length = len(f.encode(encoding=_encodings["fs"], errors="strict"))
             image_max_name_length = max(image_max_name_length, filename_length)
 
             path_length = (
-                len(_unicode_encode(path, encoding=_encodings["fs"], errors="strict"))
+                len(path.encode(encoding=_encodings["fs"], errors="strict"))
                 - root_dir_length
             )
 
@@ -1906,9 +1899,7 @@ class gpkg:
             if os_unicode_fs.path.islink(path):
                 path_link = os_unicode_fs.readlink(path)
                 path_link_length = len(
-                    _unicode_encode(
-                        path_link, encoding=_encodings["fs"], errors="strict"
-                    )
+                    path_link.encode(encoding=_encodings["fs"], errors="strict")
                 )
             elif file_stat.st_nlink > 1:
                 # Hardlink exists

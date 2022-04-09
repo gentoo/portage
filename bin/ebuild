@@ -55,7 +55,6 @@ portage._internal_caller = True
 from portage import os_unicode_fs
 from portage import _encodings
 from portage import _shell_quote
-from portage import _unicode_encode
 from portage.const import VDB_PATH
 from portage.exception import (
     PermissionDenied,
@@ -200,7 +199,7 @@ ebuild_split = ebuild.split("/")
 cpv = "%s/%s" % (ebuild_split[-3], pf)
 
 with io.open(
-    _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
+    ebuild.encode(encoding=_encodings["fs"], errors="strict"),
     mode="r",
     encoding=_encodings["repo.content"],
     errors="replace",

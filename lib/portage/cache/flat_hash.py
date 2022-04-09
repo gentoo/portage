@@ -9,7 +9,7 @@ import io
 import stat
 import tempfile
 import os as _os
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
@@ -36,7 +36,7 @@ class database(fs_template.FsBased):
         fp = self.location + _os.sep + cpv
         try:
             with io.open(
-                _unicode_encode(fp, encoding=_encodings["fs"], errors="strict"),
+                fp.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",

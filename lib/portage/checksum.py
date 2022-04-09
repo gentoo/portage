@@ -11,7 +11,7 @@ import stat
 import subprocess
 import tempfile
 
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
 
@@ -39,9 +39,7 @@ hashorigin_map = {}
 
 def _open_file(filename):
     try:
-        return open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        return open(filename, "rb")
     except IOError as e:
         func_call = f"open('{_unicode_decode(filename)}')"
         if e.errno == errno.EPERM:
@@ -333,7 +331,7 @@ hashfunc_keys = frozenset(hashfunc_map)
 prelink_capable = False
 if os_unicode_fs.path.exists(PRELINK_BINARY):
     cmd = [PRELINK_BINARY, "--version"]
-    cmd = [_unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in cmd]
+    cmd = [x.encode(encoding=_encodings["fs"], errors="strict") for x in cmd]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     proc.communicate()
     status = proc.wait()
@@ -361,7 +359,7 @@ def perform_md5(x, calc_prelink=0):
 
 def _perform_md5_merge(x, **kwargs):
     return perform_md5(
-        _unicode_encode(x, encoding=_encodings["merge"], errors="strict"), **kwargs
+        x.encode(encoding=_encodings["merge"], errors="strict"), **kwargs
     )
 
 
@@ -546,7 +544,6 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
     global prelink_capable
     # Make sure filename is encoded with the correct encoding before
     # it is passed to spawn (for prelink) and/or the hash function.
-    filename = _unicode_encode(filename, encoding=_encodings["fs"], errors="strict")
     myfilename = filename
     prelink_tmpfile = None
     try:

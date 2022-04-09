@@ -57,7 +57,6 @@ portage.proxy.lazyimport.lazyimport(
 )
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_encode
 
 
 class EbuildPhase(CompositeTask):
@@ -320,10 +319,9 @@ class EbuildPhase(CompositeTask):
                 # mark test phase as complete (bug #452030)
                 try:
                     open(
-                        _unicode_encode(
-                            os_unicode_fs.path.join(
-                                self.settings["PORTAGE_BUILDDIR"], ".tested"
-                            ),
+                        os_unicode_fs.path.join(
+                            self.settings["PORTAGE_BUILDDIR"], ".tested"
+                        ).encode(
                             encoding=_encodings["fs"],
                             errors="strict",
                         ),
@@ -427,7 +425,7 @@ class EbuildPhase(CompositeTask):
     def _append_temp_log(self, temp_log, log_path):
 
         temp_file = open(
-            _unicode_encode(temp_log, encoding=_encodings["fs"], errors="strict"), "rb"
+            temp_log.encode(encoding=_encodings["fs"], errors="strict"), "rb"
         )
 
         log_file, log_file_real = self._open_log(log_path)
@@ -444,7 +442,7 @@ class EbuildPhase(CompositeTask):
     def _open_log(self, log_path):
 
         f = open(
-            _unicode_encode(log_path, encoding=_encodings["fs"], errors="strict"),
+            log_path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="ab",
         )
         f_real = f

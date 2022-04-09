@@ -41,7 +41,6 @@ from portage import (
     _encodings,
     _movefile,
     _shell_quote,
-    _unicode_encode,
 )
 from portage.checksum import (
     get_valid_checksum_keys,
@@ -494,9 +493,7 @@ class FilenameHashLayout:
             pattern += c * "[0-9a-f]" + "/"
         pattern += "*"
         for x in glob.iglob(
-            portage._unicode_encode(
-                os_unicode_fs.path.join(distdir, pattern), errors="strict"
-            )
+            os_unicode_fs.path.join(distdir, pattern).encode(errors="strict")
         ):
             try:
                 yield portage._unicode_decode(x, errors="strict").rsplit("/", 1)[1]
@@ -1883,8 +1880,7 @@ def fetch(
                                         re.I | re.M,
                                     )
                                     with io.open(
-                                        _unicode_encode(
-                                            download_path,
+                                        download_path.encode(
                                             encoding=_encodings["fs"],
                                             errors="strict",
                                         ),

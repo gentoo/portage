@@ -5,7 +5,7 @@ import errno
 import io
 import tempfile
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.const import BASH_BINARY
 from portage.tests import TestCase
 from portage.util._eventloop.global_event_loop import global_event_loop
@@ -31,7 +31,7 @@ class SpawnTestCase(TestCase):
             os_unicode_fs.close(null_fd)
             self.assertEqual(proc.wait(), os_unicode_fs.EX_OK)
             f = io.open(
-                _unicode_encode(logfile, encoding=_encodings["fs"], errors="strict"),
+                logfile.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["content"],
                 errors="strict",

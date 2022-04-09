@@ -5,7 +5,7 @@ import errno
 import re
 from itertools import chain
 
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -160,7 +160,7 @@ class StaticFileSet(EditablePackageSet):
                 directory, encoding=_encodings["fs"], errors="strict"
             )
             # Now verify that we can also encode it.
-            _unicode_encode(directory, encoding=_encodings["fs"], errors="strict")
+            directory.encode(encoding=_encodings["fs"], errors="strict")
         except UnicodeError:
             directory = _unicode_decode(
                 directory, encoding=_encodings["fs"], errors="replace"
@@ -172,7 +172,7 @@ class StaticFileSet(EditablePackageSet):
                 % (_encodings["fs"], directory)
             )
 
-        vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
+        vcs_dirs = [x.encode(encoding=_encodings["fs"]) for x in VCS_DIRS]
         if os_unicode_fs.path.isdir(directory):
             directory = normalize_path(directory)
 

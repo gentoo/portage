@@ -20,7 +20,7 @@ import io
 import logging
 import os as _os
 import re
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.const import NEWS_LIB_PATH
 from portage.util import (
     apply_secpass_permissions,
@@ -127,7 +127,7 @@ class NewsManager:
         news_dir = self._news_dir(repoid)
         try:
             news = _os.listdir(
-                _unicode_encode(news_dir, encoding=_encodings["fs"], errors="strict")
+                news_dir.encode(encoding=_encodings["fs"], errors="strict")
             )
         except OSError:
             return
@@ -295,7 +295,7 @@ class NewsItem:
 
     def parse(self):
         with io.open(
-            _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
+            self.path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",

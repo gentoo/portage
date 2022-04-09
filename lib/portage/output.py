@@ -20,7 +20,6 @@ import portage.util.formatter as formatter
 
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_encode
 from portage import _unicode_decode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
@@ -189,7 +188,7 @@ def _parse_color_map(config_root="/", onerror=None):
 
     try:
         with io.open(
-            _unicode_encode(myfile, encoding=_encodings["fs"], errors="strict"),
+            myfile.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",
@@ -289,9 +288,7 @@ def xtermTitle(mystr, raw=False):
             mystr = "\x1b]0;%s\x07" % mystr
 
         # avoid potential UnicodeEncodeError
-        mystr = _unicode_encode(
-            mystr, encoding=_encodings["stdio"], errors="backslashreplace"
-        )
+        mystr = mystr.encode(encoding=_encodings["stdio"], errors="backslashreplace")
         f = sys.stderr.buffer
         f.write(mystr)
         f.flush()
@@ -474,9 +471,7 @@ class ConsoleStyleFile:
     def _write(self, f, s):
         # avoid potential UnicodeEncodeError
         if f in (sys.stdout, sys.stderr):
-            s = _unicode_encode(
-                s, encoding=_encodings["stdio"], errors="backslashreplace"
-            )
+            s = s.encode(encoding=_encodings["stdio"], errors="backslashreplace")
             f = f.buffer
         f.write(s)
 

@@ -164,7 +164,7 @@ class GitSync(NewBase):
                         "--symbolic-full-name",
                         "@{upstream}",
                     ],
-                    cwd=portage._unicode_encode(self.repo.location),
+                    cwd=self.repo.location.encode(),
                 )
             ).rstrip("\n")
         except subprocess.CalledProcessError as e:
@@ -184,9 +184,7 @@ class GitSync(NewBase):
             if quiet:
                 gc_cmd.append("--quiet")
             exitcode = portage.process.spawn(
-                gc_cmd,
-                cwd=portage._unicode_encode(self.repo.location),
-                **self.spawn_kwargs
+                gc_cmd, cwd=self.repo.location.encode(), **self.spawn_kwargs
             )
             if exitcode != os_unicode_fs.EX_OK:
                 msg = "!!! git gc error in %s" % self.repo.location
@@ -203,9 +201,7 @@ class GitSync(NewBase):
         writemsg_level(git_cmd + "\n")
 
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
-        previous_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-        )
+        previous_rev = subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
 
         exitcode = portage.process.spawn_bash(
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
@@ -231,9 +227,7 @@ class GitSync(NewBase):
         if quiet:
             merge_cmd.append("--quiet")
         exitcode = portage.process.spawn(
-            merge_cmd,
-            cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            merge_cmd, cwd=self.repo.location.encode(), **self.spawn_kwargs
         )
 
         if exitcode != os_unicode_fs.EX_OK:
@@ -242,9 +236,7 @@ class GitSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
 
-        current_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-        )
+        current_rev = subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
 
         return (os_unicode_fs.EX_OK, current_rev != previous_rev)
 
@@ -290,7 +282,7 @@ class GitSync(NewBase):
                 status = portage._unicode_decode(
                     subprocess.check_output(
                         rev_cmd,
-                        cwd=portage._unicode_encode(self.repo.location),
+                        cwd=self.repo.location.encode(),
                         env=env,
                     )
                 ).strip()
@@ -335,9 +327,7 @@ class GitSync(NewBase):
             ret = (
                 os_unicode_fs.EX_OK,
                 portage._unicode_decode(
-                    subprocess.check_output(
-                        rev_cmd, cwd=portage._unicode_encode(self.repo.location)
-                    )
+                    subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
                 ),
             )
         except subprocess.CalledProcessError:

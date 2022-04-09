@@ -12,7 +12,6 @@ from portage import (
     os_unicode_merge,
     _encodings,
     _unicode_decode,
-    _unicode_encode,
 )
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
@@ -149,13 +148,13 @@ class LinkageMapELF:
             os = os_unicode_merge
 
             try:
-                _unicode_encode(obj, encoding=_encodings["merge"], errors="strict")
+                obj.encode(encoding=_encodings["merge"], errors="strict")
             except UnicodeEncodeError:
                 # The package appears to have been merged with a
                 # different value of sys.getfilesystemencoding(),
                 # so fall back to utf_8 if appropriate.
                 try:
-                    _unicode_encode(obj, encoding=_encodings["fs"], errors="strict")
+                    obj.encode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeEncodeError:
                     pass
                 else:
@@ -316,8 +315,7 @@ class LinkageMapELF:
                         continue
                     try:
                         with open(
-                            _unicode_encode(
-                                entry.filename,
+                            entry.filename.encode(
                                 encoding=_encodings["fs"],
                                 errors="strict",
                             ),
@@ -336,8 +334,7 @@ class LinkageMapELF:
                             proc = subprocess.Popen(
                                 [
                                     b"file",
-                                    _unicode_encode(
-                                        entry.filename,
+                                    entry.filename.encode(
                                         encoding=_encodings["fs"],
                                         errors="strict",
                                     ),

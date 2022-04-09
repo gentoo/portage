@@ -3,7 +3,7 @@
 
 import tempfile
 
-from portage import os_unicode_fs, shutil_unicode_fs, _unicode_encode
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.tests import TestCase
 from portage.util import getconfig
 from portage.exception import ParseError
@@ -72,7 +72,7 @@ class GetConfigTestCase(TestCase):
                     line = "export %s=$'%s'\n" % (k, v[1:])
                 else:
                     line = "export %s='%s'\n" % (k, v)
-                f.write(_unicode_encode(line))
+                f.write(line.encode())
             f.flush()
 
             d = getconfig(f.name, expand=False)

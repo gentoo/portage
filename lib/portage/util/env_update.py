@@ -10,7 +10,7 @@ import stat
 import time
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.checksum import prelink_capable
 from portage.data import ostype
 from portage.exception import ParseError
@@ -202,7 +202,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
     ldsoconf_path = os_unicode_fs.path.join(eroot, "etc", "ld.so.conf")
     try:
         myld = io.open(
-            _unicode_encode(ldsoconf_path, encoding=_encodings["fs"], errors="strict"),
+            ldsoconf_path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",
@@ -233,9 +233,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
     potential_lib_dirs = set()
     for lib_dir_glob in ("usr/lib*", "lib*"):
         x = os_unicode_fs.path.join(eroot, lib_dir_glob)
-        for y in glob.glob(
-            _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
-        ):
+        for y in glob.glob(x.encode(encoding=_encodings["fs"], errors="strict")):
             try:
                 y = _unicode_decode(y, encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
@@ -285,9 +283,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         prelink_conf = os_unicode_fs.path.join(eroot, "etc", "prelink.conf")
         try:
             with open(
-                _unicode_encode(
-                    prelink_conf, encoding=_encodings["fs"], errors="strict"
-                ),
+                prelink_conf.encode(encoding=_encodings["fs"], errors="strict"),
                 "rb",
             ) as f:
                 if (

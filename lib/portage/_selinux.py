@@ -13,8 +13,7 @@ except ImportError:
     selinux = None
 
 import portage
-from portage import _encodings
-from portage import _native_string, _unicode_encode
+from portage import _encodings, _native_string
 from portage.localization import _
 
 
@@ -54,7 +53,7 @@ def mkdir(target, refdir):
 
     setfscreate(ctx)
     try:
-        os.mkdir(_unicode_encode(target, encoding=_encodings["fs"], errors="strict"))
+        os.mkdir(target.encode(encoding=_encodings["fs"], errors="strict"))
     finally:
         setfscreate()
 
@@ -68,8 +67,8 @@ def rename(src, dest):
     setfscreate(ctx)
     try:
         os.rename(
-            _unicode_encode(src, encoding=_encodings["fs"], errors="strict"),
-            _unicode_encode(dest, encoding=_encodings["fs"], errors="strict"),
+            src.encode(encoding=_encodings["fs"], errors="strict"),
+            dest.encode(encoding=_encodings["fs"], errors="strict"),
         )
     finally:
         setfscreate()
@@ -157,8 +156,8 @@ def symlink(target, link, reflnk):
     setfscreate(ctx)
     try:
         os.symlink(
-            _unicode_encode(target, encoding=_encodings["fs"], errors="strict"),
-            _unicode_encode(link, encoding=_encodings["fs"], errors="strict"),
+            target.encode(encoding=_encodings["fs"], errors="strict"),
+            link.encode(encoding=_encodings["fs"], errors="strict"),
         )
     finally:
         setfscreate()

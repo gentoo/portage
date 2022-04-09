@@ -8,7 +8,7 @@ import random
 import subprocess
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_encode
+from portage import os_unicode_fs, _encodings
 from portage.util import ensure_dirs
 from portage.util._async.FileCopier import FileCopier
 from portage.util._async.FileDigester import FileDigester
@@ -485,12 +485,12 @@ class FetchTask(CompositeTask):
         except OSError:
             pass
 
-        args = portage.util.shlex_split(default_fetchcommand)
-        args = [portage.util.varexpand(x, mydict=variables) for x in args]
-
-        args = [
-            _unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in args
-        ]
+        args = (
+            portage.util.varexpand(x, mydict=variables).encode(
+                encoding=_encodings["fs"], errors="strict"
+            )
+            for x in portage.util.shlex_split(default_fetchcommand)
+        )
 
         null_fd = os_unicode_fs.open(os_unicode_fs.devnull, os_unicode_fs.O_RDONLY)
         fetcher = PopenProcess(

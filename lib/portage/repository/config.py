@@ -13,7 +13,6 @@ from portage import (
     eclass_cache,
     os_unicode_fs,
     _unicode_decode,
-    _unicode_encode,
     _encodings,
     manifest,
 )
@@ -535,9 +534,7 @@ class RepoConfig:
         f = None
         try:
             f = io.open(
-                _unicode_encode(
-                    repo_name_path, encoding=_encodings["fs"], errors="strict"
-                ),
+                repo_name_path.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",

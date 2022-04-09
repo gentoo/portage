@@ -13,7 +13,6 @@ from portage import (
     os_unicode_fs,
     shutil_unicode_fs,
     _encodings,
-    _unicode_encode,
     _unicode_decode,
 )
 from portage.data import portage_gid, portage_uid, secpass
@@ -155,7 +154,7 @@ def _adjust_perms_msg(settings, msg):
     if background and log_path is not None:
         try:
             log_file = open(
-                _unicode_encode(log_path, encoding=_encodings["fs"], errors="strict"),
+                log_path.encode(encoding=_encodings["fs"], errors="strict"),
                 mode="ab",
             )
             log_file_real = log_file
@@ -169,7 +168,7 @@ def _adjust_perms_msg(settings, msg):
                 log_file = gzip.GzipFile(filename="", mode="ab", fileobj=log_file)
 
             def write(msg):
-                log_file.write(_unicode_encode(msg))
+                log_file.write(msg.encode())
                 log_file.flush()
 
     try:
@@ -399,7 +398,7 @@ def _prepare_workdir(mysettings):
         logdir = normalize_path(mysettings["PORTAGE_LOGDIR"])
         logid_path = os_unicode_fs.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
         if not os_unicode_fs.path.exists(logid_path):
-            open(_unicode_encode(logid_path), "w").close()
+            open(logid_path.encode(), "w").close()
         logid_time = _unicode_decode(
             time.strftime(
                 "%Y%m%d-%H%M%S", time.gmtime(os_unicode_fs.stat(logid_path).st_mtime)

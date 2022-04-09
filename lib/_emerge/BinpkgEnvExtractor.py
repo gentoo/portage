@@ -5,7 +5,7 @@ import errno
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-from portage import os_unicode_fs, _shell_quote, _unicode_encode
+from portage import os_unicode_fs, _encodings, _shell_quote
 from portage.const import BASH_BINARY
 
 
@@ -69,7 +69,12 @@ class BinpkgEnvExtractor(CompositeTask):
         # This is a signal to ebuild.sh, so that it knows to filter
         # out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
         # would be preserved between normal phases.
-        open(_unicode_encode(self._get_dest_env_path() + ".raw"), "wb").close()
+        open(
+            f"{self._get_dest_env_path()}.raw".encode(
+                encoding=_encodings["content"], errors="backslashreplace"
+            ),
+            "wb",
+        ).close()
 
         self._current_task = None
         self.returncode = os_unicode_fs.EX_OK

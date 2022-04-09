@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(
 
 from portage.const import EBUILD_PHASES
 from portage.localization import _
-from portage import os_unicode_fs, _encodings, _unicode_encode, _unicode_decode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 import io
 import sys
@@ -55,7 +55,7 @@ def collect_ebuild_messages(path):
         lastmsgtype = None
         msgcontent = []
         f = io.open(
-            _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"),
+            filename.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
@@ -130,8 +130,8 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 
     # avoid potential UnicodeEncodeError
     if out in (sys.stdout, sys.stderr):
-        formatted_msg = _unicode_encode(
-            formatted_msg, encoding=_encodings["stdio"], errors="backslashreplace"
+        formatted_msg = formatted_msg.encode(
+            encoding=_encodings["stdio"], errors="backslashreplace"
         )
         out = out.buffer
 

@@ -225,7 +225,7 @@ def _get_global(k):
             # SIGPIPE problems with nss_ldap.
             encoding = portage._encodings["content"]
             cmd = (
-                portage._unicode_encode(x, encoding=encoding, errors="strict")
+                x.encode(encoding=encoding, errors="strict")
                 for x in ("id", "-G", _portage_username)
             )
             proc = subprocess.Popen(

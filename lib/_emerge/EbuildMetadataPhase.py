@@ -13,7 +13,6 @@ portage.proxy.lazyimport.lazyimport(
 from portage import os_unicode_fs
 from portage import _encodings
 from portage import _unicode_decode
-from portage import _unicode_encode
 
 import fcntl
 import io
@@ -49,7 +48,7 @@ class EbuildMetadataPhase(SubProcess):
         ebuild_path = self.ebuild_hash.location
 
         with io.open(
-            _unicode_encode(ebuild_path, encoding=_encodings["fs"], errors="strict"),
+            ebuild_path.encode(encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",

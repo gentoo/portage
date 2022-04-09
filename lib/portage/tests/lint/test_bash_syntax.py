@@ -7,7 +7,7 @@ import subprocess
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 
 
 class BashSyntaxTestCase(TestCase):
@@ -31,9 +31,7 @@ class BashSyntaxTestCase(TestCase):
                     continue
 
                 # Check for bash shebang
-                f = open(
-                    _unicode_encode(x, encoding=_encodings["fs"], errors="strict"), "rb"
-                )
+                f = open(x.encode(encoding=_encodings["fs"], errors="strict"), "rb")
                 line = _unicode_decode(
                     f.readline(), encoding=_encodings["content"], errors="replace"
                 )
@@ -41,7 +39,7 @@ class BashSyntaxTestCase(TestCase):
                 if line[:2] == "#!" and "bash" in line:
                     cmd = [BASH_BINARY, "-n", x]
                     cmd = [
-                        _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+                        x.encode(encoding=_encodings["fs"], errors="strict")
                         for x in cmd
                     ]
                     proc = subprocess.Popen(

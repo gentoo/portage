@@ -128,9 +128,7 @@ def main(argv):
         return 1
 
     infile = io.open(
-        portage._unicode_encode(
-            src_pkgs_index, encoding=portage._encodings["fs"], errors="strict"
-        ),
+        src_pkgs_index.encode(encoding=portage._encodings["fs"], errors="strict"),
         mode="r",
         encoding=portage._encodings["repo.content"],
         errors="strict",

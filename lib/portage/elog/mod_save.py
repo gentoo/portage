@@ -6,7 +6,7 @@ import errno
 import io
 import time
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode, _unicode_encode
+from portage import os_unicode_fs, _encodings, _unicode_decode
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
 from portage.util import apply_permissions, ensure_dirs, normalize_path
@@ -59,7 +59,7 @@ def process(mysettings, key, logentries, fulltext):
 
     try:
         with io.open(
-            _unicode_encode(elogfilename, encoding=_encodings["fs"], errors="strict"),
+            elogfilename.encode(encoding=_encodings["fs"], errors="strict"),
             mode="w",
             encoding=_encodings["content"],
             errors="backslashreplace",
