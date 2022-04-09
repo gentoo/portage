@@ -8,7 +8,6 @@ import textwrap
 
 import portage
 from portage import os_unicode_fs, shutil_unicode_fs, _shell_quote
-from portage import _unicode_decode
 from portage.const import PORTAGE_PYM_PATH, TIMESTAMP_FORMAT
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -528,7 +527,7 @@ class SyncLocalTestCase(TestCase):
                     proc.stdout.close()
                     if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(line.decode())
 
                 self.assertEqual(
                     os_unicode_fs.EX_OK,

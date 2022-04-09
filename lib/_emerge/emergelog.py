@@ -4,7 +4,7 @@
 import io
 import time
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.data import secpass
 from portage.output import xtermTitle
 
@@ -19,11 +19,6 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 
     if _disable:
         return
-
-    mystr = _unicode_decode(mystr)
-
-    if short_msg is not None:
-        short_msg = _unicode_decode(short_msg)
 
     if xterm_titles and short_msg:
         if "HOSTNAME" in os_unicode_fs.environ:

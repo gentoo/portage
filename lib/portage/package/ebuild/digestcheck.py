@@ -5,7 +5,7 @@ __all__ = ["digestcheck"]
 
 import warnings
 
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.checksum import _hash_filter
 from portage.exception import DigestException, FileNotFound
 from portage.localization import _
@@ -108,11 +108,9 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
 
     for parent, dirs, files in os_unicode_fs.walk(filesdir):
         try:
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+            parent = parent.decode(encoding=_encodings["fs"], errors="strict")
         except UnicodeDecodeError:
-            parent = _unicode_decode(
-                parent, encoding=_encodings["fs"], errors="replace"
-            )
+            parent = parent.decode(encoding=_encodings["fs"], errors="replace")
             writemsg(
                 _("!!! Path contains invalid " "character(s) for encoding '%s': '%s'")
                 % (_encodings["fs"], parent),
@@ -124,9 +122,9 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
         for d in dirs:
             d_bytes = d
             try:
-                d = _unicode_decode(d, encoding=_encodings["fs"], errors="strict")
+                d = d.decode(encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
-                d = _unicode_decode(d, encoding=_encodings["fs"], errors="replace")
+                d = d.decode(encoding=_encodings["fs"], errors="replace")
                 writemsg(
                     _(
                         "!!! Path contains invalid "
@@ -143,9 +141,9 @@ def digestcheck(myfiles, mysettings, strict=False, justmanifest=None, mf=None):
                 dirs.remove(d_bytes)
         for f in files:
             try:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                f = f.decode(encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="replace")
+                f = f.decode(encoding=_encodings["fs"], errors="replace")
                 if f.startswith("."):
                     continue
                 f = os_unicode_fs.path.join(parent, f)[len(filesdir) + 1 :]

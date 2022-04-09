@@ -55,7 +55,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.cache.index.pkg_desc_index import (
     pkg_desc_index_line_format,
@@ -883,9 +883,7 @@ class GenChangeLogs:
     @staticmethod
     def grab(cmd):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        return _unicode_decode(
-            p.communicate()[0], encoding=_encodings["stdio"], errors="strict"
-        )
+        return p.communicate()[0].decode(encoding=_encodings["stdio"], errors="strict")
 
     def generate_changelog(self, cp):
 

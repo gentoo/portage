@@ -13,7 +13,6 @@ from portage import (
     os_unicode_fs,
     shutil_unicode_fs,
     _encodings,
-    _unicode_decode,
 )
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import (
@@ -399,12 +398,8 @@ def _prepare_workdir(mysettings):
         logid_path = os_unicode_fs.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
         if not os_unicode_fs.path.exists(logid_path):
             open(logid_path.encode(), "w").close()
-        logid_time = _unicode_decode(
-            time.strftime(
-                "%Y%m%d-%H%M%S", time.gmtime(os_unicode_fs.stat(logid_path).st_mtime)
-            ),
-            encoding=_encodings["content"],
-            errors="replace",
+        logid_time = time.strftime(
+            "%Y%m%d-%H%M%S", time.gmtime(os_unicode_fs.stat(logid_path).st_mtime)
         )
 
         if "split-log" in mysettings.features:

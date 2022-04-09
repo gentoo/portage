@@ -22,7 +22,6 @@ from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.metadata import action_metadata
 from portage.util.hooks import get_hooks_from_dir
 from portage.util._async.AsyncFunction import AsyncFunction
-from portage import _unicode_decode
 from _emerge.CompositeTask import CompositeTask
 
 
@@ -192,7 +191,7 @@ class SyncManager:
             _hooks = self.hooks["postsync.d"]
         for filepath in _hooks:
             writemsg_level(
-                "Spawning post_sync hook: %s\n" % (_unicode_decode(_hooks[filepath])),
+                f"Spawning post_sync hook: {_hooks[filepath].decode()}\n",
                 level=logging.ERROR,
                 noiselevel=4,
             )
@@ -205,8 +204,7 @@ class SyncManager:
                 retval = portage.process.spawn([filepath], env=self.settings.environ())
             if retval != os_unicode_fs.EX_OK:
                 writemsg_level(
-                    " %s Spawn failed for: %s, %s\n"
-                    % (bad("*"), _unicode_decode(_hooks[filepath]), filepath),
+                    f" {bad('*')} Spawn failed for: {_hooks[filepath].decode()}, {filepath}\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

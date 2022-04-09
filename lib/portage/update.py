@@ -9,7 +9,7 @@ import sys
 import warnings
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -115,16 +115,18 @@ def update_dbentry(update_cmd, mycontent, eapi=None, parent=None):
 def update_dbentries(update_iter, mydata, eapi=None, parent=None):
     """Performs update commands and returns a
     dict containing only the updated items."""
+
+    def _local_decode_coercion(s):
+        if isinstance(s, bytes):
+            s = s.decode(encoding="utf_8", errors="replace")
+        return s
+
     updated_items = {}
     for k, mycontent in mydata.items():
-        k_unicode = _unicode_decode(
-            k, encoding=_encodings["repo.content"], errors="replace"
-        )
-        if k_unicode not in ignored_dbentries:
+        k = _local_decode_coercion(k)
+        if k not in ignored_dbentries:
             orig_content = mycontent
-            mycontent = _unicode_decode(
-                mycontent, encoding=_encodings["repo.content"], errors="replace"
-            )
+            mycontent = _local_decode_coercion(mycontent)
             is_encoded = mycontent is not orig_content
             orig_content = mycontent
             for update_cmd in update_iter:
@@ -156,7 +158,7 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
     ]:
         file_path = os_unicode_fs.path.join(dbdir, myfile)
         with io.open(
-            file_path.encode(encoding=_encodings["fs"], errors="strict"),
+            file_path,
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
@@ -347,16 +349,12 @@ def update_config_files(
         if os_unicode_fs.path.isdir(config_file):
             for parent, dirs, files in os_unicode_fs.walk(config_file):
                 try:
-                    parent = _unicode_decode(
-                        parent, encoding=_encodings["fs"], errors="strict"
-                    )
+                    parent = parent.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 for y_enc in list(dirs):
                     try:
-                        y = _unicode_decode(
-                            y_enc, encoding=_encodings["fs"], errors="strict"
-                        )
+                        y = y_enc.decode(encoding=_encodings["fs"], errors="strict")
                     except UnicodeDecodeError:
                         dirs.remove(y_enc)
                         continue
@@ -364,9 +362,7 @@ def update_config_files(
                         dirs.remove(y_enc)
                 for y in files:
                     try:
-                        y = _unicode_decode(
-                            y, encoding=_encodings["fs"], errors="strict"
-                        )
+                        y = y.decode(encoding=_encodings["fs"], errors="strict")
                     except UnicodeDecodeError:
                         continue
                     if y.startswith("."):

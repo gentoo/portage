@@ -5,8 +5,6 @@
 import locale
 import math
 
-from portage import _encodings, _unicode_decode
-
 # We define this to make the transition easier for us.
 
 
@@ -17,7 +15,7 @@ def _(mystr):
     Python 2, by ensuring that string format operations invoke
     __unicode__() instead of __str__().
     """
-    return _unicode_decode(mystr)
+    return mystr
 
 
 def localization_example():
@@ -44,5 +42,4 @@ def localized_size(num_bytes):
     except UnicodeDecodeError:
         # failure to decode locale data
         formatted_num = str(num_kib)
-    unicode_num = _unicode_decode(formatted_num, encoding=_encodings["stdio"])
-    return f"{unicode_num} KiB"
+    return f"{formatted_num} KiB"

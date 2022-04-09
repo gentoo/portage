@@ -7,7 +7,7 @@ import subprocess
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 
 
 class BashSyntaxTestCase(TestCase):
@@ -19,9 +19,9 @@ class BashSyntaxTestCase(TestCase):
         for parent, dirs, files in chain.from_iterable(
             os_unicode_fs.walk(x) for x in locations
         ):
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+            parent = parent.decode(encoding=_encodings["fs"], errors="strict")
             for x in files:
-                x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
+                x = x.decode(encoding=_encodings["fs"], errors="strict")
                 ext = x.split(".")[-1]
                 if ext in (".py", ".pyc", ".pyo"):
                     continue
@@ -32,8 +32,8 @@ class BashSyntaxTestCase(TestCase):
 
                 # Check for bash shebang
                 f = open(x.encode(encoding=_encodings["fs"], errors="strict"), "rb")
-                line = _unicode_decode(
-                    f.readline(), encoding=_encodings["content"], errors="replace"
+                line = f.readline().decode(
+                    encoding=_encodings["content"], errors="replace"
                 )
                 f.close()
                 if line[:2] == "#!" and "bash" in line:
@@ -45,9 +45,7 @@ class BashSyntaxTestCase(TestCase):
                     proc = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                     )
-                    output = _unicode_decode(
-                        proc.communicate()[0], encoding=_encodings["fs"]
-                    )
+                    output = proc.communicate()[0].decode(encoding=_encodings["fs"])
                     status = proc.wait()
                     self.assertEqual(
                         os_unicode_fs.WIFEXITED(status)

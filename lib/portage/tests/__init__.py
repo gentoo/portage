@@ -13,7 +13,6 @@ from unittest.runner import TextTestResult as _TextTestResult
 import portage
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_decode
 from portage.output import colorize
 from portage.proxy.objectproxy import ObjectProxy
 

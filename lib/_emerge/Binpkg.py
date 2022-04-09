@@ -22,7 +22,6 @@ from portage import (
     os_unicode_fs,
     shutil_unicode_fs,
     _encodings,
-    _unicode_decode,
 )
 import io
 import logging
@@ -355,7 +354,7 @@ class Binpkg(CompositeTask):
                 errors="backslashreplace",
             )
             try:
-                f.write(_unicode_decode(v + "\n"))
+                f.write(f"{v}\n")
             finally:
                 f.close()
 
@@ -373,7 +372,7 @@ class Binpkg(CompositeTask):
                 encoding=_encodings["content"],
                 errors="strict",
             ) as f:
-                f.write(_unicode_decode("{}\n".format(md5sum)))
+                f.write(f"{md5sum}\n")
 
         env_extractor = BinpkgEnvExtractor(
             background=self.background, scheduler=self.scheduler, settings=self.settings

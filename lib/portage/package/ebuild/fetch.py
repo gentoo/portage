@@ -459,7 +459,7 @@ class FlatLayout:
         ):
             for filename in filenames:
                 try:
-                    yield portage._unicode_decode(filename, errors="strict")
+                    yield filename.decode(errors="strict")
                 except UnicodeDecodeError:
                     # Ignore it. Distfiles names must have valid UTF8 encoding.
                     pass
@@ -496,7 +496,7 @@ class FilenameHashLayout:
             os_unicode_fs.path.join(distdir, pattern).encode(errors="strict")
         ):
             try:
-                yield portage._unicode_decode(x, errors="strict").rsplit("/", 1)[1]
+                yield x.decode(errors="strict").rsplit("/", 1)[1]
             except UnicodeDecodeError:
                 # Ignore it. Distfiles names must have valid UTF8 encoding.
                 pass

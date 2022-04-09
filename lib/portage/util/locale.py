@@ -15,7 +15,7 @@ import textwrap
 import traceback
 
 import portage
-from portage.util import _unicode_decode, writemsg_level
+from portage.util import writemsg_level
 from portage.util._ctypes import find_library, LoadLibrary
 
 
@@ -74,7 +74,7 @@ def _check_locale(silent):
         )
         msg = [l for l in textwrap.wrap(msg, 70)]
         msg.append("")
-        chars = lambda l: "".join(_unicode_decode(chr(x)) for x in l)
+        chars = lambda l: "".join(chr(x).decode() for x in l)
         if uc != ruc:
             msg.extend(
                 [
@@ -123,7 +123,7 @@ def check_locale(silent=False, env=None):
         try:
             if env is not None:
                 try:
-                    locale.setlocale(locale.LC_CTYPE, portage._native_string(mylocale))
+                    locale.setlocale(locale.LC_CTYPE, mylocale)
                 except locale.Error:
                     os._exit(2)
 

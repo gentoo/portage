@@ -13,7 +13,6 @@ portage.proxy.lazyimport.lazyimport(
 )
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_decode
 from portage.localization import _
 
 
@@ -61,7 +60,7 @@ def RecursiveFileLoader(filename):
                     dirs.remove(d)
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    f = f.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 if f[:1] == "." or f[-1:] == "~":

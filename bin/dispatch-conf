@@ -38,7 +38,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs, shutil_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, shutil_unicode_fs, _encodings
 from portage.dispatch_conf import (
     diffstatusoutput,
     diff_mixed_wrapper,
@@ -167,14 +167,15 @@ class dispatch:
                 find_opts = "-maxdepth 1"
 
             try:
-                path_list = _unicode_decode(
+                path_list = (
                     subprocess.check_output(
                         portage.util.shlex_split(
                             FIND_EXTANT_CONFIGS % (path, find_opts, basename)
                         )
-                    ),
-                    errors="strict",
-                ).splitlines()
+                    )
+                    .decode(errors="strict")
+                    .splitlines()
+                )
             except subprocess.CalledProcessError:
                 pass
             else:
@@ -481,7 +482,7 @@ class dispatch:
         for nconf in newconfigs:
             # Use strict mode here, because we want to know if it fails,
             # and portage only merges files with valid UTF-8 encoding.
-            nconf = _unicode_decode(nconf, errors="strict").rstrip()
+            nconf = nconf.decode(errors="strict").rstrip()
             conf = re.sub(r"\._cfg\d+_", "", nconf)
             dirname = os_unicode_fs.path.dirname(nconf)
             conf_map = {
@@ -540,7 +541,7 @@ def clear_screen():
     if curses is not None:
         try:
             curses.setupterm()
-            sys.stdout.write(_unicode_decode(curses.tigetstr("clear")))
+            sys.stdout.write(curses.decode().tigetstr("clear"))
             sys.stdout.flush()
             return
         except curses.error:

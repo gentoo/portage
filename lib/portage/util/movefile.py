@@ -15,7 +15,6 @@ from portage import (
     _encodings,
     _os_overrides,
     _selinux,
-    _unicode_decode,
     _unicode_func_wrapper,
     _unicode_module_wrapper,
 )
@@ -101,10 +100,9 @@ def _copyxattr(src, dest, exclude=None):
         if raise_exception:
             raise OperationNotSupported(
                 _(
-                    "Filesystem containing file '%s' "
-                    "does not support extended attribute '%s'"
+                    "Filesystem containing file '{dest.decode()}' "
+                    "does not support extended attribute '{attr.decode(0}'"
                 )
-                % (_unicode_decode(dest), _unicode_decode(attr))
             )
 
 
@@ -360,8 +358,8 @@ def movefile(
                 writemsg(
                     _("!!! '%(src)s' to '%(dest)s'\n")
                     % {
-                        "src": _unicode_decode(src, encoding=encoding),
-                        "dest": _unicode_decode(dest, encoding=encoding),
+                        "src": src.decode(encoding=encoding),
+                        "dest": dest.decode(encoding=encoding),
                     },
                     noiselevel=-1,
                 )

@@ -4,7 +4,6 @@
 import array
 import tempfile
 
-from portage import _unicode_decode
 from portage.tests import TestCase
 
 
@@ -43,5 +42,5 @@ class ArrayFromfileEofTestCase(TestCase):
 
         self.assertEqual(
             input_data,
-            _unicode_decode(b"".join(data), encoding="utf_8", errors="strict"),
+            b"".join(data).decode(encoding="utf_8", errors="strict"),
         )

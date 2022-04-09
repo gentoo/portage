@@ -27,7 +27,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.repository.config:_gen_valid_repo",
     "portage.util:cmp_sort_key",
 )
-from portage import _unicode_decode
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidData
 from portage.localization import _
@@ -398,7 +397,7 @@ class _pkg_str(str):
     ):
         if not isinstance(cpv, str):
             # Avoid TypeError from str.__init__ with PyPy.
-            cpv = _unicode_decode(cpv)
+            cpv = cpv.decode()
         str.__init__(cpv)
         if metadata is not None:
             self.__dict__["_metadata"] = metadata

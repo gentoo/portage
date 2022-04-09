@@ -12,7 +12,6 @@ portage.proxy.lazyimport.lazyimport(
 )
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_decode
 
 import fcntl
 import io
@@ -170,11 +169,11 @@ class EbuildMetadataPhase(SubProcess):
         # self._raw_metadata is None when _start returns
         # early due to an unsupported EAPI
         if self.returncode == os_unicode_fs.EX_OK and self._raw_metadata is not None:
-            metadata_lines = _unicode_decode(
-                b"".join(self._raw_metadata),
-                encoding=_encodings["repo.content"],
-                errors="replace",
-            ).splitlines()
+            metadata_lines = (
+                b"".join(self._raw_metadata)
+                .decode(encoding=_encodings["repo.content"], errors="replace")
+                .splitlines()
+            )
             metadata = {}
             metadata_valid = True
             for l in metadata_lines:

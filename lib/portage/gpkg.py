@@ -20,7 +20,6 @@ from portage import (
     shutil_unicode_fs,
     normalize_path,
     _encodings,
-    _unicode_decode,
 )
 from portage.exception import (
     FileNotFound,
@@ -781,9 +780,7 @@ class gpkg:
         if gpkg_file is None:
             self.gpkg_file = None
         else:
-            self.gpkg_file = _unicode_decode(
-                gpkg_file, encoding=_encodings["fs"], errors="strict"
-            )
+            self.gpkg_file = gpkg_file
         self.base_name = base_name
         self.checksums = []
         self.manifest_old = []
@@ -980,9 +977,7 @@ class gpkg:
         the file contents.
         """
 
-        root_dir = normalize_path(
-            _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
-        )
+        root_dir = normalize_path(root_dir)
 
         # Get pre image info
         container_tar_format, image_tar_format = self._get_tar_format_from_stats(
@@ -1039,9 +1034,7 @@ class gpkg:
         """
         decompress current gpkg to decompress_dir
         """
-        decompress_dir = normalize_path(
-            _unicode_decode(decompress_dir, encoding=_encodings["fs"], errors="strict")
-        )
+        decompress_dir = normalize_path(decompress_dir)
 
         self._verify_binpkg()
         os_unicode_fs.makedirs(decompress_dir, mode=0o755, exist_ok=True)
@@ -1187,9 +1180,7 @@ class gpkg:
         protect_file.seek(0, io.SEEK_END)
         protect_file_size = protect_file.tell()
 
-        root_dir = normalize_path(
-            _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
-        )
+        root_dir = normalize_path(root_dir)
 
         # Get pre image info
         container_tar_format, image_tar_format = self._get_tar_format_from_stats(
@@ -1625,13 +1616,11 @@ class gpkg:
         read all files in metadata_dir and return as dict
         """
         metadata = {}
-        metadata_dir = normalize_path(
-            _unicode_decode(metadata_dir, encoding=_encodings["fs"], errors="strict")
-        )
+        metadata_dir = normalize_path(metadata_dir)
         for parent, dirs, files in os_unicode_fs.walk(metadata_dir):
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    f = f.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 with open(os_unicode_fs.path.join(parent, f), "rb") as metafile:
@@ -1756,9 +1745,7 @@ class gpkg:
         """
         image_prefix_length = len(image_prefix) + 1
         root_dir = os_unicode_fs.path.join(
-            normalize_path(
-                _unicode_decode(root_dir, encoding=_encodings["fs"], errors="strict")
-            ),
+            normalize_path(root_dir),
             "",
         )
         root_dir_length = len(
@@ -1772,14 +1759,7 @@ class gpkg:
         image_total_size = 0
 
         for parent, dirs, files in os_unicode_fs.walk(root_dir):
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
             for d in dirs:
-                try:
-                    d = _unicode_decode(d, encoding=_encodings["fs"], errors="strict")
-                except UnicodeDecodeError as err:
-                    writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
-                    raise
-
                 d = os_unicode_fs.path.join(parent, d)
                 prefix_length = (
                     len(d.encode(encoding=_encodings["fs"], errors="strict"))
@@ -1797,15 +1777,7 @@ class gpkg:
                 image_max_prefix_length = max(image_max_prefix_length, prefix_length)
 
             for f in files:
-                try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
-                except UnicodeDecodeError as err:
-                    writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
-                    raise
-
-                filename_length = len(
-                    f.encode(encoding=_encodings["fs"], errors="strict")
-                )
+                filename_length = len(f)
                 image_max_name_length = max(image_max_name_length, filename_length)
 
                 f = os_unicode_fs.path.join(parent, f)
@@ -1855,9 +1827,7 @@ class gpkg:
         path length, largest single file size, and total files size.
         """
         root_dir = os_unicode_fs.path.join(
-            normalize_path(
-                _unicode_decode(root, encoding=_encodings["fs"], errors="strict")
-            ),
+            normalize_path(root),
             "",
         )
         root_dir_length = len(
@@ -1872,12 +1842,6 @@ class gpkg:
 
         paths = list(contents)
         for path in paths:
-            try:
-                path = _unicode_decode(path, encoding=_encodings["fs"], errors="strict")
-            except UnicodeDecodeError as err:
-                writemsg(colorize("BAD", "\n*** %s\n\n" % err), noiselevel=-1)
-                raise
-
             d, f = os_unicode_fs.path.split(path)
 
             prefix_length = (

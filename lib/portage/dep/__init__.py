@@ -41,7 +41,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util:cmp_sort_key,writemsg",
 )
 
-from portage import _encodings, _unicode_decode
+from portage import _encodings
 from portage.eapi import _get_eapi_attrs
 from portage.exception import InvalidAtom, InvalidData, InvalidDependString
 from portage.localization import _
@@ -1480,7 +1480,7 @@ class Atom(str):
 
         if not isinstance(s, str):
             # Avoid TypeError from str.__init__ with PyPy.
-            s = _unicode_decode(s)
+            s = s.decode()
 
         str.__init__(s)
 

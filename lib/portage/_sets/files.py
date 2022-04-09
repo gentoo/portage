@@ -5,7 +5,7 @@ import errno
 import re
 from itertools import chain
 
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -155,32 +155,13 @@ class StaticFileSet(EditablePackageSet):
                     _("Could not find repository '%s'") % match.groupdict()["reponame"]
                 )
 
-        try:
-            directory = _unicode_decode(
-                directory, encoding=_encodings["fs"], errors="strict"
-            )
-            # Now verify that we can also encode it.
-            directory.encode(encoding=_encodings["fs"], errors="strict")
-        except UnicodeError:
-            directory = _unicode_decode(
-                directory, encoding=_encodings["fs"], errors="replace"
-            )
-            raise SetConfigError(
-                _(
-                    "Directory path contains invalid character(s) for encoding '%s': '%s'"
-                )
-                % (_encodings["fs"], directory)
-            )
-
         vcs_dirs = [x.encode(encoding=_encodings["fs"]) for x in VCS_DIRS]
         if os_unicode_fs.path.isdir(directory):
             directory = normalize_path(directory)
 
             for parent, dirs, files in os_unicode_fs.walk(directory):
                 try:
-                    parent = _unicode_decode(
-                        parent, encoding=_encodings["fs"], errors="strict"
-                    )
+                    parent = parent.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 for d in dirs[:]:
@@ -188,8 +169,8 @@ class StaticFileSet(EditablePackageSet):
                         dirs.remove(d)
                 for filename in files:
                     try:
-                        filename = _unicode_decode(
-                            filename, encoding=_encodings["fs"], errors="strict"
+                        filename = filename.decode(
+                            encoding=_encodings["fs"], errors="strict"
                         )
                     except UnicodeDecodeError:
                         continue

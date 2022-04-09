@@ -6,7 +6,7 @@ import errno
 import io
 import time
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.data import portage_gid, portage_uid
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
 from portage.util import apply_permissions, ensure_dirs, normalize_path
@@ -39,14 +39,7 @@ def process(mysettings, key, logentries, fulltext):
     cat, pf = portage.catsplit(key)
 
     elogfilename = (
-        pf
-        + ":"
-        + _unicode_decode(
-            time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())),
-            encoding=_encodings["content"],
-            errors="replace",
-        )
-        + ".log"
+        pf + ":" + time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time())) + ".log"
     )
 
     if "split-elog" in mysettings.features:
@@ -64,7 +57,7 @@ def process(mysettings, key, logentries, fulltext):
             encoding=_encodings["content"],
             errors="backslashreplace",
         ) as elogfile:
-            elogfile.write(_unicode_decode(fulltext))
+            elogfile.write(fulltext)
     except IOError as e:
         func_call = "open('%s', 'w')" % elogfilename
         if e.errno == errno.EACCES:

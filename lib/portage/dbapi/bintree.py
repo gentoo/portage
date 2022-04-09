@@ -52,7 +52,7 @@ from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
 from portage.binpkg import get_binpkg_format
 from portage import _movefile
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 
 import codecs
 import errno
@@ -221,9 +221,7 @@ class bindbapi(fakedbapi):
                             )
                         )
                 if v is not None:
-                    v = _unicode_decode(
-                        v, encoding=_encodings["repo.content"], errors="replace"
-                    )
+                    v = v.decode(encoding=_encodings["repo.content"], errors="replace")
                 return v
 
         else:
@@ -727,7 +725,7 @@ class binarytree:
                     )
                 )
                 if v is not None:
-                    v = _unicode_decode(v)
+                    v = v.decode()
                     metadata[k] = " ".join(v.split())
 
             # Create a copy of the old version of the package and
@@ -951,15 +949,13 @@ class binarytree:
             update_pkgindex = False
             for mydir, file_names in dir_files.items():
                 try:
-                    mydir = _unicode_decode(
-                        mydir, encoding=_encodings["fs"], errors="strict"
-                    )
+                    mydir = mydir.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 for myfile in file_names:
                     try:
-                        myfile = _unicode_decode(
-                            myfile, encoding=_encodings["fs"], errors="strict"
+                        myfile = myfile.decode(
+                            encoding=_encodings["fs"], errors="strict"
                         )
                     except UnicodeDecodeError:
                         continue
@@ -1785,7 +1781,7 @@ class binarytree:
                     else:
                         metadata[k] = ""
                 else:
-                    v = _unicode_decode(v)
+                    v = v.decode()
                     metadata[k] = " ".join(v.split())
 
         metadata["BINPKG_FORMAT"] = binpkg_format

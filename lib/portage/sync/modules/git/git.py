@@ -155,7 +155,7 @@ class GitSync(NewBase):
             )
 
         try:
-            remote_branch = portage._unicode_decode(
+            remote_branch = (
                 subprocess.check_output(
                     [
                         self.bin_command,
@@ -166,7 +166,9 @@ class GitSync(NewBase):
                     ],
                     cwd=self.repo.location.encode(),
                 )
-            ).rstrip("\n")
+                .decode()
+                .rstrip("\n")
+            )
         except subprocess.CalledProcessError as e:
             msg = "!!! git rev-parse error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
@@ -279,13 +281,13 @@ class GitSync(NewBase):
 
             rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
             try:
-                status = portage._unicode_decode(
+                status = (
                     subprocess.check_output(
-                        rev_cmd,
-                        cwd=self.repo.location.encode(),
-                        env=env,
+                        rev_cmd, cwd=self.repo.location.encode(), env=env
                     )
-                ).strip()
+                    .decode()
+                    .strip()
+                )
             except subprocess.CalledProcessError:
                 return False
 
@@ -326,9 +328,9 @@ class GitSync(NewBase):
         try:
             ret = (
                 os_unicode_fs.EX_OK,
-                portage._unicode_decode(
-                    subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
-                ),
+                subprocess.check_output(
+                    rev_cmd, cwd=self.repo.location.encode()
+                ).decode(),
             )
         except subprocess.CalledProcessError:
             ret = (1, False)

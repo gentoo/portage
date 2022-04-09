@@ -6,7 +6,7 @@ import sys
 import textwrap
 
 import portage
-from portage import os_unicode_fs, _unicode_decode
+from portage import os_unicode_fs
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH, USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -245,7 +245,7 @@ class PortdbCacheTestCase(TestCase):
                     proc.stdout.close()
                     if proc.returncode != os_unicode_fs.EX_OK:
                         for line in output:
-                            sys.stderr.write(_unicode_decode(line))
+                            sys.stderr.write(line.decode())
 
                 self.assertEqual(
                     os_unicode_fs.EX_OK,

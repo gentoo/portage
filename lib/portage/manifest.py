@@ -21,7 +21,6 @@ portage.proxy.lazyimport.lazyimport(
 
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_decode
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -158,9 +157,7 @@ class Manifest:
         if find_invalid_path_char is None:
             find_invalid_path_char = _find_invalid_path_char
         self._find_invalid_path_char = find_invalid_path_char
-        self.pkgdir = (
-            _unicode_decode(pkgdir).rstrip(os_unicode_fs.sep) + os_unicode_fs.sep
-        )
+        self.pkgdir = pkgdir.rstrip(os_unicode_fs.sep) + os_unicode_fs.sep
         self.hashes = set()
         self.required_hashes = set()
 
@@ -433,8 +430,8 @@ class Manifest:
                 self.pkgdir.rstrip(os_unicode_fs.sep)
             ):
                 try:
-                    parent_dir = _unicode_decode(
-                        parent_dir, encoding=_encodings["fs"], errors="strict"
+                    parent_dir = parent_dir.decode(
+                        encoding=_encodings["fs"], errors="strict"
                     )
                 except UnicodeDecodeError:
                     # If an absolute path cannot be decoded, then it is
@@ -608,9 +605,7 @@ class Manifest:
 
         def _process_for_cpv(filename):
             try:
-                filename = _unicode_decode(
-                    filename, encoding=_encodings["fs"], errors="strict"
-                )
+                filename = filename.decode(encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 return None
             if filename.startswith("."):
@@ -628,7 +623,7 @@ class Manifest:
         cpvlist = []
         for f in pkgdir_files:
             try:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                f = f.decode(encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 continue
             if f.startswith("."):
@@ -653,7 +648,7 @@ class Manifest:
         ):
             for f in files:
                 try:
-                    f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                    f = f.decode(encoding=_encodings["fs"], errors="strict")
                 except UnicodeDecodeError:
                     continue
                 full_path = os_unicode_fs.path.join(parentdir, f)

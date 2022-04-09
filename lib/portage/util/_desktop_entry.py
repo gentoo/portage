@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 
-from portage import _unicode_decode
 from portage.util import writemsg
 from portage.util.configparser import RawConfigParser, read_configs
 
@@ -49,7 +48,7 @@ def validate_desktop_entry(path):
 
     args = [x.encode(errors="strict") for x in args]
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output_lines = _unicode_decode(proc.communicate()[0]).splitlines()
+    output_lines = proc.communicate()[0].decode().splitlines()
     proc.wait()
 
     if output_lines:

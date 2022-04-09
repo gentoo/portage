@@ -4,7 +4,6 @@
 import signal
 import sys
 
-from portage import _unicode_decode
 from portage.output import bold, create_color_func
 
 
@@ -46,7 +45,7 @@ class UserQuery:
         elif colours is None:
             colours = [bold]
         colours = (colours * len(responses))[: len(responses)]
-        responses = [_unicode_decode(x) for x in responses]
+        responses = [x.decode() for x in responses]
         if "--alert" in self.myopts:
             prompt = "\a" + prompt
         print(bold(prompt), end=" ")
@@ -60,7 +59,7 @@ class UserQuery:
                         )
                     )
                 except UnicodeDecodeError as e:
-                    response = _unicode_decode(e.object).rstrip("\n")
+                    response = e.object.decode().rstrip("\n")
                 if response or not enter_invalid:
                     for key in responses:
                         # An empty response will match the

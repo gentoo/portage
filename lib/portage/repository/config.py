@@ -12,7 +12,6 @@ import portage
 from portage import (
     eclass_cache,
     os_unicode_fs,
-    _unicode_decode,
     _encodings,
     manifest,
 )
@@ -591,7 +590,7 @@ class RepoConfig:
     def __repr__(self):
         return "<portage.repository.config.RepoConfig(name=%r, location=%r)>" % (
             self.name,
-            _unicode_decode(self.location),
+            self.location.decode(),
         )
 
     def __str__(self):

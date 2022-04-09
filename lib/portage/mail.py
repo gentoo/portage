@@ -13,7 +13,7 @@
 import socket
 import sys
 
-from portage import os_unicode_fs, _unicode_decode
+from portage import os_unicode_fs
 from portage.localization import _
 import portage
 
@@ -22,7 +22,7 @@ def _force_ascii_if_necessary(s):
     # Force ascii encoding in order to avoid UnicodeEncodeError
     # from smtplib.sendmail with python3 (bug #291331).
     s = s.encode(encoding="ascii", errors="backslashreplace")
-    s = _unicode_decode(s, encoding="ascii", errors="replace")
+    s = s.decode(encoding="ascii", errors="replace")
     return s
 
 

@@ -16,7 +16,6 @@ import json
 
 import portage
 from portage import _encodings
-from portage import _unicode_decode
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
@@ -55,9 +54,7 @@ class MtimeDB(dict):
         if content:
             try:
                 d = json.loads(
-                    _unicode_decode(
-                        content, encoding=_encodings["repo.content"], errors="strict"
-                    )
+                    content.decode(encoding=_encodings["repo.content"], errors="strict")
                 )
             except SystemExit:
                 raise

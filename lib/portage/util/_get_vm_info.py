@@ -5,8 +5,6 @@ import os
 import platform
 import subprocess
 
-from portage import _unicode_decode
-
 
 def get_vm_info():
 
@@ -23,7 +21,7 @@ def get_vm_info():
         except OSError:
             pass
         else:
-            output = _unicode_decode(proc.communicate()[0])
+            output = proc.communicate()[0].decode()
             if proc.wait() == os.EX_OK:
                 for line in output.splitlines():
                     line = line.split()
@@ -62,7 +60,7 @@ def get_vm_info():
         except OSError:
             pass
         else:
-            output = _unicode_decode(proc.communicate()[0])
+            output = proc.communicate()[0].decode()
             if proc.wait() == os.EX_OK:
                 for line in output.splitlines():
                     line = line.split(":", 1)

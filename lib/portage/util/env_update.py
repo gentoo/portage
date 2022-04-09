@@ -10,7 +10,7 @@ import stat
 import time
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.checksum import prelink_capable
 from portage.data import ostype
 from portage.exception import ParseError
@@ -235,7 +235,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         x = os_unicode_fs.path.join(eroot, lib_dir_glob)
         for y in glob.glob(x.encode(encoding=_encodings["fs"], errors="strict")):
             try:
-                y = _unicode_decode(y, encoding=_encodings["fs"], errors="strict")
+                y = y.decode(encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 continue
             if os_unicode_fs.path.basename(y) != "libexec":

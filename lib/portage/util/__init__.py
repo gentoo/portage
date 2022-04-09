@@ -65,7 +65,6 @@ from portage import (
     os_unicode_fs,
     os_unicode_merge,
     _encodings,
-    _unicode_decode,
 )
 from portage.const import VCS_DIRS
 from portage.exception import (
@@ -102,17 +101,6 @@ def writemsg(mystr, noiselevel=0, fd=None):
     if fd is None:
         fd = sys.stderr
     if noiselevel <= noiselimit:
-        # avoid potential UnicodeEncodeError
-        if isinstance(fd, io.StringIO):
-            mystr = _unicode_decode(
-                mystr, encoding=_encodings["content"], errors="replace"
-            )
-        else:
-            mystr = mystr.encode(
-                encoding=_encodings["stdio"], errors="backslashreplace"
-            )
-            if fd in (sys.stdout, sys.stderr):
-                fd = fd.buffer
         fd.write(mystr)
         fd.flush()
 
@@ -728,7 +716,7 @@ class _getconfig_shlex(shlex.shlex):
         self.__portage_tolerant = portage_tolerant
 
     def allow_sourcing(self, var_expand_map):
-        self.source = portage._native_string("source")
+        self.source = "source"
         self.var_expand_map = var_expand_map
 
     def sourcehook(self, newfile):
@@ -813,19 +801,15 @@ def getconfig(
         if f is not None:
             f.close()
 
-    # Since this file has unicode_literals enabled, and Python 2's
-    # shlex implementation does not support unicode, the following code
-    # uses _native_string() to encode unicode literals when necessary.
-
     # Workaround for avoiding a silent error in shlex that is
     # triggered by a source statement at the end of the file
     # without a trailing newline after the source statement.
-    if content and content[-1] != portage._native_string("\n"):
-        content += portage._native_string("\n")
+    if content and not content.endswith("\n"):
+        content += "\n"
 
     # Warn about dos-style line endings since that prevents
     # people from being able to source them with bash.
-    if portage._native_string("\r") in content:
+    if "\r" in content:
         writemsg(
             (
                 "!!! "
@@ -847,22 +831,20 @@ def getconfig(
         lex = _getconfig_shlex(
             instream=content, infile=mycfg, posix=True, portage_tolerant=tolerant
         )
-        lex.wordchars = portage._native_string(
-            string.digits + string.ascii_letters + r"~!@#$%*_\:;?,./-+{}"
-        )
-        lex.quotes = portage._native_string("\"'")
+        lex.wordchars = string.digits + string.ascii_letters + r"~!@#$%*_\:;?,./-+{}"
+        lex.quotes = "\"'"
         if allow_sourcing:
             lex.allow_sourcing(expand_map)
 
         while True:
-            key = _unicode_decode(lex.get_token())
+            key = lex.get_token()
             if key == "export":
-                key = _unicode_decode(lex.get_token())
+                key = lex.get_token()
             if key is None:
                 # normal end of file
                 break
 
-            equ = _unicode_decode(lex.get_token())
+            equ = lex.get_token()
             if not equ:
                 msg = lex.error_leader() + _("Unexpected EOF")
                 if not tolerant:
@@ -879,7 +861,7 @@ def getconfig(
                     writemsg("%s\n" % msg, noiselevel=-1)
                     return mykeys
 
-            val = _unicode_decode(lex.get_token())
+            val = lex.get_token()
             if val is None:
                 msg = lex.error_leader() + _(
                     "Unexpected end of config file: variable '%s'"
@@ -1913,8 +1895,8 @@ def new_protect_filename(mydest, newmd5=None, force=False):
                     if e.errno != errno.ENOENT:
                         raise
                 else:
-                    pfile_link = _unicode_decode(
-                        pfile_link, encoding=_encodings["merge"], errors="replace"
+                    pfile_link = pfile_link.decode(
+                        encoding=_encodings["merge"], errors="replace"
                     )
                     if pfile_link == newmd5:
                         return old_pfile
@@ -1983,7 +1965,7 @@ def find_updated_config_files(target_root, config_protect):
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
-            output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+            output = proc.communicate()[0].decode(encoding=encoding)
             status = proc.wait()
             if (
                 os_unicode_fs.WIFEXITED(status)

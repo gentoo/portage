@@ -40,7 +40,6 @@ else:
 signal.signal(debug_signum, debug_signal)
 
 import io
-import os
 from os import path as osp
 
 if osp.isfile(

@@ -36,7 +36,6 @@ from portage import (
     load_mod,
     os_unicode_fs,
     selinux_unicode_fs,
-    _unicode_decode,
 )
 from portage.const import (
     CACHE_PATH,
@@ -601,12 +600,7 @@ class config:
             if env is None:
                 env = os_unicode_fs.environ
 
-            # Avoid potential UnicodeDecodeError exceptions later.
-            env_unicode = dict(
-                (_unicode_decode(k), _unicode_decode(v)) for k, v in env.items()
-            )
-
-            self.backupenv = env_unicode
+            self.backupenv = env
 
             if env_d:
                 # Remove duplicate values so they don't override updated
@@ -3228,10 +3222,6 @@ class config:
                 "Invalid type being used as a value: '%s': '%s'"
                 % (str(mykey), str(myvalue))
             )
-
-        # Avoid potential UnicodeDecodeError exceptions later.
-        mykey = _unicode_decode(mykey)
-        myvalue = _unicode_decode(myvalue)
 
         self.modifying()
         self.modifiedkeys.append(mykey)

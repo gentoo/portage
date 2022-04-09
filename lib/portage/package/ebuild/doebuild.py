@@ -56,7 +56,6 @@ from portage import (
     unmerge,
     _encodings,
     _shell_quote,
-    _unicode_decode,
 )
 from portage.const import (
     EBUILD_SH_ENV_FILE,
@@ -2405,7 +2404,7 @@ def _check_build_log(mysettings, out=None):
 
     try:
         for line in f:
-            line = _unicode_decode(line)
+            line = line.decode(encoding=_encodings["content"], errors="replace")
             if (
                 am_maintainer_mode_re.search(line) is not None
                 and am_maintainer_mode_exclude_re.search(line) is None
@@ -2716,18 +2715,16 @@ def _post_src_install_uid_fix(mysettings, out):
 
         for parent, dirs, files in os_unicode_merge.walk(destdir):
             try:
-                parent = _unicode_decode(
-                    parent, encoding=_encodings["merge"], errors="strict"
-                )
+                parent = parent.decode(encoding=_encodings["merge"], errors="strict")
             except UnicodeDecodeError:
-                new_parent = _unicode_decode(
-                    parent, encoding=_encodings["merge"], errors="replace"
+                new_parent = parent.decode(
+                    encoding=_encodings["merge"], errors="replace"
                 )
                 new_parent = new_parent.encode(
                     encoding="ascii", errors="backslashreplace"
                 )
-                new_parent = _unicode_decode(
-                    new_parent, encoding=_encodings["merge"], errors="replace"
+                new_parent = new_parent.decode(
+                    encoding=_encodings["merge"], errors="replace"
                 )
                 os_unicode_merge.rename(parent, new_parent)
                 unicode_error = True
@@ -2736,19 +2733,17 @@ def _post_src_install_uid_fix(mysettings, out):
 
             for fname in chain(dirs, files):
                 try:
-                    fname = _unicode_decode(
-                        fname, encoding=_encodings["merge"], errors="strict"
-                    )
+                    fname = fname.decode(encoding=_encodings["merge"], errors="strict")
                 except UnicodeDecodeError:
                     fpath = _os.path.join(parent.encode(_encodings["merge"]), fname)
-                    new_fname = _unicode_decode(
-                        fname, encoding=_encodings["merge"], errors="replace"
+                    new_fname = fname.decode(
+                        encoding=_encodings["merge"], errors="replace"
                     )
                     new_fname = new_fname.encode(
                         encoding="ascii", errors="backslashreplace"
                     )
-                    new_fname = _unicode_decode(
-                        new_fname, encoding=_encodings["merge"], errors="replace"
+                    new_fname = new_fname.decode(
+                        encoding=_encodings["merge"], errors="replace"
                     )
                     new_fpath = os_unicode_merge.path.join(parent, new_fname)
                     os_unicode_merge.rename(fpath, new_fpath)

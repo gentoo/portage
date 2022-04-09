@@ -12,7 +12,6 @@ from portage import (
     os_unicode_fs,
     _encodings,
     os_unicode_merge,
-    _unicode_decode,
 )
 from portage.exception import PermissionDenied
 from portage.localization import _
@@ -87,9 +86,7 @@ class PreservedLibsRegistry:
         if content:
             try:
                 self._data = json.loads(
-                    _unicode_decode(
-                        content, encoding=_encodings["repo.content"], errors="strict"
-                    )
+                    content.decode(encoding=_encodings["repo.content"], errors="strict")
                 )
             except SystemExit:
                 raise
@@ -164,7 +161,7 @@ class PreservedLibsRegistry:
         """
         if not isinstance(counter, str):
             counter = str(counter)
-        return _unicode_decode(counter).strip()
+        return counter.strip()
 
     def register(self, cpv, slot, counter, paths):
         """Register new objects in the registry. If there is a record with the

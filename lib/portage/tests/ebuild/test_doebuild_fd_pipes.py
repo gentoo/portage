@@ -155,7 +155,7 @@ class DoebuildFdPipesTestCase(TestCase):
                     os_unicode_fs.close(pw)
 
                 task_scheduler.wait()
-                output = portage._unicode_decode(consumer.getvalue()).rstrip("\n")
+                output = consumer.getvalue().decode().rstrip("\n")
 
                 if task_scheduler.returncode != os_unicode_fs.EX_OK:
                     portage.writemsg(output, noiselevel=-1)

@@ -7,7 +7,7 @@ import platform
 
 import fcntl
 import portage
-from portage import os_unicode_fs, _unicode_decode
+from portage import os_unicode_fs
 from portage.util._ctypes import find_library
 import portage.elog.messages
 from portage.util._async.ForkProcess import ForkProcess
@@ -96,7 +96,7 @@ class MergeProcess(ForkProcess):
     def _elog_output_handler(self):
         output = self._read_buf(self._elog_reader_fd)
         if output:
-            lines = _unicode_decode(output).split("\n")
+            lines = output.decode().split("\n")
             if len(lines) == 1:
                 self._buf += lines[0]
             else:

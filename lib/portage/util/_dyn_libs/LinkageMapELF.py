@@ -11,7 +11,6 @@ from portage import (
     os_unicode_fs,
     os_unicode_merge,
     _encodings,
-    _unicode_decode,
 )
 from portage.cache.mappings import slot_dict_class
 from portage.const import EPREFIX
@@ -287,13 +286,9 @@ class LinkageMapELF:
             else:
                 for l in proc.stdout:
                     try:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="strict"
-                        )
+                        l = l.decode(encoding=_encodings["content"], errors="strict")
                     except UnicodeDecodeError:
-                        l = _unicode_decode(
-                            l, encoding=_encodings["content"], errors="replace"
-                        )
+                        l = l.decode(encoding=_encodings["content"], errors="replace")
                         writemsg_level(
                             _(
                                 "\nError decoding characters "

@@ -31,7 +31,7 @@ portage.proxy.lazyimport.lazyimport(
     "_emerge.stdout_spinner:stdout_spinner",
 )
 
-from portage import os_unicode_fs, shutil_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.binrepo.config import BinRepoConfigLoader
 from portage.const import BINREPOS_CONF_FILE, _DEPCLEAN_LIB_CHECK_DEFAULT
 from portage.dbapi.dep_expand import dep_expand
@@ -2017,7 +2017,7 @@ def action_info(settings, trees, myopts, myfiles):
         except OSError:
             pass
         else:
-            output = _unicode_decode(proc.communicate()[0]).splitlines()
+            output = proc.communicate()[0].decode().splitlines()
             proc.wait()
             if proc.wait() == os_unicode_fs.EX_OK and output:
                 append("ld %s" % (output[0]))
@@ -2030,7 +2030,7 @@ def action_info(settings, trees, myopts, myfiles):
     except OSError:
         output = (1, None)
     else:
-        output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+        output = proc.communicate()[0].decode().rstrip("\n")
         output = (proc.wait(), output)
     if output[0] == os_unicode_fs.EX_OK:
         distcc_str = output[1].split("\n", 1)[0]
@@ -2047,7 +2047,7 @@ def action_info(settings, trees, myopts, myfiles):
     except OSError:
         output = (1, None)
     else:
-        output = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+        output = proc.communicate()[0].decode().rstrip("\n")
         output = (proc.wait(), output)
     if output[0] == os_unicode_fs.EX_OK:
         ccache_str = output[1].split("\n", 1)[0]
@@ -2967,7 +2967,7 @@ def getgccversion(chost=None):
             myoutput = None
             mystatus = 1
         else:
-            myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+            myoutput = proc.communicate()[0].decode().rstrip("\n")
             mystatus = proc.wait()
         if mystatus == os_unicode_fs.EX_OK and myoutput.startswith(chost + "-"):
             return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
@@ -2982,7 +2982,7 @@ def getgccversion(chost=None):
             myoutput = None
             mystatus = 1
         else:
-            myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+            myoutput = proc.communicate()[0].decode().rstrip("\n")
             mystatus = proc.wait()
         if mystatus == os_unicode_fs.EX_OK:
             return gcc_ver_prefix + myoutput
@@ -2995,7 +2995,7 @@ def getgccversion(chost=None):
         myoutput = None
         mystatus = 1
     else:
-        myoutput = _unicode_decode(proc.communicate()[0]).rstrip("\n")
+        myoutput = proc.communicate()[0].decode().rstrip("\n")
         mystatus = proc.wait()
     if mystatus == os_unicode_fs.EX_OK:
         return gcc_ver_prefix + myoutput
@@ -3778,11 +3778,6 @@ def run_action(emerge_config):
     if not "--pretend" in emerge_config.opts:
         time_fmt = "%b %d, %Y %H:%M:%S"
         time_str = time.strftime(time_fmt, time.localtime(time.time()))
-        # Avoid potential UnicodeDecodeError in Python 2, since strftime
-        # returns bytes in Python 2, and %b may contain non-ascii chars.
-        time_str = _unicode_decode(
-            time_str, encoding=_encodings["content"], errors="replace"
-        )
         emergelog(xterm_titles, "Started emerge on: %s" % time_str)
         myelogstr = ""
         if emerge_config.opts:

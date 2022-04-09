@@ -39,7 +39,7 @@ def diffstatusoutput(cmd, file1, file2):
 
     args = (x.encode(errors="strict") for x in args)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = portage._unicode_decode(proc.communicate()[0])
+    output = proc.communicate()[0].decode()
     if output and output.endswith("\n"):
         # getstatusoutput strips one newline
         output = output[:-1]

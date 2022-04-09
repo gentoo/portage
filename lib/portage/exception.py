@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import signal
-from portage import _encodings, _unicode_decode
+from portage import _encodings
 from portage.localization import _
 
 
@@ -221,7 +221,7 @@ class UnsupportedAPIException(PortagePackageException):
             "its EAPI is higher than this portage version's. Please upgrade"
             f" to a portage version that supports EAPI '{eapi}'."
         )
-        return _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
+        return msg.decode(encoding=_encodings["content"], errors="replace")
 
 
 class SignatureException(PortageException):

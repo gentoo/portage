@@ -42,7 +42,6 @@ from portage import (
     shutil_unicode_fs,
     normalize_path,
     _encodings,
-    _unicode_decode,
 )
 from portage.util.file_copy import copyfile
 
@@ -50,26 +49,12 @@ from portage.util.file_copy import copyfile
 def addtolist(mylist, curdir):
     """(list, dir) --- Takes an array(list) and appends all files from dir down
     the directory tree. Returns nothing. list is modified."""
-    curdir = normalize_path(
-        _unicode_decode(curdir, encoding=_encodings["fs"], errors="strict")
-    )
+    curdir = normalize_path(curdir)
     for parent, dirs, files in os_unicode_fs.walk(curdir):
-
-        parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+        parent = parent.decode(encoding=_encodings["fs"], errors="strict")
         if parent != curdir:
             mylist.append(parent[len(curdir) + 1 :] + os_unicode_fs.sep)
-
-        for x in dirs:
-            try:
-                _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
-            except UnicodeDecodeError:
-                dirs.remove(x)
-
         for x in files:
-            try:
-                x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
-            except UnicodeDecodeError:
-                continue
             mylist.append(os_unicode_fs.path.join(parent, x)[len(curdir) + 1 :])
 
 
@@ -166,7 +151,6 @@ def xsplit(infile):
     """(infile) -- Splits the infile into two files.
     'infile.index' contains the index segment.
     'infile.dat' contails the data segment."""
-    infile = _unicode_decode(infile, encoding=_encodings["fs"], errors="strict")
     myfile = open(infile.encode(encoding=_encodings["fs"], errors="strict"), "rb")
     mydat = myfile.read()
     myfile.close()
@@ -290,9 +274,7 @@ def xpand(myid, mydest):
         datapos = decodeint(myindex[startpos + 4 + namelen : startpos + 8 + namelen])
         datalen = decodeint(myindex[startpos + 8 + namelen : startpos + 12 + namelen])
         myname = myindex[startpos + 4 : startpos + 4 + namelen]
-        myname = _unicode_decode(
-            myname, encoding=_encodings["repo.content"], errors="replace"
-        )
+        myname = myname.decode(encoding=_encodings["repo.content"], errors="replace")
         filename = os_unicode_fs.path.join(mydest, myname.lstrip(os_unicode_fs.sep))
         filename = normalize_path(filename)
         if not filename.startswith(mydest):
@@ -488,8 +470,8 @@ class tbz2:
                 self.index[startpos + 8 + namelen : startpos + 12 + namelen]
             )
             myname = self.index[startpos + 4 : startpos + 4 + namelen]
-            myname = _unicode_decode(
-                myname, encoding=_encodings["repo.content"], errors="replace"
+            myname = myname.decode(
+                encoding=_encodings["repo.content"], errors="replace"
             )
             filename = os_unicode_fs.path.join(mydest, myname.lstrip(os_unicode_fs.sep))
             filename = normalize_path(filename)

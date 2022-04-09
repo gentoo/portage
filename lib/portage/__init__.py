@@ -223,16 +223,7 @@ def _decode_argv(argv):
     # possible to access the original argv bytes, which can be useful
     # if their actual encoding does no match the filesystem encoding.
     fs_encoding = sys.getfilesystemencoding()
-    return [_unicode_decode(x.encode(fs_encoding, "surrogateescape")) for x in argv]
-
-
-def _unicode_decode(s, encoding=_encodings["content"], errors="replace"):
-    if isinstance(s, bytes):
-        s = str(s, encoding=encoding, errors=errors)
-    return s
-
-
-_native_string = _unicode_decode
+    return [x.encode(fs_encoding, "surrogateescape").decode() for x in argv]
 
 
 class _unicode_func_wrapper:
@@ -271,6 +262,12 @@ class _unicode_func_wrapper:
 
     def __call__(self, *args, **kwargs):
         encoding = self._encoding
+
+        def _local_decoding_coercion(s, errors="strict"):
+            if isinstance(s, bytes):
+                s = s.decode(encoding, errors=errors)
+            return s
+
         wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
         rval = self._func(*wrapped_args, **wrapped_kwargs)
@@ -281,7 +278,7 @@ class _unicode_func_wrapper:
             decoded_rval = []
             for x in rval:
                 try:
-                    x = _unicode_decode(x, encoding=encoding, errors="strict")
+                    x = _local_decoding_coercion(x)
                 except UnicodeDecodeError:
                     pass
                 else:
@@ -292,7 +289,7 @@ class _unicode_func_wrapper:
             else:
                 rval = decoded_rval
         else:
-            rval = _unicode_decode(rval, encoding=encoding, errors="replace")
+            rval = _local_decoding_coercion(rval, errors="replace")
 
         return rval
 
@@ -737,7 +734,7 @@ if VERSION == "HEAD":
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                 )
-                output = _unicode_decode(proc.communicate()[0], encoding=encoding)
+                output = proc.communicate()[0].decode(encoding=encoding)
                 status = proc.wait()
                 if (
                     os_unicode_fs.WIFEXITED(status)

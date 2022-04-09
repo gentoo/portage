@@ -16,7 +16,6 @@ import portage
 from portage import (
     os_unicode_fs,
     load_mod,
-    _unicode_decode,
     _encodings,
 )
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH

@@ -241,9 +241,7 @@ def _get_global(k):
                     except ValueError:
                         return None
 
-                unicode_decode = portage._unicode_decode(
-                    myoutput, encoding=encoding, errors="strict"
-                )
+                unicode_decode = myoutput.decode(encoding=encoding, errors="strict")
                 checked_v = (check(x) for x in unicode_decode.split())
                 filtered_v = (x for x in checked_v if x)
                 v = sorted(set(filtered_v))
@@ -328,19 +326,11 @@ def _init(settings):
         and "_portage_username" not in _initialized_globals
     ):
 
-        # Prevents "TypeError: expected string" errors
-        # from grp.getgrnam() with PyPy
-        native_string = platform.python_implementation() == "PyPy"
-
         v = settings.get("PORTAGE_GRPNAME", "portage")
-        if native_string:
-            v = portage._native_string(v)
         globals()["_portage_grpname"] = v
         _initialized_globals.add("_portage_grpname")
 
         v = settings.get("PORTAGE_USERNAME", "portage")
-        if native_string:
-            v = portage._native_string(v)
         globals()["_portage_username"] = v
         _initialized_globals.add("_portage_username")
 

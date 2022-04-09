@@ -9,7 +9,7 @@ import sys
 from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 
 
 class CompileModulesTestCase(TestCase):
@@ -21,9 +21,9 @@ class CompileModulesTestCase(TestCase):
         iters.append(os_unicode_fs.walk(PORTAGE_BIN_PATH))
 
         for parent, _dirs, files in itertools.chain(*iters):
-            parent = _unicode_decode(parent, encoding=_encodings["fs"], errors="strict")
+            parent = parent.decode(encoding=_encodings["fs"], errors="strict")
             for x in files:
-                x = _unicode_decode(x, encoding=_encodings["fs"], errors="strict")
+                x = x.decode(encoding=_encodings["fs"], errors="strict")
                 if x[-4:] in (".pyc", ".pyo"):
                     continue
                 x = os_unicode_fs.path.join(parent, x)
@@ -52,10 +52,8 @@ class CompileModulesTestCase(TestCase):
                             x.encode(encoding=_encodings["fs"], errors="strict"),
                             "rb",
                         ) as f:
-                            line = _unicode_decode(
-                                f.readline(),
-                                encoding=_encodings["content"],
-                                errors="replace",
+                            line = f.readline().decode(
+                                encoding=_encodings["content"], errors="replace"
                             )
                     except IOError as e:
                         # Some tests create files that are unreadable by the

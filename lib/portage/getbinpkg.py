@@ -6,7 +6,7 @@ from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
 from portage.localization import _
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.package.ebuild.fetch import _hide_url_passwd
 from _emerge.Package import _all_metadata_keys
 
@@ -54,15 +54,12 @@ def make_metadata_dict(data):
     metadata = (
         (
             k_bytes,
-            _unicode_decode(
-                k_bytes, encoding=_encodings["repo.content"], errors="replace"
-            ),
+            k_bytes.decode(encoding=_encodings["repo.content"], errors="replace"),
         )
         for k_bytes in portage.xpak.getindex_mem(myid)
     )
     mydict = {
-        k: _unicode_decode(
-            portage.xpak.getitem(data, k_bytes),
+        k: portage.xpak.getitem(data, k_bytes).decode(
             encoding=_encodings["repo.content"],
             errors="replace",
         )
@@ -396,7 +393,7 @@ def dir_get_list(baseurl, conn=None):
 
         if page:
             parser = ParseLinks()
-            parser.feed(_unicode_decode(page))
+            parser.feed(page.decode())
             del page
             listing = parser.get_anchors()
         else:

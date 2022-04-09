@@ -30,7 +30,7 @@ def get_hooks_from_dir(rel_directory, prefix="/"):
                 % (
                     warn("*"),
                     directory,
-                    portage._unicode_decode(name),
+                    name.decode(),
                 ),
                 level=logging.WARN,
                 noiselevel=2,

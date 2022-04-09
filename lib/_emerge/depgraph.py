@@ -13,7 +13,7 @@ from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os_unicode_fs, _unicode_decode, _encodings
+from portage import os_unicode_fs, _encodings
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -4596,9 +4596,7 @@ class depgraph:
                     raise InvalidBinaryPackageFormat(x)
 
                 if cat is not None:
-                    cat = _unicode_decode(
-                        cat.strip(), encoding=_encodings["repo.content"]
-                    )
+                    cat = cat.strip().decode(encoding=_encodings["repo.content"])
                     mykey = cat + "/" + os_unicode_fs.path.basename(x)[:-5]
 
                 if mykey is None:

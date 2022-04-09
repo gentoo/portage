@@ -12,7 +12,7 @@ portage.proxy.lazyimport.lazyimport(
 
 from portage.const import EBUILD_PHASES
 from portage.localization import _
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 
 import io
 import sys
@@ -123,8 +123,6 @@ def _elog_base(level, msg, phase="other", key=None, color=None, out=None):
 
     if color is None:
         color = "INFO"
-
-    msg = _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
 
     formatted_msg = colorize(color, " * ") + msg + "\n"
 

@@ -6,7 +6,7 @@ import io
 import sys
 
 import portage
-from portage import os_unicode_fs, _encodings, _unicode_decode
+from portage import os_unicode_fs, _encodings
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -366,11 +366,8 @@ class _EbuildFetcherProcess(ForkProcess):
                 errors="backslashreplace",
             )
             for filename in uri_map:
-                f.write(
-                    _unicode_decode(
-                        (" * %s size ;-) ..." % filename).ljust(73) + "[ ok ]\n"
-                    )
-                )
+                wink = f" * {filename} size ;-) ...".ljust(73)
+                f.write(f"{wink}[ ok ]\n")
             f.close()
 
         return True

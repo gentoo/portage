@@ -20,7 +20,6 @@ import portage.util.formatter as formatter
 
 from portage import os_unicode_fs
 from portage import _encodings
-from portage import _unicode_decode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
     CommandNotFound,
@@ -450,11 +449,6 @@ class ConsoleStyleFile:
         self._styles = styles
 
     def write(self, s):
-        # In python-2.6, DumbWriter.send_line_break() can write
-        # non-unicode '\n' which fails with TypeError if self._file
-        # is a text stream such as io.StringIO. Therefore, make sure
-        # input is converted to unicode when necessary.
-        s = _unicode_decode(s)
         global havecolor
         if havecolor and self._styles:
             styled_s = []
@@ -537,7 +531,7 @@ def get_term_size(fd=None):
         # stty command not found
         return (0, 0)
 
-    out = _unicode_decode(proc.communicate()[0])
+    out = proc.communicate()[0].decode()
     if proc.wait() == os_unicode_fs.EX_OK:
         out = out.split()
         if len(out) == 2:
@@ -947,10 +941,10 @@ def _init(config_root="/"):
     _styles = object.__getattribute__(_styles, "_attr")
 
     for k, v in codes.items():
-        codes[k] = _unicode_decode(v)
+        codes[k] = v
 
     for k, v in _styles.items():
-        _styles[k] = _unicode_decode(v)
+        _styles[k] = v
 
     try:
         _parse_color_map(

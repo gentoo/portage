@@ -157,9 +157,9 @@ class MercurialSync(NewBase):
         try:
             ret = (
                 os_unicode_fs.EX_OK,
-                portage._unicode_decode(
-                    subprocess.check_output(rev_cmd, cwd=self.repo.location.encode())
-                ),
+                subprocess.check_output(
+                    rev_cmd, cwd=self.repo.location.encode()
+                ).decode(),
             )
         except subprocess.CalledProcessError:
             ret = (1, False)
