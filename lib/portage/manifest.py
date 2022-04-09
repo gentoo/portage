@@ -641,7 +641,7 @@ class Manifest:
         recursive_files = []
 
         pkgdir = self.pkgdir
-        cut_len = len(os.path.join(pkgdir, "files", os.sep))
+        cut_len = len(os.path.join(pkgdir, f"files{os.sep}"))
         for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
             for f in files:
                 try:
