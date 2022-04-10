@@ -340,7 +340,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
     # Archive the current config file if it isn't already saved
     if (
         os.path.lexists(archive)
-        and len(diffstatusoutput_mixed(f"diff -aq '{curconf}' '{archive}'")[1]) != 0
+        and len(diffstatusoutput_mixed("diff -aq '%s' '%s'", curconf, archive)[1]) != 0
     ):
         _file_archive_rotate(archive)
 
