@@ -1,10 +1,10 @@
 # Check for directories that need to be created at runtime
 
 runtime_dir_check() {
-	# It's ok create these directories, but not to install into them. #493154
+	# It's ok to create these directories, but not to install into them. #493154
 	# TODO: We should add var/lib to this list.
 	local x f=
-	for x in var/cache var/lock var/run run ; do
+	for x in var/cache var/lock var/run var/tmp run ; do
 		if [[ ! -L ${ED}/${x} && -d ${ED}/${x} ]] ; then
 			if [[ -z $(find "${ED}/${x}" -prune -empty) ]] ; then
 				f+=$(cd "${ED}"; find "${x}" -printf '  %p\n')
