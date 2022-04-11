@@ -339,6 +339,7 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
+	EBEGIN_EEND=1
 	return 0
 }
 
@@ -367,6 +368,11 @@ __eend() {
 
 eend() {
 	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
+	if [[ -v EBEGIN_EEND ]] ; then
+		unset EBEGIN_EEND
+	else
+		eqawarn "QA Notice: eend called without preceding ebegin (phase: ${EBUILD_PHASE})"
+	fi
 	local retval=${1:-0}
 	shift
 
