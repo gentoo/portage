@@ -42,7 +42,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
     from email.mime.multipart import MIMEMultipart as MultipartMessage
     from email.utils import formatdate
 
-    if attachments == None:
+    if attachments is None:
         mymessage = TextMessage(body)
     else:
         mymessage = MultipartMessage()

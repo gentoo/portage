@@ -59,7 +59,7 @@ class StaticFileSet(EditablePackageSet):
             if len(line) == 0 and key != None:
                 setattr(self, key, " ".join(value))
                 key = None
-            elif line[-1] == ":" and key == None:
+            elif line[-1] == ":" and key is None:
                 key = line[:-1].lower()
                 value = []
             elif key != None:
