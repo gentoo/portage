@@ -339,6 +339,9 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
+	if [[ -v EBEGIN_EEND ]] ; then
+		eqawarn "QA Notice: ebegin called, but missing call to eend (phase: ${EBUILD_PHASE})"
+	fi
 	EBEGIN_EEND=1
 	return 0
 }
