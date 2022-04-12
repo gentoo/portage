@@ -36,7 +36,7 @@ class GeneralCacheCorruption(CacheError):
 
 class InvalidRestriction(CacheError):
     def __init__(self, key, restriction, exception=None):
-        if exception == None:
+        if exception is None:
             exception = ""
         self.key, self.restriction, self.ex = key, restriction, ex
 

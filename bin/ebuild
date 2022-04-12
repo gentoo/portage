@@ -435,7 +435,7 @@ for arg in pargs:
     except PermissionDenied as e:
         portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
         a = 1
-    if a == None:
+    if a is None:
         print("Could not run the required binary?")
         a = 127
     if a:

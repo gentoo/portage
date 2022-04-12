@@ -1475,7 +1475,7 @@ def usage(argv):
     help_mode = "--help" in argv
     for name in commands:
         doc = docstrings.get(name)
-        if doc == None:
+        if doc is None:
             print("   " + name)
             print("      MISSING DOCUMENTATION!")
             print("")

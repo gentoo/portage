@@ -55,7 +55,7 @@ class database(fs_template.FsBased):
 
             # try again if failed
             try:
-                if self.__db == None:
+                if self.__db is None:
                     # dbm.open() will not work with bytes in python-3.1:
                     #   TypeError: can't concat bytes to str
                     if gdbm is None:
