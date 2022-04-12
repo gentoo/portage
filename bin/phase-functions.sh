@@ -1088,6 +1088,10 @@ __ebuild_main() {
 		;;
 	esac
 
+	if [[ -v EBEGIN_EEND ]] ; then
+		eqawarn "QA Notice: ebegin called, but missing call to eend (phase: ${1})"
+	fi
+
 	# Save the env only for relevant phases.
 	if ! has "${1}" clean help info nofetch ; then
 		umask 002
