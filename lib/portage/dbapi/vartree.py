@@ -2177,7 +2177,7 @@ class dblink:
                     file_data = contents[filename]
                     if file_data[0] == "obj":
                         orig_md5 = file_data[2].lower()
-                        cur_md5 = perform_md5(filename, calc_prelink=1)
+                        cur_md5 = perform_md5(filename)
                         if orig_md5 == cur_md5:
                             return False
                 excluded_config_files.append(filename)
@@ -2710,7 +2710,6 @@ class dblink:
         protected_symlinks = {}
 
         unmerge_orphans = "unmerge-orphans" in self.settings.features
-        calc_prelink = "prelink-checksums" in self.settings.features
 
         if pkgfiles:
             self.updateprotect()
@@ -3019,7 +3018,7 @@ class dblink:
                         continue
                     mymd5 = None
                     try:
-                        mymd5 = perf_md5(obj, calc_prelink=calc_prelink)
+                        mymd5 = perf_md5(obj)
                     except FileNotFound as e:
                         # the file has disappeared between now and our stat call
                         show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
@@ -5446,7 +5445,6 @@ class dblink:
         join = os.path.join
         srcroot = normalize_path(srcroot).rstrip(sep) + sep
         destroot = normalize_path(destroot).rstrip(sep) + sep
-        calc_prelink = "prelink-checksums" in self.settings.features
 
         protect_if_modified = (
             "config-protect-if-modified" in self.settings.features
@@ -5479,7 +5477,7 @@ class dblink:
             mymtime = mystat.st_mtime_ns
 
             if stat.S_ISREG(mymode):
-                mymd5 = perform_md5(mysrc, calc_prelink=calc_prelink)
+                mymd5 = perform_md5(mysrc)
             elif stat.S_ISLNK(mymode):
                 # The file name of mysrc and the actual file that it points to
                 # will have earlier been forcefully converted to the 'merge'
@@ -5547,7 +5545,7 @@ class dblink:
                         destmd5 = md5(_unicode_encode(mydest_link)).hexdigest()
 
                     elif stat.S_ISREG(mydmode):
-                        destmd5 = perform_md5(mydest, calc_prelink=calc_prelink)
+                        destmd5 = perform_md5(mydest)
             except (FileNotFound, OSError) as e:
                 if isinstance(e, OSError) and e.errno != errno.ENOENT:
                     raise

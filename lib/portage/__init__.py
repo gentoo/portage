@@ -149,7 +149,6 @@ try:
         SANDBOX_BINARY,
         BASH_BINARY,
         MOVE_BINARY,
-        PRELINK_BINARY,
         WORLD_FILE,
         MAKE_CONF_FILE,
         MAKE_DEFAULTS_FILE,
