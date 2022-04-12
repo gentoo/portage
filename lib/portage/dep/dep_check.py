@@ -1080,7 +1080,7 @@ def dep_wordreduce(mydeplist, mysettings, mydbapi, mode, use_cache=1):
                         mydep = x
                 else:
                     mydep = mydbapi.match(deplist[mypos], use_cache=use_cache)
-                if mydep != None:
+                if mydep is not None:
                     tmp = len(mydep) >= 1
                     if deplist[mypos][0] == "!":
                         tmp = False

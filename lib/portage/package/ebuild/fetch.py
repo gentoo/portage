@@ -1961,7 +1961,7 @@ def fetch(
                                 )
                             fetched = 2
                             break
-                        elif mydigests != None:
+                        elif mydigests is not None:
                             writemsg(
                                 _("No digest file available and download failed.\n\n"),
                                 noiselevel=-1,

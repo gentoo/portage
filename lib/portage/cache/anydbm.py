@@ -90,7 +90,7 @@ class database(fs_template.FsBased):
         return cpv in self.__db
 
     def __del__(self):
-        if "__db" in self.__dict__ and self.__db != None:
+        if "__db" in self.__dict__ and self.__db is not None:
             self.__db.sync()
             self.__db.close()
 

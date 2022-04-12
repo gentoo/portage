@@ -250,7 +250,7 @@ class LazyLoad(Mapping):
     def __getitem__(self, key):
         if key in self.d:
             return self.d[key]
-        if self.pull != None:
+        if self.pull is not None:
             self.d.update(self.pull())
             self.pull = None
         return self.d[key]
@@ -264,7 +264,7 @@ class LazyLoad(Mapping):
     def __contains__(self, key):
         if key in self.d:
             return True
-        if self.pull != None:
+        if self.pull is not None:
             self.d.update(self.pull())
             self.pull = None
         return key in self.d
