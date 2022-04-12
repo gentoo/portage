@@ -296,7 +296,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
                 raise
 
     current_time = int(time.time())
-    mtime_changed = False
+    mtime_changed = None
 
     lib_dirs = set()
     for lib_dir in set(specials["LDPATH"]) | potential_lib_dirs:
@@ -304,6 +304,7 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
         try:
             newldpathtime = os.stat(x)[stat.ST_MTIME]
             lib_dirs.add(normalize_path(x))
+            mtime_changed = newldpathtime == current_time
         except OSError as oe:
             if oe.errno == errno.ENOENT:
                 try:
@@ -313,22 +314,19 @@ def _env_update(makelinks, target_root, prev_mtimes, contents, env, writemsg_lev
                 # ignore this path because it doesn't exist
                 continue
             raise
-        if newldpathtime == current_time:
+        if mtime_changed:
             # Reset mtime to avoid the potential ambiguity of times that
             # differ by less than 1 second.
             newldpathtime -= 1
             os.utime(x, (newldpathtime, newldpathtime))
             prev_mtimes[x] = newldpathtime
-            mtime_changed = True
         elif x in prev_mtimes:
             if prev_mtimes[x] == newldpathtime:
                 pass
             else:
                 prev_mtimes[x] = newldpathtime
-                mtime_changed = True
         else:
             prev_mtimes[x] = newldpathtime
-            mtime_changed = True
 
     if makelinks and not mtime_changed and contents is not None:
         libdir_contents_changed = False
