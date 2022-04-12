@@ -2868,7 +2868,7 @@ class _RequiredUseBranch:
 
         complex_nesting = False
         node = self
-        while node != None and not complex_nesting:
+        while node is not None and not complex_nesting:
             if node._operator in ("||", "^^", "??"):
                 complex_nesting = True
             else:

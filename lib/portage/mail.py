@@ -119,7 +119,7 @@ def send_mail(mysettings, message):
     if mymailhost[0] == os.sep and os.path.exists(mymailhost):
         fd = os.popen(f"{mymailhost } -f {myfrom} {myrecipient}", "w")
         fd.write(_force_ascii_if_necessary(message.as_string()))
-        if fd.close() != None:
+        if fd.close() is not None:
             sys.stderr.write(
                 _(
                     f"!!! {mymailhost} returned with a non-zero exit code. This generally indicates an error.\n"

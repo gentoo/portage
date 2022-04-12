@@ -5595,7 +5595,7 @@ class dblink:
                         mydest = newdest
 
                 # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
-                if (secondhand != None) and (not os.path.exists(myrealto)):
+                if (secondhand is not None) and (not os.path.exists(myrealto)):
                     # either the target directory doesn't exist yet or the target file doesn't exist -- or
                     # the target is a broken symlink.  We will add this file to our "second hand" and merge
                     # it later.
@@ -5618,7 +5618,7 @@ class dblink:
                 except OSError:
                     pass
 
-                if mymtime != None:
+                if mymtime is not None:
                     # Use lexists, since if the target happens to be a broken
                     # symlink then that should trigger an independent warning.
                     if not (
@@ -5658,7 +5658,7 @@ class dblink:
                     return 1
             elif stat.S_ISDIR(mymode):
                 # we are merging a directory
-                if mydmode != None:
+                if mydmode is not None:
                     # destination exists
 
                     if bsd_chflags:
@@ -5838,7 +5838,7 @@ class dblink:
                     except OSError:
                         pass
 
-                if mymtime != None:
+                if mymtime is not None:
                     outfile.write(
                         self._format_contents_line(
                             node_type="obj",
