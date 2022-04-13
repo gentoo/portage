@@ -223,7 +223,7 @@ use() {
 	local u=$1
 	local found=0
 
-	# if we got something like '!flag', then invert the return value
+	# If we got something like '!flag', then invert the return value
 	if [[ ${u:0:1} == "!" ]] ; then
 		u=${u:1}
 		found=1
@@ -602,7 +602,7 @@ econf() {
 				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
 				"${ECONF_SOURCE}/configure._portage_tmp_.${pid}" \
 				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
-			# preserve timestamp, see bug #440304
+			# Preserve timestamp, see bug #440304
 			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
@@ -663,8 +663,8 @@ econf() {
 			fi
 		fi
 
-		# if the profile defines a location to install libs to aside from default, pass it on.
-		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
+		# If the profile defines a location to install libs to aside from default, pass it on.
+		# If the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
 		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
 			CONF_LIBDIR=${!LIBDIR_VAR}
@@ -906,7 +906,7 @@ ___best_version_and_has_version_common() {
 			fi
 			if ___eapi_has_prefix_variables; then
 				# Since portageq requires the root argument be consistent
-				# with EPREFIX, ensure consistency here (bug 655414).
+				# with EPREFIX, ensure consistency here (bug #655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
 				cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 			else
@@ -1040,7 +1040,7 @@ if ___eapi_has_eapply; then
 				-p1 -f -g0 --no-backup-if-mismatch
 				"${patch_options[@]}"
 			)
-			# try applying with -F0 first, output a verbose warning
+			# Try applying with -F0 first, output a verbose warning
 			# if fuzz factor is necessary
 			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
 					< "${f}" &>/dev/null; then
@@ -1132,7 +1132,7 @@ if ___eapi_has_eapply_user; then
 	eapply_user() {
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
-		# keep path in __dyn_prepare in sync!
+		# Keep path in __dyn_prepare in sync!
 		local tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
 		>> "${tagfile}"

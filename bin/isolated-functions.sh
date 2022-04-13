@@ -624,8 +624,8 @@ fi
 # emerge output.
 # You can override the setting by exporting a new one from the console, or you can
 # set a new default in make.*. Here the default is "" or unset.
-
-# in the future might use e* from /etc/init.d/functions.sh if i feel like it
+#
+# (TODO: in the future, might use e* from /lib/gentoo/functions.sh?)
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
