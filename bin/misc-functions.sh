@@ -21,7 +21,7 @@ install_symlink_html_docs() {
 		local ED=${D}
 	fi
 	cd "${ED}" || die "cd failed"
-	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
+	# Symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
 		local mydocdir docdir
 		for docdir in "${HTMLDOC_DIR:-does/not/exist}" "${PF}/html" "${PF}/HTML" "${P}/html" "${P}/HTML" ; do
@@ -433,7 +433,7 @@ preinst_suid_scan() {
 		local ED=${D}
 	fi
 
-	# total suid control.
+	# Total suid control
 	if has suidctl $FEATURES; then
 		local i sfconf x
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
@@ -487,8 +487,8 @@ preinst_selinux_labels() {
 				/usr/sbin/setfiles -F -r "${D}" "${file_contexts_path}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
-			# nonfatal, since merging can happen outside a SE kernel
-			# like during a recovery situation
+			# nonfatal, since merging can happen outside a SELinux kernel
+			# (like during a recovery situation)
 			__vecho "!!! Unable to set SELinux security labels"
 		fi
 	fi
@@ -538,7 +538,7 @@ __dyn_package() {
 		[[ -n "${md5_hash}" ]] && \
 			echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
 		__vecho ">>> Done."
-	
+
 	elif [[ "${BINPKG_FORMAT}" == "gpkg" ]]; then
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/gpkg-helper.py compress \

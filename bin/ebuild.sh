@@ -96,7 +96,7 @@ unset BASH_ENV
 # earlier portage versions do not detect a version change in this case
 # (9999 to 9999) and therefore they try execute an incompatible version of
 # ebuild.sh during the upgrade.
-export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2} 
+export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
@@ -144,7 +144,7 @@ fi
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
-# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
+# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (e.g. /usr/lib64/conftest)
 __sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
@@ -175,7 +175,7 @@ elif [[ $SANDBOX_ON = 1 ]] ; then
 	unset x
 fi
 
-# the sandbox is disabled by default except when overridden in the relevant stages
+# The sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON=0
 
 # Ensure that $PWD is sane whenever possible, to protect against
@@ -189,8 +189,8 @@ else
 		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
 fi
 
-#if no perms are specified, dirs/files will have decent defaults
-#(not secretive, but not stupid)
+# If no perms are specified, dirs/files will have decent defaults
+# (not secretive, but not stupid)
 umask 022
 
 # Sources all eclasses in parameters
@@ -258,12 +258,12 @@ inherit() {
 		debug-print "inherit: $1 -> $location"
 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
-		# inherits in QA checks can't handle metadata assignments
+		# Inherits in QA checks can't handle metadata assignments
 		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
-			#We need to back up the values of *DEPEND to B_*DEPEND
-			#(if set).. and then restore them after the inherit call.
+			# We need to back up the values of *DEPEND to B_*DEPEND
+			# (if set).. and then restore them after the inherit call.
 
-			#turn off glob expansion
+			# Turn off glob expansion
 			set -f
 
 			# Retain the old data and restore it later.
@@ -291,9 +291,9 @@ inherit() {
 		fi
 
 		__qa_source "$location" || die "died sourcing $location in inherit()"
-		
+
 		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
-			#turn off glob expansion
+			# Turn off glob expansion
 			set -f
 
 			# If each var has a value, append it to the global variable E_* to
@@ -308,7 +308,7 @@ inherit() {
 
 			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
 			[ "${B_IUSE+set}"     = set ] || unset IUSE
-			
+
 			[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
 			[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
 
@@ -344,7 +344,7 @@ inherit() {
 					unset RESTRICT
 			fi
 
-			#turn on glob expansion
+			# Turn on glob expansion
 			set +f
 
 			if [[ -n ${!__export_funcs_var} ]] ; then
@@ -472,7 +472,7 @@ __try_source() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
+# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
 if [[ ${EBUILD_PHASE} == depend ]] ; then
@@ -484,7 +484,8 @@ elif [[ ${EBUILD_PHASE} == clean* ]] ; then
 else
 	QA_INTERCEPTORS="autoconf automake aclocal libtoolize"
 fi
-# level the QA interceptors if we're in depend
+
+# Level the QA interceptors if we're in depend
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -Pf ${BIN})
@@ -627,7 +628,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
 
-		# add in dependency info from eclasses
+		# Add in dependency info from eclasses
 		IUSE+="${IUSE:+ }${E_IUSE}"
 		DEPEND+="${DEPEND:+ }${E_DEPEND}"
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
