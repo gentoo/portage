@@ -275,6 +275,7 @@ inherit() {
 			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
 			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
+			[ "${IDEPEND+set}"    = set ] && B_IDEPEND="${IDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
@@ -634,6 +635,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
 		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
+		IDEPEND+="${IDEPEND:+ }${E_IDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 
 		if ___eapi_has_accumulated_PROPERTIES; then
