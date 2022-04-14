@@ -7,7 +7,7 @@ import subprocess
 
 from portage.const import BASH_BINARY, PORTAGE_BASE_PATH, PORTAGE_BIN_PATH
 from portage.tests import TestCase
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 
 
 class BashSyntaxTestCase(TestCase):
@@ -19,9 +19,9 @@ class BashSyntaxTestCase(TestCase):
         for parent, dirs, files in chain.from_iterable(
             os_unicode_fs.walk(x) for x in locations
         ):
-            parent = parent.decode(encoding=_encodings["fs"], errors="strict")
+            parent = parent.decode(encoding="utf-8", errors="strict")
             for x in files:
-                x = x.decode(encoding=_encodings["fs"], errors="strict")
+                x = x.decode(encoding="utf-8", errors="strict")
                 ext = x.split(".")[-1]
                 if ext in (".py", ".pyc", ".pyo"):
                     continue
@@ -31,21 +31,16 @@ class BashSyntaxTestCase(TestCase):
                     continue
 
                 # Check for bash shebang
-                f = open(x.encode(encoding=_encodings["fs"], errors="strict"), "rb")
-                line = f.readline().decode(
-                    encoding=_encodings["content"], errors="replace"
-                )
+                f = open(x.encode(encoding="utf-8", errors="strict"), "rb")
+                line = f.readline().decode(encoding="utf-8", errors="replace")
                 f.close()
                 if line[:2] == "#!" and "bash" in line:
                     cmd = [BASH_BINARY, "-n", x]
-                    cmd = [
-                        x.encode(encoding=_encodings["fs"], errors="strict")
-                        for x in cmd
-                    ]
+                    cmd = [x.encode(encoding="utf-8", errors="strict") for x in cmd]
                     proc = subprocess.Popen(
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                     )
-                    output = proc.communicate()[0].decode(encoding=_encodings["fs"])
+                    output = proc.communicate()[0].decode(encoding="utf-8")
                     status = proc.wait()
                     self.assertEqual(
                         os_unicode_fs.WIFEXITED(status)

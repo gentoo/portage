@@ -13,7 +13,7 @@ from collections import deque, OrderedDict
 from itertools import chain
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     USER_CONFIG_PATH,
@@ -4596,7 +4596,7 @@ class depgraph:
                     raise InvalidBinaryPackageFormat(x)
 
                 if cat is not None:
-                    cat = cat.strip().decode(encoding=_encodings["repo.content"])
+                    cat = cat.strip().decode(encoding="utf-8")
                     mykey = cat + "/" + os_unicode_fs.path.basename(x)[:-5]
 
                 if mykey is None:
@@ -10364,9 +10364,9 @@ class depgraph:
             file_contents = None
             try:
                 with io.open(
-                    file_to_write_to.encode(encoding=_encodings["fs"], errors="strict"),
+                    file_to_write_to.encode(encoding="utf-8", errors="strict"),
                     mode="r",
-                    encoding=_encodings["content"],
+                    encoding="utf-8",
                     errors="replace",
                 ) as f:
                     file_contents = f.readlines()

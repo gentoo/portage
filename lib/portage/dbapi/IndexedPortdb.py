@@ -8,7 +8,6 @@ import operator
 import os
 
 import portage
-from portage import _encodings
 from portage.dep import Atom
 from portage.exception import FileNotFound
 from portage.cache.index.IndexStreamIterator import IndexStreamIterator
@@ -77,7 +76,7 @@ class IndexedPortdb:
                 f = None
                 for filename in filenames:
                     try:
-                        f = io.open(filename, encoding=_encodings["repo.content"])
+                        f = io.open(filename, encoding="utf-8")
                     except IOError as e:
                         if e.errno not in (errno.ENOENT, errno.ESTALE):
                             raise

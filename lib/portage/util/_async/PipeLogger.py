@@ -6,7 +6,7 @@ import errno
 import gzip
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.util.futures import asyncio
 from portage.util.futures._asyncio.streams import _writer
 from portage.util.futures.unix_events import _set_nonblocking
@@ -40,7 +40,7 @@ class PipeLogger(AbstractPollTask):
         elif log_file_path is not None:
             try:
                 self._log_file = open(
-                    log_file_path.encode(encoding=_encodings["fs"], errors="strict"),
+                    log_file_path.encode(encoding="utf-8", errors="strict"),
                     mode="ab",
                 )
 

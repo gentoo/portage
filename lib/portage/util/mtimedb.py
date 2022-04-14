@@ -15,7 +15,6 @@ import io
 import json
 
 import portage
-from portage import _encodings
 from portage.data import portage_gid, uid
 from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
@@ -53,9 +52,7 @@ class MtimeDB(dict):
         d = None
         if content:
             try:
-                d = json.loads(
-                    content.decode(encoding=_encodings["repo.content"], errors="strict")
-                )
+                d = json.loads(content.decode(encoding="utf-8", errors="strict"))
             except SystemExit:
                 raise
             except Exception as e:
@@ -123,7 +120,7 @@ class MtimeDB(dict):
                 if self._json_write:
                     f.write(
                         json.dumps(d, **self._json_write_opts).encode(
-                            encoding=_encodings["repo.content"],
+                            encoding="utf-8",
                             errors="strict",
                         )
                     )

@@ -5,7 +5,7 @@ import errno
 
 from _emerge.CompositeTask import CompositeTask
 from _emerge.SpawnProcess import SpawnProcess
-from portage import os_unicode_fs, _encodings, _shell_quote
+from portage import os_unicode_fs, _shell_quote
 from portage.const import BASH_BINARY
 
 
@@ -71,7 +71,7 @@ class BinpkgEnvExtractor(CompositeTask):
         # would be preserved between normal phases.
         open(
             f"{self._get_dest_env_path()}.raw".encode(
-                encoding=_encodings["content"], errors="backslashreplace"
+                encoding="utf-8", errors="backslashreplace"
             ),
             "wb",
         ).close()

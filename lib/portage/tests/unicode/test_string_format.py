@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 
-from portage import _encodings
 from portage.exception import PortageException
 from portage.tests import TestCase
 from _emerge.DependencyArg import DependencyArg
@@ -21,11 +20,8 @@ class StringFormatTestCase(TestCase):
     )
 
     def testDependencyArg(self):
-
-        self.assertEqual(_encodings["content"], "utf_8")
-
         for arg_unicode in self.unicode_strings:
-            _ = arg_unicode.encode(encoding=_encodings["content"])
+            _ = arg_unicode.encode(encoding="utf-8")
             dependency_arg = DependencyArg(arg=arg_unicode)
 
             formatted_str = "%s" % (dependency_arg,)
@@ -36,11 +32,8 @@ class StringFormatTestCase(TestCase):
             self.assertEqual(formatted_str, arg_unicode)
 
     def testPortageException(self):
-
-        self.assertEqual(_encodings["content"], "utf_8")
-
         for arg_unicode in self.unicode_strings:
-            _ = arg_unicode.encode(encoding=_encodings["content"])
+            _ = arg_unicode.encode(encoding="utf-8")
             e = PortageException(arg_unicode)
 
             formatted_str = "%s" % (e,)
@@ -51,9 +44,6 @@ class StringFormatTestCase(TestCase):
             self.assertEqual(formatted_str, arg_unicode)
 
     def testUseFlagDisplay(self):
-
-        self.assertEqual(_encodings["content"], "utf_8")
-
         for enabled in (True, False):
             for forced in (True, False):
                 for arg_unicode in self.unicode_strings:

@@ -11,7 +11,7 @@ import stat
 import subprocess
 import tempfile
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import HASHING_BLOCKSIZE, PRELINK_BINARY
 from portage.localization import _
 
@@ -331,7 +331,7 @@ hashfunc_keys = frozenset(hashfunc_map)
 prelink_capable = False
 if os_unicode_fs.path.exists(PRELINK_BINARY):
     cmd = [PRELINK_BINARY, "--version"]
-    cmd = [x.encode(encoding=_encodings["fs"], errors="strict") for x in cmd]
+    cmd = [x.encode(encoding="utf-8", errors="strict") for x in cmd]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     proc.communicate()
     status = proc.wait()
@@ -358,9 +358,7 @@ def perform_md5(x, calc_prelink=0):
 
 
 def _perform_md5_merge(x, **kwargs):
-    return perform_md5(
-        x.encode(encoding=_encodings["merge"], errors="strict"), **kwargs
-    )
+    return perform_md5(x.encode(encoding="utf-8", errors="strict"), **kwargs)
 
 
 def perform_all(x, calc_prelink=0):

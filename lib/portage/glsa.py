@@ -13,7 +13,7 @@ from functools import reduce
 import io
 from io import StringIO
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import PRIVATE_PATH
 from portage.dep import _slot_separator
 from portage.localization import _
@@ -460,7 +460,7 @@ def format_date(datestr):
 
     # TODO We could format to local date format '%x' here?
     return d.strftime("%B %d, %Y").decode(
-        encoding=_encodings["content"],
+        encoding="utf-8",
         errors="replace",
     )
 
@@ -786,11 +786,11 @@ class Glsa:
                 os_unicode_fs.path.join(
                     self.config["EROOT"], PRIVATE_PATH, "glsa_injected"
                 ).encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="a+",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="strict",
             )
             checkfile.write(f"{self.nr}\n")

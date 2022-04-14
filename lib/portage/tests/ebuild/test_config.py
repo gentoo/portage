@@ -5,7 +5,7 @@ import io
 import tempfile
 
 import portage
-from portage import os_unicode_fs, shutil_unicode_fs, _encodings
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.const import USER_CONFIG_PATH
 from portage.dep import Atom
 from portage.package.ebuild.config import config
@@ -373,7 +373,7 @@ class ConfigTestCase(TestCase):
             with io.open(
                 os_unicode_fs.path.join(user_config_dir, "package.env"),
                 mode="w",
-                encoding=_encodings["content"],
+                encoding="utf-8",
             ) as f:
                 for line in package_env:
                     f.write(line + "\n")
@@ -384,7 +384,7 @@ class ConfigTestCase(TestCase):
                 with io.open(
                     os_unicode_fs.path.join(env_dir, k),
                     mode="w",
-                    encoding=_encodings["content"],
+                    encoding="utf-8",
                 ) as f:
                     for line in v:
                         f.write(line + "\n")

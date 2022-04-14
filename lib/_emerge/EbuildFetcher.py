@@ -6,7 +6,7 @@ import io
 import sys
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.checksum import _hash_filter
 from portage.elog.messages import eerror
 from portage.package.ebuild.fetch import (
@@ -360,9 +360,9 @@ class _EbuildFetcherProcess(ForkProcess):
         # output here.
         if self.logfile is not None:
             f = io.open(
-                self.logfile.encode(encoding=_encodings["fs"], errors="strict"),
+                self.logfile.encode(encoding="utf-8", errors="strict"),
                 mode="a",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
             for filename in uri_map:

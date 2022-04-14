@@ -7,7 +7,6 @@ from unittest import mock
 
 import subprocess
 
-import portage
 from portage.tests import TestCase
 from portage.util._xattr import xattr as _xattr, _XattrSystemCommands, _XattrStub
 
@@ -25,7 +24,7 @@ def MockSubprocessPopen(stdin):
     """
     # pylint: disable=protected-access
     proc = orig_popen(["cat"], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-    proc.stdin.write(stdin.encode(portage._encodings["stdio"]))
+    proc.stdin.write(stdin.encode(encoding="utf-8"))
     return proc
 
 

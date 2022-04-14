@@ -12,7 +12,6 @@ import portage
 from portage import (
     os_unicode_fs,
     shutil_unicode_fs,
-    _encodings,
 )
 from portage.data import portage_gid, portage_uid, secpass
 from portage.exception import (
@@ -153,7 +152,7 @@ def _adjust_perms_msg(settings, msg):
     if background and log_path is not None:
         try:
             log_file = open(
-                log_path.encode(encoding=_encodings["fs"], errors="strict"),
+                log_path.encode(encoding="utf-8", errors="strict"),
                 mode="ab",
             )
             log_file_real = log_file

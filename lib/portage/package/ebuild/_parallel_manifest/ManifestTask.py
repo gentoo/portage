@@ -5,7 +5,7 @@ import errno
 import re
 import subprocess
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import MANIFEST2_IDENTIFIERS
 from portage.dep import _repo_separator
 from portage.exception import InvalidDependString
@@ -229,7 +229,7 @@ class ManifestTask(CompositeTask):
     def _need_signature(self):
         try:
             with open(
-                self._manifest_path.encode(encoding=_encodings["fs"], errors="strict"),
+                self._manifest_path.encode(encoding="utf-8", errors="strict"),
                 "rb",
             ) as f:
                 return self._PGP_HEADER not in f.readline()

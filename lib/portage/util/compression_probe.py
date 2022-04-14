@@ -6,7 +6,6 @@ import errno
 import re
 
 
-from portage import _encodings
 from portage.exception import FileNotFound, PermissionDenied
 
 _compressors = {
@@ -92,7 +91,7 @@ def compression_probe(f):
     if open_file:
         try:
             f = open(
-                f.encode(encoding=_encodings["fs"], errors="strict"),
+                f.encode(encoding="utf-8", errors="strict"),
                 mode="rb",
             )
         except IOError as e:

@@ -8,7 +8,7 @@ import random
 import subprocess
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.util import ensure_dirs
 from portage.util._async.FileCopier import FileCopier
 from portage.util._async.FileDigester import FileDigester
@@ -487,7 +487,7 @@ class FetchTask(CompositeTask):
 
         args = (
             portage.util.varexpand(x, mydict=variables).encode(
-                encoding=_encodings["fs"], errors="strict"
+                encoding="utf-8", errors="strict"
             )
             for x in portage.util.shlex_split(default_fetchcommand)
         )

@@ -39,7 +39,6 @@ try:
 except Exception:
     ExpatError = SyntaxError
 
-from portage import _encodings
 from portage.util import cmp_sort_key, unique_everseen
 
 
@@ -192,7 +191,7 @@ class MetaDataXML:
 
         try:
             self._xml_tree = etree.parse(
-                metadata_xml_path.encode(encoding=_encodings["fs"], errors="strict"),
+                metadata_xml_path.encode(encoding="utf-8", errors="strict"),
                 parser=etree.XMLParser(target=_MetadataTreeBuilder()),
             )
         except ImportError:
@@ -232,7 +231,7 @@ class MetaDataXML:
         if self._herdstree is None:
             try:
                 self._herdstree = etree.parse(
-                    self._herds_path.encode(encoding=_encodings["fs"], errors="strict"),
+                    self._herds_path.encode(encoding="utf-8", errors="strict"),
                     parser=etree.XMLParser(target=_MetadataTreeBuilder()),
                 )
             except (ImportError, IOError, SyntaxError):

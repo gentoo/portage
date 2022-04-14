@@ -8,7 +8,6 @@ import time
 import portage
 import portage.util.formatter as formatter
 from portage import os_unicode_fs
-from portage import _encodings
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
@@ -83,7 +82,7 @@ class JobStatusDisplay:
 
     def _write(self, s):
         # avoid potential UnicodeEncodeError
-        s = s.encode(encoding=_encodings["stdio"], errors="backslashreplace")
+        s = s.encode(encoding="utf-8", errors="backslashreplace")
         out = self.out.buffer
         out.write(s)
         out.flush()

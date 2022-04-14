@@ -4,7 +4,7 @@
 import io
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
@@ -132,7 +132,7 @@ class SecuritySetTestCase(TestCase):
                     os_unicode_fs.path.join(
                         glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"
                     ),
-                    encoding=_encodings["repo.content"],
+                    encoding="utf-8",
                     mode="w",
                 ) as f:
                     f.write(self.glsa_template % glsa)

@@ -9,7 +9,6 @@ from _emerge.SpawnProcess import SpawnProcess
 
 import portage
 from portage import os_unicode_fs
-from portage import _encodings
 from portage.util._async.AsyncFunction import AsyncFunction
 from portage.util.install_mask import install_mask_dir, InstallMask
 
@@ -38,11 +37,11 @@ class PackagePhase(CompositeTask):
                     "build-info",
                     "PKG_INSTALL_MASK",
                 ).encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 self._pkg_install_mask = InstallMask(f.read())

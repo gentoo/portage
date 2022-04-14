@@ -6,7 +6,7 @@ import errno
 import io
 import time
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.data import portage_gid, portage_uid
 from portage.localization import _
 from portage.package.ebuild.prepare_build_dirs import _ensure_log_subdirs
@@ -43,9 +43,9 @@ def process(mysettings, key, logentries, fulltext):
     elogfilename = elogdir + "/summary.log"
     try:
         elogfile = io.open(
-            elogfilename.encode(encoding=_encodings["fs"], errors="strict"),
+            elogfilename.encode(encoding="utf-8", errors="strict"),
             mode="a",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="backslashreplace",
         )
     except IOError as e:

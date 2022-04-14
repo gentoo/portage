@@ -223,9 +223,8 @@ def _get_global(k):
             # Get a list of group IDs for the portage user. Do not use
             # grp.getgrall() since it is known to trigger spurious
             # SIGPIPE problems with nss_ldap.
-            encoding = portage._encodings["content"]
             cmd = (
-                x.encode(encoding=encoding, errors="strict")
+                x.encode(encoding="utf-8", errors="strict")
                 for x in ("id", "-G", _portage_username)
             )
             proc = subprocess.Popen(
@@ -241,7 +240,7 @@ def _get_global(k):
                     except ValueError:
                         return None
 
-                unicode_decode = myoutput.decode(encoding=encoding, errors="strict")
+                unicode_decode = myoutput.decode(encoding="utf-8", errors="strict")
                 checked_v = (check(x) for x in unicode_decode.split())
                 filtered_v = (x for x in checked_v if x)
                 v = sorted(set(filtered_v))

@@ -9,7 +9,7 @@ import sys
 import warnings
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -136,7 +136,7 @@ def update_dbentries(update_iter, mydata, eapi=None, parent=None):
             if mycontent != orig_content:
                 if is_encoded:
                     mycontent = mycontent.encode(
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                         errors="backslashreplace",
                     )
                 updated_items[k] = mycontent
@@ -160,14 +160,14 @@ def fixdbentries(update_iter, dbdir, eapi=None, parent=None):
         with io.open(
             file_path,
             mode="r",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="replace",
         ) as f:
             mydata[myfile] = f.read()
     updated_items = update_dbentries(update_iter, mydata, eapi=eapi, parent=parent)
     for myfile, mycontent in updated_items.items():
         file_path = os_unicode_fs.path.join(dbdir, myfile)
-        write_atomic(file_path, mycontent, encoding=_encodings["repo.content"])
+        write_atomic(file_path, mycontent, encoding="utf-8")
     return len(updated_items) > 0
 
 
@@ -201,9 +201,9 @@ def grab_updates(updpath, prev_mtimes=None):
             continue
         if int(prev_mtimes.get(file_path, -1)) != mystat[stat.ST_MTIME]:
             f = io.open(
-                file_path.encode(encoding=_encodings["fs"], errors="strict"),
+                file_path.encode(encoding="utf-8", errors="strict"),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             )
             content = f.read()
@@ -349,12 +349,12 @@ def update_config_files(
         if os_unicode_fs.path.isdir(config_file):
             for parent, dirs, files in os_unicode_fs.walk(config_file):
                 try:
-                    parent = parent.decode(encoding=_encodings["fs"], errors="strict")
+                    parent = parent.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
                     continue
                 for y_enc in list(dirs):
                     try:
-                        y = y_enc.decode(encoding=_encodings["fs"], errors="strict")
+                        y = y_enc.decode(encoding="utf-8", errors="strict")
                     except UnicodeDecodeError:
                         dirs.remove(y_enc)
                         continue
@@ -362,7 +362,7 @@ def update_config_files(
                         dirs.remove(y_enc)
                 for y in files:
                     try:
-                        y = y.decode(encoding=_encodings["fs"], errors="strict")
+                        y = y.decode(encoding="utf-8", errors="strict")
                     except UnicodeDecodeError:
                         continue
                     if y.startswith("."):
@@ -378,11 +378,11 @@ def update_config_files(
         try:
             f = io.open(
                 os_unicode_fs.path.join(abs_user_config, x).encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="r",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="replace",
             )
             file_contents[x] = f.readlines()

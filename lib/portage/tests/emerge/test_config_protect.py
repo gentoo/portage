@@ -10,7 +10,7 @@ import sys
 import time
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import BASH_BINARY, PORTAGE_PYM_PATH
 from portage.process import find_binary
 from portage.tests import TestCase
@@ -136,7 +136,7 @@ src_install() {
                 path = os_unicode_fs.path.join(dir_path, name)
                 st = os_unicode_fs.lstat(path)
                 if stat.S_ISREG(st.st_mode):
-                    with io.open(path, mode="a", encoding=_encodings["stdio"]) as f:
+                    with io.open(path, mode="a", encoding="utf-8") as f:
                         f.write("modified at %d\n" % time.time())
                 elif stat.S_ISLNK(st.st_mode):
                     old_dest = os_unicode_fs.readlink(path)

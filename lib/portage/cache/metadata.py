@@ -8,7 +8,7 @@ import stat
 from operator import attrgetter
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
@@ -108,14 +108,12 @@ class database(flat_hash.database):
         for i in range(magic_line_count - len(self.auxdbkey_order)):
             new_content.append("\n")
         new_content = "".join(new_content)
-        new_content = new_content.encode(
-            _encodings["repo.content"], errors="backslashreplace"
-        )
+        new_content = new_content.encode(encoding="utf-8", errors="backslashreplace")
 
         new_fp = os_unicode_fs.path.join(self.location, cpv)
         try:
             f = open(
-                new_fp.encode(encoding=_encodings["fs"], errors="strict"),
+                new_fp.encode(encoding="utf-8", errors="strict"),
                 "rb",
             )
         except EnvironmentError:
@@ -151,13 +149,13 @@ class database(flat_hash.database):
             self.location, cpv[:s], ".update.%i.%s" % (portage.getpid(), cpv[s + 1 :])
         )
         try:
-            myf = open(fp.encode(encoding=_encodings["fs"], errors="strict"), "wb")
+            myf = open(fp.encode(encoding="utf-8", errors="strict"), "wb")
         except EnvironmentError as e:
             if errno.ENOENT == e.errno:
                 try:
                     self._ensure_dirs(cpv)
                     myf = open(
-                        fp.encode(encoding=_encodings["fs"], errors="strict"),
+                        fp.encode(encoding="utf-8", errors="strict"),
                         "wb",
                     )
                 except EnvironmentError as e:

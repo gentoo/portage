@@ -3,7 +3,7 @@
 
 import io
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.dep import Atom
 from portage.package.ebuild.config import config
 from portage.tests import TestCase
@@ -102,7 +102,7 @@ class UseExpandIncrementalTestCase(TestCase):
                     with io.open(
                         os_unicode_fs.path.join(prof_path, k),
                         mode="w",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                     ) as f:
                         for line in v:
                             f.write("%s\n" % line)

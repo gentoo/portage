@@ -3,7 +3,6 @@
 
 import os as _os
 
-from portage import _encodings
 from portage.util import apply_stat_permissions
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
@@ -25,7 +24,7 @@ class FileCopier(AsyncTaskFuture):
         super(FileCopier, self)._start()
 
     def _run(self):
-        src_path = self.src_path.encode(encoding=_encodings["fs"], errors="strict")
-        dest_path = self.dest_path.encode(encoding=_encodings["fs"], errors="strict")
+        src_path = self.src_path.encode(encoding="utf-8", errors="strict")
+        dest_path = self.dest_path.encode(encoding="utf-8", errors="strict")
         copyfile(src_path, dest_path)
         apply_stat_permissions(dest_path, _os.stat(src_path))

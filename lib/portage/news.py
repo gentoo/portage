@@ -20,7 +20,7 @@ import io
 import logging
 import os as _os
 import re
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import NEWS_LIB_PATH
 from portage.util import (
     apply_secpass_permissions,
@@ -126,9 +126,7 @@ class NewsManager:
 
         news_dir = self._news_dir(repoid)
         try:
-            news = _os.listdir(
-                news_dir.encode(encoding=_encodings["fs"], errors="strict")
-            )
+            news = _os.listdir(news_dir.encode(encoding="utf-8", errors="strict"))
         except OSError:
             return
 
@@ -146,9 +144,9 @@ class NewsManager:
 
             for itemid in news:
                 try:
-                    itemid = itemid.decode(encoding=_encodings["fs"], errors="strict")
+                    itemid = itemid.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
-                    itemid = itemid.decode(encoding=_encodings["fs"], errors="replace")
+                    itemid = itemid.decode(encoding="utf-8", errors="replace")
                     writemsg_level(
                         _("!!! Invalid encoding in news item name: '%s'\n") % itemid,
                         level=logging.ERROR,
@@ -291,9 +289,9 @@ class NewsItem:
 
     def parse(self):
         with io.open(
-            self.path.encode(encoding=_encodings["fs"], errors="strict"),
+            self.path.encode(encoding="utf-8", errors="strict"),
             mode="r",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="replace",
         ) as f:
             lines = f.readlines()

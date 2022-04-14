@@ -6,7 +6,6 @@ import io
 import json
 import os
 
-from portage import _encodings
 from portage.util import atomic_ofstream
 from portage.versions import cpv_getkey
 
@@ -22,7 +21,7 @@ class VdbMetadataDelta:
         with atomic_ofstream(
             self._vardb._cache_delta_filename,
             "w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="strict",
         ) as f:
             json.dump(
@@ -42,7 +41,7 @@ class VdbMetadataDelta:
             with io.open(
                 self._vardb._cache_delta_filename,
                 "r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="strict",
             ) as f:
                 cache_obj = json.load(f)
@@ -137,7 +136,7 @@ class VdbMetadataDelta:
             f = atomic_ofstream(
                 self._vardb._cache_delta_filename,
                 mode="w",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
             )
             json.dump(deltas_obj, f, ensure_ascii=False)
             f.close()

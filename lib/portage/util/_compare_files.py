@@ -7,7 +7,6 @@ import io
 import os
 import stat
 
-from portage import _encodings
 from portage.util._xattr import XATTRS_WORKS, xattr
 
 
@@ -26,8 +25,8 @@ def compare_files(file1, file2, skipped_types=()):
     @return: Tuple of strings specifying types of properties different between compared files
     """
 
-    file1_stat = os.lstat(file1.encode(encoding=_encodings["fs"], errors="strict"))
-    file2_stat = os.lstat(file2.encode(encoding=_encodings["fs"], errors="strict"))
+    file1_stat = os.lstat(file1.encode(encoding="utf-8", errors="strict"))
+    file2_stat = os.lstat(file2.encode(encoding="utf-8", errors="strict"))
 
     differences = []
 
@@ -87,24 +86,20 @@ def compare_files(file1, file2, skipped_types=()):
         if "content" not in skipped_types:
             if stat.S_ISLNK(file1_stat.st_mode):
                 file1_stream = io.BytesIO(
-                    os.readlink(
-                        file1.encode(encoding=_encodings["fs"], errors="strict")
-                    )
+                    os.readlink(file1.encode(encoding="utf-8", errors="strict"))
                 )
             else:
                 file1_stream = open(
-                    file1.encode(encoding=_encodings["fs"], errors="strict"),
+                    file1.encode(encoding="utf-8", errors="strict"),
                     "rb",
                 )
             if stat.S_ISLNK(file2_stat.st_mode):
                 file2_stream = io.BytesIO(
-                    os.readlink(
-                        file2.encode(encoding=_encodings["fs"], errors="strict")
-                    )
+                    os.readlink(file2.encode(encoding="utf-8", errors="strict"))
                 )
             else:
                 file2_stream = open(
-                    file2.encode(encoding=_encodings["fs"], errors="strict"),
+                    file2.encode(encoding="utf-8", errors="strict"),
                     "rb",
                 )
             while True:

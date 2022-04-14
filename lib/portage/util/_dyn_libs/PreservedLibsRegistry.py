@@ -10,7 +10,6 @@ import stat
 from portage import abssymlink
 from portage import (
     os_unicode_fs,
-    _encodings,
     os_unicode_merge,
 )
 from portage.exception import PermissionDenied
@@ -65,7 +64,7 @@ class PreservedLibsRegistry:
         content = None
         try:
             f = open(
-                self._filename.encode(encoding=_encodings["fs"], errors="strict"),
+                self._filename.encode(encoding="utf-8", errors="strict"),
                 "rb",
             )
             content = f.read()
@@ -86,7 +85,7 @@ class PreservedLibsRegistry:
         if content:
             try:
                 self._data = json.loads(
-                    content.decode(encoding=_encodings["repo.content"], errors="strict")
+                    content.decode(encoding="utf-8", errors="strict")
                 )
             except SystemExit:
                 raise
@@ -135,7 +134,7 @@ class PreservedLibsRegistry:
             if self._json_write:
                 f.write(
                     json.dumps(self._data, **self._json_write_opts).encode(
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                         errors="strict",
                     )
                 )

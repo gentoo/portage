@@ -14,7 +14,7 @@ import sys
 import tempfile
 
 import portage
-from portage import os_unicode_fs, shutil_unicode_fs, _encodings
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.env.loaders import KeyValuePairFileLoader
 from portage.localization import _
 from portage.util import shlex_split, varexpand
@@ -84,9 +84,7 @@ def diff_mixed(func, file1, file2):
                     content = f"FIF: {file1}\n"
                 else:
                     content = f"DEV: {file1}\n"
-                with io.open(
-                    diff_files[i], mode="w", encoding=_encodings["stdio"]
-                ) as f:
+                with io.open(diff_files[i], mode="w", encoding="utf-8") as f:
                     f.write(content)
 
         return func(diff_files[0], diff_files[1])

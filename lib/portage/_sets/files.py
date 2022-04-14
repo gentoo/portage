@@ -5,7 +5,7 @@ import errno
 import re
 from itertools import chain
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import USER_CONFIG_PATH, VCS_DIRS, WORLD_FILE, WORLD_SETS_FILE
 from portage.localization import _
@@ -155,13 +155,13 @@ class StaticFileSet(EditablePackageSet):
                     _("Could not find repository '%s'") % match.groupdict()["reponame"]
                 )
 
-        vcs_dirs = [x.encode(encoding=_encodings["fs"]) for x in VCS_DIRS]
+        vcs_dirs = [x.encode(encoding="utf-8") for x in VCS_DIRS]
         if os_unicode_fs.path.isdir(directory):
             directory = normalize_path(directory)
 
             for parent, dirs, files in os_unicode_fs.walk(directory):
                 try:
-                    parent = parent.decode(encoding=_encodings["fs"], errors="strict")
+                    parent = parent.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
                     continue
                 for d in dirs[:]:
@@ -169,9 +169,7 @@ class StaticFileSet(EditablePackageSet):
                         dirs.remove(d)
                 for filename in files:
                     try:
-                        filename = filename.decode(
-                            encoding=_encodings["fs"], errors="strict"
-                        )
+                        filename = filename.decode(encoding="utf-8", errors="strict")
                     except UnicodeDecodeError:
                         continue
                     if filename.startswith(".") or filename.endswith("~"):

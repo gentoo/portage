@@ -9,7 +9,7 @@ import sys
 from portage.const import PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PORTAGE_PYM_PACKAGES
 from portage.tests import TestCase
 from portage.tests.lint.metadata import module_metadata, script_metadata
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 
 
 class CompileModulesTestCase(TestCase):
@@ -21,9 +21,9 @@ class CompileModulesTestCase(TestCase):
         iters.append(os_unicode_fs.walk(PORTAGE_BIN_PATH))
 
         for parent, _dirs, files in itertools.chain(*iters):
-            parent = parent.decode(encoding=_encodings["fs"], errors="strict")
+            parent = parent.decode(encoding="utf-8", errors="strict")
             for x in files:
-                x = x.decode(encoding=_encodings["fs"], errors="strict")
+                x = x.decode(encoding="utf-8", errors="strict")
                 if x[-4:] in (".pyc", ".pyo"):
                     continue
                 x = os_unicode_fs.path.join(parent, x)
@@ -49,11 +49,11 @@ class CompileModulesTestCase(TestCase):
                     # Check for python shebang.
                     try:
                         with open(
-                            x.encode(encoding=_encodings["fs"], errors="strict"),
+                            x.encode(encoding="utf-8", errors="strict"),
                             "rb",
                         ) as f:
                             line = f.readline().decode(
-                                encoding=_encodings["content"], errors="replace"
+                                encoding="utf-8", errors="replace"
                             )
                     except IOError as e:
                         # Some tests create files that are unreadable by the
@@ -65,7 +65,7 @@ class CompileModulesTestCase(TestCase):
                         do_compile = True
                 if do_compile:
                     with open(
-                        x.encode(encoding=_encodings["fs"], errors="strict"),
+                        x.encode(encoding="utf-8", errors="strict"),
                         "rb",
                     ) as f:
                         compile(f.read(), x, "exec")

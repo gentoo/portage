@@ -7,7 +7,7 @@ import re
 import stat
 import time
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 
 
 # [D]/Name/Version/Date/Flags/Tags
@@ -48,11 +48,11 @@ def isadded(entries, path):
     try:
         myfile = io.open(
             os_unicode_fs.path.join(basedir, "CVS", "Entries").encode(
-                encoding=_encodings["fs"],
+                encoding="utf-8",
                 errors="strict",
             ),
             mode="r",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="strict",
         )
     except IOError:
@@ -233,9 +233,9 @@ def getentries(mydir, recursive=0):
         return entries
     try:
         myfile = io.open(
-            myfn.encode(encoding=_encodings["fs"], errors="strict"),
+            myfn.encode(encoding="utf-8", errors="strict"),
             mode="r",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="strict",
         )
         mylines = myfile.readlines()

@@ -55,7 +55,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.cache.cache_errors import CacheError, StatCollision
 from portage.cache.index.pkg_desc_index import (
     pkg_desc_index_line_format,
@@ -555,9 +555,7 @@ class GenPkgDescIndex:
         new = {}
         if display_updates:
             try:
-                with open(
-                    self._output_file, "rt", encoding=_encodings["repo.content"]
-                ) as f:
+                with open(self._output_file, "rt", encoding="utf-8") as f:
                     for line in f:
                         pkg_desc = pkg_desc_index_line_read(line)
                         old[pkg_desc.cp] = pkg_desc
@@ -565,9 +563,7 @@ class GenPkgDescIndex:
                 pass
 
         portage.util.ensure_dirs(os_unicode_fs.path.dirname(self._output_file))
-        f = portage.util.atomic_ofstream(
-            self._output_file, encoding=_encodings["repo.content"]
-        )
+        f = portage.util.atomic_ofstream(self._output_file, encoding="utf-8")
 
         portdb = self._portdb
         for cp in portdb.cp_all():
@@ -668,14 +664,14 @@ class GenUseLocalDesc:
                     # Probe in binary mode, in order to avoid
                     # potential character encoding issues.
                     output = open(
-                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
+                        desc_path.encode(encoding="utf-8", errors="strict"),
                         "r+b",
                     )
                 else:
                     output = io.open(
-                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
+                        desc_path.encode(encoding="utf-8", errors="strict"),
                         mode="w",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                         errors="backslashreplace",
                     )
             except IOError as e:
@@ -700,9 +696,9 @@ class GenUseLocalDesc:
                 self._preserve_comments = False
                 try:
                     output = io.open(
-                        desc_path.encode(encoding=_encodings["fs"], errors="strict"),
+                        desc_path.encode(encoding="utf-8", errors="strict"),
                         mode="w",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                         errors="backslashreplace",
                     )
                 except IOError as e:
@@ -728,9 +724,9 @@ class GenUseLocalDesc:
             # Finished probing comments in binary mode, now append
             # in text mode.
             output = io.open(
-                desc_path.encode(encoding=_encodings["fs"], errors="strict"),
+                desc_path.encode(encoding="utf-8", errors="strict"),
                 mode="a",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
             output.write("\n")
@@ -774,7 +770,7 @@ class GenUseLocalDesc:
             metadata_path = os_unicode_fs.path.join(repo_path, cp, "metadata.xml")
             try:
                 metadata = ElementTree.parse(
-                    metadata_path.encode(encoding=_encodings["fs"], errors="strict"),
+                    metadata_path.encode(encoding="utf-8", errors="strict"),
                     parser=ElementTree.XMLParser(target=_MetadataTreeBuilder()),
                 )
             except IOError:
@@ -883,7 +879,7 @@ class GenChangeLogs:
     @staticmethod
     def grab(cmd):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        return p.communicate()[0].decode(encoding=_encodings["stdio"], errors="strict")
+        return p.communicate()[0].decode(encoding="utf-8", errors="strict")
 
     def generate_changelog(self, cp):
 
@@ -911,7 +907,7 @@ class GenChangeLogs:
             output = io.open(
                 self._changelog_output,
                 mode="w",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
         except IOError as e:

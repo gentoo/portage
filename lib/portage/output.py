@@ -19,7 +19,6 @@ portage.proxy.lazyimport.lazyimport(
 import portage.util.formatter as formatter
 
 from portage import os_unicode_fs
-from portage import _encodings
 from portage.const import COLOR_MAP_FILE
 from portage.exception import (
     CommandNotFound,
@@ -187,9 +186,9 @@ def _parse_color_map(config_root="/", onerror=None):
 
     try:
         with io.open(
-            myfile.encode(encoding=_encodings["fs"], errors="strict"),
+            myfile.encode(encoding="utf-8", errors="strict"),
             mode="r",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="replace",
         ) as f:
             lines = f.readlines()
@@ -287,7 +286,7 @@ def xtermTitle(mystr, raw=False):
             mystr = "\x1b]0;%s\x07" % mystr
 
         # avoid potential UnicodeEncodeError
-        mystr = mystr.encode(encoding=_encodings["stdio"], errors="backslashreplace")
+        mystr = mystr.encode(encoding="utf-8", errors="backslashreplace")
         f = sys.stderr.buffer
         f.write(mystr)
         f.flush()
@@ -465,7 +464,7 @@ class ConsoleStyleFile:
     def _write(self, f, s):
         # avoid potential UnicodeEncodeError
         if f in (sys.stdout, sys.stderr):
-            s = s.encode(encoding=_encodings["stdio"], errors="backslashreplace")
+            s = s.encode(encoding="utf-8", errors="backslashreplace")
             f = f.buffer
         f.write(s)
 

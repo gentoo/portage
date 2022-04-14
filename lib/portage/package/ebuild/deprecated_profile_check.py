@@ -6,7 +6,7 @@ __all__ = ["deprecated_profile_check"]
 import io
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import DEPRECATED_PROFILE_FILE
 from portage.localization import _
 from portage.output import colorize
@@ -42,9 +42,9 @@ def deprecated_profile_check(settings=None):
                 return
 
     with io.open(
-        deprecated_profile_file.encode(encoding=_encodings["fs"], errors="strict"),
+        deprecated_profile_file.encode(encoding="utf-8", errors="strict"),
         mode="r",
-        encoding=_encodings["content"],
+        encoding="utf-8",
         errors="replace",
     ) as f:
         dcontent = f.readlines()

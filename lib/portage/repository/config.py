@@ -12,7 +12,6 @@ import portage
 from portage import (
     eclass_cache,
     os_unicode_fs,
-    _encodings,
     manifest,
 )
 from portage.checksum import get_valid_checksum_keys
@@ -533,9 +532,9 @@ class RepoConfig:
         f = None
         try:
             f = io.open(
-                repo_name_path.encode(encoding=_encodings["fs"], errors="strict"),
+                repo_name_path.encode(encoding="utf-8", errors="strict"),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             )
             return f.readline().strip(), False

@@ -11,7 +11,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.package.ebuild._metadata_invalid:eapi_invalid",
 )
 from portage import os_unicode_fs
-from portage import _encodings
 
 import fcntl
 import io
@@ -47,9 +46,9 @@ class EbuildMetadataPhase(SubProcess):
         ebuild_path = self.ebuild_hash.location
 
         with io.open(
-            ebuild_path.encode(encoding=_encodings["fs"], errors="strict"),
+            ebuild_path.encode(encoding="utf-8", errors="strict"),
             mode="r",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="replace",
         ) as f:
             self._eapi, self._eapi_lineno = portage._parse_eapi_ebuild_head(f)
@@ -171,7 +170,7 @@ class EbuildMetadataPhase(SubProcess):
         if self.returncode == os_unicode_fs.EX_OK and self._raw_metadata is not None:
             metadata_lines = (
                 b"".join(self._raw_metadata)
-                .decode(encoding=_encodings["repo.content"], errors="replace")
+                .decode(encoding="utf-8", errors="replace")
                 .splitlines()
             )
             metadata = {}

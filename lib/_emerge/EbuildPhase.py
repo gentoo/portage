@@ -56,7 +56,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.futures.unix_events:_set_nonblocking",
 )
 from portage import os_unicode_fs
-from portage import _encodings
 
 
 class EbuildPhase(CompositeTask):
@@ -322,7 +321,7 @@ class EbuildPhase(CompositeTask):
                         os_unicode_fs.path.join(
                             self.settings["PORTAGE_BUILDDIR"], ".tested"
                         ).encode(
-                            encoding=_encodings["fs"],
+                            encoding="utf-8",
                             errors="strict",
                         ),
                         "wb",
@@ -424,9 +423,7 @@ class EbuildPhase(CompositeTask):
 
     def _append_temp_log(self, temp_log, log_path):
 
-        temp_file = open(
-            temp_log.encode(encoding=_encodings["fs"], errors="strict"), "rb"
-        )
+        temp_file = open(temp_log.encode(encoding="utf-8", errors="strict"), "rb")
 
         log_file, log_file_real = self._open_log(log_path)
 
@@ -442,7 +439,7 @@ class EbuildPhase(CompositeTask):
     def _open_log(self, log_path):
 
         f = open(
-            log_path.encode(encoding=_encodings["fs"], errors="strict"),
+            log_path.encode(encoding="utf-8", errors="strict"),
             mode="ab",
         )
         f_real = f

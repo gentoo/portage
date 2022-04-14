@@ -16,7 +16,6 @@ import traceback
 import os as _os
 
 from portage import os_unicode_fs
-from portage import _encodings
 import portage
 
 portage.proxy.lazyimport.lazyimport(
@@ -655,7 +654,7 @@ def _exec(
     myargs = [opt_name, *mycommand[1:]]
 
     # Avoid a potential UnicodeEncodeError from os_unicode_fs.execve().
-    myargs = [x.encode(encoding=_encodings["fs"], errors="strict") for x in myargs]
+    myargs = [x.encode(encoding="utf-8", errors="strict") for x in myargs]
 
     # Use default signal handlers in order to avoid problems
     # killing subprocesses as reported in bug #353239.

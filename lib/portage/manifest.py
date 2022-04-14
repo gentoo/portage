@@ -20,7 +20,6 @@ portage.proxy.lazyimport.lazyimport(
 )
 
 from portage import os_unicode_fs
-from portage import _encodings
 from portage.exception import (
     DigestException,
     FileNotFound,
@@ -220,9 +219,9 @@ class Manifest:
         Otherwise, a new dict will be created and returned."""
         try:
             with io.open(
-                file_path.encode(encoding=_encodings["fs"], errors="strict"),
+                file_path.encode(encoding="utf-8", errors="strict"),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 if myhashdict is None:
@@ -324,11 +323,11 @@ class Manifest:
                 try:
                     with io.open(
                         self.getFullname().encode(
-                            encoding=_encodings["fs"],
+                            encoding="utf-8",
                             errors="strict",
                         ),
                         mode="r",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                         errors="replace",
                     ) as f:
                         oldentries = list(self._parseManifestLines(f))
@@ -430,9 +429,7 @@ class Manifest:
                 self.pkgdir.rstrip(os_unicode_fs.sep)
             ):
                 try:
-                    parent_dir = parent_dir.decode(
-                        encoding=_encodings["fs"], errors="strict"
-                    )
+                    parent_dir = parent_dir.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
                     # If an absolute path cannot be decoded, then it is
                     # always excluded from the manifest (repoman will
@@ -605,7 +602,7 @@ class Manifest:
 
         def _process_for_cpv(filename):
             try:
-                filename = filename.decode(encoding=_encodings["fs"], errors="strict")
+                filename = filename.decode(encoding="utf-8", errors="strict")
             except UnicodeDecodeError:
                 return None
             if filename.startswith("."):
@@ -623,7 +620,7 @@ class Manifest:
         cpvlist = []
         for f in pkgdir_files:
             try:
-                f = f.decode(encoding=_encodings["fs"], errors="strict")
+                f = f.decode(encoding="utf-8", errors="strict")
             except UnicodeDecodeError:
                 continue
             if f.startswith("."):
@@ -648,7 +645,7 @@ class Manifest:
         ):
             for f in files:
                 try:
-                    f = f.decode(encoding=_encodings["fs"], errors="strict")
+                    f = f.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
                     continue
                 full_path = os_unicode_fs.path.join(parentdir, f)
@@ -803,9 +800,9 @@ class Manifest:
         if not os_unicode_fs.path.exists(mfname):
             return []
         with io.open(
-            mfname.encode(encoding=_encodings["fs"], errors="strict"),
+            mfname.encode(encoding="utf-8", errors="strict"),
             mode="r",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="replace",
         ) as myfile:
             line_splits = (line.split() for line in myfile.readlines())

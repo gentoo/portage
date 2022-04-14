@@ -54,7 +54,7 @@ class BinpkgExtractorAsync(SpawnProcess):
         if decomp is not None:
             decomp_cmd = decomp.get("decompress")
         elif tarfile.is_tarfile(
-            self.pkg_path.encode(encoding=portage._encodings["fs"], errors="strict")
+            self.pkg_path.encode(encoding="utf-8", errors="strict")
         ):
             decomp_cmd = "cat"
             decomp = {

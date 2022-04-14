@@ -7,7 +7,7 @@ __all__ = ["database"]
 
 import errno
 
-from portage import cpv_getkey, os_unicode_fs, _encodings
+from portage import cpv_getkey, os_unicode_fs
 from portage.cache import fs_template
 from portage.versions import catsplit
 from portage.util._xattr import xattr
@@ -155,7 +155,7 @@ class database(fs_template.FsBased):
         for root, dirs, files in os_unicode_fs.walk(self.portdir):
             for file in files:
                 try:
-                    file = file.decode(encoding=_encodings["fs"], errors="strict")
+                    file = file.decode(encoding="utf-8", errors="strict")
                 except UnicodeDecodeError:
                     continue
                 if file[-7:] == ".ebuild":

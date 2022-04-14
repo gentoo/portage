@@ -18,7 +18,7 @@ from _emerge.MiscFunctionsProcess import MiscFunctionsProcess
 from _emerge.TaskSequence import TaskSequence
 
 import portage
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.package.ebuild.digestcheck import digestcheck
 from portage.package.ebuild.doebuild import _check_temp_dir
 from portage.package.ebuild._spawn_nofetch import SpawnNofetchWithoutBuilddir
@@ -569,11 +569,11 @@ class EbuildBuild(CompositeTask):
         for k, v in info.items():
             with io.open(
                 os_unicode_fs.path.join(infoloc, k).encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="w",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="strict",
             ) as f:
                 f.write(v)

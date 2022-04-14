@@ -188,36 +188,6 @@ except ImportError as e:
     raise
 
 
-# We use utf_8 encoding everywhere. Previously, we used
-# sys.getfilesystemencoding() for the 'merge' encoding, but that had
-# various problems:
-#
-#   1) If the locale is ever changed then it can cause orphan files due
-#      to changed character set translation.
-#
-#   2) Ebuilds typically install files with utf_8 encoded file names,
-#      and then portage would be forced to rename those files to match
-#      sys.getfilesystemencoding(), possibly breaking things.
-#
-#   3) Automatic translation between encodings can lead to nonsensical
-#      file names when the source encoding is unknown by portage.
-#
-#   4) It's inconvenient for ebuilds to convert the encodings of file
-#      names to match the current locale, and upstreams typically encode
-#      file names with utf_8 encoding.
-#
-# So, instead of relying on sys.getfilesystemencoding(), we avoid the above
-# problems by using a constant utf_8 'merge' encoding for all locales, as
-# discussed in bug #382199 and bug #381509.
-_encodings = {
-    "content": "utf_8",
-    "fs": "utf_8",
-    "merge": "utf_8",
-    "repo.content": "utf_8",
-    "stdio": "utf_8",
-}
-
-
 def _decode_argv(argv):
     # With Python 3, the surrogateescape encoding error handler makes it
     # possible to access the original argv bytes, which can be useful
@@ -240,7 +210,7 @@ class _unicode_func_wrapper:
 
     __slots__ = ("_func", "_encoding")
 
-    def __init__(self, func, encoding=_encodings["fs"]):
+    def __init__(self, func, encoding="utf-8"):
         self._func = func
         self._encoding = encoding
 
@@ -301,7 +271,7 @@ class _unicode_module_wrapper:
 
     __slots__ = ("_mod", "_encoding", "_overrides", "_cache")
 
-    def __init__(self, mod, encoding=_encodings["fs"], overrides=None, cache=True):
+    def __init__(self, mod, encoding="utf-8", overrides=None, cache=True):
         object.__setattr__(self, "_mod", mod)
         object.__setattr__(self, "_encoding", encoding)
         object.__setattr__(self, "_overrides", overrides)
@@ -376,26 +346,22 @@ _os_overrides = {
 if hasattr(_os, "statvfs"):
     _os_overrides[id(_os.statvfs)] = _os.statvfs
 
-os_unicode_fs = _unicode_module_wrapper(
-    _os, overrides=_os_overrides, encoding=_encodings["fs"]
-)
+os_unicode_fs = _unicode_module_wrapper(_os, overrides=_os_overrides, encoding="utf-8")
 os_unicode_merge = _unicode_module_wrapper(
-    _os, encoding=_encodings["merge"], overrides=_os_overrides
+    _os, encoding="utf-8", overrides=_os_overrides
 )
 
 import shutil as _shutil
 
-shutil_unicode_fs = _unicode_module_wrapper(_shutil, encoding=_encodings["fs"])
+shutil_unicode_fs = _unicode_module_wrapper(_shutil, encoding="utf-8")
 
 # Imports below this point rely on the above unicode wrapper definitions.
 try:
     __import__("selinux")
     import portage._selinux
 
-    selinux_unicode_fs = _unicode_module_wrapper(_selinux, encoding=_encodings["fs"])
-    selinux_unicode_merge = _unicode_module_wrapper(
-        _selinux, encoding=_encodings["merge"]
-    )
+    selinux_unicode_fs = _unicode_module_wrapper(_selinux, encoding="utf-8")
+    selinux_unicode_merge = _unicode_module_wrapper(_selinux, encoding="utf-8")
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
         sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
@@ -713,11 +679,10 @@ if VERSION == "HEAD":
             if os_unicode_fs.path.isdir(
                 os_unicode_fs.path.join(PORTAGE_BASE_PATH, ".git")
             ):
-                encoding = _encodings["fs"]
 
                 def _local_encoding_coercion(s):
                     if isinstance(s, str):
-                        s = s.encode(encoding, errors="strict")
+                        s = s.encode("utf-8", errors="strict")
                     return s
 
                 cmd = [
@@ -734,7 +699,7 @@ if VERSION == "HEAD":
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                 )
-                output = proc.communicate()[0].decode(encoding=encoding)
+                output = proc.communicate()[0].decode(encoding="utf-8")
                 status = proc.wait()
                 if (
                     os_unicode_fs.WIFEXITED(status)

@@ -4,7 +4,6 @@
 import gzip
 import errno
 
-from portage import _encodings
 from portage.util import writemsg_level
 from portage.util.futures._asyncio.streams import _writer
 from ..SlotObject import SlotObject
@@ -105,7 +104,7 @@ class SchedulerInterface(SlotObject):
         if log_path is not None:
             try:
                 f = open(
-                    log_path.encode(encoding=_encodings["fs"], errors="strict"),
+                    log_path.encode(encoding="utf-8", errors="strict"),
                     mode="ab",
                 )
                 f_real = f

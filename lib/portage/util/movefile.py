@@ -12,7 +12,6 @@ import textwrap
 import portage
 from portage import (
     bsd_chflags,
-    _encodings,
     _os_overrides,
     _selinux,
     _unicode_func_wrapper,
@@ -86,7 +85,7 @@ def _copyxattr(src, dest, exclude=None):
 
     if attrs:
         if exclude is not None and isinstance(attrs[0], bytes):
-            exclude = exclude.encode(_encodings["fs"])
+            exclude = exclude.encode(encoding="utf-8")
         exclude = _get_xattr_excluder(exclude)
 
     for attr in attrs:
@@ -113,7 +112,7 @@ def movefile(
     sstat=None,
     mysettings=None,
     hardlink_candidates=None,
-    encoding=_encodings["fs"],
+    encoding="utf-8",
 ):
     """moves a file from src to dest, preserving all permissions and attributes; mtime will
     be preserved even when moving across filesystems.  Returns mtime as integer on success

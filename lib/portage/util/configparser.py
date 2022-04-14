@@ -24,8 +24,6 @@ from configparser import (
 )
 from configparser import ConfigParser as SafeConfigParser
 
-from portage import _encodings
-
 
 def read_configs(parser, paths):
     """
@@ -50,9 +48,9 @@ def read_configs(parser, paths):
             f = None
             try:
                 f = io.open(
-                    p.encode(encoding=_encodings["fs"], errors="strict"),
+                    p.encode(encoding="utf-8", errors="strict"),
                     mode="r",
-                    encoding=_encodings["repo.content"],
+                    encoding="utf-8",
                     errors="replace",
                 )
             except EnvironmentError:

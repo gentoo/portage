@@ -21,7 +21,6 @@ import portage
 from portage import (
     os_unicode_fs,
     shutil_unicode_fs,
-    _encodings,
 )
 import io
 import logging
@@ -346,11 +345,11 @@ class Binpkg(CompositeTask):
 
             f = io.open(
                 os_unicode_fs.path.join(infloc, k).encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="w",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="backslashreplace",
             )
             try:
@@ -365,11 +364,11 @@ class Binpkg(CompositeTask):
                 md5sum = portage.checksum.perform_md5(pkg_path)
             with io.open(
                 os_unicode_fs.path.join(infloc, "BINPKGMD5").encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="w",
-                encoding=_encodings["content"],
+                encoding="utf-8",
                 errors="strict",
             ) as f:
                 f.write(f"{md5sum}\n")
@@ -450,11 +449,11 @@ class Binpkg(CompositeTask):
         try:
             with io.open(
                 os_unicode_fs.path.join(self._infloc, "EPREFIX").encode(
-                    encoding=_encodings["fs"],
+                    encoding="utf-8",
                     errors="strict",
                 ),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             ) as f:
                 self._build_prefix = f.read().rstrip("\n")
@@ -501,11 +500,11 @@ class Binpkg(CompositeTask):
         # We want to install in "our" prefix, not the binary one
         with io.open(
             os_unicode_fs.path.join(self._infloc, "EPREFIX").encode(
-                encoding=_encodings["fs"],
+                encoding="utf-8",
                 errors="strict",
             ),
             mode="w",
-            encoding=_encodings["repo.content"],
+            encoding="utf-8",
             errors="strict",
         ) as f:
             f.write(self.settings["EPREFIX"] + "\n")

@@ -38,7 +38,6 @@ from portage import (
     os_unicode_fs,
     selinux_unicode_fs,
     shutil_unicode_fs,
-    _encodings,
     _movefile,
     _shell_quote,
 )
@@ -1881,11 +1880,11 @@ def fetch(
                                     )
                                     with io.open(
                                         download_path.encode(
-                                            encoding=_encodings["fs"],
+                                            encoding="utf-8",
                                             errors="strict",
                                         ),
                                         mode="r",
-                                        encoding=_encodings["content"],
+                                        encoding="utf-8",
                                         errors="replace",
                                     ) as f:
                                         if html404.search(f.read()):

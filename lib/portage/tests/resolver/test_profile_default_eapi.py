@@ -3,7 +3,7 @@
 
 import io
 
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.const import USER_CONFIG_PATH
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import ResolverPlayground
@@ -113,7 +113,7 @@ class ProfileDefaultEAPITestCase(TestCase):
                     with io.open(
                         os_unicode_fs.path.join(prof_path, k),
                         mode="w",
-                        encoding=_encodings["repo.content"],
+                        encoding="utf-8",
                     ) as f:
                         for line in v:
                             f.write("%s\n" % line)

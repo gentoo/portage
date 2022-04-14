@@ -128,15 +128,15 @@ def main(argv):
         return 1
 
     infile = io.open(
-        src_pkgs_index.encode(encoding=portage._encodings["fs"], errors="strict"),
+        src_pkgs_index.encode(encoding="utf-8", errors="strict"),
         mode="r",
-        encoding=portage._encodings["repo.content"],
+        encoding="utf-8",
         errors="strict",
     )
 
     outfile = portage.util.atomic_ofstream(
         os.path.join(binhost_dir, "Packages"),
-        encoding=portage._encodings["repo.content"],
+        encoding="utf-8",
         errors="strict",
     )
 

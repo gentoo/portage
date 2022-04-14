@@ -38,7 +38,7 @@ if osp.isfile(
 import portage
 
 portage._internal_caller = True
-from portage import os_unicode_fs, shutil_unicode_fs, _encodings
+from portage import os_unicode_fs, shutil_unicode_fs
 from portage.dispatch_conf import (
     diffstatusoutput,
     diff_mixed_wrapper,
@@ -439,9 +439,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         if "log-file" in self.options:
             status, output = diff(curconf, newconf)
-            with io.open(
-                self.options["log-file"], mode="a", encoding=_encodings["stdio"]
-            ) as f:
+            with io.open(self.options["log-file"], mode="a", encoding="utf-8") as f:
                 f.write(output + "\n")
 
         perform_conf_update_hooks("pre-update", curconf)

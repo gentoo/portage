@@ -13,7 +13,6 @@ import io
 import logging
 import os
 
-from portage import _encodings
 from portage.util import writemsg_level
 from portage.localization import _
 from portage.data import ostype
@@ -48,7 +47,7 @@ def linux_ro_checker(dir_list):
         with io.open(
             "/proc/self/mountinfo",
             mode="r",
-            encoding=_encodings["content"],
+            encoding="utf-8",
             errors="replace",
         ) as f:
             for line in f:

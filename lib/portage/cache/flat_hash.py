@@ -9,7 +9,7 @@ import io
 import stat
 import tempfile
 import os as _os
-from portage import os_unicode_fs, _encodings
+from portage import os_unicode_fs
 from portage.exception import InvalidData
 from portage.versions import _pkg_str
 
@@ -36,9 +36,9 @@ class database(fs_template.FsBased):
         fp = self.location + _os.sep + cpv
         try:
             with io.open(
-                fp.encode(encoding=_encodings["fs"], errors="strict"),
+                fp.encode(encoding="utf-8", errors="strict"),
                 mode="r",
-                encoding=_encodings["repo.content"],
+                encoding="utf-8",
                 errors="replace",
             ) as myf:
                 lines = myf.read().split("\n")
@@ -68,9 +68,7 @@ class database(fs_template.FsBased):
         except EnvironmentError as e:
             raise cache_errors.CacheCorruption(cpv, e)
 
-        with io.open(
-            fd, mode="w", encoding=_encodings["repo.content"], errors="backslashreplace"
-        ) as myf:
+        with io.open(fd, mode="w", encoding="utf-8", errors="backslashreplace") as myf:
             for k in self._write_keys:
                 v = values.get(k)
                 if not v:
