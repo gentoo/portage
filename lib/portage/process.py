@@ -12,6 +12,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import traceback
 import os as _os
 
@@ -504,6 +505,21 @@ def spawn(
 
     # Everything succeeded
     return 0
+
+
+def spawn_check_output(cmd, **kwargs):
+    with tempfile.TemporaryFile() as tmp:
+        # The fd_pipes currently in self.spawn_kwargs result
+        # in stdout and stderr both going to stdout. In this
+        # specific case, we want to capture the output of the
+        # command we run, so we temporarily change fd_pipes
+        # and restore it later.
+        kwargs["fd_pipes"] = {1: tmp.fileno(), 2: tmp.fileno()}
+        portage.process.spawn(cmd, **kwargs)
+        tmp.seek(0)
+
+        output = portage._unicode_decode(tmp.read()).rstrip("\n")
+    return output
 
 
 __has_ipv6 = None

@@ -153,9 +153,7 @@ class GitSync(NewBase):
             )
 
         try:
-            remote_branch = portage._unicode_decode(
-                subprocess.check_output(
-                    [
+            remote_branch = portage.process.spawn_check_output([
                         self.bin_command,
                         "rev-parse",
                         "--abbrev-ref",
@@ -163,8 +161,8 @@ class GitSync(NewBase):
                         "@{upstream}",
                     ],
                     cwd=portage._unicode_encode(self.repo.location),
-                )
-            ).rstrip("\n")
+                    **self.spawn_kwargs
+            )
         except subprocess.CalledProcessError as e:
             msg = "!!! git rev-parse error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
@@ -201,8 +199,9 @@ class GitSync(NewBase):
         writemsg_level(git_cmd + "\n")
 
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
-        previous_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
+        previous_rev = portage.process.spawn_check_output(
+            rev_cmd, cwd=portage._unicode_encode(self.repo.location),
+            **self.spawn_kwargs
         )
 
         exitcode = portage.process.spawn_bash(
@@ -240,8 +239,9 @@ class GitSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
 
-        current_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
+        current_rev = portage.process.spawn_check_output(
+            rev_cmd, cwd=portage._unicode_encode(self.repo.location),
+            **self.spawn_kwargs
         )
 
         return (os.EX_OK, current_rev != previous_rev)
