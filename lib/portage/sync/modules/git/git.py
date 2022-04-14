@@ -104,7 +104,7 @@ class GitSync(NewBase):
 
         exitcode = portage.process.spawn_bash(
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
             msg = "!!! git clone error in %s" % self.repo.location
@@ -154,7 +154,7 @@ class GitSync(NewBase):
 
         try:
             remote_branch = portage._unicode_decode(
-                subprocess.check_output(
+                portage.process.check_output(
                     [
                         self.bin_command,
                         "rev-parse",
@@ -163,6 +163,7 @@ class GitSync(NewBase):
                         "@{upstream}",
                     ],
                     cwd=portage._unicode_encode(self.repo.location),
+                    **self.spawn_kwargs,
                 )
             ).rstrip("\n")
         except subprocess.CalledProcessError as e:
@@ -184,7 +185,7 @@ class GitSync(NewBase):
             exitcode = portage.process.spawn(
                 gc_cmd,
                 cwd=portage._unicode_encode(self.repo.location),
-                **self.spawn_kwargs
+                **self.spawn_kwargs,
             )
             if exitcode != os.EX_OK:
                 msg = "!!! git gc error in %s" % self.repo.location
@@ -201,13 +202,15 @@ class GitSync(NewBase):
         writemsg_level(git_cmd + "\n")
 
         rev_cmd = [self.bin_command, "rev-list", "--max-count=1", "HEAD"]
-        previous_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
+        previous_rev = portage.process.check_output(
+            rev_cmd,
+            cwd=portage._unicode_encode(self.repo.location),
+            **self.spawn_kwargs,
         )
 
         exitcode = portage.process.spawn_bash(
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
 
         if exitcode != os.EX_OK:
@@ -231,7 +234,7 @@ class GitSync(NewBase):
         exitcode = portage.process.spawn(
             merge_cmd,
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
 
         if exitcode != os.EX_OK:
@@ -240,8 +243,10 @@ class GitSync(NewBase):
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
 
-        current_rev = subprocess.check_output(
-            rev_cmd, cwd=portage._unicode_encode(self.repo.location)
+        current_rev = portage.process.check_output(
+            rev_cmd,
+            cwd=portage._unicode_encode(self.repo.location),
+            **self.spawn_kwargs,
         )
 
         return (os.EX_OK, current_rev != previous_rev)
@@ -285,11 +290,13 @@ class GitSync(NewBase):
 
             rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
             try:
+                kwargs = self.spawn_kwargs.copy()
+                kwargs["env"] = env
                 status = portage._unicode_decode(
-                    subprocess.check_output(
+                    portage.process.check_output(
                         rev_cmd,
                         cwd=portage._unicode_encode(self.repo.location),
-                        env=env,
+                        **kwargs,
                     )
                 ).strip()
             except subprocess.CalledProcessError:
@@ -333,8 +340,10 @@ class GitSync(NewBase):
             ret = (
                 os.EX_OK,
                 portage._unicode_decode(
-                    subprocess.check_output(
-                        rev_cmd, cwd=portage._unicode_encode(self.repo.location)
+                    portage.process.check_output(
+                        rev_cmd,
+                        cwd=portage._unicode_encode(self.repo.location),
+                        **self.spawn_kwargs,
                     )
                 ),
             )

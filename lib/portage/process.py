@@ -12,6 +12,7 @@ import signal
 import socket
 import subprocess
 import sys
+import tempfile
 import traceback
 import os as _os
 
@@ -1092,3 +1093,14 @@ def find_binary(binary):
         if _os.access(filename, os.X_OK) and _os.path.isfile(filename):
             return filename
     return None
+
+
+def check_output(mycommand, **kwargs):
+    with tempfile.TemporaryFile() as tf:
+        kwargs["fd_pipes"] = {1: tf.fileno()}
+        status = spawn(mycommand, **kwargs)
+        tf.seek(0)
+        output = tf.read()
+        if status != 0:
+            raise subprocess.CalledProcessError(status, mycommand, output=output)
+        return output
