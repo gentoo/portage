@@ -265,9 +265,29 @@ class GitSync(NewBase):
             )
             return False
 
-        openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
+        # Drop privileges before calling gemato openpgp functions.
+        saved_groups = None
+        groups = self.spawn_kwargs.get("groups")
+        if groups is not None:
+            saved_groups = os.getgroups()
+            os.setgroups(groups)
+
+        saved_gid = None
+        gid = self.spawn_kwargs.get("gid")
+        if gid is not None:
+            saved_gid = os.getegid()
+            os.setegid(gid)
+
+        saved_uid = None
+        uid = self.spawn_kwargs.get("uid")
+        if uid is not None:
+            saved_uid = os.geteuid()
+            os.seteuid(uid)
+
+        openpgp_env = None
 
         try:
+            openpgp_env = self._get_openpgp_env(self.repo.sync_openpgp_key_path)
             out = EOutput()
             env = None
             if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
@@ -290,13 +310,11 @@ class GitSync(NewBase):
 
             rev_cmd = [self.bin_command, "log", "-n1", "--pretty=format:%G?", revision]
             try:
-                kwargs = self.spawn_kwargs.copy()
-                kwargs["env"] = env
                 status = portage._unicode_decode(
-                    portage.process.check_output(
+                    subprocess.check_output(
                         rev_cmd,
                         cwd=portage._unicode_encode(self.repo.location),
-                        **kwargs,
+                        env=env,
                     )
                 ).strip()
             except subprocess.CalledProcessError:
@@ -327,6 +345,12 @@ class GitSync(NewBase):
         finally:
             if openpgp_env is not None:
                 openpgp_env.close()
+            if saved_uid is not None:
+                os.seteuid(saved_uid)
+            if saved_gid is not None:
+                os.setegid(saved_gid)
+            if saved_groups is not None:
+                os.setgroups(saved_groups)
 
     def retrieve_head(self, **kwargs):
         """Get information about the head commit"""
