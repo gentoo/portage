@@ -1806,6 +1806,7 @@ class dblink:
         blockers=None,
         scheduler=None,
         pipe=None,
+        mtime_pipe=None,
     ):
         """
         Creates a DBlink object for a given CPV.
@@ -1862,6 +1863,7 @@ class dblink:
         self._device_path_map = {}
         self._hardlink_merge_map = {}
         self._hash_key = (self._eroot, self.mycpv)
+        self._mtime_pipe = mtime_pipe
         self._protect_obj = None
         self._pipe = pipe
         self._postinst_failure = False
@@ -2618,6 +2620,7 @@ class dblink:
                 writemsg_level=self._display_merge,
                 vardbapi=self.vartree.dbapi,
             )
+            self._send_mtimes(ldpath_mtimes)
 
         unmerge_with_replacement = preserve_paths is not None
         if not unmerge_with_replacement:
@@ -4243,6 +4246,12 @@ class dblink:
     def _emerge_log(self, msg):
         emergelog(False, msg)
 
+    def _send_mtimes(self, mtimes):
+        if self._mtime_pipe is None:
+            return
+
+        self._mtime_pipe.send(mtimes)
+
     def treewalk(
         self,
         srcroot,
@@ -5274,6 +5283,7 @@ class dblink:
                 writemsg_level=self._display_merge,
                 vardbapi=self.vartree.dbapi,
             )
+            self._send_mtimes(prev_mtimes)
 
         # For gcc upgrades, preserved libs have to be removed after the
         # the library path has been updated.
