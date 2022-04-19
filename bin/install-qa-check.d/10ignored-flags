@@ -1,8 +1,9 @@
 # QA checks for ignored *FLAGS.
 
 ignored_flag_check() {
-	type -P scanelf > /dev/null || return
-	has binchecks ${PORTAGE_RESTRICT} && return
+	if ! type -P scanelf >/dev/null || has binchecks ${PORTAGE_RESTRICT}; then
+		return
+	fi
 
 	local qa_var="QA_FLAGS_IGNORED_${ARCH/-/_}"
 	eval "[[ -n \${!qa_var} ]] && QA_FLAGS_IGNORED=(\"\${${qa_var}[@]}\")"
