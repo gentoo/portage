@@ -340,9 +340,15 @@ ebegin() {
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
 	if [[ -v EBEGIN_EEND ]] ; then
-		eqawarn "QA Notice: ebegin called, but missing call to eend (phase: ${EBUILD_PHASE})"
+		# Already a call to ebegin
+		local prev="${EBEGIN_EEND[-1]}"
+		if [[ "${prev}" == "${FUNCNAME[1]}" ]] ; then
+			eqawarn "QA Notice: ebegin called in ${prev}, but missing call to eend (${FUNCNAME[1]})"
+		fi
+		EBEGIN_EEND+=( "${FUNCNAME[1]}" )
+	else
+		EBEGIN_EEND=( "${FUNCNAME[1]}" )
 	fi
-	EBEGIN_EEND=1
 	return 0
 }
 
@@ -372,9 +378,17 @@ __eend() {
 eend() {
 	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
 	if [[ -v EBEGIN_EEND ]] ; then
-		unset EBEGIN_EEND
+		local caller="${FUNCNAME[1]}"
+		local tos="${EBEGIN_EEND[-1]}"
+		if [[ "${caller}" != "${tos}" ]] ; then
+			eqawarn "QA Notice: eend (in ${caller}) improperly matched with ebegin (called in ${tos})"
+		fi
+		unset EBEGIN_EEND[-1]
+		if [[ ${#EBEGIN_EEND[@]} -eq 0 ]] ; then
+			unset EBEGIN_EEND
+		fi
 	else
-		eqawarn "QA Notice: eend called without preceding ebegin (phase: ${EBUILD_PHASE})"
+		eqawarn "QA Notice: eend called without preceding ebegin (phase: ${FUNCNAME[1]})"
 	fi
 	local retval=${1:-0}
 	shift
