@@ -1089,7 +1089,9 @@ __ebuild_main() {
 	esac
 
 	if [[ -v EBEGIN_EEND ]] ; then
-		eqawarn "QA Notice: ebegin called, but missing call to eend (phase: ${1})"
+		for func in "${EBEGIN_EEND[@]}" ; do
+			eqawarn "QA Notice: ebegin called in ${func} but missing call to eend"
+		done
 	fi
 
 	# Save the env only for relevant phases.
