@@ -48,9 +48,20 @@ class MiscFunctionsProcess(AbstractEbuildProcess):
         # Temporarily unset EBUILD_PHASE so that bashrc code doesn't
         # think this is a real phase.
         phase_backup = self.settings.pop("EBUILD_PHASE", None)
+
+        # Use a separate sandbox log file to avoid clobbering the real one.
+        sandbox_log = self.settings.pop("SANDBOX_LOG", None)
+        if sandbox_log is not None:
+            self.settings["SANDBOX_LOG"] = os.path.join(
+                self.settings["T"], "sandbox-misc.log"
+            )
+
         try:
             return spawn(" ".join(args), self.settings, **kwargs)
         finally:
             if phase_backup is not None:
                 self.settings["EBUILD_PHASE"] = phase_backup
             self.settings.pop("PORTAGE_PIPE_FD", None)
+            self.settings.pop("SANDBOX_LOG", None)
+            if sandbox_log is not None:
+                self.settings["SANDBOX_LOG"] = sandbox_log
