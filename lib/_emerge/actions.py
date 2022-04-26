@@ -520,6 +520,16 @@ def action_build(
         if mergecount != 0:
             myopts.pop("--ask", None)
 
+    emergerc_bin = os.path.join("/", portage.const.PORTAGE_BIN_PATH, "emergerc-functions.sh")
+    emergerc_script = os.path.join("/", portage.const.USER_CONFIG_PATH, "emergerc")
+    shproc = subprocess.Popen(["/bin/sh"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    shproc.stdin.write("source " + emergerc_bin + ";")
+    shproc.stdin.write("[[ -f " + emergerc_script + " ]] && source " + emergerc_script + ";")
+    shproc.stdin.write("firstEmerge_hooks;")
+    output = shproc.communicate()
+    for line in output:
+        print(line)
+
     if ("--pretend" in myopts) and not (
         "--fetchonly" in myopts or "--fetch-all-uri" in myopts
     ):
