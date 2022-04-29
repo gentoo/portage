@@ -219,7 +219,8 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
     be helpful for handling of corrupt EAPI metadata in essential functions
     such as pkgsplit.
     """
-    logging.info("cache info: {}".format(_get_eapi_attrs.cache_info()))
+
+    # logging.info("cache info: {}".format(_get_eapi_attrs.cache_info()))
     if eapi_str is None or not eapi_is_supported(eapi_str):
         return _eapi_attrs(
             allows_package_provided=True,
