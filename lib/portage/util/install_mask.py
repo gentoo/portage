@@ -174,11 +174,6 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
     todo = [base_dir]
     while todo:
         parent = todo.pop()
-        try:
-            parent = parent.decode(errors="strict")
-        except UnicodeDecodeError:
-            continue
-
         dir_stack.append(parent)
         for entry in os_unicode_fs.scandir(parent):
             try:
@@ -187,7 +182,7 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
                 continue
 
             if entry.is_dir(follow_symlinks=False):
-                todo.append(entry.path)
+                todo.append(abs_path)
             elif install_mask.match(abs_path[base_dir_len:]):
                 try:
                     os_unicode_fs.unlink(entry.path)
