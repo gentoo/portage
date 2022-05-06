@@ -25,14 +25,14 @@ has strip ${PORTAGE_RESTRICT} && PORTAGE_DOSTRIP=()
 declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_DESTTREE_=""
 	else
 		export _E_DESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_DESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -48,14 +48,14 @@ into() {
 }
 
 insinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_INSDESTTREE_=""
 	else
 		export _E_INSDESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -71,14 +71,14 @@ insinto() {
 }
 
 exeinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -90,14 +90,14 @@ exeinto() {
 }
 
 docinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -268,7 +268,7 @@ use() {
 }
 
 use_with() {
-	if [ -z "$1" ]; then
+	if [[ -z "$1" ]]; then
 		echo "!!! use_with() called without a parameter." >&2
 		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -290,7 +290,7 @@ use_with() {
 }
 
 use_enable() {
-	if [ -z "$1" ]; then
+	if [[ -z "$1" ]]; then
 		echo "!!! use_enable() called without a parameter." >&2
 		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -318,7 +318,7 @@ unpack() {
 	local suffix suffix_insensitive
 	local myfail
 	local eapi=${EAPI:-0}
-	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
+	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
 		__vecho ">>> Unpacking ${x} to ${PWD}"
@@ -436,7 +436,7 @@ unpack() {
 				if ___eapi_unpack_supports_7z; then
 					local my_output
 					my_output="$(7z x -y "${srcdir}${x}")"
-					if [ $? -ne 0 ]; then
+					if [[ $? -ne 0 ]]; then
 						echo "${my_output}" >&2
 						die "$myfail"
 					fi
@@ -497,7 +497,7 @@ unpack() {
 					type -P deb2targz > /dev/null; then
 					y=${x##*/}
 					local created_symlink=0
-					if [ ! "$srcdir$x" -ef "$y" ] ; then
+					if [[ ! "$srcdir$x" -ef "$y" ]]; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
@@ -505,7 +505,7 @@ unpack() {
 						created_symlink=1
 					fi
 					deb2targz "$y" || die "$myfail"
-					if [ $created_symlink = 1 ] ; then
+					if [[ $created_symlink = 1 ]]; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
 						rm -f "$y"
@@ -594,7 +594,7 @@ econf() {
 	fi
 
 	: ${ECONF_SOURCE:=.}
-	if [ -x "${ECONF_SOURCE}/configure" ]; then
+	if [[ -x "${ECONF_SOURCE}/configure" ]]; then
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
 			cp -p "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
@@ -606,7 +606,7 @@ econf() {
 			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
-		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
+		if [[ -e "${EPREFIX}"/usr/share/gnuconfig/ ]]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
@@ -701,7 +701,7 @@ econf() {
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
 
-			if [ -s config.log ]; then
+			if [[ -s config.log ]]; then
 				echo
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
@@ -711,7 +711,7 @@ econf() {
 			__helpers_die "econf failed"
 			return 1
 		fi
-	elif [ -f "${ECONF_SOURCE}/configure" ]; then
+	elif [[ -f "${ECONF_SOURCE}/configure" ]]; then
 		die "configure is not executable"
 	else
 		die "no configure script found"
@@ -730,11 +730,11 @@ einstall() {
 		local ED=${D}
 	fi
 	LIBDIR_VAR="LIBDIR_${ABI}"
-	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+	if [[ -n "${ABI}" && -n "${!LIBDIR_VAR}" ]]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
+	if [[ -n "${CONF_LIBDIR}" && "${CONF_PREFIX:+set}" = set ]]; then
 		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
@@ -742,7 +742,7 @@ einstall() {
 	fi
 
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
-		if [ "${PORTAGE_DEBUG}" == "1" ]; then
+		if [[ "${PORTAGE_DEBUG}" == "1" ]]; then
 			${MAKE:-make} -n prefix="${ED%/}/usr" \
 				datadir="${ED%/}/usr/share" \
 				infodir="${ED%/}/usr/share/info" \
@@ -786,7 +786,7 @@ __eapi0_src_unpack() {
 }
 
 __eapi0_src_compile() {
-	if [ -x ./configure ] ; then
+	if [[ -x ./configure ]]; then
 		econf
 	fi
 	__eapi2_src_compile
@@ -830,7 +830,7 @@ __eapi2_src_configure() {
 }
 
 __eapi2_src_compile() {
-	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]]; then
 		emake || die "emake failed"
 	fi
 }
@@ -892,7 +892,7 @@ ___best_version_and_has_version_common() {
 	esac
 	atom=$1
 	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[1]}: unused argument(s): $*"
+	[[ $# -gt 0 ]] && die "${FUNCNAME[1]}: unused argument(s): $*"
 
 	case ${root_arg} in
 		"") if ___eapi_has_prefix_variables; then
