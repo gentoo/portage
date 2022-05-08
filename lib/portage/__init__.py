@@ -61,7 +61,6 @@ try:
         "portage.cache.cache_errors:CacheError",
         "portage.checksum",
         "portage.checksum:perform_checksum,perform_md5,prelink_capable",
-        "portage.cvstree",
         "portage.data",
         "portage.data:lchown,ostype,portage_gid,portage_uid,secpass,"
         + "uid,userland,userpriv_groups,wheelgid",
