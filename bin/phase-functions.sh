@@ -988,7 +988,7 @@ __ebuild_main() {
 			ewarn  "pkg_${1}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"
-		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
 			__ebuild_phase_with_hooks pkg_${1}
 		else
 			set -x
@@ -1055,7 +1055,7 @@ __ebuild_main() {
 			;;
 		esac
 
-		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
 			__dyn_${1}
 		else
 			set -x
@@ -1069,7 +1069,7 @@ __ebuild_main() {
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [[ "${PORTAGE_DEBUG}" != "1" ]] || [[ "${-/x/}" != "$-" ]]; then
+		if [[ "${PORTAGE_DEBUG}" != "1" || "${-/x/}" != "$-" ]]; then
 			__dyn_${1}
 		else
 			set -x
