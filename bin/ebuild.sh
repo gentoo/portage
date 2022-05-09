@@ -556,7 +556,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 		y="PORTAGE_${x}"
 		if [[ -z "${!x}" ]]; then
 			export ${x}="${!y}"
-		elif [[ -n "${!y}" ]] && [[ "${!y}" != "${!x}" ]]; then
+		elif [[ -n "${!y}" && "${!y}" != "${!x}" ]]; then
 			# filter out dupes
 			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
 				sort -z -u | tr "\0" ":")"
