@@ -630,15 +630,14 @@ class binarytree:
             return moves
         for mycpv in origmatches:
             mycpv_cp = mycpv.cp
-            if mycpv_cp != origcp:
+            if (
                 # Ignore PROVIDE virtual match.
-                continue
-            if repo_match is not None and not repo_match(mycpv.repo):
-                continue
-
-            # Use isvalidatom() to check if this move is valid for the
-            # EAPI (characters allowed in package names may vary).
-            if not isvalidatom(newcp, eapi=mycpv.eapi):
+                mycpv_cp != origcp
+                or (repo_match is not None and not repo_match(mycpv.repo))
+                # Use isvalidatom() to check if this move is valid for the
+                # EAPI (characters allowed in package names may vary).
+                or not isvalidatom(newcp, eapi=mycpv.eapi)
+            ):
                 continue
 
             mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)

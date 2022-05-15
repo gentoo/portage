@@ -1311,14 +1311,15 @@ class portdbapi(dbapi):
                 except InvalidData:
                     continue
 
-                if visibility_filter and not self._visible(pkg_str, metadata):
-                    continue
-
-                if mydep.slot is not None and not _match_slot(mydep, pkg_str):
-                    continue
-
-                if mydep.unevaluated_atom.use is not None and not self._match_use(
-                    mydep, pkg_str, metadata, ignore_profile=ignore_profile
+                if (
+                    (visibility_filter and not self._visible(pkg_str, metadata))
+                    or (mydep.slot is not None and not _match_slot(mydep, pkg_str))
+                    or (
+                        mydep.unevaluated_atom.use is not None
+                        and not self._match_use(
+                            mydep, pkg_str, metadata, ignore_profile=ignore_profile
+                        )
+                    )
                 ):
                     continue
                 myval.append(pkg_str)

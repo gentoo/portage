@@ -747,21 +747,18 @@ class vardbapi(dbapi):
             aux_cache["packages"] = {}
 
         owners = aux_cache.get("owners")
-        if owners is not None:
-            if not isinstance(owners, dict):
-                owners = None
-            elif "version" not in owners:
-                owners = None
-            elif owners["version"] != self._owners_cache_version:
-                owners = None
-            elif "base_names" not in owners:
-                owners = None
-            elif not isinstance(owners["base_names"], dict):
-                owners = None
-
-        if owners is None:
-            owners = {"base_names": {}, "version": self._owners_cache_version}
-            aux_cache["owners"] = owners
+        if (
+            owners is None
+            or not isinstance(owners, dict)
+            or "version" not in owners
+            or owners["version"] != self._owners_cache_version
+            or "base_names" not in owners
+            or not isinstance(owners["base_names"], dict)
+        ):
+            aux_cache["owners"] = {
+                "base_names": {},
+                "version": self._owners_cache_version,
+            }
 
         aux_cache["modified"] = set()
         self._aux_cache_obj = aux_cache
@@ -809,25 +806,22 @@ class vardbapi(dbapi):
         cache_mtime = None
         metadata = None
         if pkg_data is not None:
-            if not isinstance(pkg_data, tuple) or len(pkg_data) != 2:
-                pkg_data = None
-            else:
-                cache_mtime, metadata = pkg_data
-                if not isinstance(cache_mtime, (float, int)) or not isinstance(
-                    metadata, dict
-                ):
-                    pkg_data = None
-
-        if pkg_data:
             cache_mtime, metadata = pkg_data
-            if isinstance(cache_mtime, float):
-                if cache_mtime == mydir_stat.st_mtime:
-                    cache_valid = True
-
+            if (
+                not isinstance(pkg_data, tuple)
+                or len(pkg_data) != 2
+                or not isinstance(cache_mtime, (float, int))
+                or not isinstance(metadata, dict)
+            ):
+                pkg_data = None
+            elif (
+                isinstance(cache_mtime, float)
+                and cache_mtime == mydir_stat.st_mtime
                 # Handle truncated mtime in order to avoid cache
                 # invalidation for livecd squashfs (bug 564222).
-                elif int(cache_mtime) == mydir_stat.st_mtime:
-                    cache_valid = True
+                or int(cache_mtime) == mydir_stat.st_mtime
+            ):
+                cache_valid = True
             else:
                 # Cache may contain integer mtime.
                 cache_valid = cache_mtime == mydir_stat[stat.ST_MTIME]
