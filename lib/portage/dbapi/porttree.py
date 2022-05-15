@@ -218,10 +218,12 @@ class portdbapi(dbapi):
 
         if _unused_param is not DeprecationWarning:
             warnings.warn(
-                "The first parameter of the "
-                + "portage.dbapi.porttree.portdbapi"
-                + " constructor is unused since portage-2.1.8. "
-                + "mysettings['PORTDIR'] is used instead.",
+                (
+                    "The first parameter of the "
+                    "portage.dbapi.porttree.portdbapi "
+                    "constructor is unused since portage-2.1.8. "
+                    "mysettings['PORTDIR'] is used instead."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1455,18 +1457,22 @@ class portagetree:
         self.settings = settings
         if root is not DeprecationWarning:
             warnings.warn(
-                "The root parameter of the "
-                + "portage.dbapi.porttree.portagetree"
-                + " constructor is now unused. Use "
-                + "settings['ROOT'] instead.",
+                (
+                    "The root parameter of the "
+                    "portage.dbapi.porttree.portagetree "
+                    "constructor is now unused. Use "
+                    "settings['ROOT'] instead."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
         if virtual is not DeprecationWarning:
             warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.porttree.portagetree"
-                " constructor is unused",
+                (
+                    "The 'virtual' parameter of the "
+                    "portage.dbapi.porttree.portagetree "
+                    "constructor is unused"
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1477,9 +1483,11 @@ class portagetree:
     def portroot(self):
         """Deprecated. Use the portdbapi getRepositoryPath method instead."""
         warnings.warn(
-            "The portroot attribute of "
-            "portage.dbapi.porttree.portagetree is deprecated. Use the "
-            "portdbapi getRepositoryPath method instead.",
+            (
+                "The portroot attribute of "
+                "portage.dbapi.porttree.portagetree is deprecated. Use the "
+                "portdbapi getRepositoryPath method instead."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )
@@ -1488,10 +1496,12 @@ class portagetree:
     @property
     def root(self):
         warnings.warn(
-            "The root attribute of "
-            + "portage.dbapi.porttree.portagetree"
-            + " is deprecated. Use "
-            + "settings['ROOT'] instead.",
+            (
+                "The root attribute of "
+                "portage.dbapi.porttree.portagetree "
+                "is deprecated. Use "
+                "settings['ROOT'] instead."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )
@@ -1500,9 +1510,11 @@ class portagetree:
     @property
     def virtual(self):
         warnings.warn(
-            "The 'virtual' attribute of "
-            + "portage.dbapi.porttree.portagetree"
-            + " is deprecated.",
+            (
+                "The 'virtual' attribute of "
+                "portage.dbapi.porttree.portagetree "
+                "is deprecated."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )
@@ -1533,9 +1545,11 @@ class portagetree:
     def getname(self, pkgname):
         """Deprecated. Use the portdbapi findname method instead."""
         warnings.warn(
-            "The getname method of "
-            "portage.dbapi.porttree.portagetree is deprecated. "
-            "Use the portdbapi findname method instead.",
+            (
+                "The getname method of "
+                "portage.dbapi.porttree.portagetree is deprecated. "
+                "Use the portdbapi findname method instead."
+            ),
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1581,8 +1595,10 @@ class FetchlistDict(Mapping):
     def has_key(self, pkg_key):
         """Returns true if the given package exists within pkgdir."""
         warnings.warn(
-            "portage.dbapi.porttree.FetchlistDict.has_key() is "
-            "deprecated, use the 'in' operator instead",
+            (
+                "portage.dbapi.porttree.FetchlistDict.has_key() is "
+                "deprecated, use the 'in' operator instead"
+            ),
             DeprecationWarning,
             stacklevel=2,
         )

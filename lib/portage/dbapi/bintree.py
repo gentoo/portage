@@ -8,16 +8,20 @@ import portage
 portage.proxy.lazyimport.lazyimport(
     globals(),
     "_emerge.BinpkgExtractorAsync:BinpkgExtractorAsync",
-    "portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,"
-    + "verify_all,_apply_hash_filter,_hash_filter",
+    (
+        "portage.checksum:get_valid_checksum_keys,perform_multiple_checksums,"
+        "verify_all,_apply_hash_filter,_hash_filter"
+    ),
     "portage.dbapi.dep_expand:dep_expand",
     "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list",
     "portage.output:EOutput,colorize",
     "portage.locks:lockfile,unlockfile",
     "portage.package.ebuild.fetch:_check_distfile,_hide_url_passwd",
     "portage.update:update_dbentries",
-    "portage.util:atomic_ofstream,ensure_dirs,normalize_path,"
-    + "writemsg,writemsg_stdout",
+    (
+        "portage.util:atomic_ofstream,ensure_dirs,normalize_path,"
+        "writemsg,writemsg_stdout"
+    ),
     "portage.util.path:first_existing",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._urlopen:urlopen@_urlopen,have_pep_476@_have_pep_476",
@@ -441,18 +445,22 @@ class binarytree:
             raise TypeError("settings parameter is required")
         if _unused is not DeprecationWarning:
             warnings.warn(
-                "The first parameter of the "
-                "portage.dbapi.bintree.binarytree"
-                " constructor is now unused. Instead "
-                "settings['ROOT'] is used.",
+                (
+                    "The first parameter of the "
+                    "portage.dbapi.bintree.binarytree "
+                    "constructor is now unused. Instead "
+                    "settings['ROOT'] is used."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
         if virtual is not DeprecationWarning:
             warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.bintree.binarytree"
-                " constructor is unused",
+                (
+                    "The 'virtual' parameter of the "
+                    "portage.dbapi.bintree.binarytree "
+                    "constructor is unused"
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -595,10 +603,12 @@ class binarytree:
     @property
     def root(self):
         warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.bintree.binarytree"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
+            (
+                "The root attribute of "
+                "portage.dbapi.bintree.binarytree "
+                "is deprecated. Use "
+                "settings['ROOT'] instead."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )

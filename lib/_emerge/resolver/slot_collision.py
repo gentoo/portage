@@ -724,9 +724,10 @@ class slot_conflict_handler:
         if self.conflict_is_unspecific and not (
             "--newuse" in self.myopts and "--update" in self.myopts
         ):
-            msg += "!!! Enabling --newuse and --update might solve this conflict.\n"
-            msg += "!!! If not, it might help emerge to give a more specific suggestion.\n\n"
-            return msg
+            return (
+                "!!! Enabling --newuse and --update might solve this conflict.\n"
+                "!!! If not, it might help emerge to give a more specific suggestion.\n\n"
+            )
 
         solutions = self.solutions
         if not solutions:

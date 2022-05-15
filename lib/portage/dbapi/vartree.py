@@ -13,20 +13,26 @@ portage.proxy.lazyimport.lazyimport(
     "portage.dbapi.dep_expand:dep_expand",
     "portage.dbapi._MergeProcess:MergeProcess",
     "portage.dbapi._SyncfsProcess:SyncfsProcess",
-    "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,"
-    + "use_reduce,_slot_separator,_repo_separator",
+    (
+        "portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,"
+        "use_reduce,_slot_separator,_repo_separator"
+    ),
     "portage.eapi:_get_eapi_attrs",
-    "portage.elog:collect_ebuild_messages,collect_messages,"
-    + "elog_process,_merge_logentries",
+    (
+        "portage.elog:collect_ebuild_messages,collect_messages,"
+        "elog_process,_merge_logentries"
+    ),
     "portage.locks:lockdir,unlockdir,lockfile,unlockfile",
     "portage.output:bold,colorize",
     "portage.package.ebuild.doebuild:doebuild_environment," + "_merge_unicode_error",
     "portage.package.ebuild.prepare_build_dirs:prepare_build_dirs",
     "portage.package.ebuild._ipc.QueryCommand:QueryCommand",
     "portage.process:find_binary",
-    "portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,"
-    + "writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,"
-    + "grabdict,normalize_path,new_protect_filename",
+    (
+        "portage.util:apply_secpass_permissions,ConfigProtect,ensure_dirs,"
+        "writemsg,writemsg_level,write_atomic,atomic_ofstream,writedict,"
+        "grabdict,normalize_path,new_protect_filename"
+    ),
     "portage.util._compare_files:compare_files",
     "portage.util.digraph:digraph",
     "portage.util.env_update:env_update",
@@ -41,8 +47,10 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._dyn_libs.NeededEntry:NeededEntry",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
     "portage.util._eventloop.global_event_loop:global_event_loop",
-    "portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,"
-    + "_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo",
+    (
+        "portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,"
+        "_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo"
+    ),
     "portage.gpkg",
     "subprocess",
     "tarfile",
@@ -167,10 +175,12 @@ class vardbapi(dbapi):
 
         if _unused_param is not DeprecationWarning:
             warnings.warn(
-                "The first parameter of the "
-                "portage.dbapi.vartree.vardbapi"
-                " constructor is now unused. Instead "
-                "settings['ROOT'] is used.",
+                (
+                    "The first parameter of the "
+                    "portage.dbapi.vartree.vardbapi "
+                    "constructor is now unused. Instead "
+                    "settings['ROOT'] is used."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -248,10 +258,12 @@ class vardbapi(dbapi):
     @property
     def root(self):
         warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.vartree.vardbapi"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
+            (
+                "The root attribute of "
+                "portage.dbapi.vartree.vardbapi "
+                "is deprecated. Use "
+                "settings['ROOT'] instead."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )
@@ -1655,19 +1667,23 @@ class vartree:
 
         if root is not None and root != settings["ROOT"]:
             warnings.warn(
-                "The 'root' parameter of the "
-                "portage.dbapi.vartree.vartree"
-                " constructor is now unused. Use "
-                "settings['ROOT'] instead.",
+                (
+                    "The 'root' parameter of the "
+                    "portage.dbapi.vartree.vartree "
+                    "constructor is now unused. Use "
+                    "settings['ROOT'] instead."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
 
         if virtual is not DeprecationWarning:
             warnings.warn(
-                "The 'virtual' parameter of the "
-                "portage.dbapi.vartree.vartree"
-                " constructor is unused",
+                (
+                    "The 'virtual' parameter of the "
+                    "portage.dbapi.vartree.vartree "
+                    "constructor is unused"
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1679,10 +1695,12 @@ class vartree:
     @property
     def root(self):
         warnings.warn(
-            "The root attribute of "
-            "portage.dbapi.vartree.vartree"
-            " is deprecated. Use "
-            "settings['ROOT'] instead.",
+            (
+                "The root attribute of "
+                "portage.dbapi.vartree.vartree "
+                "is deprecated. Use "
+                "settings['ROOT'] instead."
+            ),
             DeprecationWarning,
             stacklevel=3,
         )
@@ -1761,11 +1779,11 @@ class dblink:
     _normalize_needed = re.compile(r"//|^[^/]|./$|(^|/)\.\.?(/|$)")
     _contents_re = re.compile(
         r"^("
-        + r"(?P<dir>(dev|dir|fif) (.+))|"
-        + r"(?P<obj>(obj) (.+) (\S+) (\d+))|"
-        + r"(?P<sym>(sym) (.+) -> (.+) ((\d+)|(?P<oldsym>("
-        + r"\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))"
-        + r")$"
+        r"(?P<dir>(dev|dir|fif) (.+))|"
+        r"(?P<obj>(obj) (.+) (\S+) (\d+))|"
+        r"(?P<sym>(sym) (.+) -> (.+) ((\d+)|(?P<oldsym>("
+        r"\(\d+, \d+L, \d+L, \d+, \d+, \d+, \d+L, \d+, (\d+), \d+\)))))"
+        r")$"
     )
 
     # These files are generated by emerge, so we need to remove
@@ -2296,9 +2314,11 @@ class dblink:
         """
         if trimworld is not None:
             warnings.warn(
-                "The trimworld parameter of the "
-                + "portage.dbapi.vartree.dblink.unmerge()"
-                + " method is now unused.",
+                (
+                    "The trimworld parameter of the "
+                    "portage.dbapi.vartree.dblink.unmerge() "
+                    "method is now unused."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -3295,10 +3315,12 @@ class dblink:
         """
         if destroot is not None and destroot != self._eroot:
             warnings.warn(
-                "The second parameter of the "
-                + "portage.dbapi.vartree.dblink.isowner()"
-                + " is now unused. Instead "
-                + "self.settings['EROOT'] will be used.",
+                (
+                    "The second parameter of the "
+                    "portage.dbapi.vartree.dblink.isowner() "
+                    "is now unused. Instead "
+                    "self.settings['EROOT'] will be used."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -3319,10 +3341,12 @@ class dblink:
         )
         if destroot is not None and destroot != self._eroot:
             warnings.warn(
-                "The second parameter of the "
-                + "portage.dbapi.vartree.dblink._match_contents()"
-                + " is now unused. Instead "
-                + "self.settings['ROOT'] will be used.",
+                (
+                    "The second parameter of the "
+                    "portage.dbapi.vartree.dblink._match_contents() "
+                    "is now unused. Instead "
+                    "self.settings['ROOT'] will be used."
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -6385,7 +6409,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
                 f.write(
                     _unicode_encode(
                         "# empty file because --include-config=n "
-                        + "when `quickpkg` was used\n"
+                        "when `quickpkg` was used\n"
                     )
                 )
                 f.flush()

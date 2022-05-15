@@ -1298,7 +1298,7 @@ class Scheduler(PollScheduler):
             else:
                 msg = (
                     "The following package has "
-                    + "failed to build, install, or execute postinst:"
+                    "failed to build, install, or execute postinst:"
                 )
 
             printer.eerror("")

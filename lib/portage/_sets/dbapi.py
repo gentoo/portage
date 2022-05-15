@@ -285,8 +285,8 @@ class UnavailableSet(EverythingSet):
 
     description = (
         "Package set which contains all installed "
-        + "packages for which there are no visible ebuilds "
-        + "corresponding to the same $CATEGORY/$PN:$SLOT."
+        "packages for which there are no visible ebuilds "
+        "corresponding to the same $CATEGORY/$PN:$SLOT."
     )
 
     def __init__(self, vardb, metadatadb=None):
@@ -318,8 +318,8 @@ class UnavailableBinaries(EverythingSet):
 
     description = (
         "Package set which contains all installed "
-        + "packages for which corresponding binary packages "
-        + "are not available."
+        "packages for which corresponding binary packages "
+        "are not available."
     )
 
     def __init__(self, vardb, metadatadb=None):
@@ -592,8 +592,8 @@ class ChangedDepsSet(PackageSet):
 
     description = (
         "Package set which contains all installed "
-        + "packages for which the vdb *DEPEND entries are outdated "
-        + "compared to corresponding portdb entries."
+        "packages for which the vdb *DEPEND entries are outdated "
+        "compared to corresponding portdb entries."
     )
 
     def __init__(self, portdb=None, vardb=None):

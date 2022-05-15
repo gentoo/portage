@@ -1227,7 +1227,7 @@ class depgraph:
 
         writemsg(
             "\n!!! The following binary packages have been ignored "
-            + "due to non matching USE:\n\n",
+            "due to non matching USE:\n\n",
             noiselevel=-1,
         )
 
@@ -1368,7 +1368,7 @@ class depgraph:
 
             writemsg(
                 "\n!!! The following update has been skipped "
-                + "due to unsatisfied dependencies:\n\n",
+                "due to unsatisfied dependencies:\n\n",
                 noiselevel=-1,
             )
 
@@ -1397,8 +1397,8 @@ class depgraph:
             # flooding from mask messages as reported in bug #285832.
             writemsg(
                 "\n!!! The following update(s) have been skipped "
-                + "due to unsatisfied dependencies\n"
-                + "!!! triggered by backtracking:\n\n",
+                "due to unsatisfied dependencies\n"
+                "!!! triggered by backtracking:\n\n",
                 noiselevel=-1,
             )
             for pkg, parent_atoms in backtrack_masked:
@@ -6349,7 +6349,7 @@ class depgraph:
             if reduced_noise != normalized_required_use:
                 writemsg(
                     "\n  The above constraints "
-                    + "are a subset of the following complete expression:\n",
+                    "are a subset of the following complete expression:\n",
                     noiselevel=-1,
                 )
                 writemsg(
@@ -6393,10 +6393,9 @@ class depgraph:
                 writemsg("\n", noiselevel=-1)
                 msg = (
                     "The current version of portage supports "
-                    + " of portage before EAPI masked packages can"
-                    + " be installed."
-                ) % portage.const.EAPI
                     f"EAPI '{portage.const.EAPI}'. You must upgrade to a newer version"
+                    " of portage before EAPI masked packages can be installed."
+                )
                 writemsg("\n".join(textwrap.wrap(msg, 75)), noiselevel=-1)
             writemsg("\n", noiselevel=-1)
             mask_docs = True
@@ -9697,14 +9696,14 @@ class depgraph:
             writemsg("".join(suggestions), noiselevel=-1)
             writemsg(
                 "\nNote that this change can be reverted, once the package has"
-                + " been installed.\n",
+                " been installed.\n",
                 noiselevel=-1,
             )
             if handler.large_cycle_count:
                 writemsg(
                     "\nNote that the dependency graph contains a lot of cycles.\n"
-                    + "Several changes might be required to resolve all cycles.\n"
-                    + "Temporarily changing some use flag for all packages might be the better option.\n",
+                    "Several changes might be required to resolve all cycles.\n"
+                    "Temporarily changing some use flag for all packages might be the better option.\n",
                     noiselevel=-1,
                 )
         else:
@@ -9728,8 +9727,8 @@ class depgraph:
         self._show_merge_list()
         msg = (
             "Error: The above package list contains "
-            + "packages which cannot be installed "
-            + "at the same time on the same system."
+            "packages which cannot be installed "
+            "at the same time on the same system."
         )
         prefix = colorize("BAD", " * ")
         portage.writemsg("\n", noiselevel=-1)
@@ -10436,12 +10435,12 @@ class depgraph:
             if len(self._dynamic_config._pprovided_args) > 1:
                 msg.append(
                     "Requested packages will not be "
-                    + "merged because they are listed in\n"
+                    "merged because they are listed in\n"
                 )
             else:
                 msg.append(
                     "A requested package will not be "
-                    + "merged because it is listed in\n"
+                    "merged because it is listed in\n"
                 )
             msg.append("package.provided:\n\n")
             problems_sets = set()
