@@ -743,7 +743,7 @@ if VERSION == "HEAD":
                             patchlevel = False
                             if len(version_split) > 2:
                                 patchlevel = True
-                                VERSION = f"{VERSION}_p{version_split[2]}"
+                                VERSION += f"_p{version_split[2]}"
                             if len(output_lines) > 1 and output_lines[1] == "modified":
                                 head_timestamp = None
                                 if len(output_lines) > 3:
@@ -758,8 +758,8 @@ if VERSION == "HEAD":
                                 ):
                                     timestamp = timestamp - head_timestamp
                                 if not patchlevel:
-                                    VERSION = f"{VERSION}_p0"
-                                VERSION = f"{VERSION}_p{timestamp}"
+                                    VERSION += f"_p0"
+                                VERSION += f"_p{timestamp}"
                             return VERSION
             VERSION = "HEAD"
             return VERSION

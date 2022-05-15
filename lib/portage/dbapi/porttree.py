@@ -149,9 +149,8 @@ class _better_cache:
 
     def _scan_cat(self, cat):
         for repo in self._repo_list:
-            cat_dir = repo.location + "/" + cat
             try:
-                pkg_list = os.listdir(cat_dir)
+                pkgs = os.listdir(os.path.join(repo.location, cat))
             except OSError as e:
                 if e.errno not in (errno.ENOTDIR, errno.ENOENT, errno.ESTALE):
                     raise
@@ -308,7 +307,7 @@ class portdbapi(dbapi):
                         x,
                         self._known_keys,
                         readonly=True,
-                        **cache_kwargs
+                        **cache_kwargs,
                     )
                 except CacheError:
                     pass
@@ -410,8 +409,7 @@ class portdbapi(dbapi):
         if not hasattr(self, "auxdb"):
             # unhandled exception thrown from constructor
             return
-        for x in self.auxdb:
-            self.auxdb[x].sync()
+        self.flush_cache()
         self.auxdb.clear()
 
     def flush_cache(self):
@@ -545,10 +543,10 @@ class portdbapi(dbapi):
             and myrepo == getattr(mycpv, "repo", None)
             and self is getattr(mycpv, "_db", None)
         ):
-            return (mytree + _os.sep + relative_path, mytree)
+            return (_os.path.join(mytree, relative_path), mytree)
 
         for x in mytrees:
-            filename = x + _os.sep + relative_path
+            filename = _os.path.join(x, relative_path)
             if _os.access(
                 _unicode_encode(filename, encoding=encoding, errors=errors), _os.R_OK
             ):
@@ -777,8 +775,12 @@ class portdbapi(dbapi):
                 future.set_exception(PortageKeyError(mycpv))
                 return
             mydata = proc.metadata
-        mydata["repository"] = self.repositories.get_name_for_location(mylocation)
-        mydata["_mtime_"] = ebuild_hash.mtime
+        mydata.update(
+            {
+                "repository": self.repositories.get_name_for_location(mylocation),
+                "_mtime_": ebuild_hash.mtime,
+            }
+        )
         eapi = mydata.get("EAPI")
         if not eapi:
             eapi = "0"
@@ -1026,7 +1028,7 @@ class portdbapi(dbapi):
         for x in categories:
             for oroot in trees:
                 for y in listdir(
-                    oroot + "/" + x, EmptyOnError=1, ignorecvs=1, dirsonly=1
+                    os.path.join(oroot, x), EmptyOnError=1, ignorecvs=1, dirsonly=1
                 ):
                     try:
                         atom = Atom(f"{x}/{y}")
@@ -1086,13 +1088,14 @@ class portdbapi(dbapi):
         for repo in repos:
             oroot = repo.location
             try:
-                file_list = os.listdir(os.path.join(oroot, mycp))
+                files = os.listdir(os.path.join(oroot, mycp))
             except OSError:
                 continue
-            for x in file_list:
+            for file in files:
                 pf = None
-                if x[-7:] == ".ebuild":
-                    pf = x[:-7]
+                file_ext = ".ebuild"
+                if file.endswith(file_ext):
+                    pf = file[: -len(file_ext)]
 
                 if pf is not None:
                     ps = pkgsplit(pf)
@@ -1122,7 +1125,7 @@ class portdbapi(dbapi):
                         )
                         continue
                     mylist.append(
-                        _pkg_str(mysplit[0] + "/" + pf, db=self, repo=repo.name)
+                        _pkg_str(f"{mysplit[0]}/{pf}", db=self, repo=repo.name)
                     )
         if invalid_category and mylist:
             writemsg(
@@ -1132,7 +1135,7 @@ class portdbapi(dbapi):
                 ),
                 noiselevel=-1,
             )
-            mylist = []
+            mylist.clear()
         # Always sort in ascending order here since it's handy and
         # the result can be easily cached and reused. Since mylist
         # is initially in ascending order by repo.priority, stable
@@ -1284,11 +1287,9 @@ class portdbapi(dbapi):
             myval = []
             aux_keys = list(self._aux_cache_keys)
             if level == "bestmatch-visible":
-                iterfunc = reversed
-            else:
-                iterfunc = iter
+                mylist = reversed(mylist)
 
-            for cpv in iterfunc(mylist):
+            for cpv in mylist:
                 try:
                     metadata = dict(
                         zip(

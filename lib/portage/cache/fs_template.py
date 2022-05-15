@@ -33,7 +33,9 @@ class FsBased(template.database):
 
         if self.label.startswith(os.path.sep):
             # normpath.
-            self.label = os.path.sep + os.path.normpath(self.label).lstrip(os.path.sep)
+            self.label = os.path.join(os.path.sep, os.path.normpath(self.label)).lstrip(
+                os.path.sep
+            )
 
     def _ensure_access(self, path, mtime=-1):
         """returns true or false if it's able to ensure that path is properly chmod'd and chowned.
@@ -85,7 +87,7 @@ def gen_label(base, label):
     """if supplied label is a path, generate a unique label based upon label, and supplied base path"""
     if label.find(os.path.sep) == -1:
         return label
-    label = label.strip('"').strip("'")
+    label = label.strip("\"'")
     label = os.path.join(*(label.rstrip(os.path.sep).split(os.path.sep)))
     tail = os.path.split(label)[1]
     return f"{tail}-{abs(label.__hash__())}"

@@ -46,10 +46,7 @@ class database(fs_template.FsBased):
     def __calc_max(self, path):
         """Find out max attribute length supported by the file system"""
 
-        hundred = ""
-        for i in range(100):
-            hundred += "a"
-
+        hundred = "a" * 100
         s = hundred
 
         # Could use finally but needs python 2.5 then

@@ -126,8 +126,7 @@ def _unmerge_display(
                     candidate_catpkgs.append(x)
                 elif unmerge_action in ["prune", "clean"]:
                     print(
-                        "\n!!! Prune and clean do not accept individual"
-                        + " ebuilds as arguments;\n    skipping.\n"
+                        "\n!!! Prune and clean do not accept individual ebuilds as arguments;\n    skipping.\n"
                     )
                     continue
                 else:
@@ -366,8 +365,7 @@ def _unmerge_display(
                     )
                     skip_pkg = True
                 if skip_pkg:
-                    for line in textwrap.wrap(msg, 75):
-                        out.eerror(line)
+                    out.eerror("".join(line for line in textwrap.wrap(msg, 75)))
                     # adjust pkgmap so the display output is correct
                     pkgmap[cp]["selected"].remove(cpv)
                     all_selected.remove(cpv)
@@ -492,7 +490,7 @@ def _unmerge_display(
             )
             writemsg_level(
                 colorize(
-                    "WARN", "!!! Unmerging it may " + "be damaging to your system.\n\n"
+                    "WARN", "!!! Unmerging it may be damaging to your system.\n\n"
                 ),
                 level=logging.WARNING,
                 noiselevel=-1,
@@ -587,9 +585,7 @@ def unmerge(
         if uq.query("Would you like to unmerge these packages?", enter_invalid) == "No":
             # enter pretend mode for correct formatting of results
             myopts["--pretend"] = True
-            print()
-            print("Quitting.")
-            print()
+            print("\nQuitting.\n")
             return 128 + signal.SIGINT
 
     if not vartree.dbapi.writable:

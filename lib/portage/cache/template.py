@@ -346,11 +346,11 @@ def reconstruct_eclasses(cpv, eclass_string, chf_type="mtime", paths=True):
     eclasses_length = len(eclasses)
 
     if paths:
-        if len(eclasses) % 3 != 0:
+        if eclasses_length % 3 != 0:
             raise cache_errors.CacheCorruption(
                 cpv, f"_eclasses_ was of invalid len {eclasses_length}"
             )
-    elif len(eclasses) % 2 != 0:
+    elif eclasses_length % 2 != 0:
         raise cache_errors.CacheCorruption(
             cpv, f"_eclasses_ was of invalid len {eclasses_length}"
         )

@@ -570,7 +570,7 @@ class _PostPhaseCommands(CompositeTask):
                     phase=self.phase,
                     scheduler=self.scheduler,
                     settings=self.settings,
-                    **kwargs
+                    **kwargs,
                 )
             )
 

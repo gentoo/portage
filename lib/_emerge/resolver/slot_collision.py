@@ -249,12 +249,11 @@ class slot_conflict_handler:
         any_omitted_parents = False
         msg = self.conflict_msg
         indent = "  "
-        msg.append(
-            "\n!!! Multiple package instances within a single "
-            + "package slot have been pulled\n"
-        )
-        msg.append(
-            "!!! into the dependency graph, resulting" + " in a slot conflict:\n\n"
+        msg.extend(
+            (
+                "\n!!! Multiple package instances within a single package slot have been pulled\n",
+                "!!! into the dependency graph, resulting in a slot conflict:\n\n",
+            )
         )
 
         for root, slot_atom, pkgs in self.all_conflicts:
@@ -509,28 +508,27 @@ class slot_conflict_handler:
 
                     def highlight_violations(atom, version, use, slot_violated):
                         """Colorize parts of an atom"""
-                        atom_str = "%s" % (atom,)
+                        atom_str = str(atom)
                         colored_idx = set()
+                        slot = atom.slot
+                        sub_slot = atom.sub_slot
+                        slot_operator = atom.slot_operator
+                        slot_str = ""
+                        if slot:
+                            slot_str = f":{slot}"
+                        if sub_slot:
+                            slot_str += f"/{sub_slot}"
+                        if slot_operator:
+                            slot_str += f"{slot_operator}"
+
                         if version:
                             op = atom.operator
                             ver = None
                             if atom.cp != atom.cpv:
                                 ver = cpv_getversion(atom.cpv)
-                            slot = atom.slot
-                            sub_slot = atom.sub_slot
-                            slot_operator = atom.slot_operator
-
                             if op == "=*":
                                 op = "="
                                 ver += "*"
-
-                            slot_str = ""
-                            if slot:
-                                slot_str = ":" + slot
-                            if sub_slot:
-                                slot_str += "/" + sub_slot
-                            if slot_operator:
-                                slot_str += slot_operator
 
                             # Compute color_idx before adding the color codes
                             # as these change the indices of the letters.
@@ -552,36 +550,19 @@ class slot_conflict_handler:
                             if ver is not None:
                                 start = atom_str.rfind(ver)
                                 end = start + len(ver)
-                                atom_str = (
-                                    atom_str[:start]
-                                    + colorize("BAD", ver)
-                                    + atom_str[end:]
-                                )
+                                atom_str = f"{atom_str[:start]}{colorize('BAD', ver)}{atom_str[end:]}"
 
                             if slot_str:
                                 atom_str = atom_str.replace(
                                     slot_str, colorize("BAD", slot_str), 1
                                 )
 
-                        elif slot_violated:
-                            slot = atom.slot
-                            sub_slot = atom.sub_slot
-                            slot_operator = atom.slot_operator
-
-                            slot_str = ""
-                            if slot:
-                                slot_str = ":" + slot
-                            if sub_slot:
-                                slot_str += "/" + sub_slot
-                            if slot_operator:
-                                slot_str += slot_operator
-
-                            if slot_str:
-                                ii = atom_str.find(slot_str)
-                                colored_idx.update(range(ii, ii + len(slot_str)))
-                                atom_str = atom_str.replace(
-                                    slot_str, colorize("BAD", slot_str), 1
-                                )
+                        elif slot_violated and slot_str:
+                            ii = atom_str.find(slot_str)
+                            colored_idx.update(range(ii, ii + len(slot_str)))
+                            atom_str = atom_str.replace(
+                                slot_str, colorize("BAD", slot_str), 1
+                            )
 
                         if use and atom.use.tokens:
                             use_part_start = atom_str.find("[")
@@ -733,18 +714,15 @@ class slot_conflict_handler:
         if not solutions:
             return None
 
-        if len(solutions) == 1:
-            if len(self.all_conflicts) == 1:
-                msg += "It might be possible to solve this slot collision\n"
-            else:
-                msg += "It might be possible to solve these slot collisions\n"
-            msg += "by applying all of the following changes:\n"
+        if len(self.all_conflicts) == 1:
+            msg += "It might be possible to solve this slot collision\n"
         else:
-            if len(self.all_conflicts) == 1:
-                msg += "It might be possible to solve this slot collision\n"
-            else:
-                msg += "It might be possible to solve these slot collisions\n"
-            msg += "by applying one of the following solutions:\n"
+            msg += "It might be possible to solve these slot collisions\n"
+        msg += "by applying all of the following"
+        if len(solutions) == 1:
+            msg += " changes:\n"
+        else:
+            msg += " solutions:\n"
 
         def print_change(change, indent=""):
             mymsg = ""

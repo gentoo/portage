@@ -15,7 +15,7 @@ class UserQuery:
     def __init__(self, myopts):
         self.myopts = myopts
 
-    def query(self, prompt, enter_invalid, responses=None, colours=None):
+    def query(self, prompt, enter_invalid, responses=None, colors=None):
         """Display a prompt and a set of responses, then waits for user input
         and check it against the responses. The first match is returned.
 
@@ -25,12 +25,12 @@ class UserQuery:
 
         prompt: The String to display as a prompt.
         responses: a List of Strings with the acceptable responses.
-        colours: a List of Functions taking and returning a String, used to
+        colors: a List of Functions taking and returning a String, used to
         process the responses for display. Typically these will be functions
         like red() but could be e.g. lambda x: "DisplayString".
 
         If responses is omitted, it defaults to ["Yes", "No"], [green, red].
-        If only colours is omitted, it defaults to [bold, ...].
+        If only colors is omitted, it defaults to [bold, ...].
 
         Returns a member of the List responses. (If called without optional
         arguments, it returns "Yes" or "No".)
@@ -39,13 +39,13 @@ class UserQuery:
         printed."""
         if responses is None:
             responses = ["Yes", "No"]
-            colours = [
+            colors = [
                 create_color_func("PROMPT_CHOICE_DEFAULT"),
                 create_color_func("PROMPT_CHOICE_OTHER"),
             ]
-        elif colours is None:
-            colours = [bold]
-        colours = (colours * len(responses))[: len(responses)]
+        elif colors is None:
+            colors = [bold]
+        colors = (colors * len(responses))[: len(responses)]
         responses = [_unicode_decode(x) for x in responses]
         if "--alert" in self.myopts:
             prompt = "\a" + prompt
@@ -53,12 +53,10 @@ class UserQuery:
         try:
             while True:
                 try:
-                    response = input(
-                        "[%s] "
-                        % "/".join(
-                            [colours[i](responses[i]) for i in range(len(responses))]
-                        )
+                    colored_choices = "/".join(
+                        color(resp) for color, resp in zip(colors, responses)
                     )
+                    response = input(f"[{colored_choices}] ")
                 except UnicodeDecodeError as e:
                     response = _unicode_decode(e.object).rstrip("\n")
                 if response or not enter_invalid:

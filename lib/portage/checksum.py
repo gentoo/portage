@@ -412,8 +412,7 @@ class _hash_filter:
         if not tokens or tokens[-1] == "*":
             del tokens[:]
         self.transparent = not tokens
-        tokens.reverse()
-        self._tokens = tuple(tokens)
+        self._tokens = tuple(reversed(tokens))
 
     def __call__(self, hash_name):
         if self.transparent:

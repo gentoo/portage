@@ -28,7 +28,7 @@ __all__ = [
 class EverythingSet(PackageSet):
     _operations = ["merge"]
     description = (
-        "Package set which contains SLOT " + "atoms to match all installed packages"
+        "Package set which contains SLOT atoms to match all installed packages"
     )
     _filter = None
 
@@ -66,9 +66,7 @@ class OwnerSet(PackageSet):
 
     _operations = ["merge", "unmerge"]
 
-    description = (
-        "Package set which contains all packages " + "that own one or more files."
-    )
+    description = "Package set which contains all packages that own one or more files."
 
     def __init__(self, vardb=None, exclude_files=None, files=None):
         super(OwnerSet, self).__init__()

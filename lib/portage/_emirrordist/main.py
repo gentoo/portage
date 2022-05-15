@@ -391,7 +391,7 @@ def emirrordist_main(args):
 
     if options.recycle_db is not None:
         if options.recycle_dir is None:
-            parser.error("--recycle-db requires " "--recycle-dir to be specified")
+            parser.error("--recycle-db requires --recycle-dir to be specified")
         options.recycle_db = normalize_path(os.path.abspath(options.recycle_db))
 
     if options.recycle_deletion_delay is not None:
@@ -457,7 +457,7 @@ def emirrordist_main(args):
             for layout in config.layouts:
                 if isinstance(layout, ContentHashLayout):
                     parser.error(
-                        "content-hash layout requires " "--content-db to be specified"
+                        "content-hash layout requires --content-db to be specified"
                     )
 
         returncode = os.EX_OK

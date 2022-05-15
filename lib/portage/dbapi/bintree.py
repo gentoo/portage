@@ -1424,8 +1424,9 @@ class binarytree:
                             AlarmSignal.unregister()
                     except AlarmSignal:
                         writemsg(
-                            "\n\n!!! %s\n"
-                            % _("Timed out while closing connection to binhost"),
+                            _(
+                                "\n\n!!! Timed out while closing connection to binhost\n"
+                            ),
                             noiselevel=-1,
                         )
             except UseCachedCopyOfRemoteIndex:

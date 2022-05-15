@@ -78,10 +78,10 @@ def wrap(text, width, caption=""):
 
     for word in words:
         if line and line[-1] == "\n":
-            rValue = f"{rValue}{line}"
+            rValue += line
             line = " " * indentLevel
         if len(line) + len(word.replace(NEWLINE_ESCAPE, "")) + 1 > width:
-            rValue = f"{rValue}{line}\n"
+            rValue += f"{line}\n"
             escaped_word = word.replace(NEWLINE_ESCAPE, "\n")
             line = f"{' ' * indentLevel}{escaped_word}"
         elif word.find(NEWLINE_ESCAPE) >= 0:
@@ -89,16 +89,16 @@ def wrap(text, width, caption=""):
             whitespace = ""
             if len(line.strip()) > 0:
                 whitespace = " "
-            rValue = f"{rValue}{line}{whitespace}{escaped_word}"
+            rValue += f"{line}{whitespace}{escaped_word}"
             line = " " * indentLevel
         else:
             whitespace = ""
             if len(line.strip()) > 0:
                 whitespace = " "
-            line = f"{line}{whitespace}{word}"
+            line += f"{whitespace}{word}"
     if len(line) > 0:
         escaped_line = line.replace(NEWLINE_ESCAPE, "\n")
-        rValue = f"{rValue}{escaped_line}"
+        rValue += escaped_line
     rValue = rValue.replace(SPACE_ESCAPE, " ")
     return rValue
 
@@ -276,7 +276,7 @@ def makeAtom(pkgname, versionNode):
         pass
     else:
         if slot and slot != "*":
-            rValue = f"{rValue}{_slot_separator}{slot}"
+            rValue += f"{_slot_separator}{slot}"
     return str(rValue)
 
 
@@ -300,7 +300,7 @@ def makeVersion(versionNode):
         pass
     else:
         if slot and slot != "*":
-            rValue = f"{rValue}{_slot_separator}{slot}"
+            rValue += f"{_slot_separator}{slot}"
     return rValue
 
 
@@ -425,7 +425,7 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
             ):
                 update = f"{c_pv[0]}/{c_pv[1]}-{c_pv[2]}"
                 if c_pv[3] != "r0":  # we don't like -r0 for display
-                    update = f"{update}-{c_pv[3]}"
+                    update += f"-{c_pv[3]}"
                 update = portdbapi._pkg_str(update, None)
         vuln_update.append([vuln, update])
 

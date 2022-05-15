@@ -255,7 +255,7 @@ def make_ftp_request(conn, address, rest=None, dest=None):
                 if dest:
                     dest.write(somedata)
                 else:
-                    mydata = f"{mydata}{somedata}"
+                    mydata += somedata
             else:
                 break
 
@@ -396,7 +396,7 @@ def dir_get_list(baseurl, conn=None):
         if not address.endswith("/"):
             # http servers can return a 400 error here
             # if the address doesn't end with a slash.
-            address = f"{address}/"
+            address += "/"
         page, rc, msg = make_http_request(conn, address, params, headers)
 
         if page:

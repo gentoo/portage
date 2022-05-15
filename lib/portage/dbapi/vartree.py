@@ -713,7 +713,7 @@ class vardbapi(dbapi):
                     self._aux_cache_filename, encoding=_encodings["fs"], errors="strict"
                 ),
                 mode="rb",
-                **open_kwargs
+                **open_kwargs,
             ) as f:
                 mypickle = pickle.Unpickler(f)
                 try:
@@ -802,7 +802,6 @@ class vardbapi(dbapi):
         pull_me = cache_these.union(wants)
         mydata = {"_mtime_": mydir_mtime}
         cache_valid = False
-        cache_incomplete = False
         cache_mtime = None
         metadata = None
         if pkg_data is not None:
@@ -838,8 +837,7 @@ class vardbapi(dbapi):
 
         if pull_me:
             # pull any needed data and cache it
-            aux_keys = list(pull_me)
-            mydata.update(self._aux_get(mycpv, aux_keys, st=mydir_stat))
+            mydata.update(self._aux_get(mycpv, list(pull_me), st=mydir_stat))
             if not cache_valid or cache_these.difference(metadata):
                 cache_data = {}
                 if cache_valid and metadata:
@@ -969,11 +967,10 @@ class vardbapi(dbapi):
             if var_assign_match is not None:
                 key = var_assign_match.group(2)
                 quote = var_assign_match.group(3)
+                value = var_assign_match.group(4)
                 if quote is not None:
-                    if have_end_quote(quote, line[var_assign_match.end(2) + 2 :]):
-                        value = var_assign_match.group(4)
-                    else:
-                        value = [var_assign_match.group(4)]
+                    if not have_end_quote(quote, line[var_assign_match.end(2) + 2 :]):
+                        value = [value]
                         for line in proc.stdout:
                             line = _unicode_decode(
                                 line, encoding=_encodings["content"], errors="replace"
@@ -985,7 +982,7 @@ class vardbapi(dbapi):
                     # remove trailing quote and whitespace
                     value = value.rstrip()[:-1]
                 else:
-                    value = var_assign_match.group(4).rstrip()
+                    value = value.rstrip()
 
                 if key in variables:
                     results[key] = value
@@ -1330,12 +1327,12 @@ class vardbapi(dbapi):
                     raise
             else:
                 new_needed = []
-                for l in needed_lines:
-                    l = l.rstrip("\n")
-                    if not l:
+                for line in needed_lines:
+                    line = line.rstrip("\n")
+                    if not line:
                         continue
                     try:
-                        entry = NeededEntry.parse(needed_filename, l)
+                        entry = NeededEntry.parse(needed_filename, line)
                     except InvalidData as e:
                         writemsg_level(f"\n{e}\n\n", level=logging.ERROR, noiselevel=-1)
                         continue
@@ -2918,10 +2915,11 @@ class dblink:
                         show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
                         continue
                     mydirs.add((obj, (lstatobj.st_dev, lstatobj.st_ino)))
-                elif file_type == "sym" or (file_type == "dir" and islink):
-                    if not islink:
-                        show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
-                        continue
+                elif (
+                    file_type == "sym" or (file_type == "dir" and islink) and not islink
+                ):
+                    show_unmerge("---", unmerge_desc["!sym"], file_type, obj)
+                    continue
 
                     # If this symlink points to a directory then we don't want
                     # to unmerge it if there are any other packages that
@@ -3128,14 +3126,16 @@ class dblink:
                 owners.pop(owner, None)
 
         if not owners:
-            msg = []
-            msg.append(
-                _(
-                    "The above directory symlink(s) are all "
-                    "safe to remove. Removing them now..."
+            msg.clear()
+            msg.extend(
+                (
+                    _(
+                        "The above directory symlink(s) are all "
+                        "safe to remove. Removing them now..."
+                    ),
+                    "",
                 )
             )
-            msg.append("")
             self._elog("elog", "postrm", msg)
             dirs = set()
             for unmerge_syms in protected_symlinks.values():
@@ -3893,7 +3893,7 @@ class dblink:
         previous = time.monotonic()
         progress_shown = False
         report_interval = 1.7  # seconds
-        falign = len("%d" % totfiles)
+        falign = len(str(totfiles))
         showMessage(
             _(
                 f" {colorize('GOOD', '*')} checking {totfiles} files for package collisions\n"
@@ -4139,8 +4139,8 @@ class dblink:
     def _elog(self, funcname, phase, lines):
         func = getattr(portage.elog.messages, funcname)
         if self._scheduler is None:
-            for l in lines:
-                func(l, phase=phase, key=self.mycpv)
+            for line in lines:
+                func(line, phase=phase, key=self.mycpv)
         else:
             background = self.settings.get("PORTAGE_BACKGROUND") == "1"
             log_path = None
@@ -4182,8 +4182,7 @@ class dblink:
                     for line in lines:
                         for line in line.split("\n"):
                             fields = (funcname, phase, cpv, line)
-                            str_buffer.append(" ".join(fields))
-                            str_buffer.append("\n")
+                            str_buffer.extend((" ".join(fields), "\n"))
             if str_buffer:
                 str_buffer = _unicode_encode("".join(str_buffer))
                 while str_buffer:
@@ -4495,32 +4494,32 @@ class dblink:
                     unicode_errors.append(new_parent[ed_len:])
                     break
 
-                for fname in files:
+                for file in files:
                     try:
-                        fname = _unicode_decode(
-                            fname, encoding=_encodings["merge"], errors="strict"
+                        file = _unicode_decode(
+                            file, encoding=_encodings["merge"], errors="strict"
                         )
                     except UnicodeDecodeError:
                         fpath = portage._os.path.join(
-                            parent.encode(_encodings["merge"]), fname
+                            parent.encode(_encodings["merge"]), file
                         )
-                        new_fname = _unicode_decode(
-                            fname, encoding=_encodings["merge"], errors="replace"
+                        new_file = _unicode_decode(
+                            file, encoding=_encodings["merge"], errors="replace"
                         )
-                        new_fname = _unicode_encode(
-                            new_fname, encoding="ascii", errors="backslashreplace"
+                        new_file = _unicode_encode(
+                            new_file, encoding="ascii", errors="backslashreplace"
                         )
-                        new_fname = _unicode_decode(
-                            new_fname, encoding=_encodings["merge"], errors="replace"
+                        new_file = _unicode_decode(
+                            new_file, encoding=_encodings["merge"], errors="replace"
                         )
-                        new_fpath = os.path.join(parent, new_fname)
+                        new_fpath = os.path.join(parent, new_file)
                         os.rename(fpath, new_fpath)
                         unicode_error = True
                         unicode_errors.append(new_fpath[ed_len:])
-                        fname = new_fname
+                        file = new_file
                         fpath = new_fpath
                     else:
-                        fpath = os.path.join(parent, fname)
+                        fpath = os.path.join(parent, file)
 
                     relative_path = fpath[srcroot_len:]
 
@@ -4626,7 +4625,7 @@ class dblink:
             myebuild = os.path.join(inforoot, f"{self.pkg}.ebuild")
         doebuild_environment(myebuild, "preinst", settings=self.settings, db=mydbapi)
         self.settings["REPLACING_VERSIONS"] = " ".join(
-            [portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot]
+            portage.versions.cpv_getversion(other.mycpv) for other in others_in_slot
         )
         prepare_build_dirs(settings=self.settings, cleanup=cleanup)
 
@@ -4670,15 +4669,14 @@ class dblink:
             ]
             self._elog("eerror", "preinst", msg)
 
-            msg = (
-                _("Package '%s' NOT merged due to read-only file systems.")
-                % self.settings.mycpv
+            msg = textwrap.wrap(
+                _(
+                    f"Package '{self.settings.mycpv}' NOT merged due to read-only file systems. "
+                    "If necessary, refer to your elog "
+                    "messages for the whole content of the above message."
+                ),
+                70,
             )
-            msg += _(
-                " If necessary, refer to your elog "
-                "messages for the whole content of the above message."
-            )
-            msg = textwrap.wrap(msg, 70)
             eerror(msg)
             return 1
 
@@ -4708,18 +4706,17 @@ class dblink:
                     )
             self._elog("eerror", "preinst", msg)
 
-            msg = (
-                _(
-                    "Package '%s' NOT merged due to internal collisions "
-                    "between non-identical files."
+            eerror(
+                textwrap.wrap(
+                    _(
+                        f"Package '{self.settings.mycpv}' NOT merged due to internal collisions "
+                        "between non-identical files. "
+                        "If necessary, refer to your elog messages for the whole "
+                        "content of the above message."
+                    ),
+                    70,
                 )
-                % self.settings.mycpv
             )
-            msg += _(
-                " If necessary, refer to your elog messages for the whole "
-                "content of the above message."
-            )
-            eerror(textwrap.wrap(msg, 70))
             return 1
 
         if symlink_collisions:
@@ -4785,27 +4782,34 @@ class dblink:
 
             msg = wrap(msg, 70)
             if collision_protect:
-                msg.append("")
-                msg.append(_("package %s NOT merged") % self.settings.mycpv)
-            msg.append("")
-            msg.append(_("Detected file collision(s):"))
-            msg.append("")
-
-            for f in collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
-
+                msg.extends(
+                    (
+                        "",
+                        _(f"package {self.settings.mycpv} NOT merged"),
+                    )
+                )
+            msg.extends(
+                (
+                    "",
+                    _("Detected file collision(s):"),
+                    "",
+                    *(
+                        f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}"
+                        for f in collisions
+                    ),
+                )
+            )
             eerror(msg)
 
             owners = None
             if collision_protect or protect_owned or symlink_collisions:
-                msg = []
-                msg.append("")
-                msg.append(
-                    _("Searching all installed" " packages for file collisions...")
-                )
-                msg.append("")
-                msg.append(_("Press Ctrl-C to Stop"))
-                msg.append("")
+                msg = [
+                    "",
+                    _("Searching all installed packages for file collisions..."),
+                    "",
+                    _("Press Ctrl-C to Stop"),
+                    "",
+                ]
                 eerror(msg)
 
                 if len(collisions) > 20:
@@ -4830,26 +4834,18 @@ class dblink:
                     self.unlockdb()
 
                 for pkg, owned_files in owners.items():
-                    msg = []
-                    msg.append(pkg_info_strs[pkg.mycpv])
-                    for f in sorted(owned_files):
-                        msg.append(
-                            "\t%s" % os.path.join(destroot, f.lstrip(os.path.sep))
-                        )
-                    msg.append("")
+                    msg = [
+                        pkg_info_strs[pkg.mycpv],
+                        *(
+                            f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}"
+                            for f in sorted(owned_files)
+                        ),
+                        "",
+                    ]
                     eerror(msg)
 
                 if not owners:
-                    eerror(
-                        [_("None of the installed" " packages claim the file(s)."), ""]
-                    )
-
-            symlink_abort_msg = _(
-                "Package '%s' NOT merged since it has "
-                "one or more collisions between symlinks and directories, "
-                "which is explicitly forbidden by PMS section 13.4 "
-                "(see bug #326685)."
-            )
+                    eerror([_("None of the installed packages claim the file(s)."), ""])
 
             # The explanation about the collision and how to solve
             # it may not be visible via a scrollback buffer, especially
@@ -4858,14 +4854,13 @@ class dblink:
             abort = False
             if symlink_collisions:
                 abort = True
-                msg = symlink_abort_msg % (self.settings.mycpv,)
-            elif collision_protect:
-                abort = True
-                msg = (
-                    _("Package '%s' NOT merged due to file collisions.")
-                    % self.settings.mycpv
+                msg = _(
+                    f"Package '{self.settings.mycpv}' NOT merged since it has "
+                    "one or more collisions between symlinks and directories, "
+                    "which is explicitly forbidden by PMS section 13.4 "
+                    "(see bug #326685)."
                 )
-            elif protect_owned and owners:
+            elif collision_protect or protect_owned and owners:
                 abort = True
                 msg = _(
                     f"Package '{self.settings.mycpv}' NOT merged due to file collisions."
@@ -4876,7 +4871,7 @@ class dblink:
                 )
             msg += _(
                 " If necessary, refer to your elog "
-                "messages for the whole content of the above message."
+                "messages for the whole content of the above message.",
             )
             eerror(wrap(msg, 70))
 
@@ -4952,7 +4947,7 @@ class dblink:
             encoding=_encodings["repo.content"],
             errors="backslashreplace",
         ) as f:
-            f.write("%s" % counter)
+            f.write(str(counter))
 
         self.updateprotect()
 
@@ -5582,7 +5577,7 @@ class dblink:
                             abs_path=myrealdest,
                             symlink_target=myto,
                             mtime_ns=mymtime,
-                        )
+                        ),
                     )
                 else:
                     showMessage(
@@ -6013,74 +6008,58 @@ class dblink:
             retval = portage.const.RETURNCODE_POSTINST_FAILURE
         return retval
 
-    def getstring(self, name):
+    def getstring(self, filename):
         "returns contents of a file with whitespace converted to spaces"
-        if not os.path.exists(self.dbdir + "/" + name):
+        return " ".join(self.getfile(filename).split())
+
+    def copyfile(self, filename):
+        shutil.copyfile(filename, os.path.join(self.dbdir, os.path.basename(filename)))
+
+    def getfile(self, filename):
+        path = os.path.join(self.dbdir, filename)
+        if not os.path.exists(path):
             return ""
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, name),
+                path,
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
-        ) as f:
-            mydata = f.read().split()
-        return " ".join(mydata)
+        ) as file:
+            return file.read()
 
-    def copyfile(self, fname):
-        shutil.copyfile(fname, self.dbdir + "/" + os.path.basename(fname))
-
-    def getfile(self, fname):
-        if not os.path.exists(self.dbdir + "/" + fname):
-            return ""
-        with io.open(
-            _unicode_encode(
-                os.path.join(self.dbdir, fname),
-                encoding=_encodings["fs"],
-                errors="strict",
-            ),
-            mode="r",
-            encoding=_encodings["repo.content"],
-            errors="replace",
-        ) as f:
-            return f.read()
-
-    def setfile(self, fname, data):
+    def setfile(self, filename, data):
         kwargs = {}
-        if fname == "environment.bz2" or not isinstance(data, str):
+        if filename == "environment.bz2" or not isinstance(data, str):
             kwargs["mode"] = "wb"
         else:
             kwargs["mode"] = "w"
             kwargs["encoding"] = _encodings["repo.content"]
-        write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
+        write_atomic(os.path.join(self.dbdir, filename), data, **kwargs)
 
-    def getelements(self, ename):
-        if not os.path.exists(self.dbdir + "/" + ename):
+    def getelements(self, filename):
+        path = os.path.join(self.dbdir, filename)
+        if not os.path.exists(path):
             return []
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, ename),
+                path,
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
-        ) as f:
-            mylines = f.readlines()
-        myreturn = []
-        for x in mylines:
-            for y in x[:-1].split():
-                myreturn.append(y)
-        return myreturn
+        ) as file:
+            return [word for line in file.readlines() for word in line[:-1].split()]
 
-    def setelements(self, mylist, ename):
+    def setelements(self, mylist, filename):
         with io.open(
             _unicode_encode(
-                os.path.join(self.dbdir, ename),
+                os.path.join(self.dbdir, filename),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
@@ -6088,8 +6067,8 @@ class dblink:
             encoding=_encodings["repo.content"],
             errors="backslashreplace",
         ) as f:
-            for x in mylist:
-                f.write("%s\n" % x)
+            for item in mylist:
+                f.write(f"{item}\n")
 
     def isregular(self):
         "Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
@@ -6120,7 +6099,7 @@ class dblink:
         trees = QueryCommand.get_db()[self.settings["EROOT"]]
         bintree = trees["bintree"]
 
-        for binpkg in reversed(bintree.dbapi.match("={}".format(backup_dblink.mycpv))):
+        for binpkg in reversed(bintree.dbapi.match(f"={backup_dblink.mycpv}")):
             if binpkg.build_time == build_time:
                 return os.EX_OK
 
@@ -6141,7 +6120,7 @@ class dblink:
                 quickpkg_binary = find_binary("quickpkg")
                 if quickpkg_binary is None:
                     self._display_merge(
-                        _("%s: command not found") % "quickpkg",
+                        _("quickpkg: command not found"),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -6319,8 +6298,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None, xattrs=Fals
     curval = 0
     if onProgress:
         onProgress(maxval, 0)
-    paths = list(contents)
-    paths.sort()
+    paths = sorted(contents)
     for path in paths:
         curval += 1
         try:

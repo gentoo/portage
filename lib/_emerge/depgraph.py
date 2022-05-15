@@ -10266,7 +10266,7 @@ class depgraph:
                 writemsg(f"{line}\n", noiselevel=-1)
 
         if ask and write_to_file and file_to_write_to:
-            prompt = "\nWould you like to add these " + "changes to your config files?"
+            prompt = "\nWould you like to add these changes to your config files?"
             if self.query(prompt, enter_invalid) == "No":
                 write_to_file = False
 
@@ -10524,7 +10524,7 @@ class depgraph:
                 noiselevel=-1,
             )
             writemsg(
-                "!!! Cannot merge requested packages. " "Merge deps and try again.\n\n",
+                "!!! Cannot merge requested packages. Merge deps and try again.\n\n",
                 noiselevel=-1,
             )
 

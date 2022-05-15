@@ -26,10 +26,10 @@ import portage
 portage.proxy.lazyimport.lazyimport(
     globals(),
     "portage.package.ebuild.config:check_config_instance,config",
-    "portage.package.ebuild.doebuild:doebuild_environment," + "_doebuild_spawn",
+    "portage.package.ebuild.doebuild:doebuild_environment,_doebuild_spawn",
     "portage.package.ebuild.prepare_build_dirs:prepare_build_dirs",
     "portage.util:atomic_ofstream",
-    "portage.util.configparser:SafeConfigParser,read_configs," + "ConfigParserError",
+    "portage.util.configparser:SafeConfigParser,read_configs,ConfigParserError",
     "portage.util.install_mask:_raise_exc",
     "portage.util._urlopen:urlopen",
 )
@@ -183,7 +183,7 @@ def _spawn_fetch(settings, args, **kwargs):
 
 _userpriv_test_write_file_cache = {}
 _userpriv_test_write_cmd_script = (
-    ">> %(file_path)s 2>/dev/null ; rval=$? ; " + "rm -f  %(file_path)s ; exit $rval"
+    ">> %(file_path)s 2>/dev/null ; rval=$? ; rm -f  %(file_path)s ; exit $rval"
 )
 
 

@@ -150,7 +150,7 @@ class Display:
         space = ""
         if self.include_mask_str():
             # add column for mask status
-            space += " "
+            space = " "
         return space
 
     def map_to_use_expand(self, myvals, forced_flags=False, remove_hidden=True):

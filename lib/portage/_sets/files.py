@@ -231,7 +231,7 @@ class ConfigFileSet(PackageSet):
         name_pattern = options.get("name_pattern", "sets/package_$suffix")
         if not "$suffix" in name_pattern and not "${suffix}" in name_pattern:
             raise SetConfigError(_("name_pattern doesn't include $suffix placeholder"))
-        for suffix in ["keywords", "use", "mask", "unmask"]:
+        for suffix in ("keywords", "use", "mask", "unmask"):
             myname = name_pattern.replace("$suffix", suffix)
             myname = myname.replace("${suffix}", suffix)
             rValue[myname] = ConfigFileSet(os.path.join(directory, f"package.{suffix}"))
