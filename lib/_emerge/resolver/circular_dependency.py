@@ -88,29 +88,15 @@ class circular_dependency_handler:
             parent = self.shortest_cycle[pos - 1]
             priorities = self.graph.nodes[parent][0][pkg]
             if pos > 0:
-                msg.append(
-                    indent
-                    + "%s (%s)"
-                    % (
-                        pkg,
-                        priorities[-1],
-                    )
-                )
+                msg.append(f"{indent}{pkg} ({priorities[-1]})")
             else:
-                msg.append(indent + "%s depends on" % pkg)
+                msg.append(f"{indent}{pkg} depends on")
             indent += " "
 
         pkg = self.shortest_cycle[0]
         parent = self.shortest_cycle[-1]
         priorities = self.graph.nodes[parent][0][pkg]
-        msg.append(
-            indent
-            + "%s (%s)"
-            % (
-                pkg,
-                priorities[-1],
-            )
-        )
+        msg.append(f"{indent}{pkg} ({priorities[-1]})")
 
         return "\n".join(msg)
 
@@ -289,10 +275,10 @@ class circular_dependency_handler:
                 changes = []
                 for flag, state in solution:
                     if state:
-                        changes.append(colorize("red", "+" + flag))
+                        changes.append(colorize("red", f"+{flag}"))
                     else:
-                        changes.append(colorize("blue", "-" + flag))
-                msg = "- %s (Change USE: %s)\n" % (parent.cpv, " ".join(changes))
+                        changes.append(colorize("blue", f"-{flag}"))
+                msg = f"- {parent.cpv} (Change USE: {' '.join(changes)})\n"
                 if followup_change:
                     msg += (
                         " (This change might require USE changes on parent packages.)"

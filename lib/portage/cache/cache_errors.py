@@ -12,10 +12,7 @@ class InitializationError(CacheError):
         self.error, self.class_name = error, class_name
 
     def __str__(self):
-        return "Creation of instance %s failed due to %s" % (
-            self.class_name,
-            str(self.error),
-        )
+        return f"Creation of instance {self.class_name} failed due to {self.error}"
 
 
 class CacheCorruption(CacheError):
@@ -23,7 +20,7 @@ class CacheCorruption(CacheError):
         self.key, self.ex = key, ex
 
     def __str__(self):
-        return "%s is corrupt: %s" % (self.key, str(self.ex))
+        return f"{self.key} is corrupt: {self.ex}"
 
 
 class GeneralCacheCorruption(CacheError):
@@ -31,7 +28,7 @@ class GeneralCacheCorruption(CacheError):
         self.ex = ex
 
     def __str__(self):
-        return "corruption detected: %s" % str(self.ex)
+        return f"corruption detected: {self.ex}"
 
 
 class InvalidRestriction(CacheError):
@@ -41,7 +38,7 @@ class InvalidRestriction(CacheError):
         self.key, self.restriction, self.ex = key, restriction, ex
 
     def __str__(self):
-        return "%s:%s is not valid: %s" % (self.key, self.restriction, str(self.ex))
+        return f"{self.key}:{self.restriction} is not valid: {self.ex}"
 
 
 class ReadOnlyRestriction(CacheError):
@@ -49,7 +46,7 @@ class ReadOnlyRestriction(CacheError):
         self.info = info
 
     def __str__(self):
-        return "cache is non-modifiable" + str(self.info)
+        return f"cache is non-modifiable{self.info}"
 
 
 class StatCollision(CacheError):
@@ -67,15 +64,10 @@ class StatCollision(CacheError):
         self.size = size
 
     def __str__(self):
-        return "%s has stat collision with size %s and mtime %s" % (
-            self.key,
-            self.size,
-            self.mtime,
-        )
+        return f"{self.key} has stat collision with size {self.size} and mtime {self.mtime}"
 
     def __repr__(self):
-        return "portage.cache.cache_errors.StatCollision(%s)" % (
-            ", ".join(
-                (repr(self.key), repr(self.filename), repr(self.mtime), repr(self.size))
-            ),
+        error = ", ".join(
+            (repr(self.key), repr(self.filename), repr(self.mtime), repr(self.size))
         )
+        return f"portage.cache.cache_errors.StatCollision({error})"

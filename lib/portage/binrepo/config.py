@@ -36,8 +36,8 @@ class BinRepoConfig:
         repo_msg = []
         repo_msg.append(self.name or self.name_fallback)
         if self.priority is not None:
-            repo_msg.append(indent + "priority: " + str(self.priority))
-        repo_msg.append(indent + "sync-uri: " + self.sync_uri)
+            repo_msg.append(f"{indent}priority: {self.priority}")
+        repo_msg.append(f"{indent}sync-uri: {self.sync_uri}")
         repo_msg.append("")
         return "\n".join(repo_msg)
 
@@ -58,7 +58,7 @@ class BinRepoConfigLoader(Mapping):
             parser = self._parse(paths, parser_defaults)
         except ConfigParserError as e:
             writemsg(
-                _("!!! Error while reading binrepo config file: %s\n") % e,
+                _(f"!!! Error while reading binrepo config file: {e}\n"),
                 noiselevel=-1,
             )
             parser = SafeConfigParser(defaults=parser_defaults)
@@ -71,7 +71,7 @@ class BinRepoConfigLoader(Mapping):
             repo = BinRepoConfig(repo_data)
             if repo.sync_uri is None:
                 writemsg(
-                    _("!!! Missing sync-uri setting for binrepo %s\n") % (repo.name,),
+                    _(f"!!! Missing sync-uri setting for binrepo {repo.name}\n"),
                     noiselevel=-1,
                 )
                 continue

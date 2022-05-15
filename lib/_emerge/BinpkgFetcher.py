@@ -142,7 +142,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             raise FileNotFound("Binary packages index not found")
 
         if pretend:
-            portage.writemsg_stdout("\n%s\n" % uri, noiselevel=-1)
+            portage.writemsg_stdout(f"\n{uri}\n", noiselevel=-1)
             self.returncode = os.EX_OK
             self._async_wait()
             return
@@ -253,8 +253,7 @@ class _BinpkgFetcherProcess(SpawnProcess):
             else:
                 result.set_exception(
                     AssertionError(
-                        "AsynchronousLock failed with returncode %s"
-                        % (async_lock.returncode,)
+                        f"AsynchronousLock failed with returncode {async_lock.returncode}"
                     )
                 )
 

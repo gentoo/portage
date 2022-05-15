@@ -47,7 +47,7 @@ class EverythingSet(PackageSet):
                 # SLOT installed, in order to avoid the possibility
                 # of unwanted upgrades as reported in bug #338959.
                 pkg = pkg_str(cpv, None)
-                atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
+                atom = Atom(f"{pkg.cp}:{pkg.slot}")
                 if self._filter:
                     if self._filter(atom):
                         myatoms.append(atom)
@@ -105,7 +105,7 @@ class OwnerSet(PackageSet):
         if not exclude_paths:
             for link, p in vardb._owners.iter_owners(paths):
                 pkg = pkg_str(link.mycpv, None)
-                rValue.add("%s:%s" % (pkg.cp, pkg.slot))
+                rValue.add(f"{pkg.cp}:{pkg.slot}")
         else:
             all_paths = set()
             all_paths.update(paths)
@@ -113,7 +113,7 @@ class OwnerSet(PackageSet):
             exclude_atoms = set()
             for link, p in vardb._owners.iter_owners(all_paths):
                 pkg = pkg_str(link.mycpv, None)
-                atom = "%s:%s" % (pkg.cp, pkg.slot)
+                atom = f"{pkg.cp}:{pkg.slot}"
                 rValue.add(atom)
                 # Returned paths are relative to ROOT and do not have
                 # a leading slash.
@@ -189,7 +189,7 @@ class VariableSet(EverythingSet):
         metadatadb = options.get("metadata-source", "vartree")
         if not metadatadb in trees:
             raise SetConfigError(
-                _("invalid value '%s' for option metadata-source") % metadatadb
+                _(f"invalid value '{metadatab}' for option metadata-source")
             )
 
         return cls(
@@ -225,7 +225,7 @@ class SubslotChangedSet(PackageSet):
         cp_list = self._vardb.cp_list
         for cp in self._vardb.cp_all():
             for pkg in cp_list(cp):
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -264,7 +264,7 @@ class DowngradeSet(PackageSet):
         for cp in self._vardb.cp_all():
             for cpv in cp_list(cp):
                 pkg = pkg_str(cpv, None)
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = f"{pkg.cp}:{pkg.slot}"
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -301,7 +301,7 @@ class UnavailableSet(EverythingSet):
         metadatadb = options.get("metadata-source", "porttree")
         if not metadatadb in trees:
             raise SetConfigError(
-                _("invalid value '%s' for option " "metadata-source") % (metadatadb,)
+                _(f"invalid value '{metadatadb}' for option " "metadata-source")
             )
 
         return cls(trees["vartree"].dbapi, metadatadb=trees[metadatadb].dbapi)
@@ -338,7 +338,7 @@ class UnavailableBinaries(EverythingSet):
         metadatadb = options.get("metadata-source", "bintree")
         if not metadatadb in trees:
             raise SetConfigError(
-                _("invalid value '%s' for option " "metadata-source") % (metadatadb,)
+                _(f"invalid value '{metadatadb}' for option metadata-source")
             )
 
         return cls(trees["vartree"].dbapi, metadatadb=trees[metadatadb].dbapi)
@@ -358,9 +358,8 @@ class CategorySet(PackageSet):
             s = "visible"
         else:
             s = "all"
-        self.description = "Package set containing %s packages of category %s" % (
-            s,
-            self._category,
+        self.description = (
+            f"Package set containing {s} packages of category {self._category}"
         )
 
     def load(self):
@@ -374,7 +373,7 @@ class CategorySet(PackageSet):
     def _builderGetRepository(cls, options, repositories):
         repository = options.get("repository", "porttree")
         if not repository in repositories:
-            raise SetConfigError(_("invalid repository class '%s'") % repository)
+            raise SetConfigError(_(f"invalid repository class '{repository}'"))
         return repository
 
     _builderGetRepository = classmethod(_builderGetRepository)
@@ -390,7 +389,7 @@ class CategorySet(PackageSet):
 
         category = options["category"]
         if not category in settings.categories:
-            raise SetConfigError(_("invalid category name '%s'") % category)
+            raise SetConfigError(_(f"invalid category name '{category}'"))
 
         repository = cls._builderGetRepository(options, trees.keys())
         visible = cls._builderGetVisible(options)
@@ -408,9 +407,7 @@ class CategorySet(PackageSet):
             categories = options["categories"].split()
             invalid = set(categories).difference(settings.categories)
             if invalid:
-                raise SetConfigError(
-                    _("invalid categories: %s") % ", ".join(list(invalid))
-                )
+                raise SetConfigError(_(f"invalid categories: {', '.join(invalid)}"))
         else:
             categories = settings.categories
 
@@ -461,7 +458,7 @@ class AgeSet(EverythingSet):
         mode = options.get("mode", "older")
         if str(mode).lower() not in ["newer", "older"]:
             raise SetConfigError(
-                _("invalid 'mode' value %s (use either 'newer' or 'older')") % mode
+                _(f"invalid 'mode' value {mode} (use either 'newer' or 'older')")
             )
         try:
             age = int(options.get("age", "7"))
@@ -501,7 +498,7 @@ class DateSet(EverythingSet):
         mode = options.get("mode", "older")
         if str(mode).lower() not in ["newer", "older"]:
             raise SetConfigError(
-                _("invalid 'mode' value %s (use either 'newer' or 'older')") % mode
+                _(f"invalid 'mode' value {mode} (use either 'newer' or 'older')")
             )
 
         formats = []
@@ -537,7 +534,7 @@ class DateSet(EverythingSet):
                 date = int(date)
             except (KeyError, ValueError):
                 raise SetConfigError(
-                    _("cannot determine installation date of package %s") % package
+                    _(f"cannot determine installation date of package {package}")
                 )
         elif setformat == "filestamp":
             filestamp = options.get("filestamp")
@@ -545,7 +542,7 @@ class DateSet(EverythingSet):
                 date = int(os.stat(filestamp).st_mtime)
             except (OSError, ValueError):
                 raise SetConfigError(
-                    _("cannot determine 'filestamp' of '%s'") % filestamp
+                    _(f"cannot determine 'filestamp' of '{filestamp}'")
                 )
         elif setformat == "seconds":
             try:
@@ -559,8 +556,7 @@ class DateSet(EverythingSet):
                 date = int(time.mktime(time.strptime(dateopt, dateformat)))
             except ValueError:
                 raise SetConfigError(
-                    _("'date=%s' does not match 'dateformat=%s'")
-                    % (dateopt, dateformat)
+                    _(f"'date={dateopt}' does not match 'dateformat={dataformat}'")
                 )
         return DateSet(vardb=vardbapi, date=date, mode=mode)
 
@@ -655,7 +651,7 @@ class ChangedDepsSet(PackageSet):
 
             # if dependencies don't match, trigger the rebuild.
             if vdbvars != pdbvars:
-                atoms.append("=%s" % cpv)
+                atoms.append(f"={cpv}")
 
         self._setAtoms(atoms)
 

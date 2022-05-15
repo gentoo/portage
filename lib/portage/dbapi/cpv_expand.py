@@ -26,7 +26,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
         mykey = mycpv
     elif len(myslash) == 2:
         if mysplit:
-            mykey = myslash[0] + "/" + mysplit[0]
+            mykey = f"{myslash[0]}/{mysplit[0]}"
         else:
             mykey = mycpv
 
@@ -66,9 +66,11 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
         mykey = None
         matches = []
         if mydb and hasattr(mydb, "categories"):
-            for x in mydb.categories:
-                if mydb.cp_list(x + "/" + myp, use_cache=use_cache):
-                    matches.append(x + "/" + myp)
+            matches.extend(
+                f"{x}/{myp}"
+                for x in mydb.categories
+                if mydb.cp_list(f"{x}/{myp}", use_cache=use_cache)
+            )
         if len(matches) > 1:
             virtual_name_collision = False
             if len(matches) > 1:
@@ -97,9 +99,9 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
                 mykey = virts_p[0]
             # again, we only perform virtual expansion if we have a dbapi (not a list)
         if not mykey:
-            mykey = "null/" + myp
+            mykey = f"null/{myp}"
     if mysplit:
         if mysplit[2] == "r0":
-            return mykey + "-" + mysplit[1]
-        return mykey + "-" + mysplit[1] + "-" + mysplit[2]
+            return f"{mykey}-{mysplit[1]}"
+        return f"{mykey}-{mysplit[1]}-{mysplit[2]}"
     return mykey

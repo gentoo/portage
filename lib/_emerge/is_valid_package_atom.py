@@ -9,10 +9,7 @@ def insert_category_into_atom(atom, category):
     # Handle '*' character for "extended syntax" wildcard support.
     alphanum = re.search(r"[\*\w]", atom, re.UNICODE)
     if alphanum:
-        ret = atom[: alphanum.start()] + "%s/" % category + atom[alphanum.start() :]
-    else:
-        ret = None
-    return ret
+        return f"{atom[: alphanum.start()]}{category}/{atom[alphanum.start() :]}"
 
 
 def is_valid_package_atom(x, allow_repo=False, allow_build_id=True):

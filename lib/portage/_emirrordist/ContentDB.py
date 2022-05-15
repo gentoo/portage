@@ -36,10 +36,10 @@ class ContentDB:
         @param filename: file name with digests attribute
         """
         distfile_str = str(filename)
-        distfile_key = "filename:{}".format(distfile_str)
+        distfile_key = f"filename:{distfile_str}"
         for k, v in filename.digests.items():
             if k != "size":
-                digest_key = "digest:{}:{}".format(k.upper(), v.lower())
+                digest_key = f"digest:{k.upper()}:{v.lower()}"
                 try:
                     digest_files = self._shelve[digest_key]
                 except KeyError:
@@ -75,7 +75,7 @@ class ContentDB:
 
         @param filename: file name with digests attribute
         """
-        distfile_key = "filename:{}".format(filename)
+        distfile_key = f"filename:{filename}"
         try:
             content_revisions = self._shelve[distfile_key]
         except KeyError:
@@ -90,7 +90,7 @@ class ContentDB:
                     remaining.add(revision_key)
                     continue
                 for k, v in revision_key:
-                    digest_key = "digest:{}:{}".format(k, v)
+                    digest_key = f"digest:{k}:{v}"
                     try:
                         digest_files = self._shelve[digest_key]
                     except KeyError:
@@ -110,10 +110,10 @@ class ContentDB:
                             pass
 
             if remaining:
-                logging.debug(("drop '%s' revision(s) from content db") % filename)
+                logging.debug(f"drop '{filename}' revision(s) from content db")
                 self._shelve[distfile_key] = remaining
             else:
-                logging.debug(("drop '%s' from content db") % filename)
+                logging.debug(f"drop '{filename}' from content db")
                 try:
                     del self._shelve[distfile_key]
                 except KeyError:
@@ -142,7 +142,7 @@ class ContentDB:
 
         for k, v in filename.digests.items():
             digest_item = (k.upper(), v.lower())
-            digest_key = "digest:{}:{}".format(*digest_item)
+            digest_key = f"digest:{k.upper()}:{v.lower()}"
             try:
                 digest_files = self._shelve[digest_key]
             except KeyError:
@@ -151,7 +151,7 @@ class ContentDB:
             for distfile_str in digest_files:
                 matched_revisions.setdefault(distfile_str, set())
                 try:
-                    content_revisions = self._shelve["filename:{}".format(distfile_str)]
+                    content_revisions = self._shelve[f"filename:{distfile_str}"]
                 except KeyError:
                     pass
                 else:

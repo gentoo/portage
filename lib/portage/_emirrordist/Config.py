@@ -90,15 +90,13 @@ class Config:
 
         if log_path is None or getattr(self.options, "dry_run", False):
             log_func = logging.info
-            line_format = "%s: %%s" % log_desc
+            line_format = f"{log_desc}: {{}}"
             add_newline = False
             if log_path is not None:
-                logging.warning(
-                    "dry-run: %s log " "redirected to logging.info" % log_desc
-                )
+                logging.warning(f"dry-run: {log_desc} log redirected to logging.info")
         else:
             self._open_files.append(io.open(log_path, mode=mode, encoding="utf_8"))
-            line_format = "%s\n"
+            line_format = "{}\n"
             log_func = self._open_files[-1].write
 
         return self._LogFormatter(line_format, log_func)
@@ -112,7 +110,7 @@ class Config:
             self._log_func = log_func
 
         def __call__(self, msg):
-            self._log_func(self._line_format % (msg,))
+            self._log_func(self._line_format.format(msg))
 
     def _open_shelve(self, db_file, db_desc):
         dry_run = getattr(self.options, "dry_run", False)
@@ -137,7 +135,7 @@ class Config:
                     db = dbshelve.open(db_file, flags=open_flag)
 
         if dry_run:
-            logging.warning("dry-run: %s db opened in readonly mode" % db_desc)
+            logging.warning(f"dry-run: {db_desc} db opened in readonly mode")
             if not isinstance(db, dict):
                 volatile_db = dict((k, db[k]) for k in db)
                 db.close()

@@ -267,7 +267,7 @@ class SpawnProcess(SubProcess):
                         if e.errno == errno.EPERM:
                             # Reported with hardened kernel (bug #358211).
                             writemsg_level(
-                                "!!! kill: (%i) - Operation not permitted\n" % (p,),
+                                f"!!! kill: ({p}) - Operation not permitted\n",
                                 level=logging.ERROR,
                                 noiselevel=-1,
                             )

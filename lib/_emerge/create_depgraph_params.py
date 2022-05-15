@@ -209,7 +209,7 @@ def create_depgraph_params(myopts, myaction):
 
     if "--debug" in myopts:
         writemsg_level(
-            "\n\nmyparams %s\n\n" % myparams, noiselevel=-1, level=logging.DEBUG
+            f"\n\nmyparams {myparams}\n\n", noiselevel=-1, level=logging.DEBUG
         )
 
     return myparams

@@ -25,19 +25,14 @@ class PackageMerge(CompositeTask):
         else:
             action_desc = "Installing"
             preposition = "to"
-            counter_str = "(%s of %s) " % (
-                colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-                colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-            )
+            colorized_curval = colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval))
+            colorized_maxval = colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval))
+            counter_str = f"({colorized_curval} of {colorized_maxval}) "
 
-        msg = "%s %s%s" % (
-            action_desc,
-            counter_str,
-            colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo),
-        )
+        msg = f"{action_desc} {counter_str}{colorize(pkg_color, f'{pkg.cpv}{_repo_separator}{pkg.repo}')}"
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         if (
             not self.merge.build_opts.fetchonly

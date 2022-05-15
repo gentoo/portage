@@ -23,7 +23,7 @@ def copyfile(src, dest):
     dest = _native_string(dest, encoding=_encodings["fs"], errors="strict")
     (rc, ctx) = selinux.lgetfilecon(src)
     if rc < 0:
-        raise OSError(_('copyfile: Failed getting context of "%s".') % src)
+        raise OSError(_(f'copyfile: Failed getting context of "{src}".'))
 
     setfscreate(ctx)
     try:
@@ -49,7 +49,7 @@ def mkdir(target, refdir):
     (rc, ctx) = selinux.getfilecon(refdir)
     if rc < 0:
         raise OSError(
-            _('mkdir: Failed getting context of reference directory "%s".') % refdir
+            _('mkdir: Failed getting context of reference directory f"{refdir}".')
         )
 
     setfscreate(ctx)
@@ -63,7 +63,7 @@ def rename(src, dest):
     src = _native_string(src, encoding=_encodings["fs"], errors="strict")
     (rc, ctx) = selinux.lgetfilecon(src)
     if rc < 0:
-        raise OSError(_('rename: Failed getting context of "%s".') % src)
+        raise OSError(_('rename: Failed getting context of f"{src}".'))
 
     setfscreate(ctx)
     try:
@@ -81,7 +81,7 @@ def settype(newtype):
         ret[2] = newtype
         return ":".join(ret)
     except IndexError:
-        warnings.warn("Invalid SELinux context: %s" % getcontext())
+        warnings.warn(f"Invalid SELinux context: {getcontext()}")
         return None
 
 
@@ -93,26 +93,26 @@ def setexec(ctx="\n"):
     except OSError:
         msg = _(
             "Failed to set new SELinux execution context. "
-            + "Is your current SELinux context allowed to run Portage?"
+            "Is your current SELinux context allowed to run Portage?"
         )
         if selinux.security_getenforce() == 1:
             raise OSError(msg)
         else:
-            portage.writemsg("!!! %s\n" % msg, noiselevel=-1)
+            portage.writemsg(f"!!! {msg}\n", noiselevel=-1)
 
     if rc < 0:
         if selinux.security_getenforce() == 1:
-            raise OSError(_('Failed setting exec() context "%s".') % ctx)
+            raise OSError(_('Failed setting exec() context f"{ctx}".'))
         else:
             portage.writemsg(
-                "!!! " + _('Failed setting exec() context "%s".') % ctx, noiselevel=-1
+                _(f'!!! Failed setting exec() context "{ctx}".'), noiselevel=-1
             )
 
 
 def setfscreate(ctx="\n"):
     ctx = _native_string(ctx, encoding=_encodings["content"], errors="strict")
     if selinux.setfscreatecon(ctx) < 0:
-        raise OSError(_('setfscreate: Failed setting fs create context "%s".') % ctx)
+        raise OSError(_(f'setfscreate: Failed setting fs create context "{ctx}".'))
 
 
 class spawn_wrapper:
@@ -151,7 +151,7 @@ def symlink(target, link, reflnk):
     (rc, ctx) = selinux.lgetfilecon(reflnk)
     if rc < 0:
         raise OSError(
-            _('symlink: Failed getting context of reference symlink "%s".') % reflnk
+            _(f'symlink: Failed getting context of reference symlink "{reflnk}".')
         )
 
     setfscreate(ctx)

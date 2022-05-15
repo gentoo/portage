@@ -19,20 +19,17 @@ class DeletionTask(CompositeTask):
             recycle_path = os.path.join(self.config.options.recycle_dir, self.distfile)
             if self.config.options.dry_run:
                 logging.info(
-                    ("dry-run: move '%s' from " "distfiles to recycle") % self.distfile
+                    f"dry-run: move '{self.distfile}' from distfiles to recycle"
                 )
             else:
-                logging.debug(
-                    ("move '%s' from " "distfiles to recycle") % self.distfile
-                )
+                logging.debug(f"move '{self.distfile}' from distfiles to recycle")
                 try:
                     # note: distfile_path can be a symlink here
                     os.rename(os.path.realpath(self.distfile_path), recycle_path)
                 except OSError as e:
                     if e.errno != errno.EXDEV:
                         logging.error(
-                            ("rename %s from distfiles to " "recycle failed: %s")
-                            % (self.distfile, e)
+                            f"rename {self.distfile} from distfiles to recycle failed: {e}"
                         )
                 else:
                     self._delete_links()
@@ -52,16 +49,14 @@ class DeletionTask(CompositeTask):
         success = True
 
         if self.config.options.dry_run:
-            logging.info(("dry-run: delete '%s' from " "distfiles") % self.distfile)
+            logging.info(f"dry-run: delete '{self.distfile}' from distfiles")
         else:
-            logging.debug(("delete '%s' from " "distfiles") % self.distfile)
+            logging.debug(f"delete '{self.distfile}' from distfiles")
             try:
                 os.unlink(self.distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logging.error(
-                        "%s unlink failed in distfiles: %s" % (self.distfile, e)
-                    )
+                    logging.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
 
         if success:
@@ -85,15 +80,11 @@ class DeletionTask(CompositeTask):
                 os.unlink(copier.src_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logging.error(
-                        "%s unlink failed in distfiles: %s" % (self.distfile, e)
-                    )
+                    logging.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
-
         else:
             logging.error(
-                ("%s copy from distfiles " "to recycle failed: %s")
-                % (self.distfile, copier.future.exception())
+                f"{self.distfile} copy from distfiles to recycle failed: {copier.future.exception()}"
             )
             success = False
 
@@ -109,7 +100,7 @@ class DeletionTask(CompositeTask):
         success = True
         for layout in self.config.layouts:
             if isinstance(layout, ContentHashLayout) and not self.distfile.digests:
-                logging.debug(("_delete_links: '%s' has " "no digests") % self.distfile)
+                logging.debug(f"_delete_links: '{self.distfile}' has no digests")
                 continue
             distfile_path = os.path.join(
                 self.config.options.distfiles, layout.get_path(self.distfile)
@@ -118,9 +109,7 @@ class DeletionTask(CompositeTask):
                 os.unlink(distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logging.error(
-                        "%s unlink failed in distfiles: %s" % (self.distfile, e)
-                    )
+                    logging.error(f"{self.distfile} unlink failed in distfiles: {e}")
                     success = False
 
         if success:
@@ -136,7 +125,7 @@ class DeletionTask(CompositeTask):
             cpv = self.config.distfiles_db.get(self.distfile, cpv)
 
         self.config.delete_count += 1
-        self.config.log_success("%s\t%s\tremoved" % (cpv, self.distfile))
+        self.config.log_success(f"{cpv}\t{self.distfile}\tremoved")
 
         if self.config.distfiles_db is not None:
             try:
@@ -144,7 +133,7 @@ class DeletionTask(CompositeTask):
             except KeyError:
                 pass
             else:
-                logging.debug(("drop '%s' from " "distfiles db") % self.distfile)
+                logging.debug(f"drop '{self.distfile}' from distfiles db")
 
         if self.config.content_db is not None:
             self.config.content_db.remove(self.distfile)
@@ -155,4 +144,4 @@ class DeletionTask(CompositeTask):
             except KeyError:
                 pass
             else:
-                logging.debug(("drop '%s' from " "deletion db") % self.distfile)
+                logging.debug(f"drop '{self.distfile}' from deletion db")

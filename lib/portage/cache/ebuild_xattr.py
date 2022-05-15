@@ -27,7 +27,7 @@ class database(fs_template.FsBased):
     def __init__(self, *args, **config):
         super(database, self).__init__(*args, **config)
         self.portdir = self.label
-        self.ns = xattr.NS_USER + ".gentoo.cache"
+        self.ns = f"{xattr.NS_USER}.gentoo.cache"
         self.keys = set(self._known_keys)
         self.keys.add("_mtime_")
         self.keys.add("_eclasses_")
@@ -75,7 +75,7 @@ class database(fs_template.FsBased):
 
     def __get_path(self, cpv):
         cat, pn = catsplit(cpv_getkey(cpv))
-        return os.path.join(self.portdir, cat, pn, os.path.basename(cpv) + ".ebuild")
+        return os.path.join(self.portdir, cat, pn, f"{os.path.basename(cpv)}.ebuild")
 
     def __has_cache(self, path):
         try:
@@ -112,10 +112,10 @@ class database(fs_template.FsBased):
             attr_value = attrs.get(key, "1:")
             parts, sep, value = attr_value.partition(":")
             parts = int(parts)
+            attr_values = ""
             if parts > 1:
-                for i in range(1, parts):
-                    value += attrs.get(key + str(i))
-            values[key] = value
+                attr_values = "".join(attrs.get(f"{key}{i}") for i in range(1, parts))
+            values[key] = f"{value}{attr_values}"
 
         return values
 
@@ -135,7 +135,7 @@ class database(fs_template.FsBased):
                     parts += 1
 
                 # Only the first entry carries the number of parts
-                self.__set(path, key, "%s:%s" % (parts, s[0:max_len]))
+                self.__set(path, key, f"{parts}:{s[0:max_len]}")
 
                 # Write out the rest
                 for i in range(1, parts):
@@ -143,7 +143,7 @@ class database(fs_template.FsBased):
                     val = s[start : start + max_len]
                     self.__set(path, key + str(i), val)
             else:
-                self.__set(path, key, "%s:%s" % (1, s))
+                self.__set(path, key, f"1:{s}")
 
     def _delitem(self, cpv):
         pass  # Will be gone with the ebuild
@@ -161,9 +161,9 @@ class database(fs_template.FsBased):
                     )
                 except UnicodeDecodeError:
                     continue
-                if file[-7:] == ".ebuild":
+                if file.endswith(".ebuild"):
                     cat = os.path.basename(os.path.dirname(root))
                     pn_pv = file[:-7]
                     path = os.path.join(root, file)
                     if self.__has_cache(path):
-                        yield "%s/%s/%s" % (cat, os.path.basename(root), file[:-7])
+                        yield f"{cat}/{os.path.basename(root)}/{file[:-7]}"

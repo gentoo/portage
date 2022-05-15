@@ -246,9 +246,7 @@ class _LockProcess(AbstractPollTask):
                 # this failure appropriately.
                 if not (self.cancelled or self._kill_test):
                     writemsg_level(
-                        "_LockProcess: %s\n"
-                        % _("failed to acquire lock on '%s'")
-                        % (self.path,),
+                        _(f"_LockProcess: failed to acquire lock on '{self.path}'\n"),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -262,7 +260,7 @@ class _LockProcess(AbstractPollTask):
                 # only safe to ignore if either the cancel() or
                 # unlock() methods have been previously called.
                 raise AssertionError(
-                    "lock process failed with returncode %s" % (proc.returncode,)
+                    f"lock process failed with returncode {proc.returncode}"
                 )
 
         if self._unlock_future is not None:
@@ -306,7 +304,7 @@ class _LockProcess(AbstractPollTask):
             raise AssertionError("lock not acquired yet")
         if self.returncode != os.EX_OK:
             raise AssertionError(
-                "lock process failed with returncode %s" % (self.returncode,)
+                f"lock process failed with returncode {self.returncode}"
             )
         if self._unlock_future is not None:
             raise AssertionError("already unlocked")

@@ -68,21 +68,20 @@ class MergeListItem(CompositeTask):
         if build_opts.fetchonly:
             action_desc = "Fetching"
 
-        msg = "%s (%s of %s) %s" % (
-            action_desc,
-            colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
-            colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
-            colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo),
+        msg = (
+            f"{action_desc} "
+            f"({colorize('MERGE_LIST_PROGRESS', str(pkg_count.curval))} of "
+            f"{colorize('MERGE_LIST_PROGRESS', str(pkg_count.maxval))}) "
+            f"{colorize(pkg_color, pkg.cpv + _repo_separator + pkg.repo)}"
         )
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         if not build_opts.pretend:
             self.statusMessage(msg)
             logger.log(
-                " >>> emerge (%s of %s) %s to %s"
-                % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
+                f" >>> emerge ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} to {pkg.root}"
             )
 
         if pkg.type_name == "ebuild":

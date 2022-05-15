@@ -30,7 +30,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 
     if xterm_titles and short_msg:
         if "HOSTNAME" in os.environ:
-            short_msg = os.environ["HOSTNAME"] + ": " + short_msg
+            short_msg = f"{os.environ['HOSTNAME']}: {short_msg}"
         xtermTitle(short_msg)
     try:
         file_path = os.path.join(_emerge_log_dir, "emerge.log")
@@ -47,10 +47,10 @@ def emergelog(xterm_titles, mystr, short_msg=None):
             )
         mylock = portage.locks.lockfile(file_path)
         try:
-            mylogfile.write("%.0f: %s\n" % (time.time(), mystr))
+            mylogfile.write(f"{time.time():.0f}: {mystr}\n")
             mylogfile.close()
         finally:
             portage.locks.unlockfile(mylock)
     except (IOError, OSError, portage.exception.PortageException) as e:
         if secpass >= 1:
-            portage.util.writemsg("emergelog(): %s\n" % (e,), noiselevel=-1)
+            portage.util.writemsg(f"emergelog(): {e}\n", noiselevel=-1)

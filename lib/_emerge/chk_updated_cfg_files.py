@@ -16,13 +16,13 @@ def chk_updated_cfg_files(eroot, config_protect):
 
     for x in result:
         writemsg_level(
-            "\n %s " % (colorize("WARN", "* " + _("IMPORTANT:"))),
+            f"""\n {colorize("WARN", f"* {_('IMPORTANT:')}")} """,
             level=logging.INFO,
             noiselevel=-1,
         )
         if not x[1]:  # it's a protected file
             writemsg_level(
-                _("config file '%s' needs updating.\n") % x[0],
+                _(f"config file '{x[0]}' needs updating.\n"),
                 level=logging.INFO,
                 noiselevel=-1,
             )
@@ -32,31 +32,25 @@ def chk_updated_cfg_files(eroot, config_protect):
                 tail = tail[len("._cfg0000_") :]
                 fpath = os.path.join(head, tail)
                 writemsg_level(
-                    _("config file '%s' needs updating.\n") % fpath,
+                    _(f"config file '{fpath}' needs updating.\n"),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
             else:
                 writemsg_level(
-                    _("%d config files in '%s' need updating.\n") % (len(x[1]), x[0]),
+                    _(f"{len(x[1])} config files in '{x[0]}' need updating.\n"),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
 
     if result:
         print(
-            " "
-            + yellow("*")
-            + " See the "
-            + colorize("INFORM", _("CONFIGURATION FILES"))
-            + " and "
-            + colorize("INFORM", _("CONFIGURATION FILES UPDATE TOOLS"))
+            f" {yellow('*')} See the {colorize('INFORM', _('CONFIGURATION FILES'))} "
+            f"and i{colorize('INFORM', _('CONFIGURATION FILES UPDATE TOOLS'))}"
         )
         print(
-            " "
-            + yellow("*")
-            + " sections of the "
-            + bold("emerge")
-            + " "
-            + _("man page to learn how to update config files.")
+            _(
+                f" {yellow('*')} sections of the {bold('emerge')} "
+                "man page to learn how to update config files."
+            )
         )

@@ -100,7 +100,7 @@ class EbuildPhase(CompositeTask):
 
         if need_builddir:
             phase_completed_file = os.path.join(
-                self.settings["PORTAGE_BUILDDIR"], ".%sed" % self.phase.rstrip("e")
+                self.settings["PORTAGE_BUILDDIR"], f".{self.phase.rstrip('e')}ed"
             )
             if not os.path.exists(phase_completed_file):
                 # If the phase is really going to run then we want
@@ -135,22 +135,22 @@ class EbuildPhase(CompositeTask):
                     maint_str = "<invalid metadata.xml>"
 
             msg = []
-            msg.append("Package:    %s" % self.settings.mycpv)
+            msg.append(f"Package:    {self.settings.mycpv}")
             if self.settings.get("PORTAGE_REPO_NAME"):
-                msg.append("Repository: %s" % self.settings["PORTAGE_REPO_NAME"])
+                msg.append(f"Repository: {self.settings['PORTAGE_REPO_NAME']}")
             if maint_str:
-                msg.append("Maintainer: %s" % maint_str)
+                msg.append(f"Maintainer: {maint_str}")
             if upstr_str:
-                msg.append("Upstream:   %s" % upstr_str)
+                msg.append(f"Upstream:   {upstr_str}")
 
-            msg.append("USE:        %s" % use)
+            msg.append(f"USE:        {use}")
             relevant_features = []
             enabled_features = self.settings.features
             for x in self._features_display:
                 if x in enabled_features:
                     relevant_features.append(x)
             if relevant_features:
-                msg.append("FEATURES:   %s" % " ".join(relevant_features))
+                msg.append(f"FEATURES:   {' '.join(relevant_features)}")
 
             # Force background=True for this header since it's intended
             # for the log and it doesn't necessarily need to be visible
@@ -406,7 +406,7 @@ class EbuildPhase(CompositeTask):
             self._append_temp_log(post_phase.logfile, log_path)
 
         if self._final_exit(post_phase) != os.EX_OK:
-            writemsg("!!! post %s failed; exiting.\n" % self.phase, noiselevel=-1)
+            writemsg(f"!!! post {self.phase} failed; exiting.\n", noiselevel=-1)
             self._die_hooks()
             return
 
@@ -625,7 +625,7 @@ class _PostPhaseCommands(CompositeTask):
             qa_msg = ["QA Notice: Unresolved soname dependencies:"]
             qa_msg.append("")
             qa_msg.extend(
-                "\t%s: %s" % (filename, " ".join(sorted(soname_deps)))
+                f"\t{filename}: {' '.join(sorted(soname_deps))}"
                 for filename, soname_deps in unresolved
             )
             qa_msg.append("")

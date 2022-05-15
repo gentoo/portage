@@ -51,7 +51,7 @@ class MetadataRegen(AsyncScheduler):
             if self._terminated.is_set():
                 break
             cp_set.add(cp)
-            portage.writemsg_stdout("Processing %s\n" % cp)
+            portage.writemsg_stdout(f"Processing {cp}\n")
             # We iterate over portdb.porttrees, since it's common to
             # tweak this attribute in order to adjust repo selection.
             for mytree in portdb.porttrees:
@@ -64,8 +64,7 @@ class MetadataRegen(AsyncScheduler):
                     ebuild_path, repo_path = portdb.findname2(cpv, myrepo=repo.name)
                     if ebuild_path is None:
                         raise AssertionError(
-                            "ebuild not found for '%s%s%s'"
-                            % (cpv, _repo_separator, repo.name)
+                            f"ebuild not found for '{cpv}{_repo_separator}{repo.name}'"
                         )
                     metadata, ebuild_hash = portdb._pull_valid_cache(
                         cpv, ebuild_path, repo_path
@@ -100,8 +99,7 @@ class MetadataRegen(AsyncScheduler):
                     dead_nodes[mytree] = set(portdb.auxdb[mytree])
                 except CacheError as e:
                     portage.writemsg(
-                        "Error listing cache entries for "
-                        + "'%s': %s, continuing...\n" % (mytree, e),
+                        f"Error listing cache entries for '{mytree}': {e}, continuing...\n",
                         noiselevel=-1,
                     )
                     del e
@@ -117,8 +115,7 @@ class MetadataRegen(AsyncScheduler):
                     )
                 except CacheError as e:
                     portage.writemsg(
-                        "Error listing cache entries for "
-                        + "'%s': %s, continuing...\n" % (mytree, e),
+                        f"Error listing cache entries for '{mytree}': {e}, continuing...\n",
                         noiselevel=-1,
                     )
                     del e
@@ -147,7 +144,7 @@ class MetadataRegen(AsyncScheduler):
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:
                 portage.writemsg(
-                    "Error processing %s, continuing...\n" % (metadata_process.cpv,),
+                    f"Error processing {metadata_process.cpv}, continuing...\n",
                     noiselevel=-1,
                 )
 

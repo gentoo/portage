@@ -29,18 +29,16 @@ def dep_expand(mydep, mydb=None, use_cache=1, settings=None):
             alphanum = re.search(r"\w", orig_dep)
             if alphanum:
                 mydep = (
-                    orig_dep[: alphanum.start()]
-                    + "null/"
-                    + orig_dep[alphanum.start() :]
+                    f"{orig_dep[: alphanum.start()]}null/{orig_dep[alphanum.start() :]}"
                 )
         try:
             mydep = Atom(mydep, allow_repo=True)
         except InvalidAtom:
             # Missing '=' prefix is allowed for backward compatibility.
-            if not isvalidatom("=" + mydep, allow_repo=True):
+            if not isvalidatom(f"={mydep}", allow_repo=True):
                 raise
-            mydep = Atom("=" + mydep, allow_repo=True)
-            orig_dep = "=" + orig_dep
+            mydep = Atom(f"={mydep}", allow_repo=True)
+            orig_dep = "={orig_dep}"
         if not has_cat:
             null_cat, pn = catsplit(mydep.cp)
             mydep = pn

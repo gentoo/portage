@@ -127,7 +127,7 @@ class JobStatusDisplay:
         return True
 
     def _format_msg(self, msg):
-        return ">>> %s" % msg
+        return f">>> {msg}"
 
     def _erase(self):
         self._write(self._term_codes["carriage_return"] + self._term_codes["clr_eol"])
@@ -200,7 +200,7 @@ class JobStatusDisplay:
         else:
             digits = 0
 
-        return ", ".join(("%%.%df" % digits) % x for x in avg)
+        return ", ".join(f"{x:.{digits}f}" for x in avg)
 
     def display(self):
         """
@@ -228,10 +228,10 @@ class JobStatusDisplay:
     def _display_status(self):
         # Don't use len(self._completed_tasks) here since that also
         # can include uninstall tasks.
-        curval_str = "%s" % (self.curval,)
-        maxval_str = "%s" % (self.maxval,)
-        running_str = "%s" % (self.running,)
-        failed_str = "%s" % (self.failed,)
+        curval_str = str(self.curval)
+        maxval_str = str(self.maxval)
+        running_str = str(self.running)
+        failed_str = str(self.failed)
         load_avg_str = self._load_avg_str()
 
         color_output = io.StringIO()
@@ -292,5 +292,5 @@ class JobStatusDisplay:
             title_str = " ".join(plain_output.split())
             hostname = os.environ.get("HOSTNAME")
             if hostname is not None:
-                title_str = "%s: %s" % (hostname, title_str)
+                title_str = f"{hostname}: {title_str}"
             xtermTitle(title_str)

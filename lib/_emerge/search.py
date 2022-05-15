@@ -106,7 +106,7 @@ class search:
 
     def _aux_get_error(self, cpv):
         portage.writemsg(
-            "emerge: search: " "aux_get('%s') failed, skipping\n" % cpv, noiselevel=-1
+            f"emerge: search: aux_get('{cpv}') failed, skipping\n", noiselevel=-1
         )
 
     def _findname(self, *args, **kwargs):
@@ -389,9 +389,7 @@ class search:
             def append(msg):
                 writemsg_stdout(msg, noiselevel=-1)
 
-        msg.append(
-            "\b\b  \n[ Results for search key : " + bold(self.searchkey) + " ]\n"
-        )
+        msg.append(f"\b\b  \n[ Results for search key : {bold(self.searchkey)} ]\n")
         vardb = self._vardb
         metadata_keys = set(Package.metadata_keys)
         metadata_keys.update(["DESCRIPTION", "HOMEPAGE", "LICENSE", "SRC_URI"])
@@ -421,14 +419,10 @@ class search:
                     if full_package:
                         full_package = full_package[-1]
             elif mtype == "set":
-                msg.append(green("*") + "  " + bold(match) + "\n")
+                msg.append(f"{green('*')}  {bold(match)}\n")
                 if self.verbose:
                     msg.append(
-                        "      "
-                        + darkgreen("Description:")
-                        + "   "
-                        + self.sdict[match].getMetadata("DESCRIPTION")
-                        + "\n\n"
+                        "      {darkgreen('Description:')}   {self.sdict[match].getMetadata('DESCRIPTION')}\n\n"
                     )
             if full_package:
                 try:
@@ -443,19 +437,17 @@ class search:
                 homepage = metadata["HOMEPAGE"]
                 license = metadata["LICENSE"]  # pylint: disable=redefined-builtin
 
+                output = f"{green('*')}  {bold(match)}"
                 if masked:
-                    msg.append(
-                        green("*") + "  " + bold(match) + " " + red("[ Masked ]") + "\n"
-                    )
-                else:
-                    msg.append(green("*") + "  " + bold(match) + "\n")
+                    output += f" {red('[ Masked ]')}"
+                msg.append(f"{output}\n")
                 myversion = self.getVersion(full_package, search.VERSION_RELEASE)
 
                 mysum = [0, 0]
                 file_size_str = None
                 mycat = match.split("/")[0]
                 mypkg = match.split("/")[1]
-                mycpv = match + "-" + myversion
+                mycpv = f"{match}-{myversion}"
                 myebuild = self._findname(mycpv)
                 if myebuild:
                     pkg = Package(
@@ -474,15 +466,13 @@ class search:
                     try:
                         uri_map = _parse_uri_map(mycpv, metadata, use=pkg.use.enabled)
                     except portage.exception.InvalidDependString as e:
-                        file_size_str = "Unknown (%s)" % (e,)
+                        file_size_str = f"Unknown ({e})"
                         del e
                     else:
                         try:
                             mysum[0] = mf.getDistfilesSize(uri_map)
                         except KeyError as e:
-                            file_size_str = "Unknown (missing " + "digest for %s)" % (
-                                e,
-                            )
+                            file_size_str = f"Unknown (missing digest for {e})"
                             del e
 
                 available = False
@@ -503,28 +493,24 @@ class search:
                 if self.verbose:
                     if available:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Latest version available:"), myversion)
+                            f"      {darkgreen('Latest version available:')} {myversion}\n"
                         )
                     msg.append(
-                        "      %s\n" % self.getInstallationStatus(mycat + "/" + mypkg)
+                        f"      {self.getInstallationStatus(f'{mycat}/{mypkg}')}\n"
                     )
                     if myebuild:
                         msg.append(
-                            "      %s %s\n"
-                            % (darkgreen("Size of files:"), file_size_str)
+                            f"      {darkgreen('Size of files:')} {file_size_str}\n"
                         )
                     msg.append(
-                        "      " + darkgreen("Homepage:") + "      " + homepage + "\n"
-                    )
-                    msg.append(
-                        "      " + darkgreen("Description:") + "   " + desc + "\n"
-                    )
-                    msg.append(
-                        "      " + darkgreen("License:") + "       " + license + "\n\n"
+                        (
+                            f"      {darkgreen('Homepage:')}      {homepage}\n"
+                            f"      {darkgreen('Description:')}   {desc}\n"
+                            f"      {darkgreen('License:')}       {license}\n\n"
+                        )
                     )
 
-        msg.append("[ Applications found : " + bold(str(self.mlen)) + " ]\n\n")
+        msg.append("[ Applications found : {bold(str(self.mlen))} ]\n\n")
 
         # This method can be called multiple times, so
         # reset the match count for the next call. Don't
@@ -553,19 +539,18 @@ class search:
             installed_package = ""
         result = ""
         version = self.getVersion(installed_package, search.VERSION_RELEASE)
+        result = darkgreen("Latest version installed:")
         if len(version) > 0:
-            result = darkgreen("Latest version installed:") + " " + version
+            result += f" {version}"
         else:
-            result = darkgreen("Latest version installed:") + " [ Not Installed ]"
+            result += f" [ Not Installed ]"
         return result
 
     def getVersion(self, full_package, detail):
+        result = ""
         if len(full_package) > 1:
             package_parts = portage.catpkgsplit(full_package)
+            result = package_parts[2]
             if detail == search.VERSION_RELEASE and package_parts[3] != "r0":
-                result = package_parts[2] + "-" + package_parts[3]
-            else:
-                result = package_parts[2]
-        else:
-            result = ""
+                result += f"-{package_parts[3]}"
         return result

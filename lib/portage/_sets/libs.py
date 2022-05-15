@@ -28,7 +28,7 @@ class LibraryConsumerSet(PackageSet):
                     # without replacement.
                     pass
                 else:
-                    rValue.add("%s:%s" % (pkg.cp, pkg.slot))
+                    rValue.add(f"{pkg.cp}:{pkg.slot}")
         return rValue
 
 
@@ -83,7 +83,7 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
                         for x in sorted(
                             self.dbapi._linkmap.findConsumers(lib, greedy=False)
                         ):
-                            print("    ", x)
+                            print(f"{'':5}{x}")
                         print("-" * 40)
                     consumers.update(
                         self.dbapi._linkmap.findConsumers(lib, greedy=False)

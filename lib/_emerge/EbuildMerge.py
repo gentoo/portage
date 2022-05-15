@@ -70,19 +70,13 @@ class EbuildMerge(CompositeTask):
         pkg_path = self.pkg_path
         logger = self.logger
         if "noclean" not in self.settings.features:
-            short_msg = "emerge: (%s of %s) %s Clean Post" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-            )
+            short_msg = f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Clean Post"
             logger.log(
-                (" === (%s of %s) " + "Post-Build Cleaning (%s::%s)")
-                % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg_path),
+                f" === ({pkg_count.curval} of {pkg_count.maxval}) Post-Build Cleaning ({pkg.cpv}::{pkg_path})",
                 short_msg=short_msg,
             )
         logger.log(
-            " ::: completed emerge (%s of %s) %s to %s"
-            % (pkg_count.curval, pkg_count.maxval, pkg.cpv, pkg.root)
+            f" ::: completed emerge ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} to {pkg.root}"
         )
 
         self._start_exit_hook(self.returncode)

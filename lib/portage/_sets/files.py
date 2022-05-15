@@ -38,20 +38,19 @@ class StaticFileSet(EditablePackageSet):
         super(StaticFileSet, self).__init__(allow_repo=True)
         self._filename = filename
         self._mtime = None
-        self.description = "Package set loaded from file %s" % self._filename
+        self.description = f"Package set loaded from file {self._filename}"
         self.loader = ItemFileLoader(self._filename, self._validate)
         if greedy and not dbapi:
             self.errors.append(
                 _(
-                    "%s configured as greedy set, but no dbapi instance passed in constructor"
+                    f"{self._filename} configured as greedy set, but no dbapi instance passed in constructor"
                 )
-                % self._filename
             )
             greedy = False
         self.greedy = greedy
         self.dbapi = dbapi
 
-        metadata = grabfile(self._filename + ".metadata")
+        metadata = grabfile(f"{self._filename}.metadata")
         key = None
         value = []
         for line in metadata:
@@ -76,9 +75,7 @@ class StaticFileSet(EditablePackageSet):
     def write(self):
         write_atomic(
             self._filename,
-            "".join(
-                "%s\n" % (atom,) for atom in sorted(chain(self._atoms, self._nonatoms))
-            ),
+            "".join(f"{atom}\n" for atom in sorted(chain(self._atoms, self._nonatoms))),
         )
 
     def load(self):
@@ -91,7 +88,7 @@ class StaticFileSet(EditablePackageSet):
                 data, errors = self.loader.load()
                 for fname in errors:
                     for e in errors[fname]:
-                        self.errors.append(fname + ": " + e)
+                        self.errors.append(f"{fname}: {e}")
             except EnvironmentError as e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -103,7 +100,7 @@ class StaticFileSet(EditablePackageSet):
                     matches = self.dbapi.match(a)
                     for cpv in matches:
                         pkg = self.dbapi._pkg_str(cpv, None)
-                        atoms.append("%s:%s" % (pkg.cp, pkg.slot))
+                        atoms.append(f"{pkg.cp}:{pkg.slot}")
                     # In addition to any installed slots, also try to pull
                     # in the latest new slot that may be available.
                     atoms.append(a)
@@ -120,15 +117,14 @@ class StaticFileSet(EditablePackageSet):
         # look for repository path variables
         match = self._repopath_match.match(filename)
         if match:
+            reponame_match = match.groupdict()["reponame"]
             try:
                 filename = self._repopath_sub.sub(
-                    trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]],
+                    trees["porttree"].dbapi.treemap[reponame_match],
                     filename,
                 )
             except KeyError:
-                raise SetConfigError(
-                    _("Could not find repository '%s'") % match.groupdict()["reponame"]
-                )
+                raise SetConfigError(_(f"Could not find repository '{reponame_match}'"))
         return StaticFileSet(filename, greedy=greedy, dbapi=trees["vartree"].dbapi)
 
     singleBuilder = classmethod(singleBuilder)
@@ -146,15 +142,14 @@ class StaticFileSet(EditablePackageSet):
         # look for repository path variables
         match = self._repopath_match.match(directory)
         if match:
+            reponame_match = match.groupdict()["reponame"]
             try:
                 directory = self._repopath_sub.sub(
-                    trees["porttree"].dbapi.treemap[match.groupdict()["reponame"]],
+                    trees["porttree"].dbapi.treemap[reponame_match],
                     directory,
                 )
             except KeyError:
-                raise SetConfigError(
-                    _("Could not find repository '%s'") % match.groupdict()["reponame"]
-                )
+                raise SetConfigError(_(f"Could not find repository '{reponame_match}'"))
 
         try:
             directory = _unicode_decode(
@@ -168,9 +163,8 @@ class StaticFileSet(EditablePackageSet):
             )
             raise SetConfigError(
                 _(
-                    "Directory path contains invalid character(s) for encoding '%s': '%s'"
+                    f"Directory path contains invalid character(s) for encoding 'utf-8': '{directory}'"
                 )
-                % (_encodings["fs"], directory)
             )
 
         vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
@@ -215,7 +209,7 @@ class ConfigFileSet(PackageSet):
     def __init__(self, filename):
         super(ConfigFileSet, self).__init__()
         self._filename = filename
-        self.description = "Package set generated from %s" % self._filename
+        self.description = f"Package set generated from {self._filename}"
         self.loader = KeyListFileLoader(self._filename, ValidAtomValidator)
 
     def load(self):
@@ -240,7 +234,7 @@ class ConfigFileSet(PackageSet):
         for suffix in ["keywords", "use", "mask", "unmask"]:
             myname = name_pattern.replace("$suffix", suffix)
             myname = myname.replace("${suffix}", suffix)
-            rValue[myname] = ConfigFileSet(os.path.join(directory, "package." + suffix))
+            rValue[myname] = ConfigFileSet(os.path.join(directory, f"package.{suffix}"))
         return rValue
 
     multiBuilder = classmethod(multiBuilder)
@@ -298,7 +292,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         return ValidAtomValidator(atom, allow_repo=True)
 
     def write(self):
-        write_atomic(self._filename, "".join(sorted("%s\n" % x for x in self._atoms)))
+        write_atomic(self._filename, "".join(sorted(f"{x}\n" for x in self._atoms)))
 
     def load(self):
         atoms = []
@@ -312,7 +306,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
                 data, errors = self.loader.load()
                 for fname in errors:
                     for e in errors[fname]:
-                        self.errors.append(fname + ": " + e)
+                        self.errors.append(f"{fname}: {e}")
             except EnvironmentError as e:
                 if e.errno != errno.ENOENT:
                     raise
@@ -394,9 +388,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
         return setname.startswith(SETPREFIX)
 
     def write(self):
-        write_atomic(
-            self._filename, "".join(sorted("%s\n" % x for x in self._nonatoms))
-        )
+        write_atomic(self._filename, "".join(sorted(f"{x}\n" for x in self._nonatoms)))
 
     def load(self):
         atoms_changed = False
@@ -409,7 +401,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
                 data, errors = self.loader.load()
                 for fname in errors:
                     for e in errors[fname]:
-                        self.errors.append(fname + ": " + e)
+                        self.errors.append(f"{fname}: {e}")
             except EnvironmentError as e:
                 if e.errno != errno.ENOENT:
                     raise

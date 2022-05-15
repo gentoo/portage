@@ -23,10 +23,10 @@ class UseFlagDisplay:
         if self.enabled:
             s = red(s)
         else:
-            s = "-" + s
+            s = f"-{s}"
             s = blue(s)
         if self.forced:
-            s = "(%s)" % s
+            s = f"({s})"
         return s
 
     def _cmp_combined(a, b):
@@ -69,7 +69,7 @@ def pkg_use_display(pkg, opts, modified_use=None):
     use_enabled = {}
     use_disabled = {}
     for varname in use_expand:
-        flag_prefix = varname.lower() + "_"
+        flag_prefix = f"{varname.lower()}_"
         for f in use:
             if f.startswith(flag_prefix):
                 use_expand_flags.add(f)
@@ -110,8 +110,6 @@ def pkg_use_display(pkg, opts, modified_use=None):
             flags.sort(key=UseFlagDisplay.sort_combined)
         else:
             flags.sort(key=UseFlagDisplay.sort_separated)
-        flag_displays.append(
-            '%s="%s"' % (varname, " ".join("%s" % (f,) for f in flags))
-        )
+        flag_displays.append(f'''{varname}="{' '.join(str(f) for f in flags)}"''')
 
     return " ".join(flag_displays)

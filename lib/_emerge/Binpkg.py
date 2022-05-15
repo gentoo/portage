@@ -86,7 +86,7 @@ class Binpkg(CompositeTask):
         )
         if dir_path != self.settings["PORTAGE_BUILDDIR"]:
             raise AssertionError(
-                "'%s' != '%s'" % (dir_path, self.settings["PORTAGE_BUILDDIR"])
+                f"'{dir_path}' != '{self.settings['PORTAGE_BUILDDIR']}'"
             )
         self._build_dir = EbuildBuildDir(scheduler=self.scheduler, settings=settings)
         settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
@@ -124,7 +124,7 @@ class Binpkg(CompositeTask):
                     "Fetching in the background:",
                     prefetcher.pkg_path,
                     "To view fetch progress, run in another terminal:",
-                    "tail -f %s" % fetch_log,
+                    f"tail -f {fetch_log}",
                 )
                 out = portage.output.EOutput()
                 for l in msg:
@@ -178,16 +178,9 @@ class Binpkg(CompositeTask):
                 scheduler=self.scheduler,
             )
 
-            msg = " --- (%s of %s) Fetching Binary (%s::%s)" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-                fetcher.pkg_path,
-            )
-            short_msg = "emerge: (%s of %s) %s Fetch" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
+            msg = f" --- ({pkg_count.curval} of {pkg_count.maxval}) Fetching Binary ({pkg.cpv}::{fetcher.pkg_path})"
+            short_msg = (
+                f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Fetch"
             )
             self.logger.log(msg, short_msg=short_msg)
 
@@ -272,16 +265,9 @@ class Binpkg(CompositeTask):
             self.wait()
             return
 
-        msg = " === (%s of %s) Merging Binary (%s::%s)" % (
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
-            pkg_path,
-        )
-        short_msg = "emerge: (%s of %s) %s Merge Binary" % (
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
+        msg = f" === ({pkg_count.curval} of {pkg_count.maxval}) Merging Binary ({pkg.cpv}::{pkg_path})"
+        short_msg = (
+            f"emerge: ({pkg_count.curval} of {pkg_count.maxval}) {pkg.cpv} Merge Binary"
         )
         logger.log(msg, short_msg=short_msg)
 
@@ -372,7 +358,7 @@ class Binpkg(CompositeTask):
                 encoding=_encodings["content"],
                 errors="strict",
             ) as f:
-                f.write(_unicode_decode("{}\n".format(md5sum)))
+                f.write(_unicode_decode(f"{md5sum}\n"))
 
         env_extractor = BinpkgEnvExtractor(
             background=self.background, scheduler=self.scheduler, settings=self.settings
@@ -381,7 +367,7 @@ class Binpkg(CompositeTask):
         await env_extractor.async_wait()
         if env_extractor.returncode != os.EX_OK:
             raise portage.exception.PortageException(
-                "failed to extract environment for {}".format(self.pkg.cpv)
+                f"failed to extract environment for {self.pkg.cpv}"
             )
 
     def _unpack_metadata_exit(self, unpack_metadata):
@@ -406,7 +392,7 @@ class Binpkg(CompositeTask):
             self._async_unlock_builddir(returncode=self.returncode)
             return
 
-        self._writemsg_level(">>> Extracting %s\n" % self.pkg.cpv)
+        self._writemsg_level(f">>> Extracting {self.pkg.cpv}\n")
         self._start_task(
             AsyncTaskFuture(
                 future=self._bintree.dbapi.unpack_contents(
@@ -484,13 +470,13 @@ class Binpkg(CompositeTask):
             scheduler=self.scheduler,
             logfile=self.settings.get("PORTAGE_LOG_FILE"),
         )
-        self._writemsg_level(">>> Adjusting Prefix to %s\n" % self.settings["EPREFIX"])
+        self._writemsg_level(f">>> Adjusting Prefix to {self.settings['EPREFIX']}\n")
         self._start_task(chpathtool, self._chpathtool_exit)
 
     def _chpathtool_exit(self, chpathtool):
         if self._final_exit(chpathtool) != os.EX_OK:
             self._writemsg_level(
-                "!!! Error Adjusting Prefix to %s\n" % (self.settings["EPREFIX"],),
+                f"!!! Error Adjusting Prefix to {self.settings['EPREFIX']}\n",
                 noiselevel=-1,
                 level=logging.ERROR,
             )

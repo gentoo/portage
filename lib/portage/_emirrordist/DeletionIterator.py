@@ -62,8 +62,8 @@ class DeletionIterator:
             else:
                 if exceptions:
                     logging.error(
-                        "stat failed on '%s' in distfiles: %s\n"
-                        % (filename, "; ".join(str(x) for x in exceptions))
+                        f"stat failed on '{filename}' in distfiles: "
+                        f"{'; '.join(str(x) for x in exceptions)}\n"
                     )
                 continue
 
@@ -103,7 +103,7 @@ class DeletionIterator:
                     deletion_entry = deletion_db.get(filename)
 
                     if deletion_entry is None:
-                        logging.debug("add '%s' to deletion db" % filename)
+                        logging.debug(f"add '{filename}' to deletion db")
                         deletion_db[filename] = start_time
 
                     elif deletion_entry + deletion_delay <= start_time:
@@ -123,4 +123,4 @@ class DeletionIterator:
                     except KeyError:
                         pass
                     else:
-                        logging.debug("drop '%s' from deletion db" % filename)
+                        logging.debug(f"drop '{filename}' from deletion db")

@@ -10,10 +10,7 @@ from portage.util import writemsg_level
 
 def show_invalid_depstring_notice(parent_node, error_msg):
 
-    msg1 = (
-        "\n\n!!! Invalid or corrupt dependency specification: "
-        + "\n\n%s\n\n%s\n\n" % (error_msg, parent_node)
-    )
+    msg1 = f"\n\n!!! Invalid or corrupt dependency specification: \n\n{error_msg}\n\n{parent_node}\n\n"
     p_key = parent_node.cpv
     p_status = parent_node.operation
     msg = []
@@ -22,18 +19,26 @@ def show_invalid_depstring_notice(parent_node, error_msg):
         pkg_location = os.path.join(
             parent_node.root_config.settings["EROOT"], portage.VDB_PATH, category, pf
         )
-        msg.append("Portage is unable to process the dependencies of the ")
-        msg.append("'%s' package. " % p_key)
-        msg.append("In order to correct this problem, the package ")
-        msg.append("should be uninstalled, reinstalled, or upgraded. ")
-        msg.append("As a temporary workaround, the --nodeps option can ")
-        msg.append("be used to ignore all dependencies.  For reference, ")
-        msg.append("the problematic dependencies can be found in the ")
-        msg.append("*DEPEND files located in '%s/'." % pkg_location)
+        msg.extend(
+            (
+                "Portage is unable to process the dependencies of the ",
+                f"'{p_key}' package. ",
+                "In order to correct this problem, the package ",
+                "should be uninstalled, reinstalled, or upgraded. ",
+                "As a temporary workaround, the --nodeps option can ",
+                "be used to ignore all dependencies.  For reference, ",
+                "the problematic dependencies can be found in the ",
+                f"*DEPEND files located in '{pkg_location}/'.",
+            )
+        )
     else:
-        msg.append("This package can not be installed. ")
-        msg.append("Please notify the '%s' package maintainer " % p_key)
-        msg.append("about this problem.")
+        msg.extend(
+            (
+                "This package can not be installed. ",
+                f"Please notify the '{p_key}' package maintainer ",
+                "about this problem.",
+            )
+        )
 
-    msg2 = "".join("%s\n" % line for line in textwrap.wrap("".join(msg), 72))
-    writemsg_level(msg1 + msg2, level=logging.ERROR, noiselevel=-1)
+    msg2 = f"".join("{line}\n" for line in textwrap.wrap("".join(msg), 72))
+    writemsg_level(f"{msg1}{msg2}", level=logging.ERROR, noiselevel=-1)

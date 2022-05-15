@@ -24,7 +24,7 @@ class pkg_node(str):
         self.__dict__["build_time"] = None
 
     def __new__(cls, cp, version, repo=None):
-        return str.__new__(cls, cp + "-" + version)
+        return str.__new__(cls, f"{cp}-{version}")
 
     def __setattr__(self, name, value):
         raise AttributeError(
@@ -33,7 +33,7 @@ class pkg_node(str):
 
 
 def pkg_desc_index_line_format(cp, pkgs, desc):
-    return "%s %s: %s\n" % (cp, " ".join(_pkg_str(cpv).version for cpv in pkgs), desc)
+    return f"{cp} {' '.join(_pkg_str(cpv).version for cpv in pkgs)}: {desc}\n"
 
 
 def pkg_desc_index_line_read(line, repo=None):

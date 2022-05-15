@@ -83,7 +83,7 @@ class EbuildBuild(CompositeTask):
             settings.configdict["pkg"]["MERGE_TYPE"] = "source"
         ebuild_path = portdb.findname(pkg.cpv, myrepo=pkg.repo)
         if ebuild_path is None:
-            raise AssertionError("ebuild not found for '%s'" % pkg.cpv)
+            raise AssertionError(f"ebuild not found for '{pkg.cpv}'")
         self._ebuild_path = ebuild_path
         portage.doebuild_environment(
             ebuild_path, "setup", settings=self.settings, db=portdb
@@ -109,7 +109,7 @@ class EbuildBuild(CompositeTask):
                 msg = (
                     "Fetching files in the background.",
                     "To view fetch progress, run in another terminal:",
-                    "tail -f %s" % fetch_log,
+                    f"tail -f {fetch_log}",
                 )
                 out = portage.output.EOutput()
                 for l in msg:
@@ -219,17 +219,8 @@ class EbuildBuild(CompositeTask):
         lock_task.future.result()
         # Cleaning needs to happen before fetch, since the build dir
         # is used for log handling.
-        msg = " === (%s of %s) Cleaning (%s::%s)" % (
-            self.pkg_count.curval,
-            self.pkg_count.maxval,
-            self.pkg.cpv,
-            self._ebuild_path,
-        )
-        short_msg = "emerge: (%s of %s) %s Clean" % (
-            self.pkg_count.curval,
-            self.pkg_count.maxval,
-            self.pkg.cpv,
-        )
+        msg = f" === ({self.pkg_count.curval} of {self.pkg_count.maxval}) Cleaning ({self.pkg.cpv}::{self._ebuild_path})"
+        short_msg = f"emerge: ({self.pkg_count.curval} of {self.pkg_count.maxval}) {self.pkg.cpv} Clean"
         self.logger.log(msg, short_msg=short_msg)
 
         pre_clean_phase = EbuildPhase(
@@ -298,7 +289,7 @@ class EbuildBuild(CompositeTask):
             already_fetched = already_fetched_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % (self.pkg.cpv, e)
+            msg = f"Fetch failed for '{self.pkg.cpv}' due to invalid SRC_URI: {e}"
             msg_lines.append(msg)
             fetcher._eerror(msg_lines)
             portage.elog.elog_process(self.pkg.cpv, self.settings)
@@ -363,33 +354,15 @@ class EbuildBuild(CompositeTask):
         ):
 
             self._buildpkg = True
-
-            msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-                ebuild_path,
-            )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-            )
-            logger.log(msg, short_msg=short_msg)
+            pkg_action = "Packaging"
 
         else:
-            msg = " === (%s of %s) Compiling/Merging (%s::%s)" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-                ebuild_path,
-            )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
-                pkg_count.curval,
-                pkg_count.maxval,
-                pkg.cpv,
-            )
-            logger.log(msg, short_msg=short_msg)
+            pkg_action = "Merging"
+
+        pkg_status = f"({pkg_count.curval} of {pkg_count.maxval})"
+        msg = f" === {pkg_status} Compiling/{pkg_action} ({pkg.cpv}::{ebuild_path})"
+        short_msg = f"emerge: {pkg_status} {pkg.cpv} Compile"
+        logger.log(msg, short_msg=short_msg)
 
         build = EbuildExecuter(
             background=self.background, pkg=pkg, scheduler=scheduler, settings=settings
@@ -558,10 +531,10 @@ class EbuildBuild(CompositeTask):
         pkg = task.get_binpkg_info()
         infoloc = os.path.join(self.settings["PORTAGE_BUILDDIR"], "build-info")
         info = {
-            "BINPKGMD5": "%s\n" % pkg._metadata["MD5"],
+            "BINPKGMD5": f"{pkg._metadata['MD5']}\n",
         }
         if pkg.build_id is not None:
-            info["BUILD_ID"] = "%s\n" % pkg.build_id
+            info["BUILD_ID"] = f"{pkg.build_id}\n"
         for k, v in info.items():
             with io.open(
                 _unicode_encode(
@@ -623,17 +596,9 @@ class EbuildBuild(CompositeTask):
             world_atom=world_atom,
         )
 
-        msg = " === (%s of %s) Merging (%s::%s)" % (
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
-            ebuild_path,
-        )
-        short_msg = "emerge: (%s of %s) %s Merge" % (
-            pkg_count.curval,
-            pkg_count.maxval,
-            pkg.cpv,
-        )
+        pkg_status = f"({pkg_count.curval} of {pkg_count.maxval})"
+        msg = f" === {pkg_status} Merging ({pkg.cpv}::{ebuild_path})"
+        short_msg = f"emerge: {pkg_status} {pkg.cpv} Merge"
         logger.log(msg, short_msg=short_msg)
 
         return task

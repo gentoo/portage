@@ -150,7 +150,7 @@ class database(flat_hash.database):
 
         s = cpv.rfind("/")
         fp = os.path.join(
-            self.location, cpv[:s], ".update.%i.%s" % (portage.getpid(), cpv[s + 1 :])
+            self.location, cpv[:s], f".update.{portage.getpid()}.{cpv[s + 1 :]}"
         )
         try:
             myf = open(

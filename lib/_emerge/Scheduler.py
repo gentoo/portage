@@ -455,7 +455,7 @@ class Scheduler(PollScheduler):
                     msg.append(pkg_str)
                 msg.append("")
                 writemsg_level(
-                    "".join("%s\n" % (l,) for l in msg),
+                    "".join(f"{l}\n" for l in msg),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
@@ -728,11 +728,11 @@ class Scheduler(PollScheduler):
             portdb = x.root_config.trees["porttree"].dbapi
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
-                raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                raise AssertionError(f"ebuild not found for '{x.cpv}'")
             pkgsettings["O"] = os.path.dirname(ebuild_path)
             if not digestgen(mysettings=pkgsettings, myportdb=portdb):
                 writemsg_level(
-                    "!!! Unable to generate manifest for '%s'.\n" % x.cpv,
+                    f"!!! Unable to generate manifest for '{x.cpv}'.\n",
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -777,7 +777,7 @@ class Scheduler(PollScheduler):
             quiet_config = quiet_settings[root_config.root]
             ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
             if ebuild_path is None:
-                raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                raise AssertionError(f"ebuild not found for '{x.cpv}'")
             quiet_config["O"] = os.path.dirname(ebuild_path)
             if not digestcheck([], quiet_config, strict=True):
                 failures |= 1
@@ -921,7 +921,7 @@ class Scheduler(PollScheduler):
                         portdb = root_config.trees["porttree"].dbapi
                         ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
                         if ebuild_path is None:
-                            raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                            raise AssertionError(f"ebuild not found for '{x.cpv}'")
                     portage.package.ebuild.doebuild.doebuild_environment(
                         ebuild_path,
                         "clean",
@@ -989,7 +989,7 @@ class Scheduler(PollScheduler):
                     portdb = root_config.trees["porttree"].dbapi
                     ebuild_path = portdb.findname(x.cpv, myrepo=x.repo)
                     if ebuild_path is None:
-                        raise AssertionError("ebuild not found for '%s'" % x.cpv)
+                        raise AssertionError(f"ebuild not found for '{x.cpv}'")
                     settings.configdict["pkg"]["EMERGE_FROM"] = "ebuild"
                     if self._build_opts.buildpkgonly:
                         settings.configdict["pkg"]["MERGE_TYPE"] = "buildonly"
@@ -1247,7 +1247,7 @@ class Scheduler(PollScheduler):
                     for line in log_file:
                         writemsg_level(line, noiselevel=-1)
                 except zlib.error as e:
-                    writemsg_level("%s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+                    writemsg_level(f"{e}\n", level=logging.ERROR, noiselevel=-1)
                 finally:
                     log_file.close()
                     if log_file_real is not None:
@@ -1270,11 +1270,10 @@ class Scheduler(PollScheduler):
             for mysettings, key, logentries in self._failed_pkgs_die_msgs:
                 root_msg = ""
                 if mysettings["ROOT"] != "/":
-                    root_msg = " merged to %s" % mysettings["ROOT"]
+                    root_msg = f" merged to {mysettings['ROOT']}"
                 print()
                 printer.einfo(
-                    "Error messages for package %s%s:"
-                    % (colorize("INFORM", key), root_msg)
+                    f"Error messages for package {colorize('INFORM', key)}{root_msg}:"
                 )
                 print()
                 for phase in portage.const.EBUILD_PHASES:
@@ -1293,8 +1292,8 @@ class Scheduler(PollScheduler):
         if len(self._failed_pkgs_all) > 1 or (self._failed_pkgs_all and keep_going):
             if len(self._failed_pkgs_all) > 1:
                 msg = (
-                    "The following %d packages have " % len(self._failed_pkgs_all)
-                    + "failed to build, install, or execute postinst:"
+                    f"The following {len(self._failed_pkgs_all)} packages have "
+                    "failed to build, install, or execute postinst:"
                 )
             else:
                 msg = (
@@ -1307,7 +1306,7 @@ class Scheduler(PollScheduler):
                 printer.eerror(line)
             printer.eerror("")
             for failed_pkg in self._failed_pkgs_all:
-                msg = " %s" % (failed_pkg.pkg,)
+                msg = f" {failed_pkg.pkg}"
                 if failed_pkg.postinst_failure:
                     msg += " (postinst failed)"
                 log_path = self._locate_failure_log(failed_pkg)
@@ -1315,7 +1314,7 @@ class Scheduler(PollScheduler):
                     msg += ", Log file:"
                 printer.eerror(msg)
                 if log_path is not None:
-                    printer.eerror("  '%s'" % colorize("INFORM", log_path))
+                    printer.eerror(f"  '{colorize('INFORM', log_path)}'")
             printer.eerror("")
 
         if self._failed_pkgs_all:
@@ -2020,9 +2019,9 @@ class Scheduler(PollScheduler):
 
     def _failed_pkg_msg(self, failed_pkg, action, preposition):
         pkg = failed_pkg.pkg
-        msg = "%s to %s %s" % (bad("Failed"), action, colorize("INFORM", pkg.cpv))
+        msg = f"{bad('Failed')} to {action} {colorize('INFORM', pkg.cpv)}"
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += f" {preposition} {pkg.root}"
 
         log_path = self._locate_failure_log(failed_pkg)
         if log_path is not None:
@@ -2030,7 +2029,7 @@ class Scheduler(PollScheduler):
         self._status_msg(msg)
 
         if log_path is not None:
-            self._status_msg(" '%s'" % (colorize("INFORM", log_path),))
+            self._status_msg(f" '{colorize('INFORM', log_path)}'")
 
     def _status_msg(self, msg):
         """
@@ -2158,13 +2157,13 @@ class Scheduler(PollScheduler):
             if not (isinstance(task, Package) and task.operation == "merge"):
                 continue
             pkg = task
-            msg = "emerge --keep-going:" + " %s" % (pkg.cpv,)
+            msg = f"emerge --keep-going: {pkg.cpv}"
             if pkg.root_config.settings["ROOT"] != "/":
-                msg += " for %s" % (pkg.root,)
+                msg += f" for {pkg.root}"
             if not atoms:
                 msg += " dropped because it is masked or unavailable"
             else:
-                msg += " dropped because it requires %s" % ", ".join(set(atoms))
+                msg += f" dropped because it requires {', '.join(set(atoms))}"
             for line in textwrap.wrap(msg, msg_width):
                 eerror(line, phase="other", key=pkg.cpv)
             settings = self.pkgsettings[pkg.root]
@@ -2241,16 +2240,15 @@ class Scheduler(PollScheduler):
                 if atom is not None:
                     if hasattr(world_set, "add"):
                         self._status_msg(
-                            ('Recording %s in "world" ' + "favorites file...") % atom
+                            f'Recording {atom} in "world" favorites file...'
                         )
                         logger.log(
-                            " === (%s of %s) Updating world file (%s)"
-                            % (pkg_count.curval, pkg_count.maxval, pkg.cpv)
+                            f" === ({pkg_count.curval} of {pkg_count.maxval}) Updating world file ({pkg.cpv})"
                         )
                         world_set.add(atom)
                     else:
                         writemsg_level(
-                            '\n!!! Unable to record %s in "world"\n' % (atom,),
+                            f'\n!!! Unable to record {atom} in "world"\n',
                             level=logging.WARN,
                             noiselevel=-1,
                         )

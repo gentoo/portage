@@ -29,13 +29,13 @@ class PackagesSystemSet(PackageSet):
             description = desc_profile.location
         else:
             description = None
-        self.description = "System packages for profile %s" % description
+        self.description = f"System packages for profile {description}"
 
     def load(self):
         debug = self._debug
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: profiles: %s\n" % (self._profiles,),
+                f"\nPackagesSystemSet: profiles: {self._profiles}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -54,7 +54,7 @@ class PackagesSystemSet(PackageSet):
 
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: raw packages: %s\n" % (mylist,),
+                f"\nPackagesSystemSet: raw packages: {mylist}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )
@@ -63,7 +63,7 @@ class PackagesSystemSet(PackageSet):
 
         if debug:
             writemsg_level(
-                "\nPackagesSystemSet: stacked packages: %s\n" % (mylist,),
+                f"\nPackagesSystemSet: stacked packages: {mylist}\n",
                 level=logging.DEBUG,
                 noiselevel=-1,
             )

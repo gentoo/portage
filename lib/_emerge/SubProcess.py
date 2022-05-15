@@ -31,7 +31,7 @@ class SubProcess(AbstractPollTask):
                 if e.errno == errno.EPERM:
                     # Reported with hardened kernel (bug #358211).
                     writemsg_level(
-                        "!!! kill: (%i) - Operation not permitted\n" % (self.pid,),
+                        f"!!! kill: ({self.pid}) - Operation not permitted\n",
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -40,7 +40,7 @@ class SubProcess(AbstractPollTask):
 
     def _async_wait(self):
         if self.returncode is None:
-            raise asyncio.InvalidStateError("Result is not ready for %s" % (self,))
+            raise asyncio.InvalidStateError(f"Result is not ready for {self}")
         else:
             # This calls _unregister, so don't call it until pid status
             # is available.
@@ -66,7 +66,7 @@ class SubProcess(AbstractPollTask):
 
     def _async_waitpid_cb(self, pid, returncode):
         if pid != self.pid:
-            raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
+            raise AssertionError(f"expected pid {self.pid}, got {pid}")
         self.returncode = returncode
         self._async_wait()
 

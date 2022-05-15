@@ -272,13 +272,11 @@ if "RMD160" not in hashfunc_map or "WHIRLPOOL" not in hashfunc_map:
             ("RMD160", "RIPEMD160"),
             ("WHIRLPOOL", "WHIRLPOOL"),
         ):
-            if local_name not in hashfunc_map and hasattr(
-                mhash, "MHASH_%s" % hash_name
-            ):
+            if local_name not in hashfunc_map and hasattr(mhash, f"MHASH_{hash_name}"):
                 _generate_hash_function(
                     local_name,
                     functools.partial(
-                        mhash.MHASH, getattr(mhash, "MHASH_%s" % hash_name)
+                        mhash.MHASH, getattr(mhash, f"MHASH_{hash_name}")
                     ),
                     origin="mhash",
                 )

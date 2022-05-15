@@ -113,7 +113,7 @@ class VdbMetadataDelta:
                 "package": cpv.cp,
                 "version": cpv.version,
                 "slot": slot,
-                "counter": "%s" % counter,
+                "counter": str(counter),
             }
 
             deltas_obj["deltas"].append(delta_node)
@@ -149,7 +149,7 @@ class VdbMetadataDelta:
         packages = self._vardb._aux_cache["packages"]
         deltas = {}
         for delta in data["deltas"]:
-            cpv = delta["package"] + "-" + delta["version"]
+            cpv = f"{delta['package']}-{delta['version']}"
             deltas[cpv] = delta
             event = delta["event"]
             if event == "add":

@@ -75,12 +75,11 @@ class _RepoDisplay:
             show_repo_paths[repo_index] = repo_path
         if show_repo_paths:
             for index, repo_path in enumerate(show_repo_paths):
-                output.append(" " + teal("[" + str(index) + "]") + " %s\n" % repo_path)
+                teal_index = teal(f"[{index}]")
+                output.append(f" {teal_index} {repo_path}\n")
         if unknown_repo:
             output.append(
-                " "
-                + teal("[?]")
-                + " indicates that the source repository could not be determined\n"
+                f" {teal('[?]')} indicates that the source repository could not be determined\n"
             )
         return "".join(output)
 
@@ -107,61 +106,60 @@ class _PackageCounters:
         )
         myoutput = []
         details = []
-        myoutput.append("Total: %s package" % total_installs)
+        myoutput.append(f"Total: {total_installs} package")
         if total_installs != 1:
             myoutput.append("s")
         if total_installs != 0:
             myoutput.append(" (")
         if self.upgrades > 0:
-            details.append("%s upgrade" % self.upgrades)
+            details.append(f"{self.upgrades} upgrade")
             if self.upgrades > 1:
                 details[-1] += "s"
         if self.downgrades > 0:
-            details.append("%s downgrade" % self.downgrades)
+            details.append(f"{self.downgrades} downgrade")
             if self.downgrades > 1:
                 details[-1] += "s"
         if self.new > 0:
-            details.append("%s new" % self.new)
+            details.append(f"{self.new} new")
         if self.newslot > 0:
-            details.append("%s in new slot" % self.newslot)
+            details.append(f"{self.newslot} in new slot")
             if self.newslot > 1:
                 details[-1] += "s"
         if self.reinst > 0:
-            details.append("%s reinstall" % self.reinst)
+            details.append(f"{self.reinst} reinstall")
             if self.reinst > 1:
                 details[-1] += "s"
         if self.binary > 0:
-            details.append("%s binary" % self.binary)
+            details.append(f"{self.binary} binary")
             if self.binary > 1:
                 details[-1] = details[-1][:-1] + "ies"
         if self.uninst > 0:
-            details.append("%s uninstall" % self.uninst)
+            details.append(f"{self.uninst} uninstall")
             if self.uninst > 1:
                 details[-1] += "s"
         if self.interactive > 0:
-            details.append(
-                "%s %s" % (self.interactive, colorize("WARN", "interactive"))
-            )
+            details.append(f"{self.interactive} {colorize('WARN', 'interactive')}")
         myoutput.append(", ".join(details))
         if total_installs != 0:
             myoutput.append(")")
-        myoutput.append(", Size of downloads: %s" % localized_size(self.totalsize))
+        myoutput.append(f", Size of downloads: {localized_size(self.totalsize)}")
         if self.restrict_fetch:
-            myoutput.append("\nFetch Restriction: %s package" % self.restrict_fetch)
+            myoutput.append(f"\nFetch Restriction: {self.restrict_fetch} package")
             if self.restrict_fetch > 1:
                 myoutput.append("s")
         if self.restrict_fetch_satisfied < self.restrict_fetch:
             myoutput.append(
-                bad(" (%s unsatisfied)")
-                % (self.restrict_fetch - self.restrict_fetch_satisfied)
+                bad(
+                    f" ({self.restrict_fetch - self.restrict_fetch_satisfied} unsatisfied)"
+                )
             )
         if self.blocks > 0:
-            myoutput.append("\nConflict: %s block" % self.blocks)
+            myoutput.append(f"\nConflict: {self.blocks} block")
             if self.blocks > 1:
                 myoutput.append("s")
             if self.blocks_satisfied < self.blocks:
                 myoutput.append(
-                    bad(" (%s unsatisfied)") % (self.blocks - self.blocks_satisfied)
+                    bad(f" ({self.blocks - self.blocks_satisfied} unsatisfied)")
                 )
             else:
                 myoutput.append(" (all satisfied)")
@@ -205,10 +203,9 @@ class _DisplayConfig:
             try:
                 mywidth = int(frozen_config.settings["COLUMNWIDTH"])
             except ValueError as e:
-                writemsg("!!! %s\n" % str(e), noiselevel=-1)
+                writemsg(f"!!! {e}\n", noiselevel=-1)
                 writemsg(
-                    "!!! Unable to parse COLUMNWIDTH='%s'\n"
-                    % frozen_config.settings["COLUMNWIDTH"],
+                    f"!!! Unable to parse COLUMNWIDTH='{frozen_config.settings['COLUMNWIDTH']}'\n",
                     noiselevel=-1,
                 )
                 del e
@@ -299,15 +296,15 @@ def _create_use_string(
             if is_new or flag in old_use and (conf.all_flags or reinst_flag):
                 flag_str = red(flag)
             elif flag not in old_iuse:
-                flag_str = yellow(flag) + "%*"
+                flag_str = f"{yellow(flag)}%*"
             elif flag not in old_use:
-                flag_str = green(flag) + "*"
+                flag_str = f"{green(flag)}*"
         elif flag in removed_iuse:
             if conf.all_flags or reinst_flag:
-                flag_str = yellow("-" + flag) + "%"
+                flag_str = f"{yellow(f'-{flag}')}%"
                 if flag in old_use:
-                    flag_str += "*"
-                flag_str = "(" + flag_str + ")"
+                    flag_str += f"*"
+                flag_str = f"({flag_str})"
                 removed.append(flag_str)
             continue
         else:
@@ -317,29 +314,29 @@ def _create_use_string(
                 and flag not in old_use
                 and (conf.all_flags or reinst_flag)
             ):
-                flag_str = blue("-" + flag)
+                flag_str = blue(f"-{flag}")
             elif flag not in old_iuse:
-                flag_str = yellow("-" + flag)
+                flag_str = yellow(f"-{flag}")
                 if flag not in iuse_forced:
-                    flag_str += "%"
+                    flag_str += f"%"
             elif flag in old_use:
-                flag_str = green("-" + flag) + "*"
+                flag_str = f"{green(f'-{flag}')}*"
         if flag_str:
             if flag in feature_flags:
-                flag_str = "{" + flag_str + "}"
+                flag_str = f"{{{flag_str}}}"
             elif flag in iuse_forced:
-                flag_str = "(" + flag_str + ")"
+                flag_str = f"({flag_str})"
             if isEnabled:
                 enabled.append(flag_str)
             else:
                 disabled.append(flag_str)
 
-    if conf.alphabetical:
-        ret = " ".join(enabled)
-    else:
-        ret = " ".join(enabled + disabled + removed)
+    flags = enabled
+    if not conf.alphabetical:
+        flags.extend((*disabled, *removed))
+    ret = " ".join(flags)
     if ret:
-        ret = '%s="%s" ' % (name, ret)
+        ret = f'{name}="{ret}" '
     return ret
 
 
