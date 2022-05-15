@@ -523,12 +523,11 @@ class portdbapi(dbapi):
                 repos = self._better_cache[cp]
             except KeyError:
                 return (None, 0)
-
-            mytrees = []
-            for repo in repos:
-                if mytree is not None and mytree != repo.location:
-                    continue
-                mytrees.append(repo.location)
+            mytrees = [
+                repo.location
+                for repo in repos
+                if mytree is None or mytree == repo.location
+            ]
 
         # For optimal performace in this hot spot, we do manual unicode
         # handling here instead of using the wrapped os module.
@@ -1378,10 +1377,10 @@ class portdbapi(dbapi):
         else:
             # We iterate over self.porttrees, since it's common to
             # tweak this attribute in order to adjust match behavior.
-            repos = []
-            for tree in reversed(self.porttrees):
-                repos.append(self.repositories.get_name_for_location(tree))
-
+            repos = [
+                self.repositories.get_name_for_location(tree)
+                for tree in reversed(self.porttrees)
+            ]
         for mycpv in cpv_iter:
             for repo in repos:
                 metadata.clear()
@@ -1668,10 +1667,7 @@ def _async_manifest_fetchlist(
             return
         if e is None:
             result.set_result(
-                dict(
-                    (k, list(v.result()))
-                    for k, v in zip(cpv_list, gather_result.result())
-                )
+                {k: list(v.result()) for k, v in zip(cpv_list, gather_result.result())}
             )
         else:
             result.set_exception(e)

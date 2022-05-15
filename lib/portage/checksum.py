@@ -331,8 +331,10 @@ hashfunc_keys = frozenset(hashfunc_map)
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-    cmd = [PRELINK_BINARY, "--version"]
-    cmd = [_unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in cmd]
+    cmd = (
+        _unicode_encode(x, encoding=_encodings["fs"], errors="strict")
+        for x in (PRELINK_BINARY, "--version")
+    )
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     proc.communicate()
     status = proc.wait()

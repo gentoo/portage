@@ -69,13 +69,14 @@ class FsBased(template.database):
                 apply_permissions(base, mode=mode, gid=self._gid)
 
     def _prune_empty_dirs(self):
-        all_dirs = []
-        for parent, dirs, files in os.walk(self.location):
-            for x in dirs:
-                all_dirs.append(_os.path.join(parent, x))
-        while all_dirs:
+        all_dirs = [
+            _os.path.join(parent, x)
+            for parent, dirs, _ in os.walk(self.location)
+            for x in dirs
+        ]
+        for _dir in reversed(all_dirs):
             try:
-                _os.rmdir(all_dirs.pop())
+                _os.rmdir(_dir)
             except OSError:
                 pass
 

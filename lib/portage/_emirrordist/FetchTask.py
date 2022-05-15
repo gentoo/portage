@@ -459,13 +459,14 @@ class FetchTask(CompositeTask):
         except OSError:
             pass
 
-        args = portage.util.shlex_split(default_fetchcommand)
-        args = [portage.util.varexpand(x, mydict=variables) for x in args]
-
-        args = [
-            _unicode_encode(x, encoding=_encodings["fs"], errors="strict") for x in args
-        ]
-
+        args = (
+            _unicode_encode(
+                portage.util.varexpand(x, mydict=variables),
+                encoding=_encodings["fs"],
+                errors="strict",
+            )
+            for x in portage.util.shlex_split(default_fetchcommand)
+        )
         null_fd = os.open(os.devnull, os.O_RDONLY)
         fetcher = PopenProcess(
             background=self.background,

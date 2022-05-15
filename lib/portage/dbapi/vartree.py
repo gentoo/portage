@@ -2755,18 +2755,20 @@ class dblink:
                         # Restore the parent flags we saved before unlinking
                         bsd_chflags.chflags(parent_name, pflags)
 
-            unmerge_desc = {}
-            unmerge_desc["cfgpro"] = _("cfgpro")
-            unmerge_desc["replaced"] = _("replaced")
-            unmerge_desc["!dir"] = _("!dir")
-            unmerge_desc["!empty"] = _("!empty")
-            unmerge_desc["!fif"] = _("!fif")
-            unmerge_desc["!found"] = _("!found")
-            unmerge_desc["!md5"] = _("!md5")
-            unmerge_desc["!mtime"] = _("!mtime")
-            unmerge_desc["!obj"] = _("!obj")
-            unmerge_desc["!sym"] = _("!sym")
-            unmerge_desc["!prefix"] = _("!prefix")
+            descriptions = (
+                "cfgpro",
+                "replaced",
+                "!dir",
+                "!empty",
+                "!fif",
+                "!found",
+                "!md5",
+                "!mtime",
+                "!obj",
+                "!sym",
+                "!prefix",
+            )
+            unmerge_desc = {description: _(description) for description in descriptions}
 
             real_root = self.settings["ROOT"]
             real_root_len = len(real_root) - 1

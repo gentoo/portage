@@ -39,17 +39,10 @@ def pkg_desc_index_line_format(cp, pkgs, desc):
 def pkg_desc_index_line_read(line, repo=None):
     try:
         pkgs, desc = line.split(":", 1)
-    except ValueError:
-        return None
-    desc = desc.strip()
-
-    try:
         cp, pkgs = pkgs.split(" ", 1)
     except ValueError:
         return None
 
-    cp_list = []
-    for ver in pkgs.split():
-        cp_list.append(pkg_node(cp, ver, repo))
-
-    return pkg_desc_index_node(cp, tuple(cp_list), desc)
+    desc = desc.strip()
+    pkg_nodes = tuple(pkg_node(cp, ver, repo) for ver in pkgs.split())
+    return pkg_desc_index_node(cp, pkg_nodes, desc)
