@@ -935,7 +935,7 @@ docstrings[
     "envvar"
 ] = """<variable>+
 	Returns a specific environment variable as exists prior to ebuild.sh.
-	Similar to: emerge --verbose --info | egrep '^<variable>='
+	Similar to: emerge --verbose --info | grep -E '^<variable>='
 	"""
 envvar.__doc__ = docstrings["envvar"]
 
