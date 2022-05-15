@@ -528,7 +528,6 @@ def _unmerge_display(
         f"\nAll selected packages: {' '.join(f'={x}' for x in all_selected)}\n",
         noiselevel=-1,
     )
-
     writemsg_level(
         f"""\n>>> {colorize("UNMERGE_WARN", "'Selected'")} packages are slated for removal."""
         f"""\n>>> {colorize("GOOD", "'Protected'")} and {colorize("GOOD", "'omitted'")} """

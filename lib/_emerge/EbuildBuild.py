@@ -352,7 +352,6 @@ class EbuildBuild(CompositeTask):
             and not buildpkg_live_disabled
             and not self.opts.buildpkg_exclude.findAtomForPackage(pkg)
         ):
-
             self._buildpkg = True
             pkg_action = "Packaging"
 

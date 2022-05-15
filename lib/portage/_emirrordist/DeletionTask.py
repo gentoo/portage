@@ -67,7 +67,6 @@ class DeletionTask(CompositeTask):
         self._async_wait()
 
     def _recycle_copier_exit(self, copier):
-
         self._assert_current(copier)
         if self._was_cancelled():
             self.wait()
@@ -75,7 +74,6 @@ class DeletionTask(CompositeTask):
 
         success = True
         if copier.returncode == os.EX_OK:
-
             try:
                 os.unlink(copier.src_path)
             except OSError as e:

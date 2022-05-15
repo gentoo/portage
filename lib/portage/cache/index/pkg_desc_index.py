@@ -37,7 +37,6 @@ def pkg_desc_index_line_format(cp, pkgs, desc):
 
 
 def pkg_desc_index_line_read(line, repo=None):
-
     try:
         pkgs, desc = line.split(":", 1)
     except ValueError:

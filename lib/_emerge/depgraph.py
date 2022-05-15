@@ -6320,7 +6320,6 @@ class depgraph:
             show_req_use = required_use_unsatisfied[0]
 
         if show_req_use is not None:
-
             pkg = show_req_use
             output_cpv = pkg.cpv + _repo_separator + pkg.repo
             colorized_alert = "".join(

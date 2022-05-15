@@ -442,7 +442,6 @@ class search:
                     output += f" {red('[ Masked ]')}"
                 msg.append(f"{output}\n")
                 myversion = self.getVersion(full_package, search.VERSION_RELEASE)
-
                 mysum = [0, 0]
                 file_size_str = None
                 mycat = match.split("/")[0]
