@@ -11,7 +11,7 @@ pkgconfig_check() {
 	local f
 
 	# Look for leaking LDFLAGS into pkg-config files
-	f=$(egrep -zsH '^Libs.*-Wl,(-O[012]|--hash-style)' "${files[@]}")
+	f=$(grep -E -zsH '^Libs.*-Wl,(-O[012]|--hash-style)' "${files[@]}")
 	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
 		eqatag -v pkgconfig.bad-ldlags "${f//${D}}"
@@ -69,7 +69,7 @@ pkgconfig_check() {
 			fi
 
 			# In ${ED}/usr/lib, we shouldn't reference lib64
-			if egrep -q "=(/usr)?/lib64" ${f} ; then
+			if grep -E -q "=(/usr)?/lib64" ${f} ; then
 				bad_libdir+=( "${f//${D}}" )
 			fi
 		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
