@@ -940,7 +940,7 @@ class vardbapi(dbapi):
                 self.settings["PORTAGE_BZIP2_COMMAND"]
             )
             bunzip2_cmd.append("-d")
-        args = bunzip2_cmd + ["-c", env_file]
+        args = [*bunzip2_cmd, "-c", env_file]
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         except EnvironmentError as e:
@@ -1134,8 +1134,9 @@ class vardbapi(dbapi):
             log_lines = [
                 _(
                     "Config files excluded by QUICKPKG_DEFAULT_OPTS (see quickpkg(1) man page):"
-                )
-            ] + ["\t{}".format(name) for name in excluded_config_files]
+                ),
+                *("\t{}".format(name) for name in excluded_config_files),
+            ]
             out = io.StringIO()
             for line in log_lines:
                 portage.elog.messages.ewarn(line, phase="install", key=cpv, out=out)
@@ -2502,50 +2503,46 @@ class dblink:
             try:
                 if not eapi_unsupported and os.path.isfile(myebuildpath):
                     if retval != os.EX_OK:
-                        msg_lines = []
-                        msg = _(
-                            "The '%(ebuild_phase)s' "
-                            "phase of the '%(cpv)s' package "
-                            "has failed with exit value %(retval)s."
-                        ) % {
-                            "ebuild_phase": ebuild_phase,
-                            "cpv": self.mycpv,
-                            "retval": retval,
-                        }
-                        from textwrap import wrap
-
-                        msg_lines.extend(wrap(msg, 72))
-                        msg_lines.append("")
-
-                        ebuild_name = os.path.basename(myebuildpath)
-                        ebuild_dir = os.path.dirname(myebuildpath)
-                        msg = _(
-                            "The problem occurred while executing "
-                            "the ebuild file named '%(ebuild_name)s' "
-                            "located in the '%(ebuild_dir)s' directory. "
-                            "If necessary, manually remove "
-                            "the environment.bz2 file and/or the "
-                            "ebuild file located in that directory."
-                        ) % {"ebuild_name": ebuild_name, "ebuild_dir": ebuild_dir}
-                        msg_lines.extend(wrap(msg, 72))
-                        msg_lines.append("")
-
-                        msg = _(
-                            "Removal "
-                            "of the environment.bz2 file is "
-                            "preferred since it may allow the "
-                            "removal phases to execute successfully. "
-                            "The ebuild will be "
-                            "sourced and the eclasses "
-                            "from the current ebuild repository will be used "
-                            "when necessary. Removal of "
-                            "the ebuild file will cause the "
-                            "pkg_prerm() and pkg_postrm() removal "
-                            "phases to be skipped entirely."
-                        )
-                        msg_lines.extend(wrap(msg, 72))
-
-                        self._eerror(ebuild_phase, msg_lines)
+                        msg = [
+                            *wrap(
+                                _(
+                                    f"The '{ebuild_phase}' "
+                                    f"phase of the '{self.mycpv}' package "
+                                    f"has failed with exit value {retval}."
+                                ),
+                                72,
+                            ),
+                            "",
+                            *wrap(
+                                _(
+                                    "The problem occurred while executing "
+                                    f"the ebuild file named '{ebuild_name}' "
+                                    f"located in the '{ebuild_dir}' directory. "
+                                    "If necessary, manually remove "
+                                    "the environment.bz2 file and/or the "
+                                    "ebuild file located in that directory."
+                                ),
+                                72,
+                            ),
+                            "",
+                            *wrap(
+                                _(
+                                    "Removal "
+                                    "of the environment.bz2 file is "
+                                    "preferred since it may allow the "
+                                    "removal phases to execute successfully. "
+                                    "The ebuild will be "
+                                    "sourced and the eclasses "
+                                    "from the current ebuild repository will be used "
+                                    "when necessary. Removal of "
+                                    "the ebuild file will cause the "
+                                    "pkg_prerm() and pkg_postrm() removal "
+                                    "phases to be skipped entirely."
+                                ),
+                                72,
+                            ),
+                        ]
+                        self._eerror(ebuild_phase, msg)
 
                 self._elog_process(phasefilter=("prerm", "postrm"))
 
@@ -3043,23 +3040,27 @@ class dblink:
             )
 
         if protected_symlinks:
-            msg = (
-                "One or more symlinks to directories have been "
-                + "preserved in order to ensure that files installed "
-                + "via these symlinks remain accessible. "
-                + "This indicates that the mentioned symlink(s) may "
-                + "be obsolete remnants of an old install, and it "
-                + "may be appropriate to replace a given symlink "
-                + "with the directory that it points to."
-            )
-            lines = textwrap.wrap(msg, 72)
-            lines.append("")
-            flat_list = set()
-            flat_list.update(*protected_symlinks.values())
-            flat_list = sorted(flat_list)
-            for f in flat_list:
-                lines.append("\t%s" % (os.path.join(real_root, f.lstrip(os.sep))))
-            lines.append("")
+            flat_list = sorted(set(*protected_symlinks.values()))
+            lines = [
+                *textwrap.wrap(
+                    (
+                        "One or more symlinks to directories have been "
+                        "preserved in order to ensure that files installed "
+                        "via these symlinks remain accessible. "
+                        "This indicates that the mentioned symlink(s) may "
+                        "be obsolete remnants of an old install, and it "
+                        "may be appropriate to replace a given symlink "
+                        "with the directory that it points to."
+                    ),
+                    72,
+                ),
+                "",
+                *(
+                    f"\t{os.path.join(real_root, file.lstrip(os.sep))}"
+                    for file in flat_list
+                ),
+                "",
+            ]
             self._elog("elog", "postrm", lines)
 
         # Remove stale entries from config memory.
@@ -3096,25 +3097,23 @@ class dblink:
                     # and don't bother searching for any other owners.
                     return
 
-        msg = []
-        msg.append("")
-        msg.append(_("Directory symlink(s) may need protection:"))
-        msg.append("")
-
-        for f in flat_list:
-            msg.append("\t%s" % os.path.join(real_root, f.lstrip(os.path.sep)))
-
-        msg.append("")
-        msg.append("Use the UNINSTALL_IGNORE variable to exempt specific symlinks")
-        msg.append("from the following search (see the make.conf man page).")
-        msg.append("")
-        msg.append(
+        msg = [
+            "",
+            _("Directory symlink(s) may need protection:"),
+            "",
+            *(f"\t{os.path.join(real_root, f.lstrip(os.path.sep))}" for f in flat_list),
+            "",
             _(
-                "Searching all installed"
-                " packages for files installed via above symlink(s)..."
-            )
-        )
-        msg.append("")
+                "Use the UNINSTALL_IGNORE variable to exempt specific symlinks "
+                "from the following search (see the make.conf man page)."
+            ),
+            "",
+            _(
+                "Searching all installed "
+                "packages for files installed via above symlink(s)..."
+            ),
+            "",
+        ]
         self._elog("elog", "postrm", msg)
 
         self.lockdb()
@@ -4117,17 +4116,17 @@ class dblink:
         if not suspicious_hardlinks:
             return 0
 
-        msg = []
-        msg.append(_("suid/sgid file(s) " "with suspicious hardlink(s):"))
-        msg.append("")
-        for path_list in suspicious_hardlinks:
-            for path, s in path_list:
-                msg.append("\t%s" % path)
-        msg.append("")
-        msg.append(
-            _("See the Gentoo Security Handbook " "guide for advice on how to proceed.")
-        )
-
+        msg = [
+            _("suid/sgid file(s) with suspicious hardlink(s):"),
+            "",
+            *(
+                f"\t{path}"
+                for path_list in suspicious_hardlinks
+                for path, _ in path_list
+            ),
+            "",
+            _("See the Gentoo Security Handbook guide for advice on how to proceed."),
+        ]
         self._eerror("preinst", msg)
         return 1
 
@@ -4559,19 +4558,20 @@ class dblink:
             self._elog("eqawarn", "preinst", _merge_unicode_error(unicode_errors))
 
         if paths_with_newlines:
-            msg = []
-            msg.append(
+            path_with_newslines.sort()
+            msg = [
                 _(
                     "This package installs one or more files containing line ending characters:"
-                )
-            )
-            msg.append("")
-            paths_with_newlines.sort()
-            for f in paths_with_newlines:
-                msg.append("\t/%s" % (f.replace("\n", "\\n").replace("\r", "\\r")))
-            msg.append("")
-            msg.append(_("package %s NOT merged") % self.mycpv)
-            msg.append("")
+                ),
+                "",
+                *(
+                    "\t/{}".format(f.replace("\n", "\\n").replace("\r", "\\r"))
+                    for f in paths_with_newlines
+                ),
+                "",
+                _(f"package {self.mycpv} NOT merged"),
+                "",
+            ]
             eerror(msg)
             return 1
 
@@ -4591,37 +4591,31 @@ class dblink:
                 from textwrap import wrap
 
                 wrap_width = 72
-                msg = []
-                d = {"new_cpv": self.mycpv, "old_cpv": other_dblink.mycpv}
-                msg.extend(
-                    wrap(
+                msg = [
+                    *wrap(
                         _(
-                            "The '%(new_cpv)s' package will not install "
-                            "any files, but the currently installed '%(old_cpv)s'"
-                            " package has the following files: "
-                        )
-                        % d,
+                            f"The '{self.mycpv}' package will not install "
+                            f"any files, but the currently installed '{other_dblink.mycpv}' "
+                            "package has the following files: "
+                        ),
                         wrap_width,
-                    )
-                )
-                msg.append("")
-                msg.extend(sorted(installed_files))
-                msg.append("")
-                msg.append(_("package %s NOT merged") % self.mycpv)
-                msg.append("")
-                msg.extend(
-                    wrap(
+                    ),
+                    "",
+                    sorted(installed_files),
+                    "",
+                    _(f"package {self.mycpv} NOT merged"),
+                    "",
+                    *wrap(
                         _(
-                            "Manually run `emerge --unmerge =%s` if you "
+                            f"Manually run `emerge --unmerge ={other_dblink.mycpv}` if you "
                             "really want to remove the above files. Set "
                             'PORTAGE_PACKAGE_EMPTY_ABORT="0" in '
                             "/etc/portage/make.conf if you do not want to "
                             "abort in cases like this."
-                        )
-                        % other_dblink.mycpv,
+                        ),
                         wrap_width,
-                    )
-                )
+                    ),
+                ]
                 eerror(msg)
             if installed_files:
                 return 1
@@ -4660,17 +4654,20 @@ class dblink:
         rofilesystems = ro_checker(dirs_ro)
 
         if rofilesystems:
-            msg = _(
-                "One or more files installed to this package are "
-                "set to be installed to read-only filesystems. "
-                "Please mount the following filesystems as read-write "
-                "and retry."
-            )
-            msg = textwrap.wrap(msg, 70)
-            msg.append("")
-            for f in rofilesystems:
-                msg.append("\t%s" % f)
-            msg.append("")
+            msg = [
+                *textwrap.wrap(
+                    _(
+                        "One or more files installed to this package are "
+                        "set to be installed to read-only filesystems. "
+                        "Please mount the following filesystems as read-write "
+                        "and retry."
+                    ),
+                    70,
+                ),
+                "",
+                *(f"\t{f}" for f in rofilesystems),
+                "",
+            ]
             self._elog("eerror", "preinst", msg)
 
             msg = (
@@ -4686,17 +4683,18 @@ class dblink:
             return 1
 
         if internal_collisions:
-            msg = (
-                _(
-                    "Package '%s' has internal collisions between non-identical files "
-                    "(located in separate directories in the installation image (${D}) "
-                    "corresponding to merged directories in the target "
-                    "filesystem (${ROOT})):"
-                )
-                % self.settings.mycpv
-            )
-            msg = textwrap.wrap(msg, 70)
-            msg.append("")
+            msg = [
+                *textwrap.wrap(
+                    _(
+                        f"Package '{self.settings.mycpv}' has internal collisions between non-identical files "
+                        "(located in separate directories in the installation image (${D}) "
+                        "corresponding to merged directories in the target "
+                        "filesystem (${ROOT})):"
+                    ),
+                    70,
+                ),
+                "",
+            ]
             for k, v in sorted(internal_collisions.items(), key=operator.itemgetter(0)):
                 msg.append(f"\t{os.path.join(destroot, k.lstrip(os.path.sep))}")
                 for (file1, file2), differences in sorted(v.items()):
@@ -4727,16 +4725,22 @@ class dblink:
         if symlink_collisions:
             # Symlink collisions need to be distinguished from other types
             # of collisions, in order to avoid confusion (see bug #409359).
-            msg = _(
-                "Package '%s' has one or more collisions "
-                "between symlinks and directories, which is explicitly "
-                "forbidden by PMS section 13.4 (see bug #326685):"
-            ) % (self.settings.mycpv,)
-            msg = textwrap.wrap(msg, 70)
-            msg.append("")
-            for f in symlink_collisions:
-                msg.append("\t%s" % os.path.join(destroot, f.lstrip(os.path.sep)))
-            msg.append("")
+            msg = [
+                *textwrap.wrap(
+                    _(
+                        f"Package '{self.settings.mycpv}' has one or more collisions "
+                        "between symlinks and directories, which is explicitly "
+                        "forbidden by PMS section 13.4 (see bug #326685):"
+                    ),
+                    70,
+                ),
+                "",
+                *(
+                    f"\t{os.path.join(destroot, f.lstrip(os.path.sep))}"
+                    for f in symlink_collisions
+                ),
+                "",
+            ]
             self._elog("eerror", "preinst", msg)
 
         if collisions:
@@ -5520,17 +5524,14 @@ class dblink:
                     if not protected:
                         # we can't merge a symlink over a directory
                         newdest = self._new_backup_path(mydest)
-                        msg = []
-                        msg.append("")
-                        msg.append(
-                            _("Installation of a symlink is blocked by a directory:")
-                        )
-                        msg.append("  '%s'" % mydest)
-                        msg.append(
-                            _("This symlink will be merged with a different name:")
-                        )
-                        msg.append("  '%s'" % newdest)
-                        msg.append("")
+                        msg = [
+                            "",
+                            _("Installation of a symlink is blocked by a directory:"),
+                            f"  '{mydest}'",
+                            _("This symlink will be merged with a different name:"),
+                            f"  '{newdest}'",
+                            "",
+                        ]
                         self._eerror("preinst", msg)
                         mydest = newdest
 
@@ -5626,15 +5627,14 @@ class dblink:
                     else:
                         # a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
                         backup_dest = self._new_backup_path(mydest)
-                        msg = []
-                        msg.append("")
-                        msg.append(
-                            _("Installation of a directory is blocked by a file:")
-                        )
-                        msg.append("  '%s'" % mydest)
-                        msg.append(_("This file will be renamed to a different name:"))
-                        msg.append("  '%s'" % backup_dest)
-                        msg.append("")
+                        msg = [
+                            "",
+                            _("Installation of a directory is blocked by a file:"),
+                            f"  '{mydest}'",
+                            _("This file will be renamed to a different name:"),
+                            f"  '{backup_dest}'",
+                            "",
+                        ]
                         self._eerror("preinst", msg)
                         if (
                             movefile(
@@ -5715,15 +5715,14 @@ class dblink:
                 if not protected and mydmode is not None and stat.S_ISDIR(mydmode):
                     # install of destination is blocked by an existing directory with the same name
                     newdest = self._new_backup_path(mydest)
-                    msg = []
-                    msg.append("")
-                    msg.append(
-                        _("Installation of a regular file is blocked by a directory:")
-                    )
-                    msg.append("  '%s'" % mydest)
-                    msg.append(_("This file will be merged with a different name:"))
-                    msg.append("  '%s'" % newdest)
-                    msg.append("")
+                    msg = [
+                        "",
+                        _("Installation of a regular file is blocked by a directory:"),
+                        f"  '{mydest}'",
+                        _("This file will be merged with a different name:"),
+                        f"  '{newdest}'",
+                        "",
+                    ]
                     self._eerror("preinst", msg)
                     mydest = newdest
 
