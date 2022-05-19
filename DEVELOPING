@@ -21,12 +21,12 @@ with Python itself, must be optionally enabled by run-time detection.
 Tabs
 ----
 
-For legacy reasons, all leading whitespace should be tabs. All internal
-whitespace should be regular spaces. Set tab stop to 4 to calculate line
-width.
+We comply with PEP 8 so we now use spaces.
 
 Line-Wrapping
 -------------
+
+Please use Black for formatting.
 
 Lines should typically not be longer than 80 characters; if they are, an
 attempt should be made to wrap them.  Move code to the line below and
