@@ -58,6 +58,11 @@ gcc_warn_check() {
 			'warning: .*\[-Wsizeof-pointer-memaccess\]'
 			# iteration invokes undefined behavior
 			'warning: .*\[-Waggressive-loop-optimizations\]'
+			# conversion between pointers that have incompatible types
+			'warning: .*\[-Wincompatible-pointer-types\]'
+			# clobbered: Warn for variables that might be changed by longjmp or vfork
+			# (This warning is also enabled by -Wextra.)
+			'warning: .*\[-Wclobbered\]'
 
 			# this may be valid code :/
 			#': warning: multi-character character constant'
