@@ -23,7 +23,23 @@ from portage.localization import _
 from portage.util import apply_secpass_permissions, atomic_ofstream, writemsg
 
 
+_MTIMEDBKEYS = {
+    "info",
+    "ldpath",
+    "resume",
+    "resume_backup",
+    "starttime",
+    "updates",
+    "version",
+}
+
+
 class MtimeDB(dict):
+    """The MtimeDB class is used to interact with a file storing the
+    current resume lists.
+    It is a subclass of ``dict`` and it reads from/writes to JSON, by
+    default, althouth it can be configured to use ``pickle``.
+    """
 
     # JSON read support has been available since portage-2.1.10.49.
     _json_write = True
@@ -46,13 +62,13 @@ class MtimeDB(dict):
                 pass
             else:
                 writemsg(
-                    _("!!! Error loading '%s': %s\n") % (filename, e), noiselevel=-1
+                    _(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1
                 )
         finally:
             if f is not None:
                 f.close()
 
-        d = None
+        d = {}
         if content:
             try:
                 d = json.loads(
@@ -75,11 +91,8 @@ class MtimeDB(dict):
                     raise
                 except Exception:
                     writemsg(
-                        _("!!! Error loading '%s': %s\n") % (filename, e), noiselevel=-1
+                        _(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1
                     )
-
-        if d is None:
-            d = {}
 
         if "old" in d:
             d["updates"] = d["old"]
@@ -92,22 +105,9 @@ class MtimeDB(dict):
         for k in ("info", "ldpath", "updates"):
             d.setdefault(k, {})
 
-        mtimedbkeys = set(
-            (
-                "info",
-                "ldpath",
-                "resume",
-                "resume_backup",
-                "starttime",
-                "updates",
-                "version",
-            )
-        )
-
-        for k in list(d):
-            if k not in mtimedbkeys:
-                writemsg(_("Deleting invalid mtimedb key: %s\n") % str(k))
-                del d[k]
+        for k in (d.keys()-_MTIMEDBKEYS):
+            writemsg(_(f"Deleting invalid mtimedb key: {k}\n"))
+            del d[k]
         self.update(d)
         self._clean_data = copy.deepcopy(d)
 
