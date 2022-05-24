@@ -105,7 +105,7 @@ class MtimeDB(dict):
         for k in ("info", "ldpath", "updates"):
             d.setdefault(k, {})
 
-        for k in (d.keys()-_MTIMEDBKEYS):
+        for k in (set(d.keys())-_MTIMEDBKEYS):
             writemsg(_(f"Deleting invalid mtimedb key: {k}\n"))
             del d[k]
         self.update(d)
