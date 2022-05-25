@@ -222,13 +222,13 @@ class MtimeDBTestCase(TestCase):
         )
         for contents in all_fixtures:
             with patch(
-                'portage.util.mtimedb.open', mock_open(read_data=contents)
+                "portage.util.mtimedb.open", mock_open(read_data=contents)
             ):
                 mtimedb = MtimeDB("/path/to/mtimedb")
             self.assertLessEqual(set(mtimedb.keys()), _MTIMEDBKEYS)
 
     def test_instance_has_default_values(self):
-        with patch('portage.util.mtimedb.open',
+        with patch("portage.util.mtimedb.open",
                    mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertEqual(mtimedb["starttime"], 0)
@@ -238,8 +238,39 @@ class MtimeDBTestCase(TestCase):
         self.assertEqual(mtimedb["updates"], {})
 
     def test_instance_has_a_deepcopy_of_clean_data(self):
-        with patch('portage.util.mtimedb.open',
+        with patch("portage.util.mtimedb.open",
                    mock_open(read_data=_ONE_RESUME_LIST_JSON)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertEqual(dict(mtimedb), dict(mtimedb._clean_data))
         self.assertIsNot(mtimedb, mtimedb._clean_data)
+
+    @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
+    def test_commit_writes_to_disk_if_needed_and_possible(self, pwrite2disk):
+        with patch("portage.util.mtimedb.open",
+                   mock_open(read_data=_EMPTY_FILE)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        mtimedb.commit()
+        pwrite2disk.assert_not_called()
+        mtimedb["updates"]["/long/path/1Q-2021"] = 1739992409
+        d = {}
+        d.update(mtimedb)
+        mtimedb.commit()
+        pwrite2disk.assert_called_once_with(d)
+
+    @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
+    def test_commit_does_not_write_to_disk_if_no_file(self, pwrite2disk):
+        with patch("portage.util.mtimedb.open",
+                   mock_open(read_data=_EMPTY_FILE)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        mtimedb["updates"]["/long/path/1Q-2021"] = 1739992409
+        mtimedb.filename = None
+        mtimedb.commit()
+        pwrite2disk.assert_not_called()
+
+    @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
+    def test_commit_does_not_write_to_disk_if_no_changes(self, pwrite2disk):
+        with patch("portage.util.mtimedb.open",
+                   mock_open(read_data=_EMPTY_FILE)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        mtimedb.commit()
+        pwrite2disk.assert_not_called()
