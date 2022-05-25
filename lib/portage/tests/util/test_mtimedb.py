@@ -126,7 +126,7 @@ _PARTIAL_FILE_JSON = b"""{
 }
 """
 
-_TWO_RESUME_LIST_JSON = b"""{
+_TWO_RESUME_LISTS_JSON = b"""{
 	"info": {
 		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.34/info": 1711787325,
 		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11.2.0/info": 1735158257,
@@ -213,12 +213,12 @@ _TWO_RESUME_LIST_JSON = b"""{
 class MtimeDBTestCase(TestCase):
     text = b"Unit tests for MtimeDB"
 
-    def test_has_only_allowed_keys(self):
+    def test_instance_created_with_only_expected_keys(self):
         all_fixtures = (
             _ONE_RESUME_LIST_JSON,
             _EMPTY_FILE,
             _PARTIAL_FILE_JSON,
-            _TWO_RESUME_LIST_JSON,
+            _TWO_RESUME_LISTS_JSON,
         )
         for contents in all_fixtures:
             with patch(
@@ -226,3 +226,20 @@ class MtimeDBTestCase(TestCase):
             ):
                 mtimedb = MtimeDB("/path/to/mtimedb")
             self.assertLessEqual(set(mtimedb.keys()), _MTIMEDBKEYS)
+
+    def test_instance_has_default_values(self):
+        with patch('portage.util.mtimedb.open',
+                   mock_open(read_data=_EMPTY_FILE)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        self.assertEqual(mtimedb["starttime"], 0)
+        self.assertEqual(mtimedb["version"], "")
+        self.assertEqual(mtimedb["info"], {})
+        self.assertEqual(mtimedb["ldpath"], {})
+        self.assertEqual(mtimedb["updates"], {})
+
+    def test_instance_has_a_deepcopy_of_clean_data(self):
+        with patch('portage.util.mtimedb.open',
+                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        self.assertEqual(dict(mtimedb), dict(mtimedb._clean_data))
+        self.assertIsNot(mtimedb, mtimedb._clean_data)
