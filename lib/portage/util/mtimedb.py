@@ -73,7 +73,8 @@ class MtimeDB(dict):
             try:
                 d = json.loads(
                     _unicode_decode(
-                        content, encoding=_encodings["repo.content"], errors="strict"
+                        content, encoding=_encodings["repo.content"],
+                        errors="strict"
                     )
                 )
             except SystemExit:
@@ -91,7 +92,8 @@ class MtimeDB(dict):
                     raise
                 except Exception:
                     writemsg(
-                        _(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1
+                        _(f"!!! Error loading '{filename}': {e}\n"),
+                        noiselevel=-1
                     )
 
         if "old" in d:
