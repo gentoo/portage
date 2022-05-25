@@ -120,24 +120,27 @@ class MtimeDB(dict):
         d.update(self)
         # Only commit if the internal state has changed.
         if d != self._clean_data:
-            d["version"] = str(portage.VERSION)
-            try:
-                f = atomic_ofstream(self.filename, mode="wb")
-            except EnvironmentError:
-                pass
-            else:
-                if self._json_write:
-                    f.write(
-                        _unicode_encode(
-                            json.dumps(d, **self._json_write_opts),
-                            encoding=_encodings["repo.content"],
-                            errors="strict",
-                        )
+            self.__write_to_disk(d)
+
+    def __write_to_disk(self, d):
+        d["version"] = str(portage.VERSION)
+        try:
+            f = atomic_ofstream(self.filename, mode="wb")
+        except EnvironmentError:
+            pass
+        else:
+            if self._json_write:
+                f.write(
+                    _unicode_encode(
+                        json.dumps(d, **self._json_write_opts),
+                        encoding=_encodings["repo.content"],
+                        errors="strict",
                     )
-                else:
-                    pickle.dump(d, f, protocol=2)
-                f.close()
-                apply_secpass_permissions(
-                    self.filename, uid=uid, gid=portage_gid, mode=0o644
                 )
-                self._clean_data = copy.deepcopy(d)
+            else:
+                pickle.dump(d, f, protocol=2)
+            f.close()
+            apply_secpass_permissions(
+                self.filename, uid=uid, gid=portage_gid, mode=0o644
+            )
+            self._clean_data = copy.deepcopy(d)
