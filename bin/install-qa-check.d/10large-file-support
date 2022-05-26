@@ -142,7 +142,20 @@ filtered_check_lfs() {
 	# Only check on 32-bit systems.  Filtering by $ARCH here isn't perfect, but
 	# it should be good enough for our needs.
 	case ${ARCH} in
-		arm|mips|ppc|sh|x86)
+		arm|mips|hppa|m68k|ppc|sh|x86)
+			;;
+		s390)
+			# s390x is 64-bit, but s390 is 32-bit.
+			# We use the same keyword for both.
+			if [[ ${CHOST} == s390x-* ]] ; then
+				return
+			fi
+			;;
+		sparc)
+			# sparc and sparc64 share the same keyword.
+			if [[ ${CHOST} == sparc64* ]] ; then
+				return
+			fi
 			;;
 		*)
 			return
