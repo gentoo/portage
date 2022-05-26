@@ -5,8 +5,8 @@
 # https://bugs.gentoo.org/471102
 
 # Lists gleaned from headers and this doc:
-# http://people.redhat.com/berrange/notes/largefile.html
-# http://opengroup.org/platform/lfs.html
+# https://people.redhat.com/berrange/notes/largefile.html
+# https://www.opengroup.org/platform/lfs.html
 SYMBOLS=(
 	# aio.h
 	aio_cancel
@@ -103,19 +103,24 @@ SYMBOLS=(
 	truncate
 	__pread_chk
 )
+
 SYMBOLS_REGEX=$(printf '%s|' "${SYMBOLS[@]}")
 # The @@ part is to workaround a limitation in pax-utils w/versioned symbols.
 SYMBOLS_REGEX="^(${SYMBOLS_REGEX%|})(@@.*)?$"
 
 check_lfs() {
-	local files=$(scanelf -F '%s %p' -qyRgs "-${SYMBOLS_REGEX}" "$@")
+	local dir="$@"
+	if [[ ! -d "${dir}" && -n "${ED}" ]] ; then
+		dir="${ED}"
+	fi
+
+	local files=$(scanelf -F '%p:%s' -qyRgs "-${SYMBOLS_REGEX}" "${dir}")
 
 	if [[ -n ${files} ]]; then
-		echo
 		eqawarn "QA Notice: The following files were not built with LFS support:"
-		eqawarn "  Please see https://bugs.gentoo.org/471102 for details."
-		eqawarn "${files}"
-		echo
+		eqawarn " Please see https://bugs.gentoo.org/471102 for details."
+		eqawarn "Affected files:"
+		eqatag -v lfs.missing ${files[@]}
 	fi
 }
 
@@ -127,32 +132,43 @@ filtered_check_lfs() {
 	# Only check glibc & uClibc libraries.  Others are presumed to use LFS by
 	# default (e.g. musl), or it's not relevant (e.g. newlib).
 	case ${CHOST} in
-	*-gnu*|*-uclibc*) ;;
-	*) return ;;
+		*-gnu*|*-uclibc*)
+			;;
+		*)
+			return
+			;;
 	esac
 
 	# Only check on 32-bit systems.  Filtering by $ARCH here isn't perfect, but
 	# it should be good enough for our needs.
 	case ${ARCH} in
-	arm|mips|ppc|sh|x86) ;;
-	*) return ;;
+		arm|mips|ppc|sh|x86)
+			;;
+		*)
+			return
+			;;
 	esac
 
 	# Obviously filter out C libraries themselves :).
 	# The sandbox has to capture all symbols by design.
 	case ${CATEGORY}/${PN} in
-	*/glibc|\
-	*/uclibc|\
-	*/gcc|\
-	sys-apps/sandbox) ;;
-	*) check_lfs "${ED}" ;;
+		*/glibc|*/uclibc|*/gcc|sys-apps/sandbox)
+			;;
+		*)
+			check_lfs "${ED}"
+			;;
 	esac
 }
 
 # Allow for people to run manually for testing/debugging.
 if [[ $# -ne 0 ]]; then
 	eqawarn() { echo " * $*"; }
+	eqatag() { eqawarn "$@";  }
 	check_lfs "$@"
 else
 	filtered_check_lfs
 fi
+
+: # guarantee successful exit
+
+# vim:ft=sh
