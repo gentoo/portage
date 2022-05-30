@@ -9,6 +9,8 @@ from portage.util.mtimedb import MtimeDB, _MTIMEDBKEYS
 from portage.exception import DigestException
 
 
+# Some random data for the fixtures:
+
 _ONE_RESUME_LIST_JSON = b"""{
 	"info": {
 		"/tmp/stage1root/usr/share/binutils-data/x86_64-pc-linux-gnu/2.34/info": 1711785090,
@@ -213,7 +215,7 @@ _TWO_RESUME_LISTS_JSON = b"""{
 class MtimeDBTestCase(TestCase):
     text = b"Unit tests for MtimeDB"
 
-    def test_instance_created_with_only_expected_keys(self):
+    def test_instances_are_created_with_only_expected_keys(self):
         all_fixtures = (
             _ONE_RESUME_LIST_JSON,
             _EMPTY_FILE,
@@ -227,7 +229,7 @@ class MtimeDBTestCase(TestCase):
                 mtimedb = MtimeDB("/path/to/mtimedb")
             self.assertLessEqual(set(mtimedb.keys()), _MTIMEDBKEYS)
 
-    def test_instance_has_default_values(self):
+    def test_instances_have_default_values(self):
         with patch("portage.util.mtimedb.open",
                    mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
@@ -237,7 +239,7 @@ class MtimeDBTestCase(TestCase):
         self.assertEqual(mtimedb["ldpath"], {})
         self.assertEqual(mtimedb["updates"], {})
 
-    def test_instance_has_a_deepcopy_of_clean_data(self):
+    def test_instances_keep_a_deepcopy_of_clean_data(self):
         with patch("portage.util.mtimedb.open",
                    mock_open(read_data=_ONE_RESUME_LIST_JSON)):
             mtimedb = MtimeDB("/some/path/mtimedb")
@@ -274,3 +276,23 @@ class MtimeDBTestCase(TestCase):
             mtimedb = MtimeDB("/some/path/mtimedb")
         mtimedb.commit()
         pwrite2disk.assert_not_called()
+
+    def test_is_readonly_attribute(self):
+        with patch("portage.util.mtimedb.open",
+                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        self.assertFalse(mtimedb.is_readonly)
+
+        mtimedb.filename = None
+        self.assertTrue(mtimedb.is_readonly)
+
+        mtimedb.filename = "/what/ever/mtimedb"
+        self.assertFalse(mtimedb.is_readonly)
+
+    def test_make_readonly(self):
+        with patch("portage.util.mtimedb.open",
+                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+            mtimedb = MtimeDB("/some/path/mtimedb")
+        mtimedb.make_readonly()
+        self.assertTrue(mtimedb.is_readonly)
+        self.assertIs(mtimedb.filename, None)
