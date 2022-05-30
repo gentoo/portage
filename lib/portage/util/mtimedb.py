@@ -51,6 +51,16 @@ class MtimeDB(dict):
         self.filename = filename
         self._load(filename)
 
+    @property
+    def is_readonly(self):
+        if self.filename is None:
+            return True
+        else:
+            return False
+
+    def make_readonly(self):
+        self.filename = None
+
     def _load(self, filename):
         f = None
         content = None
