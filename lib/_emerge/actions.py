@@ -263,8 +263,7 @@ def action_build(
     mergelist_shown = False
 
     if pretend or fetchonly:
-        # make the mtimedb readonly
-        mtimedb.filename = None
+        mtimedb.make_readonly()
     if "--digest" in myopts or "digest" in settings.features:
         if "--digest" in myopts:
             msg = "The --digest option"
