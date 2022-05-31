@@ -124,7 +124,7 @@ class MtimeDB(dict):
         self._clean_data = copy.deepcopy(d)
 
     def commit(self):
-        if not self.filename:
+        if self.is_readonly:
             return
         d = {}
         d.update(self)
