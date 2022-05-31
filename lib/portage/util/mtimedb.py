@@ -133,6 +133,7 @@ class MtimeDB(dict):
             self.__write_to_disk(d)
 
     def __write_to_disk(self, d):
+        """Private method used by the ``commit`` method."""
         d["version"] = str(portage.VERSION)
         try:
             f = atomic_ofstream(self.filename, mode="wb")
