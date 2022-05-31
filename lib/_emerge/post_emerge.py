@@ -1,8 +1,10 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+import datetime
 import logging
 import textwrap
+import time
 
 import portage
 from portage import os
@@ -88,6 +90,17 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
     settings = vardbapi.settings
     info_mtimes = mtimedb["info"]
 
+    # Do not update the mtimedb if we updated it recently.
+    if time.time() - mtimedb.lastUpdated() > 60 * 5:
+        portage.util.writemsg_level(
+            "Skipping post_emerge update due to 5 minute cache. Last updated: %s".format(
+                datetime.datetime.fromtimestamp(mtimedb.lastUpdated()).isoformat()
+            ),
+            level=logging.INFO,
+            noiselevel=-1,
+        )
+        return
+
     # Load the most current variables from ${ROOT}/etc/profile.env
     settings.unlock()
     settings.reload()
@@ -161,11 +174,7 @@ def post_emerge(myaction, myopts, myfiles, target_root, trees, mtimedb, retval):
         hook_retval = portage.process.spawn([postemerge], env=settings.environ())
         if hook_retval != os.EX_OK:
             portage.util.writemsg_level(
-                " %s spawn failed of %s\n"
-                % (
-                    colorize("BAD", "*"),
-                    postemerge,
-                ),
+                " %s spawn failed of %s\n" % (colorize("BAD", "*"), postemerge),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
