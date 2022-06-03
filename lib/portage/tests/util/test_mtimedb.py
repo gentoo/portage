@@ -9,7 +9,6 @@ from portage.tests import TestCase
 import portage
 from portage.data import portage_gid, uid
 from portage.util.mtimedb import MtimeDB, _MTIMEDBKEYS
-from portage.exception import DigestException
 
 
 # Some data for the fixtures:
@@ -210,15 +209,12 @@ class MtimeDBTestCase(TestCase):
             _TWO_RESUME_LISTS_JSON,
         )
         for contents in all_fixtures:
-            with patch(
-                "portage.util.mtimedb.open", mock_open(read_data=contents)
-            ):
+            with patch("portage.util.mtimedb.open", mock_open(read_data=contents)):
                 mtimedb = MtimeDB("/path/to/mtimedb")
             self.assertLessEqual(set(mtimedb.keys()), _MTIMEDBKEYS)
 
     def test_default_values(self):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_EMPTY_FILE)):
+        with patch("portage.util.mtimedb.open", mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertEqual(mtimedb["starttime"], 0)
         self.assertEqual(mtimedb["version"], "")
@@ -227,88 +223,75 @@ class MtimeDBTestCase(TestCase):
         self.assertEqual(mtimedb["updates"], {})
 
     def test_instances_keep_a_deepcopy_of_clean_data(self):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+        with patch(
+            "portage.util.mtimedb.open", mock_open(read_data=_ONE_RESUME_LIST_JSON)
+        ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertEqual(dict(mtimedb), dict(mtimedb._clean_data))
         self.assertIsNot(mtimedb, mtimedb._clean_data)
 
     def test_load_data_called_at_instance_creation_time(self):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+        with patch(
+            "portage.util.mtimedb.open", mock_open(read_data=_ONE_RESUME_LIST_JSON)
+        ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertEqual(
             mtimedb["info"],
             {
-		"/usr/share/binutils-data/x86_64-pc-linux-gnu/2.37/info": (
-                    1711787325),
-		"/usr/share/gcc-data/x86_64-pc-linux-gnu/11.2.0/info": (
-                    1735158257),
-		"/usr/share/info": 1650633847
-	    }
+                "/usr/share/binutils-data/x86_64-pc-linux-gnu/2.37/info": (1711787325),
+                "/usr/share/gcc-data/x86_64-pc-linux-gnu/11.2.0/info": (1735158257),
+                "/usr/share/info": 1650633847,
+            },
         )
         self.assertEqual(
             mtimedb["ldpath"],
             {
-		"/lib": 1748456830,
-		"/lib64": 1750523381,
-		"/usr/lib": 1750461195,
-		"/usr/lib/llvm/13/lib64": 1747003135,
-		"/usr/lib/rust/lib": 1750461173,
-		"/usr/lib64": 1750881821,
-		"/usr/local/lib": 1711784303,
-		"/usr/local/lib64": 1711784303
-	    }
+                "/lib": 1748456830,
+                "/lib64": 1750523381,
+                "/usr/lib": 1750461195,
+                "/usr/lib/llvm/13/lib64": 1747003135,
+                "/usr/lib/rust/lib": 1750461173,
+                "/usr/lib64": 1750881821,
+                "/usr/local/lib": 1711784303,
+                "/usr/local/lib64": 1711784303,
+            },
         )
         self.assertEqual(
             mtimedb["resume"],
             {
-		"favorites": [
-			"@world"
-		],
-		"mergelist": [
-			[
-				"ebuild",
-				"/",
-				"some-cat/some-package-1.2.3-r4",
-				"merge"
-			],
-			[
-				"ebuild",
-				"/",
-				"another-cat/another-package-4.3.2-r1",
-				"merge"
-			]
-		],
-		"myopts": {
-			"--buildpkg": True,
-			"--deep": True,
-			"--getbinpkg": True,
-			"--keep-going": True,
-			"--newuse": True,
-			"--quiet": True,
-			"--regex-search-auto": "y",
-			"--update": True,
-			"--usepkg": True,
-			"--verbose": True
-		}
-	    }
+                "favorites": ["@world"],
+                "mergelist": [
+                    ["ebuild", "/", "some-cat/some-package-1.2.3-r4", "merge"],
+                    ["ebuild", "/", "another-cat/another-package-4.3.2-r1", "merge"],
+                ],
+                "myopts": {
+                    "--buildpkg": True,
+                    "--deep": True,
+                    "--getbinpkg": True,
+                    "--keep-going": True,
+                    "--newuse": True,
+                    "--quiet": True,
+                    "--regex-search-auto": "y",
+                    "--update": True,
+                    "--usepkg": True,
+                    "--verbose": True,
+                },
+            },
         )
         self.assertEqual(mtimedb["starttime"], 0)
         self.assertEqual(
             mtimedb["updates"],
             {
-		"/var/db/repos/gentoo/profiles/updates/1Q-2022": 1747854791,
-		"/var/db/repos/gentoo/profiles/updates/2Q-2022": 1752846209,
-		"/var/db/repos/gentoo/profiles/updates/4Q-2021": 1742787797
-	    }
+                "/var/db/repos/gentoo/profiles/updates/1Q-2022": 1747854791,
+                "/var/db/repos/gentoo/profiles/updates/2Q-2022": 1752846209,
+                "/var/db/repos/gentoo/profiles/updates/4Q-2021": 1742787797,
+            },
         )
         self.assertEqual(mtimedb["version"], "3.0.30")
 
     @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
     def test_commit_writes_to_disk_if_needed_and_possible(self, pwrite2disk):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_EMPTY_FILE)):
+        with patch("portage.util.mtimedb.open", mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         mtimedb.commit()
         pwrite2disk.assert_not_called()
@@ -320,8 +303,7 @@ class MtimeDBTestCase(TestCase):
 
     @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
     def test_commit_does_not_write_to_disk_if_no_file(self, pwrite2disk):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_EMPTY_FILE)):
+        with patch("portage.util.mtimedb.open", mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         mtimedb["updates"]["/long/path/1Q-2021"] = 1739992409
         mtimedb.filename = None
@@ -330,15 +312,15 @@ class MtimeDBTestCase(TestCase):
 
     @patch("portage.util.mtimedb.MtimeDB._MtimeDB__write_to_disk")
     def test_commit_does_not_write_to_disk_if_no_changes(self, pwrite2disk):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_EMPTY_FILE)):
+        with patch("portage.util.mtimedb.open", mock_open(read_data=_EMPTY_FILE)):
             mtimedb = MtimeDB("/some/path/mtimedb")
         mtimedb.commit()
         pwrite2disk.assert_not_called()
 
     def test_is_readonly_attribute(self):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+        with patch(
+            "portage.util.mtimedb.open", mock_open(read_data=_ONE_RESUME_LIST_JSON)
+        ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         self.assertFalse(mtimedb.is_readonly)
 
@@ -349,8 +331,9 @@ class MtimeDBTestCase(TestCase):
         self.assertFalse(mtimedb.is_readonly)
 
     def test_make_readonly(self):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+        with patch(
+            "portage.util.mtimedb.open", mock_open(read_data=_ONE_RESUME_LIST_JSON)
+        ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         mtimedb.make_readonly()
         self.assertTrue(mtimedb.is_readonly)
@@ -359,8 +342,9 @@ class MtimeDBTestCase(TestCase):
     @patch("portage.util.mtimedb.apply_secpass_permissions")
     @patch("portage.util.mtimedb.atomic_ofstream")
     def test_write_to_disk(self, matomic_ofstream, mapply_perms):
-        with patch("portage.util.mtimedb.open",
-                   mock_open(read_data=_ONE_RESUME_LIST_JSON)):
+        with patch(
+            "portage.util.mtimedb.open", mock_open(read_data=_ONE_RESUME_LIST_JSON)
+        ):
             mtimedb = MtimeDB("/some/path/mtimedb")
         d = {"z": "zome", "a": "AAA"}
         encoding = portage._encodings["repo.content"]
