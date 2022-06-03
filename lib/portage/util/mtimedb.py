@@ -71,9 +71,7 @@ class MtimeDB(dict):
             if getattr(e, "errno", None) in (errno.ENOENT, errno.EACCES):
                 pass
             else:
-                writemsg(
-                    _(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1
-                )
+                writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
         finally:
             if f is not None:
                 f.close()
@@ -83,8 +81,7 @@ class MtimeDB(dict):
             try:
                 d = json.loads(
                     _unicode_decode(
-                        content, encoding=_encodings["repo.content"],
-                        errors="strict"
+                        content, encoding=_encodings["repo.content"], errors="strict"
                     )
                 )
             except SystemExit:
@@ -101,10 +98,7 @@ class MtimeDB(dict):
                 except SystemExit:
                     raise
                 except Exception:
-                    writemsg(
-                        _(f"!!! Error loading '{filename}': {e}\n"),
-                        noiselevel=-1
-                    )
+                    writemsg(_(f"!!! Error loading '{filename}': {e}\n"), noiselevel=-1)
 
         if "old" in d:
             d["updates"] = d["old"]
@@ -117,7 +111,7 @@ class MtimeDB(dict):
         for k in ("info", "ldpath", "updates"):
             d.setdefault(k, {})
 
-        for k in (set(d.keys())-_MTIMEDBKEYS):
+        for k in set(d.keys()) - _MTIMEDBKEYS:
             writemsg(_(f"Deleting invalid mtimedb key: {k}\n"))
             del d[k]
         self.update(d)
