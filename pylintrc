@@ -13,7 +13,6 @@
 #disable=no-absolute-import,bad-continuation,C0103,C0114,C0115,E1101,W0201,no-name-in-module
 disable=all
 enable=
-        cyclic-import,
         import-error,
         import-self,
         misplaced-future,
