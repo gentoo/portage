@@ -79,10 +79,10 @@ MISC_SH_BINARY = PORTAGE_BIN_PATH + "/misc-functions.sh"
 # BEGIN PREFIX LOCAL
 SANDBOX_BINARY = EPREFIX + "/usr/bin/sandbox"
 FAKEROOT_BINARY = EPREFIX + "/usr/bin/fakeroot"
+BASH_BINARY = EPREFIX + "/bin/bash"
+PRELINK_BINARY = EPREFIX + "/usr/sbin/prelink"
 # END PREFIX LOCAL
-BASH_BINARY = "/bin/bash"
 MOVE_BINARY = "/bin/mv"
-PRELINK_BINARY = "/usr/sbin/prelink"
 # BEGIN PREFIX LOCAL
 MACOSSANDBOX_BINARY      = "/usr/bin/sandbox-exec"
 MACOSSANDBOX_PROFILE     = '''(version 1)
