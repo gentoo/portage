@@ -101,7 +101,7 @@ DOINS_ARGS+=(
 # to the import path" if the Python is prior to 3.4, which would cause
 # unexpected import. See also #469338.
 PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-	"${PORTAGE_PYTHON:-/usr/bin/python}" \
+	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" \
 	"${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"/doins.py \
 	"${DOINS_ARGS[@]}" -- "$@" || \
 { __helpers_die "${helper} failed"; exit 1; }

@@ -14,7 +14,7 @@ cd "${PORTAGE_PYM_PATH}" || exit 1
 for path in "${PORTAGE_BIN_PATH}/${0##*/}"{.py,}; do
 	if [[ -x "${path}" ]]; then
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@/usr/bin/python}" "${path}" "$@"
+			exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${path}" "$@"
 	fi
 done
 echo "File not found: ${path}" >&2

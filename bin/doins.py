@@ -1,4 +1,4 @@
-#!/usr/bin/python -b
+#!@PREFIX_PORTAGE_PYTHON@ -b
 # Copyright 2017-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #

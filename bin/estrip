@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@PORTAGE_BASH@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -101,12 +101,12 @@ if [[ ${KERNEL} == linux ]] && ${FEATURES_xattr} ; then
 	else
 		dump_xattrs() {
 			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" \
 			"${PORTAGE_BIN_PATH}/xattr-helper.py" --dump < <(echo -n "$1")
 		}
 		restore_xattrs() {
 			PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" \
+			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" \
 			"${PORTAGE_BIN_PATH}/xattr-helper.py" --restore
 		}
 	fi
