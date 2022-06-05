@@ -273,7 +273,7 @@ class Manifest:
         return myhashdict
 
     def _createManifestEntries(self):
-        valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size")))
+        valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size",)))
         mytypes = sorted(self.fhashdict)
         for mytype in mytypes:
             myfiles = sorted(self.fhashdict[mytype])
@@ -551,7 +551,7 @@ class Manifest:
             # repoman passes in an empty list, which implies that all distfiles
             # are required.
             requiredDistfiles = distlist.copy()
-        required_hash_types = set(itertools.chain(self.required_hashes, ("size")))
+        required_hash_types = set(itertools.chain(self.required_hashes, ("size",)))
         for f in distlist:
             fname = os.path.join(self.distdir, f)
             mystat = None
