@@ -604,10 +604,11 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .TP
 .BR /etc/portage/
 Files in this directory, including make.conf, repos.conf, sets.conf,
-and any file with a name that begins with "package.", can be
-more than just a flat file.  If it is a directory, then all the files in that
-directory will be sorted in lexical order by file name and summed together
-as if it were a single file.
+and any file with a name that begins with "package." can also be directories.
+
+If it is a directory, then all the files in that directory, excluding files
+that begin with '.' or end with '~', will be sorted in lexical order by file
+name and summed together as if they were a single file.
 
 .I Example:
 .nf
