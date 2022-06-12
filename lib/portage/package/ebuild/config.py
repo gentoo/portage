@@ -1510,7 +1510,7 @@ class config:
             if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
                 writemsg(
                     "!!! BINPKG_FORMAT contains invalid or "
-                    "unsupported format: %s" % binpkg_fotmat,
+                    "unsupported format: %s" % binpkg_format,
                     noiselevel=-1,
                 )
 
