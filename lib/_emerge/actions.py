@@ -1697,6 +1697,11 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     cleanlist.append(node.cpv)
 
         return _depclean_result(0, cleanlist, ordered, required_pkgs_total, resolver)
+    if args_set and "--pretend" not in myopts:
+        # If the cleanlist is empty but we were given packages to clean,
+        # we aren't successfully depcleaning. Return failure unless
+        # we're pretending.
+        return _depclean_result(1, [], False, required_pkgs_total, resolver)
     return _depclean_result(0, [], False, required_pkgs_total, resolver)
 
 
