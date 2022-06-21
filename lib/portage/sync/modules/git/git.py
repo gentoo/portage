@@ -113,6 +113,9 @@ class GitSync(NewBase):
             return (exitcode, False)
         if not self.verify_head():
             return (1, False)
+
+        self.add_safe_directory(self.repo.location)
+
         return (os.EX_OK, True)
 
     def update(self):
@@ -151,6 +154,8 @@ class GitSync(NewBase):
             git_cmd_opts += (
                 " %s" % self.repo.module_specific_options["sync-git-pull-extra-opts"]
             )
+
+        self.add_safe_directory(self.repo.location)
 
         try:
             remote_branch = portage._unicode_decode(
@@ -340,4 +345,30 @@ class GitSync(NewBase):
             )
         except subprocess.CalledProcessError:
             ret = (1, False)
+        return ret
+
+    def add_safe_directory(self, directory):
+        # https://github.com/gentoo/portage/pull/818
+        # Workaround for bug #838271 and bug #838223
+        # We unset first to avoid duplicate entries and also to handle
+        # relocations.
+        cmds = [
+            [self.bin_command, "config", "--unset-all", "safe.directory"],
+            [self.bin_command, "config", "--add", "safe.directory", directory],
+        ]
+
+        for cmd in cmds:
+            try:
+                ret = (
+                    os.EX_OK,
+                    portage._unicode_decode(
+                        subprocess.check_output(
+                            cmd, cwd=portage._unicode_encode(directory)
+                        )
+                    ),
+                )
+            except subprocess.CalledProcessError:
+                ret = (1, False)
+                return ret
+
         return ret
