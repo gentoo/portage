@@ -5,7 +5,7 @@
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 option_r=
-if [[ ___eapi_has_dosym_r && $1 == -r ]]; then
+if ___eapi_has_dosym_r && [[ $1 == -r ]]; then
 	option_r=t
 	shift
 fi
