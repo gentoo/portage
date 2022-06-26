@@ -380,9 +380,6 @@ eend() {
 	if [[ -v EBEGIN_EEND ]] ; then
 		local caller="${FUNCNAME[1]}"
 		local tos="${EBEGIN_EEND[-1]}"
-		if [[ "${caller}" != "${tos}" ]] ; then
-			eqawarn "QA Notice: eend (in ${caller}) improperly matched with ebegin (called in ${tos})"
-		fi
 		unset EBEGIN_EEND[-1]
 		if [[ ${#EBEGIN_EEND[@]} -eq 0 ]] ; then
 			unset EBEGIN_EEND
