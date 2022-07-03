@@ -1847,11 +1847,12 @@ class gpkg:
             image_total_size,
         )
 
-    def _check_pre_quickpkg_files(self, contents, root):
+    def _check_pre_quickpkg_files(self, contents, root, image_prefix="image"):
         """
         Check the pre quickpkg files size and path, return the longest
         path length, largest single file size, and total files size.
         """
+        image_prefix_length = len(image_prefix) + 1
         root_dir = os.path.join(
             normalize_path(
                 _unicode_decode(root, encoding=_encodings["fs"], errors="strict")
@@ -1881,6 +1882,7 @@ class gpkg:
             prefix_length = (
                 len(_unicode_encode(d, encoding=_encodings["fs"], errors="strict"))
                 - root_dir_length
+                + image_prefix_length
             )
             image_max_prefix_length = max(image_max_prefix_length, prefix_length)
 
@@ -1892,6 +1894,7 @@ class gpkg:
             path_length = (
                 len(_unicode_encode(path, encoding=_encodings["fs"], errors="strict"))
                 - root_dir_length
+                + image_prefix_length
             )
 
             file_stat = os.lstat(path)
