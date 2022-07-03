@@ -339,16 +339,10 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
-	if [[ -v EBEGIN_EEND ]] ; then
-		# Already a call to ebegin
-		local prev="${EBEGIN_EEND[-1]}"
-		if [[ "${prev}" == "${FUNCNAME[1]}" ]] ; then
-			eqawarn "QA Notice: ebegin called in ${prev}, but missing call to eend (${FUNCNAME[1]})"
-		fi
-		EBEGIN_EEND+=( "${FUNCNAME[1]}" )
-	else
-		EBEGIN_EEND=( "${FUNCNAME[1]}" )
+	if (( __EBEGIN_EEND_COUNT++ > 0 )) && [[ ${__EBEGIN_LAST_CALLER} == ${FUNCNAME[1]} ]]; then
+		eqawarn "QA Notice: nested ebegin call in ${FUNCNAME[1]} (missing call to eend)"
 	fi
+	__EBEGIN_LAST_CALLER=${FUNCNAME[1]}
 	return 0
 }
 
@@ -377,15 +371,9 @@ __eend() {
 
 eend() {
 	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
-	if [[ -v EBEGIN_EEND ]] ; then
-		local caller="${FUNCNAME[1]}"
-		local tos="${EBEGIN_EEND[-1]}"
-		unset EBEGIN_EEND[-1]
-		if [[ ${#EBEGIN_EEND[@]} -eq 0 ]] ; then
-			unset EBEGIN_EEND
-		fi
-	else
-		eqawarn "QA Notice: eend called without preceding ebegin (phase: ${FUNCNAME[1]})"
+	if (( --__EBEGIN_EEND_COUNT < 0 )); then
+		__EBEGIN_EEND_COUNT=0
+		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
 	fi
 	local retval=${1:-0}
 	shift
