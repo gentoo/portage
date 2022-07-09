@@ -8,6 +8,8 @@ from typing import Optional
 
 from portage import eapi_is_supported
 
+logger = logging.getLogger(__name__)
+
 
 def eapi_has_iuse_defaults(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).iuse_defaults
@@ -219,7 +221,7 @@ def _get_eapi_attrs(eapi_str: Optional[str]) -> _eapi_attrs:
     be helpful for handling of corrupt EAPI metadata in essential functions
     such as pkgsplit.
     """
-    logging.info("cache info: {}".format(_get_eapi_attrs.cache_info()))
+    logger.debug("cache info: {}".format(_get_eapi_attrs.cache_info()))
     if eapi_str is None or not eapi_is_supported(eapi_str):
         return _eapi_attrs(
             allows_package_provided=True,

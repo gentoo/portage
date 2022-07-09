@@ -26,6 +26,8 @@ import sys
 from portage.util import movefile
 from portage.util.file_copy import copyfile
 
+logger = logging.getLogger("portage.bin.doins")
+
 
 def _warn(helper, msg):
     """Output warning message to stderr.
@@ -199,7 +201,7 @@ class _InsInProcessInstallRunner:
             if self._parsed_options.preserve_timestamps:
                 _set_timestamps(sstat, dest)
         except Exception:
-            logging.exception(
+            logger.exception(
                 "Failed to copy file: " "_parsed_options=%r, source=%r, dest_dir=%r",
                 self._parsed_options,
                 source,
@@ -383,7 +385,7 @@ class _InstallRunner:
         except Exception:
             if self._helpers_can_die:
                 raise
-            logging.exception("install_dir failed.")
+            logger.exception("install_dir failed.")
 
 
 def _doins(opts, install_runner, relpath, source_root):
@@ -428,7 +430,7 @@ def _doins(opts, install_runner, relpath, source_root):
                 os.symlink(linkto, dest)
                 return True
         except Exception:
-            logging.exception(
+            logger.exception(
                 "Failed to create symlink: " "opts=%r, relpath=%r, source_root=%r",
                 opts,
                 relpath,
