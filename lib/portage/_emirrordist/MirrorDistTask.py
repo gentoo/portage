@@ -17,6 +17,8 @@ from _emerge.CompositeTask import CompositeTask
 from .FetchIterator import FetchIterator
 from .DeletionIterator import DeletionIterator
 
+logger = logging.getLogger(__name__)
+
 
 class MirrorDistTask(CompositeTask):
 
@@ -99,14 +101,14 @@ class MirrorDistTask(CompositeTask):
                 st = os.stat(recycle_file)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    logging.error(
+                    logger.error(
                         ("stat failed for '%s' in " "recycle: %s") % (filename, e)
                     )
                 continue
 
             value = recycle_db_cache.pop(filename, None)
             if value is None:
-                logging.debug(("add '%s' to " "recycle db") % filename)
+                logger.debug(("add '%s' to " "recycle db") % filename)
                 recycle_db[filename] = (st.st_size, start_time)
             else:
                 r_size, r_time = value
@@ -114,27 +116,25 @@ class MirrorDistTask(CompositeTask):
                     recycle_db[filename] = (st.st_size, start_time)
                 elif r_time + r_deletion_delay < start_time:
                     if self._config.options.dry_run:
-                        logging.info(
-                            ("dry-run: delete '%s' from " "recycle") % filename
-                        )
-                        logging.info(("drop '%s' from " "recycle db") % filename)
+                        logger.info(("dry-run: delete '%s' from " "recycle") % filename)
+                        logger.info(("drop '%s' from " "recycle db") % filename)
                     else:
                         try:
                             os.unlink(recycle_file)
                         except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
-                                logging.error(
+                                logger.error(
                                     ("delete '%s' from " "recycle failed: %s")
                                     % (filename, e)
                                 )
                         else:
-                            logging.debug(("delete '%s' from " "recycle") % filename)
+                            logger.debug(("delete '%s' from " "recycle") % filename)
                             try:
                                 del recycle_db[filename]
                             except KeyError:
                                 pass
                             else:
-                                logging.debug(
+                                logger.debug(
                                     ("drop '%s' from " "recycle db") % filename
                                 )
 
@@ -147,7 +147,7 @@ class MirrorDistTask(CompositeTask):
             except KeyError:
                 pass
             else:
-                logging.debug(("drop non-existent '%s' from " "recycle db") % filename)
+                logger.debug(("drop non-existent '%s' from " "recycle db") % filename)
 
     def _scheduled_deletion_log(self):
 
@@ -169,7 +169,7 @@ class MirrorDistTask(CompositeTask):
             date_files.append(filename)
 
         if dry_run:
-            logging.warning(
+            logger.warning(
                 "dry-run: scheduled-deletions log "
                 "will be summarized via logging.info"
             )
@@ -178,7 +178,7 @@ class MirrorDistTask(CompositeTask):
         for date in sorted(date_map):
             date_files = date_map[date]
             if dry_run:
-                logging.info(
+                logger.info(
                     ("dry-run: scheduled deletions for %s: %s files")
                     % (date, len(date_files))
                 )
@@ -202,12 +202,12 @@ class MirrorDistTask(CompositeTask):
         added_file_count = self._config.added_file_count
         added_byte_count = self._config.added_byte_count
 
-        logging.info("finished in %i seconds" % elapsed_time)
-        logging.info("failed to fetch %i files" % fail_count)
-        logging.info("deleted %i files" % delete_count)
-        logging.info("deletion of %i files scheduled" % scheduled_deletion_count)
-        logging.info("added %i files" % added_file_count)
-        logging.info("added %i bytes total" % added_byte_count)
+        logger.info("finished in %i seconds" % elapsed_time)
+        logger.info("failed to fetch %i files" % fail_count)
+        logger.info("deleted %i files" % delete_count)
+        logger.info("deletion of %i files scheduled" % scheduled_deletion_count)
+        logger.info("added %i files" % added_file_count)
+        logger.info("added %i bytes total" % added_byte_count)
 
     def _cleanup(self):
         """
