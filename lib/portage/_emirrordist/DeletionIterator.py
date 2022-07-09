@@ -9,6 +9,8 @@ from portage import os
 from portage.package.ebuild.fetch import DistfileName
 from .DeletionTask import DeletionTask
 
+logger = logging.getLogger(__name__)
+
 
 class DeletionIterator:
     def __init__(self, config):
@@ -61,7 +63,7 @@ class DeletionIterator:
                         break
             else:
                 if exceptions:
-                    logging.error(
+                    logger.error(
                         "stat failed on '%s' in distfiles: %s\n"
                         % (filename, "; ".join(str(x) for x in exceptions))
                     )
@@ -103,7 +105,7 @@ class DeletionIterator:
                     deletion_entry = deletion_db.get(filename)
 
                     if deletion_entry is None:
-                        logging.debug("add '%s' to deletion db" % filename)
+                        logger.debug("add '%s' to deletion db" % filename)
                         deletion_db[filename] = start_time
 
                     elif deletion_entry + deletion_delay <= start_time:
@@ -123,4 +125,4 @@ class DeletionIterator:
                     except KeyError:
                         pass
                     else:
-                        logging.debug("drop '%s' from deletion db" % filename)
+                        logger.debug("drop '%s' from deletion db" % filename)

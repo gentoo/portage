@@ -17,6 +17,8 @@ from portage.util._async.PipeLogger import PipeLogger
 from portage.util._async.PopenProcess import PopenProcess
 from _emerge.CompositeTask import CompositeTask
 
+logger = logging.getLogger(__name__)
+
 default_hash_name = portage.const.MANIFEST2_HASH_DEFAULT
 
 # Use --no-check-certificate since Manifest digests should provide
@@ -91,7 +93,7 @@ class FetchTask(CompositeTask):
                     self.scheduler.output(
                         msg + "\n", background=True, log_path=self._log_path
                     )
-                    logging.error(msg)
+                    logger.error(msg)
             else:
                 break
 
@@ -100,7 +102,7 @@ class FetchTask(CompositeTask):
         if not size_ok:
             if self.config.options.dry_run:
                 if st is not None:
-                    logging.info(
+                    logger.info(
                         ("dry-run: delete '%s' with " "wrong size from distfiles")
                         % (self.distfile,)
                     )
@@ -115,7 +117,7 @@ class FetchTask(CompositeTask):
                     )
                     if self._unlink_file(unlink_path, "distfiles"):
                         if st is not None:
-                            logging.debug(
+                            logger.debug(
                                 ("delete '%s' with " "wrong size from distfiles")
                                 % (self.distfile,)
                             )
@@ -172,14 +174,14 @@ class FetchTask(CompositeTask):
 
             if self.config.options.dry_run:
                 if os.path.exists(recycle_file):
-                    logging.info("dry-run: delete '%s' from recycle" % (self.distfile,))
+                    logger.info("dry-run: delete '%s' from recycle" % (self.distfile,))
             else:
                 try:
                     os.unlink(recycle_file)
                 except OSError:
                     pass
                 else:
-                    logging.debug("delete '%s' from recycle" % (self.distfile,))
+                    logger.debug("delete '%s' from recycle" % (self.distfile,))
 
     def _distfiles_digester_exit(self, digester):
 
@@ -195,7 +197,7 @@ class FetchTask(CompositeTask):
             # from the administrator.
             msg = "%s distfiles digester failed unexpectedly" % (self.distfile,)
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
-            logging.error(msg)
+            logger.error(msg)
             self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.wait()
@@ -312,7 +314,7 @@ class FetchTask(CompositeTask):
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
-                logging.error(msg)
+                logger.error(msg)
         else:
             size_ok = st.st_size == self.digests["size"]
             self._current_stat = st
@@ -345,7 +347,7 @@ class FetchTask(CompositeTask):
                 current_mirror.name,
             )
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
-            logging.error(msg)
+            logger.error(msg)
         else:
             bad_digest = self._find_bad_digest(digester.digests)
             if bad_digest is not None:
@@ -359,18 +361,18 @@ class FetchTask(CompositeTask):
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
-                logging.error(msg)
+                logger.error(msg)
             elif self.config.options.dry_run:
                 # Report success without actually touching any files
                 if self._same_device(
                     current_mirror.location, self.config.options.distfiles
                 ):
-                    logging.info(
+                    logger.info(
                         ("dry-run: hardlink '%s' from %s " "to distfiles")
                         % (self.distfile, current_mirror.name)
                     )
                 else:
-                    logging.info(
+                    logger.info(
                         "dry-run: copy '%s' from %s to distfiles"
                         % (self.distfile, current_mirror.name)
                     )
@@ -387,7 +389,7 @@ class FetchTask(CompositeTask):
                 if self._hardlink_atomic(
                     src, dest, "%s to %s" % (current_mirror.name, "distfiles")
                 ):
-                    logging.debug(
+                    logger.debug(
                         "hardlink '%s' from %s to distfiles"
                         % (self.distfile, current_mirror.name)
                     )
@@ -424,10 +426,10 @@ class FetchTask(CompositeTask):
                 copier.future.exception(),
             )
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
-            logging.error(msg)
+            logger.error(msg)
         else:
 
-            logging.debug(
+            logger.debug(
                 "copy '%s' from %s to distfiles" % (self.distfile, current_mirror.name)
             )
 
@@ -447,7 +449,7 @@ class FetchTask(CompositeTask):
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
-                logging.error(msg)
+                logger.error(msg)
 
             self._success()
             self.returncode = os.EX_OK
@@ -460,7 +462,7 @@ class FetchTask(CompositeTask):
 
         if self.config.options.dry_run:
             # Simply report success.
-            logging.info("dry-run: fetch '%s' from '%s'" % (self.distfile, uri))
+            logger.info("dry-run: fetch '%s' from '%s'" % (self.distfile, uri))
             self._success()
             self.returncode = os.EX_OK
             self._async_wait()
@@ -543,7 +545,7 @@ class FetchTask(CompositeTask):
                 self._fetch_tmp_dir_info,
             )
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
-            logging.error(msg)
+            logger.error(msg)
         else:
             bad_digest = self._find_bad_digest(digester.digests)
             if bad_digest is not None:
@@ -608,7 +610,7 @@ class FetchTask(CompositeTask):
                 copier.future.exception(),
             )
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
-            logging.error(msg)
+            logger.error(msg)
             self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.returncode = 1
@@ -662,7 +664,7 @@ class FetchTask(CompositeTask):
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
-                logging.error(msg)
+                logger.error(msg)
                 return False
         return True
 
@@ -720,7 +722,7 @@ class FetchTask(CompositeTask):
                     self.scheduler.output(
                         msg + "\n", background=True, log_path=self._log_path
                     )
-                    logging.error(msg)
+                    logger.error(msg)
                 return False
 
             try:
@@ -734,7 +736,7 @@ class FetchTask(CompositeTask):
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
-                logging.error(msg)
+                logger.error(msg)
                 return False
         finally:
             try:

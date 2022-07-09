@@ -7,6 +7,8 @@ from typing import Optional
 
 from portage import eapi_is_supported
 
+logger = logging.getLogger(__name__)
+
 
 def eapi_has_iuse_defaults(eapi: str) -> bool:
     return _get_eapi_attrs(eapi).iuse_defaults

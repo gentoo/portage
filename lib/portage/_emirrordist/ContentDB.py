@@ -8,6 +8,8 @@ import typing
 
 from portage.package.ebuild.fetch import DistfileName
 
+logger = logging.getLogger(__name__)
+
 
 class ContentDB:
     """
@@ -110,10 +112,10 @@ class ContentDB:
                             pass
 
             if remaining:
-                logging.debug(("drop '%s' revision(s) from content db") % filename)
+                logger.debug(("drop '%s' revision(s) from content db") % filename)
                 self._shelve[distfile_key] = remaining
             else:
-                logging.debug(("drop '%s' from content db") % filename)
+                logger.debug(("drop '%s' from content db") % filename)
                 try:
                     del self._shelve[distfile_key]
                 except KeyError:
