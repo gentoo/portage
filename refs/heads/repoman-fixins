@@ -1,0 +1,17 @@
+certificate version 0.1
+pusher 0x226DE4AA4B9704A49DEF6B9B1A333AEFBD714C02 1657478268 -0400
+pushee ssh://git.gentoo.org/proj/portage.git
+nonce 1657478268-e8c47b594a3d80f141f5f09debaab93b709f759f
+
+ac1d637bfdaa930b8eed4def6c26ad5b19b275e8 0000000000000000000000000000000000000000 refs/heads/repoman-fixins
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAABCAAdFiEEEcy8hJz1vFF5g9/mfliimPQvnM0FAmLLHHwACgkQfliimPQv
+nM3+jAgAl5otOf3BOfEReallDjNBWK7SkHOPBDIZuK115ZSkDETjlbsjLTs82Xrr
+0jheipO3Af9+X4lI6mwGmbYvI9AO/II3eMt+0GvtuNPbBmEQoy1Ngv5zPg0skFzR
+7TlZ7pIjOjAg5YX4rNfxXFlLrNAu1DWQT96K4loiBpnIqfrtv1/5oebszcO7YTBL
+ePiVuZ9JAIRHs9YjeAuZ++UljN0XzSJUb3mOPX/ibyJR4Jw60lMdzPjd6AGf7gQc
+MbyL3RT/YegsF5JorLpYgYgRsoLNfytxWRzRJu7ABBbDSZ/xNafpmqmnrnaf5vxt
+qs0vx8qXJ1/geOS2uwmcpj5CMZzeSQ==
+=rTK9
+-----END PGP SIGNATURE-----
