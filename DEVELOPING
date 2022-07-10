@@ -221,7 +221,10 @@ For a more detailed explanation (and rationalisation) of these rules:
 Releases
 --------
 
-First update the NEWS and RELEASE-NOTES files and commit.
+First update:
+- NEWS
+- setup.py
+and commit.
 
 Second create a git tag for this release:
 	git tag portage-2.2.8
