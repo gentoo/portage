@@ -2,6 +2,10 @@ portage-3.0.32 (UNRELEASED)
 --------------
 
 Bug fixes:
+* Fix marking all news items as relevant. See bug #857669.
+
+* Allow nested ebegin again while there's a lack of consensus on banning it.
+
 * Fix doc generation by removing reference to removed EAPIs. See bug #857486.
 
 portage-3.0.31 (2022-07-10)
