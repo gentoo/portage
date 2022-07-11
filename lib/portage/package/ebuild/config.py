@@ -485,14 +485,7 @@ class config:
             # interaction with the calling environment that might
             # lead to unexpected results.
 
-            env_d = (
-                getconfig(
-                    os.path.join(eroot, "etc", "profile.env"),
-                    tolerant=tolerant,
-                    expand=False,
-                )
-                or {}
-            )
+            env_d = self._get_env_d(broot=broot, eroot=eroot, tolerant=tolerant)
             expand_map = env_d.copy()
             self._expand_map = expand_map
 
@@ -1208,6 +1201,61 @@ class config:
 
         if mycpv:
             self.setcpv(mycpv)
+
+    def _get_env_d(self, broot, eroot, tolerant):
+        broot_only_variables = (
+            "PATH",
+            "PREROOTPATH",
+            "ROOTPATH",
+        )
+        eroot_only_variables = (
+            "CONFIG_PROTECT",
+            "CONFIG_PROTECT_MASK",
+            "INFODIR",
+            "INFOPATH",
+            "MANPATH",
+            "PKG_CONFIG_.*",
+        )
+
+        broot_only_variables_re = re.compile(r"^(%s)$" % "|".join(broot_only_variables))
+        eroot_only_variables_re = re.compile(r"^(%s)$" % "|".join(eroot_only_variables))
+
+        broot_env_d_path = os.path.join(broot or "/", "etc", "profile.env")
+        eroot_env_d_path = os.path.join(eroot or "/", "etc", "profile.env")
+
+        if (
+            os.path.exists(broot_env_d_path)
+            and os.path.exists(eroot_env_d_path)
+            and os.path.samefile(broot_env_d_path, eroot_env_d_path)
+        ):
+            broot_env_d = (
+                getconfig(broot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+            eroot_env_d = broot_env_d
+        else:
+            broot_env_d = (
+                getconfig(broot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+            eroot_env_d = (
+                getconfig(eroot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+
+        env_d = {}
+
+        for k in broot_env_d.keys() | eroot_env_d.keys():
+            if broot_only_variables_re.match(k):
+                if k in broot_env_d:
+                    env_d[k] = broot_env_d[k]
+            elif eroot_only_variables_re.match(k):
+                if k in eroot_env_d:
+                    env_d[k] = eroot_env_d[k]
+            else:
+                if k in eroot_env_d:
+                    env_d[k] = eroot_env_d[k]
+                elif k in broot_env_d:
+                    env_d[k] = broot_env_d[k]
+
+        return env_d
 
     def _init_iuse(self):
         self._iuse_effective = self._calc_iuse_effective()
@@ -2640,14 +2688,13 @@ class config:
 
     def reload(self):
         """Reload things like /etc/profile.env that can change during runtime."""
-        env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
         self.configdict["env.d"].clear()
-        env_d = getconfig(env_d_filename, tolerant=self._tolerant, expand=False)
-        if env_d:
-            # env_d will be None if profile.env doesn't exist.
-            for k in self._env_d_blacklist:
-                env_d.pop(k, None)
-            self.configdict["env.d"].update(env_d)
+        env_d = self._get_env_d(
+            broot=self["BROOT"], eroot=self["EROOT"], tolerant=self._tolerant
+        )
+        for k in self._env_d_blacklist:
+            env_d.pop(k, None)
+        self.configdict["env.d"].update(env_d)
 
     def regenerate(self, useonly=0, use_cache=None):
         """
