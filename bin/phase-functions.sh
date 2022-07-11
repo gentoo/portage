@@ -207,7 +207,11 @@ __preprocess_ebuild_env() {
 }
 
 __ebuild_phase() {
+	local __EBEGIN_EEND_COUNT=0
 	declare -F "$1" >/dev/null && __qa_call $1
+	if (( __EBEGIN_EEND_COUNT > 0 )); then
+		eqawarn "QA Notice: ebegin called without eend in $1"
+	fi
 }
 
 __ebuild_phase_with_hooks() {
@@ -1087,10 +1091,6 @@ __ebuild_main() {
 		exit 1
 		;;
 	esac
-
-	if [[ -v EBEGIN_EEND ]] ; then
-		eqawarn "QA Notice: ebegin called, but missing call to eend (phase: ${1})"
-	fi
 
 	# Save the env only for relevant phases.
 	if ! has "${1}" clean help info nofetch ; then
