@@ -6,6 +6,11 @@ Bug fixes:
 
 * Allow nested ebegin again while there's a lack of consensus on banning it.
 
+* Fix use of deprecated (now removed) getchildren() call in XML parser,
+  which caused failures with gentoolkit. See bug #857537. (Note that this
+  was not originally in the release notes for 3.0.32, but the fix was in
+  3.0.32).
+
 * Fix doc generation by removing reference to removed EAPIs. See bug #857486.
 
 portage-3.0.31 (2022-07-10)
