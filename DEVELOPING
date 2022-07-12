@@ -16,7 +16,7 @@ Dependencies
 
 Python and Bash should be the only hard dependencies. Any other
 dependencies, including external Python modules that are not included
-with Python itself, must be optionally enabled by run-time detection.
+with Python itself, must be optionally enabled by runtime detection.
 
 Tabs
 ----
@@ -89,18 +89,6 @@ except KeyError:
 
 The get call is nicer (compact) and faster (try,except are slow).
 
-Exceptions
-----------
-
-Don't use the format raise Exception, "string"
-It will be removed in py3k.
-
-YES:
-  raise KeyError("No key")
-
-NO:
-  raise KeyError, "No key"
-
 Imports
 -------
 
@@ -172,9 +160,8 @@ change a lot of unrelated things.  This makes it easier to see what
 parts of the system have actually changed.  It also makes it easier to
 cherry-pick and revert commits. Use your common sense!
 
-When you make a significant change, make sure to update RELEASE-NOTES
-for the to-be-released version.  Very significant changes should be
-mentioned in NEWS as well.  See the current entries to these files for
+When you make a significant change, make sure to update NEWS
+for the to-be-released version. See the current entries to these files for
 examples of what constitutes significant.
 
 Commit messages
@@ -203,7 +190,7 @@ Requested-by: Reported the bug/made the feature request
 
 Example:
 
-"
+"""
 emerge: Fix --tree output (bug 555555)
 
 Make sure newlines appear where they are supposed to. Fix a bug with
@@ -213,7 +200,7 @@ colourisation of --tree output when used in tandem with --verbose
 Signed-off-by: Foo Bar  <fbar@gentoo.org>
 Reviewed-by:   Fu Baz   <fub@gentoo.org>
 Reported-by:   Qux Quux <qq@gentoo.org>
-"
+"""
 
 For a more detailed explanation (and rationalisation) of these rules:
 <http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html>
@@ -222,12 +209,12 @@ Releases
 --------
 
 First update:
-- NEWS
+- NEWS (for both new version & release date)
 - setup.py
 and commit.
 
 Second create a git tag for this release:
-	git tag portage-2.2.8
+	git tag portage-3.0.30
 
 Create the tarball and run the tests: ./runtests
 (see PYTHON_SUPPORTED_VERSIONS in runtests).
@@ -239,7 +226,7 @@ Version bump the ebuild locally (don't push) and verify it can re-install itself
 Publish the results (no going back now):
 	- Push the new git tag
 	- Upload the tarball
-	- Commit the new ebuild version
+	- Commit the new ebuild version and tag the tracker bug for the commit
 
 Create the release for pypi and upload it there:
 	- python -m venv .venv
