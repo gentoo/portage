@@ -1,3 +1,17 @@
+portage-3.0.33 (UNRELEASED)
+--------------
+
+Bug fixes:
+* env-update: Handle BROOT vs ROOT distinction for PATH (and other
+  variables like PREROOTPATH and ROOTPATH). The issue being that
+  only some variables are relevant for execution (and hence need
+  to be derived from BROOT), while others need to correspond to
+  EROOT for e.g. library paths. This should help with Clang
+  stage building.
+
+* Build: Fix test suite file data processing (copying of .gnupg data
+  for the gpkg tests led to a failure in src_test in the portage ebuild).
+
 portage-3.0.32 (2022-07-11)
 --------------
 
