@@ -681,6 +681,17 @@ class build_tests(x_build_scripts_custom):
         print("Symlinking %s -> %s" % (conf_dir, conf_src))
         os.symlink(conf_src, conf_dir)
 
+        source_path = os.path.realpath(__file__)
+
+        # copy GPG test keys
+        copy_tree(
+            os.path.join(
+                os.path.dirname(source_path), "lib", "portage", "tests", ".gnupg"
+            ),
+            os.path.join(self.build_lib, "portage", "tests", ".gnupg"),
+        )
+        os.chmod(os.path.join(self.build_lib, "portage", "tests", ".gnupg"), 0o700)
+
         # create $build_lib/../.portage_not_installed
         # to enable proper paths in tests
         with open(os.path.join(self.top_dir, ".portage_not_installed"), "w"):
@@ -700,15 +711,6 @@ class test(Command):
 
     def run(self):
         self.run_command("build_tests")
-
-        # copy GPG test keys
-        copy_tree(
-            os.path.join(
-                self.build_lib, "..", "..", "lib", "portage", "tests", ".gnupg"
-            ),
-            os.path.join(self.build_lib, "portage", "tests", ".gnupg"),
-        )
-        os.chmod(os.path.join(self.build_lib, "portage", "tests", ".gnupg"), 0o700)
 
         subprocess.check_call(
             [
