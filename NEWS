@@ -16,6 +16,8 @@ Bug fixes:
   started to show on every emerge, but is harmless and left over
   from many years ago). Bug #858407.
 
+* quickpkg: Fix quoting/splitting of BINPKG_COMPRESS_FLAGS arguments. Bug #857933.
+
 * estrip: fix double prefix (regression from "don't call estrip twice" fix
   in 3.0.31). Bug #858818.
 
