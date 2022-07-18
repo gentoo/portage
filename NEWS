@@ -19,15 +19,22 @@ Bug fixes:
 * estrip: fix double prefix (regression from "don't call estrip twice" fix
   in 3.0.31). Bug #858818.
 
-* ebuild(5): mention dolib, libopts being banned in EAPI 7.
+* ebuild(5): dolib, libopts: mention dolib, libopts being banned in EAPI 7.
 
-* ebuild(5): mention dohtml is banned in EAPI 7.
+* ebuild(5): dohtml: mention dohtml is banned in EAPI 7.
 
-* ebuild(5): mention hasv is banned in EAPI 8.
+* ebuild(5): hasv: mention hasv is banned in EAPI 8.
 
-* ebuild(5): mention dosym -r for EAPI 8.
+* ebuild(5): dosym: mention dosym -r for EAPI 8.
 
-* ebuild(5): mention einstall was banned in EAPI 6.
+* ebuild(5): einstall: mention einstall was banned in EAPI 6.
+
+* ebuild(5): econf: add --docdir and --htmldir for EAPI 6,
+  add --with-sysroot for EAPI 7, add --datarootdir and --disable-static for EAPI
+  8.
+
+* ebuild(5): econf: drop --disable-dependency-tracking from "example"
+  because it's confusing (implies it was always added, even before EAPI 4).
 
 portage-3.0.32 (2022-07-11)
 --------------
