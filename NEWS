@@ -36,6 +36,8 @@ Bug fixes:
 * ebuild(5): econf: drop --disable-dependency-tracking from "example"
   because it's confusing (implies it was always added, even before EAPI 4).
 
+* ebuild(5): modernize examples slightly.
+
 portage-3.0.32 (2022-07-11)
 --------------
 
