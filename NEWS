@@ -12,6 +12,23 @@ Bug fixes:
 * Build: Fix test suite file data processing (copying of .gnupg data
   for the gpkg tests led to a failure in src_test in the portage ebuild).
 
+* emerge: drop obsolete fixpackages warning (as a result of refactoring,
+  started to show on every emerge, but is harmless and left over
+  from many years ago).
+
+* estrip: fix double prefix (regression from "don't call estrip twice" fix
+  in 3.0.31).
+
+* ebuild(5): mention dolib, libopts being banned in EAPI 7.
+
+* ebuild(5): mention dohtml is banned in EAPI 7.
+
+* ebuild(5): mention hasv is banned in EAPI 8.
+
+* ebuild(5): mention dosym -r for EAPI 8.
+
+* ebuild(5): mention einstall was banned in EAPI 6.
+
 portage-3.0.32 (2022-07-11)
 --------------
 
