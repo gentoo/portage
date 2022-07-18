@@ -1450,9 +1450,10 @@ file name.
 Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
 should call \fBln\fR(1) directly.
 .TP
-.B dosym\fR \fI<filename> <linkname>
+.B dosym\fR \fI[\-r] \fI<filename> <linkname>
 .PD 1
-Performs the ln command to create a symlink.
+Performs the ln command to create a symlink.  Setting \-r creates a relative
+symlink.  The \-r option is available beginning with \fBEAPI 8\fR.
 .TP
 .B doheader\fR \fI[\-r] <file> [list of more files]
 Installs the given header files into /usr/include/, by default
