@@ -412,7 +412,7 @@ done < <(
 	(
 		find "$@" -type f ! -type l -name '*.a'
 		cut -d ' ' -f1 < "${PORTAGE_BUILDDIR}"/build-info/NEEDED \
-			| sed -e "s:^:${ED}:"
+			| sed -e "s:^:${D}:"
 	) | LC_ALL=C sort -u
 )
 else
