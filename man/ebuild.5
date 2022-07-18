@@ -1275,6 +1275,18 @@ Beginning with \fBEAPI 5\fR, \fBeconf\fR adds
 \fIdisable\-silent\-rules\fR to the arguments if the
 string \fIdisable\-silent\-rules\fR occurs in the output
 of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 6\fR, \fBeconf\fR adds
+\fIdocdir\fR and \fIhtmldir\fR if the corresponding string occurs
+in the output of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 7\fR, \fBeconf\fR adds
+\fIwith\-sysroot\fR to the arguments if the string
+\fIwith\-sysroot\fR occurs in the output of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 8\fR, \fBeconf\fR adds
+\fIdatarootdir\fR to the arguments if the srting
+\fIdatarootdir\fR occurs in the output of \fIconfigure \-\-help\fR.  Additionally,
+in \fBEAPI 8\fR, \fBeconf\fR adds \fIdisable\-static\fR to the arguments
+if the string \fIdisable\-static\fR or \fIenable\-static\fR occurs in the output
+of \fIconfigure \-\-help\fR.
 .TP
 .B emake\fR \fI[make options]
 This must be used in place of `make` in ebuilds.  Performs `${MAKE:-make}
