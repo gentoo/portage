@@ -14,10 +14,10 @@ Bug fixes:
 
 * emerge: drop obsolete fixpackages warning (as a result of refactoring,
   started to show on every emerge, but is harmless and left over
-  from many years ago).
+  from many years ago). Bug #858407.
 
 * estrip: fix double prefix (regression from "don't call estrip twice" fix
-  in 3.0.31).
+  in 3.0.31). Bug #858818.
 
 * ebuild(5): mention dolib, libopts being banned in EAPI 7.
 
