@@ -257,7 +257,7 @@ multiple Atoms and be nested to an infinite depth.
 To include the jpeg library when the user has jpeg in \fBUSE\fR, simply use the
 following syntax:
 
-jpeg? ( media\-libs/jpeg )
+jpeg? ( media\-libs/libjpeg-turbo )
 .TP
 .B !usevar? ( Atom )
 If you want to include a package only if the user does not have a certain
@@ -271,11 +271,11 @@ support for a feature and have it enabled by default.
 .B usevar? ( Atom if true ) !usevar? ( Atom if false )
 For functionality like the tertiary operator found in C you must use
 two statements, one normal and one inverted.  If a package uses
-GTK2 or GTK1, but not both, then you can handle that like this:
+GTK3 or GTK2, but not both, then you can handle that like this:
 
-gtk2? ( =x11\-libs/gtk+\-2* ) !gtk2? ( =x11\-libs/gtk+\-1* )
+gtk3? ( =x11\-libs/gtk+\-3* ) !gtk3? ( =x11\-libs/gtk+\-2* )
 
-That way the default is the superior GTK2 library.
+That way the default is the superior GTK3 library.
 .TP
 .B || ( Atom Atom ... )
 When a package can work with a few different packages but a virtual is not
@@ -1574,11 +1574,10 @@ first parameter is \- (a hyphen).
 .SH "EXAMPLES"
 .DS
 .nf
-# Copyright 1999\-2013 Gentoo Foundation
+# Copyright 1999\-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
 
-EAPI="5"
+EAPI=8
 
 inherit some_eclass another_eclass
 
@@ -1588,11 +1587,9 @@ SRC_URI="ftp://alpha.gnu.org/pub/gnu/${PN}/${P}.tar.gz"
 
 LICENSE="GPL\-2"
 SLOT="0"
-KEYWORDS="~x86"
-IUSE=""
+KEYWORDS="~amd64"
 
-RDEPEND=""
-DEPEND="nls? ( sys-devel/gettext )"
+BDEPEND="nls? ( sys-devel/gettext )"
 
 src_configure() {
 	econf \\
