@@ -441,7 +441,7 @@ def _apply_hash_filter(digests, hash_filter):
     @type hash_filter: callable
     """
 
-    verifiable_hash_types = frozenset(digests).intersection(hashfunc_keys)
+    verifiable_hash_types = set(digests).intersection(hashfunc_keys)
     modified = False
     if len(verifiable_hash_types) > 1:
         verifiable_hash_types.discard("size")
