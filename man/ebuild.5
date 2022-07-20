@@ -9,7 +9,8 @@ This script contains variables and commands that specify how to download,
 unpack, patch, compile, install and merge a particular software package from
 its original sources.  In addition to all of this, the ebuild script can also
 contain pre/post install/remove commands, as required.  All ebuild scripts are
-written in bash.
+written in bash.  The minimum version of Bash for an ebuild depends on the
+EAPI version.
 
 .SS "Dependencies"
 A \fIdepend atom\fR is simply a dependency that is used by portage when
