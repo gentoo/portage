@@ -35,7 +35,8 @@ Shows a condensed form of this man page along with a lot of package
 specific information.
 .TP
 .BR setup
-Runs all package-specific setup actions and exotic system checks.
+Runs all package-specific setup actions (by running the \fIpkg_setup()\fR
+function specified in the ebuild file) and exotic system checks.
 .TP
 .BR clean
 Cleans the temporary build directory that Portage has created for
@@ -116,12 +117,9 @@ current working directory will be set to ${S}.  When src_compile()
 completes, the sources should be fully compiled.
 .TP
 .BR test
-Runs package-specific test cases to verify that everything was built
+Runs package-specific test cases by running the \fIsrc_test()\fR function
+specified in the ebuild file to verify that everything was built
 properly.
-.TP
-.BR preinst
-Runs package-specific actions that need to be done before the package
-is installed into the live filesystem.
 .TP
 .BR install
 Installs the package to the temporary \fIinstall directory\fR by running
@@ -130,13 +128,19 @@ the \fIsrc_install()\fR function.  When completed, the
 will contain all the files that should either be merged to the local
 filesystem or included in a binary package.
 .TP
+.BR preinst
+Runs package-specific actions (by running the \fIpkg_preinst()\fR
+function specified in the ebuild file) that need to be done before the package
+is installed into the live filesystem.
+.TP
 .BR instprep
 Performs the additional post-install/pre-merge preparations inside
 the temporary \fIinstall directory\fR.  This is intended to be called
 \fBafter\fR building binary package but before executing \fBpreinst\fR.
 .TP
 .BR postinst
-Runs package-specific actions that need to be done after the package
+Runs package-specific actions (by running the \fIpkg_postinst()\fR
+function specified in the ebuild file) that need to be done after the package
 is installed into the live filesystem.  Usually helpful messages are
 shown here.
 .TP
@@ -167,22 +171,25 @@ then unmerge the old one.  In fact, this is the recommended package
 upgrade method.
 .TP
 .BR prerm
-Runs package-specific actions that need to be executed before the package is
-removed from the filesystem.  See also \fIunmerge\fR.
+Runs package-specific actions (by running the \fIpkg_prerm()\fR
+function specified in the ebuild file) that need to be executed before the
+package is removed from the filesystem.  See also \fIunmerge\fR.
 .TP
 .BR postrm
-Runs package-specific actions that need to be executed after the package is
-removed from the filesystem.  See also \fIunmerge\fR.
+Runs package-specific actions (by running the \fIpkg_postrm()\fR
+function specified in the ebuild file) that need to be executed after the
+package is removed from the filesystem.  See also \fIunmerge\fR.
 .TP
 .BR config
-Runs package-specific actions that need to be executed after the emerge
+Runs package-specific actions (by running the \fIpkg_config()\fR
+function specified in the ebuild file) that need to be executed after the emerge
 process has completed.  This usually entails setup of configuration files
 or other similar setups that the user may wish to run.
 .TP
 .BR package
 This command is a lot like the \fImerge\fR command, except that after
-fetching, unpacking, compiling and installing, a .tbz2 binary package
-tarball is created and stored in \fBPKGDIR\fR (see \fBmake.conf\fR(5)).
+fetching, unpacking, compiling and installing, a .gpkg.tar or .tbz2 binary
+package tarball is created and stored in \fBPKGDIR\fR (see \fBmake.conf\fR(5)).
 .TP
 .BR rpm
 Builds a RedHat RPM package from the files in the temporary
