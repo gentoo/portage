@@ -106,7 +106,7 @@ class _Useflag:
         _desc = ""
         if node.text:
             _desc = node.text
-        for child in node.iter():
+        for child in node:
             _desc += child.text if child.text else ""
             _desc += child.tail if child.tail else ""
         # This takes care of tabs and newlines left from the file
