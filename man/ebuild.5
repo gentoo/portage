@@ -1529,7 +1529,8 @@ The default is \fI\-m0755\fR.
 .TP
 .B doexe\fR \fI<executable> [list of more executables]
 Installs executables into the path controlled by \fBexeinto\fR.  This function
-uses \fBinstall\fR(1).  Creates all necessary dirs.
+uses \fBinstall\fR(1).  Creates all necessary dirs.  Behavior is undefined if
+\fBexeinto\fR has not yet been called.
 .TP
 .B docinto\fR \fI[path]
 Sets the subdir used by \fBdodoc\fR and \fBdohtml\fR
