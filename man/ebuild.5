@@ -22,9 +22,9 @@ category/packagename is a \fI"catpkg"\fR. You will find this shorthand\-name
 used frequently in Gentoo. Here are some base atoms, a.k.a \fI"catpkgs"\fR:
 
 .nf
+.I 	net\-misc/dhcp
 .I 	sys\-apps/sed
 .I 	sys\-libs/zlib
-.I 	net\-misc/dhcp
 .fi
 .TP
 .B Atom Versions
@@ -131,9 +131,9 @@ delimited by a \fI/\fR character.
 
 \fBExamples\fR:
 .nf
+	dev\-lang/perl:0/5.12
 	dev\-libs/icu:0/0
 	dev\-libs/icu:0/49
-	dev\-lang/perl:0/5.12
 	dev\-libs/glib:2/2.30
 .fi
 .TP
@@ -150,9 +150,9 @@ a different matching package in a different slot.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:*
 	dev\-lang/perl:*
-	dev-libs/glib:*
+	dev\-libs/glib:*
+	dev\-libs/icu:*
 .fi
 .TP
 .I =
@@ -164,9 +164,9 @@ time the package was installed is available.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:=
+	dev\-libs/glib:=
 	dev\-lang/perl:=
-	dev-libs/glib:=
+	dev\-libs/icu:=
 .fi
 .TP
 .I slot=
@@ -175,9 +175,9 @@ otherwise behaves identically to the plain equals slot operator.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:0=
 	dev\-lang/perl:0=
-	dev-libs/glib:2=
+	dev\-libs/glib:2=
+	dev\-libs/icu:0=
 .fi
 .PP
 To implement the equals slot operator, the package manager
@@ -193,10 +193,10 @@ the regular slot).
 
 \fBExamples\fR:
 .nf
+	dev\-lang/perl:0/5.12=
+	dev\-libs/glib:2/2.30=
 	dev\-libs/icu:0/0=
 	dev\-libs/icu:0/49=
-	dev\-lang/perl:0/5.12=
-	dev-libs/glib:2/2.30=
 .fi
 .RE
 .TP
@@ -1579,7 +1579,7 @@ first parameter is \- (a hyphen).
 
 EAPI=8
 
-inherit some_eclass another_eclass
+inherit another-eclass some-eclass
 
 DESCRIPTION="Super\-useful stream editor (sed)"
 HOMEPAGE="https://www.gnu.org/software/sed/"
