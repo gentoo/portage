@@ -247,8 +247,6 @@ environ_whitelist += [
     "STY",
     "WINDOW",
     "XAUTHORITY",
-    # PREFIX LOCAL: UNIXMODE is necessary for MiNT
-    "UNIXMODE",
 ]
 
 environ_whitelist = frozenset(environ_whitelist)

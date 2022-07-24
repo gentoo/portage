@@ -2316,7 +2316,6 @@ _post_phase_cmds = {
             {},
             [
                 # PREFIX LOCAL
-                "preinst_aix",
                 "preinst_sfperms",
                 "preinst_suid_scan",
                 "preinst_qa_check",
@@ -2325,7 +2324,6 @@ _post_phase_cmds = {
     ),
     "postinst": [
             # PREFIX LOCAL
-            "postinst_aix",
             "postinst_qa_check",
             ],
 }

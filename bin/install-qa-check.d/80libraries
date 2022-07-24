@@ -157,12 +157,7 @@ lib_check() {
 	[[ ${abort} == "yes" ]] && die "add those ldscripts"
 
 	# Make sure people don't store libtool files or static libs in /lib
-	# PREFIX LOCAL: on AIX, "dynamic libs" have extension .a, so don't
-	# get false positives
-	[[ ${CHOST} == *-aix* ]] \
-		&& f=$(ls "${ED%/}"lib*/*.la 2>/dev/null || true) \
-		|| f=$(ls "${ED%/}"lib*/*.{a,la} 2>/dev/null)
-	# END PREFIX LOCAL
+	f=$(ls "${ED%/}"/lib*/*.{a,la} 2>/dev/null)
 	if [[ -n ${f} ]] ; then
 		__vecho -ne '\n'
 		eqawarn "QA Notice: Excessive files found in the / partition"
