@@ -33,6 +33,7 @@ sedexp=(
 	-e "s,${at}rootuid${at},@rootuid@,g"
 	-e "s,${at}rootuser${at},${rootuser},g"
 	-e "s,${at}sysconfdir${at},@sysconfdir@,g"
+	-e "1s,/usr/bin/env ,@PORTAGE_EPREFIX@/usr/bin/,"
 )
 
 sources=( )
