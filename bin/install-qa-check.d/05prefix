@@ -4,9 +4,9 @@ install_qa_check_prefix() {
 	[[ ${ED} == ${D} ]] && return
 
 	if [[ -d ${ED}/${D} ]] ; then
-		find "${ED}/${D}/" | \
+		find "${ED}/${D}" | \
 		while read i ; do
-			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}\${D}"
+			eqawarn "QA Notice: /${i##${ED}/${D}} installed in \${ED}/\${D}"
 		done
 		die "Aborting due to QA concerns: files installed in ${ED}/${D}"
 	fi
