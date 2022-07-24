@@ -51,7 +51,7 @@ if [[ ${_E_INSDESTTREE_#${ED}} != "${_E_INSDESTTREE_}" ]]; then
 	exit 1
 fi
 # PREFIX LOCAL: check for usage with EPREFIX
-if [[ ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
+if [[ -n ${EPREFIX} && ${INSDESTTREE#${EPREFIX}} != "${INSDESTTREE}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${EPREFIX} with helpers." 1>&2
 	__vecho "  --> ${INSDESTTREE}" 1>&2
