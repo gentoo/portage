@@ -177,6 +177,7 @@ def _get_global(k):
             portage_uid = pwd.getpwnam(_get_global("_portage_username")).pw_uid
         except KeyError:
             # PREFIX LOCAL: some sysadmins are insane, bug #344307
+            username = _get_global("_portage_username")
             if username.isdigit():
                 portage_uid = int(username)
             else:
@@ -188,6 +189,7 @@ def _get_global(k):
             portage_gid = grp.getgrnam(_get_global("_portage_grpname")).gr_gid
         except KeyError:
             # PREFIX LOCAL: some sysadmins are insane, bug #344307
+            grpname = _get_global("_portage_grpname")
             if grpname.isdigit():
                 portage_gid = int(grpname)
             else:
