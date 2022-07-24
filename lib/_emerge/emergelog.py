@@ -10,12 +10,14 @@ from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.data import secpass
 from portage.output import xtermTitle
+# PREFIX LOCAL
 from portage.const import EPREFIX
 
 # We disable emergelog by default, since it's called from
 # dblink.merge() and we don't want that to trigger log writes
 # unless it's really called via emerge.
 _disable = True
+# PREFIX LOCAL: log inside Prefix
 _emerge_log_dir = EPREFIX + '/var/log'
 
 

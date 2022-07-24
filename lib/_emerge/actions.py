@@ -2951,10 +2951,18 @@ def getgccversion(chost=None):
     gcc_ver_command = ["gcc", "-dumpversion"]
     gcc_ver_prefix = "gcc-"
 
+    # BEGIN PREFIX LOCAL: accept clang as system compiler too
     clang_ver_command = ['clang', '--version']
     clang_ver_prefix = 'clang-'
 
     ubinpath = os.path.join('/', portage.const.EPREFIX, 'usr', 'bin')
+
+    def getclangversion(output):
+        version = re.search('clang version ([0-9.]+) ', output)
+        if version:
+            return version.group(1)
+        return "unknown"
+    # END PREFIX LOCAL
 
     gcc_not_found_error = red(
         "!!! No gcc found. You probably need to 'source /etc/profile'\n"
@@ -2962,14 +2970,9 @@ def getgccversion(chost=None):
         + "!!! other terminals also.\n"
     )
 
-    def getclangversion(output):
-        version = re.search('clang version ([0-9.]+) ', output)
-        if version:
-            return version.group(1)
-        return "unknown"
-
     if chost:
         try:
+            # PREFIX LOCAL: use ubinpath
             proc = subprocess.Popen(
                 [ubinpath + "/" + "gcc-config", "-c"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT
@@ -2984,6 +2987,7 @@ def getgccversion(chost=None):
             return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
         try:
+            # PREFIX LOCAL: use ubinpath
             proc = subprocess.Popen(
                 [ubinpath + "/" + chost + "-" + gcc_ver_command[0]]
                 + gcc_ver_command[1:],
@@ -2999,6 +3003,7 @@ def getgccversion(chost=None):
         if mystatus == os.EX_OK:
             return gcc_ver_prefix + myoutput
 
+        # BEGIN PREFIX LOCAL: try Clang
         try:
             proc = subprocess.Popen(
                 [ubinpath + "/" + chost + "-" + clang_ver_command[0]]
@@ -3014,6 +3019,7 @@ def getgccversion(chost=None):
             mystatus = proc.wait()
         if mystatus == os.EX_OK:
             return clang_ver_prefix + getclangversion(myoutput)
+        # END PREFIX LOCAL
 
     try:
         proc = subprocess.Popen(

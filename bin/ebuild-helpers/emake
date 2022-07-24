@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 1999-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #
@@ -12,6 +12,7 @@
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 cmd=(
+    # PREFIX LOCAL: force SHELL to be set (don't use possibly ancient /bin/sh)
 	${MAKE:-make} SHELL="${BASH:-/bin/bash}" ${MAKEOPTS} "$@" ${EXTRA_EMAKE}
 )
 

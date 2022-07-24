@@ -9,6 +9,7 @@ import subprocess
 
 import portage
 from portage import os
+# PREFIX LOCAL
 from portage.const import EPREFIX
 
 

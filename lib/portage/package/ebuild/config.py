@@ -65,7 +65,9 @@ from portage.env.loaders import KeyValuePairFileLoader
 from portage.exception import InvalidDependString, PortageException
 from portage.localization import _
 from portage.output import colorize
-from portage.process import fakeroot_capable, sandbox_capable, macossandbox_capable
+from portage.process import fakeroot_capable, sandbox_capable
+# PREFIX LOCAL
+from portage.process import macossandbox_capable
 from portage.repository.config import (
     allow_profile_repo_deps,
     load_repository_config,
@@ -183,7 +185,6 @@ class _iuse_implicit_match_cache:
 
 
 class config:
-
     """
     This class encompasses the main portage configuration.  Data is pulled from
     ROOT/PORTDIR/profiles/, from ROOT/etc/make.profile incrementally through all

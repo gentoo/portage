@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -32,6 +32,7 @@ PORTAGE_READONLY_VARS="D EBUILD EBUILD_PHASE EBUILD_PHASE_FUNC \
 	PORTAGE_VERBOSE PORTAGE_WORKDIR_MODE PORTAGE_XATTR_EXCLUDE \
 	REPLACING_VERSIONS REPLACED_BY_VERSION T WORKDIR \
 	__PORTAGE_HELPER __PORTAGE_TEST_HARDLINK_LOCKS ED EROOT"
+    # PREFIX LOCAL: include ED EROOT (above)
 
 PORTAGE_SAVED_READONLY_VARS="A CATEGORY P PF PN PR PV PVR"
 
@@ -146,6 +147,7 @@ __filter_readonly_variables() {
 		fi
 	fi
 
+    # PREFIX LOCAL: use Prefix Python fallback
 	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}" || die "filter-bash-environment.py failed"
 }
 
@@ -770,6 +772,7 @@ __dyn_help() {
 		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}"
+	# PREFIX LOCAL: identify
 	echo "  offset      : ${EPREFIX}"
 	echo
 	if [[ -n "$USE" ]]; then
@@ -1101,6 +1104,7 @@ __ebuild_main() {
 		__save_ebuild_env | __filter_readonly_variables \
 			--filter-features > "$T/environment"
 		assert "__save_ebuild_env failed"
+		# PREFIX LOCAL: use configure group
 		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "$T/environment"
 		chmod g+w "$T/environment"
 	fi

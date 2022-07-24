@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -32,6 +32,7 @@ get_config() {
 		"${PORTAGE_CONFIGROOT}"etc/etc-update.conf)
 }
 
+# PREFIX LOCAL: use os-release from Prefix
 OS_RELEASE_POSSIBLE_IDS=$(source "@PORTAGE_EPREFIX@"/etc/os-release >/dev/null 2>&1; echo ":${ID}:${ID_LIKE//[[:space:]]/:}:")
 
 case ${OS_RELEASE_POSSIBLE_IDS} in

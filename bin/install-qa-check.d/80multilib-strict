@@ -1,5 +1,6 @@
 # Strict multilib directory checks
 multilib_strict_check() {
+    # PREFIX LOCAL: use file/find from Prefix
 	if has multilib-strict ${FEATURES} && \
 	   [[ -x ${EPREFIX}/usr/bin/file && -x ${EPREFIX}/usr/bin/find ]] && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]

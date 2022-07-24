@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 2009-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -16,8 +16,10 @@ fi
 # Use safe cwd, avoiding unsafe import for bug #469338.
 export __PORTAGE_HELPER_CWD=${PWD}
 cd "${PORTAGE_PYM_PATH}" || die
+# BEGIN PREFIX LOCAL: use Prefix Python fallback
 PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 	"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
+# END PREFIX LOCAL
 
 ret=$?
 # Restore cwd for display by __helpers_die

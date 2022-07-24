@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -441,6 +441,7 @@ case "${NOCOLOR:-false}" in
 		;;
 esac
 
+# BEGIN PREFIX LOCAL
 # In Prefix every platform has USERLAND=GNU, even FreeBSD.  Since I
 # don't know how to reliably "figure out" we are in a Prefix instance of
 # portage here, I for now disable this check, and hardcode it to GNU.
@@ -457,6 +458,7 @@ esac
 #	esac
 #fi
 [[ -z ${USERLAND} ]] && USERLAND="GNU"
+# END PREFIX LOCAL
 
 if [[ -z ${XARGS} ]] ; then
 	case ${USERLAND} in
@@ -646,6 +648,7 @@ debug-print() {
 		# default target
 		printf '%s\n' "${@}" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
+		# PREFIX LOCAL: fallback to configured group
 		chgrp "${PORTAGE_GRPNAME:-${PORTAGE_GROUP}}" "${T}/eclass-debug.log"
 		chmod g+w "${T}/eclass-debug.log"
 	fi

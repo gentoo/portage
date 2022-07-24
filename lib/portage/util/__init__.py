@@ -80,6 +80,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
+# PREFIX LOCAL
 from portage.const import EPREFIX
 
 

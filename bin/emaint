@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@
+#!/usr/bin/env python
 # Copyright 2005-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 

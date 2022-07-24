@@ -6,6 +6,7 @@ import grp
 import os
 import platform
 import pwd
+# PREFIX LOCAL
 from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, EPREFIX
 
 import portage
@@ -333,20 +334,20 @@ def _init(settings):
         native_string = platform.python_implementation() == "PyPy"
 
         # PREFIX LOCAL: use var iso hardwired 'portage'
-        v = settings.get('PORTAGE_GRPNAME', PORTAGE_GROUPNAME)
+        v = settings.get("PORTAGE_GRPNAME", PORTAGE_GROUPNAME)
         # END PREFIX LOCAL
         if native_string:
             v = portage._native_string(v)
-        globals()['_portage_grpname'] = v
-        _initialized_globals.add('_portage_grpname')
+        globals()["_portage_grpname"] = v
+        _initialized_globals.add("_portage_grpname")
 
         # PREFIX LOCAL: use var iso hardwired 'portage'
-        v = settings.get('PORTAGE_USERNAME', PORTAGE_USERNAME)
+        v = settings.get("PORTAGE_USERNAME", PORTAGE_USERNAME)
         # END PREFIX LOCAL
         if native_string:
             v = portage._native_string(v)
-        globals()['_portage_username'] = v
-        _initialized_globals.add('_portage_username')
+        globals()["_portage_username"] = v
+        _initialized_globals.add("_portage_username")
 
     if "secpass" not in _initialized_globals:
         v = 0

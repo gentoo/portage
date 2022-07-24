@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 2012-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 

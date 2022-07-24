@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 2009-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -15,9 +15,11 @@ for path in ${PATH}; do
 	[[ -x ${path}/${scriptname} ]] || continue
 	[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 	[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
+	# BEGIN PREFIX LOCAL: use Prefix Python fallback
 	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 		exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" \
 			"${path}/${scriptname}" "$@"
+	# END PREFIX LOCAL
 done
 
 unset IFS

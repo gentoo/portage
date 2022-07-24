@@ -22,6 +22,7 @@ from textwrap import wrap
 import time
 import warnings
 import zlib
+# PREFIX LOCAL
 import platform
 
 import portage
@@ -1694,6 +1695,7 @@ def _spawn_actionmap(settings):
         and "nouserpriv" not in restrict
     )
 
+    # PREFIX LOCAL: macOS sandbox
     if not (portage.process.sandbox_capable
             or portage.process.macossandbox_capable):
         nosandbox = True
@@ -2087,8 +2089,9 @@ def spawn(
             and not fakeroot
         )
 
+    # PREFIX LOCAL: macOS sandbox
     if not free and not (fakeroot or portage.process.sandbox_capable
-            or portage.process.macossandbox_capable):  # PREFIX LOCAL
+            or portage.process.macossandbox_capable):
         free = True
 
     if mysettings.mycpv is not None:

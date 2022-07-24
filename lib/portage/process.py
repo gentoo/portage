@@ -25,7 +25,9 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util:dump_traceback,writemsg",
 )
 
-from portage.const import BASH_BINARY, SANDBOX_BINARY, MACOSSANDBOX_BINARY, FAKEROOT_BINARY
+from portage.const import BASH_BINARY, SANDBOX_BINARY, FAKEROOT_BINARY
+# PREFIX LOCAL
+from portage.const import MACOSSANDBOX_BINARY
 from portage.exception import CommandNotFound
 from portage.util._ctypes import find_library, LoadLibrary, ctypes
 
@@ -106,6 +108,7 @@ fakeroot_capable = os.path.isfile(FAKEROOT_BINARY) and os.access(
     FAKEROOT_BINARY, os.X_OK
 )
 
+# PREFIX LOCAL
 macossandbox_capable = (os.path.isfile(MACOSSANDBOX_BINARY) and
                    os.access(MACOSSANDBOX_BINARY, os.X_OK))
 
@@ -186,6 +189,7 @@ def spawn_fakeroot(mycommand, fakeroot_state=None, opt_name=None, **keywords):
     return spawn(args, opt_name=opt_name, **keywords)
 
 
+# BEGIN PREFIX LOCAL
 def spawn_macossandbox(mycommand, profile=None, opt_name=None, **keywords):
 	if not macossandbox_capable:
 		return spawn_bash(mycommand, opt_name=opt_name, **keywords)
@@ -198,6 +202,7 @@ def spawn_macossandbox(mycommand, profile=None, opt_name=None, **keywords):
 	args.append("-c")
 	args.append(mycommand)
 	return spawn(args, opt_name=opt_name, **keywords)
+# END PREFIX LOCAL
 
 _exithandlers = []
 

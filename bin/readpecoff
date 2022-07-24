@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 
 ###################################################################
 # This script does the following: for implemented platforms,      #

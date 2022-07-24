@@ -2,7 +2,6 @@
 # Distributed under the terms of the GNU General Public License v2
 
 from portage import os
-import platform
 
 getloadavg = getattr(os, "getloadavg", None)
 if getloadavg is None:

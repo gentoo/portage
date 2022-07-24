@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -Wd
+#!/usr/bin/env python -Wd
 # runTests.py -- Portage Unit Test Functionality
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
@@ -31,6 +31,7 @@ signal.signal(debug_signum, debug_signal)
 # Pretend that the current user's uid/gid are the 'portage' uid/gid,
 # so things go smoothly regardless of the current user and global
 # user/group configuration.
+# BEGIN PREFIX LOCAL: fall back to number ids
 try:
 	os.environ["PORTAGE_USERNAME"] = pwd.getpwuid(os.getuid()).pw_name
 except KeyError:
@@ -39,6 +40,7 @@ try:
 	os.environ["PORTAGE_GRPNAME"] = grp.getgrgid(os.getgid()).gr_name
 except KeyError:
 	os.environ["PORTAGE_GRPNAME"] = str(os.getgid())
+# END PREFIX LOCAL
 
 # Insert our parent dir so we can do shiny import "tests"
 # This line courtesy of Marienz and Pkgcore ;)

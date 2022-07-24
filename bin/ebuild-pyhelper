@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 2010-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -13,8 +13,10 @@ fi
 cd "${PORTAGE_PYM_PATH}" || exit 1
 for path in "${PORTAGE_BIN_PATH}/${0##*/}"{.py,}; do
 	if [[ -x "${path}" ]]; then
+	    # BEGIN PREFIX LOCAL: use Prefix Python fallback
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-			exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@/usr/bin/python}" "${path}" "$@"
+			exec "${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "${path}" "$@"
+		# END PREFIX LOCAL
 	fi
 done
 echo "File not found: ${path}" >&2

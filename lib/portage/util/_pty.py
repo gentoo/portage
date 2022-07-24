@@ -9,12 +9,14 @@ from portage import os
 from portage.output import get_term_size, set_term_size
 from portage.util import writemsg
 
+# BEGIN PREFIX LOCAL: disable on more platforms
 # Disable the use of openpty on Solaris (and others) as it seems Python's
 # openpty implementation doesn't play nice with Portage's behaviour,
 # causing hangs/deadlocks.
 # Additional note for the future: on Interix, pipes do NOT work, so
 # _disable_openpty on Interix must *never* be True
 _disable_openpty = platform.system() in ("AIX","FreeMiNT","HP-UX","SunOS",)
+# END PREFIX LOCAL
 
 _fbsd_test_pty = platform.system() == "FreeBSD"
 

@@ -238,7 +238,6 @@ environ_whitelist += [
 ]
 
 # other variables inherited from the calling environment
-# UNIXMODE is necessary for MiNT
 environ_whitelist += [
     "CVS_RSH",
     "ECHANGELOG_USER",
@@ -248,7 +247,7 @@ environ_whitelist += [
     "STY",
     "WINDOW",
     "XAUTHORITY",
-    # PREFIX LOCAL
+    # PREFIX LOCAL: UNIXMODE is necessary for MiNT
     "UNIXMODE",
 ]
 

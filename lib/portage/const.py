@@ -2,10 +2,12 @@
 # Copyright 1998-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+# BEGIN PREFIX LOCAL
 # ===========================================================================
 # autotool supplied constants.
 # ===========================================================================
 from portage.const_autotool import *
+# END PREFIX LOCAL
 
 import os
 import sys
@@ -63,14 +65,15 @@ DEPCACHE_PATH = f"/{CACHE_PATH}/dep"
 GLOBAL_CONFIG_PATH = "/usr/share/portage/config"
 
 # these variables are not used with target_root or config_root
-PORTAGE_BASE_PATH        = PORTAGE_BASE
 # NOTE: Use realpath(__file__) so that python module symlinks in site-packages
 # are followed back to the real location of the whole portage installation.
-#PREFIX: below should work, but I'm not sure how it it affects other places
+# PREFIX: below should work, but I'm not sure how it it affects other places
 # NOTE: Please keep PORTAGE_BASE_PATH in one line to help substitutions.
 # fmt:off
-# PREFIX LOCAL (from const_autotools)
+# BEGIN PREFIX LOCAL: from const_autotools
 #PORTAGE_BASE_PATH = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
+PORTAGE_BASE_PATH        = PORTAGE_BASE
+# END PREFIX LOCAL
 # fmt:on
 PORTAGE_BIN_PATH = f"{PORTAGE_BASE_PATH}/bin"
 PORTAGE_PYM_PATH = os.path.realpath(os.path.join(__file__, "../.."))
@@ -261,7 +264,6 @@ MANIFEST2_IDENTIFIERS = ("AUX", "MISC", "DIST", "EBUILD")
 # in the definition of any other constants within this file.
 # PREFIX LOCAL: rely on EPREFIX from autotools
 #EPREFIX = ""
-# END PREFIX LOCAL
 
 # pick up EPREFIX from the environment if set
 if "PORTAGE_OVERRIDE_EPREFIX" in os.environ:

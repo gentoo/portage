@@ -114,6 +114,7 @@ gcc_warn_check() {
 		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
 		[[ $reset_debug = 1 ]] && set -x
 		# Use safe cwd, avoiding unsafe import for bug #469338.
+		# PREFIX LOCAL: use Prefix Python fallback
 		f=$(cd "${PORTAGE_PYM_PATH}" ; $cat_cmd "${PORTAGE_LOG_FILE}" | \
 			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
 		if [[ -n ${f} ]] ; then

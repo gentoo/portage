@@ -1,4 +1,4 @@
-#!@PORTAGE_BASH@
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
@@ -1063,7 +1063,8 @@ preinst_mask() {
 	# from bashrc.
 	local f x
 	for f in man info doc; do
-		if has no${f} $FEATURES; then
+		if has no${f} ${FEATURES}; then
+		    # PREFIX LOCAL: use EPREFIX with path
 			INSTALL_MASK="${INSTALL_MASK} ${EPREFIX}/usr/share/${f}"
 		fi
 	done

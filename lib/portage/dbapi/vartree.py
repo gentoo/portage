@@ -239,6 +239,9 @@ class vardbapi(dbapi):
             settings["ROOT"],
             os.path.join(self._eroot, PRIVATE_PATH, "preserved_libs_registry"),
         )
+
+        # BEGIN PREFIX LOCAL: set linkagemap to the platform specific
+        #                     provider
         chost = self.settings.get('CHOST')
         if not chost:
             chost = 'lunix?' # this happens when profiles are not available
@@ -250,6 +253,7 @@ class vardbapi(dbapi):
             self._linkmap = LinkageMapXCoff(self)
         else:
             self._linkmap = LinkageMap(self)
+        # END PREFIX LOCAL
         self._owners = self._owners_db(self)
 
         self._cached_counter = None
@@ -3767,6 +3771,7 @@ class dblink:
         def path_to_node(path):
             node = path_node_map.get(path)
             if node is None:
+                # BEGIN PREFIX LOCAL: use arch specific impl
                 chost = self.settings.get('CHOST')
                 if chost.find('darwin') >= 0:
                     node = LinkageMapMachO._LibGraphNode(linkmap._obj_key(path))
@@ -3776,6 +3781,7 @@ class dblink:
                     node = LinkageMapXCoff._LibGraphNode(linkmap._obj_key(path))
                 else:
                     node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
+                # END PREFIX LOCAL
                 alt_path_node = lib_graph.get(node)
                 if alt_path_node is not None:
                     node = alt_path_node
