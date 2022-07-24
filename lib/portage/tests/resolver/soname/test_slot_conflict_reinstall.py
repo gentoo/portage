@@ -1,11 +1,16 @@
 # Copyright 2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+from __future__ import print_function
+import sys
+
+from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
 from portage.tests import TestCase
 from portage.tests.resolver.ResolverPlayground import (
     ResolverPlayground,
     ResolverPlaygroundTestCase,
 )
+from portage.output import colorize
 
 
 class SonameSlotConflictReinstallTestCase(TestCase):
@@ -80,16 +85,28 @@ class SonameSlotConflictReinstallTestCase(TestCase):
             ),
         )
 
-        playground = ResolverPlayground(
-            binpkgs=binpkgs, installed=installed, world=world, debug=False
-        )
-        try:
-            for test_case in test_cases:
-                playground.run_TestCase(test_case)
-                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-        finally:
-            playground.debug = False
-            playground.cleanup()
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    world=world,
+                    debug=False,
+                    user_config={
+                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                    },
+                )
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.debug = False
+                    playground.cleanup()
 
     def testSonameSlotConflictMassRebuild(self):
         """
@@ -159,16 +176,29 @@ class SonameSlotConflictReinstallTestCase(TestCase):
 
         world = []
 
-        playground = ResolverPlayground(
-            binpkgs=binpkgs, installed=installed, world=world, debug=False
-        )
-        try:
-            for test_case in test_cases:
-                playground.run_TestCase(test_case)
-                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-        finally:
-            playground.debug = False
-            playground.cleanup()
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    world=world,
+                    debug=False,
+                    user_config={
+                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                    },
+                )
+
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.debug = False
+                    playground.cleanup()
 
     def testSonameSlotConflictForgottenChild(self):
         """
@@ -242,16 +272,29 @@ class SonameSlotConflictReinstallTestCase(TestCase):
 
         world = ["app-misc/A"]
 
-        playground = ResolverPlayground(
-            binpkgs=binpkgs, installed=installed, world=world, debug=False
-        )
-        try:
-            for test_case in test_cases:
-                playground.run_TestCase(test_case)
-                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-        finally:
-            playground.debug = False
-            playground.cleanup()
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    world=world,
+                    debug=False,
+                    user_config={
+                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                    },
+                )
+
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.debug = False
+                    playground.cleanup()
 
     def testSonameSlotConflictMixedDependencies(self):
         """
@@ -316,13 +359,25 @@ class SonameSlotConflictReinstallTestCase(TestCase):
 
         world = []
 
-        playground = ResolverPlayground(
-            binpkgs=binpkgs, installed=installed, world=world, debug=False
-        )
-        try:
-            for test_case in test_cases:
-                playground.run_TestCase(test_case)
-                self.assertEqual(test_case.test_success, True, test_case.fail_msg)
-        finally:
-            playground.debug = False
-            playground.cleanup()
+        for binpkg_format in SUPPORTED_GENTOO_BINPKG_FORMATS:
+            with self.subTest(binpkg_format=binpkg_format):
+                print(colorize("HILITE", binpkg_format), end=" ... ")
+                sys.stdout.flush()
+                playground = ResolverPlayground(
+                    binpkgs=binpkgs,
+                    installed=installed,
+                    world=world,
+                    debug=False,
+                    user_config={
+                        "make.conf": ('BINPKG_FORMAT="%s"' % binpkg_format,),
+                    },
+                )
+                try:
+                    for test_case in test_cases:
+                        playground.run_TestCase(test_case)
+                        self.assertEqual(
+                            test_case.test_success, True, test_case.fail_msg
+                        )
+                finally:
+                    playground.debug = False
+                    playground.cleanup()

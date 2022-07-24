@@ -1,4 +1,4 @@
-#!/usr/bin/python -b
+#!/usr/bin/env python
 # Copyright 2017-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #

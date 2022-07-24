@@ -1,39 +1,47 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import errno
 import sys
 
+
 def usage(status):
-	print("Usage: env-update [--no-ldconfig]")
-	print("")
-	print("See the env-update(1) man page for more info")
-	sys.exit(status)
+    print("Usage: env-update [--no-ldconfig]")
+    print("")
+    print("See the env-update(1) man page for more info")
+    sys.exit(status)
+
 
 if "-h" in sys.argv or "--help" in sys.argv:
-	usage(0)
+    usage(0)
 
-makelinks=1
+makelinks = 1
 if "--no-ldconfig" in sys.argv:
-	makelinks=0
-	sys.argv.pop(sys.argv.index("--no-ldconfig"))
+    makelinks = 0
+    sys.argv.pop(sys.argv.index("--no-ldconfig"))
 
 if len(sys.argv) > 1:
-	print("!!! Invalid command line options!\n")
-	usage(1)
+    print("!!! Invalid command line options!\n")
+    usage(1)
 
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
 import portage
+
 portage._internal_caller = True
 
 try:
-	portage.env_update(makelinks)
+    portage.env_update(makelinks)
 except IOError as e:
-	if e.errno == errno.EACCES:
-		print("env-update: Need superuser access")
-		sys.exit(1)
-	else:
-		raise
+    if e.errno == errno.EACCES:
+        print("env-update: Need superuser access")
+        sys.exit(1)
+    else:
+        raise

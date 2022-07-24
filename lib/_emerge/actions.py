@@ -42,7 +42,7 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
-from portage.exception import InvalidAtom, InvalidData, ParseError
+from portage.exception import InvalidAtom, InvalidData, ParseError, GPGException
 from portage.output import (
     colorize,
     create_color_func,
@@ -78,6 +78,8 @@ from portage.sync.old_tree_timestamp import old_tree_timestamp_warn
 from portage.localization import _
 from portage.metadata import action_metadata
 from portage.emaint.main import print_results
+from portage.gpg import GPG
+from portage.binpkg import get_binpkg_format
 
 from _emerge.clear_caches import clear_caches
 from _emerge.create_depgraph_params import create_depgraph_params
@@ -262,8 +264,7 @@ def action_build(
     mergelist_shown = False
 
     if pretend or fetchonly:
-        # make the mtimedb readonly
-        mtimedb.filename = None
+        mtimedb.make_readonly()
     if "--digest" in myopts or "digest" in settings.features:
         if "--digest" in myopts:
             msg = "The --digest option"
@@ -605,6 +606,28 @@ def action_build(
                     )
                     return 1
 
+                # unlock GPG if needed
+                if (
+                    need_write_bindb
+                    and (eroot in ebuild_eroots)
+                    and (
+                        "binpkg-signing"
+                        in trees[eroot]["root_config"].settings.features
+                    )
+                ):
+                    portage.writemsg_stdout(">>> Unlocking GPG... ")
+                    sys.stdout.flush()
+                    gpg = GPG(trees[eroot]["root_config"].settings)
+                    try:
+                        gpg.unlock()
+                    except GPGException as e:
+                        writemsg_level(
+                            colorize("BAD", "!!! %s\n" % e),
+                            level=logging.ERROR,
+                            noiselevel=-1,
+                        )
+                        return 1
+
         if "--resume" in myopts:
             favorites = mtimedb["resume"]["favorites"]
 
@@ -648,12 +671,6 @@ def action_build(
                         [],
                         ldpath_mtimes,
                         autoclean=1,
-                    )
-                else:
-                    portage.writemsg_stdout(
-                        colorize("WARN", "WARNING:")
-                        + " AUTOCLEAN is disabled.  This can cause serious"
-                        + " problems due to overlapping packages.\n"
                     )
 
         return retval
@@ -752,6 +769,15 @@ def action_depclean(
     # that should have been pulled into the graph. On the other hand, it's
     # relatively safe to ignore missing deps when only asked to remove
     # specific packages.
+
+    # Force autoclean for depcleans (but not purges), as it was changed
+    # to default off to not run it on every unmerge.
+    # bug #792195
+    if action == "depclean":
+        settings.unlock()
+        settings["AUTOCLEAN"] = "yes"
+        settings.backup_changes("AUTOCLEAN")
+        settings.lock()
 
     msg = []
     if (
@@ -1672,6 +1698,11 @@ def _calc_depclean(settings, trees, ldpath_mtimes, myopts, action, args_set, spi
                     cleanlist.append(node.cpv)
 
         return _depclean_result(0, cleanlist, ordered, required_pkgs_total, resolver)
+    if args_set and "--pretend" not in myopts:
+        # If the cleanlist is empty but we were given packages to clean,
+        # we aren't successfully depcleaning. Return failure unless
+        # we're pretending.
+        return _depclean_result(1, [], False, required_pkgs_total, resolver)
     return _depclean_result(0, [], False, required_pkgs_total, resolver)
 
 
@@ -2272,11 +2303,21 @@ def action_info(settings, trees, myopts, myfiles):
             elif pkg_type == "ebuild":
                 ebuildpath = portdb.findname(pkg.cpv, myrepo=pkg.repo)
             elif pkg_type == "binary":
-                tbz2_file = bindb.bintree.getname(pkg.cpv)
+                binpkg_file = bindb.bintree.getname(pkg.cpv)
                 ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
-                ebuild_file_contents = portage.xpak.tbz2(tbz2_file).getfile(
-                    ebuild_file_name
-                )
+                binpkg_format = pkg.cpv._metadata.get("BINPKG_FORMAT", None)
+                if not binpkg_format:
+                    binpkg_format = get_binpkg_format(binpkg_file)
+                if binpkg_format == "xpak":
+                    ebuild_file_contents = portage.xpak.tbz2(binpkg_file).getfile(
+                        ebuild_file_name
+                    )
+                elif binpkg_format == "gpkg":
+                    ebuild_file_contents = portage.gpkg.gpkg(
+                        settings, pkg.cpv, binpkg_file
+                    ).get_metadata(ebuild_file_name)
+                else:
+                    continue
                 tmpdir = tempfile.mkdtemp()
                 ebuildpath = os.path.join(tmpdir, ebuild_file_name)
                 file = open(ebuildpath, "w")
@@ -3016,25 +3057,17 @@ def validate_ebuild_environment(trees):
     check_locale()
 
 
-def check_mounted_fs():
-    """We need /proc for finding CPU counts and finding other system information.
-    We need /run for e.g. lock files in ebuilds."""
-    paths = {"/proc": False, "/run": False}
-
-    for path in paths.keys():
-        if platform.system() not in ("Linux",) or os.path.ismount(path):
-            paths[path] = True
-            continue
-
-        msg = "It seems %s is not mounted. Process management may malfunction." % path
-        writemsg_level(
-            "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
-            level=logging.ERROR,
-            noiselevel=-1,
-        )
-
-    # Were all of the mounts we were looking for available?
-    return all(paths.values())
+def check_procfs():
+    procfs_path = "/proc"
+    if platform.system() not in ("Linux",) or os.path.ismount(procfs_path):
+        return os.EX_OK
+    msg = "It seems that %s is not mounted. You have been warned." % procfs_path
+    writemsg_level(
+        "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+        level=logging.ERROR,
+        noiselevel=-1,
+    )
+    return 1
 
 
 def config_protect_check(trees):
@@ -3390,6 +3423,13 @@ def run_action(emerge_config):
         # Reload the whole config from scratch.
         load_emerge_config(emerge_config=emerge_config)
 
+        # Let's autoclean if we applied updates, rather than always doing it
+        # bug #792195
+        emerge_config.target_config.settings.unlock()
+        emerge_config.target_config.settings["AUTOCLEAN"] = "yes"
+        emerge_config.target_config.settings.backup_changes("AUTOCLEAN")
+        emerge_config.target_config.settings.lock()
+
     xterm_titles = "notitles" not in emerge_config.target_config.settings.features
     if xterm_titles:
         xtermTitle("emerge")
@@ -3512,8 +3552,7 @@ def run_action(emerge_config):
         repo_name_check(emerge_config.trees)
         repo_name_duplicate_check(emerge_config.trees)
         config_protect_check(emerge_config.trees)
-
-    check_mounted_fs()
+    check_procfs()
 
     for mytrees in emerge_config.trees.values():
         mydb = mytrees["porttree"].dbapi

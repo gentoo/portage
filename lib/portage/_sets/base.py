@@ -226,7 +226,7 @@ class InternalPackageSet(EditablePackageSet):
         super(InternalPackageSet, self).__init__(
             allow_wildcard=allow_wildcard, allow_repo=allow_repo
         )
-        if initial_atoms != None:
+        if initial_atoms is not None:
             self.update(initial_atoms)
 
     def clear(self):

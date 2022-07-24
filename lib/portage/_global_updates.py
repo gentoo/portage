@@ -89,7 +89,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                 if not update_notice_printed:
                     update_notice_printed = True
                     writemsg_stdout("\n")
-                    writemsg_stdout(colorize("GOOD", _("Performing Global Updates\n")))
+                    writemsg_stdout(colorize("GOOD", "Performing Global Updates\n"))
                     writemsg_stdout(
                         _(
                             "(Could take a couple of minutes if you have a lot of binary packages.)\n"
@@ -97,35 +97,32 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                     )
                     if not quiet:
                         writemsg_stdout(
-                            _(
-                                "  %s='update pass'  %s='binary update'  "
-                                "%s='/var/db update'  %s='/var/db move'\n"
-                                "  %s='/var/db SLOT move'  %s='binary move'  "
-                                "%s='binary SLOT move'\n  %s='update /etc/portage/package.*'\n"
-                            )
-                            % (
-                                bold("."),
-                                bold("*"),
-                                bold("#"),
-                                bold("@"),
-                                bold("s"),
-                                bold("%"),
-                                bold("S"),
-                                bold("p"),
+                            "  ".join(
+                                (
+                                    "",
+                                    f"{bold('.')}='update pass'",
+                                    f"{bold('*')}='binary update'",
+                                    f"{bold('#')}='/var/db update'",
+                                    f"{bold('@')}='/var/db move'\n",
+                                    f"{bold('s')}='/var/db SLOT move'",
+                                    f"{bold('%')}='binary move'"
+                                    f"{bold('S')}='binary SLOT move'\n",
+                                    f"{bold('p')}='update /etc/portage/package.*'\n",
+                                )
                             )
                         )
                 valid_updates, errors = parse_updates(mycontent)
                 myupd.extend(valid_updates)
                 if not quiet:
                     writemsg_stdout(bold(mykey))
-                    writemsg_stdout(len(valid_updates) * "." + "\n")
+                    writemsg_stdout(f"{len(valid_updates) * '.'}\n")
                 if len(errors) == 0:
                     # Update our internal mtime since we
                     # processed all of our directives.
                     timestamps[mykey] = mystat[stat.ST_MTIME]
                 else:
                     for msg in errors:
-                        writemsg("%s\n" % msg, noiselevel=-1)
+                        writemsg(f"{msg}\n", noiselevel=-1)
             if myupd:
                 retupd = True
 
@@ -239,44 +236,29 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
             # until after _all_ of the above updates have
             # been processed because the mtimedb will
             # automatically commit when killed by ctrl C.
-            for mykey, mtime in timestamps.items():
-                prev_mtimes[mykey] = mtime
+            prev_mtimes.update(timestamps)
 
-        do_upgrade_packagesmessage = False
         # We gotta do the brute force updates for these now.
-        if True:
+        def onUpdate(_maxval, curval):
+            if curval > 0:
+                writemsg_stdout("#")
+
+        if quiet:
+            onUpdate = None
+
+        vardb.update_ents(repo_map, onUpdate=onUpdate)
+
+        if bindb:
 
             def onUpdate(_maxval, curval):
                 if curval > 0:
-                    writemsg_stdout("#")
+                    writemsg_stdout("*")
 
-            if quiet:
-                onUpdate = None
-            vardb.update_ents(repo_map, onUpdate=onUpdate)
-            if bindb:
-
-                def onUpdate(_maxval, curval):
-                    if curval > 0:
-                        writemsg_stdout("*")
-
-                if quiet:
-                    onUpdate = None
-                bindb.update_ents(repo_map, onUpdate=onUpdate)
-        else:
-            do_upgrade_packagesmessage = 1
+            bindb.update_ents(repo_map, onUpdate=onUpdate)
 
         # Update progress above is indicated by characters written to stdout so
         # we print a couple new lines here to separate the progress output from
         # what follows.
         writemsg_stdout("\n\n")
-
-        if do_upgrade_packagesmessage and bindb and bindb.cpv_all():
-            writemsg_stdout(
-                _(
-                    " ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"
-                )
-            )
-            writemsg_stdout(bold(_("Note: This can take a very long time.")))
-            writemsg_stdout("\n")
 
     return retupd

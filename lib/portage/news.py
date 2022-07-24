@@ -80,7 +80,7 @@ class NewsManager:
         portdir = portdb.repositories.mainRepoLocation()
         profiles_base = None
         if portdir is not None:
-            profiles_base = os.path.join(portdir, "profiles") + os.path.sep
+            profiles_base = os.path.join(portdir, "profiles", os.path.sep)
         profile_path = None
         if profiles_base is not None and portdb.settings.profile_path:
             profile_path = normalize_path(
@@ -91,15 +91,15 @@ class NewsManager:
         self._profile_path = profile_path
 
     def _unread_filename(self, repoid):
-        return os.path.join(self.unread_path, "news-%s.unread" % repoid)
+        return os.path.join(self.unread_path, f"news-{repoid}.unread")
 
     def _skip_filename(self, repoid):
-        return os.path.join(self.unread_path, "news-%s.skip" % repoid)
+        return os.path.join(self.unread_path, f"news-{repoid}.skip")
 
     def _news_dir(self, repoid):
         repo_path = self.portdb.getRepositoryPath(repoid)
         if repo_path is None:
-            raise AssertionError(_("Invalid repoID: %s") % repoid)
+            raise AssertionError(_(f"Invalid repoID: {repoid}"))
         return os.path.join(repo_path, self.news_path)
 
     def updateItems(self, repoid):
@@ -164,7 +164,7 @@ class NewsManager:
                 if itemid in skip:
                     continue
                 filename = os.path.join(
-                    news_dir, itemid, itemid + "." + self.language_id + ".txt"
+                    news_dir, itemid, f"{itemid}.{self.language_id}.txt"
                 )
                 if not os.path.isfile(filename):
                     continue
@@ -178,9 +178,7 @@ class NewsManager:
                     skip.add(item.name)
 
             if unread != unread_orig:
-                write_atomic(
-                    unread_filename, "".join("%s\n" % x for x in sorted(unread))
-                )
+                write_atomic(unread_filename, "".join(f"{x}\n" for x in sorted(unread)))
                 apply_secpass_permissions(
                     unread_filename,
                     uid=self._uid,
@@ -190,7 +188,7 @@ class NewsManager:
                 )
 
             if skip != skip_orig:
-                write_atomic(skip_filename, "".join("%s\n" % x for x in sorted(skip)))
+                write_atomic(skip_filename, "".join(f"{x}\n" for x in sorted(skip)))
                 apply_secpass_permissions(
                     skip_filename,
                     uid=self._uid,
@@ -282,14 +280,11 @@ class NewsItem:
 
         kwargs = {"vardb": vardb, "config": config, "profile": profile}
 
-        all_match = True
-        for values in self.restrictions.values():
-            any_match = False
-            for restriction in values:
-                if restriction.checkRestriction(**kwargs):
-                    any_match = True
-            if not any_match:
-                all_match = False
+        all_match = all(
+            restriction.checkRestriction(**kwargs)
+            for values in self.restrictions.values()
+            for restriction in values
+        )
 
         return all_match
 
@@ -299,14 +294,13 @@ class NewsItem:
         return self._valid
 
     def parse(self):
-        f = io.open(
+        with io.open(
             _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["content"],
             errors="replace",
-        )
-        lines = f.readlines()
-        f.close()
+        ) as f:
+            lines = f.readlines()
         self.restrictions = {}
         invalids = []
         news_format = None
@@ -348,12 +342,12 @@ class NewsItem:
 
         if invalids:
             self._valid = False
-            msg = []
-            msg.append(_("Invalid news item: %s") % (self.path,))
-            for lineno, line in invalids:
-                msg.append(_("  line %d: %s") % (lineno, line))
+            msg = [
+                _(f"Invalid news item: {self.path}"),
+                *(_(f"  line {lineno}: {line}") for lineno, line in invalids),
+            ]
             writemsg_level(
-                "".join("!!! %s\n" % x for x in msg), level=logging.ERROR, noiselevel=-1
+                "".join(f"!!! {x}\n" for x in msg), level=logging.ERROR, noiselevel=-1
             )
 
         self._parsed = True
@@ -386,13 +380,12 @@ class DisplayProfileRestriction(DisplayRestriction):
         self.format = news_format
 
     def isValid(self):
-        if fnmatch.fnmatch(self.format, "1.*") and "*" in self.profile:
-            return False
-        if fnmatch.fnmatch(self.format, "2.*") and not _valid_profile_RE.match(
-            self.profile
-        ):
-            return False
-        return True
+        return (
+            not fnmatch.fnmatch(self.format, "1.*")
+            or "*" not in self.profile
+            and not fnmatch.fnmatch(self.format, "2.*")
+            or _valid_profile_RE.match(self.profile)
+        )
 
     def checkRestriction(self, **kwargs):
         if fnmatch.fnmatch(self.format, "2.*") and self.profile.endswith("/*"):
@@ -411,9 +404,7 @@ class DisplayKeywordRestriction(DisplayRestriction):
         self.format = news_format
 
     def checkRestriction(self, **kwargs):
-        if kwargs["config"].get("ARCH", "") == self.keyword:
-            return True
-        return False
+        return kwargs["config"].get("ARCH", "") == self.keyword
 
 
 class DisplayInstalledRestriction(DisplayRestriction):
@@ -434,10 +425,7 @@ class DisplayInstalledRestriction(DisplayRestriction):
         return isvalidatom(self.atom)
 
     def checkRestriction(self, **kwargs):
-        vdb = kwargs["vardb"]
-        if vdb.match(self.atom):
-            return True
-        return False
+        return kwargs["vardb"].match(self.atom)
 
 
 def count_unread_news(portdb, vardb, repos=None, update=True):
@@ -473,7 +461,7 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
             # NOTE: The NewsManager typically handles permission errors by
             # returning silently, so PermissionDenied won't necessarily be
             # raised even if we do trigger a permission error above.
-            msg = "Permission denied: '%s'\n" % (e,)
+            msg = f"Permission denied: '{e}'\n"
             if msg in permission_msgs:
                 pass
             else:
@@ -498,9 +486,8 @@ def display_news_notifications(news_counts):
                 newsReaderDisplay = True
                 print()
             print(colorize("WARN", " * IMPORTANT:"), end=" ")
-            print("%s news items need reading for repository '%s'." % (count, repo))
+            print(f"{count} news items need reading for repository '{repo}'.")
 
     if newsReaderDisplay:
         print(colorize("WARN", " *"), end=" ")
-        print("Use " + colorize("GOOD", "eselect news read") + " to view new items.")
-        print()
+        print(f"Use {colorize('GOOD', 'eselect news read')} to view new items.\n")

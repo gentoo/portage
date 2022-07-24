@@ -219,18 +219,6 @@ class dbapi:
 
             yield cpv
 
-    def _repoman_iuse_implicit_cnstr(self, pkg, metadata):
-        """
-        In repoman's version of _iuse_implicit_cnstr, account for modifications
-        of the self.settings reference between calls.
-        """
-        eapi_attrs = _get_eapi_attrs(metadata["EAPI"])
-        if eapi_attrs.iuse_effective:
-            iuse_implicit_match = lambda flag: self.settings._iuse_effective_match(flag)
-        else:
-            iuse_implicit_match = lambda flag: self.settings._iuse_implicit_match(flag)
-        return iuse_implicit_match
-
     def _iuse_implicit_cnstr(self, pkg, metadata):
         """
         Construct a callable that checks if a given USE flag should
@@ -273,17 +261,15 @@ class dbapi:
 
     def _match_use(self, atom, pkg, metadata, ignore_profile=False):
         iuse_implicit_match = self._iuse_implicit_cnstr(pkg, metadata)
-        usealiases = self.settings._use_manager.getUseAliases(pkg)
         iuse = Package._iuse(
             None,
             metadata["IUSE"].split(),
             iuse_implicit_match,
-            usealiases,
             metadata["EAPI"],
         )
 
         for x in atom.unevaluated_atom.use.required:
-            if iuse.get_real_flag(x) is None:
+            if iuse.get_flag(x) is None:
                 return False
 
         if atom.use is None:
@@ -297,18 +283,16 @@ class dbapi:
             # with implicit IUSE, in order to avoid potential
             # inconsistencies in USE dep matching (see bug #453400).
             use = frozenset(
-                x for x in metadata["USE"].split() if iuse.get_real_flag(x) is not None
+                x for x in metadata["USE"].split() if iuse.get_flag(x) is not None
             )
             missing_enabled = frozenset(
-                x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None
+                x for x in atom.use.missing_enabled if iuse.get_flag(x) is None
             )
             missing_disabled = frozenset(
-                x for x in atom.use.missing_disabled if iuse.get_real_flag(x) is None
+                x for x in atom.use.missing_disabled if iuse.get_flag(x) is None
             )
-            enabled = frozenset((iuse.get_real_flag(x) or x) for x in atom.use.enabled)
-            disabled = frozenset(
-                (iuse.get_real_flag(x) or x) for x in atom.use.disabled
-            )
+            enabled = frozenset((iuse.get_flag(x) or x) for x in atom.use.enabled)
+            disabled = frozenset((iuse.get_flag(x) or x) for x in atom.use.disabled)
 
             if enabled:
                 if any(x in enabled for x in missing_disabled):
@@ -333,7 +317,7 @@ class dbapi:
                     pkg, stable=self.settings._parent_stable
                 )
                 if any(
-                    x in usemask and iuse.get_real_flag(x) is not None
+                    x in usemask and iuse.get_flag(x) is not None
                     for x in atom.use.enabled
                 ):
                     return False
@@ -342,9 +326,7 @@ class dbapi:
                     pkg, stable=self.settings._parent_stable
                 )
                 if any(
-                    x in useforce
-                    and x not in usemask
-                    and iuse.get_real_flag(x) is not None
+                    x in useforce and x not in usemask and iuse.get_flag(x) is not None
                     for x in atom.use.disabled
                 ):
                     return False
@@ -352,15 +334,13 @@ class dbapi:
             # Check unsatisfied use-default deps
             if atom.use.enabled:
                 missing_disabled = frozenset(
-                    x
-                    for x in atom.use.missing_disabled
-                    if iuse.get_real_flag(x) is None
+                    x for x in atom.use.missing_disabled if iuse.get_flag(x) is None
                 )
                 if any(x in atom.use.enabled for x in missing_disabled):
                     return False
             if atom.use.disabled:
                 missing_enabled = frozenset(
-                    x for x in atom.use.missing_enabled if iuse.get_real_flag(x) is None
+                    x for x in atom.use.missing_enabled if iuse.get_flag(x) is None
                 )
                 if any(x in atom.use.disabled for x in missing_enabled):
                     return False

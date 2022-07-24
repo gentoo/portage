@@ -47,38 +47,17 @@ _cat = r"[\w+][\w+.-]*"
 # 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
 # It must not begin with a hyphen,
 # and must not end in a hyphen followed by one or more digits.
-_pkg = {
-    "dots_disallowed_in_PN": r"[\w+][\w+-]*?",
-    "dots_allowed_in_PN": r"[\w+][\w+.-]*?",
-}
+_pkg = r"[\w+][\w+-]*?"
 
 _v = r"(\d+)((\.\d+)*)([a-z]?)((_(pre|p|beta|alpha|rc)\d*)*)"
 _rev = r"\d+"
 _vr = _v + "(-r(" + _rev + "))?"
 
-_cp = {
-    "dots_disallowed_in_PN": "("
-    + _cat
-    + "/"
-    + _pkg["dots_disallowed_in_PN"]
-    + "(-"
-    + _vr
-    + ")?)",
-    "dots_allowed_in_PN": "("
-    + _cat
-    + "/"
-    + _pkg["dots_allowed_in_PN"]
-    + "(-"
-    + _vr
-    + ")?)",
-}
-_cpv = {
-    "dots_disallowed_in_PN": "(" + _cp["dots_disallowed_in_PN"] + "-" + _vr + ")",
-    "dots_allowed_in_PN": "(" + _cp["dots_allowed_in_PN"] + "-" + _vr + ")",
-}
-_pv = {
-    "dots_disallowed_in_PN": "(?P<pn>"
-    + _pkg["dots_disallowed_in_PN"]
+_cp = "(" + _cat + "/" + _pkg + "(-" + _vr + ")?)"
+_cpv = "(" + _cp + "-" + _vr + ")"
+_pv = (
+    "(?P<pn>"
+    + _pkg
     + "(?P<pn_inval>-"
     + _vr
     + ")?)"
@@ -86,18 +65,8 @@ _pv = {
     + _v
     + ")(-r(?P<rev>"
     + _rev
-    + "))?",
-    "dots_allowed_in_PN": "(?P<pn>"
-    + _pkg["dots_allowed_in_PN"]
-    + "(?P<pn_inval>-"
-    + _vr
-    + ")?)"
-    + "-(?P<ver>"
-    + _v
-    + ")(-r(?P<rev>"
-    + _rev
-    + "))?",
-}
+    + "))?"
+)
 
 ver_regexp = re.compile("^" + _vr + "$")
 suffix_regexp = re.compile("^(alpha|beta|rc|pre|p)(\\d*)$")
@@ -124,24 +93,17 @@ def _get_slot_re(eapi_attrs):
     return slot_re
 
 
-_pv_re_cache = {}
+_pv_re = None
 
 
 def _get_pv_re(eapi_attrs):
-    cache_key = eapi_attrs.dots_in_PN
-    pv_re = _pv_re_cache.get(cache_key)
-    if pv_re is not None:
-        return pv_re
+    global _pv_re
+    if _pv_re is not None:
+        return _pv_re
 
-    if eapi_attrs.dots_in_PN:
-        pv_re = _pv["dots_allowed_in_PN"]
-    else:
-        pv_re = _pv["dots_disallowed_in_PN"]
+    _pv_re = re.compile(r"^" + _pv + r"$", re.VERBOSE | re.UNICODE)
 
-    pv_re = re.compile(r"^" + pv_re + r"$", re.VERBOSE | re.UNICODE)
-
-    _pv_re_cache[cache_key] = pv_re
-    return pv_re
+    return _pv_re
 
 
 def ververify(myver, silent=1):
@@ -528,6 +490,22 @@ class _pkg_str(str):
             stable = settings._isStable(self)
             self.__dict__["_stable"] = stable
             return stable
+
+    @property
+    def binpkg_format(self):
+        """
+        Returns the BINPKG_FORMAT metadata. A return value of None means
+        that the format is unset. If there is no metadata available or the
+        BINPKG_FORMAT key is missing from the metadata, then raise
+        AttributeError.
+
+        @rtype: str or None
+        @return: a non-empty BINPKG_FORMAT string, or None
+        """
+        try:
+            return self._metadata["BINPKG_FORMAT"] or None
+        except (AttributeError, KeyError):
+            raise AttributeError("binpkg_format")
 
 
 def pkgsplit(mypkg, silent=1, eapi=None):

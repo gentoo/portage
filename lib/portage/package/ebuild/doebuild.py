@@ -67,6 +67,7 @@ from portage.const import (
     INVALID_ENV_FILE,
     MISC_SH_BINARY,
     PORTAGE_PYM_PACKAGES,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
     # BEGIN PREFIX LOCAL
     EPREFIX,
     MACOSSANDBOX_PROFILE,
@@ -85,7 +86,6 @@ from portage.eapi import (
     eapi_exports_KV,
     eapi_exports_merge_type,
     eapi_exports_replace_vars,
-    eapi_exports_REPOSITORY,
     eapi_has_required_use,
     eapi_has_src_prepare_and_src_configure,
     eapi_has_pkg_pretend,
@@ -549,14 +549,6 @@ def doebuild_environment(
     if not eapi_is_supported(eapi):
         raise UnsupportedAPIException(mycpv, eapi)
 
-    if (
-        eapi_exports_REPOSITORY(eapi)
-        and "PORTAGE_REPO_NAME" in mysettings.configdict["pkg"]
-    ):
-        mysettings.configdict["pkg"]["REPOSITORY"] = mysettings.configdict["pkg"][
-            "PORTAGE_REPO_NAME"
-        ]
-
     if mydo != "depend":
         if hasattr(mydbapi, "getFetchMap") and (
             "A" not in mysettings.configdict["pkg"]
@@ -659,6 +651,18 @@ def doebuild_environment(
             else:
                 mysettings["KV"] = ""
             mysettings.backup_changes("KV")
+
+        binpkg_format = mysettings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        )
+        if binpkg_format not in portage.const.SUPPORTED_GENTOO_BINPKG_FORMATS:
+            writemsg(
+                "!!! BINPKG_FORMAT contains invalid or "
+                "unsupported format: %s" % binpkg_format,
+                noiselevel=-1,
+            )
+            binpkg_format = "xpak"
+        mysettings["BINPKG_FORMAT"] = binpkg_format
 
         binpkg_compression = mysettings.get("BINPKG_COMPRESS", "bzip2")
         try:

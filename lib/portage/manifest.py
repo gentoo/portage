@@ -3,6 +3,7 @@
 
 import errno
 import io
+import itertools
 import logging
 import re
 import stat
@@ -82,13 +83,13 @@ def parseManifest2(line):
     if not isinstance(line, str):
         line = " ".join(line)
     myentry = None
-    match = _manifest_re.match(line)
-    if match is not None:
-        tokens = match.group(3).split()
+    matched = _manifest_re.match(line)
+    if matched:
+        tokens = matched.group(3).split()
         hashes = dict(zip(tokens[1::2], tokens[2::2]))
         hashes["size"] = int(tokens[0])
         myentry = Manifest2Entry(
-            type=match.group(1), name=match.group(2), hashes=hashes
+            type=matched.group(1), name=matched.group(2), hashes=hashes
         )
     return myentry
 
@@ -107,19 +108,16 @@ class Manifest2Entry(ManifestEntry):
         myhashkeys = list(self.hashes)
         myhashkeys.remove("size")
         myhashkeys.sort()
-        for h in myhashkeys:
-            myline += " " + h + " " + str(self.hashes[h])
-        return myline
+        with_hashes = " ".join(f"{h} {self.hashes[h]}" for h in myhashkeys)
+        return f"{myline} {with_hashes}"
 
     def __eq__(self, other):
-        if (
-            not isinstance(other, Manifest2Entry)
-            or self.type != other.type
-            or self.name != other.name
-            or self.hashes != other.hashes
-        ):
-            return False
-        return True
+        return (
+            isinstance(other, Manifest2Entry)
+            and self.type == other.type
+            and self.name == other.name
+            and self.hashes == other.hashes
+        )
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -162,7 +160,6 @@ class Manifest:
             find_invalid_path_char = _find_invalid_path_char
         self._find_invalid_path_char = find_invalid_path_char
         self.pkgdir = _unicode_decode(pkgdir).rstrip(os.sep) + os.sep
-        self.fhashdict = {}
         self.hashes = set()
         self.required_hashes = set()
 
@@ -182,14 +179,19 @@ class Manifest:
         self.required_hashes.update(required_hashes)
         self.required_hashes.intersection_update(self.hashes)
 
-        for t in MANIFEST2_IDENTIFIERS:
-            self.fhashdict[t] = {}
+        self.fhashdict = {t: {} for t in MANIFEST2_IDENTIFIERS}
+
         if not from_scratch:
-            self._read()
-        if fetchlist_dict != None:
-            self.fetchlist_dict = fetchlist_dict
-        else:
-            self.fetchlist_dict = {}
+            # Parse Manifest file for this instance
+            try:
+                self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
+            except FileNotFound:
+                pass
+
+        self.fetchlist_dict = {}
+        if fetchlist_dict:
+            self.fetchlist_dict.update(fetchlist_dict)
+
         self.distdir = distdir
         self.thin = thin
         if thin:
@@ -206,9 +208,9 @@ class Manifest:
 
     def getDigests(self):
         """Compability function for old digest/manifest code, returns dict of filename:{hashfunction:hashvalue}"""
-        rval = {}
-        for t in MANIFEST2_IDENTIFIERS:
-            rval.update(self.fhashdict[t])
+        rval = {
+            k: v for t in MANIFEST2_IDENTIFIERS for k, v in self.fhashdict[t].items()
+        }
         return rval
 
     def getTypeDigests(self, ftype):
@@ -234,13 +236,6 @@ class Manifest:
                 raise FileNotFound(file_path)
             else:
                 raise
-
-    def _read(self):
-        """Parse Manifest file for this instance"""
-        try:
-            self._readManifest(self.getFullname(), myhashdict=self.fhashdict)
-        except FileNotFound:
-            pass
 
     def _parseManifestLines(self, mylines):
         """Parse manifest lines and return a list of manifest entries."""
@@ -269,40 +264,49 @@ class Manifest:
 
     def _getDigestData(self, distlist):
         """create a hash dict for a specific list of files"""
-        myhashdict = {}
-        for myname in distlist:
-            for mytype in self.fhashdict:
-                if myname in self.fhashdict[mytype]:
-                    myhashdict.setdefault(mytype, {})
-                    myhashdict[mytype].setdefault(myname, {})
-                    myhashdict[mytype][myname].update(self.fhashdict[mytype][myname])
+        myhashdict = {
+            mytype: {myname: self.fhashdict[mytype][myname]}
+            for myname in distlist
+            for mytype in self.fhashdict
+            if myname in self.fhashdict[mytype]
+        }
         return myhashdict
 
     def _createManifestEntries(self):
-        valid_hashes = set(get_valid_checksum_keys())
-        valid_hashes.add("size")
-        mytypes = list(self.fhashdict)
-        mytypes.sort()
-        for t in mytypes:
-            myfiles = list(self.fhashdict[t])
-            myfiles.sort()
-            for f in myfiles:
-                myentry = Manifest2Entry(
-                    type=t, name=f, hashes=self.fhashdict[t][f].copy()
+        valid_hashes = set(itertools.chain(get_valid_checksum_keys(), ("size",)))
+        mytypes = sorted(self.fhashdict)
+        for mytype in mytypes:
+            myfiles = sorted(self.fhashdict[mytype])
+            for myfile in myfiles:
+                remainings = set(self.fhashdict[mytype][myfile]).intersection(
+                    valid_hashes
                 )
-                for h in list(myentry.hashes):
-                    if h not in valid_hashes:
-                        del myentry.hashes[h]
-                yield myentry
+                yield Manifest2Entry(
+                    type=mytype,
+                    name=myfile,
+                    hashes={
+                        remaining: self.fhashdict[mytype][myfile][remaining]
+                        for remaining in remainings
+                    },
+                )
 
     def checkIntegrity(self):
-        for t in self.fhashdict:
-            for f in self.fhashdict[t]:
-                diff = self.required_hashes.difference(set(self.fhashdict[t][f]))
-                if diff:
-                    raise MissingParameter(
-                        _("Missing %s checksum(s): %s %s") % (" ".join(diff), t, f)
+        manifest_data = (
+            (
+                self.required_hashes.difference(set(self.fhashdict[mytype][myfile])),
+                mytype,
+                myfile,
+            )
+            for mytype in self.fhashdict
+            for myfile in self.fhashdict[mytype]
+        )
+        for needed_hashes, its_type, its_file in manifest_data:
+            if needed_hashes:
+                raise MissingParameter(
+                    _(
+                        f"Missing {' '.join(needed_hashes)} checksum(s): {its_type} {its_file}"
                     )
+                )
 
     def write(self, sign=False, force=False):
         """Write Manifest instance to disk, optionally signing it. Returns
@@ -315,11 +319,10 @@ class Manifest:
         try:
             myentries = list(self._createManifestEntries())
             update_manifest = True
-            preserved_stats = {}
-            preserved_stats[self.pkgdir.rstrip(os.sep)] = os.stat(self.pkgdir)
+            preserved_stats = {self.pkgdir.rstrip(os.sep): os.stat(self.pkgdir)}
             if myentries and not force:
                 try:
-                    f = io.open(
+                    with io.open(
                         _unicode_encode(
                             self.getFullname(),
                             encoding=_encodings["fs"],
@@ -328,16 +331,15 @@ class Manifest:
                         mode="r",
                         encoding=_encodings["repo.content"],
                         errors="replace",
-                    )
-                    oldentries = list(self._parseManifestLines(f))
-                    preserved_stats[self.getFullname()] = os.fstat(f.fileno())
-                    f.close()
-                    if len(oldentries) == len(myentries):
-                        update_manifest = False
-                        for i in range(len(oldentries)):
-                            if oldentries[i] != myentries[i]:
-                                update_manifest = True
-                                break
+                    ) as f:
+                        oldentries = list(self._parseManifestLines(f))
+                        preserved_stats[self.getFullname()] = os.fstat(f.fileno())
+                        if len(oldentries) == len(myentries):
+                            update_manifest = False
+                            for oldentry, myentry in zip(oldentries, myentries):
+                                if oldentry != myentry:
+                                    update_manifest = True
+                                    break
                 except (IOError, OSError) as e:
                     if e.errno == errno.ENOENT:
                         pass
@@ -352,7 +354,7 @@ class Manifest:
                     # non-empty for all currently known use cases.
                     write_atomic(
                         self.getFullname(),
-                        "".join("%s\n" % str(myentry) for myentry in myentries),
+                        "".join(f"{myentry}\n" for myentry in myentries),
                     )
                     self._apply_max_mtime(preserved_stats, myentries)
                     rval = True
@@ -394,30 +396,30 @@ class Manifest:
         # it always rounds down. Note that stat_result.st_mtime will round
         # up from 0.999999999 to 1.0 when precision is lost during conversion
         # from nanosecond resolution to float.
-        max_mtime = None
-        _update_max = (
-            lambda st: max_mtime
-            if max_mtime is not None and max_mtime > st[stat.ST_MTIME]
-            else st[stat.ST_MTIME]
-        )
-        _stat = (
-            lambda path: preserved_stats[path]
-            if path in preserved_stats
-            else os.stat(path)
-        )
 
+        def _update_max(max_mtime, st):
+            stat_mtime = st[stat.ST_MTIME]
+            if max_mtime:
+                return max(max_mtime, stat_mtime)
+
+        def _stat(path):
+            if path in preserved_stats:
+                return preserved_stats[path]
+            else:
+                return os.stat(path)
+
+        max_mtime = None
         for stat_result in preserved_stats.values():
-            max_mtime = _update_max(stat_result)
+            max_mtime = _update_max(max_mtime, stat_result)
 
         for entry in entries:
             if entry.type == "DIST":
                 continue
-            abs_path = (
-                os.path.join(self.pkgdir, "files", entry.name)
-                if entry.type == "AUX"
-                else os.path.join(self.pkgdir, entry.name)
-            )
-            max_mtime = _update_max(_stat(abs_path))
+            files = ""
+            if entry.type == "AUX":
+                files = "files"
+            abs_path = os.path.join(self.pkgdir, files, entry.name)
+            max_mtime = _update_max(max_mtime, _stat(abs_path))
 
         if not self.thin:
             # Account for changes to all relevant nested directories.
@@ -434,7 +436,7 @@ class Manifest:
                     # report such problems).
                     pass
                 else:
-                    max_mtime = _update_max(_stat(parent_dir))
+                    max_mtime = _update_max(max_mtime, _stat(parent_dir))
 
         if max_mtime is not None:
             for path in preserved_stats:
@@ -447,8 +449,7 @@ class Manifest:
                     # unless this repo is being prepared for distribution
                     # via rsync.
                     writemsg_level(
-                        "!!! utime('%s', (%s, %s)): %s\n"
-                        % (path, max_mtime, max_mtime, e),
+                        f"!!! utime('{path}', ({max_mtime}, {max_mtime})): {e}\n",
                         level=logging.WARNING,
                         noiselevel=-1,
                     )
@@ -463,16 +464,17 @@ class Manifest:
 
     def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
         """Add entry to Manifest optionally using hashdict to avoid recalculation of hashes"""
-        if ftype == "AUX" and not fname.startswith("files/"):
-            fname = os.path.join("files", fname)
-        if not os.path.exists(self.pkgdir + fname) and not ignoreMissing:
+        if ftype == "AUX":
+            if not fname.startswith("files/"):
+                fname = os.path.join("files", fname)
+            if fname.startswith("files"):
+                fname = fname[6:]
+        if not os.path.exists(f"{self.pkgdir}{fname}") and not ignoreMissing:
             raise FileNotFound(fname)
-        if not ftype in MANIFEST2_IDENTIFIERS:
+        if ftype not in MANIFEST2_IDENTIFIERS:
             raise InvalidDataType(ftype)
-        if ftype == "AUX" and fname.startswith("files"):
-            fname = fname[6:]
         self.fhashdict[ftype][fname] = {}
-        if hashdict != None:
+        if hashdict is not None:
             self.fhashdict[ftype][fname].update(hashdict)
         if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
             self.updateFileHashes(
@@ -489,17 +491,15 @@ class Manifest:
 
     def findFile(self, fname):
         """Return entrytype of the given file if present in Manifest or None if not present"""
-        for t in MANIFEST2_IDENTIFIERS:
-            if fname in self.fhashdict[t]:
-                return t
-        return None
+        found_entries = (t for t in MANIFEST2_IDENTIFIERS if fname in self.fhashdict[t])
+        return next(found_entries, None)
 
     def create(
         self,
         checkExisting=False,
         assumeDistHashesSometimes=False,
         assumeDistHashesAlways=False,
-        requiredDistfiles=[],
+        requiredDistfiles=None,
     ):
         """Recreate this Manifest from scratch.  This will not use any
         existing checksums unless assumeDistHashesSometimes or
@@ -513,10 +513,9 @@ class Manifest:
             return
         if checkExisting:
             self.checkAllHashes()
+        distfilehashes = {}
         if assumeDistHashesSometimes or assumeDistHashesAlways:
-            distfilehashes = self.fhashdict["DIST"]
-        else:
-            distfilehashes = {}
+            distfilehashes.update(self.fhashdict["DIST"])
         self.__init__(
             self.pkgdir,
             distdir=self.distdir,
@@ -530,18 +529,19 @@ class Manifest:
             find_invalid_path_char=self._find_invalid_path_char,
             strict_misc_digests=self.strict_misc_digests,
         )
-        pn = os.path.basename(self.pkgdir.rstrip(os.path.sep))
-        cat = self._pkgdir_category()
 
-        pkgdir = self.pkgdir
+        update_pkgdir = self._update_thick_pkgdir
         if self.thin:
-            cpvlist = self._update_thin_pkgdir(cat, pn, pkgdir)
-        else:
-            cpvlist = self._update_thick_pkgdir(cat, pn, pkgdir)
+            update_pkgdir = self._update_thin_pkgdir
 
-        distlist = set()
-        for cpv in cpvlist:
-            distlist.update(self._getCpvDistfiles(cpv))
+        cpvlist = update_pkgdir(
+            self._pkgdir_category(),
+            os.path.basename(self.pkgdir.rstrip(os.path.sep)),
+            self.pkgdir,
+        )
+        distlist = set(
+            distfile for cpv in cpvlist for distfile in self._getCpvDistfiles(cpv)
+        )
 
         if requiredDistfiles is None:
             # This allows us to force removal of stale digests for the
@@ -551,9 +551,7 @@ class Manifest:
             # repoman passes in an empty list, which implies that all distfiles
             # are required.
             requiredDistfiles = distlist.copy()
-        required_hash_types = set()
-        required_hash_types.add("size")
-        required_hash_types.update(self.required_hashes)
+        required_hash_types = set(itertools.chain(self.required_hashes, ("size",)))
         for f in distlist:
             fname = os.path.join(self.distdir, f)
             mystat = None
@@ -590,41 +588,44 @@ class Manifest:
             return None
         pf = filename[:-7]
         ps = portage.versions._pkgsplit(pf)
-        cpv = "%s/%s" % (cat, pf)
+        cpv = f"{cat}/{pf}"
         if not ps:
-            raise PortagePackageException(_("Invalid package name: '%s'") % cpv)
+            raise PortagePackageException(_(f"Invalid package name: '{cpv}'"))
         if ps[0] != pn:
             raise PortagePackageException(
-                _("Package name does not " "match directory name: '%s'") % cpv
+                _(f"Package name does not match directory name: '{cpv}'")
             )
         return cpv
 
     def _update_thin_pkgdir(self, cat, pn, pkgdir):
-        for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-            break
-        cpvlist = []
-        for f in pkgdir_files:
+        _, _, pkgdir_files = next(os.walk(pkgdir), (None, None, None))
+
+        def _process_for_cpv(filename):
             try:
-                f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
+                filename = _unicode_decode(
+                    filename, encoding=_encodings["fs"], errors="strict"
+                )
             except UnicodeDecodeError:
-                continue
-            if f[:1] == ".":
-                continue
-            pf = self._is_cpv(cat, pn, f)
+                return None
+            if filename.startswith("."):
+                return None
+            pf = self._is_cpv(cat, pn, filename)
             if pf is not None:
-                cpvlist.append(pf)
+                return pf
+
+        processed = (_process_for_cpv(filename) for filename in pkgdir_files)
+        cpvlist = [pf for pf in processed if pf]
         return cpvlist
 
     def _update_thick_pkgdir(self, cat, pn, pkgdir):
+        _, _, pkgdir_files = next(os.walk(pkgdir), (None, None, None))
         cpvlist = []
-        for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
-            break
         for f in pkgdir_files:
             try:
                 f = _unicode_decode(f, encoding=_encodings["fs"], errors="strict")
             except UnicodeDecodeError:
                 continue
-            if f[:1] == ".":
+            if f.startswith("."):
                 continue
             pf = self._is_cpv(cat, pn, f)
             if pf is not None:
@@ -635,12 +636,12 @@ class Manifest:
             else:
                 continue
             self.fhashdict[mytype][f] = perform_multiple_checksums(
-                self.pkgdir + f, self.hashes
+                f"{self.pkgdir}{f}", self.hashes
             )
         recursive_files = []
 
         pkgdir = self.pkgdir
-        cut_len = len(os.path.join(pkgdir, "files") + os.sep)
+        cut_len = len(os.path.join(pkgdir, f"files{os.sep}"))
         for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
             for f in files:
                 try:
@@ -662,12 +663,12 @@ class Manifest:
 
     def _getAbsname(self, ftype, fname):
         if ftype == "DIST":
-            absname = os.path.join(self.distdir, fname)
+            abspath = (self.distdir, fname)
         elif ftype == "AUX":
-            absname = os.path.join(self.pkgdir, "files", fname)
+            abspath = (self.pkgdir, "files", fname)
         else:
-            absname = os.path.join(self.pkgdir, fname)
-        return absname
+            abspath = (self.pkgdir, fname)
+        return os.path.join(*abspath)
 
     def checkAllHashes(self, ignoreMissingFiles=False):
         for t in MANIFEST2_IDENTIFIERS:
@@ -693,7 +694,7 @@ class Manifest:
         except FileNotFound as e:
             if not ignoreMissing:
                 raise
-            return False, _("File Not Found: '%s'") % str(e)
+            return False, _(f"File Not Found: '{e}'")
 
     def checkCpvHashes(
         self, cpv, checkDistfiles=True, onlyDistfiles=False, checkMiscfiles=False
@@ -704,7 +705,7 @@ class Manifest:
             self.checkTypeHashes("AUX", ignoreMissingFiles=False)
             if checkMiscfiles:
                 self.checkTypeHashes("MISC", ignoreMissingFiles=False)
-            ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
+            ebuildname = f"{self._catsplit(cpv)[1]}.ebuild"
             self.checkFileHashes("EBUILD", ebuildname, ignoreMissing=False)
         if checkDistfiles or onlyDistfiles:
             for f in self._getCpvDistfiles(cpv):
@@ -715,68 +716,75 @@ class Manifest:
         return self.fetchlist_dict[cpv]
 
     def getDistfilesSize(self, fetchlist):
-        total_bytes = 0
-        for f in fetchlist:
-            total_bytes += int(self.fhashdict["DIST"][f]["size"])
+        total_bytes = sum(int(self.fhashdict["DIST"][f]["size"]) for f in fetchlist)
         return total_bytes
 
-    def updateFileHashes(
-        self, ftype, fname, checkExisting=True, ignoreMissing=True, reuseExisting=False
+    def updateAllFileHashes(
+        self, ftype, fnames, checkExisting=True, ignoreMissing=True, reuseExisting=False
     ):
-        """Regenerate hashes for the given file"""
-        if checkExisting:
-            self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
-        if not ignoreMissing and fname not in self.fhashdict[ftype]:
-            raise FileNotInManifestException(fname)
-        if fname not in self.fhashdict[ftype]:
-            self.fhashdict[ftype][fname] = {}
-        myhashkeys = list(self.hashes)
-        if reuseExisting:
-            for k in [h for h in self.fhashdict[ftype][fname] if h in myhashkeys]:
-                myhashkeys.remove(k)
-        myhashes = perform_multiple_checksums(
-            self._getAbsname(ftype, fname), myhashkeys
-        )
-        self.fhashdict[ftype][fname].update(myhashes)
+        """Regenerate hashes from a list of files"""
+        for fname in fnames:
+            if checkExisting:
+                self.checkFileHashes(ftype, fname, ignoreMissing=ignoreMissing)
+            if not ignoreMissing and fname not in self.fhashdict[ftype]:
+                raise FileNotInManifestException(fname)
+            if fname not in self.fhashdict[ftype]:
+                self.fhashdict[ftype][fname] = {}
+            myhashkeys = self.hashes
+            if reuseExisting:
+                myhashkeys = myhashkeys.difference(self.fhashdict[ftype][fname])
+            myhashes = perform_multiple_checksums(
+                self._getAbsname(ftype, fname), myhashkeys
+            )
+            self.fhashdict[ftype][fname].update(myhashes)
 
-    def updateTypeHashes(self, idtype, checkExisting=False, ignoreMissingFiles=True):
-        """Regenerate all hashes for all files of the given type"""
-        for fname in self.fhashdict[idtype]:
-            self.updateFileHashes(idtype, fname, checkExisting)
+    def updateAllTypeHashes(
+        self, idtypes, checkExisting=False, ignoreMissingFiles=True
+    ):
+        """Regenerate all hashes for all files from a list of types"""
+        for idtype in idtypes:
+            self.updateAllFileHashes(
+                ftype=idtype, fnames=self.fhashdict[idtype], checkExisting=checkExisting
+            )
 
     def updateAllHashes(self, checkExisting=False, ignoreMissingFiles=True):
         """Regenerate all hashes for all files in this Manifest."""
-        for idtype in MANIFEST2_IDENTIFIERS:
-            self.updateTypeHashes(
-                idtype,
-                checkExisting=checkExisting,
-                ignoreMissingFiles=ignoreMissingFiles,
-            )
+        self.updateTypeHashes(
+            idtypes=MANIFEST2_IDENTIFIERS,
+            checkExisting=checkExisting,
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
 
     def updateCpvHashes(self, cpv, ignoreMissingFiles=True):
         """Regenerate all hashes associated to the given cpv (includes all AUX and MISC
         files)."""
-        self.updateTypeHashes("AUX", ignoreMissingFiles=ignoreMissingFiles)
-        self.updateTypeHashes("MISC", ignoreMissingFiles=ignoreMissingFiles)
-        ebuildname = "%s.ebuild" % self._catsplit(cpv)[1]
-        self.updateFileHashes(
-            "EBUILD", ebuildname, ignoreMissingFiles=ignoreMissingFiles
+        self.updateAllTypeHashes(
+            idtypes=("AUX", "MISC"),
+            ignoreMissingFiles=ignoreMissingFiles,
         )
-        for f in self._getCpvDistfiles(cpv):
-            self.updateFileHashes("DIST", f, ignoreMissingFiles=ignoreMissingFiles)
+        self.updateAllFileHashes(
+            ftype="EBUILD",
+            fnames=(f"{self._catsplit(cpv)[1]}.ebuild",),
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
+        self.updateAllFileHashes(
+            ftype="DIST",
+            fnames=self._getCpvDistfiles(cpv),
+            ignoreMissingFiles=ignoreMissingFiles,
+        )
 
     def updateHashesGuessType(self, fname, *args, **kwargs):
         """Regenerate hashes for the given file (guesses the type and then
         calls updateFileHashes)."""
         mytype = self.guessType(fname)
-        if mytype == "AUX":
-            fname = fname[len("files" + os.sep) :]
-        elif mytype is None:
+        if mytype is None:
             return
+        elif mytype == "AUX":
+            fname = fname[len(f"files{os.sep}") :]
         myrealtype = self.findFile(fname)
         if myrealtype is not None:
             mytype = myrealtype
-        return self.updateFileHashes(mytype, fname, *args, **kwargs)
+        return self.updateAllFileHashes(ftype=mytype, fnames=(fname,), *args, **kwargs)
 
     def getFileData(self, ftype, fname, key):
         """Return the value of a specific (type,filename,key) triple, mainly useful
@@ -785,28 +793,26 @@ class Manifest:
 
     def getVersions(self):
         """Returns a list of manifest versions present in the manifest file."""
-        rVal = []
         mfname = self.getFullname()
         if not os.path.exists(mfname):
-            return rVal
-        myfile = io.open(
+            return []
+        with io.open(
             _unicode_encode(mfname, encoding=_encodings["fs"], errors="strict"),
             mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
-        )
-        lines = myfile.readlines()
-        myfile.close()
-        for l in lines:
-            mysplit = l.split()
-            if (
-                len(mysplit) > 4
-                and mysplit[0] in MANIFEST2_IDENTIFIERS
-                and ((len(mysplit) - 3) % 2) == 0
-                and not 2 in rVal
-            ):
-                rVal.append(2)
-        return rVal
+        ) as myfile:
+            line_splits = (line.split() for line in myfile.readlines())
+            validation = (
+                True
+                for line_split in line_splits
+                if len(line_split) > 4
+                and line_split[0] in MANIFEST2_IDENTIFIERS
+                and (len(line_split) - 3) % 2 == 0
+            )
+            if any(validation):
+                return [2]
+        return []
 
     def _catsplit(self, pkg_key):
         """Split a category and package, returning a list of [cat, pkg].

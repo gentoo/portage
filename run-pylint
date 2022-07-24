@@ -1,0 +1,2 @@
+#!/bin/sh
+exec pylint "$@" lib/_emerge lib/portage $(grep -Rl '^#!.*python' bin)

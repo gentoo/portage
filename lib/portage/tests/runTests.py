@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -bWd
+#!@PREFIX_PORTAGE_PYTHON@ -Wd
 # runTests.py -- Portage Unit Test Functionality
 # Copyright 2006-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
@@ -9,7 +9,10 @@ import os.path as osp
 import platform
 import pwd
 import signal
+import tempfile
+import shutil
 import sys
+from distutils.dir_util import copy_tree
 
 
 def debug_signal(signum, frame):
@@ -69,8 +72,17 @@ if insert_bin_path:
     path.insert(0, PORTAGE_BIN_PATH)
     os.environ["PATH"] = ":".join(path)
 
+# Copy GPG test keys to temporary directory
+gpg_path = tempfile.mkdtemp(prefix="gpg_")
+
+copy_tree(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".gnupg"), gpg_path)
+
+os.chmod(gpg_path, 0o700)
+os.environ["PORTAGE_GNUPGHOME"] = gpg_path
+
 if __name__ == "__main__":
     try:
         sys.exit(tests.main())
     finally:
         global_event_loop().close()
+        shutil.rmtree(gpg_path, ignore_errors=True)

@@ -25,17 +25,17 @@ install_symlink_html_docs() {
 		# END PREFIX LOCAL
 	fi
 	cd "${ED}" || die "cd failed"
-	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
-	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
+	# Symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
+	if [[ -n "${DOC_SYMLINKS_DIR}" ]]; then
 		local mydocdir docdir
 		for docdir in "${HTMLDOC_DIR:-does/not/exist}" "${PF}/html" "${PF}/HTML" "${P}/html" "${P}/HTML" ; do
-			if [ -d "usr/share/doc/${docdir}" ] ; then
+			if [[ -d "usr/share/doc/${docdir}" ]]; then
 				mydocdir="/usr/share/doc/${docdir}"
 			fi
 		done
-		if [ -n "${mydocdir}" ] ; then
+		if [[ -n "${mydocdir}" ]]; then
 			local mysympath
-			if [ -z "${SLOT}" -o "${SLOT%/*}" = "0" ] ; then
+			if [[ -z "${SLOT}" || "${SLOT%/*}" = "0" ]]; then
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}"
 			else
 				mysympath="${DOC_SYMLINKS_DIR}/${CATEGORY}/${PN}-${SLOT%/*}"
@@ -157,20 +157,6 @@ install_qa_check() {
 		"${PORTAGE_BIN_PATH}"/ecompress --dequeue
 	fi
 
-	# If binpkg-dostrip is enabled, apply stripping before creating
-	# the binary package.
-	# Note: disabling it won't help with packages calling prepstrip directly.
-	if has binpkg-dostrip ${FEATURES}; then
-		export STRIP_MASK
-		if ___eapi_has_dostrip; then
-			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
-			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
-			"${PORTAGE_BIN_PATH}"/estrip --dequeue
-		else
-			prepallstrip
-		fi
-	fi
-
 	if has chflags $FEATURES ; then
 		# Restore all the file flags that were saved earlier on.
 		mtree -U -e -p "${ED}" -k flags < "${T}/bsdflags.mtree" &> /dev/null
@@ -259,7 +245,7 @@ install_qa_check_elf() {
 				arch=${l%%;*}; l=${l#*;}
 				obj="/${l%%;*}"; l=${l#*;}
 				soname=${l%%;*}; l=${l#*;}
-				rpath=${l%%;*}; l=${l#*;}; [ "${rpath}" = "  -  " ] && rpath=""
+				rpath=${l%%;*}; l=${l#*;}; [[ "${rpath}" = "  -  " ]] && rpath=""
 				needed=${l%%;*}; l=${l#*;}
 
 				# Infer implicit soname from basename (bug 715162).
@@ -272,7 +258,7 @@ install_qa_check_elf() {
 			done <<< ${scanelf_output}
 		fi
 
-		[ -n "${QA_SONAME_NO_SYMLINK}" ] && \
+		[[ -n "${QA_SONAME_NO_SYMLINK}" ]] && \
 			echo "${QA_SONAME_NO_SYMLINK}" > \
 			"${PORTAGE_BUILDDIR}"/build-info/QA_SONAME_NO_SYMLINK
 
@@ -290,6 +276,21 @@ install_qa_check_elf() {
 }
 
 install_qa_check_misc() {
+	# If binpkg-dostrip is enabled, apply stripping before creating
+	# the binary package.
+	# Note: disabling it won't help with packages calling prepstrip directly.
+	# We do this after the scanelf bits so that we can reuse the data. bug #749624.
+	if has binpkg-dostrip ${FEATURES}; then
+		export STRIP_MASK
+		if ___eapi_has_dostrip; then
+			"${PORTAGE_BIN_PATH}"/estrip --queue "${PORTAGE_DOSTRIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --ignore "${PORTAGE_DOSTRIP_SKIP[@]}"
+			"${PORTAGE_BIN_PATH}"/estrip --dequeue
+		else
+			prepallstrip
+		fi
+	fi
+
 	# Portage regenerates this on the installed system.
 	rm -f "${ED%/}"/usr/share/info/dir{,.gz,.bz2} || die "rm failed!"
 }
@@ -1080,7 +1081,7 @@ preinst_mask() {
 }
 
 preinst_sfperms() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -1094,7 +1095,7 @@ preinst_sfperms() {
 		local i
 		find "${ED}" -type f -perm -4000 -print0 | \
 		while read -r -d $'\0' i ; do
-			if [ -n "$(find "$i" -perm -2000)" ] ; then
+			if [[ -n "$(find "$i" -perm -2000)" ]]; then
 				ebegin ">>> SetUID and SetGID: [chmod o-r] ${i#${ED%/}}"
 				chmod o-r "$i"
 				eend $?
@@ -1106,7 +1107,7 @@ preinst_sfperms() {
 		done
 		find "${ED}" -type f -perm -2000 -print0 | \
 		while read -r -d $'\0' i ; do
-			if [ -n "$(find "$i" -perm -4000)" ] ; then
+			if [[ -n "$(find "$i" -perm -4000)" ]]; then
 				# This case is already handled
 				# by the SetUID check above.
 				true
@@ -1120,7 +1121,7 @@ preinst_sfperms() {
 }
 
 preinst_suid_scan() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -1129,7 +1130,7 @@ preinst_suid_scan() {
 		local ED=${D}
 	fi
 
-	# total suid control.
+	# Total suid control
 	if has suidctl $FEATURES; then
 		local i sfconf x
 		sfconf=${PORTAGE_CONFIGROOT}etc/portage/suidctl.conf
@@ -1139,7 +1140,7 @@ preinst_suid_scan() {
 		addwrite "${sfconf}"
 		__vecho ">>> Performing suid scan in ${ED}"
 		for i in $(find "${ED}" -type f \( -perm -4000 -o -perm -2000 \) ); do
-			if [ -s "${sfconf}" ]; then
+			if [[ -s "${sfconf}" ]]; then
 				install_path=${i#${ED%/}}
 				if grep -q "^${install_path}\$" "${sfconf}" ; then
 					__vecho "- ${install_path} is an approved suid file"
@@ -1164,7 +1165,7 @@ preinst_suid_scan() {
 }
 
 preinst_selinux_labels() {
-	if [ -z "${D}" ]; then
+	if [[ -z "${D}" ]]; then
 		 eerror "${FUNCNAME}: D is unset"
 		 return 1
 	fi
@@ -1172,7 +1173,7 @@ preinst_selinux_labels() {
 		# SELinux file labeling (needs to execute after preinst)
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
-		if [ -f /sys/fs/selinux/context -a -x /usr/sbin/setfiles -a -x /usr/sbin/selinuxconfig ]; then
+		if [[ -f /sys/fs/selinux/context && -x /usr/sbin/setfiles && -x /usr/sbin/selinuxconfig ]]; then
 			__vecho ">>> Setting SELinux security labels"
 			(
 				eval "$(/usr/sbin/selinuxconfig)" || \
@@ -1183,8 +1184,8 @@ preinst_selinux_labels() {
 				/usr/sbin/setfiles -F -r "${D}" "${file_contexts_path}" "${D}"
 			) || die "Failed to set SELinux security labels."
 		else
-			# nonfatal, since merging can happen outside a SE kernel
-			# like during a recovery situation
+			# nonfatal, since merging can happen outside a SELinux kernel
+			# (like during a recovery situation)
 			__vecho "!!! Unable to set SELinux security labels"
 		fi
 	fi
@@ -1200,38 +1201,57 @@ __dyn_package() {
 	# in there in case any tools were built with -pg in CFLAGS.
 	cd "${T}" || die
 
-	local tar_options=""
-	[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
-	has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
 	# Sandbox is disabled in case the user wants to use a symlink
 	# for $PKGDIR and/or $PKGDIR/All.
 	export SANDBOX_ON="0"
-	[ -z "${PORTAGE_BINPKG_TMPFILE}" ] && \
+	[[ -z "${PORTAGE_BINPKG_TMPFILE}" ]] && \
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
-	[ -z "${PORTAGE_COMPRESSION_COMMAND}" ] && \
-        die "PORTAGE_COMPRESSION_COMMAND is unset"
-	tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
-		$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
-	assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
-	PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-		"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
-		"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
-	if [ $? -ne 0 ]; then
-		rm -f "${PORTAGE_BINPKG_TMPFILE}"
-		die "Failed to append metadata to the tbz2 file"
+
+	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
+		local tar_options=""
+		[[ $PORTAGE_VERBOSE = 1 ]] && tar_options+=" -v"
+		has xattr ${FEATURES} && [[ $(tar --help 2> /dev/null) == *--xattrs* ]] && tar_options+=" --xattrs"
+		[[ -z "${PORTAGE_COMPRESSION_COMMAND}" ]] && \
+			die "PORTAGE_COMPRESSION_COMMAND is unset"
+		tar $tar_options -cf - $PORTAGE_BINPKG_TAR_OPTS -C "${D}" . | \
+			$PORTAGE_COMPRESSION_COMMAND > "$PORTAGE_BINPKG_TMPFILE"
+		assert "failed to pack binary package: '$PORTAGE_BINPKG_TMPFILE'"
+		# BEGIN PREFIX LOCAL: use PREFIX_PORTAGE_PYTHON fallback
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/xpak-helper.py recompose \
+			"$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info"
+		# END PREFIX LOCAL
+		if [[ $? -ne 0 ]]; then
+			rm -f "${PORTAGE_BINPKG_TMPFILE}"
+			die "Failed to append metadata to the tbz2 file"
+		fi
+		local md5_hash=""
+		if type md5sum &>/dev/null ; then
+			md5_hash=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
+			md5_hash=${md5_hash%% *}
+		elif type md5 &>/dev/null ; then
+			md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
+			md5_hash=${md5_hash##* }
+		fi
+		[[ -n "${md5_hash}" ]] && \
+			echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
+		__vecho ">>> Done."
+
+	elif [[ "${BINPKG_FORMAT}" == "gpkg" ]]; then
+		# BEGIN PREFIX LOCAL: use PREFIX_PORTAGE_PYTHON fallback
+		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
+			"${PORTAGE_PYTHON:-@PREFIX_PORTAGE_PYTHON@}" "$PORTAGE_BIN_PATH"/gpkg-helper.py compress \
+			"${CATEGORY}/${PF}" "$PORTAGE_BINPKG_TMPFILE" "$PORTAGE_BUILDDIR/build-info" "${D}"
+		# END PREFIX LOCAL
+		if [[ $? -ne 0 ]]; then
+			rm -f "${PORTAGE_BINPKG_TMPFILE}"
+			die "Failed to create binpkg file"
+		fi
+		__vecho ">>> Done."
+	else
+		die "Unknown BINPKG_FORMAT ${BINPKG_FORMAT}"
 	fi
-	local md5_hash=""
-	if type md5sum &>/dev/null ; then
-		md5_hash=$(md5sum "${PORTAGE_BINPKG_TMPFILE}")
-		md5_hash=${md5_hash%% *}
-	elif type md5 &>/dev/null ; then
-		md5_hash=$(md5 "${PORTAGE_BINPKG_TMPFILE}")
-		md5_hash=${md5_hash##* }
-	fi
-	[ -n "${md5_hash}" ] && \
-		echo ${md5_hash} > "${PORTAGE_BUILDDIR}"/build-info/BINPKGMD5
-	__vecho ">>> Done."
 
 	cd "${PORTAGE_BUILDDIR}"
 	>> "$PORTAGE_BUILDDIR/.packaged" || \
@@ -1314,7 +1334,7 @@ install_hooks() {
 	local ret=0
 	shopt -s nullglob
 	for fp in "${hooks_dir}"/*; do
-		if [ -x "$fp" ]; then
+		if [[ -x "$fp" ]]; then
 			"$fp"
 			ret=$(( $ret | $? ))
 		fi
@@ -1327,9 +1347,9 @@ eqatag() {
 	__eqatag "${@}"
 }
 
-if [ -n "${MISC_FUNCTIONS_ARGS}" ]; then
+if [[ -n "${MISC_FUNCTIONS_ARGS}" ]]; then
 	__source_all_bashrcs
-	[ "$PORTAGE_DEBUG" == "1" ] && set -x
+	[[ "$PORTAGE_DEBUG" == "1" ]] && set -x
 	for x in ${MISC_FUNCTIONS_ARGS}; do
 		${x}
 	done

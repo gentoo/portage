@@ -62,7 +62,7 @@ class PopenPipeBlockingIOTestCase(TestCase):
             self.assertFalse(True, skip_reason)
             return
 
-        for x in (1, 2, 5, 6, 7, 8, 2 ** 5, 2 ** 10, 2 ** 12, 2 ** 13, 2 ** 14):
+        for x in (1, 2, 5, 6, 7, 8, 2**5, 2**10, 2**12, 2**13, 2**14):
             test_string = x * "a"
             output = self._testPipeReader(test_string)
             self.assertEqual(

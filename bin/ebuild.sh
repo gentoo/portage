@@ -32,7 +32,7 @@ __check_bash_version() {
 	# Make sure the active bash is sane.
 	if [[ ${BASH_VERSINFO[0]} -lt ${maj} ]] ||
 	   [[ ${BASH_VERSINFO[0]} -eq ${maj} && ${BASH_VERSINFO[1]} -lt ${min} ]] ; then
-		die ">=bash-${maj}.${min} is required"
+		die "EAPI=\"${EAPI}\" requires >=bash-${maj}.${min}, but bash-${BASH_VERSION} found"
 	fi
 
 	# Set the compat level in case things change with newer ones.  We must not
@@ -73,11 +73,6 @@ else
 	# These functions die because calls to them during the "depend" phase
 	# are considered to be severe QA violations.
 	funcs+=" best_version has_version portageq"
-	___eapi_has_master_repositories && funcs+=" master_repositories"
-	___eapi_has_repository_path && funcs+=" repository_path"
-	___eapi_has_available_eclasses && funcs+=" available_eclasses"
-	___eapi_has_eclass_path && funcs+=" eclass_path"
-	___eapi_has_license_path && funcs+=" license_path"
 	for x in ${funcs} ; do
 		eval "${x}() { die \"\${FUNCNAME}() calls are not allowed in global scope\"; }"
 	done
@@ -101,7 +96,7 @@ unset BASH_ENV
 # earlier portage versions do not detect a version change in this case
 # (9999 to 9999) and therefore they try execute an incompatible version of
 # ebuild.sh during the upgrade.
-export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2} 
+export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
@@ -149,7 +144,7 @@ fi
 
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
-# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex)
+# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (e.g. /usr/lib64/conftest)
 __sb_append_var() {
 	local _v=$1 ; shift
 	local var="SANDBOX_${_v}"
@@ -180,7 +175,7 @@ elif [[ $SANDBOX_ON = 1 ]] ; then
 	unset x
 fi
 
-# the sandbox is disabled by default except when overridden in the relevant stages
+# The sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON=0
 
 # Ensure that $PWD is sane whenever possible, to protect against
@@ -194,8 +189,8 @@ else
 		die "PORTAGE_PYM_PATH does not exist: '${PORTAGE_PYM_PATH}'"
 fi
 
-#if no perms are specified, dirs/files will have decent defaults
-#(not secretive, but not stupid)
+# If no perms are specified, dirs/files will have decent defaults
+# (not secretive, but not stupid)
 umask 022
 
 # Sources all eclasses in parameters
@@ -229,7 +224,7 @@ inherit() {
 	local B_IDEPEND
 	local B_PROPERTIES
 	local B_RESTRICT
-	while [ "$1" ]; do
+	while [[ "$1" ]]; do
 		location=""
 		potential_location=""
 
@@ -263,23 +258,24 @@ inherit() {
 		debug-print "inherit: $1 -> $location"
 		[[ -z ${location} ]] && die "${1}.eclass could not be found by inherit()"
 
-		# inherits in QA checks can't handle metadata assignments
+		# Inherits in QA checks can't handle metadata assignments
 		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
-			#We need to back up the values of *DEPEND to B_*DEPEND
-			#(if set).. and then restore them after the inherit call.
+			# We need to back up the values of *DEPEND to B_*DEPEND
+			# (if set).. and then restore them after the inherit call.
 
-			#turn off glob expansion
+			# Turn off glob expansion
 			set -f
 
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
 			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
-			[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
-			[ "${REQUIRED_USE+set}" = set ] && B_REQUIRED_USE="${REQUIRED_USE}"
-			[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
-			[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
-			[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
-			[ "${BDEPEND+set}"    = set ] && B_BDEPEND="${BDEPEND}"
+			[[ "${IUSE+set}"       = set ]] && B_IUSE="${IUSE}"
+			[[ "${REQUIRED_USE+set}" = set ]] && B_REQUIRED_USE="${REQUIRED_USE}"
+			[[ "${DEPEND+set}"     = set ]] && B_DEPEND="${DEPEND}"
+			[[ "${RDEPEND+set}"    = set ]] && B_RDEPEND="${RDEPEND}"
+			[[ "${PDEPEND+set}"    = set ]] && B_PDEPEND="${PDEPEND}"
+			[[ "${BDEPEND+set}"    = set ]] && B_BDEPEND="${BDEPEND}"
+			[[ "${IDEPEND+set}"    = set ]] && B_IDEPEND="${IDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
@@ -296,41 +292,41 @@ inherit() {
 		fi
 
 		__qa_source "$location" || die "died sourcing $location in inherit()"
-		
+
 		if [[ -z ${_IN_INSTALL_QA_CHECK} ]]; then
-			#turn off glob expansion
+			# Turn off glob expansion
 			set -f
 
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
-			[ "${IUSE+set}"         = set ] && E_IUSE+="${E_IUSE:+ }${IUSE}"
-			[ "${REQUIRED_USE+set}" = set ] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-			[ "${DEPEND+set}"       = set ] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-			[ "${RDEPEND+set}"      = set ] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-			[ "${PDEPEND+set}"      = set ] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-			[ "${BDEPEND+set}"      = set ] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
-			[ "${IDEPEND+set}"      = set ] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
+			[[ "${IUSE+set}"         = set ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[[ "${REQUIRED_USE+set}" = set ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+			[[ "${DEPEND+set}"       = set ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+			[[ "${RDEPEND+set}"      = set ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+			[[ "${PDEPEND+set}"      = set ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+			[[ "${BDEPEND+set}"      = set ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
+			[[ "${IDEPEND+set}"      = set ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
-			[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
-			[ "${B_IUSE+set}"     = set ] || unset IUSE
-			
-			[ "${B_REQUIRED_USE+set}"     = set ] && REQUIRED_USE="${B_REQUIRED_USE}"
-			[ "${B_REQUIRED_USE+set}"     = set ] || unset REQUIRED_USE
+			[[ "${B_IUSE+set}"     = set ]] && IUSE="${B_IUSE}"
+			[[ "${B_IUSE+set}"     = set ]] || unset IUSE
 
-			[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
-			[ "${B_DEPEND+set}"   = set ] || unset DEPEND
+			[[ "${B_REQUIRED_USE+set}"     = set ]] && REQUIRED_USE="${B_REQUIRED_USE}"
+			[[ "${B_REQUIRED_USE+set}"     = set ]] || unset REQUIRED_USE
 
-			[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
-			[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
+			[[ "${B_DEPEND+set}"   = set ]] && DEPEND="${B_DEPEND}"
+			[[ "${B_DEPEND+set}"   = set ]] || unset DEPEND
 
-			[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
-			[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
+			[[ "${B_RDEPEND+set}"  = set ]] && RDEPEND="${B_RDEPEND}"
+			[[ "${B_RDEPEND+set}"  = set ]] || unset RDEPEND
 
-			[ "${B_BDEPEND+set}"  = set ] && BDEPEND="${B_BDEPEND}"
-			[ "${B_BDEPEND+set}"  = set ] || unset BDEPEND
+			[[ "${B_PDEPEND+set}"  = set ]] && PDEPEND="${B_PDEPEND}"
+			[[ "${B_PDEPEND+set}"  = set ]] || unset PDEPEND
 
-			[ "${B_IDEPEND+set}"  = set ] && IDEPEND="${B_IDEPEND}"
-			[ "${B_IDEPEND+set}"  = set ] || unset IDEPEND
+			[[ "${B_BDEPEND+set}"  = set ]] && BDEPEND="${B_BDEPEND}"
+			[[ "${B_BDEPEND+set}"  = set ]] || unset BDEPEND
+
+			[[ "${B_IDEPEND+set}"  = set ]] && IDEPEND="${B_IDEPEND}"
+			[[ "${B_IDEPEND+set}"  = set ]] || unset IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
 				[[ ${PROPERTIES+set} == set ]] &&
@@ -349,7 +345,7 @@ inherit() {
 					unset RESTRICT
 			fi
 
-			#turn on glob expansion
+			# Turn on glob expansion
 			set +f
 
 			if [[ -n ${!__export_funcs_var} ]] ; then
@@ -379,7 +375,7 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
-	if [ -z "$ECLASS" ]; then
+	if [[ -z "$ECLASS" ]]; then
 		die "EXPORT_FUNCTIONS without a defined ECLASS"
 	fi
 	eval $__export_funcs_var+=\" $*\"
@@ -420,8 +416,8 @@ __source_all_bashrcs() {
 		__source_env_files --no-qa "${PM_EBUILD_HOOK_DIR}"
 	fi
 
-	[ ! -z "${OCC}" ] && export CC="${OCC}"
-	[ ! -z "${OCXX}" ] && export CXX="${OCXX}"
+	[[ ! -z "${OCC}" ]] && export CC="${OCC}"
+	[[ ! -z "${OCXX}" ]] && export CXX="${OCXX}"
 }
 
 # @FUNCTION: __source_env_files
@@ -477,7 +473,7 @@ __try_source() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
+# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
 shopt -u extglob
 
 if [[ ${EBUILD_PHASE} == depend ]] ; then
@@ -489,18 +485,19 @@ elif [[ ${EBUILD_PHASE} == clean* ]] ; then
 else
 	QA_INTERCEPTORS="autoconf automake aclocal libtoolize"
 fi
-# level the QA interceptors if we're in depend
+
+# Level the QA interceptors if we're in depend
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
 	for BIN in ${QA_INTERCEPTORS}; do
 		BIN_PATH=$(type -Pf ${BIN})
-		if [ "$?" != "0" ]; then
+		if [[ "$?" != "0" ]]; then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
 		fi
 		if [[ ${EBUILD_PHASE} == depend ]] ; then
 			FUNC_SRC="${BIN}() {
-				if [ \$ECLASS_DEPTH -gt 0 ]; then
+				if [[ \$ECLASS_DEPTH -gt 0 ]]; then
 					eqawarn \"QA Notice: '${BIN}' called in global scope: eclass \${ECLASS}\"
 				else
 					eqawarn \"QA Notice: '${BIN}' called in global scope: \${CATEGORY}/\${PF}\"
@@ -535,7 +532,7 @@ trap 'exit 1' SIGTERM
 
 if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	! [[ $EMERGE_FROM = ebuild && $EBUILD_PHASE = setup ]] && \
-	[ -f "${T}"/environment ] ; then
+	[[ -f "${T}"/environment ]]; then
 	# The environment may have been extracted from environment.bz2 or
 	# may have come from another version of ebuild.sh or something.
 	# In any case, preprocess it to prevent any potential interference.
@@ -557,9 +554,9 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	export SANDBOX_ON=0
 	for x in SANDBOX_DENY SANDBOX_PREDICT SANDBOX_READ SANDBOX_WRITE ; do
 		y="PORTAGE_${x}"
-		if [ -z "${!x}" ] ; then
+		if [[ -z "${!x}" ]]; then
 			export ${x}="${!y}"
-		elif [ -n "${!y}" ] && [ "${!y}" != "${!x}" ] ; then
+		elif [[ -n "${!y}" && "${!y}" != "${!x}" ]]; then
 			# filter out dupes
 			export ${x}="$(printf "${!y}:${!x}" | tr ":" "\0" | \
 				sort -z -u | tr "\0" ":")"
@@ -571,10 +568,6 @@ if ! has "$EBUILD_PHASE" clean cleanrm depend && \
 	export SANDBOX_ON=${PORTAGE_SANDBOX_ON}
 	unset PORTAGE_SANDBOX_ON
 	[[ -n $EAPI ]] || EAPI=0
-fi
-
-if ___eapi_enables_globstar; then
-	shopt -s globstar
 fi
 
 # Convert quoted paths to array.
@@ -626,7 +619,7 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			shopt -u failglob
 		fi
 
-		[ "${EAPI+set}" = set ] || EAPI=0
+		[[ "${EAPI+set}" = set ]] || EAPI=0
 
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
@@ -636,12 +629,13 @@ if ! has "$EBUILD_PHASE" clean cleanrm ; then
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
 
-		# add in dependency info from eclasses
+		# Add in dependency info from eclasses
 		IUSE+="${IUSE:+ }${E_IUSE}"
 		DEPEND+="${DEPEND:+ }${E_DEPEND}"
 		RDEPEND+="${RDEPEND:+ }${E_RDEPEND}"
 		PDEPEND+="${PDEPEND:+ }${E_PDEPEND}"
 		BDEPEND+="${BDEPEND:+ }${E_BDEPEND}"
+		IDEPEND+="${IDEPEND:+ }${E_IDEPEND}"
 		REQUIRED_USE+="${REQUIRED_USE:+ }${E_REQUIRED_USE}"
 
 		if ___eapi_has_accumulated_PROPERTIES; then

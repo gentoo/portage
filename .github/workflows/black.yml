@@ -7,4 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: "Collect stragglers that Black misses"
+        id: stragglers
+        run: |
+          echo "::set-output name=missed::$(
+          find bin runtests -type f -not -name '*.py' -not -name '*.sh' | \
+          xargs grep -l '#!/usr/bin/env python' | tr $'\n' ' ')"
       - uses: psf/black@stable
+        with:
+            src: . ${{ steps.stragglers.outputs.missed }}

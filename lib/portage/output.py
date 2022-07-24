@@ -5,6 +5,7 @@ __docformat__ = "epytext"
 
 import errno
 import io
+import itertools
 import re
 import subprocess
 import sys
@@ -34,56 +35,50 @@ from portage.localization import _
 havecolor = 1
 dotitles = 1
 
-_styles = {}
 """Maps style class to tuple of attribute names."""
+_styles = {}
 
-codes = {}
 """Maps attribute name to ansi code."""
 
 esc_seq = "\x1b["
 
-codes["normal"] = esc_seq + "0m"
-codes["reset"] = esc_seq + "39;49;00m"
-
-codes["bold"] = esc_seq + "01m"
-codes["faint"] = esc_seq + "02m"
-codes["standout"] = esc_seq + "03m"
-codes["underline"] = esc_seq + "04m"
-codes["blink"] = esc_seq + "05m"
-codes["overline"] = esc_seq + "06m"
-codes["reverse"] = esc_seq + "07m"
-codes["invisible"] = esc_seq + "08m"
-
-codes["no-attr"] = esc_seq + "22m"
-codes["no-standout"] = esc_seq + "23m"
-codes["no-underline"] = esc_seq + "24m"
-codes["no-blink"] = esc_seq + "25m"
-codes["no-overline"] = esc_seq + "26m"
-codes["no-reverse"] = esc_seq + "27m"
-
-codes["bg_black"] = esc_seq + "40m"
-codes["bg_darkred"] = esc_seq + "41m"
-codes["bg_darkgreen"] = esc_seq + "42m"
-codes["bg_brown"] = esc_seq + "43m"
-codes["bg_darkblue"] = esc_seq + "44m"
-codes["bg_purple"] = esc_seq + "45m"
-codes["bg_teal"] = esc_seq + "46m"
-codes["bg_lightgray"] = esc_seq + "47m"
-codes["bg_default"] = esc_seq + "49m"
-codes["bg_darkyellow"] = codes["bg_brown"]
+codes = {
+    "normal": f"{esc_seq}0m",
+    "reset": f"{esc_seq}39;49;00m",
+    "bold": f"{esc_seq}01m",
+    "faint": f"{esc_seq}02m",
+    "standout": f"{esc_seq}03m",
+    "underline": f"{esc_seq}04m",
+    "blink": f"{esc_seq}05m",
+    "overline": f"{esc_seq}06m",
+    "reverse": f"{esc_seq}07m",
+    "invisible": f"{esc_seq}08m",
+    "no-attr": f"{esc_seq}22m",
+    "no-standout": f"{esc_seq}23m",
+    "no-underline": f"{esc_seq}24m",
+    "no-blink": f"{esc_seq}25m",
+    "no-overline": f"{esc_seq}26m",
+    "no-reverse": f"{esc_seq}27m",
+    "bg_black": f"{esc_seq}40m",
+    "bg_darkred": f"{esc_seq}41m",
+    "bg_darkgreen": f"{esc_seq}42m",
+    "bg_brown": f"{esc_seq}43m",
+    "bg_darkblue": f"{esc_seq}44m",
+    "bg_purple": f"{esc_seq}45m",
+    "bg_teal": f"{esc_seq}46m",
+    "bg_lightgray": f"{esc_seq}47m",
+    "bg_default": f"{esc_seq}49m",
+    "bg_darkyellow": f"{esc_seq}43m",
+}
 
 
 def color(fg, bg="default", attr=["normal"]):
-    mystr = codes[fg]
-    for x in [bg] + attr:
-        mystr += codes[x]
-    return mystr
+    myansicodechain = itertools.chain((codes[fg]), (codes[x] for x in [bg, *attr]))
+    return "".join(myansicodechain)
 
 
-ansi_codes = []
-for x in range(30, 38):
-    ansi_codes.append("%im" % x)
-    ansi_codes.append("%i;01m" % x)
+ansi_codes = [y for x in range(30, 38) for y in (f"{x}m", f"{x};01m")]
+
 
 rgb_ansi_colors = [
     "0x000000",
@@ -270,7 +265,7 @@ def nc_len(mystr):
 
 
 _legal_terms_re = re.compile(
-    r"^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole)"
+    r"^(xterm|xterm-color|Eterm|aterm|rxvt|screen|kterm|rxvt-unicode|gnome|interix|tmux|st-256color|alacritty|konsole|foot)"
 )
 _disable_xtermTitle = None
 _max_xtermTitle_len = 253

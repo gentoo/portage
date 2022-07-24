@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -6,17 +6,17 @@ import os
 import re
 import sys
 
-here_doc_re = re.compile(br".*\s<<[-]?(\w+)$")
-func_start_re = re.compile(br"^[-\w]+\s*\(\)\s*$")
-func_end_re = re.compile(br"^\}$")
+here_doc_re = re.compile(rb".*\s<<[-]?(\w+)$")
+func_start_re = re.compile(rb"^[-\w]+\s*\(\)\s*$")
+func_end_re = re.compile(rb"^\}$")
 
 var_assign_re = re.compile(
-    br'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$'
+    rb'(^|^declare\s+-\S+\s+|^declare\s+|^export\s+)([^=\s]+)=("|\')?.*$'
 )
-close_quote_re = re.compile(br'(\\"|"|\')\s*$')
-readonly_re = re.compile(br"^declare\s+-(\S*)r(\S*)\s+")
+close_quote_re = re.compile(rb'(\\"|"|\')\s*$')
+readonly_re = re.compile(rb"^declare\s+-(\S*)r(\S*)\s+")
 # declare without assignment
-var_declare_re = re.compile(br"^declare(\s+-\S+)?\s+([^=\s]+)\s*$")
+var_declare_re = re.compile(rb"^declare(\s+-\S+)?\s+([^=\s]+)\s*$")
 
 
 def have_end_quote(quote, line):
@@ -146,8 +146,8 @@ if __name__ == "__main__":
     var_pattern = os.fsencode(args[0]).split()
 
     # Filter invalid variable names that are not supported by bash.
-    var_pattern.append(br"\d.*")
-    var_pattern.append(br".*\W.*")
+    var_pattern.append(rb"\d.*")
+    var_pattern.append(rb".*\W.*")
 
     var_pattern = b"^(" + b"|".join(var_pattern) + b")$"
     filter_bash_environment(re.compile(var_pattern), file_in, file_out)

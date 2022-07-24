@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -161,8 +161,6 @@ class OptionsClass:
                 self.DOCDESTTREE = normalize_path(self.DOCDESTTREE)
 
         self.allowed_exts = ["css", "gif", "htm", "html", "jpeg", "jpg", "js", "png"]
-        if os.environ.get("EAPI", "0") in ("4-python", "5-progress"):
-            self.allowed_exts += ["ico", "svg", "xhtml", "xml"]
         self.allowed_files = []
         self.disallowed_dirs = ["CVS"]
         self.recurse = False

@@ -25,14 +25,14 @@ has strip ${PORTAGE_RESTRICT} && PORTAGE_DOSTRIP=()
 declare -a PORTAGE_DOSTRIP_SKIP=()
 
 into() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_DESTTREE_=""
 	else
 		export _E_DESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_DESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_DESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -48,14 +48,14 @@ into() {
 }
 
 insinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_INSDESTTREE_=""
 	else
 		export _E_INSDESTTREE_=$1
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_INSDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_INSDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -71,14 +71,14 @@ insinto() {
 }
 
 exeinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_EXEDESTTREE_=""
 	else
 		export _E_EXEDESTTREE_="$1"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/${_E_EXEDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/${_E_EXEDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -90,14 +90,14 @@ exeinto() {
 }
 
 docinto() {
-	if [ "$1" == "/" ]; then
+	if [[ "$1" == "/" ]]; then
 		export _E_DOCDESTTREE_=""
 	else
 		export _E_DOCDESTTREE_="$1"
 		if ! ___eapi_has_prefix_variables; then
 			local ED=${D}
 		fi
-		if [ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]; then
+		if [[ ! -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}" ]]; then
 			install -d "${ED%/}/usr/share/doc/${PF}/${_E_DOCDESTTREE_#/}"
 			local ret=$?
 			if [[ $ret -ne 0 ]] ; then
@@ -223,7 +223,7 @@ use() {
 	local u=$1
 	local found=0
 
-	# if we got something like '!flag', then invert the return value
+	# If we got something like '!flag', then invert the return value
 	if [[ ${u:0:1} == "!" ]] ; then
 		u=${u:1}
 		found=1
@@ -246,7 +246,7 @@ use() {
 		[[ -n ${EBUILD_PHASE} && -n ${PORTAGE_INTERNAL_CALLER} ]] ; then
 		if ! ___in_portage_iuse "${u}"; then
 			if [[ ${EMERGE_FROM} != binary &&
-				! ${EAPI} =~ ^(0|1|2|3|4|4-python|4-slot-abi)$ ]] ; then
+				! ${EAPI} =~ ^(0|1|2|3|4|4-slot-abi)$ ]] ; then
 				# This is only strict starting with EAPI 5, since implicit IUSE
 				# is not well defined for earlier EAPIs (see bug #449708).
 				die "USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}"
@@ -268,7 +268,7 @@ use() {
 }
 
 use_with() {
-	if [ -z "$1" ]; then
+	if [[ -z "$1" ]]; then
 		echo "!!! use_with() called without a parameter." >&2
 		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -290,7 +290,7 @@ use_with() {
 }
 
 use_enable() {
-	if [ -z "$1" ]; then
+	if [[ -z "$1" ]]; then
 		echo "!!! use_enable() called without a parameter." >&2
 		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return 1
@@ -318,7 +318,7 @@ unpack() {
 	local suffix suffix_insensitive
 	local myfail
 	local eapi=${EAPI:-0}
-	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
+	[[ -z "$*" ]] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
 		__vecho ">>> Unpacking ${x} to ${PWD}"
@@ -436,7 +436,7 @@ unpack() {
 				if ___eapi_unpack_supports_7z; then
 					local my_output
 					my_output="$(7z x -y "${srcdir}${x}")"
-					if [ $? -ne 0 ]; then
+					if [[ $? -ne 0 ]]; then
 						echo "${my_output}" >&2
 						die "$myfail"
 					fi
@@ -497,7 +497,7 @@ unpack() {
 					type -P deb2targz > /dev/null; then
 					y=${x##*/}
 					local created_symlink=0
-					if [ ! "$srcdir$x" -ef "$y" ] ; then
+					if [[ ! "$srcdir$x" -ef "$y" ]]; then
 						# deb2targz always extracts into the same directory as
 						# the source file, so create a symlink in the current
 						# working directory if necessary.
@@ -505,7 +505,7 @@ unpack() {
 						created_symlink=1
 					fi
 					deb2targz "$y" || die "$myfail"
-					if [ $created_symlink = 1 ] ; then
+					if [[ $created_symlink = 1 ]]; then
 						# Clean up the symlink so the ebuild
 						# doesn't inadvertently install it.
 						rm -f "$y"
@@ -594,7 +594,7 @@ econf() {
 	fi
 
 	: ${ECONF_SOURCE:=.}
-	if [ -x "${ECONF_SOURCE}/configure" ]; then
+	if [[ -x "${ECONF_SOURCE}/configure" ]]; then
 		if [[ -n $CONFIG_SHELL && \
 			"$(head -n1 "$ECONF_SOURCE/configure")" =~ ^'#!'[[:space:]]*/bin/sh([[:space:]]|$) ]] ; then
 			cp -p "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
@@ -602,11 +602,11 @@ econf() {
 				-e "1s:^#![[:space:]]*/bin/sh:#!$CONFIG_SHELL:" \
 				"${ECONF_SOURCE}/configure._portage_tmp_.${pid}" \
 				|| die "Substition of shebang in '${ECONF_SOURCE}/configure' failed"
-			# preserve timestamp, see bug #440304
+			# Preserve timestamp, see bug #440304
 			touch -r "${ECONF_SOURCE}/configure" "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" || die
 			mv -f "${ECONF_SOURCE}/configure._portage_tmp_.${pid}" "${ECONF_SOURCE}/configure" || die
 		fi
-		if [ -e "${EPREFIX}"/usr/share/gnuconfig/ ]; then
+		if [[ -e "${EPREFIX}"/usr/share/gnuconfig/ ]]; then
 			find "${WORKDIR}" -type f '(' \
 			-name config.guess -o -name config.sub ')' -print0 | \
 			while read -r -d $'\0' x ; do
@@ -663,8 +663,8 @@ econf() {
 			fi
 		fi
 
-		# if the profile defines a location to install libs to aside from default, pass it on.
-		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
+		# If the profile defines a location to install libs to aside from default, pass it on.
+		# If the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
 		if [[ -n ${ABI} && -n ${!LIBDIR_VAR} ]] ; then
 			CONF_LIBDIR=${!LIBDIR_VAR}
@@ -701,7 +701,7 @@ econf() {
 
 		if ! "${ECONF_SOURCE}/configure" "$@" ; then
 
-			if [ -s config.log ]; then
+			if [[ -s config.log ]]; then
 				echo
 				echo "!!! Please attach the following file when seeking support:"
 				echo "!!! ${PWD}/config.log"
@@ -711,7 +711,7 @@ econf() {
 			__helpers_die "econf failed"
 			return 1
 		fi
-	elif [ -f "${ECONF_SOURCE}/configure" ]; then
+	elif [[ -f "${ECONF_SOURCE}/configure" ]]; then
 		die "configure is not executable"
 	else
 		die "no configure script found"
@@ -730,11 +730,11 @@ einstall() {
 		local ED=${D}
 	fi
 	LIBDIR_VAR="LIBDIR_${ABI}"
-	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+	if [[ -n "${ABI}" && -n "${!LIBDIR_VAR}" ]]; then
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
+	if [[ -n "${CONF_LIBDIR}" && "${CONF_PREFIX:+set}" = set ]]; then
 		EI_DESTLIBDIR="${D%/}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(__strip_duplicate_slashes "${EI_DESTLIBDIR}")"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
@@ -742,7 +742,7 @@ einstall() {
 	fi
 
 	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
-		if [ "${PORTAGE_DEBUG}" == "1" ]; then
+		if [[ "${PORTAGE_DEBUG}" == "1" ]]; then
 			${MAKE:-make} -n prefix="${ED%/}/usr" \
 				datadir="${ED%/}/usr/share" \
 				infodir="${ED%/}/usr/share/info" \
@@ -786,7 +786,7 @@ __eapi0_src_unpack() {
 }
 
 __eapi0_src_compile() {
-	if [ -x ./configure ] ; then
+	if [[ -x ./configure ]]; then
 		econf
 	fi
 	__eapi2_src_compile
@@ -830,7 +830,7 @@ __eapi2_src_configure() {
 }
 
 __eapi2_src_compile() {
-	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]]; then
 		emake || die "emake failed"
 	fi
 }
@@ -892,7 +892,7 @@ ___best_version_and_has_version_common() {
 	esac
 	atom=$1
 	shift
-	[ $# -gt 0 ] && die "${FUNCNAME[1]}: unused argument(s): $*"
+	[[ $# -gt 0 ]] && die "${FUNCNAME[1]}: unused argument(s): $*"
 
 	case ${root_arg} in
 		"") if ___eapi_has_prefix_variables; then
@@ -906,7 +906,7 @@ ___best_version_and_has_version_common() {
 			fi
 			if ___eapi_has_prefix_variables; then
 				# Since portageq requires the root argument be consistent
-				# with EPREFIX, ensure consistency here (bug 655414).
+				# with EPREFIX, ensure consistency here (bug #655414).
 				root=/${PORTAGE_OVERRIDE_EPREFIX#/}
 				cmd+=(env EPREFIX="${PORTAGE_OVERRIDE_EPREFIX}")
 			else
@@ -1056,7 +1056,7 @@ if ___eapi_has_eapply; then
 				-p1 -f -g0 --no-backup-if-mismatch
 				"${patch_options[@]}"
 			)
-			# try applying with -F0 first, output a verbose warning
+			# Try applying with -F0 first, output a verbose warning
 			# if fuzz factor is necessary
 			if ${patch_cmd} "${all_opts[@]}" --dry-run -s -F0 \
 					< "${f}" &>/dev/null; then
@@ -1148,7 +1148,7 @@ if ___eapi_has_eapply_user; then
 	eapply_user() {
 		[[ ${EBUILD_PHASE} == prepare ]] || \
 			die "eapply_user() called during invalid phase: ${EBUILD_PHASE}"
-		# keep path in __dyn_prepare in sync!
+		# Keep path in __dyn_prepare in sync!
 		local tagfile=${T}/.portage_user_patches_applied
 		[[ -f ${tagfile} ]] && return
 		>> "${tagfile}"
@@ -1224,171 +1224,5 @@ if ___eapi_has_in_iuse; then
 		local liuse=( ${IUSE_EFFECTIVE} )
 
 		has "${use}" "${liuse[@]#[+-]}"
-	}
-fi
-
-if ___eapi_has_master_repositories; then
-	master_repositories() {
-		local output repository=$1 retval
-		shift
-		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-			"${PORTAGE_BIN_PATH}/ebuild-ipc" master_repositories "${EROOT}" "${repository}"
-		else
-			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" master_repositories "${EROOT}" "${repository}")
-		fi
-		retval=$?
-		[[ -n ${output} ]] && echo "${output}"
-		case "${retval}" in
-			0|1)
-				return ${retval}
-				;;
-			2)
-				die "${FUNCNAME[0]}: invalid repository: ${repository}"
-				;;
-			*)
-				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-				else
-					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-				fi
-				;;
-		esac
-	}
-fi
-
-if ___eapi_has_repository_path; then
-	repository_path() {
-		local output repository=$1 retval
-		shift
-		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-			"${PORTAGE_BIN_PATH}/ebuild-ipc" repository_path "${EROOT}" "${repository}"
-		else
-			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" get_repo_path "${EROOT}" "${repository}")
-		fi
-		retval=$?
-		[[ -n ${output} ]] && echo "${output}"
-		case "${retval}" in
-			0|1)
-				return ${retval}
-				;;
-			2)
-				die "${FUNCNAME[0]}: invalid repository: ${repository}"
-				;;
-			*)
-				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-				else
-					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-				fi
-				;;
-		esac
-	}
-fi
-
-if ___eapi_has_available_eclasses; then
-	available_eclasses() {
-		local output repository=${PORTAGE_REPO_NAME} retval
-		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-			"${PORTAGE_BIN_PATH}/ebuild-ipc" available_eclasses "${EROOT}" "${repository}"
-		else
-			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" available_eclasses "${EROOT}" "${repository}")
-		fi
-		retval=$?
-		[[ -n ${output} ]] && echo "${output}"
-		case "${retval}" in
-			0|1)
-				return ${retval}
-				;;
-			2)
-				die "${FUNCNAME[0]}: invalid repository: ${repository}"
-				;;
-			*)
-				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-				else
-					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-				fi
-				;;
-		esac
-	}
-fi
-
-if ___eapi_has_eclass_path; then
-	eclass_path() {
-		local eclass=$1 output repository=${PORTAGE_REPO_NAME} retval
-		shift
-		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-			"${PORTAGE_BIN_PATH}/ebuild-ipc" eclass_path "${EROOT}" "${repository}" "${eclass}"
-		else
-			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" eclass_path "${EROOT}" "${repository}" "${eclass}")
-		fi
-		retval=$?
-		[[ -n ${output} ]] && echo "${output}"
-		case "${retval}" in
-			0|1)
-				return ${retval}
-				;;
-			2)
-				die "${FUNCNAME[0]}: invalid repository: ${repository}"
-				;;
-			*)
-				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-				else
-					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-				fi
-				;;
-		esac
-	}
-fi
-
-if ___eapi_has_license_path; then
-	license_path() {
-		local license=$1 output repository=${PORTAGE_REPO_NAME} retval
-		shift
-		[[ $# -gt 0 ]] && die "${FUNCNAME[0]}: unused argument(s): $*"
-
-		if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-			"${PORTAGE_BIN_PATH}/ebuild-ipc" license_path "${EROOT}" "${repository}" "${license}"
-		else
-			output=$("${PORTAGE_BIN_PATH}/ebuild-helpers/portageq" license_path "${EROOT}" "${repository}" "${license}")
-		fi
-		retval=$?
-		[[ -n ${output} ]] && echo "${output}"
-		case "${retval}" in
-			0|1)
-				return ${retval}
-				;;
-			2)
-				die "${FUNCNAME[0]}: invalid repository: ${repository}"
-				;;
-			*)
-				if [[ -n ${PORTAGE_IPC_DAEMON} ]]; then
-					die "${FUNCNAME[0]}: unexpected ebuild-ipc exit code: ${retval}"
-				else
-					die "${FUNCNAME[0]}: unexpected portageq exit code: ${retval}"
-				fi
-				;;
-		esac
-	}
-fi
-
-if ___eapi_has_package_manager_build_user; then
-	package_manager_build_user() {
-		echo "${PORTAGE_BUILD_USER}"
-	}
-fi
-
-if ___eapi_has_package_manager_build_group; then
-	package_manager_build_group() {
-		echo "${PORTAGE_BUILD_GROUP}"
 	}
 fi

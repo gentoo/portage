@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 2013-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -6,6 +6,7 @@ import signal
 import sys
 
 import portage
+
 portage._internal_caller = True
 portage._disable_legacy_globals()
 from portage._emirrordist.main import emirrordist_main
@@ -13,13 +14,14 @@ from portage.util._eventloop.global_event_loop import global_event_loop
 
 if __name__ == "__main__":
 
-	def debug_signal(_signum, _frame):
-		import pdb
-		pdb.set_trace()
+    def debug_signal(_signum, _frame):
+        import pdb
 
-	signal.signal(signal.SIGUSR1, debug_signal)
+        pdb.set_trace()
 
-	try:
-		sys.exit(emirrordist_main(sys.argv[1:]))
-	finally:
-		global_event_loop().close()
+    signal.signal(signal.SIGUSR1, debug_signal)
+
+    try:
+        sys.exit(emirrordist_main(sys.argv[1:]))
+    finally:
+        global_event_loop().close()

@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -7,14 +7,21 @@ import os
 import sys
 
 from os import path as osp
-if osp.isfile(osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")):
-	sys.path.insert(0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib"))
+
+if osp.isfile(
+    osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), ".portage_not_installed")
+):
+    sys.path.insert(
+        0, osp.join(osp.dirname(osp.dirname(osp.realpath(__file__))), "lib")
+    )
 import portage
+
 portage._internal_caller = True
 from portage import os
 from portage.output import EOutput
 from textwrap import wrap
 from portage._global_updates import _global_updates
+
 mysettings = portage.settings
 mytrees = portage.db
 mtimedb = portage.mtimedb
@@ -26,22 +33,25 @@ description = " ".join(description.split())
 parser = argparse.ArgumentParser(description=description)
 parser.parse_args()
 
-if mysettings['ROOT'] != "/":
-	out = EOutput()
-	msg = "The fixpackages program is not intended for use with " + \
-		"ROOT != \"/\". Instead use `emaint --fix movebin` and/or " + \
-		"`emaint --fix moveinst."
-	for line in wrap(msg, 72):
-		out.eerror(line)
-	sys.exit(1)
+if mysettings["ROOT"] != "/":
+    out = EOutput()
+    msg = (
+        "The fixpackages program is not intended for use with "
+        + 'ROOT != "/". Instead use `emaint --fix movebin` and/or '
+        + "`emaint --fix moveinst."
+    )
+    for line in wrap(msg, 72):
+        out.eerror(line)
+    sys.exit(1)
 
 try:
-	os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
+    os.nice(int(mysettings.get("PORTAGE_NICENESS", "0")))
 except (OSError, ValueError) as e:
-	portage.writemsg("!!! Failed to change nice value to '%s'\n" % \
-		mysettings["PORTAGE_NICENESS"])
-	portage.writemsg("!!! %s\n" % str(e))
-	del e
+    portage.writemsg(
+        "!!! Failed to change nice value to '%s'\n" % mysettings["PORTAGE_NICENESS"]
+    )
+    portage.writemsg("!!! %s\n" % str(e))
+    del e
 
 _global_updates(mytrees, mtimedb["updates"], if_mtime_changed=False)
 

@@ -56,18 +56,18 @@ class StaticFileSet(EditablePackageSet):
         value = []
         for line in metadata:
             line = line.strip()
-            if len(line) == 0 and key != None:
+            if len(line) == 0 and key is not None:
                 setattr(self, key, " ".join(value))
                 key = None
-            elif line[-1] == ":" and key == None:
+            elif line[-1] == ":" and key is None:
                 key = line[:-1].lower()
                 value = []
-            elif key != None:
+            elif key is not None:
                 value.append(line)
             else:
                 pass
         else:
-            if key != None:
+            if key is not None:
                 setattr(self, key, " ".join(value))
 
     def _validate(self, atom):

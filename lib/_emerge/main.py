@@ -81,7 +81,7 @@ shortmapping = {
 
 COWSAY_MOO = r"""
 
-  Larry loves Gentoo (%s)
+  Larry loves Gentoo ({})
 
  _______________________
 < Have you mooed today? >
@@ -97,7 +97,7 @@ COWSAY_MOO = r"""
 
 def multiple_actions(action1, action2):
     sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
-    sys.stderr.write("!!! '%s' or '%s'\n\n" % (action1, action2))
+    sys.stderr.write(f"!!! '{action1}' or '{action2}'\n\n")
     sys.exit(1)
 
 
@@ -745,7 +745,7 @@ def parse_opts(tmpcmdline, silent=False):
 
     for action_opt in actions:
         parser.add_argument(
-            "--" + action_opt,
+            f"--{action_opt}",
             action="store_true",
             dest=action_opt.replace("-", "_"),
             default=False,
@@ -759,7 +759,7 @@ def parse_opts(tmpcmdline, silent=False):
         )
     for shortopt, longopt in shortmapping.items():
         parser.add_argument(
-            "-" + shortopt,
+            f"-{shortopt}",
             action="store_true",
             dest=longopt.lstrip("--").replace("-", "_"),
             default=False,
@@ -832,9 +832,9 @@ def parse_opts(tmpcmdline, silent=False):
     if myoptions.buildpkg_exclude:
         bad_atoms = _find_bad_atoms(myoptions.buildpkg_exclude, less_strict=True)
         if bad_atoms and not silent:
+            invalid_atoms = ",".join(bad_atoms)
             parser.error(
-                "Invalid Atom(s) in --buildpkg-exclude parameter: '%s'\n"
-                % (",".join(bad_atoms),)
+                f"Invalid Atom(s) in --buildpkg-exclude parameter: '{invalid_atoms}'\n"
             )
 
     if myoptions.changed_deps is not None:
@@ -876,52 +876,23 @@ def parse_opts(tmpcmdline, silent=False):
     if myoptions.depclean_lib_check in true_y:
         myoptions.depclean_lib_check = True
 
-    if myoptions.exclude:
-        bad_atoms = _find_bad_atoms(myoptions.exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
+    candidate_bad_options = (
+        (myoptions.exclude, "exclude"),
+        (myoptions.reinstall_atoms, "reinstall-atoms"),
+        (myoptions.rebuild_exclude, "rebuild-exclude"),
+        (myoptions.rebuild_ignore, "rebuild-ignore"),
+        (myoptions.usepkg_exclude, "usepkg-exclude"),
+        (myoptions.useoldpkg_atoms, "useoldpkg-atoms"),
+    )
+    bad_options = (
+        (_find_bad_atoms(atoms), flag) for atoms, flag in candidate_bad_options if atoms
+    )
 
-    if myoptions.reinstall_atoms:
-        bad_atoms = _find_bad_atoms(myoptions.reinstall_atoms)
+    for bad_atoms, flag in bad_options:
         if bad_atoms and not silent:
+            invalid_atoms = ",".join(bad_atoms)
             parser.error(
-                "Invalid Atom(s) in --reinstall-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.rebuild_exclude:
-        bad_atoms = _find_bad_atoms(myoptions.rebuild_exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --rebuild-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.rebuild_ignore:
-        bad_atoms = _find_bad_atoms(myoptions.rebuild_ignore)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --rebuild-ignore parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.usepkg_exclude:
-        bad_atoms = _find_bad_atoms(myoptions.usepkg_exclude)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --usepkg-exclude parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
-            )
-
-    if myoptions.useoldpkg_atoms:
-        bad_atoms = _find_bad_atoms(myoptions.useoldpkg_atoms)
-        if bad_atoms and not silent:
-            parser.error(
-                "Invalid Atom(s) in --useoldpkg-atoms parameter: '%s' (only package names and slot atoms (with wildcards) allowed)\n"
-                % (",".join(bad_atoms),)
+                f"Invalid Atom(s) in --{flag} parameter: '{invalid_atoms}' (only package names and slot atoms (with wildcards) allowed)\n"
             )
 
     if myoptions.fail_clean in true_y:
@@ -1014,7 +985,7 @@ def parse_opts(tmpcmdline, silent=False):
             backtrack = None
             if not silent:
                 parser.error(
-                    "Invalid --backtrack parameter: '%s'\n" % (myoptions.backtrack,)
+                    f"Invalid --backtrack parameter: '{myoptions.backtrack}'\n"
                 )
 
         myoptions.backtrack = backtrack
@@ -1032,7 +1003,7 @@ def parse_opts(tmpcmdline, silent=False):
         if deep is not True and deep < 0:
             deep = None
             if not silent:
-                parser.error("Invalid --deep parameter: '%s'\n" % (myoptions.deep,))
+                parser.error(f"Invalid --deep parameter: '{myoptions.deep}'\n")
 
         myoptions.deep = deep
 
@@ -1049,7 +1020,7 @@ def parse_opts(tmpcmdline, silent=False):
         if jobs is not True and jobs < 1:
             jobs = None
             if not silent:
-                parser.error("Invalid --jobs parameter: '%s'\n" % (myoptions.jobs,))
+                parser.error(f"Invalid --jobs parameter: '{myoptions.jobs}'\n")
 
         myoptions.jobs = jobs
 
@@ -1066,8 +1037,7 @@ def parse_opts(tmpcmdline, silent=False):
             load_average = None
             if not silent:
                 parser.error(
-                    "Invalid --load-average parameter: '%s'\n"
-                    % (myoptions.load_average,)
+                    f"Invalid --load-average parameter: '{myoptions.load_average}'\n"
                 )
 
         myoptions.load_average = load_average
@@ -1082,8 +1052,7 @@ def parse_opts(tmpcmdline, silent=False):
             rebuilt_binaries_timestamp = 0
             if not silent:
                 parser.error(
-                    "Invalid --rebuilt-binaries-timestamp parameter: '%s'\n"
-                    % (myoptions.rebuilt_binaries_timestamp,)
+                    f"Invalid --rebuilt-binaries-timestamp parameter: '{myoptions.rebuilt_binaries_timestamp}'\n"
                 )
 
         myoptions.rebuilt_binaries_timestamp = rebuilt_binaries_timestamp
@@ -1093,14 +1062,12 @@ def parse_opts(tmpcmdline, silent=False):
             search_similarity = float(myoptions.search_similarity)
         except ValueError:
             parser.error(
-                "Invalid --search-similarity parameter "
-                "(not a number): '{}'\n".format(myoptions.search_similarity)
+                f"Invalid --search-similarity parameter (not a number): '{myoptions.search_similarity}'\n"
             )
 
         if search_similarity < 0 or search_similarity > 100:
             parser.error(
-                "Invalid --search-similarity parameter "
-                "(not between 0 and 100): '{}'\n".format(myoptions.search_similarity)
+                f"Invalid --search-similarity parameter (not between 0 and 100): '{myoptions.search_similarity}'\n"
             )
 
         myoptions.search_similarity = search_similarity
@@ -1181,7 +1148,7 @@ def profile_check(trees, myaction):
             "--help, --info, --search, --sync, and --version."
         )
         writemsg_level(
-            "".join("!!! %s\n" % l for l in textwrap.wrap(msg, 70)),
+            "".join(f"!!! {l}\n" for l in textwrap.wrap(msg, 70)),
             level=logging.ERROR,
             noiselevel=-1,
         )
@@ -1203,7 +1170,7 @@ def emerge_main(args=None):
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
-        writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
+        writemsg_level(f"setlocale: {e}\n", level=logging.WARN)
 
     # Disable color until we're sure that it should be enabled (after
     # EMERGE_DEFAULT_OPTS has been parsed).
@@ -1234,7 +1201,7 @@ def emerge_main(args=None):
         emerge_help()
         return os.EX_OK
     if myaction == "moo":
-        print(COWSAY_MOO % platform.system())
+        print(COWSAY_MOO.format(platform.system()))
         return os.EX_OK
     if myaction == "sync":
         # need to set this to True now in order for the repository config
@@ -1268,12 +1235,10 @@ def emerge_main(args=None):
             1: dev_null.fileno(),
             2: dev_null.fileno(),
         }
-        if (
-            portage.process.spawn_bash(
-                "[[ $(< <(echo foo) ) == foo ]]", fd_pipes=fd_pipes
-            )
-            != 0
-        ):
+        exit_code = portage.process.spawn_bash(
+            "[[ $(< <(echo foo) ) == foo ]]", fd_pipes=fd_pipes
+        )
+        if exit_code != 0:
             writemsg_level(
                 "Failed to validate a sane '/dev'.\n"
                 "bash process substitution doesn't work; this may be an "
@@ -1311,7 +1276,7 @@ def emerge_main(args=None):
     try:
         locale.setlocale(locale.LC_ALL, "")
     except locale.Error as e:
-        writemsg_level("setlocale: %s\n" % e, level=logging.WARN)
+        writemsg_level(f"setlocale: {e}\n", level=logging.WARN)
 
     tmpcmdline = []
     if "--ignore-default-opts" not in myopts:

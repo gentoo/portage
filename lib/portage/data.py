@@ -9,6 +9,7 @@ import pwd
 from portage.const import PORTAGE_GROUPNAME, PORTAGE_USERNAME, EPREFIX
 
 import portage
+from portage.localization import _
 
 portage.proxy.lazyimport.lazyimport(
     globals(),
@@ -17,17 +18,12 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util.path:first_existing",
     "subprocess",
 )
-from portage.localization import _
 
 ostype = platform.system()
-userland = None
-# Prefix always has USERLAND=GNU, even on
-# FreeBSD, OpenBSD and Darwin (thank the lord!).
-# Hopefully this entire USERLAND hack can go once
+userland = "GNU"
+# PREFIX LOCAL: Prefix always has USERLAND=GNU
 if EPREFIX == "" and (ostype == "DragonFly" or ostype.endswith("BSD")):
     userland = "BSD"
-else:
-    userland = "GNU"
 
 lchown = getattr(os, "lchown", None)
 
@@ -82,17 +78,17 @@ def _target_root():
         # Handle either empty or unset ROOT.
         root = os.sep
     root = portage.util.normalize_path(root)
-    return root.rstrip(os.sep) + os.sep
+    return f"{root.rstrip(os.sep)}{os.sep}"
 
 
 def portage_group_warning():
     warn_prefix = colorize("BAD", "*** WARNING ***  ")
-    mylines = [
+    mylines = (
         "For security reasons, only system administrators should be",
         "allowed in the portage group.  Untrusted users or processes",
         "can potentially exploit the portage group for attacks such as",
         "local privilege escalation.",
-    ]
+    )
     for x in mylines:
         writemsg(warn_prefix, noiselevel=-1)
         writemsg(x, noiselevel=-1)
@@ -144,7 +140,6 @@ def _get_global(k):
         return globals()[k]
 
     if k == "secpass":
-
         unprivileged = False
         if hasattr(portage, "settings"):
             unprivileged = "unprivileged" in portage.settings.features
@@ -162,15 +157,12 @@ def _get_global(k):
                 unprivileged = _unprivileged_mode(eroot_or_parent, eroot_st)
 
         v = 0
-        if uid == 0:
-            v = 2
-        elif unprivileged:
+        if uid == 0 or unprivileged:
             v = 2
         elif _get_global("portage_gid") in os.getgroups():
             v = 1
 
     elif k in ("portage_gid", "portage_uid"):
-
         # Discover the uid and gid of the portage user/group
         keyerror = False
         try:
@@ -231,36 +223,38 @@ def _get_global(k):
             # Get a list of group IDs for the portage user. Do not use
             # grp.getgrall() since it is known to trigger spurious
             # SIGPIPE problems with nss_ldap.
-            cmd = ["id", "-G", _portage_username]
-
             encoding = portage._encodings["content"]
-            cmd = [
+            cmd = (
                 portage._unicode_encode(x, encoding=encoding, errors="strict")
-                for x in cmd
-            ]
+                for x in ("id", "-G", _portage_username)
+            )
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
             )
             myoutput = proc.communicate()[0]
             status = proc.wait()
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-                for x in portage._unicode_decode(
-                    myoutput, encoding=encoding, errors="strict"
-                ).split():
+
+                def check(x):
                     try:
-                        v.append(int(x))
+                        return int(x)
                     except ValueError:
-                        pass
-                v = sorted(set(v))
+                        return None
+
+                unicode_decode = portage._unicode_decode(
+                    myoutput, encoding=encoding, errors="strict"
+                )
+                checked_v = (check(x) for x in unicode_decode.split())
+                filtered_v = (x for x in checked_v if x)
+                v = sorted(set(filtered_v))
 
     # Avoid instantiating portage.settings when the desired
     # variable is set in os.environ.
     elif k in ("_portage_grpname", "_portage_username"):
-        v = None
+        v = "portage"
+        env_key = "PORTAGE_USERNAME"
         if k == "_portage_grpname":
             env_key = "PORTAGE_GRPNAME"
-        else:
-            env_key = "PORTAGE_USERNAME"
 
         if env_key in os.environ:
             v = os.environ[env_key]
@@ -292,14 +286,6 @@ def _get_global(k):
                             pass
                         else:
                             v = pwd_struct.pw_name
-
-        if v is None:
-            # PREFIX LOCAL: use var iso hardwired 'portage'
-            if k == '_portage_grpname':
-                v = PORTAGE_GROUPNAME
-            else:
-                v = PORTAGE_USERNAME
-            # END PREFIX LOCAL
     else:
         raise AssertionError("unknown name: %s" % k)
 
@@ -309,7 +295,6 @@ def _get_global(k):
 
 
 class _GlobalProxy(portage.proxy.objectproxy.ObjectProxy):
-
     __slots__ = ("_name",)
 
     def __init__(self, name):
@@ -365,9 +350,7 @@ def _init(settings):
 
     if "secpass" not in _initialized_globals:
         v = 0
-        if uid == 0:
-            v = 2
-        elif "unprivileged" in settings.features:
+        if uid == 0 or "unprivileged" in settings.features:
             v = 2
         elif portage_gid in os.getgroups():
             v = 1

@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "May 2021" "Portage VERSION" "Portage"
+.TH "EBUILD" "5" "July 2022" "Portage VERSION" "Portage"
 
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
@@ -9,7 +9,8 @@ This script contains variables and commands that specify how to download,
 unpack, patch, compile, install and merge a particular software package from
 its original sources.  In addition to all of this, the ebuild script can also
 contain pre/post install/remove commands, as required.  All ebuild scripts are
-written in bash.
+written in bash.  The minimum version of Bash for an ebuild depends on the
+EAPI version.
 
 .SS "Dependencies"
 A \fIdepend atom\fR is simply a dependency that is used by portage when
@@ -22,9 +23,9 @@ category/packagename is a \fI"catpkg"\fR. You will find this shorthand\-name
 used frequently in Gentoo. Here are some base atoms, a.k.a \fI"catpkgs"\fR:
 
 .nf
+.I 	net\-misc/dhcp
 .I 	sys\-apps/sed
 .I 	sys\-libs/zlib
-.I 	net\-misc/dhcp
 .fi
 .TP
 .B Atom Versions
@@ -131,9 +132,9 @@ delimited by a \fI/\fR character.
 
 \fBExamples\fR:
 .nf
+	dev\-lang/perl:0/5.12
 	dev\-libs/icu:0/0
 	dev\-libs/icu:0/49
-	dev\-lang/perl:0/5.12
 	dev\-libs/glib:2/2.30
 .fi
 .TP
@@ -150,9 +151,9 @@ a different matching package in a different slot.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:*
 	dev\-lang/perl:*
-	dev-libs/glib:*
+	dev\-libs/glib:*
+	dev\-libs/icu:*
 .fi
 .TP
 .I =
@@ -164,9 +165,9 @@ time the package was installed is available.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:=
+	dev\-libs/glib:=
 	dev\-lang/perl:=
-	dev-libs/glib:=
+	dev\-libs/icu:=
 .fi
 .TP
 .I slot=
@@ -175,9 +176,9 @@ otherwise behaves identically to the plain equals slot operator.
 
 \fBExamples\fR:
 .nf
-	dev\-libs/icu:0=
 	dev\-lang/perl:0=
-	dev-libs/glib:2=
+	dev\-libs/glib:2=
+	dev\-libs/icu:0=
 .fi
 .PP
 To implement the equals slot operator, the package manager
@@ -193,10 +194,10 @@ the regular slot).
 
 \fBExamples\fR:
 .nf
+	dev\-lang/perl:0/5.12=
+	dev\-libs/glib:2/2.30=
 	dev\-libs/icu:0/0=
 	dev\-libs/icu:0/49=
-	dev\-lang/perl:0/5.12=
-	dev-libs/glib:2/2.30=
 .fi
 .RE
 .TP
@@ -257,7 +258,7 @@ multiple Atoms and be nested to an infinite depth.
 To include the jpeg library when the user has jpeg in \fBUSE\fR, simply use the
 following syntax:
 
-jpeg? ( media\-libs/jpeg )
+jpeg? ( media\-libs/libjpeg-turbo )
 .TP
 .B !usevar? ( Atom )
 If you want to include a package only if the user does not have a certain
@@ -271,11 +272,11 @@ support for a feature and have it enabled by default.
 .B usevar? ( Atom if true ) !usevar? ( Atom if false )
 For functionality like the tertiary operator found in C you must use
 two statements, one normal and one inverted.  If a package uses
-GTK2 or GTK1, but not both, then you can handle that like this:
+GTK3 or GTK2, but not both, then you can handle that like this:
 
-gtk2? ( =x11\-libs/gtk+\-2* ) !gtk2? ( =x11\-libs/gtk+\-1* )
+gtk3? ( =x11\-libs/gtk+\-3* ) !gtk3? ( =x11\-libs/gtk+\-2* )
 
-That way the default is the superior GTK2 library.
+That way the default is the superior GTK3 library.
 .TP
 .B || ( Atom Atom ... )
 When a package can work with a few different packages but a virtual is not
@@ -554,9 +555,9 @@ EAPI value then it will mask the package and refuse to perform any
 operations with it since this means that a newer version of portage
 needs to be installed first. For maximum backward compatiblity, a
 package should conform to the lowest possible EAPI. Note that anyone
-who uses the \fBebuild\fR(1) and \fBrepoman\fR(1) commands with this
-package will be required to have a version of portage that recognizes
-the EAPI to which this package conforms.
+who uses the \fBebuild\fR(1) command with this package will be
+required to have a version of portage that recognizes the EAPI to
+which this package conforms.
 .TP
 .B SRC_URI\fR = \fI"https://example.com/path/${P}.tar.gz"
 Contains a list of URIs for the required source files.  It can contain
@@ -1163,7 +1164,8 @@ The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .TP
 .B hasv\fR \fI<item>\fR \fI<item list>
-Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.
+Like \fBhas\fR, but also echoes \fIitem\fR when \fBhas\fR returns true.  Banned
+in \fBEAPI 8\fR.
 .TP
 .B has_version\fR \fI[\-b]\fR \fI[\-d]\fR \fI[\-r]\fR \fI[\-\-host\-root]\fR \fI<category/package\-version>
 Check to see if \fIcategory/package\-version\fR is installed.  The
@@ -1262,7 +1264,6 @@ ${\fIECONF_SOURCE\fR:-.}/configure \\
 	\-\-mandir="${EPREFIX}"/usr/share/man \\
 	\-\-sysconfdir="${EPREFIX}"/etc \\
 	${CTARGET:+\-\-target=${CTARGET}} \\
-	\-\-disable\-dependency\-tracking \\
 	\fI${EXTRA_ECONF}\fR \\
 	\fIconfigure options\fR || die "econf failed"
 .fi
@@ -1279,6 +1280,18 @@ of \fIconfigure \-\-help\fR.
 Beginning with \fBEAPI 5\fR, \fBeconf\fR adds
 \fIdisable\-silent\-rules\fR to the arguments if the
 string \fIdisable\-silent\-rules\fR occurs in the output
+of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 6\fR, \fBeconf\fR adds
+\fIdocdir\fR and \fIhtmldir\fR if the corresponding string occurs
+in the output of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 7\fR, \fBeconf\fR adds
+\fIwith\-sysroot\fR to the arguments if the string
+\fIwith\-sysroot\fR occurs in the output of \fIconfigure \-\-help\fR.
+Beginning with \fBEAPI 8\fR, \fBeconf\fR adds
+\fIdatarootdir\fR to the arguments if the string
+\fIdatarootdir\fR occurs in the output of \fIconfigure \-\-help\fR.  Additionally,
+in \fBEAPI 8\fR, \fBeconf\fR adds \fIdisable\-static\fR to the arguments
+if the string \fIdisable\-static\fR or \fIenable\-static\fR occurs in the output
 of \fIconfigure \-\-help\fR.
 .TP
 .B emake\fR \fI[make options]
@@ -1319,7 +1332,8 @@ make \\
 .fi
 Please do \fBnot\fR use this in place of 'emake install DESTDIR=${D}'.
 That is the preferred way of installing make\-based packages.  Also, do
-not utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.
+not utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.  Banned
+since \fBEAPI 6\fR.
 
 .TP
 .B docompress\fR \fI[\-x] <path> [list of more paths]
@@ -1427,11 +1441,13 @@ necessary dirs.
 .B dolib.so\fR \fI<library>\fR \fI[list of more libraries]
 .PD 1
 Installs a library or a list of libraries into \fIDESTTREE\fR/lib.
-Creates all necessary dirs.
+Creates all necessary dirs.  dolib is banned in \fBEAPI 7\fR: use the more
+specific \fBdolib.a\fR or \fBdolib.so\fR instead.
 .TP
 .B libopts\fR \fI[options for install(1)]
 Can be used to define options for the install function used in
-the \fBdolib\fR functions.  The default is \fI\-m0644\fR.
+the \fBdolib\fR functions.  The default is \fI\-m0644\fR.  \fBlibopts\fR
+is banned in \fBEAPI 7\fR.
 .TP
 .B doman\fR \fI[\-i18n=<locale>]\fR \fI<man\-page> [list of more man\-pages]
 Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
@@ -1453,9 +1469,10 @@ file name.
 Beginning with \fBEAPI 4\fR, the \fBdohard\fR helper no longer exists. Ebuilds
 should call \fBln\fR(1) directly.
 .TP
-.B dosym\fR \fI<filename> <linkname>
+.B dosym\fR \fI[\-r] \fI<filename> <linkname>
 .PD 1
-Performs the ln command to create a symlink.
+Performs the ln command to create a symlink.  Setting \-r creates a relative
+symlink.  The \-r option is available beginning with \fBEAPI 8\fR.
 .TP
 .B doheader\fR \fI[\-r] <file> [list of more files]
 Installs the given header files into /usr/include/, by default
@@ -1472,6 +1489,7 @@ Setting \fI\-a\fR limits what types of files will be included,
 \fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
 exclude (CVS excluded by default), \fI\-p\fR sets a document prefix,
 \fI\-r\fR sets recursive.
+\fBdohtml\fR is banned in \fBEAPI 7\fR: use \fBdodoc\fR and \fBdocinto\fR instead.
 .TP
 .B doinfo\fR \fI<info\-file> [list of more info\-files]
 Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically
@@ -1517,7 +1535,8 @@ The default is \fI\-m0755\fR.
 .TP
 .B doexe\fR \fI<executable> [list of more executables]
 Installs executables into the path controlled by \fBexeinto\fR.  This function
-uses \fBinstall\fR(1).  Creates all necessary dirs.
+uses \fBinstall\fR(1).  Creates all necessary dirs.  Behavior is undefined if
+\fBexeinto\fR has not yet been called.
 .TP
 .B docinto\fR \fI[path]
 Sets the subdir used by \fBdodoc\fR and \fBdohtml\fR
@@ -1563,13 +1582,12 @@ first parameter is \- (a hyphen).
 .SH "EXAMPLES"
 .DS
 .nf
-# Copyright 1999\-2013 Gentoo Foundation
+# Copyright 1999\-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
 
-EAPI="5"
+EAPI=8
 
-inherit some_eclass another_eclass
+inherit another-eclass some-eclass
 
 DESCRIPTION="Super\-useful stream editor (sed)"
 HOMEPAGE="https://www.gnu.org/software/sed/"
@@ -1577,11 +1595,9 @@ SRC_URI="ftp://alpha.gnu.org/pub/gnu/${PN}/${P}.tar.gz"
 
 LICENSE="GPL\-2"
 SLOT="0"
-KEYWORDS="~x86"
-IUSE=""
+KEYWORDS="~amd64"
 
-RDEPEND=""
-DEPEND="nls? ( sys-devel/gettext )"
+BDEPEND="nls? ( sys-devel/gettext )"
 
 src_configure() {
 	econf \\

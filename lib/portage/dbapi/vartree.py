@@ -48,6 +48,7 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._eventloop.global_event_loop:global_event_loop",
     "portage.versions:best,catpkgsplit,catsplit,cpv_getkey,vercmp,"
     + "_get_slot_re,_pkgsplit@pkgsplit,_pkg_str,_unknown_repo",
+    "portage.gpkg",
     "subprocess",
     "tarfile",
 )
@@ -59,6 +60,7 @@ from portage.const import (
     PORTAGE_PACKAGE_ATOM,
     PRIVATE_PATH,
     VDB_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
     # PREFIX LOCAL
     EPREFIX,
 )
@@ -68,6 +70,7 @@ from portage.exception import (
     InvalidData,
     InvalidLocation,
     InvalidPackageName,
+    InvalidBinaryPackageFormat,
     FileNotFound,
     PermissionDenied,
     UnsupportedAPIException,
@@ -1106,26 +1109,45 @@ class vardbapi(dbapi):
                     "y" if include_unmodified_config else "n"
                 )
             )
-
         opts, args = parser.parse_known_args(opts_list)
 
-        tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
-        pr, pw = os.pipe()
-        proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
-        os.close(pr)
-        with os.fdopen(pw, "wb", 0) as pw_file:
+        binpkg_format = settings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        )
+        if binpkg_format == "xpak":
+            tar_cmd = ("tar", "-x", "--xattrs", "--xattrs-include=*", "-C", dest_dir)
+            pr, pw = os.pipe()
+            proc = await asyncio.create_subprocess_exec(*tar_cmd, stdin=pr)
+            os.close(pr)
+            with os.fdopen(pw, "wb", 0) as pw_file:
+                excluded_config_files = await loop.run_in_executor(
+                    ForkExecutor(loop=loop),
+                    functools.partial(
+                        self._dblink(cpv).quickpkg,
+                        pw_file,
+                        include_config=opts.include_config == "y",
+                        include_unmodified_config=opts.include_unmodified_config == "y",
+                    ),
+                )
+            await proc.wait()
+            if proc.returncode != os.EX_OK:
+                raise PortageException("command failed: {}".format(tar_cmd))
+        elif binpkg_format == "gpkg":
+            gpkg_tmp_fd, gpkg_tmp = tempfile.mkstemp(suffix=".gpkg.tar")
+            os.close(gpkg_tmp_fd)
             excluded_config_files = await loop.run_in_executor(
                 ForkExecutor(loop=loop),
                 functools.partial(
                     self._dblink(cpv).quickpkg,
-                    pw_file,
+                    gpkg_tmp,
                     include_config=opts.include_config == "y",
                     include_unmodified_config=opts.include_unmodified_config == "y",
                 ),
             )
-        await proc.wait()
-        if proc.returncode != os.EX_OK:
-            raise PortageException("command failed: {}".format(tar_cmd))
+            portage.gpkg.gpkg(settings, cpv, gpkg_tmp).decompress(dest_dir)
+            os.remove(gpkg_tmp)
+        else:
+            raise InvalidBinaryPackageFormat(binpkg_format)
 
         if excluded_config_files:
             log_lines = [
@@ -1801,6 +1823,7 @@ class dblink:
         blockers=None,
         scheduler=None,
         pipe=None,
+        mtime_pipe=None,
     ):
         """
         Creates a DBlink object for a given CPV.
@@ -1857,6 +1880,7 @@ class dblink:
         self._device_path_map = {}
         self._hardlink_merge_map = {}
         self._hash_key = (self._eroot, self.mycpv)
+        self._mtime_pipe = mtime_pipe
         self._protect_obj = None
         self._pipe = pipe
         self._postinst_failure = False
@@ -2124,7 +2148,11 @@ class dblink:
         return pkgfiles
 
     def quickpkg(
-        self, output_file, include_config=False, include_unmodified_config=False
+        self,
+        output_file,
+        metadata=None,
+        include_config=False,
+        include_unmodified_config=False,
     ):
         """
         Create a tar file appropriate for use by quickpkg.
@@ -2147,6 +2175,9 @@ class dblink:
         contents = self.getcontents()
         excluded_config_files = []
         protect = None
+        binpkg_format = settings.get(
+            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        )
 
         if not include_config:
             confprot = ConfigProtect(
@@ -2169,16 +2200,22 @@ class dblink:
                 excluded_config_files.append(filename)
                 return True
 
-        # The tarfile module will write pax headers holding the
-        # xattrs only if PAX_FORMAT is specified here.
-        with tarfile.open(
-            fileobj=output_file,
-            mode="w|",
-            format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
-        ) as tar:
-            tar_contents(
-                contents, settings["ROOT"], tar, protect=protect, xattrs=xattrs
-            )
+        if binpkg_format == "xpak":
+            # The tarfile module will write pax headers holding the
+            # xattrs only if PAX_FORMAT is specified here.
+            with tarfile.open(
+                fileobj=output_file,
+                mode="w|",
+                format=tarfile.PAX_FORMAT if xattrs else tarfile.DEFAULT_FORMAT,
+            ) as tar:
+                tar_contents(
+                    contents, settings["ROOT"], tar, protect=protect, xattrs=xattrs
+                )
+        elif binpkg_format == "gpkg":
+            gpkg_file = portage.gpkg.gpkg(settings, cpv, output_file)
+            gpkg_file._quickpkg(contents, metadata, settings["ROOT"], protect=protect)
+        else:
+            raise InvalidBinaryPackageFormat(binpkg_format)
 
         return excluded_config_files
 
@@ -2590,14 +2627,17 @@ class dblink:
         else:
             self.settings.pop("PORTAGE_LOG_FILE", None)
 
-        env_update(
-            target_root=self.settings["ROOT"],
-            prev_mtimes=ldpath_mtimes,
-            contents=contents,
-            env=self.settings,
-            writemsg_level=self._display_merge,
-            vardbapi=self.vartree.dbapi,
-        )
+        # If we didn't unmerge anything, don't bother updating env.
+        if contents:
+            env_update(
+                target_root=self.settings["ROOT"],
+                prev_mtimes=ldpath_mtimes,
+                contents=contents,
+                env=self.settings,
+                writemsg_level=self._display_merge,
+                vardbapi=self.vartree.dbapi,
+            )
+            self._send_mtimes(ldpath_mtimes)
 
         unmerge_with_replacement = preserve_paths is not None
         if not unmerge_with_replacement:
@@ -4231,6 +4271,12 @@ class dblink:
     def _emerge_log(self, msg):
         emergelog(False, msg)
 
+    def _send_mtimes(self, mtimes):
+        if self._mtime_pipe is None:
+            return
+
+        self._mtime_pipe.send(mtimes)
+
     def treewalk(
         self,
         srcroot,
@@ -5076,21 +5122,18 @@ class dblink:
 
         emerge_log = self._emerge_log
 
-        # If we have any preserved libraries then autoclean
-        # is forced so that preserve-libs logic doesn't have
+        # We always autoclean now for the current package-case for simplicity.
+        # If it were conditional, we'd always need to do it when any preserved-libs,
+        # so that preserve-libs logic doesn't have
         # to account for the additional complexity of the
         # AUTOCLEAN=no mode.
-        autoclean = self.settings.get("AUTOCLEAN", "yes") == "yes" or preserve_paths
-
-        if autoclean:
-            emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
+        emerge_log(_(" >>> AUTOCLEAN: %s") % (slot_atom,))
 
         others_in_slot.append(self)  # self has just been merged
         for dblnk in list(others_in_slot):
             if dblnk is self:
                 continue
-            if not (autoclean or dblnk.mycpv == self.mycpv or reinstall_self):
-                continue
+
             showMessage(_(">>> Safely unmerging already-installed instance...\n"))
             emerge_log(_(" === Unmerging... (%s)") % (dblnk.mycpv,))
             others_in_slot.remove(dblnk)  # dblnk will unmerge itself now
@@ -5120,17 +5163,6 @@ class dblink:
                 self.unlockdb()
             showMessage(_(">>> Original instance of package unmerged safely.\n"))
 
-        if len(others_in_slot) > 1:
-            showMessage(
-                colorize("WARN", _("WARNING:"))
-                + _(
-                    " AUTOCLEAN is disabled.  This can cause serious"
-                    " problems due to overlapping packages.\n"
-                ),
-                level=logging.WARN,
-                noiselevel=-1,
-            )
-
         # We hold both directory locks.
         self.dbdir = self.dbpkgdir
         self.lockdb()
@@ -5150,14 +5182,17 @@ class dblink:
         self._clear_contents_cache()
         contents = self.getcontents()
         destroot_len = len(destroot) - 1
-        self.lockdb()
-        try:
-            for blocker in blockers:
-                self.vartree.dbapi.removeFromContents(
-                    blocker, iter(contents), relative_paths=False
-                )
-        finally:
-            self.unlockdb()
+
+        # Avoid lock contention if we aren't going to do any work.
+        if blockers:
+            self.lockdb()
+            try:
+                for blocker in blockers:
+                    self.vartree.dbapi.removeFromContents(
+                        blocker, iter(contents), relative_paths=False
+                    )
+            finally:
+                self.unlockdb()
 
         plib_registry = self.vartree.dbapi._plib_registry
         if plib_registry:
@@ -5262,15 +5297,18 @@ class dblink:
                 ],
             )
 
-        # update environment settings, library paths. DO NOT change symlinks.
-        env_update(
-            target_root=self.settings["ROOT"],
-            prev_mtimes=prev_mtimes,
-            contents=contents,
-            env=self.settings,
-            writemsg_level=self._display_merge,
-            vardbapi=self.vartree.dbapi,
-        )
+        # Update environment settings, library paths. DO NOT change symlinks.
+        # Only do this if we actually installed something.
+        if contents:
+            env_update(
+                target_root=self.settings["ROOT"],
+                prev_mtimes=prev_mtimes,
+                contents=contents,
+                env=self.settings,
+                writemsg_level=self._display_merge,
+                vardbapi=self.vartree.dbapi,
+            )
+            self._send_mtimes(prev_mtimes)
 
         # For gcc upgrades, preserved libs have to be removed after the
         # the library path has been updated.
@@ -5599,7 +5637,7 @@ class dblink:
                         mydest = newdest
 
                 # if secondhand is None it means we're operating in "force" mode and should not create a second hand.
-                if (secondhand != None) and (not os.path.exists(myrealto)):
+                if (secondhand is not None) and (not os.path.exists(myrealto)):
                     # either the target directory doesn't exist yet or the target file doesn't exist -- or
                     # the target is a broken symlink.  We will add this file to our "second hand" and merge
                     # it later.
@@ -5622,7 +5660,7 @@ class dblink:
                 except OSError:
                     pass
 
-                if mymtime != None:
+                if mymtime is not None:
                     # Use lexists, since if the target happens to be a broken
                     # symlink then that should trigger an independent warning.
                     if not (
@@ -5662,7 +5700,7 @@ class dblink:
                     return 1
             elif stat.S_ISDIR(mymode):
                 # we are merging a directory
-                if mydmode != None:
+                if mydmode is not None:
                     # destination exists
 
                     if bsd_chflags:
@@ -5842,7 +5880,7 @@ class dblink:
                     except OSError:
                         pass
 
-                if mymtime != None:
+                if mymtime is not None:
                     outfile.write(
                         self._format_contents_line(
                             node_type="obj",

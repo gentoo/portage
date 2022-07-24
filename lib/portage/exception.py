@@ -181,6 +181,22 @@ class InvalidPackageName(PortagePackageException):
     """Malformed package name"""
 
 
+class InvalidBinaryPackageFormat(PortagePackageException):
+    """Invalid Binary Package Format"""
+
+
+class InvalidCompressionMethod(PortagePackageException):
+    """Invalid or unsupported compression method"""
+
+
+class CompressorNotFound(PortagePackageException):
+    """A required compressor binary was not available or executable"""
+
+
+class CompressorOperationFailed(PortagePackageException):
+    """An error occurred during external operation"""
+
+
 class InvalidAtom(PortagePackageException):
     """Malformed atom spec"""
 
@@ -201,10 +217,10 @@ class UnsupportedAPIException(PortagePackageException):
             eapi = str(eapi)
         eapi = eapi.lstrip("-")
         msg = _(
-            "Unable to do any operations on '%(cpv)s', since "
+            f"Unable to do any operations on '{self.cpv}', since "
             "its EAPI is higher than this portage version's. Please upgrade"
-            " to a portage version that supports EAPI '%(eapi)s'."
-        ) % {"cpv": self.cpv, "eapi": eapi}
+            f" to a portage version that supports EAPI '{eapi}'."
+        )
         return _unicode_decode(msg, encoding=_encodings["content"], errors="replace")
 
 
@@ -214,6 +230,10 @@ class SignatureException(PortageException):
 
 class DigestException(SignatureException):
     """A problem exists in the digest"""
+
+
+class GPGException(SignatureException):
+    """GPG operation failed"""
 
 
 class MissingSignature(SignatureException):

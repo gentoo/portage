@@ -171,22 +171,26 @@ def install_mask_dir(base_dir, install_mask, onerror=None):
     dir_stack = []
 
     # Remove masked files.
-    for parent, dirs, files in os.walk(base_dir, onerror=onerror):
+    todo = [base_dir]
+    while todo:
+        parent = todo.pop()
         try:
             parent = _unicode_decode(parent, errors="strict")
         except UnicodeDecodeError:
             continue
+
         dir_stack.append(parent)
-        for fname in files:
+        for entry in os.scandir(parent):
             try:
-                fname = _unicode_decode(fname, errors="strict")
+                abs_path = _unicode_decode(entry.path, errors="strict")
             except UnicodeDecodeError:
                 continue
-            abs_path = os.path.join(parent, fname)
-            relative_path = abs_path[base_dir_len:]
-            if install_mask.match(relative_path):
+
+            if entry.is_dir(follow_symlinks=False):
+                todo.append(entry.path)
+            elif install_mask.match(abs_path[base_dir_len:]):
                 try:
-                    os.unlink(abs_path)
+                    os.unlink(entry.path)
                 except OSError as e:
                     onerror(e)
 

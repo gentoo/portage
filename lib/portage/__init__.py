@@ -50,7 +50,7 @@ except ImportError as e:
     sys.stderr.write(
         "!!! gone wrong. Here is the information we got for this exception:\n"
     )
-    sys.stderr.write("    " + str(e) + "\n\n")
+    sys.stderr.write(f"    {e}\n\n")
     raise
 
 # BEGIN PREFIX LOCAL
@@ -105,7 +105,7 @@ try:
         + "doebuild_environment,spawn,spawnebuild",
         "portage.package.ebuild.config:autouse,best_from_dict,"
         + "check_config_instance,config",
-        "portage.package.ebuild.deprecated_profile_check:" + "deprecated_profile_check",
+        "portage.package.ebuild.deprecated_profile_check:deprecated_profile_check",
         "portage.package.ebuild.digestcheck:digestcheck",
         "portage.package.ebuild.digestgen:digestgen",
         "portage.package.ebuild.fetch:fetch",
@@ -136,6 +136,7 @@ try:
         + "cpv_getkey@getCPFromCPV,endversion_keys,"
         + "suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify",
         "portage.xpak",
+        "portage.gpkg",
         "subprocess",
         "time",
     )
@@ -199,7 +200,7 @@ except ImportError as e:
         "!!! There is a README.RESCUE file that details the steps required to perform\n"
     )
     sys.stderr.write("!!! a recovery of portage.\n")
-    sys.stderr.write("    " + str(e) + "\n\n")
+    sys.stderr.write(f"    {e}\n\n")
     raise
 
 
@@ -275,7 +276,6 @@ class _unicode_func_wrapper:
         self._encoding = encoding
 
     def _process_args(self, args, kwargs):
-
         encoding = self._encoding
         wrapped_args = [
             _unicode_encode(x, encoding=encoding, errors="strict") for x in args
@@ -291,7 +291,6 @@ class _unicode_func_wrapper:
         return (wrapped_args, wrapped_kwargs)
 
     def __call__(self, *args, **kwargs):
-
         encoding = self._encoding
         wrapped_args, wrapped_kwargs = self._process_args(args, kwargs)
 
@@ -375,7 +374,6 @@ class _eintr_func_wrapper:
         self._func = func
 
     def __call__(self, *args, **kwargs):
-
         while True:
             try:
                 rval = self._func(*args, **kwargs)
@@ -398,10 +396,7 @@ _os_overrides = {
 }
 
 
-try:
-    _os_overrides[id(_os.mkfifo)] = _os.mkfifo
-except AttributeError:
-    pass  # Jython
+_os_overrides[id(_os.mkfifo)] = _os.mkfifo
 
 if hasattr(_os, "statvfs"):
     _os_overrides[id(_os.statvfs)] = _os.statvfs
@@ -424,7 +419,7 @@ try:
     _selinux_merge = _unicode_module_wrapper(_selinux, encoding=_encodings["merge"])
 except (ImportError, OSError) as e:
     if isinstance(e, OSError):
-        sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
+        sys.stderr.write(f"!!! SELinux not loaded: {e}\n")
     del e
     _selinux = None
     selinux = None
@@ -497,10 +492,10 @@ def _shell_quote(s):
     """
     if _shell_quote_re.search(s) is None:
         return s
-    for letter in '\\"$`':
+    for letter in r"\"$`":
         if letter in s:
-            s = s.replace(letter, "\\" + letter)
-    return '"%s"' % s
+            s = s.replace(letter, rf"\{letter}")
+    return f'"{s}"'
 
 
 bsd_chflags = None
@@ -513,9 +508,9 @@ if platform.system() in ("FreeBSD",):
 
 
 def load_mod(name):
-    modname = ".".join(name.split(".")[:-1])
-    mod = __import__(modname)
     components = name.split(".")
+    modname = ".".join(components[:-1])
+    mod = __import__(modname)
     for comp in components[1:]:
         mod = getattr(mod, comp)
     return mod
@@ -549,7 +544,7 @@ def abssymlink(symlink, target=None):
         mylink = os.readlink(symlink)
     if mylink[0] != "/":
         mydir = os.path.dirname(symlink)
-        mylink = mydir + "/" + mylink
+        mylink = f"{mydir}/{mylink}"
     return os.path.normpath(mylink)
 
 
@@ -561,19 +556,22 @@ _deprecated_eapis = frozenset(
         "3_pre1",
         "3_pre2",
         "4_pre1",
-        "4-python",
         "4-slot-abi",
         "5_pre1",
         "5_pre2",
-        "5-progress",
         "6_pre1",
         "7_pre1",
     ]
 )
+
+from itertools import chain
+
 _supported_eapis = frozenset(
-    [str(x) for x in range(portage.const.EAPI + 1)]
-    + list(_testing_eapis)
-    + list(_deprecated_eapis)
+    chain(
+        (str(x) for x in range(portage.const.EAPI + 1)),
+        _testing_eapis,
+        _deprecated_eapis,
+    )
 )
 
 
@@ -583,7 +581,6 @@ def _eapi_is_deprecated(eapi):
 
 def eapi_is_supported(eapi):
     eapi = str(eapi).strip()
-
     return eapi in _supported_eapis
 
 
@@ -612,7 +609,7 @@ def _parse_eapi_ebuild_head(f):
 def _movefile(src, dest, **kwargs):
     """Calls movefile and raises a PortageException if an error occurs."""
     if movefile(src, dest, **kwargs) is None:
-        raise portage.exception.PortageException("mv '%s' '%s'" % (src, dest))
+        raise portage.exception.PortageException(f"mv '{src}' '{dest}'")
 
 
 auxdbkeys = (
@@ -687,8 +684,7 @@ def create_trees(
         # When ROOT != "/" we only want overrides from the calling
         # environment to apply to the config that's associated
         # with ROOT != "/", so pass a nearly empty dict for the env parameter.
-        clean_env = {}
-        for k in (
+        env_sequence = (
             "PATH",
             "PORTAGE_GRPNAME",
             "PORTAGE_REPOSITORIES",
@@ -702,10 +698,10 @@ def create_trees(
             "https_proxy",
             "no_proxy",
             "__PORTAGE_TEST_HARDLINK_LOCKS",
-        ):
-            v = settings.get(k)
-            if v is not None:
-                clean_env[k] = v
+        )
+        env = ((k, settings.get(k)) for k in env_sequence)
+        clean_env = {k: v for k, v in env if v is not None}
+
         if depcachedir is not None:
             clean_env["PORTAGE_DEPCACHEDIR"] = depcachedir
         settings = config(
@@ -741,12 +737,11 @@ if VERSION == "HEAD":
                     BASH_BINARY,
                     "-c",
                     (
-                        "cd %s ; git describe --match 'portage-*' || exit $? ; "
-                        + 'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
-                        + "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
-                        + "exit 0"
-                    )
-                    % _shell_quote(PORTAGE_BASE_PATH),
+                        f"cd {_shell_quote(PORTAGE_BASE_PATH)} ; git describe --match 'portage-*' || exit $? ; "
+                        'if [ -n "`git diff-index --name-only --diff-filter=M HEAD`" ] ; '
+                        "then echo modified ; git rev-list --format=%%ct -n 1 HEAD ; fi ; "
+                        "exit 0"
+                    ),
                 ]
                 cmd = [
                     _unicode_encode(x, encoding=encoding, errors="strict") for x in cmd
@@ -765,7 +760,7 @@ if VERSION == "HEAD":
                             patchlevel = False
                             if len(version_split) > 2:
                                 patchlevel = True
-                                VERSION = "%s_p%s" % (VERSION, version_split[2])
+                                VERSION = f"{VERSION}_p{version_split[2]}"
                             if len(output_lines) > 1 and output_lines[1] == "modified":
                                 head_timestamp = None
                                 if len(output_lines) > 3:
@@ -780,8 +775,8 @@ if VERSION == "HEAD":
                                 ):
                                     timestamp = timestamp - head_timestamp
                                 if not patchlevel:
-                                    VERSION = "%s_p0" % (VERSION,)
-                                VERSION = "%s_p%d" % (VERSION, timestamp)
+                                    VERSION = f"{VERSION}_p0"
+                                VERSION = f"{VERSION}_p{timestamp}"
                             return VERSION
             VERSION = "HEAD"
             return VERSION
@@ -806,7 +801,6 @@ _legacy_global_var_names = (
 
 
 def _reset_legacy_globals():
-
     global _legacy_globals_constructed
     _legacy_globals_constructed = set()
     for k in _legacy_global_var_names:

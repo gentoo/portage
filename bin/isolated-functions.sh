@@ -61,7 +61,7 @@ __dump_trace() {
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	(( p = ${#BASH_ARGV[@]} ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
+		[[ "${FUNCNAME[${n}]}" == "__qa_call" ]] && break
 		(( p -= ${BASH_ARGC[${n}]} ))
 		(( n-- ))
 	done
@@ -132,7 +132,7 @@ die() {
 	fi
 
 	set +e
-	if [ -n "${QA_INTERCEPTORS}" ] ; then
+	if [[ -n "${QA_INTERCEPTORS}" ]]; then
 		# die was called from inside inherit. We need to clean up
 		# QA_INTERCEPTORS since sed is called below.
 		unset -f ${QA_INTERCEPTORS}
@@ -142,7 +142,7 @@ die() {
 	# setup spacing to make output easier to read
 	(( n = ${#FUNCNAME[@]} - 1 ))
 	while (( n > 0 )) ; do
-		[ "${FUNCNAME[${n}]}" == "__qa_call" ] && break
+		[[ "${FUNCNAME[${n}]}" == "__qa_call" ]] && break
 		(( n-- ))
 	done
 	(( n == 0 )) && (( n = ${#FUNCNAME[@]} - 1 ))
@@ -217,9 +217,9 @@ die() {
 			eerror "For convenience, a symlink to the build log is located at '${T}/build.${log_ext}'."
 		fi
 	fi
-	if [ -f "${T}/environment" ] ; then
+	if [[ -f "${T}/environment" ]]; then
 		eerror "The ebuild environment file is located at '${T}/environment'."
-	elif [ -d "${T}" ] ; then
+	elif [[ -d "${T}" ]]; then
 		{
 			set
 			export
@@ -227,13 +227,15 @@ die() {
 		eerror "The ebuild environment file is located at '${T}/die.env'."
 	fi
 	eerror "Working directory: '$(pwd)'"
-	eerror "S: '${S}'"
+	[[ -n ${S} ]] && eerror "S: '${S}'"
 
 	[[ -n $PORTAGE_EBUILD_EXIT_FILE ]] && > "$PORTAGE_EBUILD_EXIT_FILE"
 	[[ -n $PORTAGE_IPC_DAEMON ]] && "$PORTAGE_BIN_PATH"/ebuild-ipc exit 1
 
 	# subshell die support
-	[[ ${BASHPID:-$(__bashpid)} == ${EBUILD_MASTER_PID} ]] || kill -s SIGTERM ${EBUILD_MASTER_PID}
+	if [[ -n ${EBUILD_MASTER_PID} && ${BASHPID:-$(__bashpid)} != ${EBUILD_MASTER_PID} ]] ; then
+		kill -s SIGTERM ${EBUILD_MASTER_PID}
+	fi
 	exit 1
 }
 
@@ -248,7 +250,7 @@ __vecho() {
 # Internal logging function, don't use this in ebuilds
 __elog_base() {
 	local messagetype
-	[ -z "${1}" -o -z "${T}" -o ! -d "${T}/logging" ] && return 1
+	[[ -z "${1}" || -z "${T}" || ! -d "${T}/logging" ]] && return 1
 	case "${1}" in
 		INFO|WARN|ERROR|LOG|QA)
 			messagetype="${1}"
@@ -337,6 +339,7 @@ ebegin() {
 	[[ ${RC_ENDCOL} == "yes" ]] && echo >&2
 	LAST_E_LEN=$(( 3 + ${#RC_INDENTATION} + ${#msg} ))
 	LAST_E_CMD="ebegin"
+	let ++__EBEGIN_EEND_COUNT
 	return 0
 }
 
@@ -365,6 +368,10 @@ __eend() {
 
 eend() {
 	[[ -n $1 ]] || eqawarn "QA Notice: eend called without first argument"
+	if (( --__EBEGIN_EEND_COUNT < 0 )); then
+		__EBEGIN_EEND_COUNT=0
+		eqawarn "QA Notice: eend called without preceding ebegin in ${FUNCNAME[1]}"
+	fi
 	local retval=${1:-0}
 	shift
 
@@ -404,7 +411,7 @@ __set_colors() {
 	# Now, ${ENDCOL} will move us to the end of the
 	# column;  irregardless of character width
 	ENDCOL=$'\e[A\e['$(( COLS - 8 ))'C'
-	if [ -n "${PORTAGE_COLORMAP}" ] ; then
+	if [[ -n "${PORTAGE_COLORMAP}" ]]; then
 		eval ${PORTAGE_COLORMAP}
 	else
 		PORTAGE_COLOR_BAD=$'\e[31;01m'
@@ -512,7 +519,7 @@ has() {
 
 	local x
 	for x in "$@"; do
-		[ "${x}" = "${needle}" ] && return 0
+		[[ "${x}" = "${needle}" ]] && return 0
 	done
 	return 1
 }
@@ -622,8 +629,8 @@ fi
 # emerge output.
 # You can override the setting by exporting a new one from the console, or you can
 # set a new default in make.*. Here the default is "" or unset.
-
-# in the future might use e* from /etc/init.d/functions.sh if i feel like it
+#
+# (TODO: in the future, might use e* from /lib/gentoo/functions.sh?)
 debug-print() {
 	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything

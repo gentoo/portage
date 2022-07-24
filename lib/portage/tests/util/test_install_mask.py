@@ -1,8 +1,11 @@
-# Copyright 2018 Gentoo Foundation
+# Copyright 2018-2022 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
+import tempfile
+from portage import os
+from portage import shutil
 from portage.tests import TestCase
-from portage.util.install_mask import InstallMask
+from portage.util.install_mask import InstallMask, install_mask_dir
 
 
 class InstallMaskTestCase(TestCase):
@@ -166,3 +169,29 @@ class InstallMaskTestCase(TestCase):
                         install_mask_str, path
                     ),
                 )
+
+    def testSymlinkDir(self):
+        """
+        Test that masked symlinks to directories are removed.
+        """
+        tmp_dir = tempfile.mkdtemp()
+
+        try:
+            base_dir = os.path.join(tmp_dir, "foo")
+            target_dir = os.path.join(tmp_dir, "foo", "bar")
+            link_name = os.path.join(tmp_dir, "foo", "baz")
+
+            os.mkdir(base_dir)
+            os.mkdir(target_dir)
+            os.symlink(target_dir, link_name)
+
+            install_mask = InstallMask("/foo/")
+            install_mask_dir(tmp_dir, install_mask)
+            self.assertFalse(
+                os.path.lexists(link_name), "failed to remove {}".format(link_name)
+            )
+            self.assertFalse(
+                os.path.lexists(base_dir), "failed to remove {}".format(base_dir)
+            )
+        finally:
+            shutil.rmtree(tmp_dir)

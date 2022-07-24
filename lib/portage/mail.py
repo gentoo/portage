@@ -42,7 +42,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
     from email.mime.multipart import MIMEMultipart as MultipartMessage
     from email.utils import formatdate
 
-    if attachments == None:
+    if attachments is None:
         mymessage = TextMessage(body)
     else:
         mymessage = MultipartMessage()
@@ -54,7 +54,7 @@ def create_message(sender, recipient, subject, body, attachments=None):
                 mymessage.attach(TextMessage(x))
             else:
                 raise portage.exception.PortageException(
-                    _("Can't handle type of attachment: %s") % type(x)
+                    _(f"Can't handle type of attachment: {type(x)}")
                 )
 
     mymessage.set_unixfrom(sender)
@@ -117,14 +117,13 @@ def send_mail(mysettings, message):
 
     # user wants to use a sendmail binary instead of smtp
     if mymailhost[0] == os.sep and os.path.exists(mymailhost):
-        fd = os.popen(mymailhost + " -f " + myfrom + " " + myrecipient, "w")
+        fd = os.popen(f"{mymailhost } -f {myfrom} {myrecipient}", "w")
         fd.write(_force_ascii_if_necessary(message.as_string()))
-        if fd.close() != None:
+        if fd.close() is not None:
             sys.stderr.write(
                 _(
-                    "!!! %s returned with a non-zero exit code. This generally indicates an error.\n"
+                    f"!!! {mymailhost} returned with a non-zero exit code. This generally indicates an error.\n"
                 )
-                % mymailhost
             )
     else:
         try:
@@ -149,12 +148,11 @@ def send_mail(mysettings, message):
             myconn.quit()
         except smtplib.SMTPException as e:
             raise portage.exception.PortageException(
-                _("!!! An error occurred while trying to send logmail:\n") + str(e)
+                _(f"!!! An error occurred while trying to send logmail:\n{e}")
             )
         except socket.error as e:
             raise portage.exception.PortageException(
                 _(
-                    "!!! A network error occurred while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?"
+                    f"!!! A network error occurred while trying to send logmail:\n{e}\nSure you configured PORTAGE_ELOG_MAILURI correctly?"
                 )
-                % str(e)
             )

@@ -1,4 +1,4 @@
-#!@PREFIX_PORTAGE_PYTHON@ -b
+#!@PREFIX_PORTAGE_PYTHON@
 # Copyright 2012-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -22,7 +22,7 @@ import sys
 from portage.util._xattr import xattr
 
 
-_UNQUOTE_RE = re.compile(br"\\[0-7]{3}")
+_UNQUOTE_RE = re.compile(rb"\\[0-7]{3}")
 _FS_ENCODING = sys.getfilesystemencoding()
 
 

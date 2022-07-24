@@ -1,11 +1,125 @@
 # Check for pkg-config file issues
 
 pkgconfig_check() {
+	local files=()
+	# Make a list of .pc files and bail out if there aren't any
+	mapfile -d '' files < <(
+		find "${ED}"/usr/{lib*,share}/pkgconfig -maxdepth 1 -type f -name '*.pc' -print0 2>/dev/null
+	)
+	[[ -z "${files[@]}" ]] && return
+
+	local f
+
 	# Look for leaking LDFLAGS into pkg-config files
-	local f=$(egrep -sH '^Libs.*-Wl,(-O[012]|--hash-style)' "${ED}"/usr/*/pkgconfig/*.pc)
+	f=$(grep -E -zsH '^Libs.*-Wl,(-O[012]|--hash-style)' "${files[@]}")
 	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: pkg-config files with wrong LDFLAGS detected:"
-		eqawarn "${f//${D}}"
+		eqatag -v pkgconfig.bad-ldlags "${f//${D}}"
+	fi
+
+	# Bail out now so we can rely on pkgconfig in subsequent checks if we want.
+	if ! type -P pkg-config >/dev/null ; then
+		return
+	fi
+
+	# Validate using pkgconfig
+	# Some less common implementations may not support this?
+	# seems like f.d.o, OpenBSD, and of course pkgconf do though.
+	# Need --maximum-traverse-depth=1 to avoid checking deps and giving
+	# unrelated warnings/errors.
+	if ! pkg-config --maximum-traverse-depth=1 --validate "${files[@]}" ; then
+		eqawarn "QA Notice: pkg-config files which fail validation found!"
+		eqawarn "Run 'pkg-config --validate ...' for more information"
+	fi
+
+	# Check for unexpected paths
+	# e.g. https://gitweb.gentoo.org/repo/gentoo.git/commit/?id=c90ab38e3577aae61fac2341b34ad593948de1cd
+	if [[ -n ${EPREFIX} ]] ; then
+		for f in "${files[@]}" ; do
+			local key
+			for key in prefix exec_prefix libdir includedir ; do
+				local value=$(pkg-config --variable="${key}" "${f}")
+
+				if [[ ${value} != "${EPREFIX}"* ]] ; then
+					eqawarn "QA Notice: pkg-config files not respecting EPREFIX found"
+					eqawarn "key=${key} does not respect EPREFIX:"
+					eqawarn "${key}=${value}"
+					eqatag -v pkgconfig.bad-paths ${key}="${value}" "${f//${D}}"
+
+					# Don't bother repeating for every variable in the same file
+					break
+				fi
+			done
+		done
+	fi
+
+	# TODO: Generalise for non-lib64 libdir? Not that this is very common now
+	# that riscv chose a more standard layout.
+	#
+	# If we're installing to ${ED}/usr/lib/pkgconfig, let's make sure
+	# we're not referencing lib64.
+	#
+	# e.g. https://bugs.gentoo.org/729642
+	local bad_libdir=()
+	for f in "${files[@]}" ; do
+		if [[ ${f} == *lib/pkgconfig* ]] ; then
+			if [[ -d "${ED}"/usr/lib && -L "${ED}"/usr/lib ]] ; then
+				# (Don't bother if /usr/lib is a symlink to /usr/lib64)
+				continue
+			fi
+
+			# In ${ED}/usr/lib, we shouldn't reference lib64
+			if grep -E -q "=(/usr)?/lib64" ${f} ; then
+				bad_libdir+=( "${f//${D}}" )
+			fi
+		elif [[ ${f} == *lib64/pkgconfig* ]] ; then
+			# We want to match /lib/, /lib/foo/, but not e.g. /lib64 or /lib64/, or libfoo
+			if grep -qP '=(/usr)?/lib\b' ${f} ; then
+				bad_libdir+=( "${f//${D}}" )
+			fi
+		fi
+	done
+
+	if [[ -n "${bad_libdir[@]}" ]] ; then
+		eqawarn "QA Notice: pkg-config files not respecting libdir found"
+		eqawarn "(contains reference to either lib or lib64 in wrong directory)"
+		eqatag -v pkgconfig.bad-libdir "${bad_libdir[@]}"
+	fi
+
+	# Check for mismatched Version field vs ${PV}
+	# To be safe, let's make sure _all_ installed .pcs have a bad Version
+	# before warning, as this should catch the general cases we're worried
+	# about, while avoiding any pathological cases e.g. multiple libraries
+	# with different versioning within one package.
+	# Example bugs: bug #833895, bug #833887.
+
+	# Default to PV if QA_PKGCONFIG_VERSION is unset.
+	if [[ -z ${QA_PKGCONFIG_VERSION+set} ]]; then
+		local QA_PKGCONFIG_VERSION=${PV}
+	fi
+
+	# Skip the check if QA_PKGCONFIG_VERSION is set to empty string.
+	if [[ -n ${QA_PKGCONFIG_VERSION} ]]; then
+		local all_bad=yes
+		# Record the last bad file matched
+		local bad_file
+		for f in "${files[@]}" ; do
+			if [[ ${QA_PKGCONFIG_VERSION} == $(pkg-config --modversion "${f}") ]] ; then
+				all_bad=no
+				break
+			fi
+
+			bad_file="${f//${D}}"
+		done
+
+		# Skip result reporting if *_p* because for both _pN and _preN, we
+		# don't generally expect the versions to be exactly accurate, and
+		# we want to avoid false positives.
+		if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
+			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
+			eqawarn "At least ${bad_file}'s Version field does not match ${PV}"
+			eqawarn "Please check all .pc files installed by this package."
+		fi
 	fi
 }
 

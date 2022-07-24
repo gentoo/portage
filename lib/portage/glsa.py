@@ -76,26 +76,29 @@ def wrap(text, width, caption=""):
     words = text.split()
     indentLevel = len(caption) + 1
 
-    for w in words:
-        if line != "" and line[-1] == "\n":
-            rValue += line
+    for word in words:
+        if line and line[-1] == "\n":
+            rValue = f"{rValue}{line}"
             line = " " * indentLevel
-        if len(line) + len(w.replace(NEWLINE_ESCAPE, "")) + 1 > width:
-            rValue += line + "\n"
-            line = " " * indentLevel + w.replace(NEWLINE_ESCAPE, "\n")
-        elif w.find(NEWLINE_ESCAPE) >= 0:
+        if len(line) + len(word.replace(NEWLINE_ESCAPE, "")) + 1 > width:
+            rValue = f"{rValue}{line}\n"
+            escaped_word = word.replace(NEWLINE_ESCAPE, "\n")
+            line = f"{' ' * indentLevel}{escaped_word}"
+        elif word.find(NEWLINE_ESCAPE) >= 0:
+            escaped_word = word.replace(NEWLINE_ESCAPE, "\n")
+            whitespace = ""
             if len(line.strip()) > 0:
-                rValue += line + " " + w.replace(NEWLINE_ESCAPE, "\n")
-            else:
-                rValue += line + w.replace(NEWLINE_ESCAPE, "\n")
+                whitespace = " "
+            rValue = f"{rValue}{line}{whitespace}{escaped_word}"
             line = " " * indentLevel
         else:
+            whitespace = ""
             if len(line.strip()) > 0:
-                line += " " + w
-            else:
-                line += w
+                whitespace = " "
+            line = f"{line}{whitespace}{word}"
     if len(line) > 0:
-        rValue += line.replace(NEWLINE_ESCAPE, "\n")
+        escaped_line = line.replace(NEWLINE_ESCAPE, "\n")
+        rValue = f"{rValue}{escaped_line}"
     rValue = rValue.replace(SPACE_ESCAPE, " ")
     return rValue
 
@@ -112,25 +115,29 @@ def get_glsa_list(myconfig):
     @rtype:		List of Strings
     @return:	a list of GLSA IDs in this repository
     """
-    rValue = []
 
+    repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
     if "GLSA_DIR" in myconfig:
         repository = myconfig["GLSA_DIR"]
-    else:
-        repository = os.path.join(myconfig["PORTDIR"], "metadata", "glsa")
 
     if not os.access(repository, os.R_OK):
         return []
     dirlist = os.listdir(repository)
     prefix = "glsa-"
+    prefix_size = len(prefix)
     suffix = ".xml"
+    suffix_size = len(suffix)
 
-    for f in dirlist:
+    def check(value):
         try:
-            if f[: len(prefix)] == prefix and f[-1 * len(suffix) :] == suffix:
-                rValue.append(f[len(prefix) : -1 * len(suffix)])
+            if value[:prefix_size] == prefix and value[-suffix_size:] == suffix:
+                return value[prefix_size:-suffix_size]
         except IndexError:
-            pass
+            return None
+        return None
+
+    checked_dirlist = (check(f) for f in dirlist)
+    rValue = [f for f in checked_dirlist if f]
     return rValue
 
 
@@ -143,7 +150,7 @@ def getListElements(listnode):
     @rtype:		List of Strings
     @return:	a list that contains the value of the <li> elements
     """
-    if not listnode.nodeName in ["ul", "ol"]:
+    if not listnode.nodeName in ("ul", "ol"):
         raise GlsaFormatException("Invalid function call: listnode is not <ul> or <ol>")
     rValue = [
         getText(li, format="strip")
@@ -182,9 +189,9 @@ def getText(node, format, textfd=None):  # pylint: disable=redefined-builtin
         returnNone = False
     else:
         returnNone = True
-    if format in ["strip", "keep"]:
-        if node.nodeName in ["uri", "mail"]:
-            textfd.write(node.childNodes[0].data + ": " + node.getAttribute("link"))
+    if format in ("strip", "keep"):
+        if node.nodeName in ("uri", "mail"):
+            textfd.write(f"{node.childNodes[0].data}:{node.getAttribute('link')}")
         else:
             for subnode in node.childNodes:
                 if subnode.nodeName == "#text":
@@ -197,20 +204,18 @@ def getText(node, format, textfd=None):  # pylint: disable=redefined-builtin
                 for p_subnode in subnode.childNodes:
                     if p_subnode.nodeName == "#text":
                         textfd.write(p_subnode.data.strip())
-                    elif p_subnode.nodeName in ["uri", "mail"]:
+                    elif p_subnode.nodeName in ("uri", "mail"):
                         textfd.write(p_subnode.childNodes[0].data)
                         textfd.write(" ( " + p_subnode.getAttribute("link") + " )")
                 textfd.write(NEWLINE_ESCAPE)
             elif subnode.nodeName == "ul":
                 for li in getListElements(subnode):
-                    textfd.write("-" + SPACE_ESCAPE + li + NEWLINE_ESCAPE + " ")
+                    textfd.write(f"-{SPACE_ESCAPE}{li}{NEWLINE_ESCAPE} ")
             elif subnode.nodeName == "ol":
                 i = 0
                 for li in getListElements(subnode):
                     i = i + 1
-                    textfd.write(
-                        str(i) + "." + SPACE_ESCAPE + li + NEWLINE_ESCAPE + " "
-                    )
+                    textfd.write(f"{i}.{SPACE_ESCAPE}{li}{NEWLINE_ESCAPE} ")
             elif subnode.nodeName == "code":
                 textfd.write(
                     getText(subnode, format="keep")
@@ -262,19 +267,16 @@ def makeAtom(pkgname, versionNode):
     @rtype:		String
     @return:	the portage atom
     """
-    rValue = (
-        opMapping[versionNode.getAttribute("range")]
-        + pkgname
-        + "-"
-        + getText(versionNode, format="strip")
-    )
+    op = opMapping[versionNode.getAttribute("range")]
+    version = getText(versionNode, format="strip")
+    rValue = f"{op}{pkgname}-{version}"
     try:
         slot = versionNode.getAttribute("slot").strip()
     except KeyError:
         pass
     else:
         if slot and slot != "*":
-            rValue += _slot_separator + slot
+            rValue = f"{rValue}{_slot_separator}{slot}"
     return str(rValue)
 
 
@@ -289,16 +291,16 @@ def makeVersion(versionNode):
     @rtype:		String
     @return:	the version string
     """
-    rValue = opMapping[versionNode.getAttribute("range")] + getText(
-        versionNode, format="strip"
-    )
+    op = opMapping[versionNode.getAttribute("range")]
+    version = getText(versionNode, format="strip")
+    rValue = f"{op}{version}"
     try:
         slot = versionNode.getAttribute("slot").strip()
     except KeyError:
         pass
     else:
         if slot and slot != "*":
-            rValue += _slot_separator + slot
+            rValue = f"{rValue}{_slot_separator}{slot}"
     return rValue
 
 
@@ -421,9 +423,9 @@ def getMinUpgrade(vulnerableList, unaffectedList, portdbapi, vardbapi, minimize=
                 and portdbapi._pkg_str(c, None).slot
                 == vardbapi._pkg_str(vuln, None).slot
             ):
-                update = c_pv[0] + "/" + c_pv[1] + "-" + c_pv[2]
+                update = f"{c_pv[0]}/{c_pv[1]}-{c_pv[2]}"
                 if c_pv[3] != "r0":  # we don't like -r0 for display
-                    update += "-" + c_pv[3]
+                    update = f"{update}-{c_pv[3]}"
                 update = portdbapi._pkg_str(update, None)
         vuln_update.append([vuln, update])
 
@@ -466,7 +468,7 @@ def format_date(datestr):
 
 class GlsaTypeException(Exception):
     def __init__(self, doctype):
-        Exception.__init__(self, "wrong DOCTYPE: %s" % doctype)
+        Exception.__init__(self, f"wrong DOCTYPE: {doctype}")
 
 
 class GlsaFormatException(Exception):
@@ -509,7 +511,7 @@ class Glsa:
             self.type = "file"
         else:
             raise GlsaArgumentException(
-                _("Given ID %s isn't a valid GLSA ID or filename.") % myid
+                _(f"Given ID {myid} isn't a valid GLSA ID or filename.")
             )
         self.nr = myid
         self.config = myconfig
@@ -526,13 +528,13 @@ class Glsa:
         @return:	None
         """
         if "GLSA_DIR" in self.config:
-            repository = "file://" + self.config["GLSA_DIR"] + "/"
+            repository = f"file://{self.config['GLSA_DIR']}/"
         else:
-            repository = "file://" + self.config["PORTDIR"] + "/metadata/glsa/"
+            repository = f"file://{self.config['PORTDIR']}/metadata/glsa/"
         if self.type == "file":
-            myurl = "file://" + self.nr
+            myurl = f"file://{self.nr}"
         else:
-            myurl = repository + "glsa-%s.xml" % str(self.nr)
+            myurl = f"{repository}glsa-{self.nr}.xml"
 
         f = urllib_request_urlopen(myurl)
         try:
@@ -563,10 +565,9 @@ class Glsa:
         myroot = self.DOM.getElementsByTagName("glsa")[0]
         if self.type == "id" and myroot.getAttribute("id") != self.nr:
             raise GlsaFormatException(
-                _("filename and internal id don't match:")
-                + myroot.getAttribute("id")
-                + " != "
-                + self.nr
+                _(
+                    f"filename and internal id don't match: {myroot.getAttribute('id')} != {self.nr}"
+                )
             )
 
         # the simple (single, required, top-level, #PCDATA) tags first
@@ -585,17 +586,14 @@ class Glsa:
         count = revisedEl.getAttribute("count")
         if not count:
             raise GlsaFormatException(
-                "Count attribute is missing or blank in GLSA: "
-                + myroot.getAttribute("id")
+                f"Count attribute is missing or blank in GLSA: {myroot.getAttribute('id')}"
             )
 
         try:
             self.count = int(count)
         except ValueError:
             raise GlsaFormatException(
-                "Revision attribute in GLSA: "
-                + myroot.getAttribute("id")
-                + " is not an integer"
+                f"Revision attribute in GLSA: {myroot.getAttribute('id')} is not an integer"
             )
 
         self.revised = format_date(self.revised)
@@ -645,9 +643,9 @@ class Glsa:
             try:
                 name = portage.dep.Atom(name)
             except portage.exception.InvalidAtom:
-                raise GlsaFormatException(_("invalid package name: %s") % name)
+                raise GlsaFormatException(_(f"invalid package name: {name}"))
             if name != name.cp:
-                raise GlsaFormatException(_("invalid package name: %s") % name)
+                raise GlsaFormatException(_(f"invalid package name: {name}"))
             name = name.cp
             if name not in self.packages:
                 self.packages[name] = []
@@ -683,58 +681,51 @@ class Glsa:
         outstream = getattr(outstream, "buffer", outstream)
         outstream = codecs.getwriter(encoding)(outstream)
         width = 76
-        outstream.write(("GLSA %s: \n%s" % (self.nr, self.title)).center(width) + "\n")
-        outstream.write((width * "=") + "\n")
-        outstream.write(
-            wrap(self.synopsis, width, caption=_("Synopsis:         ")) + "\n"
+        buffer = "\n".join(
+            (
+                f"GLSA {self.nr}: ",
+                f"{self.title}".center(width),
+                "=" * width,
+                wrap(self.synopsis, width, caption=_("Synopsis:         ")),
+                _(f"Announced on:      {self.announced}"),
+                _(f"Last revised on:   {self.revised} : %{self.count}\n"),
+            )
         )
-        outstream.write(_("Announced on:      %s\n") % self.announced)
-        outstream.write(
-            _("Last revised on:   %s : %02d\n\n") % (self.revised, self.count)
-        )
+        outstream.write(buffer)
         if self.glsatype == "ebuild":
             for k in self.packages:
                 pkg = self.packages[k]
                 for path in pkg:
                     vul_vers = ", ".join(path["vul_vers"])
                     unaff_vers = ", ".join(path["unaff_vers"])
-                    outstream.write(_("Affected package:  %s\n") % k)
+                    outstream.write(_(f"Affected package:  {k}\n"))
                     outstream.write(_("Affected archs:    "))
                     if path["arch"] == "*":
                         outstream.write(_("All\n"))
                     else:
-                        outstream.write("%s\n" % path["arch"])
-                    outstream.write(_("Vulnerable:        %s\n") % vul_vers)
-                    outstream.write(_("Unaffected:        %s\n\n") % unaff_vers)
+                        outstream.write(f"{path['arch']}\n")
+                    outstream.write(_(f"Vulnerable:        {vul_vers}\n"))
+                    outstream.write(_(f"Unaffected:        {unaff_vers}\n\n"))
         elif self.glsatype == "infrastructure":
             pass
         if len(self.bugs) > 0:
-            outstream.write(_("\nRelated bugs:      "))
-            outstream.write(", ".join(self.bugs))
-            outstream.write("\n")
+            outstream.write(_(f"\nRelated bugs:      {', '.join(self.bugs)}\n"))
         if self.background:
-            outstream.write(
-                "\n" + wrap(self.background, width, caption=_("Background:       "))
-            )
-        outstream.write(
-            "\n" + wrap(self.description, width, caption=_("Description:      "))
-        )
-        outstream.write(
-            "\n" + wrap(self.impact_text, width, caption=_("Impact:           "))
-        )
-        outstream.write(
-            "\n" + wrap(self.workaround, width, caption=_("Workaround:       "))
-        )
-        outstream.write(
-            "\n" + wrap(self.resolution, width, caption=_("Resolution:       "))
-        )
+            bg = wrap(self.background, width, caption=_("Background:       "))
+            outstream.write(f"\n{bg}")
         myreferences = " ".join(
             r.replace(" ", SPACE_ESCAPE) + NEWLINE_ESCAPE for r in self.references
         )
-        outstream.write(
-            "\n" + wrap(myreferences, width, caption=_("References:       "))
+        buffer = "\n".join(
+            (
+                wrap(self.description, width, caption=_("Description:      ")),
+                wrap(self.impact_text, width, caption=_("Impact:           ")),
+                wrap(self.workaround, width, caption=_("Workaround:       ")),
+                wrap(self.resolution, width, caption=_("Resolution:       ")),
+                wrap(myreferences, width, caption=_("References:       ")),
+            )
         )
-        outstream.write("\n")
+        outstream.write(f"\n{buffer}\n")
 
     def isVulnerable(self):
         """

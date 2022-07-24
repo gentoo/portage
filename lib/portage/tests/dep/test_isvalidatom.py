@@ -185,9 +185,6 @@ class IsValidAtom(TestCase):
                 "sys-apps/portage::repo", False, allow_repo=None, eapi="5"
             ),
             IsValidAtomTestCase(
-                "sys-apps/portage::repo", True, allow_repo=None, eapi="5-progress"
-            ),
-            IsValidAtomTestCase(
                 "sys-apps/portage::repo", False, allow_repo=None, eapi="7"
             ),
             # If allow_repo is not None, it should not be overwritten by eapi
@@ -196,17 +193,11 @@ class IsValidAtom(TestCase):
                 "sys-apps/portage::repo", False, allow_repo=False, eapi="5"
             ),
             IsValidAtomTestCase(
-                "sys-apps/portage::repo", False, allow_repo=False, eapi="5-progress"
-            ),
-            IsValidAtomTestCase(
                 "sys-apps/portage::repo", False, allow_repo=False, eapi="7"
             ),
             IsValidAtomTestCase("sys-apps/portage::repo", True, allow_repo=True),
             IsValidAtomTestCase(
                 "sys-apps/portage::repo", True, allow_repo=True, eapi="5"
-            ),
-            IsValidAtomTestCase(
-                "sys-apps/portage::repo", True, allow_repo=True, eapi="5-progress"
             ),
             IsValidAtomTestCase(
                 "sys-apps/portage::repo", True, allow_repo=True, eapi="7"

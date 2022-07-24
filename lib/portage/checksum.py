@@ -44,7 +44,7 @@ def _open_file(filename):
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
         )
     except IOError as e:
-        func_call = "open('%s')" % _unicode_decode(filename)
+        func_call = f"open('{_unicode_decode(filename)}')"
         if e.errno == errno.EPERM:
             raise portage.exception.OperationNotPermitted(func_call)
         elif e.errno == errno.EACCES:
@@ -344,11 +344,8 @@ if os.path.exists(PRELINK_BINARY):
 
 
 def is_prelinkable_elf(filename):
-    f = _open_file(filename)
-    try:
+    with _open_file(filename) as f:
         magic = f.read(17)
-    finally:
-        f.close()
     return (
         len(magic) == 17
         and magic.startswith(b"\x7fELF")
@@ -367,9 +364,7 @@ def _perform_md5_merge(x, **kwargs):
 
 
 def perform_all(x, calc_prelink=0):
-    mydict = {}
-    for k in hashfunc_keys:
-        mydict[k] = perform_checksum(x, k, calc_prelink)[0]
+    mydict = {k: perform_checksum(x, k, calc_prelink)[0] for k in hashfunc_keys}
     return mydict
 
 
@@ -427,9 +422,8 @@ class _hash_filter:
         for token in self._tokens:
             if token in matches:
                 return True
-            if token[:1] == "-":
-                if token[1:] in matches:
-                    return False
+            if token[:1] == "-" and token[1:] in matches:
+                return False
         return False
 
 
@@ -448,10 +442,10 @@ def _apply_hash_filter(digests, hash_filter):
     """
 
     verifiable_hash_types = set(digests).intersection(hashfunc_keys)
-    verifiable_hash_types.discard("size")
     modified = False
     if len(verifiable_hash_types) > 1:
-        for k in list(verifiable_hash_types):
+        verifiable_hash_types.discard("size")
+        for k in verifiable_hash_types:
             if not hash_filter(k):
                 modified = True
                 verifiable_hash_types.remove(k)
@@ -459,11 +453,7 @@ def _apply_hash_filter(digests, hash_filter):
                     break
 
     if modified:
-        digests = dict(
-            (k, v)
-            for (k, v) in digests.items()
-            if k == "size" or k in verifiable_hash_types
-        )
+        digests = {k: v for k, v in digests.items() if k in verifiable_hash_types}
 
     return digests
 
@@ -525,12 +515,11 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
             if mydict[x] != myhash:
                 if strict:
                     raise portage.exception.DigestException(
-                        ("Failed to verify '$(file)s' on " + "checksum type '%(type)s'")
-                        % {"file": filename, "type": x}
+                        f"Failed to verify '{filename}' on checksum type '{x}'"
                     )
                 else:
                     file_is_ok = False
-                    reason = (("Failed on %s verification" % x), myhash, mydict[x])
+                    reason = (f"Failed on {x} verification", myhash, mydict[x])
                     break
 
     return file_is_ok, reason
@@ -578,8 +567,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
         try:
             if hashname not in hashfunc_keys:
                 raise portage.exception.DigestException(
-                    hashname
-                    + " hash function not available (needs dev-python/pycrypto)"
+                    f"{hashname} hash function not available (needs dev-python/pycrypto)"
                 )
             myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
         except (OSError, IOError) as e:
@@ -618,8 +606,7 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
     for x in hashes:
         if x not in hashfunc_keys:
             raise portage.exception.DigestException(
-                x
-                + " hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)"
+                f"{x} hash function not available (needs dev-python/pycrypto)"
             )
         rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
     return rVal
@@ -638,6 +625,6 @@ def checksum_str(data, hashname="MD5"):
     """
     if hashname not in hashfunc_keys:
         raise portage.exception.DigestException(
-            hashname + " hash function not available (needs dev-python/pycrypto)"
+            f"{hashname} hash function not available (needs dev-python/pycrypto)"
         )
     return hashfunc_map[hashname].checksum_str(data)

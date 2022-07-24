@@ -8,6 +8,7 @@
 from portage.const_autotool import *
 
 import os
+import sys
 
 # ===========================================================================
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
@@ -33,32 +34,32 @@ import os
 
 # variables used with config_root (these need to be relative)
 USER_CONFIG_PATH = "etc/portage"
-BINREPOS_CONF_FILE = USER_CONFIG_PATH + "/binrepos.conf"
-MAKE_CONF_FILE = USER_CONFIG_PATH + "/make.conf"
-MODULES_FILE_PATH = USER_CONFIG_PATH + "/modules"
-CUSTOM_PROFILE_PATH = USER_CONFIG_PATH + "/profile"
-USER_VIRTUALS_FILE = USER_CONFIG_PATH + "/virtuals"
-EBUILD_SH_ENV_FILE = USER_CONFIG_PATH + "/bashrc"
-EBUILD_SH_ENV_DIR = USER_CONFIG_PATH + "/env"
-CUSTOM_MIRRORS_FILE = USER_CONFIG_PATH + "/mirrors"
-COLOR_MAP_FILE = USER_CONFIG_PATH + "/color.map"
-PROFILE_PATH = USER_CONFIG_PATH + "/make.profile"
-MAKE_DEFAULTS_FILE = PROFILE_PATH + "/make.defaults"  # FIXME: not used
-DEPRECATED_PROFILE_FILE = PROFILE_PATH + "/deprecated"
+BINREPOS_CONF_FILE = f"{USER_CONFIG_PATH}/binrepos.conf"
+MAKE_CONF_FILE = f"{USER_CONFIG_PATH}/make.conf"
+MODULES_FILE_PATH = f"{USER_CONFIG_PATH}/modules"
+CUSTOM_PROFILE_PATH = f"{USER_CONFIG_PATH}/profile"
+USER_VIRTUALS_FILE = f"{USER_CONFIG_PATH}/virtuals"
+EBUILD_SH_ENV_FILE = f"{USER_CONFIG_PATH}/bashrc"
+EBUILD_SH_ENV_DIR = f"{USER_CONFIG_PATH}/env"
+CUSTOM_MIRRORS_FILE = f"{USER_CONFIG_PATH}/mirrors"
+COLOR_MAP_FILE = f"{USER_CONFIG_PATH}/color.map"
+PROFILE_PATH = f"{USER_CONFIG_PATH}/make.profile"
+MAKE_DEFAULTS_FILE = f"{PROFILE_PATH}/make.defaults"  # FIXME: not used
+DEPRECATED_PROFILE_FILE = f"{PROFILE_PATH}/deprecated"
 
 # variables used with targetroot (these need to be absolute, but not
 # have a leading '/' since they are used directly with os.path.join on EROOT)
 VDB_PATH = "var/db/pkg"
 CACHE_PATH = "var/cache/edb"
 PRIVATE_PATH = "var/lib/portage"
-WORLD_FILE = PRIVATE_PATH + "/world"
-WORLD_SETS_FILE = PRIVATE_PATH + "/world_sets"
-CONFIG_MEMORY_FILE = PRIVATE_PATH + "/config"
+WORLD_FILE = f"{PRIVATE_PATH}/world"
+WORLD_SETS_FILE = f"{PRIVATE_PATH}/world_sets"
+CONFIG_MEMORY_FILE = f"{PRIVATE_PATH}/config"
 NEWS_LIB_PATH = "var/lib/gentoo"
 
 # these variables get EPREFIX prepended automagically when they are
 # translated into their lowercase variants
-DEPCACHE_PATH = "/var/cache/edb/dep"
+DEPCACHE_PATH = f"/{CACHE_PATH}/dep"
 GLOBAL_CONFIG_PATH = "/usr/share/portage/config"
 
 # these variables are not used with target_root or config_root
@@ -71,19 +72,19 @@ PORTAGE_BASE_PATH        = PORTAGE_BASE
 # PREFIX LOCAL (from const_autotools)
 #PORTAGE_BASE_PATH = os.path.join(os.sep, os.sep.join(os.path.realpath(__file__.rstrip("co")).split(os.sep)[:-3]))
 # fmt:on
-PORTAGE_BIN_PATH = PORTAGE_BASE_PATH + "/bin"
+PORTAGE_BIN_PATH = f"{PORTAGE_BASE_PATH}/bin"
 PORTAGE_PYM_PATH = os.path.realpath(os.path.join(__file__, "../.."))
-LOCALE_DATA_PATH = PORTAGE_BASE_PATH + "/locale"  # FIXME: not used
-EBUILD_SH_BINARY = PORTAGE_BIN_PATH + "/ebuild.sh"
-MISC_SH_BINARY = PORTAGE_BIN_PATH + "/misc-functions.sh"
-# BEGIN PREFIX LOCAL
-SANDBOX_BINARY = EPREFIX + "/usr/bin/sandbox"
-FAKEROOT_BINARY = EPREFIX + "/usr/bin/fakeroot"
+LOCALE_DATA_PATH = f"{PORTAGE_BASE_PATH}/locale"  # FIXME: not used
+EBUILD_SH_BINARY = f"{PORTAGE_BIN_PATH}/ebuild.sh"
+MISC_SH_BINARY = f"{PORTAGE_BIN_PATH}/misc-functions.sh"
+# BEGIN PREFIX LOCAL: use EPREFIX for binaries
+SANDBOX_BINARY = f"{EPREFIX}/usr/bin/sandbox"
+FAKEROOT_BINARY = f"{EPREFIX}/usr/bin/fakeroot"
 # END PREFIX LOCAL
 BASH_BINARY = "/bin/bash"
 MOVE_BINARY = "/bin/mv"
 PRELINK_BINARY = "/usr/sbin/prelink"
-# BEGIN PREFIX LOCAL
+# BEGIN PREFIX LOCAL: macOS sandbox
 MACOSSANDBOX_BINARY      = "/usr/bin/sandbox-exec"
 MACOSSANDBOX_PROFILE     = '''(version 1)
 (allow default)
@@ -100,7 +101,7 @@ PORTAGE_USERNAME         = portageuser
 INVALID_ENV_FILE = "/etc/spork/is/not/valid/profile.env"
 MERGING_IDENTIFIER = "-MERGING-"
 REPO_NAME_FILE = "repo_name"
-REPO_NAME_LOC = "profiles" + "/" + REPO_NAME_FILE
+REPO_NAME_LOC = f"profiles/{REPO_NAME_FILE}"
 
 PORTAGE_PACKAGE_ATOM = "sys-apps/portage"
 LIBC_PACKAGE_ATOM = "virtual/libc"
@@ -147,12 +148,15 @@ EBUILD_PHASES = (
     "other",
 )
 SUPPORTED_FEATURES = frozenset(
-    [
+    (
         "assume-digests",
         "binpkg-docompress",
         "binpkg-dostrip",
+        "binpkg-ignore-signature",
         "binpkg-logs",
         "binpkg-multi-instance",
+        "binpkg-request-signature",
+        "binpkg-signing",
         "buildpkg",
         "buildpkg-live",
         "buildsyspkg",
@@ -178,6 +182,7 @@ SUPPORTED_FEATURES = frozenset(
         "force-mirror",
         "force-prefix",
         "getbinpkg",
+        "gpg-keepalive",
         "icecream",
         "installsources",
         "ipc-sandbox",
@@ -237,14 +242,14 @@ SUPPORTED_FEATURES = frozenset(
         "xattr",
         # PREFIX LOCAL
 		"stacked-prefix",
-    ]
+    )
 )
 
 EAPI = 8
 
 HASHING_BLOCKSIZE = 32768
 
-MANIFEST2_HASH_DEFAULTS = frozenset(["BLAKE2B", "SHA512"])
+MANIFEST2_HASH_DEFAULTS = frozenset(("BLAKE2B", "SHA512"))
 MANIFEST2_HASH_DEFAULT = "BLAKE2B"
 
 MANIFEST2_IDENTIFIERS = ("AUX", "MISC", "DIST", "EBUILD")
@@ -270,7 +275,7 @@ VCS_DIRS = ("CVS", "RCS", "SCCS", ".bzr", ".git", ".hg", ".svn")
 
 # List of known live eclasses. Keep it in sync with cnf/sets/portage.conf
 LIVE_ECLASSES = frozenset(
-    [
+    (
         "bzr",
         "cvs",
         "darcs",
@@ -279,11 +284,18 @@ LIVE_ECLASSES = frozenset(
         "golang-vcs",
         "mercurial",
         "subversion",
-    ]
+    )
 )
 
 SUPPORTED_BINPKG_FORMATS = ("tar", "rpm")
+
+if sys.version_info.major < 3:
+    SUPPORTED_GENTOO_BINPKG_FORMATS = ("xpak",)
+else:
+    SUPPORTED_GENTOO_BINPKG_FORMATS = ("xpak", "gpkg")
+
 SUPPORTED_XPAK_EXTENSIONS = (".tbz2", ".xpak")
+SUPPORTED_GPKG_EXTENSIONS = (".gpkg.tar",)
 
 # Time formats used in various places like metadata.chk.
 TIMESTAMP_FORMAT = "%a, %d %b %Y %H:%M:%S +0000"  # to be used with time.gmtime()

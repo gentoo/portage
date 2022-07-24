@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 import io
+import multiprocessing
 import platform
 
 import fcntl
@@ -38,6 +39,7 @@ class MergeProcess(ForkProcess):
         "_dblink",
         "_elog_keys",
         "_locked_vdb",
+        "_mtime_reader",
     )
 
     def _start(self):
@@ -113,6 +115,19 @@ class MergeProcess(ForkProcess):
             self._elog_reader_fd = None
             return False
 
+    def _mtime_handler(self):
+        if self._mtime_reader is not None:
+            try:
+                mtimes = self._mtime_reader.recv()
+            except EOFError:
+                self.scheduler.remove_reader(self._mtime_reader.fileno())
+                self._mtime_reader.close()
+                self._mtime_reader = None
+            else:
+                if self.prev_mtimes is not None:
+                    self.prev_mtimes.clear()
+                    self.prev_mtimes.update(mtimes)
+
     def _spawn(self, args, fd_pipes, **kwargs):
         """
         Extend the superclass _spawn method to perform some pre-fork and
@@ -126,6 +141,11 @@ class MergeProcess(ForkProcess):
             fcntl.F_SETFL,
             fcntl.fcntl(elog_reader_fd, fcntl.F_GETFL) | os.O_NONBLOCK,
         )
+
+        mtime_reader, mtime_writer = multiprocessing.Pipe(duplex=False)
+        fd_pipes[mtime_writer.fileno()] = mtime_writer.fileno()
+        self.scheduler.add_reader(mtime_reader.fileno(), self._mtime_handler)
+        self._mtime_reader = mtime_reader
 
         blockers = None
         if self.blockers is not None:
@@ -142,6 +162,7 @@ class MergeProcess(ForkProcess):
             vartree=self.vartree,
             blockers=blockers,
             pipe=elog_writer_fd,
+            mtime_pipe=mtime_writer,
         )
         fd_pipes[elog_writer_fd] = elog_writer_fd
         self.scheduler.add_reader(elog_reader_fd, self._elog_output_handler)
@@ -160,6 +181,7 @@ class MergeProcess(ForkProcess):
         self._elog_reader_fd = elog_reader_fd
         pids = super(MergeProcess, self)._spawn(args, fd_pipes, **kwargs)
         os.close(elog_writer_fd)
+        mtime_writer.close()
         self._buf = ""
         self._elog_keys = set()
         # Discard messages which will be collected by the subprocess,

@@ -152,7 +152,7 @@ class SQLDatabase(template.database):
 
     def __del__(self):
         # just to be safe.
-        if "db" in self.__dict__ and self.db != None:
+        if "db" in self.__dict__ and self.db is not None:
             self.commit()
             self.db.close()
 
@@ -278,7 +278,7 @@ class SQLDatabase(template.database):
         l = []
         for x, y, v in self.con.fetchall():
             if oldcpv != x:
-                if oldcpv != None:
+                if oldcpv is not None:
                     d = dict(l)
                     if "_eclasses_" in d:
                         d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
@@ -288,7 +288,7 @@ class SQLDatabase(template.database):
                 l.clear()
                 oldcpv = x
             l.append((y, v))
-        if oldcpv != None:
+        if oldcpv is not None:
             d = dict(l)
             if "_eclasses_" in d:
                 d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])

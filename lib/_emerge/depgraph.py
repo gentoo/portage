@@ -15,7 +15,12 @@ from itertools import chain
 import portage
 from portage import os
 from portage import _unicode_decode, _unicode_encode, _encodings
-from portage.const import PORTAGE_PACKAGE_ATOM, USER_CONFIG_PATH, VCS_DIRS
+from portage.const import (
+    PORTAGE_PACKAGE_ATOM,
+    USER_CONFIG_PATH,
+    VCS_DIRS,
+    SUPPORTED_GPKG_EXTENSIONS,
+)
 from portage.dbapi import dbapi
 from portage.dbapi.dep_expand import dep_expand
 from portage.dbapi.DummyTree import DummyTree
@@ -55,6 +60,7 @@ from portage.util.digraph import digraph
 from portage.util.futures import asyncio
 from portage.util._async.TaskScheduler import TaskScheduler
 from portage.versions import _pkg_str, catpkgsplit
+from portage.binpkg import get_binpkg_format
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -4558,8 +4564,7 @@ class depgraph:
         onlydeps = "--onlydeps" in self._frozen_config.myopts
         lookup_owners = []
         for x in myfiles:
-            ext = os.path.splitext(x)[1]
-            if ext == ".tbz2":
+            if x.endswith(".tbz2") or x.endswith(SUPPORTED_GPKG_EXTENSIONS):
                 if not os.path.exists(x):
                     if os.path.exists(os.path.join(pkgsettings["PKGDIR"], "All", x)):
                         x = os.path.join(pkgsettings["PKGDIR"], "All", x)
@@ -4571,13 +4576,22 @@ class depgraph:
                             noiselevel=-1,
                         )
                         writemsg(
-                            "!!! Please ensure the tbz2 exists as specified.\n\n",
+                            "!!! Please ensure the binpkg exists as specified.\n\n",
                             noiselevel=-1,
                         )
                         return 0, myfavorites
-                mytbz2 = portage.xpak.tbz2(x)
-                mykey = None
-                cat = mytbz2.getfile("CATEGORY")
+                binpkg_format = get_binpkg_format(x)
+                if binpkg_format == "xpak":
+                    mytbz2 = portage.xpak.tbz2(x)
+                    mykey = None
+                    cat = mytbz2.getfile("CATEGORY")
+                elif binpkg_format == "gpkg":
+                    mygpkg = portage.gpkg.gpkg(self.frozen_config, None, x)
+                    mykey = None
+                    cat = mygpkg.get_metadata("CATEGORY")
+                else:
+                    raise InvalidBinaryPackageFormat(x)
+
                 if cat is not None:
                     cat = _unicode_decode(
                         cat.strip(), encoding=_encodings["repo.content"]
@@ -4619,7 +4633,7 @@ class depgraph:
                     return 0, myfavorites
 
                 args.append(PackageArg(arg=x, package=pkg, root_config=root_config))
-            elif ext == ".ebuild":
+            elif x.endswith(".ebuild"):
                 ebuild_path = portage.util.normalize_path(os.path.abspath(x))
                 pkgdir = os.path.dirname(ebuild_path)
                 tree_root = os.path.dirname(os.path.dirname(pkgdir))
@@ -7168,21 +7182,21 @@ class depgraph:
             new_changes = {}
 
         for flag, state in target_use.items():
-            real_flag = pkg.iuse.get_real_flag(flag)
-            if real_flag is None:
+            flag = pkg.iuse.get_flag(flag)
+            if flag is None:
                 # Triggered by use-dep defaults.
                 continue
             if state:
-                if real_flag not in old_use:
-                    if new_changes.get(real_flag) == False:
+                if flag not in old_use:
+                    if new_changes.get(flag) == False:
                         return old_use
-                    new_changes[real_flag] = True
+                    new_changes[flag] = True
                 new_use.add(flag)
             else:
-                if real_flag in old_use:
-                    if new_changes.get(real_flag) == True:
+                if flag in old_use:
+                    if new_changes.get(flag) == True:
                         return old_use
-                    new_changes[real_flag] = False
+                    new_changes[flag] = False
         new_use |= old_use.difference(target_use)
 
         def want_restart_for_use_change(pkg, new_use):
@@ -9034,7 +9048,7 @@ class depgraph:
             ):
                 # Make sure that portage always has all of its
                 # RDEPENDs installed first, but ignore uninstalls
-                # (these occur when new portage blocks older repoman).
+                # (these occur when new portage blocks an older package version).
                 return False
             selected_nodes.add(node)
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):

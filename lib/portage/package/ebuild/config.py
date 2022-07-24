@@ -41,6 +41,7 @@ from portage.const import (
     PORTAGE_BASE_PATH,
     PRIVATE_PATH,
     PROFILE_PATH,
+    SUPPORTED_GENTOO_BINPKG_FORMATS,
     USER_CONFIG_PATH,
     USER_VIRTUALS_FILE,
 )
@@ -103,9 +104,6 @@ from portage.package.ebuild._config.VirtualsManager import VirtualsManager
 from portage.package.ebuild._config.helper import (
     ordered_by_atom_specificity,
     prune_incremental,
-)
-from portage.package.ebuild._config.unpack_dependencies import (
-    load_unpack_dependencies_configuration,
 )
 
 
@@ -203,7 +201,6 @@ class config:
     _deprecated_keys = {
         "PORTAGE_LOGDIR": "PORT_LOGDIR",
         "PORTAGE_LOGDIR_CLEAN": "PORT_LOGDIR_CLEAN",
-        "SIGNED_OFF_BY": "DCO_SIGNED_OFF_BY",
     }
 
     _setcpv_aux_keys = (
@@ -335,7 +332,6 @@ class config:
             self.profiles = clone.profiles
             self.packages = clone.packages
             self.repositories = clone.repositories
-            self.unpack_dependencies = clone.unpack_dependencies
             self._default_features_use = clone._default_features_use
             self._iuse_effective = clone._iuse_effective
             self._iuse_implicit_match = clone._iuse_implicit_match
@@ -490,14 +486,7 @@ class config:
             # interaction with the calling environment that might
             # lead to unexpected results.
 
-            env_d = (
-                getconfig(
-                    os.path.join(eroot, "etc", "profile.env"),
-                    tolerant=tolerant,
-                    expand=False,
-                )
-                or {}
-            )
+            env_d = self._get_env_d(broot=broot, eroot=eroot, tolerant=tolerant)
             expand_map = env_d.copy()
             self._expand_map = expand_map
 
@@ -729,10 +718,6 @@ class config:
                 if not isinstance(x, Atom):
                     x = Atom(x.lstrip("*"))
                 self.prevmaskdict.setdefault(x.cp, []).append(x)
-
-            self.unpack_dependencies = load_unpack_dependencies_configuration(
-                self.repositories
-            )
 
             mygcfg = {}
             if profiles_complex:
@@ -1225,6 +1210,61 @@ class config:
         if mycpv:
             self.setcpv(mycpv)
 
+    def _get_env_d(self, broot, eroot, tolerant):
+        broot_only_variables = (
+            "PATH",
+            "PREROOTPATH",
+            "ROOTPATH",
+        )
+        eroot_only_variables = (
+            "CONFIG_PROTECT",
+            "CONFIG_PROTECT_MASK",
+            "INFODIR",
+            "INFOPATH",
+            "MANPATH",
+            "PKG_CONFIG_.*",
+        )
+
+        broot_only_variables_re = re.compile(r"^(%s)$" % "|".join(broot_only_variables))
+        eroot_only_variables_re = re.compile(r"^(%s)$" % "|".join(eroot_only_variables))
+
+        broot_env_d_path = os.path.join(broot or "/", "etc", "profile.env")
+        eroot_env_d_path = os.path.join(eroot or "/", "etc", "profile.env")
+
+        if (
+            os.path.exists(broot_env_d_path)
+            and os.path.exists(eroot_env_d_path)
+            and os.path.samefile(broot_env_d_path, eroot_env_d_path)
+        ):
+            broot_env_d = (
+                getconfig(broot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+            eroot_env_d = broot_env_d
+        else:
+            broot_env_d = (
+                getconfig(broot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+            eroot_env_d = (
+                getconfig(eroot_env_d_path, tolerant=tolerant, expand=False) or {}
+            )
+
+        env_d = {}
+
+        for k in broot_env_d.keys() | eroot_env_d.keys():
+            if broot_only_variables_re.match(k):
+                if k in broot_env_d:
+                    env_d[k] = broot_env_d[k]
+            elif eroot_only_variables_re.match(k):
+                if k in eroot_env_d:
+                    env_d[k] = eroot_env_d[k]
+            else:
+                if k in eroot_env_d:
+                    env_d[k] = eroot_env_d[k]
+                elif k in broot_env_d:
+                    env_d[k] = broot_env_d[k]
+
+        return env_d
+
     def _init_iuse(self):
         self._iuse_effective = self._calc_iuse_effective()
         self._iuse_implicit_match = _iuse_implicit_match_cache(self)
@@ -1518,6 +1558,15 @@ class config:
             if warning_shown and platform.python_implementation() == "PyPy":
                 writemsg(
                     _("!!! See https://bugs.pypy.org/issue833 for details.\n"),
+                    noiselevel=-1,
+                )
+
+        binpkg_format = self.get("BINPKG_FORMAT")
+        if binpkg_format:
+            if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
+                writemsg(
+                    "!!! BINPKG_FORMAT contains invalid or "
+                    "unsupported format: %s" % binpkg_format,
                     noiselevel=-1,
                 )
 
@@ -2647,14 +2696,13 @@ class config:
 
     def reload(self):
         """Reload things like /etc/profile.env that can change during runtime."""
-        env_d_filename = os.path.join(self["EROOT"], "etc", "profile.env")
         self.configdict["env.d"].clear()
-        env_d = getconfig(env_d_filename, tolerant=self._tolerant, expand=False)
-        if env_d:
-            # env_d will be None if profile.env doesn't exist.
-            for k in self._env_d_blacklist:
-                env_d.pop(k, None)
-            self.configdict["env.d"].update(env_d)
+        env_d = self._get_env_d(
+            broot=self["BROOT"], eroot=self["EROOT"], tolerant=self._tolerant
+        )
+        for k in self._env_d_blacklist:
+            env_d.pop(k, None)
+        self.configdict["env.d"].update(env_d)
 
     def regenerate(self, useonly=0, use_cache=None):
         """
@@ -3315,16 +3363,12 @@ class config:
             mydict.pop("EROOT", None)
             mydict.pop("ESYSROOT", None)
 
-        if (
-            phase
-            not in (
-                "pretend",
-                "setup",
-                "preinst",
-                "postinst",
-            )
-            or not eapi_exports_replace_vars(eapi)
-        ):
+        if phase not in (
+            "pretend",
+            "setup",
+            "preinst",
+            "postinst",
+        ) or not eapi_exports_replace_vars(eapi):
             mydict.pop("REPLACING_VERSIONS", None)
 
         if phase not in ("prerm", "postrm") or not eapi_exports_replace_vars(eapi):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 1998-2021 Gentoo Authors
+# Copyright 1998-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 try:
@@ -14,7 +14,7 @@ try:
     from setuptools.command.install_scripts import install_scripts
     from setuptools.command.sdist import sdist
     from setuptools.dep_util import newer
-    from setuptools.dir_util import mkpath, remove_tree
+    from setuptools.dir_util import mkpath, remove_tree, copy_tree
     from setuptools.util import change_root, subst_vars
 except ImportError:
     from distutils.core import setup, Command, Extension
@@ -28,7 +28,7 @@ except ImportError:
     from distutils.command.install_scripts import install_scripts
     from distutils.command.sdist import sdist
     from distutils.dep_util import newer
-    from distutils.dir_util import mkpath, remove_tree
+    from distutils.dir_util import mkpath, remove_tree, copy_tree
     from distutils.util import change_root, subst_vars
 
 import codecs
@@ -681,6 +681,17 @@ class build_tests(x_build_scripts_custom):
         print("Symlinking %s -> %s" % (conf_dir, conf_src))
         os.symlink(conf_src, conf_dir)
 
+        source_path = os.path.realpath(__file__)
+
+        # copy GPG test keys
+        copy_tree(
+            os.path.join(
+                os.path.dirname(source_path), "lib", "portage", "tests", ".gnupg"
+            ),
+            os.path.join(self.build_lib, "portage", "tests", ".gnupg"),
+        )
+        os.chmod(os.path.join(self.build_lib, "portage", "tests", ".gnupg"), 0o700)
+
         # create $build_lib/../.portage_not_installed
         # to enable proper paths in tests
         with open(os.path.join(self.top_dir, ".portage_not_installed"), "w"):
@@ -700,6 +711,7 @@ class test(Command):
 
     def run(self):
         self.run_command("build_tests")
+
         subprocess.check_call(
             [
                 sys.executable,
@@ -805,7 +817,7 @@ def get_data_files(regular_files, venv_files):
 
 setup(
     name="portage",
-    version="3.0.30",
+    version="3.0.34",
     url="https://wiki.gentoo.org/wiki/Project:Portage",
     project_urls={
         "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES",

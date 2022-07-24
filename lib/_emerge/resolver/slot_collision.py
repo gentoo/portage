@@ -22,7 +22,7 @@ class slot_conflict_handler:
     go away. This class focuses on cases where this can be achieved
     with a change in USE settings.
 
-    1) Find out if what causes a given slot conflict. There are
+    1) Find out what causes a given slot conflict. There are
     three possibilities:
 
             a) One parent needs foo-1:0 and another one needs foo-2:0,
@@ -36,7 +36,7 @@ class slot_conflict_handler:
             enabled, this case is treated in the same way as c).
 
             c) Neither a 'version based conflict' nor an 'unspecific
-            conflict'. Ignoring use deps would result result in an
+            conflict'. Ignoring use deps would result in an
             'unspecific conflict'. This is called a 'specific conflict'.
             This is the only conflict we try to find suggestions for.
 
@@ -63,7 +63,7 @@ class slot_conflict_handler:
             * The parent package is 'installed'.
             * The conflict package is 'installed'.
 
-    USE of 'installed' packages can't be changed. This always requires an
+    USE of 'installed' packages can't be changed. This always requires a
     non-installed package.
 
     During this procedure, contradictions may occur. In this case the
@@ -126,10 +126,10 @@ class slot_conflict_handler:
 
         self._prepare_conflict_msg_and_check_for_specificity()
 
-        # a list of dicts that hold the needed USE values to solve all conflicts
+        # a list of dicts that holds the needed USE values to solve all conflicts
         self.solutions = []
 
-        # a list of dicts that hold the needed USE changes to solve all conflicts
+        # a list of dicts that holds the needed USE changes to solve all conflicts
         self.changes = []
 
         # configuration = a list of packages with exactly one package from every
@@ -218,7 +218,7 @@ class slot_conflict_handler:
                 to_be_removed.append(change)
 
         if not ignore:
-            # Discard all existing change that are a superset of the new change.
+            # Discard all existing changes that are a superset of the new change.
             for obsolete_change in to_be_removed:
                 changes.remove(obsolete_change)
             changes.append(new_change)
@@ -228,14 +228,14 @@ class slot_conflict_handler:
         new_change = {}
         for pkg in solution:
             for flag, state in solution[pkg].items():
-                real_flag = pkg.iuse.get_real_flag(flag)
-                if real_flag is None:
+                flag = pkg.iuse.get_flag(flag)
+                if flag is None:
                     # Triggered by use-dep defaults.
                     continue
                 if state == "enabled" and flag not in _pkg_use_enabled(pkg):
-                    new_change.setdefault(pkg, {})[real_flag] = True
+                    new_change.setdefault(pkg, {})[flag] = True
                 elif state == "disabled" and flag in _pkg_use_enabled(pkg):
-                    new_change.setdefault(pkg, {})[real_flag] = False
+                    new_change.setdefault(pkg, {})[flag] = False
         return new_change
 
     def _prepare_conflict_msg_and_check_for_specificity(self):
@@ -803,12 +803,12 @@ class slot_conflict_handler:
         self, config, all_conflict_atoms_by_slotatom, conflict_nodes
     ):
         """
-        Given a configuartion, required use changes are computed and checked to
+        Given a configuration, required use changes are computed and checked to
         make sure that no new conflict is introduced. Returns a solution or None.
         """
         _pkg_use_enabled = self.depgraph._pkg_use_enabled
         # An installed package can only be part of a valid configuration if it has no
-        # pending use changed. Otherwise the ebuild will be pulled in again.
+        # pending use changes. Otherwise the ebuild will be pulled in again.
         for pkg in config:
             if not pkg.installed:
                 continue
@@ -908,7 +908,7 @@ class slot_conflict_handler:
                     violated_atom.use.enabled or violated_atom.use.disabled
                 ):
                     # We can't change USE of an installed package (only of an ebuild, but that is already
-                    # part of the conflict, isn't it?
+                    # part of the conflict, isn't it?)
                     if self.debug:
                         writemsg(
                             (
@@ -922,7 +922,7 @@ class slot_conflict_handler:
 
                 # Compute the required USE changes. A flag can be forced to "enabled" or "disabled",
                 # it can be in the conditional state "cond" that allows both values or in the
-                # "contradiction" state, which means that some atoms insist on differnt values
+                # "contradiction" state, which means that some atoms insist on different values
                 # for this flag and those kill this configuration.
                 for flag in violated_atom.use.required:
                     state = involved_flags.get(flag, "")
@@ -1013,7 +1013,7 @@ class slot_conflict_handler:
 
     def _force_flag_for_package(self, required_changes, pkg, flag, state):
         """
-        Adds an USE change to required_changes. Sets the target state to
+        Adds a USE change to required_changes. Sets the target state to
         "contradiction" if a flag is forced to conflicting values.
         """
         _pkg_use_enabled = self.depgraph._pkg_use_enabled
@@ -1043,7 +1043,7 @@ class slot_conflict_handler:
         self, config, all_involved_flags, all_conflict_atoms_by_slotatom
     ):
         """
-        Given a configuartion and all involved flags, all possible settings for the involved
+        Given a configuration and all involved flags, all possible settings for the involved
         flags are checked if they solve the slot conflict.
         """
         _pkg_use_enabled = self.depgraph._pkg_use_enabled
