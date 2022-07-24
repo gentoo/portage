@@ -34,22 +34,9 @@ install_qa_check_prefix() {
 	# check shebangs, bug #282539
 	rm -f "${T}"/non-prefix-shebangs-errs
 	local WHITELIST=" /usr/bin/env "
-	# BEGIN PREFIX LOCAL: resolve path before check
+	# BEGIN PREFIX LOCAL: pull canonicalize call out of loop
 	# shebang can be an absolutised path, bug #342929
 	local eprefix=$(canonicalize ${EPREFIX})
-	# Without the stacked-prefix feature, tests using BPREFIX
-	# are redundant to EPREFIX, but run only if we will fail.
-	# Otherways, BPREFIX really is BROOT (the EAPI 7 one).
-	local BPREFIX=${EPREFIX}
-	local bprefix=${eprefix}
-	if has stacked-prefix ${FEATURES} &&
-	   [[ -z ${ROOT%/} ]]             &&
-	   [[ ${CBUILD} == ${CHOST} ]]    &&
-	   [[ ${EPREFIX} != ${BROOT-${PORTAGE_OVERRIDE_EPREFIX}} ]] &&
-	:; then
-		BPREFIX=${BROOT-${PORTAGE_OVERRIDE_EPREFIX}}
-		bprefix=$(canonicalize ${BPREFIX})
-	fi
 	# END PREFIX LOCAL
 	# this is hell expensive, but how else?
 	# PREFIX LOCAL: use grep -I to skip binary files, allow POSIX space
@@ -80,9 +67,7 @@ install_qa_check_prefix() {
 			[[ $(canonicalize "/${rf#${D}}") != ${eprefix}/* ]] && continue
 		fi
 		# does the shebang start with ${EPREFIX}, and does it exist?
-		# PREFIX LOCAL: check BPREFIX also
-		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] \
-		|| [[ ${line[0]} == ${BPREFIX}/* || ${line[0]} == ${bprefix}/* ]] ; then
+		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
 			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
 				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
 				# if it's in PATH that's wrong in any case
@@ -99,25 +84,16 @@ install_qa_check_prefix() {
 		# unprefixed shebang, is the script directly in $PATH or an init
 		# script?
 		if [[ ":${PATH}:${EPREFIX}/etc/init.d:" == *":${fp}:"* ]] ; then
-			local foundprefix="none"
-			if [[ -e ${EROOT%/}${line[0]} || -e ${ED%/}${line[0]} ]] ; then
+			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because an
 				# eprefixed variant exists
 				eqawarn "eprefixing shebang of ${fn#${D%/}/}"
-				foundprefix=${EPREFIX}
-			elif [[ -e ${BPREFIX}${line[0]} ]] ; then
-				# is it unprefixed, but we can just fix it because a
-				# bprefixed variant exists
-				eqawarn "bprefixing shebang of ${fn#${D%/}/}"
-				foundprefix=${BPREFIX}
-			fi
-			if [[ ${foundprefix} != "none" ]] ; then
 				# statement is made idempotent on purpose, because
 				# symlinks may point to the same target, and hence the
 				# same real file may be sedded multiple times since we
 				# read the shebangs in one go upfront for performance
 				# reasons
-				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${foundprefix}"${line[0]}':' "${rf}"
+				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
 				continue
 			else
 				# this is definitely wrong: script in $PATH and invalid shebang
@@ -130,7 +106,6 @@ install_qa_check_prefix() {
 			has stricter ${FEATURES} && \
 				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
 		fi
-		# END PREFIX LOCAL
 	done
 	if [[ -e "${T}"/non-prefix-shebangs-errs ]] ; then
 		eqawarn "QA Notice: the following files use invalid (possible non-prefixed) shebangs:"

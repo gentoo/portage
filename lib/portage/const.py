@@ -243,8 +243,6 @@ SUPPORTED_FEATURES = frozenset(
         "usersync",
         "webrsync-gpg",
         "xattr",
-        # PREFIX LOCAL
-		"stacked-prefix",
     )
 )
 
