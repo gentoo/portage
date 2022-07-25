@@ -146,6 +146,7 @@ class ResolverPlayground:
             essential_binaries = (
                 "awk",
                 "basename",
+                "bash",
                 "bzip2",
                 "cat",
                 "chgrp",
