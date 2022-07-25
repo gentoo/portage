@@ -667,50 +667,6 @@ postinst_qa_check() {
 	done < <(printf "%s\0" "${qa_checks[@]}" | LC_ALL=C sort -u -z)
 }
 
-install_mask() {
-	local root="$1"
-	shift
-	local install_mask="$*"
-
-	# We think of $install_mask as a space-separated list of
-	# globs. We don't want globbing in the "for" loop; that is, we
-	# want to keep the asterisks in the indivual entries.
-	local shopts=$-
-	set -o noglob
-	local no_inst
-	for no_inst in ${install_mask}; do
-		# Here, $no_inst is a single "entry" potentially
-		# containing a glob. From now on, we *do* want to
-		# expand it.
-		set +o noglob
-
-		# The standard case where $no_inst is something that
-		# the shell could expand on its own.
-		if [[ -e "${root}"/${no_inst} || -L "${root}"/${no_inst} ||
-			"${root}"/${no_inst} != $(echo "${root}"/${no_inst}) ]] ; then
-			__quiet_mode || einfo "Removing ${no_inst}"
-			rm -Rf "${root}"/${no_inst} >&/dev/null
-		fi
-
-		# We also want to allow the user to specify a "bare
-		# glob." For example, $no_inst="*.a" should prevent
-		# ALL files ending in ".a" from being installed,
-		# regardless of their location/depth. We achieve this
-		# by passing the pattern to `find`.
-		find "${root}" \( -path "${no_inst}" -or -name "${no_inst}" \) \
-			-print0 2> /dev/null \
-		| LC_ALL=C sort -z \
-		| while read -r -d ''; do
-			__quiet_mode || einfo "Removing /${REPLY#${root}}"
-			rm -Rf "${REPLY}" >&/dev/null
-		done
-
-	done
-	# set everything back the way we found it
-	set +o noglob
-	set -${shopts}
-}
-
 preinst_mask() {
 	# Remove man pages, info pages, docs if requested. This is
 	# implemented in bash in order to respect INSTALL_MASK settings
@@ -719,7 +675,7 @@ preinst_mask() {
 	for f in man info doc; do
 		if has no${f} ${FEATURES}; then
 		    # PREFIX LOCAL: use EPREFIX with path
-			INSTALL_MASK="${INSTALL_MASK} ${EPREFIX}/usr/share/${f}"
+			INSTALL_MASK+=" ${EPREFIX}/usr/share/${f}"
 		fi
 	done
 
