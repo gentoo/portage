@@ -773,7 +773,9 @@ __dyn_help() {
 	fi
 	echo "  merge to    : ${ROOT}"
 	# PREFIX LOCAL: identify
-	echo "  offset      : ${EPREFIX}"
+	if [[ -n "${EPREFIX}" ]]; then
+		echo "  offset      : ${EPREFIX}"
+	fi
 	echo
 	if [[ -n "$USE" ]]; then
 		echo "Additionally, support for the following optional features will be enabled:"
