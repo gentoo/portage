@@ -5,13 +5,6 @@
 scriptpath=${BASH_SOURCE[0]}
 scriptname=${scriptpath##*/}
 
-# PREFIX LOCAL: warn about screwups early
-if [[ -n ${EPREFIX} ]] ; then
-	echo "When using Prefix, this BSD sed wrapper should not exist (in ${scriptpath})!  This is a bug!" > /dev/stderr
-	exit 1
-fi
-# END PREFIX LOCAL
-
 if [[ sed == ${scriptname} && -n ${ESED} ]]; then
 	exec ${ESED} "$@"
 elif type -P g${scriptname} > /dev/null ; then
