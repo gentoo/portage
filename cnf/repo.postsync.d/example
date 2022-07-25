@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Example /etc/portage/repo.postsync.d script. Make it executable (chmod +x) for
 # Portage to process it.
 #
