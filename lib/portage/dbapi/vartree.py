@@ -40,7 +40,6 @@ portage.proxy.lazyimport.lazyimport(
     "portage.util._dyn_libs.LinkageMapELF:LinkageMapELF@LinkageMap",
     # BEGIN PREFIX LOCAL
     'portage.util._dyn_libs.LinkageMapMachO:LinkageMapMachO',
-    'portage.util._dyn_libs.LinkageMapPeCoff:LinkageMapPeCoff',
     # END PREFIX LOCAL
     "portage.util._dyn_libs.NeededEntry:NeededEntry",
     "portage.util._async.SchedulerInterface:SchedulerInterface",
@@ -246,8 +245,6 @@ class vardbapi(dbapi):
             chost = 'lunix?' # this happens when profiles are not available
         if chost.find('darwin') >= 0:
             self._linkmap = LinkageMapMachO(self)
-        elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
-            self._linkmap = LinkageMapPeCoff(self)
         else:
             self._linkmap = LinkageMap(self)
         # END PREFIX LOCAL
@@ -3772,8 +3769,6 @@ class dblink:
                 chost = self.settings.get('CHOST')
                 if chost.find('darwin') >= 0:
                     node = LinkageMapMachO._LibGraphNode(linkmap._obj_key(path))
-                elif chost.find('interix') >= 0 or chost.find('winnt') >= 0:
-                    node = LinkageMapPeCoff._LibGraphNode(linkmap._obj_key(path))
                 else:
                     node = LinkageMap._LibGraphNode(linkmap._obj_key(path))
                 # END PREFIX LOCAL
