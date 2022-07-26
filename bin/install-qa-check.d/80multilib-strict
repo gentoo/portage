@@ -1,7 +1,7 @@
 # Strict multilib directory checks
 multilib_strict_check() {
 	if has multilib-strict ${FEATURES} && \
-	   [[ -x /usr/bin/file && -x /usr/bin/find ]] && \
+	   type find &>/dev/null && type file &>/dev/null && \
 	   [[ -n ${MULTILIB_STRICT_DIRS} && -n ${MULTILIB_STRICT_DENY} ]]
 	then
 		rm -f "${T}/multilib-strict.log"
