@@ -129,8 +129,11 @@ class ResolverPlayground:
         """
 
         self.debug = debug
-        if eprefix is None:
-            self.eprefix = normalize_path(tempfile.mkdtemp())
+        if True:
+            if eprefix is None:
+                self.eprefix = normalize_path(tempfile.mkdtemp())
+            else:
+                self.eprefix = normalize_path(eprefix)
 
             # EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
             eubin = os.path.join(self.eprefix, "usr", "bin")
@@ -146,6 +149,7 @@ class ResolverPlayground:
             essential_binaries = (
                 "awk",
                 "basename",
+                "bash",
                 "bzip2",
                 "cat",
                 "chgrp",
@@ -191,8 +195,6 @@ class ResolverPlayground:
                     os.symlink(path, os.path.join(eubin, x))
             finally:
                 os.environ["PATH"] = orig_path
-        else:
-            self.eprefix = normalize_path(eprefix)
 
         # Tests may override portage.const.EPREFIX in order to
         # simulate a prefix installation. It's reasonable to do
