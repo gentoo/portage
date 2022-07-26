@@ -2016,22 +2016,15 @@ def getlibpaths(root, env=None):
     if env is None:
         env = os.environ
     # BEGIN PREFIX LOCAL:
-    # LD_LIBRARY_PATH isn't portable, and considered harmfull, so better
-    # not use it.  We don't need any host OS lib paths either, so do
-    # Prefix case.
-    if EPREFIX != '':
-        rval = []
-        rval.append(EPREFIX + "/usr/lib")
-        rval.append(EPREFIX + "/lib")
-        # we don't know the CHOST here, so it's a bit hard to guess
-        # where GCC's and ld's libs are.  Though, GCC's libs should be
-        # in lib and usr/lib, binutils' libs are rarely used
-    else:
+    # For Darwin, match LD_LIBRARY_PATH with DYLD_LIBRARY_PATH.
+    # We don't need any host OS lib paths in Prefix, so just going with
+    # the prefixed one is fine.
+    # the following is based on the information from ld.so(8)
+    rval = env.get("LD_LIBRARY_PATH", "").split(":")
+    rval.extend(env.get("DYLD_LIBRARY_PATH", "").split(":"))
+    rval.extend(read_ld_so_conf(os.path.join(root, EPREFIX, "etc", "ld.so.conf")))
+    rval.append(f"{EPREFIX}/usr/lib")
+    rval.append(f"{EPREFIX}/lib")
     # END PREFIX LOCAL
-        # the following is based on the information from ld.so(8)
-        rval = env.get("LD_LIBRARY_PATH", "").split(":")
-        rval.extend(read_ld_so_conf(os.path.join(root, "etc", "ld.so.conf")))
-        rval.append("/usr/lib")
-        rval.append("/lib")
 
     return [normalize_path(x) for x in rval if x]
