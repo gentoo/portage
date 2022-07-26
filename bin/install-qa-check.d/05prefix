@@ -55,7 +55,7 @@ install_qa_check_prefix() {
 		line=( ${line#"#!"} )
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-		local fp=${fn#${D}} ; fp=/${fp%/*}
+		local fp=${fn#${D}/} ; fp=/${fp%/*}
 		local rf=${fn}
 		# in case we deal with a symlink, make sure we don't replace it
 		# with a real file (sed -i does that)
