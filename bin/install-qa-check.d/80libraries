@@ -140,7 +140,11 @@ lib_check() {
 	local abort="no"
 	local a s
 	for a in "${ED%/}"/usr/lib*/*.a ; do
-		s=${a%.a}.so
+		if [[ ${CHOST} == *-darwin* ]] ; then
+			s=${a%.a}.dylib
+		else
+			s=${a%.a}.so
+		fi
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
