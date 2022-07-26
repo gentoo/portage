@@ -19,6 +19,8 @@ source "${PORTAGE_BIN_PATH}/ebuild.sh" || exit 1
 install_symlink_html_docs() {
 	if ! ___eapi_has_prefix_variables; then
 		local ED=${D}
+	else
+		[[ ! -d ${ED} && -d ${D} ]] && dodir /
 	fi
 	cd "${ED}" || die "cd failed"
 	# Symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
@@ -83,7 +85,7 @@ install_qa_check() {
 		local EPREFIX= ED=${D}
 	fi
 
-	cd "${ED}" || die "cd failed"
+	cd "${D}" || die "cd failed"
 
 	# Collect the paths for QA checks, highest prio first.
 	paths=(
@@ -367,7 +369,7 @@ preinst_mask() {
 	local f x
 	for f in man info doc; do
 		if has no${f} ${FEATURES}; then
-			INSTALL_MASK+=" /usr/share/${f}"
+			INSTALL_MASK+=" ${EPREFIX}/usr/share/${f}"
 		fi
 	done
 
