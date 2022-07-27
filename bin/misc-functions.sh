@@ -20,9 +20,7 @@ install_symlink_html_docs() {
 	if ! ___eapi_has_prefix_variables; then
 		local ED=${D}
 	else
-		# PREFIX LOCAL: ED needs not to exist, whereas D does
 		[[ ! -d ${ED} && -d ${D} ]] && dodir /
-		# END PREFIX LOCAL
 	fi
 	cd "${ED}" || die "cd failed"
 	# Symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
@@ -87,9 +85,7 @@ install_qa_check() {
 		local EPREFIX= ED=${D}
 	fi
 
-	# PREFIX LOCAL: ED needs not to exist, whereas D does
 	cd "${D}" || die "cd failed"
-	# END PREFIX LOCAL
 
 	# Collect the paths for QA checks, highest prio first.
 	paths=(
@@ -546,7 +542,6 @@ preinst_mask() {
 	local f x
 	for f in man info doc; do
 		if has no${f} ${FEATURES}; then
-		    # PREFIX LOCAL: use EPREFIX with path
 			INSTALL_MASK+=" ${EPREFIX}/usr/share/${f}"
 		fi
 	done

@@ -42,7 +42,6 @@ if ! ___eapi_has_prefix_variables; then
 	export ED="${D}"
 fi
 
-# PREFIX LOCAL: check D *AND* ED
 if [[ ${_E_INSDESTTREE_#${D}} != "${_E_INSDESTTREE_}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${D} or \${ED} with helpers." 1>&2
@@ -51,9 +50,8 @@ if [[ ${_E_INSDESTTREE_#${D}} != "${_E_INSDESTTREE_}" ]]; then
 	__helpers_die "${helper} used with \${D} or \${ED}"
 	exit 1
 fi
-# BEGIN PREFIX LOCAL: check for usage with EPREFIX
 if [[ -n ${EPREFIX} && \
-		${_E_INSDESTTREE_#${EPREFIX}} != "${_E_INSDESTTREE_}" ]];
+		${_E_INSDESTTREE_#${EPREFIX}} != "${_E_INSDESTTREE_}" ]]
 then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${EPREFIX} with helpers." 1>&2
@@ -62,7 +60,6 @@ then
 	__helpers_die "${helper} used with \${EPREFIX}"
 	exit 1
 fi
-# END PREFIX LOCAL
 
 if ___eapi_doins_and_newins_preserve_symlinks; then
 	DOINS_ARGS+=( --preserve_symlinks )
