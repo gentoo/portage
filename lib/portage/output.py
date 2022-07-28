@@ -134,7 +134,7 @@ codes["0xAAAA00"] = codes["brown"]
 codes["darkyellow"] = codes["0xAAAA00"]
 
 
-# Colors from /etc/init.d/functions.sh
+# Colors from /lib/gentoo/functions.sh
 _styles["BAD"] = ("red",)
 _styles["BRACKET"] = ("blue",)
 _styles["ERR"] = ("red",)
