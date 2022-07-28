@@ -3,12 +3,12 @@
 deprecated_dir_check() {
 	local x f=
 	for x in etc/app-defaults usr/man usr/info usr/X11R6 usr/doc usr/locale ; do
-		[[ -d ${ED}/$x ]] && f+="  $x\n"
+		[[ -d ${ED}/${x} ]] && f+="  ${x}\n"
 	done
-	if [[ -n $f ]] ; then
+	if [[ -n ${f} ]] ; then
 		eqawarn "QA Notice: This ebuild installs into the following deprecated directories:"
 		eqawarn
-		eqawarn "$f"
+		eqawarn "${f}"
 	fi
 }
 

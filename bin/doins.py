@@ -410,11 +410,11 @@ def _doins(opts, install_runner, relpath, source_root):
     source = os.path.join(source_root, relpath)
     dest = os.path.join(opts.dest, relpath)
     if os.path.islink(source):
-        # Our fake $DISTDIR contains symlinks that should not be
-        # reproduced inside $D. In order to ensure that things like
-        # dodoc "$DISTDIR"/foo.pdf work as expected, we dereference
+        # Our fake ${DISTDIR} contains symlinks that should not be
+        # reproduced inside ${D}. In order to ensure that things like
+        # dodoc "${DISTDIR}"/foo.pdf work as expected, we dereference
         # symlinked files that refer to absolute paths inside
-        # $PORTAGE_ACTUAL_DISTDIR/.
+        # ${PORTAGE_ACTUAL_DISTDIR}/.
         try:
             if opts.preserve_symlinks and not os.readlink(source).startswith(
                 opts.distdir

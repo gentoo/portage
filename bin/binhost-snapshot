@@ -44,7 +44,7 @@ def parse_args(argv):
 
     usage += "\n"
     usage += "Required Arguments:\n\n"
-    usage += "  src_pkg_dir  - the source $PKGDIR\n"
+    usage += "  src_pkg_dir  - the source ${PKGDIR}\n"
     usage += "  snapshot_dir - destination snapshot " + "directory (must not exist)\n"
     usage += (
         "  snapshot_uri - URI which refers to "

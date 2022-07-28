@@ -4,7 +4,7 @@
 
 doc = """Helper tool for converting installed files to custom prefixes.
 
-In other words, eprefixy $D for Gentoo/Prefix."""
+In other words, eprefixy ${D} for Gentoo/Prefix."""
 __doc__ = doc
 
 import argparse
@@ -146,9 +146,11 @@ def chpath_inplace_symlink(filename, st, old, new):
 def main(argv):
 
     parser = argparse.ArgumentParser(description=doc)
-    parser.add_argument("location", default=None, help="root directory (e.g. $D)")
+    parser.add_argument("location", default=None, help="root directory (e.g. ${D})")
     parser.add_argument("old", default=None, help="original build prefix (e.g. /)")
-    parser.add_argument("new", default=None, help="new install prefix (e.g. $EPREFIX)")
+    parser.add_argument(
+        "new", default=None, help="new install prefix (e.g. ${EPREFIX})"
+    )
     opts = parser.parse_args(argv)
 
     location, old, new = opts.location, opts.old, opts.new

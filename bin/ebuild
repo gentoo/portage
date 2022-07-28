@@ -278,7 +278,7 @@ build_dir_phases = set(
 )
 
 # If the current metadata is invalid then force the ebuild to be
-# sourced again even if $T/environment already exists.
+# sourced again even if ${T}/environment already exists.
 ebuild_changed = False
 if mytree == "porttree" and build_dir_phases.intersection(pargs):
     ebuild_changed = (

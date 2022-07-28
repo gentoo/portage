@@ -65,7 +65,7 @@ install_qa_check_prefix() {
 		# does the shebang start with ${EPREFIX}, and does it exist?
 		if [[ ${line[0]} == ${EPREFIX}/* || ${line[0]} == ${eprefix}/* ]] ; then
 			if [[ ! -e ${ROOT%/}${line[0]} && ! -e ${D%/}${line[0]} ]] ; then
-				# hmm, refers explicitly to $EPREFIX, but doesn't exist,
+				# hmm, refers explicitly to ${EPREFIX}, but doesn't exist,
 				# if it's in PATH that's wrong in any case
 				if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
 					echo "${fn#${D}}:${line[0]} (explicit EPREFIX but target not found)" \
@@ -76,7 +76,7 @@ install_qa_check_prefix() {
 			fi
 			continue
 		fi
-		# unprefixed shebang, is the script directly in $PATH?
+		# unprefixed shebang, is the script directly in ${PATH}?
 		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
@@ -90,12 +90,12 @@ install_qa_check_prefix() {
 				sed -i -e '1s:^#! \?'"${line[0]}"':#!'"${EPREFIX}"${line[0]}':' "${rf}"
 				continue
 			else
-				# this is definitely wrong: script in $PATH and invalid shebang
+				# this is definitely wrong: script in ${PATH} and invalid shebang
 				echo "${fn#${D}}:${line[0]} (script ${fn##*/} installed in PATH but interpreter ${line[0]} not found)" \
 					>> "${T}"/non-prefix-shebangs-errs
 			fi
 		else
-			# unprefixed/invalid shebang, but outside $PATH, this may be
+			# unprefixed/invalid shebang, but outside ${PATH}, this may be
 			# intended (e.g. config.guess) so remain silent by default
 			has stricter ${FEATURES} && \
 				eqawarn "invalid shebang in ${fn#${D}}: ${line[0]}"
