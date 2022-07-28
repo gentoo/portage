@@ -771,10 +771,6 @@ __dyn_help() {
 		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}"
-	# PREFIX LOCAL: identify
-	if [[ -n "${EPREFIX}" ]]; then
-		echo "  offset      : ${EPREFIX}"
-	fi
 	echo
 	if [[ -n "$USE" ]]; then
 		echo "Additionally, support for the following optional features will be enabled:"
