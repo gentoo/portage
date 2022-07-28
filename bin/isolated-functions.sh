@@ -470,10 +470,11 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 ___makeopts_jobs() {
-	# Copied from eutils.eclass:makeopts_jobs()
-	local jobs
-	jobs=$(echo " ${MAKEOPTS} " | \
-		sed -r -n 's:.*[[:space:]](-j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p') || die
+	# Copied from multiprocessing.eclass:makeopts_jobs
+	# This assumes the first .* will be more greedy than the second .*
+	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
+	local jobs=$(echo " ${MAKEOPTS} " | sed -r -n \
+		-e 's:.*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p' || die)
 	echo ${jobs:-1}
 }
 
