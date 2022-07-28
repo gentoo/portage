@@ -20,7 +20,7 @@ if [[ ${helper} == dodoc ]] ; then
 else
 	if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 		[[ -n ${INSDESTTREE} ]] &&
-			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 	else
 		# backwards compatibility
 		_E_INSDESTTREE_=${INSDESTTREE}
@@ -33,7 +33,7 @@ if [ $# -lt 1 ] ; then
 fi
 
 DOINS_ARGS=()
-if [[ "$1" == "-r" ]] ; then
+if [[ "${1}" == "-r" ]] ; then
 	DOINS_ARGS+=( --recursive )
 	shift
 fi

@@ -956,7 +956,7 @@ def get_repos(argv):
 docstrings[
     "get_repos"
 ] = """<eroot>
-	Returns all repos with names (repo_name file) argv[0] = $EROOT
+	Returns all repos with names (repo_name file) argv[0] = ${EROOT}
 	"""
 get_repos.__doc__ = docstrings["get_repos"]
 
@@ -1023,7 +1023,7 @@ def get_repo_path(argv):
 docstrings[
     "get_repo_path"
 ] = """<eroot> <repo_id>+
-	Returns the path to the repo named argv[1], argv[0] = $EROOT
+	Returns the path to the repo named argv[1], argv[0] = ${EROOT}
 	"""
 get_repo_path.__doc__ = docstrings["get_repo_path"]
 

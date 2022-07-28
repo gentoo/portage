@@ -12,6 +12,7 @@ gcc_warn_check() {
 			set +x
 			reset_debug=1
 		fi
+
 		local m msgs=(
 			# only will and does, no might :)
 			'warning: .*will.*\[-Wstrict-aliasing\]'
@@ -79,9 +80,9 @@ gcc_warn_check() {
 
 		local abort="no"
 		local grep_cmd=grep
-		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
+		[[ ${PORTAGE_LOG_FILE} = *.gz ]] && grep_cmd=zgrep
 
-		# Force C locale to work around slow multibyte locales. #160234
+		# Force C locale to work around slow multibyte locales, bug #160234
 		# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
 		# binary when we run in the C locale.
 		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
@@ -91,7 +92,8 @@ gcc_warn_check() {
 			#if [[ ${f} == *'will always overflow destination buffer'* ]]; then
 			#	always_overflow=yes
 			#fi
-			if [[ $always_overflow = yes ]] ; then
+
+			if [[ ${always_overflow} = yes ]] ; then
 				eerror
 				eerror "QA Notice: Package triggers severe warnings which indicate that it"
 				eerror "           may exhibit random runtime failures."
@@ -149,7 +151,7 @@ gcc_warn_check() {
 
 		fi
 		if [[ ${abort} == "yes" ]] ; then
-			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
+			if [[ ${gentoo_bug} = yes || ${always_overflow} = yes ]] ; then
 				die "install aborted due to severe warnings shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \

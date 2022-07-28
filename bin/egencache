@@ -879,10 +879,10 @@ class GenChangeLogs:
         # --work-tree=... must be passed to Git if GIT_DIR is used
         # and GIT_DIR is not a child of the root of the checkout
         # eg:
-        # GIT_DIR=$parent/work/.git/
-        # work-tree=$parent/staging/
+        # GIT_DIR=${parent}/work/.git/
+        # work-tree=${parent}/staging/
         # If work-tree is not passed, Git tries to use the shared
-        # parent of the current directory and the $GIT_DIR, which can
+        # parent of the current directory and the ${GIT_DIR}, which can
         # be outside the root of the checkout.
         self._work_tree = "--work-tree=%s" % self._repo_path
 
@@ -960,7 +960,7 @@ class GenChangeLogs:
             # --no-renames to avoid getting more complex records on the list
             # --format to get the timestamp, author and commit description
             # --root to make it work fine even with the initial commit
-            # --relative=$cp to get paths relative to ebuilddir
+            # --relative=${cp} to get paths relative to ebuilddir
             # -r (recursive) to get per-file changes
             # then the commit-id and path.
 
