@@ -1,4 +1,4 @@
-.TH "PORTAGE" "5" "Nov 2022" "Portage VERSION" "Portage"
+.TH "PORTAGE" "5" "Apr 2023" "Portage VERSION" "Portage"
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
@@ -1469,6 +1469,14 @@ listed toward the left of the list.
 .TP
 .BR repo\-name " = <value of profiles/repo_name>"
 The name of this repository (overrides profiles/repo_name if it exists).
+.TP
+.BR properties\-allowed
+List of PROPERTIES tokens which are allowed for ebuilds within
+the repo.  If unset, any tokens is allowed.
+.TP
+.BR restrict\-allowed
+List of RESTRICT tokens which are allowed for ebuilds within
+the repo.  If unset, any tokens is allowed.
 .TP
 .BR sign\-commits " = [true|" false "]"
 Boolean value whether we should sign commits in this repo.
