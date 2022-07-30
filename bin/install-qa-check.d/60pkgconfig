@@ -104,15 +104,19 @@ pkgconfig_check() {
 	# Skip the check if QA_PKGCONFIG_VERSION is set to empty string.
 	if [[ -n ${QA_PKGCONFIG_VERSION} ]]; then
 		local all_bad=yes
-		# Record the last bad file matched
-		local bad_file
+		local -A bad_files
 		for f in "${files[@]}" ; do
-			if [[ ${QA_PKGCONFIG_VERSION} == $(pkg-config --modversion "${f}") ]] ; then
+			local file_version=$(pkg-config --modversion "${f}")
+			if [[ ${QA_PKGCONFIG_VERSION} == ${file_version} ]] ; then
 				all_bad=no
 				break
 			fi
 
-			bad_file="${f//${D}}"
+			# Record a special value if the .pc file has no version set at all.
+			if [[ -z ${file_version} ]] ; then
+				file_version="<no-set>"
+			fi
+			bad_files["${f//${D}}"]="${file_version}"
 		done
 
 		# Skip result reporting if *_p* because for both _pN and _preN, we
@@ -120,8 +124,15 @@ pkgconfig_check() {
 		# we want to avoid false positives.
 		if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
 			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
-			eqawarn "At least ${bad_file}'s Version field does not match ${PV}"
+			eqawarn "The Version field of the following files does not match ${PV}"
+			local bad_file
+			for bad_file in "${!bad_files[@]}"; do
+				local bad_file_version="${bad_files[${bad_file}]}"
+				eqawarn "- ${bad_file}: ${bad_file_version}"
+			done
 			eqawarn "Please check all .pc files installed by this package."
+			eqawarn "You can use QA_PKGCONFIG_VERSION to set the expected version,"
+			eqawarn "or set to the empty string to disable this QA check."
 		fi
 	fi
 }
