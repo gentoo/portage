@@ -3054,6 +3054,7 @@ def config_protect_check(trees):
 def apply_priorities(settings):
     ionice(settings)
     nice(settings)
+    set_scheduling_policy(settings)
 
 
 def nice(settings):
@@ -3092,6 +3093,50 @@ def ionice(settings):
         out.eerror(
             "See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions."
         )
+
+
+def set_scheduling_policy(settings):
+    scheduling_policy = settings.get("PORTAGE_SCHEDULING_POLICY")
+    scheduling_priority = settings.get("PORTAGE_SCHEDULING_PRIORITY")
+
+    if platform.system() != "Linux" or not scheduling_policy:
+        return os.EX_OK
+
+    policies = {
+        "other": os.SCHED_OTHER,
+        "batch": os.SCHED_BATCH,
+        "idle": os.SCHED_IDLE,
+        "fifo": os.SCHED_FIFO,
+        "round-robin": os.SCHED_RR,
+    }
+
+    out = portage.output.EOutput()
+
+    if scheduling_policy in policies:
+        policy = policies[scheduling_policy]
+    else:
+        out.eerror("Invalid policy in PORTAGE_SCHEDULING_POLICY.")
+        out.eerror(
+            "See the make.conf(5) man page for PORTAGE_SCHEDULING_POLICY usage instructions."
+        )
+        return os.EX_USAGE
+
+    if not scheduling_priority:
+        scheduling_priority = os.sched_get_priority_min(policy)
+    else:
+        scheduling_priority = int(scheduling_priority)
+        if scheduling_priority not in range(
+            os.sched_get_priority_min(policy), os.sched_get_priority_max(policy) + 1
+        ):
+            out.eerror("Invalid priority in PORTAGE_SCHEDULING_PRIORITY.")
+            out.eerror(
+                "See the make.conf(5) man page for PORTAGE_SCHEDULING_PRIORITY usage instructions."
+            )
+            return os.EX_USAGE
+
+    os.sched_setscheduler(portage.getpid(), policy, os.sched_param(scheduling_priority))
+
+    return os.EX_OK
 
 
 def setconfig_fallback(root_config):

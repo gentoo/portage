@@ -1080,6 +1080,22 @@ will set idle io priority. For more information about ionice, see
 Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
 FEATURES="pid\-sandbox" is enabled.
 .TP
+\fBPORTAGE_SCHEDULING_POLICY\fR = \fI[policy name]\fR
+Allows changing the current scheduling policy. The supported options are
+\fBother\fR, \fBbatch\fR, \fBidle\fR, \fBfifo\fR, and \fBround-robin\fR. When
+unset, the scheduling policy remains unchanged, by default Linux uses 'other'
+policy. Users that wish to minimize the Portage's impact on system
+responsiveness should set scheduling policy to \fBidle\fR, which significantly
+reduces the disruption to the rest of the system by scheduling Portage as
+extremely low priority processes. see \fBsched\fR(7) for more information.
+.TP
+\fBPORTAGE_SCHEDULING_PRIORITY\fR = \fI[priority]\fR
+Allows changing the priority (1-99) of the current scheduling policy, only
+applies if PORTAGE _SCHEDULING_POLICY is set to 'fifo' or 'round-robin',
+for others the only supported priority is 0, If unset, defaults to lowest
+priority of the selected scheduling policy. For more information about
+scheduler, see \fBsched\fR(7). This variable is unset by default.
+.TP
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a
 log file. In order to filter ANSI escape codes from build logs,
