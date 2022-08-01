@@ -419,9 +419,10 @@ while read -r x ; do
 done < <(
 	# NEEDED may not exist for some packages (bug #862606)
 	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
-		needed_contents=$(cat "${PORTAGE_BUILDDIR}"/build-info/NEEDED | cut -d ' ' -f1 | sed -e "s:^:${D%/}:")
-	else
-		needed_contents=""
+		while IFS= read -r needed_entry ; do
+			needed_entry="${needed_entry% *}"
+			needed_contents+=( "${D%/}${needed_entry}" )
+		done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	fi
 
 	# Use sort -u to eliminate duplicates (bug #445336).
@@ -429,8 +430,6 @@ done < <(
 		[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
 		find "$@" -type f ! -type l -name '*.a'
 	) | LC_ALL=C sort -u
-
-	unset needed_contents
 )
 else
 while IFS= read -d '' -r x ; do
