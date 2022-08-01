@@ -38,6 +38,9 @@ pkgconfig_check() {
 		for f in "${files[@]}" ; do
 			local key
 			for key in prefix exec_prefix libdir includedir ; do
+				# Check if the variable is even in there (bug #860825)
+				grep -E -q "^${key}" "${f}" || continue
+
 				local value=$(pkg-config --variable="${key}" "${f}")
 
 				if [[ ${value} != "${EPREFIX}"* ]] ; then
