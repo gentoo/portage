@@ -130,6 +130,7 @@ pkgconfig_check() {
 			eqawarn "Please check all .pc files installed by this package."
 			eqawarn "You can use QA_PKGCONFIG_VERSION to set the expected version,"
 			eqawarn "or set to the empty string to disable this QA check."
+			eqatag pkgconfig.unexpected-version ${!bad_files[@]}
 		fi
 	fi
 }
