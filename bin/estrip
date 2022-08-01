@@ -64,12 +64,51 @@ while [[ $# -gt 0 ]] ; do
 		done
 
 		if [[ ${find_paths[@]} ]]; then
+			# We can avoid scanelf calls for binaries we already
+			# checked in install_qa_check (where we generate
+			# NEEDED for everything installed).
+			#
+			# EAPI 7+ has controlled stripping (dostrip) though
+			# which is why estrip has the queue/dequeue logic,
+			# so we need to take the intersection of:
+			# 1. files scanned earlier (all ELF installed)
+			#    (note that this should be a superset of 2., so we don't
+			#    need to worry about unknown files appearing)
+			#
+			# 2. the files we're interested in right now
+			scanelf_results=()
+			if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+				# The arguments may not be exact files (probably aren't), but search paths/directories
+				# which should then be searched recursively.
+				while IFS= read -r needed_entry ; do
+					for find_path in "${find_paths[@]}" ; do
+						# NEEDED has a bunch of entries like:
+						# /usr/lib64/libfoo.so libc.so
+						#
+						# find_path entries may be exact paths (like /usr/lib64/libfoo.so)
+						# or instead /usr/lib64, or ${ED}/usr, etc.
+						#
+						# We check if the beginning (i.e. first entry) of the NEEDED line
+						# matches the path given
+						# e.g. find_path="/usr/lib64" will match needed_entry="/usr/lib64/libfoo.so libc.so".
+						needed_entry_file="${needed_entry% *}"
+						if [[ "${needed_entry_file}" =~ ^${find_path##${D}} ]] ; then
+							scanelf_results+=( "${D}${needed_entry_file}" )
+						fi
+					done
+				done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+			else
+				scanelf_results=$(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
+			fi
+
 			while IFS= read -r path; do
 				>> "${path}.estrip" || die
 			done < <(
-				scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}"
+				printf "%s\n" "${scanelf_results[@]}"
 				find "${find_paths[@]}" -type f ! -type l -name '*.a'
 			)
+
+			unset scanelf_results needed_entry needed_entry_file find_path
 		fi
 
 		exit 0
