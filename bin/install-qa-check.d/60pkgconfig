@@ -103,26 +103,38 @@ pkgconfig_check() {
 
 	# Skip the check if QA_PKGCONFIG_VERSION is set to empty string.
 	if [[ -n ${QA_PKGCONFIG_VERSION} ]]; then
-		local all_bad=yes
+		local pms_ver_re="^([0-9]+(\.[0-9]+)*)([a-z]?)((_(alpha|beta|pre|rc|p)[0-9]*)*)(-r[0-9]+)?$"
 		local -A bad_files
+
+		local is_pms_ver=false
+		if [[ ${QA_PKGCONFIG_VERSION} =~ ${pms_ver_re} ]] ; then
+			# Ensure that ver_test is available.
+			[[ $(type -f ver_test) == function ]] || inherit eapi7-ver
+			is_pms_ver=true
+		fi
+
 		for f in "${files[@]}" ; do
 			local file_version=$(pkg-config --modversion "${f}")
-			if [[ ${QA_PKGCONFIG_VERSION} == ${file_version} ]] ; then
-				all_bad=no
-				break
-			fi
-
-			# Record a special value if the .pc file has no version set at all.
-			if [[ -z ${file_version} ]] ; then
+			if [[ -n ${file_version} ]] ; then
+				if ${is_pms_ver} && [[ ${file_version} =~ ${pms_ver_re} ]]; then
+					# If both versions comply to PMS, then we can use ver_test to compare them.
+					ver_test ${QA_PKGCONFIG_VERSION} -eq ${file_version} && continue
+				else
+					# Otherwise, we resort to string comparision.
+					[[ ${QA_PKGCONFIG_VERSION} == ${file_version} ]] && continue
+				fi
+			else
+				# Record a special value if the .pc file has no version set at all.
 				file_version="<no-set>"
 			fi
+
 			bad_files["${f//${D}}"]="${file_version}"
 		done
 
 		# Skip result reporting if *_p* because for both _pN and _preN, we
 		# don't generally expect the versions to be exactly accurate, and
 		# we want to avoid false positives.
-		if [[ ${all_bad} == "yes" && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
+		if [[ ${#bad_files[@]} -gt 0 && ${PV} != *_p* ]] && ! has live ${PROPERTIES} ; then
 			eqawarn "QA Notice: pkg-config files with mismatched Version found!"
 			eqawarn "The Version field of the following files does not match ${PV}"
 			local bad_file
