@@ -417,12 +417,20 @@ while read -r x ; do
 	inode_link=$(get_inode_number "${x}") || die "stat failed unexpectedly"
 	echo "${x}" >> "${inode_link}" || die "echo failed unexpectedly"
 done < <(
-	# Use sort -u to eliminate duplicates for bug #445336.
+	# NEEDED may not exist for some packages (bug #862606)
+	if [[ -f "${PORTAGE_BUILDDIR}"/build-info/NEEDED ]] ; then
+		needed_contents=$(cat "${PORTAGE_BUILDDIR}"/build-info/NEEDED | cut -d ' ' -f1 | sed -e "s:^:${D%/}:")
+	else
+		needed_contents=""
+	fi
+
+	# Use sort -u to eliminate duplicates (bug #445336).
 	(
+		[[ -n ${needed_contents[@]} ]] && printf "%s\n" "${needed_contents[@]}"
 		find "$@" -type f ! -type l -name '*.a'
-		cut -d ' ' -f1 < "${PORTAGE_BUILDDIR}"/build-info/NEEDED \
-			| sed -e "s:^:${D%/}:"
 	) | LC_ALL=C sort -u
+
+	unset needed_contents
 )
 else
 while IFS= read -d '' -r x ; do
