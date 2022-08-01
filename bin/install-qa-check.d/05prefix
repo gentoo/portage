@@ -34,9 +34,12 @@ install_qa_check_prefix() {
 	# check shebangs, bug #282539
 	rm -f "${T}"/non-prefix-shebangs-errs
 	local WHITELIST=" /usr/bin/env "
+	# shebang can be an absolutised path, bug #342929
+	local eprefix=$(canonicalize ${EPREFIX})
 	# this is hell expensive, but how else?
+	# use -I to skip binary files, stop after first match
 	find "${ED}" -executable \! -type d -print0 \
-			| xargs -0 grep -H -n -m1 "^#!" \
+			| xargs -0 grep -H -n -m1 -I "^#!" \
 			| while read f ;
 	do
 		local fn=${f%%:*}
@@ -49,9 +52,8 @@ install_qa_check_prefix() {
 		line=( ${line#"#!"} )
 		IFS=${oldIFS}
 		[[ ${WHITELIST} == *" ${line[0]} "* ]] && continue
-		local fp=${fn#${D}} ; fp=/${fp%/*}
-		# line[0] can be an absolutised path, bug #342929
-		local eprefix=$(canonicalize ${EPREFIX})
+		# bug 861305: fp really needs to start with just a single /
+		local fp=${fn#${D}/} ; fp=/${fp%/*}
 		local rf=${fn}
 		# in case we deal with a symlink, make sure we don't replace it
 		# with a real file (sed -i does that)
@@ -76,8 +78,9 @@ install_qa_check_prefix() {
 			fi
 			continue
 		fi
-		# unprefixed shebang, is the script directly in $PATH?
-		if [[ ":${PATH}:" == *":${fp}:"* ]] ; then
+		# unprefixed shebang, is the script directly in $PATH or an init
+		# script?
+		if [[ ":${PATH}:${EPREFIX}/etc/init.d:" == *":${fp}:"* ]] ; then
 			if [[ -e ${EROOT}${line[0]} || -e ${ED}${line[0]} ]] ; then
 				# is it unprefixed, but we can just fix it because a
 				# prefixed variant exists
