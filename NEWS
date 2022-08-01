@@ -7,6 +7,28 @@ Bug fixes:
   consumer (gentoolkit, and only as of its most recent releases), so
   impact is not severe.
 
+* logging: don't clutter with a global logger and instead scope to
+  each module. Allows further logging refactoring in future.
+
+* estrip: fix double slash for older EAPIs (bug 862600).
+
+* install-qa-check.d: 60-pkgconfig: fix --validate check by adding
+  ${ED}/usr/{lib*,share} to search path.
+
+* install-qa-check.d: 60-pkgconfig: only check defined variables for
+  ${EPREFIX} compliance (bug 860825).
+
+* install-qa-checks.d: 90gcc-warnings: add arm64, aarch64 (used by Apple),
+  loongarch64, riscv64, s390x to list of 64-bit arches which affects the
+  severity of some warnings (like pointer truncation).
+
+* portage: output: update obsolete /etc/init.d/functions.sh path.
+
+* bin: style tweaks to conform to Gentoo style (mostly variable bracing).
+
+* isolated-functions.sh: sync __makeopts_jobs implementation with
+  multiprocessing.eclass.
+
 * ebuild(1): improve descriptions of various phase functions.
 
 portage-3.0.34 (2022-07-20)
