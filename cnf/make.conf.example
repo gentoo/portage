@@ -291,6 +291,23 @@
 #     unset.
 #PORTAGE_IONICE_COMMAND="ionice -c 3 -p \${PID}"
 #
+# PORTAGE_SCHEDULING_POLICY allows changing the current scheduling policy. The
+# supported options are 'other', 'batch', 'idle', 'fifo' and 'round-robin'. When
+# unset, the scheduling policy remains unchanged, by default Linux uses 'other'
+# policy. Users that wish to minimize the Portage's impact on system
+# responsiveness should set scheduling policy to 'idle' which significantly
+# reduces the disruption to the rest of the system by scheduling Portage as
+# extremely low priority processes.
+#
+#PORTAGE_SCHEDULING_POLICY="idle"
+#
+# PORTAGE_SCHEDULING_PRIORITY allows changing the priority (1-99) of the current
+# scheduling policy, only applies if PORTAGE_SCHEDULING_POLICY is set to 'fifo'
+# or 'round-robin', for others the only supported priority is 0, If unset,
+# defaults to lowest priority of the selected scheduling policy.
+#
+#PORTAGE_SCHEDULING_PRIORITY="99"
+#
 # AUTOCLEAN enables portage to automatically clean out older or overlapping
 #     packages from the system after every successful merge. This is the
 #     same as running 'emerge -c' after every merge. Set with: "yes" or "no".
