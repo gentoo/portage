@@ -77,8 +77,7 @@ __save_ebuild_env() {
 		__unpack_tar __unset_colors \
 		__source_env_files __try_source __check_bash_version \
 		__bashpid __start_distcc \
-		__eqaquote __eqatag \
-		${QA_INTERCEPTORS}
+		__eqaquote __eqatag
 
 	___eapi_has_usex && unset -f usex
 
@@ -107,7 +106,6 @@ __save_ebuild_env() {
 		PORTAGE_SANDBOX_DENY PORTAGE_SANDBOX_PREDICT \
 		PORTAGE_SANDBOX_READ PORTAGE_SANDBOX_WRITE \
 		PORTAGE_SOCKS5_PROXY PREROOTPATH \
-		QA_INTERCEPTORS \
 		RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL RC_INDENTATION  \
 		ROOT ROOTPATH RPMDIR TEMP TMP TMPDIR USE_EXPAND \
 		XARGS _RC_GET_KV_CACHE

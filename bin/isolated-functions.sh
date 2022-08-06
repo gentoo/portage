@@ -132,12 +132,6 @@ die() {
 	fi
 
 	set +e
-	if [[ -n "${QA_INTERCEPTORS}" ]]; then
-		# die was called from inside inherit. We need to clean up
-		# QA_INTERCEPTORS since sed is called below.
-		unset -f ${QA_INTERCEPTORS}
-		unset QA_INTERCEPTORS
-	fi
 	local n filespacing=0 linespacing=0
 	# setup spacing to make output easier to read
 	(( n = ${#FUNCNAME[@]} - 1 ))
