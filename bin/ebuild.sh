@@ -82,6 +82,8 @@ else
 	# note: we can't use empty because it implies current directory
 	_PORTAGE_ORIG_PATH=${PATH}
 	export PATH=/dev/null
+	# invoked internally by bash on PATH search failure, see the bash man
+	# page section on command execution for details
 	command_not_found_handle() {
 		die "External commands disallowed while sourcing ebuild: ${*}"
 	}
