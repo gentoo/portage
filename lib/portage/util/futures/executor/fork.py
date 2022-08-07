@@ -6,7 +6,6 @@ __all__ = ("ForkExecutor",)
 import collections
 import functools
 import os
-import sys
 import traceback
 
 from portage.util._async.AsyncFunction import AsyncFunction
@@ -140,9 +139,3 @@ class _RemoteTraceback(Exception):
 def _rebuild_exc(exc, tb):
     exc.__cause__ = _RemoteTraceback(tb)
     return exc
-
-
-if sys.version_info < (3,):
-    # Python 2 does not support exception chaining, so
-    # don't bother to preserve the traceback.
-    _ExceptionWithTraceback = lambda exc: exc

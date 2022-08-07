@@ -2,7 +2,6 @@
 # Portage Unit Testing Functionality
 
 import io
-import sys
 import tarfile
 import tempfile
 from os import urandom
@@ -18,9 +17,6 @@ from portage.exception import MissingSignature, InvalidSignature
 
 class test_gpkg_gpg_case(TestCase):
     def test_gpkg_missing_manifest_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -76,9 +72,6 @@ class test_gpkg_gpg_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_missing_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -123,9 +116,6 @@ class test_gpkg_gpg_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_ignore_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -167,9 +157,6 @@ class test_gpkg_gpg_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_auto_use_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -214,9 +201,6 @@ class test_gpkg_gpg_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_invalid_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -286,9 +270,6 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             playground.cleanup()
 
     def test_gpkg_untrusted_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         gpg_test_path = os.environ["PORTAGE_GNUPGHOME"]
 
         playground = ResolverPlayground(
@@ -331,9 +312,6 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
             playground.cleanup()
 
     def test_gpkg_unknown_signature(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
