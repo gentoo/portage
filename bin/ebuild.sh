@@ -480,9 +480,6 @@ __try_source() {
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-# Turn off extended glob matching so that g++ doesn't get incorrectly matched.
-shopt -u extglob
-
 # Subshell/helper die support (must export for the die helper).
 export EBUILD_MASTER_PID=${BASHPID:-$(__bashpid)}
 trap 'exit 1' SIGTERM
