@@ -17,12 +17,8 @@ multilib_strict_check() {
 		done
 
 		if [[ -s ${T}/multilib-strict.log ]] ; then
-			if [[ ${#QA_MULTILIB_PATHS[@]} -eq 1 ]] ; then
-				local shopts=$-
-				set -o noglob
-				QA_MULTILIB_PATHS=(${QA_MULTILIB_PATHS})
-				set +o noglob
-				set -${shopts}
+			if [[ ${QA_MULTILIB_PATHS@a} != *a* ]] ; then
+				read -rd '' -a QA_MULTILIB_PATHS <<<"${QA_MULTILIB_PATHS}"
 			fi
 			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
 				for dir in "${QA_MULTILIB_PATHS[@]}" ; do
