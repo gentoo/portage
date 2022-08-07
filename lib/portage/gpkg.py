@@ -770,8 +770,6 @@ class gpkg:
         base_name is the package basename.
         gpkg_file should be exists file path for read or will create.
         """
-        if sys.version_info.major < 3:
-            raise InvalidBinaryPackageFormat("GPKG not support Python 2")
         self.settings = settings
         self.gpkg_version = "gpkg-1"
         if gpkg_file is None:

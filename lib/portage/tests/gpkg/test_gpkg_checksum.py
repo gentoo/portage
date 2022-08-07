@@ -2,7 +2,6 @@
 # Portage Unit Testing Functionality
 
 import io
-import sys
 import tarfile
 import tempfile
 from os import urandom
@@ -21,9 +20,6 @@ from portage.exception import (
 
 class test_gpkg_checksum_case(TestCase):
     def test_gpkg_missing_header(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -66,9 +62,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_missing_manifest(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -109,9 +102,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_missing_files(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -156,9 +146,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_extra_files(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -203,9 +190,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_incorrect_checksum(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -253,9 +237,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_duplicate_files(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -298,9 +279,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_manifest_duplicate_files(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
@@ -351,9 +329,6 @@ class test_gpkg_checksum_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_different_size_file(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (

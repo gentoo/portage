@@ -3,7 +3,6 @@
 
 import tempfile
 import tarfile
-import sys
 
 from portage import os, shutil
 from portage.tests import TestCase
@@ -13,9 +12,6 @@ from portage.gpkg import gpkg
 
 class test_gpkg_large_size_case(TestCase):
     def test_gpkg_large_size(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="gzip"',),

@@ -2,7 +2,6 @@
 # Portage Unit Testing Functionality
 
 import tempfile
-import sys
 from os import urandom
 
 from portage import os
@@ -15,8 +14,6 @@ from portage.gpkg import gpkg
 
 class test_gpkg_metadata_case(TestCase):
     def test_gpkg_update_metadata(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="gzip"',),
