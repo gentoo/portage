@@ -511,7 +511,8 @@ done < <(find "${ED}" -name '*.estrip' -delete -print0)
 fi
 
 # Now we look for unstripped binaries.
-for inode_link in $(shopt -s nullglob; echo *) ; do
+for inode_link in *; do
+test -e "${inode_link}" || continue
 while read -r x
 do
 
