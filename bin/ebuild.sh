@@ -285,21 +285,21 @@ inherit() {
 			# Retain the old data and restore it later.
 			unset B_IUSE B_REQUIRED_USE B_DEPEND B_RDEPEND B_PDEPEND
 			unset B_BDEPEND B_IDEPEND B_PROPERTIES B_RESTRICT
-			[[ "${IUSE+set}"       = set ]] && B_IUSE="${IUSE}"
-			[[ "${REQUIRED_USE+set}" = set ]] && B_REQUIRED_USE="${REQUIRED_USE}"
-			[[ "${DEPEND+set}"     = set ]] && B_DEPEND="${DEPEND}"
-			[[ "${RDEPEND+set}"    = set ]] && B_RDEPEND="${RDEPEND}"
-			[[ "${PDEPEND+set}"    = set ]] && B_PDEPEND="${PDEPEND}"
-			[[ "${BDEPEND+set}"    = set ]] && B_BDEPEND="${BDEPEND}"
-			[[ "${IDEPEND+set}"    = set ]] && B_IDEPEND="${IDEPEND}"
+			[[ -v IUSE         ]] && B_IUSE="${IUSE}"
+			[[ -v REQUIRED_USE ]] && B_REQUIRED_USE="${REQUIRED_USE}"
+			[[ -v DEPEND       ]] && B_DEPEND="${DEPEND}"
+			[[ -v RDEPEND      ]] && B_RDEPEND="${RDEPEND}"
+			[[ -v PDEPEND      ]] && B_PDEPEND="${PDEPEND}"
+			[[ -v BDEPEND      ]] && B_BDEPEND="${BDEPEND}"
+			[[ -v IDEPEND      ]] && B_IDEPEND="${IDEPEND}"
 			unset IUSE REQUIRED_USE DEPEND RDEPEND PDEPEND BDEPEND IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
-				[[ ${PROPERTIES+set} == set ]] && B_PROPERTIES=${PROPERTIES}
+				[[ -v PROPERTIES ]] && B_PROPERTIES=${PROPERTIES}
 				unset PROPERTIES
 			fi
 			if ___eapi_has_accumulated_RESTRICT; then
-				[[ ${RESTRICT+set} == set ]] && B_RESTRICT=${RESTRICT}
+				[[ -v RESTRICT ]] && B_RESTRICT=${RESTRICT}
 				unset RESTRICT
 			fi
 
@@ -315,49 +315,49 @@ inherit() {
 
 			# If each var has a value, append it to the global variable E_* to
 			# be applied after everything is finished. New incremental behavior.
-			[[ "${IUSE+set}"         = set ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
-			[[ "${REQUIRED_USE+set}" = set ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
-			[[ "${DEPEND+set}"       = set ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
-			[[ "${RDEPEND+set}"      = set ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
-			[[ "${PDEPEND+set}"      = set ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
-			[[ "${BDEPEND+set}"      = set ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
-			[[ "${IDEPEND+set}"      = set ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
+			[[ -v IUSE         ]] && E_IUSE+="${E_IUSE:+ }${IUSE}"
+			[[ -v REQUIRED_USE ]] && E_REQUIRED_USE+="${E_REQUIRED_USE:+ }${REQUIRED_USE}"
+			[[ -v DEPEND       ]] && E_DEPEND+="${E_DEPEND:+ }${DEPEND}"
+			[[ -v RDEPEND      ]] && E_RDEPEND+="${E_RDEPEND:+ }${RDEPEND}"
+			[[ -v PDEPEND      ]] && E_PDEPEND+="${E_PDEPEND:+ }${PDEPEND}"
+			[[ -v BDEPEND      ]] && E_BDEPEND+="${E_BDEPEND:+ }${BDEPEND}"
+			[[ -v IDEPEND      ]] && E_IDEPEND+="${E_IDEPEND:+ }${IDEPEND}"
 
-			[[ "${B_IUSE+set}"     = set ]] && IUSE="${B_IUSE}"
-			[[ "${B_IUSE+set}"     = set ]] || unset IUSE
+			[[ -v B_IUSE ]] && IUSE="${B_IUSE}"
+			[[ -v B_IUSE ]] || unset IUSE
 
-			[[ "${B_REQUIRED_USE+set}"     = set ]] && REQUIRED_USE="${B_REQUIRED_USE}"
-			[[ "${B_REQUIRED_USE+set}"     = set ]] || unset REQUIRED_USE
+			[[ -v B_REQUIRED_USE ]] && REQUIRED_USE="${B_REQUIRED_USE}"
+			[[ -v B_REQUIRED_USE ]] || unset REQUIRED_USE
 
-			[[ "${B_DEPEND+set}"   = set ]] && DEPEND="${B_DEPEND}"
-			[[ "${B_DEPEND+set}"   = set ]] || unset DEPEND
+			[[ -v B_DEPEND ]] && DEPEND="${B_DEPEND}"
+			[[ -v B_DEPEND ]] || unset DEPEND
 
-			[[ "${B_RDEPEND+set}"  = set ]] && RDEPEND="${B_RDEPEND}"
-			[[ "${B_RDEPEND+set}"  = set ]] || unset RDEPEND
+			[[ -v B_RDEPEND ]] && RDEPEND="${B_RDEPEND}"
+			[[ -v B_RDEPEND ]] || unset RDEPEND
 
-			[[ "${B_PDEPEND+set}"  = set ]] && PDEPEND="${B_PDEPEND}"
-			[[ "${B_PDEPEND+set}"  = set ]] || unset PDEPEND
+			[[ -v B_PDEPEND ]] && PDEPEND="${B_PDEPEND}"
+			[[ -v B_PDEPEND ]] || unset PDEPEND
 
-			[[ "${B_BDEPEND+set}"  = set ]] && BDEPEND="${B_BDEPEND}"
-			[[ "${B_BDEPEND+set}"  = set ]] || unset BDEPEND
+			[[ -v B_BDEPEND ]] && BDEPEND="${B_BDEPEND}"
+			[[ -v B_BDEPEND ]] || unset BDEPEND
 
-			[[ "${B_IDEPEND+set}"  = set ]] && IDEPEND="${B_IDEPEND}"
-			[[ "${B_IDEPEND+set}"  = set ]] || unset IDEPEND
+			[[ -v B_IDEPEND ]] && IDEPEND="${B_IDEPEND}"
+			[[ -v B_IDEPEND ]] || unset IDEPEND
 
 			if ___eapi_has_accumulated_PROPERTIES; then
-				[[ ${PROPERTIES+set} == set ]] &&
+				[[ -v PROPERTIES ]] &&
 					E_PROPERTIES+=${E_PROPERTIES:+ }${PROPERTIES}
-				[[ ${B_PROPERTIES+set} == set ]] &&
+				[[ -v B_PROPERTIES ]] &&
 					PROPERTIES=${B_PROPERTIES}
-				[[ ${B_PROPERTIES+set} == set ]] ||
+				[[ -v B_PROPERTIES ]] ||
 					unset PROPERTIES
 			fi
 			if ___eapi_has_accumulated_RESTRICT; then
-				[[ ${RESTRICT+set} == set ]] &&
+				[[ -v RESTRICT ]] &&
 					E_RESTRICT+=${E_RESTRICT:+ }${RESTRICT}
-				[[ ${B_RESTRICT+set} == set ]] &&
+				[[ -v B_RESTRICT ]] &&
 					RESTRICT=${B_RESTRICT}
-				[[ ${B_RESTRICT+set} == set ]] ||
+				[[ -v B_RESTRICT ]] ||
 					unset RESTRICT
 			fi
 
@@ -642,7 +642,7 @@ if [[ ${EBUILD_PHASE} != clean?(rm) ]]; then
 			shopt -u failglob
 		fi
 
-		[[ "${EAPI+set}" = set ]] || EAPI=0
+		[[ -v EAPI ]] || EAPI=0
 
 		# export EAPI for helpers (especially since we unset it above)
 		export EAPI
