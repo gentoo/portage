@@ -498,8 +498,8 @@ if (( ! has_restriction[binchecks] )); then
 	__multijob_child_init
 	qa_var="QA_PRESTRIPPED_${ARCH/-/_}"
 	[[ -n ${!qa_var} ]] && QA_PRESTRIPPED="${!qa_var}"
-	if [[ -n ${QA_PRESTRIPPED} && -s ${log} && \
-		${QA_STRICT_PRESTRIPPED-unset} = unset ]] ; then
+	if [[ -n ${QA_PRESTRIPPED} && -s ${log} &&
+		! -v QA_STRICT_PRESTRIPPED ]] ; then
 		shopts=$-
 		set -o noglob
 		for x in ${QA_PRESTRIPPED} ; do
