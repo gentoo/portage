@@ -23,7 +23,7 @@ multilib_strict_check() {
 			if [[ ${QA_MULTILIB_PATHS@a} != *a* ]] ; then
 				read -rd '' -a QA_MULTILIB_PATHS <<<"${QA_MULTILIB_PATHS}"
 			fi
-			if [ "${QA_STRICT_MULTILIB_PATHS-unset}" = unset ] ; then
+			if [[ ! -v QA_STRICT_MULTILIB_PATHS ]] ; then
 				for dir in "${QA_MULTILIB_PATHS[@]}" ; do
 					sed -e "s#^${dir#/}\$##" -i "${T}/multilib-strict.log"
 				done
