@@ -19,7 +19,7 @@ scanelf_lib_check() {
 	f=$(scanelf -ByF '%S %p' "${ED%/}"/{,usr/}lib*/lib*.so* | awk '$2 == "" { print }' | sed -e "s:^[[:space:]]${ED%/}/:/:")
 	if [[ -n ${f} ]] ; then
 		echo "${f}" > "${T}"/scanelf-missing-SONAME.log
-		if [[ "${QA_STRICT_SONAME-unset}" == unset ]] ; then
+		if [[ ! -v QA_STRICT_SONAME ]] ; then
 			if [[ ${#QA_SONAME[@]} -gt 1 ]] ; then
 				for x in "${QA_SONAME[@]}" ; do
 					sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-SONAME.log
@@ -62,7 +62,7 @@ scanelf_lib_check() {
 	fi
 	if [[ -n ${f} ]] ; then
 		echo "${f}" > "${T}"/scanelf-missing-NEEDED.log
-		if [[ "${QA_STRICT_DT_NEEDED-unset}" == unset ]] ; then
+		if [[ ! -v QA_STRICT_DT_NEEDED ]] ; then
 			if [[ ${#QA_DT_NEEDED[@]} -gt 1 ]] ; then
 				for x in "${QA_DT_NEEDED[@]}" ; do
 					sed -e "s#^/${x#/}\$##" -i "${T}"/scanelf-missing-NEEDED.log
