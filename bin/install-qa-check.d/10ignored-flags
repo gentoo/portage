@@ -43,7 +43,7 @@ ignored_flag_check() {
 
 		if [[ -f "${T}"/scanelf-ignored-CFLAGS.log ]] ; then
 
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ ! -v QA_STRICT_FLAGS_IGNORED ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-CFLAGS.log
 				done
@@ -74,7 +74,7 @@ ignored_flag_check() {
 			<(scanelf -qyRF '#s%p' -s __gentoo_check_ldflags__ "${ED%/}/" | LC_ALL=C sort))
 		if [[ -n ${f} ]] ; then
 			echo "${f}" > "${T}"/scanelf-ignored-LDFLAGS.log
-			if [ "${QA_STRICT_FLAGS_IGNORED-unset}" = unset ] ; then
+			if [[ ! -v QA_STRICT_FLAGS_IGNORED ]] ; then
 				for x in "${QA_FLAGS_IGNORED[@]}" ; do
 					sed -e "s#^${x#/}\$##" -i "${T}"/scanelf-ignored-LDFLAGS.log
 				done
