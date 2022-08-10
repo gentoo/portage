@@ -634,8 +634,13 @@ __dyn_install() {
 	(
 		hash du 2>/dev/null || exit 0
 
-		local nsz=( $(du -ks "${WORKDIR}") )
-		local isz=( $(du -ks "${D}") )
+		local nsz isz
+
+		nsz=$(du -ks "${WORKDIR}")
+		isz=$(du -ks "${D}")
+		nsz=${nsz%% *}
+		isz=${isz%% *}
+
 		# align $1 to the right to the width of the widest of $1 and $2
 		padl() {
 			local s1=$1
@@ -676,8 +681,8 @@ __dyn_install() {
 			fi
 			echo "${out}"
 		}
-		einfo "Final size of build directory: $(size ${nsz[0]} ${isz[0]})"
-		einfo "Final size of installed tree:  $(size ${isz[0]} ${nsz[0]})"
+		einfo "Final size of build directory: $(size "${nsz}" "${isz}")"
+		einfo "Final size of installed tree:  $(size "${isz}" "${nsz}")"
 	)
 	__vecho
 
