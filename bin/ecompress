@@ -4,21 +4,10 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-if [[ -z $1 ]] ; then
-	__helpers_die "${0##*/}: at least one argument needed"
-	exit 1
-fi
+do_ignore() {
+		local -a skip_dirs
+		local skip
 
-if ! ___eapi_has_prefix_variables; then
-	ED=${D} EPREFIX=
-fi
-
-while [[ $# -gt 0 ]] ; do
-	case $1 in
-	--ignore)
-		shift
-
-		skip_dirs=()
 		> "${T}/.ecompress_skip_files" || die
 		for skip; do
 			if [[ -d ${ED%/}/${skip#/} ]]; then
@@ -44,13 +33,13 @@ while [[ $# -gt 0 ]] ; do
 			LC_COLLATE=C comm -13 "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
 			rm -f "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
 		fi
+}
 
-		exit 0
-		;;
-	--queue)
-		shift
+do_queue() {
+		local vpath comp path x
+		local -A collisions
+		local -a find_args
 
-		find_args=()
 		for path; do
 			if [[ -e ${ED%/}/${path#/} ]]; then
 				find_args+=( "${ED%/}/${path#/}" )
@@ -62,7 +51,6 @@ while [[ $# -gt 0 ]] ; do
 			[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
 				find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
 
-			declare -A collisions
 			while IFS= read -d '' -r path; do
 				# detect the horrible posibility of the ebuild installing
 				# colliding compressed and/or uncompressed variants
@@ -99,39 +87,7 @@ while [[ $# -gt 0 ]] ; do
 				eqawarn "Please remove the extraneous compressed variants."
 			fi
 		fi
-
-		exit 0
-		;;
-	--dequeue)
-		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
-		break
-		;;
-	*)
-		die "${0##*/}: unknown arguments '$*'"
-		exit 1
-		;;
-	esac
-	shift
-done
-
-# setup compression stuff
-PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
-if [[ -z ${PORTAGE_COMPRESS} ]]; then
-	find "${ED}" -name '*.ecompress' -delete
-	exit 0
-fi
-
-if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
-	case ${PORTAGE_COMPRESS} in
-		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
-		# Without setting '-m' lz4 will not compress multiple files at once.
-		# See: https://bugs.gentoo.org/672916
-		# Setting '--rm' will remove the source files after a successful compression.
-		lz4)  PORTAGE_COMPRESS_FLAGS="-m --rm";;
-		xz)   PORTAGE_COMPRESS_FLAGS="-q -T$(___makeopts_jobs) --memlimit-compress=50%";;
-		zstd) PORTAGE_COMPRESS_FLAGS="-q --rm -T$(___makeopts_jobs)";;
-	esac
-fi
+}
 
 guess_suffix() {
 	set -e
@@ -158,18 +114,14 @@ guess_suffix() {
 	echo "${suffix}"
 }
 
-# figure out the new suffix
-if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
-	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
-fi
-export PORTAGE_COMPRESS_SUFFIX
-
 fix_symlinks() {
+	local something_changed brokenlink newdest olddest ret
+	local -i indirection=0
+
 	# Repeat until nothing changes, in order to handle multiple
 	# levels of indirection (see bug #470916).
-	local -i indirection=0
 	while true ; do
-		local something_changed=
+		something_changed=
 		while read -r -d $'\0' brokenlink ; do
 			[[ -e ${brokenlink} ]] && continue
 
@@ -200,6 +152,62 @@ fix_symlinks() {
 
 	return ${ret}
 }
+
+if [[ -z $1 ]] ; then
+	__helpers_die "${0##*/}: at least one argument needed"
+	exit 1
+fi
+
+if ! ___eapi_has_prefix_variables; then
+	ED=${D} EPREFIX=
+fi
+
+while [[ $# -gt 0 ]] ; do
+	case $1 in
+	--ignore)
+		shift
+		do_ignore "$@"
+		exit
+		;;
+	--queue)
+		shift
+		do_queue "$@"
+		exit
+		;;
+	--dequeue)
+		[[ -n ${2} ]] && die "${0##*/}: --dequeue takes no additional arguments"
+		break
+		;;
+	*)
+		die "${0##*/}: unknown arguments '$*'"
+		exit 1
+	esac
+done
+
+# setup compression stuff
+PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
+if [[ -z ${PORTAGE_COMPRESS} ]]; then
+	find "${ED}" -name '*.ecompress' -delete
+	exit 0
+fi
+
+if [[ ! -v PORTAGE_COMPRESS_FLAGS ]] ; then
+	case ${PORTAGE_COMPRESS} in
+		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
+		# Without setting '-m' lz4 will not compress multiple files at once.
+		# See: https://bugs.gentoo.org/672916
+		# Setting '--rm' will remove the source files after a successful compression.
+		lz4)  PORTAGE_COMPRESS_FLAGS="-m --rm";;
+		xz)   PORTAGE_COMPRESS_FLAGS="-q -T$(___makeopts_jobs) --memlimit-compress=50%";;
+		zstd) PORTAGE_COMPRESS_FLAGS="-q --rm -T$(___makeopts_jobs)";;
+	esac
+fi
+
+# figure out the new suffix
+if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
+	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
+fi
+export PORTAGE_COMPRESS_SUFFIX
 
 export PORTAGE_COMPRESS PORTAGE_COMPRESS_FLAGS
 find "${ED}" -name '*.ecompress' -delete -print0 |
