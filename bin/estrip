@@ -104,7 +104,7 @@ while [[ $# -gt 0 ]] ; do
 			while IFS= read -r path; do
 				>> "${path}.estrip" || die
 			done < <(
-				printf "%s\n" "${scanelf_results[@]}"
+				[[ -n ${scanelf_results[@]} ]] && printf "%s\n" "${scanelf_results[@]}"
 				find "${find_paths[@]}" -type f ! -type l -name '*.a'
 			)
 
