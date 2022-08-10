@@ -345,7 +345,7 @@ eerror() {
 ebegin() {
 	local msg="$*" dots spaces=${RC_DOT_PATTERN//?/ }
 	if [[ -n ${RC_DOT_PATTERN} ]] ; then
-		dots=$(printf "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" '')
+		printf -v dots "%$(( COLS - 3 - ${#RC_INDENTATION} - ${#msg} - 7 ))s" ''
 		dots=${dots//${spaces}/${RC_DOT_PATTERN}}
 		msg="${msg}${dots}"
 	else
