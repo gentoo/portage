@@ -1056,13 +1056,16 @@ Tells emerge to use binary packages (from $PKGDIR) if they are available, thus
 possibly avoiding some time\-consuming compiles.  This option is useful for CD
 installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to
 have emerge "pull" binary packages from the CD in order to satisfy
-dependencies.
+dependencies.  Note this option implies \fB\-\-with\-bdeps=n\fR.  To include
+build time dependencies, \fB\-\-with\-bdeps=y\fR must be specified explicitly.
 .TP
 .BR "\-\-usepkgonly [ y | n ]" ", " \-K
 Tells emerge to only use binary packages (from $PKGDIR).  All the binary
 packages must be available at the time of dependency calculation or emerge
 will simply abort.  Portage does not use ebuild repositories when calculating
-dependency information so all masking information is ignored.
+dependency information so all masking information is ignored.  Like \fB\-k\fR
+above, this option implies \fB\-\-with\-bdeps=n\fR.  To include build time
+dependencies, \fB\-\-with\-bdeps=y\fR must be specified explicitly.
 .TP
 .BR "\-\-usepkg\-exclude\-live [ y | n ]"
 Tells emerge to not install from binary packages for live ebuilds.
