@@ -159,7 +159,10 @@ guess_suffix() {
 }
 
 # figure out the new suffix
-export PORTAGE_COMPRESS_SUFFIX=$(guess_suffix) || die
+if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
+	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
+fi
+export PORTAGE_COMPRESS_SUFFIX
 
 fix_symlinks() {
 	# Repeat until nothing changes, in order to handle multiple
