@@ -166,33 +166,33 @@ fix_symlinks() {
 	# levels of indirection (see bug #470916).
 	local -i indirection=0
 	while true ; do
-	local something_changed=
-	while read -r -d $'\0' brokenlink ; do
-		[[ -e ${brokenlink} ]] && continue
+		local something_changed=
+		while read -r -d $'\0' brokenlink ; do
+			[[ -e ${brokenlink} ]] && continue
 
-		olddest=$(readlink "${brokenlink}")
-		newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
-		if [[ "${newdest}" == /* ]] ; then
-			[[ -f "${D%/}${newdest}" ]] || continue
-		else
-			[[ -f "${brokenlink%/*}/${newdest}" ]] || continue
+			olddest=$(readlink "${brokenlink}")
+			newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
+			if [[ "${newdest}" == /* ]] ; then
+				[[ -f "${D%/}${newdest}" ]] || continue
+			else
+				[[ -f "${brokenlink%/*}/${newdest}" ]] || continue
+			fi
+
+			something_changed=${brokenlink}
+			rm -f "${brokenlink}" &&
+			ln -snf "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
+			((ret|=$?))
+		done < <(find "${ED}" -type l -print0 || die)
+
+		[[ -n ${something_changed} ]] || break
+		(( indirection++ ))
+
+		if (( indirection >= 100 )) ; then
+			# Protect against possibility of a bug triggering an endless loop.
+			eerror "ecompress: too many levels of indirection for" \
+				"'${something_changed#${ED%/}}'"
+			break
 		fi
-
-		something_changed=${brokenlink}
-		rm -f "${brokenlink}" &&
-		ln -snf "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
-		((ret|=$?))
-	done < <(find "${ED}" -type l -print0 || die)
-
-	[[ -n ${something_changed} ]] || break
-	(( indirection++ ))
-
-	if (( indirection >= 100 )) ; then
-		# Protect against possibility of a bug triggering an endless loop.
-		eerror "ecompress: too many levels of indirection for" \
-			"'${something_changed#${ED%/}}'"
-		break
-	fi
 	done
 
 	return ${ret}
