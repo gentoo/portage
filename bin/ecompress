@@ -13,25 +13,25 @@ do_ignore() {
 		if [[ -d ${ED%/}/${skip#/} ]]; then
 			skip_dirs+=( "${ED%/}/${skip#/}" )
 		else
-			rm -f "${ED%/}/${skip#/}.ecompress" || die
-			printf -- '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
+			rm -f -- "${ED%/}/${skip#/}.ecompress" || die
+			printf '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
 		fi
 	done
 
 	if (( ${#skip_dirs[@]} )); then
 		while read -r -d '' skip; do
 			skip=${skip%.ecompress}
-			printf -- '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
+			printf '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
 		done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
 	fi
 
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
 		# Filter skipped files from ${T}/.ecompress_had_precompressed,
 		# using temporary files since these lists can be extremely large.
-		LC_COLLATE=C sort -u "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
-		LC_COLLATE=C sort -u "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
-		LC_COLLATE=C comm -13 "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
-		rm -f "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
+		LC_COLLATE=C sort -u -- "${T}/.ecompress_skip_files" > "${T}/.ecompress_skip_files_sorted" || die
+		LC_COLLATE=C sort -u -- "${T}/.ecompress_had_precompressed" > "${T}/.ecompress_had_precompressed_sorted" || die
+		LC_COLLATE=C comm -13 -- "${T}/.ecompress_skip_files_sorted" "${T}/.ecompress_had_precompressed_sorted" > "${T}/.ecompress_had_precompressed" || die
+		rm -f -- "${T}/.ecompress_had_precompressed_sorted" "${T}/.ecompress_skip_files"{,_sorted}
 	fi
 }
 
@@ -70,7 +70,7 @@ do_queue() {
 							continue 2
 						fi
 					done
-					printf -- '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
+					printf '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
 					;;
 			esac
 
@@ -93,8 +93,8 @@ guess_suffix() {
 	set -e
 
 	tmpdir="${T}"/.ecompress$$.${RANDOM}
-	mkdir "${tmpdir}"
-	cd "${tmpdir}"
+	mkdir -- "${tmpdir}"
+	cd -- "${tmpdir}"
 
 	# We have to fill the file enough so that there is something
 	# to compress as some programs will refuse to do compression
@@ -110,7 +110,7 @@ guess_suffix() {
 	suffix=${suffix#compressme}
 
 	cd /
-	rm -rf "${tmpdir}"
+	rm -rf -- "${tmpdir}"
 	echo "${suffix}"
 }
 
@@ -125,7 +125,7 @@ fix_symlinks() {
 		while read -r -d $'\0' brokenlink ; do
 			[[ -e ${brokenlink} ]] && continue
 
-			olddest=$(readlink "${brokenlink}")
+			olddest=$(readlink -- "${brokenlink}")
 			newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
 			if [[ "${newdest}" == /* ]] ; then
 				[[ -f "${D%/}${newdest}" ]] || continue
@@ -134,8 +134,8 @@ fix_symlinks() {
 			fi
 
 			something_changed=1
-			rm -f "${brokenlink}" &&
-			ln -snf "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
+			rm -f -- "${brokenlink}" \
+			&& ln -snf -- "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
 			((ret|=$?))
 		done < <(find "${ED}" -type l -print0 || die)
 
