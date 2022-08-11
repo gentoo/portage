@@ -494,19 +494,20 @@ if [[ -z ${XARGS} ]] ; then
 fi
 
 ___makeopts_jobs() {
+	local jobs
+
 	# Copied from multiprocessing.eclass:makeopts_jobs
 	# This assumes the first .* will be more greedy than the second .*
 	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
-	local jobs=$(echo " ${MAKEOPTS} " | sed -r -n \
-		-e 's:.*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p' || die)
-
-	# Fallbacks for if MAKEOPTS parsing failed
-	[[ -n ${jobs} ]] || \
-		jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null) || \
-		jobs=$(sysctl -n hw.ncpu 2>/dev/null) || \
+	if [[ " ${MAKEOPTS} " =~ .*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).* ]]; then
+		jobs=${BASH_REMATCH[2]}
+	elif jobs=$({ getconf _NPROCESSORS_ONLN || sysctl -n hw.ncpu; } 2>/dev/null); then
+		:
+	else
 		jobs=1
+	fi
 
-	echo ${jobs}
+	printf '%s\n' "${jobs}"
 }
 
 # Run ${XARGS} in parallel for detected number of CPUs, if supported.
