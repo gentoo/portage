@@ -90,6 +90,8 @@ do_queue() {
 }
 
 guess_suffix() {
+	local - f i suffix
+
 	set -e
 
 	tmpdir="${T}"/.ecompress$$.${RANDOM}
@@ -99,19 +101,25 @@ guess_suffix() {
 	# We have to fill the file enough so that there is something
 	# to compress as some programs will refuse to do compression
 	# if it cannot actually compress the file
-	echo {0..1000} > compressme
+	for (( i = 0; i <= 1000; i++ )); do
+		printf '%s ' "${i}"
+	done > compressme
 	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
 
 	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 	# having our glob match the uncompressed file here.
-	suffix=$(echo compressme.*)
-	[[ -z ${suffix} || "${suffix}" == "compressme.*" ]] && \
-		suffix=$(echo compressme*)
-	suffix=${suffix#compressme}
+	for f in compressme?*; do
+		if [[ -e ${f} ]]; then
+			suffix=${f#compressme}
+			break
+		fi
+	done
 
 	cd /
 	rm -rf -- "${tmpdir}"
-	echo "${suffix}"
+
+	set +e
+	[[ ${suffix} ]] && printf '%s\n' "${suffix}"
 }
 
 fix_symlinks() {
