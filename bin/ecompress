@@ -13,16 +13,19 @@ do_ignore() {
 		if [[ -d ${ED%/}/${skip#/} ]]; then
 			skip_dirs+=( "${ED%/}/${skip#/}" )
 		else
-			rm -f -- "${ED%/}/${skip#/}.ecompress" || die
-			printf '%s\n' "${EPREFIX}/${skip#/}" >> "${T}/.ecompress_skip_files" || die
+			rm -f -- "${ED%/}/${skip#/}.ecompress" \
+			&& printf '%s\n' "${EPREFIX}/${skip#/}" \
+			|| ! break
 		fi
-	done
+	done > "${T}/.ecompress_skip_files" || die
 
 	if (( ${#skip_dirs[@]} )); then
 		while IFS= read -rd '' skip; do
 			skip=${skip%.ecompress}
-			printf '%s\n' "${skip#"${D%/}"}" >> "${T}/.ecompress_skip_files" || die
-		done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
+			printf '%s\n' "${skip#"${D%/}"}" || ! break
+		done \
+		< <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die) \
+		>> "${T}/.ecompress_skip_files" || die
 	fi
 
 	if [[ -s ${T}/.ecompress_skip_files && -s ${T}/.ecompress_had_precompressed ]]; then
@@ -70,12 +73,14 @@ do_queue() {
 							continue 2
 						fi
 					done
-					printf '%s\n' "${path#"${D%/}"}" >> "${T}"/.ecompress_had_precompressed || die
+					printf '%s\n' "${path#"${D%/}"}" || ! break
 					;;
 			esac
 
 			>> "${path}.ecompress" || die
-		done < <(find "${find_args[@]}" -print0 || die)
+		done \
+		< <(find "${find_args[@]}" -print0 || die) \
+		> "${T}"/.ecompress_had_precompressed || die
 
 		if (( ${#collisions[@]} )); then
 			eqawarn "QA Notice: Colliding files found by ecompress:"
