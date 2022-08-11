@@ -110,10 +110,13 @@ nonfatal() {
 }
 
 __helpers_die() {
+	local retval=$?
+
 	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
 		die "$@"
 	else
 		echo -e "$@" >&2
+		return "$(( retval || 1 ))"
 	fi
 }
 
