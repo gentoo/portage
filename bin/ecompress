@@ -4,6 +4,13 @@
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
+# shellcheck disable=2185
+if hash gfind 2>/dev/null; then
+	find0() { gfind -files0-from - "$@"; }
+else
+	find0() { find -files0-from - "$@"; }
+fi
+
 do_ignore() {
 	local -a skip_dirs
 	local skip
@@ -24,7 +31,7 @@ do_ignore() {
 			skip=${skip%.ecompress}
 			printf '%s\n' "${skip#"${D%/}"}" || ! break
 		done \
-		< <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die) \
+		< <(printf '%s\0' "${skip_dirs[@]}" | find0 -name '*.ecompress' -print0 -delete || die) \
 		>> "${T}/.ecompress_skip_files" || die
 	fi
 
@@ -40,20 +47,20 @@ do_ignore() {
 
 do_queue() {
 	local vpath comp path x
+	local -a find_args paths
 	local -A collisions
-	local -a find_args
 
 	for path; do
 		if [[ -e ${ED%/}/${path#/} ]]; then
-			find_args+=( "${ED%/}/${path#/}" )
+			paths+=( "${ED%/}/${path#/}" )
 		fi
 	done
 
-	if (( ${#find_args[@]} )); then
+	if (( ${#paths[@]} )); then
 		find_args+=( -type f )
-		[[ -n ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]] &&
+		if [[ ${PORTAGE_DOCOMPRESS_SIZE_LIMIT} ]]; then
 			find_args+=( -size "+${PORTAGE_DOCOMPRESS_SIZE_LIMIT}c" )
-
+		fi
 		while IFS= read -rd '' path; do
 			# detect the horrible posibility of the ebuild installing
 			# colliding compressed and/or uncompressed variants
@@ -79,7 +86,7 @@ do_queue() {
 
 			>> "${path}.ecompress" || die
 		done \
-		< <(find "${find_args[@]}" -print0 || die) \
+		< <(printf '%s\0' "${paths[@]}" | find0 "${find_args[@]}" -print0 || die) \
 		> "${T}"/.ecompress_had_precompressed || die
 
 		if (( ${#collisions[@]} )); then
@@ -149,7 +156,7 @@ fix_symlinks() {
 			rm -f -- "${brokenlink}" \
 			&& ln -snf -- "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
 			((ret|=$?))
-		done < <(find "${ED}" -type l -print0 || die)
+		done < <(printf '%s\0' "${ED}" | find0 -type l -print0 || die)
 
 		if (( ! something_changed )); then
 			break
@@ -198,7 +205,7 @@ done
 # setup compression stuff
 PORTAGE_COMPRESS=${PORTAGE_COMPRESS-bzip2}
 if [[ -z ${PORTAGE_COMPRESS} ]]; then
-	find "${ED}" -name '*.ecompress' -delete
+	printf '%s\0' "${ED}" | find0 -name '*.ecompress' -delete
 	exit 0
 fi
 
@@ -218,12 +225,13 @@ fi
 if ! PORTAGE_COMPRESS_SUFFIX=$(guess_suffix); then
 	die "Failed to determine the suffix of archives created by ${PORTAGE_COMPRESS@Q}"
 fi
-export PORTAGE_COMPRESS_SUFFIX
 
-export PORTAGE_COMPRESS PORTAGE_COMPRESS_FLAGS
-find "${ED}" -name '*.ecompress' -delete -print0 |
-	___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
-ret=${?}
+export PORTAGE_COMPRESS_SUFFIX PORTAGE_COMPRESS_FLAGS PORTAGE_COMPRESS
+
+printf '%s\0' "${ED}" \
+| find0 -name '*.ecompress' -delete -print0 \
+| ___parallel_xargs -0 "${PORTAGE_BIN_PATH}"/ecompress-file
+ret=$?
 
 if [[ -s ${T}/.ecompress_had_precompressed ]]; then
 	eqawarn "QA Notice: One or more compressed files were found in docompress-ed"
