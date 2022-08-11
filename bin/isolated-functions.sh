@@ -180,21 +180,24 @@ die() {
 	# This tends to be the most common usage though, so let's do it.
 	# Due to the usage of appending to the hold space (even when empty),
 	# we always end up with the first line being a blank (thus the 2nd sed).
-	sed -n \
-		-e "# When we get to the line that failed, append it to the
-		    # hold space, move the hold space to the pattern space,
-		    # then print out the pattern space and quit immediately
-		    ${BASH_LINENO[0]}{H;g;p;q}" \
-		-e '# If this line ends with a line continuation, append it
-		    # to the hold space
-		    /\\$/H' \
-		-e '# If this line does not end with a line continuation,
-		    # erase the line and set the hold buffer to it (thus
-		    # erasing the hold buffer in the process)
-		    /[^\]$/{s:^.*$::;h}' \
-		"${BASH_SOURCE[1]}" \
-		| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
-		| while read -r n ; do eerror "  ${n#RETAIN-LEADING-SPACE}" ; done
+	local -a sed_args=(
+		# When we get to the line that failed, append it to the hold
+		# space, move the hold space to the pattern space, then print
+		# out the pattern space and quit immediately.
+		-n -e "${BASH_LINENO[0]}{H;g;p;q}"
+		# If this line ends with a line continuation, append it to the
+		# hold space.
+		-e '/\\$/H'
+		# If this line does not end with a line continuation, erase the
+		# line and set the hold buffer to it (thus erasing the hold
+		# buffer in the process).
+		-e '/[^\]$/{s:^.*$::;h}'
+	)
+	sed "${sed_args[@]}" "${BASH_SOURCE[1]}" \
+	| sed -e '1d' -e 's:^:RETAIN-LEADING-SPACE:' \
+	| while read -r n; do
+		eerror "  ${n#RETAIN-LEADING-SPACE}"
+	done
 	eerror
 	fi
 	eerror "If you need support, post the output of \`emerge --info '=${CATEGORY}/${PF}::${PORTAGE_REPO_NAME}'\`,"
