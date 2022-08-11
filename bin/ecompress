@@ -21,7 +21,7 @@ do_ignore() {
 	if (( ${#skip_dirs[@]} )); then
 		while IFS= read -rd '' skip; do
 			skip=${skip%.ecompress}
-			printf '%s\n' "${skip#${D%/}}" >> "${T}/.ecompress_skip_files" || die
+			printf '%s\n' "${skip#"${D%/}"}" >> "${T}/.ecompress_skip_files" || die
 		done < <(find "${skip_dirs[@]}" -name '*.ecompress' -print0 -delete || die)
 	fi
 
@@ -62,7 +62,7 @@ do_queue() {
 				*.Z|*.gz|*.bz2|*.lzma|.lz|.lzo|.lz4|*.xz|*.zst)
 					vpath=${path%.*}
 					for comp in '' .Z .gz .bz2 .lzma .lz .lzo .lz4 .xz .zst; do
-						if [[ ${vpath}${comp} != ${path} && \
+						if [[ ${vpath}${comp} != "${path}" && \
 								-e ${vpath}${comp} ]]; then
 							collisions[${path}]=1
 							collisions[${vpath}]=1
@@ -70,7 +70,7 @@ do_queue() {
 							continue 2
 						fi
 					done
-					printf '%s\n' "${path#${D%/}}" >> "${T}"/.ecompress_had_precompressed || die
+					printf '%s\n' "${path#"${D%/}"}" >> "${T}"/.ecompress_had_precompressed || die
 					;;
 			esac
 
@@ -151,7 +151,7 @@ fix_symlinks() {
 		elif (( ++i >= 100 )); then
 			# Protect against possibility of a bug triggering an endless loop.
 			eerror "ecompress: too many levels of indirection for" \
-				"'${something_changed#${ED%/}}'"
+				"'${something_changed#"${ED%/}"}'"
 			break
 		fi
 	done
