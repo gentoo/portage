@@ -7,6 +7,8 @@ Features:
 
   See also https://wiki.gentoo.org/wiki/Portage_niceness.
 
+* The header of build.log now contains the package's slot (bug #864382).
+
 Bug fixes:
 * xml: Fix XML node parsing (resulted in duplicate USE flag descriptions
   in gentoolkit, bug 858791). This code is thought to have only one
