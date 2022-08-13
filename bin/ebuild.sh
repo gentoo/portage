@@ -2,6 +2,10 @@
 # Copyright 1999-2025 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+# Have the execution trace include the basename of the source file, the line
+# number and the name of the function, if any.
+PS4='+${BASH_SOURCE[0]##*/}:$LINENO:${FUNCNAME-}: '
+
 # Discard any aliases that the file specified by BASH_ENV may have defined.
 unalias -a
 
