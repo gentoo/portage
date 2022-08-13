@@ -1,6 +1,12 @@
 portage-3.0.35 (UNRELEASED)
 --------------
 
+Features:
+* Portage can now set scheduling policies using the PORTAGE_SCHEDULING_POLICY
+  and PORTAGE_SCHEDULING_PRIORITY variables. See make.conf.example for details.
+
+  See also https://wiki.gentoo.org/wiki/Portage_niceness.
+
 Bug fixes:
 * xml: Fix XML node parsing (resulted in duplicate USE flag descriptions
   in gentoolkit, bug 858791). This code is thought to have only one
@@ -10,26 +16,62 @@ Bug fixes:
 * logging: don't clutter with a global logger and instead scope to
   each module. Allows further logging refactoring in future.
 
-* estrip: fix double slash for older EAPIs (bug 862600).
+* estrip: fix double slash for older EAPIs (bug #862600).
 
-* install-qa-check.d: 60-pkgconfig: fix --validate check by adding
+* estrip: avoid spurious NEEDED warning when no ELF files installed for
+  < EAPI 7 (bug #749624, bug #862606).
+
+* estrip: apply scanelf optimisation for EAPI 7+ too (bug #749624, bug #862606).
+
+* dispatch-conf: respect (E)ROOT
+
+* install-qa-check.d: 60pkgconfig: fix --validate check by adding
   ${ED}/usr/{lib*,share} to search path.
 
-* install-qa-check.d: 60-pkgconfig: only check defined variables for
+* install-qa-check.d: 60pkgconfig: only check defined variables for
   ${EPREFIX} compliance (bug 860825).
+
+* install-qa-check.d: 60pkgconfig: display the detected version from
+  the .pc file (improves the QA warning output), and hint to the user/developer
+  about the existence of QA_PKGCONFIG_VERSION to silence the warning.
+
+* install-qa-check.d: 60pkgconfig: use eqatag for nicer output.
+
+* install-qa-check.d: 60pkgconfig: use ver_test where possible in version
+  comparison checks to avoid warning if the Version field in the .pc file
+  is equivalent to the ebuild version.
+
+* install-qa-check.d: 80libraries: include Darwin/Mach-O objects in checks.
+
+* install-qa-check.d: 80multilib-strict: use file/find from Prefix instead
+  of absolute paths in /usr/bin.
 
 * install-qa-checks.d: 90gcc-warnings: add arm64, aarch64 (used by Apple),
   loongarch64, riscv64, s390x to list of 64-bit arches which affects the
   severity of some warnings (like pointer truncation).
 
+* install-qa-check.d: 90world-writable: include EPREFIX in paths.
+
 * portage: output: update obsolete /etc/init.d/functions.sh path.
 
 * bin: style tweaks to conform to Gentoo style (mostly variable bracing).
+
+* doins: fix D check, add EPREFIX check
+
+* misc-functions.sh: add Prefix fixups, like including EPREFIX in
+  INSTALL_MASK for /usr/share for noman, noinfo, nodoc.
+
+* phase-function.sh: mark ED, EROOT read-only variables
+
+* eapi.sh: cleanup obsolete references to unofficial 5-hdepend EAPI.
 
 * isolated-functions.sh: sync __makeopts_jobs implementation with
   multiprocessing.eclass.
 
 * ebuild(1): improve descriptions of various phase functions.
+
+* emerge(1): mention --with-bdeps=n behavior for both --usepkg (-k) and
+  --usepkgonly (-K) (bug #863422).
 
 portage-3.0.34 (2022-07-20)
 --------------
