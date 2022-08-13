@@ -104,12 +104,12 @@ export PORTAGE_BZIP2_COMMAND=${PORTAGE_BZIP2_COMMAND:-bzip2}
 # when they are done.
 
 __qa_source() {
-	local shopts=$(shopt) OLDIFS="${IFS}"
+	local bashopts="${BASHOPTS:?}" OLDIFS="${IFS}"
 	local retval
 	source "$@"
 	retval=$?
 	set +e
-	[[ ${shopts} != $(shopt) ]] &&
+	[[ "${BASHOPTS}" != "${bashopts}" ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while sourcing '$*'"
 	[[ "${IFS}" != "${OLDIFS}" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while sourcing '$*'"
@@ -117,12 +117,12 @@ __qa_source() {
 }
 
 __qa_call() {
-	local shopts=$(shopt) OLDIFS="${IFS}"
+	local bashopts="${BASHOPTS:?}" OLDIFS="${IFS}"
 	local retval
 	"$@"
 	retval=$?
 	set +e
-	[[ ${shopts} != $(shopt) ]] &&
+	[[ "${BASHOPTS}" != "${bashopts}" ]] &&
 		eqawarn "QA Notice: Global shell options changed and were not restored while calling '$*'"
 	[[ "${IFS}" != "${OLDIFS}" ]] &&
 		eqawarn "QA Notice: Global IFS changed and was not restored while calling '$*'"
