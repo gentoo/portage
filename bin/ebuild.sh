@@ -503,9 +503,9 @@ fi
 
 # Level the QA interceptors if we're in depend
 if [[ -n ${QA_INTERCEPTORS} ]] ; then
+	# shellcheck disable=SC2086
 	for BIN in ${QA_INTERCEPTORS}; do
-		BIN_PATH=$(type -Pf ${BIN})
-		if [[ "$?" != "0" ]]; then
+		if ! BIN_PATH=$(type -P -- "${BIN}"); then
 			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
 		else
 			BODY="${BIN_PATH} \"\$@\"; return \$?"
