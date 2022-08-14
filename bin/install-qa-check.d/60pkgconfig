@@ -109,7 +109,7 @@ pkgconfig_check() {
 		local is_pms_ver=false
 		if [[ ${QA_PKGCONFIG_VERSION} =~ ${pms_ver_re} ]] ; then
 			# Ensure that ver_test is available.
-			[[ $(type -f ver_test) == function ]] || inherit eapi7-ver
+			[[ $(type -t ver_test) == function ]] || inherit eapi7-ver
 			is_pms_ver=true
 		fi
 
