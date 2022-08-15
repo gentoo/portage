@@ -262,7 +262,7 @@ class _LockProcess(AbstractPollTask):
                 # only safe to ignore if either the cancel() or
                 # unlock() methods have been previously called.
                 raise AssertionError(
-                    "lock process failed with returncode %s" % (proc.returncode,)
+                    "lock process failed with returncode {}".format(proc.returncode)
                 )
 
         if self._unlock_future is not None:
@@ -306,7 +306,7 @@ class _LockProcess(AbstractPollTask):
             raise AssertionError("lock not acquired yet")
         if self.returncode != os.EX_OK:
             raise AssertionError(
-                "lock process failed with returncode %s" % (self.returncode,)
+                "lock process failed with returncode {}".format(self.returncode)
             )
         if self._unlock_future is not None:
             raise AssertionError("already unlocked")

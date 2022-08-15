@@ -23,7 +23,7 @@ class ImportModulesTestCase(TestCase):
                 __import__(mod)
             except ImportError as e:
                 if mod not in expected_failures:
-                    self.assertTrue(False, "failed to import '%s': %s" % (mod, e))
+                    self.assertTrue(False, "failed to import '{}': {}".format(mod, e))
                 del e
 
     def _iter_modules(self, base_dir):

@@ -68,7 +68,7 @@ class MergeListItem(CompositeTask):
         if build_opts.fetchonly:
             action_desc = "Fetching"
 
-        msg = "%s (%s of %s) %s" % (
+        msg = "{} ({} of {}) {}".format(
             action_desc,
             colorize("MERGE_LIST_PROGRESS", str(pkg_count.curval)),
             colorize("MERGE_LIST_PROGRESS", str(pkg_count.maxval)),
@@ -76,7 +76,7 @@ class MergeListItem(CompositeTask):
         )
 
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += " {} {}".format(preposition, pkg.root)
 
         if not build_opts.pretend:
             self.statusMessage(msg)

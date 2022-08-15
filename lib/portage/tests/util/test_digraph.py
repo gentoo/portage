@@ -118,17 +118,15 @@ class DigraphTest(TestCase):
             self.assertEqual(
                 x.shortest_path("D", "A", ignore_priority=-2), ["D", "C", "B", "A"]
             )
-            cycles = set(tuple(y) for y in x.get_cycles())
+            cycles = {tuple(y) for y in x.get_cycles()}
             self.assertEqual(
                 cycles,
-                set(
-                    [
-                        ("D", "C", "B", "A"),
-                        ("C", "B", "A", "D"),
-                        ("B", "A", "D", "C"),
-                        ("A", "D", "C", "B"),
-                    ]
-                ),
+                {
+                    ("D", "C", "B", "A"),
+                    ("C", "B", "A", "D"),
+                    ("B", "A", "D", "C"),
+                    ("A", "D", "C", "B"),
+                },
             )
             x.remove_edge("A", "B")
             self.assertEqual(x.get_cycles(), [])
@@ -154,17 +152,15 @@ class DigraphTest(TestCase):
             self.assertEqual(x.firstzero(), "B")
             self.assertRaises(KeyError, x.remove, "Z")
             x.delnode("Z")
-            self.assertEqual(set(x), set(["A", "B", "C", "D", "E"]))
+            self.assertEqual(set(x), {"A", "B", "C", "D", "E"})
             self.assertEqual(x.get("A"), "A")
             self.assertEqual(x.get("A", "default"), "A")
-            self.assertEqual(set(x.all_nodes()), set(["A", "B", "C", "D", "E"]))
-            self.assertEqual(set(x.leaf_nodes()), set(["B", "D", "E"]))
-            self.assertEqual(
-                set(x.leaf_nodes(ignore_priority=0)), set(["A", "B", "D", "E"])
-            )
+            self.assertEqual(set(x.all_nodes()), {"A", "B", "C", "D", "E"})
+            self.assertEqual(set(x.leaf_nodes()), {"B", "D", "E"})
+            self.assertEqual(set(x.leaf_nodes(ignore_priority=0)), {"A", "B", "D", "E"})
             self.assertEqual(x.root_nodes(), ["A"])
-            self.assertEqual(set(x.root_nodes(ignore_priority=0)), set(["A", "B", "C"]))
-            self.assertEqual(set(x.child_nodes("A")), set(["B", "C"]))
+            self.assertEqual(set(x.root_nodes(ignore_priority=0)), {"A", "B", "C"})
+            self.assertEqual(set(x.child_nodes("A")), {"B", "C"})
             self.assertEqual(x.child_nodes("A", ignore_priority=2), [])
             self.assertEqual(x.parent_nodes("B"), ["A"])
             self.assertEqual(x.parent_nodes("B", ignore_priority=-2), ["A"])
@@ -177,12 +173,12 @@ class DigraphTest(TestCase):
             self.assertEqual(x.shortest_path("A", "D"), ["A", "C", "D"])
             self.assertEqual(x.shortest_path("D", "A"), None)
             self.assertEqual(x.shortest_path("A", "D", ignore_priority=2), None)
-            cycles = set(tuple(y) for y in x.get_cycles())
+            cycles = {tuple(y) for y in x.get_cycles()}
             self.assertEqual(cycles, set())
             x.remove("D")
-            self.assertEqual(set(x.all_nodes()), set(["A", "B", "C", "E"]))
+            self.assertEqual(set(x.all_nodes()), {"A", "B", "C", "E"})
             x.remove("C")
-            self.assertEqual(set(x.all_nodes()), set(["A", "B", "E"]))
+            self.assertEqual(set(x.all_nodes()), {"A", "B", "E"})
             portage.util.noiselimit = -2
             x.debug_print()
             portage.util.noiselimit = 0
@@ -210,9 +206,9 @@ class DigraphTest(TestCase):
             self.assertEqual(x.all_nodes(), ["A", "B", "C"])
             self.assertEqual(x.leaf_nodes(), [])
             self.assertEqual(x.root_nodes(), [])
-            self.assertEqual(set(x.child_nodes("A")), set(["B", "C"]))
+            self.assertEqual(set(x.child_nodes("A")), {"B", "C"})
             self.assertEqual(x.child_nodes("A", ignore_priority=0), ["B"])
-            self.assertEqual(set(x.parent_nodes("A")), set(["B", "C"]))
+            self.assertEqual(set(x.parent_nodes("A")), {"B", "C"})
             self.assertEqual(x.parent_nodes("A", ignore_priority=0), ["C"])
             self.assertEqual(x.parent_nodes("A", ignore_priority=1), [])
             self.assertEqual(x.hasallzeros(), False)
@@ -223,22 +219,18 @@ class DigraphTest(TestCase):
                 x.shortest_path("A", "C", ignore_priority=0), ["A", "B", "C"]
             )
             self.assertEqual(x.shortest_path("C", "A", ignore_priority=0), ["C", "A"])
-            cycles = set(frozenset(y) for y in x.get_cycles())
+            cycles = {frozenset(y) for y in x.get_cycles()}
             self.assertEqual(
                 cycles,
-                set(
-                    [
-                        frozenset(["A", "B"]),
-                        frozenset(["A", "C"]),
-                        frozenset(["B", "C"]),
-                    ]
-                ),
+                {
+                    frozenset(["A", "B"]),
+                    frozenset(["A", "C"]),
+                    frozenset(["B", "C"]),
+                },
             )
             x.remove_edge("A", "B")
-            cycles = set(frozenset(y) for y in x.get_cycles())
-            self.assertEqual(
-                cycles, set([frozenset(["A", "C"]), frozenset(["C", "B"])])
-            )
+            cycles = {frozenset(y) for y in x.get_cycles()}
+            self.assertEqual(cycles, {frozenset(["A", "C"]), frozenset(["C", "B"])})
             x.difference_update(["C"])
             self.assertEqual(x.all_nodes(), ["A", "B"])
             portage.util.noiselimit = -2

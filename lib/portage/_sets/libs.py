@@ -12,7 +12,7 @@ class LibraryConsumerSet(PackageSet):
     _operations = ["merge", "unmerge"]
 
     def __init__(self, vardbapi, debug=False):
-        super(LibraryConsumerSet, self).__init__()
+        super().__init__()
         self.dbapi = vardbapi
         self.debug = debug
 
@@ -28,7 +28,7 @@ class LibraryConsumerSet(PackageSet):
                     # without replacement.
                     pass
                 else:
-                    rValue.add("%s:%s" % (pkg.cp, pkg.slot))
+                    rValue.add("{}:{}".format(pkg.cp, pkg.slot))
         return rValue
 
 
@@ -45,7 +45,7 @@ class LibraryFileConsumerSet(LibraryConsumerSet):
     )
 
     def __init__(self, vardbapi, files, **kargs):
-        super(LibraryFileConsumerSet, self).__init__(vardbapi, **kargs)
+        super().__init__(vardbapi, **kargs)
         self.files = files
 
     def load(self):

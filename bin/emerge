@@ -80,7 +80,7 @@ try:
         sys.exit(retval)
 
 except KeyboardInterrupt:
-    sys.stderr.write("\n\nExiting on signal %(signal)s\n" % {"signal": signal.SIGINT})
+    sys.stderr.write("\n\nExiting on signal {signal}\n".format(signal=signal.SIGINT))
     sys.stderr.flush()
     sys.exit(128 + signal.SIGINT)
 finally:

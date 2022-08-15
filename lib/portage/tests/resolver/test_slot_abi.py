@@ -1,7 +1,6 @@
 # Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
@@ -15,7 +14,7 @@ from portage.output import colorize
 
 class SlotAbiTestCase(TestCase):
     def __init__(self, *args, **kwargs):
-        super(SlotAbiTestCase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def testSubSlot(self):
         ebuilds = {

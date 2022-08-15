@@ -188,9 +188,8 @@ def _parse_color_map(config_root="/", onerror=None):
         return token
 
     try:
-        with io.open(
+        with open(
             _unicode_encode(myfile, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         ) as f:
@@ -251,7 +250,7 @@ def _parse_color_map(config_root="/", onerror=None):
                     _styles[k] = tuple(code_list)
                 elif k in codes:
                     codes[k] = "".join(code_list)
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise FileNotFound(myfile)
         elif e.errno == errno.EACCES:
@@ -336,7 +335,7 @@ def xtermTitleReset():
             home = os.environ.get("HOME", "")
             if home != "" and pwd.startswith(home):
                 pwd = "~" + pwd[len(home) :]
-            default_xterm_title = "\x1b]0;%s@%s:%s\x07" % (
+            default_xterm_title = "\x1b]0;{}@{}:{}\x07".format(
                 os.environ.get("LOGNAME", ""),
                 os.environ.get("HOSTNAME", "").split(".", 1)[0],
                 pwd,
@@ -534,7 +533,7 @@ def get_term_size(fd=None):
 
     try:
         proc = subprocess.Popen(["stty", "size"], stdout=subprocess.PIPE, stderr=fd)
-    except EnvironmentError as e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
         # stty command not found
@@ -808,7 +807,7 @@ class ProgressBar:
         self._set_desc()
 
     def _set_desc(self):
-        self._desc = "%s%s" % (
+        self._desc = "{}{}".format(
             "%s: " % self._title if self._title else "",
             "%s" % self._label if self._label else "",
         )
@@ -900,7 +899,7 @@ class TermProgressBar(ProgressBar):
                 position = 0.5
             self._position = position
             bar_width = int(offset * max_bar_width)
-            image = "%s%s%s" % (
+            image = "{}{}{}".format(
                 self._desc,
                 _percent,
                 "["
@@ -914,7 +913,7 @@ class TermProgressBar(ProgressBar):
         percentage = 100 * curval // maxval
         max_bar_width = bar_space - 1
         _percent = ("%d%% " % percentage).rjust(percentage_str_width)
-        image = "%s%s" % (self._desc, _percent)
+        image = "{}{}".format(self._desc, _percent)
 
         if cols < min_columns:
             return image

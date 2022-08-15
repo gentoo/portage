@@ -227,7 +227,7 @@ def digestgen(myarchives=None, mysettings=None, myportdb=None):
                     pv = pkg_key.split("/")[1]
                     for filename in auto_assumed:
                         if filename in fetchlist:
-                            writemsg_stdout("   %s::%s\n" % (pv, filename))
+                            writemsg_stdout("   {}::{}\n".format(pv, filename))
         return 1
     finally:
         portage._doebuild_manifest_exempt_depend -= 1

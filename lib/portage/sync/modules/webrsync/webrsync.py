@@ -46,7 +46,7 @@ class WebRsync(SyncBase):
             self.bin_command = portage.process.find_binary(self._bin_command)
             self.bin_pkg = ">=app-portage/emerge-delta-webrsync-3.7.5"
 
-        return super(WebRsync, self).has_bin
+        return super().has_bin
 
     def sync(self, **kwargs):
         """Sync the repository"""
@@ -97,8 +97,10 @@ class WebRsync(SyncBase):
 
                 out = portage.output.EOutput(quiet=quiet)
                 try:
-                    out.einfo("Using keys from %s" % (self.repo.sync_openpgp_key_path,))
-                    with io.open(self.repo.sync_openpgp_key_path, "rb") as f:
+                    out.einfo(
+                        "Using keys from {}".format(self.repo.sync_openpgp_key_path)
+                    )
+                    with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
                     self._refresh_keys(openpgp_env)
                     self.spawn_kwargs["env"]["PORTAGE_GPG_DIR"] = openpgp_env.home

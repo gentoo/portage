@@ -35,7 +35,7 @@ class StaticFileSet(EditablePackageSet):
     _repopath_sub = re.compile(r"\$\{repository:(?P<reponame>.+)\}")
 
     def __init__(self, filename, greedy=False, dbapi=None):
-        super(StaticFileSet, self).__init__(allow_repo=True)
+        super().__init__(allow_repo=True)
         self._filename = filename
         self._mtime = None
         self.description = "Package set loaded from file %s" % self._filename
@@ -77,14 +77,15 @@ class StaticFileSet(EditablePackageSet):
         write_atomic(
             self._filename,
             "".join(
-                "%s\n" % (atom,) for atom in sorted(chain(self._atoms, self._nonatoms))
+                "{}\n".format(atom)
+                for atom in sorted(chain(self._atoms, self._nonatoms))
             ),
         )
 
     def load(self):
         try:
             mtime = os.stat(self._filename).st_mtime
-        except (OSError, IOError):
+        except OSError:
             mtime = None
         if not self._loaded or self._mtime != mtime:
             try:
@@ -92,7 +93,7 @@ class StaticFileSet(EditablePackageSet):
                 for fname in errors:
                     for e in errors[fname]:
                         self.errors.append(fname + ": " + e)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
@@ -103,7 +104,7 @@ class StaticFileSet(EditablePackageSet):
                     matches = self.dbapi.match(a)
                     for cpv in matches:
                         pkg = self.dbapi._pkg_str(cpv, None)
-                        atoms.append("%s:%s" % (pkg.cp, pkg.slot))
+                        atoms.append("{}:{}".format(pkg.cp, pkg.slot))
                     # In addition to any installed slots, also try to pull
                     # in the latest new slot that may be available.
                     atoms.append(a)
@@ -213,7 +214,7 @@ class StaticFileSet(EditablePackageSet):
 
 class ConfigFileSet(PackageSet):
     def __init__(self, filename):
-        super(ConfigFileSet, self).__init__()
+        super().__init__()
         self._filename = filename
         self.description = "Package set generated from %s" % self._filename
         self.loader = KeyListFileLoader(self._filename, ValidAtomValidator)
@@ -250,7 +251,7 @@ class WorldSelectedSet(EditablePackageSet):
     description = "Set of packages and subsets that were directly installed by the user"
 
     def __init__(self, eroot):
-        super(WorldSelectedSet, self).__init__(allow_repo=True)
+        super().__init__(allow_repo=True)
         self._pkgset = WorldSelectedPackagesSet(eroot)
         self._setset = WorldSelectedSetsSet(eroot)
 
@@ -288,7 +289,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
     description = "Set of packages that were directly installed by the user"
 
     def __init__(self, eroot):
-        super(WorldSelectedPackagesSet, self).__init__(allow_repo=True)
+        super().__init__(allow_repo=True)
         self._lock = None
         self._filename = os.path.join(eroot, WORLD_FILE)
         self.loader = ItemFileLoader(self._filename, self._validate)
@@ -305,7 +306,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
         atoms_changed = False
         try:
             mtime = os.stat(self._filename).st_mtime
-        except (OSError, IOError):
+        except OSError:
             mtime = None
         if not self._loaded or self._mtime != mtime:
             try:
@@ -313,7 +314,7 @@ class WorldSelectedPackagesSet(EditablePackageSet):
                 for fname in errors:
                     for e in errors[fname]:
                         self.errors.append(fname + ": " + e)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
@@ -384,7 +385,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
     description = "Set of sets that were directly installed by the user"
 
     def __init__(self, eroot):
-        super(WorldSelectedSetsSet, self).__init__(allow_repo=True)
+        super().__init__(allow_repo=True)
         self._lock = None
         self._filename = os.path.join(eroot, WORLD_SETS_FILE)
         self.loader = ItemFileLoader(self._filename, self._validate)
@@ -402,7 +403,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
         atoms_changed = False
         try:
             mtime = os.stat(self._filename).st_mtime
-        except (OSError, IOError):
+        except OSError:
             mtime = None
         if not self._loaded or self._mtime != mtime:
             try:
@@ -410,7 +411,7 @@ class WorldSelectedSetsSet(EditablePackageSet):
                 for fname in errors:
                     for e in errors[fname]:
                         self.errors.append(fname + ": " + e)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e

@@ -164,7 +164,7 @@ class SlotAbiEmergeTestCase(TestCase):
             for i, args in enumerate(test_commands):
 
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index %s failed" % (i,))
+                    self.assertTrue(args[0](), "callable at index {} failed".format(i))
                     continue
 
                 proc = subprocess.Popen(args, env=env, stdout=stdout)
@@ -180,7 +180,7 @@ class SlotAbiEmergeTestCase(TestCase):
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, "emerge failed with args {}".format(args)
                 )
         finally:
             playground.cleanup()

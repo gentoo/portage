@@ -427,7 +427,7 @@ class SyncScheduler(AsyncScheduler):
         self._update_leaf_nodes()
         if hooks_enabled:
             self._hooks_repos.add(repo)
-        super(SyncScheduler, self)._task_exit(self)
+        super()._task_exit(self)
 
     def _master_hooks(self, repo_name):
         """

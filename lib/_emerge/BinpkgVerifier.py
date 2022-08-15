@@ -105,7 +105,9 @@ class BinpkgVerifier(CompositeTask):
                 path = path[: -len(".partial")]
             eout = EOutput()
             eout.ebegin(
-                "%s %s ;-)" % (os.path.basename(path), " ".join(sorted(self._digests)))
+                "{} {} ;-)".format(
+                    os.path.basename(path), " ".join(sorted(self._digests))
+                )
             )
             eout.eend(0)
 

@@ -53,7 +53,7 @@ class QueryCommand(IpcCommand):
 
         root = normalize_path(root or os.sep).rstrip(os.sep) + os.sep
         if root not in db:
-            return ("", "%s: Invalid ROOT: %s\n" % (cmd, root), 3)
+            return ("", "{}: Invalid ROOT: {}\n".format(cmd, root), 3)
 
         portdb = db[root]["porttree"].dbapi
         vardb = db[root]["vartree"].dbapi
@@ -63,12 +63,12 @@ class QueryCommand(IpcCommand):
             try:
                 atom = Atom(args[0], allow_repo=allow_repo)
             except InvalidAtom:
-                return ("", "%s: Invalid atom: %s\n" % (cmd, args[0]), 2)
+                return ("", "{}: Invalid atom: {}\n".format(cmd, args[0]), 2)
 
             try:
                 atom = Atom(args[0], allow_repo=allow_repo, eapi=eapi)
             except InvalidAtom as e:
-                warnings.append("QA Notice: %s: %s" % (cmd, e))
+                warnings.append("QA Notice: {}: {}".format(cmd, e))
 
             use = self.settings.get("PORTAGE_BUILT_USE")
             if use is None:
@@ -98,7 +98,7 @@ class QueryCommand(IpcCommand):
         ):
             repo = _repo_name_re.match(args[0])
             if repo is None:
-                return ("", "%s: Invalid repository: %s\n" % (cmd, args[0]), 2)
+                return ("", "{}: Invalid repository: {}\n".format(cmd, args[0]), 2)
             try:
                 repo = portdb.repositories[args[0]]
             except KeyError:

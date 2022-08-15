@@ -96,7 +96,7 @@ opts, pargs = parser.parse_known_args(args=sys.argv[1:])
 
 
 def err(txt):
-    portage.writemsg("ebuild: %s\n" % (txt,), noiselevel=-1)
+    portage.writemsg("ebuild: {}\n".format(txt), noiselevel=-1)
     sys.exit(1)
 
 
@@ -147,7 +147,7 @@ if ebuild.endswith(".ebuild"):
     pf = os.path.basename(ebuild)[:-7]
 
 if pf is None:
-    err("%s: does not end with '.ebuild'" % (ebuild,))
+    err("{}: does not end with '.ebuild'".format(ebuild))
 
 if not os.path.isabs(ebuild):
     mycwd = os.getcwd()
@@ -180,14 +180,13 @@ if ebuild_portdir != vdb_path:
     myrepo = portage.portdb.getRepositoryName(ebuild_portdir)
 
 if not os.path.exists(ebuild):
-    err("%s: does not exist" % (ebuild,))
+    err("{}: does not exist".format(ebuild))
 
 ebuild_split = ebuild.split("/")
-cpv = "%s/%s" % (ebuild_split[-3], pf)
+cpv = "{}/{}".format(ebuild_split[-3], pf)
 
-with io.open(
+with open(
     _unicode_encode(ebuild, encoding=_encodings["fs"], errors="strict"),
-    mode="r",
     encoding=_encodings["repo.content"],
     errors="replace",
 ) as f:
@@ -195,7 +194,7 @@ with io.open(
 if eapi is None:
     eapi = "0"
 if not portage.catpkgsplit(cpv, eapi=eapi):
-    err("%s: %s: does not follow correct package syntax" % (ebuild, cpv))
+    err("{}: {}: does not follow correct package syntax".format(ebuild, cpv))
 
 if ebuild.startswith(vdb_path):
     mytree = "vartree"
@@ -204,7 +203,7 @@ if ebuild.startswith(vdb_path):
     portage_ebuild = portage.db[portage.root][mytree].dbapi.findname(cpv, myrepo=myrepo)
 
     if os.path.realpath(portage_ebuild) != ebuild:
-        err("Portage seems to think that %s is at %s" % (cpv, portage_ebuild))
+        err("Portage seems to think that {} is at {}".format(cpv, portage_ebuild))
 
 else:
     mytree = "porttree"
@@ -213,7 +212,7 @@ else:
     portage_ebuild = portage.portdb.findname(cpv, myrepo=myrepo)
 
     if not portage_ebuild or portage_ebuild != ebuild:
-        err("%s: does not seem to have a valid PORTDIR structure" % (ebuild,))
+        err("{}: does not seem to have a valid PORTDIR structure".format(ebuild))
 
 if len(pargs) > 1 and "config" in pargs:
     other_phases = set(pargs)
@@ -255,21 +254,19 @@ def discard_digests(myebuild, mysettings, mydbapi):
 
 portage.settings.validate()  # generate warning messages if necessary
 
-build_dir_phases = set(
-    [
-        "setup",
-        "unpack",
-        "prepare",
-        "configure",
-        "compile",
-        "test",
-        "install",
-        "package",
-        "rpm",
-        "merge",
-        "qmerge",
-    ]
-)
+build_dir_phases = {
+    "setup",
+    "unpack",
+    "prepare",
+    "configure",
+    "compile",
+    "test",
+    "install",
+    "package",
+    "rpm",
+    "merge",
+    "qmerge",
+}
 
 # If the current metadata is invalid then force the ebuild to be
 # sourced again even if ${T}/environment already exists.
@@ -424,10 +421,10 @@ for arg in pargs:
             portage.writemsg("!!! %s\n" % x, noiselevel=-1)
         a = 1
     except PortagePackageException as e:
-        portage.writemsg("!!! %s\n" % (e,), noiselevel=-1)
+        portage.writemsg("!!! {}\n".format(e), noiselevel=-1)
         a = 1
     except PermissionDenied as e:
-        portage.writemsg("!!! Permission Denied: %s\n" % (e,), noiselevel=-1)
+        portage.writemsg("!!! Permission Denied: {}\n".format(e), noiselevel=-1)
         a = 1
     if a is None:
         print("Could not run the required binary?")

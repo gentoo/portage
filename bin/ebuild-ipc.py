@@ -104,7 +104,7 @@ class FifoWriter(AbstractPollTask):
         while buf:
             try:
                 buf = buf[os.write(fd, buf) :]
-            except EnvironmentError:
+            except OSError:
                 self.returncode = RETURNCODE_WRITE_FAILED
                 self._async_wait()
                 return
@@ -236,7 +236,7 @@ class EbuildIpc:
         if not buf:
 
             portage.util.writemsg_level(
-                "ebuild-ipc: %s\n" % (portage.localization._("read failed"),),
+                "ebuild-ipc: {}\n".format(portage.localization._("read failed")),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -251,7 +251,7 @@ class EbuildIpc:
                 # The pickle module can raise practically
                 # any exception when given corrupt data.
                 portage.util.writemsg_level(
-                    "ebuild-ipc: %s\n" % (e,), level=logging.ERROR, noiselevel=-1
+                    "ebuild-ipc: {}\n".format(e), level=logging.ERROR, noiselevel=-1
                 )
 
             else:

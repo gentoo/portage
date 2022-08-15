@@ -112,7 +112,7 @@ class ConfigTestCase(TestCase):
             self.assertEqual(lic_man._accept_license_str, None)
             self.assertEqual(lic_man._accept_license, None)
             self.assertEqual(lic_man._license_groups, {"EULA": frozenset(["TEST"])})
-            self.assertEqual(lic_man._undef_lic_groups, set(["TEST"]))
+            self.assertEqual(lic_man._undef_lic_groups, {"TEST"})
 
             self.assertEqual(lic_man.extract_global_changes(), "TEST TEST2")
             self.assertEqual(lic_man.extract_global_changes(), "")
@@ -370,7 +370,7 @@ class ConfigTestCase(TestCase):
             user_config_dir = os.path.join(eprefix, USER_CONFIG_PATH)
             os.makedirs(user_config_dir)
 
-            with io.open(
+            with open(
                 os.path.join(user_config_dir, "package.env"),
                 mode="w",
                 encoding=_encodings["content"],
@@ -381,7 +381,7 @@ class ConfigTestCase(TestCase):
             env_dir = os.path.join(user_config_dir, "env")
             os.makedirs(env_dir)
             for k, v in env_files.items():
-                with io.open(
+                with open(
                     os.path.join(env_dir, k), mode="w", encoding=_encodings["content"]
                 ) as f:
                     for line in v:

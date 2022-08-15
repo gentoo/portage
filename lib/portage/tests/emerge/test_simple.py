@@ -39,7 +39,7 @@ class BinhostContentMap(Mapping):
         try:
             with open(local_path, "rb") as f:
                 return f.read()
-        except EnvironmentError:
+        except OSError:
             raise KeyError(request_path)
 
 
@@ -564,7 +564,7 @@ call_has_and_best_version() {
 
         # Test binhost support if FETCHCOMMAND is available.
         binrepos_conf_file = os.path.join(os.sep, eprefix, BINREPOS_CONF_FILE)
-        with open(binrepos_conf_file, "wt") as f:
+        with open(binrepos_conf_file, "w") as f:
             f.write("[test-binhost]\n")
             f.write("sync-uri = {}\n".format(binhost_uri))
         fetchcommand = portage.util.shlex_split(playground.settings["FETCHCOMMAND"])
@@ -720,7 +720,7 @@ move dev-util/git dev-vcs/git
                         portage.writemsg(output)
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, "emerge failed with args {}".format(args)
                 )
         finally:
             binhost_server.__exit__(None, None, None)

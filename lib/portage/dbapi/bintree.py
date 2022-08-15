@@ -104,33 +104,31 @@ class bindbapi(fakedbapi):
         self.bintree = mybintree
         self.move_ent = mybintree.move_ent
         # Selectively cache metadata in order to optimize dep matching.
-        self._aux_cache_keys = set(
-            [
-                "BDEPEND",
-                "BUILD_ID",
-                "BUILD_TIME",
-                "CHOST",
-                "DEFINED_PHASES",
-                "DEPEND",
-                "EAPI",
-                "IDEPEND",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "MD5",
-                "PDEPEND",
-                "PROPERTIES",
-                "PROVIDES",
-                "RDEPEND",
-                "repository",
-                "REQUIRES",
-                "RESTRICT",
-                "SIZE",
-                "SLOT",
-                "USE",
-                "_mtime_",
-            ]
-        )
+        self._aux_cache_keys = {
+            "BDEPEND",
+            "BUILD_ID",
+            "BUILD_TIME",
+            "CHOST",
+            "DEFINED_PHASES",
+            "DEPEND",
+            "EAPI",
+            "IDEPEND",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "MD5",
+            "PDEPEND",
+            "PROPERTIES",
+            "PROVIDES",
+            "RDEPEND",
+            "repository",
+            "REQUIRES",
+            "RESTRICT",
+            "SIZE",
+            "SLOT",
+            "USE",
+            "_mtime_",
+        }
         self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
         self._aux_cache = {}
 
@@ -525,7 +523,6 @@ class binarytree:
             "SLOT",
             "USE",
         ]
-        self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
         self._pkgindex_use_evaluated_keys = (
             "BDEPEND",
             "DEPEND",
@@ -537,26 +534,24 @@ class binarytree:
             "RESTRICT",
         )
         self._pkgindex_header = None
-        self._pkgindex_header_keys = set(
-            [
-                "ACCEPT_KEYWORDS",
-                "ACCEPT_LICENSE",
-                "ACCEPT_PROPERTIES",
-                "ACCEPT_RESTRICT",
-                "CBUILD",
-                "CONFIG_PROTECT",
-                "CONFIG_PROTECT_MASK",
-                "FEATURES",
-                "GENTOO_MIRRORS",
-                "INSTALL_MASK",
-                "IUSE_IMPLICIT",
-                "USE",
-                "USE_EXPAND",
-                "USE_EXPAND_HIDDEN",
-                "USE_EXPAND_IMPLICIT",
-                "USE_EXPAND_UNPREFIXED",
-            ]
-        )
+        self._pkgindex_header_keys = {
+            "ACCEPT_KEYWORDS",
+            "ACCEPT_LICENSE",
+            "ACCEPT_PROPERTIES",
+            "ACCEPT_RESTRICT",
+            "CBUILD",
+            "CONFIG_PROTECT",
+            "CONFIG_PROTECT_MASK",
+            "FEATURES",
+            "GENTOO_MIRRORS",
+            "INSTALL_MASK",
+            "IUSE_IMPLICIT",
+            "USE",
+            "USE_EXPAND",
+            "USE_EXPAND_HIDDEN",
+            "USE_EXPAND_IMPLICIT",
+            "USE_EXPAND_UNPREFIXED",
+        }
         self._pkgindex_default_pkg_data = {
             "BDEPEND": "",
             "BUILD_ID": "",
@@ -1097,7 +1092,7 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id < 1:
                             invalid_name = True
-                        elif myfile != "%s-%s.xpak" % (mypf, build_id):
+                        elif myfile != "{}-{}.xpak".format(mypf, build_id):
                             invalid_name = True
                         else:
                             mypkg = mypkg[: -len(str(build_id)) - 1]
@@ -1105,7 +1100,7 @@ class binarytree:
                         build_id = self._parse_build_id(myfile)
                         if build_id > 0:
                             multi_instance = True
-                            if myfile != "%s-%s.gpkg.tar" % (mypf, build_id):
+                            if myfile != "{}-{}.gpkg.tar".format(mypf, build_id):
                                 invalid_name = True
                             else:
                                 mypkg = mypkg[: -len(str(build_id)) - 1]
@@ -1136,7 +1131,7 @@ class binarytree:
                         build_id = None
 
                     if multi_instance:
-                        name_split = catpkgsplit("%s/%s" % (mycat, mypf))
+                        name_split = catpkgsplit("{}/{}".format(mycat, mypf))
                         if (
                             name_split is None
                             or tuple(catsplit(mydir)) != name_split[:2]
@@ -1256,7 +1251,7 @@ class binarytree:
                     user, passwd = user.split(":", 1)
 
             if port is not None:
-                port_str = ":%s" % (port,)
+                port_str = ":{}".format(port)
                 if host.endswith(port_str):
                     host = host[: -len(port_str)]
             pkgindex_file = os.path.join(
@@ -1269,11 +1264,10 @@ class binarytree:
             )
             pkgindex = self._new_pkgindex()
             try:
-                f = io.open(
+                f = open(
                     _unicode_encode(
                         pkgindex_file, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 )
@@ -1281,7 +1275,7 @@ class binarytree:
                     pkgindex.read(f)
                 finally:
                     f.close()
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
             local_timestamp = pkgindex.header.get("TIMESTAMP", None)
@@ -1333,7 +1327,7 @@ class binarytree:
                         )
                         if hasattr(f, "headers") and f.headers.get("timestamp", ""):
                             remote_timestamp = f.headers.get("timestamp")
-                    except IOError as err:
+                    except OSError as err:
                         if (
                             hasattr(err, "code") and err.code == 304
                         ):  # not modified (since local_timestamp)
@@ -1362,7 +1356,7 @@ class binarytree:
                         # matches that of the cached Packages file.
                         ssh_args = ["ssh"]
                         if port is not None:
-                            ssh_args.append("-p%s" % (port,))
+                            ssh_args.append("-p{}".format(port))
                         # NOTE: shlex evaluates embedded quotes
                         ssh_args.extend(
                             portage.util.shlex_split(
@@ -1383,7 +1377,7 @@ class binarytree:
                             if not fcmd:
                                 fcmd = self.settings.get("FETCHCOMMAND")
                                 if not fcmd:
-                                    raise EnvironmentError("FETCHCOMMAND is unset")
+                                    raise OSError("FETCHCOMMAND is unset")
                         else:
                             fcmd = repo.fetchcommand
 
@@ -1406,7 +1400,7 @@ class binarytree:
                             fcmd=fcmd, fcmd_vars=fcmd_vars
                         )
                         if not success:
-                            raise EnvironmentError("%s failed" % (setting,))
+                            raise OSError("{} failed".format(setting))
                         f = open(tmp_filename, "rb")
 
                 f_dec = codecs.iterdecode(
@@ -1467,7 +1461,7 @@ class binarytree:
                     + "\n"
                 )
                 rmt_idx = pkgindex
-            except EnvironmentError as e:
+            except OSError as e:
                 # This includes URLError which is raised for SSL
                 # certificate errors when PEP 476 is supported.
                 writemsg(
@@ -1502,7 +1496,7 @@ class binarytree:
                     f = atomic_ofstream(pkgindex_file)
                     pkgindex.write(f)
                     f.close()
-                except (IOError, PortageException):
+                except (OSError, PortageException):
                     if os.access(os.path.dirname(pkgindex_file), os.W_OK):
                         raise
                     # The current user doesn't have permission to cache the
@@ -1983,7 +1977,7 @@ class binarytree:
                 deps = use_reduce(deps, uselist=use, token_class=token_class)
                 deps = paren_enclose(deps)
             except portage.exception.InvalidDependString as e:
-                writemsg("%s: %s\n" % (k, e), noiselevel=-1)
+                writemsg("{}: {}\n".format(k, e), noiselevel=-1)
                 raise
             metadata[k] = deps
 
@@ -2065,7 +2059,7 @@ class binarytree:
             elif binpkg_format == "xpak":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "%s-%s.xpak" % (
+                    filename = "{}-{}.xpak".format(
                         os.path.join(self.pkgdir, cpv.cp, pf),
                         "1",
                     )
@@ -2074,7 +2068,7 @@ class binarytree:
             elif binpkg_format == "gpkg":
                 if self._multi_instance:
                     pf = catsplit(cpv)[1]
-                    filename = "%s-%s.gpkg.tar" % (
+                    filename = "{}-{}.gpkg.tar".format(
                         os.path.join(self.pkgdir, cpv.cp, pf),
                         "1",
                     )
@@ -2257,15 +2251,14 @@ class binarytree:
     def _load_pkgindex(self):
         pkgindex = self._new_pkgindex()
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     self._pkgindex_file, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             )
-        except EnvironmentError:
+        except OSError:
             pass
         else:
             try:

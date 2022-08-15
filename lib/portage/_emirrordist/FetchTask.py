@@ -74,7 +74,7 @@ class FetchTask(CompositeTask):
             self.scheduler.output(
                 msg, background=self.background, log_path=self._log_path
             )
-            self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
+            self.config.log_failure("{}\t{}\t{}".format(self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.returncode = os.EX_OK
             self._async_wait()
@@ -89,7 +89,9 @@ class FetchTask(CompositeTask):
                 st = os.stat(distfile_path)
             except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
-                    msg = "%s stat failed in %s: %s" % (self.distfile, "distfiles", e)
+                    msg = "{} stat failed in {}: {}".format(
+                        self.distfile, "distfiles", e
+                    )
                     self.scheduler.output(
                         msg + "\n", background=True, log_path=self._log_path
                     )
@@ -174,14 +176,16 @@ class FetchTask(CompositeTask):
 
             if self.config.options.dry_run:
                 if os.path.exists(recycle_file):
-                    logger.info("dry-run: delete '%s' from recycle" % (self.distfile,))
+                    logger.info(
+                        "dry-run: delete '{}' from recycle".format(self.distfile)
+                    )
             else:
                 try:
                     os.unlink(recycle_file)
                 except OSError:
                     pass
                 else:
-                    logger.debug("delete '%s' from recycle" % (self.distfile,))
+                    logger.debug("delete '{}' from recycle".format(self.distfile))
 
     def _distfiles_digester_exit(self, digester):
 
@@ -195,10 +199,10 @@ class FetchTask(CompositeTask):
             # is a bad situation which normally does not occur, so
             # skip this file and report it, in order to draw attention
             # from the administrator.
-            msg = "%s distfiles digester failed unexpectedly" % (self.distfile,)
+            msg = "{} distfiles digester failed unexpectedly".format(self.distfile)
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
             logger.error(msg)
-            self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
+            self.config.log_failure("{}\t{}\t{}".format(self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.wait()
             return
@@ -271,7 +275,7 @@ class FetchTask(CompositeTask):
         else:
             msg = "no fetchable uris"
 
-        self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
+        self.config.log_failure("{}\t{}\t{}".format(self.cpv, self.distfile, msg))
         self.config.file_failures[self.distfile] = self.cpv
         self.returncode = os.EX_OK
         self.wait()
@@ -310,7 +314,9 @@ class FetchTask(CompositeTask):
             st = os.stat(file_path)
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
-                msg = "%s stat failed in %s: %s" % (self.distfile, mirror_info.name, e)
+                msg = "{} stat failed in {}: {}".format(
+                    self.distfile, mirror_info.name, e
+                )
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
@@ -342,7 +348,7 @@ class FetchTask(CompositeTask):
 
         current_mirror = self._current_mirror
         if digester.returncode != os.EX_OK:
-            msg = "%s %s digester failed unexpectedly" % (
+            msg = "{} {} digester failed unexpectedly".format(
                 self.distfile,
                 current_mirror.name,
             )
@@ -351,7 +357,7 @@ class FetchTask(CompositeTask):
         else:
             bad_digest = self._find_bad_digest(digester.digests)
             if bad_digest is not None:
-                msg = "%s %s has bad %s digest: expected %s, got %s" % (
+                msg = "{} {} has bad {} digest: expected {}, got {}".format(
                     self.distfile,
                     current_mirror.name,
                     bad_digest,
@@ -387,7 +393,7 @@ class FetchTask(CompositeTask):
                     self.config.layouts[0].get_path(self.distfile),
                 )
                 if self._hardlink_atomic(
-                    src, dest, "%s to %s" % (current_mirror.name, "distfiles")
+                    src, dest, "{} to {}".format(current_mirror.name, "distfiles")
                 ):
                     logger.debug(
                         "hardlink '%s' from %s to distfiles"
@@ -420,7 +426,7 @@ class FetchTask(CompositeTask):
 
         current_mirror = self._current_mirror
         if copier.returncode != os.EX_OK:
-            msg = "%s %s copy failed unexpectedly: %s" % (
+            msg = "{} {} copy failed unexpectedly: {}".format(
                 self.distfile,
                 current_mirror.name,
                 copier.future.exception(),
@@ -430,7 +436,9 @@ class FetchTask(CompositeTask):
         else:
 
             logger.debug(
-                "copy '%s' from %s to distfiles" % (self.distfile, current_mirror.name)
+                "copy '{}' from {} to distfiles".format(
+                    self.distfile, current_mirror.name
+                )
             )
 
             # Apply the timestamp from the source file, but
@@ -441,7 +449,7 @@ class FetchTask(CompositeTask):
                     ns=(self._current_stat.st_mtime_ns, self._current_stat.st_mtime_ns),
                 )
             except OSError as e:
-                msg = "%s %s utime failed unexpectedly: %s" % (
+                msg = "{} {} utime failed unexpectedly: {}".format(
                     self.distfile,
                     current_mirror.name,
                     e,
@@ -462,7 +470,7 @@ class FetchTask(CompositeTask):
 
         if self.config.options.dry_run:
             # Simply report success.
-            logger.info("dry-run: fetch '%s' from '%s'" % (self.distfile, uri))
+            logger.info("dry-run: fetch '{}' from '{}'".format(self.distfile, uri))
             self._success()
             self.returncode = os.EX_OK
             self._async_wait()
@@ -540,7 +548,7 @@ class FetchTask(CompositeTask):
             return
 
         if digester.returncode != os.EX_OK:
-            msg = "%s %s digester failed unexpectedly" % (
+            msg = "{} {} digester failed unexpectedly".format(
                 self.distfile,
                 self._fetch_tmp_dir_info,
             )
@@ -549,7 +557,7 @@ class FetchTask(CompositeTask):
         else:
             bad_digest = self._find_bad_digest(digester.digests)
             if bad_digest is not None:
-                msg = "%s has bad %s digest: expected %s, got %s" % (
+                msg = "{} has bad {} digest: expected {}, got {}".format(
                     self.distfile,
                     bad_digest,
                     self.digests[bad_digest],
@@ -604,14 +612,14 @@ class FetchTask(CompositeTask):
             self._make_layout_links()
         else:
             # out of space?
-            msg = "%s %s copy failed unexpectedly: %s" % (
+            msg = "{} {} copy failed unexpectedly: {}".format(
                 self.distfile,
                 self._fetch_tmp_dir_info,
                 copier.future.exception(),
             )
             self.scheduler.output(msg + "\n", background=True, log_path=self._log_path)
             logger.error(msg)
-            self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
+            self.config.log_failure("{}\t{}\t{}".format(self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.returncode = 1
             self.wait()
@@ -636,7 +644,7 @@ class FetchTask(CompositeTask):
             if not self._hardlink_atomic(
                 src_path,
                 link_path,
-                "%s -> %s" % (link_path, src_path),
+                "{} -> {}".format(link_path, src_path),
                 self.config.options.symlinks,
             ):
                 success = False
@@ -649,7 +657,7 @@ class FetchTask(CompositeTask):
             msg = "failed to create distfiles layout {}".format(
                 "symlink" if self.config.options.symlinks else "hardlink"
             )
-            self.config.log_failure("%s\t%s\t%s" % (self.cpv, self.distfile, msg))
+            self.config.log_failure("{}\t{}\t{}".format(self.cpv, self.distfile, msg))
             self.config.file_failures[self.distfile] = self.cpv
             self.returncode = 1
 
@@ -660,7 +668,7 @@ class FetchTask(CompositeTask):
             os.unlink(file_path)
         except OSError as e:
             if e.errno not in (errno.ENOENT, errno.ESTALE):
-                msg = "unlink '%s' failed in %s: %s" % (self.distfile, dir_info, e)
+                msg = "unlink '{}' failed in {}: {}".format(self.distfile, dir_info, e)
                 self.scheduler.output(
                     msg + "\n", background=True, log_path=self._log_path
                 )
@@ -703,7 +711,7 @@ class FetchTask(CompositeTask):
 
         head, tail = os.path.split(dest)
         hardlink_tmp = os.path.join(
-            head, ".%s._mirrordist_hardlink_.%s" % (tail, portage.getpid())
+            head, ".{}._mirrordist_hardlink_.{}".format(tail, portage.getpid())
         )
 
         try:
@@ -714,7 +722,7 @@ class FetchTask(CompositeTask):
                     os.link(src, hardlink_tmp)
             except OSError as e:
                 if e.errno != errno.EXDEV:
-                    msg = "hardlink %s from %s failed: %s" % (
+                    msg = "hardlink {} from {} failed: {}".format(
                         self.distfile,
                         dir_info,
                         e,
@@ -728,7 +736,7 @@ class FetchTask(CompositeTask):
             try:
                 os.rename(hardlink_tmp, dest)
             except OSError as e:
-                msg = "hardlink rename '%s' from %s failed: %s" % (
+                msg = "hardlink rename '{}' from {} failed: {}".format(
                     self.distfile,
                     dir_info,
                     e,

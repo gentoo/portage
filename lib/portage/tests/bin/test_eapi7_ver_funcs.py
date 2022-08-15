@@ -14,9 +14,11 @@ class TestEAPI7VerFuncs(TestCase):
         Test that commands in test_cases produce expected output.
         """
         with tempfile.NamedTemporaryFile("w") as test_script:
-            test_script.write('source "%s"/eapi7-ver-funcs.sh\n' % (PORTAGE_BIN_PATH,))
+            test_script.write(
+                'source "{}"/eapi7-ver-funcs.sh\n'.format(PORTAGE_BIN_PATH)
+            )
             for cmd, exp in test_cases:
-                test_script.write("%s\n" % (cmd,))
+                test_script.write("{}\n".format(cmd))
             test_script.flush()
 
             s = subprocess.Popen(
@@ -30,7 +32,7 @@ class TestEAPI7VerFuncs(TestCase):
             for test_case, result in zip(test_cases, sout.decode().splitlines()):
                 cmd, exp = test_case
                 self.assertEqual(
-                    result, exp, "%s -> %s; expected: %s" % (cmd, result, exp)
+                    result, exp, "{} -> {}; expected: {}".format(cmd, result, exp)
                 )
 
     def _test_return(self, test_cases):
@@ -38,9 +40,11 @@ class TestEAPI7VerFuncs(TestCase):
         Test that commands in test_cases give appropriate exit codes.
         """
         with tempfile.NamedTemporaryFile("w+") as test_script:
-            test_script.write('source "%s"/eapi7-ver-funcs.sh\n' % (PORTAGE_BIN_PATH,))
+            test_script.write(
+                'source "{}"/eapi7-ver-funcs.sh\n'.format(PORTAGE_BIN_PATH)
+            )
             for cmd, exp in test_cases:
-                test_script.write("%s; echo $?\n" % (cmd,))
+                test_script.write("{}; echo $?\n".format(cmd))
             test_script.flush()
 
             s = subprocess.Popen(
@@ -54,7 +58,7 @@ class TestEAPI7VerFuncs(TestCase):
             for test_case, result in zip(test_cases, sout.decode().splitlines()):
                 cmd, exp = test_case
                 self.assertEqual(
-                    result, exp, "%s -> %s; expected: %s" % (cmd, result, exp)
+                    result, exp, "{} -> {}; expected: {}".format(cmd, result, exp)
                 )
 
     def _test_fail(self, test_cases):
@@ -64,9 +68,9 @@ class TestEAPI7VerFuncs(TestCase):
 
         for cmd in test_cases:
             test = """
-source "%s"/eapi7-ver-funcs.sh
-die() { exit 1; }
-%s""" % (
+source "{}"/eapi7-ver-funcs.sh
+die() {{ exit 1; }}
+{}""".format(
                 PORTAGE_BIN_PATH,
                 cmd,
             )

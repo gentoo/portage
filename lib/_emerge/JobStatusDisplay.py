@@ -228,10 +228,10 @@ class JobStatusDisplay:
     def _display_status(self):
         # Don't use len(self._completed_tasks) here since that also
         # can include uninstall tasks.
-        curval_str = "%s" % (self.curval,)
-        maxval_str = "%s" % (self.maxval,)
-        running_str = "%s" % (self.running,)
-        failed_str = "%s" % (self.failed,)
+        curval_str = "{}".format(self.curval)
+        maxval_str = "{}".format(self.maxval)
+        running_str = "{}".format(self.running)
+        failed_str = "{}".format(self.failed)
         load_avg_str = self._load_avg_str()
 
         color_output = io.StringIO()
@@ -292,5 +292,5 @@ class JobStatusDisplay:
             title_str = " ".join(plain_output.split())
             hostname = os.environ.get("HOSTNAME")
             if hostname is not None:
-                title_str = "%s: %s" % (hostname, title_str)
+                title_str = "{}: {}".format(hostname, title_str)
             xtermTitle(title_str)

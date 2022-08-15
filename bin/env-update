@@ -39,7 +39,7 @@ portage._internal_caller = True
 
 try:
     portage.env_update(makelinks)
-except IOError as e:
+except OSError as e:
     if e.errno == errno.EACCES:
         print("env-update: Need superuser access")
         sys.exit(1)

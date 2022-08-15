@@ -137,7 +137,7 @@ class SyncManager:
         if repo.sync_type in self.module_names:
             tasks = [self.module_controller.get_class(repo.sync_type)]
         else:
-            msg = "\n%s: Sync module '%s' is not an installed/known type'\n" % (
+            msg = "\n{}: Sync module '{}' is not an installed/known type'\n".format(
                 bad("ERROR"),
                 repo.sync_type,
             )
@@ -212,7 +212,9 @@ class SyncManager:
         return succeeded
 
     def pre_sync(self, repo):
-        msg = ">>> Syncing repository '%s' into '%s'..." % (repo.name, repo.location)
+        msg = ">>> Syncing repository '{}' into '{}'...".format(
+            repo.name, repo.location
+        )
         self.logger(self.xterm_titles, msg)
         writemsg_level(msg + "\n")
         try:

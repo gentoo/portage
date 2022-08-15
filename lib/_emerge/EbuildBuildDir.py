@@ -23,7 +23,9 @@ class EbuildBuildDir(SlotObject):
         if async_lock.returncode != os.EX_OK:
             # TODO: create a better way to propagate this error to the caller
             raise AssertionError(
-                "AsynchronousLock failed with returncode %s" % (async_lock.returncode,)
+                "AsynchronousLock failed with returncode {}".format(
+                    async_lock.returncode
+                )
             )
 
     def clean_log(self):

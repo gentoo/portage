@@ -27,7 +27,7 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) <= 0,
-                msg="%s < %s? Wrong!" % (test[0], test[1]),
+                msg="{} < {}? Wrong!".format(test[0], test[1]),
             )
 
     def testVerCmpLess(self):
@@ -57,7 +57,7 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) >= 0,
-                msg="%s > %s? Wrong!" % (test[0], test[1]),
+                msg="{} > {}? Wrong!".format(test[0], test[1]),
             )
 
     def testVerCmpEqual(self):
@@ -73,7 +73,7 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) != 0,
-                msg="%s != %s? Wrong!" % (test[0], test[1]),
+                msg="{} != {}? Wrong!".format(test[0], test[1]),
             )
 
     def testVerNotEqual(self):
@@ -96,5 +96,5 @@ class VerCmpTestCase(TestCase):
         for test in tests:
             self.assertFalse(
                 vercmp(test[0], test[1]) == 0,
-                msg="%s == %s? Wrong!" % (test[0], test[1]),
+                msg="{} == {}? Wrong!".format(test[0], test[1]),
             )

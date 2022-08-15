@@ -54,7 +54,7 @@ class UseReduceTestCase:
                 subset=self.subset,
             )
         except InvalidDependString as e:
-            raise InvalidDependString("%s: %s" % (e, self.deparray))
+            raise InvalidDependString("{}: {}".format(e, self.deparray))
 
 
 class UseReduce(TestCase):

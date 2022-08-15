@@ -553,7 +553,7 @@ class config:
                 and user_auxdbmodule in self._module_aliases
             ):
                 warnings.warn(
-                    "'%s' is deprecated: %s" % (user_auxdbmodule, modules_file)
+                    "'{}' is deprecated: {}".format(user_auxdbmodule, modules_file)
                 )
 
             self.modules["default"] = {
@@ -587,9 +587,9 @@ class config:
                 env = os.environ
 
             # Avoid potential UnicodeDecodeError exceptions later.
-            env_unicode = dict(
-                (_unicode_decode(k), _unicode_decode(v)) for k, v in env.items()
-            )
+            env_unicode = {
+                _unicode_decode(k): _unicode_decode(v) for k, v in env.items()
+            }
 
             self.backupenv = env_unicode
 
@@ -705,7 +705,7 @@ class config:
                     )
                     for x in profiles_complex
                 ]
-            except EnvironmentError as e:
+            except OSError as e:
                 _raise_exc(e)
 
             self.packages = tuple(stack_lists(packages_list, incremental=1))
@@ -1744,9 +1744,9 @@ class config:
         def __getitem__(self, key):
             prefix = key.lower() + "_"
             prefix_len = len(prefix)
-            expand_flags = set(
+            expand_flags = {
                 x[prefix_len:] for x in self._use if x[:prefix_len] == prefix
-            )
+            }
             var_split = self._use_expand_dict.get(key, "").split()
             # Preserve the order of var_split because it can matter for things
             # like LINGUAS.
@@ -2224,7 +2224,7 @@ class config:
         # Use the calculated USE flags to regenerate the USE_EXPAND flags so
         # that they are consistent. For optimal performance, use slice
         # comparison instead of startswith().
-        use_expand_split = set(x.lower() for x in self.get("USE_EXPAND", "").split())
+        use_expand_split = {x.lower() for x in self.get("USE_EXPAND", "").split()}
         lazy_use_expand = self._lazy_use_expand(
             self,
             unfiltered_use,
@@ -2235,7 +2235,7 @@ class config:
             self._use_expand_dict,
         )
 
-        use_expand_iuses = dict((k, set()) for k in use_expand_split)
+        use_expand_iuses = {k: set() for k in use_expand_split}
         for x in portage_iuse:
             x_split = x.split("_")
             if len(x_split) == 1:
@@ -2300,7 +2300,7 @@ class config:
                     if k in protected_keys or k in non_user_variables:
                         writemsg(
                             "!!! Illegal variable "
-                            + "'%s' assigned in '%s'\n" % (k, penvfile),
+                            + "'{}' assigned in '{}'\n".format(k, penvfile),
                             noiselevel=-1,
                         )
                     elif k in incrementals:
@@ -3050,9 +3050,9 @@ class config:
             for k in use_expand:
                 prefix = k.lower() + "_"
                 prefix_len = len(prefix)
-                expand_flags = set(
+                expand_flags = {
                     x[prefix_len:] for x in myflags if x[:prefix_len] == prefix
-                )
+                }
                 var_split = use_expand_dict.get(k, "").split()
                 var_split = [x for x in var_split if x in expand_flags]
                 var_split.extend(sorted(expand_flags.difference(var_split)))

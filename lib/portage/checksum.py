@@ -43,7 +43,7 @@ def _open_file(filename):
         return open(
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"), "rb"
         )
-    except IOError as e:
+    except OSError as e:
         func_call = f"open('{_unicode_decode(filename)}')"
         if e.errno == errno.EPERM:
             raise portage.exception.OperationNotPermitted(func_call)
@@ -574,7 +574,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
                     f"{hashname} hash function not available (needs dev-python/pycrypto)"
                 )
             myhash, mysize = hashfunc_map[hashname].checksum_file(myfilename)
-        except (OSError, IOError) as e:
+        except OSError as e:
             if e.errno in (errno.ENOENT, errno.ESTALE):
                 raise portage.exception.FileNotFound(myfilename)
             elif e.errno == portage.exception.PermissionDenied.errno:

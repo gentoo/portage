@@ -124,7 +124,7 @@ class _socket_file_wrapper(portage.proxy.objectproxy.ObjectProxy):
     def __getattribute__(self, attr):
         if attr == "close":
             return object.__getattribute__(self, "close")
-        return super(_socket_file_wrapper, self).__getattribute__(attr)
+        return super().__getattribute__(attr)
 
     def __enter__(self):
         return self

@@ -34,7 +34,7 @@ class PackageKeywordsFileTestCase(TestCase):
         fd, self.fname = mkstemp()
         f = os.fdopen(fd, "w")
         for c in self.cpv:
-            f.write("%s %s\n" % (c, " ".join(self.keywords)))
+            f.write("{} {}\n".format(c, " ".join(self.keywords)))
         f.close()
 
     def NukeFile(self):

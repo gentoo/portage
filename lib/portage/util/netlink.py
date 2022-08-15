@@ -65,7 +65,7 @@ class RtNetlink:
         self.addr = (0, 0)
         try:
             self.sock.bind(self.addr)
-        except socket.error:
+        except OSError:
             self.sock.close()
             raise
 

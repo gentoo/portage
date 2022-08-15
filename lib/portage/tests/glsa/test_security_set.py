@@ -128,7 +128,7 @@ class SecuritySetTestCase(TestCase):
             )
             portage.util.ensure_dirs(glsa_dir)
             for glsa in glsas:
-                with io.open(
+                with open(
                     os.path.join(glsa_dir, "glsa-" + glsa["glsa_id"] + ".xml"),
                     encoding=_encodings["repo.content"],
                     mode="w",

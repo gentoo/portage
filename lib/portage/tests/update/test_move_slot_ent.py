@@ -1,7 +1,6 @@
 # Copyright 2012-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from __future__ import print_function
 import sys
 import textwrap
 

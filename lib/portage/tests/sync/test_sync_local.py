@@ -94,7 +94,9 @@ class SyncLocalTestCase(TestCase):
                     break
             else:
                 raise AssertionError(
-                    "%s binary not found in %s or %s" % (cmd, self.bindir, self.sbindir)
+                    "{} binary not found in {} or {}".format(
+                        cmd, self.bindir, self.sbindir
+                    )
                 )
 
         git_binary = find_binary("git")
@@ -320,7 +322,7 @@ class SyncLocalTestCase(TestCase):
         )
 
         def hg_init_global_config():
-            with open(os.path.join(homedir, ".hgrc"), "wt") as f:
+            with open(os.path.join(homedir, ".hgrc"), "w") as f:
                 f.write(
                     "[ui]\nusername = {} <{}>\n".format(committer_name, committer_email)
                 )
@@ -335,7 +337,7 @@ class SyncLocalTestCase(TestCase):
         sync_type_mercurial = ((homedir, lambda: repos_set_conf("mercurial")),)
 
         def append_newline(path):
-            with open(path, "at") as f:
+            with open(path, "a") as f:
                 f.write("\n")
 
         upstream_hg_commit = (

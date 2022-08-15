@@ -24,7 +24,7 @@ def dnf_convert(dep_struct):
         if isinstance(x, list):
             assert (
                 x and x[0] == "||"
-            ), "Normalization error, nested conjunction found in %s" % (dep_struct,)
+            ), "Normalization error, nested conjunction found in {}".format(dep_struct)
             if any(isinstance(element, list) for element in x):
                 x_dnf = ["||"]
                 for element in x[1:]:
@@ -34,10 +34,14 @@ def dnf_convert(dep_struct):
                         # must be a conjunction.
                         assert (
                             element
-                        ), "Normalization error, empty conjunction found in %s" % (x,)
+                        ), "Normalization error, empty conjunction found in {}".format(
+                            x
+                        )
                         assert (
                             element[0] != "||"
-                        ), "Normalization error, nested disjunction found in %s" % (x,)
+                        ), "Normalization error, nested disjunction found in {}".format(
+                            x
+                        )
                         element = dnf_convert(element)
                         if contains_disjunction(element):
                             assert (
@@ -89,7 +93,7 @@ def contains_disjunction(dep_struct):
     is_disjunction = dep_struct and dep_struct[0] == "||"
     for x in dep_struct:
         if isinstance(x, list):
-            assert x, "Normalization error, empty conjunction found in %s" % (
+            assert x, "Normalization error, empty conjunction found in {}".format(
                 dep_struct,
             )
             if x[0] == "||":

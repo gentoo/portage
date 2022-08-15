@@ -40,11 +40,11 @@ class SubProcess(AbstractPollTask):
 
     def _async_wait(self):
         if self.returncode is None:
-            raise asyncio.InvalidStateError("Result is not ready for %s" % (self,))
+            raise asyncio.InvalidStateError("Result is not ready for {}".format(self))
         else:
             # This calls _unregister, so don't call it until pid status
             # is available.
-            super(SubProcess, self)._async_wait()
+            super()._async_wait()
 
     def _async_waitpid(self):
         """
@@ -66,7 +66,7 @@ class SubProcess(AbstractPollTask):
 
     def _async_waitpid_cb(self, pid, returncode):
         if pid != self.pid:
-            raise AssertionError("expected pid %s, got %s" % (self.pid, pid))
+            raise AssertionError("expected pid {}, got {}".format(self.pid, pid))
         self.returncode = returncode
         self._async_wait()
 

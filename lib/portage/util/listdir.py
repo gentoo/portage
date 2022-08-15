@@ -29,7 +29,7 @@ def cacheddir(
         pathstat = os.stat(mypath)
         if not stat.S_ISDIR(pathstat.st_mode):
             raise DirectoryNotFound(mypath)
-    except EnvironmentError as e:
+    except OSError as e:
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied(mypath)
         del e
@@ -39,7 +39,7 @@ def cacheddir(
     else:
         try:
             fpaths = os.listdir(mypath)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.EACCES:
                 raise
             del e
@@ -60,7 +60,7 @@ def cacheddir(
                     ftype.append(2)
                 else:
                     ftype.append(3)
-            except (IOError, OSError):
+            except OSError:
                 ftype.append(3)
 
     if ignorelist or ignorecvs:

@@ -294,9 +294,8 @@ class NewsItem:
         return self._valid
 
     def parse(self):
-        with io.open(
+        with open(
             _unicode_encode(self.path, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         ) as f:

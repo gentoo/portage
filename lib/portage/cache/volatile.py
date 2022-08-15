@@ -14,7 +14,7 @@ class database(template.database):
     def __init__(self, *args, **config):
         config.pop("gid", None)
         config.pop("perms", None)
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
         self._data = {}
         self._delitem = self._data.__delitem__
 

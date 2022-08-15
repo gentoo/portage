@@ -53,7 +53,7 @@ class SQLDatabase(template.database):
         """initialize the instance.
         derived classes shouldn't need to override this"""
 
-        super(SQLDatabase, self).__init__(location, label, auxdbkeys, *args, **config)
+        super().__init__(location, label, auxdbkeys, *args, **config)
 
         config.setdefault("host", "127.0.0.1")
         config.setdefault("autocommit", self.autocommits)
@@ -122,7 +122,7 @@ class SQLDatabase(template.database):
         if len(rows) == 0:
             raise KeyError(cpv)
 
-        vals = dict([(k, "") for k in self._known_keys])
+        vals = {k: "" for k in self._known_keys}
         vals.update(dict(rows))
         return vals
 
@@ -309,7 +309,7 @@ class SQLDatabase(template.database):
             v = v.replace("%", "\\%")
             v = v.replace(".*", "%")
             query_list.append(
-                "(key=%s AND value LIKE %s)" % (self._sfilter(k), self._sfilter(v))
+                "(key={} AND value LIKE {})".format(self._sfilter(k), self._sfilter(v))
             )
 
         if len(query_list):

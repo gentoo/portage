@@ -111,7 +111,7 @@ class EbuildIpcDaemon(FifoIpcDaemon):
             # This probably means that the client has been killed,
             # which causes open to fail with ENXIO.
             writemsg_level(
-                "!!! EbuildIpcDaemon %s: %s\n" % (_("failed to send reply"), e),
+                "!!! EbuildIpcDaemon {}: {}\n".format(_("failed to send reply"), e),
                 level=logging.ERROR,
                 noiselevel=-1,
             )

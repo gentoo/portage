@@ -87,7 +87,9 @@ class MoveHandler:
                                     if maybe_applied.build_time == build_time:
                                         break
                                 else:
-                                    errors.append("'%s' moved to '%s'" % (cpv, newcp))
+                                    errors.append(
+                                        "'{}' moved to '{}'".format(cpv, newcp)
+                                    )
                 elif update_cmd[0] == "slotmove":
                     pkg, origslot, newslot = update_cmd[1:]
                     atom = pkg.with_slot(origslot)
@@ -121,7 +123,7 @@ class MoveHandler:
                 pkg = _pkg_str(cpv, metadata=metadata, settings=settings)
             except InvalidData:
                 continue
-            metadata = dict((k, metadata[k]) for k in self._update_keys)
+            metadata = {k: metadata[k] for k in self._update_keys}
             try:
                 updates = allupdates[pkg.repo]
             except KeyError:

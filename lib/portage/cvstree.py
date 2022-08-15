@@ -48,17 +48,16 @@ def isadded(entries, path):
     filename = os.path.basename(path)
 
     try:
-        myfile = io.open(
+        myfile = open(
             _unicode_encode(
                 os.path.join(basedir, "CVS", "Entries"),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["content"],
             errors="strict",
         )
-    except IOError:
+    except OSError:
         return 0
     mylines = myfile.readlines()
     myfile.close()
@@ -107,8 +106,7 @@ def findoption(entries, pattern, recursive=0, basedir=""):
 
     if recursive:
         for mydir, mydata in entries["dirs"].items():
-            for x in findoption(mydata, pattern, recursive, basedir + mydir):
-                yield x
+            yield from findoption(mydata, pattern, recursive, basedir + mydir)
 
 
 def findchanged(entries, recursive=0, basedir=""):
@@ -235,9 +233,8 @@ def getentries(mydir, recursive=0):
     if not os.path.exists(mydir):
         return entries
     try:
-        myfile = io.open(
+        myfile = open(
             _unicode_encode(myfn, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="strict",
         )

@@ -232,7 +232,7 @@ def parse_args(args):
             jobs = -1
 
         if jobs < 1:
-            parser.error("Invalid: --jobs='%s'" % (options.jobs,))
+            parser.error("Invalid: --jobs='{}'".format(options.jobs))
 
         options.jobs = jobs
 
@@ -246,7 +246,7 @@ def parse_args(args):
             load_average = 0.0
 
         if load_average <= 0.0:
-            parser.error("Invalid: --load-average='%s'" % (options.load_average,))
+            parser.error("Invalid: --load-average='{}'".format(options.load_average))
 
         options.load_average = load_average
 
@@ -255,22 +255,24 @@ def parse_args(args):
 
     options.config_root = options.portage_configroot
     if options.config_root is not None and not os.path.isdir(options.config_root):
-        parser.error("Not a directory: --config-root='%s'" % (options.config_root,))
+        parser.error("Not a directory: --config-root='{}'".format(options.config_root))
 
     if options.cache_dir is not None:
         if not os.path.isdir(options.cache_dir):
-            parser.error("Not a directory: --cache-dir='%s'" % (options.cache_dir,))
+            parser.error("Not a directory: --cache-dir='{}'".format(options.cache_dir))
         if not os.access(options.cache_dir, os.W_OK):
-            parser.error("Write access denied: --cache-dir='%s'" % (options.cache_dir,))
+            parser.error(
+                "Write access denied: --cache-dir='{}'".format(options.cache_dir)
+            )
 
     for atom in args:
         try:
             atom = portage.dep.Atom(atom)
         except portage.exception.InvalidAtom:
-            parser.error("Invalid atom: %s" % (atom,))
+            parser.error("Invalid atom: {}".format(atom))
 
         if not isjustname(atom):
-            parser.error("Atom is too specific: %s" % (atom,))
+            parser.error("Atom is too specific: {}".format(atom))
 
     if options.update_use_local_desc:
         try:
@@ -415,7 +417,7 @@ class GenCache:
                 except OSError as e:
                     self.returncode |= 1
                     writemsg_level(
-                        "%s writing target: %s\n" % (cpv, e),
+                        "{} writing target: {}\n".format(cpv, e),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -428,7 +430,7 @@ class GenCache:
         except CacheError as ce:
             self.returncode |= 1
             writemsg_level(
-                "%s writing target: %s\n" % (cpv, ce),
+                "{} writing target: {}\n".format(cpv, ce),
                 level=logging.ERROR,
                 noiselevel=-1,
             )
@@ -453,7 +455,7 @@ class GenCache:
                     if cp is None:
                         self.returncode |= 1
                         writemsg_level(
-                            "Unable to parse cp for '%s'\n" % (cpv,),
+                            "Unable to parse cp for '{}'\n".format(cpv),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -463,7 +465,7 @@ class GenCache:
                 self.returncode |= 1
                 writemsg_level(
                     "Error listing cache entries for "
-                    + "'%s': %s, continuing...\n" % (trg_cache.location, ce),
+                    + "'{}': {}, continuing...\n".format(trg_cache.location, ce),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -476,7 +478,7 @@ class GenCache:
                     if cp is None:
                         self.returncode |= 1
                         writemsg_level(
-                            "Unable to parse cp for '%s'\n" % (cpv,),
+                            "Unable to parse cp for '{}'\n".format(cpv),
                             level=logging.ERROR,
                             noiselevel=-1,
                         )
@@ -488,7 +490,7 @@ class GenCache:
                 self.returncode |= 1
                 writemsg_level(
                     "Error listing cache entries for "
-                    + "'%s': %s, continuing...\n" % (trg_cache.location, ce),
+                    + "'{}': {}, continuing...\n".format(trg_cache.location, ce),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -497,7 +499,7 @@ class GenCache:
             self.returncode |= 1
             for cp in sorted(cp_missing):
                 writemsg_level(
-                    "No ebuilds or cache entries found for '%s'\n" % (cp,),
+                    "No ebuilds or cache entries found for '{}'\n".format(cp),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -512,7 +514,7 @@ class GenCache:
                 except CacheError as ce:
                     self.returncode |= 1
                     writemsg_level(
-                        "%s deleting stale cache: %s\n" % (k, ce),
+                        "{} deleting stale cache: {}\n".format(k, ce),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -523,7 +525,7 @@ class GenCache:
             except CacheError as ce:
                 self.returncode |= 1
                 writemsg_level(
-                    "committing target: %s\n" % (ce,),
+                    "committing target: {}\n".format(ce),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -547,9 +549,7 @@ class GenPkgDescIndex:
         new = {}
         if display_updates:
             try:
-                with open(
-                    self._output_file, "rt", encoding=_encodings["repo.content"]
-                ) as f:
+                with open(self._output_file, encoding=_encodings["repo.content"]) as f:
                     for line in f:
                         pkg_desc = pkg_desc_index_line_read(line)
                         old[pkg_desc.cp] = pkg_desc
@@ -666,7 +666,7 @@ class GenUseLocalDesc:
                         "r+b",
                     )
                 else:
-                    output = io.open(
+                    output = open(
                         _unicode_encode(
                             desc_path, encoding=_encodings["fs"], errors="strict"
                         ),
@@ -674,10 +674,12 @@ class GenUseLocalDesc:
                         encoding=_encodings["repo.content"],
                         errors="backslashreplace",
                     )
-            except IOError as e:
+            except OSError as e:
                 if not self._preserve_comments or os.path.isfile(desc_path):
                     writemsg_level(
-                        "ERROR: failed to open output file %s: %s\n" % (desc_path, e),
+                        "ERROR: failed to open output file {}: {}\n".format(
+                            desc_path, e
+                        ),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -689,13 +691,13 @@ class GenUseLocalDesc:
                 # preserve_comments mode now.
                 writemsg_level(
                     "WARNING: --preserve-comments enabled, but "
-                    + "output file not found: %s\n" % (desc_path,),
+                    + "output file not found: {}\n".format(desc_path),
                     level=logging.WARNING,
                     noiselevel=-1,
                 )
                 self._preserve_comments = False
                 try:
-                    output = io.open(
+                    output = open(
                         _unicode_encode(
                             desc_path, encoding=_encodings["fs"], errors="strict"
                         ),
@@ -703,9 +705,11 @@ class GenUseLocalDesc:
                         encoding=_encodings["repo.content"],
                         errors="backslashreplace",
                     )
-                except IOError as e:
+                except OSError as e:
                     writemsg_level(
-                        "ERROR: failed to open output file %s: %s\n" % (desc_path, e),
+                        "ERROR: failed to open output file {}: {}\n".format(
+                            desc_path, e
+                        ),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -725,7 +729,7 @@ class GenUseLocalDesc:
 
             # Finished probing comments in binary mode, now append
             # in text mode.
-            output = io.open(
+            output = open(
                 _unicode_encode(desc_path, encoding=_encodings["fs"], errors="strict"),
                 mode="a",
                 encoding=_encodings["repo.content"],
@@ -777,11 +781,11 @@ class GenUseLocalDesc:
                     ),
                     parser=ElementTree.XMLParser(target=_MetadataTreeBuilder()),
                 )
-            except IOError:
+            except OSError:
                 pass
-            except (ExpatError, EnvironmentError) as e:
+            except (ExpatError, OSError) as e:
                 writemsg_level(
-                    "ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+                    "ERROR: failed parsing {}/metadata.xml: {}\n".format(cp, e),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -791,7 +795,7 @@ class GenUseLocalDesc:
                     usedict = parse_metadata_use(metadata)
                 except portage.exception.ParseError as e:
                     writemsg_level(
-                        "ERROR: failed parsing %s/metadata.xml: %s\n" % (cp, e),
+                        "ERROR: failed parsing {}/metadata.xml: {}\n".format(cp, e),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -826,7 +830,7 @@ class GenUseLocalDesc:
                             resdesc = next(iter(resdict.items()))[1]
                         else:
                             try:
-                                reskeys = dict((_Atom(k), k) for k in resdict)
+                                reskeys = {_Atom(k): k for k in resdict}
                             except portage.exception.InvalidAtom as e:
                                 writemsg_level(
                                     "ERROR: failed parsing %s/metadata.xml: %s\n"
@@ -840,7 +844,7 @@ class GenUseLocalDesc:
                                 resatoms = sorted(reskeys, key=cmp_sort_key(atomcmp))
                                 resdesc = resdict[reskeys[resatoms[-1]]]
 
-                        output.write("%s:%s - %s\n" % (cp, flag, resdesc))
+                        output.write("{}:{} - {}\n".format(cp, flag, resdesc))
 
         output.close()
         if prev_mtime is not None and prev_md5 == portage.checksum.perform_md5(
@@ -910,13 +914,13 @@ class GenChangeLogs:
             return
 
         try:
-            output = io.open(
+            output = open(
                 self._changelog_output,
                 mode="w",
                 encoding=_encodings["repo.content"],
                 errors="backslashreplace",
             )
-        except IOError as e:
+        except OSError as e:
             writemsg_level(
                 "ERROR: failed to open ChangeLog for %s: %s\n"
                 % (
@@ -968,7 +972,7 @@ class GenChangeLogs:
                         "--no-renames",
                         "--format=%ct %cN <%cE>%n%B",
                         "--root",
-                        "--relative=%s" % (cp,),
+                        "--relative={}".format(cp),
                         "-r",
                         c,
                         "--",
@@ -1030,7 +1034,7 @@ class GenChangeLogs:
             # Reverse the sort order for headers.
             for c in reversed(changed):
                 if c.startswith("+") and c.endswith(".ebuild"):
-                    output.write("*%s (%s)\n" % (c[1:-7], date))
+                    output.write("*{} ({})\n".format(c[1:-7], date))
                     wroteheader = True
             if wroteheader:
                 output.write("\n")
@@ -1057,7 +1061,9 @@ class GenChangeLogs:
             # don't break filenames on hyphens
             self._wrapper.break_on_hyphens = False
             output.write(
-                self._wrapper.fill("%s; %s %s:" % (date, author, ", ".join(changed)))
+                self._wrapper.fill(
+                    "{}; {} {}:".format(date, author, ", ".join(changed))
+                )
             )
             # but feel free to break commit messages there
             self._wrapper.break_on_hyphens = True
@@ -1153,7 +1159,7 @@ def egencache_main(args):
 
     repo_path = settings.repositories.treemap.get(options.repo)
     if repo_path is None:
-        parser.error("Unable to locate repository named '%s'" % (options.repo,))
+        parser.error("Unable to locate repository named '{}'".format(options.repo))
         return 1
 
     repo_config = settings.repositories.get_repo_for_location(repo_path)
@@ -1193,7 +1199,9 @@ def egencache_main(args):
             if not os.access(settings["PORTAGE_DEPCACHEDIR"], os.W_OK):
                 writemsg_level(
                     "ecachegen: error: "
-                    + "write access denied: %s\n" % (settings["PORTAGE_DEPCACHEDIR"],),
+                    + "write access denied: {}\n".format(
+                        settings["PORTAGE_DEPCACHEDIR"]
+                    ),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )
@@ -1311,8 +1319,12 @@ def egencache_main(args):
             )
             if not options.external_cache_only:
                 msg = [
-                    "WARNING: Repository is not writable: %s" % (repo_config.location,),
-                    "         Using cache directory instead: %s" % (writable_location,),
+                    "WARNING: Repository is not writable: {}".format(
+                        repo_config.location
+                    ),
+                    "         Using cache directory instead: {}".format(
+                        writable_location
+                    ),
                 ]
                 msg = "".join(line + "\n" for line in msg)
                 writemsg_level(msg, level=logging.WARNING, noiselevel=-1)
@@ -1381,7 +1393,7 @@ def egencache_main(args):
             portage.util.write_atomic(
                 timestamp_path, time.strftime("%s\n" % TIMESTAMP_FORMAT, time.gmtime())
             )
-        except (EnvironmentError, portage.exception.PortageException):
+        except (OSError, portage.exception.PortageException):
             ret.append(os.EX_IOERR)
         else:
             ret.append(os.EX_OK)

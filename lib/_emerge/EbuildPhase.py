@@ -136,7 +136,7 @@ class EbuildPhase(CompositeTask):
 
             msg = []
             msg.append(
-                "Package:    %s:%s" % (self.settings.mycpv, self.settings["SLOT"])
+                "Package:    {}:{}".format(self.settings.mycpv, self.settings["SLOT"])
             )
             if self.settings.get("PORTAGE_REPO_NAME"):
                 msg.append("Repository: %s" % self.settings["PORTAGE_REPO_NAME"])
@@ -560,9 +560,7 @@ class _PostPhaseCommands(CompositeTask):
         tasks = TaskSequence()
         for kwargs, commands in cmds:
             # Select args intended for MiscFunctionsProcess.
-            kwargs = dict(
-                (k, v) for k, v in kwargs.items() if k in ("ld_preload_sandbox",)
-            )
+            kwargs = {k: v for k, v in kwargs.items() if k in ("ld_preload_sandbox",)}
             tasks.add(
                 MiscFunctionsProcess(
                     background=self.background,
@@ -627,7 +625,7 @@ class _PostPhaseCommands(CompositeTask):
             qa_msg = ["QA Notice: Unresolved soname dependencies:"]
             qa_msg.append("")
             qa_msg.extend(
-                "\t%s: %s" % (filename, " ".join(sorted(soname_deps)))
+                "\t{}: {}".format(filename, " ".join(sorted(soname_deps)))
                 for filename, soname_deps in unresolved
             )
             qa_msg.append("")

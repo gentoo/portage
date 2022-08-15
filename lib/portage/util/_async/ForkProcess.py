@@ -60,17 +60,17 @@ class ForkProcess(SpawnProcess):
 
     def _cancel(self):
         if self._proc is None:
-            super(ForkProcess, self)._cancel()
+            super()._cancel()
         else:
             self._proc.terminate()
 
     def _async_wait(self):
         if self._proc_join_task is None:
-            super(ForkProcess, self)._async_wait()
+            super()._async_wait()
 
     def _async_waitpid(self):
         if self._proc_join_task is None:
-            super(ForkProcess, self)._async_waitpid()
+            super()._async_waitpid()
 
     async def _proc_join(self, proc, loop=None):
         sentinel_reader = self.scheduler.create_future()
@@ -114,7 +114,7 @@ class ForkProcess(SpawnProcess):
         self._async_wait()
 
     def _unregister(self):
-        super(ForkProcess, self)._unregister()
+        super()._unregister()
         if self._proc is not None:
             if self._proc.is_alive():
                 self._proc.terminate()

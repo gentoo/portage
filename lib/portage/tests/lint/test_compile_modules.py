@@ -60,7 +60,7 @@ class CompileModulesTestCase(TestCase):
                                 encoding=_encodings["content"],
                                 errors="replace",
                             )
-                    except IOError as e:
+                    except OSError as e:
                         # Some tests create files that are unreadable by the
                         # user (by design), so ignore EACCES issues.
                         if e.errno != errno.EACCES:

@@ -71,7 +71,7 @@ class PreservedLibsRegistry:
                 "rb",
             )
             content = f.read()
-        except EnvironmentError as e:
+        except OSError as e:
             if not hasattr(e, "errno"):
                 raise
             elif e.errno == errno.ENOENT:
@@ -144,10 +144,10 @@ class PreservedLibsRegistry:
             else:
                 pickle.dump(self._data, f, protocol=2)
             f.close()
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != PermissionDenied.errno:
                 writemsg_level(
-                    "!!! %s %s\n" % (e, self._filename),
+                    "!!! {} {}\n".format(e, self._filename),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

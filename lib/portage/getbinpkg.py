@@ -616,7 +616,7 @@ def dir_get_metadata(
     except tuple(_all_errors) as e:
         # ftplib.FTP(host) can raise errors like this:
         #   socket.error: (111, 'Connection refused')
-        sys.stderr.write("!!! %s\n" % (e,))
+        sys.stderr.write("!!! {}\n".format(e))
         return {}
 
     out = sys.stdout
@@ -891,7 +891,7 @@ class PackageIndex:
         self._read_translation_map = {}
         if translated_keys:
             self._write_translation_map.update(translated_keys)
-            self._read_translation_map.update(((y, x) for (x, y) in translated_keys))
+            self._read_translation_map.update((y, x) for (x, y) in translated_keys)
         self.header = {}
         if self._default_header_data:
             self.header.update(self._default_header_data)

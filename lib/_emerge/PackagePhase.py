@@ -33,7 +33,7 @@ class PackagePhase(CompositeTask):
 
     def _start(self):
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(
                         self.settings["PORTAGE_BUILDDIR"],
@@ -43,12 +43,11 @@ class PackagePhase(CompositeTask):
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 self._pkg_install_mask = InstallMask(f.read())
-        except EnvironmentError:
+        except OSError:
             self._pkg_install_mask = None
         if self._pkg_install_mask:
             self._proot = os.path.join(self.settings["T"], "packaging")

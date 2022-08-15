@@ -78,9 +78,9 @@ def usage(module_controller):
     textwrap.subsequent_indent = " ".ljust(17)
     for mod in module_controller.module_names:
         desc = textwrap.wrap(module_controller.get_description(mod), 65)
-        _usage += "  %s%s\n" % (mod.ljust(15), desc[0])
+        _usage += "  {}{}\n".format(mod.ljust(15), desc[0])
         for d in desc[1:]:
-            _usage += "  %s%s\n" % (" ".ljust(15), d)
+            _usage += "  {}{}\n".format(" ".ljust(15), d)
     return _usage
 
 
@@ -92,10 +92,10 @@ def module_opts(module_controller, module):
     for opt in sorted(opts):
         optd = opts[opt]
         if "short" in optd:
-            opto = "  %s, %s" % (optd["short"], optd["long"])
+            opto = "  {}, {}".format(optd["short"], optd["long"])
         else:
-            opto = "  %s" % (optd["long"],)
-        _usage += "%s %s\n" % (opto.ljust(15), optd["help"])
+            opto = "  {}".format(optd["long"])
+        _usage += "{} {}\n".format(opto.ljust(15), optd["help"])
     _usage += "\n"
     return _usage
 
@@ -206,7 +206,7 @@ def emaint_main(myargv):
         if opt.status and getattr(options, opt.target, False):
             if long_action is not None:
                 parser.error(
-                    "--%s and %s are exclusive options" % (long_action, opt.long)
+                    "--{} and {} are exclusive options".format(long_action, opt.long)
                 )
             status = opt.status
             func = opt.func

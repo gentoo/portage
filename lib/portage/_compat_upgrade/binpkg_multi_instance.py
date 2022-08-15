@@ -31,7 +31,7 @@ def main():
         config_path = os.path.join(
             os.environ["ED"], GLOBAL_CONFIG_PATH.lstrip(os.sep), "make.globals"
         )
-        with open(config_path, "at") as f:
+        with open(config_path, "a") as f:
             f.write("{}\n".format(COMPAT_FEATURES))
 
 

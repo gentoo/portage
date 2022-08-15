@@ -32,7 +32,7 @@ class TrackingFile:
         @type failed_pkgs: dict
         """
         tracking_path = self._tracking_path
-        lines = ["%s %s" % (pkg, mtime) for pkg, mtime in failed_pkgs.items()]
+        lines = ["{} {}".format(pkg, mtime) for pkg, mtime in failed_pkgs.items()]
         portage.util.write_atomic(tracking_path, "\n".join(lines))
 
     def load(self):
@@ -46,7 +46,7 @@ class TrackingFile:
         if not self.exists():
             return {}
         failed_pkgs = {}
-        with open(tracking_path, "r") as tracking_file:
+        with open(tracking_path) as tracking_file:
             for failed_merge in tracking_file:
                 pkg, mtime = failed_merge.strip().split()
                 failed_pkgs[pkg] = mtime
@@ -231,7 +231,7 @@ class MergesHandler:
         errors = []
         for pkg, mtime in failed_pkgs.items():
             mtime_str = time.ctime(int(mtime))
-            errors.append("'%s' failed to merge on '%s'" % (pkg, mtime_str))
+            errors.append("'{}' failed to merge on '{}'".format(pkg, mtime_str))
         if errors:
             return (False, errors)
         return (True, None)
@@ -251,7 +251,7 @@ class MergesHandler:
 
         try:
             self._tracking_file.save(failed_pkgs)
-        except IOError as ex:
+        except OSError as ex:
             errors = ["Unable to save failed merges to tracking file: %s\n" % str(ex)]
             errors.append(", ".join(sorted(failed_pkgs)))
             return (False, errors)

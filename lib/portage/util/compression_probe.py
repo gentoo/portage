@@ -95,7 +95,7 @@ def compression_probe(f):
                 _unicode_encode(f, encoding=_encodings["fs"], errors="strict"),
                 mode="rb",
             )
-        except IOError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(f)
             elif e.errno in (errno.ENOENT, errno.ESTALE):

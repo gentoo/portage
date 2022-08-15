@@ -98,7 +98,7 @@ class ProfilePackageSetTestCase(TestCase):
                 prof_path = os.path.join(profile_root, p)
                 ensure_dirs(prof_path)
                 for k, v in data.items():
-                    with io.open(
+                    with open(
                         os.path.join(prof_path, k),
                         mode="w",
                         encoding=_encodings["repo.content"],

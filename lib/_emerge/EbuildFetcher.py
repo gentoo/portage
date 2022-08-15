@@ -69,7 +69,9 @@ class EbuildFetcher(CompositeTask):
             uri_map = uri_map_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % (self.pkg.cpv, e)
+            msg = "Fetch failed for '{}' due to invalid SRC_URI: {}".format(
+                self.pkg.cpv, e
+            )
             msg_lines.append(msg)
             self._fetcher_proc._eerror(msg_lines)
             self._current_task = None
@@ -362,7 +364,7 @@ class _EbuildFetcherProcess(ForkProcess):
         # fetch code will be skipped, so we need to generate equivalent
         # output here.
         if self.logfile is not None:
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     self.logfile, encoding=_encodings["fs"], errors="strict"
                 ),
@@ -407,11 +409,11 @@ class _EbuildFetcherProcess(ForkProcess):
         """
         if not self.prefetch and not future.cancelled() and proc.exitcode != os.EX_OK:
             msg_lines = []
-            msg = "Fetch failed for '%s'" % (self.pkg.cpv,)
+            msg = "Fetch failed for '{}'".format(self.pkg.cpv)
             if self.logfile is not None:
                 msg += ", Log file:"
             msg_lines.append(msg)
             if self.logfile is not None:
-                msg_lines.append(" '%s'" % (self.logfile,))
+                msg_lines.append(" '{}'".format(self.logfile))
             self._eerror(msg_lines)
-        super(_EbuildFetcherProcess, self)._proc_join_done(proc, future)
+        super()._proc_join_done(proc, future)

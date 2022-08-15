@@ -93,8 +93,10 @@ class PackageUninstall(CompositeTask):
             self._async_unlock_builddir(returncode=retval)
             return
 
-        self._writemsg_level(">>> Unmerging %s...\n" % (self.pkg.cpv,), noiselevel=-1)
-        self._emergelog("=== Unmerging... (%s)" % (self.pkg.cpv,))
+        self._writemsg_level(
+            ">>> Unmerging {}...\n".format(self.pkg.cpv), noiselevel=-1
+        )
+        self._emergelog("=== Unmerging... ({})".format(self.pkg.cpv))
 
         cat, pf = portage.catsplit(self.pkg.cpv)
         unmerge_task = MergeProcess(
@@ -115,9 +117,9 @@ class PackageUninstall(CompositeTask):
 
     def _unmerge_exit(self, unmerge_task):
         if self._final_exit(unmerge_task) != os.EX_OK:
-            self._emergelog(" !!! unmerge FAILURE: %s" % (self.pkg.cpv,))
+            self._emergelog(" !!! unmerge FAILURE: {}".format(self.pkg.cpv))
         else:
-            self._emergelog(" >>> unmerge success: %s" % (self.pkg.cpv,))
+            self._emergelog(" >>> unmerge success: {}".format(self.pkg.cpv))
             self.world_atom(self.pkg)
         self._async_unlock_builddir(returncode=self.returncode)
 

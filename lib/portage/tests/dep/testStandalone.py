@@ -32,12 +32,12 @@ class TestStandalone(TestCase):
             self.assertEqual(
                 cpvequal(cpv1, cpv2),
                 expected_result,
-                "cpvequal('%s', '%s') != %s" % (cpv1, cpv2, expected_result),
+                "cpvequal('{}', '{}') != {}".format(cpv1, cpv2, expected_result),
             )
 
         for cpv1, cpv2 in test_cases_xfail:
             self.assertRaisesMsg(
-                "cpvequal(%s, %s)" % (cpv1, cpv2),
+                "cpvequal({}, {})".format(cpv1, cpv2),
                 PortageException,
                 cpvequal,
                 cpv1,

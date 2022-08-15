@@ -112,7 +112,7 @@ class SchedulerInterface(SlotObject):
                     mode="ab",
                 )
                 f_real = f
-            except IOError as e:
+            except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     raise
                 if not msg_shown:

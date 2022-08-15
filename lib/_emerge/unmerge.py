@@ -506,13 +506,13 @@ def _unmerge_display(
         if not (pkgmap[x]["protected"] or pkgmap[x]["omitted"]) and cp in syslist:
             virt_cp = sys_virt_map.get(cp)
             if virt_cp is None:
-                cp_info = "'%s'" % (cp,)
+                cp_info = "'{}'".format(cp)
             else:
-                cp_info = "'%s' (%s)" % (cp, virt_cp)
+                cp_info = "'{}' ({})".format(cp, virt_cp)
             writemsg_level(
                 colorize(
                     "BAD",
-                    "\n\n!!! " + "%s is part of your system profile.\n" % (cp_info,),
+                    "\n\n!!! " + "{} is part of your system profile.\n".format(cp_info),
                 ),
                 level=logging.WARNING,
                 noiselevel=-1,
@@ -525,7 +525,7 @@ def _unmerge_display(
                 noiselevel=-1,
             )
         if not quiet:
-            writemsg_level("\n %s\n" % (bold(cp),), noiselevel=-1)
+            writemsg_level("\n {}\n".format(bold(cp)), noiselevel=-1)
         else:
             writemsg_level(bold(cp) + ": ", noiselevel=-1)
         for mytype in ["selected", "protected", "omitted"]:
@@ -653,7 +653,7 @@ def unmerge(
     for x in range(len(pkgmap)):
         for y in pkgmap[x]["selected"]:
             emergelog(xterm_titles, "=== Unmerging... (" + y + ")")
-            message = ">>> Unmerging ({0} of {1}) {2}...\n".format(
+            message = ">>> Unmerging ({} of {}) {}...\n".format(
                 colorize("MERGE_LIST_PROGRESS", str(curval)),
                 colorize("MERGE_LIST_PROGRESS", str(maxval)),
                 y,

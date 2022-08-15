@@ -12,7 +12,7 @@ class InitializationError(CacheError):
         self.error, self.class_name = error, class_name
 
     def __str__(self):
-        return "Creation of instance %s failed due to %s" % (
+        return "Creation of instance {} failed due to {}".format(
             self.class_name,
             str(self.error),
         )
@@ -23,7 +23,7 @@ class CacheCorruption(CacheError):
         self.key, self.ex = key, ex
 
     def __str__(self):
-        return "%s is corrupt: %s" % (self.key, str(self.ex))
+        return "{} is corrupt: {}".format(self.key, str(self.ex))
 
 
 class GeneralCacheCorruption(CacheError):
@@ -41,7 +41,7 @@ class InvalidRestriction(CacheError):
         self.key, self.restriction, self.ex = key, restriction, ex
 
     def __str__(self):
-        return "%s:%s is not valid: %s" % (self.key, self.restriction, str(self.ex))
+        return "{}:{} is not valid: {}".format(self.key, self.restriction, str(self.ex))
 
 
 class ReadOnlyRestriction(CacheError):
@@ -67,14 +67,14 @@ class StatCollision(CacheError):
         self.size = size
 
     def __str__(self):
-        return "%s has stat collision with size %s and mtime %s" % (
+        return "{} has stat collision with size {} and mtime {}".format(
             self.key,
             self.size,
             self.mtime,
         )
 
     def __repr__(self):
-        return "portage.cache.cache_errors.StatCollision(%s)" % (
+        return "portage.cache.cache_errors.StatCollision({})".format(
             ", ".join(
                 (repr(self.key), repr(self.filename), repr(self.mtime), repr(self.size))
             ),

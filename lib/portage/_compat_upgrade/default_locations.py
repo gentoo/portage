@@ -97,7 +97,7 @@ def main():
                 content = re.sub(
                     "^RPMDIR=.*$", compat_setting, content, flags=re.MULTILINE
                 )
-        with open(config_path, "wt") as f:
+        with open(config_path, "w") as f:
             f.write(content)
 
     if do_main_repo:
@@ -115,7 +115,7 @@ def main():
             content = re.sub(
                 "^location =.*$", compat_setting, content, flags=re.MULTILINE
             )
-        with open(config_path, "wt") as f:
+        with open(config_path, "w") as f:
             f.write(content)
 
 

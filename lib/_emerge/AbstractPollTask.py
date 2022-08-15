@@ -34,7 +34,7 @@ class AbstractPollTask(AsynchronousTask):
             # Python 3.2:
             # TypeError: read() didn't return bytes
             pass
-        except IOError as e:
+        except OSError as e:
             # EIO happens with pty on Linux after the
             # slave end of the pty has been closed.
             if e.errno == errno.EIO:
@@ -93,7 +93,7 @@ class AbstractPollTask(AsynchronousTask):
 
     def _async_wait(self):
         self._unregister()
-        super(AbstractPollTask, self)._async_wait()
+        super()._async_wait()
 
     def _unregister(self):
         self._registered = False

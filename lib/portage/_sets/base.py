@@ -34,10 +34,8 @@ class PackageSet:
 
     def __iter__(self):
         self._load()
-        for x in self._atoms:
-            yield x
-        for x in self._nonatoms:
-            yield x
+        yield from self._atoms
+        yield from self._nonatoms
 
     def __bool__(self):
         self._load()
@@ -160,9 +158,7 @@ class PackageSet:
 
 class EditablePackageSet(PackageSet):
     def __init__(self, allow_wildcard=False, allow_repo=False):
-        super(EditablePackageSet, self).__init__(
-            allow_wildcard=allow_wildcard, allow_repo=allow_repo
-        )
+        super().__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
 
     def update(self, atoms):
         self._load()
@@ -223,9 +219,7 @@ class InternalPackageSet(EditablePackageSet):
         functions default to allow_repo=False, which is sufficient to ensure
         that repo atoms are prohibited when necessary.
         """
-        super(InternalPackageSet, self).__init__(
-            allow_wildcard=allow_wildcard, allow_repo=allow_repo
-        )
+        super().__init__(allow_wildcard=allow_wildcard, allow_repo=allow_repo)
         if initial_atoms is not None:
             self.update(initial_atoms)
 
@@ -242,7 +236,7 @@ class InternalPackageSet(EditablePackageSet):
 
 class DummyPackageSet(PackageSet):
     def __init__(self, atoms=None):
-        super(DummyPackageSet, self).__init__()
+        super().__init__()
         if atoms:
             self._setAtoms(atoms)
 

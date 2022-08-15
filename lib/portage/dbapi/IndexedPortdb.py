@@ -77,8 +77,8 @@ class IndexedPortdb:
                 f = None
                 for filename in filenames:
                     try:
-                        f = io.open(filename, encoding=_encodings["repo.content"])
-                    except IOError as e:
+                        f = open(filename, encoding=_encodings["repo.content"])
+                    except OSError as e:
                         if e.errno not in (errno.ENOENT, errno.ESTALE):
                             raise
                     else:

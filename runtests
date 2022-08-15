@@ -138,7 +138,9 @@ def main(argv):
             cmd = [prog, "-b", "-Wd", "lib/portage/tests/runTests.py"] + args
             if os.access(prog, os.X_OK):
                 print(
-                    "%sTesting with Python %s...%s" % (colors.GOOD, ver, colors.NORMAL)
+                    "{}Testing with Python {}...{}".format(
+                        colors.GOOD, ver, colors.NORMAL
+                    )
                 )
                 statuses.append((ver, subprocess.call(cmd)))
             elif not ignore_missing:
@@ -148,7 +150,7 @@ def main(argv):
                 )
                 statuses.append((ver, 1))
             else:
-                print("%sSkip Python %s...%s" % (colors.WARN, ver, colors.NORMAL))
+                print("{}Skip Python {}...{}".format(colors.WARN, ver, colors.NORMAL))
             print()
     finally:
         if tempdir is not None:
@@ -162,7 +164,7 @@ def main(argv):
     print("\nSummary:\n")
     width = 10
     header = "| %-*s | %s" % (width, "Version", "Status")
-    print("%s\n|%s" % (header, "-" * (len(header) - 1)))
+    print("{}\n|{}".format(header, "-" * (len(header) - 1)))
     exit_status = 0
     for ver, status in statuses:
         exit_status += status

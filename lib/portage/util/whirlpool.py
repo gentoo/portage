@@ -2180,7 +2180,7 @@ def WhirlpoolInit(ctx):
 
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
-        raise TypeError("Expected %s, got %s" % (bytes, type(source)))
+        raise TypeError("Expected {}, got {}".format(bytes, type(source)))
     if sourceBits == 0:
         return
 

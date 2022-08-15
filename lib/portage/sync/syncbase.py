@@ -73,7 +73,7 @@ class SyncBase:
         try:
             self.repo_storage
         except RepoStorageException as e:
-            writemsg_level("!!! %s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+            writemsg_level("!!! {}\n".format(e), level=logging.ERROR, noiselevel=-1)
             return False
 
         return True
@@ -293,11 +293,9 @@ class SyncBase:
 
         out.ebegin(
             "Refreshing keys from keyserver{}".format(
-                (
-                    ""
-                    if self.repo.sync_openpgp_keyserver is None
-                    else " " + self.repo.sync_openpgp_keyserver
-                )
+                ""
+                if self.repo.sync_openpgp_keyserver is None
+                else " " + self.repo.sync_openpgp_keyserver
             )
         )
         retry_decorator = self._key_refresh_retry_decorator()
@@ -317,7 +315,7 @@ class SyncBase:
                         keyserver=self.repo.sync_openpgp_keyserver
                     )
                 except Exception as e:
-                    writemsg_level("%s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+                    writemsg_level("{}\n".format(e), level=logging.ERROR, noiselevel=-1)
                     raise  # retry
 
             # The ThreadPoolExecutor that asyncio uses by default

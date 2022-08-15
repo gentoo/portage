@@ -46,7 +46,7 @@ class dbapi:
         """
         if self._categories is not None:
             return self._categories
-        self._categories = tuple(sorted(set(catsplit(x)[0] for x in self.cp_all())))
+        self._categories = tuple(sorted({catsplit(x)[0] for x in self.cp_all()}))
         return self._categories
 
     def close_caches(self):
@@ -392,7 +392,7 @@ class dbapi:
                 pkg = _pkg_str(cpv, metadata=metadata, settings=self.settings)
             except InvalidData:
                 continue
-            metadata = dict((k, metadata[k]) for k in update_keys)
+            metadata = {k: metadata[k] for k in update_keys}
             if repo_dict is None:
                 updates_list = updates
             else:
@@ -454,7 +454,7 @@ class dbapi:
                 and mycpv.sub_slot
                 and mycpv.sub_slot not in (mycpv.slot, newslot)
             ):
-                newslot = "%s/%s" % (newslot, mycpv.sub_slot)
+                newslot = "{}/{}".format(newslot, mycpv.sub_slot)
             mydata = {"SLOT": newslot + "\n"}
             self.aux_update(mycpv, mydata)
         return moves

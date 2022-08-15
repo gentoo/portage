@@ -279,7 +279,7 @@ class LinkageMapELF:
             args.extend(os.path.join(root, x.lstrip("." + os.sep)) for x in plibs)
             try:
                 proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 raise CommandNotFound(args[0])
@@ -309,7 +309,7 @@ class LinkageMapELF:
                         entry = NeededEntry.parse("scanelf", l)
                     except InvalidData as e:
                         writemsg_level(
-                            "\n%s\n\n" % (e,), level=logging.ERROR, noiselevel=-1
+                            "\n{}\n\n".format(e), level=logging.ERROR, noiselevel=-1
                         )
                         continue
                     try:
@@ -322,7 +322,7 @@ class LinkageMapELF:
                             "rb",
                         ) as f:
                             elf_header = ELFHeader.read(f)
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno != errno.ENOENT:
                             raise
                         # File removed concurrently.
@@ -344,7 +344,7 @@ class LinkageMapELF:
                             )
                             out, err = proc.communicate()
                             proc.wait()
-                        except EnvironmentError:
+                        except OSError:
                             pass
                         else:
                             if b"SB shared object" in out:
@@ -392,7 +392,7 @@ class LinkageMapELF:
             try:
                 entry = NeededEntry.parse(location, l)
             except InvalidData as e:
-                writemsg_level("\n%s\n\n" % (e,), level=logging.ERROR, noiselevel=-1)
+                writemsg_level("\n{}\n\n".format(e), level=logging.ERROR, noiselevel=-1)
                 continue
 
             # If NEEDED.ELF.2 contains the new multilib category field,
@@ -662,7 +662,7 @@ class LinkageMapELF:
                         if debug:
                             if not os.path.isfile(lib):
                                 writemsg_level(
-                                    _("Missing library:") + " %s\n" % (lib,),
+                                    _("Missing library:") + " {}\n".format(lib),
                                     level=logging.DEBUG,
                                     noiselevel=-1,
                                 )
@@ -719,7 +719,7 @@ class LinkageMapELF:
         os = _os_merge
         obj_key = self._obj_key(obj)
         if obj_key not in self._obj_properties:
-            raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+            raise KeyError("{} ({}) not in object list".format(obj_key, obj))
         basename = os.path.basename(obj)
         soname = self._obj_properties[obj_key].soname
         return (
@@ -835,13 +835,13 @@ class LinkageMapELF:
         else:
             obj_key = self._obj_key(obj)
             if obj_key not in self._obj_properties:
-                raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+                raise KeyError("{} ({}) not in object list".format(obj_key, obj))
 
         obj_props = self._obj_properties[obj_key]
         arch = obj_props.arch
         needed = obj_props.needed
         path = obj_props.runpaths
-        path_keys = set(self._path_key(x) for x in path.union(self._defpath))
+        path_keys = {self._path_key(x) for x in path.union(self._defpath)}
         for soname in needed:
             rValue[soname] = set()
             if arch not in self._libs or soname not in self._libs[arch]:
@@ -913,10 +913,10 @@ class LinkageMapELF:
                 raise KeyError("%s not in object list" % obj_key)
             objs = self._obj_properties[obj_key].alt_paths
         else:
-            objs = set([obj])
+            objs = {obj}
             obj_key = self._obj_key(obj)
             if obj_key not in self._obj_properties:
-                raise KeyError("%s (%s) not in object list" % (obj_key, obj))
+                raise KeyError("{} ({}) not in object list".format(obj_key, obj))
 
         # If there is another version of this lib with the
         # same soname and the soname symlink points to that
@@ -949,7 +949,7 @@ class LinkageMapELF:
         if arch_map is not None:
             soname_node = arch_map.get(soname)
 
-        defpath_keys = set(self._path_key(x) for x in self._defpath)
+        defpath_keys = {self._path_key(x) for x in self._defpath}
         satisfied_consumer_keys = set()
         if soname_node is not None:
             if exclude_providers is not None or not greedy:
@@ -984,7 +984,7 @@ class LinkageMapELF:
         if soname_node is not None:
             # For each potential consumer, add it to rValue if an object from the
             # arguments resides in the consumer's runpath.
-            objs_dir_keys = set(self._path_key(os.path.dirname(x)) for x in objs)
+            objs_dir_keys = {self._path_key(os.path.dirname(x)) for x in objs}
             for consumer_key in soname_node.consumers:
                 if consumer_key in satisfied_consumer_keys:
                     continue

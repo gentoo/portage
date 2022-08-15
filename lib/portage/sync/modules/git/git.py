@@ -52,7 +52,7 @@ class GitSync(NewBase):
                 self.logger(
                     self.xterm_titles, "Created new directory %s" % self.repo.location
                 )
-        except IOError:
+        except OSError:
             return (1, False)
 
         sync_uri = self.repo.sync_uri
@@ -62,22 +62,22 @@ class GitSync(NewBase):
         git_cmd_opts = ""
         if self.repo.module_specific_options.get("sync-git-env"):
             shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
-            env = dict(
-                (k, v)
+            env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-clone-env"):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-git-clone-env"]
             )
-            clone_env = dict(
-                (k, v)
+            clone_env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(clone_env)
 
         if self.settings.get("PORTAGE_QUIET") == "1":
@@ -93,7 +93,7 @@ class GitSync(NewBase):
             git_cmd_opts += (
                 " %s" % self.repo.module_specific_options["sync-git-clone-extra-opts"]
             )
-        git_cmd = "%s clone%s %s ." % (
+        git_cmd = "{} clone{} {} .".format(
             self.bin_command,
             git_cmd_opts,
             portage._shell_quote(sync_uri),
@@ -101,7 +101,7 @@ class GitSync(NewBase):
         writemsg_level(git_cmd + "\n")
 
         exitcode = portage.process.spawn_bash(
-            "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
+            "cd {} ; exec {}".format(portage._shell_quote(self.repo.location), git_cmd),
             **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
@@ -129,22 +129,22 @@ class GitSync(NewBase):
         quiet = self.settings.get("PORTAGE_QUIET") == "1"
         if self.repo.module_specific_options.get("sync-git-env"):
             shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
-            env = dict(
-                (k, v)
+            env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(env)
 
         if self.repo.module_specific_options.get("sync-git-pull-env"):
             shlexed_env = shlex_split(
                 self.repo.module_specific_options["sync-git-pull-env"]
             )
-            pull_env = dict(
-                (k, v)
+            pull_env = {
+                k: v
                 for k, _, v in (assignment.partition("=") for assignment in shlexed_env)
                 if k
-            )
+            }
             self.spawn_kwargs["env"].update(pull_env)
 
         if self.settings.get("PORTAGE_QUIET") == "1":
@@ -201,7 +201,7 @@ class GitSync(NewBase):
                 writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
                 return (exitcode, False)
 
-        git_cmd = "%s fetch %s%s" % (
+        git_cmd = "{} fetch {}{}".format(
             self.bin_command,
             remote_branch.partition("/")[0],
             git_cmd_opts,
@@ -215,7 +215,7 @@ class GitSync(NewBase):
         )
 
         exitcode = portage.process.spawn_bash(
-            "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
+            "cd {} ; exec {}".format(portage._shell_quote(self.repo.location), git_cmd),
             **self.spawn_kwargs,
         )
 
@@ -300,8 +300,10 @@ class GitSync(NewBase):
             env = None
             if openpgp_env is not None and self.repo.sync_openpgp_key_path is not None:
                 try:
-                    out.einfo("Using keys from %s" % (self.repo.sync_openpgp_key_path,))
-                    with io.open(self.repo.sync_openpgp_key_path, "rb") as f:
+                    out.einfo(
+                        "Using keys from {}".format(self.repo.sync_openpgp_key_path)
+                    )
+                    with open(self.repo.sync_openpgp_key_path, "rb") as f:
                         openpgp_env.import_key(f)
                     self._refresh_keys(openpgp_env)
                 except (GematoException, asyncio.TimeoutError) as e:
@@ -348,7 +350,7 @@ class GitSync(NewBase):
                 expl = "no signature"
             else:
                 expl = "unknown issue"
-            out.eerror("No valid signature found: %s" % (expl,))
+            out.eerror("No valid signature found: {}".format(expl))
             return False
         finally:
             if openpgp_env is not None:

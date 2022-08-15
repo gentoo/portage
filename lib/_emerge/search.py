@@ -475,14 +475,17 @@ class search:
                     try:
                         uri_map = _parse_uri_map(mycpv, metadata, use=pkg.use.enabled)
                     except portage.exception.InvalidDependString as e:
-                        file_size_str = "Unknown (%s)" % (e,)
+                        file_size_str = "Unknown ({})".format(e)
                         del e
                     else:
                         try:
                             mysum[0] = mf.getDistfilesSize(uri_map)
                         except KeyError as e:
-                            file_size_str = "Unknown (missing " + "digest for %s)" % (
-                                e,
+                            file_size_str = (
+                                "Unknown (missing "
+                                + "digest for {})".format(
+                                    e,
+                                )
                             )
                             del e
 

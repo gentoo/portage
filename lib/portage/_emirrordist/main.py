@@ -275,7 +275,7 @@ def emirrordist_main(args):
 
     repo_path = settings.repositories.treemap.get(options.repo)
     if repo_path is None:
-        parser.error("Unable to locate repository named '%s'" % (options.repo,))
+        parser.error("Unable to locate repository named '{}'".format(options.repo))
 
     if options.jobs is not None:
         options.jobs = int(options.jobs)

@@ -139,7 +139,7 @@ def has_version(argv):
             try:
                 atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
             except portage.exception.InvalidAtom as e:
-                warnings.append("QA Notice: %s: %s" % ("has_version", e))
+                warnings.append("QA Notice: {}: {}".format("has_version", e))
         atom = eval_atom_use(atom)
 
     if warnings:
@@ -188,7 +188,7 @@ def best_version(argv):
             try:
                 atom = portage.dep.Atom(argv[1], allow_repo=allow_repo, eapi=eapi)
             except portage.exception.InvalidAtom as e:
-                warnings.append("QA Notice: %s: %s" % ("best_version", e))
+                warnings.append("QA Notice: {}: {}".format("best_version", e))
         atom = eval_atom_use(atom)
 
     if warnings:
@@ -217,7 +217,7 @@ def mass_best_version(argv):
     try:
         for pack in argv[1:]:
             mylist = portage.db[argv[0]]["vartree"].dbapi.match(pack)
-            print("%s:%s" % (pack, portage.best(mylist)))
+            print("{}:{}".format(pack, portage.best(mylist)))
     except KeyError:
         return 1
 
@@ -346,7 +346,7 @@ def owners(argv):
         msg.append("%s\n" % cpv)
         for f in sorted(owned_files):
             f_abs = os.path.join(root, f.lstrip(os.path.sep))
-            msg.append("\t%s\n" % (f_abs,))
+            msg.append("\t{}\n".format(f_abs))
             orphan_abs_paths.discard(f_abs)
             if orphan_basenames:
                 orphan_basenames.discard(os.path.basename(f_abs))
@@ -361,7 +361,7 @@ def owners(argv):
         msg = []
         msg.append("None of the installed packages claim these files:\n")
         for f in orphans:
-            msg.append("\t%s\n" % (f,))
+            msg.append("\t{}\n".format(f))
         sys.stderr.write("".join(msg))
         sys.stderr.flush()
 
@@ -576,7 +576,7 @@ def best_visible(argv):
                     continue
 
                 if pkg.visible:
-                    writemsg_stdout("%s\n" % (pkg.cpv,), noiselevel=-1)
+                    writemsg_stdout("{}\n".format(pkg.cpv), noiselevel=-1)
                     return os.EX_OK
 
     # No package found, write out an empty line.
@@ -717,7 +717,7 @@ def expand_virtual(argv):
     results.sort()
     for x in results:
         if not x.blocker:
-            writemsg_stdout("%s\n" % (x,))
+            writemsg_stdout("{}\n".format(x))
 
     return os.EX_OK
 
@@ -1290,7 +1290,7 @@ def pquery(parser, opts, args):
                     metadata_xml_path = os.path.join(repo.location, cp, "metadata.xml")
                     try:
                         metadata_xml = MetaDataXML(metadata_xml_path, None)
-                    except (EnvironmentError, SyntaxError):
+                    except (OSError, SyntaxError):
                         match = False
                     else:
                         for matcher in xml_matchers:
@@ -1344,12 +1344,12 @@ def pquery(parser, opts, args):
                 continue
 
             if no_version:
-                writemsg_stdout("%s\n" % (cp,), noiselevel=-1)
+                writemsg_stdout("{}\n".format(cp), noiselevel=-1)
             else:
                 matches = list(set(matches))
                 portdb._cpv_sort_ascending(matches)
                 for cpv in matches:
-                    writemsg_stdout("%s\n" % (cpv,), noiselevel=-1)
+                    writemsg_stdout("{}\n".format(cpv), noiselevel=-1)
 
     return os.EX_OK
 
@@ -1510,7 +1510,7 @@ if atom_validate_strict:
     def elog(elog_funcname, lines):
         cmd = "source '%s/isolated-functions.sh' ; " % os.environ["PORTAGE_BIN_PATH"]
         for line in lines:
-            cmd += "%s %s ; " % (elog_funcname, portage._shell_quote(line))
+            cmd += "{} {} ; ".format(elog_funcname, portage._shell_quote(line))
         subprocess.call([portage.const.BASH_BINARY, "-c", cmd])
 
 else:

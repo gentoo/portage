@@ -707,7 +707,7 @@ class tar_safe_extract:
         them to the dest_dir after sanity check.
         """
         if self.closed:
-            raise IOError("Tar file is closed.")
+            raise OSError("Tar file is closed.")
         temp_dir = tempfile.TemporaryDirectory(dir=dest_dir)
         try:
             while True:

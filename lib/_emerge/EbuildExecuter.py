@@ -28,10 +28,10 @@ class EbuildExecuter(CompositeTask):
         if eapi_exports_replace_vars(settings["EAPI"]):
             vardb = pkg.root_config.trees["vartree"].dbapi
             settings["REPLACING_VERSIONS"] = " ".join(
-                set(
+                {
                     portage.versions.cpv_getversion(match)
                     for match in vardb.match(pkg.slot_atom) + vardb.match("=" + pkg.cpv)
-                )
+                }
             )
 
         setup_phase = EbuildPhase(

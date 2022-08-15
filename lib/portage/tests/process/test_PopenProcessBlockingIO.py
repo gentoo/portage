@@ -69,5 +69,5 @@ class PopenPipeBlockingIOTestCase(TestCase):
             test_string = x * "a"
             output = self._testPipeReader(test_string)
             self.assertEqual(
-                test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                test_string, output, "x = {}, len(output) = {}".format(x, len(output))
             )

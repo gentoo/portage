@@ -56,7 +56,7 @@ def _create_pty_or_pipe(copy_term_size=None):
         try:
             master_fd, slave_fd = pty.openpty()
             got_pty = True
-        except EnvironmentError as e:
+        except OSError as e:
             _disable_openpty = True
             writemsg("openpty failed: '%s'\n" % str(e), noiselevel=-1)
             del e

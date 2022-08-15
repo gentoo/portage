@@ -171,10 +171,10 @@ class EbuildFetchTestCase(TestCase):
             for k, v in orig_distfiles.items():
                 filename = DistfileName(
                     k,
-                    digests=dict(
-                        (algo, checksum_str(v, hashname=algo))
+                    digests={
+                        algo: checksum_str(v, hashname=algo)
                         for algo in MANIFEST2_HASH_DEFAULTS
-                    ),
+                    },
                 )
                 distfiles[filename] = v
 
@@ -186,7 +186,7 @@ class EbuildFetchTestCase(TestCase):
 
             shutil.rmtree(settings["DISTDIR"])
             os.makedirs(settings["DISTDIR"])
-            with open(os.path.join(settings["DISTDIR"], "layout.conf"), "wt") as f:
+            with open(os.path.join(settings["DISTDIR"], "layout.conf"), "w") as f:
                 f.write(layout_data)
 
             if any(isinstance(layout, ContentHashLayout) for layout in layouts):
@@ -254,7 +254,9 @@ class EbuildFetchTestCase(TestCase):
 				"""
                     % orig_fetchcommand.replace("${FILE}", "${FILE}.__download__")
                 )
-            settings["FETCHCOMMAND"] = '"%s" "%s" "${URI}" "${DISTDIR}" "${FILE}"' % (
+            settings[
+                "FETCHCOMMAND"
+            ] = '"{}" "{}" "${{URI}}" "${{DISTDIR}}" "${{FILE}}"'.format(
                 BASH_BINARY,
                 temp_fetchcommand,
             )
@@ -744,10 +746,10 @@ class EbuildFetchTestCase(TestCase):
 
         filename = DistfileName(
             "foo-1.tar.gz",
-            digests=dict(
-                (algo, checksum_str(b"", hashname=algo))
+            digests={
+                algo: checksum_str(b"", hashname=algo)
                 for algo in MANIFEST2_HASH_DEFAULTS
-            ),
+            },
         )
 
         # Raise KeyError for a hash algorithm SHA1 which is not in MANIFEST2_HASH_DEFAULTS.
@@ -851,10 +853,10 @@ class EbuildFetchTestCase(TestCase):
     def test_filename_hash_layout_get_filenames(self):
         filename = DistfileName(
             "foo-1.tar.gz",
-            digests=dict(
-                (algo, checksum_str(b"", hashname=algo))
+            digests={
+                algo: checksum_str(b"", hashname=algo)
                 for algo in MANIFEST2_HASH_DEFAULTS
-            ),
+            },
         )
         layouts = (
             FlatLayout(),
