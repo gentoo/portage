@@ -89,7 +89,7 @@ def main():
         for mydir in getTestDirs(basedir):
             testsubdir = mydir.name
             for name in getTestNames(mydir):
-                print("%s/%s/%s.py" % (testdir, testsubdir, name))
+                print("{}/{}/{}.py".format(testdir, testsubdir, name))
         return os.EX_OK
 
     if len(options.tests) > 1:
@@ -181,7 +181,7 @@ class TextTestResult(_TextTestResult):
     """
 
     def __init__(self, stream, descriptions, verbosity):
-        super(TextTestResult, self).__init__(stream, descriptions, verbosity)
+        super().__init__(stream, descriptions, verbosity)
         self.todoed = []
         self.portage_skipped = []
 
@@ -273,14 +273,14 @@ class TestCase(unittest.TestCase):
                 testMethod()
                 ok = True
             except unittest.SkipTest as e:
-                result.addPortageSkip(self, "%s: SKIP: %s" % (testMethod, str(e)))
+                result.addPortageSkip(self, "{}: SKIP: {}".format(testMethod, str(e)))
             except self.failureException:
                 if self.portage_skip is not None:
                     if self.portage_skip is True:
                         result.addPortageSkip(self, "%s: SKIP" % testMethod)
                     else:
                         result.addPortageSkip(
-                            self, "%s: SKIP: %s" % (testMethod, self.portage_skip)
+                            self, "{}: SKIP: {}".format(testMethod, self.portage_skip)
                         )
                 elif self.todo:
                     result.addTodo(self, "%s: TODO" % testMethod)
@@ -322,7 +322,7 @@ class TestCase(unittest.TestCase):
                 excName = excClass.__name__
             else:
                 excName = str(excClass)
-            raise self.failureException("%s not raised: %s" % (excName, msg))
+            raise self.failureException("{} not raised: {}".format(excName, msg))
 
     def assertNotExists(self, path):
         """Make sure |path| does not exist"""

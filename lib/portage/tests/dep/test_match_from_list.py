@@ -16,7 +16,7 @@ class Package:
         self.cp = atom.cp
         slot = atom.slot
         if atom.sub_slot:
-            slot = "%s/%s" % (slot, atom.sub_slot)
+            slot = "{}/{}".format(slot, atom.sub_slot)
         if not slot:
             slot = "0"
         self.cpv = _pkg_str(atom.cpv, slot=slot, repo=atom.repo)

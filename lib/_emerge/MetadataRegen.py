@@ -37,8 +37,7 @@ class MetadataRegen(AsyncScheduler):
         # and in order to reduce latency in case of a signal interrupt.
         cp_all = self._portdb.cp_all
         for category in sorted(self._portdb.categories):
-            for cp in cp_all(categories=(category,)):
-                yield cp
+            yield from cp_all(categories=(category,))
 
     def _iter_metadata_processes(self):
         portdb = self._portdb
@@ -85,7 +84,7 @@ class MetadataRegen(AsyncScheduler):
                     )
 
     def _cleanup(self):
-        super(MetadataRegen, self)._cleanup()
+        super()._cleanup()
 
         portdb = self._portdb
         dead_nodes = {}
@@ -101,7 +100,7 @@ class MetadataRegen(AsyncScheduler):
                 except CacheError as e:
                     portage.writemsg(
                         "Error listing cache entries for "
-                        + "'%s': %s, continuing...\n" % (mytree, e),
+                        + "'{}': {}, continuing...\n".format(mytree, e),
                         noiselevel=-1,
                     )
                     del e
@@ -112,13 +111,13 @@ class MetadataRegen(AsyncScheduler):
             cpv_getkey = portage.cpv_getkey
             for mytree in portdb.porttrees:
                 try:
-                    dead_nodes[mytree] = set(
+                    dead_nodes[mytree] = {
                         cpv for cpv in portdb.auxdb[mytree] if cpv_getkey(cpv) in cp_set
-                    )
+                    }
                 except CacheError as e:
                     portage.writemsg(
                         "Error listing cache entries for "
-                        + "'%s': %s, continuing...\n" % (mytree, e),
+                        + "'{}': {}, continuing...\n".format(mytree, e),
                         noiselevel=-1,
                     )
                     del e
@@ -147,7 +146,7 @@ class MetadataRegen(AsyncScheduler):
             self._valid_pkgs.discard(metadata_process.cpv)
             if not self._terminated_tasks:
                 portage.writemsg(
-                    "Error processing %s, continuing...\n" % (metadata_process.cpv,),
+                    "Error processing {}, continuing...\n".format(metadata_process.cpv),
                     noiselevel=-1,
                 )
 

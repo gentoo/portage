@@ -57,9 +57,8 @@ def collect_ebuild_messages(path):
             logentries[msgfunction] = []
         lastmsgtype = None
         msgcontent = []
-        f = io.open(
+        f = open(
             _unicode_encode(filename, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         )

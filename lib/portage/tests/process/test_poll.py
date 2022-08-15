@@ -29,7 +29,7 @@ class PipeReaderTestCase(TestCase):
         def make_pipes():
             try:
                 return pty.openpty(), None
-            except EnvironmentError:
+            except OSError:
                 self.skipTest("pty not available")
 
         self._do_test(make_pipes)
@@ -101,7 +101,9 @@ class PipeReaderTestCase(TestCase):
             try:
                 output = self._testPipeReader(read_end, write_end, test_string)
                 self.assertEqual(
-                    test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                    test_string,
+                    output,
+                    "x = {}, len(output) = {}".format(x, len(output)),
                 )
             finally:
                 if cleanup is not None:
@@ -115,7 +117,7 @@ class PipeReaderArrayTestCase(PipeReaderTestCase):
     _echo_cmd = "sleep 0.1 ; echo -n '%s'"
 
     def __init__(self, *args, **kwargs):
-        super(PipeReaderArrayTestCase, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         # https://bugs.python.org/issue5380
         # https://bugs.pypy.org/issue956
         self.todo = True

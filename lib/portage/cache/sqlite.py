@@ -30,7 +30,7 @@ class database(fs_template.FsBased):
     )
 
     def __init__(self, *args, **config):
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
         self._import_sqlite()
         self._allowed_keys = ["_eclasses_"]
         self._allowed_keys.extend(self._known_keys)
@@ -202,7 +202,7 @@ class database(fs_template.FsBased):
         if m is None:
             return False, missing_keys
 
-        unique_constraints = set([self._db_table["packages"]["package_key"]])
+        unique_constraints = {self._db_table["packages"]["package_key"]}
         missing_keys = set(self._allowed_keys)
         unique_re = re.compile(r"^\s*UNIQUE\s*\(\s*(\w*)\s*\)\s*$")
         column_re = re.compile(r"^\s*(\w*)\s*TEXT\s*$")
@@ -309,7 +309,7 @@ class database(fs_template.FsBased):
             s = " ".join(update_statement)
             cursor.execute(s)
         except self._db_error as e:
-            writemsg("%s: %s\n" % (cpv, str(e)))
+            writemsg("{}: {}\n".format(cpv, str(e)))
             raise
 
     def commit(self):

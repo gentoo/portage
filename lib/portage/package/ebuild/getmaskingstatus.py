@@ -149,7 +149,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     try:
         missing_licenses = settings._getMissingLicenses(mycpv, metadata)
         if missing_licenses:
-            allowed_tokens = set(["||", "(", ")"])
+            allowed_tokens = {"||", "(", ")"}
             allowed_tokens.update(missing_licenses)
             license_split = licenses.split()
             license_split = [x for x in license_split if x in allowed_tokens]
@@ -168,7 +168,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
     try:
         missing_properties = settings._getMissingProperties(mycpv, metadata)
         if missing_properties:
-            allowed_tokens = set(["||", "(", ")"])
+            allowed_tokens = {"||", "(", ")"}
             allowed_tokens.update(missing_properties)
             properties_split = properties.split()
             properties_split = [x for x in properties_split if x in allowed_tokens]
@@ -185,7 +185,7 @@ def _getmaskingstatus(mycpv, settings, portdb, myrepo=None):
             msg.append("in RESTRICT")
             rValue.append(_MaskReason("RESTRICT", " ".join(msg)))
     except InvalidDependString as e:
-        rValue.append(_MaskReason("invalid", "RESTRICT: %s" % (e,)))
+        rValue.append(_MaskReason("invalid", "RESTRICT: {}".format(e)))
 
     # Only show KEYWORDS masks for installed packages
     # if they're not masked for any other reason.

@@ -54,7 +54,7 @@ class CompositeTask(AsynchronousTask):
         for detecting bugs.
         """
         if task is not self._current_task:
-            raise AssertionError("Unrecognized task: %s" % (task,))
+            raise AssertionError("Unrecognized task: {}".format(task))
 
     def _default_exit(self, task):
         """

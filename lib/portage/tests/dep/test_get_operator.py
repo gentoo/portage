@@ -30,7 +30,7 @@ class GetOperator(TestCase):
                     self.assertEqual(
                         result,
                         test[1],
-                        msg="get_operator(%s) != %s" % (test[0] + atom, test[1]),
+                        msg="get_operator({}) != {}".format(test[0] + atom, test[1]),
                     )
 
         result = get_operator("sys-apps/portage")

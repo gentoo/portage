@@ -472,9 +472,8 @@ def read_corresponding_eapi_file(filename, default="0"):
 
     eapi = None
     try:
-        with io.open(
+        with open(
             _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -487,7 +486,7 @@ def read_corresponding_eapi_file(filename, default="0"):
                 % (eapi_file),
                 noiselevel=-1,
             )
-    except IOError:
+    except OSError:
         pass
 
     _eapi_cache[eapi_file] = eapi
@@ -679,9 +678,8 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
 
     else:
         try:
-            with io.open(
+            with open(
                 _unicode_encode(myfilename, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["content"],
                 errors="replace",
             ) as myfile:
@@ -689,7 +687,7 @@ def grablines(myfilename, recursive=0, remember_source_file=False):
                     mylines = [(line, myfilename) for line in myfile.readlines()]
                 else:
                     mylines = myfile.readlines()
-        except IOError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(myfilename)
             elif e.errno in (errno.ENOENT, errno.ESTALE):
@@ -708,7 +706,7 @@ def writedict(mydict, myfilename, writekey=True):
             lines.append(v + "\n")
     else:
         for k, v in mydict.items():
-            lines.append("%s %s\n" % (k, " ".join(v)))
+            lines.append("{} {}\n".format(k, " ".join(v)))
     write_atomic(myfilename, "".join(lines))
 
 
@@ -734,11 +732,11 @@ class _getconfig_shlex(shlex.shlex):
         try:
             newfile = varexpand(newfile, self.var_expand_map)
             return shlex.shlex.sourcehook(self, newfile)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(newfile)
             if e.errno not in (errno.ENOENT, errno.ENOTDIR):
-                writemsg("open('%s', 'r'): %s\n" % (newfile, e), noiselevel=-1)
+                writemsg("open('{}', 'r'): {}\n".format(newfile, e), noiselevel=-1)
                 raise
 
             msg = self.error_leader()
@@ -795,16 +793,15 @@ def getconfig(
     try:
         f = open(
             _unicode_encode(mycfg, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         )
         content = f.read()
-    except IOError as e:
+    except OSError as e:
         if e.errno == PermissionDenied.errno:
             raise PermissionDenied(mycfg)
         if e.errno != errno.ENOENT:
-            writemsg("open('%s', 'r'): %s\n" % (mycfg, e), noiselevel=-1)
+            writemsg("open('{}', 'r'): {}\n".format(mycfg, e), noiselevel=-1)
             if e.errno not in (errno.EISDIR,):
                 raise
         return None
@@ -908,7 +905,7 @@ def getconfig(
     except Exception as e:
         if isinstance(e, ParseError) or lex is None:
             raise
-        msg = "%s%s" % (lex.error_leader(), e)
+        msg = "{}{}".format(lex.error_leader(), e)
         writemsg("%s\n" % msg, noiselevel=-1)
         raise
 
@@ -1128,7 +1125,7 @@ class cmp_sort_key:
         def __lt__(self, other):
             if other.__class__ is not self.__class__:
                 raise TypeError(
-                    "Expected type %s, got %s" % (self.__class__, other.__class__)
+                    "Expected type {}, got {}".format(self.__class__, other.__class__)
                 )
             return self._cmp_func(self._obj, other._obj) < 0
 
@@ -1290,7 +1287,7 @@ def apply_permissions(
             os.chmod(filename, new_mode)
             modified = True
         except OSError as oe:
-            func_call = "chmod('%s', %s)" % (filename, oct(new_mode))
+            func_call = "chmod('{}', {})".format(filename, oct(new_mode))
             if oe.errno == errno.EPERM:
                 raise OperationNotPermitted(func_call)
             elif oe.errno == errno.EACCES:
@@ -1467,7 +1464,7 @@ class atomic_ofstream(AbstractContextManager, ObjectProxy):
                     ),
                 )
                 return
-            except IOError as e:
+            except OSError as e:
                 if canonical_path == filename:
                     raise
                 # Ignore this error, since it's irrelevant
@@ -1560,7 +1557,7 @@ def write_atomic(file_path, content, **kwargs):
         f = atomic_ofstream(file_path, **kwargs)
         f.write(content)
         f.close()
-    except (IOError, OSError) as e:
+    except OSError as e:
         if f:
             f.abort()
         func_call = "write_atomic('%s')" % file_path
@@ -2005,8 +2002,7 @@ def getlibpaths(root, env=None):
             if include_match is not None:
                 subpath = os.path.join(os.path.dirname(path), include_match.group(1))
                 for p in glob.glob(subpath):
-                    for r in read_ld_so_conf(p):
-                        yield r
+                    yield from read_ld_so_conf(p)
             else:
                 yield l
 

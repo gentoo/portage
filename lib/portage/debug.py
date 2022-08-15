@@ -74,7 +74,7 @@ class trace_handler:
             my_repr = repr(arg[1])
             if len(my_repr) > self.max_repr_length:
                 my_repr = "'omitted'"
-            return "type=%s value=%s " % (arg[0], my_repr)
+            return "type={} value={} ".format(arg[0], my_repr)
 
         return ""
 

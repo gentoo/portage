@@ -47,7 +47,7 @@ autodetect_pip = os.path.basename(os.environ.get("_", "")) == "pip" or os.path.b
 ).startswith("pip-")
 venv_prefix = "" if sys.prefix == sys.base_prefix else sys.prefix
 create_entry_points = bool(autodetect_pip or venv_prefix)
-with open(os.path.join(os.path.dirname(__file__), "README.md"), "rt") as f:
+with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
     long_description = f.read()
 
 # TODO:
@@ -129,7 +129,7 @@ class build_man(Command):
                 if not newer(source, target) and not newer(__file__, target):
                     continue
 
-                print("copying and updating %s -> %s" % (source, target))
+                print("copying and updating {} -> {}".format(source, target))
 
                 with codecs.open(source, "r", "utf8") as f:
                     data = f.readlines()
@@ -679,7 +679,7 @@ class build_tests(x_build_scripts_custom):
                 )
             os.unlink(conf_dir)
         conf_src = os.path.relpath("cnf", self.top_dir)
-        print("Symlinking %s -> %s" % (conf_dir, conf_src))
+        print("Symlinking {} -> {}".format(conf_dir, conf_src))
         os.symlink(conf_src, conf_dir)
 
         source_path = os.path.realpath(__file__)

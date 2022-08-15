@@ -16,7 +16,7 @@ class SecuritySet(PackageSet):
     description = "package set that includes all packages possibly affected by a GLSA"
 
     def __init__(self, settings, vardbapi, portdbapi, least_change=True):
-        super(SecuritySet, self).__init__()
+        super().__init__()
         self._settings = settings
         self._vardbapi = vardbapi
         self._portdbapi = portdbapi
@@ -49,7 +49,7 @@ class SecuritySet(PackageSet):
         for atom in atomlist[:]:
             cpv = self._portdbapi.xmatch("match-all", atom)[0]
             pkg = self._portdbapi._pkg_str(cpv, None)
-            cps = "%s:%s" % (pkg.cp, pkg.slot)
+            cps = "{}:{}".format(pkg.cp, pkg.slot)
             if not cps in mydict:
                 mydict[cps] = (atom, cpv)
             else:

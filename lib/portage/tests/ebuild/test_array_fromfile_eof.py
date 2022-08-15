@@ -27,7 +27,7 @@ class ArrayFromfileEofTestCase(TestCase):
             a = array.array("B")
             try:
                 a.fromfile(f, len(input_bytes) + 1)
-            except (EOFError, IOError):
+            except (EOFError, OSError):
                 # python-3.0 lost data here
                 eof = True
 

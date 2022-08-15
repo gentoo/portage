@@ -372,7 +372,9 @@ def _check_distfile(filename, digests, eout, show_errors=1, hash_filter=None):
             digests = _apply_hash_filter(digests, hash_filter)
         if _check_digests(filename, digests, show_errors=show_errors):
             eout.ebegin(
-                "%s %s ;-)" % (os.path.basename(filename), " ".join(sorted(digests)))
+                "{} {} ;-)".format(
+                    os.path.basename(filename), " ".join(sorted(digests))
+                )
             )
             eout.eend(0)
         else:
@@ -579,7 +581,7 @@ class ContentHashLayout(FilenameHashLayout):
         to a digest value for self.algo, and which can be compared to
         other DistfileName instances with their digests_equal method.
         """
-        for filename in super(ContentHashLayout, self).get_filenames(distdir):
+        for filename in super().get_filenames(distdir):
             yield DistfileName(filename, digests=dict([(self.algo, filename)]))
 
     @staticmethod
@@ -702,9 +704,9 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
     cache = {}
     if cache_path is not None:
         try:
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache = json.load(f)
-        except (IOError, ValueError):
+        except (OSError, ValueError):
             pass
 
     ts, data = cache.get(mirror_url, (0, None))
@@ -726,8 +728,8 @@ def get_mirror_url(mirror_url, filename, mysettings, cache_path=None):
                 tmpfile = os.path.join(mysettings["DISTDIR"], tmpfile)
                 mirror_conf.read_from_file(tmpfile)
             else:
-                raise IOError()
-        except (ConfigParserError, IOError, UnicodeDecodeError):
+                raise OSError()
+        except (ConfigParserError, OSError, UnicodeDecodeError):
             pass
         else:
             cache[mirror_url] = (time.time(), mirror_conf.serialize())
@@ -1217,7 +1219,7 @@ def fetch(
                     vfs_stat = os.statvfs(mysettings["DISTDIR"])
                 except OSError as e:
                     writemsg_level(
-                        "!!! statvfs('%s'): %s\n" % (mysettings["DISTDIR"], e),
+                        "!!! statvfs('{}'): {}\n".format(mysettings["DISTDIR"], e),
                         noiselevel=-1,
                         level=logging.ERROR,
                     )
@@ -1444,7 +1446,7 @@ def fetch(
                             shutil.copyfile(mirror_file, download_path)
                             writemsg(_("Local mirror has file: %s\n") % myfile)
                             break
-                        except (IOError, OSError) as e:
+                        except OSError as e:
                             if e.errno not in (errno.ENOENT, errno.ESTALE):
                                 raise
                             del e
@@ -1482,7 +1484,7 @@ def fetch(
                         if distdir_writable:
                             try:
                                 os.unlink(download_path)
-                            except EnvironmentError:
+                            except OSError:
                                 pass
                     elif not orig_digests:
                         # We don't have a digest, and the temporary file exists.
@@ -1503,7 +1505,7 @@ def fetch(
                         ):
                             eout = EOutput()
                             eout.quiet = mysettings.get("PORTAGE_QUIET") == "1"
-                            eout.ebegin("%s size ;-)" % (myfile,))
+                            eout.ebegin("{} size ;-)".format(myfile))
                             eout.eend(0)
                             continue
                         else:
@@ -1555,7 +1557,7 @@ def fetch(
                                     digests = list(digests)
                                     digests.sort()
                                     eout.ebegin(
-                                        "%s %s ;-)" % (myfile, " ".join(digests))
+                                        "{} {} ;-)".format(myfile, " ".join(digests))
                                     )
                                     eout.eend(0)
                                 continue  # fetch any remaining files
@@ -1735,7 +1737,7 @@ def fetch(
                     try:
                         variables["DIGESTS"] = " ".join(
                             [
-                                "%s:%s" % (k.lower(), v)
+                                "{}:{}".format(k.lower(), v)
                                 for k, v in mydigests[myfile].items()
                                 if k != "size"
                             ]
@@ -1784,7 +1786,7 @@ def fetch(
                             os.unlink(download_path)
                             fetched = 0
                             continue
-                    except EnvironmentError:
+                    except OSError:
                         pass
 
                     if mydigests is not None and myfile in mydigests:
@@ -1850,13 +1852,12 @@ def fetch(
                                         "<title>.*(not found|404).*</title>",
                                         re.I | re.M,
                                     )
-                                    with io.open(
+                                    with open(
                                         _unicode_encode(
                                             download_path,
                                             encoding=_encodings["fs"],
                                             errors="strict",
                                         ),
-                                        mode="r",
                                         encoding=_encodings["content"],
                                         errors="replace",
                                     ) as f:
@@ -1870,7 +1871,7 @@ def fetch(
                                                 )
                                                 fetched = 0
                                                 continue
-                                            except (IOError, OSError):
+                                            except OSError:
                                                 pass
                                 fetched = 1
                                 continue

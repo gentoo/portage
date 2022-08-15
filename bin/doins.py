@@ -36,7 +36,7 @@ def _warn(helper, msg):
             helper: helper executable name.
             msg: Message to be output.
     """
-    print("!!! %s: %s\n" % (helper, msg), file=sys.stderr)
+    print("!!! {}: {}\n".format(helper, msg), file=sys.stderr)
 
 
 def _parse_group(group):
@@ -111,7 +111,7 @@ def _parse_install_options(
     # Because parsing '--mode' option is partially supported. If unknown
     # arg for --mode is passed, namespace.mode is set to None.
     if remaining or namespace.mode is None:
-        _warn(helper, "Unknown install options: %s, %r" % (options, remaining))
+        _warn(helper, "Unknown install options: {}, {!r}".format(options, remaining))
         if is_strict:
             sys.exit(1)
         _warn(
@@ -253,7 +253,7 @@ class _InsInProcessInstallRunner:
         ):
             return True
 
-        _warn(self._helper, "%s and %s are same file." % (source, dest))
+        _warn(self._helper, "{} and {} are same file.".format(source, dest))
         return False
 
 
@@ -534,7 +534,7 @@ def _install_dir(opts, install_runner, source):
     """
     if not opts.recursive:
         if opts.helper == "dodoc":
-            _warn(opts.helper, "%s is a directory" % (source,))
+            _warn(opts.helper, "{} is a directory".format(source))
             return False
         # Neither success nor fail. Return None to indicate skipped.
         return None

@@ -48,9 +48,8 @@ class EbuildMetadataPhase(SubProcess):
     def _start(self):
         ebuild_path = self.ebuild_hash.location
 
-        with io.open(
+        with open(
             _unicode_encode(ebuild_path, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:

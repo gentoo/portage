@@ -25,15 +25,14 @@ def ExtractKernelVersion(base_dir):
     lines = []
     pathname = os.path.join(base_dir, "Makefile")
     try:
-        f = io.open(
+        f = open(
             _unicode_encode(pathname, encoding=_encodings["fs"], errors="strict"),
-            mode="r",
             encoding=_encodings["content"],
             errors="replace",
         )
     except OSError as details:
         return (None, str(details))
-    except IOError as details:
+    except OSError as details:
         return (None, str(details))
 
     try:
@@ -41,7 +40,7 @@ def ExtractKernelVersion(base_dir):
             lines.append(f.readline())
     except OSError as details:
         return (None, str(details))
-    except IOError as details:
+    except OSError as details:
         return (None, str(details))
     finally:
         f.close()
@@ -81,7 +80,7 @@ def ExtractKernelVersion(base_dir):
         for file_path, file_errors in loader_errors.items():
             for error_str in file_errors:
                 writemsg_level(
-                    "%s: %s\n" % (file_path, error_str),
+                    "{}: {}\n".format(file_path, error_str),
                     level=logging.ERROR,
                     noiselevel=-1,
                 )

@@ -312,7 +312,7 @@ class ResolverPlayground:
                     f.write(copyright_header)
                 f.write('EAPI="%s"\n' % eapi)
                 for k, v in metadata.items():
-                    f.write('%s="%s"\n' % (k, v))
+                    f.write('{}="{}"\n'.format(k, v))
                 if misc_content is not None:
                     f.write(misc_content)
 
@@ -369,11 +369,13 @@ class ResolverPlayground:
             if "BUILD_ID" in metadata:
                 if binpkg_format == "xpak":
                     binpkg_path = os.path.join(
-                        category_dir, pn, "%s-%s.xpak" % (pf, metadata["BUILD_ID"])
+                        category_dir, pn, "{}-{}.xpak".format(pf, metadata["BUILD_ID"])
                     )
                 elif binpkg_format == "gpkg":
                     binpkg_path = os.path.join(
-                        category_dir, pn, "%s-%s.gpkg.tar" % (pf, metadata["BUILD_ID"])
+                        category_dir,
+                        pn,
+                        "{}-{}.gpkg.tar".format(pf, metadata["BUILD_ID"]),
                     )
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
@@ -437,7 +439,7 @@ class ResolverPlayground:
             with open(ebuild_path, "w") as f:
                 f.write('EAPI="%s"\n' % metadata.pop("EAPI", "0"))
                 for k, v in metadata.items():
-                    f.write('%s="%s"\n' % (k, v))
+                    f.write('{}="{}"\n'.format(k, v))
 
             env_path = os.path.join(vdb_pkg_dir, "environment.bz2")
             with bz2.BZ2File(env_path, mode="w") as f:
@@ -517,7 +519,7 @@ class ResolverPlayground:
 
             for eclass_name, eclass_content in eclasses.items():
                 with open(
-                    os.path.join(eclass_dir, "{}.eclass".format(eclass_name)), "wt"
+                    os.path.join(eclass_dir, "{}.eclass".format(eclass_name)), "w"
                 ) as f:
                     if isinstance(eclass_content, str):
                         eclass_content = [eclass_content]
@@ -688,7 +690,7 @@ class ResolverPlayground:
                 "[%s]\n%s"
                 % (
                     repo_name,
-                    "\n".join("%s = %s" % (k, v) for k, v in repo_config.items()),
+                    "\n".join("{} = {}".format(k, v) for k, v in repo_config.items()),
                 )
                 for repo_name, repo_config in self._repositories.items()
             )
@@ -942,7 +944,7 @@ class ResolverPlaygroundTestCase:
                 expected = set(expected)
 
             elif key == "forced_rebuilds" and expected is not None:
-                expected = dict((k, set(v)) for k, v in expected.items())
+                expected = {k: set(v) for k, v in expected.items()}
 
             if got != expected:
                 fail_msgs.append(
@@ -980,7 +982,7 @@ def _mergelist_str(x, depgraph):
                 desc = x.type_name
             else:
                 desc = x.operation
-            mergelist_str = "[%s]%s" % (desc, mergelist_str)
+            mergelist_str = "[{}]{}".format(desc, mergelist_str)
         if x.root != depgraph._frozen_config._running_root.root:
             mergelist_str += "{targetroot}"
     return mergelist_str
@@ -1080,17 +1082,17 @@ class ResolverPlaygroundResult:
             )
 
         if self.depgraph._dynamic_config._unsatisfied_deps_for_display:
-            self.unsatisfied_deps = set(
+            self.unsatisfied_deps = {
                 dep_info[0][1]
                 for dep_info in self.depgraph._dynamic_config._unsatisfied_deps_for_display
-            )
+            }
 
         if self.depgraph._forced_rebuilds:
-            self.forced_rebuilds = dict(
-                (child.cpv, set(parent.cpv for parent in parents))
+            self.forced_rebuilds = {
+                child.cpv: {parent.cpv for parent in parents}
                 for child_dict in self.depgraph._forced_rebuilds.values()
                 for child, parents in child_dict.items()
-            )
+            }
 
         required_use_unsatisfied = []
         for (

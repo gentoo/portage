@@ -68,10 +68,8 @@ class Module:
     def get_class(self, name):
         if not name or name not in self.kids_names:
             raise InvalidModuleName(
-                (
-                    f"Module name '{name}' is invalid or not"
-                    f"part of the module '{self.name}'"
-                )
+                f"Module name '{name}' is invalid or not"
+                f"part of the module '{self.name}'"
             )
         kid = self.kids[name]
         if kid["is_imported"]:
@@ -117,7 +115,7 @@ class Modules:
                 # test for statinfo to ensure it should a real module
                 # it will bail if it errors
                 os.lstat(os.path.join(module_dir, entry, "__init__.py"))
-            except EnvironmentError:
+            except OSError:
                 return False
             return True
 
@@ -238,9 +236,7 @@ class Modules:
         if self.compat_versions:
             if not module.module_spec["version"] in self.compat_versions:
                 raise ModuleVersionError(
-                    (
-                        f"Error loading '{self._namepath}' plugin module: {module.module_spec['name']}, version: {module.module_spec['version']}\n"
-                        "Module is not compatible with the current application version\n"
-                        f"Compatible module API versions are: {self.compat_versions}"
-                    )
+                    f"Error loading '{self._namepath}' plugin module: {module.module_spec['name']}, version: {module.module_spec['version']}\n"
+                    "Module is not compatible with the current application version\n"
+                    f"Compatible module API versions are: {self.compat_versions}"
                 )

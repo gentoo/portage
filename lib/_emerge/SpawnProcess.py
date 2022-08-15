@@ -203,12 +203,12 @@ class SpawnProcess(SubProcess):
     def _async_wait(self):
         # Allow _main_task to exit normally rather than via cancellation.
         if self._main_task is None:
-            super(SpawnProcess, self)._async_wait()
+            super()._async_wait()
 
     def _async_waitpid(self):
         # Allow _main_task to exit normally rather than via cancellation.
         if self._main_task is None:
-            super(SpawnProcess, self)._async_waitpid()
+            super()._async_waitpid()
 
     def _can_log(self, slave_fd):
         return True
@@ -258,9 +258,9 @@ class SpawnProcess(SubProcess):
 
             def get_pids(cgroup):
                 try:
-                    with open(os.path.join(cgroup, "cgroup.procs"), "r") as f:
+                    with open(os.path.join(cgroup, "cgroup.procs")) as f:
                         return [int(p) for p in f.read().split()]
-                except EnvironmentError:
+                except OSError:
                     # removed by cgroup-release-agent
                     return []
 

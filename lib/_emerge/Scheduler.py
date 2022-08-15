@@ -326,7 +326,7 @@ class Scheduler(PollScheduler):
             # clear out existing fetch log if it exists
             try:
                 open(self._fetch_log, "w").close()
-            except EnvironmentError:
+            except OSError:
                 pass
 
         self._running_portage = None
@@ -455,7 +455,7 @@ class Scheduler(PollScheduler):
                     msg.append(pkg_str)
                 msg.append("")
                 writemsg_level(
-                    "".join("%s\n" % (l,) for l in msg),
+                    "".join("{}\n".format(l) for l in msg),
                     level=logging.INFO,
                     noiselevel=-1,
                 )
@@ -1011,10 +1011,10 @@ class Scheduler(PollScheduler):
 
                 vardb = root_config.trees["vartree"].dbapi
                 settings["REPLACING_VERSIONS"] = " ".join(
-                    set(
+                    {
                         portage.versions.cpv_getversion(match)
                         for match in vardb.match(x.slot_atom) + vardb.match("=" + x.cpv)
-                    )
+                    }
                 )
                 pretend_phase = EbuildPhase(
                     phase="pretend", scheduler=sched_iface, settings=settings
@@ -1133,7 +1133,7 @@ class Scheduler(PollScheduler):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 signal.signal(signal.SIGTERM, signal.SIG_IGN)
                 portage.util.writemsg(
-                    "\n\nExiting on signal %(signal)s\n" % {"signal": signum}
+                    "\n\nExiting on signal {signal}\n".format(signal=signum)
                 )
                 self.terminate()
                 received_signal.append(128 + signum)
@@ -1237,7 +1237,7 @@ class Scheduler(PollScheduler):
                         ),
                         mode="rb",
                     )
-                except IOError:
+                except OSError:
                     pass
                 else:
                     if log_path.endswith(".gz"):
@@ -1251,7 +1251,7 @@ class Scheduler(PollScheduler):
                     for line in log_file:
                         writemsg_level(line, noiselevel=-1)
                 except zlib.error as e:
-                    writemsg_level("%s\n" % (e,), level=logging.ERROR, noiselevel=-1)
+                    writemsg_level("{}\n".format(e), level=logging.ERROR, noiselevel=-1)
                 finally:
                     log_file.close()
                     if log_file_real is not None:
@@ -1311,7 +1311,7 @@ class Scheduler(PollScheduler):
                 printer.eerror(line)
             printer.eerror("")
             for failed_pkg in self._failed_pkgs_all:
-                msg = " %s" % (failed_pkg.pkg,)
+                msg = " {}".format(failed_pkg.pkg)
                 if failed_pkg.postinst_failure:
                     msg += " (postinst failed)"
                 log_path = self._locate_failure_log(failed_pkg)
@@ -1700,7 +1700,7 @@ class Scheduler(PollScheduler):
         completed_tasks = self._completed_tasks
 
         dependent = False
-        traversed_nodes = set([pkg])
+        traversed_nodes = {pkg}
         direct_deps = graph.child_nodes(pkg)
         node_stack = direct_deps
         direct_deps = frozenset(direct_deps)
@@ -2024,9 +2024,9 @@ class Scheduler(PollScheduler):
 
     def _failed_pkg_msg(self, failed_pkg, action, preposition):
         pkg = failed_pkg.pkg
-        msg = "%s to %s %s" % (bad("Failed"), action, colorize("INFORM", pkg.cpv))
+        msg = "{} to {} {}".format(bad("Failed"), action, colorize("INFORM", pkg.cpv))
         if pkg.root_config.settings["ROOT"] != "/":
-            msg += " %s %s" % (preposition, pkg.root)
+            msg += " {} {}".format(preposition, pkg.root)
 
         log_path = self._locate_failure_log(failed_pkg)
         if log_path is not None:
@@ -2034,7 +2034,7 @@ class Scheduler(PollScheduler):
         self._status_msg(msg)
 
         if log_path is not None:
-            self._status_msg(" '%s'" % (colorize("INFORM", log_path),))
+            self._status_msg(" '{}'".format(colorize("INFORM", log_path)))
 
     def _status_msg(self, msg):
         """
@@ -2162,9 +2162,9 @@ class Scheduler(PollScheduler):
             if not (isinstance(task, Package) and task.operation == "merge"):
                 continue
             pkg = task
-            msg = "emerge --keep-going:" + " %s" % (pkg.cpv,)
+            msg = "emerge --keep-going:" + " {}".format(pkg.cpv)
             if pkg.root_config.settings["ROOT"] != "/":
-                msg += " for %s" % (pkg.root,)
+                msg += " for {}".format(pkg.root)
             if not atoms:
                 msg += " dropped because it is masked or unavailable"
             else:
@@ -2195,16 +2195,14 @@ class Scheduler(PollScheduler):
         it's supposed to be added or removed. Otherwise, do nothing.
         """
 
-        if set(
-            (
-                "--buildpkgonly",
-                "--fetchonly",
-                "--fetch-all-uri",
-                "--oneshot",
-                "--onlydeps",
-                "--pretend",
-            )
-        ).intersection(self.myopts):
+        if {
+            "--buildpkgonly",
+            "--fetchonly",
+            "--fetch-all-uri",
+            "--oneshot",
+            "--onlydeps",
+            "--pretend",
+        }.intersection(self.myopts):
             return
 
         if pkg.root != self.target_root:
@@ -2254,7 +2252,7 @@ class Scheduler(PollScheduler):
                         world_set.add(atom)
                     else:
                         writemsg_level(
-                            '\n!!! Unable to record %s in "world"\n' % (atom,),
+                            '\n!!! Unable to record {} in "world"\n'.format(atom),
                             level=logging.WARN,
                             noiselevel=-1,
                         )

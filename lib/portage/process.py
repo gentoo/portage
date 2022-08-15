@@ -442,7 +442,7 @@ def spawn(
                 # We need to catch _any_ exception so that it doesn't
                 # propagate out of this function and cause exiting
                 # with anything other than os._exit()
-                writemsg("%s:\n   %s\n" % (e, " ".join(mycommand)), noiselevel=-1)
+                writemsg("{}:\n   {}\n".format(e, " ".join(mycommand)), noiselevel=-1)
                 traceback.print_exc()
                 sys.stderr.flush()
 
@@ -458,7 +458,7 @@ def spawn(
             os._exit(1)
 
     if not isinstance(pid, int):
-        raise AssertionError("fork returned non-integer: %s" % (repr(pid),))
+        raise AssertionError("fork returned non-integer: {}".format(repr(pid)))
 
     # Add the pid to our local and the global pid lists.
     mypids.append(pid)
@@ -529,7 +529,7 @@ def _has_ipv6():
                 # [Errno 99] Cannot assign requested address.
                 sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
                 sock.bind(("::1", 0))
-            except EnvironmentError:
+            except OSError:
                 __has_ipv6 = False
             else:
                 __has_ipv6 = True
@@ -572,7 +572,7 @@ def _configure_loopback_interface():
             rtnl.add_address(ifindex, socket.AF_INET, "10.0.0.1", 8)
             if _has_ipv6():
                 rtnl.add_address(ifindex, socket.AF_INET6, "fd::1", 8)
-    except EnvironmentError as e:
+    except OSError as e:
         writemsg(
             "Unable to configure loopback interface: %s\n" % e.strerror, noiselevel=-1
         )

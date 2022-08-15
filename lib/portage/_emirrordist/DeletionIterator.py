@@ -36,11 +36,9 @@ class DeletionIterator:
             )
             if self._config.content_db is None
             else itertools.chain.from_iterable(
-                (
-                    self._config.content_db.get_filenames_translate(filename)
-                    for filename in itertools.chain.from_iterable(
-                        layout.get_filenames(distdir) for layout in self._config.layouts
-                    )
+                self._config.content_db.get_filenames_translate(filename)
+                for filename in itertools.chain.from_iterable(
+                    layout.get_filenames(distdir) for layout in self._config.layouts
                 )
             )
         )

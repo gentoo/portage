@@ -231,7 +231,7 @@ class PortdbCacheTestCase(TestCase):
             for i, args in enumerate(test_commands):
 
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index %s failed" % (i,))
+                    self.assertTrue(args[0](), "callable at index {} failed".format(i))
                     continue
 
                 proc = subprocess.Popen(args, env=env, stdout=stdout)

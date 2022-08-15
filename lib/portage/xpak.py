@@ -342,7 +342,7 @@ class tbz2:
         the directory provided. Raises IOError if scan() fails.
         Returns result of upackinfo()."""
         if not self.scan():
-            raise IOError
+            raise OSError
         if cleanup:
             self.cleanup(datadir)
         if not os.path.exists(datadir):
@@ -390,7 +390,7 @@ class tbz2:
             "ab+",
         )
         if not myfile:
-            raise IOError
+            raise OSError
         myfile.seek(-self.xpaksize, 2)  # 0,2 or -0,2 just mean EOF.
         myfile.truncate()
         myfile.write(xpdata + encodeint(len(xpdata)) + b"STOP")

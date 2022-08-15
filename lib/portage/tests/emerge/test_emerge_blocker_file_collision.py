@@ -162,7 +162,7 @@ src_install() {
             for i, args in enumerate(test_commands):
 
                 if hasattr(args[0], "__call__"):
-                    self.assertTrue(args[0](), "callable at index %s failed" % (i,))
+                    self.assertTrue(args[0](), "callable at index {} failed".format(i))
                     continue
 
                 if isinstance(args[0], dict):
@@ -185,7 +185,7 @@ src_install() {
                             sys.stderr.write(_unicode_decode(line))
 
                 self.assertEqual(
-                    os.EX_OK, proc.returncode, "emerge failed with args %s" % (args,)
+                    os.EX_OK, proc.returncode, "emerge failed with args {}".format(args)
                 )
         finally:
             playground.debug = False

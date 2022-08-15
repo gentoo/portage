@@ -22,7 +22,7 @@ class FileCopier(AsyncTaskFuture):
         self.future = asyncio.ensure_future(
             self.scheduler.run_in_executor(ForkExecutor(loop=self.scheduler), self._run)
         )
-        super(FileCopier, self)._start()
+        super()._start()
 
     def _run(self):
         src_path = _unicode_encode(

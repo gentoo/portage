@@ -21,7 +21,7 @@ class SonameAtom:
         )
 
     def __getstate__(self):
-        return dict((k, getattr(self, k)) for k in self.__slots__)
+        return {k: getattr(self, k) for k in self.__slots__}
 
     def __setstate__(self, state):
         for k, v in state.items():
@@ -43,14 +43,14 @@ class SonameAtom:
             return True
 
     def __repr__(self):
-        return "%s('%s', '%s')" % (
+        return "{}('{}', '{}')".format(
             self.__class__.__name__,
             self.multilib_category,
             self.soname,
         )
 
     def __str__(self):
-        return "%s: %s" % (self.multilib_category, self.soname)
+        return "{}: {}".format(self.multilib_category, self.soname)
 
     def match(self, pkg):
         """

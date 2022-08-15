@@ -146,7 +146,7 @@ class slot_conflict_handler:
             if self.debug:
                 writemsg("\nNew configuration:\n", noiselevel=-1)
                 for pkg in config:
-                    writemsg("   %s\n" % (pkg,), noiselevel=-1)
+                    writemsg("   {}\n".format(pkg), noiselevel=-1)
                 writemsg("\n", noiselevel=-1)
 
             new_solutions = self._check_configuration(
@@ -258,9 +258,9 @@ class slot_conflict_handler:
         )
 
         for root, slot_atom, pkgs in self.all_conflicts:
-            msg.append("%s" % (slot_atom,))
+            msg.append("{}".format(slot_atom))
             if root != self.depgraph._frozen_config._running_root.root:
-                msg.append(" for %s" % (root,))
+                msg.append(" for {}".format(root))
             msg.append("\n\n")
 
             for pkg in pkgs:
@@ -523,7 +523,7 @@ class slot_conflict_handler:
 
                     def highlight_violations(atom, version, use, slot_violated):
                         """Colorize parts of an atom"""
-                        atom_str = "%s" % (atom,)
+                        atom_str = "{}".format(atom)
                         colored_idx = set()
                         if version:
                             op = atom.operator
@@ -614,7 +614,7 @@ class slot_conflict_handler:
 
                             atom_str = (
                                 atom_str[:use_part_start]
-                                + "[%s]" % (",".join(new_tokens),)
+                                + "[{}]".format(",".join(new_tokens))
                                 + atom_str[use_part_end + 1 :]
                             )
 
@@ -639,15 +639,17 @@ class slot_conflict_handler:
                             use_display = ""
                         if atom.soname:
                             msg.append(
-                                "%s required by %s %s\n" % (atom, parent, use_display)
+                                "{} required by {} {}\n".format(
+                                    atom, parent, use_display
+                                )
                             )
                         elif isinstance(parent, PackageArg):
                             # For PackageArg it's
                             # redundant to display the atom attribute.
-                            msg.append("%s\n" % (parent,))
+                            msg.append("{}\n".format(parent))
                         elif isinstance(parent, AtomArg):
                             msg.append(2 * indent)
-                            msg.append("%s (Argument)\n" % (atom,))
+                            msg.append("{} (Argument)\n".format(atom))
                         else:
                             # Display the specific atom from SetArg or
                             # Package types.
@@ -675,7 +677,7 @@ class slot_conflict_handler:
                             if version_violated or slot_violated:
                                 self.is_a_version_conflict = True
 
-                            cur_line = "%s required by %s %s\n" % (
+                            cur_line = "{} required by {} {}\n".format(
                                 atom_str,
                                 parent,
                                 use_display,
@@ -736,7 +738,7 @@ class slot_conflict_handler:
             )
             msg.append("!!! package(s) cannot be rebuilt for the reason(s) shown:\n\n")
             for ppkg, reason in need_rebuild.items():
-                msg.append("%s%s: %s\n" % (indent, ppkg, reason))
+                msg.append("{}{}: {}\n".format(indent, ppkg, reason))
             msg.append("\n")
 
         msg.append("\n")
@@ -975,7 +977,7 @@ class slot_conflict_handler:
         if self.debug:
             writemsg("All involved flags:\n", noiselevel=-1)
             for idx, involved_flags in enumerate(all_involved_flags):
-                writemsg("   %s\n" % (config[idx],), noiselevel=-1)
+                writemsg("   {}\n".format(config[idx]), noiselevel=-1)
                 for flag, state in involved_flags.items():
                     writemsg("     " + flag + ": " + state + "\n", noiselevel=-1)
 
@@ -1066,7 +1068,7 @@ class slot_conflict_handler:
                         inner_first = False
                     else:
                         msg += ", "
-                    msg += flag + ": %s" % (state,)
+                    msg += flag + ": {}".format(state)
                 msg += "}"
             msg += "]\n"
             writemsg(msg, noiselevel=-1)
@@ -1281,7 +1283,7 @@ class _solution_candidate_generator:
             return self.value == other.value
 
         def __str__(self):
-            return "%s" % (self.value,)
+            return "{}".format(self.value)
 
     def __init__(self, all_involved_flags):
         # A copy of all_involved_flags with all "cond" values

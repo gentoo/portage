@@ -59,7 +59,7 @@ class _XattrSystemCommands(_XattrGetAll):
     @classmethod
     def get(cls, item, name, nofollow=False, namespace=None):
         if namespace:
-            name = "%s.%s" % (namespace, name)
+            name = "{}.{}".format(namespace, name)
         cmd = ["getfattr", "--absolute-names", "-n", name, item]
         if nofollow:
             cmd += ["-h"]
@@ -75,14 +75,14 @@ class _XattrSystemCommands(_XattrGetAll):
     @classmethod
     def set(cls, item, name, value, _flags=0, namespace=None):
         if namespace:
-            name = "%s.%s" % (namespace, name)
+            name = "{}.{}".format(namespace, name)
         cmd = ["setfattr", "-n", name, "-v", value, item]
         cls._call(cmd)
 
     @classmethod
     def remove(cls, item, name, nofollow=False, namespace=None):
         if namespace:
-            name = "%s.%s" % (namespace, name)
+            name = "{}.{}".format(namespace, name)
         cmd = ["setfattr", "-x", name, item]
         if nofollow:
             cmd += ["-h"]

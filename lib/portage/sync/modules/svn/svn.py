@@ -59,7 +59,7 @@ class SVNSync(NewBase):
 
         # svn update
         exitcode = portage.process.spawn_bash(
-            "cd %s; exec svn update" % (portage._shell_quote(self.repo.location),),
+            "cd {}; exec svn update".format(portage._shell_quote(self.repo.location)),
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:
@@ -77,7 +77,7 @@ class SVNSync(NewBase):
         @rtype: (int, bool)
         """
         exitcode = portage.process.spawn_bash(
-            "cd %s; exec svn upgrade" % (portage._shell_quote(self.repo.location),),
+            "cd {}; exec svn upgrade".format(portage._shell_quote(self.repo.location)),
             **self.spawn_kwargs
         )
         if exitcode != os.EX_OK:

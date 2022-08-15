@@ -462,7 +462,7 @@ def paren_enclose(mylist, unevaluated_atom=False, opconvert=False):
     for x in mylist:
         if isinstance(x, list):
             if opconvert and x and x[0] == "||":
-                mystrparts.append("%s ( %s )" % (x[0], paren_enclose(x[1:])))
+                mystrparts.append("{} ( {} )".format(x[0], paren_enclose(x[1:])))
             else:
                 mystrparts.append("( %s )" % paren_enclose(x))
         else:
@@ -1164,7 +1164,7 @@ class _use_dep:
     def __str__(self):
         if not self.tokens:
             return ""
-        return "[%s]" % (",".join(self.tokens),)
+        return "[{}]".format(",".join(self.tokens))
 
     def __repr__(self):
         return "portage.dep._use_dep(%s)" % repr(self.tokens)
@@ -1795,7 +1795,7 @@ class Atom(str):
                 False otherwise.
         """
         if not isinstance(other, Atom):
-            raise TypeError("expected %s, got %s" % (Atom, type(other)))
+            raise TypeError("expected {}, got {}".format(Atom, type(other)))
 
         if self == other:
             return True
@@ -1957,17 +1957,13 @@ class ExtendedAtomDict(portage.cache.mappings.MutableMapping):
         return result
 
     def __iter__(self):
-        for k in self._normal:
-            yield k
-        for k in self._extended:
-            yield k
+        yield from self._normal
+        yield from self._extended
 
     def iteritems(self):
         try:
-            for item in self._normal.items():
-                yield item
-            for item in self._extended.items():
-                yield item
+            yield from self._normal.items()
+            yield from self._extended.items()
         except AttributeError:
             pass  # FEATURES=python-trace
 

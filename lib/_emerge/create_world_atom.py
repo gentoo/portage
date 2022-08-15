@@ -47,9 +47,9 @@ def create_world_atom(pkg, args_set, root_config, before_install=False):
     )
     if not slotted:
         # check the vdb in case this is multislot
-        available_slots = set(
+        available_slots = {
             vardb._pkg_str(cpv, None).slot for cpv in vardb.match(Atom(cp))
-        )
+        }
         slotted = len(available_slots) > 1 or (
             len(available_slots) == 1 and "0" not in available_slots
         )

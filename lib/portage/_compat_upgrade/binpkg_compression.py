@@ -43,7 +43,7 @@ def main():
             content = re.sub(
                 "^BINPKG_COMPRESS=.*$", compat_setting, content, flags=re.MULTILINE
             )
-        with open(config_path, "wt") as f:
+        with open(config_path, "w") as f:
             f.write(content)
 
 

@@ -531,16 +531,15 @@ class RepoConfig:
         repo_name_path = os.path.join(repo_path, REPO_NAME_LOC)
         f = None
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     repo_name_path, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             )
             return f.readline().strip(), False
-        except EnvironmentError:
+        except OSError:
             return "x-" + os.path.basename(repo_path), True
         finally:
             if f is not None:
@@ -589,16 +588,18 @@ class RepoConfig:
         return "\n".join(repo_msg)
 
     def __repr__(self):
-        return "<portage.repository.config.RepoConfig(name=%r, location=%r)>" % (
-            self.name,
-            _unicode_decode(self.location),
+        return (
+            "<portage.repository.config.RepoConfig(name={!r}, location={!r})>".format(
+                self.name,
+                _unicode_decode(self.location),
+            )
         )
 
     def __str__(self):
         d = {}
         for k in self.__slots__:
             d[k] = getattr(self, k, None)
-        return "%s" % (d,)
+        return "{}".format(d)
 
 
 class RepoConfigLoader:
@@ -1258,27 +1259,27 @@ class RepoConfigLoader:
                     continue
                 if getattr(repo, key) is not None:
                     if key in bool_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             "true" if getattr(repo, key) else "false",
                         )
                     elif key in str_or_int_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             getattr(repo, key),
                         )
                     elif key in str_tuple_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(getattr(repo, key)),
                         )
                     elif key in repo_config_tuple_keys:
-                        config_string += "%s = %s\n" % (
+                        config_string += "{} = {}\n".format(
                             key.replace("_", "-"),
                             " ".join(x.name for x in getattr(repo, key)),
                         )
             for o, v in repo.module_specific_options.items():
-                config_string += "%s = %s\n" % (o, v)
+                config_string += "{} = {}\n".format(o, v)
         return config_string.lstrip("\n")
 
 

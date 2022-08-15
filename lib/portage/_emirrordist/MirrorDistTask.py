@@ -187,7 +187,7 @@ class MirrorDistTask(CompositeTask):
                 cpv = "unknown"
                 if distfiles_db is not None:
                     cpv = distfiles_db.get(filename, cpv)
-                lines.append("\t%s\t%s\n" % (filename, cpv))
+                lines.append("\t{}\t{}\n".format(filename, cpv))
 
         if not dry_run:
             portage.util.write_atomic(
@@ -250,4 +250,4 @@ class MirrorDistTask(CompositeTask):
         Override _async_wait to call self._cleanup().
         """
         self._cleanup()
-        super(MirrorDistTask, self)._async_wait()
+        super()._async_wait()

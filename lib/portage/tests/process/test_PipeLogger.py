@@ -72,5 +72,5 @@ class PipeLoggerTestCase(TestCase):
                 self._testPipeLoggerToPipe(test_string, loop)
             )
             self.assertEqual(
-                test_string, output, "x = %s, len(output) = %s" % (x, len(output))
+                test_string, output, "x = {}, len(output) = {}".format(x, len(output))
             )

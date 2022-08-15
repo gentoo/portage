@@ -34,8 +34,7 @@ def iter_completed(futures, max_jobs=None, max_load=None, loop=None):
     for future_done_set in async_iter_completed(
         futures, max_jobs=max_jobs, max_load=max_load, loop=loop
     ):
-        for future in loop.run_until_complete(future_done_set):
-            yield future
+        yield from loop.run_until_complete(future_done_set)
 
 
 def async_iter_completed(futures, max_jobs=None, max_load=None, loop=None):

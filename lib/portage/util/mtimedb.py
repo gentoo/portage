@@ -67,7 +67,7 @@ class MtimeDB(dict):
         try:
             f = open(_unicode_encode(filename), "rb")
             content = f.read()
-        except EnvironmentError as e:
+        except OSError as e:
             if getattr(e, "errno", None) in (errno.ENOENT, errno.EACCES):
                 pass
             else:
@@ -131,7 +131,7 @@ class MtimeDB(dict):
         d["version"] = str(portage.VERSION)
         try:
             f = atomic_ofstream(self.filename, mode="wb")
-        except EnvironmentError:
+        except OSError:
             pass
         else:
             if self._json_write:

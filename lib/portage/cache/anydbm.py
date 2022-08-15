@@ -27,7 +27,7 @@ class database(fs_template.FsBased):
     serialize_eclasses = False
 
     def __init__(self, *args, **config):
-        super(database, self).__init__(*args, **config)
+        super().__init__(*args, **config)
 
         default_db = config.get("dbtype", "anydbm")
         if not default_db.startswith("."):
@@ -50,7 +50,7 @@ class database(fs_template.FsBased):
             try:
                 self._ensure_dirs()
                 self._ensure_dirs(self._db_path)
-            except (OSError, IOError) as e:
+            except OSError as e:
                 raise cache_errors.InitializationError(self.__class__, e)
 
             # try again if failed

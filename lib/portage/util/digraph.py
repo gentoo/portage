@@ -312,7 +312,7 @@ class digraph:
             writemsg(s, noiselevel=-1)
 
         for node in self.nodes:
-            output("%s " % (node,))
+            output("{} ".format(node))
             if self.nodes[node][0]:
                 output("depends on\n")
             else:
@@ -330,7 +330,7 @@ class digraph:
         if start not in self:
             raise KeyError(start)
 
-        queue, enqueued = deque([(None, start)]), set([start])
+        queue, enqueued = deque([(None, start)]), {start}
         while queue:
             parent, n = queue.popleft()
             yield parent, n

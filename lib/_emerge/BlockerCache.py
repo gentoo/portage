@@ -62,7 +62,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 pass
             else:
                 writemsg(
-                    "!!! Error loading '%s': %s\n" % (self._cache_filename, str(e)),
+                    "!!! Error loading '{}': {}\n".format(self._cache_filename, str(e)),
                     noiselevel=-1,
                 )
             del e
@@ -145,7 +145,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
                 portage.util.apply_secpass_permissions(
                     self._cache_filename, gid=portage.portage_gid, mode=0o644
                 )
-            except (IOError, OSError):
+            except OSError:
                 pass
             self._modified.clear()
 

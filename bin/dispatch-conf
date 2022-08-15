@@ -433,7 +433,7 @@ class dispatch:
         the diff of what changed into the configured log file."""
         if "log-file" in self.options:
             status, output = diff(curconf, newconf)
-            with io.open(
+            with open(
                 self.options["log-file"], mode="a", encoding=_encodings["stdio"]
             ) as f:
                 f.write(output + "\n")
@@ -442,7 +442,7 @@ class dispatch:
 
         try:
             os.rename(newconf, curconf)
-        except (IOError, os.error) as why:
+        except (OSError, os.error) as why:
             writemsg(
                 "dispatch-conf: Error renaming %s to %s: %s; fatal\n"
                 % (newconf, curconf, str(why)),

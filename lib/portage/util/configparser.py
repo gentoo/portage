@@ -50,13 +50,12 @@ def read_configs(parser, paths):
         if isinstance(p, str):
             f = None
             try:
-                f = io.open(
+                f = open(
                     _unicode_encode(p, encoding=_encodings["fs"], errors="strict"),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 )
-            except EnvironmentError:
+            except OSError:
                 pass
             else:
                 # The 'source' keyword argument is needed since otherwise
@@ -73,5 +72,7 @@ def read_configs(parser, paths):
             read_file(p, **kwargs)
         else:
             raise TypeError(
-                "Unsupported type %r of element %r of 'paths' argument" % (type(p), p)
+                "Unsupported type {!r} of element {!r} of 'paths' argument".format(
+                    type(p), p
+                )
             )

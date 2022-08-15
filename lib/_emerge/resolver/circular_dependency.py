@@ -292,7 +292,7 @@ class circular_dependency_handler:
                         changes.append(colorize("red", "+" + flag))
                     else:
                         changes.append(colorize("blue", "-" + flag))
-                msg = "- %s (Change USE: %s)\n" % (parent.cpv, " ".join(changes))
+                msg = "- {} (Change USE: {})\n".format(parent.cpv, " ".join(changes))
                 if followup_change:
                     msg += (
                         " (This change might require USE changes on parent packages.)"

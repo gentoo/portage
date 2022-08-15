@@ -87,7 +87,7 @@ class Binpkg(CompositeTask):
         )
         if dir_path != self.settings["PORTAGE_BUILDDIR"]:
             raise AssertionError(
-                "'%s' != '%s'" % (dir_path, self.settings["PORTAGE_BUILDDIR"])
+                "'{}' != '{}'".format(dir_path, self.settings["PORTAGE_BUILDDIR"])
             )
         self._build_dir = EbuildBuildDir(scheduler=self.scheduler, settings=settings)
         settings.configdict["pkg"]["EMERGE_FROM"] = "binary"
@@ -96,11 +96,11 @@ class Binpkg(CompositeTask):
         if eapi_exports_replace_vars(settings["EAPI"]):
             vardb = self.pkg.root_config.trees["vartree"].dbapi
             settings["REPLACING_VERSIONS"] = " ".join(
-                set(
+                {
                     portage.versions.cpv_getversion(x)
                     for x in vardb.match(self.pkg.slot_atom)
                     + vardb.match("=" + self.pkg.cpv)
-                )
+                }
             )
 
         # The prefetcher has already completed or it
@@ -179,13 +179,13 @@ class Binpkg(CompositeTask):
                 scheduler=self.scheduler,
             )
 
-            msg = " --- (%s of %s) Fetching Binary (%s::%s)" % (
+            msg = " --- ({} of {}) Fetching Binary ({}::{})".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
                 fetcher.pkg_path,
             )
-            short_msg = "emerge: (%s of %s) %s Fetch" % (
+            short_msg = "emerge: ({} of {}) {} Fetch".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
@@ -278,13 +278,13 @@ class Binpkg(CompositeTask):
             self.wait()
             return
 
-        msg = " === (%s of %s) Merging Binary (%s::%s)" % (
+        msg = " === ({} of {}) Merging Binary ({}::{})".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,
             pkg_path,
         )
-        short_msg = "emerge: (%s of %s) %s Merge Binary" % (
+        short_msg = "emerge: ({} of {}) {} Merge Binary".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,
@@ -350,7 +350,7 @@ class Binpkg(CompositeTask):
             else:
                 continue
 
-            f = io.open(
+            f = open(
                 _unicode_encode(
                     os.path.join(infloc, k), encoding=_encodings["fs"], errors="strict"
                 ),
@@ -368,7 +368,7 @@ class Binpkg(CompositeTask):
             (md5sum,) = self._bintree.dbapi.aux_get(self.pkg.cpv, ["MD5"])
             if not md5sum:
                 md5sum = portage.checksum.perform_md5(pkg_path)
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(infloc, "BINPKGMD5"),
                     encoding=_encodings["fs"],
@@ -461,18 +461,17 @@ class Binpkg(CompositeTask):
             )
 
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(self._infloc, "EPREFIX"),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 self._build_prefix = f.read().rstrip("\n")
-        except IOError:
+        except OSError:
             self._build_prefix = ""
 
         if self._build_prefix == self.settings["EPREFIX"]:
@@ -503,7 +502,7 @@ class Binpkg(CompositeTask):
     def _chpathtool_exit(self, chpathtool):
         if self._final_exit(chpathtool) != os.EX_OK:
             self._writemsg_level(
-                "!!! Error Adjusting Prefix to %s\n" % (self.settings["EPREFIX"],),
+                "!!! Error Adjusting Prefix to {}\n".format(self.settings["EPREFIX"]),
                 noiselevel=-1,
                 level=logging.ERROR,
             )
@@ -511,7 +510,7 @@ class Binpkg(CompositeTask):
             return
 
         # We want to install in "our" prefix, not the binary one
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self._infloc, "EPREFIX"),
                 encoding=_encodings["fs"],

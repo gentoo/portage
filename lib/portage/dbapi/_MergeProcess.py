@@ -50,7 +50,7 @@ class MergeProcess(ForkProcess):
         # since closing of file descriptors in the subprocess
         # can prevent access to open database connections such
         # as that used by the sqlite metadata cache module.
-        cpv = "%s/%s" % (self.mycat, self.mypkg)
+        cpv = "{}/{}".format(self.mycat, self.mypkg)
         settings = self.settings
         if cpv != settings.mycpv or "EAPI" not in settings.configdict["pkg"]:
             settings.reload()
@@ -72,7 +72,7 @@ class MergeProcess(ForkProcess):
         self.fd_pipes.setdefault(0, portage._get_stdin().fileno())
 
         self.log_filter_file = self.settings.get("PORTAGE_LOG_FILTER_FILE_CMD")
-        super(MergeProcess, self)._start()
+        super()._start()
 
     def _lock_vdb(self):
         """
@@ -179,7 +179,7 @@ class MergeProcess(ForkProcess):
 
         self._dblink = mylink
         self._elog_reader_fd = elog_reader_fd
-        pids = super(MergeProcess, self)._spawn(args, fd_pipes, **kwargs)
+        pids = super()._spawn(args, fd_pipes, **kwargs)
         os.close(elog_writer_fd)
         mtime_writer.close()
         self._buf = ""
@@ -254,7 +254,7 @@ class MergeProcess(ForkProcess):
         ):
             self.postinst_failure = True
             self.returncode = os.EX_OK
-        super(MergeProcess, self)._proc_join_done(proc, future)
+        super()._proc_join_done(proc, future)
 
     def _unregister(self):
         """
@@ -281,4 +281,4 @@ class MergeProcess(ForkProcess):
                 )
             self._elog_keys = None
 
-        super(MergeProcess, self)._unregister()
+        super()._unregister()

@@ -76,7 +76,7 @@ async def _writer(output_file, content, loop=DeprecationWarning):
     while content:
         try:
             content = content[os.write(fd, content) :]
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.EAGAIN:
                 raise
             waiter = loop.create_future()

@@ -70,7 +70,7 @@ class EbuildMerge(CompositeTask):
         pkg_path = self.pkg_path
         logger = self.logger
         if "noclean" not in self.settings.features:
-            short_msg = "emerge: (%s of %s) %s Clean Post" % (
+            short_msg = "emerge: ({} of {}) {} Clean Post".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,

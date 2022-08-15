@@ -81,7 +81,7 @@ def _copyxattr(src, dest, exclude=None):
     """Copy the extended attributes from |src| to |dest|"""
     try:
         attrs = xattr.list(src)
-    except (OSError, IOError) as e:
+    except OSError as e:
         if e.errno != OperationNotSupported.errno:
             raise
         attrs = ()
@@ -97,7 +97,7 @@ def _copyxattr(src, dest, exclude=None):
         try:
             xattr.set(dest, attr, xattr.get(src, attr))
             raise_exception = False
-        except (OSError, IOError):
+        except OSError:
             raise_exception = True
         if raise_exception:
             raise OperationNotSupported(
@@ -151,13 +151,13 @@ def movefile(
         writemsg(
             "!!! %s\n" % _("Stating source file failed... movefile()"), noiselevel=-1
         )
-        writemsg("!!! %s\n" % (e,), noiselevel=-1)
+        writemsg("!!! {}\n".format(e), noiselevel=-1)
         return None
 
     destexists = 1
     try:
         dstat = os.lstat(dest)
-    except (OSError, IOError):
+    except OSError:
         dstat = os.lstat(os.path.dirname(dest))
         destexists = 0
 
@@ -235,8 +235,8 @@ def movefile(
             writemsg(
                 "!!! %s\n" % _("failed to properly create symlink:"), noiselevel=-1
             )
-            writemsg("!!! %s -> %s\n" % (dest, target), noiselevel=-1)
-            writemsg("!!! %s\n" % (e,), noiselevel=-1)
+            writemsg("!!! {} -> {}\n".format(dest, target), noiselevel=-1)
+            writemsg("!!! {}\n".format(e), noiselevel=-1)
             return None
 
     hardlinked = False
@@ -247,7 +247,7 @@ def movefile(
     if hardlink_candidates:
         head, tail = os.path.split(dest)
         hardlink_tmp = os.path.join(
-            head, ".%s._portage_merge_.%s" % (tail, portage.getpid())
+            head, ".{}._portage_merge_.{}".format(tail, portage.getpid())
         )
         try:
             os.unlink(hardlink_tmp)
@@ -258,7 +258,7 @@ def movefile(
                     % (hardlink_tmp,),
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg("!!! {}\n".format(e), noiselevel=-1)
                 return None
             del e
         for hardlink_src in hardlink_candidates:
@@ -274,7 +274,7 @@ def movefile(
                         _("!!! Failed to rename %s to %s\n") % (hardlink_tmp, dest),
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                    writemsg("!!! {}\n".format(e), noiselevel=-1)
                     return None
                 hardlinked = True
                 try:
@@ -302,7 +302,7 @@ def movefile(
                     % {"src": src, "dest": dest},
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg("!!! {}\n".format(e), noiselevel=-1)
                 return None
             # Invalid cross-device-link 'bind' mounted or actually Cross-Device
     if renamefailed:
@@ -332,7 +332,7 @@ def movefile(
                         )
                         msg = textwrap.wrap(msg, 65)
                         for line in msg:
-                            writemsg("!!! %s\n" % (line,), noiselevel=-1)
+                            writemsg("!!! {}\n".format(line), noiselevel=-1)
                         raise
                 _rename(dest_tmp_bytes, dest_bytes)
                 _os.unlink(src_bytes)
@@ -344,7 +344,7 @@ def movefile(
                     % {"src": src, "dest": dest},
                     noiselevel=-1,
                 )
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg("!!! {}\n".format(e), noiselevel=-1)
                 return None
             finally:
                 if not success:

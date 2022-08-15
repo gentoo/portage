@@ -67,12 +67,12 @@ def quickpkg_atom(options, infos, arg, eout):
         infos["missing"].append(arg)
         return 1
     except (InvalidAtom, InvalidData):
-        eout.eerror("Invalid atom: %s" % (arg,))
+        eout.eerror("Invalid atom: {}".format(arg))
         infos["missing"].append(arg)
         return 1
     if atom[:1] == "=" and arg[:1] != "=":
         # dep_expand() allows missing '=' but it's really invalid
-        eout.eerror("Invalid atom: %s" % (arg,))
+        eout.eerror("Invalid atom: {}".format(arg))
         infos["missing"].append(arg)
         return 1
 
@@ -103,7 +103,7 @@ def quickpkg_atom(options, infos, arg, eout):
             except InvalidDependString as e:
                 eout.eerror(
                     "Invalid RESTRICT metadata "
-                    + "for '%s': %s; skipping" % (cpv, str(e))
+                    + "for '{}': {}; skipping".format(cpv, str(e))
                 )
                 del e
                 continue
@@ -271,7 +271,7 @@ def quickpkg_set(options, infos, arg, eout):
 
     set_name = arg[1:]
     if not set_name in sets:
-        eout.eerror("Package set not found: '%s'; skipping" % (arg,))
+        eout.eerror("Package set not found: '{}'; skipping".format(arg))
         infos["missing"].append(arg)
         return 1
 
@@ -389,7 +389,7 @@ def quickpkg_main(options, args, eout):
                 size_str += unit
             else:
                 size_str = str(size)
-        eout.einfo("%s: %s" % (cpv, size_str))
+        eout.einfo("{}: {}".format(cpv, size_str))
     if infos["config_files_excluded"]:
         print()
         eout.ewarn("Excluded config files: %d" % infos["config_files_excluded"])

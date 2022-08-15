@@ -265,10 +265,10 @@ class _unicode_func_wrapper:
             _unicode_encode(x, encoding=encoding, errors="strict") for x in args
         ]
         if kwargs:
-            wrapped_kwargs = dict(
-                (k, _unicode_encode(v, encoding=encoding, errors="strict"))
+            wrapped_kwargs = {
+                k: _unicode_encode(v, encoding=encoding, errors="strict")
                 for k, v in kwargs.items()
-            )
+            }
         else:
             wrapped_kwargs = {}
 
@@ -362,7 +362,7 @@ class _eintr_func_wrapper:
             try:
                 rval = self._func(*args, **kwargs)
                 break
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.EINTR:
                     raise
 

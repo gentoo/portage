@@ -28,11 +28,11 @@ class StringFormatTestCase(TestCase):
             arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings["content"])
             dependency_arg = DependencyArg(arg=arg_unicode)
 
-            formatted_str = "%s" % (dependency_arg,)
+            formatted_str = "{}".format(dependency_arg)
             self.assertEqual(formatted_str, arg_unicode)
 
             # Test the __str__ method which returns unicode in python3
-            formatted_str = "%s" % (dependency_arg,)
+            formatted_str = "{}".format(dependency_arg)
             self.assertEqual(formatted_str, arg_unicode)
 
     def testPortageException(self):
@@ -43,11 +43,11 @@ class StringFormatTestCase(TestCase):
             arg_bytes = _unicode_encode(arg_unicode, encoding=_encodings["content"])
             e = PortageException(arg_unicode)
 
-            formatted_str = "%s" % (e,)
+            formatted_str = "{}".format(e)
             self.assertEqual(formatted_str, arg_unicode)
 
             # Test the __str__ method which returns unicode in python3
-            formatted_str = "%s" % (e,)
+            formatted_str = "{}".format(e)
             self.assertEqual(formatted_str, arg_unicode)
 
     def testUseFlagDisplay(self):
@@ -59,9 +59,9 @@ class StringFormatTestCase(TestCase):
                 for arg_unicode in self.unicode_strings:
                     e = UseFlagDisplay(arg_unicode, enabled, forced)
 
-                    formatted_str = "%s" % (e,)
+                    formatted_str = "{}".format(e)
                     self.assertEqual(isinstance(formatted_str, str), True)
 
                     # Test the __str__ method which returns unicode in python3
-                    formatted_str = "%s" % (e,)
+                    formatted_str = "{}".format(e)
                     self.assertEqual(isinstance(formatted_str, str), True)

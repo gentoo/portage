@@ -213,7 +213,7 @@ class RetryForkExecutorTestCase(RetryTestCase):
     """
 
     def __init__(self, *pargs, **kwargs):
-        super(RetryForkExecutorTestCase, self).__init__(*pargs, **kwargs)
+        super().__init__(*pargs, **kwargs)
         self._executor = None
 
     def _setUpExecutor(self):

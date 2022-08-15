@@ -211,7 +211,7 @@ if "affected" in params:
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    ("invalid GLSA: %s (error message was: %s)\n" % (x, e))
+                    "invalid GLSA: {} (error message was: {})\n".format(x, e)
                 )
             continue
         if myglsa.isVulnerable():
@@ -222,10 +222,8 @@ if "affected" in params:
 for p in params[:]:
     if not (p in completelist or os.path.exists(p)):
         sys.stderr.write(
-            (
-                "(removing %s from parameter list as it isn't a valid GLSA specification)\n"
-                % p
-            )
+            "(removing %s from parameter list as it isn't a valid GLSA specification)\n"
+            % p
         )
         params.remove(p)
 
@@ -252,7 +250,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr, encoding="utf-8"):
             myglsa = Glsa(myid, portage.settings, vardb, portdb)
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
-                fd2.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
+                fd2.write("invalid GLSA: {} (error message was: {})\n".format(myid, e))
             continue
         if myglsa.isInjected():
             status = "[A]"
@@ -322,7 +320,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    ("invalid GLSA: %s (error message was: %s)\n" % (myid, e))
+                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
                 )
             continue
         if mode == "dump":
@@ -416,7 +414,7 @@ if mode == "test":
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    ("invalid GLSA: %s (error message was: %s)\n" % (myid, e))
+                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
                 )
             continue
         if myglsa.isVulnerable():
@@ -471,7 +469,7 @@ if mode == "mail":
         except (GlsaTypeException, GlsaFormatException) as e:
             if verbose:
                 sys.stderr.write(
-                    ("invalid GLSA: %s (error message was: %s)\n" % (myid, e))
+                    "invalid GLSA: {} (error message was: {})\n".format(myid, e)
                 )
             continue
         myfd = BytesIO()

@@ -219,13 +219,13 @@ class EbuildBuild(CompositeTask):
         lock_task.future.result()
         # Cleaning needs to happen before fetch, since the build dir
         # is used for log handling.
-        msg = " === (%s of %s) Cleaning (%s::%s)" % (
+        msg = " === ({} of {}) Cleaning ({}::{})".format(
             self.pkg_count.curval,
             self.pkg_count.maxval,
             self.pkg.cpv,
             self._ebuild_path,
         )
-        short_msg = "emerge: (%s of %s) %s Clean" % (
+        short_msg = "emerge: ({} of {}) {} Clean".format(
             self.pkg_count.curval,
             self.pkg_count.maxval,
             self.pkg.cpv,
@@ -298,7 +298,9 @@ class EbuildBuild(CompositeTask):
             already_fetched = already_fetched_task.future.result()
         except portage.exception.InvalidDependString as e:
             msg_lines = []
-            msg = "Fetch failed for '%s' due to invalid SRC_URI: %s" % (self.pkg.cpv, e)
+            msg = "Fetch failed for '{}' due to invalid SRC_URI: {}".format(
+                self.pkg.cpv, e
+            )
             msg_lines.append(msg)
             fetcher._eerror(msg_lines)
             portage.elog.elog_process(self.pkg.cpv, self.settings)
@@ -364,13 +366,13 @@ class EbuildBuild(CompositeTask):
 
             self._buildpkg = True
 
-            msg = " === (%s of %s) Compiling/Packaging (%s::%s)" % (
+            msg = " === ({} of {}) Compiling/Packaging ({}::{})".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
                 ebuild_path,
             )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
+            short_msg = "emerge: ({} of {}) {} Compile".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
@@ -378,13 +380,13 @@ class EbuildBuild(CompositeTask):
             logger.log(msg, short_msg=short_msg)
 
         else:
-            msg = " === (%s of %s) Compiling/Merging (%s::%s)" % (
+            msg = " === ({} of {}) Compiling/Merging ({}::{})".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
                 ebuild_path,
             )
-            short_msg = "emerge: (%s of %s) %s Compile" % (
+            short_msg = "emerge: ({} of {}) {} Compile".format(
                 pkg_count.curval,
                 pkg_count.maxval,
                 pkg.cpv,
@@ -563,7 +565,7 @@ class EbuildBuild(CompositeTask):
         if pkg.build_id is not None:
             info["BUILD_ID"] = "%s\n" % pkg.build_id
         for k, v in info.items():
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(infoloc, k), encoding=_encodings["fs"], errors="strict"
                 ),
@@ -623,13 +625,13 @@ class EbuildBuild(CompositeTask):
             world_atom=world_atom,
         )
 
-        msg = " === (%s of %s) Merging (%s::%s)" % (
+        msg = " === ({} of {}) Merging ({}::{})".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,
             ebuild_path,
         )
-        short_msg = "emerge: (%s of %s) %s Merge" % (
+        short_msg = "emerge: ({} of {}) {} Merge".format(
             pkg_count.curval,
             pkg_count.maxval,
             pkg.cpv,

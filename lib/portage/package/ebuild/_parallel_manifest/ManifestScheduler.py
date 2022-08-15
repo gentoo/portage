@@ -41,8 +41,7 @@ class ManifestScheduler(AsyncScheduler):
         # and in order to reduce latency in case of a signal interrupt.
         cp_all = self._portdb.cp_all
         for category in sorted(self._portdb.categories):
-            for cp in cp_all(categories=(category,)):
-                yield cp
+            yield from cp_all(categories=(category,))
 
     def _iter_tasks(self):
         portdb = self._portdb

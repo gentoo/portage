@@ -105,7 +105,7 @@ def _test_lock_fn(
         try:
             with open(lock_path, "a") as f:
                 lock_fn(lock_path, f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except (TryAgain, EnvironmentError) as e:
+        except (TryAgain, OSError) as e:
             if isinstance(e, TryAgain) or e.errno == errno.EAGAIN:
                 # Parent process holds lock, as expected.
                 sys.exit(0)
@@ -118,7 +118,7 @@ def _test_lock_fn(
     try:
         try:
             unlock_fn = lock_fn(lock_path, fd, fcntl.LOCK_EX)
-        except (TryAgain, EnvironmentError):
+        except (TryAgain, OSError):
             pass
         else:
             _lock_manager(fd, os.fstat(fd), lock_path)
@@ -297,9 +297,9 @@ def _lockfile_iteration(
     locking_method = portage._eintr_func_wrapper(_get_lock_fn())
     try:
         if "__PORTAGE_TEST_HARDLINK_LOCKS" in os.environ:
-            raise IOError(errno.ENOSYS, "Function not implemented")
+            raise OSError(errno.ENOSYS, "Function not implemented")
         locking_method(myfd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError as e:
+    except OSError as e:
         if not hasattr(e, "errno"):
             raise
         if e.errno in (errno.EACCES, errno.EAGAIN, errno.ENOLCK):
@@ -325,7 +325,7 @@ def _lockfile_iteration(
             while True:
                 try:
                     locking_method(myfd, fcntl.LOCK_EX)
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno == errno.ENOLCK:
                         # This is known to occur on Solaris NFS (see
                         # bug #462694). Assume that the error is due
@@ -343,7 +343,7 @@ def _lockfile_iteration(
                                     % lockfilename
                                 )
                             writemsg(
-                                "\n!!! %s: %s\n" % (context_desc, e), noiselevel=-1
+                                "\n!!! {}: {}\n".format(context_desc, e), noiselevel=-1
                             )
 
                         time.sleep(_HARDLINK_POLL_LATENCY)
@@ -494,7 +494,7 @@ def _fstat_nlink(fd):
     """
     try:
         return os.fstat(fd).st_nlink
-    except EnvironmentError as e:
+    except OSError as e:
         if e.errno in (errno.ENOENT, errno.ESTALE):
             # Some filesystems such as CIFS return
             # ENOENT which means st_nlink == 0.
@@ -532,7 +532,7 @@ def unlockfile(mytuple):
     except OSError:
         if isinstance(lockfilename, str):
             _open_fds[myfd].close()
-        raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
+        raise OSError(_("Failed to unlock file '%s'\n") % lockfilename)
 
     try:
         # This sleep call was added to allow other processes that are
@@ -686,7 +686,7 @@ def hardlink_lockfile(
                 try:
                     os.link(lockfilename, myhardlock)
                 except OSError as e:
-                    func_call = "link('%s', '%s')" % (lockfilename, myhardlock)
+                    func_call = "link('{}', '{}')".format(lockfilename, myhardlock)
                     if e.errno == OperationNotPermitted.errno:
                         raise OperationNotPermitted(func_call)
                     elif e.errno == PermissionDenied.errno:

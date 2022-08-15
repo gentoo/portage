@@ -14,7 +14,7 @@ if getloadavg is None:
         try:
             with open("/proc/loadavg") as f:
                 loadavg_str = f.readline()
-        except IOError:
+        except OSError:
             # getloadavg() is only supposed to raise OSError, so convert
             raise OSError("unknown")
         loadavg_split = loadavg_str.split()

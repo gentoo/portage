@@ -143,7 +143,7 @@ class AbstractEbuildProcess(SpawnProcess):
                     try:
                         with open(release_agent) as f:
                             release_agent_path = f.readline().rstrip("\n")
-                    except EnvironmentError:
+                    except OSError:
                         release_agent_path = None
 
                     if release_agent_path is None or not os.path.exists(
@@ -159,7 +159,9 @@ class AbstractEbuildProcess(SpawnProcess):
 
                 cgroup_path = tempfile.mkdtemp(
                     dir=cgroup_portage,
-                    prefix="%s:%s." % (self.settings["CATEGORY"], self.settings["PF"]),
+                    prefix="{}:{}.".format(
+                        self.settings["CATEGORY"], self.settings["PF"]
+                    ),
                 )
             except (subprocess.CalledProcessError, OSError):
                 pass
@@ -451,7 +453,9 @@ class AbstractEbuildProcess(SpawnProcess):
             SpawnProcess._async_wait(self)
         elif self._build_dir_unlock is None:
             if self.returncode is None:
-                raise asyncio.InvalidStateError("Result is not ready for %s" % (self,))
+                raise asyncio.InvalidStateError(
+                    "Result is not ready for {}".format(self)
+                )
             self._async_unlock_builddir(returncode=self.returncode)
 
     def _async_unlock_builddir(self, returncode=None):

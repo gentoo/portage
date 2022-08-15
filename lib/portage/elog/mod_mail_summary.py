@@ -97,6 +97,6 @@ def _finalize(mysettings, items):
             "Timeout in finalize() for elog system 'mail_summary'\n", noiselevel=-1
         )
     except PortageException as e:
-        writemsg("%s\n" % (e,), noiselevel=-1)
+        writemsg("{}\n".format(e), noiselevel=-1)
 
     return

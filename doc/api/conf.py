@@ -64,7 +64,7 @@ html_theme = "sphinxdoc"
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = []
 
-autodoc_default_options = dict(
-    (opt, True)
+autodoc_default_options = {
+    opt: True
     for opt in filter(None, os.environ.get("SPHINX_APIDOC_OPTIONS", "").split(","))
-)
+}

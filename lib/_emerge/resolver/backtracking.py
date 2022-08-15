@@ -206,7 +206,7 @@ class Backtracker:
 
         new_node.parameter.runtime_pkg_mask.setdefault(dep.parent, {})[
             "missing dependency"
-        ] = set([(dep.parent, dep.root, dep.atom)])
+        ] = {(dep.parent, dep.root, dep.atom)}
 
         self._add(new_node)
 

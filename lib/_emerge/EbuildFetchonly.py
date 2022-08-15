@@ -37,7 +37,7 @@ class EbuildFetchonly(SlotObject):
         # and the unsuccessful return value is used to trigger
         # a call to the pkg_nofetch phase.
         if rval != os.EX_OK and not self.pretend:
-            msg = "Fetch failed for '%s'" % (pkg.cpv,)
+            msg = "Fetch failed for '{}'".format(pkg.cpv)
             eerror(msg, phase="unpack", key=pkg.cpv)
 
         return rval

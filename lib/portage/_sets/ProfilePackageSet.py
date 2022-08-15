@@ -11,9 +11,7 @@ class ProfilePackageSet(PackageSet):
     _operations = ["merge"]
 
     def __init__(self, profiles, debug=False):
-        super(ProfilePackageSet, self).__init__(
-            allow_repo=any(allow_profile_repo_deps(y) for y in profiles)
-        )
+        super().__init__(allow_repo=any(allow_profile_repo_deps(y) for y in profiles))
         self._profiles = profiles
         if profiles:
             desc_profile = profiles[-1]

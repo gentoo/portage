@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copright Gentoo Foundation 2006
 # Portage Unit Testing Functionality
 

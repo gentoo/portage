@@ -59,7 +59,7 @@ def _combine_logentries(logentries):
         for msgtype, msgcontent in logentries[phase]:
             if previous_type != msgtype:
                 previous_type = msgtype
-                rValue.append("%s: %s" % (msgtype, phase))
+                rValue.append("{}: {}".format(msgtype, phase))
             if isinstance(msgcontent, str):
                 rValue.append(msgcontent.rstrip("\n"))
             else:

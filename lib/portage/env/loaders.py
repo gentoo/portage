@@ -31,7 +31,7 @@ class LoaderError(Exception):
         self.error_msg = error_msg
 
     def __str__(self):
-        return "Failed while loading resource: %s, error was: %s" % (
+        return "Failed while loading resource: {}, error was: {}".format(
             self.resource,
             self.error_msg,
         )
@@ -159,14 +159,13 @@ class FileLoader(DataLoader):
         func = self.lineParser
         for fn in RecursiveFileLoader(self.fname):
             try:
-                with io.open(
+                with open(
                     _unicode_encode(fn, encoding=_encodings["fs"], errors="strict"),
-                    mode="r",
                     encoding=_encodings["content"],
                     errors="replace",
                 ) as f:
                     lines = f.readlines()
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno == errno.EACCES:
                     writemsg(_("Permission denied: '%s'\n") % fn, noiselevel=-1)
                     del e

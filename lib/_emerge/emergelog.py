@@ -35,7 +35,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
     try:
         file_path = os.path.join(_emerge_log_dir, "emerge.log")
         existing_log = os.path.exists(file_path)
-        mylogfile = io.open(
+        mylogfile = open(
             _unicode_encode(file_path, encoding=_encodings["fs"], errors="strict"),
             mode="a",
             encoding=_encodings["content"],
@@ -47,10 +47,10 @@ def emergelog(xterm_titles, mystr, short_msg=None):
             )
         mylock = portage.locks.lockfile(file_path)
         try:
-            mylogfile.write("%.0f: %s\n" % (time.time(), mystr))
+            mylogfile.write("{:.0f}: {}\n".format(time.time(), mystr))
             mylogfile.close()
         finally:
             portage.locks.unlockfile(mylock)
-    except (IOError, OSError, portage.exception.PortageException) as e:
+    except (OSError, portage.exception.PortageException) as e:
         if secpass >= 1:
-            portage.util.writemsg("emergelog(): %s\n" % (e,), noiselevel=-1)
+            portage.util.writemsg("emergelog(): {}\n".format(e), noiselevel=-1)

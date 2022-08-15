@@ -25,7 +25,7 @@ class _PipeClosedTestCase:
     def test_pty_device(self):
         try:
             read_end, write_end = pty.openpty()
-        except EnvironmentError:
+        except OSError:
             self.skipTest("pty not available")
         self._do_test(read_end, write_end)
 
@@ -123,7 +123,7 @@ class WriterPipeClosedTestCase(_PipeClosedTestCase, TestCase):
                 while True:
                     try:
                         os.write(write_end.fileno(), 512 * b"0")
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno != errno.EAGAIN:
                             raise
                         break

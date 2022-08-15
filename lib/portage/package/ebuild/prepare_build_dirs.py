@@ -151,7 +151,7 @@ def _adjust_perms_msg(settings, msg):
                 mode="ab",
             )
             log_file_real = log_file
-        except IOError:
+        except OSError:
 
             def write(msg):
                 pass
@@ -237,11 +237,9 @@ def _prepare_features_dirs(mysettings):
                                 except OSError:
                                     continue
                                 if subdir_st.st_gid != portage_gid or (
-                                    (
-                                        stat.S_ISDIR(subdir_st.st_mode)
-                                        and not dirmode
-                                        == (stat.S_IMODE(subdir_st.st_mode) & dirmode)
-                                    )
+                                    stat.S_ISDIR(subdir_st.st_mode)
+                                    and not dirmode
+                                    == (stat.S_IMODE(subdir_st.st_mode) & dirmode)
                                 ):
                                     droppriv_fix = True
                                     break
@@ -396,7 +394,7 @@ def _prepare_workdir(mysettings):
             log_subdir = os.path.join(logdir, "build", mysettings["CATEGORY"])
             mysettings["PORTAGE_LOG_FILE"] = os.path.join(
                 log_subdir,
-                "%s:%s.log%s" % (mysettings["PF"], logid_time, compress_log_ext),
+                "{}:{}.log{}".format(mysettings["PF"], logid_time, compress_log_ext),
             )
         else:
             log_subdir = logdir
@@ -417,13 +415,14 @@ def _prepare_workdir(mysettings):
             try:
                 _ensure_log_subdirs(logdir, log_subdir)
             except PortageException as e:
-                writemsg("!!! %s\n" % (e,), noiselevel=-1)
+                writemsg("!!! {}\n".format(e), noiselevel=-1)
 
             if os.access(log_subdir, os.W_OK):
                 logdir_subdir_ok = True
             else:
                 writemsg(
-                    "!!! %s: %s\n" % (_("Permission Denied"), log_subdir), noiselevel=-1
+                    "!!! {}: {}\n".format(_("Permission Denied"), log_subdir),
+                    noiselevel=-1,
                 )
 
     tmpdir_log_path = os.path.join(mysettings["T"], "build.log%s" % compress_log_ext)

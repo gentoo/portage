@@ -59,10 +59,10 @@ def archive_conf():
         for filename in content_files:
             filename = filename.rstrip()
             try:
-                contents = open(filename, "r")
-            except IOError as e:
+                contents = open(filename)
+            except OSError as e:
                 print(
-                    "archive-conf: Unable to open %s: %s" % (filename, e),
+                    "archive-conf: Unable to open {}: {}".format(filename, e),
                     file=sys.stderr,
                 )
                 sys.exit(1)

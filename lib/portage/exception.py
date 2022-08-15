@@ -159,7 +159,7 @@ class AmbiguousPackageName(ValueError, PortageException):
 
     def __init__(self, *args, **kwargs):
         self.args = args
-        super(AmbiguousPackageName, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __str__(self):
         return ValueError.__str__(self)

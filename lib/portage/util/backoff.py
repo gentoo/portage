@@ -52,4 +52,4 @@ class RandomExponentialBackoff(ExponentialBackoff):
     """
 
     def __call__(self, tries):
-        return random.random() * super(RandomExponentialBackoff, self).__call__(tries)
+        return random.random() * super().__call__(tries)

@@ -191,33 +191,31 @@ class vardbapi(dbapi):
         if vartree is None:
             vartree = portage.db[settings["EROOT"]]["vartree"]
         self.vartree = vartree
-        self._aux_cache_keys = set(
-            [
-                "BDEPEND",
-                "BUILD_TIME",
-                "CHOST",
-                "COUNTER",
-                "DEPEND",
-                "DESCRIPTION",
-                "EAPI",
-                "HOMEPAGE",
-                "BUILD_ID",
-                "IDEPEND",
-                "IUSE",
-                "KEYWORDS",
-                "LICENSE",
-                "PDEPEND",
-                "PROPERTIES",
-                "RDEPEND",
-                "repository",
-                "RESTRICT",
-                "SLOT",
-                "USE",
-                "DEFINED_PHASES",
-                "PROVIDES",
-                "REQUIRES",
-            ]
-        )
+        self._aux_cache_keys = {
+            "BDEPEND",
+            "BUILD_TIME",
+            "CHOST",
+            "COUNTER",
+            "DEPEND",
+            "DESCRIPTION",
+            "EAPI",
+            "HOMEPAGE",
+            "BUILD_ID",
+            "IDEPEND",
+            "IUSE",
+            "KEYWORDS",
+            "LICENSE",
+            "PDEPEND",
+            "PROPERTIES",
+            "RDEPEND",
+            "repository",
+            "RESTRICT",
+            "SLOT",
+            "USE",
+            "DEFINED_PHASES",
+            "PROVIDES",
+            "REQUIRES",
+        }
         self._aux_cache_obj = None
         self._aux_cache_filename = os.path.join(
             self._eroot, CACHE_PATH, "vdb_metadata.pickle"
@@ -341,7 +339,7 @@ class vardbapi(dbapi):
         """
         lock, counter = self._slot_locks.get(slot_atom, (None, 0))
         if lock is None:
-            lock_path = self.getpath("%s:%s" % (slot_atom.cp, slot_atom.slot))
+            lock_path = self.getpath("{}:{}".format(slot_atom.cp, slot_atom.slot))
             ensure_dirs(os.path.dirname(lock_path))
             lock = lockfile(lock_path, wantnewlockfile=True)
         self._slot_locks[slot_atom] = (lock, counter + 1)
@@ -460,7 +458,7 @@ class vardbapi(dbapi):
                         os.path.join(newpath, old_pf + ".ebuild"),
                         os.path.join(newpath, new_pf + ".ebuild"),
                     )
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise
                     del e
@@ -484,7 +482,7 @@ class vardbapi(dbapi):
         cat_dir = self.getpath(mysplit[0])
         try:
             dir_list = os.listdir(cat_dir)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno == PermissionDenied.errno:
                 raise PermissionDenied(cat_dir)
             del e
@@ -500,7 +498,7 @@ class vardbapi(dbapi):
                 continue
             if len(mysplit) > 1:
                 if ps[0] == mysplit[1]:
-                    cpv = "%s/%s" % (mysplit[0], x)
+                    cpv = "{}/{}".format(mysplit[0], x)
                     metadata = dict(
                         zip(
                             self._aux_cache_keys,
@@ -541,7 +539,7 @@ class vardbapi(dbapi):
                     return [
                         x for x in os.listdir(p) if os.path.isdir(os.path.join(p, x))
                     ]
-                except EnvironmentError as e:
+                except OSError as e:
                     if e.errno == PermissionDenied.errno:
                         raise PermissionDenied(p)
                     del e
@@ -634,7 +632,7 @@ class vardbapi(dbapi):
             )
         try:
             curmtime = os.stat(os.path.join(self._eroot, VDB_PATH, mycat)).st_mtime_ns
-        except (IOError, OSError):
+        except OSError:
             curmtime = 0
 
         if mycat not in self.matchcache or self.mtdircache[mycat] != curmtime:
@@ -876,18 +874,17 @@ class vardbapi(dbapi):
                 results[x] = st[stat.ST_MTIME]
                 continue
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         os.path.join(mydir, x),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     myd = f.read()
-            except IOError:
+            except OSError:
                 if (
                     x not in self._aux_cache_keys
                     and self._aux_cache_keys_re.match(x) is None
@@ -941,7 +938,7 @@ class vardbapi(dbapi):
         args = bunzip2_cmd + ["-c", env_file]
         try:
             proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             raise portage.exception.CommandNotFound(args[0])
@@ -1004,7 +1001,7 @@ class vardbapi(dbapi):
             else:
                 try:
                     os.unlink(os.path.join(self.getpath(cpv), k))
-                except EnvironmentError:
+                except OSError:
                     pass
         self._bump_mtime(cpv)
 
@@ -1177,11 +1174,10 @@ class vardbapi(dbapi):
         del myroot
         counter = -1
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     self._counter_path, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
@@ -1192,8 +1188,8 @@ class vardbapi(dbapi):
                         _("!!! COUNTER file is corrupt: '%s'\n") % self._counter_path,
                         noiselevel=-1,
                     )
-                    writemsg("!!! %s\n" % (e,), noiselevel=-1)
-        except EnvironmentError as e:
+                    writemsg("!!! {}\n".format(e), noiselevel=-1)
+        except OSError as e:
             # Silently allow ENOENT since files under
             # /var/cache/ are allowed to disappear.
             if e.errno != errno.ENOENT:
@@ -1313,16 +1309,15 @@ class vardbapi(dbapi):
             needed_filename = os.path.join(pkg.dbdir, LinkageMap._needed_aux_key)
             new_needed = None
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         needed_filename, encoding=_encodings["fs"], errors="strict"
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     needed_lines = f.readlines()
-            except IOError as e:
+            except OSError as e:
                 if e.errno not in (errno.ENOENT, errno.ESTALE):
                     raise
             else:
@@ -1335,7 +1330,7 @@ class vardbapi(dbapi):
                         entry = NeededEntry.parse(needed_filename, l)
                     except InvalidData as e:
                         writemsg_level(
-                            "\n%s\n\n" % (e,), level=logging.ERROR, noiselevel=-1
+                            "\n{}\n\n".format(e), level=logging.ERROR, noiselevel=-1
                         )
                         continue
 
@@ -1594,8 +1589,7 @@ class vardbapi(dbapi):
                         del owners[:]
                         dblink_cache.clear()
                         gc.collect()
-                        for x in self._iter_owners_low_mem(path_iter):
-                            yield x
+                        yield from self._iter_owners_low_mem(path_iter)
                         return
                     else:
                         for cpv, p in owners:
@@ -1649,8 +1643,7 @@ class vardbapi(dbapi):
                 search_future = event_loop.create_future()
                 event_loop.call_soon(search_pkg, cpv, search_future)
                 event_loop.run_until_complete(search_future)
-                for result in search_future.result():
-                    yield result
+                yield from search_future.result()
 
 
 class vartree:
@@ -1936,7 +1929,7 @@ class dblink:
             (slot,) = db.aux_get(self.mycpv, ["SLOT"])
             slot = slot.partition("/")[0]
 
-        slot_atoms.append(portage.dep.Atom("%s:%s" % (self.mycpv.cp, slot)))
+        slot_atoms.append(portage.dep.Atom("{}:{}".format(self.mycpv.cp, slot)))
 
         for blocker in self._blockers or []:
             slot_atoms.append(blocker.slot_atom)
@@ -2031,16 +2024,15 @@ class dblink:
         contents_file = os.path.join(self.dbdir, "CONTENTS")
         pkgfiles = {}
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     contents_file, encoding=_encodings["fs"], errors="strict"
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 mylines = f.readlines()
-        except EnvironmentError as e:
+        except OSError as e:
             if e.errno != errno.ENOENT:
                 raise
             del e
@@ -2358,7 +2350,7 @@ class dblink:
         if others_in_slot is None:
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
             slot_matches = self.vartree.dbapi.match(
-                "%s:%s" % (portage.cpv_getkey(self.mycpv), slot)
+                "{}:{}".format(portage.cpv_getkey(self.mycpv), slot)
             )
             others_in_slot = []
             for cur_cpv in slot_matches:
@@ -2459,7 +2451,7 @@ class dblink:
                     noiselevel=-1,
                 )
                 showMessage(
-                    "%s\n" % (eapi_unsupported,), level=logging.ERROR, noiselevel=-1
+                    "{}\n".format(eapi_unsupported), level=logging.ERROR, noiselevel=-1
                 )
             elif os.path.isfile(myebuildpath):
                 phase = EbuildPhase(
@@ -2658,7 +2650,7 @@ class dblink:
 
     def _show_unmerge(self, zing, desc, file_type, file_name):
         self._display_merge(
-            "%s %s %s %s\n" % (zing, desc.ljust(8), file_type, file_name)
+            "{} {} {} {}\n".format(zing, desc.ljust(8), file_type, file_name)
         )
 
     def _unmerge_pkgfiles(self, pkgfiles, others_in_slot):
@@ -2689,7 +2681,7 @@ class dblink:
             others_in_slot = []
             slot = self.vartree.dbapi._pkg_str(self.mycpv, None).slot
             slot_matches = self.vartree.dbapi.match(
-                "%s:%s" % (portage.cpv_getkey(self.mycpv), slot)
+                "{}:{}".format(portage.cpv_getkey(self.mycpv), slot)
             )
             for cur_cpv in slot_matches:
                 if cur_cpv == self.mycpv:
@@ -2752,7 +2744,7 @@ class dblink:
                     # administrative and pkg_postinst stuff.
                     self._eerror(
                         "postrm",
-                        ["Could not chmod or unlink '%s': %s" % (file_name, ose)],
+                        ["Could not chmod or unlink '{}': {}".format(file_name, ose)],
                     )
                 else:
 
@@ -2919,7 +2911,7 @@ class dblink:
                 ):
                     try:
                         unlink(obj, lstatobj)
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3008,7 +3000,7 @@ class dblink:
                     try:
                         unlink(obj, lstatobj)
                         show_unmerge("<<<", "", file_type, obj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3032,7 +3024,7 @@ class dblink:
                         continue
                     try:
                         unlink(obj, lstatobj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3173,7 +3165,7 @@ class dblink:
                     try:
                         unlink(obj, os.lstat(obj))
                         show_unmerge("<<<", "", "sym", obj)
-                    except (OSError, IOError) as e:
+                    except OSError as e:
                         if e.errno not in ignored_unlink_errnos:
                             raise
                         del e
@@ -3224,7 +3216,7 @@ class dblink:
                             if stat.S_ISREG(lstatobj.st_mode):
                                 unlink(child, lstatobj)
                                 show_unmerge("<<<", "", "obj", child)
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
@@ -3258,7 +3250,7 @@ class dblink:
                 self._merged_path(os.path.realpath(parent_name), parent_stat)
 
                 show_unmerge("<<<", "", "dir", obj)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno not in ignored_rmdir_errnos:
                     raise
                 if e.errno != errno.ENOENT:
@@ -3290,7 +3282,7 @@ class dblink:
                         try:
                             unlink(obj, os.lstat(obj))
                             show_unmerge("<<<", "", "sym", obj)
-                        except (OSError, IOError) as e:
+                        except OSError as e:
                             if e.errno not in ignored_unlink_errnos:
                                 raise
                             del e
@@ -3427,9 +3419,9 @@ class dblink:
                     else:
                         os = portage.os
 
-                self._contents_basenames = set(
+                self._contents_basenames = {
                     os.path.basename(x) for x in self._contents.keys()
-                )
+                }
             if basename not in self._contents_basenames:
                 # This is a shortcut that, in most cases, allows us to
                 # eliminate this package as an owner without the need
@@ -3441,7 +3433,7 @@ class dblink:
             parent_path = os_filename_arg.path.dirname(destfile)
             try:
                 parent_stat = os_filename_arg.stat(parent_path)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
@@ -3982,7 +3974,7 @@ class dblink:
 
             try:
                 dest_lstat = os.lstat(dest_path)
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno == errno.ENOENT:
                     del e
                     continue
@@ -3997,7 +3989,7 @@ class dblink:
                         try:
                             dest_lstat = os.lstat(parent_path)
                             break
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno != errno.ENOTDIR:
                                 raise
                             del e
@@ -4340,18 +4332,17 @@ class dblink:
         slot = ""
         for var_name in ("CHOST", "SLOT"):
             try:
-                with io.open(
+                with open(
                     _unicode_encode(
                         os.path.join(inforoot, var_name),
                         encoding=_encodings["fs"],
                         errors="strict",
                     ),
-                    mode="r",
                     encoding=_encodings["repo.content"],
                     errors="replace",
                 ) as f:
                     val = f.readline().strip()
-            except EnvironmentError as e:
+            except OSError as e:
                 if e.errno != errno.ENOENT:
                     raise
                 del e
@@ -4399,7 +4390,7 @@ class dblink:
         # Use _pkg_str discard the sub-slot part if necessary.
         slot = _pkg_str(self.mycpv, slot=slot).slot
         cp = self.mysplit[0]
-        slot_atom = "%s:%s" % (cp, slot)
+        slot_atom = "{}:{}".format(cp, slot)
 
         self.lockdb()
         try:
@@ -4480,18 +4471,17 @@ class dblink:
         phase.start()
         phase.wait()
         try:
-            with io.open(
+            with open(
                 _unicode_encode(
                     os.path.join(inforoot, "INSTALL_MASK"),
                     encoding=_encodings["fs"],
                     errors="strict",
                 ),
-                mode="r",
                 encoding=_encodings["repo.content"],
                 errors="replace",
             ) as f:
                 install_mask = InstallMask(f.read())
-        except EnvironmentError:
+        except OSError:
             install_mask = None
 
         if install_mask:
@@ -4876,9 +4866,9 @@ class dblink:
 
                     for pkg in owners:
                         pkg = self.vartree.dbapi._pkg_str(pkg.mycpv, None)
-                        pkg_info_str = "%s%s%s" % (pkg, _slot_separator, pkg.slot)
+                        pkg_info_str = "{}{}{}".format(pkg, _slot_separator, pkg.slot)
                         if pkg.repo != _unknown_repo:
-                            pkg_info_str += "%s%s" % (_repo_separator, pkg.repo)
+                            pkg_info_str += "{}{}".format(_repo_separator, pkg.repo)
                         pkg_info_strs[pkg] = pkg_info_str
 
                 finally:
@@ -5002,7 +4992,7 @@ class dblink:
         # write local package counter for recording
         if counter is None:
             counter = self.vartree.dbapi.counter_tick(mycpv=self.mycpv)
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbtmpdir, "COUNTER"),
                 encoding=_encodings["fs"],
@@ -5652,7 +5642,7 @@ class dblink:
                             ],
                         )
 
-                    showMessage("%s %s -> %s\n" % (zing, mydest, myto))
+                    showMessage("{} {} -> {}\n".format(zing, mydest, myto))
                     outfile.write(
                         self._format_contents_line(
                             node_type="sym",
@@ -5668,7 +5658,7 @@ class dblink:
                         noiselevel=-1,
                     )
                     showMessage(
-                        "!!! %s -> %s\n" % (mydest, myto),
+                        "!!! {} -> {}\n".format(mydest, myto),
                         level=logging.ERROR,
                         noiselevel=-1,
                     )
@@ -5864,7 +5854,7 @@ class dblink:
                             mtime_ns=mymtime,
                         )
                     )
-                showMessage("%s %s\n" % (zing, mydest))
+                showMessage("{} {}\n".format(zing, mydest))
             else:
                 # we are merging a fifo or device node
                 zing = "!!!"
@@ -6025,7 +6015,7 @@ class dblink:
         if returncode is None or returncode != os.EX_OK:
             try:
                 proc = subprocess.Popen(["sync"])
-            except EnvironmentError:
+            except OSError:
                 pass
             else:
                 proc.wait()
@@ -6122,13 +6112,12 @@ class dblink:
         "returns contents of a file with whitespace converted to spaces"
         if not os.path.exists(self.dbdir + "/" + name):
             return ""
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, name),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6141,13 +6130,12 @@ class dblink:
     def getfile(self, fname):
         if not os.path.exists(self.dbdir + "/" + fname):
             return ""
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, fname),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6165,13 +6153,12 @@ class dblink:
     def getelements(self, ename):
         if not os.path.exists(self.dbdir + "/" + ename):
             return []
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
                 errors="strict",
             ),
-            mode="r",
             encoding=_encodings["repo.content"],
             errors="replace",
         ) as f:
@@ -6183,7 +6170,7 @@ class dblink:
         return myreturn
 
     def setelements(self, mylist, ename):
-        with io.open(
+        with open(
             _unicode_encode(
                 os.path.join(self.dbdir, ename),
                 encoding=_encodings["fs"],
@@ -6270,7 +6257,7 @@ class dblink:
                 args=[
                     portage._python_interpreter,
                     quickpkg_binary,
-                    "=%s" % (backup_dblink.mycpv,),
+                    "={}".format(backup_dblink.mycpv),
                 ],
                 background=background,
                 env=env,
@@ -6397,12 +6384,12 @@ def write_contents(contents, root, f):
         relative_filename = filename[root_len:]
         if entry_type == "obj":
             entry_type, mtime, md5sum = entry_data
-            line = "%s %s %s %s\n" % (entry_type, relative_filename, md5sum, mtime)
+            line = "{} {} {} {}\n".format(entry_type, relative_filename, md5sum, mtime)
         elif entry_type == "sym":
             entry_type, mtime, link = entry_data
-            line = "%s %s -> %s %s\n" % (entry_type, relative_filename, link, mtime)
+            line = "{} {} -> {} {}\n".format(entry_type, relative_filename, link, mtime)
         else:  # dir, dev, fif
-            line = "%s %s\n" % (entry_type, relative_filename)
+            line = "{} {}\n".format(entry_type, relative_filename)
         f.write(line)
 
 

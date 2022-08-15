@@ -131,7 +131,7 @@ class Package(Task):
         self.version = self.cpv.version
         self.slot = self.cpv.slot
         self.sub_slot = self.cpv.sub_slot
-        self.slot_atom = Atom("%s%s%s" % (self.cp, _slot_separator, self.slot))
+        self.slot_atom = Atom("{}{}{}".format(self.cp, _slot_separator, self.slot))
         # sync metadata with validated repo (may be UNKNOWN_REPO)
         self._metadata["repository"] = self.cpv.repo
 
@@ -355,7 +355,7 @@ class Package(Task):
                             self._metadata_exception(k, e)
 
         self._validated_atoms = tuple(
-            set(atom for atom in validated_atoms if isinstance(atom, Atom))
+            {atom for atom in validated_atoms if isinstance(atom, Atom)}
         )
 
         for k in self._use_conditional_misc_keys:
@@ -381,7 +381,7 @@ class Package(Task):
                 try:
                     check_required_use(v, (), self.iuse.is_valid_flag, eapi=eapi)
                 except InvalidDependString as e:
-                    self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                    self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
 
         k = "SRC_URI"
         v = self._metadata.get(k)
@@ -403,13 +403,13 @@ class Package(Task):
             try:
                 self._provides = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
 
             k = "REQUIRES"
             try:
                 self._requires = frozenset(parse_soname_deps(self._metadata[k]))
             except InvalidData as e:
-                self._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
+                self._invalid_metadata(k + ".syntax", "{}: {}".format(k, e))
 
     def copy(self):
         return Package(
@@ -546,17 +546,17 @@ class Package(Task):
                     if getattr(error, "category", None) is None:
                         continue
                     categorized_error = True
-                    self._invalid_metadata(error.category, "%s: %s" % (k, error))
+                    self._invalid_metadata(error.category, "{}: {}".format(k, error))
 
             if not categorized_error:
-                self._invalid_metadata(qacat, "%s: %s" % (k, e))
+                self._invalid_metadata(qacat, "{}: {}".format(k, e))
         else:
             # For installed packages, show the path of the file
             # containing the invalid metadata, since the user may
             # want to fix the deps by hand.
             vardb = self.root_config.trees["vartree"].dbapi
             path = vardb.getpath(self.cpv, filename=k)
-            self._invalid_metadata(qacat, "%s: %s in '%s'" % (k, e, path))
+            self._invalid_metadata(qacat, "{}: {} in '{}'".format(k, e, path))
 
     def _invalid_metadata(self, msg_type, msg):
         if self._invalid is None:
@@ -582,7 +582,7 @@ class Package(Task):
         if isinstance(self.cpv.build_id, int) and self.cpv.build_id > 0:
             build_id_str = "-%s" % self.cpv.build_id
 
-        s = "(%s, %s" % (
+        s = "({}, {}".format(
             portage.output.colorize(
                 cpv_color,
                 self.cpv

@@ -94,7 +94,7 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
         self._schedule()
 
     def _cleanup(self):
-        super(AsyncScheduler, self)._cleanup()
+        super()._cleanup()
         if self._loadavg_check_id is not None:
             self._loadavg_check_id.cancel()
             self._loadavg_check_id = None
@@ -104,4 +104,4 @@ class AsyncScheduler(AsynchronousTask, PollScheduler):
         Override _async_wait to call self._cleanup().
         """
         self._cleanup()
-        super(AsyncScheduler, self)._async_wait()
+        super()._async_wait()

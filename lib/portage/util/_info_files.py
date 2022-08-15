@@ -68,7 +68,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                             try:
                                 os.rename(dir_file + ext, dir_file + ext + ".old")
                                 moved_old_dir = True
-                            except EnvironmentError as e:
+                            except OSError as e:
                                 if e.errno != errno.ENOENT:
                                     raise
                                 del e
@@ -114,7 +114,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                     for ext in dir_extensions:
                         try:
                             os.rename(dir_file + ext + ".old", dir_file + ext)
-                        except EnvironmentError as e:
+                        except OSError as e:
                             if e.errno != errno.ENOENT:
                                 raise
                             del e
@@ -124,7 +124,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
                 for ext in dir_extensions:
                     try:
                         os.unlink(dir_file + ext + ".old")
-                    except EnvironmentError as e:
+                    except OSError as e:
                         if e.errno != errno.ENOENT:
                             raise
                         del e

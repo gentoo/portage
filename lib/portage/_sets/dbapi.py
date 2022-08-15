@@ -33,7 +33,7 @@ class EverythingSet(PackageSet):
     _filter = None
 
     def __init__(self, vdbapi, **kwargs):
-        super(EverythingSet, self).__init__()
+        super().__init__()
         self._db = vdbapi
 
     def load(self):
@@ -47,7 +47,7 @@ class EverythingSet(PackageSet):
                 # SLOT installed, in order to avoid the possibility
                 # of unwanted upgrades as reported in bug #338959.
                 pkg = pkg_str(cpv, None)
-                atom = Atom("%s:%s" % (pkg.cp, pkg.slot))
+                atom = Atom("{}:{}".format(pkg.cp, pkg.slot))
                 if self._filter:
                     if self._filter(atom):
                         myatoms.append(atom)
@@ -71,7 +71,7 @@ class OwnerSet(PackageSet):
     )
 
     def __init__(self, vardb=None, exclude_files=None, files=None):
-        super(OwnerSet, self).__init__()
+        super().__init__()
         self._db = vardb
         self._exclude_files = exclude_files
         self._files = files
@@ -105,7 +105,7 @@ class OwnerSet(PackageSet):
         if not exclude_paths:
             for link, p in vardb._owners.iter_owners(paths):
                 pkg = pkg_str(link.mycpv, None)
-                rValue.add("%s:%s" % (pkg.cp, pkg.slot))
+                rValue.add("{}:{}".format(pkg.cp, pkg.slot))
         else:
             all_paths = set()
             all_paths.update(paths)
@@ -113,7 +113,7 @@ class OwnerSet(PackageSet):
             exclude_atoms = set()
             for link, p in vardb._owners.iter_owners(all_paths):
                 pkg = pkg_str(link.mycpv, None)
-                atom = "%s:%s" % (pkg.cp, pkg.slot)
+                atom = "{}:{}".format(pkg.cp, pkg.slot)
                 rValue.add(atom)
                 # Returned paths are relative to ROOT and do not have
                 # a leading slash.
@@ -156,7 +156,7 @@ class VariableSet(EverythingSet):
     def __init__(
         self, vardb, metadatadb=None, variable=None, includes=None, excludes=None
     ):
-        super(VariableSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
         self._variable = variable
         self._includes = includes
@@ -231,7 +231,7 @@ class SubslotChangedSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(SubslotChangedSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 
@@ -242,7 +242,7 @@ class SubslotChangedSet(PackageSet):
         cp_list = self._vardb.cp_list
         for cp in self._vardb.cp_all():
             for pkg in cp_list(cp):
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = "{}:{}".format(pkg.cp, pkg.slot)
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -268,7 +268,7 @@ class DowngradeSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(DowngradeSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 
@@ -281,7 +281,7 @@ class DowngradeSet(PackageSet):
         for cp in self._vardb.cp_all():
             for cpv in cp_list(cp):
                 pkg = pkg_str(cpv, None)
-                slot_atom = "%s:%s" % (pkg.cp, pkg.slot)
+                slot_atom = "{}:{}".format(pkg.cp, pkg.slot)
                 ebuild = xmatch(xmatch_level, slot_atom)
                 if not ebuild:
                     continue
@@ -307,7 +307,7 @@ class UnavailableSet(EverythingSet):
     )
 
     def __init__(self, vardb, metadatadb=None):
-        super(UnavailableSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
 
     def _filter(self, atom):
@@ -340,7 +340,7 @@ class UnavailableBinaries(EverythingSet):
     )
 
     def __init__(self, vardb, metadatadb=None):
-        super(UnavailableBinaries, self).__init__(vardb)
+        super().__init__(vardb)
         self._metadatadb = metadatadb
 
     def _filter(self, atom):
@@ -367,7 +367,7 @@ class CategorySet(PackageSet):
     _operations = ["merge", "unmerge"]
 
     def __init__(self, category, dbapi, only_visible=True):
-        super(CategorySet, self).__init__()
+        super().__init__()
         self._db = dbapi
         self._category = category
         self._check = only_visible
@@ -375,7 +375,7 @@ class CategorySet(PackageSet):
             s = "visible"
         else:
             s = "all"
-        self.description = "Package set containing %s packages of category %s" % (
+        self.description = "Package set containing {} packages of category {}".format(
             s,
             self._category,
         )
@@ -455,7 +455,7 @@ class AgeSet(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, mode="older", age=7):
-        super(AgeSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._mode = mode
         self._age = age
 
@@ -494,7 +494,7 @@ class DateSet(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, date, mode="older"):
-        super(DateSet, self).__init__(vardb)
+        super().__init__(vardb)
         self._mode = mode
         self._date = date
 
@@ -589,7 +589,7 @@ class RebuiltBinaries(EverythingSet):
     _aux_keys = ("BUILD_TIME",)
 
     def __init__(self, vardb, bindb=None):
-        super(RebuiltBinaries, self).__init__(vardb, bindb=bindb)
+        super().__init__(vardb, bindb=bindb)
         self._bindb = bindb
 
     def _filter(self, atom):
@@ -618,7 +618,7 @@ class ChangedDepsSet(PackageSet):
     )
 
     def __init__(self, portdb=None, vardb=None):
-        super(ChangedDepsSet, self).__init__()
+        super().__init__()
         self._portdb = portdb
         self._vardb = vardb
 

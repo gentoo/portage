@@ -140,7 +140,7 @@ class _PackageCounters:
                 details[-1] += "s"
         if self.interactive > 0:
             details.append(
-                "%s %s" % (self.interactive, colorize("WARN", "interactive"))
+                "{} {}".format(self.interactive, colorize("WARN", "interactive"))
             )
         myoutput.append(", ".join(details))
         if total_installs != 0:
@@ -339,7 +339,7 @@ def _create_use_string(
     else:
         ret = " ".join(enabled + disabled + removed)
     if ret:
-        ret = '%s="%s" ' % (name, ret)
+        ret = '{}="{}" '.format(name, ret)
     return ret
 
 
@@ -349,11 +349,11 @@ def _tree_display(conf, mylist):
     # corresponding blockers to the digraph.
     mygraph = conf.digraph.copy()
 
-    executed_uninstalls = set(
+    executed_uninstalls = {
         node
         for node in mylist
         if isinstance(node, Package) and node.operation == "unmerge"
-    )
+    }
 
     for uninstall in conf.blocker_uninstalls.leaf_nodes():
         uninstall_parents = conf.blocker_uninstalls.parent_nodes(uninstall)

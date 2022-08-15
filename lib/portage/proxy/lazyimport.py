@@ -136,7 +136,7 @@ class _LazyImportFrom(_LazyImport):
         except AttributeError:
             # Try to import it as a submodule
             try:
-                __import__("%s.%s" % (name, attr_name))
+                __import__("{}.{}".format(name, attr_name))
             except ImportError:
                 pass
             # If it's a submodule, this will succeed. Otherwise, it may

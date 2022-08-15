@@ -27,6 +27,6 @@ def process(mysettings, key, logentries, fulltext):
             if isinstance(msgcontent, str):
                 msgcontent = [msgcontent]
             for line in msgcontent:
-                line = "%s: %s: %s" % (key, phase, line)
+                line = "{}: {}: {}".format(key, phase, line)
                 syslog.syslog(_pri[msgtype], line.rstrip("\n"))
     syslog.closelog()

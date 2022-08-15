@@ -41,13 +41,13 @@ class Task(SlotObject):
         Emulate tuple.__repr__, but don't show 'foo' as u'foo' for unicode
         strings.
         """
-        return "(%s)" % ", ".join(("'%s'" % x for x in self._hash_key))
+        return "(%s)" % ", ".join("'%s'" % x for x in self._hash_key)
 
     def __repr__(self):
         if self._hash_key is None:
             # triggered by python-trace
             return SlotObject.__repr__(self)
-        return "<%s (%s)>" % (
+        return "<{} ({})>".format(
             self.__class__.__name__,
-            ", ".join(("'%s'" % x for x in self._hash_key)),
+            ", ".join("'%s'" % x for x in self._hash_key),
         )

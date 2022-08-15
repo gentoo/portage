@@ -98,9 +98,7 @@ class LocationsManager:
         self.broot = portage.const.EPREFIX
 
     def load_profiles(self, repositories, known_repository_paths):
-        known_repository_paths = set(
-            os.path.realpath(x) for x in known_repository_paths
-        )
+        known_repository_paths = {os.path.realpath(x) for x in known_repository_paths}
 
         known_repos = []
         for x in known_repository_paths:
@@ -224,14 +222,13 @@ class LocationsManager:
         eapi = eapi or "0"
         f = None
         try:
-            f = io.open(
+            f = open(
                 _unicode_encode(eapi_file, encoding=_encodings["fs"], errors="strict"),
-                mode="r",
                 encoding=_encodings["content"],
                 errors="replace",
             )
             eapi = f.readline().strip()
-        except IOError:
+        except OSError:
             pass
         else:
             if not eapi_is_supported(eapi):

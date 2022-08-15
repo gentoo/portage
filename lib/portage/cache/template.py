@@ -89,7 +89,7 @@ class database:
                 mtime = int(mtime)
             except ValueError:
                 raise cache_errors.CacheCorruption(
-                    cpv, "_mtime_ conversion to int failed: %s" % (mtime,)
+                    cpv, "_mtime_ conversion to int failed: {}".format(mtime)
                 )
             d["_mtime_"] = mtime
         return d
@@ -111,11 +111,11 @@ class database:
             return extern_ec_dict
         chf_getter = operator.attrgetter(chf_type)
         if paths:
-            intern_ec_dict = dict(
-                (k, (v.eclass_dir, chf_getter(v))) for k, v in extern_ec_dict.items()
-            )
+            intern_ec_dict = {
+                k: (v.eclass_dir, chf_getter(v)) for k, v in extern_ec_dict.items()
+            }
         else:
-            intern_ec_dict = dict((k, chf_getter(v)) for k, v in extern_ec_dict.items())
+            intern_ec_dict = {k: chf_getter(v) for k, v in extern_ec_dict.items()}
         return intern_ec_dict
 
     def __setitem__(self, cpv, values):
@@ -311,11 +311,11 @@ def serialize_eclasses(eclass_dict, chf_type="mtime", paths=True):
     getter = operator.attrgetter(chf_type)
     if paths:
         return "\t".join(
-            "%s\t%s\t%s" % (k, v.eclass_dir, getter(v))
+            "{}\t{}\t{}".format(k, v.eclass_dir, getter(v))
             for k, v in sorted(eclass_dict.items(), key=_keysorter)
         )
     return "\t".join(
-        "%s\t%s" % (k, getter(v))
+        "{}\t{}".format(k, getter(v))
         for k, v in sorted(eclass_dict.items(), key=_keysorter)
     )
 
