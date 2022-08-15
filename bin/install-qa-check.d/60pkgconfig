@@ -1,5 +1,10 @@
 # Check for pkg-config file issues
 
+# Ensure that ver_test is available.
+if ! __eapi_has_version_functions; then
+	source "${PORTAGE_BIN_PATH}/eapi7-ver-funcs.sh" || exit 1
+fi
+
 pkgconfig_check() {
 	local files=()
 	# Make a list of .pc files and bail out if there aren't any
@@ -108,8 +113,6 @@ pkgconfig_check() {
 
 		local is_pms_ver=false
 		if [[ ${QA_PKGCONFIG_VERSION} =~ ${pms_ver_re} ]] ; then
-			# Ensure that ver_test is available.
-			[[ $(type -t ver_test) == function ]] || inherit eapi7-ver
 			is_pms_ver=true
 		fi
 
