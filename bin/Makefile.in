@@ -32,7 +32,6 @@ usr_sbinprogs = \
 	env-update \
 	etc-update \
 	fixpackages \
-	readpecoff \
 	regenworld
 
 all:
