@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]] ; do
 			fi
 		done
 
-		if [[ ${find_paths[@]} ]]; then
+		if (( ${#find_paths[@]} )); then
 			# We can avoid scanelf calls for binaries we already
 			# checked in install_qa_check (where we generate
 			# NEEDED for everything installed).
@@ -98,7 +98,7 @@ while [[ $# -gt 0 ]] ; do
 					done
 				done < "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 			else
-				scanelf_results=$(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
+				mapfile -t scanelf_results < <(scanelf -yqRBF '#k%F' -k '.symtab' "${find_paths[@]}")
 			fi
 
 			while IFS= read -r path; do
