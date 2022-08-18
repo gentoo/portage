@@ -271,9 +271,9 @@ def action_build(
             msg = "The FEATURES=digest setting"
 
         msg += (
-            " can prevent corruption from being"
-            + " noticed. The `repoman manifest` command is the preferred"
-            + " way to generate manifests and it is capable of doing an"
+            " can prevent corruption from being noticed."
+            + " `pkgdev` is the preferred way to generate"
+            + " manifests and it is capable of doing an"
             + " entire repository or category at once."
         )
         prefix = bad(" * ")
