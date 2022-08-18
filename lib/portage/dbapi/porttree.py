@@ -367,14 +367,14 @@ class portdbapi(dbapi):
                 repo priority
         @type porttrees: list
         """
+        self._porttrees = tuple(porttrees)
         self._porttrees_repos = portage.OrderedDict(
             (repo.name, repo)
             for repo in (
                 self.repositories.get_repo_for_location(location)
-                for location in porttrees
+                for location in self._porttrees
             )
         )
-        self._porttrees = tuple(porttrees)
 
     def _get_porttrees(self):
         return self._porttrees
