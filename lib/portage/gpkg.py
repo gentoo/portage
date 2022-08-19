@@ -781,6 +781,7 @@ class gpkg:
         self.base_name = base_name
         self.checksums = []
         self.manifest_old = []
+        signature_exist = None
 
         # Compression is the compression algorithm, if set to None will
         # not use compression.
@@ -1113,6 +1114,77 @@ class gpkg:
                         new_data_tarinfo, container_old.extractfile(old_data_tarinfo)
                     )
                     self.checksums.append(m)
+
+            self._add_manifest(container)
+
+        shutil.move(tmp_gpkg_file_name, self.gpkg_file)
+
+    def update_signature(self, keep_current_signature=False):
+        """
+        Add / update signature in the gpkg file.
+        if keep_current_signature is True, keep the current signature, otherwise, re-signing it.
+        """
+        self.create_signature = True
+        self._verify_binpkg()
+        self.checksums = []
+
+        with open(self.gpkg_file, "rb") as container:
+            container_tar_format = self._get_tar_format(container)
+            if container_tar_format is None:
+                raise InvalidBinaryPackageFormat("Cannot identify tar format")
+
+        # container
+        tmp_gpkg_file_name = f"{self.gpkg_file}.{os.getpid()}"
+        with tarfile.TarFile(
+            name=tmp_gpkg_file_name, mode="w", format=container_tar_format
+        ) as container:
+            # gpkg version
+            gpkg_version_file = tarfile.TarInfo(self.gpkg_version)
+            gpkg_version_file.mtime = datetime.utcnow().timestamp()
+            container.addfile(gpkg_version_file)
+
+            # reuse other stuffs
+            with tarfile.open(self.gpkg_file, "r") as container_old:
+                manifest_old = self.manifest_old.copy()
+                file_list_old = [f[1] for f in manifest_old]
+
+                for m in manifest_old:
+                    file_name_old = m[1]
+                    if os.path.basename(file_name_old).endswith(".sig"):
+                        continue
+                    old_data_tarinfo = container_old.getmember(file_name_old)
+                    new_data_tarinfo = copy(old_data_tarinfo)
+
+                    container.addfile(
+                        new_data_tarinfo, container_old.extractfile(old_data_tarinfo)
+                    )
+                    self.checksums.append(m)
+
+                    # Check if signature file exists and reuse or create new one.
+                    if keep_current_signature and (
+                        file_name_old + ".sig" in file_list_old
+                    ):
+                        old_data_sign_tarinfo = container_old.getmember(
+                            file_name_old + ".sig"
+                        )
+                        new_data_sign_tarinfo = copy(old_data_sign_tarinfo)
+                        container.addfile(
+                            new_data_sign_tarinfo,
+                            container_old.extractfile(old_data_sign_tarinfo),
+                        )
+                        for manifest_sign in manifest_old:
+                            if manifest_sign[1] == file_name_old + ".sig":
+                                self.checksums.append(manifest_sign)
+                                break
+                    else:
+                        checksum_info = checksum_helper(
+                            self.settings, gpg_operation=checksum_helper.SIGNING
+                        )
+                        checksum_info.update(
+                            container_old.extractfile(old_data_tarinfo).read()
+                        )
+                        checksum_info.finish()
+                        self._add_signature(checksum_info, new_data_tarinfo, container)
 
             self._add_manifest(container)
 
@@ -1611,6 +1683,7 @@ class gpkg:
 
         # Save current Manifest for other operations.
         self.manifest_old = manifest.copy()
+        self.signature_exist = signature_exist
 
     def _generate_metadata_from_dir(self, metadata_dir):
         """

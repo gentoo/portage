@@ -66,6 +66,7 @@ x_scripts = {
         "bin/glsa-check",
         "bin/portageq",
         "bin/quickpkg",
+        "bin/gpkg-sign",
     ],
     "sbin": [
         "bin/archive-conf",
