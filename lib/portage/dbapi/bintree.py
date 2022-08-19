@@ -1039,6 +1039,12 @@ class binarytree:
                     if match:
                         binpkg_format = match.get("BINPKG_FORMAT", None)
 
+                    if not binpkg_format:
+                        if myfile.endswith(SUPPORTED_XPAK_EXTENSIONS):
+                            binpkg_format = "xpak"
+                        elif myfile.endswith(SUPPORTED_GPKG_EXTENSIONS):
+                            binpkg_format = "gpkg"
+
                     if gpkg_only:
                         if binpkg_format != "gpkg":
                             if not gpkg_only_warned:
