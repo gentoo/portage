@@ -75,6 +75,9 @@ Bug fixes:
 * emerge(1): mention --with-bdeps=n behavior for both --usepkg (-k) and
   --usepkgonly (-K) (bug #863422).
 
+* ecompress: add option to lz4 in order to be able to compress multiple
+  files at once (bug #672916).
+
 portage-3.0.34 (2022-07-20)
 --------------
 
