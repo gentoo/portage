@@ -824,7 +824,7 @@ else
 			# Don't allow subprocesses to inherit the pipe which
 			# emerge uses to monitor ebuild.sh.
 			if [[ -n ${PORTAGE_PIPE_FD} ]] ; then
-				eval "exec ${PORTAGE_PIPE_FD}>&-"
+				exec {PORTAGE_PIPE_FD}>&-
 				unset -v PORTAGE_PIPE_FD
 			fi
 			__ebuild_main ${EBUILD_SH_ARGS}
