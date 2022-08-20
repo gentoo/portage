@@ -594,8 +594,9 @@ then
 	[[ -n ${EAPI} ]] || EAPI=0
 fi
 
-# Convert quoted paths to array.
-eval "PORTAGE_ECLASS_LOCATIONS=(${PORTAGE_ECLASS_LOCATIONS})"
+# Convert PORTAGE_ECLASS_LOCATIONS to an array. The initial value comes quoted
+# in a manner suitable for evaluation by the shell, hence the use of eval.
+eval "PORTAGE_ECLASS_LOCATIONS=( ${PORTAGE_ECLASS_LOCATIONS} )"
 
 # Source the ebuild every time for FEATURES=noauto, so that ebuild
 # modifications take effect immediately.
