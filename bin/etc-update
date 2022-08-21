@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -41,7 +41,7 @@ case ${OS_RELEASE_POSSIBLE_IDS} in
 	*) OS_FAMILY='gentoo';;
 esac
 
-if [[ $OS_FAMILY == 'gentoo' ]]; then
+if [[ ${OS_FAMILY} == 'gentoo' ]]; then
 	get_basename() {
 		printf -- '%s\n' "${1:10}"
 	}
@@ -54,7 +54,7 @@ if [[ $OS_FAMILY == 'gentoo' ]]; then
 	get_live_file() {
 		echo "${rpath}/${rfile:10}"
 	}
-elif [[ $OS_FAMILY == 'arch' ]]; then
+elif [[ ${OS_FAMILY} == 'arch' ]]; then
 	get_basename() {
 		printf -- '%s\n' "${1%.${NEW_EXT}}"
 	}
@@ -68,7 +68,7 @@ elif [[ $OS_FAMILY == 'arch' ]]; then
 		printf -- '%s\n' "${cfg_file%.${NEW_EXT}}"
 	}
 # In rpm we have rpmsave, rpmorig, and rpmnew.
-elif [[ $OS_FAMILY == 'rpm' ]]; then
+elif [[ ${OS_FAMILY} == 'rpm' ]]; then
 	get_basename() {
 		printf -- '%s\n' "${1}" |sed -e 's/\.rpmsave$//' -e 's/\.rpmnew$//' -e 's/\.rpmorig$//'
 	}
@@ -133,6 +133,7 @@ scan() {
 			# parent directory doesn't exist, we can safely skip it.
 			path=${path%/}
 			[[ -d ${path%/*} ]] || continue
+
 			local name_opt=$(get_basename_find_opt "${path##*/}")
 			path="${path%/*}"
 			find_opts=( -maxdepth 1 )
@@ -141,9 +142,10 @@ scan() {
 			local name_opt=$(get_basename_find_opt '*')
 			find_opts=( -name '.*' -type d -prune -o )
 		fi
+
 		${case_insensitive} && \
 			find_opts+=( -iname ) || find_opts+=( -name )
-		find_opts+=( "$name_opt" )
+		find_opts+=( "${name_opt}" )
 		find_opts+=( ! -name '.*~' ! -iname '.*.bak' -print )
 
 		if [[ ! -w ${path} ]] ; then
@@ -157,8 +159,8 @@ scan() {
 		              sed \
 						-e 's://*:/:g' \
 						-e "${scan_regexp}" |
-		              sort -t"$b" -k2,2 -k4,4 -k3,3 |
-		              LC_ALL=C cut -f1 -d"$b")
+		              sort -t"${b}" -k2,2 -k4,4 -k3,3 |
+		              LC_ALL=C cut -f1 -d"${b}")
 		do
 			local rpath rfile cfg_file live_file
 			rpath=${file%/*}
@@ -175,6 +177,7 @@ scan() {
 					continue 2
 				fi
 			done
+
 			if [[ -L ${file} ]] ; then
 				if [[ -L ${live_file} && \
 					$(readlink "${live_file}") == $(readlink "${file}") ]]
@@ -182,17 +185,20 @@ scan() {
 					rm -f "${file}"
 					continue
 				fi
+
 				if [[ $(get_basename "${ofile}") != $(get_basename "${rfile}") ]] ||
 				   [[ ${opath} != ${rpath} ]]
 				then
 					: $(( ++count ))
 					echo "${live_file}" > "${TMP}"/files/${count}
 				fi
+
 				echo "${cfg_file}" >> "${TMP}"/files/${count}
 				ofile="${rfile}"
 				opath="${rpath}"
 				continue
 			fi
+
 			if [[ ! -f ${file} ]] ; then
 				${QUIET} || echo "Skipping non-file ${file} ..."
 				continue
@@ -202,6 +208,7 @@ scan() {
 			   [[ ${opath} != ${rpath} ]]
 			then
 				MATCHES=0
+
 				if ! [[ -f ${cfg_file} && -f ${live_file} ]] ; then
 					MATCHES=0
 				elif [[ ${eu_automerge} == "yes" ]] ; then
@@ -594,7 +601,7 @@ do_merge() {
 		rm ${rm_opts} "${mfile}"
 	fi
 
-	# since mfile will be like $TMP/path/to/original-file.merged, we
+	# since mfile will be like ${TMP}/path/to/original-file.merged, we
 	# need to make sure the full /path/to/ exists ahead of time
 	mkdir -p "${mfile%/*}"
 
@@ -769,13 +776,13 @@ while [[ -n $1 ]] ; do
 done
 ${SET_X} && set -x
 
-if [[ $OS_FAMILY == 'rpm' ]]; then
+if [[ ${OS_FAMILY} == 'rpm' ]]; then
 	PORTAGE_CONFIGROOT='/'
 	PORTAGE_TMPDIR='/tmp'
 	CONFIG_PROTECT='/etc /usr/share'
 	CONFIG_PROTECT_MASK=''
 	[[ -f /etc/sysconfig/etc-update ]] && . /etc/sysconfig/etc-update
-elif [[ $OS_FAMILY == 'arch' ]]; then
+elif [[ ${OS_FAMILY} == 'arch' ]]; then
 	PORTAGE_CONFIGROOT='/'
 	PORTAGE_TMPDIR='/tmp'
 	CONFIG_PROTECT='/etc /usr/lib /usr/share/config'
@@ -796,7 +803,7 @@ portage_vars=(
 if type -P portageq > /dev/null; then
 	eval $(${PORTAGE_PYTHON:+"${PORTAGE_PYTHON}"} "$(type -P portageq)" envvar -v "${portage_vars[@]}")
 else
-	[[ $OS_FAMILY == 'gentoo' ]] && die "missing portageq"
+	[[ ${OS_FAMILY} == 'gentoo' ]] && die "missing portageq"
 fi
 
 export PORTAGE_TMPDIR

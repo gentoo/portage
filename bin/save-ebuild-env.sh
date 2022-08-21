@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -16,9 +16,9 @@ __save_ebuild_env() {
 		unset S _E_DESTTREE _E_INSDESTTREE _E_DOCDESTTREE_ _E_EXEDESTTREE_ \
 			PORTAGE_DOCOMPRESS_SIZE_LIMIT PORTAGE_DOCOMPRESS \
 			PORTAGE_DOCOMPRESS_SKIP PORTAGE_DOSTRIP PORTAGE_DOSTRIP_SKIP
-		if [[ -n $PYTHONPATH &&
-			${PYTHONPATH%%:*} -ef $PORTAGE_PYM_PATH ]] ; then
-			if [[ $PYTHONPATH == *:* ]] ; then
+		if [[ -n ${PYTHONPATH} &&
+			${PYTHONPATH%%:*} -ef ${PORTAGE_PYM_PATH} ]] ; then
+			if [[ ${PYTHONPATH} == *:* ]] ; then
 				export PYTHONPATH=${PYTHONPATH#*:}
 			else
 				unset PYTHONPATH
@@ -43,7 +43,7 @@ __save_ebuild_env() {
 	for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 		src_compile src_test src_install pkg_preinst pkg_postinst \
 		pkg_prerm pkg_postrm pkg_config pkg_info pkg_pretend ; do
-		unset -f default_$x __eapi{0,1,2,3,4}_$x
+		unset -f default_${x} __eapi{0,1,2,3,4}_${x}
 	done
 	unset x
 

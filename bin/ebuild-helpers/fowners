@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -11,10 +11,12 @@ fi
 got_owner=
 for arg; do
 	[[ ${arg} == -* ]] && continue
+
 	if [[ ! ${got_owner} ]]; then
 		got_owner=1
 		continue
 	fi
+
 	if [[ ${arg} != /* ]]; then
 		eqawarn "Relative path passed to '${0##*/}': ${arg}"
 		eqawarn "This is unsupported. Please use 'chown' when you need to work on files"
@@ -29,5 +31,5 @@ slash="/"
 chown "${@/#${slash}/${ED%/}${slash}}"
 ret=$?
 
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

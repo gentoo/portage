@@ -116,7 +116,7 @@ class dispatch:
 
         perform_conf_update_session_hooks("pre-session")
 
-        config_root = portage.settings["EPREFIX"] or os.sep
+        config_root = portage.settings["EROOT"]
         self.options = portage.dispatch_conf.read_config(MANDATORY_OPTS)
 
         if "log-file" in self.options:

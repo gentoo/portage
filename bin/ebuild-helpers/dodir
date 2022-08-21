@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -10,5 +10,5 @@ fi
 
 install -d ${DIROPTIONS} "${@/#/${ED%/}/}"
 ret=$?
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

@@ -25,7 +25,7 @@ bad_bin_owner_check() {
 		# We do want to list non-superuser setuid executables, because
 		# they can be exploited. The owner can simply wipe the setuid
 		# bit, and then alter the contents of the file. The superuser
-		# will then have a time bomb in his $PATH.
+		# will then have a time bomb in his ${PATH}.
 		while read -r -d '' f; do
 			found+=( "${f}" )
 		done < <(find -L "${d}"   \

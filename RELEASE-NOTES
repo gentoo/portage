@@ -1,6 +1,9 @@
 Release Notes; upgrade information mainly.
 Features/major bugfixes are listed in NEWS
 
+NOTE: As of Portage 3.0.31, this file is obsolete and will no longer be updated.
+      Please see the NEWS file instead!
+
 portage-3.0.29
 ==================================
     - Bug 811462: fixes to detect package (and binpkg) corruption due to broken

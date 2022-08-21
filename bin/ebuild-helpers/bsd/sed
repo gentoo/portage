@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2007-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -13,10 +13,11 @@ else
 	old_IFS="${IFS}"
 	IFS=":"
 
-	for path in $PATH; do
+	for path in ${PATH}; do
 		if [[ -x ${path}/${scriptname} ]]; then
 			[[ ${path} == */portage/*/ebuild-helpers* ]] && continue
 			[[ ${path}/${scriptname} -ef ${scriptpath} ]] && continue
+
 			exec "${path}/${scriptname}" "$@"
 			exit 0
 		fi

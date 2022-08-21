@@ -1,5 +1,5 @@
-#!/bin/bash
-# Copyright 2012-2021 Gentoo Authors
+#!/usr/bin/env bash
+# Copyright 2012-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # PHASES
@@ -43,7 +43,7 @@ ___eapi_has_BDEPEND() {
 }
 
 ___eapi_has_IDEPEND() {
-	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-slot-abi|5|5-hdepend|6|7)$ ]]
+	[[ ! ${1-${EAPI-0}} =~ ^(0|1|2|3|4|4-slot-abi|5|6|7)$ ]]
 }
 
 ___eapi_has_RDEPEND_DEPEND_fallback() {

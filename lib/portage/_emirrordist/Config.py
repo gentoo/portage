@@ -12,6 +12,8 @@ from portage.package.ebuild.fetch import MirrorLayoutConfig
 from portage.util import grabdict, grablines
 from .ContentDB import ContentDB
 
+logger = logging.getLogger(__name__)
+
 
 class Config:
     def __init__(self, options, portdb, event_loop):
@@ -89,13 +91,11 @@ class Config:
     def _open_log(self, log_desc, log_path, mode):
 
         if log_path is None or getattr(self.options, "dry_run", False):
-            log_func = logging.info
+            log_func = logger.info
             line_format = "%s: %%s" % log_desc
             add_newline = False
             if log_path is not None:
-                logging.warning(
-                    "dry-run: %s log " "redirected to logging.info" % log_desc
-                )
+                logger.warning("dry-run: %s log redirected to logging.info" % log_desc)
         else:
             self._open_files.append(io.open(log_path, mode=mode, encoding="utf_8"))
             line_format = "%s\n"
@@ -137,7 +137,7 @@ class Config:
                     db = dbshelve.open(db_file, flags=open_flag)
 
         if dry_run:
-            logging.warning("dry-run: %s db opened in readonly mode" % db_desc)
+            logger.warning("dry-run: %s db opened in readonly mode" % db_desc)
             if not isinstance(db, dict):
                 volatile_db = dict((k, db[k]) for k in db)
                 db.close()

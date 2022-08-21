@@ -1,26 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2009-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ! ___eapi_has_dohtml; then
-	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
 	exit 1
 fi
 
 if ___eapi_has_dohtml_deprecated; then
-	eqawarn "'${0##*/}' is deprecated in EAPI '$EAPI'"
+	eqawarn "'${0##*/}' is deprecated in EAPI '${EAPI}'"
 fi
 
 # Use safe cwd, avoiding unsafe import for bug #469338.
 export __PORTAGE_HELPER_CWD=${PWD}
 cd "${PORTAGE_PYM_PATH}" || die
 PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
-	"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH/dohtml.py" "$@"
+	"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}/dohtml.py" "$@"
 
 ret=$?
 # Restore cwd for display by __helpers_die
 cd "${__PORTAGE_HELPER_CWD}"
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ! ___eapi_has_dohard; then
-	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
 	exit 1
 fi
 
 if [[ $# -ne 2 ]] ; then
-	echo "$0: two arguments needed" 1>&2
+	echo "${0}: two arguments needed" 1>&2
 	exit 1
 fi
 

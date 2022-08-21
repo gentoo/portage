@@ -14,7 +14,7 @@ from _emerge.SpawnProcess import SpawnProcess
 
 class LazyImportPortageBaselineTestCase(TestCase):
 
-    _module_re = re.compile(r"^(portage|repoman|_emerge)\.")
+    _module_re = re.compile(r"^(portage|_emerge)\.")
 
     _baseline_imports = frozenset(
         [

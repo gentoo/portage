@@ -37,11 +37,9 @@ class Whirlpool:
     may be provided; if present, this string will be automatically
     hashed."""
 
-    def __init__(self, arg=None):
+    def __init__(self, arg=b""):
         self.ctx = WhirlpoolStruct()
-        if arg:
-            self.update(arg)
-        self.digest_status = 0
+        self.update(arg)
 
     def update(self, arg):
         """update(arg)"""
@@ -71,7 +69,7 @@ class Whirlpool:
         return copy.deepcopy(self)
 
 
-def new(init=None):
+def new(init=b""):
     """Return a new Whirlpool object. An optional string argument
     may be provided; if present, this string will be automatically
     hashed."""
@@ -2183,6 +2181,8 @@ def WhirlpoolInit(ctx):
 def WhirlpoolAdd(source, sourceBits, ctx):
     if not isinstance(source, bytes):
         raise TypeError("Expected %s, got %s" % (bytes, type(source)))
+    if sourceBits == 0:
+        return
 
     carry = 0
     value = sourceBits
@@ -2348,5 +2348,11 @@ if __name__ == "__main__":
     )
     assert (
         Whirlpool(b"").hexdigest()
+        == "19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3"
+    )
+    w = Whirlpool()
+    w.update(b"")
+    assert (
+        w.hexdigest()
         == "19fa61d75522a4669b44e39c1d2e1726c530232130d407f89afee0964997f7a73e83be698b288febcf88e3e03c4f0757ea8964e59b63d93708b138cc42a66eb3"
     )

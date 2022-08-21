@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -23,24 +23,25 @@ ret=0
 
 for x in "$@" ; do
 	if [ -L "${x}" ] ; then
-		cp "$x" "$TMP"
-		mysrc=$TMP/${x##*/}
+		cp "${x}" "${TMP}"
+		mysrc=${TMP}/${x##*/}
 	elif [ -d "${x}" ] ; then
 		__vecho "doexe: warning, skipping directory ${x}"
 		continue
 	else
 		mysrc="${x}"
 	fi
-	if [ -e "$mysrc" ] ; then
-		install ${EXEOPTIONS} "$mysrc" "${ED%/}/${_E_EXEDESTTREE_#/}"
+
+	if [ -e "${mysrc}" ] ; then
+		install ${EXEOPTIONS} "${mysrc}" "${ED%/}/${_E_EXEDESTTREE_#/}"
 	else
-		echo "!!! ${0##*/}: $mysrc does not exist" 1>&2
+		echo "!!! ${0##*/}: ${mysrc} does not exist" 1>&2
 		false
 	fi
 	((ret|=$?))
 done
 
-rm -rf "$TMP"
+rm -rf "${TMP}"
 
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

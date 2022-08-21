@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -29,10 +29,10 @@ for x in "$@" ; do
 	elif [ -s "${x}" ] ; then
 		install -m0644 "${x}" "${dir}" || { ((ret|=1)); continue; }
 	elif [ ! -e "${x}" ] ; then
-		echo "!!! ${0##*/}: $x does not exist" 1>&2
+		echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 		((ret|=1))
 	fi
 done
 
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

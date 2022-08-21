@@ -1,4 +1,286 @@
-News (mainly features/major bug fixes)
+portage-3.0.35 (UNRELEASED)
+--------------
+
+Features:
+* Portage can now set scheduling policies using the PORTAGE_SCHEDULING_POLICY
+  and PORTAGE_SCHEDULING_PRIORITY variables. See make.conf.example for details.
+
+  See also https://wiki.gentoo.org/wiki/Portage_niceness.
+
+* The header of build.log now contains the package's slot (bug #864382).
+
+Bug fixes:
+* xml: Fix XML node parsing (resulted in duplicate USE flag descriptions
+  in gentoolkit, bug 858791). This code is thought to have only one
+  consumer (gentoolkit, and only as of its most recent releases), so
+  impact is not severe.
+
+* logging: don't clutter with a global logger and instead scope to
+  each module. Allows further logging refactoring in future.
+
+* estrip: fix double slash for older EAPIs (bug #862600).
+
+* estrip: avoid spurious NEEDED warning when no ELF files installed for
+  < EAPI 7 (bug #749624, bug #862606).
+
+* estrip: apply scanelf optimisation for EAPI 7+ too (bug #749624, bug #862606).
+
+* dispatch-conf: respect (E)ROOT
+
+* install-qa-check.d: 60pkgconfig: fix --validate check by adding
+  ${ED}/usr/{lib*,share} to search path.
+
+* install-qa-check.d: 60pkgconfig: only check defined variables for
+  ${EPREFIX} compliance (bug 860825).
+
+* install-qa-check.d: 60pkgconfig: display the detected version from
+  the .pc file (improves the QA warning output), and hint to the user/developer
+  about the existence of QA_PKGCONFIG_VERSION to silence the warning.
+
+* install-qa-check.d: 60pkgconfig: use eqatag for nicer output.
+
+* install-qa-check.d: 60pkgconfig: use ver_test where possible in version
+  comparison checks to avoid warning if the Version field in the .pc file
+  is equivalent to the ebuild version.
+
+* install-qa-check.d: 80libraries: include Darwin/Mach-O objects in checks.
+
+* install-qa-check.d: 80multilib-strict: use file/find from Prefix instead
+  of absolute paths in /usr/bin.
+
+* install-qa-checks.d: 90gcc-warnings: add arm64, aarch64 (used by Apple),
+  loongarch64, riscv64, s390x to list of 64-bit arches which affects the
+  severity of some warnings (like pointer truncation).
+
+* install-qa-check.d: 90world-writable: include EPREFIX in paths.
+
+* portage: output: update obsolete /etc/init.d/functions.sh path.
+
+* bin: style tweaks to conform to Gentoo style (mostly variable bracing).
+
+* doins: fix D check, add EPREFIX check
+
+* misc-functions.sh: add Prefix fixups, like including EPREFIX in
+  INSTALL_MASK for /usr/share for noman, noinfo, nodoc.
+
+* phase-function.sh: mark ED, EROOT read-only variables
+
+* eapi.sh: cleanup obsolete references to unofficial 5-hdepend EAPI.
+
+* isolated-functions.sh: sync __makeopts_jobs implementation with
+  multiprocessing.eclass.
+
+* ebuild(1): improve descriptions of various phase functions.
+
+* emerge(1): mention --with-bdeps=n behavior for both --usepkg (-k) and
+  --usepkgonly (-K) (bug #863422).
+
+* ecompress: add option to lz4 in order to be able to compress multiple
+  files at once (bug #672916).
+
+portage-3.0.34 (2022-07-20)
+--------------
+
+Bug fixes:
+* checksum: fix trying to use discard on a frozenset().
+
+* ebuild(5): mention doexe behavior is undefined if exeinto not yet called.
+
+* ebuild(5): fix typos.
+
+portage-3.0.33 (2022-07-18)
+--------------
+
+Bug fixes:
+* env-update: Handle BROOT vs ROOT distinction for PATH (and other
+  variables like PREROOTPATH and ROOTPATH). The issue being that
+  only some variables are relevant for execution (and hence need
+  to be derived from BROOT), while others need to correspond to
+  EROOT for e.g. library paths. This should help with Clang
+  stage building.
+
+* Build: Fix test suite file data processing (copying of .gnupg data
+  for the gpkg tests led to a failure in src_test in the portage ebuild).
+
+* emerge: drop obsolete fixpackages warning (as a result of refactoring,
+  started to show on every emerge, but is harmless and left over
+  from many years ago). Bug #858407.
+
+* quickpkg: Fix quoting/splitting of BINPKG_COMPRESS_FLAGS arguments. Bug #857933.
+
+* estrip: fix double prefix (regression from "don't call estrip twice" fix
+  in 3.0.31). Bug #858818.
+
+* ebuild(5): dolib, libopts: mention dolib, libopts being banned in EAPI 7.
+
+* ebuild(5): dohtml: mention dohtml is banned in EAPI 7.
+
+* ebuild(5): hasv: mention hasv is banned in EAPI 8.
+
+* ebuild(5): dosym: mention dosym -r for EAPI 8.
+
+* ebuild(5): einstall: mention einstall was banned in EAPI 6.
+
+* ebuild(5): econf: add --docdir and --htmldir for EAPI 6,
+  add --with-sysroot for EAPI 7, add --datarootdir and --disable-static for EAPI
+  8.
+
+* ebuild(5): econf: drop --disable-dependency-tracking from "example"
+  because it's confusing (implies it was always added, even before EAPI 4).
+
+* ebuild(5): modernize examples slightly.
+
+portage-3.0.32 (2022-07-11)
+--------------
+
+Bug fixes:
+* Fix marking all news items as relevant. See bug #857669.
+
+* Allow nested ebegin again while there's a lack of consensus on banning it.
+
+* Fix use of deprecated (now removed) getchildren() call in XML parser,
+  which caused failures with gentoolkit. See bug #857537. (Note that this
+  was not originally in the release notes for 3.0.32, but the fix was in
+  3.0.32).
+
+* Fix doc generation by removing reference to removed EAPIs. See bug #857486.
+
+portage-3.0.31 (2022-07-10)
+--------------
+
+Breaking changes:
+* repoman support dropped. Please migrate to pkgcheck. See bug 835013.
+
+* Remove support for never-official EAPIs: "4-python", "5-progress".
+  Further cleanups as a result allowed removal of "USE alias" support too.
+
+* Drop support for Python 3.6. It's been EOL upstream since 2021-12-23.
+  The minimum version of Python for Portage is now Python 3.7.
+
+Features:
+* GLEP 78 "gpkg" binary package format support, including the ability to sign
+  binpkgs! See bug 500630, bug 659864, bug 672672, bug 773259, bug 820578.
+
+  This is still somewhat experimental!
+
+  To try it out:
+  - set BINPKG_FORMAT="gpkg" in make.conf;
+
+  - optionally, set FEATURES="binpkg-signing binpkg-request-signature", and so on.
+    See cnf/make.conf.example for the full details, options, and documentation.
+
+* emerge: Add -X short option for --exclude.
+
+* emerge: Support the "foot" terminal for title updates.
+
+* Recognize LoongArch ABIs in multilib_category.
+
+* depclean: Return failure via exit code if requested packages
+  aren't depcleaned. See bug 851750.
+
+* estrip: Optimize calls (avoid duplicate call) by using previously
+  collected scanelf data. See bug 749624
+
+* autoclean: Optimize unmerges by only enabling autoclean for global
+  updates and/or depcleans. This avoids needing to iterate over all
+  installed packages after each individual removal.
+
+* vartree: Optimize by skipping `env-update` call (which is expensive, as
+  it ends up calling `ldconfig` to regenerate ld.so.cache) if no files
+  were installed (e.g. virtual/).
+
+* vartree: Optimize by avoiding VDB lock contention (avoid taking
+  lock if no blockers).
+
+* QA: warn if 'eend' is called without a corresponding 'ebegin',
+  and vice-versa: if 'ebegin' is called without a corresponding 'eend'.
+  See bug 835824 and bug 835823.
+
+* QA: install-qa-check.d: Add 60pkgconfig check which:
+  - checks libdir in installed .pc files
+  - checks paths not respecting EPREFIX in .pc files
+  - runs pkg-config --validate on .pc files
+  - checks for mismatched version in .pc files vs ${PV}. Ebuilds can override
+    this using QA_PKGCONFIG_VERSION.
+
+* QA: install-qa-check.d: Update 20runtime-directories to warn on /var/tmp
+  usage too.
+
+* emerge: Deduplicate atoms in 'dropped' message for --keep-going.
+
+* dispatch-conf: Warn about changing the 'use-rcs' setting. See bug 837533.
+
+* Lots of general refactoring and code cleanups.
+
+Bug fixes:
+* Disable SONAME dependencies by default again (i.e. set --ignore-soname-deps=y
+  to default on). See bug 687956 and bug 829623.
+
+  This was done because of problems caused with depcleans.
+
+* git: Mark repository as safe for newer versions of git (>= git-2.35.2).
+  See bug 838223 and bug 838271.
+
+* dosym: Fix EAPI check for '-r' (relative) flag. It would previously allow
+  using an EAPI 8 only feature.
+
+* ebuild: Fix re-sourcing IDEPEND (EAPI 8+).
+
+* estrip: Fix race when creating build-id debug symlinks. See bug 831927.
+
+* MergeProcess: Fix bug causing unnecessary ld.so.cache regeneration even
+  when no libraries were installed. This used to work in the past, so is viewed
+  as a bug fix, rather than an optimization, although it's a bit of both.
+  See bug 836375.
+
+* MiscFunctionsProcess: Avoid clobbering the main sandbox.log if a "die hook"
+  is invoked. This should prevent sandbox.log being blank in many cases.
+
+* Drop /run warning as it ended up being too noisy and we've decided
+  to workaround/fix (depending on your perspective) the issues in packages
+  themselves, given only one package was actually at fault here: bug 832853.
+
+* movefile: Merge symlinks atomically. This should reduce the risk of build
+  failures during parallel builds (multiple emerge jobs). See bug 836400.
+
+* Improve error message when Bash version is too old for an ebuild
+  to be read.
+
+* Minor improvements to 'die' output.
+
+* Undo dep_zapdeps change in 3.0.29 as it introduced a regression w.r.t solving
+  blockers for gentoo-kernel. See bug 833014.
+
+* QA: install-qa-check.d: update 95empty-dirs to mention Portage behavior
+  change for EAPI 8+.
+
+* QA: install-qa-check.d: Fix usage of obsolete 'egrep' and 'fgrep' which
+  now emit warnings with an upcoming grep release (> 3.7).
+
+* portageq: Ditto re egrep/fgrep.
+
+* util: Fix Whirlpool implementation breaking (crashing/failing tests) with
+  OpenSSL 3. This wasn't noticed before as previously, OpenSSL exposed its
+  Whirlpool implementation by default, whereas it's now marked as legacy.
+  See bug 846389.
+
+* socks5-server: Fix Python 3.10 DeprecationWarning. See bug 794115.
+
+* portage.eapi: Include workaround for consumers with misconfigured
+  logger to avoid needing a newer gentoolkit. See bug 838406.
+
+* CI: Run 'black' on remaining files missed in the previous conversion and fix
+  CI to catch regressions related to this.
+
+* CI: Test with Python 3.11.
+
+* CI: Drop references to unsupported Python 3.6.
+
+* make.conf: document MAKEOPTS defaulting to the number of processors for
+  the number of jobs in make.conf(5).
+
+* dispatch-conf: fix description of 'frozen-files' format in dispatch-conf.conf
+  man page. See bug 830618.
 
 portage-3.0.30
 --------------

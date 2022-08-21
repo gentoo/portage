@@ -255,9 +255,6 @@ of \fBemerge\fR(1) for more information.
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-target=${CTARGET}\fR only if it is defined.
 .TP
-.B DCO_SIGNED_OFF_BY
-See \fISIGNED_OFF_BY\fR below.  Deprecated.
-.TP
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository. After packages
 are built, it is safe to remove any and all files from this directory since
@@ -457,9 +454,9 @@ enabled by default.
 .TP
 .B digest
 Autogenerate digests for packages when running the
-\fBemerge\fR(1), \fBebuild\fR(1), or \fBrepoman\fR(1) commands. If
-the \fIassume\-digests\fR feature is also enabled then existing SRC_URI digests
-will be reused whenever they are available.
+\fBemerge\fR(1) or \fBebuild\fR(1) commands. If the
+\fIassume\-digests\fR feature is also enabled then existing SRC_URI
+digests will be reused whenever they are available.
 .TP
 .B distcc
 Enable portage support for the distcc package.
@@ -1051,7 +1048,7 @@ when \fBsign\fR is in \fBFEATURES\fR. In order to sign commits with
 to be configured by \fI`git config user.signingkey key_id`\fR.
 .TP
 .B PORTAGE_GPG_SIGNING_COMMAND
-The command used by \fBrepoman\fR(1) to sign manifests when \fBsign\fR is
+The command used by \fBegencache\fR(1) to sign manifests when \fBsign\fR is
 in \fBFEATURES\fR.
 .TP
 \fBPORTAGE_GRPNAME\fR = \fI[group]\fR
@@ -1082,6 +1079,22 @@ will set idle io priority. For more information about ionice, see
 .br
 Portage will also set the autogroup-nice value (see fBsched\fR(7))), if
 FEATURES="pid\-sandbox" is enabled.
+.TP
+\fBPORTAGE_SCHEDULING_POLICY\fR = \fI[policy name]\fR
+Allows changing the current scheduling policy. The supported options are
+\fBother\fR, \fBbatch\fR, \fBidle\fR, \fBfifo\fR, and \fBround-robin\fR. When
+unset, the scheduling policy remains unchanged, by default Linux uses 'other'
+policy. Users that wish to minimize the Portage's impact on system
+responsiveness should set scheduling policy to \fBidle\fR, which significantly
+reduces the disruption to the rest of the system by scheduling Portage as
+extremely low priority processes. see \fBsched\fR(7) for more information.
+.TP
+\fBPORTAGE_SCHEDULING_PRIORITY\fR = \fI[priority]\fR
+Allows changing the priority (1-99) of the current scheduling policy, only
+applies if PORTAGE _SCHEDULING_POLICY is set to 'fifo' or 'round-robin',
+for others the only supported priority is 0, If unset, defaults to lowest
+priority of the selected scheduling policy. For more information about
+scheduler, see \fBsched\fR(7). This variable is unset by default.
 .TP
 .B PORTAGE_LOG_FILTER_FILE_CMD
 This variable specifies a command that filters build log output to a
@@ -1279,14 +1292,6 @@ Defaults to /.
 Defines the location where created RPM packages will be stored.
 .br
 Defaults to /var/cache/rpm.
-.TP
-.B SIGNED_OFF_BY
-This variable may contain a name and email address which will be used by
-\fBrepoman\fR(1) to add a Signed\-off\-by line to each commit message.
-The meaning of a signoff depends on the project.  Typically, it certifies
-that the committer has the rights to submit the work under a free license
-and agrees to a Certificate of Origin.  (For example, see GLEP 76 for the
-Gentoo Linux policy: \fIhttps://www.gentoo.org/glep/glep-0076.html\fR.)
 .TP
 \fBSYNC\fR = \fI[RSYNC]\fR
 Insert your preferred rsync mirror here.  This rsync server

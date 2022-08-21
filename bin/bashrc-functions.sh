@@ -1,26 +1,26 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 register_die_hook() {
 	local x
 	for x in $* ; do
-		has $x $EBUILD_DEATH_HOOKS || \
-			export EBUILD_DEATH_HOOKS="$EBUILD_DEATH_HOOKS $x"
+		has ${x} ${EBUILD_DEATH_HOOKS} || \
+			export EBUILD_DEATH_HOOKS="${EBUILD_DEATH_HOOKS} ${x}"
 	done
 }
 
 register_success_hook() {
 	local x
 	for x in $* ; do
-		has $x $EBUILD_SUCCESS_HOOKS || \
-			export EBUILD_SUCCESS_HOOKS="$EBUILD_SUCCESS_HOOKS $x"
+		has ${x} ${EBUILD_SUCCESS_HOOKS} || \
+			export EBUILD_SUCCESS_HOOKS="${EBUILD_SUCCESS_HOOKS} ${x}"
 	done
 }
 
 __strip_duplicate_slashes() {
-	if [[ -n $1 ]] ; then
-		local removed=$1
+	if [[ -n ${1} ]] ; then
+		local removed=${1}
 		while [[ ${removed} == *//* ]] ; do
 			removed=${removed//\/\///}
 		done
@@ -29,14 +29,14 @@ __strip_duplicate_slashes() {
 }
 
 KV_major() {
-	[[ -z $1 ]] && return 1
+	[[ -z ${1} ]] && return 1
 
 	local KV=$@
 	echo "${KV%%.*}"
 }
 
 KV_minor() {
-	[[ -z $1 ]] && return 1
+	[[ -z ${1} ]] && return 1
 
 	local KV=$@
 	KV=${KV#*.}
@@ -44,7 +44,7 @@ KV_minor() {
 }
 
 KV_micro() {
-	[[ -z $1 ]] && return 1
+	[[ -z ${1} ]] && return 1
 
 	local KV=$@
 	KV=${KV#*.*.}

@@ -359,22 +359,22 @@ class portdbapi(dbapi):
 
     def _set_porttrees(self, porttrees):
         """
-        Consumers, such as repoman and emirrordist, may modify the porttrees
-        attribute in order to modify the effective set of repositories for
-        all portdbapi operations.
+        Consumers, such as emirrordist, may modify the porttrees attribute in
+        order to modify the effective set of repositories for all portdbapi
+        operations.
 
         @param porttrees: list of repo locations, in ascending order by
                 repo priority
         @type porttrees: list
         """
+        self._porttrees = tuple(porttrees)
         self._porttrees_repos = portage.OrderedDict(
             (repo.name, repo)
             for repo in (
                 self.repositories.get_repo_for_location(location)
-                for location in porttrees
+                for location in self._porttrees
             )
         )
-        self._porttrees = tuple(porttrees)
 
     def _get_porttrees(self):
         return self._porttrees

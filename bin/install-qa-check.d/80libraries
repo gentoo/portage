@@ -140,7 +140,11 @@ lib_check() {
 	local abort="no"
 	local a s
 	for a in "${ED%/}"/usr/lib*/*.a ; do
-		s=${a%.a}.so
+		if [[ ${CHOST} == *-darwin* ]] ; then
+			s=${a%.a}.dylib
+		else
+			s=${a%.a}.so
+		fi
 		if [[ ! -e ${s} ]] ; then
 			s=${s%usr/*}${s##*/usr/}
 			if [[ -e ${s} ]] ; then
@@ -162,7 +166,7 @@ lib_check() {
 		die "static archives (*.a) and libtool library files (*.la) belong in /usr/lib*, not /lib*"
 	fi
 
-	# Verify that the libtool files don't contain bogus $D entries.
+	# Verify that the libtool files don't contain bogus ${D} entries.
 	local abort=no gentoo_bug=no always_overflow=no
 	for a in "${ED%/}"/usr/lib*/*.la ; do
 		s=${a##*/}

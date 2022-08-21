@@ -167,10 +167,7 @@ def quickpkg_atom(options, infos, arg, eout):
                         % (binpkg_compression, missing_package)
                     )
                     return 1
-                cmd = [
-                    varexpand(x, mydict=settings)
-                    for x in shlex_split(compression["compress"])
-                ]
+                cmd = shlex_split(varexpand(compression["compress"], mydict=settings))
                 # Filter empty elements that make Popen fail
                 cmd = [x for x in cmd if x != ""]
                 with open(binpkg_tmpfile, "wb") as fobj:

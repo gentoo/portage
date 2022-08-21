@@ -35,13 +35,13 @@ massive commit that simply formatted the code base using black - you can do
 the following:
 
 ```sh
-git config blame.ignoreRevsFile .gitignorerevs
+git config blame.ignoreRevsFile .git-blame-ignore-revs
 ```
 
 Dependencies
 ============
 
-Python and Bash should be the only hard dependencies. Python 3.6 is the
+Python and Bash should be the only hard dependencies. Python 3.7 is the
 minimum supported version.
 
 Native Extensions

@@ -9048,7 +9048,7 @@ class depgraph:
             ):
                 # Make sure that portage always has all of its
                 # RDEPENDs installed first, but ignore uninstalls
-                # (these occur when new portage blocks older repoman).
+                # (these occur when new portage blocks an older package version).
                 return False
             selected_nodes.add(node)
             for child in mygraph.child_nodes(node, ignore_priority=ignore_priority):

@@ -1,8 +1,9 @@
-# Copyright 2005-2020 Gentoo Authors
+# Copyright 2005-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import io
 import logging
+import re
 import subprocess
 
 import portage
@@ -104,15 +105,19 @@ class GitSync(NewBase):
 
         exitcode = portage.process.spawn_bash(
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
         if exitcode != os.EX_OK:
             msg = "!!! git clone error in %s" % self.repo.location
             self.logger(self.xterm_titles, msg)
             writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
             return (exitcode, False)
+
+        self.add_safe_directory()
+
         if not self.verify_head():
             return (1, False)
+
         return (os.EX_OK, True)
 
     def update(self):
@@ -152,6 +157,8 @@ class GitSync(NewBase):
                 " %s" % self.repo.module_specific_options["sync-git-pull-extra-opts"]
             )
 
+        self.add_safe_directory()
+
         try:
             remote_branch = portage._unicode_decode(
                 subprocess.check_output(
@@ -184,7 +191,7 @@ class GitSync(NewBase):
             exitcode = portage.process.spawn(
                 gc_cmd,
                 cwd=portage._unicode_encode(self.repo.location),
-                **self.spawn_kwargs
+                **self.spawn_kwargs,
             )
             if exitcode != os.EX_OK:
                 msg = "!!! git gc error in %s" % self.repo.location
@@ -207,7 +214,7 @@ class GitSync(NewBase):
 
         exitcode = portage.process.spawn_bash(
             "cd %s ; exec %s" % (portage._shell_quote(self.repo.location), git_cmd),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
 
         if exitcode != os.EX_OK:
@@ -231,7 +238,7 @@ class GitSync(NewBase):
         exitcode = portage.process.spawn(
             merge_cmd,
             cwd=portage._unicode_encode(self.repo.location),
-            **self.spawn_kwargs
+            **self.spawn_kwargs,
         )
 
         if exitcode != os.EX_OK:
@@ -341,3 +348,29 @@ class GitSync(NewBase):
         except subprocess.CalledProcessError:
             ret = (1, False)
         return ret
+
+    def add_safe_directory(self):
+        # Add safe.directory to system gitconfig if not already configured.
+        # Workaround for bug #838271 and bug #838223.
+        location_escaped = re.escape(self.repo.location)
+        result = subprocess.run(
+            [
+                self.bin_command,
+                "config",
+                "--get",
+                "safe.directory",
+                f"^{location_escaped}$",
+            ]
+        )
+        if result.returncode == 1:
+            result = subprocess.run(
+                [
+                    self.bin_command,
+                    "config",
+                    "--system",
+                    "--add",
+                    "safe.directory",
+                    self.repo.location,
+                ]
+            )
+        return result.returncode == 0

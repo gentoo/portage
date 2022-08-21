@@ -261,13 +261,4 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
         # what follows.
         writemsg_stdout("\n\n")
 
-        if bindb and bindb.cpv_all():
-            writemsg_stdout(
-                _(
-                    " ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the tbz2's in the packages directory.\n"
-                )
-            )
-            writemsg_stdout(bold(_("Note: This can take a very long time.")))
-            writemsg_stdout("\n")
-
     return retupd

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -19,10 +19,10 @@ fi
 
 install -m0644 "$@" "${ED%/}/usr/share/info"
 rval=$?
-if [ $rval -ne 0 ] ; then
+if [ ${rval} -ne 0 ] ; then
 	for x in "$@" ; do
-		[ -e "$x" ] || echo "!!! ${0##*/}: $x does not exist" 1>&2
+		[ -e "${x}" ] || echo "!!! ${0##*/}: ${x} does not exist" 1>&2
 	done
 	__helpers_die "${0##*/} failed"
 fi
-exit $rval
+exit ${rval}

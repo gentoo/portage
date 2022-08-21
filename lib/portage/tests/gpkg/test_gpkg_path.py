@@ -5,7 +5,6 @@
 import tempfile
 import tarfile
 import io
-import sys
 from os import urandom
 
 from portage import os
@@ -18,9 +17,6 @@ from portage.gpkg import gpkg
 
 class test_gpkg_path_case(TestCase):
     def test_gpkg_short_path(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),
@@ -77,9 +73,6 @@ class test_gpkg_path_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_long_path(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),
@@ -141,9 +134,6 @@ class test_gpkg_path_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_non_ascii_path(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),
@@ -198,9 +188,6 @@ class test_gpkg_path_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_symlink_path(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),
@@ -258,9 +245,6 @@ class test_gpkg_path_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_long_hardlink_path(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),
@@ -327,9 +311,6 @@ class test_gpkg_path_case(TestCase):
             shutil.rmtree(tmpdir)
 
     def test_gpkg_long_filename(self):
-        if sys.version_info.major < 3:
-            self.skipTest("Not support Python 2")
-
         playground = ResolverPlayground(
             user_config={
                 "make.conf": ('BINPKG_COMPRESS="none"',),

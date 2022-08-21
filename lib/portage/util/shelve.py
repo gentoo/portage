@@ -5,6 +5,8 @@ import logging
 import pickle
 import shelve
 
+logger = logging.getLogger(__name__)
+
 
 def open_shelve(db_file, flag="r"):
     """
@@ -36,7 +38,7 @@ def dump(args):
                 try:
                     value = src[key]
                 except KeyError:
-                    logging.exception(key)
+                    logger.exception(key)
                     continue
                 pickle.dump((key, value), dest)
     finally:

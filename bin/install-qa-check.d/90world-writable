@@ -2,33 +2,33 @@
 
 world_writable_check() {
 	# Now we look for all world writable files.
-	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${ED}:/:")
+	local unsafe_files=$(find "${ED}" -type f -perm -2 | sed -e "s:^${D}:/:")
 	local OLDIFS x prev_shopts=$-
 
-	OLDIFS=$IFS
+	OLDIFS=${IFS}
 	IFS=$'\n'
 	set -f
 
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Security Notice: world writable file(s):"
 
-		eqatag -v world-writable $unsafe_files
+		eqatag -v world-writable ${unsafe_files}
 
 		eqawarn "This may or may not be a security problem, most of the time it is one."
-		eqawarn "Please double check that $PF really needs a world writeable bit and file bugs accordingly."
+		eqawarn "Please double check that ${PF} really needs a world writeable bit and file bugs accordingly."
 		eqawarn
 	fi
 
-	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${ED}:/:")
+	local unsafe_files=$(find "${ED}" -type f '(' -perm -2002 -o -perm -4002 ')' | sed -e "s:^${D}:/:")
 	if [[ -n ${unsafe_files} ]] ; then
 		eqawarn "QA Notice: Unsafe files detected (set*id and world writable)"
 
-		eqatag -v world-writable-setid $unsafe_files
+		eqatag -v world-writable-setid ${unsafe_files}
 
 		die "Unsafe files found in \${D}.  Portage will not install them."
 	fi
 
-	IFS=$OLDIFS
+	IFS=${OLDIFS}
 	[[ ${prev_shopts} == *f* ]] || set +f
 }
 

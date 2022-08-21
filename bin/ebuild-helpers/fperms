@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -12,10 +12,12 @@ got_mode=
 for arg; do
 	# - can either be an option or a mode string
 	[[ ${arg} == -* && ${arg} != -[ugorwxXst] ]] && continue
+
 	if [[ ! ${got_mode} ]]; then
 		got_mode=1
 		continue
 	fi
+
 	if [[ ${arg} != /* ]]; then
 		eqawarn "Relative path passed to '${0##*/}': ${arg}"
 		eqawarn "This is unsupported. Please use 'chmod' when you need to work on files"
@@ -28,5 +30,5 @@ done
 slash="/"
 chmod "${@/#${slash}/${ED%/}${slash}}"
 ret=$?
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
-exit $ret
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
+exit ${ret}

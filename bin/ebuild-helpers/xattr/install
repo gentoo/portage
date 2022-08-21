@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2013-2015 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -23,7 +23,7 @@ else
 fi
 
 # Filter internal portage paths from PATH, in order to avoid
-# a possible exec loop or fork bomb (see bug 547086).
+# a possible exec loop or fork bomb (see bug #547086).
 IFS=':'
 set -f
 path=

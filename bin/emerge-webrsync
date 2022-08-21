@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author: Karl Trygve Kalleberg <karltk@gentoo.org>
@@ -20,8 +20,8 @@
 # Alternative (legacy) PORTAGE_GPG_DIR configuration:
 # gpg key import
 # KEY_ID=0x96D8BF6D
-# gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys $KEY_ID
-# gpg --homedir /etc/portage/gnupg --edit-key $KEY_ID trust
+# gpg --homedir /etc/portage/gnupg --keyserver subkeys.pgp.net --recv-keys ${KEY_ID}
+# gpg --homedir /etc/portage/gnupg --edit-key ${KEY_ID} trust
 #
 
 # Only echo if in verbose mode
@@ -46,6 +46,7 @@ else
 	eecho "could not find 'portageq'; aborting"
 	exit 1
 fi
+
 eval "$("${portageq}" envvar -v DISTDIR EPREFIX FEATURES \
 	FETCHCOMMAND GENTOO_MIRRORS \
 	PORTAGE_BIN_PATH PORTAGE_CONFIGROOT PORTAGE_GPG_DIR \
@@ -67,7 +68,7 @@ repo_sync_type=$(__repo_attr "${repo_name}" sync-type)
 # If PORTAGE_NICENESS is overriden via the env then it will
 # still pass through the portageq call and override properly.
 if [ -n "${PORTAGE_NICENESS}" ]; then
-	renice $PORTAGE_NICENESS $$ > /dev/null
+	renice ${PORTAGE_NICENESS} $$ > /dev/null
 fi
 
 do_verbose=0
@@ -83,6 +84,7 @@ fi
 if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
 	has $(__repo_attr "${repo_name}" sync-webrsync-verify-signature |
 	LC_ALL=C tr '[:upper:]' '[:lower:]') true yes; then
+
 	# If FEATURES=webrsync-gpg is enabled then allow direct emerge-webrsync
 	# calls for backward compatibility (this triggers a deprecation warning
 	# above). Since direct emerge-webrsync calls do not use gemato for secure
@@ -92,12 +94,14 @@ if [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] ||
 		eecho "Do not call ${argv0##*/} directly, instead call emerge --sync or emaint sync."
 		exit 1
 	fi
+
 	WEBSYNC_VERIFY_SIGNATURE=1
 elif has webrsync-gpg ${FEATURES}; then
 	WEBSYNC_VERIFY_SIGNATURE=1
 else
 	WEBSYNC_VERIFY_SIGNATURE=0
 fi
+
 [[ -n ${PORTAGE_TEMP_GPG_DIR} ]] && PORTAGE_GPG_DIR=${PORTAGE_TEMP_GPG_DIR}
 if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 	eecho "please set PORTAGE_GPG_DIR in make.conf"
@@ -105,8 +109,10 @@ if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 -a -z "${PORTAGE_GPG_DIR}" ]; then
 fi
 
 do_tar() {
-	local file=$1; shift
+	local file=$1
+	shift
 	local decompressor
+
 	case ${file} in
 		*.xz)   decompressor="xzcat" ;;
 		*.bz2)  decompressor="bzcat" ;;
@@ -126,7 +132,7 @@ get_date_part() {
 	local utc_time_in_secs="$1"
 	local part="$2"
 
-	if	[[ ${USERLAND} == BSD ]] ; then
+	if [[ ${USERLAND} == BSD ]] ; then
 		date -r ${utc_time_in_secs} -u +"${part}"
 	else
 		date -d @${utc_time_in_secs} -u +"${part}"
@@ -135,6 +141,7 @@ get_date_part() {
 
 get_utc_second_from_string() {
 	local s="$1"
+
 	if [[ ${USERLAND} == BSD ]] ; then
 		# Specify zeros for the least significant digits, or else those
 		# digits are inherited from the current system clock time.
@@ -168,8 +175,9 @@ fetch_file() {
 	fi
 
 	__vecho "Fetching file ${FILE} ..."
-	# already set DISTDIR=
+	# Already set DISTDIR=
 	eval "${FETCHCOMMAND} ${opts}"
+
 	if [[ $? -eq 0 && -s ${DISTDIR}/${FILE} ]] ; then
 		return 0
 	else
@@ -205,7 +213,6 @@ check_file_signature() {
 	local gnupg_status line
 
 	if [ ${WEBSYNC_VERIFY_SIGNATURE} != 0 ]; then
-
 		__vecho "Checking signature ..."
 
 		if type -P gpg > /dev/null; then
@@ -218,6 +225,7 @@ check_file_signature() {
 					fi
 				done <<< "${gnupg_status}"
 			fi
+
 			if [[ ${r} -ne 0 ]]; then
 				# Exit early since it's typically inappropriate to
 				# try other mirrors in this case (it may indicate
@@ -262,8 +270,10 @@ sync_local() {
 	if type -P tarsync > /dev/null ; then
 		local chown_opts="-o ${ownership%:*} -g ${ownership#*:}"
 		chown ${ownership} "${repo_location}" > /dev/null 2>&1 || chown_opts=""
+
 		if ! tarsync $(vvecho -v) -s 1 ${chown_opts} \
 			-e /distfiles -e /packages -e /local "${file}" "${repo_location}"; then
+
 			eecho "tarsync failed; tarball is corrupt? (${file})"
 			return 1
 		fi
@@ -281,6 +291,7 @@ sync_local() {
 			chown -R ${ownership} .
 			rsync_opts+=" --owner --group"
 		fi
+
 		chmod 755 .
 		rsync ${rsync_opts} . "${repo_location%%/}"
 
@@ -291,8 +302,10 @@ sync_local() {
 		__vecho "Updating cache ..."
 		emerge --metadata
 	fi
+
 	local post_sync=${PORTAGE_CONFIGROOT}etc/portage/bin/post_sync
 	[ -x "${post_sync}" ] && "${post_sync}"
+
 	# --quiet suppresses output if there are no relevant news items
 	has news ${FEATURES} && emerge --check-news --quiet
 	return 0
@@ -310,16 +323,17 @@ do_snapshot() {
 	local mirror
 
 	local compressions=""
+
 	type -P xzcat > /dev/null && compressions="${compressions} ${repo_name}:xz portage:xz"
 	type -P bzcat > /dev/null && compressions="${compressions} ${repo_name}:bz2 portage:bz2"
 	type -P  zcat > /dev/null && compressions="${compressions} ${repo_name}:gz portage:gz"
+
 	if [[ -z ${compressions} ]] ; then
 		eecho "unable to locate any decompressors (xzcat or bzcat or zcat)"
 		exit 1
 	fi
 
 	for mirror in ${GENTOO_MIRRORS} ; do
-
 		mirror=${mirror%/}
 		__vecho "Trying to retrieve ${date} snapshot from ${mirror} ..."
 
@@ -351,7 +365,6 @@ do_snapshot() {
 			# from a different mirror
 			#
 			if [ ${have_files} -eq 1 ]; then
-
 				__vecho "Getting snapshot timestamp ..."
 				local snapshot_timestamp=$(get_snapshot_timestamp "${DISTDIR}/${file}")
 

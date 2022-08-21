@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ! ___eapi_has_dosed; then
-	die "'${0##*/}' has been banned for EAPI '$EAPI'"
+	die "'${0##*/}' has been banned for EAPI '${EAPI}'"
 	exit 1
 fi
 
@@ -38,9 +38,9 @@ for x in "$@" ; do
 	fi
 done
 
-if [ $file_found = 0 ] ; then
-	echo "!!! ${0##*/}: $y does not exist" 1>&2
+if [ ${file_found} = 0 ] ; then
+	echo "!!! ${0##*/}: ${y} does not exist" 1>&2
 	((ret|=1))
 fi
 
-exit $ret
+exit ${ret}

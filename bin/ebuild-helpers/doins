@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -20,7 +20,7 @@ if [[ ${helper} == dodoc ]] ; then
 else
 	if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 		[[ -n ${INSDESTTREE} ]] &&
-			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+			die "${0##*/}: \${INSDESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 	else
 		# backwards compatibility
 		_E_INSDESTTREE_=${INSDESTTREE}
@@ -33,7 +33,7 @@ if [ $# -lt 1 ] ; then
 fi
 
 DOINS_ARGS=()
-if [[ "$1" == "-r" ]] ; then
+if [[ "${1}" == "-r" ]] ; then
 	DOINS_ARGS+=( --recursive )
 	shift
 fi
@@ -42,12 +42,22 @@ if ! ___eapi_has_prefix_variables; then
 	export ED="${D}"
 fi
 
-if [[ ${_E_INSDESTTREE_#${ED}} != "${_E_INSDESTTREE_}" ]]; then
+if [[ ${_E_INSDESTTREE_#${D}} != "${_E_INSDESTTREE_}" ]]; then
 	__vecho "-------------------------------------------------------" 1>&2
 	__vecho "You should not use \${D} or \${ED} with helpers." 1>&2
 	__vecho "  --> ${_E_INSDESTTREE_}" 1>&2
 	__vecho "-------------------------------------------------------" 1>&2
 	__helpers_die "${helper} used with \${D} or \${ED}"
+	exit 1
+fi
+if [[ -n ${EPREFIX} && \
+		${_E_INSDESTTREE_#${EPREFIX}} != "${_E_INSDESTTREE_}" ]]
+then
+	__vecho "-------------------------------------------------------" 1>&2
+	__vecho "You should not use \${EPREFIX} with helpers." 1>&2
+	__vecho "  --> ${_E_INSDESTTREE_}" 1>&2
+	__vecho "-------------------------------------------------------" 1>&2
+	__helpers_die "${helper} used with \${EPREFIX}"
 	exit 1
 fi
 

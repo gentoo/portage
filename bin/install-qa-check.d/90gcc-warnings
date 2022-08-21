@@ -12,6 +12,7 @@ gcc_warn_check() {
 			set +x
 			reset_debug=1
 		fi
+
 		local m msgs=(
 			# only will and does, no might :)
 			'warning: .*will.*\[-Wstrict-aliasing\]'
@@ -57,6 +58,11 @@ gcc_warn_check() {
 			'warning: .*\[-Wsizeof-pointer-memaccess\]'
 			# iteration invokes undefined behavior
 			'warning: .*\[-Waggressive-loop-optimizations\]'
+			# conversion between pointers that have incompatible types
+			'warning: .*\[-Wincompatible-pointer-types\]'
+			# clobbered: Warn for variables that might be changed by longjmp or vfork
+			# (This warning is also enabled by -Wextra.)
+			'warning: .*\[-Wclobbered\]'
 
 			# this may be valid code :/
 			#': warning: multi-character character constant'
@@ -79,9 +85,9 @@ gcc_warn_check() {
 
 		local abort="no"
 		local grep_cmd=grep
-		[[ $PORTAGE_LOG_FILE = *.gz ]] && grep_cmd=zgrep
+		[[ ${PORTAGE_LOG_FILE} = *.gz ]] && grep_cmd=zgrep
 
-		# Force C locale to work around slow multibyte locales. #160234
+		# Force C locale to work around slow multibyte locales, bug #160234
 		# Force text mode as newer grep will treat non-ASCII (e.g. UTF-8) as
 		# binary when we run in the C locale.
 		f=$(LC_CTYPE=C LC_COLLATE=C "${grep_cmd}" -E -a "${joined_msgs}" "${PORTAGE_LOG_FILE}" | uniq)
@@ -91,7 +97,8 @@ gcc_warn_check() {
 			#if [[ ${f} == *'will always overflow destination buffer'* ]]; then
 			#	always_overflow=yes
 			#fi
-			if [[ $always_overflow = yes ]] ; then
+
+			if [[ ${always_overflow} = yes ]] ; then
 				eerror
 				eerror "QA Notice: Package triggers severe warnings which indicate that it"
 				eerror "           may exhibit random runtime failures."
@@ -111,25 +118,26 @@ gcc_warn_check() {
 		fi
 
 		local cat_cmd=cat
-		[[ $PORTAGE_LOG_FILE = *.gz ]] && cat_cmd=zcat
-		[[ $reset_debug = 1 ]] && set -x
-		# Use safe cwd, avoiding unsafe import for bug #469338.
-		f=$(cd "${PORTAGE_PYM_PATH}" ; $cat_cmd "${PORTAGE_LOG_FILE}" | \
-			"${PORTAGE_PYTHON:-/usr/bin/python}" "$PORTAGE_BIN_PATH"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
-		if [[ -n ${f} ]] ; then
+		[[ ${PORTAGE_LOG_FILE} = *.gz ]] && cat_cmd=zcat
+		[[ ${reset_debug} = 1 ]] && set -x
 
+		# Use safe cwd, avoiding unsafe import for bug #469338.
+		f=$(cd "${PORTAGE_PYM_PATH}" ; ${cat_cmd} "${PORTAGE_LOG_FILE}" | \
+			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/check-implicit-pointer-usage.py || die "check-implicit-pointer-usage.py failed")
+
+		if [[ -n ${f} ]] ; then
 			# In the future this will be a forced "die". In preparation,
 			# increase the log level from "qa" to "eerror" so that people
-			# are aware this is a problem that must be fixed asap.
+			# are aware this is a problem that must be fixed ASAP.
 
-			# just warn on 32bit hosts but bail on 64bit hosts
+			# Just warn on 32bit hosts but bail on 64bit hosts
 			case ${CHOST} in
-				alpha*|hppa64*|ia64*|powerpc64*|mips64*|sparc64*|sparcv9*|x86_64*) gentoo_bug=yes ;;
+				alpha*|aarch64*|arm64*|hppa64*|ia64*|powerpc64*|loongarch64*|mips64*|riscv64*|sparc64*|sparcv9*|s390x*|x86_64*) gentoo_bug=yes ;;
 			esac
 
 			abort=yes
 
-			if [[ $gentoo_bug = yes ]] ; then
+			if [[ ${gentoo_bug} = yes ]] ; then
 				eerror
 				eerror "QA Notice: Package triggers severe warnings which indicate that it"
 				eerror "           will almost certainly crash on 64bit architectures."
@@ -149,7 +157,7 @@ gcc_warn_check() {
 
 		fi
 		if [[ ${abort} == "yes" ]] ; then
-			if [[ $gentoo_bug = yes || $always_overflow = yes ]] ; then
+			if [[ ${gentoo_bug} = yes || ${always_overflow} = yes ]] ; then
 				die "install aborted due to severe warnings shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \

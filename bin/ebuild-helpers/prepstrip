@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
 if ___eapi_has_dostrip; then
-	die "${0##*/}: ${0##*/} has been banned for EAPI '$EAPI'; use 'dostrip' instead"
+	die "${0##*/}: ${0##*/} has been banned for EAPI '${EAPI}'; use 'dostrip' instead"
 fi
 
 __PORTAGE_HELPER=prepstrip exec "${PORTAGE_BIN_PATH}"/estrip "${@}"

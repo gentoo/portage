@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
@@ -15,7 +15,7 @@ fi
 
 if ! ___eapi_has_DESTTREE_INSDESTTREE; then
 	[[ -n ${DESTTREE} ]] &&
-		die "${0##*/}: \${DESTTREE} has been banned for EAPI '$EAPI'; use 'into' instead"
+		die "${0##*/}: \${DESTTREE} has been banned for EAPI '${EAPI}'; use 'into' instead"
 else
 	# backwards compatibility
 	_E_DESTTREE_=${DESTTREE}
@@ -37,5 +37,5 @@ for x in "$@" ; do
 	((ret|=$?))
 done
 
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 exit ${ret}

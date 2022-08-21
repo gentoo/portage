@@ -35,11 +35,6 @@ from _emerge.DependencyArg import DependencyArg
 from _emerge.depgraph import backtrack_depgraph
 from _emerge.RootConfig import RootConfig
 
-try:
-    from repoman.tests import cnf_path_repoman
-except ImportError:
-    cnf_path_repoman = None
-
 
 class ResolverPlayground:
     """
@@ -134,8 +129,11 @@ class ResolverPlayground:
         """
 
         self.debug = debug
-        if eprefix is None:
-            self.eprefix = normalize_path(tempfile.mkdtemp())
+        if True:
+            if eprefix is None:
+                self.eprefix = normalize_path(tempfile.mkdtemp())
+            else:
+                self.eprefix = normalize_path(eprefix)
 
             # EPREFIX/bin is used by fake true_binaries. Real binaries goes into EPREFIX/usr/bin
             eubin = os.path.join(self.eprefix, "usr", "bin")
@@ -151,6 +149,7 @@ class ResolverPlayground:
             essential_binaries = (
                 "awk",
                 "basename",
+                "bash",
                 "bzip2",
                 "cat",
                 "chgrp",
@@ -196,8 +195,6 @@ class ResolverPlayground:
                     os.symlink(path, os.path.join(eubin, x))
             finally:
                 os.environ["PATH"] = orig_path
-        else:
-            self.eprefix = normalize_path(eprefix)
 
         # Tests may override portage.const.EPREFIX in order to
         # simulate a prefix installation. It's reasonable to do
@@ -663,11 +660,6 @@ class ResolverPlayground:
             with open(file_name, "w") as f:
                 for line in lines:
                     f.write("%s\n" % line)
-
-        if cnf_path_repoman is not None:
-            # Create /usr/share/repoman
-            repoman_share_dir = os.path.join(self.eroot, "usr", "share", "repoman")
-            os.symlink(cnf_path_repoman, repoman_share_dir)
 
     def _create_world(self, world, world_sets):
         # Create /var/lib/portage/world

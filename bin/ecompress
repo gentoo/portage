@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
@@ -124,25 +124,33 @@ fi
 if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 	case ${PORTAGE_COMPRESS} in
 		bzip2|gzip)  PORTAGE_COMPRESS_FLAGS="-9";;
+		# Without setting '-m' lz4 will not compress multiple files at once.
+		# See: https://bugs.gentoo.org/672916
+		# Setting '--rm' will remove the source files after a successful compression.
+		lz4)  PORTAGE_COMPRESS_FLAGS="-m --rm";;
 	esac
 fi
 
 guess_suffix() {
 	set -e
+
 	tmpdir="${T}"/.ecompress$$.${RANDOM}
 	mkdir "${tmpdir}"
 	cd "${tmpdir}"
-	# we have to fill the file enough so that there is something
+
+	# We have to fill the file enough so that there is something
 	# to compress as some programs will refuse to do compression
 	# if it cannot actually compress the file
 	echo {0..1000} > compressme
 	${PORTAGE_COMPRESS} ${PORTAGE_COMPRESS_FLAGS} compressme > /dev/null
+
 	# If PORTAGE_COMPRESS_FLAGS contains -k then we need to avoid
 	# having our glob match the uncompressed file here.
 	suffix=$(echo compressme.*)
-	[[ -z $suffix || "$suffix" == "compressme.*" ]] && \
+	[[ -z ${suffix} || "${suffix}" == "compressme.*" ]] && \
 		suffix=$(echo compressme*)
 	suffix=${suffix#compressme}
+
 	cd /
 	rm -rf "${tmpdir}"
 	echo "${suffix}"
@@ -159,6 +167,7 @@ fix_symlinks() {
 	local something_changed=
 	while read -r -d $'\0' brokenlink ; do
 		[[ -e ${brokenlink} ]] && continue
+
 		olddest=$(readlink "${brokenlink}")
 		newdest=${olddest}${PORTAGE_COMPRESS_SUFFIX}
 		if [[ "${newdest}" == /* ]] ; then
@@ -166,6 +175,7 @@ fix_symlinks() {
 		else
 			[[ -f "${brokenlink%/*}/${newdest}" ]] || continue
 		fi
+
 		something_changed=${brokenlink}
 		rm -f "${brokenlink}" &&
 		ln -snf "${newdest}" "${brokenlink}${PORTAGE_COMPRESS_SUFFIX}"
@@ -174,6 +184,7 @@ fix_symlinks() {
 
 	[[ -n ${something_changed} ]] || break
 	(( indirection++ ))
+
 	if (( indirection >= 100 )) ; then
 		# Protect against possibility of a bug triggering an endless loop.
 		eerror "ecompress: too many levels of indirection for" \
@@ -207,6 +218,6 @@ fi
 
 fix_symlinks
 : $(( ret |= ${?} ))
-[[ $ret -ne 0 ]] && __helpers_die "${0##*/} failed"
+[[ ${ret} -ne 0 ]] && __helpers_die "${0##*/} failed"
 
 exit ${ret}
