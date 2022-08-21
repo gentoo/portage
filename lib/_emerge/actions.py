@@ -265,6 +265,7 @@ def action_build(
     quiet = "--quiet" in myopts
     myparams = create_depgraph_params(myopts, myaction)
     mergelist_shown = False
+    callemergerc('pre_calc_deps')
 
     if pretend or fetchonly:
         mtimedb.make_readonly()
@@ -447,6 +448,11 @@ def action_build(
         if not success:
             mydepgraph.display_problems()
             return 1
+
+    if success:
+        callemergerc('post_calc_deps_success')
+    else:
+        callemergerc('post_calc_deps_fail')
 
     mergecount = None
     if (
@@ -3858,6 +3864,7 @@ def run_action(emerge_config):
 
     def emergeexit():
         """This gets out final log message in before we quit."""
+        callemergerc('emerge_exit')
         if "--pretend" not in emerge_config.opts:
             emergelog(xterm_titles, " *** terminating.")
         if xterm_titles:
@@ -4051,6 +4058,12 @@ def run_action(emerge_config):
                         "Please install eselect to use this feature.\n", noiselevel=-1
                     )
         retval = action_build(emerge_config, spinner=spinner)
+
+        if retval == 0:
+            callemergerc('post_build_success')
+        else:
+            callemergerc('post_build_fail')
+
         post_emerge(
             emerge_config.action,
             emerge_config.opts,
