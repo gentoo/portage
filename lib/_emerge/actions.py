@@ -2419,7 +2419,7 @@ def action_sync(
     opts=DeprecationWarning,
     action=DeprecationWarning,
 ):
-
+    callemergerc('pre_sync')
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_sync() now expects "
@@ -2447,6 +2447,11 @@ def action_sync(
             level=logging.ERROR,
             noiselevel=-1,
         )
+
+    if success:
+        callemergerc('post_sync_success')
+    else:
+        callemergerc('post_sync_fail')
 
     return os.EX_OK if success else 1
 
@@ -4060,9 +4065,9 @@ def run_action(emerge_config):
         retval = action_build(emerge_config, spinner=spinner)
 
         if retval == 0:
-            callemergerc('post_build_success')
+            callemergerc('post_emerge_success')
         else:
-            callemergerc('post_build_fail')
+            callemergerc('post_emerge_fail')
 
         post_emerge(
             emerge_config.action,
