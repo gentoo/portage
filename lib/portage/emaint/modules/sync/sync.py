@@ -334,17 +334,17 @@ class SyncRepos:
             msgs.append("")
             msgs.append(
                 warn(" * ")
-                + bold("An update to portage is available.")
-                + " It is _highly_ recommended"
+                + bold("An update to Portage is available.")
+                + " It is highly recommended"
             )
             msgs.append(
                 warn(" * ")
-                + "that you update portage now, before any other packages are updated."
+                + "that you update Portage now, before any other packages are updated."
             )
             msgs.append("")
             msgs.append(
                 warn(" * ")
-                + "To update portage, run 'emerge --oneshot sys-apps/portage' now."
+                + "To update Portage, run `emerge --oneshot sys-apps/portage` now."
             )
             msgs.append("")
         return msgs
