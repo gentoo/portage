@@ -27,6 +27,9 @@ Bug fixes:
 
 * dispatch-conf: respect (E)ROOT
 
+* install-qa-check.d: 60pkgconfig: drop noisy pkg-config mismatched Version
+  field check (bug 857654).
+
 * install-qa-check.d: 60pkgconfig: fix --validate check by adding
   ${ED}/usr/{lib*,share} to search path.
 
