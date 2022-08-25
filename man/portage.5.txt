@@ -1,0 +1,1267 @@
+PORTAGE(5)                                                                                                        Portage                                                                                                       PORTAGE(5)
+
+NAME
+       portage - the heart of Gentoo
+
+DESCRIPTION
+       The  current  portage  code  uses  many  different  configuration  files, most of which are unknown to users and normal developers.  Here we will try to collect all the odds and ends so as to help users more effectively utilize
+       portage.  This is a reference only for files which do not already have a man page.
+
+       All files in the make.profile directory may be tweaked via parent profiles when using cascading profiles.  For more info, please see https://wiki.gentoo.org/wiki/Profile_(Portage)
+
+       Note:  If you are looking for information on how to emerge something, please see emerge(1).
+
+SYNOPSIS
+       /etc/portage/make.profile/ or /etc/make.profile/
+              site-specific overrides go in /etc/portage/profile/
+              deprecated
+              eapi
+              make.defaults
+              packages
+              packages.build
+              package.accept_keywords
+              package.bashrc
+              package.keywords
+              package.mask
+              package.provided
+              package.unmask
+              package.use
+              package.use.force
+              package.use.mask
+              package.use.stable.force
+              package.use.stable.mask
+              parent
+              profile.bashrc
+              soname.provided
+              use.force
+              use.mask
+              use.stable.mask
+              use.stable.force
+              virtuals
+
+       /etc/portage/
+              bashrc
+              binrepos.conf
+              categories
+              color.map
+              license_groups
+              make.conf(5)
+              mirrors
+              modules
+              package.accept_keywords
+              package.accept_restrict
+              package.env
+              package.keywords
+              package.license
+              package.mask
+              package.properties
+              package.unmask
+              package.use
+              postsync.d
+              repo.postsync.d
+              repos.conf
+              sets.conf
+
+       /etc/portage/env/
+              package-specific bashrc files
+
+       /etc/portage/profile/
+              site-specific overrides of /etc/portage/make.profile/
+
+       /etc/portage/sets/
+              user-defined package sets
+
+       /etc/portage/patches/
+              user-provided patches to packages
+
+       /var/db/repos/gentoo/
+              sets.conf
+
+       /var/db/repos/gentoo/metadata/
+              layout.conf
+              pkg_desc_index
+
+       /var/db/repos/gentoo/profiles/
+              arch.list
+              categories
+              info_pkgs
+              info_vars
+              license_groups
+              make.defaults
+              package.mask
+              package.unmask
+              package.use
+              package.use.force
+              package.use.mask
+              package.use.stable.force
+              package.use.stable.mask
+              profiles.desc
+              repo_name
+              thirdpartymirrors
+              use.desc
+              use.force
+              use.local.desc
+              use.mask
+              use.stable.mask
+              use.stable.force
+
+       /usr/share/portage/config/
+              make.globals
+              repos.conf
+              sets
+
+       /var/cache/edb/
+              misc internal cache files
+
+       /var/db/pkg/
+              database to track installed packages
+
+       /var/lib/portage/
+              config
+              world
+              world_sets
+
+GLOSSARY
+       In the following sections, some terminology may be foreign to you or used with meaning specific to Portage.  Please see the referenced manpages for more detailed explanations.
+
+              DEPEND atom
+                     An atom is either of the form category/package or consists of an operator followed by category/package followed by a hyphen and a version specification.  An atom might be suffixed by a slot specification.
+                     More reading: ebuild(5)
+
+                     Extended Atom Syntax
+                     The following atom syntax extensions are only supported in user configuration files and command line arguments for programs such as emerge(1):
+
+                     Repository Constraints
+                            Atoms with repository constraints have a '::' separator appended to the right side, followed by a repository name. Each repository name should correspond to the value of a repo_name entry from  one  of  the
+                            repositories that is configured in repos.conf file.
+
+                            Examples:
+                            # match sed from the 'gentoo' repository
+                            sys-apps/sed::gentoo
+                            # match kdelibs from the 'kde-testing' repository
+                            kde-base/kdelibs::kde-testing
+                            # match empathy from the 'gnome' repository
+                            net-im/empathy::gnome
+
+                     Wildcard Patterns
+                            Atoms  containing  wildcard  patterns  are of the form category/package, where the special '*' wildcard character substitutes for an arbitrary number of normal characters. More than one '*' character is al‐
+                            lowed, but not two next to each other.
+
+                            Examples:
+                            # match anything with a version containing 9999, which can be used in
+                            # package.mask to prevent emerge --autounmask from selecting live ebuilds
+                            =*/*-*9999*
+                            # match anything with a version containing _beta
+                            =*/*-*_beta*
+                            # match anything from the 'sys-apps' category
+                            sys-apps/*
+                            # match packages named 'zlib' from any category
+                            */zlib
+                            # match any package from a category that begins with 'net-'
+                            net-*/*
+                            # match any package name from any category
+                            */*
+                            # match any package from the 'gentoo' repository
+                            */*::gentoo
+
+              KEYWORD
+                     Each architecture has a unique KEYWORD.
+                     More reading: ebuild(5)
+
+              virtual
+                     A DEPEND atom that is part of the "virtual" category.  They are used when different packages can satisfy a dependency and only one of them is needed.
+                     More reading: ebuild(5)
+
+SPECIFIC FILE DESCRIPTIONS
+       /etc/portage/make.profile/ or /etc/make.profile/
+              This is usually just a symlink to the correct profile in /var/db/repos/gentoo/profiles/.  Since it is part of the ebuild repository, it may easily be updated/regenerated by running `emerge --sync`.   It  defines  what  a
+              profile  is  (usually arch specific stuff).  If you need a custom profile, then you should make your own make.profile directory and populate it.  However, if you just wish to override some settings, use /etc/portage/pro‐
+              file/ (it supports all of the same file types that make.profile does, except parent). Do NOT edit the settings in make.profile because they WILL be lost with the next `emerge --sync`. If  both  /etc/portage/make.profile/
+              and /etc/make.profile/ exist, then /etc/portage/make.profile/ will be preferred.
+
+              Any  file  in this directory, directories of other profiles or top-level "profiles" directory that begins with "package." or "use." can be more than just a flat file.  If it is a directory, then all the files in that di‐
+              rectory will be sorted in lexical order by file name and summed together as if it were a single file. Note that this behavior is only supported since portage-2.1.6.7, and it is not included in PMS at this time.
+
+              Example:
+              ${repository_location}/profiles/package.mask/removals
+              ${repository_location}/profiles/package.mask/testing
+
+              deprecated
+                     The existence of this file marks a profile as deprecated, meaning it is not supported by Gentoo anymore.  The first line must be the profile to which users are encouraged to upgrade, optionally  followed  by  some
+                     instructions explaining how they can upgrade.
+
+                     Example:
+                     default/linux/amd64/17.0
+                     # emerge -n '>=sys-apps/portage-2.3.62'
+                     # rm -f /etc/portage/make.profile
+                     # ln -s /var/db/repos/gentoo/profiles/default/linux/amd64/17.0 /etc/portage/make.profile
+
+              eapi   The  first  line  of this file specifies the EAPI to which files in the same directory conform. See ebuild(5) for information about EAPI and related features. Beginning with EAPI 5, new USE configuration files are
+                     supported: use.stable.mask, use.stable.force, package.use.stable.mask and package.use.stable.force. These files behave similarly to previously supported USE configuration files, except  that  they  only  influence
+                     packages that are merged due to a stable keyword.
+
+                     If the eapi file does not exist, then the EAPI defaults to 0 unless the default has been overridden by a profile_eapi_when_unspecified setting inside metadata/layout.conf of the containing repository.
+
+              make.defaults
+                     The profile default settings for Portage.  The general format is described in make.conf(5).  The make.defaults for your profile defines a few specific variables too:
+
+                     ARCH   Architecture type (x86/ppc/hppa/etc...).
+                     IUSE_IMPLICIT = [space delimited list of USE flags]
+                            Defines  implicit  IUSE  for ebuilds using EAPI 5 or later. Flags that come from USE_EXPAND or USE_EXPAND_UNPREFIXED variables do not belong in IUSE_IMPLICIT, since USE_EXPAND_VALUES_* variables are used to
+                            define implicit IUSE for those flags. See ebuild(5) for more information about IUSE.
+                     USERLAND = "GNU"
+                            Support BSD/cygwin/etc...
+                     USE_EXPAND = [space delimited list of variable names]
+                            Any variable listed here will be used to augment USE by inserting a new flag for every value in that variable, so USE_EXPAND="FOO" and FOO="bar bla" results in USE="foo_bar foo_bla".
+                     USE_EXPAND_HIDDEN = [space delimited list of variable names]
+                            Names of USE_EXPAND variables that should not be shown in the verbose merge list output of the emerge(1) command.
+                     USE_EXPAND_IMPLICIT = [space delimited list of variable names]
+                            Defines USE_EXPAND and USE_EXPAND_UNPREFIXED variables for which the corresponding USE flags may have implicit IUSE for ebuilds using EAPI 5 or later.
+                     USE_EXPAND_UNPREFIXED = [space delimited list of variable names]
+                            Any variable listed here will be used to augment USE by inserting a new flag for every value in that variable, so USE_EXPAND_UNPREFIXED="FOO" and FOO="bar bla" results in USE="bar bla".
+                     USE_EXPAND_VALUES_ARCH = [space delimited list of ARCH values]
+                            Defines ARCH values used to generate implicit IUSE for ebuilds using EAPI 5 or later.
+                     USE_EXPAND_VALUES_ELIBC = [space delimited list of ELIBC values]
+                            Defines ELIBC values used to generate implicit IUSE for ebuilds using EAPI 5 or later.
+                     USE_EXPAND_VALUES_KERNEL = [space delimited list of KERNEL values]
+                            Defines KERNEL values used to generate implicit IUSE for ebuilds using EAPI 5 or later.
+                     USE_EXPAND_VALUES_USERLAND = [space delimited list of USERLAND values]
+                            Defines USERLAND values used to generate implicit IUSE for ebuilds using EAPI 5 or later.
+                     ELIBC = "glibc"
+                            Support uClibc/BSD libc/etc...
+                     PROFILE_ONLY_VARIABLES = "ARCH"
+                            Prevent critical variables from being changed by the user in make.conf or the env.
+                     PROFILE_ARCH
+                            Distinguish machines classes that have the same ARCH.  All sparc machines have ARCH=sparc but set this to either 'sparc32' or 'sparc64'.
+                     BOOTSTRAP_USE
+                            Special USE flags which may be needed when bootstrapping from stage1 to stage2.
+
+              packages
+                     Provides the list of packages that compose the @system and @profile package sets.  The motivation to have @profile separate from @system is that @system packages may have incomplete dependency specifications  (due
+                     to  long-standing  Gentoo  policy),  and  incomplete dependency specifications have deleterious effects on the ability of emerge to parallelize builds. So, unlike @system, packages included in @profile do not hurt
+                     emerge's ability to parallelize.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line
+                     - packages to be added to the @system set begin with a *
+                     - packages to be added to the @profile set do not begin with a *
+                     - packages may only be added to the @profile set if the containing
+                       repository's layout.conf has 'profile-set' listed in the
+                       profile-formats field. Otherwise, packages that do not begin with
+                       '*' will simply be ignored for legacy reasons
+                     Note: In a cascading profile setup, you can remove packages in children profiles which were added by parent profiles by prefixing the atom with a '-'. The '-*' wildcard discards all @system and  @profile  packages
+                     added by parent profiles.
+
+                     Example:
+                     # i am a comment !
+                     # pull a version of glibc less than 2.3 into @system
+                     *<sys-libs/glibc-2.3
+                     # pull any version of bash into @system
+                     *app-shells/bash
+                     # pull a version of readline earlier than 4.2 into @system
+                     *<sys-libs/readline-4.2
+                     # pull vim into @profile
+                     app-editors/vim
+
+              packages.build
+                     A list of packages (one per line) that make up a stage1 tarball.  Really only useful for stage builders.
+
+              package.bashrc
+                     Per-package bashrc mechanism.  Contains a list of bashrc files to be sourced before emerging a given atom.  The bashrc files must be stored in bashrc/, in the profile directory.
+
+                     Note:
+                     - The bashrc files will be sourced after profile.bashrc for the same profile.
+                     - profile-formats in metadata/layout.conf must contain profile-bashrcs for this
+                     to be enabled.
+
+                     Format:
+                     - comments begin with # (no inline comments).
+                     - one atom per line with space-delimited list of bashrc files.
+
+                     Example:
+                     # By setting INSTALL_MASK in bashrc/nostandardconf.conf, we can avoid installing
+                     # the standard configuration and enable another package to install it.
+                     net-misc/dhcp nostandardconf.conf
+
+              package.provided
+                     A list of packages (one per line) that portage should assume have been provided.  Useful for porting to non-Linux systems. Basically, it's a list that replaces the emerge --inject syntax.
+
+                     For example, if you manage your own copy of a 2.6 kernel, then you can tell portage that 'sys-kernel/development-sources-2.6.7' is already taken care of and it should get off your back about it.
+
+                     Portage  will  not  attempt to update a package that is listed here unless another package explicitly requires a version that is newer than what has been listed. Dependencies that are satisfied by package.provided
+                     entries may cause installed packages satisfying equivalent dependencies to be removed by emerge(1) --depclean actions (see the ACTIONS section of the emerge(1) man page for more information).
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line
+                     - relational operators are not allowed
+                     - must include a version
+
+                     Example:
+                     # you take care of the kernel
+                     sys-kernel/development-sources-2.6.7
+
+                     # you installed your own special copy of QT
+                     x11-libs/qt-3.3.0
+
+                     # you have modular X but packages want monolithic
+                     x11-base/xorg-x11-6.8
+
+              package.use.force and package.use.stable.force
+                     Per-package USE flag forcing.
+
+                     Note: In a cascading profile setup, you can remove USE flags in children profiles which were added by parent profiles by prefixing the flag with a '-'.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line with space-delimited USE flags
+
+                     Example:
+                     # force docs for GTK 2.x
+                     =x11-libs/gtk+-2* doc
+                     # unforce mysql support for QT
+                     x11-libs/qt -mysql
+
+              package.use.mask and package.use.stable.mask
+                     Per-package USE flag masks.
+
+                     Note: In a cascading profile setup, you can remove USE flags in children profiles which were added by parent profiles by prefixing the flag with a '-'.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line with space-delimited USE flags
+
+                     Example:
+                     # mask docs for GTK 2.x
+                     =x11-libs/gtk+-2* doc
+                     # unmask mysql support for QT
+                     x11-libs/qt -mysql
+
+              parent This contains paths to the parent profiles (one per line).  They may be either relative (to the location of the profile) or absolute.  Most commonly this file contains '..' to indicate the directory  above.   Uti‐
+                     lized only in cascading profiles.
+
+                     When multiple parent profiles are specified, they are inherited in order from the first line to the last.
+
+                     If layout.conf is new enough, you can also use the <repo>:<path> syntax.  The <repo> is the same string as is stored in the repo_name file (or omitted to refer to the current repo), and <path> is a subdir starting
+                     at profiles/.
+
+              profile.bashrc
+                     If needed, this file can be used to set up a special environment for ebuilds, different from the standard root environment.  The syntax is the same as for any other bash script.
+
+              soname.provided
+                     A list of sonames that portage should assume have been provided. This is useful for using portage to install binary packages on top of a base image which lacks /var/db/pkg for some reason (perhaps  the  image  was
+                     assembled by another package manager, or by Linux From Scratch).
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - line begins with a multilib category
+                     - multilib category is followed by one or more sonames
+                     - only one multilib category is allowed per line
+                     - prefixing an soname with a '-' will negate a parent profile setting
+
+                     Example:
+                     # provide libc and ld-linux sonames for x86_32 and x86_64 categories
+                     x86_32 ld-linux.so.2 libc.so.6
+                     x86_64 ld-linux-x86-64.so.2 libc.so.6
+
+              use.force and use.stable.force
+                     Some USE flags don't make sense to disable under certain conditions.  Here we list forced flags.
+
+                     Note: In a cascading profile setup, you can remove USE flags in children profiles which were added by parent profiles by prefixing the flag with a '-'.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one USE flag per line
+
+              use.mask and use.stable.mask
+                     Some USE flags don't make sense on some archs (for example altivec on non-ppc or mmx on non-x86), or haven't yet been tested.  Here we list the masked ones.
+
+                     Note: In a cascading profile setup, you can remove USE flags in children profiles which were added by parent profiles by prefixing the flag with a '-'.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one USE flag per line
+
+                     Example:
+                     # mask doc
+                     doc
+                     # unmask mysql
+                     -mysql
+
+              virtuals
+                     The  virtuals  file controls default preferences for virtuals that are defined via the PROVIDE ebuild variable (see ebuild(5)). Since Gentoo now uses GLEP 37 virtuals instead of PROVIDE virtuals, the virtuals file
+                     is irrelevant for all Gentoo ebuilds. However, it is still possible for third-parties to distribute ebuilds that make use of PROVIDE.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one virtual and DEPEND atom base pair per line
+
+                     Example:
+                     # use net-mail/ssmtp as the default mta
+                     virtual/mta           net-mail/ssmtp
+                     # use app-dicts/aspell-en as the default dictionary
+                     virtual/aspell-dict   app-dicts/aspell-en
+
+       /etc/portage/
+              Files in this directory including make.conf, repos.conf, and any file with a name that begins with "package." can be more than just a flat file.  If it is a directory, then all the files in that directory will be  sorted
+              in lexical order by file name and summed together as if it were a single file.
+
+              Example:
+              /etc/portage/package.accept_keywords/common
+              /etc/portage/package.accept_keywords/e17
+              /etc/portage/package.accept_keywords/kde
+
+              bashrc If needed, this file can be used to set up a special environment for ebuilds, different from the standard root environment.  The syntax is the same as for any other bash script.
+
+                     Additional package-specific bashrc files can be created in /etc/portage/env.
+
+              binrepos.conf
+                     Specifies remote binary package repository configuration information. This is intended to be used as a replacement for the make.conf(5) PORTAGE_BINHOST variable.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - configuration of each repository is specified in a section starting with "[${repository_name}]"
+                     - attributes are specified in "${attribute} = ${value}" format
+
+                     Attributes supported in DEFAULT section:
+
+                            fetchcommand
+                                   Specifies a FETCHCOMMAND used to fetch files from a repository, overriding the value from make.conf(5).
+
+                            resumecommand
+                                   Specifies a RESUMECOMMAND used to fetch files from a repository, overriding the value from make.conf(5).
+
+                     Attributes supported in sections of repositories:
+
+                            priority
+                                   Specifies priority of given repository. When a package exists in multiple repositories, those with higher priority are preferred.
+
+                            sync-uri
+                                   Specifies URI of repository used for `emerge --getbinpkg`.
+
+              Example:
+              [example-binhost]
+              # repos with higher priorities are preferred when packages with equal
+              # versions are found in multiple repos
+              priority = 9999
+              # packages are fetched from here
+              sync-uri = https://example.com/binhost
+
+              categories
+                     A simple list of valid categories that may be used in repositories and PKGDIR (see make.conf(5)). This allows for custom categories to be created.
+
+                     Format:
+                     - one category per line
+
+                     Example:
+                     app-hackers
+                     media-other
+
+              color.map
+                     Contains variables customizing colors. See color.map(5).
+
+              make.conf
+                     The global custom settings for Portage. See make.conf(5).
+
+              mirrors
+                     Whenever  portage encounters a mirror:// style URI it will look up the actual hosts here.  If the mirror set is not found here, it will check the global mirrors file at /var/db/repos/gentoo/profiles/thirdpartymir‐
+                     rors.  You may also set a special mirror type called "local".  This list of mirrors will be checked before GENTOO_MIRRORS and will be used even if the package has RESTRICT="mirror" or RESTRICT="fetch".
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - mirror type followed by a list of hosts
+
+                     Example:
+                     # local private mirrors used only by my company
+                     local ftp://192.168.0.3/mirrors/gentoo http://192.168.0.4/distfiles
+
+                     # people in japan would want to use the japanese mirror first
+                     sourceforge http://keihanna.dl.sourceforge.net/sourceforge
+
+                     # people in tawain would want to use the local gnu mirror first
+                     gnu ftp://ftp.nctu.edu.tw/UNIX/gnu/
+
+              modules
+                     This file can be used to override the metadata cache implementation.  In practice, portdbapi.auxdbmodule is the only variable that the user will want to override.
+
+                     Example:
+                     portdbapi.auxdbmodule = portage.cache.sqlite.database
+
+                     After changing the portdbapi.auxdbmodule setting, it may be necessary to transfer or regenerate metadata cache. Users of the rsync tree need to run `emerge --metadata`  if  they  have  enabled  FEATURES="metadata-
+                     transfer"  in make.conf(5). In order to regenerate metadata for repositories not distributing pregenerated metadata cache, run `emerge --regen` (see emerge(1)). If you use something like the sqlite module and want
+                     to keep all metadata in that format alone (useful for querying), enable FEATURES="metadata-transfer" in make.conf(5).
+
+              package.accept_keywords and package.keywords
+                     Per-package ACCEPT_KEYWORDS.  Useful for mixing unstable packages in with a normally stable system or vice versa.  This will allow ACCEPT_KEYWORDS to be augmented for a single package. If both  package.accept_key‐
+                     words  and  package.keywords  are present, both of them will be used, and values from package.accept_keywords will override values from package.keywords. The package.accept_keywords file is intended to replace the
+                     package.keywords file, since profiles support a different form of package.keywords which modifies effective KEYWORDS (rather than ACCEPT_KEYWORDS).
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by additional KEYWORDS
+                     - lines without any KEYWORDS imply unstable host arch
+
+                     Example:
+                     # always use unstable libgd
+                     media-libs/libgd ~x86
+                     # only use stable mplayer
+                     media-video/mplayer -~x86
+                     # always use unstable netcat
+                     net-analyzer/netcat
+
+                     Note:
+                     In addition to the normal values from ACCEPT_KEYWORDS package.keywords supports three special tokens:
+
+                     *  package is visible if it is stable on any architecture
+                     ~* package is visible if it is in testing on any architecture
+                     ** package is always visible (KEYWORDS are ignored completely)
+
+                     Additional Note: If you encounter the -* KEYWORD, this indicates that the package is known to be broken on all systems which are not otherwise listed in KEYWORDS.  For example, a binary only package which is built
+                     for x86 will look like:
+
+                     games-fps/quake3-demo-1.11.ebuild:KEYWORDS="-* x86"
+
+                     If you wish to accept this package anyways, then use one of the other keywords in your package.accept_keywords like this:
+
+                     games-fps/quake3-demo x86
+
+              package.accept_restrict
+                     This will allow ACCEPT_RESTRICT (see make.conf(5)) to be augmented for a single package.
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by additional RESTRICT tokens
+
+              package.env
+                     Per-package environment variable settings. Entries refer to environment files that are placed in the /etc/portage/env/ directory and have the same format as make.conf(5). Note that these files are interpreted much
+                     earlier than the package-specific bashrc files which are described in a later section about /etc/portage/env/.  Beginners should be careful to recognize the difference between these two types of files. When  envi‐
+                     ronment variable settings are all that's needed, package.env is the recommended approach to use.
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by name(s) of environment file(s)
+
+                     Example:
+                     # use environment variables from /etc/portage/env/glibc.conf for the glibc package
+                     sys-libs/glibc glibc.conf
+
+              package.license
+                     This will allow ACCEPT_LICENSE (see make.conf(5)) to be augmented for a single package.
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by additional licenses or groups
+
+              package.mask
+                     A list of package atoms to mask.  Useful if specific versions of packages do not work well for you.  For example, you swear by the Nvidia drivers, but only versions earlier than 1.0.4496.  No problem!
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line
+
+                     Example:
+                     # mask out versions 1.0.4496 of the nvidia
+                     # drivers and later
+                     >=media-video/nvidia-kernel-1.0.4496
+                     >=media-video/nvidia-glx-1.0.4496
+
+              package.properties
+                     This will allow ACCEPT_PROPERTIES (see make.conf(5)) to be augmented for a single package.
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by additional properties
+
+              package.unmask
+                     Just  like package.mask above, except here you list packages you want to unmask.  Useful for overriding the global package.mask file (see above).  Note that this does not override packages that are masked via KEY‐
+                     WORDS.
+
+              package.use
+                     Per-package USE flags.  Useful for tracking local USE flags or for enabling USE flags for certain packages only.  Perhaps you develop GTK and thus you want documentation for it, but you  don't  want  documentation
+                     for QT.  Easy as pie my friend!
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line with space-delimited USE flags
+                     - USE flags can be prefixed with USE_EXPAND name followed by a colon (:)
+                     and a space. In this case, all the names following it are treated
+                     as values for the USE_EXPAND. Note that if you need to remove earlier
+                     assignments or defaults, you need to explicitly specify '-*'.
+
+                     Example:
+                     # turn on docs for GTK 2.x
+                     =x11-libs/gtk+-2* doc
+                     # disable mysql support for QT
+                     x11-libs/qt -mysql
+                     # set preferred video card for all packages
+                     */* VIDEO_CARDS: -* radeon
+
+              postsync.d/
+                     This directory is for user supplied postsync hooks to be run once after all repositories have been synced.  Each script is called in lexical order without any arguments.
+
+              repo.postsync.d/
+                     This directory is for user supplied postsync hooks to be run once after each repository has been synced.  Each script is called in lexical order with the following three arguments: args:
+                             repository name, sync-uri, location
+
+                     Using this information it is possible for hooks to be run for only a certain repository.  This way other update actions can be performed for that repository only.
+
+              repos.conf
+                     Specifies site-specific repository configuration information.
+                     Configuration specified in repos.conf can be overriden by PORTAGE_REPOSITORIES environmental variable, which has the same format as repos.conf.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - configuration of each repository is specified in a section starting with "[${repository_name}]"
+                     - attributes are specified in "${attribute} = ${value}" format
+
+                     Attributes supported in DEFAULT section:
+
+                            main-repo
+                                   Specifies main repository.
+
+                            eclass-overrides
+                                   Makes all repositories inherit eclasses from specified repositories.
+                                   Setting this attribute is generally not recommended since resulting changes in eclass inheritance may trigger performance issues due to invalidation of metadata cache.
+                                   When 'force = eclass-overrides' attribute is not set, egencache(1) and emirrordist(1) ignore this attribute, since operations performed by these tools are inherently not site-specific.
+
+                            force  Specifies names of attributes, which should be forcefully respected by egencache(1) and emirrordist(1).
+                                   Valid values: aliases, eclass-overrides, masters
+
+                     Attributes supported in sections of repositories:
+
+                            aliases
+                                   Specifies aliases of given repository.
+                                   Setting this attribute is generally not recommended since resulting changes in eclass inheritance may trigger performance issues due to invalidation of metadata cache.
+                                   When 'force = aliases' attribute is not set, egencache(1) and emirrordist(1) ignore this attribute, since operations performed by these tools are inherently not site-specific.
+
+                            auto-sync = yes|no|true|false
+                                   This setting determines if the repo will be synced during "emerge --sync" or "emaint sync --auto" runs.  This allows for repositories to be synced only when desired via "emaint sync --repo foo".
+                                   If unset, the repo will be treated as set yes, true.
+
+                            clone-depth
+                                   Specifies clone depth to use for DVCS repositories. Defaults to 1 (only the newest commit). If set to 0, the depth is unlimited.
+
+                            eclass-overrides
+                                   Makes given repository inherit eclasses from specified repositories.
+                                   Setting this attribute is generally not recommended since resulting changes in eclass inheritance may trigger performance issues due to invalidation of metadata cache.
+                                   When 'force = eclass-overrides' attribute is not set, egencache(1) and emirrordist(1) ignore this attribute, since operations performed by these tools are inherently not site-specific.
+
+                            force  Specifies names of attributes, which should be forcefully respected by egencache(1) and emirrordist(1).
+                                   Valid values: aliases, eclass-overrides, masters
+
+                            location
+                                   Specifies location of given repository.
+
+                            masters
+                                   Specifies master repositories of given repository.
+                                   Setting this attribute is generally not recommended since resulting changes in eclass inheritance may trigger performance issues due to invalidation of metadata cache.
+                                   When 'force = masters' attribute is not set, egencache(1) and emirrordist(1) ignore this attribute, since operations performed by these tools are inherently not site-specific.
+
+                            priority
+                                   Specifies priority of given repository.
+
+                            strict-misc-digests = yes|no|true|false
+                                   This setting determines whether digests are checked for files declared in the Manifest with MISC type (includes ChangeLog and metadata.xml files). Defaults to yes, true.
+
+                            sync-allow-hardlinks = yes|no|true|false
+                                   Allow sync plugins to use hardlinks in order to ensure that a repository remains in a valid state if something goes wrong during the sync operation.  For example, if signature verification fails dur‐
+                                   ing a sync operation, the previous state of the repository will be preserved. This option may conflict with configurations that restrict the use of hardlinks, such as overlay filesystems. Defaults to
+                                   yes, true.
+
+                            sync-cvs-repo
+                                   Specifies CVS repository.
+
+                            sync-depth
+                                   Specifies sync depth to use for DVCS repositories. If set to 0, the depth is unlimited. Defaults to 0.
+
+                            sync-git-clone-env
+                                   Set environment variables for git when cloning repository (git clone).  This will override settings from sync-git-env.
+
+                                   Example:
+                                          sync-git-clone-env="VAR1=word1 word2" VAR2=word3 "VAR3=$word 5 6"
+                                          Gives three variables "VAR1", "VAR2", "VAR3" with the values "word1 word2", "word3", "$word 5 6".
+
+                            sync-git-clone-extra-opts
+                                   Extra options to give to git when cloning repository (git clone).
+
+                            sync-git-env
+                                   Set  environment variables for git when cloning or pulling the repository.  These will be overridden by setting them again in sync-git-clone-env and sync-git-pull-env.  See also example for sync-git-
+                                   clone-env.
+
+                            sync-git-pull-env
+                                   Set environment variables for git when updating repository (git pull).  This will override settings from sync-git-env.  See also example for sync-git-clone-env.
+
+                            sync-git-pull-extra-opts
+                                   Extra options to give to git when updating repository (git pull).
+
+                            sync-git-verify-commit-signature = yes|no|true|false
+                                   Require the top commit in the repository to contain a good OpenPGP signature. Defaults to no, false.
+
+                            sync-hooks-only-on-change = yes|no|true|false
+                                   If set to true, then sync of a given repository will not trigger postsync hooks unless hooks would have executed for a master repository or the repository has changed since the previous  sync  opera‐
+                                   tion. Defaults to no, false.
+
+                            sync-mercurial-clone-env
+                                   Extra options to give to mercurial when cloning repository (hg clone).  See also example for sync-git-clone-env.
+
+                            sync-mercurial-clone-extra-opts
+                                   Extra options to give to mercurial when cloning repository (hg clone).
+
+                            sync-mercurial-env
+                                   Set  environment variables for mercurial when cloning or pulling the repository.  These will be overridden by setting them again in sync-mercurial-clone-env and sync-mercurial-pull-env.  See also ex‐
+                                   ample for sync-git-clone-env.
+
+                            sync-mercurial-pull-env
+                                   Set environment variables for mercurial when updating repository (hg pull).  This will override settings from sync-mercurial-env.  See also example for sync-git-clone-env.
+
+                            sync-mercurial-pull-extra-opts
+                                   Extra options to give to mercurial when updating repository (hg pull).
+
+                            sync-rcu = yes|no|true|false
+                                   Enable read-copy-update (RCU) behavior for sync operations. The current latest immutable version of a repository will be referenced by a symlink found where the repository would normally  be  located
+                                   (see  the location setting). Repository consumers should resolve the cannonical path of this symlink before attempt to access the repository, and all operations should be read-only, since the reposi‐
+                                   tory is considered immutable. Updates occur by atomic replacement of the symlink, which causes new consumers to use the new immutable version, while any earlier consumers continue to use the cannoni‐
+                                   cal  path that was resolved earlier. This option requires sync-allow-hardlinks and sync-rcu-store-dir options to be enabled, and currently also requires that sync-type is set to rsync. This option is
+                                   disabled by default, since the symlink usage would require special handling for scenarios involving bind mounts and chroots.
+
+                            sync-rcu-store-dir
+                                   Directory path reserved for sync-rcu storage. This directory must have a unique value for each repository (do not set it in the DEFAULT section).  This directory must not contain any other  files  or
+                                   directories aside from those that are created automatically when sync-rcu is enabled.
+
+                            sync-rcu-spare-snapshots = 1
+                                   Number  of  spare  snapshots  for  sync-rcu to retain with expired ttl. This protects the previous latest snapshot from being removed immediately after a new version becomes available, since it might
+                                   still be used by running processes.
+
+                            sync-rcu-ttl-days = 7
+                                   Number of days for sync-rcu to retain previous immutable snapshots of a repository. After the ttl of a particular snapshot has expired, it will be remove automatically (the latest snapshot is exempt,
+                                   and sync-rcu-spare-snapshots configures the number of previous snapshots that are exempt). If the ttl is set too low, then a snapshot could expire while it is in use by a running process.
+
+                            sync-type
+                                   Specifies type of synchronization performed by `emerge --sync`.
+                                   Valid non-empty values: cvs, git, mercurial, rsync, svn, webrsync (emerge-webrsync)
+                                   This attribute can be set to empty value to disable synchronization of given repository. Empty value is default.
+
+                            sync-umask
+                                   Specifies umask used to synchronize the repository.
+                                   Takes an octal permission mask, e.g. 022.
+
+                            sync-uri
+                                   Specifies URI of repository used for synchronization performed by `emerge --sync`.
+                                   This attribute can be set to empty value to disable synchronization of given repository. Empty value is default.
+
+                                   Syntax:
+                                          cvs: [cvs://]:access_method:[username@]hostname[:port]:/path
+                                          git: (git|git+ssh|http|https)://[username@]hostname[:port]/path
+                                          rsync: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+
+                                   Examples:
+                                          rsync://private-mirror.com/portage-module
+                                          rsync://rsync-user@private-mirror.com:873/gentoo-portage
+                                          ssh://ssh-user@192.168.0.1:22/var/db/repos/gentoo
+                                          ssh://ssh-user@192.168.0.1:22/\${HOME}/portage-storage
+
+                                   Note: For the ssh:// scheme, key-based authentication might be of interest.
+
+                            sync-user
+                                   Specifies the credentials used to perform the synchronization.
+                                   Syntax: [user][:group]
+                                   If only user is provided, the primary group of the user will be used.  If only group is provided, the current user will be preserved and only group id will be changed.
+                                   This key takes precedence over FEATURES=userpriv. If user or group id is provided, Portage no longer uses owner of the directory.
+
+                            sync-rsync-extra-opts
+                                   Extra options to give to rsync on repository synchronization. It takes precedence over a declaration in [DEFAULT] section, that takes precedence over PORTAGE_RSYNC_EXTRA_OPTS.
+
+                            sync-openpgp-key-path
+                                   Path to the OpenPGP key(ring) used to verify received repository. Used only for protocols supporting cryptographic verification, provided that the respective verification option is enabled. If unset,
+                                   the user's keyring is used.
+
+                            sync-openpgp-key-refresh = yes
+                                   Enable OpenPGP key(ring) refresh. This option is enabled by default.
+
+                                   Warning: It is a security vulnerability to disable this option because this will prevent detection of revoked keys!
+
+                            sync-openpgp-key-refresh-retry-count = 40
+                                   Maximum number of times to retry key refresh if it fails. Between each key refresh attempt, there is an exponential delay with a constant multiplier and a uniform random multiplier between 0 and 1.
+
+                            sync-openpgp-key-refresh-retry-delay-exp-base = 2
+                                   The base of the exponential expression. The exponent is the number of previous refresh attempts.
+
+                            sync-openpgp-key-refresh-retry-delay-max = 60
+                                   Maximum delay between each retry attempt, in units of seconds. This places a limit on the length of the exponential delay.
+
+                            sync-openpgp-key-refresh-retry-delay-mult = 4
+                                   Multiplier for the exponential delay.
+
+                            sync-openpgp-key-refresh-retry-overall-timeout = 1200
+                                   Combined time limit for all refresh attempts, in units of seconds.
+
+                            sync-openpgp-keyserver = name
+                                   Pass name as the `gpg --keyserver` argument. Refer to the gpg(1) man page for information about the `gpg --keyserver` name format.
+
+                            sync-rsync-vcs-ignore = yes|no|true|false
+                                   Ignore vcs directories that may be present in the repository. It is the user's responsibility to set sync-rsync-extra-opts to protect vcs directories if appropriate. Defaults to no, false.
+
+                            sync-rsync-verify-jobs = 1
+                                   Number of parallel jobs to use when verifying nested Manifests. When set to 0, this will use the apparent number of processors if parallel verification is supported by the installed version  of  app-
+                                   portage/gemato.  Defaults to 1.
+
+                            sync-rsync-verify-max-age
+                                   Warn if repository is older than the specified number of days. Disabled when 0. Defaults to disabled.
+
+                            sync-rsync-verify-metamanifest = yes|no|true|false
+                                   Require the repository to contain a signed MetaManifest and verify it using app-portage/gemato. Defaults to no, false.
+
+                            sync-webrsync-delta = yes|no|true|false
+                                   Use app-portage/emerge-delta-webrsync to minimize bandwidth.  Defaults to no, false.
+
+                            sync-webrsync-keep-snapshots = yes|no|true|false
+                                   Keep snapshots in DISTDIR (do not delete). Defaults to no, false.
+
+                            sync-webrsync-verify-signature = yes|no|true|false
+                                   Require the detached tarball signature to contain a good OpenPGP signature. This uses the OpenPGP key(ring) specified by the sync-openpgp-key-path setting. Defaults to no, false.
+
+                     Example:
+                     [DEFAULT]
+                     # make gentoo the main repository, which makes it the default master
+                     # repository for repositories that do not specify masters
+                     main-repo = gentoo
+                     # make all repositories inherit eclasses from the java-overlay and
+                     # java-experimental repositories, with eclasses from java-experimental
+                     # taking precedence over those from java-overlay
+                     eclass-overrides = java-overlay java-experimental
+
+                     [gentoo]
+                     # repos with higher priorities are preferred when ebuilds with equal versions
+                     # are found in multiple repos (see the `emerge --info --verbose` repo
+                     # display for a listing of repos and their corresponding priorities).
+                     priority = 9999
+                     # disable all eclass overrides for ebuilds from the gentoo repository
+                     eclass-overrides =
+                     # when processing metadata/layout.conf from other repositories, substitute
+                     # 'gentoo' in place of references to repositories named 'foo' and 'bar',
+                     # and discard the 'baz' alias contained in gentoo's layout.conf
+                     aliases = foo bar -baz
+
+                     [kde-testing]
+                     # override the metadata/layout.conf masters setting from the kde-testing repo
+                     masters = gentoo kde
+
+                     [python]
+                     # override the metadata/layout.conf masters setting from the python repo,
+                     # so that settings won't be inherited from those masters, and so that
+                     # those master repos won't be required as dependencies (the user must
+                     # ensure that any required dependencies such as eclasses are satisfied)
+                     masters =
+
+                     # Repository 'gentoo' synchronized using CVS
+                     [gentoo]
+                     location = /var/db/repos/gentoo
+                     sync-type = cvs
+                     sync-uri = :pserver:anonymous@anoncvs.gentoo.org:/var/cvsroot
+                     sync-cvs-repo = gentoo-x86
+                     auto-sync = yes
+
+                     # Overlay 'voip' syncronized with layman's plug-in sync module
+                     [voip]
+                     location = /var/lib/layman/voip
+                     sync-type = laymanator
+                     sync-uri = git://anongit.gentoo.org/proj/voip.git
+                     auto-sync = yes
+
+              sets.conf
+                     A  package set configuration file. Settings here override settings from /var/db/repos/gentoo/sets.conf and /usr/share/portage/config/sets.  The format is described extensively in the Package Set Configuration sec‐
+                     tion of the html documentation which is installed with portage when the "doc" USE flag is enabled.
+
+                     Example:
+                     [world]
+                     class = portage.sets.base.DummyPackageSet
+                     packages = @profile @selected @system
+
+                     [usersets]
+                     class = portage.sets.files.StaticFileSet
+                     multiset = true
+                     directory =  %(PORTAGE_CONFIGROOT)setc/portage/sets
+                     world-candidate = True
+
+                     [module-rebuild]
+                     class = portage.sets.dbapi.OwnerSet
+                     files = /lib/modules
+
+       /etc/portage/env/
+              In this directory additional package-specific bashrc files can be created.  Note that if package-specific environment variable settings are all that's needed, then /etc/portage/package.env should be used instead  of  the
+              bashrc approach that is described here. Also note that special variables such as FEATURES and INSTALL_MASK will not produce the intended results if they are set in bashrc, and therefore /etc/portage/package.env should be
+              used instead. Lastly, note that these files are interpreted much later than the portage environment file package.env.
+
+              Portage will source all of these bashrc files after /etc/portage/bashrc in the following order:
+
+              1. /etc/portage/env/${CATEGORY}/${PN}
+
+              2. /etc/portage/env/${CATEGORY}/${PN}:${SLOT}
+
+              3. /etc/portage/env/${CATEGORY}/${P}
+
+              4. /etc/portage/env/${CATEGORY}/${PF}
+
+       /etc/portage/sets/
+              For each file in this directory, a package set is created with its name corresponding to the name of the file. Each file should contain a list of package atoms and nested package sets, one per line. When a package set is
+              referenced as an emerge(1) argument or when it is referenced as a nested package set (inside of another package set), the set name is prefixed with @.
+
+              Also see /var/lib/portage/world_sets and the emerge(1) --list-sets option.
+
+       /etc/portage/patches/
+              In this directory patches to the package source tree can be created.  For each package, patches are taken from these subdirectories in the following order:
+
+              1. /etc/portage/patches/${CATEGORY}/${P}-${PR}[:${SLOT}]
+
+              2. /etc/portage/patches/${CATEGORY}/${P}[:${SLOT}]
+
+              3. /etc/portage/patches/${CATEGORY}/${PN}[:${SLOT}]
+
+              Patches  from more-specific directories overrides patches from less-specific, i.e. if patches with the same name coexist in different directories matches same package, only patch from directory matches the first matching
+              pattern will be applied. Patches for each package are applied in the POSIX lexicographic order. Patch file name must end in ".patch" or, for EAPI >= 6, in ".diff".
+
+              If package ebuild uses EAPI <= 5, it must explicitly invoke epatch_user or inherit epatch.eclass(5) and rely on default src_prepare for apply patches. Otherwise, patches are silently ignored. If package ebuild uses  EAPI
+              >= 6, applying user patches is mandatory.
+
+       /var/db/repos/gentoo/
+
+              sets.conf
+                     A package set configuration file. Also see /etc/portage/sets.conf which overrides these settings, and /usr/share/portage/config/sets which contains default settings.
+
+       /var/db/repos/gentoo/metadata/
+
+              layout.conf
+                     Specifies  information  about  the  repository  layout.   Site-specific  overrides to layout.conf settings may be specified in /etc/portage/repos.conf.  Settings in repos.conf take precedence over settings in lay‐
+                     out.conf, except tools such as egencache(1) ignore "aliases", "eclass-overrides" and "masters" attributes set in repos.conf since their operations are inherently not site-specific.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - attributes are specified in "${attribute} = ${value}" format
+
+                     Supported attributes.
+
+                            aliases
+                                   Behaves like an "aliases" attribute in repos.conf.
+
+                            eapis-banned
+                                   List of EAPIs which are not allowed in this repo.
+
+                            eapis-deprecated
+                                   List of EAPIs which are allowed but generate warnings when used.
+
+                            masters
+                                   Names of repositories which satisfy dependencies on eclasses and from which settings specified in various repository-level files (package.mask, package.use.mask, use.mask etc.)  are  inherited.  Each
+                                   repository  name  should correspond to the value of a repo_name entry from one of the repositories that is configured in repos.conf file. Repositories listed toward the right of the masters list take
+                                   precedence over those listed toward the left of the list.
+
+                            repo-name = <value of profiles/repo_name>
+                                   The name of this repository (overrides profiles/repo_name if it exists).
+
+                            sign-commits = [true|false]
+                                   Boolean value whether we should sign commits in this repo.
+
+                            sign-manifests = [true|false]
+                                   Boolean value whether we should sign Manifest files in this repo.
+
+                            thin-manifests = [true|false]
+                                   Boolean value whether Manifest files contain only DIST entries.
+
+                            use-manifests = [strict|true|false]
+                                   How Manifest files get used.  Possible values are "strict" (require an entry for every file), "true" (if an entry exists for a file, enforce it), or "false" (don't check Manifest files at all).
+
+                            manifest-hashes
+                                   List of hashes to generate in new/updated entries Manifest files.  Valid hashes depend on the current version of portage; see the portage.checksum module for the current list.  Portage will  not  re‐
+                                   write old entries if they satisfy manifest-required-hashes.
+
+                            manifest-required-hashes
+                                   List  of  hashes that must be used in all Manifest entries.  If the hashes listed here are not present in the Manifest, Portage will refetch all distfiles and update the respective entries to include
+                                   them.  Must be a subset of manifest-hashes.  If not specified, defaults to all manifest-hashes.
+
+                            cache-formats = [pms] [md5-dict]
+                                   The cache formats supported in the metadata tree.  There is the old "pms" format and the newer/faster "md5-dict" format.  Default is to detect dirs.
+
+                            profile_eapi_when_unspecified
+                                   The EAPI to use for profiles when unspecified. This attribute is supported only if profile-default-eapi is included in profile-formats.
+
+                            profile-formats = [pms] [portage-1] [portage-2] [profile-bashrcs] [profile-set] [profile-default-eapi] [build-id] [profile-repo-deps]
+                                   Control functionality available to profiles in this repo such as which files may be dirs, or the syntax available in parent files.  Use "portage-2" if you're unsure.  The default  is  "portage-1-com‐
+                                   pat"  mode  which is meant to be compatible with old profiles, but is not allowed to be opted into directly.  Setting profile-bashrcs will enable the per-profile bashrc mechanism package.bashrc. Set‐
+                                   ting profile-set enables support for using the profile packages file to add atoms to the @profile package set.  See the profile packages section for more  information.   Setting  profile-default-eapi
+                                   enables support for the profile_eapi_when_unspecified attribute. Setting build-id allows dependency atoms in the profile to refer to specific builds (see the binpkg-multi-instance FEATURES setting in
+                                   make.conf(5)). A build-id atom is identical to a version-specific atom, except that the version is followed by a hyphen and an integer build-id.  Setting profile-repo-deps allows dependency atoms  in
+                                   the profile to refer to specific repositories.
+
+                     Example:
+                     # Specify the repository name (overriding profiles/repo_name).
+                     repo-name = foo-overlay
+
+                     # eclasses provided by java-overlay take precedence over identically named
+                     # eclasses that are provided by gentoo
+                     masters = gentoo java-overlay
+
+                     # indicate that this repo can be used as a substitute for foo-overlay
+                     aliases = foo-overlay
+
+                     # indicate that ebuilds with the specified EAPIs are banned
+                     eapis-banned = 0 1
+
+                     # indicate that ebuilds with the specified EAPIs are deprecated
+                     eapis-deprecated = 2 3 4
+
+                     # sign commits in this repo, which requires Git >=1.7.9, and
+                     # key configured by `git config user.signingkey key_id`
+                     sign-commits = true
+
+                     # do not sign Manifest files in this repo
+                     sign-manifests = false
+
+                     # Manifest files only contain DIST entries
+                     thin-manifests = true
+
+                     # indicate that this repo requires manifests for each package, and is
+                     # considered a failure if a manifest file is missing/incorrect
+                     use-manifests = strict
+
+                     # customize the set of hashes generated for Manifest entries
+                     manifest-hashes = SHA256 SHA512 WHIRLPOOL
+
+                     # indicate that this repo contains the md5-dict cache format,
+                     # which may be generated by egencache(1)
+                     cache-formats = md5-dict
+
+                     # indicate that this repo contains profiles that may use directories for
+                     # package.mask, package.provided, package.use, package.use.force,
+                     # package.use.mask, package.use.stable.force, package.use.stable.mask,
+                     # use.force, use.mask, use.stable.force, and use.stable.mask.
+                     # profile-formats = portage-1
+                     # indicate that paths such as 'gentoo:targets/desktop' or ':targets/desktop' in
+                     # profile parent files can be used to express paths relative to the root
+                     # 'profiles' directory of a repository (when the repo name is omitted before
+                     # the colon, it refers to the current repository the parent file is inside)
+                     profile-formats = portage-2
+
+              pkg_desc_index
+                     This is an index of package names, versions, and descriptions which may be generated by egencache(1) in order to optimize emerge(1) search actions.
+
+                     Example:
+                     sys-apps/sed 4.2 4.2.1 4.2.1-r1 4.2.2: Super-useful stream editor
+                     sys-apps/usleep 0.1: A wrapper for usleep
+
+       /var/db/repos/gentoo/profiles/
+              Global Gentoo settings that are controlled by the developers.  To override these settings, you can use the files in /etc/portage/.
+
+              arch.list
+                     A list of all valid KEYWORDS.  This does not include modifiers.
+
+                     Format:
+                     - one KEYWORD per line
+
+                     Example:
+                     x86
+                     ppc
+                     sparc
+
+              categories
+                     A simple list of valid categories that may be used in repositories and PKGDIR (see make.conf(5)).
+
+                     Format:
+                     - one category per line
+
+                     Example:
+                     app-admin
+                     dev-lang
+                     games-strategy
+                     sys-kernel
+
+              info_pkgs
+                     A list of all the packages which will be displayed when you run `emerge info`.
+
+              info_vars
+                     A list of all the variables which will be displayed when you run `emerge info`.
+
+              license_groups
+                     This contains groups of licenses that may be specifed in the ACCEPT_LICENSE variable (see make.conf(5)). Refer to GLEP 23 for further information: https://www.gentoo.org/glep/glep-0023.html.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one group name, followed by list of licenses and nested groups
+                     - nested groups are prefixed with the '@' symbol
+
+                     Example:
+                     # The FSF-APPROVED group includes the entire GPL-COMPATIBLE group and more.
+                     FSF-APPROVED @GPL-COMPATIBLE Apache-1.1 BSD-4 MPL-1.0 MPL-1.1
+                     # The GPL-COMPATIBLE group includes all licenses compatible with the GNU GPL.
+                     GPL-COMPATIBLE Apache-2.0 BSD BSD-2 GPL-2 GPL-3 LGPL-2.1 LGPL-3 X11 ZLIB
+
+              package.accept_keywords
+                     Per-package  ACCEPT_KEYWORDS  for profiles. This has the same format and behavior as /etc/portage/package.accept_keywords, including the ability to list atoms without any keywords in order to accept unstable vari‐
+                     ants of all stable keywords listed in ACCEPT_KEYWORDS.
+
+              package.keywords
+                     Per-profile KEYWORDS. Useful for cases in which the effective KEYWORDS of a given package should vary depending on which profile the user has selected.
+
+                     Format:
+                     - comment lines begin with # (no inline comments)
+                     - one DEPEND atom per line followed by additional KEYWORDS
+
+                     Example:
+                     # add stable keyword to libgd
+                     media-libs/libgd x86
+                     # remove stable keyword from mplayer and add unstable keyword
+                     media-video/mplayer -x86 ~x86
+                     # remove all keywords from netcat
+                     net-analyzer/netcat -*
+
+              package.mask
+                     This contains a list of DEPEND atoms for packages that should not be installed in any profile.  Useful for adding the latest KDE betas and making sure no one accidentally upgrades to them.  Also useful for quickly
+                     masking specific versions due to security issues.  ALWAYS include a comment explaining WHY the package has been masked and WHO is doing the masking.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - one DEPEND atom per line
+
+                     Example:
+                     # Larry The Cow <larry@example.com> (2 Jan 2022)
+                     # Masked for security reasons, bug #123456
+                     <sys-libs/zlib-1.1.4
+
+                     # Larry The Cow <larry@example.com> (1 jan 2022)
+                     # New KDE betas
+                     =kde-base/kde-3.2.0_beta1
+                     =kde-base/kdeaccessibility-3.2.0_beta1
+
+              profiles.desc
+                     List all the current stable and development profiles.  If a profile is listed here, then it will be checked by pkgcheck.  Format:
+                     - comments begin with # (no inline comments)
+                     - one profile list per line in format: arch dir status
+                     - arch must be listed in arch.list
+                     - dir is relative to profiles.desc
+                     - status must be 'stable', 'dev', or 'exp'
+
+                     Example:
+                     alpha        default/linux/alpha/10.0    stable
+                     m68k         default/linux/m68k/10.0     dev
+                     x86          default/linux/x86/10.0      stable
+                     x86-linux    prefix/linux/x86            exp
+
+              repo_name
+                     The first line of the file should define a unique repository name. The name may contain any of the characters [A-Za-z0-9_-]. It must not begin with a hyphen. If the repo-name attribute is specified in layout.conf,
+                     then that setting will take precedence.
+
+              thirdpartymirrors
+                     Controls the mapping of mirror:// style URIs to actual lists of mirrors.  Keeps us from overloading a single server.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - mirror type followed by a list of hosts
+
+                     Example:
+                     sourceforge http://aleron.dl.sourceforge.net/sourceforge http://unc.dl.sourceforge.net/sourceforge
+
+                     gentoo http://distro.ibiblio.org/pub/linux/distributions/gentoo/distfiles/ ftp://ftp.gtlib.cc.gatech.edu/pub/gentoo/distfiles
+
+                     kernel https://www.kernel.org/pub https://www.us.kernel.org/pub
+
+              use.desc
+                     All global USE flags must be listed here with a description of what they do.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - use flag - some description
+
+                     Example:
+                     3dfx - Adds support for 3dfx video cards
+                     acl - Adds support for Access Control Lists
+                     doc - Adds extra documentation
+
+              use.local.desc
+                     All local USE flags are listed here along with the package and a description. This file is automatically generated from the metadata.xml files that are included with each individual package.  Refer to GLEP 56  for
+                     further information: https://www.gentoo.org/glep/glep-0056.html.
+
+                     Format:
+                     - comments begin with # (no inline comments)
+                     - package:use flag - description
+
+                     Example:
+                     app-editors/nano:justify - Toggles the justify option
+                     dev-libs/DirectFB:fusion - Adds Multi Application support
+                     games-emulation/xmess:net - Adds network support
+
+       /usr/share/portage/config/
+
+              make.globals
+                     The global default settings for Portage.  This comes from the portage package itself.  Settings in make.conf or package.env override values set here. The format is described extensively in make.conf(5).
+
+              repos.conf
+                     The default configuration of repositories for Portage.  This comes from the portage package itself.  Settings in /etc/portage/repos.conf override values set here. The format is described extensively in section for
+                     /etc/portage/repos.conf.
+
+              sets   A directory containing package set configuration files. Also see /etc/portage/sets.conf and /var/db/repos/gentoo/sets.conf, both of which override values set here.  Default  set  configurations  are  installed  in
+                     /usr/share/portage/config/sets/portage.conf.
+
+       /var/cache/edb/
+              This  directory  is  used to store internal portage cache files.  The names and purpose of these files are not documented on purpose so as to keep down bitrot as internals change.  If you aren't working on portage inter‐
+              nally, then the details most likely do not matter to you.
+
+              This entire directory can be safely deleted.  It is highly recommended you do not do this however as it can be a time consuming process to generate them all again.
+
+       /var/db/pkg/
+              All installed package information is recorded here.  If portage thinks you have a package installed, it is usually because it is listed here.
+
+              The format follows somewhat closely that of the ebuild repository. There is a directory for each category and a package-version subdirectory for each package you have installed.
+
+              Inside each package directory are misc files that describe the installed contents of the package as well as build time information (so that the package can be unmerged without needing the ebuild repository).
+
+              The exact file contents and format are not described here again so that things can be changed quickly.  Generally though there is one file per environment variable that "matters" (like CFLAGS) with  the  contents  stored
+              inside of it.  Another common file is the CONTENTS file which lists the path and hashes of all objects that the package installed onto your system.
+
+              PROVIDES
+                     Contains  information  about  the sonames that a package provides, which is automatically generated from the files that it installs. The sonames may have been filtered by the PROVIDES_EXCLUDE ebuild(5) variable. A
+                     multilib category, followed by a colon, always preceeds a list of one or more sonames.
+
+                     Example:
+                     x86_32: libcom_err.so.2 libss.so.2 x86_64: libcom_err.so.2 libss.so.2
+
+              REQUIRES
+                     Contains information about the sonames that a package requires, which is automatically generated from the files that it installs. The sonames may have been filtered by the REQUIRES_EXCLUDE ebuild(5) variable.  Any
+                     sonames that a package provides are automatically excluded from REQUIRES. A multilib category, followed by a colon, always preceeds a list of one or more sonames.
+
+                     Example:
+                     x86_32: ld-linux.so.2 libc.so.6 x86_64: ld-linux-x86-64.so.2 libc.so.6
+
+       /var/lib/portage/
+
+              config Hashes which are used to determine whether files in config protected directories have been modified since being installed.  Files which have not been modified will automatically be unmerged.
+
+              world  Every time you emerge a package, the package that you requested is recorded here.  Then when you run `emerge world -up`, the list of packages is read from this file.  Note that this does not mean that the packages
+                     that were installed as dependencies are listed here.  For example, if you run `emerge mod_wsgi` and you do not have apache already, then "www-apache/mod_wsgi" is recorded in the world file but "www-servers/apache"
+                     is not.  For more information, review emerge(1).
+
+                     Format:
+                     - one DEPEND atom base per line
+
+                     Example:
+                     games-misc/fortune-mod-gentoo-dev
+                     dev-libs/uclibc
+                     app-cdr/cdemu
+
+              world_sets
+                     This is like the world file but instead of package atoms it contains packages sets which always begin with the @ character. Use /etc/portage/sets/ to define user package sets.
+
+                     Example:
+                     @kde
+
+REPORTING BUGS
+       Please report bugs via https://bugs.gentoo.org/
+
+AUTHORS
+       Marius Mauch <genone@gentoo.org>
+       Mike Frysinger <vapier@gentoo.org>
+       Drake Wyrm <wyrm@haell.com>
+       Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
+
+SEE ALSO
+       emerge(1), ebuild(1), ebuild(5), make.conf(5), color.map(5)
+
+Portage VERSION                                                                                                  Apr 2021                                                                                                       PORTAGE(5)

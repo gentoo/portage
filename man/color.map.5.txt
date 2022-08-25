@@ -1,0 +1,198 @@
+COLOR.MAP(5)                                                                                                      Portage                                                                                                     COLOR.MAP(5)
+
+NAME
+       color.map - custom color settings for Portage
+
+SYNOPSIS
+       /etc/portage/color.map
+
+DESCRIPTION
+       This file contains variables that define color classes used by Portage.  Portage will check this file first for color classes settings. If no setting of given color class is found in /etc/portage/color.map, Portage uses default
+       value defined internally.
+
+SYNTAX
+       VARIABLE = [space delimited list of attributes or ansi code pattern]
+
+       ATTRIBUTE = [space delimited list of attributes or ansi code pattern]
+
+VARIABLES
+       NORMAL = "normal"
+              Defines color used for some words occuring in other contexts than those below.
+
+       BAD = "red"
+              Defines color used for some words occuring in bad context.
+
+       BRACKET = "blue"
+              Defines color used for brackets.
+
+       GOOD = "green"
+              Defines color used for some words occuring in good context.
+
+       HILITE = "teal"
+              Defines color used for highlighted words.
+
+       INFORM = "darkgreen"
+              Defines color used for informational words.
+
+       MERGE_LIST_PROGRESS = "yellow"
+              Defines color used for numbers indicating merge progress.
+
+       PKG_BLOCKER = "red"
+              Defines color used for unsatisfied blockers.
+
+       PKG_BLOCKER_SATISFIED = "teal"
+              Defines color used for satisfied blockers.
+
+       PKG_MERGE = "darkgreen"
+              Defines color used for packages planned to be merged.
+
+       PKG_MERGE_SYSTEM = "darkgreen"
+              Defines color used for system packages planned to be merged.
+
+       PKG_MERGE_WORLD = "green"
+              Defines color used for world packages planned to be merged.
+
+       PKG_BINARY_MERGE = "purple"
+              Defines color used for packages planned to be merged using a binary package.
+
+       PKG_BINARY_MERGE_SYSTEM = "purple"
+              Defines color used for system packages planned to be merged using a binary package.
+
+       PKG_BINARY_MERGE_WORLD = "fuchsia"
+              Defines color used for world packages planned to be merged using a binary package.
+
+       PKG_NOMERGE = "teal"
+              Defines color used for packages not planned to be merged.
+
+       PKG_NOMERGE_SYSTEM = "teal"
+              Defines color used for system packages not planned to be merged.
+
+       PKG_NOMERGE_WORLD = "blue"
+              Defines color used for world packages not planned to be merged.
+
+       PKG_UNINSTALL = "red"
+              Defines color used for packages planned to be uninstalled in order to resolve conflicts.
+
+       PROMPT_CHOICE_DEFAULT = "green"
+              Defines color used for the default choice at a prompt.
+
+       PROMPT_CHOICE_OTHER = "red"
+              Defines color used for a non-default choice at a prompt.
+
+       SECURITY_WARN = "red"
+              Defines color used for security warnings.
+
+       UNMERGE_WARN = "red"
+              Defines color used for unmerge warnings.
+
+       WARN = "yellow"
+              Defines color used for warnings.
+
+LIST OF VALID ATTRIBUTES
+       Foreground colors
+
+              black
+
+              darkgray
+
+              darkred
+
+              red
+
+              darkgreen
+
+              green
+
+              brown
+
+              yellow
+
+              darkyellow
+
+              darkblue
+
+              blue
+
+              purple
+
+              fuchsia
+
+              teal
+
+              turquoise = darkteal
+
+              lightgray
+
+              white
+
+       Background colors
+
+              bg_black
+
+              bg_darkred
+
+              bg_darkgreen
+
+              bg_brown = bg_darkyellow
+
+              bg_darkblue
+
+              bg_purple
+
+              bg_teal
+
+              bg_lightgray
+
+       Other attributes
+
+              normal
+
+              no-attr
+
+              reset
+
+              bold
+
+              faint
+
+              standout
+
+              no-standout
+
+              underline
+
+              no-underline
+
+              blink
+
+              no-blink
+
+              overline
+
+              no-overline
+
+              reverse
+
+              no-reverse
+
+              invisible
+
+REPORTING BUGS
+       Please report bugs via https://bugs.gentoo.org/
+
+AUTHORS
+       Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
+
+FILES
+       /etc/portage/color.map
+              Contains variables customizing colors.
+
+       /etc/portage/make.conf
+              Contains other variables.
+
+SEE ALSO
+       console_codes(4), make.conf(5), portage(5), emerge(1), ebuild(1), ebuild(5)
+
+       The /usr/lib/portage/lib/portage/output.py Python module.
+
+Portage VERSION                                                                                                  Jul 2013                                                                                                     COLOR.MAP(5)

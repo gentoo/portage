@@ -1,0 +1,27 @@
+ENV-UPDATE(1)                                                                                                     Portage                                                                                                    ENV-UPDATE(1)
+
+NAME
+       env-update - updates environment settings automatically
+
+SYNOPSIS
+       env-update [options]
+
+DESCRIPTION
+       env-update  reads  the  files in /etc/env.d and automatically generates /etc/profile.env and /etc/ld.so.conf.  Then ldconfig(8) is run to update /etc/ld.so.cache.  env-update is run by emerge(1) automatically after each package
+       merge.  Also, if you make changes to /etc/env.d, you should run env-update yourself for changes to take effect immediately.  Note that this would only affect new processes.  In order for the changes to affect your active shell,
+       you will probably have to run source /etc/profile first.
+
+OPTIONS
+       --no-ldconfig
+              Do not run ldconfig (and thus skip rebuilding the ld.so.cache, etc...).
+
+REPORTING BUGS
+       Please report bugs via https://bugs.gentoo.org/
+
+AUTHORS
+       Daniel Robbins <drobbins@gentoo.org>
+
+SEE ALSO
+       emerge(1), ldconfig(8)
+
+Portage VERSION                                                                                                  Aug 2008                                                                                                    ENV-UPDATE(1)

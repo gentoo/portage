@@ -1,0 +1,128 @@
+XPAK(5)                                                                                                           Portage                                                                                                          XPAK(5)
+
+NAME
+       xpak - The XPAK Data Format used with Portage binary packages
+
+DESCRIPTION
+       Every Gentoo binary package has a xpak attached to it which contains build time information like the USE flags it was built with, the ebuild it was built from, the environmental variables, CFLAGS, CXXFLAGS, etc...
+
+NOTES
+   Data Types
+       The following conventions cover all occurrences in this documentation
+
+       Integer
+              All offsets/lengths are big endian unsigned 32bit integers
+
+       String All strings are ASCII encoded, and not NUL terminated (quotes are for illustration only)
+
+       Values The actual values of the individual xpak entries are stored as Strings
+
+   Vertical Bars
+       The vertical bars '|' are not part of the file format; they are merely used to illustrate how the offset values apply to the data.
+
+SYNOPSIS
+       binpkg (tbz2)
+                    |<-xpak_offset->|
+               <tar>|<    xpak     >|<xpak_offset>"STOP"
+
+       xpak
+               "XPAKPACK"<index_len><data_len><index><data>"XPAKSTOP"
+
+       index
+               |<-------------index_len------------->|
+               |<index1><index2><index3><index4><...>|
+
+       indexN
+                         |<-name_len->|
+               <name_len>|<   name   >|<data_offset><data_len>
+
+       data
+               |<--------------data_len------------->|
+               |<-dataN_offset->|<-dataN_len->|
+               |<     data     >|<  data_N   >|<data>|
+
+DETAILS
+   xpak
+       If  you  look  at a Gentoo binary package (binpkg) with a hex-editor you'll notice that after the tarball of files, you find a binary blob - the xpak, an offset which holds the bytes from the start of the xpak to the end of the
+       file - xpak_offset and finally the String "STOP".
+
+             |<xpak_offset>|
+        <tar>|<---xpak---->|<xpak_offset>"STOP"
+
+       Here you see the tar archive, the attached xpak blob, the xpak_offset and the string "STOP" at the end.  This metadata is not considered "part" of the xpak, but rather part of the binpkg.
+
+       If we read the offset value and count offset bytes backwards from the start of xpak_offset, we have found the start of the xpak block which starts with the String "XPAKPACK".
+
+       This xpak block consists of the string "XPAKPACK", the length of the index block (index_len), the length of the data block (data_len), an index_len bytes long binary blob with the index, a data_len bytes long binary  blob  with
+       the data, and the string "XPAKSTOP" at the end:
+
+                                       |<index_len>|<data_len>|
+        "XPAKPACK"<index_len><data_len>|<--index-->|<--data-->|"XPAKSTOP"
+
+       To  actually get the index and the data, we cut out index_len bytes after the end of data_len for the index block, and then cut out the next data_len bytes for the data block.  If we have done everything right up to this point,
+       the following bytes would be the ASCII formatted string "XPAKSTOP".
+
+       The actual data is merged into one big block; so if we want to read it, we need the actual positions of each information in this big data block.  This information can be obtained using the indices which are stored in the  index
+       block.
+
+   Index block
+       The index block consists of several indices:
+
+        |<-----------------------index_len---------------------->|
+        |<index1><index2><index3><index4><index5><index6><index7>|
+
+       The  index  block  holds  all the information we need to find the data we want in the data block.  It consists of multiple index elements, all of which add up to the total length index_len.  It is not zero delimited or anything
+       else.
+
+       Each of those elements corresponds to one chunk of data in the data block: the length of that block's name (name_len), a name_len bytes long string, the offset  of  that  block  (dataN_offset)  and  the  length  of  that  block
+       (dataN_len):
+
+                  |<name_len>|
+        <name_len>|<--name-->|<dataN_offset><dataN_len>
+
+   Data block
+       The data block contains multiple chunks of data with a total length of data_len:
+
+        |<------------------------data_len------------------------>|
+        |<data1><data2><data3><data4><data5><data6><data7><data...>|
+
+       To  select one data element, we need the data_offset and the data_len from the index.  With those, we can count data_offset bytes from the start of the data block, and then cut out the next data_len bytes.  Then we got our data
+       block:
+
+        |<-----dataN_offset----->|<--dataN_len->|
+        |<data1data2data3data...>|<data-we-want>|
+
+EXAMPLES
+       Let's say we have an xpak with two chunks of data.  The first has the name "file1" with the contents "ddDddDdd" and the second has the name "file2" with the contents "jjJjjJjj".  There is no "STOP" or xpak_offset as  this  xpak
+       is not part of a binpkg.
+
+       Here is the hexdump output (we will break it down line by line below):
+        00  58 50 41 4b 50 41 43 4b  00 00 00 20 00 00 00 10  |XPAKPACK... ....|
+        10  00 00 00 04 66 69 6c 31  00 00 00 00 00 00 00 08  |....fil1........|
+        20  00 00 00 04 66 69 6c 32  00 00 00 08 00 00 00 08  |....fil2........|
+        30  64 64 44 64 64 44 64 64  6a 6a 4a 6a 6a 4a 6a 6a  |ddDddDddjjJjjJjj|
+        40  58 50 41 4b 53 54 4f 50                           |XPAKSTOP|
+
+       The index_len is 32 and the data_len 16 (as there are 16 bytes: "ddDddDdd" and "jjJjjJjj").
+           |<------"XPAKPACK"----->||    32     |    16     |
+        00  58 50 41 4b 50 41 43 4b  00 00 00 20 00 00 00 10
+
+       Now we have the first index element with a name_len of 4, followed by the name string "fil1", followed by the data1 offset of 0 and a data1 len of 8 (since data1 has 8 bytes: "ddDddDdd").
+           |     4     |<--"fil1"->||data1_off:0|data1_len:8|
+        10  00 00 00 04 66 69 6c 31  00 00 00 00 00 00 00 08
+
+       Now we have the second index element with a name_len of 4, followed by the name string "fil2", followed by the data2 offset of 8 and a data2 len of 8 (since data2 has 8 bytes: "jjJjjJjj").
+           |     4     |<--"fil2"->||data2_off:8|data2_len:8|
+        20  00 00 00 04 66 69 6c 32  00 00 00 08 00 00 00 08
+
+           |<------"XPAKSTOP"----->|
+        40  58 50 41 4b 53 54 4f 50
+
+AUTHORS
+       Lars Hartmann <lars@chaotika.org>
+       Mike Frysinger <vapier@gentoo.org>
+
+SEE ALSO
+       qtbz2(1), quickpkg(1), qxpak(1)
+
+Portage VERSION                                                                                                  Oct 2011                                                                                                          XPAK(5)

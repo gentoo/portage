@@ -1,0 +1,879 @@
+MAKE.CONF(5)                                                                                                      Portage                                                                                                     MAKE.CONF(5)
+
+NAME
+       make.conf - custom settings for Portage
+
+SYNOPSIS
+       /etc/make.conf and /etc/portage/make.conf
+
+DESCRIPTION
+       This  file  contains various variables that are used by Portage. The file has a newline-delimited list of <key>=<value> pairs (see the default file for examples) which are accessible from the environment of ebuilds. It supports
+       simple shell-like expansion of the form var="${var}", the source keyword and variable substitution, but not some of the more advanced BASH features like arrays and special parameter expansions. For more details, see the  Simple
+       lexical analysis documentation: https://docs.python.org/3/library/shlex.html. Note that if you source files, they need to be in the same shlex syntax for portage to read them.  If make.conf is a directory, then all the files in
+       that directory will be sorted in lexical order by file name and summed together as if it were a single file.
+       Portage will check the currently-defined environment variables first for any settings.  If no environment settings are found, Portage then checks the make.conf files. Both /etc/make.conf and /etc/portage/make.conf  are  checked
+       (if present), and settings from /etc/portage/make.conf will override settings from /etc/make.conf.  If no setting is found in the make.conf files, Portage checks make.globals. If no setting is found there, the profile's default
+       setting is grabbed from /etc/portage/make.profile/make.defaults. Please note that all user settings should be made in the environment or in the make.conf files, which are intended to be customized by the user.
+       Exceptions are incremental variables such as USE, CONFIG_PROTECT*, and ACCEPT_KEYWORDS.  Incremental variables are propagated down from make.defaults to make.globals to make.conf to the  environment  settings.   Clearing  these
+       variables requires a clear-all as in: export USE="-*"
+       __* variables set in make.conf are local and are not be propagated.
+       In order to create per-package environment settings, refer to package.env in portage(5).
+
+VARIABLES
+       ACCEPT_CHOSTS = [space delimited list of CHOST values]
+              Specifies acceptable CHOST values. Regular expression syntax is supported, so it is necessary to escape CHOST characters if they have special meaning in regular expressions.
+              Defaults to the value of $CHOST.
+
+       ACCEPT_KEYWORDS = [space delimited list of KEYWORDS]
+              Enable  testing  of  ebuilds  that  have  not yet been deemed 'stable'.  Users of the 'x86' architecture would set this to '~x86' while ppc users would set this to '~ppc'.  This is an incremental variable.  Only define a
+              ~arch.
+              Defaults to the value of $ARCH.
+
+       ACCEPT_LICENSE = [space delimited list of licenses or groups]
+              This variable is used to mask packages based on licensing restrictions. It may contain both license and group names, where group names are prefixed with the '@' symbol. License groups are defined  in  the  license_groups
+              file (see portage(5)). In addition to license and group names, the * and -* wildcard tokens are also supported. Refer to GLEP 23 for further information: https://www.gentoo.org/glep/glep-0023.html.
+              Defaults to the value defined in the profile.
+              Examples:
+              # Only accept licenses in the FREE license group (i.e. Free Software)
+              ACCEPT_LICENSE="-* @FREE"
+              # As before, but exclude the "Artistic" license
+              ACCEPT_LICENSE="-* @FREE -Artistic"
+              # Accept any license except those in the EULA license group
+              ACCEPT_LICENSE="* -@EULA"
+
+       ACCEPT_PROPERTIES = [space delimited list of properties]
+              This  variable  is  used  to  mask  packages  based on PROPERTIES restrictions.  In addition to property names, the * and -* wildcard tokens are also supported. This variable can be temporarily overridden using the --ac‐
+              cept-properties option of emerge(1).  See ebuild(5) for more information about PROPERTIES.
+              Defaults to the value of *.
+              Examples:
+              # Accept any properties
+              ACCEPT_PROPERTIES="*"
+              # Accept any properties except the "interactive" property
+              ACCEPT_PROPERTIES="* -interactive"
+
+       ACCEPT_RESTRICT = [space delimited list of RESTRICT tokens]
+              This variable is used to mask packages based on RESTRICT tokens.  In addition to RESTRICT tokens, the * and -* wildcard tokens are also supported. This variable can be temporarily overridden using  the  --accept-restrict
+              option of emerge(1).  See ebuild(5) for more information about RESTRICT.
+              Defaults to the value of *.
+              Examples:
+              # Accept any restrict tokens
+              ACCEPT_RESTRICT="*"
+              # Accept any tokens except "bindist"
+              ACCEPT_RESTRICT="* -bindist"
+
+       BINPKG_COMPRESS = "compression"
+              This variable is used to determine the compression used for binary packages. Supported settings and compression algorithms are: bzip2, gzip, lz4, lzip, lzop, xz, zstd.
+              Defaults to "zstd".
+              Example:
+              # Set it to use lz4:
+              BINPKG_COMPRESS="lz4"
+
+       BINPKG_COMPRESS_FLAGS = "arguments for compression command"
+              This variable is used to add additional arguments to the compression command selected by BINPKG_COMPRESS.
+              Defaults to "".
+              Example:
+              # Set it to use compression level 9:
+              BINPKG_COMPRESS_FLAGS="-9"
+
+       BINPKG_GPG_SIGNING_BASE_COMMAND = "GPG command and arguments [PORTAGE_CONFIG]"
+              The base command will be used for all signing operations.  Portage will replace [PORTAGE_CONFIG] under different operations.  Please do not add arguments that can be configured independently.
+              Defaults to "/usr/bin/flock /run/lock/portage-binpkg-gpg.lock /usr/bin/gpg --sign --armor [PORTAGE_CONFIG]".
+
+       BINPKG_GPG_SIGNING_DIGEST= = "GPG supported digest"
+              The digest that will be used for signature.
+              Defaults to "SHA512"
+
+       BINPKG_GPG_SIGNING_GPG_HOME = [path]
+              The GPG home where the signing private key located.
+              Defaults to "/root/.gnupg"
+
+       BINPKG_GPG_SIGNING_KEY = "GPG key ID"
+              GPG key ID used to sign binary packages, must exists in BINPKG_GPG_SIGNING_GPG_HOME.
+              Defaults to ""
+              Example: "0x40DCF18E97150795!"
+
+       BINPKG_GPG_VERIFY_BASE_COMMAND= = "GPG command and arguments"
+              The base command will be used for all verify operations.  Portage will replace [PORTAGE_CONFIG] and [SIGNATURE] under different operations.  Please do not add arguments that can be configured independently.
+              Defaults to "/usr/bin/gpg --verify --batch --no-tty --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"
+
+       BINPKG_GPG_VERIFY_GPG_HOME = [path]
+              The GPG home where the trusted keys located. Please make sure the target directory is globally readable, as the user will be dropped to nobody during verification.
+              Defaults to "/etc/portage/gnupg"
+
+       CBUILD This variable is passed by the ebuild scripts to the configure as --build=${CBUILD} only if it is defined.  Do not set this yourself unless you know what you are doing.
+
+       CCACHE_DIR = [path]
+              Defines the location of the ccache working directory.  See the ccache(1) man page for more information.
+              Defaults to /var/tmp/ccache
+
+       CCACHE_SIZE = "size"
+              This controls the space use limitations for ccache.  See the -M flag in the ccache(1) man page for more information.
+
+       CFLAGS CXXFLAGS
+              Use  these  variables to set the desired optimization/CPU instruction settings for applications that you compile.  These two variables are passed to the C and C++ compilers, respectively. (CXX is used to refer to the C++
+              compiler within many buildsystems.) Nearly all ebuild files will take advantage of your custom settings, resulting in a Gentoo Linux that is fully customized to your specifications.  Please  use  sane  settings  as  some
+              packages will fail to compile/run if the optimizations are too extreme.
+
+              For more information, see the Invoking GCC section of the gcc manual:
+              https://gcc.gnu.org/onlinedocs/
+
+       CHOST  This variable is passed by the ebuild scripts to the configure step as --host=${CHOST}.  This way you can force the build-host.
+
+              For more information:
+              https://gcc.gnu.org/onlinedocs/gcc-6.1.0/gcc/Submodel-Options.html
+              https://gcc.gnu.org/onlinedocs/gcc-5.4.0/gcc/Submodel-Options.html
+              https://gcc.gnu.org/onlinedocs/gcc-4.9.3/gcc/Submodel-Options.html
+
+       CLEAN_DELAY = integer
+              Determines how long the countdown delay will be after running `emerge --unmerge`.
+              Defaults to 5 seconds.
+
+       COLLISION_IGNORE = [space delimited list of fnmatch patterns]
+              This  variable allows the user to disable collision-protect and protect-owned for specific fnmatch(3) patterns. For backward compatibility, directories that are listed without a fnmatch pattern will automatically have /*
+              appended to them.
+              Defaults to "/lib/modules/* *.py[co]".
+
+       CONFIG_PROTECT = [space delimited list of files and/or directories]
+              All files and/or directories that are defined here will have "config file protection" enabled for them. See the CONFIGURATION FILES section of emerge(1) for more information.
+
+       CONFIG_PROTECT_MASK = [space delimited list of files and/or directories]
+              All files and/or directories that are defined here will have "config file protection" disabled for them. See the CONFIGURATION FILES section of emerge(1) for more information.
+
+       CTARGET
+              This variable is passed by the ebuild scripts to the configure as --target=${CTARGET} only if it is defined.
+
+       DISTDIR = [path]
+              Defines the location of your local source file repository. After packages are built, it is safe to remove any and all files from this directory since they will be automatically fetched on demand for a given build. If you
+              would like to selectively prune obsolete files from this directory, see eclean(1) from the gentoolkit package.
+
+              Use the PORTAGE_RO_DISTDIRS variable to specify one or more read-only directories containing distfiles.
+              Defaults to /var/cache/distfiles.
+
+       DOC_SYMLINKS_DIR
+              If this variable contains a directory then symlinks to html documentation will be installed into it.
+
+       EBEEP_IGNORE
+              Defines whether or not to ignore audible beeps when displaying important informational messages.  This variable is unset by default.
+
+       EMERGE_DEFAULT_OPTS
+              Options to append to the end of the emerge(1) command line on every invocation. These options will not be appended to the command line if --ignore-default-opts is specified.
+
+       EMERGE_LOG_DIR
+              Controls the location of emerge.log and emerge-fetch.log.
+              Defaults to /var/log.
+
+       EMERGE_WARNING_DELAY = integer
+              Determines how long the countdown delay will be after running `emerge --unmerge` for a system package.
+              Defaults to 10 seconds.
+
+       EPAUSE_IGNORE
+              Defines whether or not to ignore short pauses that occur when displaying important informational messages.  This variable is unset by default.  If it is set to any value pauses are ignored.
+
+       EXTRA_ECONF = [configure options string]
+              Contains additional options that econf will append to configure script arguments (see ebuild(5)).
+
+       FEATURES = "sandbox"
+              Defines actions portage takes by default. This is an incremental variable.  Most of these settings are for developer use, but some are available to non-developers as well. The sandbox feature is very important and should
+              not be disabled by default.
+
+              assume-digests
+                     When commiting work to cvs with repoman(1), assume that all existing SRC_URI digests are correct.  This feature also affects digest generation via ebuild(1) and emerge(1) (emerge generates digests  only  when  the
+                     digest  feature  is  enabled). Existing digests for files that do not exist in ${DISTDIR} will be automatically assumed even when assume-digests is not enabled. If a file exists in ${DISTDIR} but its size does not
+                     match the existing digest, the digest will be regenerated regardless of whether or not assume-digests is enabled. The ebuild(1) digest command has a --force option that can be used to  force  regeneration  of  di‐
+                     gests.
+
+              binpkg-docompress
+                     Perform  docompress  (controllable  file compression) before creating binary package.  When this option is enabled (the default), documentation files are already compressed inside binary packages.  When it is dis‐
+                     abled, binary packages contain uncompressed documentation and Portage compresses it before installing.
+
+              binpkg-dostrip
+                     Perform file stripping before creating binary package.  When this option is enabled (the default), executables are already stripped inside binary packages.  When it is disabled, binary packages contain  unstripped
+                     executables and Portage strips (or splits) them before installing.
+
+                     binpkg-dostrip must be enabled for installsources to work.
+
+              binpkg-ignore-signature
+                     This will disable GPG signature check for all binary packages. Enable this could be dangerous if you get binary packages from remote site or use third party packages.
+
+              binpkg-logs
+                     Keep logs from successful binary package merges. This is relevant only when PORTAGE_LOGDIR is set.
+
+              binpkg-multi-instance
+                     Enable  support  for multiple binary package instances per ebuild.  Having multiple instances is useful for a number of purposes, such as retaining builds that were built with different USE flags or linked against
+                     different versions of libraries. The location of any particular package within PKGDIR can be expressed as follows:
+
+                          ${PKGDIR}/${CATEGORY}/${PN}/${PF}-${BUILD_ID}.xpak
+
+                     The build-id starts at 1 for the first build of a particular ebuild, and is incremented by 1 for each new build. It is possible to share a writable PKGDIR over NFS, and locking ensures that each package  added  to
+                     PKGDIR  will have a unique build-id. It is not necessary to migrate an existing PKGDIR to the new layout, since portage is capable of working with a mixed PKGDIR layout, where packages using the old layout are al‐
+                     lowed to remain in place.
+
+                     The new PKGDIR layout is backward-compatible with binhost clients running older portage, since the file format is identical, the per-package PATH attribute in the 'Packages' index directs them to download the file
+                     from the correct URI, and they automatically use BUILD_TIME metadata to select the latest builds.
+
+                     The  eclean-pkg  command  can be used to prune old builds from PKGDIR.  It is also possible to remove packages manually, and then run 'emaint --fix binhost' to update the ${PKGDIR}/Packages index.  This feature is
+                     enabled by default.
+
+              binpkg-request-signature
+                     Binary packages are requested to be signed by trusted GPG signature.  Portage will reject to process any binary package without a valid GPG signature. The verify command  is  defined  in  BINPKG_GPG_VERIFY_COMMAND
+                     variable.
+
+              binpkg-signing
+                     Binary packages will be signed by given GPG command. The signing command is defined in BINPKG_GPG_SIGNING_COMMAND variable.
+
+              buildpkg
+                     Binary packages will be created for all packages that are merged. Also see quickpkg(1) and emerge(1) --buildpkg and --buildpkgonly options.
+
+              buildpkg-live
+                     When this option is enabled (the default), buildpkg will exhibit the default behavior of building binary cache for all packages. When it is disabled, binary packages will not be created for live ebuilds.
+
+              buildsyspkg
+                     Build binary packages for just packages in the system set.
+
+              candy  Enable a special progress indicator when emerge(1) is calculating dependencies.
+
+              case-insensitive-fs
+                     Use  case-insensitive  file  name comparisions when merging and unmerging files. Most users should not enable this feature, since most filesystems are case-sensitive. You should only enable this feature if you are
+                     using portage to install files to a case-insensitive filesystem.
+
+              ccache Enable portage support for the ccache package.  If the ccache dir is not present in the user's environment, then portage will default to ${PORTAGE_TMPDIR}/ccache.
+
+                     Warning: This feature is known to cause numerous compilation failures.  Sometimes ccache will retain stale code objects or corrupted files, which can lead to packages that cannot be emerged. If  this  happens  (if
+                     you receive errors like "File not recognized: File truncated"), try recompiling the application with ccache disabled before reporting a bug. Unless you are doing development work, do not enable ccache.
+
+              cgroup Use Linux control group to control processes spawned by ebuilds. This allows emerge to safely kill all subprocesses when ebuild phase exits.
+
+              clean-logs
+                     Enable  automatic execution of the command specified by the PORTAGE_LOGDIR_CLEAN variable. The default PORTAGE_LOGDIR_CLEAN setting will remove all files from PORTAGE_LOGDIR that were last modified at least 7 days
+                     ago.
+
+              collision-protect
+                     A QA-feature to ensure that a package doesn't overwrite files it doesn't own.  The COLLISION_IGNORE variable can be used to selectively disable this feature. Also see the related protect-owned feature.
+
+              compress-build-logs
+                     The causes all build logs to be compressed while they are being written.  Log file names have an extension that is appropriate for the compression type. Currently, only gzip(1) compression is supported,  so  build
+                     logs will have a '.gz' extension when this feature is enabled.
+
+              compress-index
+                     If  set then a compressed copy of 'Packages' index file will be written.  This feature is intended for Gentoo binhosts using certain webservers (such as, but not limited to, Nginx with gzip_static module) to avoid
+                     redundant on-the-fly compression.  The resulting file will be called 'Packages.gz' and its modification time will match that of 'Packages'.
+
+              compressdebug
+                     Compress the debug sections in the split debug files with zlib to save space.  See splitdebug for general split debug information (upon which this feature depends).
+
+              config-protect-if-modified
+                     This causes the CONFIG_PROTECT behavior to be skipped for files that have not been modified since they were installed. This feature is enabled by default.
+
+              digest Autogenerate digests for packages when running the emerge(1) or ebuild(1) commands. If the assume-digests feature is also enabled then existing SRC_URI digests will be reused whenever they are available.
+
+              distcc Enable portage support for the distcc package.
+
+              distlocks
+                     Portage uses lockfiles to ensure competing instances don't clobber each other's files.  It covers saving distfiles to ${DISTDIR} and binpkgs to ${PKGDIR}.
+
+                     This feature is enabled by default but may cause heartache on less intelligent remote filesystems like NFSv2 and some strangely configured Samba servers (oplocks off, NFS re-export).
+
+                     /usr/lib/portage/bin/clean_locks exists to help handle lock issues when a problem arises (normally due to a crash or disconnect).
+
+              downgrade-backup
+                     When a package is downgraded to a lower version, call quickpkg(1) in order to create a backup of the installed version before it is unmerged (if a binary package of the same version does not already  exist).  Also
+                     see the related unmerge-backup feature.
+
+              ebuild-locks
+                     Use locks to ensure that unsandboxed ebuild phases never execute concurrently. Also see parallel-install.
+
+              fail-clean
+                     Clean  up  temporary  files  after a build failure. This is particularly useful if you have PORTAGE_TMPDIR on tmpfs. If this feature is enabled, you probably also want to enable PORTAGE_LOGDIR in order to save the
+                     build log.  Both the ebuild(1) command and the noclean feature cause the fail-clean feature to be automatically disabled.
+
+              fakeroot
+                     Enable fakeroot for the install and package phases when a non-root user runs the ebuild(1) command.
+
+              fixlafiles
+                     Modifies .la files to not include other .la files and some other fixes (order of flags, duplicated entries, ...)
+
+              force-mirror
+                     Only fetch files from configured mirrors, ignoring SRC_URI, except when mirror is in the ebuild(5) RESTRICT variable.
+
+              force-prefix
+                     Enable prefix support for all ebuilds, regardless of EAPI, since older EAPIs would otherwise be useless with prefix configurations. This brings compatibility with the prefix branch of portage, which also  supports
+                     EPREFIX for all EAPIs (for obvious reasons).
+
+              getbinpkg
+                     Force emerges to always try to fetch files from the PORTAGE_BINHOST.  See make.conf(5) for more information.
+
+              gpg-keepalive
+                     Run GPG unlock command every 5 mins to avoid the passphrase expired.  If your GPG is auto unlocked on login, you do not need this.
+
+              icecream
+                     Enable portage support for the icecream package.
+
+              installsources
+                     Install  source  code  into  /usr/src/debug/${CATEGORY}/${PF}  (also see splitdebug). This feature works only if debugedit is installed, CFLAGS is set to include debug information (such as with the -ggdb flag) and
+                     binpkg-dostrip is enabled.
+
+              ipc-sandbox
+                     Isolate the ebuild phase functions from host IPC namespace. Supported only on Linux. Requires IPC namespace support in kernel.
+
+              keeptemp
+                     Do not delete the ${T} directory after the merge process.
+
+              keepwork
+                     Do not delete the ${WORKDIR} directory after the merge process. ${WORKDIR} can then be reused since this feature disables most of the clean phase that runs prior to each build. Due to lack of proper cleanup,  this
+                     feature can interfere with normal emerge operation and therefore it should not be left enabled for more than a short period of time.
+
+              lmirror
+                     When  mirror  is  enabled in FEATURES, fetch files even when mirror is also in the ebuild(5) RESTRICT variable.  Do NOT use lmirror for clients that need to override RESTRICT when fetching from a local mirror, but
+                     instead use a "local" mirror setting in /etc/portage/mirrors, as described in portage(5).
+
+              merge-sync
+                     After a package is merged or unmerged, sync relevant files to disk in order to avoid data-loss in the event of a power failure.  This feature is enabled by default.
+
+              metadata-transfer
+                     Automatically perform a metadata transfer when `emerge --sync` is run.  In versions of portage >=2.1.5, this feature is disabled by default. When metadata-transfer is disabled, metadata cache  from  the  ${reposi‐
+                     tory_location}/metadata/md5-cache/ directory will be used directly (if available).
+
+              mirror Fetch everything in SRC_URI regardless of USE settings, except do not fetch anything when mirror is in RESTRICT.
+
+              mount-sandbox
+                     Isolate  the ebuild phase functions from host mount namespace. This makes it possible for ebuild to alter mountpoints without affecting the host system. Supported only on Linux. Requires mount namespace support in
+                     kernel.
+
+              multilib-strict
+                     Many Makefiles assume that their libraries should go to /usr/lib, or $(prefix)/lib. This assumption can cause a serious mess if /usr/lib isn't a symlink to /usr/lib64. To find the bad packages, we have  a  portage
+                     feature called multilib-strict. It will prevent emerge from putting 64bit libraries into anything other than (/usr)/lib64.
+
+              network-sandbox
+                     Isolate the ebuild phase functions from host network interfaces.  Supported only on Linux. Requires network namespace support in kernel.
+
+              network-sandbox-proxy
+                     Enable escaping network-sandbox through SOCKSv5 proxy. Enabling distcc feature also enables the proxy.
+
+                     If  asyncio  Python  module  is  available  (requires  Python  3.3,  built-in  since  Python  3.4)  Portage  will additionally spawn an isolated SOCKSv5 proxy on UNIX socket. The socket address will be exported as
+                     PORTAGE_SOCKS5_PROXY and the processes running inside the sandbox can use it to access host's network when desired. Portage automatically configures new enough distcc to use the proxy.
+
+              news   Enable GLEP 42 news support. See https://www.gentoo.org/glep/glep-0042.html.
+
+              noauto When utilizing ebuild(1), only run the function requested. Also, forces the corresponding ebuild and eclasses to be sourced again for each phase, in order to account for modifications.
+
+              noclean
+                     Do not delete the source and temporary files after the merge process.
+
+              nodoc  Do not install doc files (/usr/share/doc).
+
+              noinfo Do not install info pages.
+
+              noman  Do not install manpages.
+
+              nostrip
+                     Prevents the stripping of binaries that are merged to the live filesystem.
+
+              notitles
+                     Disables xterm titlebar updates (which contains status info).
+
+              parallel-fetch
+                     Fetch in the background while compiling. Run `tail -f /var/log/emerge-fetch.log` in a terminal to view parallel-fetch progress.
+
+              parallel-install
+                     Use finer-grained locks when installing packages, allowing for greater parallelization. For additional parallelization, disable ebuild-locks.
+
+              pid-sandbox
+                     Isolate the process space for the ebuild processes. This makes it possible to cleanly kill all processes spawned by the ebuild.  Supported only on Linux. Requires PID and mount namespace support in  kernel.  /proc
+                     is remounted inside the mount namespace to account for new PID namespace.
+
+              pkgdir-index-trusted
+                     Trust  that  the  PKGDIR  index  file is valid, meaning that no packages have been manually added or removed since the last call to emaint --fix binhost. This feature eliminates overhead involved with detection of
+                     packages that have been manually added or removed, which significantly improves performance in some cases, such as when PKGDIR resides on a high-latency network file system.
+
+              prelink-checksums
+                     If prelink(8) is installed then use it to undo any prelinks on files before computing checksums for merge and unmerge. This feature is useful only if prelink(8) is installed and accurate  checksums  (despite  pre‐
+                     linking) are needed for some reason such as for checking the integrity of installed files or because the unmerge-orphans feature is disabled.
+
+                     Note  that  normal  emerging  of packages from source computes the checksums before things will be prelinked, so in such cases, this feature isn't required either. Undoing prelinking while merging is only required
+                     when using tools like quickpkg(1) which can cause already prelinked files to be merged.
+
+              preserve-libs
+                     Preserve libraries when the sonames change during upgrade or downgrade.  Libraries are preserved only if consumers of those libraries are detected.  Preserved libraries are automatically removed when there are  no
+                     remaining consumers. Run `emerge @preserved-rebuild` in order to rebuild all consumers of preserved libraries.
+
+              protect-owned
+                     This  is  identical  to the collision-protect feature except that files may be overwritten if they are not explicitly listed in the contents of a currently installed package. This is particularly useful on systems
+                     that have lots of orphan files that have been left behind by older versions of portage that did not support the unmerge-orphans feature. Like collision-protect, the COLLISION_IGNORE variable can be used to  selec‐
+                     tively  disable  this  feature.  It is recommended to leave either protect-owned or collision-protect enabled at all times, since otherwise file collisions between packages may result in files being overwritten or
+                     uninstalled at inappropriate times.  If collision-protect is enabled then it takes precedence over protect-owned.
+
+              python-trace
+                     Output a verbose trace of python execution to stderr when a command's --debug option is enabled.
+
+              qa-unresolved-soname-deps
+                     Trigger a QA warning when a package installs files with unresolved soname dependencies.
+
+              sandbox
+                     Enable sandbox-ing when running emerge(1) and ebuild(1).
+
+              sesandbox
+                     Enable SELinux sandbox-ing.  Do not toggle this FEATURE yourself.
+
+              sfperms
+                     Stands for Smart Filesystem Permissions.  Before merging packages to the live filesystem, automatically search for and set permissions on setuid and setgid files.  Files that are setuid have the  group  and  other
+                     read bits removed while files that are setgid have the other read bit removed.  See also suidctl below.
+
+              sign   When commiting work to cvs with repoman(1), sign the Manifest with a GPG key.  Read about the PORTAGE_GPG_KEY variable in make.conf(5).
+
+              skiprocheck
+                     Skip write access checks on DISTDIR when fetching files. This is useful when FETCHCOMMAND and RESUMECOMMAND are used to forward fetch requests to a server that exposes DISTDIR as a read-only NFS share. A read-only
+                     DISTDIR is not compatible with the distlocks, so it is recommended to also add "-distlocks" to FEATURES in order to avoid warning messages that are triggered by this incompatibility.
+
+              split-elog
+                     Store logs created by PORTAGE_ELOG_SYSTEM="save" in category subdirectories of PORTAGE_LOGDIR/elog, instead of using PORTAGE_LOGDIR/elog directly.
+
+              split-log
+                     Store build logs in category subdirectories of PORTAGE_LOGDIR/build, instead of using PORTAGE_LOGDIR directly.
+
+              splitdebug
+                     Prior to stripping ELF etdyn and etexec files, the debugging info is stored for later use by various debuggers.  This feature is disabled by nostrip.  You should also consider setting compressdebug  so  the  files
+                     don't suck up a lot of space.  For installation of source code, see installsources.
+
+              strict Have portage react strongly to conditions that have the potential to be dangerous (like missing or incorrect digests for ebuilds).
+
+              strict-keepdir
+                     Have portage strictly require keepdir calls in ebuilds.  Empty directories installed without explicit keepdir will be removed.  This feature is automatically enabled for EAPI 8 and later.
+
+              stricter
+                     Have portage react strongly to conditions that may conflict with system security provisions (for example textrels, executable stack).  Read about the QA_STRICT_* variables in make.conf(5).
+
+              suidctl
+                     Before merging packages to the live filesystem, automatically strip setuid bits from any file that is not listed in /etc/portage/suidctl.conf.
+
+              test   Run package-specific tests during each merge to help make sure the package compiled properly.  See test in ebuild(1) and src_test() in ebuild(5). This feature implies the "test" USE flag if it is a member of IUSE,
+                     either explicitly or implicitly (see ebuild(5) for more information about IUSE).  The "test" USE flag is also automatically disabled when the "test" feature is disabled.
+
+              test-fail-continue
+                     If "test" is enabled FEATURES and the test phase of an ebuild fails, continue to execute the remaining phases as if the failure had not occurred.  Note that the test phase for a specific package may be disabled by
+                     masking the "test" USE flag in package.use.mask (see portage(5)).
+
+              unknown-features-filter
+                     Filter out any unknown values that the FEATURES variable contains.
+
+              unknown-features-warn
+                     Warn if FEATURES contains one or more unknown values.
+
+              unmerge-backup
+                     Call quickpkg(1) to create a backup of each package before it is unmerged (if a binary package of the same version does not already exist).  Also see the related downgrade-backup feature.
+
+              unmerge-logs
+                     Keep logs from successful unmerge phases. This is relevant only when PORTAGE_LOGDIR is set.
+
+              unmerge-orphans
+                     If a file is not claimed by another package in the same slot and it is not protected by CONFIG_PROTECT, unmerge it even if the modification time or checksum differs from the file that was originally installed.
+
+              userfetch
+                     When portage is run as root, drop privileges to portage:portage during the fetching of package sources.
+
+              userpriv
+                     Allow portage to drop root privileges and compile packages as portage:portage without a sandbox (unless usersandbox is also used).
+
+              usersandbox
+                     Enable the sandbox in the compile phase, when running without root privs (userpriv).
+
+              usersync
+                     Drop  privileges to the owner of ${repository_location} for emerge(1) --sync operations. Note that this feature assumes that all subdirectories of ${repository_location} have the same ownership as ${repository_lo‐
+                     cation} itself.  It is the user's responsibility to ensure correct ownership, since otherwise Portage would have to waste time validating ownership for each and every sync operation.
+
+              webrsync-gpg
+                     Enable GPG verification when using emerge-webrsync. This feature is deprecated and has been replaced by the repos.conf sync-webrsync-verify-signature setting, see portage(5).
+
+              xattr  Preserve extended attributes (filesystem-stored metadata) when installing files (see attr(1)). The PORTAGE_XATTR_EXCLUDE variable may be used to exclude specific attributes from being preserved.
+
+       FETCHCOMMAND
+              This variable contains the command used for fetching package sources from the internet.  It must contain the full path to the executable as well as the place-holders \${DISTDIR}, \${FILE} and \${URI}.  The command should
+              be written to place the fetched file at \${DISTDIR}/\${FILE}.  Also see RESUMECOMMAND.
+
+              Optional FETCHCOMMAND Placeholders
+
+                     Placeholder   Meaning                                Example
+                     ────────────────────────────────────────────────────────────────────────────────────────────
+
+                     \${DIGESTS}   Space separated list of file digests   blake2b:<hexdigest> sha512:<hexdigest>
+
+       FFLAGS FCFLAGS
+              Use these variables to set the desired optimization/CPU instruction settings for applications that you compile with a FORTRAN compiler. FFLAGS is usually passed to the FORTRAN 77 compiler, and FCFLAGS to any FORTRAN com‐
+              piler in more modern build systems.
+
+              For more information, see the Invoking GCC section of the gcc manual:
+              https://gcc.gnu.org/onlinedocs/
+
+       GENTOO_MIRRORS = [URIs]
+              Insert your space-separated list of local mirrors here.  These locations are used to download files before the ones listed in the ebuild scripts. Merging 'mirrorselect' can help.  Entries in this variable  that  have  no
+              protocol and simply start with a '/' path separator may be used to specify mounted filesystem mirrors.
+
+       GPG_VERIFY_GROUP_DROP = [group]
+              The group name used to drop root privileges during verification.
+              Defaults to "nogroup"
+
+       GPG_VERIFY_USER_DROP = [user]
+              The user name used to drop root privileges during verification.
+              Defaults to "nobody"
+
+       http_proxy ftp_proxy RSYNC_PROXY = [protocol://host:port]
+              These variables are used by network clients such as wget(1) and rsync(1). They are only required if you use a proxy server for internet access.
+
+       INSTALL_MASK = [space delimited list of filename patterns (globs)]
+              Use  this  variable  if you want to selectively prevent certain files from being copied into your file system tree.  This does not work on symlinks, but only on actual files (including directories). Useful if you wish to
+              filter out files like HACKING.gz and TODO.gz.
+
+              Patterns are matched against both the absolute path and the bare filename of each file (or directory) to be installed.
+
+              The INSTALL_MASK is processed just before a package is merged.  Also supported is a PKG_INSTALL_MASK variable that behaves exactly like INSTALL_MASK except that it is processed just before creation of a binary package.
+
+              ***warning***
+              This does not place nice with filenames containing spaces. If you supply a pattern with a space in it, that single pattern will be interpreted as two separate patterns.
+
+              Examples:
+
+              # Prevent individual files from being installed.
+              INSTALL_MASK="/usr/bin/zless /usr/bin/zzxorcat"
+
+              # Prevent all PDF files from being installed.
+              INSTALL_MASK="*.pdf"
+
+              # Block PDF files one level beneath /usr/share/doc.
+              INSTALL_MASK="/usr/share/doc/*/*.pdf"
+
+              # Watch out! This will be interpreted as two patterns, and
+              # prevent both "README" AND all PDF files from being installed.
+              INSTALL_MASK="README.md\ *.pdf"
+
+       LDFLAGS
+              A list of flags to pass to the compiler when the linker will be called. See ld(1) for linker flags, but don't forget that these flags will be passed directly to the compiler. Thus, you must use '-Wl' to escape the  flags
+              which only the linker understands (see gcc(1)).
+
+              ***warning***
+              Setting this and other *FLAGS variables arbitrarily may cause compile or runtime failures. Bug reports submitted when nonstandard values are enabled for these flags may be closed as INVALID.
+
+       MAKEOPTS
+              Use this variable if you want to use parallel make.  For example, if you have a dual-processor system, set this variable to "-j2" or "-j3" for enhanced build performance with many packages. Suggested settings are between
+              CPUs+1 and 2*CPUs+1. In order to avoid excess load, the --load-average option is recommended.  For more information, see make(1). Also see emerge(1) for information about analogous --jobs and --load-average options.  De‐
+              faults to the number of processors if left unset.
+
+       NOCOLOR = ["true" | "false"]
+              Defines if color should be disabled by default.
+              Defaults to false.
+
+       PKGDIR = [path]
+              Defines  the  location  where created .tbz2 binary packages will be stored when the emerge(1) --buildpkg option is enabled.  By default, a given package is stored in a subdirectory corresponding to its category. However,
+              for backward compatibility with the layout used by older versions of portage, if the ${PKGDIR}/All directory exists then all packages will be stored inside of it and symlinks to the packages will be created in the  cate‐
+              gory subdirectories.
+              Defaults to /var/cache/binpkgs.
+
+       PORT_LOGDIR
+              See PORTAGE_LOGDIR below. Deprecated.
+
+       PORT_LOGDIR_CLEAN
+              See PORTAGE_LOGDIR_CLEAN below. Deprecated.
+
+       PORTAGE_BINHOST = [space delimited URI list]
+              This is a list of hosts from which portage will grab prebuilt-binary packages.  Each entry in the list must specify the full address of a directory serving tbz2's for your system (this directory must contain a 'Packages'
+              index file). This is only used when running with the get binary pkg options are given to emerge.  Review emerge(1) for more information. The PORTAGE_BINHOST variable is deprecated in favor of the binrepos.conf configura‐
+              tion file (see portage(5)).
+
+       PORTAGE_BINHOST_HEADER_URI = "ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon-xp/"
+              This  variable  only  makes  sense on a system that will serve as a binhost and build packages for clients.  It defines the URI header field for the package index file which is located at ${PKGDIR}/Packages. Clients that
+              have PORTAGE_BINHOST properly configured will be able to fetch the index and use the URI header field as a base URI for fetching binary packages. If the URI header field is not  defined  then  the  client  will  use  its
+              ${PORTAGE_BINHOST} setting as the base URI.
+
+       PORTAGE_BINPKG_FORMAT
+              This variable sets default format used for binary packages. Possible values are tar and rpm or both.
+
+       PORTAGE_BINPKG_TAR_OPTS
+              This variable contains options to be passed to the tar command for creation of binary packages.
+
+       PORTAGE_BUNZIP2_COMMAND = [bunzip2 command string]
+              This variable should contain a command that is suitable for portage to call for bunzip2 extraction operations.
+
+       PORTAGE_BZIP2_COMMAND = [bzip2 command string]
+              This  variable should contain a command that is suitable for portage to call for bzip2 compression operations. PORTAGE_BZIP2_COMMAND will also be called for extraction operation, with -d appended, unless the PORTAGE_BUN‐
+              ZIP2_COMMAND variable is set.
+
+       PORTAGE_CHECKSUM_FILTER = [space delimited list of hash names]
+              This variable may be used to filter the hash functions that are used to verify integrity of files. Hash function names are case-insensitive, and the * and -* wildcard tokens are supported.
+              Defaults to the value of *.
+              Examples:
+              # Use all available hash functions
+              PORTAGE_CHECKSUM_FILTER="*"
+              # Use any function except whirlpool
+              PORTAGE_CHECKSUM_FILTER="* -whirlpool"
+              # Only use sha256
+              PORTAGE_CHECKSUM_FILTER="-* sha256"
+
+       PORTAGE_COMPRESS = "bzip2"
+              This variable contains the command used to compress documentation during the install phase.
+
+       PORTAGE_COMPRESS_EXCLUDE_SUFFIXES = "gif htm[l]? jp[e]?g pdf png"
+              This variable contains a space delimited list of file suffixes for which matching files are excluded when the PORTAGE_COMPRESS command is called. Regular expressions are supported and the match is performed only  against
+              the portion of the file name which follows the last period character.
+
+       PORTAGE_COMPRESS_FLAGS = "-9"
+              This variable contains flags for the PORTAGE_COMPRESS command.
+
+       PORTAGE_ELOG_CLASSES
+
+       PORTAGE_ELOG_COMMAND
+
+       PORTAGE_ELOG_MAILFROM
+
+       PORTAGE_ELOG_MAILSUBJECT
+
+       PORTAGE_ELOG_MAILURI
+
+       PORTAGE_ELOG_SYSTEM
+              Please see /usr/share/portage/config/make.conf.example for elog documentation.
+
+       PORTAGE_FETCH_CHECKSUM_TRY_MIRRORS = 5
+              Number of mirrors to try when a downloaded file has an incorrect checksum.
+
+       PORTAGE_FETCH_RESUME_MIN_SIZE = 350K
+              Minimum  size  of  existing  file for RESUMECOMMAND to be called. Files smaller than this size will be removed and FETCHCOMMAND will be called to download the file from the beginning. This is useful for helping to ensure
+              that small garbage files such as html 404 pages are properly discarded. The variable should contain an integer number of bytes and may have a suffix such as K, M, or G.
+
+       PORTAGE_GPG_DIR
+              The gpg(1) home directory that is used by repoman(1) when sign is in FEATURES.
+              Defaults to $HOME/.gnupg.
+
+       PORTAGE_GPG_KEY
+              The gpg(1) key used by repoman(1) to sign manifests when sign is in FEATURES. In order to sign commits with git(1), you will need Git >=1.7.9 and your commit key will have to be configured by `git config  user.signingkey
+              key_id`.
+
+       PORTAGE_GPG_SIGNING_COMMAND
+              The command used by egencache(1) to sign manifests when sign is in FEATURES.
+
+       PORTAGE_GRPNAME = [group]
+              Defines the groupname to use when executing in userpriv/etc... modes (i.e.  non-root).
+              Defaults to portage.
+
+       PORTAGE_INST_GID = [gid]
+              Defines the group id when installing files via dobin/dosbin.  Useful when running ebuild as yourself.
+              Defaults to 0.
+
+       PORTAGE_INST_UID = [uid]
+              Defines the user id when installing files via dobin/dosbin.  Useful when running ebuild as yourself.
+              Defaults to 0.
+
+       PORTAGE_IONICE_COMMAND = [ionice command string]
+              This variable should contain a command for portage to call in order to adjust the io priority of portage and its subprocesses. The command string should contain a \${PID} place-holder that will be substituted with an in‐
+              teger pid. For example, a value of "ionice -c 3 -p \${PID}" will set idle io priority. For more information about ionice, see ionice(1). This variable is unset by default.
+              Portage will also set the autogroup-nice value (see fBsched(7))), if FEATURES="pid-sandbox" is enabled.
+
+       PORTAGE_SCHEDULING_POLICY = [policy name]
+              Allows changing the current scheduling policy. The supported options are other, batch, idle, fifo, and round-robin. When unset, the scheduling policy remains unchanged, by default Linux uses 'other'  policy.  Users  that
+              wish  to  minimize  the Portage's impact on system responsiveness should set scheduling policy to idle, which significantly reduces the disruption to the rest of the system by scheduling Portage as extremely low priority
+              processes. see sched(7) for more information.
+
+       PORTAGE_SCHEDULING_PRIORITY = [priority]
+              Allows changing the priority (1-99) of the current scheduling policy, only applies if PORTAGE _SCHEDULING_POLICY is set to 'fifo' or 'round-robin', for others the only supported priority is 0, If unset, defaults to  low‐
+              est priority of the selected scheduling policy. For more information about scheduler, see sched(7). This variable is unset by default.
+
+       PORTAGE_LOG_FILTER_FILE_CMD
+              This  variable  specifies  a command that filters build log output to a log file. In order to filter ANSI escape codes from build logs, ansifilter(1) is a convenient setting for this variable. Generally, PORTAGE_LOG_FIL‐
+              TER_FILE_CMD should include a supervisor that falls back to cat if the real filter command fails after exec. For example, a supervisor is needed for ansifilter, in case it fails after exec due to a problem resolving lib‐
+              stdc++ during a gcc upgrade.
+              Example:
+              # Use bash as a supervisor, for fallback to cat if ansifilter fails
+              # after exec due to a problem resolving libstdc++ during a gcc upgrade.
+              PORTAGE_LOG_FILTER_FILE_CMD="bash -c \"ansifilter; exec cat\""
+
+       PORTAGE_LOGDIR
+              This  variable  defines the directory in which per-ebuild logs are kept.  Logs are created only when this is set. They are stored as ${CATEGORY}:${PF}:YYYYMMDD-HHMMSS.log in the directory specified. If the directory does
+              not exist, it will be created automatically and group permissions will be applied to it.  If the directory already exists, portage will not modify its permissions.
+
+       PORTAGE_LOGDIR_CLEAN
+              This variable should contain a command for portage to call in order to clean PORTAGE_LOGDIR. The command string should contain a \${PORTAGE_LOGDIR} place-holder that will be substituted with the value of  that  variable.
+              This variable will have no effect unless clean-logs is enabled in FEATURES.
+
+       PORTAGE_NICENESS = [number]
+              The  value of this variable will be added to the current nice level that emerge is running at.  In other words, this will not set the nice level, it will increment it.  For more information about nice levels and what are
+              acceptable ranges, see nice(1).
+
+       PORTAGE_RO_DISTDIRS = [space delimited list of directories]
+              When a given file does not exist in DISTDIR, search for the file in this list of directories. Search order is from left to right. Note that the current implementation works by creating a symlink inside DISTDIR, but  that
+              may change in the future.
+
+       PORTAGE_RSYNC_EXTRA_OPTS = [rsync options string]
+              Additional rsync options to be used by emerge --sync.
+              Defaults to no value.
+
+       PORTAGE_RSYNC_INITIAL_TIMEOUT = integer
+              Used by emerge --sync as a timeout for the initial connection to an rsync server.
+              Defaults to 15 seconds.
+
+       PORTAGE_RSYNC_OPTS = [rsync options string]
+              Default rsync options to be used by emerge --sync.
+              Don't change this unless you know exactly what you're doing!
+              Defaults to "--recursive --links --safe-links --perms --times --compress --force --whole-file --delete --stats --timeout=180 --exclude='/distfiles' --exclude='/local' --exclude='/packages'"
+
+       PORTAGE_RSYNC_RETRIES = [NUMBER]
+              The number of times rsync should retry on failed connections before giving up. If set to a negative number, then retry until all possible addresses are exhausted.
+              Defaults to -1.
+
+       PORTAGE_SSH_OPTS = [list of ssh options]
+              Additional  ssh options to be used when portage executes ssh or sftp.  This variable supports use of embedded quote characters to quote whitespace or special shell characters within arguments (embedded quotes must be es‐
+              caped in make.conf settings).
+              Defaults to no value.
+
+       PORTAGE_SYNC_STALE = [NUMBER]
+              Defines the number of days after the last `emerge --sync` that a warning message should be produced. A value of 0 will disable warnings.
+              Defaults to 30.
+
+       PORTAGE_TMPDIR = [path]
+              Defines the location of the temporary build directories.
+              Defaults to /var/tmp.
+
+              This should not be set to point anywhere under location of any repository.
+
+       PORTAGE_USERNAME = [user]
+              Defines the username to use when executing in userpriv/etc... modes (i.e.  non-root).
+              Defaults to portage.
+
+       PORTAGE_WORKDIR_MODE = "0700"
+              This variable controls permissions for WORKDIR (see ebuild(5)).
+
+       PORTAGE_XATTR_EXCLUDE = [space delimited list of fnmatch patterns]
+              This variable may be used to exclude specific attributes from being preserved when xattr is in FEATURES.
+              Defaults to "security.*" (security labels are special, see bug #461868).
+
+       PORTDIR = [path]
+              Defines the location of main repository. This variable is deprecated in favor of settings in repos.conf. If you change this, you must update your /etc/portage/make.profile symlink accordingly.
+              Defaults to /var/db/repos/gentoo.
+              ***Warning***
+              Data stored inside PORTDIR is in peril of being overwritten or deleted by the emerge --sync command. The default value of PORTAGE_RSYNC_OPTS will protect the default locations of DISTDIR and PKGDIR, but users are  warned
+              that  any  other  locations inside PORTDIR are not necessarily safe for data storage.  You should not put other data (such as overlays) in your PORTDIR.  Portage will walk directory structures and may arbitrarily add in‐
+              valid categories as packages.
+
+       PORTDIR_OVERLAY = "[path] [different-path] [etc...]"
+              Defines the locations of other repositories. This variable is deprecated in favor of settings in repos.conf. This variable is a space-delimited list of directories.
+              Defaults to no value.
+
+       QA_STRICT_EXECSTACK = "set"
+              Set this to cause portage to ignore any QA_EXECSTACK override settings from ebuilds.  See also ebuild(5).
+
+       QA_STRICT_FLAGS_IGNORED = "set"
+              Set this to cause portage to ignore any QA_FLAGS_IGNORED override settings from ebuilds.  See also ebuild(5).
+
+       QA_STRICT_MULTILIB_PATHS = "set"
+              Set this to cause portage to ignore any QA_MULTILIB_PATHS override settings from ebuilds.  See also ebuild(5).
+
+       QA_STRICT_PRESTRIPPED = "set"
+              Set this to cause portage to ignore any QA_PRESTRIPPED override settings from ebuilds.  See also ebuild(5).
+
+       QA_STRICT_TEXTRELS = "set"
+              Set this to cause portage to ignore any QA_TEXTREL override settings from ebuilds.  See also ebuild(5).
+
+       QA_STRICT_WX_LOAD = "set"
+              Set this to cause portage to ignore any QA_WX_LOAD override settings from ebuilds.  See also ebuild(5).
+
+       ALLOW_TEST = [token]...
+              This variable can be used to select the kinds of additional tests to run, particularly overriding RESTRICT="test".  It contains a whitespace-separated list of tokens.  The following tokens are currently recognized:
+
+              all    Run tests in all packages, even if they specify RESTRICT="test".  This option is certain to cause test failures, it is intended to be used by developers when testing specific packages.
+
+              network
+                     Run tests in packages specifying PROPERTIES="test_network".  Note that this will most likely cause Internet access during the test suite which could cause additional costs, privacy concerns and  intermittent  test
+                     failures.
+
+       RESUMECOMMAND
+              This variable contains the command used for resuming package sources that have been partially downloaded.  It should be defined using the same format as FETCHCOMMAND, and must include any additional option(s) that may be
+              necessary in order to continue a partially downloaded file located at \${DISTDIR}/\${FILE}.
+
+       ROOT = [path]
+              Use ROOT to specify the target root filesystem to be used for merging packages or ebuilds.  Typically, you should set this setting in the environment rather than in make.conf itself. It's commonly used for  creating  new
+              build images. Make sure you use an absolute path. Refer to the Cross-compilation section of ebuild(5) for information about how dependencies are handled for ROOT.
+              Defaults to /.
+
+       RPMDIR = [path]
+              Defines the location where created RPM packages will be stored.
+              Defaults to /var/cache/rpm.
+
+       SYNC = [RSYNC]
+              Insert your preferred rsync mirror here.  This rsync server is used to sync the local ebuild repository when `emerge --sync` is run.
+
+              Note that the SYNC variable is now deprecated, and instead the sync-type and sync-uri attributes in repos.conf should be used. See portage(5) for more information.
+
+              Defaults to rsync://rsync.gentoo.org/gentoo-portage
+
+              Usage: (rsync|ssh)://[username@]hostname[:port]/(module|path)
+
+              Examples:
+                     rsync://private-mirror.com/portage-module
+                     rsync://rsync-user@private-mirror.com:873/gentoo-portage
+                     ssh://ssh-user@192.168.0.1:22/var/db/repos/gentoo
+                     ssh://ssh-user@192.168.0.1:22/\${HOME}/portage-storage
+
+              Note: For the ssh:// scheme, key-based authentication might be of interest.
+
+       UNINSTALL_IGNORE = [space delimited list of fnmatch patterns]
+              This  variable  prevents  uninstallation of files that match specific fnmatch(3) patterns. In order to ignore file collisions with these files at install time, the same patterns can be added to the COLLISION_IGNORE vari‐
+              able.
+              Defaults to "/lib/modules/*".
+
+       USE = [space delimited list of USE items]
+              This variable contains options that control the build behavior of several packages.  More information in ebuild(5).  Possible USE values can be found in /var/db/repos/gentoo/profiles/use.desc.
+
+       USE_ORDER = "env:pkg:conf:defaults:pkginternal:features:repo:env.d"
+              Determines the precedence of layers in the incremental stacking of the USE variable. Precedence decreases from left to right such that env overrides pkg, pkg overrides conf, and so forth.
+
+              ***warning***
+              Do not modify this value unless you're a developer and you know what you're doing. If you change this and something breaks, we will not help you fix it.
+
+              env    USE from the current environment variables (USE and those listed in USE_EXPAND)
+
+              pkg    Per-package USE from /etc/portage/package.use (see portage(5))
+
+              conf   USE from make.conf
+
+              defaults
+                     USE from make.defaults and package.use in the profile (e.g. /etc/portage/make.profile/package.use) (see portage(5))
+
+              pkginternal
+                     USE from ebuild(5) IUSE defaults
+
+              features
+                     Flags implied by FEATURES.  Currently includes USE=test for FEATURES=test.
+
+              repo   USE from make.defaults and package.use in the repo's profiles/ top dir (e.g. /var/db/repos/gentoo/profiles/package.use) (see portage(5))
+
+              env.d  USE from the environment variables, such as LINGUAS, defined by files in /etc/env.d/
+
+REPORTING BUGS
+       Please report bugs via https://bugs.gentoo.org/
+
+AUTHORS
+       Daniel Robbins <drobbins@gentoo.org>
+       Nicholas Jones <carpaski@gentoo.org>
+       Mike Frysinger <vapier@gentoo.org>
+       Saleem Abdulrasool <compnerd@gentoo.org>
+       Arfrever Frehtes Taifersar Arahesis <arfrever@apache.org>
+
+FILES
+       /etc/make.conf and /etc/portage/make.conf
+              Contains variables for the build-process and overwrites those in make.defaults.
+
+       /usr/share/portage/config/make.globals
+              Contains the default variables for the build-process, you should edit /etc/portage/make.conf instead.
+
+       /etc/portage/color.map
+              Contains variables customizing colors.
+
+       /var/db/repos/gentoo/profiles/use.desc
+              Contains a list of all global USE flags.
+
+       /var/db/repos/gentoo/profiles/use.local.desc
+              Contains a list of all local USE variables.
+
+SEE ALSO
+       emerge(1), portage(5), ebuild(1), ebuild(5)
+
+       The /usr/lib/portage/bin/ebuild.sh script.
+
+       The helper apps in /usr/lib/portage/bin.
+
+Portage VERSION                                                                                                  Nov 2021                                                                                                     MAKE.CONF(5)

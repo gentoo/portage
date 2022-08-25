@@ -1,0 +1,103 @@
+EMAINT(1)                                                                                                         Portage                                                                                                        EMAINT(1)
+
+NAME
+       emaint - performs package management related system health checks and maintenance
+
+SYNOPSIS
+       emaint [options] [all | binhost | cleanresume | merges | movebin | moveinst | sync | world]
+
+DESCRIPTION
+       The emaint program provides a command line interface to package management health checks and maintenance.
+
+COMMANDS
+       all    Perform all supported commands that accept the specified option.
+
+       binhost
+              Generate a metadata index for binary packages located in PKGDIR (for download by remote clients). See the PORTAGE_BINHOST documentation in the make.conf(5) man page for additional information.
+              OPTIONS: check, fix
+
+       cleanconfmem
+              Discard no longer installed config tracker entries.
+              OPTIONS: check, fix
+
+       cleanresume
+              Discard merge lists saved for the emerge(1) --resume action.
+              OPTIONS: check, fix
+
+       logs   Clean  out  old  logs  from the PORTAGE_LOGDIR using the command PORTAGE_LOGDIR_CLEAN.  See the make.conf(5) man page for additional information as well as enabling the 'clean-logs' feature in emerge to do this automati‐
+              cally.
+              OPTIONS: check, clean
+
+       merges Scan for failed package merges and attempt to fix those failed packages.
+              OPTIONS: check, fix, purge
+
+       movebin
+              Perform package move updates for binary packages located in PKGDIR.
+              OPTIONS: check, fix
+
+       moveinst
+              Perform package move updates for installed packages.
+              OPTIONS: check, fix
+
+       sync   Perform sync actions on specified repositories.
+              OPTIONS: allrepos, auto, repo
+
+       world  Fix problems in the world file.
+              OPTIONS: check, fix
+
+DEFAULT OPTIONS (Not supported in all commands)
+       -c, --check
+              Check for any problems that may exist.
+
+       -f, --fix
+              Fix any problems that may exist.
+
+OPTIONS logs command only
+       -C, --clean
+              Cleans the logs from PORTAGE_LOGDIR
+
+       -p, --pretend
+              Sets pretend mode (same as -c, --check) for use with the -C, --clean OPTION
+
+       -t NUM, --time NUM
+              Changes the minimum age NUM (in days) of the logs to be listed or deleted.
+
+OPTIONS merges command only
+       -y, --yes
+              Do not prompt for emerge invocations.
+
+OPTIONS sync command only
+       -a, --auto
+              Sync repositories which have their auto-sync setting set yes, true.
+
+       -A, --allrepos
+              Sync all repositories which have a sync-uri specified.
+
+       -r, --repo REPO
+              Sync the repository specified.
+
+       --sync-submodule <glsa|news|profiles>
+              Restrict sync to the specified submodule(s). This option may be specified multiple times, in order to sync multiple submodules.  Currently, this option has no effect for sync protocols other than rsync.
+
+REPORTING BUGS
+       Please report bugs via https://bugs.gentoo.org/
+
+AUTHORS
+       Pavel Kazakov <nullishzero@gentoo.org>
+       Mike Frysinger <vapier@gentoo.org>
+       Brian Dolbec <dolsen@gentoo.org>
+
+FILES
+       /var/lib/portage/world
+              Contains a list of all user-specified packages.
+
+       /var/lib/portage/config
+              Contains the paths and md5sums of all the config files being tracked.
+
+       /var/lib/portage/failed-merges
+              Contains the packages and timestamps of any failed merges being cleaned from the system, and to be re-emerged.
+
+SEE ALSO
+       emerge(1), portage(5)
+
+Portage VERSION                                                                                                  Feb 2021                                                                                                        EMAINT(1)
