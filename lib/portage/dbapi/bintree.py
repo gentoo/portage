@@ -744,7 +744,7 @@ class binarytree:
                     mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
                 elif binpkg_format == "gpkg":
                     mybinpkg = portage.gpkg.gpkg(self.settings, mycpv, update_path)
-                    mybinpkg.update_metadata(mydata, newcpv=mynewcpv)
+                    mybinpkg.update_metadata(mydata, new_basename=mynewcpv)
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
                 self.inject(mynewcpv, filename=update_path)
