@@ -17,8 +17,8 @@ def get_binpkg_format(binpkg_path):
 
     try:
         with open(binpkg_path, "rb") as binpkg_file:
-            header = binpkg_file.read(6)
-            if header == b"gpkg-1":
+            header = binpkg_file.read(100)
+            if b"/gpkg-1\x00" in header:
                 file_format = "gpkg"
             else:
                 binpkg_file.seek(-16, 2)
@@ -32,7 +32,9 @@ def get_binpkg_format(binpkg_path):
         if file_format is None:
             try:
                 with tarfile.open(binpkg_path) as gpkg_tar:
-                    if "gpkg-1" in gpkg_tar.getnames():
+                    if "gpkg-1" in [
+                        f.split("/", maxsplit=1)[-1] for f in gpkg_tar.getnames()
+                    ]:
                         file_format = "gpkg"
             except tarfile.TarError:
                 pass

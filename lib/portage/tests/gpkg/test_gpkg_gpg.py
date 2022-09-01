@@ -46,7 +46,7 @@ class test_gpkg_gpg_case(TestCase):
                     os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
-                        if f.name == "Manifest":
+                        if f.name == os.path.join("test", "Manifest"):
                             manifest = tar_1.extractfile(f).read().decode("UTF-8")
                             manifest = manifest.replace(
                                 "-----BEGIN PGP SIGNATURE-----", ""
@@ -116,11 +116,19 @@ class test_gpkg_gpg_case(TestCase):
             playground.cleanup()
 
     def test_gpkg_ignore_signature(self):
+        gpg_test_path = os.environ["PORTAGE_GNUPGHOME"]
+
         playground = ResolverPlayground(
             user_config={
                 "make.conf": (
                     'FEATURES="${FEATURES} binpkg-signing ' 'binpkg-ignore-signature"',
                     'BINPKG_FORMAT="gpkg"',
+                    f'BINPKG_GPG_SIGNING_BASE_COMMAND="flock {gpg_test_path}/portage-binpkg-gpg.lock /usr/bin/gpg --sign --armor --batch --no-tty --yes --pinentry-mode loopback --passphrase GentooTest [PORTAGE_CONFIG]"',
+                    'BINPKG_GPG_SIGNING_DIGEST="SHA512"',
+                    f'BINPKG_GPG_SIGNING_GPG_HOME="{gpg_test_path}"',
+                    'BINPKG_GPG_SIGNING_KEY="0x8812797DDF1DD192"',
+                    'BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --yes --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"',
+                    f'BINPKG_GPG_VERIFY_GPG_HOME="{gpg_test_path}"',
                 ),
             }
         )
@@ -140,17 +148,7 @@ class test_gpkg_gpg_case(TestCase):
             binpkg_1 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
             binpkg_1.compress(orig_full_path, {})
 
-            with tarfile.open(os.path.join(tmpdir, "test-1.gpkg.tar"), "r") as tar_1:
-                with tarfile.open(
-                    os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
-                ) as tar_2:
-                    for f in tar_1.getmembers():
-                        if f.name == "Manifest.sig":
-                            pass
-                        else:
-                            tar_2.addfile(f, tar_1.extractfile(f))
-
-            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-2.gpkg.tar"))
+            binpkg_2 = gpkg(settings, "test", os.path.join(tmpdir, "test-1.gpkg.tar"))
             binpkg_2.decompress(os.path.join(tmpdir, "test"))
         finally:
             shutil.rmtree(tmpdir)
@@ -230,7 +228,7 @@ class test_gpkg_gpg_case(TestCase):
                     os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
-                        if f.name == "Manifest":
+                        if f.name == os.path.join("test", "Manifest"):
                             sig = b"""
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA512
@@ -281,7 +279,7 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
                     'BINPKG_GPG_SIGNING_DIGEST="SHA512"',
                     f'BINPKG_GPG_SIGNING_GPG_HOME="{gpg_test_path}"',
                     'BINPKG_GPG_SIGNING_KEY="0x8812797DDF1DD192"',
-                    'BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --yes --no-auto-check-trustdb --status-fd 1 [PORTAGE_CONFIG] [SIGNATURE]"',
+                    'BINPKG_GPG_VERIFY_BASE_COMMAND="/usr/bin/gpg --verify --batch --no-tty --yes --no-auto-check-trustdb --status-fd 2 [PORTAGE_CONFIG] [SIGNATURE]"',
                     f'BINPKG_GPG_VERIFY_GPG_HOME="{gpg_test_path}"',
                 ),
             }
@@ -341,7 +339,7 @@ qGAN3VUF+8EsdcsV781H0F86PANhyBgEYTGDrnItTGe3/vAPjCo=
                     os.path.join(tmpdir, "test-2.gpkg.tar"), "w"
                 ) as tar_2:
                     for f in tar_1.getmembers():
-                        if f.name == "Manifest":
+                        if f.name == os.path.join("test", "Manifest"):
                             sig = b"""
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA256
