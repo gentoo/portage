@@ -2049,7 +2049,7 @@ class binarytree:
             return ""
         return mymatch
 
-    def getname(self, cpv, allocate_new=None):
+    def getname(self, cpv, allocate_new=None, remote_binpkg_format=None):
         """Returns a file location for this package.
         If cpv has both build_time and build_id attributes, then the
         path to the specific corresponding instance is returned.
@@ -2067,7 +2067,7 @@ class binarytree:
 
         filename = None
         if allocate_new:
-            filename = self._allocate_filename(cpv)
+            filename = self._allocate_filename(cpv, remote_binpkg_format)
         elif self._is_specific_instance(cpv):
             instance_key = self.dbapi._instance_key(cpv)
             path = self._pkg_paths.get(instance_key)
@@ -2148,13 +2148,16 @@ class binarytree:
                 max_build_id = x.build_id
         return max_build_id
 
-    def _allocate_filename(self, cpv):
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+    def _allocate_filename(self, cpv, remote_binpkg_format=None):
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = cpv.binpkg_format
+            except AttributeError:
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
         if binpkg_format == "xpak":
             return os.path.join(self.pkgdir, cpv + ".tbz2")
@@ -2163,7 +2166,7 @@ class binarytree:
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
-    def _allocate_filename_multi(self, cpv):
+    def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
 
         # First, get the max build_id found when _populate was
         # called.
@@ -2175,12 +2178,15 @@ class binarytree:
         pf = catsplit(cpv)[1]
         build_id = max_build_id + 1
 
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = cpv.binpkg_format
+            except AttributeError:
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
         if binpkg_format == "xpak":
             filename_format = "%s-%s.xpak"
