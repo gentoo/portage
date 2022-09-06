@@ -19,7 +19,7 @@ def command_compose(args):
         sys.stderr.write("4 arguments are required, got %s\n" % len(args))
         return 1
 
-    cpv, binpkg_path, metadata_dir, image_dir = args
+    basename, binpkg_path, metadata_dir, image_dir = args
 
     if not os.path.isdir(metadata_dir):
         sys.stderr.write(usage)
@@ -31,7 +31,7 @@ def command_compose(args):
         sys.stderr.write("Argument 4 is not a directory: '%s'\n" % image_dir)
         return 1
 
-    gpkg_file = portage.gpkg.gpkg(portage.settings, cpv, binpkg_path)
+    gpkg_file = portage.gpkg.gpkg(portage.settings, basename, binpkg_path)
     metadata = gpkg_file._generate_metadata_from_dir(metadata_dir)
     gpkg_file.compress(image_dir, metadata)
     return os.EX_OK

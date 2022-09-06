@@ -512,6 +512,10 @@ __dyn_package() {
 		die "PORTAGE_BINPKG_TMPFILE is unset"
 	mkdir -p "${PORTAGE_BINPKG_TMPFILE%/*}" || die "mkdir failed"
 
+	if [[ ! -z "${BUILD_ID}" ]]; then
+		echo -n "${BUILD_ID}" > "${PORTAGE_BUILDDIR}"/build-info/BUILD_ID
+	fi
+
 	if [[ "${BINPKG_FORMAT}" == "xpak" ]]; then
 		local tar_options=""
 
@@ -547,7 +551,7 @@ __dyn_package() {
 	elif [[ "${BINPKG_FORMAT}" == "gpkg" ]]; then
 		PYTHONPATH=${PORTAGE_PYTHONPATH:-${PORTAGE_PYM_PATH}} \
 			"${PORTAGE_PYTHON:-/usr/bin/python}" "${PORTAGE_BIN_PATH}"/gpkg-helper.py compress \
-			"${CATEGORY}/${PF}" "${PORTAGE_BINPKG_TMPFILE}" "${PORTAGE_BUILDDIR}/build-info" "${D}"
+			"${PF}${BUILD_ID:+-${BUILD_ID}}" "${PORTAGE_BINPKG_TMPFILE}" "${PORTAGE_BUILDDIR}/build-info" "${D}"
 		if [[ $? -ne 0 ]]; then
 			rm -f "${PORTAGE_BINPKG_TMPFILE}"
 			die "Failed to create binpkg file"

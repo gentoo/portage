@@ -6,8 +6,6 @@ from _emerge.EbuildPhase import EbuildPhase
 
 import portage
 from portage import os
-from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
-from portage.exception import InvalidBinaryPackageFormat
 
 
 class EbuildBinpkg(CompositeTask):
@@ -15,29 +13,26 @@ class EbuildBinpkg(CompositeTask):
     This assumes that src_install() has successfully completed.
     """
 
-    __slots__ = ("pkg", "settings") + ("_binpkg_tmpfile", "_binpkg_info")
+    __slots__ = ("pkg", "settings") + (
+        "_binpkg_tmpfile",
+        "_binpkg_info",
+        "pkg_allocated_path",
+    )
 
     def _start(self):
         pkg = self.pkg
         root_config = pkg.root_config
         bintree = root_config.trees["bintree"]
-        binpkg_format = self.settings.get(
-            "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+        pkg_allocated_path, build_id = bintree.getname_build_id(
+            pkg.cpv, allocate_new=True
         )
-        if binpkg_format == "xpak":
-            binpkg_tmpfile = os.path.join(
-                bintree.pkgdir, pkg.cpv + ".tbz2." + str(portage.getpid())
-            )
-        elif binpkg_format == "gpkg":
-            binpkg_tmpfile = os.path.join(
-                bintree.pkgdir, pkg.cpv + ".gpkg.tar." + str(portage.getpid())
-            )
-        else:
-            raise InvalidBinaryPackageFormat(binpkg_format)
-        bintree._ensure_dir(os.path.dirname(binpkg_tmpfile))
 
-        self._binpkg_tmpfile = binpkg_tmpfile
+        self.pkg_allocated_path = pkg_allocated_path
+        self._binpkg_tmpfile = self.pkg_allocated_path + "." + str(portage.getpid())
         self.settings["PORTAGE_BINPKG_TMPFILE"] = self._binpkg_tmpfile
+
+        if "binpkg-multi-instance" in self.settings.features:
+            self.settings["BUILD_ID"] = str(build_id)
 
         package_phase = EbuildPhase(
             background=self.background,
@@ -61,7 +56,11 @@ class EbuildBinpkg(CompositeTask):
 
         pkg = self.pkg
         bintree = pkg.root_config.trees["bintree"]
-        self._binpkg_info = bintree.inject(pkg.cpv, filename=self._binpkg_tmpfile)
+        self._binpkg_info = bintree.inject(
+            pkg.cpv,
+            current_pkg_path=self._binpkg_tmpfile,
+            allocated_pkg_path=self.pkg_allocated_path,
+        )
 
         self._current_task = None
         self.returncode = os.EX_OK

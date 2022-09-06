@@ -246,7 +246,7 @@ class Binpkg(CompositeTask):
 
         if self._fetched_pkg:
             pkg_path = self._bintree.getname(
-                self._bintree.inject(pkg.cpv, filename=self._fetched_pkg),
+                self._bintree.inject(pkg.cpv, current_pkg_path=self._fetched_pkg),
                 allocate_new=False,
             )
         else:

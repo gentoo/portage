@@ -12,6 +12,7 @@ import sys
 import portage
 from portage import os
 from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
+from portage.const import SUPPORTED_XPAK_EXTENSIONS, SUPPORTED_GPKG_EXTENSIONS
 from portage.exception import FileNotFound, InvalidBinaryPackageFormat
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
@@ -19,27 +20,31 @@ from portage.util._pty import _create_pty_or_pipe
 
 class BinpkgFetcher(CompositeTask):
 
-    __slots__ = ("pkg", "pretend", "logfile", "pkg_path")
+    __slots__ = ("pkg", "pretend", "logfile", "pkg_path", "pkg_allocated_path")
 
     def __init__(self, **kwargs):
         CompositeTask.__init__(self, **kwargs)
 
         pkg = self.pkg
         bintree = pkg.root_config.trees["bintree"]
-        binpkg_path = None
+        instance_key = bintree.dbapi._instance_key(pkg.cpv)
+        binpkg_format = bintree._remotepkgs[instance_key].get("BINPKG_FORMAT", None)
 
-        if bintree._remote_has_index:
-            instance_key = bintree.dbapi._instance_key(pkg.cpv)
+        if binpkg_format is None:
             binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
-            if binpkg_path:
-                self.pkg_path = binpkg_path + ".partial"
+            if binpkg_path.endswith(SUPPORTED_XPAK_EXTENSIONS):
+                binpkg_format = "xpak"
+            elif binpkg_path.endswith(SUPPORTED_GPKG_EXTENSIONS):
+                binpkg_format = "gpkg"
             else:
-                self.pkg_path = (
-                    pkg.root_config.trees["bintree"].getname(pkg.cpv, allocate_new=True)
-                    + ".partial"
+                raise InvalidBinaryPackageFormat(
+                    f"Unsupported binary package format from '{binpkg_path}'"
                 )
-        else:
-            raise FileNotFound("Binary packages index not found")
+
+        self.pkg_allocated_path = pkg.root_config.trees["bintree"].getname(
+            pkg.cpv, allocate_new=True, remote_binpkg_format=binpkg_format
+        )
+        self.pkg_path = self.pkg_allocated_path + ".partial"
 
     def _start(self):
         fetcher = _BinpkgFetcherProcess(
