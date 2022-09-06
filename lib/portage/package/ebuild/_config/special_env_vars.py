@@ -88,6 +88,7 @@ environ_whitelist += [
     "BASH_FUNC____in_portage_iuse%%",
     "BINPKG_FORMAT",
     "BROOT",
+    "BUILD_ID",
     "BUILD_PREFIX",
     "COLUMNS",
     "D",

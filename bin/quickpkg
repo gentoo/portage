@@ -206,7 +206,7 @@ def quickpkg_atom(options, infos, arg, eout):
         finally:
             if have_lock:
                 dblnk.unlockdb()
-        pkg_info = bintree.inject(cpv, filename=binpkg_tmpfile)
+        pkg_info = bintree.inject(cpv, current_pkg_path=binpkg_tmpfile)
         # The pkg_info value ensures that the following getname call
         # returns the correct path when FEATURES=binpkg-multi-instance
         # is enabled, but fallback to cpv in case the inject call

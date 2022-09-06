@@ -11,6 +11,7 @@ class BinpkgPrefetcher(CompositeTask):
 
     __slots__ = ("pkg",) + (
         "pkg_path",
+        "pkg_allocated_path",
         "_bintree",
     )
 
@@ -23,6 +24,7 @@ class BinpkgPrefetcher(CompositeTask):
             scheduler=self.scheduler,
         )
         self.pkg_path = fetcher.pkg_path
+        self.pkg_allocated_path = fetcher.pkg_allocated_path
         self._start_task(fetcher, self._fetcher_exit)
 
     def _fetcher_exit(self, fetcher):
@@ -45,7 +47,11 @@ class BinpkgPrefetcher(CompositeTask):
             self.wait()
             return
 
-        self._bintree.inject(self.pkg.cpv, filename=self.pkg_path)
+        self._bintree.inject(
+            self.pkg.cpv,
+            current_pkg_path=self.pkg_path,
+            allocated_pkg_path=self.pkg_allocated_path,
+        )
 
         self._current_task = None
         self.returncode = os.EX_OK

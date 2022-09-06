@@ -47,6 +47,7 @@ from portage.exception import (
 from portage.localization import _
 from portage.output import colorize
 from portage.package.ebuild.profile_iuse import iter_iuse_vars
+from portage.util import ensure_dirs
 from portage.util.file_copy import copyfile
 from portage.util.futures import asyncio
 from portage.util.futures.executor.fork import ForkExecutor
@@ -733,7 +734,8 @@ class binarytree:
             # assuming that it will be deleted by eclean-pkg when its
             # time comes.
             mynewcpv = _pkg_str(mynewcpv, metadata=metadata, db=self.dbapi)
-            update_path = self.getname(mynewcpv, allocate_new=True) + ".partial"
+            allocated_pkg_path = self.getname(mynewcpv, allocate_new=True)
+            update_path = allocated_pkg_path + ".partial"
             self._ensure_dir(os.path.dirname(update_path))
             update_path_lock = None
             try:
@@ -747,7 +749,11 @@ class binarytree:
                     mybinpkg.update_metadata(mydata, new_basename=mynewcpv)
                 else:
                     raise InvalidBinaryPackageFormat(binpkg_format)
-                self.inject(mynewcpv, filename=update_path)
+                self.inject(
+                    mynewcpv,
+                    current_pkg_path=update_path,
+                    allocated_pkg_path=allocated_pkg_path,
+                )
             finally:
                 if update_path_lock is not None:
                     try:
@@ -1590,13 +1596,17 @@ class binarytree:
                 self._additional_pkgs[instance_key] = pkg
                 self.dbapi.cpv_inject(pkg)
 
-    def inject(self, cpv, filename=None):
+    def inject(self, cpv, current_pkg_path=None, allocated_pkg_path=None):
         """Add a freshly built package to the database.  This updates
         $PKGDIR/Packages with the new package metadata (including MD5).
         @param cpv: The cpv of the new package to inject
         @type cpv: string
-        @param filename: File path of the package to inject, or None if it's
-                already in the location returned by getname()
+        @param current_pkg_path: File path of the package to inject,
+               or None if it's already in the location returned by getname()
+        @type filename: string
+        @rtype: _pkg_str or None
+        @param allocated_pkg_path: File path of the package that was newly
+               allocated or None if it's not allocated.
         @type filename: string
         @rtype: _pkg_str or None
         @return: A _pkg_str instance on success, or None on failure.
@@ -1604,10 +1614,10 @@ class binarytree:
         mycat, mypkg = catsplit(cpv)
         if not self.populated:
             self.populate()
-        if filename is None:
+        if current_pkg_path is None:
             full_path = self.getname(cpv)
         else:
-            full_path = filename
+            full_path = current_pkg_path
         try:
             s = os.stat(full_path)
         except OSError as e:
@@ -1615,7 +1625,7 @@ class binarytree:
                 raise
             del e
             writemsg(
-                _("!!! Binary package does not exist: '%s'\n") % full_path,
+                f"!!! Binary package does not exist: '{full_path}'\n",
                 noiselevel=-1,
             )
             return
@@ -1664,48 +1674,19 @@ class binarytree:
         try:
             os.makedirs(self.pkgdir, exist_ok=True)
             pkgindex_lock = lockfile(self._pkgindex_file, wantnewlockfile=1)
-            if filename is not None:
-                new_filename = self.getname(cpv, allocate_new=True)
+            if current_pkg_path is not None:
+                if allocated_pkg_path is not None:
+                    new_path = allocated_pkg_path
+                else:
+                    new_path = self.getname(cpv, allocate_new=True)
                 try:
-                    samefile = os.path.samefile(filename, new_filename)
+                    samefile = os.path.samefile(current_pkg_path, new_path)
                 except OSError:
                     samefile = False
                 if not samefile:
-                    self._ensure_dir(os.path.dirname(new_filename))
-                    _movefile(filename, new_filename, mysettings=self.settings)
-                full_path = new_filename
-
-            basename = os.path.basename(full_path)
-            pf = catsplit(cpv)[1]
-            if (build_id is None) and (not fetched) and binpkg_format:
-                # Apply the newly assigned BUILD_ID. This is intended
-                # to occur only for locally built packages. If the
-                # package was fetched, we want to preserve its
-                # attributes, so that we can later distinguish that it
-                # is identical to its remote counterpart.
-                build_id = self._parse_build_id(basename)
-                if build_id > 0:
-                    metadata["BUILD_ID"] = str(build_id)
-                    cpv = _pkg_str(
-                        cpv, metadata=metadata, settings=self.settings, db=self.dbapi
-                    )
-                    if binpkg_format == "xpak":
-                        if basename.endswith(".xpak"):
-                            binpkg = portage.xpak.tbz2(full_path)
-                            binary_data = binpkg.get_data()
-                            binary_data[b"BUILD_ID"] = _unicode_encode(
-                                metadata["BUILD_ID"]
-                            )
-                            binpkg.recompose_mem(portage.xpak.xpak_mem(binary_data))
-                    elif binpkg_format == "gpkg":
-                        binpkg = portage.gpkg.gpkg(self.settings, cpv, full_path)
-                        binpkg_metadata = binpkg.get_metadata()
-                        binpkg_metadata["BUILD_ID"] = _unicode_encode(
-                            metadata["BUILD_ID"]
-                        )
-                        binpkg.update_metadata(binpkg_metadata)
-                    else:
-                        raise InvalidBinaryPackageFormat(basename)
+                    self._ensure_dir(os.path.dirname(new_path))
+                    _movefile(current_pkg_path, new_path, mysettings=self.settings)
+                full_path = new_path
 
             self._file_permissions(full_path)
             pkgindex = self._load_pkgindex()
@@ -2055,7 +2036,12 @@ class binarytree:
             return ""
         return mymatch
 
-    def getname(self, cpv, allocate_new=None):
+    def getname(self, cpv, allocate_new=None, remote_binpkg_format=None):
+        return self.getname_build_id(
+            cpv, allocate_new=allocate_new, remote_binpkg_format=remote_binpkg_format
+        )[0]
+
+    def getname_build_id(self, cpv, allocate_new=None, remote_binpkg_format=None):
         """Returns a file location for this package.
         If cpv has both build_time and build_id attributes, then the
         path to the specific corresponding instance is returned.
@@ -2072,8 +2058,9 @@ class binarytree:
             cpv = _pkg_str(cpv)
 
         filename = None
+        build_id = None
         if allocate_new:
-            filename = self._allocate_filename(cpv)
+            filename, build_id = self._allocate_filename(cpv)
         elif self._is_specific_instance(cpv):
             instance_key = self.dbapi._instance_key(cpv)
             path = self._pkg_paths.get(instance_key)
@@ -2090,7 +2077,7 @@ class binarytree:
                 if filename is not None:
                     filename = os.path.join(self.pkgdir, filename)
                 elif instance_key in self._additional_pkgs:
-                    return None
+                    return (None, None)
 
         if filename is None:
             try:
@@ -2133,7 +2120,7 @@ class binarytree:
             else:
                 raise InvalidBinaryPackageFormat(binpkg_format)
 
-        return filename
+        return (filename, build_id)
 
     def _is_specific_instance(self, cpv):
         specific = True
@@ -2154,22 +2141,26 @@ class binarytree:
                 max_build_id = x.build_id
         return max_build_id
 
-    def _allocate_filename(self, cpv):
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+    def _allocate_filename(self, cpv, remote_binpkg_format=None):
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = cpv.binpkg_format
+            except AttributeError:
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
+        # Do not create a new placeholder to avoid overwriting existing binpkgs.
         if binpkg_format == "xpak":
-            return os.path.join(self.pkgdir, cpv + ".tbz2")
+            return (os.path.join(self.pkgdir, cpv + ".tbz2"), None)
         elif binpkg_format == "gpkg":
-            return os.path.join(self.pkgdir, cpv + ".gpkg.tar")
+            return (os.path.join(self.pkgdir, cpv + ".gpkg.tar"), None)
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
-    def _allocate_filename_multi(self, cpv):
+    def _allocate_filename_multi(self, cpv, remote_binpkg_format=None):
 
         # First, get the max build_id found when _populate was
         # called.
@@ -2181,29 +2172,39 @@ class binarytree:
         pf = catsplit(cpv)[1]
         build_id = max_build_id + 1
 
-        try:
-            binpkg_format = cpv.binpkg_format
-        except AttributeError:
-            binpkg_format = self.settings.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
+        if remote_binpkg_format is None:
+            try:
+                binpkg_format = cpv.binpkg_format
+            except AttributeError:
+                binpkg_format = self.settings.get(
+                    "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
+                )
+        else:
+            binpkg_format = remote_binpkg_format
 
         if binpkg_format == "xpak":
-            filename_format = "%s-%s.xpak"
+            binpkg_suffix = "xpak"
         elif binpkg_format == "gpkg":
-            filename_format = "%s-%s.gpkg.tar"
+            binpkg_suffix = "gpkg.tar"
         else:
             raise InvalidBinaryPackageFormat(binpkg_format)
 
         while True:
-            filename = filename_format % (
-                os.path.join(self.pkgdir, cpv.cp, pf),
-                build_id,
+            filename = (
+                f"{os.path.join(self.pkgdir, cpv.cp, pf)}-{build_id}.{binpkg_suffix}"
             )
             if os.path.exists(filename):
                 build_id += 1
             else:
-                return filename
+                try:
+                    # Avoid races
+                    ensure_dirs(os.path.dirname(filename))
+                    with open(filename, "x") as f:
+                        pass
+                except FileExistsError:
+                    build_id += 1
+                    continue
+                return (filename, build_id)
 
     @staticmethod
     def _parse_build_id(filename):

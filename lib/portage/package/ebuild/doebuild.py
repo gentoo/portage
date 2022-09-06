@@ -1463,7 +1463,8 @@ def doebuild(
             if retval == os.EX_OK:
                 if mydo == "package" and bintree is not None:
                     pkg = bintree.inject(
-                        mysettings.mycpv, filename=mysettings["PORTAGE_BINPKG_TMPFILE"]
+                        mysettings.mycpv,
+                        current_pkg_path=mysettings["PORTAGE_BINPKG_TMPFILE"],
                     )
                     if pkg is not None:
                         infoloc = os.path.join(
