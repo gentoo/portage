@@ -208,6 +208,8 @@ For a more detailed explanation (and rationalisation) of these rules:
 Releases
 --------
 
+Before starting: CI MUST BE GREEN!
+
 First update:
 - NEWS (for both new version & release date)
 - setup.py
