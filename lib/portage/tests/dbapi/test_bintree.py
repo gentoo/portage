@@ -1,11 +1,14 @@
-# Copyright 2020-2022 Gentoo Authors
+# Copyright 2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, call
+import os
 
 from portage.tests import TestCase
 
 from portage.dbapi.bintree import binarytree
+from portage.localization import _
+from portage.const import BINREPOS_CONF_FILE
 
 
 class BinarytreeTestCase(TestCase):
@@ -52,3 +55,64 @@ class BinarytreeTestCase(TestCase):
         # The next attribute is the difference between multi instance
         # and no multi instance:
         getattr(multi_instance_bt, "_allocate_filename")
+
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_populate_without_updates_repos_nor_getbinspkgs(
+            self, ppopulate_local):
+        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        ppopulate_local.return_value = {}
+        bt.populate()
+        ppopulate_local.assert_called_once_with(reindex=True)
+        self.assertFalse(bt._populating)
+        self.assertTrue(bt.populated)
+
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_populate_calls_twice_populate_local_if_updates(
+            self, ppopulate_local):
+        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        bt.populate()
+        self.assertIn(call(reindex=True), ppopulate_local.mock_calls)
+        self.assertIn(call(), ppopulate_local.mock_calls)
+        self.assertEqual(ppopulate_local.call_count, 2)
+
+    @patch("portage.dbapi.bintree.binarytree._populate_additional")
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_populate_with_repos(
+            self, ppopulate_local, ppopulate_additional):
+        repos = ("one", "two")
+        bt = binarytree(pkgdir="/tmp", settings=MagicMock())
+        bt.populate(add_repos=repos)
+        ppopulate_additional.assert_called_once_with(repos)
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._populate_remote")
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_populate_with_getbinpkgs(
+            self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader):
+        refresh = "something"
+        settings = MagicMock()
+        settings.__getitem__.return_value = "/some/path"
+        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
+        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=refresh)
+
+    @patch("portage.dbapi.bintree.writemsg")
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._populate_remote")
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_populate_with_getbinpkgs_and_not_BinRepoConfigLoader(
+            self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader,
+            pwritemsg):
+        refresh = "something"
+        settings = MagicMock()
+        portage_root = "/some/path"
+        settings.__getitem__.return_value = portage_root
+        pBinRepoConfigLoader.return_value = None
+        conf_file = os.path.join(portage_root, BINREPOS_CONF_FILE)
+        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
+        ppopulate_remote.assert_not_called()
+        pwritemsg.assert_called_once_with(
+            _(f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
+              ", but use is requested.\n"), noiselevel=-1
+        )
