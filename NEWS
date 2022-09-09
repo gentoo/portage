@@ -1,3 +1,11 @@
+portage-3.0.36 (2022-09-09)
+--------------
+
+Bug fixes:
+* The layout of gpkg (new binpkg format) packages has been fixed (bug #865905).
+
+* Fix getbinpkg fetching (bug #864160).
+
 portage-3.0.35 (2022-08-23)
 --------------
 
