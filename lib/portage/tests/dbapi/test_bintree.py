@@ -30,25 +30,44 @@ class BinarytreeTestCase(TestCase):
         # Quite smoky test. What would it be a better testing strategy?
         # Not sure yet...
         required_attrs_no_multi_instance = {
-            "pkgdir", "_multi_instance", "dbapi", "update_ents",
-            "move_slot_ent", "populated", "tree", "_binrepos_conf",
-            "_remote_has_index", "_remotepkgs", "_additional_pkgs",
-            "invalids", "settings", "_pkg_paths", "_populating",
-            "_all_directory", "_pkgindex_version", "_pkgindex_hashes",
-            "_pkgindex_file", "_pkgindex_keys", "_pkgindex_aux_keys",
-            "_pkgindex_use_evaluated_keys", "_pkgindex_header",
-            "_pkgindex_header_keys", "_pkgindex_default_pkg_data",
-            "_pkgindex_inherited_keys", "_pkgindex_default_header_data",
-            "_pkgindex_translated_keys", "_pkgindex_allowed_pkg_keys",
+            "pkgdir",
+            "_multi_instance",
+            "dbapi",
+            "update_ents",
+            "move_slot_ent",
+            "populated",
+            "tree",
+            "_binrepos_conf",
+            "_remote_has_index",
+            "_remotepkgs",
+            "_additional_pkgs",
+            "invalids",
+            "settings",
+            "_pkg_paths",
+            "_populating",
+            "_all_directory",
+            "_pkgindex_version",
+            "_pkgindex_hashes",
+            "_pkgindex_file",
+            "_pkgindex_keys",
+            "_pkgindex_aux_keys",
+            "_pkgindex_use_evaluated_keys",
+            "_pkgindex_header",
+            "_pkgindex_header_keys",
+            "_pkgindex_default_pkg_data",
+            "_pkgindex_inherited_keys",
+            "_pkgindex_default_header_data",
+            "_pkgindex_translated_keys",
+            "_pkgindex_allowed_pkg_keys",
         }
         no_multi_instance_settings = MagicMock()
         no_multi_instance_settings.features = ""
         no_multi_instance_bt = binarytree(
-            pkgdir="/tmp", settings=no_multi_instance_settings)
+            pkgdir="/tmp", settings=no_multi_instance_settings
+        )
         multi_instance_settings = MagicMock()
         multi_instance_settings.features = "binpkg-multi-instance"
-        multi_instance_bt = binarytree(
-            pkgdir="/tmp", settings=multi_instance_settings)
+        multi_instance_bt = binarytree(pkgdir="/tmp", settings=multi_instance_settings)
         for attr in required_attrs_no_multi_instance:
             getattr(no_multi_instance_bt, attr)
             getattr(multi_instance_bt, attr)
@@ -57,8 +76,7 @@ class BinarytreeTestCase(TestCase):
         getattr(multi_instance_bt, "_allocate_filename")
 
     @patch("portage.dbapi.bintree.binarytree._populate_local")
-    def test_populate_without_updates_repos_nor_getbinspkgs(
-            self, ppopulate_local):
+    def test_populate_without_updates_repos_nor_getbinspkgs(self, ppopulate_local):
         bt = binarytree(pkgdir="/tmp", settings=MagicMock())
         ppopulate_local.return_value = {}
         bt.populate()
@@ -67,8 +85,7 @@ class BinarytreeTestCase(TestCase):
         self.assertTrue(bt.populated)
 
     @patch("portage.dbapi.bintree.binarytree._populate_local")
-    def test_populate_calls_twice_populate_local_if_updates(
-            self, ppopulate_local):
+    def test_populate_calls_twice_populate_local_if_updates(self, ppopulate_local):
         bt = binarytree(pkgdir="/tmp", settings=MagicMock())
         bt.populate()
         self.assertIn(call(reindex=True), ppopulate_local.mock_calls)
@@ -77,8 +94,7 @@ class BinarytreeTestCase(TestCase):
 
     @patch("portage.dbapi.bintree.binarytree._populate_additional")
     @patch("portage.dbapi.bintree.binarytree._populate_local")
-    def test_populate_with_repos(
-            self, ppopulate_local, ppopulate_additional):
+    def test_populate_with_repos(self, ppopulate_local, ppopulate_additional):
         repos = ("one", "two")
         bt = binarytree(pkgdir="/tmp", settings=MagicMock())
         bt.populate(add_repos=repos)
@@ -88,7 +104,8 @@ class BinarytreeTestCase(TestCase):
     @patch("portage.dbapi.bintree.binarytree._populate_remote")
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_with_getbinpkgs(
-            self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader):
+        self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader
+    ):
         refresh = "something"
         settings = MagicMock()
         settings.__getitem__.return_value = "/some/path"
@@ -101,8 +118,8 @@ class BinarytreeTestCase(TestCase):
     @patch("portage.dbapi.bintree.binarytree._populate_remote")
     @patch("portage.dbapi.bintree.binarytree._populate_local")
     def test_populate_with_getbinpkgs_and_not_BinRepoConfigLoader(
-            self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader,
-            pwritemsg):
+        self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader, pwritemsg
+    ):
         refresh = "something"
         settings = MagicMock()
         portage_root = "/some/path"
@@ -113,6 +130,9 @@ class BinarytreeTestCase(TestCase):
         bt.populate(getbinpkgs=True, getbinpkg_refresh=refresh)
         ppopulate_remote.assert_not_called()
         pwritemsg.assert_called_once_with(
-            _(f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
-              ", but use is requested.\n"), noiselevel=-1
+            _(
+                f"!!! {conf_file} is missing (or PORTAGE_BINHOST is unset)"
+                ", but use is requested.\n"
+            ),
+            noiselevel=-1,
         )
