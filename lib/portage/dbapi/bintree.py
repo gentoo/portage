@@ -866,9 +866,9 @@ class binarytree:
                 if not self._binrepos_conf:
                     writemsg(
                         _(
-                            "!!! %s is missing (or PORTAGE_BINHOST is unset), but use is requested.\n"
-                        )
-                        % (config_path,),
+                            f"!!! {config_path} is missing (or PORTAGE_BINHOST is unset), "
+                            "but use is requested.\n"
+                        ),
                         noiselevel=-1,
                     )
                 else:
