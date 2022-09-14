@@ -16,6 +16,15 @@ def main(
     gpkg_file, keep_current_signature=False, allow_unsigned=False, skip_signed=False
 ):
     eout = portage.output.EOutput()
+
+    if not portage.settings.get("BINPKG_GPG_SIGNING_GPG_HOME"):
+        eout.eerror("BINPKG_GPG_SIGNING_GPG_HOME is not set")
+        exit(1)
+
+    if not portage.settings.get("BINPKG_GPG_SIGNING_KEY"):
+        eout.eerror("BINPKG_GPG_SIGNING_KEY is not set")
+        exit(1)
+
     try:
         package = gpkg.gpkg(settings=portage.settings, gpkg_file=gpkg_file)
         if allow_unsigned:

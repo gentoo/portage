@@ -614,6 +614,22 @@ def action_build(
                         in trees[eroot]["root_config"].settings.features
                     )
                 ):
+                    for binpkg_gpg_config in (
+                        "BINPKG_GPG_SIGNING_GPG_HOME",
+                        "BINPKG_GPG_SIGNING_KEY",
+                    ):
+                        if not trees[eroot]["root_config"].settings.get(
+                            binpkg_gpg_config
+                        ):
+                            writemsg_level(
+                                colorize(
+                                    "BAD", f"!!! {binpkg_gpg_config} is not set\n"
+                                ),
+                                level=logging.ERROR,
+                                noiselevel=-1,
+                            )
+                            return 1
+
                     portage.writemsg_stdout(">>> Unlocking GPG... ")
                     sys.stdout.flush()
                     gpg = GPG(trees[eroot]["root_config"].settings)
