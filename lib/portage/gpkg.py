@@ -33,7 +33,7 @@ from portage.exception import (
     MissingSignature,
     InvalidSignature,
 )
-from portage.output import colorize
+from portage.output import colorize, EOutput
 from portage.util._urlopen import urlopen
 from portage.util import writemsg
 from portage.util import shlex_split, varexpand
@@ -1271,6 +1271,7 @@ class gpkg:
         Will compress the given files to image with root,
         ignoring all other files.
         """
+        eout = EOutput()
 
         protect_file = io.BytesIO(
             b"# empty file because --include-config=n when `quickpkg` was used\n"
@@ -1284,7 +1285,7 @@ class gpkg:
 
         # Get pre image info
         container_tar_format, image_tar_format = self._get_tar_format_from_stats(
-            *self._check_pre_quickpkg_files(contents, root_dir)
+            *self._check_pre_quickpkg_files(contents, root_dir, ignore_missing=True)
         )
 
         # Long CPV
@@ -1341,6 +1342,7 @@ class gpkg:
                     except OSError as e:
                         if e.errno != errno.ENOENT:
                             raise
+                        eout.ewarn(f'Missing file from local system: "{path}"')
                         del e
                         continue
                     contents_type = contents[path][0]
@@ -1984,7 +1986,9 @@ class gpkg:
             image_total_size,
         )
 
-    def _check_pre_quickpkg_files(self, contents, root, image_prefix="image"):
+    def _check_pre_quickpkg_files(
+        self, contents, root, image_prefix="image", ignore_missing=False
+    ):
         """
         Check the pre quickpkg files size and path, return the longest
         path length, largest single file size, and total files size.
@@ -2033,6 +2037,12 @@ class gpkg:
                 - root_dir_length
                 + image_prefix_length
             )
+
+            if not os.path.exists(path):
+                if ignore_missing:
+                    continue
+                else:
+                    raise FileNotFound(path)
 
             file_stat = os.lstat(path)
 
