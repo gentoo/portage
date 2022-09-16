@@ -807,7 +807,7 @@ class binarytree:
             except PortageException:
                 pass
 
-    def populate(self, getbinpkgs=False, getbinpkg_refresh=True, add_repos=()):
+    def populate(self, getbinpkgs=False, getbinpkg_refresh=False, add_repos=()):
         """
         Populates the binarytree with package metadata.
 

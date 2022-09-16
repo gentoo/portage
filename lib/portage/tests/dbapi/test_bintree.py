@@ -136,3 +136,20 @@ class BinarytreeTestCase(TestCase):
             ),
             noiselevel=-1,
         )
+
+    @patch("portage.dbapi.bintree.BinRepoConfigLoader")
+    @patch("portage.dbapi.bintree.binarytree._populate_remote")
+    @patch("portage.dbapi.bintree.binarytree._populate_local")
+    def test_default_getbinpkg_refresh_in_populate(
+        self, ppopulate_local, ppopulate_remote, pBinRepoConfigLoader
+    ):
+        """Bug #864259
+        This test fixes the bug. It requires that
+        ``_emerge.actions.run_action`` calls ``binarytree.populate``
+        explicitly with ``getbinpkg_refresh=True``
+        """
+        settings = MagicMock()
+        settings.__getitem__.return_value = "/some/path"
+        bt = binarytree(pkgdir="/tmp", settings=settings)
+        bt.populate(getbinpkgs=True)
+        ppopulate_remote.assert_called_once_with(getbinpkg_refresh=False)
