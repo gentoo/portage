@@ -22,14 +22,11 @@ class RunActionTestCase(TestCase):
     If the implementation changes, the mocks can be adjusted to play its
     role.
     """
+
     @patch("_emerge.actions.profile_check")
     @patch("_emerge.actions.adjust_configs")
     @patch("_emerge.actions.apply_priorities")
-    def test_binary_trees_populate_called(
-            self,
-            papply,
-            padjust,
-            profile_ckeck):
+    def test_binary_trees_populate_called(self, papply, padjust, profile_ckeck):
         """Ensure that ``binarytree.populate`` API is correctly used.
         The point of this test is to ensure that the ``populate`` method
         is called as expected: since it is the first time that ``populate``
@@ -37,7 +34,7 @@ class RunActionTestCase(TestCase):
         """
         config = MagicMock()
         config.action = None
-        config.opts = {"--quiet": True, "--usepkg": True}
+        config.opts = {"--quiet": True, "--usepkg": True, "--package-moves": "n"}
         bt = MagicMock()
         tree = {"bintree": bt}
         trees = {"first": tree}
@@ -45,6 +42,4 @@ class RunActionTestCase(TestCase):
 
         run_action(config)
 
-        bt.populate.assert_called_once_with(
-            getbinpkgs=False, getbinpkg_refresh=True
-        )
+        bt.populate.assert_called_once_with(getbinpkgs=False, getbinpkg_refresh=True)
