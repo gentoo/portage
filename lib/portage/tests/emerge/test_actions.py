@@ -30,6 +30,11 @@ class RunActionTestCase(TestCase):
             papply,
             padjust,
             profile_ckeck):
+        """Ensure that ``binarytree.populate`` API is correctly used.
+        The point of this test is to ensure that the ``populate`` method
+        is called as expected: since it is the first time that ``populate``
+        is called, it must use ``getbinpkg_refresh=True``.
+        """
         config = MagicMock()
         config.action = None
         config.opts = {"--quiet": True, "--usepkg": True}
