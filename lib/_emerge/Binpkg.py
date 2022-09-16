@@ -50,6 +50,7 @@ class Binpkg(CompositeTask):
         "_pkg_path",
         "_tree",
         "_verify",
+        "_pkg_allocated_path",
     )
 
     def _writemsg_level(self, msg, level=0, noiselevel=0):
@@ -68,6 +69,7 @@ class Binpkg(CompositeTask):
         self._tree = "bintree"
         self._bintree = self.pkg.root_config.trees[self._tree]
         self._verify = not self.opts.pretend
+        self._pkg_allocated_path = None
 
         # Use realpath like doebuild_environment() does, since we assert
         # that this path is literally identical to PORTAGE_BUILDDIR.
@@ -206,6 +208,7 @@ class Binpkg(CompositeTask):
         # --getbinpkg is enabled.
         if fetcher is not None:
             self._fetched_pkg = fetcher.pkg_path
+            self._pkg_allocated_path = fetcher.pkg_allocated_path
             if self._default_exit(fetcher) != os.EX_OK:
                 self._async_unlock_builddir(returncode=self.returncode)
                 return
@@ -246,7 +249,11 @@ class Binpkg(CompositeTask):
 
         if self._fetched_pkg:
             pkg_path = self._bintree.getname(
-                self._bintree.inject(pkg.cpv, current_pkg_path=self._fetched_pkg),
+                self._bintree.inject(
+                    pkg.cpv,
+                    current_pkg_path=self._fetched_pkg,
+                    allocated_pkg_path=self._pkg_allocated_path,
+                ),
                 allocate_new=False,
             )
         else:
