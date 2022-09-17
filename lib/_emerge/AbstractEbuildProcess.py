@@ -18,7 +18,6 @@ from portage.package.ebuild._ipc.ExitCommand import ExitCommand
 from portage.package.ebuild._ipc.QueryCommand import QueryCommand
 from portage import os
 from portage.util.futures import asyncio
-from portage.util._pty import _create_pty_or_pipe
 from portage.util import apply_secpass_permissions
 
 portage.proxy.lazyimport.lazyimport(
@@ -335,13 +334,6 @@ class AbstractEbuildProcess(SpawnProcess):
         ) % (phase, self.pid)
 
         self._eerror(textwrap.wrap(msg, 72))
-
-    def _pipe(self, fd_pipes):
-        stdout_pipe = None
-        if not self.background:
-            stdout_pipe = fd_pipes.get(1)
-        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
-        return (master_fd, slave_fd)
 
     def _can_log(self, slave_fd):
         # With sesandbox, logging works through a pty but not through a

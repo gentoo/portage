@@ -16,6 +16,7 @@ from portage.output import EOutput
 from portage.util import writemsg_level
 from portage.util._async.BuildLogger import BuildLogger
 from portage.util._async.PipeLogger import PipeLogger
+from portage.util._pty import _create_pty_or_pipe
 from portage.util.futures import asyncio
 
 
@@ -217,7 +218,11 @@ class SpawnProcess(SubProcess):
         @type fd_pipes: dict
         @param fd_pipes: pipes from which to copy terminal size if desired.
         """
-        return os.pipe()
+        stdout_pipe = None
+        if not self.background:
+            stdout_pipe = fd_pipes.get(1)
+        got_pty, master_fd, slave_fd = _create_pty_or_pipe(copy_term_size=stdout_pipe)
+        return (master_fd, slave_fd)
 
     def _spawn(self, args, **kwargs):
         spawn_func = portage.process.spawn
