@@ -1,9 +1,9 @@
-# Copyright 2011-2017 Gentoo Foundation
+# Copyright 2011-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 from portage.tests import TestCase
 
-from portage.checksum import checksum_str
+from portage.checksum import checksum_str, _apply_hash_filter
 from portage.exception import DigestException
 
 
@@ -146,3 +146,26 @@ class ChecksumTestCase(TestCase):
             )
         except DigestException:
             self.skipTest("STREEBOG512 implementation not available")
+
+
+class ApplyHashFilterTestCase(TestCase):
+    def test_apply_hash_filter(self):
+        indict = {"MD5": "", "SHA1": "", "SHA256": "", "size": ""}
+
+        self.assertEqual(
+            sorted(_apply_hash_filter(indict, lambda x: True)),
+            ["MD5", "SHA1", "SHA256", "size"],
+        )
+        self.assertEqual(
+            sorted(_apply_hash_filter(indict, lambda x: x == "MD5")), ["MD5", "size"]
+        )
+        self.assertEqual(
+            sorted(_apply_hash_filter(indict, lambda x: x != "MD5")),
+            ["SHA1", "SHA256", "size"],
+        )
+        self.assertEqual(
+            sorted(_apply_hash_filter(indict, lambda x: x == "SHA256")),
+            ["SHA256", "size"],
+        )
+        # this should return size + one of the hashes
+        self.assertEqual(len(list(_apply_hash_filter(indict, lambda x: False))), 2)
