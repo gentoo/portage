@@ -442,10 +442,10 @@ def _apply_hash_filter(digests, hash_filter):
     """
 
     verifiable_hash_types = set(digests).intersection(hashfunc_keys)
+    verifiable_hash_types.discard("size")
     modified = False
     if len(verifiable_hash_types) > 1:
-        verifiable_hash_types.discard("size")
-        for k in verifiable_hash_types:
+        for k in list(verifiable_hash_types):
             if not hash_filter(k):
                 modified = True
                 verifiable_hash_types.remove(k)
@@ -453,7 +453,11 @@ def _apply_hash_filter(digests, hash_filter):
                     break
 
     if modified:
-        digests = {k: v for k, v in digests.items() if k in verifiable_hash_types}
+        digests = {
+            k: v
+            for k, v in digests.items()
+            if k == "size" or k in verifiable_hash_types
+        }
 
     return digests
 
