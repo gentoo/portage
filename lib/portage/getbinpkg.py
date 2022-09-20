@@ -529,7 +529,7 @@ def file_get(
     from portage.util import varexpand
     from portage.process import spawn
 
-    myfetch = (varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd))
+    myfetch = [varexpand(x, mydict=variables) for x in portage.util.shlex_split(fcmd)]
     fd_pipes = {
         0: portage._get_stdin().fileno(),
         1: sys.__stdout__.fileno(),
