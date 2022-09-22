@@ -21,12 +21,13 @@ with Python itself, must be optionally enabled by runtime detection.
 Tabs
 ----
 
-We comply with PEP 8 so we now use spaces.
+We comply with PEP 8 so we now use spaces in Python source files.
+We use tabs in Bash files for consistency with ebuild code.
 
 Line-Wrapping
 -------------
 
-Please use Black for formatting.
+Please use Black for formatting of Python source files.
 
 Lines should typically not be longer than 80 characters; if they are, an
 attempt should be made to wrap them.  Move code to the line below and
