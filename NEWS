@@ -1,3 +1,21 @@
+portage-3.0.37 (2022-09-23)
+--------------
+
+Bug fixes:
+* _emerge: SpawnProcess: Avoid sandbox violations with PROPERTIES="interactive"
+  when accessing /dev/tty* (bug #870310).
+
+* _emerge: Binpkg: Don't create empty stray binpkgs (bug #870283).
+
+* bin: gpkg-sign: Check gpg configuration before using (bug #869470).
+
+* portage: gpkg: Allow missing files (needed for when ebuilds touch
+  ${EROOT} in pkg_*) when creating binpkgs with quickpkg (bug #870229).
+
+* portage: getbinpkg: Fix --getbinpkgonly command list with e.g. rsync (bug #866197).
+
+* portage: checksum: Fix PORTAGE_CHECKSUM_FILTER. Regression from 3.0.31.
+
 portage-3.0.36 (2022-09-09)
 --------------
 
