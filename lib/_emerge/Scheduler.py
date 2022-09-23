@@ -975,7 +975,11 @@ class Scheduler(PollScheduler):
                         continue
 
                     if fetched:
-                        bintree.inject(x.cpv, current_pkg_path=fetched)
+                        bintree.inject(
+                            x.cpv,
+                            current_pkg_path=fetched,
+                            allocated_pkg_path=fetcher.pkg_allocated_path,
+                        )
 
                     infloc = os.path.join(build_dir_path, "build-info")
                     ensure_dirs(infloc)
