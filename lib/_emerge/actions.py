@@ -3512,7 +3512,7 @@ def run_action(emerge_config):
                 mytrees["bintree"].populate(
                     getbinpkgs="--getbinpkg" in emerge_config.opts,
                     getbinpkg_refresh=True,
-                    **kwargs
+                    **kwargs,
                 )
             except ParseError as e:
                 writemsg(
