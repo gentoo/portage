@@ -544,7 +544,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'xz'."
 				fi
 				if ___eapi_unpack_supports_xz; then
-					__unpack_tar "xz -d"
+					__unpack_tar "xz -T$(___makeopts_jobs) -d"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
@@ -557,7 +557,7 @@ unpack() {
 						"with EAPI '${EAPI}'. Instead use 'txz'."
 				fi
 				if ___eapi_unpack_supports_txz; then
-					tar xof "${srcdir}${x}" || die "${myfail}"
+					XZ_OPT="-T$(___makeopts_jobs)" tar xof "${srcdir}${x}" || die "${myfail}"
 				else
 					__vecho "unpack ${x}: file format not recognized. Ignoring."
 				fi
