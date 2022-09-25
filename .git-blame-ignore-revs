@@ -8,3 +8,5 @@ baf79da44e543cc0fd12f64a2c99b49b66727f39
 9fe091668c8a1d988c02c849ac1bece6eb764d0b
 # bin: style tweaks
 cb8eda531dad92bec9293c89f93db9b581245fd3
+# chore(bintree): removed useless ``if True:``
+a83507be7ce04d3ac421f9cbe8b63816809b0f4e
