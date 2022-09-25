@@ -1,3 +1,16 @@
+portage-3.0.38 (UNRELEASED)
+--------------
+
+Features:
+* unpack now calls xz(1) with -T N where N is the number of jobs from ${MAKEOPTS}.
+  This allows decompression in parallel with new enough xz (>= xz-utils 5.3.3 alpha)
+  and where the source file was compressed using the parallel xz compressor
+  (which becomes the default with newer xz too).
+
+Bug fixes:
+* emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
+  filename and don't allocate a new one (bug #872392).
+
 portage-3.0.37 (2022-09-23)
 --------------
 
