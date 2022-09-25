@@ -8,9 +8,11 @@ import portage
 
 portage._internal_caller = True
 from portage import os
+from portage.output import EOutput
 
 
 def command_compose(args):
+    eout = EOutput()
 
     usage = "usage: compose <package_cpv> <binpkg_path> <metadata_dir> <image_dir>\n"
 
@@ -31,9 +33,13 @@ def command_compose(args):
         sys.stderr.write("Argument 4 is not a directory: '%s'\n" % image_dir)
         return 1
 
-    gpkg_file = portage.gpkg.gpkg(portage.settings, basename, binpkg_path)
-    metadata = gpkg_file._generate_metadata_from_dir(metadata_dir)
-    gpkg_file.compress(image_dir, metadata)
+    try:
+        gpkg_file = portage.gpkg.gpkg(portage.settings, basename, binpkg_path)
+        metadata = gpkg_file._generate_metadata_from_dir(metadata_dir)
+        gpkg_file.compress(image_dir, metadata)
+    except portage.exception.CompressorOperationFailed:
+        eout.eerror("Compressor Operation Failed")
+        exit(1)
     return os.EX_OK
 
 
