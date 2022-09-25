@@ -108,8 +108,13 @@ __bashpid() {
 }
 
 __helpers_die() {
-	if ___eapi_helpers_can_die && [[ ${PORTAGE_NONFATAL} != 1 ]]; then
-		die "$@"
+	if ___eapi_helpers_can_die; then
+		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
+			echo -e "$@" >&2
+			: > "${T}"/._portage_nonfatal_died
+		else
+			die "$@"
+		fi
 	else
 		echo -e "$@" >&2
 	fi
@@ -127,6 +132,7 @@ die() {
 		shift
 		if [[ ${PORTAGE_NONFATAL} == 1 ]]; then
 			[[ $# -gt 0 ]] && eerror "$*"
+			: > "${T}"/._portage_nonfatal_died
 			return 1
 		fi
 	fi
