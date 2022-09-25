@@ -214,7 +214,11 @@ class tar_stream_writer:
 
         if self.proc:
             # Write to external program
-            self.proc.stdin.write(data)
+            try:
+                self.proc.stdin.write(data)
+            except BrokenPipeError:
+                self.error = True
+                raise CompressorOperationFailed("PIPE broken")
         else:
             # Write to container
             self.container.fileobj.write(data)
@@ -232,7 +236,8 @@ class tar_stream_writer:
         if self.proc is not None:
             self.proc.stdin.close()
             if self.proc.wait() != os.EX_OK:
-                raise CompressorOperationFailed("compression failed")
+                if not self.error:
+                    raise CompressorOperationFailed("compression failed")
             if self.read_thread.is_alive():
                 self.read_thread.join()
 
