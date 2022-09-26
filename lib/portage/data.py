@@ -259,7 +259,7 @@ def _get_global(k):
         if env_key in os.environ:
             v = os.environ[env_key]
         elif hasattr(portage, "settings"):
-            v = portage.settings.get(env_key)
+            v = portage.settings.get(env_key, v)
         else:
             # The config class has equivalent code, but we also need to
             # do it here if _disable_legacy_globals() has been called.
