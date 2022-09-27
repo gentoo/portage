@@ -203,7 +203,7 @@ postrm
     from the filesystem by running the ``pkg_postrm`` function from the ebuild.
 
 config
-    Run package-specific actions that are need after the *emerge* process has
+    Run package-specific actions that are needed after the *emerge* process has
     completed by running the ``pkg_config`` function from the ebuild.  This
     usually means setting up configuration files or other similar setup tasks
     that the user may wish to do.
