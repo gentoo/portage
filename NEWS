@@ -7,11 +7,19 @@ Features:
   and where the source file was compressed using the parallel xz compressor
   (which becomes the default with newer xz too).
 
+* portage: sets: Parse INCLUDES/EXCLUDES in VariableSet which allows properly
+  checking for dependencies. Update @goland-rebuild accordingly which now
+  includes all packages depending on dev-lang/go (bug #827974, bug #865115)
+
 Bug fixes:
 * emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
   filename and don't allocate a new one (bug #872392).
 
 * dbapi: bintree: Avoid fetching 'Packages' multiple times (bug #864259).
+
+* binpkg: Handle failure of various BINPKG_COMPRESS_* commands (bug #871570).
+
+* data: Fix PORTAGE_USERNAME default (bug #873088).
 
 portage-3.0.37 (2022-09-23)
 --------------
