@@ -71,9 +71,9 @@ while [[ $# -gt 0 ]] ; do
 				# note: to save time, we need to do this only if there's
 				# at least one compressed file
 				case ${path} in
-					*.Z|*.gz|*.bz2|*.lzma|.lz4|*.xz|*.zst)
+					*.Z|*.gz|*.bz2|*.lzma|.lz|.lzo|.lz4|*.xz|*.zst)
 						vpath=${path%.*}
-						for comp in '' .Z .gz .bz2 .lzma .lz4 .xz .zst; do
+						for comp in '' .Z .gz .bz2 .lzma .lz .lzo .lz4 .xz .zst; do
 							if [[ ${vpath}${comp} != ${path} && \
 									-e ${vpath}${comp} ]]; then
 								collisions[${path}]=1
