@@ -32,6 +32,9 @@ Bug fixes:
 * bin: ecompress: zstd: Recognize .zst as a compressed file suffix for the purposes
   of the internal compressed file collision check.
 
+* bin: ecompress: lz4: Recognize .lz4 as a compressed file suffix for the purposes
+  of the internal compressed file collision check.
+
 * bin: ecompress: zstd: Set '-q --rm' in PORTAGE_COMPRESS_FLAGS to behave
   like other compressors.
 
