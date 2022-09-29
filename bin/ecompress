@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
@@ -128,6 +128,7 @@ if [[ ${PORTAGE_COMPRESS_FLAGS+set} != "set" ]] ; then
 		# See: https://bugs.gentoo.org/672916
 		# Setting '--rm' will remove the source files after a successful compression.
 		lz4)  PORTAGE_COMPRESS_FLAGS="-m --rm";;
+		xz)   PORTAGE_COMPRESS_FLAGS="-9 -T$(__makeopts_jobs)";;
 	esac
 fi
 

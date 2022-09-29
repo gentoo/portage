@@ -11,6 +11,11 @@ Features:
   checking for dependencies. Update @goland-rebuild accordingly which now
   includes all packages depending on dev-lang/go (bug #827974, bug #865115)
 
+* bin: ecompress: xz: Pass -9 to xz for compression level like we do for bzip2 & gzip.
+
+* bin: ecompress: xz: Pass -T N where N is the number of jobs from ${MAKEOPTS}
+  to xz for parallel compression.
+
 Bug fixes:
 * emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
   filename and don't allocate a new one (bug #872392).
