@@ -29,6 +29,9 @@ Bug fixes:
 
 * data: Fix PORTAGE_USERNAME default (bug #873088).
 
+* bin: ecompress: zstd: Recognize .zst as a compressed file suffix for the purposes
+  of the internal compressed file collision check.
+
 portage-3.0.37 (2022-09-23)
 --------------
 
