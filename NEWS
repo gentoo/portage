@@ -1,3 +1,10 @@
+portage-3.0.39 (UNRELEASED)
+--------------
+
+Features:
+* gpkg: Call xz and zstd with -T N where N is the number of jobs from ${MAKEOPTS}
+  for parallel compression (xz & zstd) and decompression (xz with newer versions).
+
 portage-3.0.38.1 (2022-10-04)
 --------------
 

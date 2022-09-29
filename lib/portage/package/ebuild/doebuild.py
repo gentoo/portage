@@ -111,7 +111,7 @@ from portage.util import (
     writemsg_stdout,
     write_atomic,
 )
-from portage.util.cpuinfo import get_cpu_count
+from portage.util.cpuinfo import get_cpu_count, makeopts_to_job_count
 from portage.util.lafilefixer import rewrite_lafile
 from portage.util.compression_probe import _compressors
 from portage.util.futures import asyncio
@@ -667,8 +667,12 @@ def doebuild_environment(
                 mysettings["PORTAGE_COMPRESSION_COMMAND"] = "cat"
         else:
             try:
+                compression_binary = compression["compress"].replace(
+                    "{JOBS}",
+                    str(makeopts_to_job_count(mysettings.get("MAKEOPTS", "1"))),
+                )
                 compression_binary = shlex_split(
-                    varexpand(compression["compress"], mydict=settings)
+                    varexpand(compression_binary, mydict=settings)
                 )[0]
             except IndexError as e:
                 writemsg(
@@ -683,9 +687,13 @@ def doebuild_environment(
                         % (binpkg_compression, missing_package)
                     )
                 else:
+                    compression_binary = compression["compress"].replace(
+                        "{JOBS}",
+                        str(makeopts_to_job_count(mysettings.get("MAKEOPTS", "1"))),
+                    )
                     cmd = [
                         varexpand(x, mydict=settings)
-                        for x in shlex_split(compression["compress"])
+                        for x in shlex_split(compression_binary)
                     ]
                     # Filter empty elements
                     cmd = [x for x in cmd if x != ""]

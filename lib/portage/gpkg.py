@@ -38,6 +38,7 @@ from portage.util._urlopen import urlopen
 from portage.util import writemsg
 from portage.util import shlex_split, varexpand
 from portage.util.compression_probe import _compressors
+from portage.util.cpuinfo import makeopts_to_job_count
 from portage.process import find_binary
 from portage.const import MANIFEST2_HASH_DEFAULTS, HASHING_BLOCKSIZE
 
@@ -1787,7 +1788,12 @@ class gpkg:
         if mode not in compressor:
             raise InvalidCompressionMethod("{}: {}".format(compression, mode))
 
-        cmd = shlex_split(varexpand(compressor[mode], mydict=self.settings))
+        cmd = compressor[mode]
+        cmd = cmd.replace(
+            "{JOBS}", str(makeopts_to_job_count(self.settings.get("MAKEOPTS", "1")))
+        )
+        cmd = shlex_split(varexpand(cmd, mydict=self.settings))
+
         # Filter empty elements that make Popen fail
         cmd = [x for x in cmd if x != ""]
 

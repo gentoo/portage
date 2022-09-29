@@ -1,7 +1,9 @@
 # Copyright 2015-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-__all__ = ["get_cpu_count"]
+import re
+
+__all__ = ["get_cpu_count", "makeopts_to_job_count"]
 
 # Before you set out to change this function, figure out what you're really
 # asking:
@@ -48,3 +50,21 @@ def get_cpu_count():
         return multiprocessing.cpu_count()
     except (ImportError, NotImplementedError):
         return None
+
+
+def makeopts_to_job_count(makeopts):
+    """
+    Parse the job count (-jN) from MAKEOPTS. Python version of
+    bin/isolated-functions.sh's ___makeopts_jobs().
+
+    @return: Number of jobs to run or number of CPUs if none set.
+    """
+    if not makeopts:
+        return get_cpu_count()
+
+    jobs = re.match(r".*(j|--jobs=\s)\s*([0-9]+)", makeopts)
+
+    if not jobs:
+        return get_cpu_count()
+
+    return jobs.groups()[1]

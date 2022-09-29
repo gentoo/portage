@@ -36,6 +36,7 @@ from portage.exception import (
     PermissionDenied,
 )
 from portage.util import ensure_dirs, shlex_split, varexpand, _xattr
+from portage.util.cpuinfo import makeopts_to_job_count
 
 xattr = _xattr.xattr
 from portage._sets import load_default_config, SETPREFIX
@@ -168,7 +169,12 @@ def quickpkg_atom(options, infos, arg, eout):
                         % (binpkg_compression, missing_package)
                     )
                     return 1
-                cmd = shlex_split(varexpand(compression["compress"], mydict=settings))
+
+                cmd = compression["compress"].replace(
+                    "{JOBS}",
+                    str(makeopts_to_job_count(settings.get("MAKEOPTS", "1"))),
+                )
+                cmd = shlex_split(varexpand(cmd, mydict=settings))
                 # Filter empty elements that make Popen fail
                 cmd = [x for x in cmd if x != ""]
                 with open(binpkg_tmpfile, "wb") as fobj:
