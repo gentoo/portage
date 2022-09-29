@@ -35,6 +35,8 @@ Bug fixes:
 * bin: ecompress: zstd: Set '-q --rm' in PORTAGE_COMPRESS_FLAGS to behave
   like other compressors.
 
+* portage: _global_updates: Fix update summary output.
+
 portage-3.0.37 (2022-09-23)
 --------------
 
