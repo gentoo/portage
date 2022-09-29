@@ -1778,7 +1778,7 @@ class gpkg:
 
     def _get_binary_cmd(self, compression, mode):
         """
-        get command list form portage and try match compressor
+        get command list from portage and try match compressor
         """
         if compression not in _compressors:
             raise InvalidCompressionMethod(compression)
