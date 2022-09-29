@@ -11,10 +11,13 @@ Features:
   checking for dependencies. Update @goland-rebuild accordingly which now
   includes all packages depending on dev-lang/go (bug #827974, bug #865115)
 
-* bin: ecompress: xz: Pass -9 to xz for compression level like we do for bzip2 & gzip.
+* gpkg: Call xz and zstd with -T N where N is the number of jobs from ${MAKEOPTS}
+  for parallel compression (xz & zstd) and decompression (xz with newer versions).
 
 * bin: ecompress: xz, zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
   to xz, zstd for parallel compression.
+
+* bin: ecompress: xz: Pass -9 to xz for compression level like we do for bzip2 & gzip.
 
 Bug fixes:
 * emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
@@ -29,7 +32,7 @@ Bug fixes:
 * bin: isolated-functions.sh: return number of CPUs in ___makeopts_jobs as default
   instead of 1 to match Portage's behavior on the Python side.
 
-* bin: ecompress: Recognize .lz, .lzo, .lz4,, and .zst as compressed file
+* bin: ecompress: Recognize .lz, .lzo, .lz4, and .zst as compressed file
   suffixes for the purposes of the internal compressed file collision check.
 
 * bin: ecompress: zstd: Set '-q --rm' in PORTAGE_COMPRESS_FLAGS to behave
