@@ -105,7 +105,7 @@ def _do_global_updates(trees, prev_mtimes, quiet=False, if_mtime_changed=True):
                                     f"{bold('#')}='/var/db update'",
                                     f"{bold('@')}='/var/db move'\n",
                                     f"{bold('s')}='/var/db SLOT move'",
-                                    f"{bold('%')}='binary move'"
+                                    f"{bold('%')}='binary move'",
                                     f"{bold('S')}='binary SLOT move'\n",
                                     f"{bold('p')}='update /etc/portage/package.*'\n",
                                 )
