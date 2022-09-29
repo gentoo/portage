@@ -168,14 +168,31 @@ class VariableSet(EverythingSet):
             return False
         (values,) = self._metadatadb.aux_get(ebuild, [self._variable])
         values = values.split()
+
+        if "DEPEND" in self._variable:
+            include_atoms = []
+            for include in self._includes:
+                include_atoms.append(Atom(include))
+
+            for x in use_reduce(values, token_class=Atom):
+                if not isinstance(x, Atom):
+                    continue
+
+                for include_atom in include_atoms:
+                    if include_atom.match(x):
+                        return True
+
+            return False
+
         if self._includes and not self._includes.intersection(values):
             return False
+
         if self._excludes and self._excludes.intersection(values):
             return False
+
         return True
 
     def singleBuilder(cls, options, settings, trees):
-
         variable = options.get("variable")
         if variable is None:
             raise SetConfigError(_("missing required attribute: 'variable'"))

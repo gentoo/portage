@@ -474,20 +474,23 @@ def count_unread_news(portdb, vardb, repos=None, update=True):
     return news_counts
 
 
-def display_news_notifications(news_counts):
+def display_news_notifications(news_counts: dict):
     """
     Display a notification for unread news items, using a dictionary mapping
     repos to integer counts, like that returned from count_unread_news().
+
+    @param news_count: mapping of repos to integer counts of unread news items
+    @type news_count: dict
     """
-    newsReaderDisplay = False
+    news_reader_display = False
     for repo, count in news_counts.items():
         if count > 0:
-            if not newsReaderDisplay:
-                newsReaderDisplay = True
+            if not news_reader_display:
+                news_reader_display = True
                 print()
             print(colorize("WARN", " * IMPORTANT:"), end=" ")
             print(f"{count} news items need reading for repository '{repo}'.")
 
-    if newsReaderDisplay:
+    if news_reader_display:
         print(colorize("WARN", " *"), end=" ")
         print(f"Use {colorize('GOOD', 'eselect news read')} to view new items.\n")
