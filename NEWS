@@ -11,9 +11,6 @@ Features:
   checking for dependencies. Update @goland-rebuild accordingly which now
   includes all packages depending on dev-lang/go (bug #827974, bug #865115)
 
-* gpkg: Call xz and zstd with -T N where N is the number of jobs from ${MAKEOPTS}
-  for parallel compression (xz & zstd) and decompression (xz with newer versions).
-
 * bin: ecompress: xz, zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
   to xz, zstd for parallel compression.
 
