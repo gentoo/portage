@@ -13,11 +13,8 @@ Features:
 
 * bin: ecompress: xz: Pass -9 to xz for compression level like we do for bzip2 & gzip.
 
-* bin: ecompress: xz: Pass -T N where N is the number of jobs from ${MAKEOPTS}
-  to xz for parallel compression.
-
-* bin: ecompress: zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
-  to zstd for parallel compression.
+* bin: ecompress: xz, zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
+  to xz, zstd for parallel compression.
 
 Bug fixes:
 * emerge: Scheduler: Fix filenames for binpkgs in some cases - reuse existing
@@ -32,14 +29,8 @@ Bug fixes:
 * bin: isolated-functions.sh: return number of CPUs in ___makeopts_jobs as default
   instead of 1 to match Portage's behavior on the Python side.
 
-* bin: ecompress: zstd: Recognize .zst as a compressed file suffix for the purposes
-  of the internal compressed file collision check.
-
-* bin: ecompress: lz4: Recognize .lz4 as a compressed file suffix for the purposes
-  of the internal compressed file collision check.
-
-* bin: compress: Recognize .lzo and .lz for the internal compressed file
-  collision check too.
+* bin: ecompress: Recognize .lz, .lzo, .lz4,, and .zst as compressed file
+  suffixes for the purposes of the internal compressed file collision check.
 
 * bin: ecompress: zstd: Set '-q --rm' in PORTAGE_COMPRESS_FLAGS to behave
   like other compressors.
