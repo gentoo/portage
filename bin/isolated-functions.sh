@@ -475,7 +475,14 @@ ___makeopts_jobs() {
 	# since POSIX doesn't specify a non-greedy match (i.e. ".*?").
 	local jobs=$(echo " ${MAKEOPTS} " | sed -r -n \
 		-e 's:.*[[:space:]](-[a-z]*j|--jobs[=[:space:]])[[:space:]]*([0-9]+).*:\2:p' || die)
-	echo ${jobs:-1}
+
+	# Fallbacks for if MAKEOPTS parsing failed
+	[[ -n ${jobs} ]] || \
+		jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null) || \
+		jobs=$(sysctl -n hw.ncpu 2>/dev/null) || \
+		jobs=1
+
+	echo ${jobs}
 }
 
 # Run ${XARGS} in parallel for detected number of CPUs, if supported.
