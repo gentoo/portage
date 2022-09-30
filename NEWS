@@ -8,8 +8,10 @@ Features:
   (which becomes the default with newer xz too).
 
 * portage: sets: Parse INCLUDES/EXCLUDES in VariableSet which allows properly
-  checking for dependencies. Update @goland-rebuild accordingly which now
+  checking for dependencies. Update @golang-rebuild accordingly which now
   includes all packages depending on dev-lang/go (bug #827974, bug #865115)
+
+* cnf: Provide a @rust-rebuild set, similar to @golang-rebuild.
 
 * bin: ecompress: xz, zstd: Pass -T N where N is the number of jobs from ${MAKEOPTS}
   to xz, zstd for parallel compression.
