@@ -354,21 +354,27 @@ def load_default_config(settings, trees):
     vcs_dirs = [_unicode_encode(x, encoding=_encodings["fs"]) for x in VCS_DIRS]
 
     def _getfiles():
-        for path, dirs, files in os.walk(os.path.join(global_config_path, "sets")):
-            for d in dirs:
-                if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
-                    dirs.remove(d)
-            for f in files:
-                if not f.startswith(b".") and not f.endswith(b"~"):
-                    yield os.path.join(path, f)
+        sets_config_paths = [
+            os.path.join(global_config_path, "sets"),
+            *(
+                os.path.join(repo.location, "sets.conf")
+                for repo in trees["porttree"].dbapi.repositories
+            ),
+            os.path.join(settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"),
+        ]
 
-        dbapi = trees["porttree"].dbapi
-        for repo in dbapi.getRepositories():
-            path = dbapi.getRepositoryPath(repo)
-            yield os.path.join(path, "sets.conf")
-
-        yield os.path.join(
-            settings["PORTAGE_CONFIGROOT"], USER_CONFIG_PATH, "sets.conf"
-        )
+        for sets_config_path in sets_config_paths:
+            if os.path.isdir(sets_config_path):
+                for path, dirs, files in os.walk(sets_config_path):
+                    dirs.sort()
+                    files.sort()
+                    for d in dirs:
+                        if d in vcs_dirs or d.startswith(b".") or d.endswith(b"~"):
+                            dirs.remove(d)
+                    for f in files:
+                        if not f.startswith(b".") and not f.endswith(b"~"):
+                            yield os.path.join(path, f)
+            elif os.path.isfile(sets_config_path):
+                yield sets_config_path
 
     return SetConfig(_getfiles(), settings, trees)
