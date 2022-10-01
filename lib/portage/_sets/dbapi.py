@@ -167,7 +167,7 @@ class VariableSet(EverythingSet):
         if not ebuild:
             return False
         (values,) = self._metadatadb.aux_get(ebuild, [self._variable])
-        values = values.split()
+        values_list = values.split()
 
         if "DEPEND" in self._variable:
             include_atoms = []
@@ -184,10 +184,10 @@ class VariableSet(EverythingSet):
 
             return False
 
-        if self._includes and not self._includes.intersection(values):
+        if self._includes and not self._includes.intersection(values_list):
             return False
 
-        if self._excludes and self._excludes.intersection(values):
+        if self._excludes and self._excludes.intersection(values_list):
             return False
 
         return True
