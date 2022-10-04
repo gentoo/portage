@@ -1,3 +1,9 @@
+portage-3.0.38.1 (2022-10-04)
+--------------
+
+Bug fixes:
+* ecompress: Fix typo in ___makeopts_jobs (bug #874597).
+
 portage-3.0.38 (2022-10-01)
 --------------
 
