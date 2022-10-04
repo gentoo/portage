@@ -1,10 +1,11 @@
-.TH XPAK 5 "Oct 2011" "Portage VERSION" "Portage"
+.TH XPAK 5 "Oct 2022" "Portage VERSION" "Portage"
 .SH NAME
 xpak \- The XPAK Data Format used with Portage binary packages
 .SH DESCRIPTION
-Every Gentoo binary package has a xpak attached to it which contains build
-time information like the USE flags it was built with, the ebuild it was
-built from, the environmental variables, CFLAGS, CXXFLAGS, etc...
+Gentoo binary packages built in the \fIxpak\fR format have an xpak attached to
+it which contains build time information like the USE flags it was built with,
+the ebuild it was built from, the environmental variables, CFLAGS, CXXFLAGS, etc.
+Note that the \fIgpkg\fR format is different and described in GLEP 78.
 .SH NOTES
 .SS Data Types
 The following conventions cover all occurrences in this documentation
