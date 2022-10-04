@@ -4,8 +4,8 @@ emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
 .TP
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIfile\fR |
-\fI@set\fR | \fIatom\fR] ...
+[\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2 file\fR | \fIgpkg file\fR |
+\fIfile\fR | \fI@set\fR | \fIatom\fR] ...
 .TP
 .BR emerge
 \fB\-\-sync\fR [\fIrepo\fR | \fIalias\fR] ...
@@ -30,8 +30,8 @@ distribution.
 .SH "EBUILDS, TBZ2S, SETS AND ATOMS"
 \fBemerge\fR primarily installs packages.  You can specify
 packages to install in five possible ways: an \fIatom\fR,
-a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, or
-a \fItbz2file\fR.
+a \fIset\fR, an installed \fIfile\fR, an \fIebuild\fR, a
+a \fItbz2\fR file, or a \fIgpkg\fR file.
 .LP
 .TP
 .BR ebuild
@@ -47,10 +47,16 @@ The \fIebuild\fR may also be an actual filename, such as
 \fBWARNING:\fR The implementation of \fBemerge /path/to/ebuild\fR is broken and
 so this syntax shouldn't be used.
 .TP
-.BR tbz2file
-A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
+.BR "tbz2 file"
+A \fItbz2\fR file must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg
 [category/]<package>\fR or \fBquickpkg [category/]<package>\fR.
+.TP
+.BR "gpkg file"
+A \fIgpkg\fR file must be a valid .gpkg created with \fBebuild
+<package>\-<version>.ebuild package\fR or \fBemerge \-\-buildpkg
+[category/]<package>\fR or \fBquickpkg [category/]<package>\fR
+with \fBBINPKG_FORMAT="gpkg"\fR.
 .TP
 .BR file
 A \fIfile\fR must be a file or directory that has been installed by one or
@@ -99,9 +105,9 @@ specific \fBSLOT\fR by appending a colon and a \fBSLOT\fR. Example:
 If no action is specified, the action is to merge in the specified
 packages, satisfying any dependencies that they may have.  The
 arguments can be \fIatoms\fR, \fIsets\fR, installed \fIfiles\fR,
-\fIebuilds\fR, or \fItbz2s\fR.
+\fIebuilds\fR, \fItbz2s\fR, or \fIgpkgs\fR.
 \fBNote that you need to use the \-\-usepkg
-option if you want to install a tbz2\fR.  The packages are added
+option if you want to install a tbz2 or a gpkg.\fR  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.
 .TP
@@ -457,10 +463,10 @@ naturally oppose eachother.
 Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,
-emerge tbz2s everywhere) as well as disaster recovery. The package
+emerge tbz2s or gpkgs everywhere) as well as disaster recovery. The package
 will be created in the \fBPKGDIR\fR directory (see \fBmake.conf\fR(5)).
 An alternative for already\-merged
-packages is to use \fBquickpkg\fR(1) which creates a tbz2 from the
+packages is to use \fBquickpkg\fR(1) which creates a tbz2 or gpkg from the
 live filesystem.
 .TP
 .BR \-\-buildpkg\-exclude " ATOMS"
