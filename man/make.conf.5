@@ -112,6 +112,10 @@ ACCEPT_RESTRICT="*"
 ACCEPT_RESTRICT="* -bindist"
 .fi
 .TP
+.B BINPKG_FORMAT
+This variable sets the format used for tar binary packages. Possible
+values are \fIxpak\fI or \fIgpkg\fI.
+.TP
 \fBBINPKG_COMPRESS\fR = \fI"compression"\fR
 This variable is used to determine the compression used for \fIbinary
 packages\fR. Supported settings and compression algorithms are: bzip2, gzip,
@@ -928,7 +932,7 @@ Defines if color should be disabled by default.
 Defaults to false.
 .TP
 \fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be
+Defines the location where created .tbz2 or .gpkg binary packages will be
 stored when the \fBemerge\fR(1) \fB\-\-buildpkg\fR option is enabled.
 By default, a given package is stored in a subdirectory corresponding
 to its category. However, for backward compatibility with the layout
@@ -947,7 +951,7 @@ See \fIPORTAGE_LOGDIR_CLEAN\fR below. Deprecated.
 \fBPORTAGE_BINHOST\fR = \fI[space delimited URI list]\fR
 This is a list of hosts from which portage will grab prebuilt\-binary packages.
 Each entry in the list must specify the full address of a directory
-serving tbz2's for your system (this directory must contain a 'Packages' index
+serving tbz2/gpkgs for your system (this directory must contain a 'Packages' index
 file). This is only used when running with
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1)
 for more information. The \fBPORTAGE_BINHOST\fR variable is deprecated in
@@ -965,7 +969,8 @@ setting as the base URI.
 .TP
 .B PORTAGE_BINPKG_FORMAT
 This variable sets default format used for binary packages. Possible values
-are tar and rpm or both.
+are tar and rpm or both. It is very uncommon to set this and is likely
+not what you want. You probably want \fBBINPKG_FORMAT\fR instead.
 .TP
 .B PORTAGE_BINPKG_TAR_OPTS
 This variable contains options to be passed to the tar command for creation
