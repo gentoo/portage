@@ -464,21 +464,21 @@ class Manifest:
 
     def addFile(self, ftype, fname, hashdict=None, ignoreMissing=False):
         """Add entry to Manifest optionally using hashdict to avoid recalculation of hashes"""
-        if ftype == "AUX":
-            if not fname.startswith("files/"):
-                fname = os.path.join("files", fname)
-            if fname.startswith("files"):
-                fname = fname[6:]
+        if ftype == "AUX" and not fname.startswith("files/"):
+            fname = os.path.join("files", fname)
         if not os.path.exists(f"{self.pkgdir}{fname}") and not ignoreMissing:
             raise FileNotFound(fname)
         if ftype not in MANIFEST2_IDENTIFIERS:
             raise InvalidDataType(ftype)
+
+        if fname.startswith("files"):
+            fname = fname[6:]
         self.fhashdict[ftype][fname] = {}
         if hashdict is not None:
             self.fhashdict[ftype][fname].update(hashdict)
         if self.required_hashes.difference(set(self.fhashdict[ftype][fname])):
-            self.updateFileHashes(
-                ftype, fname, checkExisting=False, ignoreMissing=ignoreMissing
+            self.updateAllFileHashes(
+                ftype, [fname], checkExisting=False, ignoreMissing=ignoreMissing
             )
 
     def removeFile(self, ftype, fname):
@@ -775,7 +775,7 @@ class Manifest:
 
     def updateHashesGuessType(self, fname, *args, **kwargs):
         """Regenerate hashes for the given file (guesses the type and then
-        calls updateFileHashes)."""
+        calls updateAllFileHashes)."""
         mytype = self.guessType(fname)
         if mytype is None:
             return
