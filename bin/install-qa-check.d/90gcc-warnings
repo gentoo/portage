@@ -1,5 +1,6 @@
 # Check for important gcc warnings
 # TODO: adapt for clang?
+# TODO: add -Wformat-security
 
 gcc_warn_check() {
 	local f
