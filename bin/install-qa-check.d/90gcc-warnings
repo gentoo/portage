@@ -1,4 +1,5 @@
-# Check for important gcc warning
+# Check for important gcc warnings
+# TODO: adapt for clang?
 
 gcc_warn_check() {
 	local f
