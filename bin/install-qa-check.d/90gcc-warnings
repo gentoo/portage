@@ -63,6 +63,10 @@ gcc_warn_check() {
 			# clobbered: Warn for variables that might be changed by longjmp or vfork
 			# (This warning is also enabled by -Wextra.)
 			'warning: .*\[-Wclobbered\]'
+			# LTO type mismatch (https://wiki.gentoo.org/wiki/Project:Toolchain/LTO)
+			'warning: .*\[-Wlto-type-mismatch\]'
+			# ODR (https://wiki.gentoo.org/wiki/Project:Toolchain/LTO)
+			'warning: .*\[-Wodr\]'
 
 			# this may be valid code :/
 			#': warning: multi-character character constant'
