@@ -5,6 +5,11 @@ Features:
 * gpkg: Call xz and zstd with -T N where N is the number of jobs from ${MAKEOPTS}
   for parallel compression (xz & zstd) and decompression (xz with newer versions).
 
+* install-qa-check.d: 90gcc-warnings: Add additional code quality warnings
+  which are indicative of problems with LTO in particular:
+  * -Wlto-type-mismatch
+  * -Wodr
+
 portage-3.0.38.1 (2022-10-04)
 --------------
 
