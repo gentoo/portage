@@ -1788,8 +1788,16 @@ class gpkg:
         if mode not in compressor:
             raise InvalidCompressionMethod("{}: {}".format(compression, mode))
 
-        cmd = compressor[mode]
-        cmd = cmd.replace(
+        if mode == "compress" and (
+            self.settings.get(f"BINPKG_COMPRESS_FLAGS_{compression.upper()}", None)
+            is not None
+        ):
+            compressor["compress"] = compressor["compress"].replace(
+                "${BINPKG_COMPRESS_FLAGS}",
+                f"${{BINPKG_COMPRESS_FLAGS_{compression.upper()}}}",
+            )
+
+        cmd = compressor[mode].replace(
             "{JOBS}", str(makeopts_to_job_count(self.settings.get("MAKEOPTS", "1")))
         )
         cmd = shlex_split(varexpand(cmd, mydict=self.settings))

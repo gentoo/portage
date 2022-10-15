@@ -153,6 +153,18 @@ def quickpkg_atom(options, infos, arg, eout):
                         "compress": "cat",
                         "package": "sys-apps/coreutils",
                     }
+
+                if (
+                    settings.get(
+                        f"BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}", None
+                    )
+                    is not None
+                ):
+                    compression["compress"] = compression["compress"].replace(
+                        "${BINPKG_COMPRESS_FLAGS}",
+                        f"${{BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}}}",
+                    )
+
                 try:
                     compression_binary = shlex_split(
                         varexpand(compression["compress"], mydict=settings)

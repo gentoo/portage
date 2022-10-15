@@ -1573,6 +1573,17 @@ class config:
                     noiselevel=-1,
                 )
             else:
+                if (
+                    self.get(
+                        f"BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}", None
+                    )
+                    is not None
+                ):
+                    compression["compress"] = compression["compress"].replace(
+                        "${BINPKG_COMPRESS_FLAGS}",
+                        f"${{BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}}}",
+                    )
+
                 try:
                     compression_binary = shlex_split(
                         portage.util.varexpand(compression["compress"], mydict=self)
