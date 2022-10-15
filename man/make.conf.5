@@ -141,6 +141,18 @@ Defaults to "".
 BINPKG_COMPRESS_FLAGS="-9"
 .fi
 .TP
+\fBBINPKG_COMPRESS_FLAGS_[format]\fR = \fI"arguments for [format] compression \
+command"\fR
+This variable is used to add additional arguments only for the specified \
+[format] compression command selected by \fBBINPKG_COMPRESS\fR.
+\fBBINPKG_COMPRESS_FLAGS\fR will be ignored when using [format] compression.
+.br
+.I Example:
+.nf
+# Set only zstd to use compression level 9:
+BINPKG_COMPRESS_FLAGS_ZSTD="-9"
+.fi
+.TP
 \fBBINPKG_GPG_SIGNING_BASE_COMMAND\fR = \fI"GPG command and arguments \
 [PORTAGE_CONFIG]"\fR
 The base command will be used for all signing operations.

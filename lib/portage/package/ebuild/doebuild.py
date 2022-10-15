@@ -255,7 +255,7 @@ def _spawn_phase(
             actionmap=actionmap,
             returnpid=returnpid,
             logfile=logfile,
-            **kwargs
+            **kwargs,
         )
 
     # The logfile argument is unused here, since EbuildPhase uses
@@ -266,7 +266,7 @@ def _spawn_phase(
         phase=phase,
         scheduler=SchedulerInterface(asyncio._safe_loop()),
         settings=settings,
-        **kwargs
+        **kwargs,
     )
 
     ebuild_phase.start()
@@ -666,6 +666,17 @@ def doebuild_environment(
                 # Empty BINPKG_COMPRESS disables compression.
                 mysettings["PORTAGE_COMPRESSION_COMMAND"] = "cat"
         else:
+            if (
+                settings.get(
+                    f"BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}", None
+                )
+                is not None
+            ):
+                compression["compress"] = compression["compress"].replace(
+                    "${BINPKG_COMPRESS_FLAGS}",
+                    f"${{BINPKG_COMPRESS_FLAGS_{binpkg_compression.upper()}}}",
+                )
+
             try:
                 compression_binary = compression["compress"].replace(
                     "{JOBS}",
@@ -1908,7 +1919,7 @@ def spawn(
     ipc=True,
     mountns=False,
     pidns=False,
-    **keywords
+    **keywords,
 ):
     """
     Spawn a subprocess with extra portage-specific options.
@@ -2116,7 +2127,7 @@ def spawn(
             scheduler=SchedulerInterface(asyncio._safe_loop()),
             spawn_func=spawn_func,
             settings=mysettings,
-            **keywords
+            **keywords,
         )
 
         proc.start()
