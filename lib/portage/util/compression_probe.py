@@ -37,7 +37,7 @@ _compressors = {
         "package": "app-arch/lzop",
     },
     "xz": {
-        "compress": "xz -T{JOBS} --memlimit-compress=50% ${BINPKG_COMPRESS_FLAGS}",
+        "compress": "xz -T{JOBS} --memlimit-compress=50% -q ${BINPKG_COMPRESS_FLAGS}",
         "decompress": "xz -T{JOBS} -d",
         "package": "app-arch/xz-utils",
     },
