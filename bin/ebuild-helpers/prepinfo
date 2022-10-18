@@ -32,7 +32,7 @@ find "${ED%/}/${infodir#/}" -type d -print0 | while read -r -d $'\0' x ; do
 		[[ -e ${f} ]] && continue 2
 	done
 
-	rm -f "${x}"/dir{,.info}{,.gz,.bz2,.xz,.lz,.zst,.lzma,.lz4}
+	rm -f "${x}"/dir{,.info}{,.Z,.gz,.bz2,.lzma,.lz,.xz,.zst}
 done
 
 exit 0

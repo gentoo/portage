@@ -19,7 +19,7 @@ Features:
   * -Wodr
 
 * ecompress, etc: Support additional compression suffixes for texinfo:
-  .xz, .lz, .lz4, .zst, .lzma (bug #757525).
+  .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).
 
 Bug fixes:
 * Manifest: Fix Manifest.addFile() calls and add tests (bug #875860).

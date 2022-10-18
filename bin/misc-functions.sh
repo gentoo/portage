@@ -253,7 +253,7 @@ install_qa_check() {
 	fi
 
 	# Portage regenerates this on the installed system.
-	rm -f "${ED%/}"/usr/share/info/dir{,.gz,.bz2,.xz,.lz,.zst,.lzma,.lz4} || die "rm failed!"
+	rm -f "${ED%/}"/usr/share/info/dir{,.Z,.gz,.bz2,.lzma,.lz,.xz,.zst} || die "rm failed!"
 }
 
 __dyn_instprep() {
