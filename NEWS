@@ -10,6 +10,21 @@ Features:
   * -Wlto-type-mismatch
   * -Wodr
 
+* ecompress, etc: Support additional compression suffixes for texinfo:
+  .xz, .lz, .lz4, .zst, .lzma (bug #757525).
+
+Bug fixes:
+* Manifest: Fix Manifest.addFile() calls and add tests (bug #875860).
+
+* ecompress, etc: Pass --quiet to xz to reduce noise from "reducing threads"
+  messages.
+
+* ecompress, etc: Pass --memlimit-compress=50% to xz to avoid breakage
+  on 32-bit systems with large -Tn. Required for < xz-5.3.3_alpha and
+  has an equivalent effect to the limiting that comes with newer xz versions.
+  We don't need it for decompression as it's there by default in newer xz
+  and it's a no-op in older xz.
+
 portage-3.0.38.1 (2022-10-04)
 --------------
 
