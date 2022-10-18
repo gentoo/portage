@@ -25,6 +25,9 @@ Bug fixes:
   We don't need it for decompression as it's there by default in newer xz
   and it's a no-op in older xz.
 
+* emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
+  packate format further.
+
 portage-3.0.38.1 (2022-10-04)
 --------------
 
