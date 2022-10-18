@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Copyright 1999-2018 Gentoo Foundation
+# Copyright 1999-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 source "${PORTAGE_BIN_PATH}"/isolated-functions.sh || exit 1
 
-if ! ___eapi_has_prefix_variables; then
+if ! ___eapi_has_prefix_variables ; then
 	ED=${D}
 fi
 
@@ -32,7 +32,7 @@ find "${ED%/}/${infodir#/}" -type d -print0 | while read -r -d $'\0' x ; do
 		[[ -e ${f} ]] && continue 2
 	done
 
-	rm -f "${x}"/dir{,.info}{,.gz,.bz2}
+	rm -f "${x}"/dir{,.info}{,.gz,.bz2,.xz,.lz,.zst,.lzma,.lz4}
 done
 
 exit 0

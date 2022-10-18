@@ -36,7 +36,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes):
             if portage.util.noiselimit >= 0:
                 out.einfo("Regenerating GNU info directory index...")
 
-            dir_extensions = ("", ".gz", ".bz2")
+            dir_extensions = ("", ".gz", ".bz2", ".xz", ".lz", ".lz4", ".zst", ".lzma")
             icount = 0
             badcount = 0
             errmsg = ""
