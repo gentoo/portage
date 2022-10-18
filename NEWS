@@ -36,6 +36,8 @@ Bug fixes:
 * emerge(1), make.conf(5), xpak(5): document BINPKG_FORMAT and the gpkg binary
   packate format further.
 
+* sync: git: Fix sync printing local repo path (bug #875812)
+
 portage-3.0.38.1 (2022-10-04)
 --------------
 

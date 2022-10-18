@@ -362,7 +362,8 @@ class GitSync(NewBase):
                 "--get",
                 "safe.directory",
                 f"^{location_escaped}$",
-            ]
+            ],
+            stdout=subprocess.DEVNULL,
         )
         if result.returncode == 1:
             result = subprocess.run(
@@ -373,6 +374,7 @@ class GitSync(NewBase):
                     "--add",
                     "safe.directory",
                     self.repo.location,
-                ]
+                ],
+                stdout=subprocess.DEVNULL,
             )
         return result.returncode == 0
