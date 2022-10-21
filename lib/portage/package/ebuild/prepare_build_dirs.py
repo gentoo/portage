@@ -89,8 +89,8 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
 
     try:
         for mydir in mydirs:
-            ensure_dirs(mydir)
             try:
+                ensure_dirs(mydir, uid=portage_uid)
                 apply_secpass_permissions(
                     mydir, gid=portage_gid, uid=portage_uid, mode=0o700, mask=0
                 )
@@ -98,7 +98,7 @@ def prepare_build_dirs(myroot=None, settings=None, cleanup=False):
                 if not os.path.isdir(mydir):
                     raise
         for dir_key in ("HOME", "PKG_LOGDIR", "T"):
-            ensure_dirs(mysettings[dir_key], mode=0o755)
+            ensure_dirs(mysettings[dir_key], uid=portage_uid, mode=0o755)
             apply_secpass_permissions(
                 mysettings[dir_key], uid=portage_uid, gid=portage_gid
             )
@@ -218,7 +218,7 @@ def _prepare_features_dirs(mysettings):
                     for subdir in kwargs["subdirs"]:
                         mydirs.append(os.path.join(basedir, subdir))
                 for mydir in mydirs:
-                    modified = ensure_dirs(mydir)
+                    modified = ensure_dirs(mydir, uid=portage_uid)
                     # Generally, we only want to apply permissions for
                     # initial creation.  Otherwise, we don't know exactly what
                     # permissions the user wants, so should leave them as-is.

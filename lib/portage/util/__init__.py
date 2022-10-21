@@ -1576,7 +1576,25 @@ def write_atomic(file_path, content, **kwargs):
             raise
 
 
-def ensure_dirs(dir_path, **kwargs):
+class UnsafeOwner(PortageException):
+    pass
+
+
+class InvalidDirectory(PortageException):
+    pass
+
+
+def check_directory(path, valid_uids):
+    st = os.stat(path, follow_symlinks=False)
+    if st.st_uid not in valid_uids:
+        raise UnsafeOwner(path)
+    if stat.S_ISLNK(st.st_mode):
+        st = os.stat(path, follow_symlinks=True)
+    if not stat.S_ISDIR(st.st_mode):
+        raise InvalidDirectory(path)
+
+
+def ensure_dirs(dir_path, uid=-1, **kwargs):
     """Create a directory and call apply_permissions.
     Returns True if a directory is created or the permissions needed to be
     modified, and False otherwise.
@@ -1588,9 +1606,24 @@ def ensure_dirs(dir_path, **kwargs):
 
     created_dir = False
 
+    if os.getuid() != 0:
+        uid = -1
+
+    if uid != -1:
+        valid_uids = (0, uid)
+    else:
+        valid_uids = (0, os.getuid())
+
+    try:
+        check_directory(dir_path, valid_uids)
+    except FileNotFoundError:
+        pass
+
     try:
         os.makedirs(dir_path)
         created_dir = True
+    except FileExistsError:
+        check_directory(dir_path, valid_uids)
     except OSError as oe:
         func_call = "makedirs('%s')" % dir_path
         if oe.errno in (errno.EEXIST,):
@@ -1610,8 +1643,8 @@ def ensure_dirs(dir_path, **kwargs):
                 raise ReadOnlyFileSystem(func_call)
             else:
                 raise
-    if kwargs:
-        perms_modified = apply_permissions(dir_path, **kwargs)
+    if uid != -1 or kwargs:
+        perms_modified = apply_permissions(dir_path, uid=uid, **kwargs)
     else:
         perms_modified = False
     return created_dir or perms_modified
