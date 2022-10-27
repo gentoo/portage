@@ -15,8 +15,11 @@ Features:
 
 * install-qa-check.d: 90gcc-warnings: Add additional code quality warnings
   which are indicative of problems with LTO in particular:
-  * -Wlto-type-mismatch
-  * -Wodr
+  * -Wbuiltin-declaration-mismatch
+  * -Wlto-type-mismatch (LTO esp.)
+  * -Wmismatched-dealloc
+  * -Wodr (LTO esp.)
+  * -Wreturn-type
 
 * ecompress, etc: Support additional compression suffixes for texinfo:
   .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).
