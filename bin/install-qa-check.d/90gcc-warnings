@@ -24,6 +24,7 @@ gcc_warn_check() {
 			# with -Wall, goes in pair with -Wimplicit-function-declaration
 			# but without -Wall, we need to assert for it alone
 			'warning: .*incompatible implicit declaration of built-in function'
+			'warning: .*\[-Wbuiltin-declaration-mismatch\]'
 			# 'is used uninitialized in this function' and some more
 			'warning: .*\[-Wuninitialized\]'
 			# comparisons like ‘X<=Y<=Z’ do not have their mathematical meaning
