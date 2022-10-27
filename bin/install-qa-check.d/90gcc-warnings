@@ -56,6 +56,9 @@ gcc_warn_check() {
 			'warning: .*matching.*\[-Wformat=\]'
 			# function returns address of local variable
 			'warning: .*\[-Wreturn-local-addr\]'
+			# missing return at end of function, or non-void return in a void function
+			# (clang at least aggressively optimises on this)
+			'warning: .*\[-Wreturn-type\]'
 			# argument to sizeof ... is the same expression as the source
 			'warning: .*\[-Wsizeof-pointer-memaccess\]'
 			# iteration invokes undefined behavior
