@@ -87,10 +87,17 @@ SYMBOLS=(
 
 	# sys/statfs.h
 	fstatfs
+	statfs
 
 	# sys/statvfs.h
 	statvfs
 	fstatvfs
+
+	# sys/uio.h
+	preadv
+	preadv2
+	pwritev
+	pwritev2
 
 	# unistd.h
 	lockf
