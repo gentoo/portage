@@ -228,7 +228,21 @@ class GitSync(NewBase):
         if not self.verify_head(revision="refs/remotes/%s" % remote_branch):
             return (1, False)
 
-        if shallow:
+        # `git diff --quiet` returns 0 on a clean tree and 1 otherwise
+        is_clean = (
+            portage.process.spawn(
+                f"{self.bin_command} diff --quiet",
+                cwd=portage._unicode_encode(self.repo.location),
+                **self.spawn_kwargs,
+            )
+            == 0
+        )
+
+        if not is_clean:
+            # If the repo isn't clean, clobber any changes for parity
+            # with rsync
+            merge_cmd = [self.bin_command, "reset", "--hard"]
+        elif shallow:
             # Since the default merge strategy typically fails when
             # the depth is not unlimited, `git reset --merge`.
             merge_cmd = [self.bin_command, "reset", "--merge"]
@@ -244,10 +258,20 @@ class GitSync(NewBase):
         )
 
         if exitcode != os.EX_OK:
-            msg = "!!! git merge error in %s" % self.repo.location
-            self.logger(self.xterm_titles, msg)
-            writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
-            return (exitcode, False)
+            # HACK - sometimes merging results in a tree diverged from
+            # upstream, so try to hack around it
+            # https://stackoverflow.com/questions/41075972/how-to-update-a-git-shallow-clone/41081908#41081908
+            exitcode = portage.process.spawn(
+                f"{self.bin_command} reset --hard refs/remotes/{remote_branch}",
+                cwd=portage._unicode_encode(self.repo.location),
+                **self.spawn_kwargs,
+            )
+
+            if exitcode != os.EX_OK:
+                msg = "!!! git merge error in %s" % self.repo.location
+                self.logger(self.xterm_titles, msg)
+                writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+                return (exitcode, False)
 
         current_rev = subprocess.check_output(
             rev_cmd, cwd=portage._unicode_encode(self.repo.location)
