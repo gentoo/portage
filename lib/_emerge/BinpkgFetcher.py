@@ -11,9 +11,8 @@ import stat
 import sys
 import portage
 from portage import os
-from portage.const import SUPPORTED_GENTOO_BINPKG_FORMATS
-from portage.const import SUPPORTED_XPAK_EXTENSIONS, SUPPORTED_GPKG_EXTENSIONS
-from portage.exception import FileNotFound, InvalidBinaryPackageFormat
+from portage.binpkg import get_binpkg_format
+from portage.exception import FileNotFound
 from portage.util._async.AsyncTaskFuture import AsyncTaskFuture
 from portage.util._pty import _create_pty_or_pipe
 
@@ -28,18 +27,9 @@ class BinpkgFetcher(CompositeTask):
         pkg = self.pkg
         bintree = pkg.root_config.trees["bintree"]
         instance_key = bintree.dbapi._instance_key(pkg.cpv)
-        binpkg_format = bintree._remotepkgs[instance_key].get("BINPKG_FORMAT", None)
 
-        if binpkg_format is None:
-            binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
-            if binpkg_path.endswith(SUPPORTED_XPAK_EXTENSIONS):
-                binpkg_format = "xpak"
-            elif binpkg_path.endswith(SUPPORTED_GPKG_EXTENSIONS):
-                binpkg_format = "gpkg"
-            else:
-                raise InvalidBinaryPackageFormat(
-                    f"Unsupported binary package format from '{binpkg_path}'"
-                )
+        binpkg_path = bintree._remotepkgs[instance_key].get("PATH")
+        binpkg_format = get_binpkg_format(binpkg_path)
 
         self.pkg_allocated_path = pkg.root_config.trees["bintree"].getname(
             pkg.cpv, allocate_new=True, remote_binpkg_format=binpkg_format
@@ -128,17 +118,11 @@ class _BinpkgFetcherProcess(SpawnProcess):
         resumecommand = None
         if bintree._remote_has_index:
             remote_metadata = bintree._remotepkgs[bintree.dbapi._instance_key(pkg.cpv)]
-            binpkg_format = remote_metadata.get(
-                "BINPKG_FORMAT", SUPPORTED_GENTOO_BINPKG_FORMATS[0]
-            )
-            if binpkg_format not in SUPPORTED_GENTOO_BINPKG_FORMATS:
-                raise InvalidBinaryPackageFormat(binpkg_format)
             rel_uri = remote_metadata.get("PATH")
             if not rel_uri:
-                if binpkg_format == "xpak":
-                    rel_uri = pkg.cpv + ".tbz2"
-                elif binpkg_format == "gpkg":
-                    rel_uri = pkg.cpv + ".gpkg.tar"
+                # Assume that the remote index is out of date. No path should
+                # never happen in new portage versions.
+                rel_uri = pkg.cpv + ".tbz2"
             remote_base_uri = remote_metadata["BASE_URI"]
             uri = remote_base_uri.rstrip("/") + "/" + rel_uri.lstrip("/")
             fetchcommand = remote_metadata.get("FETCHCOMMAND")

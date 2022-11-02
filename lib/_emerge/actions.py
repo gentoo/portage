@@ -41,7 +41,13 @@ from portage.dbapi._expand_new_virt import expand_new_virt
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
 from portage.dep import Atom, _repo_separator, _slot_separator
-from portage.exception import InvalidAtom, InvalidData, ParseError, GPGException
+from portage.exception import (
+    InvalidAtom,
+    InvalidData,
+    ParseError,
+    GPGException,
+    InvalidBinaryPackageFormat,
+)
 from portage.output import (
     colorize,
     create_color_func,
@@ -2320,9 +2326,12 @@ def action_info(settings, trees, myopts, myfiles):
             elif pkg_type == "binary":
                 binpkg_file = bindb.bintree.getname(pkg.cpv)
                 ebuild_file_name = pkg.cpv.split("/")[1] + ".ebuild"
-                binpkg_format = pkg.cpv._metadata.get("BINPKG_FORMAT", None)
-                if not binpkg_format:
+                try:
                     binpkg_format = get_binpkg_format(binpkg_file)
+                except InvalidBinaryPackageFormat as e:
+                    out.ewarn(e)
+                    continue
+
                 if binpkg_format == "xpak":
                     ebuild_file_contents = portage.xpak.tbz2(binpkg_file).getfile(
                         ebuild_file_name

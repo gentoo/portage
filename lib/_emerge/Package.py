@@ -63,7 +63,6 @@ class Package(Task):
 
     metadata_keys = [
         "BDEPEND",
-        "BINPKG_FORMAT",
         "BUILD_ID",
         "BUILD_TIME",
         "CHOST",

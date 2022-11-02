@@ -43,6 +43,8 @@ from portage import normalize_path
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.binpkg import get_binpkg_format
+from portage.exception import InvalidBinaryPackageFormat
 from portage.util.file_copy import copyfile
 
 
@@ -435,14 +437,26 @@ class tbz2:
             self.infosize = 0
             self.xpaksize = 0
             if trailer[-4:] != b"STOP":
+                try:
+                    get_binpkg_format(self.file, check_file=True)
+                except InvalidBinaryPackageFormat:
+                    pass
                 return 0
             if trailer[0:8] != b"XPAKSTOP":
+                try:
+                    get_binpkg_format(self.file, check_file=True)
+                except InvalidBinaryPackageFormat:
+                    pass
                 return 0
             self.infosize = decodeint(trailer[8:12])
             self.xpaksize = self.infosize + 8
             a.seek(-(self.xpaksize), 2)
             header = a.read(16)
             if header[0:8] != b"XPAKPACK":
+                try:
+                    get_binpkg_format(self.file, check_file=True)
+                except InvalidBinaryPackageFormat:
+                    pass
                 return 0
             self.indexsize = decodeint(header[8:12])
             self.datasize = decodeint(header[12:16])
@@ -453,6 +467,10 @@ class tbz2:
         except SystemExit:
             raise
         except:
+            try:
+                get_binpkg_format(self.file, check_file=True)
+            except InvalidBinaryPackageFormat:
+                pass
             return 0
         finally:
             if a is not None:
