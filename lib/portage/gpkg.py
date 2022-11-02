@@ -21,6 +21,7 @@ from portage import normalize_path
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.binpkg import get_binpkg_format
 from portage.exception import (
     FileNotFound,
     InvalidBinaryPackageFormat,
@@ -1560,6 +1561,7 @@ class gpkg:
         with open(self.gpkg_file, "rb") as container:
             container_tar_format = self._get_tar_format(container)
             if container_tar_format is None:
+                get_binpkg_format(self.gpkg_file, check_file=True)
                 raise InvalidBinaryPackageFormat(
                     f"Cannot identify tar format: {self.gpkg_file}"
                 )
@@ -1569,12 +1571,14 @@ class gpkg:
             try:
                 container_files = container.getnames()
             except tarfile.ReadError:
+                get_binpkg_format(self.gpkg_file, check_file=True)
                 raise InvalidBinaryPackageFormat(
                     f"Cannot read tar file: {self.gpkg_file}"
                 )
 
             # Check if gpkg version file exists in any place
             if self.gpkg_version not in (os.path.basename(f) for f in container_files):
+                get_binpkg_format(self.gpkg_file, check_file=True)
                 raise InvalidBinaryPackageFormat(f"Invalid gpkg file: {self.gpkg_file}")
 
             # Check how many layers are in the container

@@ -34,7 +34,9 @@ class BinpkgExtractorAsync(SpawnProcess):
         if binpkg_format == "xpak":
             self._xpak_start()
         else:
-            raise InvalidBinaryPackageFormat(self.pkg_path)
+            raise InvalidBinaryPackageFormat(
+                f"{self.pkg_path} is not a valid xpak binary package"
+            )
 
     def _xpak_start(self):
         tar_options = ""

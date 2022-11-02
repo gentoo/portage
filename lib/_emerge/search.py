@@ -8,6 +8,7 @@ from portage import os
 from portage.dbapi.porttree import _parse_uri_map
 from portage.dbapi.IndexedPortdb import IndexedPortdb
 from portage.dbapi.IndexedVardb import IndexedVardb
+from portage.exception import InvalidBinaryPackageFormat
 from portage.localization import localized_size
 from portage.output import bold, darkgreen, green, red
 from portage.util import writemsg_stdout
@@ -490,7 +491,10 @@ class search:
                     if db is not vardb and db.cpv_exists(mycpv):
                         available = True
                         if not myebuild and hasattr(db, "bintree"):
-                            myebuild = db.bintree.getname(mycpv)
+                            try:
+                                myebuild = db.bintree.getname(mycpv)
+                            except InvalidBinaryPackageFormat:
+                                break
                             try:
                                 mysum[0] = os.stat(myebuild).st_size
                             except OSError:

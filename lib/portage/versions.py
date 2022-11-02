@@ -491,22 +491,6 @@ class _pkg_str(str):
             self.__dict__["_stable"] = stable
             return stable
 
-    @property
-    def binpkg_format(self):
-        """
-        Returns the BINPKG_FORMAT metadata. A return value of None means
-        that the format is unset. If there is no metadata available or the
-        BINPKG_FORMAT key is missing from the metadata, then raise
-        AttributeError.
-
-        @rtype: str or None
-        @return: a non-empty BINPKG_FORMAT string, or None
-        """
-        try:
-            return self._metadata["BINPKG_FORMAT"] or None
-        except (AttributeError, KeyError):
-            raise AttributeError("binpkg_format")
-
 
 def pkgsplit(mypkg, silent=1, eapi=None):
     """

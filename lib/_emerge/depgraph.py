@@ -39,6 +39,7 @@ from portage.dep._slot_operator import ignore_built_slot_operator_deps, strip_sl
 from portage.eapi import eapi_has_strong_blocks, eapi_has_required_use, _get_eapi_attrs
 from portage.exception import (
     InvalidAtom,
+    InvalidBinaryPackageFormat,
     InvalidData,
     InvalidDependString,
     PackageNotFound,
@@ -4580,7 +4581,19 @@ class depgraph:
                             noiselevel=-1,
                         )
                         return 0, myfavorites
-                binpkg_format = get_binpkg_format(x)
+
+                try:
+                    binpkg_format = get_binpkg_format(x)
+                except InvalidBinaryPackageFormat as e:
+                    writemsg(
+                        colorize(
+                            "BAD",
+                            "\n{e}\n" % x,
+                        ),
+                        noiselevel=-1,
+                    )
+                    continue
+
                 if binpkg_format == "xpak":
                     mytbz2 = portage.xpak.tbz2(x)
                     mykey = None
