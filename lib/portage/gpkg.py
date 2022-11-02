@@ -1048,6 +1048,14 @@ class gpkg:
             self._add_signature(checksum_info, image_tarinfo, container)
 
         self._add_manifest(container)
+
+        # Check if all directories are the same in the container
+        prefix = os.path.commonpath(container.getnames())
+        if not prefix:
+            raise InvalidBinaryPackageFormat(
+                f"gpkg file structure mismatch in {self.gpkg_file}"
+            )
+
         container.close()
 
     def decompress(self, decompress_dir):
@@ -1132,15 +1140,22 @@ class gpkg:
                         os.path.join(self.prefix, file_name_old)
                     )
                     new_data_tarinfo = copy(old_data_tarinfo)
-                    new_data_tarinfo.name = new_data_tarinfo.name.replace(
-                        old_basename, new_basename, 1
-                    )
+                    new_file_path = list(os.path.split(new_data_tarinfo.name))
+                    new_file_path[0] = new_basename
+                    new_data_tarinfo.name = os.path.join(*new_file_path)
                     container.addfile(
                         new_data_tarinfo, container_old.extractfile(old_data_tarinfo)
                     )
                     self.checksums.append(m)
 
             self._add_manifest(container)
+
+            # Check if all directories are the same in the container
+            prefix = os.path.commonpath(container.getnames())
+            if not prefix:
+                raise InvalidBinaryPackageFormat(
+                    f"gpkg file structure mismatch in {self.gpkg_file}"
+                )
 
         shutil.move(tmp_gpkg_file_name, self.gpkg_file)
 
@@ -1221,6 +1236,13 @@ class gpkg:
                         self._add_signature(checksum_info, new_data_tarinfo, container)
 
             self._add_manifest(container)
+
+            # Check if all directories are the same in the container
+            prefix = os.path.commonpath(container.getnames())
+            if not prefix:
+                raise InvalidBinaryPackageFormat(
+                    f"gpkg file structure mismatch in {self.gpkg_file}"
+                )
 
         shutil.move(tmp_gpkg_file_name, self.gpkg_file)
 
@@ -1438,6 +1460,14 @@ class gpkg:
             self._add_signature(checksum_info, image_tarinfo, container)
 
         self._add_manifest(container)
+
+        # Check if all directories are the same in the container
+        prefix = os.path.commonpath(container.getnames())
+        if not prefix:
+            raise InvalidBinaryPackageFormat(
+                f"gpkg file structure mismatch in {self.gpkg_file}"
+            )
+
         container.close()
 
     def _record_checksum(self, checksum_info, tarinfo):
