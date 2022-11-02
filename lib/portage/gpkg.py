@@ -91,6 +91,7 @@ class tar_stream_writer:
         gid              # drop root group to gid
         """
         self.checksum_helper = checksum_helper
+        self.cmd = cmd
         self.closed = False
         self.container = container
         self.killed = False
@@ -123,7 +124,6 @@ class tar_stream_writer:
                     cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
                     user=self.uid,
                     group=self.gid,
                 )
@@ -132,7 +132,6 @@ class tar_stream_writer:
                     cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
                     preexec_fn=self._drop_privileges,
                 )
 
@@ -194,10 +193,10 @@ class tar_stream_writer:
                 buffer = self.proc.stdout.read(HASHING_BLOCKSIZE)
                 if not buffer:
                     self.proc.stdout.close()
-                    self.proc.stderr.close()
                     return
             except BrokenPipeError:
                 self.proc.stdout.close()
+                writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 if not self.killed:
                     # Do not raise error if killed by portage
                     raise CompressorOperationFailed("PIPE broken")
@@ -219,6 +218,7 @@ class tar_stream_writer:
                 self.proc.stdin.write(data)
             except BrokenPipeError:
                 self.error = True
+                writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 raise CompressorOperationFailed("PIPE broken")
         else:
             # Write to container
@@ -318,7 +318,6 @@ class tar_stream_reader:
                     cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
                     user=self.uid,
                     group=self.gid,
                 )
@@ -327,7 +326,6 @@ class tar_stream_reader:
                     cmd,
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
                     preexec_fn=self._drop_privileges,
                 )
             self.read_io = self.proc.stdout
@@ -373,6 +371,7 @@ class tar_stream_reader:
                     break
         except BrokenPipeError:
             if self.killed is False:
+                writemsg(colorize("BAD", f"GPKG subprocess failed: {self.cmd} \n"))
                 raise CompressorOperationFailed("PIPE broken")
 
     def _drop_privileges(self):
@@ -430,14 +429,11 @@ class tar_stream_reader:
             self.thread.join()
             try:
                 if self.proc.wait() != os.EX_OK:
-                    if not self.proc.stderr.closed:
-                        stderr = self.proc.stderr.read().decode()
                     if not self.killed:
-                        writemsg(colorize("BAD", f"!!!\n{stderr}"))
+                        writemsg(colorize("BAD", f"GPKG external program failed."))
                         raise CompressorOperationFailed("decompression failed")
             finally:
                 self.proc.stdout.close()
-                self.proc.stderr.close()
 
 
 class checksum_helper:
