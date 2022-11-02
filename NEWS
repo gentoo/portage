@@ -25,6 +25,21 @@ Features:
   .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).
 
 Bug fixes:
+* binpkg: Deprecate BINPKG_FORMAT in the binpkg manifest ('Packages') because
+  it can become out-of-sync with reality and shouldn't be relied upon anyway
+  (bug #877419).
+
+* binpkg: Add various asserts / integrity checks to detect structure mismatches
+  and detect problems earlier (bug #877357, bug #877271, bug #877419).
+
+* binpkg: gpkg: Try to correct mismatched structures (old/new gpkg structure)
+  (bug #877271).
+
+* binpkg: gpkg: Handle package renames ('updates') where the same category was
+  used but with a new package name (bug #877357).
+
+* binpkg: gpkg: Don't silence compressor stderr to ease debugging (bug #877215).
+
 * Manifest: Fix Manifest.addFile() calls and add tests (bug #875860).
 
 * ecompress, etc: Pass --quiet to xz to reduce noise from "reducing threads"
