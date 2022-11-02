@@ -99,6 +99,10 @@ from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import pkg_use_display
 from _emerge.UserQuery import UserQuery
 
+emergerc_script = os.path.join("/", portage.const.USER_CONFIG_PATH, "emergerc")
+def callemergerc(phase):
+    os.system(" [[ -f " + emergerc_script + " ]] && export EMERGE_PHASE=" + phase + " && " + os.path.join(". /", emergerc_script))
+callemergerc('emerge_startup')
 
 def action_build(
     emerge_config,
@@ -261,6 +265,7 @@ def action_build(
     quiet = "--quiet" in myopts
     myparams = create_depgraph_params(myopts, myaction)
     mergelist_shown = False
+    callemergerc('pre_calc_deps')
 
     if pretend or fetchonly:
         mtimedb.make_readonly()
@@ -444,6 +449,11 @@ def action_build(
             mydepgraph.display_problems()
             return 1
 
+    if success:
+        callemergerc('post_calc_deps_success')
+    else:
+        callemergerc('post_calc_deps_fail')
+
     mergecount = None
     if (
         "--pretend" not in myopts
@@ -518,6 +528,8 @@ def action_build(
         # Don't ask again (e.g. when auto-cleaning packages after merge)
         if mergecount != 0:
             myopts.pop("--ask", None)
+
+    callemergerc('pre_first_emerge')
 
     if ("--pretend" in myopts) and not (
         "--fetchonly" in myopts or "--fetch-all-uri" in myopts
@@ -788,7 +800,10 @@ def action_depclean(
     # Force autoclean for depcleans (but not purges), as it was changed
     # to default off to not run it on every unmerge.
     # bug #792195
-    if action == "depclean":
+
+   callemergerc('pre_depclean')
+
+   if action == "depclean":
         settings.unlock()
         settings["AUTOCLEAN"] = "yes"
         settings.backup_changes("AUTOCLEAN")
@@ -893,6 +908,8 @@ def action_depclean(
         print("Number to remove:     " + str(len(cleanlist)))
     else:
         print("Number removed:       " + str(len(cleanlist)))
+
+    callemergerc('post_depclean')
 
     return rval
 
@@ -2424,6 +2441,8 @@ def action_sync(
     action=DeprecationWarning,
 ):
 
+    callemergerc('pre_sync')
+
     if not isinstance(emerge_config, _emerge_config):
         warnings.warn(
             "_emerge.actions.action_sync() now expects "
@@ -2451,6 +2470,11 @@ def action_sync(
             level=logging.ERROR,
             noiselevel=-1,
         )
+
+    if success:
+        callemergerc('post_sync_success')
+    else:
+        callemergerc('post_sync_fail')
 
     return os.EX_OK if success else 1
 
@@ -2649,6 +2673,8 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
         action == "prune" and "--nodeps" in opts
     ):
         # When given a list of atoms, unmerge them in the order given.
+        callemergerc('pre_unmerge')
+
         ordered = action in ("rage-clean", "unmerge")
         rval = unmerge(
             trees[settings["EROOT"]]["root_config"],
@@ -2659,6 +2685,7 @@ def action_uninstall(settings, trees, ldpath_mtimes, opts, action, files, spinne
             ordered=ordered,
             scheduler=sched_iface,
         )
+        callemergerc('post_unmerge')
     else:
         rval = action_depclean(
             settings,
@@ -3870,6 +3897,7 @@ def run_action(emerge_config):
 
     def emergeexit():
         """This gets out final log message in before we quit."""
+        callemergerc('emerge_exit')
         if "--pretend" not in emerge_config.opts:
             emergelog(xterm_titles, " *** terminating.")
         if xterm_titles:
@@ -4063,6 +4091,12 @@ def run_action(emerge_config):
                         "Please install eselect to use this feature.\n", noiselevel=-1
                     )
         retval = action_build(emerge_config, spinner=spinner)
+
+        if retval == 0:
+            callemergerc('post_emerge_success')
+        else:
+            callemergerc('post_emerge_fail')
+
         post_emerge(
             emerge_config.action,
             emerge_config.opts,
