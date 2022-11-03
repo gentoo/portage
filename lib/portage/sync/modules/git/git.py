@@ -250,6 +250,24 @@ class GitSync(NewBase):
         if not self.verify_head(revision="refs/remotes/%s" % remote_branch):
             return (1, False)
 
+        # Clean up the repo before trying to sync to upstream's
+        clean_cmd = [self.bin_command, "clean", "--force", "-d", "-x"]
+
+        if quiet:
+            clean_cmd.append("--quiet")
+
+        portage.process.spawn(
+            clean_cmd,
+            cwd=portage._unicode_encode(self.repo.location),
+            **self.spawn_kwargs,
+        )
+
+        if exitcode != os.EX_OK:
+            msg = "!!! git clean error in %s" % self.repo.location
+            self.logger(self.xterm_titles, msg)
+            writemsg_level(msg + "\n", level=logging.ERROR, noiselevel=-1)
+            return (exitcode, False)
+
         # `git diff --quiet` returns 0 on a clean tree and 1 otherwise
         is_clean = (
             portage.process.spawn(
