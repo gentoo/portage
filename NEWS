@@ -20,6 +20,8 @@ Features:
   * -Wmismatched-dealloc
   * -Wodr (LTO esp.)
   * -Wreturn-type
+  * -Wstringop-overflow (GCC, FORTIFY_SOURCE)
+  * -Wfortify-source (Clang, FORTIFY_SOURCE)
 
 * ecompress, etc: Support additional compression suffixes for texinfo:
   .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).

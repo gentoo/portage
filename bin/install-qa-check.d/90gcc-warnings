@@ -37,6 +37,10 @@ gcc_warn_check() {
 			'warning: .*\[-Wfree-nonheap-object\]'
 			# those three do not have matching -W flags, it seems
 			'warning: .*will always overflow destination buffer'
+			# compile-time part of FORTIFY_SOURCE
+			'warning: .*\[-Wstringop-overflow\]'
+			# clang-only, equivalent of -Wstringop-overflow
+			'warning: .*\[-Wfortify-source\]'
 			'warning: .*assuming pointer wraparound does not occur'
 			'warning: .*escape sequence out of range'
 			# left-hand operand of comma expression has no effect
