@@ -1000,20 +1000,9 @@ class binarytree:
                             pkg_paths[instance_key] = mypath
                             # update the path if the package has been moved
                             oldpath = d.get("PATH")
-                            if oldpath and oldpath != mypath:
-                                update_pkgindex = True
-                            # Omit PATH if it is the default path for
-                            # the current Packages format version.
-                            if (mypath != mycpv + ".tbz2") and (
-                                mypath != mycpv + ".gpkg.tar"
-                            ):
+                            if oldpath != mypath:
                                 d["PATH"] = mypath
-                                if not oldpath:
-                                    update_pkgindex = True
-                            else:
-                                d.pop("PATH", None)
-                                if oldpath:
-                                    update_pkgindex = True
+                                update_pkgindex = True
                             self.dbapi.cpv_inject(mycpv)
                             continue
                     if not os.access(full_path, os.R_OK):
@@ -1218,11 +1207,7 @@ class binarytree:
                         self.dbapi.cpv_remove(mycpv)
                         del pkg_paths[_instance_key(mycpv)]
 
-                    # record location if it's non-default
-                    if (mypath != mycpv + ".tbz2") and (mypath != mycpv + ".gpkg.tar"):
-                        d["PATH"] = mypath
-                    else:
-                        d.pop("PATH", None)
+                    d["PATH"] = mypath
                     metadata[_instance_key(mycpv)] = d
 
             if reindex:
