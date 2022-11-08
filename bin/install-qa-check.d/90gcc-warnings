@@ -31,7 +31,7 @@ gcc_warn_check() {
 			'warning: .*mathematical meaning*\[-Wparentheses\]'
 			# null argument where non-null required
 			'warning: .*\[-Wnonnull\]'
-			# array subscript is above/below/outside array bounds
+			# array subscript is above/below/outside array bounds (FORTIFY_SOURCE)
 			'warning: .*\[-Warray-bounds\]'
 			# attempt to free a non-heap object
 			'warning: .*\[-Wfree-nonheap-object\]'
