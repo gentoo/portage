@@ -19,18 +19,21 @@ gcc_warn_check() {
 			# only will and does, no might :)
 			'warning: .*will.*\[-Wstrict-aliasing\]'
 			'warning: .*does.*\[-Wstrict-aliasing\]'
+
 			# implicit declaration of function ‘...’
 			'warning: .*\[-Wimplicit-function-declaration\]'
 			# with -Wall, goes in pair with -Wimplicit-function-declaration
 			# but without -Wall, we need to assert for it alone
 			'warning: .*incompatible implicit declaration of built-in function'
 			'warning: .*\[-Wbuiltin-declaration-mismatch\]'
+
 			# 'is used uninitialized in this function' and some more
 			'warning: .*\[-Wuninitialized\]'
 			# comparisons like ‘X<=Y<=Z’ do not have their mathematical meaning
 			'warning: .*mathematical meaning*\[-Wparentheses\]'
 			# null argument where non-null required
 			'warning: .*\[-Wnonnull\]'
+
 			# array subscript is above/below/outside array bounds (FORTIFY_SOURCE)
 			'warning: .*\[-Warray-bounds\]'
 			# attempt to free a non-heap object
@@ -43,6 +46,7 @@ gcc_warn_check() {
 			'warning: .*\[-Wfortify-source\]'
 			'warning: .*assuming pointer wraparound does not occur'
 			'warning: .*escape sequence out of range'
+
 			# left-hand operand of comma expression has no effect
 			'warning: .*left.*comma.*\[-Wunused-value\]'
 			# converting to non-pointer type ... from NULL and likes
@@ -58,11 +62,13 @@ gcc_warn_check() {
 			'warning: .*\[-Wint-conversion\]'
 			# warning: cast to ... from integer of different size (or smaller size)
 			'warning: .*\[-Wint-to-pointer-cast\]'
+
 			# outdated?
 			'warning: .*too few arguments for format'
 			# format ... expects a matching ... argument
 			# (iow, too few arguments for format in new wording :))
 			'warning: .*matching.*\[-Wformat=\]'
+
 			# function returns address of local variable
 			'warning: .*\[-Wreturn-local-addr\]'
 			# missing return at end of function, or non-void return in a void function
