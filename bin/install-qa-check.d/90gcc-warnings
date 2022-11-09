@@ -94,6 +94,8 @@ gcc_warn_check() {
 			'warning: .*\[-Wlto-type-mismatch\]'
 			# ODR (https://wiki.gentoo.org/wiki/Project:Toolchain/LTO)
 			'warning: .*\[-Wodr\]'
+			# warning: argument value A will result in undefined behaviour (Clang)
+			'warning: .*\[-Wargument-undefined-behaviour\]'
 
 			# this may be valid code :/
 			#': warning: multi-character character constant'
