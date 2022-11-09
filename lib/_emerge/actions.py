@@ -101,7 +101,11 @@ from _emerge.UserQuery import UserQuery
 
 emergerc_script = os.path.join("/", portage.const.USER_CONFIG_PATH, "emergerc")
 def callemergerc(phase):
-    os.system(" [[ -f " + emergerc_script + " ]] && export EMERGE_PHASE=" + phase + " && " + os.path.join(". /", emergerc_script))
+    if os.path.isfile(emergerc_script):
+        subprocess.run([os.path.join(". /", emergerc_script)],
+                       shell=True,
+                       env={"EMERGE_PHASE": phase})
+
 callemergerc('emerge_startup')
 
 def action_build(
