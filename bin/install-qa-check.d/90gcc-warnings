@@ -54,6 +54,10 @@ gcc_warn_check() {
 			# the address of ... will never be NULL and likes
 			# (uses of function refs & string constants in conditionals)
 			'warning: .*\[-Waddress\]'
+			# warning: assignment/initialization to ... from ... makes integer from pointer without cast
+			'warning: .*\[-Wint-conversion\]'
+			# warning: cast to ... from integer of different size (or smaller size)
+			'warning: .*\[-Wint-to-pointer-cast\]'
 			# outdated?
 			'warning: .*too few arguments for format'
 			# format ... expects a matching ... argument
