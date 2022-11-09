@@ -16,25 +16,20 @@ static PyObject * _reflink_linux_file_copy(PyObject *, PyObject *);
 
 static PyMethodDef reflink_linuxMethods[] = {
     {
-            "file_copy",
-            _reflink_linux_file_copy,
-            METH_VARARGS,
-            "Copy between two file descriptors, "
-            "with reflink and sparse file support."
+            .ml_name = "file_copy",
+            .ml_meth = _reflink_linux_file_copy,
+            .ml_flags = METH_VARARGS,
+            .ml_doc = "Copy between two file descriptors with reflink and sparse file support."
     },
     {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
-    "reflink_linux",                                /* m_name */
-    "Module for reflink_linux copy operations",     /* m_doc */
-    -1,                                             /* m_size */
-    reflink_linuxMethods,                           /* m_methods */
-    NULL,                                           /* m_reload */
-    NULL,                                           /* m_traverse */
-    NULL,                                           /* m_clear */
-    NULL,                                           /* m_free */
+    .m_name = "reflink_linux",
+    .m_doc = "Module for reflink_linux copy operations",
+    .m_size = -1,
+    .m_methods = reflink_linuxMethods,
 };
 
 PyMODINIT_FUNC
