@@ -22,6 +22,10 @@ Features:
   * -Wreturn-type
   * -Wstringop-overflow (GCC, FORTIFY_SOURCE)
   * -Wfortify-source (Clang, FORTIFY_SOURCE)
+  * -Wstrlcpy-strlcat-size
+  * -Wstrncat-size
+  * -Wsuspicious-bzero
+  * -Wvarargs
   * -Wargument-undefined-behaviour (Clang)
   * -Wincompatible-function-pointer-types (Clang, becomes fatal in Clang 16)
     (note we already have -Wincompatible-pointer-types in the list for GCC)

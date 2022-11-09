@@ -49,6 +49,12 @@ gcc_warn_check() {
 			'warning: .*assuming pointer wraparound does not occur'
 			'warning: .*escape sequence out of range'
 
+			# all clang
+			'warning: .*\[-Wstrlcpy-strlcat-size\]'
+			'warning: .*\[-Wstrncat-size\]'
+			'warning: .*\[-Wsuspicious-bzero\]'
+			'warning: .*\[-Wvarargs\]'
+
 			# left-hand operand of comma expression has no effect
 			'warning: .*left.*comma.*\[-Wunused-value\]'
 			# converting to non-pointer type ... from NULL and likes
