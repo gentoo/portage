@@ -19,6 +19,8 @@ gcc_warn_check() {
 			# only will and does, no might :)
 			'warning: .*will.*\[-Wstrict-aliasing\]'
 			'warning: .*does.*\[-Wstrict-aliasing\]'
+			# strict aliasing violation in C++ (Clang)
+			'warning: .*\[\-Wundefined-reinterpret-cast\]'
 
 			# implicit declaration of function ‘...’
 			'warning: .*\[-Wimplicit-function-declaration\]'
