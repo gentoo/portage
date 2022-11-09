@@ -23,6 +23,13 @@ Features:
   * -Wstringop-overflow (GCC, FORTIFY_SOURCE)
   * -Wfortify-source (Clang, FORTIFY_SOURCE)
 
+* install-qa-check.d: 90gcc-warnings: Always die on -Wimplicit-function-declaration
+  and remove bin/check-implicit-pointer-usage.py of dubious licencing (it was
+  broken since GCC 4.5 because of output changes anyway, bug #365655).
+
+  -Wimplicit-function-declaration becomes an error in Clang 16 onwards and
+  GCC is likely to do the same from 14 onwards. See bug #870412.
+
 * ecompress, etc: Support additional compression suffixes for texinfo:
   .Z, .bz2, .lzma, .lz, .xz, .zst (bug #757525).
 
