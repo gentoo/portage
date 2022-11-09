@@ -20,7 +20,7 @@ gcc_warn_check() {
 			'warning: .*will.*\[-Wstrict-aliasing\]'
 			'warning: .*does.*\[-Wstrict-aliasing\]'
 			# strict aliasing violation in C++ (Clang)
-			'warning: .*\[\-Wundefined-reinterpret-cast\]'
+			'warning: .*\[-Wundefined-reinterpret-cast\]'
 
 			# implicit declaration of function ‘...’
 			'warning: .*\[-Wimplicit-function-declaration\]'
