@@ -69,8 +69,12 @@ gcc_warn_check() {
 			# warning: cast from ... to integer of different size
 			'warning: .*\[-Wpointer-to-int-cast\]'
 
-			# outdated?
+			# -Wformat
+			# TODO: comment out some time in future for time_t & LFS preparedness
+			#'warning: .*\[-Wformat=\]'
+			# -Wformat variants
 			'warning: .*too few arguments for format'
+			'warning: .*missing sentinel in function call.*\[-Wformat=\]'
 			# format ... expects a matching ... argument
 			# (iow, too few arguments for format in new wording :))
 			'warning: .*matching.*\[-Wformat=\]'
