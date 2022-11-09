@@ -30,10 +30,6 @@ Features:
   * -Wincompatible-function-pointer-types (Clang, becomes fatal in Clang 16)
     (note we already have -Wincompatible-pointer-types in the list for GCC)
   * -Wundefined-reinterpret-cast (Clang, C++ strict aliasing)
-  * -Wint-conversion
-  * -Wint-to-pointer-cast
-  * -Wpointer-to-int-cast
-  * -Wint-to-void-pointer-cast
   * -Wcast-function-type-strict (Clang, CFI)
   * Further -Wformat matches for missing specifiers.
     In future, we may warn on all -Wformat (in particular because of e.g.

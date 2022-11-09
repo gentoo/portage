@@ -66,14 +66,19 @@ gcc_warn_check() {
 			# the address of ... will never be NULL and likes
 			# (uses of function refs & string constants in conditionals)
 			'warning: .*\[-Waddress\]'
+
+			# TODO: we want to enable these but bash currently triggers
+			# them with a trick in random.c where it intentionally wants
+			# some truncation :(
+			#
 			# warning: assignment/initialization to ... from ... makes integer from pointer without cast
-			'warning: .*\[-Wint-conversion\]'
+			#'warning: .*\[-Wint-conversion\]'
 			# warning: cast to ... from integer of different size (or smaller size)
-			'warning: .*\[-Wint-to-pointer-cast\]'
+			#'warning: .*\[-Wint-to-pointer-cast\]'
 			# warning: cast to ... from (smaller) integer type
-			'warning: .*\[-Wint-to-void-pointer-cast\]'
+			#'warning: .*\[-Wint-to-void-pointer-cast\]'
 			# warning: cast from ... to integer of different size
-			'warning: .*\[-Wpointer-to-int-cast\]'
+			#'warning: .*\[-Wpointer-to-int-cast\]'
 
 			# -Wformat
 			# TODO: comment out some time in future for time_t & LFS preparedness
