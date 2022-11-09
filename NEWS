@@ -22,6 +22,12 @@ Features:
   * -Wreturn-type
   * -Wstringop-overflow (GCC, FORTIFY_SOURCE)
   * -Wfortify-source (Clang, FORTIFY_SOURCE)
+  * -Wargument-undefined-behaviour (Clang)
+  * -Wincompatible-function-pointer-types (Clang, becomes fatal in Clang 16)
+    (note we already have -Wincompatible-pointer-types in the list for GCC)
+  * -Wundefined-reinterpret-cast (Clang, C++ strict aliasing)
+  * -Wint-conversion
+  * -Wint-to-pointer-cast
 
 * install-qa-check.d: 90gcc-warnings: Always die on -Wimplicit-function-declaration
   and remove bin/check-implicit-pointer-usage.py of dubious licencing (it was
