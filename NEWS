@@ -10,6 +10,8 @@ Features:
 
 * cleanups: Drop long-obsolete Jython compatibility code.
 
+* cleanups: Use designated initializer syntax in src/ (C bits).
+
 * Add support for a distinct SYSROOT location that is not equal to / or ROOT.
   This is only expected to be used for cross-bootstrapping a new system from
   scratch using a crossdev environment under /usr/${CHOST}.
