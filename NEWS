@@ -29,6 +29,7 @@ Features:
   * -Wint-conversion
   * -Wint-to-pointer-cast
   * -Wpointer-to-int-cast
+  * -Wint-to-void-pointer-cast
 
 * install-qa-check.d: 90gcc-warnings: Always die on -Wimplicit-function-declaration
   and remove bin/check-implicit-pointer-usage.py of dubious licencing (it was
