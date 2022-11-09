@@ -30,6 +30,7 @@ Features:
   * -Wint-to-pointer-cast
   * -Wpointer-to-int-cast
   * -Wint-to-void-pointer-cast
+  * -Wcast-function-type-strict (Clang, CFI)
   * Further -Wformat matches for missing specifiers.
     In future, we may warn on all -Wformat (in particular because of e.g.
     time_t & LFS).

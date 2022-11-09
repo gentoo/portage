@@ -92,6 +92,8 @@ gcc_warn_check() {
 			'warning: .*\[-Wincompatible-pointer-types\]'
 			# more specific form of -Wincompatible-pointer-types (Clang)
 			'warning: .*\[-Wincompatible-function-pointer-types\]'
+			# these will fail with CFI (https://reviews.llvm.org/D134831)
+			'warning: .*\[-Wcast-function-type-strict\]'
 			# using wrong deallocator, e.g. using free() on object allocated using my_malloc()
 			# when my_malloc() is annotated as needing my_free().
 			'warning: .*\[-Wmismatched-dealloc\]'
