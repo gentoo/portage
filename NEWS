@@ -28,6 +28,7 @@ Features:
   * -Wundefined-reinterpret-cast (Clang, C++ strict aliasing)
   * -Wint-conversion
   * -Wint-to-pointer-cast
+  * -Wpointer-to-int-cast
 
 * install-qa-check.d: 90gcc-warnings: Always die on -Wimplicit-function-declaration
   and remove bin/check-implicit-pointer-usage.py of dubious licencing (it was

@@ -64,6 +64,8 @@ gcc_warn_check() {
 			'warning: .*\[-Wint-conversion\]'
 			# warning: cast to ... from integer of different size (or smaller size)
 			'warning: .*\[-Wint-to-pointer-cast\]'
+			# warning: cast from ... to integer of different size
+			'warning: .*\[-Wpointer-to-int-cast\]'
 
 			# outdated?
 			'warning: .*too few arguments for format'
