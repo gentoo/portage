@@ -620,12 +620,11 @@ __dyn_install() {
 
 	# record build & installed size in build log
 	if type -P du &>/dev/null; then
-		local nsz=( $(du -ks "${WORKDIR}") )
-		local isz=( $(du -ks "${D}") )
-
 		# subshell to avoid polluting the caller env with the helper
 		# functions below
 		(
+			local nsz=( $(du -ks "${WORKDIR}") )
+			local isz=( $(du -ks "${D}") )
 			# align $1 to the right to the width of the widest of $1 and $2
 			padl() {
 				local s1=$1
