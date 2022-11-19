@@ -76,6 +76,7 @@ x_scripts = {
         "bin/etc-update",
         "bin/fixpackages",
         "bin/regenworld",
+        "bin/verify_all_hashes.sh",
     ],
 }
 
