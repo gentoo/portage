@@ -592,6 +592,8 @@ def doebuild_environment(
             nproc = get_cpu_count()
             if nproc:
                 mysettings["MAKEOPTS"] = "-j%d" % (nproc)
+            if "GNUMAKEFLAGS" not in mysettings:
+                mysettings["GNUMAKEFLAGS"] = "--output-sync=line"
 
         if not eapi_exports_KV(eapi):
             # Discard KV for EAPIs that don't support it. Cached KV is restored
