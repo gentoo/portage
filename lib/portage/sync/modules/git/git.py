@@ -116,6 +116,22 @@ class GitSync(NewBase):
 
         return (os.EX_OK, True)
 
+    def _gen_ceiling_string(self, path):
+        """
+        Iteratively generate a colon delimited string of all of the
+        given path's parents, for use with GIT_CEILING_DIRECTORIES
+        """
+        path = self.repo.location
+        directories = []
+
+        while True:
+            if path == "/":
+                break
+            path = os.path.dirname(path)
+            directories.append(path)
+
+        return ":".join(directories)
+
     def update(self):
         """Update existing git repository, and ignore the syncuri. We are
         going to trust the user and assume that the user is in the branch
@@ -126,6 +142,13 @@ class GitSync(NewBase):
             return (1, False)
         git_cmd_opts = ""
         quiet = self.settings.get("PORTAGE_QUIET") == "1"
+
+        # We don't want to operate with a .git outside of the given
+        # repo in any circumstances.
+        self.spawn_kwargs["env"].update(
+            {"GIT_CEILING_DIRECTORIES": self._gen_ceiling_string(self.repo.location)}
+        )
+
         if self.repo.module_specific_options.get("sync-git-env"):
             shlexed_env = shlex_split(self.repo.module_specific_options["sync-git-env"])
             env = {
