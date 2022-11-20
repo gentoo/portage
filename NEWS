@@ -31,6 +31,10 @@ Bug fixes:
   by the SYSROOT location. For example, if BROOT=/foo, ROOT=/bar, EPREFIX=/baz,
   EROOT=/bar/baz, and SYSROOT=/ then ESYSROOT should be /foo, not /baz.
 
+* depgraph: Resolve atoms using the correct root. This bug may have played out
+  in different ways, but one example was a rebuild in / causing the same package
+  to be added to ROOT, even when it had no other reason to be.
+
 portage-3.0.39 (2022-11-20)
 --------------
 

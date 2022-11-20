@@ -5019,13 +5019,14 @@ class depgraph:
         a favorite list."""
         debug = "--debug" in self._frozen_config.myopts
         onlydeps = "--onlydeps" in self._frozen_config.myopts
-        myroot = self._frozen_config.target_root
-        pkgsettings = self._frozen_config.pkgsettings[myroot]
-        pprovideddict = pkgsettings.pprovideddict
-        virtuals = pkgsettings.getvirtuals()
         args = self._dynamic_config._initial_arg_list[:]
 
         for arg in self._expand_set_args(args, add_to_digraph=True):
+            myroot = arg.root_config.root
+            pkgsettings = self._frozen_config.pkgsettings[myroot]
+            pprovideddict = pkgsettings.pprovideddict
+            virtuals = pkgsettings.getvirtuals()
+
             for atom in sorted(arg.pset.getAtoms()):
                 self._spinner_update()
                 dep = Dependency(atom=atom, onlydeps=onlydeps, root=myroot, parent=arg)
@@ -5168,6 +5169,11 @@ class depgraph:
                         "!!! %s %s\n" % (str(e), str(getattr(e, "__module__", None)))
                     )
                     raise
+
+        try:
+            del myroot, pkgsettings, pprovideddict, virtuals
+        except NameError:
+            pass
 
         # Now that the root packages have been added to the graph,
         # process the dependencies.
