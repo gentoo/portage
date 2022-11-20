@@ -153,9 +153,10 @@ gcc_warn_check() {
 			#	always_overflow=yes
 			#fi
 
-			if [[ ${f} == *'[-Wimplicit-function-declaration]'* ]] ; then
-				implicit_func_decl=yes
-			fi
+			# Disabled for now because too many failures. bug #870412.
+			#if [[ ${f} == *'[-Wimplicit-function-declaration]'* ]] ; then
+			#	implicit_func_decl=yes
+			#fi
 
 			if [[ ${always_overflow} = yes || ${implicit_func_decl} = yes ]] ; then
 				eerror

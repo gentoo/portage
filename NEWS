@@ -16,6 +16,10 @@ Bug fixes:
 
 * Fix DeprecationWarning in sets.
 
+* install-qa-check.d: 90gcc-warnigns: Disable -Wimplicit-function-declaration being
+  fatal for now. The number of failures in bug #870412 is too large for the time
+  being.
+
 portage-3.0.39 (2022-11-20)
 --------------
 
