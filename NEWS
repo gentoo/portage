@@ -22,6 +22,10 @@ Bug fixes:
   fatal for now. The number of failures in bug #870412 is too large for the time
   being.
 
+* depgraph: Resolve atoms using the correct root. This bug may have played out
+  in different ways, but one example was a rebuild in / causing the same package
+  to be added to ROOT, even when it had no other reason to be.
+
 portage-3.0.39 (2022-11-20)
 --------------
 
