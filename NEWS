@@ -1,3 +1,21 @@
+portage-3.0.40 (UNRELEASED)
+--------------
+
+Features:
+* /etc/portage/sets.conf can now be a directory. Ditto for the Portage extension
+  supporting sets.conf in ebuild repositories.
+
+* Tests added for VariableSet changes to check @golang-rebuild works as
+  intended.
+
+Bug fixes:
+* Clobber repositories using sync-type=git to match rsync behavior. This
+  helps with issues where git-synced repositories can become confused
+  if the remote is a CDN and then starts to diverge, preventing further
+  syncs.
+
+* Fix DeprecationWarning in sets.
+
 portage-3.0.39 (2022-11-20)
 --------------
 
