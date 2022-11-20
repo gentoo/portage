@@ -104,7 +104,7 @@ def callemergerc(phase='', packages='', opts=''):
     if os.path.isfile(emergerc_script):
         subprocess.run([os.path.join(". /", emergerc_script)],
                        shell=True,
-                       env={"EMERGE_PHASE": phase, "PACKAGES": packages, "OPTS": opts})
+                       env={"EMERGE_PHASE": phase, "PACKAGES": packages, "OPTS": opts, "EMERGE_PID": str(os.getpid())})
 
 def action_build(
     emerge_config,
