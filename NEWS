@@ -8,6 +8,8 @@ Features:
 * sets: Tests added for VariableSet changes to check @golang-rebuild works as
   intended.
 
+* cleanups: Drop long-obsolete Jython compatibility code.
+
 Bug fixes:
 * sync: Clobber repositories using sync-type=git to match rsync behavior. This
   helps with issues where git-synced repositories can become confused

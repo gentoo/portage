@@ -1,4 +1,4 @@
-# Copyright 2012 Gentoo Foundation
+# Copyright 2012-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import subprocess
@@ -18,10 +18,13 @@ from portage.util._async.PipeReaderBlockingIO import PipeReaderBlockingIO
 
 class PopenPipeBlockingIOTestCase(TestCase):
     """
-    Test PopenProcess, which can be useful for Jython support:
+    Test PopenProcess, which is historically useful for Jython support:
             * use subprocess.Popen since Jython does not support os.fork()
             * use blocking IO with threads, since Jython does not support
               fcntl non-blocking IO)
+
+    Portage does not currently support Jython, but re-introducing support
+    in The Future (TM) may be possible.
     """
 
     _echo_cmd = "echo -n '%s'"

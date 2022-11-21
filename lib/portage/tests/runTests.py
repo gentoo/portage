@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # runTests.py -- Portage Unit Test Functionality
-# Copyright 2006-2020 Gentoo Authors
+# Copyright 2006-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 import grp
 import os
 import os.path as osp
-import platform
 import pwd
 import signal
 import tempfile
@@ -21,12 +20,7 @@ def debug_signal(signum, frame):
     pdb.set_trace()
 
 
-if platform.python_implementation() == "Jython":
-    debug_signum = signal.SIGUSR2  # bug #424259
-else:
-    debug_signum = signal.SIGUSR1
-
-signal.signal(debug_signum, debug_signal)
+signal.signal(signal.SIGUSR1, debug_signal)
 
 # Pretend that the current user's uid/gid are the 'portage' uid/gid,
 # so things go smoothly regardless of the current user and global

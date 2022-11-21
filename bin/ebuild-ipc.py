@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2010-2021 Gentoo Authors
+# Copyright 2010-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This is a helper which ebuild processes can use
@@ -24,7 +24,6 @@ except KeyboardInterrupt:
 import errno
 import logging
 import pickle
-import platform
 import sys
 import time
 
@@ -35,12 +34,7 @@ def debug_signal(signum, frame):
     pdb.set_trace()
 
 
-if platform.python_implementation() == "Jython":
-    debug_signum = signal.SIGUSR2  # bug #424259
-else:
-    debug_signum = signal.SIGUSR1
-
-signal.signal(debug_signum, debug_signal)
+signal.signal(signal.SIGUSR1, debug_signal)
 
 if os.path.isfile(
     os.path.join(
