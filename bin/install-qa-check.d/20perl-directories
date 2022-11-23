@@ -1,0 +1,28 @@
+# Check for perl modules installed in invalid directories.
+
+perl_dir_check() {
+	local invalid_dirs=(
+		usr/share/perl5
+	)
+	if [[ ${PN} != dev-lang/perl ]]; then
+		invalid_dirs+=( usr/lib64/perl5/5.* )
+	fi
+
+	# See, for example, bug #876757
+	local dir detected_invalid_dirs=()
+	for dir in "${invalid_dirs[@]}" ; do
+		if [[ -d ${ED}/${dir} ]]; then
+		   detected_invalid_dirs+=( "${x}" )
+		fi
+	done
+	if [[ ${#detected_invalid_dirs[@]} -gt 0 ]] ; then
+		eqawarn "QA Notice: This ebuild installs perl modules into invalid directories."
+		eqawarn " Maybe PERLDIR is not set accordingly in the ebuild?"
+		eqatag -erl.invalid-module-directory -v "${detected_invalid_dirs[@]}"
+	fi
+}
+
+perl_dir_check
+: # guarantee successful exit
+
+# vim:ft=sh
