@@ -2240,6 +2240,7 @@ class depgraph:
 
         return None
 
+    @functools.lru_cache(maxsize=100)
     def _slot_operator_check_reverse_dependencies(
         self, existing_pkg, candidate_pkg, replacement_parent=None
     ):
