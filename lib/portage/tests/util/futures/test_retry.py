@@ -176,8 +176,13 @@ class RetryTestCase(TestCase):
                 asyncio.wait([decorated_func()], loop=loop)
             )
             self.assertEqual(len(done), 1)
+            cause = done.pop().exception().__cause__
             self.assertTrue(
-                isinstance(done.pop().exception().__cause__, SucceedNeverException)
+                isinstance(
+                    cause,
+                    (asyncio.TimeoutError, SucceedNeverException),
+                ),
+                msg=f"Cause was {cause.__class__.__name__}",
             )
 
     def testOverallTimeoutWithTimeoutError(self):
