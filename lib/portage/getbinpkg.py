@@ -43,8 +43,6 @@ except ImportError as e:
 else:
     _all_errors.append(http_client_error)
 
-_all_errors = tuple(_all_errors)
-
 
 def make_metadata_dict(data):
     warnings.warn(
@@ -615,7 +613,7 @@ def dir_get_metadata(
 
     try:
         conn = create_conn(baseurl, conn)[0]
-    except _all_errors as e:
+    except tuple(_all_errors) as e:
         # ftplib.FTP(host) can raise errors like this:
         #   socket.error: (111, 'Connection refused')
         sys.stderr.write("!!! %s\n" % (e,))

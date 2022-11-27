@@ -339,7 +339,7 @@ if os.path.exists(PRELINK_BINARY):
     proc.communicate()
     status = proc.wait()
     if os.WIFEXITED(status) and os.WEXITSTATUS(status) == os.EX_OK:
-        prelink_capable = 1
+        prelink_capable = True
     del cmd, proc, status
 
 
