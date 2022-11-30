@@ -17,6 +17,11 @@ Features:
   scratch using a crossdev environment under /usr/${CHOST}.
 
 Bug fixes:
+* ebuild: Handle Bash 5.2's change in behavior which enables the shopt
+  'patsub_replacement' by default. This is needed to avoid breaking existing
+  working ebuilds. Future EAPIs will need to adjust the logic
+  added by this change. See bug #881383.
+
 * sync: Clobber repositories using sync-type=git to match rsync behavior. This
   helps with issues where git-synced repositories can become confused
   if the remote is a CDN and then starts to diverge, preventing further

@@ -18,6 +18,7 @@ source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || exit 1
 # used instead.
 __check_bash_version() {
 	# Figure out which min version of bash we require.
+	# Adjust patsub_replacement logic below on new EAPI!
 	local maj min
 	if ___eapi_bash_3_2 ; then
 		maj=3 min=2
@@ -50,6 +51,19 @@ __check_bash_version() {
 	if ___eapi_bash_3_2 && [[ ${BASH_VERSINFO[0]} -gt 3 ]] ; then
 		shopt -s compat32
 	fi
+
+	# patsub_replacement is a new option in bash-5.2 that is also default-on
+	# in that release. The default value is not gated by BASH_COMPAT (see bug #881383),
+	# hence we need to disable it for older Bashes to avoid behaviour changes in ebuilds
+	# and eclasses.
+	#
+	# New EAPI note: a newer EAPI (after 8) may well adopt Bash 5.2 as its minimum version.
+	# If it does, this logic will need to be adjusted to only disable patsub_replacement
+	# for < ${new_api}!
+	if (( BASH_VERSINFO[0] >= 6 || ( BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2 ) )) ; then
+		shopt -u patsub_replacement
+	fi
+
 }
 __check_bash_version
 
