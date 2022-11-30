@@ -49,6 +49,10 @@ Bug fixes:
 * env-update: Also generate PATH definition in systemd user environment file
   /etc/environment.d/10-gentoo-env.conf
 
+* --disable-static is only passed for libtool-enabled configure scripts in EAPI 8.
+  This avoids annoying warnings when a configure script has a flag such as
+  --disable-static_link that would then trigger a QA warning (bug #814380).
+
 portage-3.0.39 (2022-11-20)
 --------------
 
