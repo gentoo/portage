@@ -2,6 +2,10 @@ portage-3.0.40 (UNRELEASED)
 --------------
 
 Features:
+* Optimize _slot_operator_check_reverse_dependencies by caching using
+  lru_cache. In a ChromeOS use case, this patch decreases the running time from
+  311s to 197s with almost no memory usage increase. See bug #883071.
+
 * config: /etc/portage/sets.conf can now be a directory. Ditto for the Portage extension
   supporting sets.conf in ebuild repositories.
 
