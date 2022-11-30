@@ -2031,7 +2031,7 @@ class binarytree:
         filename = None
         build_id = None
         if allocate_new:
-            filename, build_id = self._allocate_filename(cpv)
+            filename, build_id = self._allocate_filename(cpv, remote_binpkg_format)
         elif self._is_specific_instance(cpv):
             instance_key = self.dbapi._instance_key(cpv)
             path = self._pkg_paths.get(instance_key)
