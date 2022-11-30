@@ -655,8 +655,8 @@ econf() {
 			fi
 
 			if ___eapi_econf_passes_--disable-static; then
-				if [[ ${conf_help} == *--disable-static* || \
-						${conf_help} == *--enable-static* ]]; then
+				if [[ ${conf_help} == *--enable-shared[^A-Za-z0-9+_.-]* &&
+						${conf_help} == *--enable-static[^A-Za-z0-9+_.-]* ]]; then
 					conf_args+=( --disable-static )
 				fi
 			fi
