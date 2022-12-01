@@ -821,7 +821,7 @@ setup(
     version="3.0.40",
     url="https://wiki.gentoo.org/wiki/Project:Portage",
     project_urls={
-        "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/RELEASE-NOTES",
+        "Release Notes": "https://gitweb.gentoo.org/proj/portage.git/plain/NEWS",
         "Documentation": "https://wiki.gentoo.org/wiki/Handbook:AMD64/Working/Portage",
     },
     author="Gentoo Portage Development Team",
