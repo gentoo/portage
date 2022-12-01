@@ -30,6 +30,17 @@ editor integration. Something like this:
 black --check --diff .
 ```
 
+One can also use pre-commit to run the configured pre-commit
+hooks. Utilizing pre-commit has the advantage of running the linter
+over only the changed files, resulting in a much faster pre-commit
+hook. To use, install pre-commit and then install the hook to your
+.git:
+
+```sh
+emerge dev-vcs/pre-commit
+pre-commit install
+```
+
 To ignore commit 1bb64ff452 (and other reformatting commits) which is a
 massive commit that simply formatted the code base using black - you can do
 the following:
