@@ -2039,12 +2039,13 @@ class depgraph:
                 "",
                 "",
                 "backtracking due to slot conflict:",
-                "   first package:  %s" % existing_node,
-                "  package(s) to mask: %s" % str(to_be_masked),
-                "      slot: %s" % slot_atom,
-                "   parents: %s"
-                % ", ".join(
-                    "({}, '{}')".format(ppkg, atom) for ppkg, atom in all_parents
+                "   first package:  {}".format(existing_node),
+                "  package(s) to mask: {}".format(str(to_be_masked)),
+                "      slot: {}".format(slot_atom),
+                "   parents: {}".format(
+                    ", ".join(
+                        "({}, '{}')".format(ppkg, atom) for ppkg, atom in all_parents
+                    )
                 ),
                 "",
             ]
