@@ -4187,6 +4187,9 @@ class dblink:
     def _eqawarn(self, phase, lines):
         self._elog("eqawarn", phase, lines)
 
+    def _ewarn(self, phase, lines):
+        self._elog("ewarn", phase, lines)
+
     def _eerror(self, phase, lines):
         self._elog("eerror", phase, lines)
 
@@ -4387,6 +4390,9 @@ class dblink:
                         }
                     ],
                 )
+
+        def ewarn(lines):
+            self._ewarn("preinst", lines)
 
         def eerror(lines):
             self._eerror("preinst", lines)
@@ -4884,6 +4890,10 @@ class dblink:
                 finally:
                     self.unlockdb()
 
+                collision_message_type = ewarn
+                if collision_protect or protect_owned and owners:
+                    collision_message_type = eerror
+
                 for pkg, owned_files in owners.items():
                     msg = []
                     msg.append(pkg_info_strs[pkg.mycpv])
@@ -4892,10 +4902,10 @@ class dblink:
                             "\t%s" % os.path.join(destroot, f.lstrip(os.path.sep))
                         )
                     msg.append("")
-                    eerror(msg)
+                    collision_message_type(msg)
 
                 if not owners:
-                    eerror(
+                    collision_message_type(
                         [_("None of the installed" " packages claim the file(s)."), ""]
                     )
 
@@ -4935,10 +4945,12 @@ class dblink:
                 " If necessary, refer to your elog "
                 "messages for the whole content of the above message."
             )
-            eerror(wrap(msg, 70))
 
             if abort:
+                eerror(wrap(msg, 70))
                 return 1
+            else:
+                ewarn(wrap(msg, 70))
 
         # The merge process may move files out of the image directory,
         # which causes invalidation of the .installed flag.
