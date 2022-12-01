@@ -424,8 +424,8 @@ def update_config_files(
                         if match_callback(repo_name, atom, new_atom):
                             # add a comment with the update command, so
                             # the user can clearly see what happened
-                            contents[pos] = "# %s\n" % " ".join(
-                                "{}".format(x) for x in update_cmd
+                            contents[pos] = "# {}\n".format(
+                                " ".join("{}".format(x) for x in update_cmd)
                             )
                             contents.insert(
                                 pos + 1,
